@@ -1,6 +1,5 @@
 
 from enum import Enum
-from pathlib import Path
 import shlex
 import datetime
 import tempfile
@@ -111,19 +110,18 @@ class PackageManager(Enum):
 # Main Functions
 ###################
 
-def pin_dockerfile_packages(
+def pin_dockerfile_base_image_and_packages(
         dockerfile_contents: str, 
         date: datetime.datetime,
         ) -> str:
 
-    with tempfile.TemporaryFile(mode="w+") as tmpfile:
-        pinned_dockerfile = Path("pinned-Dockerfile")
+    with tempfile.TemporaryDirectory() as tmpdir:
 
-        dfp = DockerfileParser(path=str(pinned_dockerfile))
+        dfp = DockerfileParser(tmpdir)
 
         dfp.content = dockerfile_contents
 
-        original_from = dfp.baseimage
+        #original_from = dfp.baseimage
 
         print(dfp.parent_images)
         print(dfp.baseimage)
@@ -476,11 +474,3 @@ def put_pinned_package_version(package_name: str, version: str, install_command:
             raise ValueError(f"Unsupported install command: {install_command}")
     
     return pinned_package
-
-if __name__ == "__main__":
-    dockerfile_path = Path("Dockerfile")
-    dockerfile_contents = dockerfile_path.read_text()
-    pin_dockerfile_packages(dockerfile_contents, datetime.datetime.now(), Path("."))
-
-    from repo2ree.dockerfile_utils.validate import is_dockerfile_buildable
-    #assert is_dockerfile_buildable(Path("pinned-Dockerfile"))

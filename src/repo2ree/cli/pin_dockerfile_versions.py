@@ -5,7 +5,7 @@ from pathlib import Path
 import click
 
 from repo2ree.cli.cli import cli as repo2ree_cli
-from repo2ree.dockerfile_utils.pin_versions import pin_dockerfile_packages
+from repo2ree.dockerfile_utils.pin_versions import pin_dockerfile_base_image_and_packages
 
 @repo2ree_cli.command()
 @click.option('-f', '--dockerfile', type=click.Path(exists=True, dir_okay=False, file_okay=True), default="./Dockerfile", help='Path to the Dockerfile to be processed.')
@@ -46,7 +46,7 @@ def pin_dockerfile(dockerfile: str, cutoff_date: str, output_path: str):
     dockerfile_contents = dockerfile_path.read_text()
 
     try:
-        pinned_dockerfile_contents = pin_dockerfile_packages(dockerfile_contents, _cutoff_date)
+        pinned_dockerfile_contents = pin_dockerfile_base_image_and_packages(dockerfile_contents, _cutoff_date)
         print(pinned_dockerfile_contents)
 
         pinned_dockerfile_path.write_text(pinned_dockerfile_contents)

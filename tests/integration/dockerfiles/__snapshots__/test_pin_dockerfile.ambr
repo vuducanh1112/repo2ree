@@ -1,0 +1,20 @@
+# serializer version: 1
+# name: test_pin_dockerfile
+  '''
+  FROM python@sha256:5f55cdf0c5d9dc1a415637a5ccc4a9e18663ad203673173b8cda8f8dcacef689
+  
+  RUN if [ -e /etc/apt/sources.list.d/debian.sources ]; then rm -f /etc/apt/sources.list.d/debian.sources; fi;\
+      echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20251006T161231Z trixie main" >/etc/apt/sources.list;\
+      echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20251006T161231Z trixie-security main" >>/etc/apt/sources.list;\
+      echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20251006T161231Z trixie-updates main" >>/etc/apt/sources.list;\
+      echo "deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20251006T161231Z trixie-backports main" >>/etc/apt/sources.list;\
+      rm -f /etc/apt/apt.conf.d/docker-clean\
+      echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
+  
+  RUN apt-get update && apt-get install -y curl=8.14.1-2 gnupg2=2.4.7-21 ca-certificates=20250419 lsb-release=12.1-1
+  
+  RUN python3 -m pip install requests==2.32.5
+  
+  
+  '''
+# ---

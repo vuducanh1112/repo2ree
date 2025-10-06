@@ -177,7 +177,7 @@ def get_put_snapshot_sources_shell_command(
             snapshot_archive_base = "http://snapshot.debian.org/archive/"
 
             commands: list[str] = []
-            commands.append(f"""if [ -e /etc/apt/sources.list.d/debian.sources ]; then rm -f /etc/apt/sources.list.d/debian.sources; fi;""")
+            commands.append("""if [ -e /etc/apt/sources.list.d/debian.sources ]; then rm -f /etc/apt/sources.list.d/debian.sources; fi;""")
             commands.append(f"""echo "deb [check-valid-until=no] {snapshot_archive_base}debian/{snapshot} {version_code} main" >/etc/apt/sources.list;""")
             commands.append(f"""echo "deb [check-valid-until=no] {snapshot_archive_base}debian-security/{snapshot} {version_code}-security main" >>/etc/apt/sources.list;""")
             commands.append(f"""echo "deb [check-valid-until=no] {snapshot_archive_base}debian/{snapshot} {version_code}-updates main" >>/etc/apt/sources.list;""")
@@ -198,7 +198,7 @@ def get_put_snapshot_sources_shell_command(
 
             commands: list[str] = []
 
-            commands.append(f"""if [ -e /etc/apt/sources.list.d/ubuntu.sources ]; then rm -f /etc/apt/sources.list.d/ubuntu.sources; fi;""")
+            commands.append("""if [ -e /etc/apt/sources.list.d/ubuntu.sources ]; then rm -f /etc/apt/sources.list.d/ubuntu.sources; fi;""")
             commands.append(f"""echo "deb [check-valid-until=no] {snapshot_archive_base}ubuntu/{snapshot} {version_code} main restricted" >/etc/apt/sources.list;""")
             commands.append(f"""echo "deb [check-valid-until=no] {snapshot_archive_base}ubuntu/{snapshot} {version_code}-updates main restricted" >>/etc/apt/sources.list;""")
             commands.append(f"""echo "deb [check-valid-until=no] {snapshot_archive_base}ubuntu/{snapshot} {version_code} universe" >>/etc/apt/sources.list;""")
@@ -214,9 +214,9 @@ def get_put_snapshot_sources_shell_command(
                 commands.extend(keep_apt_cache_command)
 
             # http://snapshot.ubuntu.com is redirected to https, so we have to install ca-certificates
-            commands.append(f"""export DEBIAN_FRONTEND=noninteractive;""")
-            commands.append(f"""apt-get -o Acquire::https::Verify-Peer=false update >&2;""")
-            commands.append(f"""apt-get -o Acquire::https::Verify-Peer=false install -y ca-certificates >&2;""")
+            commands.append("""export DEBIAN_FRONTEND=noninteractive;""")
+            commands.append("""apt-get -o Acquire::https::Verify-Peer=false update >&2;""")
+            commands.append("""apt-get -o Acquire::https::Verify-Peer=false install -y ca-certificates >&2;""")
 
             run_command = "\\\n    ".join(commands)
             #TODO Ubuntu >= 24.04 has new format
