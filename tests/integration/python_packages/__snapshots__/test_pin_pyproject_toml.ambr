@@ -1,0 +1,39 @@
+# serializer version: 1
+# name: test_pin_pyproject_toml
+  '''
+  [project]
+  name = "repo2ree"
+  version = "0.1.0"
+  description = "A utility tool to create a reusable execution environment from a repo."
+  readme = "README.md"
+  requires-python = "~=3.13"
+  dependencies = [
+      "click==8.1.8",
+      "packaging~=25.0",
+      "pydantic==2.10.4",
+      "requests~=2.32.5",
+  ]
+  
+  [project.scripts]
+  repo2ree = "repo2ree.__main__:main"
+  
+  [tool.uv]
+  dev-dependencies = [
+      "pytest",
+      "pre-commit~=4.3.0",
+      "ruff~=0.12.11",
+  ]
+  
+  [tool.hatch.build.targets.wheel]
+  packages = [
+      "src/repo2ree",
+  ]
+  
+  [build-system]
+  requires = [
+      "hatchling",
+  ]
+  build-backend = "hatchling.build"
+  
+  '''
+# ---
