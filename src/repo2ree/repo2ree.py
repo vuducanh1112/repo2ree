@@ -42,12 +42,16 @@ def repo2ree(
     )
 
     ree = ReproducibleExecutionEnvironment(
-        name="example",
-        runtime=docker_image_path,
-        sbom=sbom_path,
+        name=f"{repo_path.name}-ree",
+        runtime=docker_image_path.relative_to(output_dir)
+        if docker_image_path
+        else None,
+        sbom=sbom_path.relative_to(output_dir),
         hardware_description={"cpu": "x86_64", "memory": "16GB"},
         build_runtime_script=Path("/path/to/build/script"),
-        validate_runtime_reproducibility_script=validate_runtime_reproducibility_script,
+        validate_runtime_reproducibility_script=validate_runtime_reproducibility_script.relative_to(
+            output_dir
+        ),
     )
 
     ree_file = output_dir / "ree.json"
