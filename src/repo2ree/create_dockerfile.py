@@ -149,4 +149,7 @@ def generate_uv_pyprojecttoml(repo_path: Path, exclude_newer: datetime) -> str:
         f'exclude-newer = "{exclude_newer.strftime("%Y-%m-%dT%H:%M:%SZ")}"\n'
     )
 
+    print("Generated temporary pyproject.toml contents:")
+    print(pyproject_contents)
+
     return pyproject_contents

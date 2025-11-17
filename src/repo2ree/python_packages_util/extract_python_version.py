@@ -32,10 +32,8 @@ def get_required_python(repo_dir: Path, cutoff_date: datetime) -> SpecifierSet:
             break
 
     if not required_python_version:
-        major_python_version = get_major_python_version_until_date(
-            target_date=cutoff_date
-        )
-        required_python_version = SpecifierSet(f"~={major_python_version.major}.0")
+        major_python_version = get_python_version_until_date(target_date=cutoff_date)
+        required_python_version = SpecifierSet(f"~={major_python_version}.0")
 
     return required_python_version
 
@@ -45,7 +43,7 @@ def get_required_python(repo_dir: Path, cutoff_date: datetime) -> SpecifierSet:
 ###################
 
 
-def get_major_python_version_until_date(target_date: datetime) -> Version:
+def get_python_version_until_date(target_date: datetime) -> Version:
     PYTHON_RELEASES: dict[str, datetime] = {
         "3.6": datetime.strptime("2016-12-23", "%Y-%m-%d"),
         "3.7": datetime.strptime("2018-06-27", "%Y-%m-%d"),
@@ -69,7 +67,9 @@ def get_major_python_version_until_date(target_date: datetime) -> Version:
             f"No Python versions found released before {target_date.isoformat()}"
         )
 
-    return max(available_versions)
+    python_version = max(available_versions)
+
+    return python_version
 
 
 ###################
