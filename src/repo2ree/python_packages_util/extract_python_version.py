@@ -16,7 +16,7 @@ import yaml
 ###################
 
 
-def get_required_python(repo_dir: Path) -> SpecifierSet:
+def get_required_python(repo_dir: Path, cutoff_date: datetime) -> SpecifierSet:
     required_python_version: SpecifierSet | None = None
 
     for func in [
@@ -33,7 +33,7 @@ def get_required_python(repo_dir: Path) -> SpecifierSet:
 
     if not required_python_version:
         major_python_version = get_major_python_version_until_date(
-            target_date=datetime.now()
+            target_date=cutoff_date
         )
         required_python_version = SpecifierSet(f"~={major_python_version.major}.0")
 

@@ -134,7 +134,7 @@ def generate_dockerfile(repo_path: Path, cutoff_date: datetime) -> str:
 def generate_uv_pyprojecttoml(repo_path: Path, exclude_newer: datetime) -> str:
     pyproject_contents = ""
 
-    required_python = get_required_python(repo_path)
+    required_python = get_required_python(repo_path, exclude_newer)
 
     pyproject_contents += "[project]\n"
     pyproject_contents += f'name = "{repo_path.name}"\n'
