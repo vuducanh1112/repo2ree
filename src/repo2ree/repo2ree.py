@@ -7,14 +7,16 @@ from repo2ree.create_dockerfile import generate_dockerfile_and_build_image
 from repo2ree.sbom.generate_sbom import generate_sbom
 
 
-def repo2ree(repo_path: Path, output_dir: Path) -> ReproducibleExecutionEnvironment:
+def repo2ree(
+    repo_path: Path, output_dir: Path, cutoff_date: datetime
+) -> ReproducibleExecutionEnvironment:
     ##############
     assert repo_path.exists(), "Repository path must exist."
     assert output_dir.exists(), "Output directory must exist."
     ##############
 
     docker_image_path = generate_dockerfile_and_build_image(
-        repo_path, datetime(2025, 10, 1), output_dir
+        repo_path, cutoff_date, output_dir
     )
     # dockerfile = output_dir / "Dockerfile-ree"
 
