@@ -1,15 +1,15 @@
-
 import requests
 import json
 from typing import List, Dict, Final
-from pathlib import Path
 from datetime import datetime
 
 from packaging.version import Version
 from pydantic import BaseModel
 import yaml
 
-from repo2ree.python_packages_util.pin_pypi_package_version import pin_python_dependency_in_string
+from repo2ree.python_packages_util.pin_pypi_package_version import (
+    pin_python_dependency_in_string,
+)
 
 ###################
 # Constants
@@ -20,6 +20,7 @@ ANACONDA_API_URL: Final = "https://api.anaconda.org/package"
 ###################
 # Data Models
 ###################
+
 
 class AnacondaPackageInfo(BaseModel):
     name: str
@@ -47,13 +48,14 @@ class AnacondaPackageInfo(BaseModel):
     app_entry: Dict
     app_type: Dict
     app_summary: Dict
-    builds: List[str] 
+    builds: List[str]
     releases: List[Dict]
     watchers: int
     upvoted: bool
     created_at: str
     modified_at: str
     files: List["AnacondaPackageFileInfo"]
+
 
 class AnacondaPackageFileInfo(BaseModel):
     description: str
@@ -73,12 +75,15 @@ class AnacondaPackageFileInfo(BaseModel):
     owner: str
     labels: List[str]
 
+
 ###################
 # Main Functions
 ###################
 
-def pin_package_versions_in_environment_yml(environment_file_content: str, cutoff_date: datetime) -> str:
-    
+
+def pin_package_versions_in_environment_yml(
+    environment_file_content: str, cutoff_date: datetime
+) -> str:
     conda_env_data = yaml.safe_load(environment_file_content)
 
     channels = conda_env_data.get("channels", [])
@@ -90,33 +95,38 @@ def pin_package_versions_in_environment_yml(environment_file_content: str, cutof
             conda_dependencies.append(dep)
         elif isinstance(dep, dict) and "pip" in dep:
             pip_dependencies.extend(dep["pip"])
-    
+
     pinned_conda_dependencies = []
     for dep in conda_dependencies:
         if "=" in dep or "<" in dep or ">" in dep or "~" in dep:
             pinned_conda_dependencies.append(dep)
         else:
-            version = get_anaconda_package_version_until_date(dep, cutoff_date, channels)
+            version = get_anaconda_package_version_until_date(
+                dep, cutoff_date, channels
+            )
             if version:
                 pinned_conda_dependencies.append(f"{dep}={version}")
             else:
                 pinned_conda_dependencies.append(dep)
-    
+
     pinned_pip_dependencies = []
     for dep in pip_dependencies:
-        pinned_pip_dependencies.append(pin_python_dependency_in_string(dep, cutoff_date))
-    
+        pinned_pip_dependencies.append(
+            pin_python_dependency_in_string(dep, cutoff_date)
+        )
+
     pinned_env_data = conda_env_data.copy()
     pinned_env_data["dependencies"] = pinned_conda_dependencies
     if pip_dependencies:
         pinned_env_data["dependencies"].append({"pip": pinned_pip_dependencies})
-    
+
     pinned_environment_file_content = yaml.dump(pinned_env_data, sort_keys=False)
     return pinned_environment_file_content
 
 
-def get_anaconda_package_version_until_date(package_name: str, cutoff_date: datetime, channels: list[str]) -> str:
-
+def get_anaconda_package_version_until_date(
+    package_name: str, cutoff_date: datetime, channels: list[str]
+) -> str:
     from datetime import timezone
 
     # Ensure cutoff_date is timezone-aware (UTC)
@@ -128,19 +138,25 @@ def get_anaconda_package_version_until_date(package_name: str, cutoff_date: date
     for channel, data in anaconda_channels_data.items():
         if not data:
             continue
-        
+
         package_info = parse_anaconda_response(data)
-        
+
         file_infos_by_version: Dict[str, AnacondaPackageFileInfo] = {}
         for file_info in package_info.files:
             file_infos_by_version[file_info.version] = file_info
-        
-        sorted_versions = sorted(file_infos_by_version.keys(), key=lambda v: Version(v), reverse=True)
+
+        sorted_versions = sorted(
+            file_infos_by_version.keys(), key=lambda v: Version(v), reverse=True
+        )
         for version in sorted_versions:
             file_info = file_infos_by_version[version]
-            upload_time = datetime.strptime(file_info.upload_time, "%Y-%m-%d %H:%M:%S.%f%z")
+            upload_time = datetime.strptime(
+                file_info.upload_time, "%Y-%m-%d %H:%M:%S.%f%z"
+            )
             if upload_time <= cutoff_date:
-                print(f"Found version '{version}' on channel '{channel}' uploaded at {upload_time.isoformat()}")
+                print(
+                    f"Found version '{version}' on channel '{channel}' uploaded at {upload_time.isoformat()}"
+                )
                 return version
 
     return ""
@@ -159,29 +175,26 @@ def get_anaconda_package_data(package_name: str, channels: list[str]) -> Dict:
         package_name: The name of the package (e.g., 'numpy', 'pytorch').
 
     Returns:
-        A dictionary where keys are the channel names and values are lists of 
+        A dictionary where keys are the channel names and values are lists of
         unique versions found on that channel.
     """
-    
+
     anaconda_channels_data: Dict[str, Dict] = {channel: dict() for channel in channels}
-    
-    print(f"Searching for package '{package_name}' across channels: {', '.join(channels)}\n")
+
+    print(
+        f"Searching for package '{package_name}' across channels: {', '.join(channels)}\n"
+    )
 
     for channel in channels:
-        
-        # Construct the API endpoint URL for the specific channel and package
         api_url = f"{ANACONDA_API_URL}/{channel}/{package_name}"
-        
+
         try:
-            # Make the API request
             response = requests.get(api_url, timeout=10)
-            
-            # Check for HTTP errors (404, 500, etc.)
-            response.raise_for_status() 
-            
-            # Parse the JSON response
+
+            response.raise_for_status()
+
             data = response.json()
-            #Path("debug_anaconda_response.json").write_text(json.dumps(data, indent=2))
+            # Path("debug_anaconda_response.json").write_text(json.dumps(data, indent=2))
 
             anaconda_channels_data[channel] = data
 
@@ -190,12 +203,15 @@ def get_anaconda_package_data(package_name: str, channels: list[str]) -> Dict:
             if e.response.status_code == 404:
                 print(f"   Package not found on channel '{channel}' (404).")
             else:
-                print(f"   Error accessing channel '{channel}': HTTP Error {e.response.status_code}")
+                print(
+                    f"   Error accessing channel '{channel}': HTTP Error {e.response.status_code}"
+                )
         except requests.exceptions.RequestException as e:
-            print(f"   An error occurred while connecting to Anaconda API for channel '{channel}': {e}")
+            print(
+                f"   An error occurred while connecting to Anaconda API for channel '{channel}': {e}"
+            )
         except json.JSONDecodeError:
             print(f"   Error: Received non-JSON response from channel '{channel}'.")
-
 
     return anaconda_channels_data
 
@@ -203,6 +219,7 @@ def get_anaconda_package_data(package_name: str, channels: list[str]) -> Dict:
 ###################
 # Pure Functions
 ###################
+
 
 def parse_anaconda_response(data: dict) -> AnacondaPackageInfo:
     """
@@ -213,7 +230,9 @@ def parse_anaconda_response(data: dict) -> AnacondaPackageInfo:
     for file_data in data.get("files", []):
         anaconda_package_file_info = AnacondaPackageFileInfo(
             description=file_data.get("description") or "",
-            dependencies=file_data.get("dependencies", {}) if isinstance(file_data.get("dependencies"), dict) else {},
+            dependencies=file_data.get("dependencies", {})
+            if isinstance(file_data.get("dependencies"), dict)
+            else {},
             distribution_type=file_data.get("distribution_type") or "",
             basename=file_data.get("basename") or "",
             attrs=file_data.get("attrs") or {},
@@ -225,7 +244,9 @@ def parse_anaconda_response(data: dict) -> AnacondaPackageInfo:
             download_url=file_data.get("download_url") or "",
             type=file_data.get("type") or "",
             version=file_data.get("version") or "",
-            ndownloads=file_data.get("ndownloads") if file_data.get("ndownloads") is not None else 0,
+            ndownloads=file_data.get("ndownloads")
+            if file_data.get("ndownloads") is not None
+            else 0,
             owner=file_data.get("owner") or "",
             labels=file_data.get("labels") or [],
         )
@@ -260,11 +281,12 @@ def parse_anaconda_response(data: dict) -> AnacondaPackageInfo:
         builds=data.get("builds") or [],
         releases=data.get("releases") or [],
         watchers=data.get("watchers", 0) if data.get("watchers") is not None else 0,
-        upvoted=data.get("upvoted", False) if data.get("upvoted") is not None else False,
+        upvoted=data.get("upvoted", False)
+        if data.get("upvoted") is not None
+        else False,
         created_at=data.get("created_at") or "",
         modified_at=data.get("modified_at") or "",
-        files=anaconda_package_files
+        files=anaconda_package_files,
     )
 
     return anaconda_package_info
-
