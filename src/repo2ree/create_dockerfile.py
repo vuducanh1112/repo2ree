@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from datetime import datetime
 import tempfile
+from packaging.specifiers import SpecifierSet
 
 from repo2ree.dockerfile_utils.extract_files import extract_file_from_image
 from repo2ree.dockerfile_utils.pin_versions import pin_base_image
@@ -10,7 +11,12 @@ from repo2ree.dockerfile_utils.build_image import (
     save_image_to_tar,
     unify_build_contexts,
 )
-from repo2ree.python_packages_util.extract_python_version import get_required_python
+from repo2ree.python_packages_util.extract_python_version import (
+    find_required_python_version,
+)
+from repo2ree.python_packages_util.get_required_python_version import (
+    get_python_version_until_date,
+)
 
 import tomli
 
@@ -134,7 +140,11 @@ def generate_dockerfile(repo_path: Path, cutoff_date: datetime) -> str:
 def generate_uv_pyprojecttoml(repo_path: Path, exclude_newer: datetime) -> str:
     pyproject_contents = ""
 
-    required_python = get_required_python(repo_path, exclude_newer)
+    required_python = find_required_python_version(repo_path, exclude_newer)
+
+    if not required_python:
+        major_python_version = get_python_version_until_date(target_date=exclude_newer)
+        required_python = SpecifierSet(f"~={major_python_version}.0")
 
     pyproject_contents += "[project]\n"
     pyproject_contents += f'name = "{repo_path.name}"\n'
