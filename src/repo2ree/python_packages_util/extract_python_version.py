@@ -2,7 +2,6 @@ import re
 import ast
 import configparser
 from pathlib import Path
-from datetime import datetime
 
 from repo2ree.python_packages_util.pin_pypi_package_version import get_pypi_package_info
 
@@ -16,7 +15,7 @@ import yaml
 
 
 def find_required_python_version(
-    repo_dir: Path, cutoff_date: datetime
+    repo_dir: Path,
 ) -> SpecifierSet | None:
     required_python_version: SpecifierSet | None = None
 
