@@ -1,18 +1,14 @@
 {
-    "name": "repo2ree devcontainer",
-    "build": {
-      "dockerfile": "Dockerfile"
-    },
-    "mounts": [
-        "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
-    ],
+  "name": "repo2ree devcontainer",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/repo2ree",
 
-    "customizations": {
-      "vscode": {
-        "extensions": [
-          "ms-python.python"
-        ]
-      }
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python"
+      ]
     }
   }
-  
+}
