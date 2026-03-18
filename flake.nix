@@ -21,6 +21,7 @@
 
             # Essentials
             git
+            less
             vim
             docker-client
 
@@ -28,6 +29,8 @@
             nodejs_25        
             python313Packages.uv
             kubectl
+
+            renovate
           ];
 
           shellHook = ''
