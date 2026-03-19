@@ -77,7 +77,7 @@ interface Ree {
   name: string;
   swhid: string;
   origin_url: string;
-  source_type: "git" | "svn" | "hg" | "tarball";
+  source_type: "" | "git" | "svn" | "hg" | "cvs" | "bzr" | "tarball";
   runtime: string;
   build_runtime_script: string;
   sbom: string;
@@ -89,9 +89,12 @@ interface Ree {
   _sealedAt?: string;
   _sealHash?: string;
   _sourceIncluded?: boolean;
-  _sourceDownloaded?: boolean;
+  _sourceAvailable?: boolean;
+  _sourceAcquiredBy?: "download" | "upload";
   _runtimeIncluded?: boolean;
   _uploadedArchive?: string;
+  _sourceSnapshotArchive?: string;
+  _sourceSnapshotCapturedAt?: string;
 }
 
 interface FileTreeNode {
@@ -101,6 +104,11 @@ interface FileTreeNode {
   content?: string;
   tag?: string;
   children?: FileTreeNode[];
+}
+
+interface SourceUploadCommit {
+  mode: "archive";
+  archiveName?: string;
 }
 
 interface ReeFile {
@@ -222,7 +230,49 @@ function findVirtualFileByName(nodes: FileTreeNode[], name: string): FileTreeNod
   return walk(nodes || []);
 }
 
-function buildCurrentReeArchiveEntries(ree: Ree, virtualFiles: FileTreeNode[]): ZipEntry[] {
+function normalizeSnapshotArchiveName(rawName: string): string {
+  const trimmed = (rawName || "").trim();
+  if (!trimmed) return "source-original.tar.gz";
+  if (/\.tar\.gz$/i.test(trimmed)) return trimmed;
+  if (/\.tgz$/i.test(trimmed)) return trimmed.replace(/\.tgz$/i, ".tar.gz");
+  const stem = trimmed.replace(/\.(zip|tar|tar\.bz2|tar\.xz|tar\.zst|jar)$/i, "");
+  return `${stem || "source"}-original.tar.gz`;
+}
+
+function listTreeFiles(nodes: FileTreeNode[], prefix = ""): Array<{ path: string; content: string }> {
+  let files: Array<{ path: string; content: string }> = [];
+  for (const node of nodes || []) {
+    const path = prefix ? `${prefix}${node.name}` : node.name;
+    if (node.type === "file") {
+      files.push({ path, content: node.content ?? "" });
+    } else if (node.children) {
+      files = files.concat(listTreeFiles(node.children, `${path}/`));
+    }
+  }
+  return files;
+}
+
+function buildSnapshotArchiveContent(sourceSnapshotFiles: FileTreeNode[], capturedAt?: string): string {
+  const files = listTreeFiles(sourceSnapshotFiles);
+  return [
+    "# Immutable source snapshot",
+    `captured_at=${capturedAt || new Date().toISOString()}`,
+    `file_count=${files.length}`,
+    "",
+    ...files.flatMap(file => [
+      `>>> ${file.path}`,
+      file.content,
+      "",
+    ]),
+  ].join("\n");
+}
+
+function buildCurrentReeArchiveEntries(
+  ree: Ree,
+  virtualFiles: FileTreeNode[],
+  sourceSnapshotFiles: FileTreeNode[],
+  sourceSnapshotArchiveName?: string,
+): ZipEntry[] {
   const enc = new TextEncoder();
   const entries: ZipEntry[] = [];
 
@@ -243,7 +293,10 @@ function buildCurrentReeArchiveEntries(ree: Ree, virtualFiles: FileTreeNode[]): 
     seal_hash: ree._sealHash || null,
     eval_level: ree._evalLevel ?? 0,
     source_included: !!ree._sourceIncluded,
-    source_downloaded: !!ree._sourceDownloaded,
+    source_available: !!ree._sourceAvailable,
+    source_acquired_by: ree._sourceAcquiredBy || null,
+    source_snapshot_archive: ree._sourceSnapshotArchive || null,
+    source_snapshot_captured_at: ree._sourceSnapshotCapturedAt || null,
     runtime_included: !!ree._runtimeIncluded,
   };
   entries.push({ path: "ree/ree.json", data: enc.encode(JSON.stringify(manifest, null, 2)) });
@@ -262,17 +315,14 @@ function buildCurrentReeArchiveEntries(ree: Ree, virtualFiles: FileTreeNode[]): 
     entries.push({ path: "ree/runtime.tar.gz", data: enc.encode(runtimeContent) });
   }
 
-  if (ree._sourceIncluded) {
-    function addTree(nodes: FileTreeNode[], prefix: string) {
-      for (const node of nodes || []) {
-        if (node.type === "file") {
-          entries.push({ path: `ree/source-repo/${prefix}${node.name}`, data: enc.encode(node.content ?? "") });
-        } else if (node.children) {
-          addTree(node.children, `${prefix}${node.name}/`);
-        }
-      }
+  if (ree._sourceIncluded && sourceSnapshotFiles.length > 0) {
+    for (const file of listTreeFiles(sourceSnapshotFiles)) {
+      entries.push({ path: `ree/source-repo/${file.path}`, data: enc.encode(file.content) });
     }
-    addTree(virtualFiles, "");
+
+    const archiveName = normalizeSnapshotArchiveName(sourceSnapshotArchiveName || ree._sourceSnapshotArchive || "source-original.tar.gz");
+    const archiveContent = buildSnapshotArchiveContent(sourceSnapshotFiles, ree._sourceSnapshotCapturedAt);
+    entries.push({ path: `ree/${archiveName}`, data: enc.encode(archiveContent) });
   }
 
   return entries;
@@ -380,8 +430,7 @@ const EVALUATE_SVC: Service = {
   badge: { label: "Evaluated", color: "#7c3aed", bg: "#f5f3ff" },
   desc: "Scan the repository structure and score the reproducibility level based on available metadata.",
   requires: [
-    { field: "origin_url", label: "Origin URL" },
-    { field: "_sourceDownloaded", label: "Source downloaded" },
+    { field: "_sourceAvailable", label: "Source available" },
   ],
   params: [
     { key: "strict", label: "Strict mode", type: "bool", default: false, hint: "Fail if any optional fields are missing" },
@@ -398,7 +447,7 @@ const SERVICES: Service[] = [
     badge: { label: "Built", color: "#0891b2", bg: "#ecfeff" },
     desc: "Execute the build_runtime_script to construct the runtime environment from scratch.",
     requires: [
-      { field: "_sourceDownloaded", label: "Source downloaded" },
+      { field: "_sourceAvailable", label: "Source available" },
       { field: "build_runtime_script", label: "Build script" },
     ],
     params: [
@@ -479,7 +528,7 @@ const ARCHIVE_REPOS: ArchiveRepo[] = [
       { key: "visit_type", label: "Visit type", type: "select", default: "git", options: ["git", "svn", "hg", "tar"], hint: "Repository type for the deposit" },
       { key: "metadata_only", label: "Metadata only", type: "bool", default: false, hint: "Only update metadata, skip re-archival if already present" },
     ],
-    requires: [{ field: "origin_url", label: "Origin URL" }],
+    requires: [{ field: "_sourceAvailable", label: "Source available" }],
   },
   {
     key: "zenodo",
@@ -543,6 +592,71 @@ const MOCK_FILES: FileTreeNode[] = [
   { id: "10", name: "runtime.tar.gz", type: "file", content: "(binary content)" },
 ];
 
+function cloneTree(nodes: FileTreeNode[]): FileTreeNode[] {
+  return (nodes || []).map(node => ({
+    ...node,
+    children: node.children ? cloneTree(node.children) : undefined,
+  }));
+}
+
+function makeWorkspaceFromOrigin(originUrl: string, sourceType: Ree["source_type"]): FileTreeNode[] {
+  const seed = cloneTree(MOCK_FILES);
+  const repoName = (originUrl.split("/").filter(Boolean).pop() || "repo").replace(/\.(git|tar\.gz|tgz|zip)$/i, "");
+
+  if (sourceType === "tarball") {
+    return [
+      {
+        id: `src-${Date.now()}`,
+        name: repoName || "repo",
+        type: "folder",
+        tag: "source",
+        children: [
+          ...seed,
+          {
+            id: `src-meta-${Date.now()}`,
+            name: "EXTRACTION_NOTE.txt",
+            type: "file",
+            tag: "source",
+            content: `Extracted from tarball source: ${originUrl}`,
+          },
+        ],
+      },
+    ];
+  }
+
+  return [
+    {
+      id: `src-${Date.now()}`,
+      name: repoName || "repo",
+      type: "folder",
+      tag: "source",
+      children: seed,
+    },
+  ];
+}
+
+function makeWorkspaceFromArchiveUpload(archiveName: string): FileTreeNode[] {
+  const root = archiveName.replace(/\.(tar\.gz|tgz|tar|zip)$/i, "") || "repo";
+  return [
+    {
+      id: `up-${Date.now()}`,
+      name: root,
+      type: "folder",
+      tag: "source",
+      children: [
+        ...cloneTree(MOCK_FILES),
+        {
+          id: `up-note-${Date.now()}`,
+          name: "EXTRACTION_NOTE.txt",
+          type: "file",
+          tag: "source",
+          content: `Extracted from uploaded archive: ${archiveName}`,
+        },
+      ],
+    },
+  ];
+}
+
 const DEMO_REE: Ree = {
   name: "genomics-pipeline-v2",
   swhid: "",
@@ -553,7 +667,8 @@ const DEMO_REE: Ree = {
   sbom: "",
   activation_script: "activation_test.sh",
   hardware_description: { arch: "x86_64", memory: "16 GB", os: "Debian Bookworm", cpu: "Intel Xeon E5-2680" },
-  _sourceDownloaded: false,
+  _sourceAvailable: false,
+  _sourceIncluded: true,
 };
 
 const SEALED_DEMO_REE: Ree = {
@@ -638,7 +753,8 @@ function makeLogs(key: string, ree: Ree, params: Record<string, unknown>, newLev
     swh: [
       L("info", "Visit type:     " + (params.visit_type || "git")),
       L("info", "Metadata only:  " + (params.metadata_only ? "yes" : "no")),
-      L("info", "Preparing source archive..."),
+      L("info", "Preparing immutable source snapshot archive..."),
+      L("info", "Snapshot: " + (ree._sourceSnapshotArchive || "source-original.tar.gz")),
       L("info", "Connecting to Software Heritage API..."),
       L("info", "Depositing: " + (ree.origin_url || ree.name)),
       L("info", "Waiting for ingestion confirmation..."),
@@ -988,7 +1104,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
   };
 
   const commitFile = (fname: string, content: string) => {
-    const newFile: FileTreeNode = { id: "vf-" + fname, name: fname, type: "file", content };
+    const newFile: FileTreeNode = { id: "vf-" + fname, name: fname, type: "file", tag: "source", content };
     const updated = [...files.filter(f => f.name !== fname), newFile];
     onFilesChange?.(updated);
     onReeChange?.({ ...ree, [fieldKey]: fname });
@@ -1621,18 +1737,34 @@ const FIELD_META: Record<string, FieldMeta> = {
   },
   origin_url: {
     label: "Origin URL",
-    desc: "Canonical URL of the source repository.",
+    desc: "URL of the remote software origin or tarball download (optional if you upload locally).",
     example: "https://github.com/org/climate-model",
-    format: "Full HTTPS URL. Must be publicly accessible for archival.",
-    howTo: "Use the URL you would clone from. For GitHub, this is the repository homepage URL.",
+    format: "Use the clone/checkout URL provided by the host, or a direct tarball URL.",
+    howTo: "To avoid archiving errors, use the provider clone URL and verify it works before submission (for example, `git clone <origin_url>` for git origins).",
     tools: [{ label: "GitHub", url: "https://github.com" }, { label: "GitLab", url: "https://gitlab.com" }],
   },
+  _sourceAcquiredBy: {
+    label: "Origin Provisioning Status",
+    desc: "How source files were provided to the workspace.",
+    example: "Uploaded archive",
+    format: "Automatically set after source acquisition.",
+    howTo: "Set automatically based on whether source came from origin download or local upload.",
+    tools: [],
+  },
   source_type: {
-    label: "Source Type",
-    desc: "Version-control or archive type for the source repository.",
+    label: "Origin Type",
+    desc: "Type of software origin used for Save Code Now style archiving.",
     example: "git",
-    format: "One of: git, svn, hg, tarball.",
-    howTo: "Select the actual source type so the source download step can fetch it correctly.",
+    format: "One of: git, hg, svn, cvs, bzr, tarball. Tarball formats include: .jar, .tar, .tar.bz2, .tar.gz, .tar.lz, .tar.xz, .tar.zst, .zip.",
+    howTo: "Use the clone/checkout URL from the provider UI, and verify it works (for example, `git clone <origin_url>` for git) before requesting download.",
+    tools: [],
+  },
+  _sourceAvailable: {
+    label: "In Workspace",
+    desc: "Whether the repository has been materialized into the local workspace.",
+    example: "Yes — repository is available in workspace",
+    format: "Set automatically after source download or tarball upload.",
+    howTo: "Download from origin or upload a tarball to populate the workspace before Evaluate/Build.",
     tools: [],
   },
   runtime: {
@@ -1694,8 +1826,8 @@ docker run --rm --entrypoint="" ree:latest echo ok`,
 function svcReadableFields(svcKey: string): string[] {
   const map = {
     create: ["name", "origin_url"],
-    evaluate: ["name", "origin_url", "source_type", "_sourceDownloaded", "runtime", "build_runtime_script", "activation_script", "sbom", "swhid"],
-    build: ["_sourceDownloaded", "runtime", "build_runtime_script"],
+    evaluate: ["name", "origin_url", "source_type", "_sourceAvailable", "runtime", "build_runtime_script", "activation_script", "sbom", "swhid"],
+    build: ["_sourceAvailable", "runtime", "build_runtime_script"],
     sbom: ["runtime", "sbom"],
     activation: ["activation_script", "runtime"],
     archive: ["origin_url", "sbom", "swhid"],
@@ -1872,18 +2004,30 @@ interface SourceUrlFieldProps {
 }
 function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrlFieldProps) {
   const [draft, setDraft] = useState(committedValue || "");
+  const [checkState, setCheckState] = useState<"idle" | "checking" | "reachable" | "unreachable">("idle");
+  const [checkedFor, setCheckedFor] = useState<string>("");
 
   const prevCommitted = useRef<string | undefined>(committedValue);
   if (prevCommitted.current !== committedValue) {
     prevCommitted.current = committedValue;
     setDraft(committedValue || "");
+    if ((committedValue || "") !== checkedFor) {
+      setCheckState("idle");
+      setCheckedFor("");
+    }
   }
 
   const isDirty = draft.trim() !== (committedValue || "").trim();
 
-  const handleCommit = () => {
-    if (!draft.trim()) return;
-    onCommit(draft.trim());
+  const handleCheckReachable = async () => {
+    const candidate = draft.trim();
+    if (!candidate) return;
+    setCheckState("checking");
+    setCheckedFor(candidate);
+    await new Promise(r => setTimeout(r, 700));
+    const reachable = /^https?:\/\/[^\s]+$/i.test(candidate);
+    setCheckState(reachable ? "reachable" : "unreachable");
+    if (reachable) onCommit(candidate);
   };
 
   return (
@@ -1894,31 +2038,41 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
           <input
             disabled={locked}
             value={draft}
-            onChange={e => setDraft(e.target.value)}
+            onChange={e => {
+              const next = e.target.value;
+              setDraft(next);
+              if (!next.trim()) {
+                onCommit("");
+              }
+              if (checkedFor && next.trim() !== checkedFor) {
+                setCheckState("idle");
+                setCheckedFor("");
+              }
+            }}
             onFocus={onFocus}
-            onKeyDown={e => { if (e.key === "Enter" && isDirty && draft.trim()) handleCommit(); }}
+            onKeyDown={e => { if (e.key === "Enter" && draft.trim()) handleCheckReachable(); }}
             placeholder="https://github.com/org/repo"
             style={{ ...inp(locked), paddingLeft: 32, borderColor: isDirty ? "#f59e0b" : undefined }}
           />
         </div>
         <button
-          onClick={handleCommit}
-          disabled={locked || !draft.trim() || !isDirty}
+          onClick={handleCheckReachable}
+          disabled={locked || !draft.trim() || checkState === "checking"}
           style={{
             display: "flex", alignItems: "center", gap: 6,
             padding: "7px 13px", borderRadius: 7,
-            cursor: locked || !draft.trim() || !isDirty ? "default" : "pointer",
-            border: `1.5px solid ${isDirty && draft.trim() ? "#f59e0b" : C.border}`,
-            background: isDirty && draft.trim() ? "#fffbeb" : C.surfaceAlt,
-            color: isDirty && draft.trim() ? "#b45309" : C.textMuted,
+            cursor: locked || !draft.trim() || checkState === "checking" ? "default" : "pointer",
+            border: `1.5px solid ${draft.trim() ? C.accentBorder : C.border}`,
+            background: draft.trim() ? C.accentBg : C.surfaceAlt,
+            color: draft.trim() ? C.accent : C.textMuted,
             fontSize: 13, fontWeight: 600, fontFamily: C.sans,
             flexShrink: 0, transition: "all 0.15s", whiteSpace: "nowrap",
             opacity: locked ? 0.5 : 1,
           }}
-          onMouseEnter={e => { if (!locked && isDirty && draft.trim()) e.currentTarget.style.filter = "brightness(0.96)"; }}
+          onMouseEnter={e => { if (!locked && draft.trim() && checkState !== "checking") e.currentTarget.style.filter = "brightness(0.96)"; }}
           onMouseLeave={e => e.currentTarget.style.filter = "none"}
         >
-          {Ic.check(13)} Set source
+          {checkState === "checking" ? Ic.loader(13) : Ic.link(13)} Check reachable
         </button>
       </div>
       {isDirty && draft.trim() && (
@@ -1932,6 +2086,16 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{committedValue}</span>
         </div>
       )}
+      {checkState === "reachable" && checkedFor === draft.trim() && (
+        <div style={{ fontSize: 11, color: "#15803d", fontFamily: C.sans, display: "flex", alignItems: "center", gap: 4 }}>
+          {Ic.check(10)} URL reachable
+        </div>
+      )}
+      {checkState === "unreachable" && checkedFor === draft.trim() && (
+        <div style={{ fontSize: 11, color: "#b45309", fontFamily: C.sans, display: "flex", alignItems: "center", gap: 4 }}>
+          {Ic.info(10)} URL not reachable (or invalid format)
+        </div>
+      )}
     </div>
   );
 }
@@ -1939,25 +2103,35 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
 // ── Source upload field with pending confirm ────────────────────────────────────
 interface SourceUploadFieldProps {
   locked: boolean;
-  onCommit: (name: string) => void;
+  disabled?: boolean;
+  disabledReason?: string;
+  onCommit: (payload: SourceUploadCommit) => void;
   committedName?: string;
 }
-function SourceUploadField({ locked, onCommit, committedName }: SourceUploadFieldProps) {
-  const fileRef = useRef<HTMLInputElement>(null);
+function SourceUploadField({ locked, disabled = false, disabledReason, onCommit, committedName }: SourceUploadFieldProps) {
+  const archiveRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [pending, setPending] = useState<string | null>(null); // file name pending confirmation
+  const [pending, setPending] = useState<SourceUploadCommit | null>(null);
+  const [dropError, setDropError] = useState<string | null>(null);
+  const inputDisabled = locked || disabled;
 
-  const handleFile = (file: File) => {
-    if (!file || locked) return;
-    setPending(file.name);
+  const handleArchive = (file: File) => {
+    if (!file || inputDisabled) return;
+    setDropError(null);
+    setPending({ mode: "archive", archiveName: file.name });
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragging(false);
-    if (locked) return;
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
+    if (inputDisabled) return;
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    if (files.length !== 1 || !/\.(zip|tar|tar\.gz|tgz)$/i.test(files[0].name)) {
+      setDropError("Only a single tarball/archive upload is allowed for direct repo upload.");
+      return;
+    }
+    handleArchive(files[0]);
   };
 
   const handleConfirm = () => {
@@ -1970,8 +2144,8 @@ function SourceUploadField({ locked, onCommit, committedName }: SourceUploadFiel
 
   return (
     <div style={{ padding: "8px 0 14px" }}>
-      <input ref={fileRef} type="file" accept=".zip,.tar,.tar.gz,.tgz" style={{ display: "none" }}
-        onChange={e => handleFile(e.target.files?.[0])} />
+      <input ref={archiveRef} type="file" accept=".zip,.tar,.tar.gz,.tgz" style={{ display: "none" }}
+        onChange={e => handleArchive(e.target.files?.[0] as File)} />
 
       {/* Committed archive */}
       {committedName && !pending && (
@@ -1979,7 +2153,8 @@ function SourceUploadField({ locked, onCommit, committedName }: SourceUploadFiel
           <span style={{ color: "#16a34a", display: "flex" }}>{Ic.archive()}</span>
           <span style={{ flex: 1, fontSize: 13, fontFamily: C.mono, color: "#15803d", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{committedName}</span>
           {!locked && (
-            <button onClick={() => fileRef.current?.click()}
+            <button onClick={() => archiveRef.current?.click()}
+              disabled={inputDisabled}
               style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 5, cursor: "pointer", color: C.textMuted, fontSize: 11, fontFamily: C.sans, padding: "2px 8px", display: "flex", alignItems: "center", gap: 4 }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; }}>
@@ -1994,12 +2169,14 @@ function SourceUploadField({ locked, onCommit, committedName }: SourceUploadFiel
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 8, background: "#fffbeb", border: "1.5px solid #f59e0b" }}>
             <span style={{ color: "#d97706", display: "flex" }}>{Ic.archive()}</span>
-            <span style={{ flex: 1, fontSize: 13, fontFamily: C.mono, color: "#92400e", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pending}</span>
+            <span style={{ flex: 1, fontSize: 13, fontFamily: C.mono, color: "#92400e", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {pending.archiveName}
+            </span>
             <button onClick={handleConfirm}
               style={{ background: "#fffbeb", border: "1.5px solid #f59e0b", borderRadius: 6, cursor: "pointer", color: "#b45309", fontSize: 12, fontWeight: 700, fontFamily: C.sans, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
               onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.96)"}
               onMouseLeave={e => e.currentTarget.style.filter = "none"}>
-              {Ic.check(11)} Set source
+              {Ic.check(11)} Add to workspace
             </button>
             <button onClick={handleCancel}
               style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 2, borderRadius: 4 }}
@@ -2017,25 +2194,38 @@ function SourceUploadField({ locked, onCommit, committedName }: SourceUploadFiel
       {/* Drop zone — always show if no committed file yet, or for replacement */}
       {!committedName && !pending && (
         <div
-          onDragOver={e => { e.preventDefault(); if (!locked) setDragging(true); }}
+          onDragOver={e => { e.preventDefault(); if (!inputDisabled) setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
-          onClick={() => !locked && fileRef.current?.click()}
+          onClick={() => !inputDisabled && archiveRef.current?.click()}
           style={{
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            gap: 6, padding: "22px 16px", borderRadius: 8, cursor: locked ? "default" : "pointer",
+            gap: 6, padding: "22px 16px", borderRadius: 8, cursor: inputDisabled ? "default" : "pointer",
             border: `1.5px dashed ${dragging ? C.accent : C.borderMid}`,
             background: dragging ? C.accentBg : C.bg,
             transition: "all 0.15s",
+            opacity: inputDisabled ? 0.55 : 1,
           }}
-          onMouseEnter={e => { if (!locked) { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.background = C.accentBg; } }}
+          onMouseEnter={e => { if (!inputDisabled) { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.background = C.accentBg; } }}
           onMouseLeave={e => { if (!dragging) { e.currentTarget.style.borderColor = C.borderMid; e.currentTarget.style.background = C.bg; } }}
         >
           <span style={{ color: dragging ? C.accent : C.textMuted, display: "flex" }}>{Ic.upload(18)}</span>
           <span style={{ fontSize: 13, color: dragging ? C.accent : C.textMid, fontFamily: C.sans }}>
-            Drop archive or <span style={{ color: C.accent, fontWeight: 600 }}>browse</span>
+            Drop archive or <span style={{ color: C.accent, fontWeight: 600 }}>browse archive</span>
           </span>
-          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: C.mono }}>.zip · .tar · .tar.gz</span>
+          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: C.mono, marginTop: 4 }}>.zip · .tar · .tar.gz</span>
+        </div>
+      )}
+
+      {disabledReason && (
+        <div style={{ marginTop: 6, fontSize: 11, color: C.textMuted, fontFamily: C.sans, display: "flex", alignItems: "center", gap: 4 }}>
+          {Ic.info(10)} {disabledReason}
+        </div>
+      )}
+
+      {dropError && (
+        <div style={{ marginTop: 6, fontSize: 11, color: "#b45309", fontFamily: C.sans, display: "flex", alignItems: "center", gap: 4 }}>
+          {Ic.info(10)} {dropError}
         </div>
       )}
     </div>
@@ -2187,16 +2377,35 @@ interface PageSourceRepoEntryProps {
   onRepoModeChange: (mode: string) => void;
   onSourceChange: () => void;
   badges: Badges;
-  onDownloadSource: () => void;
+  onDownloadSource: (originType: Ree["source_type"]) => void;
+  onWorkspaceUpload: (payload: SourceUploadCommit) => void;
+  onRemoveWorkspaceSource: () => void;
   downloadRunning: boolean;
   downloadDone: boolean;
   onGoService: (key: string) => void;
   focusedField: string | null;
   setFocusedField: (field: string | null) => void;
 }
-function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange, onSourceChange, badges, onDownloadSource, downloadRunning, downloadDone, onGoService, focusedField, setFocusedField }: PageSourceRepoEntryProps) {
+function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange, onSourceChange, badges, onDownloadSource, onWorkspaceUpload, onRemoveWorkspaceSource, downloadRunning, downloadDone, onGoService, focusedField, setFocusedField }: PageSourceRepoEntryProps) {
   const set = (k: string, v: unknown) => onChange({ ...ree, [k]: v });
   const focus = (key: string) => setFocusedField(key);
+  const [originTypeDraft, setOriginTypeDraft] = useState<Ree["source_type"]>(ree.source_type || "");
+  const sourceInWorkspace = !!ree._sourceAvailable;
+  const sourceIncluded = sourceInWorkspace && !!ree._sourceIncluded;
+  const toggleSourceIncluded = () => {
+    if (locked || !sourceInWorkspace) return;
+    onChange({ ...ree, _sourceIncluded: !sourceIncluded });
+  };
+
+  useEffect(() => {
+    if (!sourceInWorkspace && ree._sourceIncluded) {
+      onChange({ ...ree, _sourceIncluded: false });
+    }
+  }, [sourceInWorkspace, ree._sourceIncluded]);
+
+  useEffect(() => {
+    setOriginTypeDraft(ree.source_type || "");
+  }, [ree.source_type]);
 
   useEffect(() => {
     if (focusedField) {
@@ -2209,12 +2418,28 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
   const fieldUsedBy = (fieldKey: string): Service[] =>
     [EVALUATE_SVC, ...SERVICES].filter(s => svcReadableFields(s.key).includes(fieldKey));
 
+  const sourceFromUpload = ree._sourceAcquiredBy === "upload" && !!ree._sourceAvailable;
+  const sourceFromDownload = ree._sourceAcquiredBy === "download" && !!ree._sourceAvailable;
+  const sourceProvisionStatus = sourceFromUpload
+    ? "Uploaded archive"
+    : sourceFromDownload
+      ? "Downloaded from origin"
+      : "Not provided yet";
   const sourceFilled = [
-    repoMode === "url" ? ree.origin_url : ree._uploadedArchive,
+    ree._sourceAcquiredBy,
     ree.source_type,
-    ree._sourceDownloaded ? "yes" : "",
+    ree._sourceAvailable ? "yes" : "",
   ].filter(Boolean).length;
-  const canDownload = !!ree.origin_url && !!ree.source_type;
+  const canDownload = !!ree.origin_url && !!originTypeDraft && repoMode === "url" && !sourceFromUpload;
+  const canUpload = repoMode === "upload" && !sourceFromDownload;
+  const [workspaceBrowseHover, setWorkspaceBrowseHover] = React.useState(false);
+  const downloadLabel = downloadRunning
+    ? "Downloading source..."
+    : sourceFromUpload
+      ? "Source uploaded"
+      : sourceFromDownload
+        ? "Source downloaded"
+        : "Download source files locally";
 
   return (
     <div style={{ display: "flex", height: "100%", minHeight: 0, overflow: "hidden" }}>
@@ -2232,63 +2457,167 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
 
           {/* Source — first, everything depends on it */}
           <FieldSection title="Source Repository" icon={Ic.globe()} filledCount={sourceFilled} totalCount={3}>
+            <FieldRow fieldKey="origin_url" locked={locked} usedBy={fieldUsedBy("origin_url")} onFocus={() => focus("origin_url")} active={focusedField === "origin_url"}>
+              <SourceUrlField locked={locked} committedValue={ree.origin_url} onCommit={v => { set("origin_url", v); }} onFocus={() => focus("origin_url")} />
+            </FieldRow>
+
             <div style={{ padding: "12px 0 0" }}>
               <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
                 {["url", "upload"].map(m => (
-                  <button key={m} onClick={() => { if (!locked && m !== repoMode) onRepoModeChange(m); }}
+                  <button key={m} onClick={() => {
+                    if (locked || m === repoMode) return;
+                    onRepoModeChange(m);
+                    if (m === "upload") setOriginTypeDraft("");
+                  }}
                     style={{ flex: 1, padding: "7px", borderRadius: 7, cursor: locked ? "default" : "pointer", border: `1.5px solid ${repoMode === m ? C.accent : C.border}`, background: repoMode === m ? C.accentBg : C.surface, fontSize: 13, fontWeight: 600, color: repoMode === m ? C.accent : C.textMid, fontFamily: C.sans, transition: "all 0.15s" }}>
-                    {m === "url" ? "⇢ Origin URL" : "⤒ Upload archive"}
+                    {m === "url" ? "⇢ Origin URL" : "⤒ Upload tarball"}
                   </button>
                 ))}
               </div>
             </div>
-            {repoMode === "url"
-              ? <FieldRow fieldKey="origin_url" required locked={locked} usedBy={fieldUsedBy("origin_url")} onFocus={() => focus("origin_url")} active={focusedField === "origin_url"}>
-                <SourceUrlField locked={locked} committedValue={ree.origin_url} onCommit={v => { onSourceChange(); set("origin_url", v); }} onFocus={() => focus("origin_url")} />
-              </FieldRow>
-              : <SourceUploadField locked={locked} committedName={ree._uploadedArchive} onCommit={name => { onSourceChange(); set("origin_url", name); set("_uploadedArchive", name); set("source_type", "tarball"); }} />
-            }
-
-            <FieldRow fieldKey="source_type" required locked={locked} usedBy={fieldUsedBy("source_type")} onFocus={() => focus("source_type")} active={focusedField === "source_type"}>
-              <select
-                disabled={locked}
-                value={ree.source_type}
-                onChange={e => {
-                  onSourceChange();
-                  set("source_type", e.target.value as Ree["source_type"]);
+            {repoMode === "upload" && (
+              <SourceUploadField
+                locked={locked}
+                disabled={!canUpload}
+                disabledReason={sourceFromDownload ? "Source is already populated via origin download. Change source to switch method." : undefined}
+                committedName={ree._uploadedArchive}
+                onCommit={payload => {
+                  onWorkspaceUpload(payload);
                 }}
-                onFocus={() => focus("source_type")}
-                style={inp(locked)}
-              >
-                <option value="git">git</option>
-                <option value="svn">svn</option>
-                <option value="hg">hg</option>
-                <option value="tarball">tarball</option>
-              </select>
+              />
+            )}
+
+            {repoMode === "url" && (
+              <>
+                <FieldRow fieldKey="source_type" required locked={locked} usedBy={fieldUsedBy("source_type")} onFocus={() => focus("source_type")} active={focusedField === "source_type"}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <select
+                      disabled={locked}
+                      value={originTypeDraft}
+                      onChange={e => {
+                        setOriginTypeDraft(e.target.value as Ree["source_type"]);
+                      }}
+                      onFocus={() => focus("source_type")}
+                      style={{ ...inp(locked), flex: 1 }}
+                    >
+                      <option value="">Select origin type</option>
+                      <option value="git">git</option>
+                      <option value="hg">hg</option>
+                      <option value="svn">svn</option>
+                      <option value="cvs">cvs</option>
+                      <option value="bzr">bzr</option>
+                      <option value="tarball">tarball</option>
+                    </select>
+
+                    <div>
+                      <button
+                        disabled={locked || !canDownload || downloadRunning}
+                        onClick={() => onDownloadSource(originTypeDraft)}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          padding: "8px 12px", borderRadius: 7,
+                          cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
+                          border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
+                          background: downloadDone ? "#f0fdf4" : C.accentBg,
+                          color: downloadDone ? "#15803d" : C.accent,
+                          fontSize: 13, fontWeight: 700, fontFamily: C.sans,
+                          width: "fit-content",
+                          opacity: locked || !canDownload ? 0.6 : 1,
+                        }}
+                      >
+                        {downloadRunning ? Ic.loader(13) : Ic.download(13)}
+                        {downloadLabel}
+                      </button>
+                    </div>
+                  </div>
+                </FieldRow>
+                
+              </>
+            )}
+
+            <FieldRow fieldKey="_sourceAcquiredBy" required={false} locked={true} usedBy={[{ key: "evaluate", label: "Evaluate", color: "#7c3aed" }, { key: "build", label: "Build Runtime", color: "#0891b2" }]}>
+              <input
+                disabled
+                value={sourceProvisionStatus}
+                style={{ ...inp(true, { cursor: "not-allowed", color: sourceInWorkspace ? C.text : C.textMuted, fontWeight: 600 }) }}
+              />
             </FieldRow>
 
-            <FieldRow fieldKey="source_type" required={false} locked={locked} usedBy={[{ key: "evaluate", label: "Evaluate", color: "#7c3aed" }, { key: "build", label: "Build Runtime", color: "#0891b2" }]}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "2px 0" }}>
+            <FieldRow fieldKey="_sourceAvailable" required={false} locked={true} usedBy={[{ key: "evaluate", label: "Evaluate", color: "#7c3aed" }, { key: "build", label: "Build Runtime", color: "#0891b2" }]} onFocus={() => focus("_sourceAvailable")} active={focusedField === "_sourceAvailable"}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <button
-                  disabled={locked || !canDownload || downloadRunning}
-                  onClick={onDownloadSource}
+                  onClick={() => onGoService("files")}
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "8px 14px", borderRadius: 7,
-                    cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
-                    border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
-                    background: downloadDone ? "#f0fdf4" : C.accentBg,
-                    color: downloadDone ? "#15803d" : C.accent,
-                    fontSize: 13, fontWeight: 700, fontFamily: C.sans,
-                    width: "fit-content",
-                    opacity: locked || !canDownload ? 0.6 : 1,
+                    ...inp(false, {
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      cursor: "pointer",
+                    }),
+                    background: workspaceBrowseHover ? C.accentBg : C.surface,
+                    borderColor: workspaceBrowseHover ? C.accentBorder : C.border,
+                    flex: 1,
+                  }}
+                  title="Browse files"
+                  onMouseEnter={() => setWorkspaceBrowseHover(true)}
+                  onMouseLeave={() => setWorkspaceBrowseHover(false)}
+                >
+                  <span style={{ color: sourceInWorkspace ? "#15803d" : C.textMuted, fontWeight: 600, fontFamily: C.sans }}>
+                    {sourceInWorkspace ? "Yes — repository is available in workspace" : "No — source not in workspace yet"}
+                  </span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: C.accent, fontSize: 12, fontWeight: 700, fontFamily: C.sans, flexShrink: 0 }}>
+                    {Ic.files(12)} Browse files
+                  </span>
+                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 2, flexShrink: 0 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase", color: sourceIncluded ? C.textMid : C.textMuted, fontFamily: C.sans }}>Included</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: sourceIncluded ? "#b45309" : C.textMuted, fontFamily: C.sans }}>{sourceIncluded ? "Yes" : "No"}</div>
+                  </div>
+                <button
+                  onClick={toggleSourceIncluded}
+                  aria-pressed={sourceIncluded}
+                  disabled={locked || !sourceInWorkspace}
+                  title={!sourceInWorkspace
+                    ? "Source must be in workspace before it can be included"
+                    : sourceIncluded
+                      ? "Source will be included in final REE"
+                      : "Source will be excluded from final REE"}
+                  style={{
+                    width: 36, height: 18, borderRadius: 99, border: "none",
+                    cursor: locked || !sourceInWorkspace ? "not-allowed" : "pointer",
+                    background: sourceIncluded ? "#f59e0b" : C.borderMid,
+                    position: "relative", transition: "all 0.18s", flexShrink: 0,
+                    opacity: locked || !sourceInWorkspace ? 0.6 : 1,
                   }}
                 >
-                  {downloadRunning ? Ic.loader(13) : Ic.download(13)}
-                  {downloadRunning ? "Downloading source..." : downloadDone ? "Source downloaded" : "Download source files locally"}
+                  <div style={{ position: "absolute", top: 2, left: sourceIncluded ? 18 : 2, width: 14, height: 14, borderRadius: "50%", background: "#fff", transition: "left 0.18s", boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />
                 </button>
+                {ree._sourceAvailable && (
+                  <button
+                    disabled={locked}
+                    onClick={onRemoveWorkspaceSource}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      width: "fit-content",
+                      padding: "6px 10px", borderRadius: 6,
+                      border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c",
+                      fontSize: 12, fontFamily: C.sans, fontWeight: 600,
+                      cursor: locked ? "not-allowed" : "pointer",
+                      opacity: locked ? 0.6 : 1,
+                    }}
+                  >
+                    {Ic.x(12)} Remove source from workspace
+                  </button>
+                )}
+                </div>
+                </div>
                 <div style={{ fontSize: 12, color: C.textMuted, fontFamily: C.sans }}>
-                  Required before running Evaluate and Build Runtime.
+                  {sourceIncluded
+                    ? "Original source snapshot will be packaged into the final REE archive (workspace edits are excluded)."
+                    : "Source files stay in workspace only and are excluded from the final REE archive."}
                 </div>
               </div>
             </FieldRow>
@@ -3911,7 +4240,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// PAGE: FILES — two-pane file browser: source repo | REE files
+// PAGE: FILES — two-pane file browser: workspace | REE files
 // ══════════════════════════════════════════════════════════════════════════════
 
 // Flatten a file tree into a list of file nodes (no folders)
@@ -3980,7 +4309,6 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
   const [copied, setCopied] = useState(false);
   const copy = () => { navigator.clipboard?.writeText(file.content || ""); setCopied(true); setTimeout(() => setCopied(false), 1800); };
   const lines = (file.content || "").split("\n");
-  const ftype = fileType(file.name);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#f8fafc" }}>
@@ -4085,8 +4413,8 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
         overflow: "hidden", flexShrink: 0, transition: "width 0.18s"
       }}>
         <div style={{ overflowY: "auto", flex: 1 }}>
-          {/* Source section */}
-          <SectionHeader label="Source Repo" badge="read-only" color="#f59e0b" />
+          {/* Workspace section */}
+          <SectionHeader label="Workspace" badge="read-only" color="#f59e0b" />
           <div style={{ padding: "4px 4px 8px" }}>
             {sourceFiles.map(n => (
               <FileNode key={n.id} node={n} onSelect={n => setSelectedId(n.id)} selectedId={selectedId} />
@@ -4115,7 +4443,7 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
       {selectedFile
         ? <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
           <FileViewer file={selectedFile} onClose={() => setSelectedId(null)}
-            label={reeFlatFiles.find(f => f.id === selectedId) ? "ree" : "source"} />
+            label={reeFlatFiles.find(f => f.id === selectedId) ? "ree" : "workspace"} />
         </div>
         : <div style={{
           flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
@@ -4396,7 +4724,7 @@ function PanelCableOverlay({ containerRef, sourceRef, runtimeRef, metadataRef, s
     const fieldsConnected = (["name", "origin_url", "runtime", "build_runtime_script"] as (keyof Ree)[]).filter(f => ree && !!ree[f]).length >= 2;
     const archiveConnected = !!(ree && (ree.zenodo_doi || ree.dataverse_doi));
     const activationConnected = !!(badges && badges["activation"]);
-    const sourceConnected = !!(ree && ree._sourceDownloaded);
+    const sourceConnected = !!(ree && ree._sourceAvailable);
     const runtimeConnected = !!(ree && ree._runtimeIncluded);
 
     const cables = [];
@@ -4708,8 +5036,26 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
   const activationRef = useRef<HTMLDivElement>(null);
 
   // Source panel state
-  const sourceIncluded = !!(ree && ree._sourceIncluded);
-  const toggleSource = () => onReeChange && onReeChange({ ...ree, _sourceIncluded: !sourceIncluded });
+  const sourceInWorkspace = !!ree._sourceAvailable;
+  const sourceFromUpload = ree._sourceAcquiredBy === "upload" && !!ree._sourceAvailable;
+  const sourceFromDownload = ree._sourceAcquiredBy === "download" && !!ree._sourceAvailable;
+  const sourceProvisionStatus = sourceFromUpload
+    ? "Uploaded archive"
+    : sourceFromDownload
+      ? "Downloaded from origin"
+      : "Not provided yet";
+  const sourceIncluded = sourceInWorkspace && !!ree._sourceIncluded;
+  const canIncludeSource = sourceInWorkspace;
+  const toggleSource = () => {
+    if (!canIncludeSource) return;
+    onReeChange && onReeChange({ ...ree, _sourceIncluded: !sourceIncluded });
+  };
+
+  useEffect(() => {
+    if (!sourceInWorkspace && ree._sourceIncluded) {
+      onReeChange && onReeChange({ ...ree, _sourceIncluded: false });
+    }
+  }, [sourceInWorkspace, ree._sourceIncluded]);
 
   // Runtime panel state
   const runtimeVal = (ree && ree.runtime && ree.runtime !== "__skipped__") ? ree.runtime.trim() : "";
@@ -4846,11 +5192,11 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: sourceIncluded ? "#f59e0b" : "#d1d5db", boxShadow: sourceIncluded ? "0 0 5px #f59e0b99" : "none", transition: "all 0.2s" }} />
               <span style={headerLabel}>Source</span>
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, opacity: canIncludeSource ? 1 : 0.45 }}>
                 <span style={{ fontSize: 9, fontFamily: C.sans, fontWeight: 600, color: sourceIncluded ? "#92400e" : C.textMuted, letterSpacing: 0.3 }}>{sourceIncluded ? "Included" : "Include"}</span>
-                <button onClick={toggleSource} aria-pressed={sourceIncluded}
-                  style={{ width: 32, height: 16, borderRadius: 99, border: 'none', cursor: 'pointer', background: sourceIncluded ? '#f59e0b' : C.borderMid, position: 'relative', transition: 'all 0.18s', flexShrink: 0 }}
-                  onMouseEnter={e => { if (!sourceIncluded) (e.currentTarget.style as any).filter = 'brightness(0.93)'; }}
+                <button onClick={toggleSource} aria-pressed={sourceIncluded} disabled={!canIncludeSource}
+                  style={{ width: 32, height: 16, borderRadius: 99, border: 'none', cursor: canIncludeSource ? 'pointer' : 'not-allowed', background: sourceIncluded ? '#f59e0b' : C.borderMid, position: 'relative', transition: 'all 0.18s', flexShrink: 0 }}
+                  onMouseEnter={e => { if (!sourceIncluded && canIncludeSource) (e.currentTarget.style as any).filter = 'brightness(0.93)'; }}
                   onMouseLeave={e => { (e.currentTarget.style as any).filter = 'none'; }}>
                   <div style={{ position: 'absolute', top: 2, left: sourceIncluded ? 16 : 2, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: 'left 0.18s', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
                 </button>
@@ -4858,21 +5204,34 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <PanelFieldRow
-                label="Origin URL" value={ree.origin_url} filled={!!ree.origin_url}
+                label="Origin URL" value={ree.origin_url || null} filled={!!ree.origin_url}
                 dotColor="#f59e0b" dotGlow="#f59e0b99" labelColor="#92400e" labelBg="#fffbeb" labelBorderColor="#f59e0b25"
                 onClick={() => onGoField && onGoField("origin_url")}
               />
               <PanelFieldRow
-                label="Type" value={ree.source_type || null} filled={!!ree.source_type}
+                label="Origin Provisioning Status" value={sourceProvisionStatus} filled={!!ree._sourceAcquiredBy}
+                dotColor="#f59e0b" dotGlow="#f59e0b99" labelColor="#92400e" labelBg="#fffbeb" labelBorderColor="#f59e0b25"
+                onClick={() => onGoField && onGoField("_sourceAcquiredBy")}
+              />
+              <PanelFieldRow
+                label="Origin Type" value={ree.source_type || null} filled={!!ree.source_type}
                 dotColor="#f59e0b" dotGlow="#f59e0b99" labelColor="#92400e" labelBg="#fffbeb" labelBorderColor="#f59e0b25"
                 onClick={() => onGoField && onGoField("source_type")}
               />
               <PanelFieldRow
-                label="Files" value={ree._sourceDownloaded ? (fileCount > 0 ? `${fileCount} file${fileCount !== 1 ? "s" : ""} · ${fmtBytes(totalBytes)}` : "downloaded") : null} filled={!!ree._sourceDownloaded}
+                label="Files" value={ree._sourceAvailable ? (fileCount > 0 ? `${fileCount} file${fileCount !== 1 ? "s" : ""} · ${fmtBytes(totalBytes)}` : "downloaded") : null} filled={!!ree._sourceAvailable}
                 dotColor="#f59e0b" dotGlow="#f59e0b99" labelColor="#92400e" labelBg="#fffbeb" labelBorderColor="#f59e0b25"
                 emptyText="not downloaded" isLast
                 onClick={() => onNavigate && onNavigate("source")}
               />
+            </div>
+            <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
+              <button onClick={() => onNavigate && onNavigate("source")}
+                style={{ fontSize: 10, fontFamily: C.sans, color: "#92400e", background: "#fffbeb", border: "1px solid #f59e0b40", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
+                onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
+                onMouseLeave={e => e.currentTarget.style.filter = "none"}>
+                → Go to Source
+              </button>
             </div>
           </div>
 
@@ -5024,7 +5383,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             const sealed = locked && ree._sealedAt;
             const cableItems = [
               { key: "metadata", label: "Metadata", live: (["name", "hardware_description"] as (keyof Ree)[]).filter(f => f === "hardware_description" ? Object.values((ree[f] as Record<string, string>) || {}).some(v => v) : !!ree[f]).length > 0 },
-              { key: "source", label: "Source", live: !!(ree._sourceDownloaded) },
+              { key: "source", label: "Source", live: !!(ree._sourceAvailable) },
               { key: "runtime", label: "Runtime", live: !!(ree._runtimeIncluded) },
               { key: "swh", label: "Software Heritage", live: !!(ree.swhid) },
               { key: "sbom", label: "SBOM", live: !!(ree.sbom) },
@@ -5471,11 +5830,16 @@ function Explorer({ onBack }: ExplorerProps) {
   const [page, setPage] = useState("source"); // "source" | "metadata" | service key | "archive" | "overview" | "files"
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [navCollapsed, setNavCollapsed] = useState(false);
-  const [virtualFiles, setVirtualFiles] = useState(MOCK_FILES);
+  const [virtualFiles, setVirtualFiles] = useState<FileTreeNode[]>([]);
+  const [immutableSourceSnapshotFiles, setImmutableSourceSnapshotFiles] = useState<FileTreeNode[]>([]);
+  const [immutableSourceSnapshotArchiveName, setImmutableSourceSnapshotArchiveName] = useState("");
 
   const [showReviewerPreview, setShowReviewerPreview] = useState(false);
 
-  const currentReeArchiveEntries = useMemo(() => buildCurrentReeArchiveEntries(ree, virtualFiles), [ree, virtualFiles]);
+  const currentReeArchiveEntries = useMemo(
+    () => buildCurrentReeArchiveEntries(ree, virtualFiles, immutableSourceSnapshotFiles, immutableSourceSnapshotArchiveName),
+    [ree, virtualFiles, immutableSourceSnapshotFiles, immutableSourceSnapshotArchiveName],
+  );
   const currentReeFiles = useMemo(() => reeArchiveEntriesToFiles(currentReeArchiveEntries), [currentReeArchiveEntries]);
 
   const showToast = (msg: string, type: ToastState["type"] = "info") => setToast({ message: msg, type });
@@ -5501,8 +5865,8 @@ function Explorer({ onBack }: ExplorerProps) {
     showToast(`Downloaded ${(ree.name || "ree")}-capsule.zip`, "success");
   };
 
-  // Reset all derived/workflow state when source changes
-  const handleSourceChange = () => {
+  // Reset all derived/workflow state when source in workspace changes
+  const handleSourceChange = (options: { silent?: boolean } = {}) => {
     setBadges({});
     setTimestamps({});
     setServiceLogs({});
@@ -5515,30 +5879,88 @@ function Explorer({ onBack }: ExplorerProps) {
       sbom: "",
       swhid: "",
       _evalLevel: 0,
-      _sourceDownloaded: false,
+      _sourceAvailable: false,
+      _sourceAcquiredBy: undefined,
       zenodo_doi: "",
       _uploadedArchive: "",
+      _sourceSnapshotArchive: "",
+      _sourceSnapshotCapturedAt: "",
     }));
-    setVirtualFiles(MOCK_FILES);
-    showToast("Source changed — workflow status and scripts reset", "info");
+    setVirtualFiles([]);
+    setImmutableSourceSnapshotFiles([]);
+    setImmutableSourceSnapshotArchiveName("");
+    if (!options.silent) {
+      showToast("Source changed — workflow status and scripts reset", "info");
+    }
   };
 
-  const handleDownloadSourceFiles = async () => {
-    if (!ree.origin_url || !ree.source_type) {
-      showToast("Set origin URL and source type first", "error");
+  const handleDownloadSourceFiles = async (originType: Ree["source_type"]) => {
+    if (ree._sourceAvailable && ree._sourceAcquiredBy === "upload") {
+      showToast("Source already provided via tarball upload. Change source to switch method.", "error");
       return;
     }
+    if (!ree.origin_url || !originType) {
+      showToast("Set origin URL and origin type first", "error");
+      return;
+    }
+    handleSourceChange({ silent: true });
     setActionStates(s => ({ ...s, source: "loading" }));
     await new Promise(r => setTimeout(r, 1400));
     setActionStates(s => ({ ...s, source: "done" }));
     setBadges(b => ({ ...b, source: true }));
     const ts = new Date().toISOString();
     setTimestamps(t => ({ ...t, source: ts }));
-    setRee(r => ({ ...r, _sourceDownloaded: true }));
-    if (!virtualFiles || virtualFiles.length === 0) {
-      setVirtualFiles(MOCK_FILES);
+    const workspaceFiles = makeWorkspaceFromOrigin(ree.origin_url, originType);
+    const snapshotFiles = cloneTree(workspaceFiles);
+    const repoBase = (ree.origin_url.split("/").filter(Boolean).pop() || "source").replace(/\.(git|tar\.gz|tgz|zip)$/i, "") || "source";
+    const snapshotArchiveName = normalizeSnapshotArchiveName(`${repoBase}-original.tar.gz`);
+    setVirtualFiles(workspaceFiles);
+    setImmutableSourceSnapshotFiles(snapshotFiles);
+    setImmutableSourceSnapshotArchiveName(snapshotArchiveName);
+    setRee(r => ({
+      ...r,
+      source_type: originType,
+      _sourceAvailable: true,
+      _sourceAcquiredBy: "download",
+      _uploadedArchive: "",
+      _sourceSnapshotArchive: snapshotArchiveName,
+      _sourceSnapshotCapturedAt: ts,
+    }));
+    showToast(originType === "tarball" ? "Tarball downloaded and extracted into workspace" : "Source files downloaded into workspace", "success");
+  };
+
+  const handleWorkspaceUpload = (payload: SourceUploadCommit) => {
+    if (ree._sourceAvailable && ree._sourceAcquiredBy === "download") {
+      showToast("Source already provided via origin download. Change source to switch method.", "error");
+      return;
     }
-    showToast("Source files downloaded locally", "success");
+    handleSourceChange({ silent: true });
+    const ts = new Date().toISOString();
+
+    const archiveName = payload.archiveName || "source.tar.gz";
+    const workspaceFiles = makeWorkspaceFromArchiveUpload(archiveName);
+    const snapshotFiles = cloneTree(workspaceFiles);
+    const snapshotArchiveName = normalizeSnapshotArchiveName(archiveName);
+    setVirtualFiles(workspaceFiles);
+    setImmutableSourceSnapshotFiles(snapshotFiles);
+    setImmutableSourceSnapshotArchiveName(snapshotArchiveName);
+    setRee(r => ({
+      ...r,
+      _uploadedArchive: archiveName,
+      source_type: "",
+      _sourceAvailable: true,
+      _sourceAcquiredBy: "upload",
+      _sourceSnapshotArchive: snapshotArchiveName,
+      _sourceSnapshotCapturedAt: ts,
+    }));
+    setBadges(b => ({ ...b, source: true }));
+    setTimestamps(t => ({ ...t, source: ts }));
+    showToast("Archive extracted into workspace", "success");
+  };
+
+  const handleRemoveWorkspaceSource = () => {
+    handleSourceChange({ silent: true });
+    showToast("Source files removed from workspace — choose download or upload again", "info");
   };
 
   const runAction = async (key: string, params: Record<string, unknown> = {}) => {
@@ -5568,6 +5990,7 @@ function Explorer({ onBack }: ExplorerProps) {
       if (isTarball) {
         const mockRuntime: FileTreeNode = {
           id: "vf-runtime", name: producedName, type: "file",
+          tag: "runtime",
           content: `[mock binary — docker save | gzip output]\nBuilt: ${new Date().toISOString()}\nSize: ~1.2 GB (mock)`,
         };
         setVirtualFiles(f => [...f.filter(n => n.name !== producedName), mockRuntime]);
@@ -5595,7 +6018,7 @@ function Explorer({ onBack }: ExplorerProps) {
         ],
       }, null, 2);
       const fname = "sbom.spdx.json";
-      setVirtualFiles(f => [...f.filter(n => n.name !== fname), { id: "vf-sbom", name: fname, type: "file", content: sbomContent }]);
+      setVirtualFiles(f => [...f.filter(n => n.name !== fname), { id: "vf-sbom", name: fname, type: "file", tag: "sbom", content: sbomContent }]);
       setRee(r => ({ ...r, sbom: fname }));
       showToast("SBOM generated — sbom.spdx.json", "success");
     } else if (key === "activation") {
@@ -5842,7 +6265,7 @@ function Explorer({ onBack }: ExplorerProps) {
                     const isActive = page === step.key;
                     const svc = step.svc;
                     let hasRun = false;
-                    if (step.key === "source") hasRun = !!ree._sourceDownloaded;
+                    if (step.key === "source") hasRun = !!ree._sourceAvailable;
                     else if (step.key === "metadata") hasRun = !!ree.name;
                     else if (step.key === "overview" || step.key === "seal") hasRun = !!ree._sealedAt;
                     else if (step.key === "archive") hasRun = !!badges["swh"] || !!badges["zenodo"] || !!badges["dataverse"];
@@ -5965,7 +6388,7 @@ function Explorer({ onBack }: ExplorerProps) {
             {(page === "overview" || page === "seal") && (
               <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                 <PageOverview ree={ree} onReeChange={setRee} level={level} onNavigate={key => setPage(key)} badges={badges} timestamps={timestamps} onGoField={key => {
-                  const sourceFieldKeys = ["origin_url", "source_type", "_sourceDownloaded"];
+                  const sourceFieldKeys = ["origin_url", "source_type", "_sourceAvailable"];
                   setPage(sourceFieldKeys.includes(String(key)) ? "source" : "metadata");
                   setFocusedField(key);
                 }} files={virtualFiles} locked={locked} onSeal={handleSeal} onPreviewReviewer={() => setShowReviewerPreview(true)} onDownloadRee={ree._sealedAt ? handleDownloadRee : undefined} />
@@ -5980,9 +6403,11 @@ function Explorer({ onBack }: ExplorerProps) {
                 onRepoModeChange={setRepoMode}
                 onSourceChange={handleSourceChange}
                 badges={badges}
-                onDownloadSource={handleDownloadSourceFiles}
+                onDownloadSource={originType => handleDownloadSourceFiles(originType)}
+                onWorkspaceUpload={handleWorkspaceUpload}
+                onRemoveWorkspaceSource={handleRemoveWorkspaceSource}
                 downloadRunning={actionStates["source"] === "loading"}
-                downloadDone={!!ree._sourceDownloaded}
+                downloadDone={!!ree._sourceAvailable}
                 onGoService={key => setPage(key)}
                 focusedField={focusedField}
                 setFocusedField={setFocusedField}
@@ -6024,7 +6449,7 @@ function Explorer({ onBack }: ExplorerProps) {
                     ts={timestamps[svc.key]}
                     onRun={runAction}
                     onGoFields={() => {
-                      const sourceFieldKeys: (keyof Ree)[] = ["origin_url", "source_type", "_sourceDownloaded"];
+                      const sourceFieldKeys: (keyof Ree)[] = ["origin_url", "source_type", "_sourceAvailable"];
                       const hasSourceGap = missingRequirements(svc, ree).some(req => sourceFieldKeys.includes(req.field));
                       setPage(hasSourceGap ? "source" : "metadata");
                     }}
