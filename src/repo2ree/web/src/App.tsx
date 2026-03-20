@@ -1839,6 +1839,24 @@ function missingRequirements(svc: Service, ree: Ree): ServiceRequire[] {
   return (svc.requires || []).filter(r => !ree[r.field]);
 }
 
+function tipTargetSectionStyle(active: boolean): React.CSSProperties {
+  return {
+    cursor: "pointer",
+    background: active ? C.accentBg + "75" : "transparent",
+    borderLeft: `3px solid ${active ? C.accent : "transparent"}`,
+    boxShadow: active ? `inset 0 0 0 1px ${C.accentBorder}` : "none",
+    transition: "background 0.15s, box-shadow 0.15s, border-color 0.15s",
+  };
+}
+
+function tipTargetChip(active: boolean, idleLabel = "Click for tips"): React.ReactNode {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, fontFamily: C.sans, color: active ? C.accent : C.textMuted, background: active ? C.accentBg : C.surfaceAlt, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 99, padding: "1px 7px", letterSpacing: 0.2 }}>
+      {Ic.info(10)} {active ? "Tips open" : idleLabel}
+    </span>
+  );
+}
+
 // ── Field row with description ─────────────────────────────────────────────────
 interface FieldRowProps {
   fieldKey: string;
@@ -1851,11 +1869,24 @@ interface FieldRowProps {
 }
 function FieldRow({ fieldKey, required, children, locked, usedBy = [], onFocus, active }: FieldRowProps) {
   const meta = FIELD_META[fieldKey] || { label: fieldKey, desc: "" };
+  const tipEnabled = !!onFocus;
   return (
-    <div id={`field-${fieldKey}`} onFocus={onFocus} style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 20, alignItems: "start", borderBottom: `1px solid ${C.border}`, background: active ? C.accentBg + "60" : "transparent", margin: "0 -20px", padding: "18px 20px", transition: "background 0.15s" }}>
+    <div id={`field-${fieldKey}`} onFocus={onFocus} onClick={() => onFocus?.()}
+      onMouseEnter={e => {
+        if (!tipEnabled || active) return;
+        e.currentTarget.style.background = C.accentBg + "45";
+        e.currentTarget.style.borderLeftColor = C.accentBorder;
+      }}
+      onMouseLeave={e => {
+        if (!tipEnabled || active) return;
+        e.currentTarget.style.background = "transparent";
+        e.currentTarget.style.borderLeftColor = "transparent";
+      }}
+      style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 20, alignItems: "start", borderBottom: `1px solid ${C.border}`, background: active ? C.accentBg + "75" : "transparent", margin: "0 -20px", padding: "18px 20px", transition: "background 0.15s", cursor: tipEnabled ? "pointer" : "default", borderLeft: `3px solid ${active ? C.accent : "transparent"}`, boxShadow: active ? `inset 0 0 0 1px ${C.accentBorder}` : "none" }}>
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: active ? C.accent : C.text, fontFamily: C.sans }}>{meta.label}</span>
+          {tipEnabled && tipTargetChip(!!active)}
           {required && <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, fontFamily: C.sans, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 3, padding: "1px 4px" }}>required</span>}
           {locked && fieldKey !== "swhid" && <span style={{ fontSize: 11, color: C.textMuted, fontFamily: C.sans, background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 3, padding: "1px 4px" }}>locked</span>}
         </div>
@@ -1991,6 +2022,70 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+interface FieldTipsSidebarProps {
+  focusedField: string | null;
+  onFocusField?: (field: string) => void;
+  onClear: () => void;
+  tipFields?: string[];
+  emptyMessage?: string;
+}
+function FieldTipsSidebar({ focusedField, onFocusField, onClear, tipFields, emptyMessage }: FieldTipsSidebarProps) {
+  const activeField = focusedField && (!tipFields || tipFields.includes(focusedField)) ? focusedField : null;
+  const showFieldPicker = !!(tipFields && tipFields.length > 0 && onFocusField);
+  const emptyText = emptyMessage || "Click any field — here or in the status bar above — to see examples, format rules, and commands.";
+  const workflowTipFields = (tipFields || []).filter(fieldKey => !!FIELD_META[fieldKey]);
+
+  return (
+    <div style={{ width: 296, borderLeft: `1px solid ${C.border}`, background: C.surface, overflowY: "auto", padding: 20, flexShrink: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+      {showFieldPicker && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.1, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans }}>Tips</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {(tipFields || []).map(fieldKey => {
+              const isActive = activeField === fieldKey;
+              return (
+                <button key={fieldKey} onClick={() => onFocusField(fieldKey)}
+                  style={{ fontSize: 11, fontFamily: C.sans, fontWeight: 700, letterSpacing: 0.2, color: isActive ? C.accent : C.textMid, background: isActive ? C.accentBg : C.surfaceAlt, border: `1px solid ${isActive ? C.accentBorder : C.border}`, borderRadius: 99, padding: "3px 9px", cursor: "pointer" }}>
+                  {FIELD_META[fieldKey]?.label || fieldKey}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {activeField
+        ? <FieldTipCard fieldKey={activeField} onDismiss={onClear} />
+        : (workflowTipFields.length > 0
+          ? <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 13px", background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: 9 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ color: C.accent, display: "flex" }}>{Ic.info(13)}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.accent, textTransform: "uppercase", fontFamily: C.sans }}>Workflow tips</span>
+            </div>
+            <p style={{ fontSize: 12, color: C.textMid, lineHeight: 1.55, margin: 0 }}>No field selected. Here are the key tips for this page/workflow:</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {workflowTipFields.map(fieldKey => {
+                const meta = FIELD_META[fieldKey];
+                return (
+                  <button key={fieldKey}
+                    onClick={() => onFocusField?.(fieldKey)}
+                    style={{ textAlign: "left", padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.accentBorder}`, background: C.surface, cursor: onFocusField ? "pointer" : "default", display: "flex", flexDirection: "column", gap: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.text, fontFamily: C.sans }}>{meta?.label || fieldKey}</span>
+                    <span style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.45 }}>{meta?.desc || ""}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          : <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "12px 13px", background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: 9 }}>
+            <span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}>{Ic.info(13)}</span>
+            <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, margin: 0 }}>{emptyText}</p>
+          </div>)
+      }
     </div>
   );
 }
@@ -2266,17 +2361,32 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, usedBy, files }:
     <div
       id="field-runtime"
       onFocus={onFocus}
+      onClick={() => onFocus?.()}
+      onMouseEnter={e => {
+        if (!onFocus || active) return;
+        e.currentTarget.style.background = C.accentBg + "45";
+        e.currentTarget.style.borderLeftColor = C.accentBorder;
+      }}
+      onMouseLeave={e => {
+        if (!onFocus || active) return;
+        e.currentTarget.style.background = "transparent";
+        e.currentTarget.style.borderLeftColor = "transparent";
+      }}
       style={{
         display: "grid", gridTemplateColumns: "220px 1fr", gap: 20, alignItems: "start",
         borderBottom: `1px solid ${C.border}`,
-        background: active ? C.accentBg + "60" : "transparent",
+        background: active ? C.accentBg + "75" : "transparent",
         margin: "0 -20px", padding: "18px 20px", transition: "background 0.15s",
+        cursor: onFocus ? "pointer" : "default",
+        borderLeft: `3px solid ${active ? C.accent : "transparent"}`,
+        boxShadow: active ? `inset 0 0 0 1px ${C.accentBorder}` : "none",
       }}
     >
       {/* Left: label + description + used-by */}
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: active ? C.accent : C.text, fontFamily: C.sans }}>{meta.label}</span>
+          {!!onFocus && tipTargetChip(!!active)}
         </div>
         <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5, margin: "0 0 5px" }}>{meta.desc}</p>
         {usedBy && usedBy.length > 0 && (
@@ -2426,8 +2536,8 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
       ? "Downloaded from origin"
       : "Not provided yet";
   const sourceFilled = [
+    ree.origin_url,
     ree._sourceAcquiredBy,
-    ree.source_type,
     ree._sourceAvailable ? "yes" : "",
   ].filter(Boolean).length;
   const canDownload = !!ree.origin_url && !!originTypeDraft && repoMode === "url" && !sourceFromUpload;
@@ -2631,16 +2741,11 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
         </div>
       </div>
 
-      {/* Right sidebar — field tip card only */}
-      <div style={{ width: 296, borderLeft: `1px solid ${C.border}`, background: C.surface, overflowY: "auto", padding: 20, flexShrink: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-        {focusedField
-          ? <FieldTipCard fieldKey={focusedField} onDismiss={() => setFocusedField(null)} />
-          : <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "12px 13px", background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: 9 }}>
-            <span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}>{Ic.info(13)}</span>
-            <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, margin: 0 }}>Click any field — here or in the status bar above — to see examples, format rules, and commands.</p>
-          </div>
-        }
-      </div>
+      <FieldTipsSidebar
+        tipFields={["origin_url", "source_type", "_sourceAcquiredBy", "_sourceAvailable"]}
+        focusedField={focusedField}
+        onClear={() => setFocusedField(null)}
+      />
     </div>
   );
 }
@@ -2699,35 +2804,37 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
           </FieldSection>
 
           <FieldSection title="Hardware" icon={Ic.chip()} subtitle="target machine specification" filledCount={hardwareFilled} totalCount={hardwareTotal}>
-            <div style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
-              {Object.entries(ree.hardware_description).map(([k, v], i) => (
-                <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input disabled={locked} value={k}
-                    onChange={e => { const ent = Object.entries(ree.hardware_description); ent[i] = [e.target.value, v]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
-                    placeholder="key" style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: "0 0 36%" }} />
-                  <span style={{ color: C.textMuted, fontFamily: C.mono, flexShrink: 0 }}>:</span>
-                  <input disabled={locked} value={v}
-                    onChange={e => { const ent = Object.entries(ree.hardware_description); ent[i] = [k, e.target.value]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
-                    placeholder="value" style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: 1 }} />
-                  {!locked && (
-                    <button onClick={() => { const ent = Object.entries(ree.hardware_description).filter((_, j) => j !== i); onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, padding: "4px", display: "flex", borderRadius: 5, flexShrink: 0 }}
-                      onMouseEnter={e => { e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.background = "#fef2f2"; }}
-                      onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.background = "none"; }}>
-                      {Ic.x()}
-                    </button>
-                  )}
-                </div>
-              ))}
-              {!locked && (
-                <button onClick={() => { const ent = [...Object.entries(ree.hardware_description), ["", ""]]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", background: "transparent", border: `1.5px dashed ${C.borderMid}`, borderRadius: 7, cursor: "pointer", fontSize: 13, fontFamily: C.sans, color: C.textMuted, transition: "border-color 0.14s,color 0.14s", marginTop: 4, width: "fit-content" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderMid; e.currentTarget.style.color = C.textMuted; }}>
-                  {Ic.plus()} Add field
-                </button>
-              )}
-            </div>
+            <FieldRow fieldKey="hardware_description" locked={locked} usedBy={fieldUsedBy("hardware_description")} onFocus={() => focus("hardware_description")} active={focusedField === "hardware_description"}>
+              <div style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
+                {Object.entries(ree.hardware_description).map(([k, v], i) => (
+                  <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <input disabled={locked} value={k}
+                      onChange={e => { const ent = Object.entries(ree.hardware_description); ent[i] = [e.target.value, v]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
+                      placeholder="key" style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: "0 0 36%" }} />
+                    <span style={{ color: C.textMuted, fontFamily: C.mono, flexShrink: 0 }}>:</span>
+                    <input disabled={locked} value={v}
+                      onChange={e => { const ent = Object.entries(ree.hardware_description); ent[i] = [k, e.target.value]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
+                      placeholder="value" style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: 1 }} />
+                    {!locked && (
+                      <button onClick={() => { const ent = Object.entries(ree.hardware_description).filter((_, j) => j !== i); onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, padding: "4px", display: "flex", borderRadius: 5, flexShrink: 0 }}
+                        onMouseEnter={e => { e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.background = "#fef2f2"; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.background = "none"; }}>
+                        {Ic.x()}
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {!locked && (
+                  <button onClick={() => { const ent = [...Object.entries(ree.hardware_description), ["", ""]]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", background: "transparent", border: `1.5px dashed ${C.borderMid}`, borderRadius: 7, cursor: "pointer", fontSize: 13, fontFamily: C.sans, color: C.textMuted, transition: "border-color 0.14s,color 0.14s", marginTop: 4, width: "fit-content" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderMid; e.currentTarget.style.color = C.textMuted; }}>
+                    {Ic.plus()} Add field
+                  </button>
+                )}
+              </div>
+            </FieldRow>
           </FieldSection>
 
           <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
@@ -2736,15 +2843,11 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
         </div>
       </div>
 
-      <div style={{ width: 296, borderLeft: `1px solid ${C.border}`, background: C.surface, overflowY: "auto", padding: 20, flexShrink: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-        {focusedField
-          ? <FieldTipCard fieldKey={focusedField} onDismiss={() => setFocusedField(null)} />
-          : <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "12px 13px", background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: 9 }}>
-            <span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}>{Ic.info(13)}</span>
-            <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, margin: 0 }}>Click any field — here or in the status bar above — to see examples, format rules, and commands.</p>
-          </div>
-        }
-      </div>
+      <FieldTipsSidebar
+        tipFields={["name", "hardware_description"]}
+        focusedField={focusedField}
+        onClear={() => setFocusedField(null)}
+      />
     </div>
   );
 }
@@ -2894,6 +2997,7 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
   const isTb = rt && /\.(tar\.gz|tgz)$/i.test(rt);
   const hasSbom = !!(ree.sbom && ree.sbom !== "__skipped__");
   const sbomNode = hasSbom ? findFileByPath(files || [], ree.sbom) : null;
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const sbomScripts = SVC_SCRIPT_FIELDS[svc.key] || [];
 
@@ -2913,12 +3017,26 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
         onGoFields={onGoFields}
       />
 
-      {/* Body */}
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
 
         {/* Step 1: Runtime input */}
-        <div style={{ padding: "20px 24px 16px", flexShrink: 0, borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 14 }}>Step 1: Runtime Input</div>
+        <div style={{ padding: "20px 24px 16px", flexShrink: 0, borderBottom: `1px solid ${C.border}`, ...tipTargetSectionStyle(focusedField === "runtime") }} onClick={() => setFocusedField("runtime")}
+          onMouseEnter={e => {
+            if (focusedField === "runtime") return;
+            e.currentTarget.style.background = C.accentBg + "45";
+            e.currentTarget.style.borderLeftColor = C.accentBorder;
+          }}
+          onMouseLeave={e => {
+            if (focusedField === "runtime") return;
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderLeftColor = "transparent";
+          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Step 1: Runtime Input</div>
+            {tipTargetChip(focusedField === "runtime")}
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: rt ? "#ecfeff" : C.surfaceAlt, border: `1.5px solid ${rt ? sbomColor + "50" : C.border}`, borderRadius: 9 }}>
               <div style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: `${rt ? sbomColor : C.textMuted}18` }}>
@@ -2955,8 +3073,21 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
         />
 
         {/* Step 2: Produced SBOM */}
-        <div style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 10 }}>Step 2: Produced SBOM</div>
+        <div style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0, ...tipTargetSectionStyle(focusedField === "sbom") }} onClick={() => setFocusedField("sbom")}
+          onMouseEnter={e => {
+            if (focusedField === "sbom") return;
+            e.currentTarget.style.background = C.accentBg + "45";
+            e.currentTarget.style.borderLeftColor = C.accentBorder;
+          }}
+          onMouseLeave={e => {
+            if (focusedField === "sbom") return;
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderLeftColor = "transparent";
+          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Step 2: Produced SBOM</div>
+            {tipTargetChip(focusedField === "sbom")}
+          </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: hasSbom ? "#f0fdf4" : C.surfaceAlt, border: `1.5px solid ${hasSbom ? "#bbf7d0" : C.border}`, borderRadius: 9, marginBottom: 12 }}>
             <div style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: hasSbom ? "#dcfce7" : C.border + "40" }}>
@@ -3013,6 +3144,16 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
           <NextStepNudge stepKey={"sbom"} badges={badges || {}} onGo={onGo || (() => {})} />
         </div>
 
+        </div>
+
+        <FieldTipsSidebar
+          tipFields={["runtime", "sbom"]}
+          focusedField={focusedField}
+          onFocusField={setFocusedField}
+          onClear={() => setFocusedField(null)}
+          emptyMessage="Choose a field to see examples, format rules, and commands."
+        />
+
       </div>
     </div>
   );
@@ -3021,6 +3162,7 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
 function PageTestActivation({ svc, ree, log, running, runDone, badge, ts, onRun, onGoFields, badges, onGo, files, onFilesChange, onReeChange, missing, params, setParam }: ServicePageProps) {
   const asLabel = FIELD_META["activation_script"]?.label || "Activation script";
   const buildColor = svc?.color || "#ef4444";
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden", animation: "fadeUp 0.2s ease" }}>
@@ -3038,12 +3180,26 @@ function PageTestActivation({ svc, ree, log, running, runDone, badge, ts, onRun,
         onGoFields={onGoFields}
       />
 
-      {/* Body */}
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
 
         {/* Fields */}
-        <div style={{ padding: "20px 24px 16px", flexShrink: 0, borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 14 }}>Fields</div>
+        <div style={{ padding: "20px 24px 16px", flexShrink: 0, borderBottom: `1px solid ${C.border}`, ...tipTargetSectionStyle(focusedField === "activation_script") }} onClick={() => setFocusedField("activation_script")}
+          onMouseEnter={e => {
+            if (focusedField === "activation_script") return;
+            e.currentTarget.style.background = C.accentBg + "45";
+            e.currentTarget.style.borderLeftColor = C.accentBorder;
+          }}
+          onMouseLeave={e => {
+            if (focusedField === "activation_script") return;
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderLeftColor = "transparent";
+          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Fields</div>
+            {tipTargetChip(focusedField === "activation_script")}
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -3081,11 +3237,20 @@ function PageTestActivation({ svc, ree, log, running, runDone, badge, ts, onRun,
           <LogPanel log={log} running={running} />
         </div>
 
-        {/* Next step nudge */}
-        <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
-          <NextStepNudge stepKey={"activation"} badges={badges || {}} onGo={onGo || (() => {})} />
+          {/* Next step nudge */}
+          <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
+            <NextStepNudge stepKey={"activation"} badges={badges || {}} onGo={onGo || (() => {})} />
+          </div>
+
         </div>
 
+        <FieldTipsSidebar
+          tipFields={["activation_script", "runtime"]}
+          focusedField={focusedField}
+          onFocusField={setFocusedField}
+          onClear={() => setFocusedField(null)}
+          emptyMessage="Choose a field to see examples, format rules, and commands."
+        />
       </div>
     </div>
   );
@@ -3737,6 +3902,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
     () => (ree.runtime && ree.runtime !== "__skipped__") ? ree.runtime : ""
   );
   const [showManualOverride, setShowManualOverride] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const buildColor = svc.color;
   const imageColor = "#0891b2";
@@ -3775,12 +3941,26 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
         onGoFields={onGoFields}
       />
 
-      {/* Scrollable body */}
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+        {/* Scrollable body */}
+        <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
 
         {/* BUILD SCRIPT — First step in workflow */}
-        <div style={{ padding: "20px 24px 16px", flexShrink: 0, borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 14 }}>Step 1: Build Script</div>
+        <div style={{ padding: "20px 24px 16px", flexShrink: 0, borderBottom: `1px solid ${C.border}`, ...tipTargetSectionStyle(focusedField === "build_runtime_script") }} onClick={() => setFocusedField("build_runtime_script")}
+          onMouseEnter={e => {
+            if (focusedField === "build_runtime_script") return;
+            e.currentTarget.style.background = C.accentBg + "45";
+            e.currentTarget.style.borderLeftColor = C.accentBorder;
+          }}
+          onMouseLeave={e => {
+            if (focusedField === "build_runtime_script") return;
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderLeftColor = "transparent";
+          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Step 1: Build Script</div>
+            {tipTargetChip(focusedField === "build_runtime_script")}
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: C.sans }}>Shell script</span>
@@ -3817,8 +3997,21 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
         
 
         {/* EXPECTED OUTPUT — Second step in workflow */}
-        <div style={{ padding: "20px 24px 16px", flexShrink: 0, borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 14 }}>Step 2: Expected Output</div>
+        <div style={{ padding: "20px 24px 16px", flexShrink: 0, borderBottom: `1px solid ${C.border}`, ...tipTargetSectionStyle(focusedField === "runtime") }} onClick={() => setFocusedField("runtime")}
+          onMouseEnter={e => {
+            if (focusedField === "runtime") return;
+            e.currentTarget.style.background = C.accentBg + "45";
+            e.currentTarget.style.borderLeftColor = C.accentBorder;
+          }}
+          onMouseLeave={e => {
+            if (focusedField === "runtime") return;
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderLeftColor = "transparent";
+          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Step 2: Expected Output</div>
+            {tipTargetChip(focusedField === "runtime")}
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: C.sans }}>Export filename</span>
@@ -3828,6 +4021,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
             <input
               value={expectedOutput}
               onChange={e => setExpectedOutput(e.target.value)}
+              onFocus={() => setFocusedField("runtime")}
               placeholder="runtime.tar.gz"
               style={{ border: `1.5px solid ${expectedOutput ? C.accentBorder : C.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 11, fontFamily: C.mono, color: C.text, background: C.surface, width: "100%", boxSizing: "border-box" }}
             />
@@ -3936,7 +4130,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
                 </div>
                 {metaRuntime && <span style={{ fontSize: 10, fontFamily: C.sans, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>SET</span>}
               </div>
-              <RuntimeField locked={false} ree={ree} onChange={onReeChange} onFocus={() => { }} active={false} usedBy={[]} files={files || MOCK_FILES} />
+              <RuntimeField locked={false} ree={ree} onChange={onReeChange} onFocus={() => setFocusedField("runtime")} active={false} usedBy={[]} files={files || MOCK_FILES} />
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => setShowManualOverride(false)}
                   style={{
@@ -3965,8 +4159,21 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
         )}
 
         {/* FINAL RUNTIME FIELD — Step 4 */}
-        <div style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 12 }}>Step 4: Final Runtime Field</div>
+        <div style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0, ...tipTargetSectionStyle(focusedField === "runtime") }} onClick={() => setFocusedField("runtime")}
+          onMouseEnter={e => {
+            if (focusedField === "runtime") return;
+            e.currentTarget.style.background = C.accentBg + "45";
+            e.currentTarget.style.borderLeftColor = C.accentBorder;
+          }}
+          onMouseLeave={e => {
+            if (focusedField === "runtime") return;
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderLeftColor = "transparent";
+          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Step 4: Final Runtime Field</div>
+            {tipTargetChip(focusedField === "runtime")}
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: finalRuntime ? "#f0fdf4" : C.surfaceAlt, border: `1.5px solid ${finalRuntime ? "#bbf7d0" : C.border}`, borderRadius: 8 }}>
               <div style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: finalRuntime ? "#dcfce7" : C.border + "40" }}>
@@ -4010,10 +4217,20 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
           <LogPanel log={log} running={running} />
         </div>
 
-        {/* Next step nudge */}
-        <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
-          <NextStepNudge stepKey={svc.key} badges={badges || {}} onGo={onGo || (() => { })} />
+          {/* Next step nudge */}
+          <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
+            <NextStepNudge stepKey={svc.key} badges={badges || {}} onGo={onGo || (() => { })} />
+          </div>
+
         </div>
+
+        <FieldTipsSidebar
+          tipFields={["build_runtime_script", "runtime"]}
+          focusedField={focusedField}
+          onFocusField={setFocusedField}
+          onClear={() => setFocusedField(null)}
+          emptyMessage="Choose a field to see examples, format rules, and commands."
+        />
 
       </div>
     </div>
@@ -4996,12 +5213,13 @@ interface PageOverviewProps {
   timestamps?: Timestamps;
   onGoField: (key: string) => void;
   files?: FileTreeNode[];
+  snapshotFiles?: FileTreeNode[];
   locked?: boolean;
   onSeal: () => void;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
 }
-function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timestamps = {}, onGoField, files = [], locked = false, onSeal, onPreviewReviewer, onDownloadRee }: PageOverviewProps) {
+function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timestamps = {}, onGoField, files = [], snapshotFiles = [], locked = false, onSeal, onPreviewReviewer, onDownloadRee }: PageOverviewProps) {
   const [showSealConfirm, setShowSealConfirm] = React.useState(false);
   const lv = LEVELS[Math.min(level, 7)];
   const panel = (extra = {}) => ({ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, ...extra });
@@ -5066,21 +5284,6 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
     onReeChange && onReeChange({ ...ree, _runtimeIncluded: !runtimeIncluded });
   };
 
-  function detectRuntimeType(val: string): { label: string; tag: string; color: string } | null {
-    if (!val) return null;
-    if (/\.(tar\.gz|tgz)$/i.test(val)) return { label: "OCI tarball", tag: "tar.gz", color: "#0891b2" };
-    if (/\.(qcow2)$/i.test(val)) return { label: "QEMU image", tag: "qcow2", color: "#7c3aed" };
-    if (/\.(vmdk)$/i.test(val)) return { label: "VMware disk", tag: "vmdk", color: "#6366f1" };
-    if (/\.(vdi)$/i.test(val)) return { label: "VirtualBox", tag: "vdi", color: "#8b5cf6" };
-    if (/\.(raw|img)$/i.test(val)) return { label: "Raw image", tag: "raw", color: "#64748b" };
-    if (/\.(iso)$/i.test(val)) return { label: "ISO image", tag: "iso", color: "#94a3b8" };
-    if (/^sha256:[0-9a-f]{12}/i.test(val)) return { label: "OCI digest", tag: "sha256", color: "#0ea5e9" };
-    // image ref  name:tag  or  registry/name:tag
-    if (/^[a-z0-9._\-/]+:[a-z0-9._\-]+$/i.test(val)) return { label: "OCI image", tag: "image", color: "#0891b2" };
-    return { label: "Image ref", tag: "ref", color: "#0891b2" };
-  }
-  const runtimeType = detectRuntimeType(runtimeVal);
-
   // Find runtime file in virtual tree and get its mock size
   function findFile(nodes: FileTreeNode[], name: string): FileTreeNode | null {
     for (const n of (nodes || [])) {
@@ -5124,7 +5327,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
     }
     return out;
   }
-  const allFiles = flatFiles(files);
+  const allFiles = flatFiles(snapshotFiles);
   const fileCount = allFiles.length;
   const totalBytes = allFiles.reduce((s, f) => s + (f.content ? new TextEncoder().encode(f.content).length : 0), 0);
   function fmtBytes(b: number): string {
@@ -6388,10 +6591,22 @@ function Explorer({ onBack }: ExplorerProps) {
             {(page === "overview" || page === "seal") && (
               <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                 <PageOverview ree={ree} onReeChange={setRee} level={level} onNavigate={key => setPage(key)} badges={badges} timestamps={timestamps} onGoField={key => {
-                  const sourceFieldKeys = ["origin_url", "source_type", "_sourceAvailable"];
-                  setPage(sourceFieldKeys.includes(String(key)) ? "source" : "metadata");
+                  const fieldToPage: Record<string, string> = {
+                    origin_url: "source",
+                    source_type: "source",
+                    _sourceAvailable: "source",
+                    _sourceAcquiredBy: "source",
+                    runtime: "build",
+                    build_runtime_script: "build",
+                    activation_script: "activation",
+                    sbom: "sbom",
+                    swhid: "swh",
+                    zenodo_doi: "archive",
+                    dataverse_doi: "archive",
+                  };
+                  setPage(fieldToPage[String(key)] || "metadata");
                   setFocusedField(key);
-                }} files={virtualFiles} locked={locked} onSeal={handleSeal} onPreviewReviewer={() => setShowReviewerPreview(true)} onDownloadRee={ree._sealedAt ? handleDownloadRee : undefined} />
+                }} files={virtualFiles} snapshotFiles={immutableSourceSnapshotFiles} locked={locked} onSeal={handleSeal} onPreviewReviewer={() => setShowReviewerPreview(true)} onDownloadRee={ree._sealedAt ? handleDownloadRee : undefined} />
               </div>
             )}
             {page === "source" && (
