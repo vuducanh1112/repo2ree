@@ -252,6 +252,27 @@ function listTreeFiles(nodes: FileTreeNode[], prefix = ""): Array<{ path: string
   return files;
 }
 
+function normalizeWorkspacePath(path: string): string {
+  return (path || "").replace(/^\/+/, "").trim();
+}
+
+function findTreeFileBySelectedPath(
+  files: Array<{ path: string; content: string }>,
+  selectedPath: string,
+): { path: string; content: string } | null {
+  const normalized = normalizeWorkspacePath(selectedPath);
+  if (!normalized) return null;
+  const exact = files.find(f => normalizeWorkspacePath(f.path) === normalized);
+  if (exact) return exact;
+  const selectedBase = normalized.split("/").pop();
+  if (!selectedBase) return null;
+  return files.find(f => normalizeWorkspacePath(f.path).split("/").pop() === selectedBase) || null;
+}
+
+function archiveWorkspacePath(path: string): string {
+  return normalizeWorkspacePath(path).replace(/\.\.+/g, "_");
+}
+
 function buildSnapshotArchiveContent(sourceSnapshotFiles: FileTreeNode[], capturedAt?: string): string {
   const files = listTreeFiles(sourceSnapshotFiles);
   return [
@@ -275,6 +296,8 @@ function buildCurrentReeArchiveEntries(
 ): ZipEntry[] {
   const enc = new TextEncoder();
   const entries: ZipEntry[] = [];
+  const workspaceFiles = listTreeFiles(virtualFiles);
+  const sourcePaths = new Set(listTreeFiles(sourceSnapshotFiles).map(f => normalizeWorkspacePath(f.path)));
 
   const manifest = {
     ree_version: "1.0",
@@ -325,6 +348,24 @@ function buildCurrentReeArchiveEntries(
     entries.push({ path: `ree/${archiveName}`, data: enc.encode(archiveContent) });
   }
 
+  const selectedScripts: Array<{ key: "build_runtime_script" | "activation_script"; path: string }> = [
+    { key: "build_runtime_script", path: ree.build_runtime_script || "" },
+    { key: "activation_script", path: ree.activation_script || "" },
+  ];
+
+  for (const selected of selectedScripts) {
+    const selectedPath = normalizeWorkspacePath(selected.path);
+    if (!selectedPath) continue;
+    const selectedFile = findTreeFileBySelectedPath(workspaceFiles, selectedPath);
+    if (!selectedFile) continue;
+    if (sourcePaths.has(normalizeWorkspacePath(selectedFile.path))) continue;
+    const archivePath = archiveWorkspacePath(selectedPath);
+    if (!archivePath) continue;
+    const reePath = `ree/${archivePath}`;
+    if (entries.some(e => e.path === reePath)) continue;
+    entries.push({ path: reePath, data: enc.encode(selectedFile.content || "") });
+  }
+
   return entries;
 }
 
@@ -342,6 +383,8 @@ function reeArchiveEntriesToFiles(entries: ZipEntry[]): ReeFile[] {
           ? "Runtime"
           : entry.path.startsWith("ree/source-repo/")
             ? "Source"
+            : entry.path.startsWith("ree/")
+              ? "Workspace"
             : "REE",
     content: dec.decode(entry.data),
   }));
@@ -1061,8 +1104,9 @@ interface ScriptPanelProps {
   onReeChange?: (ree: Ree) => void;
   onTemplateSuggestedOutput?: (output: string) => void;
   reviewerMode?: boolean;
+  saveToWorkspaceOnly?: boolean;
 }
-function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeChange, onTemplateSuggestedOutput, reviewerMode }: ScriptPanelProps) {
+function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeChange, onTemplateSuggestedOutput, reviewerMode, saveToWorkspaceOnly = false }: ScriptPanelProps) {
   const scriptPath = (ree[fieldKey] as string) || "";
   const existingFile = scriptPath ? findFileByPath(files, scriptPath) : null;
   const hasScript = !!existingFile;
@@ -1071,7 +1115,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
   const originUrl = ree.origin_url || "";
   const isGitHub = /github\.com/i.test(originUrl);
   const isGitLab = /gitlab\.com|gitlab\./i.test(originUrl);
-  const isRemoteGit = isGitHub || isGitLab;
+  const isRemoteGit = (isGitHub || isGitLab) && !saveToWorkspaceOnly;
 
   // view | write
   type ScriptPanelMode = "view" | "write";
@@ -1272,7 +1316,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
 
                 <div style={{ width: 1, height: 16, background: C.border, flexShrink: 0 }} />
 
-                {/* Save / PR button — context-aware */}
+                {/* Save action */}
                 {isRemoteGit ? (
                   <button
                     onClick={handleOpenPR}
@@ -1313,7 +1357,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
                     onMouseEnter={e => { if (editorContent.trim()) e.currentTarget.style.background = "#dbeafe"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = C.accentBg; }}
                   >
-                    {Ic.check(11)} Save to repo
+                    {Ic.check(11)} Save to workspace
                   </button>
                 )}
               </div>
@@ -2779,7 +2823,6 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
 
   const identityFilled = [ree.name].filter(Boolean).length;
   const hardwareFilled = Object.values(ree.hardware_description).filter(v => v.trim?.()).length;
-  const hardwareTotal = Object.keys(ree.hardware_description).length;
 
   return (
     <div style={{ display: "flex", height: "100%", minHeight: 0, overflow: "hidden" }}>
@@ -2803,7 +2846,7 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
             </FieldRow>
           </FieldSection>
 
-          <FieldSection title="Hardware" icon={Ic.chip()} subtitle="target machine specification" filledCount={hardwareFilled} totalCount={hardwareTotal}>
+          <FieldSection title="Hardware" icon={Ic.chip()} subtitle="target machine specification" filledCount={hardwareFilled > 0 ? 1 : 0} totalCount={1}>
             <FieldRow fieldKey="hardware_description" locked={locked} usedBy={fieldUsedBy("hardware_description")} onFocus={() => focus("hardware_description")} active={focusedField === "hardware_description"}>
               <div style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
                 {Object.entries(ree.hardware_description).map(([k, v], i) => (
@@ -3227,7 +3270,7 @@ function PageTestActivation({ svc, ree, log, running, runDone, badge, ts, onRun,
         <div style={{ padding: "16px 24px 0", flexShrink: 0 }}>
           <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 14 }}>Scripts</div>
           {SVC_SCRIPT_FIELDS["activation"]?.map(sf => (
-            <ScriptPanel key={sf.fieldKey} scriptKind={sf.scriptKind || null} fieldKey={sf.fieldKey} files={files || MOCK_FILES} onFilesChange={onFilesChange} ree={ree} onReeChange={onReeChange} />
+            <ScriptPanel key={sf.fieldKey} scriptKind={sf.scriptKind || null} fieldKey={sf.fieldKey} files={files || MOCK_FILES} onFilesChange={onFilesChange} ree={ree} onReeChange={onReeChange} saveToWorkspaceOnly />
           ))}
         </div>
 
@@ -3988,6 +4031,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
                 ree={ree}
                 onReeChange={onReeChange}
                 onTemplateSuggestedOutput={out => setExpectedOutput(out)}
+                saveToWorkspaceOnly
               />
             ))}
           </div>
@@ -4014,7 +4058,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: C.sans }}>Export filename</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: C.sans }}>Exported runtime file path</span>
               <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, fontFamily: C.sans, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 3, padding: "1px 4px" }}>required</span>
             </div>
             <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>The filepath where your build script will export the runtime (e.g., <code style={{ fontFamily: C.mono, fontSize: 10 }}>runtime.tar.gz</code>).</div>
