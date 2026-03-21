@@ -441,16 +441,23 @@ const Ic = {
 };
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
-const C = {
-  bg: "#f4f6f9", surface: "#ffffff", surfaceAlt: "#f0f3f7",
-  border: "#dde3ec", borderMid: "#c4cdd9",
-  text: "#0d1117", textMid: "#4a5568", textMuted: "#8896a5",
-  accent: "#2563eb", accentBg: "#eef4ff", accentBorder: "#bfdbfe",
-  nav: "#111827",
-  mono: "'JetBrains Mono', monospace",
-  sans: "'Inter', system-ui, sans-serif",
-  navBg: "#0f172a", navText: "#94a3b8", navActive: "#e2e8f0",
-};
+const TOKENS = {
+  color: {
+    bg: "#f4f6f9", surface: "#ffffff", surfaceAlt: "#f0f3f7",
+    border: "#dde3ec", borderMid: "#c4cdd9",
+    text: "#0d1117", textMid: "#4a5568", textMuted: "#8896a5",
+    accent: "#2563eb", accentBg: "#eef4ff", accentBorder: "#bfdbfe",
+    nav: "#111827",
+    navBg: "#0f172a", navText: "#94a3b8", navActive: "#e2e8f0",
+  },
+  font: {
+    mono: "'JetBrains Mono', monospace",
+    sans: "'Inter', system-ui, sans-serif",
+  },
+} as const;
+
+const C = TOKENS.color;
+const F = TOKENS.font;
 
 // ── Page keys ─────────────────────────────────────────────────────────────────
 // Single source of truth for page/navigation string literals.
@@ -504,7 +511,7 @@ const FIELD_TO_PAGE: Record<string, ExplorerPage> = {
 /** Uppercase section label used throughout service pages and the overview. */
 const S_SECTION_LABEL: React.CSSProperties = {
   fontSize: 11, letterSpacing: 1.2, color: C.textMuted,
-  fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700,
+  fontFamily: F.sans, textTransform: "uppercase", fontWeight: 700,
 };
 
 /** Card-style surface panel (no overflow setting — callers spread extras in). */
@@ -514,7 +521,7 @@ const S_PANEL: React.CSSProperties = {
 
 /** Small bold label used for panel column headers in the overview. */
 const S_PANEL_HEADER_LABEL: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, color: C.text, letterSpacing: 0.3, fontFamily: C.sans,
+  fontSize: 11, fontWeight: 700, color: C.text, letterSpacing: 0.3, fontFamily: F.sans,
 };
 
 // ── Level colors use a single-axis progress ramp (slate → indigo → blue → cyan → teal → emerald).
@@ -971,7 +978,7 @@ function Toast({ message, type, onClose }: ToastProps) {
   return (
     <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 2000, background: bg, border: `1px solid ${c}30`, borderLeft: `3px solid ${c}`, borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.08)", maxWidth: 340, animation: "slideIn 0.2s ease" }}>
       <span style={{ color: c, flexShrink: 0 }}>{Ic.info()}</span>
-      <span style={{ fontSize: 14, color: C.text, fontFamily: C.sans, flex: 1 }}>{message}</span>
+      <span style={{ fontSize: 14, color: C.text, fontFamily: F.sans, flex: 1 }}>{message}</span>
       <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex" }}>{Ic.x()}</button>
     </div>
   );
@@ -997,7 +1004,7 @@ function FileNode({ node, depth = 0, onSelect, selectedId, highlightedPaths = ne
           display: "flex", alignItems: "center", gap: 5, padding: "4px 8px", paddingLeft: 8 + depth * 14, borderRadius: 5, cursor: "pointer",
           background: isSel ? C.accentBg : isHighlighted ? "#fef3c7" : "transparent",
           border: isHighlighted && !isSel ? "1px solid #fde68a" : "1px solid transparent",
-          fontSize: 13, fontFamily: C.mono, transition: "background 0.1s", userSelect: "none",
+          fontSize: 13, fontFamily: F.mono, transition: "background 0.1s", userSelect: "none",
           color: isSel ? C.accent : isHighlighted ? "#92400e" : isFolder ? C.text : C.textMid
         }}
         onMouseEnter={e => !isSel && (e.currentTarget.style.background = isHighlighted ? "#fef3c7" : C.surfaceAlt)}
@@ -1006,7 +1013,7 @@ function FileNode({ node, depth = 0, onSelect, selectedId, highlightedPaths = ne
           ? <><span style={{ color: C.textMuted, display: "flex", width: 12 }}>{open ? Ic.chevD(12) : Ic.chevR(12)}</span>{Ic.folder(14)}</>
           : <span style={{ marginLeft: 12, display: "flex" }}>{Ic.file(14)}</span>}
         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.name}</span>
-        {isHighlighted && !isSel && <span style={{ fontSize: 9, fontWeight: 700, color: "#b45309", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 3, padding: "0 3px", fontFamily: C.sans, flexShrink: 0 }}>REF</span>}
+        {isHighlighted && !isSel && <span style={{ fontSize: 9, fontWeight: 700, color: "#b45309", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 3, padding: "0 3px", fontFamily: F.sans, flexShrink: 0 }}>REF</span>}
       </div>
       {isFolder && open && node.children?.map(c => <FileNode key={c.id} node={c} depth={depth + 1} onSelect={onSelect} selectedId={selectedId} highlightedPaths={highlightedPaths} />)}
     </div>
@@ -1275,11 +1282,11 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
                 onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
               >
                 <span style={{ display: "flex", color: isActive ? acc : C.textMuted }}>{t.icon(12)}</span>
-                <span style={{ fontSize: 12, fontFamily: t.key === "view" ? C.mono : C.sans, color: isActive ? acc : C.textMid, whiteSpace: "nowrap", fontWeight: isActive ? 600 : 400 }}>
+                <span style={{ fontSize: 12, fontFamily: t.key === "view" ? F.mono : F.sans, color: isActive ? acc : C.textMid, whiteSpace: "nowrap", fontWeight: isActive ? 600 : 400 }}>
                   {t.label}
                 </span>
                 {t.key === "view" && (
-                  <span style={{ fontSize: 9, fontWeight: 700, fontFamily: C.mono, letterSpacing: 0.6, textTransform: "uppercase", padding: "1px 4px", borderRadius: 3, background: typeStyle.bg, color: typeStyle.color, border: `1px solid ${typeStyle.border}`, marginLeft: 2 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, fontFamily: F.mono, letterSpacing: 0.6, textTransform: "uppercase", padding: "1px 4px", borderRadius: 3, background: typeStyle.bg, color: typeStyle.color, border: `1px solid ${typeStyle.border}`, marginLeft: 2 }}>
                     {typeStyle.label}
                   </span>
                 )}
@@ -1306,18 +1313,18 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
           {mode === "view" && (
             <div style={{ background: C.surfaceAlt }}>
               {viewLines === null ? (
-                <div style={{ padding: "12px 16px", fontSize: 12, fontFamily: C.mono, color: "#f97316" }}>
+                <div style={{ padding: "12px 16px", fontSize: 12, fontFamily: F.mono, color: "#f97316" }}>
                   File not found in repository tree — check the path in metadata fields.
                 </div>
               ) : viewLines.length === 0 ? (
-                <div style={{ padding: "12px 16px", fontSize: 12, fontFamily: C.mono, color: C.textMuted, fontStyle: "italic" }}>(empty file)</div>
+                <div style={{ padding: "12px 16px", fontSize: 12, fontFamily: F.mono, color: C.textMuted, fontStyle: "italic" }}>(empty file)</div>
               ) : (
                 <div style={{ padding: "8px 0 10px" }}>
                   {viewLines.map((line, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "baseline" }}>
-                      <span style={{ display: "inline-block", minWidth: 40, textAlign: "right", paddingRight: 16, paddingLeft: 12, fontSize: 11, fontFamily: C.mono, color: C.borderMid, userSelect: "none", flexShrink: 0 }}>{i + 1}</span>
+                      <span style={{ display: "inline-block", minWidth: 40, textAlign: "right", paddingRight: 16, paddingLeft: 12, fontSize: 11, fontFamily: F.mono, color: C.borderMid, userSelect: "none", flexShrink: 0 }}>{i + 1}</span>
                       <span style={{
-                        fontSize: 12, fontFamily: C.mono, lineHeight: 1.75,
+                        fontSize: 12, fontFamily: F.mono, lineHeight: 1.75,
                         color: line.startsWith("#") ? "#94a3b8"
                           : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line) ? "#0369a1"
                             : /^(set |echo |docker |pip |apt-get )/.test(line) ? "#15803d"
@@ -1340,7 +1347,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
                 {/* Filename */}
                 <span style={{ color: C.textMuted, display: "flex", flexShrink: 0 }}>{Ic.terminal(11)}</span>
                 <input value={editorFilename} onChange={e => setEditorFilename(e.target.value)} placeholder="filename.sh"
-                  style={{ flex: 1, border: "none", background: "transparent", fontSize: 12, fontFamily: C.mono, color: C.textMid, outline: "none", minWidth: 0 }} />
+                  style={{ flex: 1, border: "none", background: "transparent", fontSize: 12, fontFamily: F.mono, color: C.textMid, outline: "none", minWidth: 0 }} />
 
                 {/* Template selector */}
                 {templates.length > 0 && (
@@ -1348,7 +1355,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
                     <select
                       value={templateKey}
                       onChange={e => setTemplateKey(e.target.value)}
-                      style={{ border: `1.5px solid ${C.border}`, borderRadius: 5, padding: "4px 8px", fontSize: 11, fontFamily: C.sans, color: C.textMid, background: C.surface }}
+                      style={{ border: `1.5px solid ${C.border}`, borderRadius: 5, padding: "4px 8px", fontSize: 11, fontFamily: F.sans, color: C.textMid, background: C.surface }}
                     >
                       {templates.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                     </select>
@@ -1359,7 +1366,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
                         display: "flex", alignItems: "center", gap: 6,
                         padding: "4px 10px", borderRadius: 5, cursor: "pointer",
                         border: `1px solid ${C.border}`, background: C.surface, color: C.textMid,
-                        fontSize: 11, fontWeight: 600, fontFamily: C.sans,
+                        fontSize: 11, fontWeight: 600, fontFamily: F.sans,
                         transition: "all 0.13s", flexShrink: 0, whiteSpace: "nowrap",
                       }}
                       onMouseEnter={e => { if (e.currentTarget) e.currentTarget.style.background = C.surfaceAlt; }}
@@ -1383,7 +1390,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
                       cursor: !editorContent.trim() ? "default" : "pointer",
                       border: `1px solid ${C.accentBorder}`,
                       background: C.accentBg,
-                      fontSize: 11, fontWeight: 600, fontFamily: C.sans, color: C.accent,
+                      fontSize: 11, fontWeight: 600, fontFamily: F.sans, color: C.accent,
                       transition: "all 0.13s", flexShrink: 0, whiteSpace: "nowrap",
                       opacity: !editorContent.trim() ? 0.4 : 1,
                     }}
@@ -1399,7 +1406,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
               <textarea value={editorContent} onChange={e => setEditorContent(e.target.value)}
                 placeholder={"#!/bin/bash\nset -euo pipefail\n\n# Write your script here..."}
                 spellCheck={false}
-                style={{ width: "100%", minHeight: 200, padding: "10px 14px", fontFamily: C.mono, fontSize: 12, lineHeight: 1.7, color: C.text, background: C.surface, border: "none", resize: "vertical", outline: "none", tabSize: 2, display: "block" }}
+                style={{ width: "100%", minHeight: 200, padding: "10px 14px", fontFamily: F.mono, fontSize: 12, lineHeight: 1.7, color: C.text, background: C.surface, border: "none", resize: "vertical", outline: "none", tabSize: 2, display: "block" }}
                 onKeyDown={e => {
                   if (e.key === "Tab") {
                     e.preventDefault();
@@ -1414,9 +1421,9 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
 
               {/* Status bar */}
               <div style={{ padding: "5px 12px", background: C.surfaceAlt, borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 11, fontFamily: C.mono, color: C.textMuted }}>{editorContent.split("\n").length} lines · Tab = 2 spaces</span>
+                <span style={{ fontSize: 11, fontFamily: F.mono, color: C.textMuted }}>{editorContent.split("\n").length} lines · Tab = 2 spaces</span>
                 {isRemoteGit && (
-                  <span style={{ fontSize: 11, fontFamily: C.sans, color: C.textMuted, display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontSize: 11, fontFamily: F.sans, color: C.textMuted, display: "flex", alignItems: "center", gap: 4 }}>
                     {Ic.link(10)}
                     <span>{isGitHub ? "github.com" : "gitlab.com"} · changes go via PR</span>
                   </span>
@@ -1551,7 +1558,7 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
             disabled={disabled}
             placeholder={placeholder || "path/to/file"}
             onFocus={onFocus}
-            style={{ flex: 1, border: "none", padding: "7px 4px 7px 0", fontSize: 14, fontFamily: C.mono, color: C.text, background: "transparent" }}
+            style={{ flex: 1, border: "none", padding: "7px 4px 7px 0", fontSize: 14, fontFamily: F.mono, color: C.text, background: "transparent" }}
           />
 
           {/* Type badge — shown when file is matched */}
@@ -1562,7 +1569,7 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
               background: typeStyle.bg,
               flexShrink: 0,
             }}>
-              <span style={{ fontSize: 10, fontWeight: 700, fontFamily: C.mono, letterSpacing: 0.5, color: typeStyle.color, textTransform: "uppercase" }}>
+              <span style={{ fontSize: 10, fontWeight: 700, fontFamily: F.mono, letterSpacing: 0.5, color: typeStyle.color, textTransform: "uppercase" }}>
                 {typeStyle.label}
               </span>
             </div>
@@ -1579,7 +1586,7 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
                 padding: "7px 9px", cursor: "pointer",
                 color: previewOpen ? "#16a34a" : C.textMid,
                 display: "flex", alignItems: "center", gap: 4,
-                fontSize: 11, fontFamily: C.sans, fontWeight: 600,
+                fontSize: 11, fontFamily: F.sans, fontWeight: 600,
                 transition: "background 0.15s, color 0.15s",
                 flexShrink: 0,
               }}
@@ -1620,13 +1627,13 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
             boxShadow: "0 8px 24px rgba(0,0,0,0.10)", maxHeight: 180, overflowY: "auto",
           }}>
             {paths.length === 0
-              ? <div style={{ padding: "12px", fontSize: 13, color: C.textMuted, fontFamily: C.sans, textAlign: "center" }}>
+              ? <div style={{ padding: "12px", fontSize: 13, color: C.textMuted, fontFamily: F.sans, textAlign: "center" }}>
                 {filterFn ? "No matching files in repository" : "No files in repository"}
               </div>
               : paths.map(p => (
                 <div key={p} onClick={() => handleSelect(p)}
                   style={{
-                    padding: "7px 12px", fontSize: 13, fontFamily: C.mono, cursor: "pointer",
+                    padding: "7px 12px", fontSize: 13, fontFamily: F.mono, cursor: "pointer",
                     background: draft === p ? C.accentBg : "transparent",
                     color: draft === p ? C.accent : C.textMid,
                     display: "flex", alignItems: "center", gap: 8,
@@ -1651,7 +1658,7 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
           borderTop: "none", borderRadius: "0 0 6px 6px",
           animation: "fadeUp 0.15s ease",
         }}>
-          <span style={{ fontSize: 11, color: "#c2410c", fontFamily: C.sans }}>
+          <span style={{ fontSize: 11, color: "#c2410c", fontFamily: F.sans }}>
             {wrongFormat && notFound
               ? `Wrong format — expected ${placeholder || "the required format"}. File not found either.`
               : wrongFormat
@@ -1681,11 +1688,11 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
               <span style={{ display: "flex", color: "#16a34a", opacity: 0.9 }}>{Ic.file(12)}</span>
-              <span style={{ fontSize: 11, fontFamily: C.mono, color: C.textMid, letterSpacing: 0.3 }}>
+              <span style={{ fontSize: 11, fontFamily: F.mono, color: C.textMid, letterSpacing: 0.3 }}>
                 {trimmedDraft}
               </span>
               <span style={{
-                fontSize: 9, fontWeight: 700, fontFamily: C.mono, letterSpacing: 0.8, textTransform: "uppercase",
+                fontSize: 9, fontWeight: 700, fontFamily: F.mono, letterSpacing: 0.8, textTransform: "uppercase",
                 padding: "1px 5px", borderRadius: 3,
                 background: typeStyle.bg, color: typeStyle.color, border: `1px solid ${typeStyle.border}`,
               }}>
@@ -1709,13 +1716,13 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
                 <span style={{
                   display: "inline-block", minWidth: 36, textAlign: "right",
                   paddingRight: 14, paddingLeft: 12,
-                  fontSize: 11, fontFamily: C.mono, color: C.borderMid,
+                  fontSize: 11, fontFamily: F.mono, color: C.borderMid,
                   userSelect: "none", flexShrink: 0,
                 }}>
                   {i + 1}
                 </span>
                 <span style={{
-                  fontSize: 12, fontFamily: C.mono, lineHeight: 1.7,
+                  fontSize: 12, fontFamily: F.mono, lineHeight: 1.7,
                   color: line.startsWith("#") ? "#94a3b8"
                     : line.startsWith("FROM") || line.startsWith("RUN") || line.startsWith("COPY") || line.startsWith("CMD") || line.startsWith("WORKDIR") ? "#0369a1"
                       : line.startsWith("set ") || line.startsWith("echo ") || line.startsWith("docker ") ? "#15803d"
@@ -1729,7 +1736,7 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
               </div>
             ))}
             {hasMore && (
-              <div style={{ padding: "4px 12px 2px 36px", fontSize: 11, fontFamily: C.mono, color: C.textMuted, fontStyle: "italic" }}>
+              <div style={{ padding: "4px 12px 2px 36px", fontSize: 11, fontFamily: F.mono, color: C.textMuted, fontStyle: "italic" }}>
                 … {(matchedFile.content || "").split("\n").length - PREVIEW_LINES} more lines
               </div>
             )}
@@ -1741,7 +1748,7 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
 }
 
 // ── Form helpers ───────────────────────────────────────────────────────────────
-const inp = (locked, extra = {}) => ({ width: "100%", border: `1.5px solid ${C.border}`, borderRadius: 7, padding: "9px 12px", fontSize: 14, fontFamily: C.mono, color: C.text, background: locked ? C.surfaceAlt : C.surface, transition: "border-color 0.15s, box-shadow 0.15s", ...extra });
+const inp = (locked, extra = {}) => ({ width: "100%", border: `1.5px solid ${C.border}`, borderRadius: 7, padding: "9px 12px", fontSize: 14, fontFamily: F.mono, color: C.text, background: locked ? C.surfaceAlt : C.surface, transition: "border-color 0.15s, box-shadow 0.15s", ...extra });
 
 // ── Log view ───────────────────────────────────────────────────────────────────
 interface LogStyleEntry { pre: string; color: string; bg: string }
@@ -1763,17 +1770,17 @@ function LogPanel({ log }: LogPanelProps) {
       {!log ? (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", minHeight: 200, gap: 8, color: C.textMuted }}>
           {Ic.terminal()}
-          <span style={{ fontSize: 13, fontFamily: C.sans }}>No output yet</span>
+          <span style={{ fontSize: 13, fontFamily: F.sans }}>No output yet</span>
         </div>
       ) : (
         <div style={{ padding: "12px 0" }}>
-          <div style={{ padding: "6px 18px 12px", fontSize: 11, color: C.textMuted, fontFamily: C.mono, borderBottom: `1px solid ${C.border}`, marginBottom: 4 }}>
+          <div style={{ padding: "6px 18px 12px", fontSize: 11, color: C.textMuted, fontFamily: F.mono, borderBottom: `1px solid ${C.border}`, marginBottom: 4 }}>
             Last run: {new Date(log.ts).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
           </div>
           {log.lines.map((line, i) => {
             const s = LOG_STYLE[line.type] || LOG_STYLE.info;
             return (
-              <div key={i} style={{ display: "flex", padding: "3px 18px", background: s.bg, fontFamily: C.mono, fontSize: 13, lineHeight: 1.75 }}>
+              <div key={i} style={{ display: "flex", padding: "3px 18px", background: s.bg, fontFamily: F.mono, fontSize: 13, lineHeight: 1.75 }}>
                 <span style={{ color: s.color, fontWeight: 600, marginRight: 14, flexShrink: 0, fontSize: 11, opacity: 0.75, minWidth: 52 }}>[{s.pre}]</span>
                 <span style={{ color: s.color }}>{line.msg}</span>
               </div>
@@ -1946,7 +1953,7 @@ function tipTargetSectionStyle(active: boolean): React.CSSProperties {
 
 function tipTargetChip(active: boolean, idleLabel = "Click for tips"): React.ReactNode {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, fontFamily: C.sans, color: active ? C.accent : C.textMuted, background: active ? C.accentBg : C.surfaceAlt, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 99, padding: "1px 7px", letterSpacing: 0.2 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, fontFamily: F.sans, color: active ? C.accent : C.textMuted, background: active ? C.accentBg : C.surfaceAlt, border: `1px solid ${active ? C.accentBorder : C.border}`, borderRadius: 99, padding: "1px 7px", letterSpacing: 0.2 }}>
       {Ic.info(10)} {active ? "Tips open" : idleLabel}
     </span>
   );
@@ -1980,16 +1987,16 @@ function FieldRow({ fieldKey, required, children, locked, usedBy = [], onFocus, 
       style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 20, alignItems: "start", borderBottom: `1px solid ${C.border}`, background: active ? C.accentBg + "75" : "transparent", margin: "0 -20px", padding: "18px 20px", transition: "background 0.15s", cursor: tipEnabled ? "pointer" : "default", borderLeftWidth: 3, borderLeftStyle: "solid", borderLeftColor: active ? C.accent : "transparent", boxShadow: active ? `inset 0 0 0 1px ${C.accentBorder}` : "none" }}>
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: active ? C.accent : C.text, fontFamily: C.sans }}>{meta.label}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: active ? C.accent : C.text, fontFamily: F.sans }}>{meta.label}</span>
           {tipEnabled && tipTargetChip(!!active)}
-          {required && <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, fontFamily: C.sans, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 3, padding: "1px 4px" }}>required</span>}
-          {locked && fieldKey !== "swhid" && <span style={{ fontSize: 11, color: C.textMuted, fontFamily: C.sans, background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 3, padding: "1px 4px" }}>locked</span>}
+          {required && <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, fontFamily: F.sans, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 3, padding: "1px 4px" }}>required</span>}
+          {locked && fieldKey !== "swhid" && <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.sans, background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 3, padding: "1px 4px" }}>locked</span>}
         </div>
         <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5, margin: "0 0 5px" }}>{meta.desc}</p>
         {usedBy.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
             {usedBy.map(s => (
-              <span key={s.key} style={{ fontSize: 11, fontFamily: C.mono, color: s.color, background: s.color + "10", border: `1px solid ${s.color}30`, borderRadius: 3, padding: "1px 5px" }}>{s.label}</span>
+              <span key={s.key} style={{ fontSize: 11, fontFamily: F.mono, color: s.color, background: s.color + "10", border: `1px solid ${s.color}30`, borderRadius: 3, padding: "1px 5px" }}>{s.label}</span>
             ))}
           </div>
         )}
@@ -2018,7 +2025,7 @@ function FieldSection({ title, icon, subtitle, children, filledCount, totalCount
         {/* Accent bar */}
         <div style={{ width: 3, height: 16, borderRadius: 99, background: allFilled ? "#22c55e" : someFilled ? "#f59e0b" : C.borderMid, flexShrink: 0, transition: "background 0.3s" }} />
         <span style={{ color: allFilled ? "#16a34a" : C.textMuted, display: "flex" }}>{icon}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: allFilled ? "#15803d" : C.text, textTransform: "uppercase", fontFamily: C.sans }}>{title}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: allFilled ? "#15803d" : C.text, textTransform: "uppercase", fontFamily: F.sans }}>{title}</span>
         {subtitle && <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>— {subtitle}</span>}
         <div style={{ flex: 1 }} />
         {totalCount > 0 && (
@@ -2026,7 +2033,7 @@ function FieldSection({ title, icon, subtitle, children, filledCount, totalCount
             <div style={{ width: 40, height: 3, borderRadius: 99, background: C.border, overflow: "hidden" }}>
               <div style={{ width: `${pct}%`, height: "100%", background: allFilled ? "#22c55e" : someFilled ? "#f59e0b" : C.borderMid, borderRadius: 99, transition: "width 0.4s" }} />
             </div>
-            <span style={{ fontSize: 11, fontFamily: C.mono, color: allFilled ? "#16a34a" : someFilled ? "#92400e" : C.textMuted, fontWeight: 600 }}>{filledCount}/{totalCount}</span>
+            <span style={{ fontSize: 11, fontFamily: F.mono, color: allFilled ? "#16a34a" : someFilled ? "#92400e" : C.textMuted, fontWeight: 600 }}>{filledCount}/{totalCount}</span>
           </div>
         )}
       </div>
@@ -2049,7 +2056,7 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.accent }} />
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.1, color: C.accent, textTransform: "uppercase", fontFamily: C.sans }}>Field guide</span>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.1, color: C.accent, textTransform: "uppercase", fontFamily: F.sans }}>Field guide</span>
         </div>
         <button onClick={onDismiss} style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 2, borderRadius: 4 }}
           onMouseEnter={e => e.currentTarget.style.color = C.text} onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
@@ -2063,8 +2070,8 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       {/* Example value */}
       {meta.example && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans, marginBottom: 6 }}>Example</div>
-          <div style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 6, padding: "9px 12px", fontFamily: C.mono, fontSize: 13, color: C.accent, wordBreak: "break-all" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans, marginBottom: 6 }}>Example</div>
+          <div style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 6, padding: "9px 12px", fontFamily: F.mono, fontSize: 13, color: C.accent, wordBreak: "break-all" }}>
             {meta.example}
           </div>
         </div>
@@ -2073,28 +2080,28 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       {/* Format */}
       {meta.format && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans, marginBottom: 6 }}>Format</div>
-          <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, margin: 0, fontFamily: C.mono }}>{meta.format}</p>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans, marginBottom: 6 }}>Format</div>
+          <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, margin: 0, fontFamily: F.mono }}>{meta.format}</p>
         </div>
       )}
 
       {/* How to */}
       {meta.howTo && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans, marginBottom: 6 }}>How to get this</div>
-          <pre style={{ fontSize: 13, color: C.textMid, lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap", fontFamily: meta.howTo.includes("\n") ? C.mono : "inherit" }}>{meta.howTo}</pre>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans, marginBottom: 6 }}>How to get this</div>
+          <pre style={{ fontSize: 13, color: C.textMid, lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap", fontFamily: meta.howTo.includes("\n") ? F.mono : "inherit" }}>{meta.howTo}</pre>
         </div>
       )}
 
       {/* Tool commands */}
       {meta.toolCommands && meta.toolCommands.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans, marginBottom: 8 }}>Commands</div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans, marginBottom: 8 }}>Commands</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {meta.toolCommands.map((tc, i) => (
               <div key={i}>
-                <div style={{ fontSize: 11, color: C.textMuted, fontFamily: C.sans, marginBottom: 4 }}>{tc.label}</div>
-                <div style={{ background: "#0f172a", borderRadius: 6, padding: "10px 12px", fontFamily: C.mono, fontSize: 13, color: "#94d2bd", wordBreak: "break-all", lineHeight: 1.6 }}>
+                <div style={{ fontSize: 11, color: C.textMuted, fontFamily: F.sans, marginBottom: 4 }}>{tc.label}</div>
+                <div style={{ background: "#0f172a", borderRadius: 6, padding: "10px 12px", fontFamily: F.mono, fontSize: 13, color: "#94d2bd", wordBreak: "break-all", lineHeight: 1.6 }}>
                   {tc.cmd}
                 </div>
               </div>
@@ -2106,11 +2113,11 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       {/* Tools / links */}
       {meta.tools && meta.tools.length > 0 && (
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans, marginBottom: 8 }}>Tools</div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans, marginBottom: 8 }}>Tools</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {meta.tools.map((t, i) => (
               <a key={i} href={t.url} target="_blank" rel="noreferrer"
-                style={{ fontSize: 13, fontFamily: C.sans, color: C.accent, background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: 5, padding: "4px 10px", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                style={{ fontSize: 13, fontFamily: F.sans, color: C.accent, background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: 5, padding: "4px 10px", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
                 {Ic.link(11)} {t.label}
               </a>
             ))}
@@ -2140,13 +2147,13 @@ function FieldTipsSidebar({ focusedField, onFocusField, onClear, tipFields, empt
     <div style={{ width: 296, borderLeft: `1px solid ${C.border}`, background: C.surface, overflowY: "auto", padding: 20, flexShrink: 0, display: "flex", flexDirection: "column", gap: 16 }}>
       {showFieldPicker && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.1, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans }}>Tips</div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.1, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans }}>Tips</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {(tipFields || []).map(fieldKey => {
               const isActive = activeField === fieldKey;
               return (
                 <button key={fieldKey} onClick={() => onFocusField(fieldKey)}
-                  style={{ fontSize: 11, fontFamily: C.sans, fontWeight: 700, letterSpacing: 0.2, color: isActive ? C.accent : C.textMid, background: isActive ? C.accentBg : C.surfaceAlt, border: `1px solid ${isActive ? C.accentBorder : C.border}`, borderRadius: 99, padding: "3px 9px", cursor: "pointer" }}>
+                  style={{ fontSize: 11, fontFamily: F.sans, fontWeight: 700, letterSpacing: 0.2, color: isActive ? C.accent : C.textMid, background: isActive ? C.accentBg : C.surfaceAlt, border: `1px solid ${isActive ? C.accentBorder : C.border}`, borderRadius: 99, padding: "3px 9px", cursor: "pointer" }}>
                   {FIELD_META[fieldKey]?.label || fieldKey}
                 </button>
               );
@@ -2159,7 +2166,7 @@ function FieldTipsSidebar({ focusedField, onFocusField, onClear, tipFields, empt
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <span style={{ color: C.textMid, display: "flex" }}>{Ic.info(13)}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMid, textTransform: "uppercase", fontFamily: C.sans }}>{generalTitle}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMid, textTransform: "uppercase", fontFamily: F.sans }}>{generalTitle}</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {generalTips.map((tip, i) => (
@@ -2175,7 +2182,7 @@ function FieldTipsSidebar({ focusedField, onFocusField, onClear, tipFields, empt
           ? <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 13px", background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: 9 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
               <span style={{ color: C.accent, display: "flex" }}>{Ic.info(13)}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.accent, textTransform: "uppercase", fontFamily: C.sans }}>Workflow tips</span>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.accent, textTransform: "uppercase", fontFamily: F.sans }}>Workflow tips</span>
             </div>
             <p style={{ fontSize: 12, color: C.textMid, lineHeight: 1.55, margin: 0 }}>No field selected. Here are the key tips for this page/workflow:</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -2185,7 +2192,7 @@ function FieldTipsSidebar({ focusedField, onFocusField, onClear, tipFields, empt
                   <button key={fieldKey}
                     onClick={() => onFocusField?.(fieldKey)}
                     style={{ textAlign: "left", padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.accentBorder}`, background: C.surface, cursor: onFocusField ? "pointer" : "default", display: "flex", flexDirection: "column", gap: 3 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: C.text, fontFamily: C.sans }}>{meta?.label || fieldKey}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.text, fontFamily: F.sans }}>{meta?.label || fieldKey}</span>
                     <span style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.45 }}>{meta?.desc || ""}</span>
                   </button>
                 );
@@ -2271,7 +2278,7 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
             border: `1.5px solid ${draft.trim() ? C.accentBorder : C.border}`,
             background: draft.trim() ? C.accentBg : C.surfaceAlt,
             color: draft.trim() ? C.accent : C.textMuted,
-            fontSize: 13, fontWeight: 600, fontFamily: C.sans,
+            fontSize: 13, fontWeight: 600, fontFamily: F.sans,
             flexShrink: 0, transition: "all 0.15s", whiteSpace: "nowrap",
             opacity: locked ? 0.5 : 1,
           }}
@@ -2282,23 +2289,23 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
         </button>
       </div>
       {isDirty && draft.trim() && (
-        <div style={{ fontSize: 11, color: "#92400e", fontFamily: C.sans, display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ fontSize: 11, color: "#92400e", fontFamily: F.sans, display: "flex", alignItems: "center", gap: 4 }}>
           {Ic.info(10)} Setting a new source will reset all workflow results.
         </div>
       )}
       {committedValue && !isDirty && (
-        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontFamily: C.mono, color: "#16a34a" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontFamily: F.mono, color: "#16a34a" }}>
           {Ic.check(10)}
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{committedValue}</span>
         </div>
       )}
       {checkState === "reachable" && checkedFor === draft.trim() && (
-        <div style={{ fontSize: 11, color: "#15803d", fontFamily: C.sans, display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ fontSize: 11, color: "#15803d", fontFamily: F.sans, display: "flex", alignItems: "center", gap: 4 }}>
           {Ic.check(10)} URL reachable
         </div>
       )}
       {checkState === "unreachable" && checkedFor === draft.trim() && (
-        <div style={{ fontSize: 11, color: "#b45309", fontFamily: C.sans, display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ fontSize: 11, color: "#b45309", fontFamily: F.sans, display: "flex", alignItems: "center", gap: 4 }}>
           {Ic.info(10)} URL not reachable (or invalid format)
         </div>
       )}
@@ -2357,11 +2364,11 @@ function SourceUploadField({ locked, disabled = false, disabledReason, onCommit,
       {committedName && !pending && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 8, background: "#f0fdf4", border: "1.5px solid #bbf7d0", marginBottom: 8 }}>
           <span style={{ color: "#16a34a", display: "flex" }}>{Ic.archive()}</span>
-          <span style={{ flex: 1, fontSize: 13, fontFamily: C.mono, color: "#15803d", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{committedName}</span>
+          <span style={{ flex: 1, fontSize: 13, fontFamily: F.mono, color: "#15803d", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{committedName}</span>
           {!locked && (
             <button onClick={() => archiveRef.current?.click()}
               disabled={inputDisabled}
-              style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 5, cursor: "pointer", color: C.textMuted, fontSize: 11, fontFamily: C.sans, padding: "2px 8px", display: "flex", alignItems: "center", gap: 4 }}
+              style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 5, cursor: "pointer", color: C.textMuted, fontSize: 11, fontFamily: F.sans, padding: "2px 8px", display: "flex", alignItems: "center", gap: 4 }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; }}>
               {Ic.upload(11)} Replace
@@ -2375,11 +2382,11 @@ function SourceUploadField({ locked, disabled = false, disabledReason, onCommit,
         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 8, background: "#fffbeb", border: "1.5px solid #f59e0b" }}>
             <span style={{ color: "#d97706", display: "flex" }}>{Ic.archive()}</span>
-            <span style={{ flex: 1, fontSize: 13, fontFamily: C.mono, color: "#92400e", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ flex: 1, fontSize: 13, fontFamily: F.mono, color: "#92400e", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {pending.archiveName}
             </span>
             <button onClick={handleConfirm}
-              style={{ background: "#fffbeb", border: "1.5px solid #f59e0b", borderRadius: 6, cursor: "pointer", color: "#b45309", fontSize: 12, fontWeight: 700, fontFamily: C.sans, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
+              style={{ background: "#fffbeb", border: "1.5px solid #f59e0b", borderRadius: 6, cursor: "pointer", color: "#b45309", fontSize: 12, fontWeight: 700, fontFamily: F.sans, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
               onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.96)"}
               onMouseLeave={e => e.currentTarget.style.filter = "none"}>
               {Ic.check(11)} Add to workspace
@@ -2391,7 +2398,7 @@ function SourceUploadField({ locked, disabled = false, disabledReason, onCommit,
               {Ic.x(13)}
             </button>
           </div>
-          <div style={{ fontSize: 11, color: "#92400e", fontFamily: C.sans, display: "flex", alignItems: "center", gap: 4, paddingLeft: 2 }}>
+          <div style={{ fontSize: 11, color: "#92400e", fontFamily: F.sans, display: "flex", alignItems: "center", gap: 4, paddingLeft: 2 }}>
             {Ic.info(10)} Setting a new source will reset all workflow results.
           </div>
         </div>
@@ -2416,21 +2423,21 @@ function SourceUploadField({ locked, disabled = false, disabledReason, onCommit,
           onMouseLeave={e => { if (!dragging) { e.currentTarget.style.borderColor = C.borderMid; e.currentTarget.style.background = C.bg; } }}
         >
           <span style={{ color: dragging ? C.accent : C.textMuted, display: "flex" }}>{Ic.upload(18)}</span>
-          <span style={{ fontSize: 13, color: dragging ? C.accent : C.textMid, fontFamily: C.sans }}>
+          <span style={{ fontSize: 13, color: dragging ? C.accent : C.textMid, fontFamily: F.sans }}>
             Drop archive or <span style={{ color: C.accent, fontWeight: 600 }}>browse archive</span>
           </span>
-          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: C.mono, marginTop: 4 }}>.zip · .tar · .tar.gz</span>
+          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono, marginTop: 4 }}>.zip · .tar · .tar.gz</span>
         </div>
       )}
 
       {disabledReason && (
-        <div style={{ marginTop: 6, fontSize: 11, color: C.textMuted, fontFamily: C.sans, display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ marginTop: 6, fontSize: 11, color: C.textMuted, fontFamily: F.sans, display: "flex", alignItems: "center", gap: 4 }}>
           {Ic.info(10)} {disabledReason}
         </div>
       )}
 
       {dropError && (
-        <div style={{ marginTop: 6, fontSize: 11, color: "#b45309", fontFamily: C.sans, display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ marginTop: 6, fontSize: 11, color: "#b45309", fontFamily: F.sans, display: "flex", alignItems: "center", gap: 4 }}>
           {Ic.info(10)} {dropError}
         </div>
       )}
@@ -2496,14 +2503,14 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, usedBy, files }:
       {/* Left: label + description + used-by */}
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: active ? C.accent : C.text, fontFamily: C.sans }}>{meta.label}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: active ? C.accent : C.text, fontFamily: F.sans }}>{meta.label}</span>
           {!!onFocus && tipTargetChip(!!active)}
         </div>
         <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5, margin: "0 0 5px" }}>{meta.desc}</p>
         {usedBy && usedBy.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
             {usedBy.map(s => (
-              <span key={s.key} style={{ fontSize: 11, fontFamily: C.mono, color: s.color, background: s.color + "10", border: `1px solid ${s.color}30`, borderRadius: 3, padding: "1px 5px" }}>{s.label}</span>
+              <span key={s.key} style={{ fontSize: 11, fontFamily: F.mono, color: s.color, background: s.color + "10", border: `1px solid ${s.color}30`, borderRadius: 3, padding: "1px 5px" }}>{s.label}</span>
             ))}
           </div>
         )}
@@ -2527,7 +2534,7 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, usedBy, files }:
                   border: `1.5px solid ${isActive ? C.accent : C.border}`,
                   background: isActive ? C.accentBg : C.surface,
                   fontSize: 11, fontWeight: 600, color: isActive ? C.accent : C.textMid,
-                  fontFamily: C.sans, transition: "all 0.15s", opacity: locked ? 0.6 : 1,
+                  fontFamily: F.sans, transition: "all 0.15s", opacity: locked ? 0.6 : 1,
                 }}
                 onMouseEnter={e => { if (!locked && !isActive) e.currentTarget.style.borderColor = C.borderMid; }}
                 onMouseLeave={e => { if (!locked && !isActive) e.currentTarget.style.borderColor = C.border; }}
@@ -2552,7 +2559,7 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, usedBy, files }:
               filterFn={p => /\.(tar\.gz|tgz)$/i.test(p)}
             />
             <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.5 }}>
-              Bundled into the REE archive on deposit. Produced by your build script via <code style={{ fontFamily: C.mono, fontSize: 10.5, background: C.surfaceAlt, padding: "1px 4px", borderRadius: 3 }}>docker save … | gzip</code>.
+              Bundled into the REE archive on deposit. Produced by your build script via <code style={{ fontFamily: F.mono, fontSize: 10.5, background: C.surfaceAlt, padding: "1px 4px", borderRadius: 3 }}>docker save … | gzip</code>.
             </div>
             {isSkipped && (
               <div style={{ display: "flex", gap: 8, padding: "8px 11px", background: "#fff7ed", border: "1px solid #fde68a", borderRadius: 7 }}>
@@ -2670,7 +2677,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <div>
-            <h2 style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", fontFamily: C.sans, color: C.textMuted }}>Fields</h2>
+            <h2 style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", fontFamily: F.sans, color: C.textMuted }}>Fields</h2>
           </div>
         </div>
 
@@ -2690,7 +2697,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
                     onRepoModeChange(m);
                     if (m === "upload") setOriginTypeDraft("");
                   }}
-                    style={{ flex: 1, padding: "7px", borderRadius: 7, cursor: locked ? "default" : "pointer", border: `1.5px solid ${repoMode === m ? C.accent : C.border}`, background: repoMode === m ? C.accentBg : C.surface, fontSize: 13, fontWeight: 600, color: repoMode === m ? C.accent : C.textMid, fontFamily: C.sans, transition: "all 0.15s" }}>
+                    style={{ flex: 1, padding: "7px", borderRadius: 7, cursor: locked ? "default" : "pointer", border: `1.5px solid ${repoMode === m ? C.accent : C.border}`, background: repoMode === m ? C.accentBg : C.surface, fontSize: 13, fontWeight: 600, color: repoMode === m ? C.accent : C.textMid, fontFamily: F.sans, transition: "all 0.15s" }}>
                     {m === "url" ? "⇢ Origin URL" : "⤒ Upload tarball"}
                   </button>
                 ))}
@@ -2741,7 +2748,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
                           border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
                           background: downloadDone ? "#f0fdf4" : C.accentBg,
                           color: downloadDone ? "#15803d" : C.accent,
-                          fontSize: 13, fontWeight: 700, fontFamily: C.sans,
+                          fontSize: 13, fontWeight: 700, fontFamily: F.sans,
                           width: "fit-content",
                           opacity: locked || !canDownload ? 0.6 : 1,
                         }}
@@ -2785,17 +2792,17 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
                   onMouseEnter={() => setWorkspaceBrowseHover(true)}
                   onMouseLeave={() => setWorkspaceBrowseHover(false)}
                 >
-                  <span style={{ color: sourceInWorkspace ? "#15803d" : C.textMuted, fontWeight: 600, fontFamily: C.sans }}>
+                  <span style={{ color: sourceInWorkspace ? "#15803d" : C.textMuted, fontWeight: 600, fontFamily: F.sans }}>
                     {sourceInWorkspace ? "Yes — repository is available in workspace" : "No — source not in workspace yet"}
                   </span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: C.accent, fontSize: 12, fontWeight: 700, fontFamily: C.sans, flexShrink: 0 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: C.accent, fontSize: 12, fontWeight: 700, fontFamily: F.sans, flexShrink: 0 }}>
                     {Ic.files(12)} Browse files
                   </span>
                 </button>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 2, flexShrink: 0 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase", color: sourceIncluded ? C.textMid : C.textMuted, fontFamily: C.sans }}>Included</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: sourceIncluded ? "#b45309" : C.textMuted, fontFamily: C.sans }}>{sourceIncluded ? "Yes" : "No"}</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase", color: sourceIncluded ? C.textMid : C.textMuted, fontFamily: F.sans }}>Included</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: sourceIncluded ? "#b45309" : C.textMuted, fontFamily: F.sans }}>{sourceIncluded ? "Yes" : "No"}</div>
                   </div>
                 <button
                   onClick={toggleSourceIncluded}
@@ -2825,7 +2832,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
                       width: "fit-content",
                       padding: "6px 10px", borderRadius: 6,
                       border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c",
-                      fontSize: 12, fontFamily: C.sans, fontWeight: 600,
+                      fontSize: 12, fontFamily: F.sans, fontWeight: 600,
                       cursor: locked ? "not-allowed" : "pointer",
                       opacity: locked ? 0.6 : 1,
                     }}
@@ -2835,7 +2842,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
                 )}
                 </div>
                 </div>
-                <div style={{ fontSize: 12, color: C.textMuted, fontFamily: C.sans }}>
+                <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
                   {sourceIncluded
                     ? "Original source snapshot will be packaged into the final REE archive (workspace edits are excluded)."
                     : "Source files stay in workspace only and are excluded from the final REE archive."}
@@ -2900,11 +2907,11 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
       <div style={{ flex: 1, overflowY: "auto", padding: 28, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <div>
-            <h2 style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", fontFamily: C.sans, color: C.textMuted }}>Fields</h2>
+            <h2 style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", fontFamily: F.sans, color: C.textMuted }}>Fields</h2>
           </div>
           {locked ? (
             <button onClick={() => setLocked(false)}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, cursor: "pointer", fontSize: 13, fontFamily: C.sans, color: "#92400e", fontWeight: 600, flexShrink: 0 }}>
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, cursor: "pointer", fontSize: 13, fontFamily: F.sans, color: "#92400e", fontWeight: 600, flexShrink: 0 }}>
               {Ic.unlock(13)} Unlock fields
             </button>
           ) : null}
@@ -2925,7 +2932,7 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
                     <input disabled={locked} value={k}
                       onChange={e => { const ent = Object.entries(ree.hardware_description); ent[i] = [e.target.value, v]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
                       placeholder="key" style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: "0 0 36%" }} />
-                    <span style={{ color: C.textMuted, fontFamily: C.mono, flexShrink: 0 }}>:</span>
+                    <span style={{ color: C.textMuted, fontFamily: F.mono, flexShrink: 0 }}>:</span>
                     <input disabled={locked} value={v}
                       onChange={e => { const ent = Object.entries(ree.hardware_description); ent[i] = [k, e.target.value]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
                       placeholder="value" style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: 1 }} />
@@ -2941,7 +2948,7 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
                 ))}
                 {!locked && (
                   <button onClick={() => { const ent = [...Object.entries(ree.hardware_description), ["", ""]]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", background: "transparent", border: `1.5px dashed ${C.borderMid}`, borderRadius: 7, cursor: "pointer", fontSize: 13, fontFamily: C.sans, color: C.textMuted, transition: "border-color 0.14s,color 0.14s", marginTop: 4, width: "fit-content" }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", background: "transparent", border: `1.5px dashed ${C.borderMid}`, borderRadius: 7, cursor: "pointer", fontSize: 13, fontFamily: F.sans, color: C.textMuted, transition: "border-color 0.14s,color 0.14s", marginTop: 4, width: "fit-content" }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderMid; e.currentTarget.style.color = C.textMuted; }}>
                     {Ic.plus()} Add field
@@ -3002,7 +3009,7 @@ function NextStepNudge({ stepKey, badges, onGo }: NextStepNudgeProps) {
       animation: "fadeUp 0.2s ease",
     }}>
       <span style={{ color: C.accent, display: "flex", flexShrink: 0 }}>{Ic.chevR()}</span>
-      <span style={{ fontSize: 13, color: C.textMid, fontFamily: C.sans, flex: 1 }}>
+      <span style={{ fontSize: 13, color: C.textMid, fontFamily: F.sans, flex: 1 }}>
         Next step:
       </span>
       <button onClick={() => onGo(step.nextKey)}
@@ -3010,7 +3017,7 @@ function NextStepNudge({ stepKey, badges, onGo }: NextStepNudgeProps) {
           display: "flex", alignItems: "center", gap: 5,
           padding: "5px 12px", borderRadius: 6, border: "none",
           background: C.accent, color: "#fff",
-          fontSize: 13, fontWeight: 600, fontFamily: C.sans,
+          fontSize: 13, fontWeight: 600, fontFamily: F.sans,
           cursor: "pointer", flexShrink: 0,
           transition: "background 0.13s",
         }}
@@ -3075,7 +3082,7 @@ function ServicePageHeader({ svc, icon, title, subtitle, runDone, badge, ts, tim
         </div>
         <div style={{ fontSize: 12, color: C.textMuted, marginTop: 1 }}>{subtitle}</div>
       </div>
-      {runDone && ts && <span style={{ fontSize: 11, color: C.textMuted, fontFamily: C.mono, flexShrink: 0 }}>{timestampPrefix} {new Date(ts).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>}
+      {runDone && ts && <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono, flexShrink: 0 }}>{timestampPrefix} {new Date(ts).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>}
     </div>
   );
 }
@@ -3099,7 +3106,7 @@ function ServiceActionSection({ color, running, runDone, disabled, idleLabel, ru
       <div style={{ ...S_SECTION_LABEL, marginBottom: 14 }}>Action</div>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <button onClick={onRun} disabled={disabled}
-          style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", background: disabled ? `${color}22` : color, border: "none", borderRadius: 8, cursor: disabled ? "default" : "pointer", fontSize: 13, fontWeight: 700, color: disabled ? color : "#fff", fontFamily: C.sans, transition: "all 0.15s" }}>
+          style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", background: disabled ? `${color}22` : color, border: "none", borderRadius: 8, cursor: disabled ? "default" : "pointer", fontSize: 13, fontWeight: 700, color: disabled ? color : "#fff", fontFamily: F.sans, transition: "all 0.15s" }}>
           <span style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}>{running ? Ic.loader(14) : Ic.play(14)}</span>
           {buttonLabel}
         </button>
@@ -3161,15 +3168,15 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
                 <span style={{ color: rt ? sbomColor : C.textMuted, display: "flex" }}>{isTb ? Ic.archive(14) : Ic.cpu(14)}</span>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: C.sans, textTransform: "uppercase", color: rt ? sbomColor : C.textMuted, opacity: 0.7, marginBottom: 1 }}>Scan target · ree.runtime</div>
-                <div style={{ fontSize: 12, fontWeight: 700, fontFamily: C.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: rt ? sbomColor : C.textMuted }}>{rt || <span style={{ fontStyle: "italic", fontWeight: 400, fontSize: 11 }}>not set — set a runtime in the Build Runtime step first</span>}</div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: F.sans, textTransform: "uppercase", color: rt ? sbomColor : C.textMuted, opacity: 0.7, marginBottom: 1 }}>Scan target · ree.runtime</div>
+                <div style={{ fontSize: 12, fontWeight: 700, fontFamily: F.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: rt ? sbomColor : C.textMuted }}>{rt || <span style={{ fontStyle: "italic", fontWeight: 400, fontSize: 11 }}>not set — set a runtime in the Build Runtime step first</span>}</div>
               </div>
-              {rt && <span style={{ fontSize: 10, fontFamily: C.sans, fontWeight: 700, color: sbomColor, background: `${sbomColor}12`, border: `1px solid ${sbomColor}40`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>{isTb ? "TARBALL" : "IMAGE"}</span>}
+              {rt && <span style={{ fontSize: 10, fontFamily: F.sans, fontWeight: 700, color: sbomColor, background: `${sbomColor}12`, border: `1px solid ${sbomColor}40`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>{isTb ? "TARBALL" : "IMAGE"}</span>}
             </div>
 
             {!rt && (
               <button onClick={() => onGo(PAGE.BUILD)}
-                style={{ width: "fit-content", display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontFamily: C.sans, color: sbomColor, background: `${sbomColor}12`, border: `1px solid ${sbomColor}40`, borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontWeight: 600 }}
+                style={{ width: "fit-content", display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontFamily: F.sans, color: sbomColor, background: `${sbomColor}12`, border: `1px solid ${sbomColor}40`, borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontWeight: 600 }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.96)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
                 {Ic.chevR(12)} Go to Build Runtime
@@ -3212,12 +3219,12 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
               <span style={{ color: hasSbom ? "#16a34a" : C.textMuted, display: "flex" }}>{Ic.package(14)}</span>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: C.sans, textTransform: "uppercase", color: hasSbom ? "#16a34a" : C.textMuted, opacity: 0.7, marginBottom: 1 }}>ree.sbom</div>
-              <div style={{ fontSize: 12, fontWeight: 700, fontFamily: C.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: hasSbom ? "#15803d" : C.textMuted }}>
+              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: F.sans, textTransform: "uppercase", color: hasSbom ? "#16a34a" : C.textMuted, opacity: 0.7, marginBottom: 1 }}>ree.sbom</div>
+              <div style={{ fontSize: 12, fontWeight: 700, fontFamily: F.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: hasSbom ? "#15803d" : C.textMuted }}>
                 {hasSbom ? ree.sbom : <span style={{ fontStyle: "italic", fontWeight: 400, fontSize: 11 }}>not set — click Generate SBOM</span>}
               </div>
             </div>
-            {hasSbom && <span style={{ fontSize: 10, fontFamily: C.sans, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>SET</span>}
+            {hasSbom && <span style={{ fontSize: 10, fontFamily: F.sans, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>SET</span>}
           </div>
 
           {hasSbom ? (() => {
@@ -3230,11 +3237,11 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
                 <div style={{ border: `1px solid ${sbomColor}20`, borderRadius: 10, overflow: "hidden" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: `${sbomColor}08`, borderBottom: `1px solid ${sbomColor}20` }}>
                     <span style={{ color: sbomColor, display: "flex" }}>{Ic.file(13)}</span>
-                    <span style={{ fontSize: 13, fontFamily: C.mono, fontWeight: 700, color: sbomColor, flex: 1 }}>{ree.sbom}</span>
-                    {pkgCount !== null && <span style={{ fontSize: 11, fontFamily: C.sans, color: sbomColor, background: `${sbomColor}15`, border: `1px solid ${sbomColor}30`, borderRadius: 10, padding: "1px 8px" }}>{pkgCount} package{pkgCount !== 1 ? "s" : ""}</span>}
+                    <span style={{ fontSize: 13, fontFamily: F.mono, fontWeight: 700, color: sbomColor, flex: 1 }}>{ree.sbom}</span>
+                    {pkgCount !== null && <span style={{ fontSize: 11, fontFamily: F.sans, color: sbomColor, background: `${sbomColor}15`, border: `1px solid ${sbomColor}30`, borderRadius: 10, padding: "1px 8px" }}>{pkgCount} package{pkgCount !== 1 ? "s" : ""}</span>}
                   </div>
                   <div style={{ background: "#0d1117", padding: "14px 16px", maxHeight: 340, overflowY: "auto" }}>
-                    <pre style={{ margin: 0, fontSize: 11, fontFamily: C.mono, color: "#7ee787", lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{sbomNode.content}</pre>
+                    <pre style={{ margin: 0, fontSize: 11, fontFamily: F.mono, color: "#7ee787", lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{sbomNode.content}</pre>
                   </div>
                 </div>
               </div>
@@ -3325,8 +3332,8 @@ function PageTestActivation({ svc, ree, log, running, runDone, badge, ts, onRun,
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: C.sans }}>{asLabel}</span>
-                <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, fontFamily: C.sans, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 3, padding: "1px 4px" }}>required</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: F.sans }}>{asLabel}</span>
+                <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, fontFamily: F.sans, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 3, padding: "1px 4px" }}>required</span>
               </div>
               <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>Shell script that loads the runtime and verifies the environment activates correctly</div>
               <FilePicker disabled={false} value={ree.activation_script} onChange={v => onReeChange?.({ ...ree, activation_script: v })} files={files || MOCK_FILES} placeholder="activation_test.sh" filterFn={p => /\.sh$/i.test(p)} />
@@ -3562,7 +3569,7 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
         ].map(s => (
           <button key={s.key} onClick={() => setFilter(s.key)}
             style={{
-              fontSize: 11, fontFamily: C.sans, fontWeight: 600, color: s.color,
+              fontSize: 11, fontFamily: F.sans, fontWeight: 600, color: s.color,
               background: filter === s.key ? s.bg : "transparent",
               border: `1.5px solid ${filter === s.key ? s.border : C.border}`,
               borderRadius: 99, padding: "3px 10px", cursor: "pointer", transition: "all 0.12s"
@@ -3600,14 +3607,14 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
                 onMouseLeave={e => e.currentTarget.style.background = ecoMeta.color + "12"}
               >
                 <span style={{ display: "flex", color: ecoMeta.color }}>{Ic.file(13)}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, fontFamily: C.mono, color: ecoMeta.color, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.path}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, fontFamily: F.mono, color: ecoMeta.color, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{group.path}</span>
                 {/* eco badge */}
-                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: ecoMeta.color, background: ecoMeta.bg, border: `1px solid ${ecoMeta.color}40`, borderRadius: 99, padding: "1px 6px", fontFamily: C.sans, flexShrink: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, color: ecoMeta.color, background: ecoMeta.bg, border: `1px solid ${ecoMeta.color}40`, borderRadius: 99, padding: "1px 6px", fontFamily: F.sans, flexShrink: 0 }}>
                   {ecoMeta.label}
                 </span>
                 {/* mini stats */}
-                <span style={{ fontSize: 10, color: "#16a34a", fontFamily: C.mono, flexShrink: 0, marginLeft: 4 }}>{groupPinned}✓</span>
-                {groupUnpinned > 0 && <span style={{ fontSize: 10, color: "#dc2626", fontFamily: C.mono, flexShrink: 0 }}>{groupUnpinned}✗</span>}
+                <span style={{ fontSize: 10, color: "#16a34a", fontFamily: F.mono, flexShrink: 0, marginLeft: 4 }}>{groupPinned}✓</span>
+                {groupUnpinned > 0 && <span style={{ fontSize: 10, color: "#dc2626", fontFamily: F.mono, flexShrink: 0 }}>{groupUnpinned}✗</span>}
                 <span style={{ display: "flex", color: C.textMuted, marginLeft: 4 }}>{isOpen ? Ic.chevD(12) : Ic.chevR(12)}</span>
               </button>
 
@@ -3617,7 +3624,7 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
                   {/* Column headers */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 130px 80px", gap: 0, padding: "4px 12px", background: C.surfaceAlt, borderBottom: `1px solid ${C.border}` }}>
                     {["Package", "Version / Constraint", "Status"].map(h => (
-                      <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans }}>{h}</span>
+                      <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans }}>{h}</span>
                     ))}
                   </div>
                   {(filter === "all" ? group.packages : visiblePkgs).map((pkg, i) => {
@@ -3629,15 +3636,15 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
                         background: i % 2 === 0 ? "transparent" : "#fafbfd",
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                          {pkg.dev && <span style={{ fontSize: 9, color: ECO_META.dev.color, background: ECO_META.dev.bg, border: `1px solid ${ECO_META.dev.color}40`, borderRadius: 3, padding: "0 3px", fontFamily: C.sans, fontWeight: 700, flexShrink: 0 }}>dev</span>}
-                          {pkg.ecosystem === "pip" && <span style={{ fontSize: 9, color: ECO_META.pip.color, background: ECO_META.pip.bg, border: `1px solid ${ECO_META.pip.color}40`, borderRadius: 3, padding: "0 3px", fontFamily: C.sans, fontWeight: 700, flexShrink: 0 }}>pip</span>}
-                          <span style={{ fontSize: 12, fontFamily: C.mono, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pkg.name}</span>
+                          {pkg.dev && <span style={{ fontSize: 9, color: ECO_META.dev.color, background: ECO_META.dev.bg, border: `1px solid ${ECO_META.dev.color}40`, borderRadius: 3, padding: "0 3px", fontFamily: F.sans, fontWeight: 700, flexShrink: 0 }}>dev</span>}
+                          {pkg.ecosystem === "pip" && <span style={{ fontSize: 9, color: ECO_META.pip.color, background: ECO_META.pip.bg, border: `1px solid ${ECO_META.pip.color}40`, borderRadius: 3, padding: "0 3px", fontFamily: F.sans, fontWeight: 700, flexShrink: 0 }}>pip</span>}
+                          <span style={{ fontSize: 12, fontFamily: F.mono, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pkg.name}</span>
                         </div>
-                        <span style={{ fontSize: 11, fontFamily: C.mono, color: pkg.version ? C.textMid : C.textMuted, fontStyle: pkg.version ? "normal" : "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", alignSelf: "center" }}>
+                        <span style={{ fontSize: 11, fontFamily: F.mono, color: pkg.version ? C.textMid : C.textMuted, fontStyle: pkg.version ? "normal" : "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", alignSelf: "center" }}>
                           {pkg.version || "—"}
                         </span>
                         <span style={{ alignSelf: "center" }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: pm.color, background: pm.bg, border: `1px solid ${pm.border}`, borderRadius: 99, padding: "1px 6px", fontFamily: C.sans, whiteSpace: "nowrap" }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: pm.color, background: pm.bg, border: `1px solid ${pm.border}`, borderRadius: 99, padding: "1px 6px", fontFamily: F.sans, whiteSpace: "nowrap" }}>
                             {pm.label}
                           </span>
                         </span>
@@ -3676,17 +3683,17 @@ function FileViewCard({ file, color, badge, icon }: FileViewCardProps) {
         onMouseLeave={e => e.currentTarget.style.background = color + "12"}
       >
         <span style={{ display: "flex", color, flexShrink: 0 }}>{icon(13)}</span>
-        <span style={{ fontSize: 11, fontWeight: 700, fontFamily: C.mono, color, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.path}</span>
-        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color, background: color + "20", border: `1px solid ${color}40`, borderRadius: 99, padding: "1px 6px", fontFamily: C.sans, flexShrink: 0 }}>{badge}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, fontFamily: F.mono, color, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.path}</span>
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color, background: color + "20", border: `1px solid ${color}40`, borderRadius: 99, padding: "1px 6px", fontFamily: F.sans, flexShrink: 0 }}>{badge}</span>
         <span style={{ display: "flex", color: C.textMuted, marginLeft: 4, flexShrink: 0 }}>{open ? Ic.chevD(11) : Ic.chevR(11)}</span>
       </button>
       {open && (
         <div style={{ maxHeight: 180, overflowY: "auto", background: C.surface }}>
           {lines.map((line, i) => (
             <div key={i} style={{ display: "flex", alignItems: "baseline" }}>
-              <span style={{ minWidth: 32, textAlign: "right", paddingRight: 10, paddingLeft: 8, fontSize: 10, fontFamily: C.mono, color: C.borderMid, userSelect: "none", flexShrink: 0 }}>{i + 1}</span>
+              <span style={{ minWidth: 32, textAlign: "right", paddingRight: 10, paddingLeft: 8, fontSize: 10, fontFamily: F.mono, color: C.borderMid, userSelect: "none", flexShrink: 0 }}>{i + 1}</span>
               <span style={{
-                fontSize: 11, fontFamily: C.mono, lineHeight: 1.65, display: "block", paddingRight: 12,
+                fontSize: 11, fontFamily: F.mono, lineHeight: 1.65, display: "block", paddingRight: 12,
                 whiteSpace: "pre", overflow: "hidden", textOverflow: "ellipsis",
                 color: line.startsWith("#") ? "#94a3b8"
                   : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV|EXPOSE|LABEL)\b/.test(line) ? "#0369a1"
@@ -3742,7 +3749,7 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
           <div style={{ fontSize: 12, color: C.textMuted, marginTop: 1 }}>{svc.desc}</div>
         </div>
         {runDone && ts && (
-          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: C.mono, flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono, flexShrink: 0 }}>
             Last run {new Date(ts).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
           </span>
         )}
@@ -3762,10 +3769,10 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#dc2626", marginBottom: 5 }}>Missing required fields</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
                   {missing.map(r => (
-                    <span key={r.field} style={{ fontSize: 12, fontFamily: C.sans, color: "#dc2626", background: "#fff", border: "1px solid #fecaca", borderRadius: 4, padding: "2px 8px" }}>{r.label}</span>
+                    <span key={r.field} style={{ fontSize: 12, fontFamily: F.sans, color: "#dc2626", background: "#fff", border: "1px solid #fecaca", borderRadius: 4, padding: "2px 8px" }}>{r.label}</span>
                   ))}
                 </div>
-                <button onClick={onGoFields} style={{ fontSize: 13, fontFamily: C.sans, color: C.accent, background: "transparent", border: `1px solid ${C.accentBorder}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
+                <button onClick={onGoFields} style={{ fontSize: 13, fontFamily: F.sans, color: C.accent, background: "transparent", border: `1px solid ${C.accentBorder}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
                   ← Go to Source Repo
                 </button>
               </div>
@@ -3776,9 +3783,9 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
           {svc.requires && svc.requires.length > 0 && missing.length === 0 && (
             <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "10px 14px", marginBottom: 20, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <span style={{ color: "#16a34a", display: "flex", flexShrink: 0 }}>{Ic.check()}</span>
-              <span style={{ fontSize: 13, color: "#16a34a", fontFamily: C.sans, fontWeight: 600 }}>All required fields set:</span>
+              <span style={{ fontSize: 13, color: "#16a34a", fontFamily: F.sans, fontWeight: 600 }}>All required fields set:</span>
               {svc.requires.map(r => (
-                <span key={r.field} style={{ fontSize: 12, fontFamily: C.sans, color: "#16a34a", background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px" }}>{r.label}</span>
+                <span key={r.field} style={{ fontSize: 12, fontFamily: F.sans, color: "#16a34a", background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px" }}>{r.label}</span>
               ))}
             </div>
           )}
@@ -3858,7 +3865,7 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
                           style={{
                             fontSize: 10,
                             fontWeight: 700,
-                            fontFamily: C.mono,
+                            fontFamily: F.mono,
                             color: reached ? lv.ink : C.textMuted,
                             background: reached ? lv.bg : C.surfaceAlt,
                             border: `1px solid ${reached ? `${lv.color}55` : C.border}`,
@@ -3923,8 +3930,8 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
                     ) : (
                       <div style={{ border: `1.5px dashed ${C.borderMid}`, borderRadius: 10, padding: "16px", textAlign: "center", color: C.textMuted, marginBottom: 12 }}>
                         <div style={{ display: "flex", justifyContent: "center", marginBottom: 6, opacity: 0.4 }}>{Ic.package(20)}</div>
-                        <div style={{ fontSize: 12, fontFamily: C.sans }}>No manifest files found</div>
-                        <div style={{ fontSize: 11, color: C.textMuted, fontFamily: C.sans, marginTop: 3 }}>Add requirements.txt, pyproject.toml, environment.yml, or package.json.</div>
+                        <div style={{ fontSize: 12, fontFamily: F.sans }}>No manifest files found</div>
+                        <div style={{ fontSize: 11, color: C.textMuted, fontFamily: F.sans, marginTop: 3 }}>Add requirements.txt, pyproject.toml, environment.yml, or package.json.</div>
                       </div>
                     )}
 
@@ -3944,10 +3951,10 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
                       scan(files || MOCK_FILES);
                       return (
                         <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 11, color: "#0e7490", background: "#ecfeff", border: "1px solid #a5f3fc", borderRadius: 99, padding: "3px 10px", fontFamily: C.sans, fontWeight: 600 }}>
+                          <span style={{ fontSize: 11, color: "#0e7490", background: "#ecfeff", border: "1px solid #a5f3fc", borderRadius: 99, padding: "3px 10px", fontFamily: F.sans, fontWeight: 600 }}>
                             Container files: {containerCount}
                           </span>
-                          <span style={{ fontSize: 11, color: "#6d28d9", background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 99, padding: "3px 10px", fontFamily: C.sans, fontWeight: 600 }}>
+                          <span style={{ fontSize: 11, color: "#6d28d9", background: "#f5f3ff", border: "1px solid #ddd6fe", borderRadius: 99, padding: "3px 10px", fontFamily: F.sans, fontWeight: 600 }}>
                             Nix files: {nixCount}
                           </span>
                         </div>
@@ -3969,8 +3976,8 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
                         border: `1.5px dashed ${item.color}30`, borderRadius: 8, background: item.color + "05", opacity: 0.7
                       }}>
                         <span style={{ display: "flex", color: item.color, opacity: 0.6 }}>{Ic.file(12)}</span>
-                        <span style={{ fontSize: 11, fontFamily: C.mono, color: item.color, fontWeight: 600, flex: 1 }}>{item.label}</span>
-                        <span style={{ fontSize: 10, color: C.textMuted, fontFamily: C.sans }}>{item.hint}</span>
+                        <span style={{ fontSize: 11, fontFamily: F.mono, color: item.color, fontWeight: 600, flex: 1 }}>{item.label}</span>
+                        <span style={{ fontSize: 10, color: C.textMuted, fontFamily: F.sans }}>{item.hint}</span>
                       </div>
                     ))}
                   </div>
@@ -3978,7 +3985,7 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
               </div>
 
               {/* Log output */}
-              <div style={{ fontSize: 11, letterSpacing: 1.3, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 600, marginBottom: 8 }}>Output</div>
+              <div style={{ fontSize: 11, letterSpacing: 1.3, color: C.textMuted, fontFamily: F.sans, textTransform: "uppercase", fontWeight: 600, marginBottom: 8 }}>Output</div>
               <LogPanel log={log} running={running} />
 
               {/* Next step nudge */}
@@ -4057,31 +4064,31 @@ function RuntimeOutputNode({ expectedOutput, buildDone, ree, imageColor, files }
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: C.sans, textTransform: "uppercase", color: col.text, opacity: 0.7, marginBottom: 1 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: F.sans, textTransform: "uppercase", color: col.text, opacity: 0.7, marginBottom: 1 }}>
             {state === "unset" ? "Build output" : "Runtime file"}
           </div>
-          <div style={{ fontSize: 12, fontWeight: 700, fontFamily: C.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: col.text }}>
+          <div style={{ fontSize: 12, fontWeight: 700, fontFamily: F.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: col.text }}>
             {expectedOutput || <span style={{ fontStyle: "italic", fontWeight: 400, fontSize: 11, color: C.textMuted }}>not specified</span>}
           </div>
           {expectedOutput && (
-            <div style={{ fontSize: 10, color: col.text, opacity: 0.7, fontFamily: C.sans, marginTop: 1 }}>
+            <div style={{ fontSize: 10, color: col.text, opacity: 0.7, fontFamily: F.sans, marginTop: 1 }}>
               {state === "pending" && "will be checked after build runs"}
               {state === "found" && "✓ produced by build"}
               {state === "missing" && "✗ not found after build"}
             </div>
           )}
         </div>
-        {state === "found" && <span style={{ fontSize: 10, fontFamily: C.sans, fontWeight: 700, color: imageColor, background: `${imageColor}18`, border: `1px solid ${imageColor}40`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>FOUND</span>}
-        {state === "missing" && <span style={{ fontSize: 10, fontFamily: C.sans, fontWeight: 700, color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>NOT FOUND</span>}
-        {alreadySet && <span style={{ fontSize: 10, fontFamily: C.sans, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>SET</span>}
+        {state === "found" && <span style={{ fontSize: 10, fontFamily: F.sans, fontWeight: 700, color: imageColor, background: `${imageColor}18`, border: `1px solid ${imageColor}40`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>FOUND</span>}
+        {state === "missing" && <span style={{ fontSize: 10, fontFamily: F.sans, fontWeight: 700, color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>NOT FOUND</span>}
+        {alreadySet && <span style={{ fontSize: 10, fontFamily: F.sans, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>SET</span>}
       </div>
 
       {/* Manual setting removed: runtime is auto-detected from build output. */}
 
       {state === "missing" && (
         <div style={{ padding: "9px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderTop: "none", borderRadius: "0 0 8px 8px" }}>
-          <span style={{ fontSize: 11, color: "#dc2626", fontFamily: C.sans, lineHeight: 1.4 }}>
-            Expected <code style={{ fontFamily: C.mono, fontSize: 10.5 }}>{expectedOutput}</code> but it wasn't produced. Check your build script writes to this path.
+          <span style={{ fontSize: 11, color: "#dc2626", fontFamily: F.sans, lineHeight: 1.4 }}>
+            Expected <code style={{ fontFamily: F.mono, fontSize: 10.5 }}>{expectedOutput}</code> but it wasn't produced. Check your build script writes to this path.
           </span>
         </div>
       )}
@@ -4155,15 +4162,15 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: C.sans }}>Shell script</span>
-              <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, fontFamily: C.sans, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 3, padding: "1px 4px" }}>required</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: F.sans }}>Shell script</span>
+              <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, fontFamily: F.sans, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 3, padding: "1px 4px" }}>required</span>
             </div>
             <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>Script that builds your runtime environment. The script is responsible for exporting the runtime to the file specified in "Expected output" below.</div>
             <FilePicker disabled={false} value={ree.build_runtime_script} onChange={v => onReeChange?.({ ...ree, build_runtime_script: v })} files={files || MOCK_FILES} placeholder="build_runtime.sh" filterFn={p => /\.sh$/i.test(p)} />
           </div>
 
           {!ree.build_runtime_script && (
-            <div style={{ marginTop: 12, padding: "9px 12px", borderRadius: 7, background: "#ecfeff", border: "1px solid #a5f3fc", color: "#0e7490", fontSize: 11, fontFamily: C.sans, lineHeight: 1.4 }}>
+            <div style={{ marginTop: 12, padding: "9px 12px", borderRadius: 7, background: "#ecfeff", border: "1px solid #a5f3fc", color: "#0e7490", fontSize: 11, fontFamily: F.sans, lineHeight: 1.4 }}>
               No build script yet? Use a predefined default script in the editor below (Docker, Nix, Conda, Python venv).
             </div>
           )}
@@ -4207,16 +4214,16 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: C.sans }}>Exported runtime file path</span>
-              <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, fontFamily: C.sans, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 3, padding: "1px 4px" }}>required</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: F.sans }}>Exported runtime file path</span>
+              <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, fontFamily: F.sans, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 3, padding: "1px 4px" }}>required</span>
             </div>
-            <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>The filepath where your build script will export the runtime (e.g., <code style={{ fontFamily: C.mono, fontSize: 10 }}>runtime.tar.gz</code>).</div>
+            <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>The filepath where your build script will export the runtime (e.g., <code style={{ fontFamily: F.mono, fontSize: 10 }}>runtime.tar.gz</code>).</div>
             <input
               value={expectedOutput}
               onChange={e => setExpectedOutput(e.target.value)}
               onFocus={() => setFocusedField("runtime")}
               placeholder="runtime.tar.gz"
-              style={{ border: `1.5px solid ${expectedOutput ? C.accentBorder : C.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 11, fontFamily: C.mono, color: C.text, background: C.surface, width: "100%", boxSizing: "border-box" }}
+              style={{ border: `1.5px solid ${expectedOutput ? C.accentBorder : C.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 11, fontFamily: F.mono, color: C.text, background: C.surface, width: "100%", boxSizing: "border-box" }}
             />
           </div>
 
@@ -4227,7 +4234,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
               <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}>
                 {svc.params.map(p => (
                   <div key={p.key} style={{ display: "flex", flexDirection: "column", gap: 5, flex: "0 1 auto" }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: C.sans }}>{p.label}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: F.sans }}>{p.label}</div>
                     {p.hint && <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>{p.hint}</div>}
                     {p.type === "bool" ? (
                       <button onClick={() => setParam(p.key, !Boolean(params[p.key]))}
@@ -4236,12 +4243,12 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
                       </button>
                     ) : p.type === "select" ? (
                       <select value={String(params[p.key] ?? "")} onChange={e => setParam(p.key, e.target.value)}
-                        style={{ border: `1.5px solid ${C.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 11, fontFamily: C.mono, color: C.text, background: C.surface }}>
+                        style={{ border: `1.5px solid ${C.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 11, fontFamily: F.mono, color: C.text, background: C.surface }}>
                         {p.options.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
                     ) : (
                       <input value={String(params[p.key] ?? "")} onChange={e => setParam(p.key, e.target.value)}
-                        style={{ border: `1.5px solid ${C.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 11, fontFamily: C.mono, color: C.text, background: C.surface, boxSizing: "border-box" }} />
+                        style={{ border: `1.5px solid ${C.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 11, fontFamily: F.mono, color: C.text, background: C.surface, boxSizing: "border-box" }} />
                     )}
                   </div>
                 ))}
@@ -4316,12 +4323,12 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
                   <span style={{ color: metaRuntime ? "#16a34a" : C.textMuted, display: "flex" }}>{Ic.files(14)}</span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: C.sans, textTransform: "uppercase", color: metaRuntime ? "#16a34a" : C.textMuted, opacity: 0.7, marginBottom: 1 }}>ree.runtime</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, fontFamily: C.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: metaRuntime ? "#15803d" : C.textMuted }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: F.sans, textTransform: "uppercase", color: metaRuntime ? "#16a34a" : C.textMuted, opacity: 0.7, marginBottom: 1 }}>ree.runtime</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, fontFamily: F.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: metaRuntime ? "#15803d" : C.textMuted }}>
                     {metaRuntime || <span style={{ fontStyle: "italic", fontWeight: 400, fontSize: 11 }}>not set</span>}
                   </div>
                 </div>
-                {metaRuntime && <span style={{ fontSize: 10, fontFamily: C.sans, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>SET</span>}
+                {metaRuntime && <span style={{ fontSize: 10, fontFamily: F.sans, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>SET</span>}
               </div>
               <RuntimeField locked={false} ree={ree} onChange={onReeChange} onFocus={() => setFocusedField("runtime")} active={false} usedBy={[]} files={files || MOCK_FILES} />
               <div style={{ display: "flex", gap: 8 }}>
@@ -4373,21 +4380,21 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
                 <span style={{ color: finalRuntime ? "#16a34a" : C.textMuted, display: "flex" }}>{Ic.archive(14)}</span>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: C.sans, textTransform: "uppercase", color: finalRuntime ? "#16a34a" : C.textMuted, opacity: 0.7, marginBottom: 1 }}>ree.runtime</div>
-                <div style={{ fontSize: 12, fontWeight: 700, fontFamily: C.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: finalRuntime ? "#15803d" : C.textMuted }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: F.sans, textTransform: "uppercase", color: finalRuntime ? "#16a34a" : C.textMuted, opacity: 0.7, marginBottom: 1 }}>ree.runtime</div>
+                <div style={{ fontSize: 12, fontWeight: 700, fontFamily: F.mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: finalRuntime ? "#15803d" : C.textMuted }}>
                   {finalRuntime || <span style={{ fontStyle: "italic", fontWeight: 400, fontSize: 11 }}>not set yet — run build or set manually</span>}
                 </div>
               </div>
               {finalRuntimeSize && (
-                <span style={{ fontSize: 10, fontFamily: C.mono, fontWeight: 700, color: finalRuntime ? "#166534" : C.textMuted, background: finalRuntime ? "#dcfce7" : C.surfaceAlt, border: `1px solid ${finalRuntime ? "#86efac" : C.border}`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>
+                <span style={{ fontSize: 10, fontFamily: F.mono, fontWeight: 700, color: finalRuntime ? "#166534" : C.textMuted, background: finalRuntime ? "#dcfce7" : C.surfaceAlt, border: `1px solid ${finalRuntime ? "#86efac" : C.border}`, borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>
                   {finalRuntimeSize}
                 </span>
               )}
               {finalRuntime && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 4, paddingLeft: 8, borderLeft: `1px solid ${finalRuntime ? "#bbf7d0" : C.border}` }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase", color: includeRuntime ? "#164e63" : C.textMuted, fontFamily: C.sans }}>Included</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: includeRuntime ? "#0891b2" : C.textMuted, fontFamily: C.sans }}>{includeRuntime ? "Yes" : "No"}</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase", color: includeRuntime ? "#164e63" : C.textMuted, fontFamily: F.sans }}>Included</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: includeRuntime ? "#0891b2" : C.textMuted, fontFamily: F.sans }}>{includeRuntime ? "Yes" : "No"}</div>
                   </div>
                   <button
                     onClick={() => onReeChange?.({ ...ree, _runtimeIncluded: !includeRuntime })}
@@ -4396,7 +4403,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
                   </button>
                 </div>
               )}
-              {finalRuntime && <span style={{ fontSize: 10, fontFamily: C.sans, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>FINAL</span>}
+              {finalRuntime && <span style={{ fontSize: 10, fontFamily: F.sans, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>FINAL</span>}
             </div>
             <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
               {finalRuntime ? (includeRuntime ? "Runtime will be bundled in the REE archive." : "Runtime will not be bundled in the REE archive.") : "Set a runtime value first."}
@@ -4500,17 +4507,17 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               {!buildDone && (
-                <span style={{ fontSize: 12, fontFamily: C.sans, color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 4, padding: "2px 8px", fontWeight: 600 }}>
+                <span style={{ fontSize: 12, fontFamily: F.sans, color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 4, padding: "2px 8px", fontWeight: 600 }}>
                   ✗ Build Runtime not run
                 </span>
               )}
               {!sbomDone && (
-                <span style={{ fontSize: 12, fontFamily: C.sans, color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 4, padding: "2px 8px", fontWeight: 600 }}>
+                <span style={{ fontSize: 12, fontFamily: F.sans, color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 4, padding: "2px 8px", fontWeight: 600 }}>
                   ✗ SBOM not generated
                 </span>
               )}
               {!activationDone && (
-                <span style={{ fontSize: 12, fontFamily: C.sans, color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 4, padding: "2px 8px", fontWeight: 600 }}>
+                <span style={{ fontSize: 12, fontFamily: F.sans, color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 4, padding: "2px 8px", fontWeight: 600 }}>
                   ✗ Activation test not run
                 </span>
               )}
@@ -4535,7 +4542,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
               onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = r.color + "70"; e.currentTarget.style.background = r.bg; } }}
               onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = isDone ? r.color + "40" : C.border; e.currentTarget.style.background = isDone ? r.bg : C.surface; } }}>
               {isDone && <span style={{ color: r.color, display: "flex" }}>{Ic.check(13)}</span>}
-              <span style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? r.color : isDone ? r.color : C.textMid, fontFamily: C.sans }}>{r.label}</span>
+              <span style={{ fontSize: 13, fontWeight: isActive ? 700 : 500, color: isActive ? r.color : isDone ? r.color : C.textMid, fontFamily: F.sans }}>{r.label}</span>
             </button>
           );
         })}
@@ -4550,9 +4557,9 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
           <div style={{ background: C.surface, border: `1.5px solid ${repo.border}`, borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <div style={{ padding: "10px 16px", background: repo.bg, borderBottom: `1px solid ${repo.border}`, display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 3, height: 16, borderRadius: 99, background: repo.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 14, fontWeight: 700, color: repo.color, fontFamily: C.sans }}>{repo.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: repo.color, fontFamily: F.sans }}>{repo.label}</span>
               <a href={repo.url} target="_blank" rel="noreferrer"
-                style={{ marginLeft: "auto", fontSize: 11, fontFamily: C.mono, color: repo.color, opacity: 0.7, textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
+                style={{ marginLeft: "auto", fontSize: 11, fontFamily: F.mono, color: repo.color, opacity: 0.7, textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
                 {Ic.link(10)} {repo.url.replace("https://", "")}
               </a>
             </div>
@@ -4564,11 +4571,11 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                 background: assignedId ? repo.bg : C.surfaceAlt,
                 border: `1px solid ${assignedId ? repo.border : C.border}`
               }}>
-                <span style={{ fontSize: 12, fontWeight: 700, fontFamily: C.mono, color: assignedId ? repo.color : C.textMuted, flexShrink: 0 }}>{repo.idLabel}</span>
-                <span style={{ fontSize: 13, fontFamily: C.mono, color: assignedId ? repo.color : C.textMuted, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, fontFamily: F.mono, color: assignedId ? repo.color : C.textMuted, flexShrink: 0 }}>{repo.idLabel}</span>
+                <span style={{ fontSize: 13, fontFamily: F.mono, color: assignedId ? repo.color : C.textMuted, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {assignedId || repo.idPlaceholder}
                 </span>
-                {assignedId && <span style={{ fontSize: 11, color: repo.color, background: repo.bg, border: `1px solid ${repo.border}`, borderRadius: 3, padding: "1px 5px", fontFamily: C.mono, fontWeight: 700, flexShrink: 0 }}>✓ assigned</span>}
+                {assignedId && <span style={{ fontSize: 11, color: repo.color, background: repo.bg, border: `1px solid ${repo.border}`, borderRadius: 3, padding: "1px 5px", fontFamily: F.mono, fontWeight: 700, flexShrink: 0 }}>✓ assigned</span>}
               </div>
             </div>
           </div>
@@ -4577,13 +4584,13 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <div style={{ padding: "8px 16px", background: "#fafbfd", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 3, height: 14, borderRadius: 99, background: C.borderMid, flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans }}>Parameters</span>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans }}>Parameters</span>
             </div>
             <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
               {repo.params.map(p => (
                 <div key={p.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: C.textMid, fontFamily: C.sans }}>{p.label}</label>
+                    <label style={{ fontSize: 13, fontWeight: 600, color: C.textMid, fontFamily: F.sans }}>{p.label}</label>
                     <span style={{ fontSize: 12, color: C.textMuted }}>{p.hint}</span>
                   </div>
                   {p.type === "bool" ? (
@@ -4592,16 +4599,16 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                       <div style={{ width: 30, height: 16, borderRadius: 99, background: Boolean(getParam(repo.key, p.key)) ? C.accent : C.borderMid, position: "relative", transition: "background 0.2s" }}>
                         <div style={{ position: "absolute", top: 2, left: Boolean(getParam(repo.key, p.key)) ? 16 : 2, width: 12, height: 12, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
                       </div>
-                      <span style={{ fontSize: 13, fontFamily: C.sans, color: Boolean(getParam(repo.key, p.key)) ? C.accent : C.textMuted }}>{Boolean(getParam(repo.key, p.key)) ? "yes" : "no"}</span>
+                      <span style={{ fontSize: 13, fontFamily: F.sans, color: Boolean(getParam(repo.key, p.key)) ? C.accent : C.textMuted }}>{Boolean(getParam(repo.key, p.key)) ? "yes" : "no"}</span>
                     </button>
                   ) : p.type === "select" ? (
                     <select value={String(getParam(repo.key, p.key) ?? "")} onChange={e => setParam(repo.key, p.key, e.target.value)}
-                      style={{ border: `1.5px solid ${C.border}`, borderRadius: 7, padding: "6px 10px", fontSize: 14, fontFamily: C.mono, color: C.text, background: C.surface }}>
+                      style={{ border: `1.5px solid ${C.border}`, borderRadius: 7, padding: "6px 10px", fontSize: 14, fontFamily: F.mono, color: C.text, background: C.surface }}>
                       {p.options.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   ) : (
                     <input value={String(getParam(repo.key, p.key) ?? "")} onChange={e => setParam(repo.key, p.key, e.target.value)}
-                      style={{ border: `1.5px solid ${C.border}`, borderRadius: 7, padding: "6px 10px", fontSize: 14, fontFamily: C.mono, color: C.text, background: C.surface }} />
+                      style={{ border: `1.5px solid ${C.border}`, borderRadius: 7, padding: "6px 10px", fontSize: 14, fontFamily: F.mono, color: C.text, background: C.surface }} />
                   )}
                 </div>
               ))}
@@ -4626,7 +4633,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
               background: !canRun ? C.surfaceAlt : earned ? repo.bg : repo.color,
               border: earned ? `1.5px solid ${repo.border}` : "none",
               color: !canRun ? C.textMuted : earned ? repo.color : "#fff",
-              fontSize: 15, fontWeight: 700, fontFamily: C.sans, cursor: canRun ? "pointer" : "default",
+              fontSize: 15, fontWeight: 700, fontFamily: F.sans, cursor: canRun ? "pointer" : "default",
               boxShadow: canRun && !earned ? `0 2px 12px ${repo.color}40` : "none",
               transition: "all 0.2s"
             }}>
@@ -4639,7 +4646,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
 
         {/* Right: log output */}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.3, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 600 }}>Output</div>
+          <div style={{ fontSize: 11, letterSpacing: 1.3, color: C.textMuted, fontFamily: F.sans, textTransform: "uppercase", fontWeight: 600 }}>Output</div>
           <LogPanel log={log} running={running} />
         </div>
 
@@ -4733,20 +4740,20 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
       }}>
         <span style={{ display: "flex", color: C.textMuted }}>{Ic.file(12)}</span>
         <span style={{
-          fontFamily: C.mono, fontSize: 12, color: C.textMid, flex: 1,
+          fontFamily: F.mono, fontSize: 12, color: C.textMid, flex: 1,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
         }}>{file.name}</span>
         {label && (
           <span style={{
             fontSize: 9, fontWeight: 700, letterSpacing: 0.5, color: C.textMuted,
             background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 3,
-            padding: "1px 5px", fontFamily: C.sans, flexShrink: 0
+            padding: "1px 5px", fontFamily: F.sans, flexShrink: 0
           }}>{label}</span>
         )}
         <button onClick={copy}
           style={{
             background: "none", border: `1px solid ${C.border}`, borderRadius: 4,
-            cursor: "pointer", padding: "2px 8px", fontSize: 10, fontFamily: C.sans,
+            cursor: "pointer", padding: "2px 8px", fontSize: 10, fontFamily: F.sans,
             color: copied ? "#16a34a" : C.textMuted, transition: "all 0.12s", flexShrink: 0
           }}
           onMouseEnter={e => { if (!copied) { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; } }}
@@ -4766,10 +4773,10 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
           <div key={i} style={{ display: "flex", alignItems: "baseline" }}>
             <span style={{
               minWidth: 40, textAlign: "right", paddingRight: 14, paddingLeft: 10,
-              fontSize: 10, fontFamily: C.mono, color: C.borderMid, userSelect: "none", flexShrink: 0
+              fontSize: 10, fontFamily: F.mono, color: C.borderMid, userSelect: "none", flexShrink: 0
             }}>{i + 1}</span>
             <span style={{
-              fontSize: 12, fontFamily: C.mono, lineHeight: 1.75, whiteSpace: "pre",
+              fontSize: 12, fontFamily: F.mono, lineHeight: 1.75, whiteSpace: "pre",
               display: "block", paddingRight: 16,
               color: line.startsWith("#") ? "#94a3b8"
                 : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line) ? "#0369a1"
@@ -4807,12 +4814,12 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
       <div style={{ width: 3, height: 12, borderRadius: 99, background: color, flexShrink: 0 }} />
       <span style={{
         fontSize: 10, fontWeight: 800, letterSpacing: 1.3, color: C.textMid,
-        textTransform: "uppercase", fontFamily: C.sans, flex: 1
+        textTransform: "uppercase", fontFamily: F.sans, flex: 1
       }}>{label}</span>
       {badge && <span style={{
         fontSize: 9, fontWeight: 700, color: C.textMuted,
         background: C.surfaceAlt, border: `1px solid ${C.border}`,
-        borderRadius: 3, padding: "1px 5px", fontFamily: C.sans
+        borderRadius: 3, padding: "1px 5px", fontFamily: F.sans
       }}>{badge}</span>}
     </div>
   );
@@ -4841,7 +4848,7 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
             {reeFiles.length === 0
               ? <div style={{
                 padding: "10px 12px", fontSize: 11, color: C.textMuted,
-                fontFamily: C.sans, fontStyle: "italic"
+                fontFamily: F.sans, fontStyle: "italic"
               }}>
                 Run Create &amp; Build to generate files
               </div>
@@ -4864,7 +4871,7 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
           color: C.textMuted, flexDirection: "column", gap: 8, background: "#f8fafc"
         }}>
           <span style={{ display: "flex", opacity: 0.3 }}>{Ic.file(28)}</span>
-          <span style={{ fontSize: 13, fontFamily: C.sans }}>Select a file to view</span>
+          <span style={{ fontSize: 13, fontFamily: F.sans }}>Select a file to view</span>
         </div>
       }
     </div>
@@ -5011,7 +5018,7 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
         return <g key={i}><rect x={px - 5} y={py - 5} width="10" height="10" rx="2" fill={POD_M.face} stroke={POD_M.deep} strokeWidth="0.8" /><circle cx={px} cy={py} r="3" fill={s.col} opacity="0.9" /></g>;
       })}
       <rect x={CX - 36} y={CY + SR - 26} width="72" height="14" rx="2" fill={POD_M.face} stroke={POD_M.weld} strokeWidth="0.8" />
-      <text x={CX} y={CY + SR - 16} textAnchor="middle" fontSize="7" fontFamily={C.mono} fill={lv.ink} letterSpacing="1.5">{lv.short}</text>
+      <text x={CX} y={CY + SR - 16} textAnchor="middle" fontSize="7" fontFamily={F.mono} fill={lv.ink} letterSpacing="1.5">{lv.short}</text>
       <circle cx={CX} cy={CY} r={SR} fill="none" stroke={lv.color} strokeWidth="1.5" opacity="0.4" />
       <path d={`M ${CX - SR * 0.68} ${CY - SR * 0.28} A ${SR} ${SR} 0 0 1 ${CX - SR * 0.28} ${CY - SR * 0.68}`} fill="none" stroke="white" strokeWidth="2" opacity="0.3" strokeLinecap="round" />
     </g>
@@ -5358,10 +5365,10 @@ function PanelFieldRow({ label, value, emptyText = "not set", filled, dotColor, 
           background: filled ? labelBg : "transparent",
         }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: filled ? dotColor : "#d1d5db", boxShadow: filled ? `0 0 5px ${dotGlow}` : "none" }} />
-          <span style={{ fontSize: 10, fontFamily: C.sans, color: filled ? labelColor : C.textMuted, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+          <span style={{ fontSize: 10, fontFamily: F.sans, color: filled ? labelColor : C.textMuted, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
         </div>
         <div style={{ padding: "4px 8px", flex: 1, minWidth: 0 }}>
-          <span ref={valueRef} style={{ fontSize: 10, fontFamily: C.mono, color: filled ? C.textMid : C.textMuted, fontStyle: filled ? "normal" : "italic", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block" }}>
+          <span ref={valueRef} style={{ fontSize: 10, fontFamily: F.mono, color: filled ? C.textMid : C.textMuted, fontStyle: filled ? "normal" : "italic", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block" }}>
             {filled ? value : emptyText}
           </span>
         </div>
@@ -5374,7 +5381,7 @@ function PanelFieldRow({ label, value, emptyText = "not set", filled, dotColor, 
           zIndex: 9999,
           background: C.text,
           color: "#fff",
-          fontFamily: C.mono,
+          fontFamily: F.mono,
           fontSize: 11,
           padding: "5px 9px",
           borderRadius: 6,
@@ -5532,13 +5539,13 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
         <div>
           <div style={{
             fontSize: 10, fontWeight: 600, color: C.textMuted, letterSpacing: 1.2,
-            textTransform: "uppercase", fontFamily: C.sans, marginBottom: 4
+            textTransform: "uppercase", fontFamily: F.sans, marginBottom: 4
           }}>
             Reproducible Execution Environment
           </div>
           <div style={{
             fontSize: 18, fontWeight: 800, color: C.text, letterSpacing: 0.2,
-            fontFamily: C.mono, display: "flex", alignItems: "center", gap: 10
+            fontFamily: F.mono, display: "flex", alignItems: "center", gap: 10
           }}>
             {ree.name || "untitled-env"}
             <span style={{
@@ -5551,7 +5558,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
           </div>
         </div>
         <div style={{ flex: 1, height: 1, background: C.border, marginBottom: 2 }} />
-        <div style={{ fontSize: 9, fontFamily: C.mono, color: C.textMuted, letterSpacing: 1 }}>
+        <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, letterSpacing: 1 }}>
           {new Date().toISOString().slice(0, 10)}
         </div>
       </div>
@@ -5584,7 +5591,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: sourceIncluded ? "#f59e0b" : "#d1d5db", boxShadow: sourceIncluded ? "0 0 5px #f59e0b99" : "none", transition: "all 0.2s" }} />
               <span style={S_PANEL_HEADER_LABEL}>Source</span>
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, opacity: canIncludeSource ? 1 : 0.45 }}>
-                <span style={{ fontSize: 9, fontFamily: C.sans, fontWeight: 600, color: sourceIncluded ? "#92400e" : C.textMuted, letterSpacing: 0.3 }}>{sourceIncluded ? "Included" : "Include"}</span>
+                <span style={{ fontSize: 9, fontFamily: F.sans, fontWeight: 600, color: sourceIncluded ? "#92400e" : C.textMuted, letterSpacing: 0.3 }}>{sourceIncluded ? "Included" : "Include"}</span>
                 <button onClick={toggleSource} aria-pressed={sourceIncluded} disabled={!canIncludeSource}
                   style={{ width: 32, height: 16, borderRadius: 99, border: 'none', cursor: canIncludeSource ? 'pointer' : 'not-allowed', background: sourceIncluded ? '#f59e0b' : C.borderMid, position: 'relative', transition: 'all 0.18s', flexShrink: 0 }}
                   onMouseEnter={e => { if (!sourceIncluded && canIncludeSource) (e.currentTarget.style as any).filter = 'brightness(0.93)'; }}
@@ -5618,7 +5625,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             </div>
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
               <button onClick={() => onNavigate && onNavigate(PAGE.SOURCE)}
-                style={{ fontSize: 10, fontFamily: C.sans, color: "#92400e", background: "#fffbeb", border: "1px solid #f59e0b40", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
+                style={{ fontSize: 10, fontFamily: F.sans, color: "#92400e", background: "#fffbeb", border: "1px solid #f59e0b40", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
                 → Go to Source
@@ -5635,7 +5642,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e" }} />
               <span style={S_PANEL_HEADER_LABEL}>Metadata</span>
               <span style={{
-                marginLeft: "auto", fontSize: 8, fontFamily: C.mono,
+                marginLeft: "auto", fontSize: 8, fontFamily: F.mono,
                 color: C.textMuted, letterSpacing: 0.5
               }}>
                 {(["name", "hardware_description"] as (keyof Ree)[])
@@ -5663,7 +5670,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             </div>
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
               <button onClick={() => onNavigate && onNavigate(PAGE.METADATA)}
-                style={{ fontSize: 10, fontFamily: C.sans, color: C.text, background: "#f0fdf4", border: `1px solid ${C.border}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, marginTop: 2 }}
+                style={{ fontSize: 10, fontFamily: F.sans, color: C.text, background: "#f0fdf4", border: `1px solid ${C.border}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, marginTop: 2 }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
                 → Edit Metadata
@@ -5677,7 +5684,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: runtimeIncluded ? "#0891b2" : "#d1d5db", boxShadow: runtimeIncluded ? "0 0 5px #0891b299" : "none", transition: "all 0.2s" }} />
               <span style={S_PANEL_HEADER_LABEL}>Runtime</span>
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, opacity: canIncludeRuntime ? 1 : 0.45 }}>
-                <span style={{ fontSize: 9, fontFamily: C.sans, fontWeight: 600, color: runtimeIncluded ? "#164e63" : C.textMuted, letterSpacing: 0.3 }}>{runtimeIncluded ? "Included" : "Include"}</span>
+                <span style={{ fontSize: 9, fontFamily: F.sans, fontWeight: 600, color: runtimeIncluded ? "#164e63" : C.textMuted, letterSpacing: 0.3 }}>{runtimeIncluded ? "Included" : "Include"}</span>
                 <button onClick={toggleRuntime} aria-pressed={runtimeIncluded} disabled={!canIncludeRuntime}
                   style={{ width: 32, height: 16, borderRadius: 99, border: 'none', cursor: canIncludeRuntime ? 'pointer' : 'not-allowed', background: runtimeIncluded ? '#0891b2' : C.borderMid, position: 'relative', transition: 'all 0.18s', flexShrink: 0 }}
                   onMouseEnter={e => { if (!runtimeIncluded && canIncludeRuntime) (e.currentTarget.style as any).filter = 'brightness(0.93)'; }}
@@ -5710,7 +5717,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             {/* Go to Build Runtime button */}
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
               <button onClick={() => onNavigate && onNavigate(PAGE.BUILD)}
-                style={{ fontSize: 10, fontFamily: C.sans, color: "#0891b2", background: "#ecfeff", border: "1px solid #a5f3fc", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
+                style={{ fontSize: 10, fontFamily: F.sans, color: "#0891b2", background: "#ecfeff", border: "1px solid #a5f3fc", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
                 → Go to Build Runtime
@@ -5727,7 +5734,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 5, height: 5, borderRadius: "50%", background: sbomVal ? color : "#d1d5db", boxShadow: sbomVal ? `0 0 5px ${color}99` : "none" }} />
                   <span style={S_PANEL_HEADER_LABEL}>SBOM</span>
-                  {earned && <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: C.mono, color, background: "#f0fdf4", border: `1px solid ${color}40`, borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>OK</span>}
+                  {earned && <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: F.mono, color, background: "#f0fdf4", border: `1px solid ${color}40`, borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>OK</span>}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <PanelFieldRow
@@ -5753,7 +5760,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 </div>
                 <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
                   <button onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
-                    style={{ fontSize: 10, fontFamily: C.sans, color, background: "#f0fdf4", border: `1px solid ${color}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
+                    style={{ fontSize: 10, fontFamily: F.sans, color, background: "#f0fdf4", border: `1px solid ${color}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                     onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                     onMouseLeave={e => e.currentTarget.style.filter = "none"}>
                     → Generate SBOM
@@ -5799,17 +5806,17 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderBottom: `1px solid ${lv.color}30`, background: `${lv.color}0c` }}>
                     <span style={{ color: lv.color, display: "flex", flexShrink: 0 }}>{Ic.lock(13)}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: C.sans, color: lv.color, letterSpacing: 0.4 }}>REE SEALED</span>
-                    <span style={{ marginLeft: "auto", fontSize: 9, fontFamily: C.mono, color: lv.color, background: `${lv.color}18`, border: `1px solid ${lv.color}40`, borderRadius: 3, padding: "1px 6px", letterSpacing: 0.6, fontWeight: 700 }}>L{level} · {lv.label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: F.sans, color: lv.color, letterSpacing: 0.4 }}>REE SEALED</span>
+                    <span style={{ marginLeft: "auto", fontSize: 9, fontFamily: F.mono, color: lv.color, background: `${lv.color}18`, border: `1px solid ${lv.color}40`, borderRadius: 3, padding: "1px 6px", letterSpacing: 0.6, fontWeight: 700 }}>L{level} · {lv.label}</span>
                   </div>
                   <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 9, fontFamily: C.sans, color: C.textMuted, flexShrink: 0 }}>hash</span>
-                      <span style={{ fontFamily: C.mono, fontSize: 11, color: C.text, fontWeight: 600, letterSpacing: 0.8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ree._sealHash || "—"}</span>
+                      <span style={{ fontSize: 9, fontFamily: F.sans, color: C.textMuted, flexShrink: 0 }}>hash</span>
+                      <span style={{ fontFamily: F.mono, fontSize: 11, color: C.text, fontWeight: 600, letterSpacing: 0.8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ree._sealHash || "—"}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 9, fontFamily: C.sans, color: C.textMuted, flexShrink: 0 }}>sealed</span>
-                      <span style={{ fontFamily: C.mono, fontSize: 10, color: C.textMid }}>{sealDate}</span>
+                      <span style={{ fontSize: 9, fontFamily: F.sans, color: C.textMuted, flexShrink: 0 }}>sealed</span>
+                      <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMid }}>{sealDate}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 2 }}>
                       {cableItems.map((c, i) => (
@@ -5824,7 +5831,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                           width: "100%", padding: "8px 14px", borderRadius: 7,
                           background: `linear-gradient(135deg, ${lv.color}18 0%, ${lv.color}0c 100%)`,
                           border: `1.5px solid ${lv.color}50`,
-                          color: lv.color, fontSize: 12, fontWeight: 700, fontFamily: C.sans,
+                          color: lv.color, fontSize: 12, fontWeight: 700, fontFamily: F.sans,
                           cursor: "pointer", transition: "all 0.15s",
                         }}
                         onMouseEnter={e => { e.currentTarget.style.background = `${lv.color}28`; e.currentTarget.style.borderColor = `${lv.color}80`; }}
@@ -5842,7 +5849,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                           width: "100%", padding: "8px 14px", borderRadius: 7,
                           background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
                           border: "1.5px solid #86efac",
-                          color: "#15803d", fontSize: 12, fontWeight: 700, fontFamily: C.sans,
+                          color: "#15803d", fontSize: 12, fontWeight: 700, fontFamily: F.sans,
                           cursor: "pointer", transition: "all 0.15s",
                         }}
                         onMouseEnter={e => { e.currentTarget.style.background = "#bbf7d0"; e.currentTarget.style.borderColor = "#4ade80"; }}
@@ -5881,8 +5888,8 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                             <span style={{ color: lv.color, display: "flex" }}>{Ic.lock(16)}</span>
                           </div>
                           <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: C.sans, color: C.text }}>Seal this REE?</div>
-                            <div style={{ fontSize: 11, fontFamily: C.sans, color: C.textMuted, marginTop: 1 }}>This action cannot be undone.</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: F.sans, color: C.text }}>Seal this REE?</div>
+                            <div style={{ fontSize: 11, fontFamily: F.sans, color: C.textMuted, marginTop: 1 }}>This action cannot be undone.</div>
                           </div>
                         </div>
                       </div>
@@ -5893,14 +5900,14 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                           <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                             <span style={{ fontSize: 15, flexShrink: 0, lineHeight: 1.2 }}>⚠️</span>
                             <div>
-                              <div style={{ fontSize: 11, fontWeight: 700, fontFamily: C.sans, color: "#92400e", marginBottom: 5 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, fontFamily: F.sans, color: "#92400e", marginBottom: 5 }}>
                                 {missing.length} panel{missing.length !== 1 ? "s" : ""} not connected
                               </div>
                               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                                 {missing.map(m => (
                                   <div key={m.key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} />
-                                    <span style={{ fontSize: 10, fontFamily: C.sans, color: "#92400e" }}>{m.label} — not completed</span>
+                                    <span style={{ fontSize: 10, fontFamily: F.sans, color: "#92400e" }}>{m.label} — not completed</span>
                                   </div>
                                 ))}
                               </div>
@@ -5911,7 +5918,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
 
                       {/* Body copy */}
                       <div style={{ padding: "12px 20px" }}>
-                        <div style={{ fontSize: 12, fontFamily: C.sans, color: C.textMid, lineHeight: 1.6 }}>
+                        <div style={{ fontSize: 12, fontFamily: F.sans, color: C.textMid, lineHeight: 1.6 }}>
                           {allLive
                             ? <>All <strong>{totalCables}</strong> panels are connected. The REE will be frozen at <strong>L{level} · {lv.label}</strong> and become read-only.</>
                             : <>Sealing now will freeze the REE at <strong>L{level} · {lv.label}</strong> with incomplete data. You can still seal, but the missing panels will not be part of the record.</>
@@ -5923,7 +5930,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                       <div style={{ padding: "0 20px 16px", display: "flex", gap: 8, justifyContent: "flex-end" }}>
                         <button
                           onClick={() => setShowSealConfirm(false)}
-                          style={{ padding: "8px 16px", borderRadius: 7, fontSize: 12, fontFamily: C.sans, fontWeight: 600, cursor: "pointer", background: C.surfaceAlt, color: C.textMid, border: `1.5px solid ${C.border}` }}
+                          style={{ padding: "8px 16px", borderRadius: 7, fontSize: 12, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", background: C.surfaceAlt, color: C.textMid, border: `1.5px solid ${C.border}` }}
                           onMouseEnter={e => e.currentTarget.style.background = C.border}
                           onMouseLeave={e => e.currentTarget.style.background = C.surfaceAlt}
                         >
@@ -5931,7 +5938,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                         </button>
                         <button
                           onClick={() => { setShowSealConfirm(false); onSeal && onSeal(); }}
-                          style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", borderRadius: 7, fontSize: 12, fontFamily: C.sans, fontWeight: 700, cursor: "pointer", background: lv.color, color: "#fff", border: `1.5px solid ${lv.color}`, boxShadow: `0 2px 8px ${lv.color}50` }}
+                          style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", borderRadius: 7, fontSize: 12, fontFamily: F.sans, fontWeight: 700, cursor: "pointer", background: lv.color, color: "#fff", border: `1.5px solid ${lv.color}`, boxShadow: `0 2px 8px ${lv.color}50` }}
                           onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.9)"}
                           onMouseLeave={e => e.currentTarget.style.filter = "none"}
                         >
@@ -5951,28 +5958,28 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 }}>
                   {/* Progress row */}
                   <div style={{ padding: "9px 14px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 10, fontFamily: C.sans, color: C.textMuted, flexShrink: 0 }}>{liveCount}/{totalCables} connected</span>
+                    <span style={{ fontSize: 10, fontFamily: F.sans, color: C.textMuted, flexShrink: 0 }}>{liveCount}/{totalCables} connected</span>
                     <div style={{ flex: 1, display: "flex", gap: 3, alignItems: "center" }}>
                       {cableItems.map((c, i) => (
                         <div key={i} title={c.label} style={{ flex: 1, height: 3, borderRadius: 99, background: c.live ? lv.color : C.border, transition: "background 0.3s" }} />
                       ))}
                     </div>
                     {allLive
-                      ? <span style={{ fontSize: 9, fontFamily: C.mono, fontWeight: 700, color: lv.color, background: `${lv.color}14`, border: `1px solid ${lv.color}40`, borderRadius: 3, padding: "1px 6px", letterSpacing: 0.5, flexShrink: 0 }}>ready</span>
-                      : <span style={{ fontSize: 9, fontFamily: C.mono, fontWeight: 700, color: "#d97706", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 3, padding: "1px 6px", letterSpacing: 0.5, flexShrink: 0 }}>incomplete</span>
+                      ? <span style={{ fontSize: 9, fontFamily: F.mono, fontWeight: 700, color: lv.color, background: `${lv.color}14`, border: `1px solid ${lv.color}40`, borderRadius: 3, padding: "1px 6px", letterSpacing: 0.5, flexShrink: 0 }}>ready</span>
+                      : <span style={{ fontSize: 9, fontFamily: F.mono, fontWeight: 700, color: "#d97706", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 3, padding: "1px 6px", letterSpacing: 0.5, flexShrink: 0 }}>incomplete</span>
                     }
                   </div>
                   {/* Seal button row */}
                   <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 11, fontFamily: C.sans, fontWeight: 600, color: C.text }}>Seal REE</div>
-                      <div style={{ fontSize: 10, fontFamily: C.sans, color: allLive ? C.textMuted : "#d97706", marginTop: 2 }}>
+                      <div style={{ fontSize: 11, fontFamily: F.sans, fontWeight: 600, color: C.text }}>Seal REE</div>
+                      <div style={{ fontSize: 10, fontFamily: F.sans, color: allLive ? C.textMuted : "#d97706", marginTop: 2 }}>
                         {allLive ? `L${level} · ${lv.label} — all panels connected` : `${missing.length} panel${missing.length !== 1 ? "s" : ""} not yet connected`}
                       </div>
                     </div>
                     <button
                       onClick={() => setShowSealConfirm(true)}
-                      style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", borderRadius: 7, flexShrink: 0, fontSize: 12, fontFamily: C.sans, fontWeight: 700, letterSpacing: 0.3, cursor: "pointer", background: lv.color, color: "#fff", border: `1.5px solid ${lv.color}`, boxShadow: `0 2px 10px ${lv.color}50`, transition: "all 0.2s" }}
+                      style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", borderRadius: 7, flexShrink: 0, fontSize: 12, fontFamily: F.sans, fontWeight: 700, letterSpacing: 0.3, cursor: "pointer", background: lv.color, color: "#fff", border: `1.5px solid ${lv.color}`, boxShadow: `0 2px 10px ${lv.color}50`, transition: "all 0.2s" }}
                       onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.92)"}
                       onMouseLeave={e => e.currentTarget.style.filter = "none"}
                     >
@@ -5995,7 +6002,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#e4572e", boxShadow: ree.swhid ? "0 0 5px #e4572e99" : "none" }} />
               <span style={S_PANEL_HEADER_LABEL}>Software Heritage</span>
-              <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: C.mono, color: "#e4572e", background: "#fff7f5", border: "1px solid #fbd0c4", borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>SWH</span>
+              <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: F.mono, color: "#e4572e", background: "#fff7f5", border: "1px solid #fbd0c4", borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>SWH</span>
             </div>
             <PanelFieldRow
               label="SWHID" value={ree.swhid || null} filled={!!ree.swhid}
@@ -6005,7 +6012,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             />
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
               <button onClick={() => onNavigate && onNavigate(PAGE.SWH)}
-                style={{ fontSize: 10, fontFamily: C.sans, color: "#9a3412", background: "#fff7f5", border: "1px solid #fbd0c4", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
+                style={{ fontSize: 10, fontFamily: F.sans, color: "#9a3412", background: "#fff7f5", border: "1px solid #fbd0c4", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
                 → Go to Software Heritage
@@ -6024,29 +6031,29 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 5, height: 5, borderRadius: "50%", background: earned ? svc.badge.color : "#d1d5db", boxShadow: earned ? `0 0 5px ${svc.badge.color}99` : "none" }} />
                   <span style={S_PANEL_HEADER_LABEL}>Evaluate</span>
-                  {earned && <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: C.mono, color: svc.badge.color, background: svc.badge.bg, border: `1px solid ${svc.badge.color}40`, borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>OK</span>}
+                  {earned && <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: F.mono, color: svc.badge.color, background: svc.badge.bg, border: `1px solid ${svc.badge.color}40`, borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>OK</span>}
                 </div>
                 <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ display: "flex", color: earned ? svc.badge.color : C.textMuted }}>{Ic.star(12)}</span>
-                    <span style={{ fontSize: 10, fontFamily: C.sans, color: earned ? C.text : C.textMuted, flex: 1 }}>
+                    <span style={{ fontSize: 10, fontFamily: F.sans, color: earned ? C.text : C.textMuted, flex: 1 }}>
                       {earned ? `L${level} — ${LEVELS[Math.min(level, 7)].label}` : "Not evaluated"}
                     </span>
                   </div>
                   {earned && dateStr && (
-                    <div style={{ fontSize: 9, fontFamily: C.mono, color: C.textMuted, letterSpacing: 0.2 }}>{dateStr}</div>
+                    <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, letterSpacing: 0.2 }}>{dateStr}</div>
                   )}
                   <div style={{
                     display: "flex", alignItems: "center", gap: 5, padding: "5px 8px", borderRadius: 5,
                     background: earned ? svc.badge.bg : C.surfaceAlt,
                     border: `1px solid ${earned ? svc.badge.color + "40" : C.border}`,
                   }}>
-                    <span style={{ fontSize: 10, fontFamily: C.sans, color: earned ? svc.badge.color : C.textMuted, fontWeight: 600 }}>
+                    <span style={{ fontSize: 10, fontFamily: F.sans, color: earned ? svc.badge.color : C.textMuted, fontWeight: 600 }}>
                       {earned ? "✓ score computed" : "run Evaluate"}
                     </span>
                   </div>
                   <button onClick={() => onNavigate && onNavigate(svc.key)}
-                    style={{ fontSize: 10, fontFamily: C.sans, color: svc.badge.color, background: svc.badge.bg, border: `1px solid ${svc.badge.color}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600 }}
+                    style={{ fontSize: 10, fontFamily: F.sans, color: svc.badge.color, background: svc.badge.bg, border: `1px solid ${svc.badge.color}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600 }}
                     onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                     onMouseLeave={e => e.currentTarget.style.filter = "none"}>
                     → Go to Evaluate
@@ -6079,7 +6086,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             })}
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
               <button onClick={() => onNavigate && onNavigate(PAGE.ARCHIVE)}
-                style={{ fontSize: 10, fontFamily: C.sans, color: "#059669", background: "#f0fdf4", border: "1px solid #6ee7b740", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
+                style={{ fontSize: 10, fontFamily: F.sans, color: "#059669", background: "#f0fdf4", border: "1px solid #6ee7b740", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
                 → Go to Archival & DOIs
@@ -6099,7 +6106,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 5, height: 5, borderRadius: "50%", background: activationColor, boxShadow: activationEarned ? `0 0 5px ${activationColor}99` : "none" }} />
                   <span style={S_PANEL_HEADER_LABEL}>Test Activation</span>
-                  {activationEarned && <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: C.mono, color: activationColor, background: "#f5f3ff", border: `1px solid ${activationColor}40`, borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>OK</span>}
+                  {activationEarned && <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: F.mono, color: activationColor, background: "#f5f3ff", border: `1px solid ${activationColor}40`, borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>OK</span>}
                 </div>
                 {/* activation_script field row */}
                 <PanelFieldRow
@@ -6110,7 +6117,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 {/* Go to Test Activation button */}
                 <div style={{ padding: "8px 12px" }}>
                   <button onClick={() => onNavigate && onNavigate(PAGE.ACTIVATION)}
-                    style={{ fontSize: 10, fontFamily: C.sans, color: activationColor, background: "#f5f3ff", border: `1px solid ${activationColor}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
+                    style={{ fontSize: 10, fontFamily: F.sans, color: activationColor, background: "#f5f3ff", border: `1px solid ${activationColor}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                     onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                     onMouseLeave={e => e.currentTarget.style.filter = "none"}>
                     → Go to Test Activation
@@ -6141,7 +6148,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                   flexShrink: 0,
                 }} />
                 <span style={{
-                  fontSize: 9, fontWeight: 700, fontFamily: C.mono, letterSpacing: 0.4,
+                  fontSize: 9, fontWeight: 700, fontFamily: F.mono, letterSpacing: 0.4,
                   color: isReached ? lv.ink : C.textMuted,
                   background: isReached ? lv.color + "18" : C.surfaceAlt,
                   border: `1px solid ${isReached ? lv.color + "40" : C.border}`,
@@ -6150,7 +6157,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 <span style={{
                   fontSize: 10, fontWeight: isCurrent ? 700 : 400,
                   color: isCurrent ? C.text : isReached ? C.textMid : C.textMuted,
-                  fontFamily: C.sans, whiteSpace: "nowrap"
+                  fontFamily: F.sans, whiteSpace: "nowrap"
                 }}>{lv.label}</span>
               </div>
               {!isLast && (
@@ -6169,7 +6176,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
       <div style={{ marginTop: 32, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "16px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.textMuted }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: C.text, letterSpacing: 0.3, fontFamily: C.sans }}>All Fields</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: C.text, letterSpacing: 0.3, fontFamily: F.sans }}>All Fields</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           {Object.entries(ree).filter(([k]) => !k.startsWith("_")).map(([k, v], idx, arr) => {
@@ -6183,15 +6190,15 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             return (
               <div key={k} style={{ display: "flex", padding: "10px 0", borderBottom: isLastRow ? "none" : `1px solid ${C.border}`, alignItems: "flex-start", gap: 16 }}>
                 <div style={{ width: 180, display: "flex", flexDirection: "column", flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, fontFamily: C.sans, color: C.textMid, fontWeight: 600 }}>{label}</span>
-                  <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textMuted }}>{k}</span>
+                  <span style={{ fontSize: 11, fontFamily: F.sans, color: C.textMid, fontWeight: 600 }}>{label}</span>
+                  <span style={{ fontFamily: F.mono, fontSize: 9, color: C.textMuted }}>{k}</span>
                 </div>
                 {typeof v === "object" && v !== null && !isEmpty ? (
-                  <pre style={{ margin: 0, fontSize: 11, fontFamily: C.mono, color: C.textMid, whiteSpace: "pre-wrap", background: C.surfaceAlt, padding: "8px 12px", borderRadius: 6, flex: 1, border: `1px solid ${C.border}` }}>
+                  <pre style={{ margin: 0, fontSize: 11, fontFamily: F.mono, color: C.textMid, whiteSpace: "pre-wrap", background: C.surfaceAlt, padding: "8px 12px", borderRadius: 6, flex: 1, border: `1px solid ${C.border}` }}>
                     {displayVal}
                   </pre>
                 ) : (
-                  <span style={{ fontSize: 12, fontFamily: C.mono, color: isEmpty ? C.textMuted : C.text, fontStyle: isEmpty ? "italic" : "normal", wordBreak: "break-all", flex: 1, marginTop: 1 }}>
+                  <span style={{ fontSize: 12, fontFamily: F.mono, color: isEmpty ? C.textMuted : C.text, fontStyle: isEmpty ? "italic" : "normal", wordBreak: "break-all", flex: 1, marginTop: 1 }}>
                     {String(displayVal)}
                   </span>
                 )}
@@ -6286,10 +6293,10 @@ function ActionBtn({
       </div>
       {!navCollapsed && (
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontFamily: C.sans, fontWeight: 700, color: labelColor, whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 13, fontFamily: F.sans, fontWeight: 700, color: labelColor, whiteSpace: "nowrap" }}>
             {label}
           </div>
-          <div style={{ fontSize: 10, color: subtitleColor, fontFamily: C.sans, marginTop: 1 }}>
+          <div style={{ fontSize: 10, color: subtitleColor, fontFamily: F.sans, marginTop: 1 }}>
             {subtitle}
           </div>
         </div>
@@ -6562,13 +6569,13 @@ function Explorer({ onBack }: ExplorerProps) {
         <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: C.textMuted, padding: "4px 8px", borderRadius: 6, transition: "all 0.12s" }}
           onMouseEnter={e => { e.currentTarget.style.color = C.textMid; e.currentTarget.style.background = C.surfaceAlt; }}
           onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.background = "none"; }}>
-          {Ic.arrowLeft()}<span style={{ fontSize: 13, fontFamily: C.sans }}>back</span>
+          {Ic.arrowLeft()}<span style={{ fontSize: 13, fontFamily: F.sans }}>back</span>
         </button>
         <div style={{ width: 1, height: 18, background: C.border }} />
         <span style={{ color: C.accent, display: "flex" }}>{Ic.layers()}</span>
         <span style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: -0.3 }}>REE Explorer</span>
-        <span style={{ fontSize: 13, color: C.borderMid, fontFamily: C.mono }}>/</span>
-        <span style={{ fontSize: 13, color: C.textMuted, fontFamily: C.mono }}>{ree.name || "untitled"}</span>
+        <span style={{ fontSize: 13, color: C.borderMid, fontFamily: F.mono }}>/</span>
+        <span style={{ fontSize: 13, color: C.textMuted, fontFamily: F.mono }}>{ree.name || "untitled"}</span>
         <div style={{ flex: 1 }} />
       </header>
 
@@ -6608,14 +6615,14 @@ function Explorer({ onBack }: ExplorerProps) {
                   {!navCollapsed && (
                     <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                       <div style={{
-                        fontSize: 13, fontFamily: C.sans, fontWeight: 600,
+                        fontSize: 13, fontFamily: F.sans, fontWeight: 600,
                         color: isActive ? C.accent : C.textMid,
                         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"
                       }}>
                         {label}
                       </div>
                       {subtitle && (
-                        <div style={{ fontSize: 10, color: C.textMuted, fontFamily: C.sans, marginTop: 1 }}>
+                        <div style={{ fontSize: 10, color: C.textMuted, fontFamily: F.sans, marginTop: 1 }}>
                           {subtitle}
                         </div>
                       )}
@@ -6656,7 +6663,7 @@ function Explorer({ onBack }: ExplorerProps) {
                 {/* Workflow label */}
                 {!navCollapsed && (
                   <div style={{ padding: "10px 14px 4px" }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.3, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans }}>Workflow</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.3, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans }}>Workflow</span>
                   </div>
                 )}
                 {navCollapsed && <div style={{ height: 8 }} />}
@@ -6695,7 +6702,7 @@ function Explorer({ onBack }: ExplorerProps) {
                           }}>
                             {running
                               ? <span style={{ display: "flex", color: C.accent, animation: "spin 0.9s linear infinite" }}>{Ic.loader(11)}</span>
-                              : <span style={{ fontSize: 10, fontWeight: 700, fontFamily: C.mono, color: isActive ? "#fff" : C.textMuted }}>{step.n}</span>
+                              : <span style={{ fontSize: 10, fontWeight: 700, fontFamily: F.mono, color: isActive ? "#fff" : C.textMuted }}>{step.n}</span>
                             }
                             {hasRun && !running && !isActive && (
                               <div style={{ position: "absolute", bottom: -1, right: -1, width: 8, height: 8, borderRadius: "50%", background: C.accent, border: `1.5px solid ${C.surface}` }} />
@@ -6706,13 +6713,13 @@ function Explorer({ onBack }: ExplorerProps) {
                           {!navCollapsed && (
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{
-                                fontSize: 13, fontFamily: C.sans, fontWeight: isActive ? 600 : 400,
+                                fontSize: 13, fontFamily: F.sans, fontWeight: isActive ? 600 : 400,
                                 color: isActive ? C.accent : C.textMid,
                                 whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3
                               }}>
                                 {step.label}
                               </div>
-                              <div style={{ fontSize: 10, color: C.textMuted, fontFamily: C.mono, marginTop: 1 }}>
+                              <div style={{ fontSize: 10, color: C.textMuted, fontFamily: F.mono, marginTop: 1 }}>
                                 {running ? "running…" : tsShort ? `last run ${tsShort}` : step.desc}
                               </div>
                             </div>
@@ -6896,13 +6903,13 @@ function Explorer({ onBack }: ExplorerProps) {
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", boxShadow: "0 0 6px #f59e0b80" }} />
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.2, color: "#94a3b8", fontFamily: C.sans, textTransform: "uppercase" }}>Reviewer Preview</span>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.2, color: "#94a3b8", fontFamily: F.sans, textTransform: "uppercase" }}>Reviewer Preview</span>
             </div>
-            <span style={{ fontSize: 11, color: "#475569", fontFamily: C.sans }}>— this is how a reviewer will see your sealed REE</span>
+            <span style={{ fontSize: 11, color: "#475569", fontFamily: F.sans }}>— this is how a reviewer will see your sealed REE</span>
             <div style={{ flex: 1 }} />
             <button
               onClick={() => setShowReviewerPreview(false)}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 6, border: "1px solid #334155", background: "#1e293b", color: "#94a3b8", cursor: "pointer", fontSize: 12, fontFamily: C.sans, fontWeight: 600, transition: "all 0.15s" }}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 6, border: "1px solid #334155", background: "#1e293b", color: "#94a3b8", cursor: "pointer", fontSize: 12, fontFamily: F.sans, fontWeight: 600, transition: "all 0.15s" }}
               onMouseEnter={e => { e.currentTarget.style.background = "#334155"; e.currentTarget.style.color = "#e2e8f0"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "#1e293b"; e.currentTarget.style.color = "#94a3b8"; }}>
               {Ic.x(12)} Exit Preview
@@ -6934,22 +6941,22 @@ function Landing({ onLoad }: LandingProps) {
           <p style={{ fontSize: 14, color: C.textMid, lineHeight: 1.6 }}>Build, inspect, and certify<br />Reproducible Execution Environments</p>
         </div>
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: 22, boxShadow: "0 2px 12px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", gap: 12 }}>
-          <label style={{ fontSize: 11, letterSpacing: 1.4, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase" }}>Repository URL</label>
+          <label style={{ fontSize: 11, letterSpacing: 1.4, color: C.textMuted, fontFamily: F.sans, textTransform: "uppercase" }}>Repository URL</label>
           <div style={{ display: "flex", gap: 8 }}>
             <div style={{ flex: 1, position: "relative" }}>
               <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }}>{Ic.link()}</div>
               <input value={url} onChange={e => setUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && url.trim() && go()}
                 placeholder="https://github.com/org/repo"
-                style={{ width: "100%", border: `1.5px solid ${C.border}`, borderRadius: 8, padding: "8px 10px 8px 32px", fontSize: 14, fontFamily: C.mono, color: C.text, background: C.bg }} />
+                style={{ width: "100%", border: `1.5px solid ${C.border}`, borderRadius: 8, padding: "8px 10px 8px 32px", fontSize: 14, fontFamily: F.mono, color: C.text, background: C.bg }} />
             </div>
             <button onClick={go} disabled={loading}
-              style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: C.sans, display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+              style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: F.sans, display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
               <span style={{ display: "flex", animation: loading ? "spin 0.9s linear infinite" : "none" }}>{loading ? Ic.loader() : Ic.play()}</span>
               {loading ? "…" : "Load"}
             </button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ flex: 1, height: 1, background: C.border }} /><span style={{ fontSize: 12, color: C.textMuted, fontFamily: C.mono }}>or</span><div style={{ flex: 1, height: 1, background: C.border }} />
+            <div style={{ flex: 1, height: 1, background: C.border }} /><span style={{ fontSize: 12, color: C.textMuted, fontFamily: F.mono }}>or</span><div style={{ flex: 1, height: 1, background: C.border }} />
           </div>
           <input ref={fileRef} type="file" style={{ display: "none" }} onChange={e => { if (e.target.files?.[0]) go(); }} accept=".zip,.tar,.tar.gz" />
           <button onClick={() => fileRef.current?.click()} disabled={loading}
@@ -6957,17 +6964,17 @@ function Landing({ onLoad }: LandingProps) {
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.background = C.accentBg; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderMid; e.currentTarget.style.background = C.bg; }}>
             <span style={{ color: C.accent }}>{Ic.upload()}</span>
-            <span style={{ fontSize: 13, color: C.textMid, fontFamily: C.sans }}>Drop archive or <span style={{ color: C.accent }}>browse</span></span>
-            <span style={{ fontSize: 11, color: C.textMuted, fontFamily: C.mono }}>.zip · .tar · .tar.gz</span>
+            <span style={{ fontSize: 13, color: C.textMid, fontFamily: F.sans }}>Drop archive or <span style={{ color: C.accent }}>browse</span></span>
+            <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono }}>.zip · .tar · .tar.gz</span>
           </button>
           <button onClick={() => onLoad(APP_PAGE.EXPLORER)} disabled={loading}
-            style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, cursor: "pointer", width: "100%", fontSize: 13, color: C.textMid, fontFamily: C.sans, transition: "background 0.13s, color 0.13s" }}
+            style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, cursor: "pointer", width: "100%", fontSize: 13, color: C.textMid, fontFamily: F.sans, transition: "background 0.13s, color 0.13s" }}
             onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.textMid; }}>
             ✦ Try with demo repository (Author)
           </button>
           <button onClick={() => onLoad(APP_PAGE.REVIEWER)} disabled={loading}
-            style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, cursor: "pointer", width: "100%", fontSize: 13, color: C.textMid, fontFamily: C.sans, transition: "background 0.13s, color 0.13s" }}
+            style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, cursor: "pointer", width: "100%", fontSize: 13, color: C.textMid, fontFamily: F.sans, transition: "background 0.13s, color 0.13s" }}
             onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.textMid; }}>
             ✦ Review a sealed pod (Reviewer)
@@ -6975,7 +6982,7 @@ function Landing({ onLoad }: LandingProps) {
         </div>
         <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
           {LEVELS.map(l => (
-            <div key={l.n} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textMuted, fontFamily: C.sans }}>
+            <div key={l.n} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.textMuted, fontFamily: F.sans }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: l.color }} />L{l.n} {l.label}
             </div>
           ))}
@@ -7115,7 +7122,7 @@ function ReviewLogPanel({ lines, running }: ReviewLogPanelProps) {
     <div ref={ref} style={{
       background: "#0d1117", borderRadius: 8, border: "1px solid #1e293b",
       minHeight: 160, maxHeight: 260, overflowY: "auto",
-      padding: "12px 14px", fontFamily: C.mono, fontSize: 12, lineHeight: 1.8,
+      padding: "12px 14px", fontFamily: F.mono, fontSize: 12, lineHeight: 1.8,
     }}>
       {displayed.length === 0 && !running && (
         <span style={{ color: "#4a5568", fontStyle: "italic" }}>Output will appear here…</span>
@@ -7155,14 +7162,14 @@ function MetaRow({ label, value, mono = false, href, color }: MetaRowProps) {
   };
   if (!value) return (
     <div style={{ display: "flex", gap: 10, padding: "7px 0", borderBottom: `1px solid ${C.border}`, alignItems: "center" }}>
-      <span style={{ width: 130, fontSize: 11, color: C.textMuted, fontFamily: C.sans, flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: 11, fontFamily: C.mono, color: C.textMuted, fontStyle: "italic" }}>not set</span>
+      <span style={{ width: 130, fontSize: 11, color: C.textMuted, fontFamily: F.sans, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 11, fontFamily: F.mono, color: C.textMuted, fontStyle: "italic" }}>not set</span>
     </div>
   );
   return (
     <div style={{ display: "flex", gap: 10, padding: "7px 0", borderBottom: `1px solid ${C.border}`, alignItems: "center" }}>
-      <span style={{ width: 130, fontSize: 11, color: C.textMuted, fontFamily: C.sans, flexShrink: 0, fontWeight: 500 }}>{label}</span>
-      <span style={{ flex: 1, fontSize: 11, fontFamily: mono ? C.mono : C.sans, color: color || (mono ? C.accent : C.text), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <span style={{ width: 130, fontSize: 11, color: C.textMuted, fontFamily: F.sans, flexShrink: 0, fontWeight: 500 }}>{label}</span>
+      <span style={{ flex: 1, fontSize: 11, fontFamily: mono ? F.mono : F.sans, color: color || (mono ? C.accent : C.text), overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {href
           ? <a href={href} target="_blank" rel="noreferrer" style={{ color: C.accent, display: "inline-flex", alignItems: "center", gap: 3, textDecoration: "none" }}>
             {value} {Ic.externalLink(10)}
@@ -7191,7 +7198,7 @@ function LevelBadge({ level, large = false }: LevelBadgeProps) {
       borderRadius: large ? 8 : 5,
     }}>
       <div style={{ width: large ? 8 : 6, height: large ? 8 : 6, borderRadius: "50%", background: lv.color, boxShadow: `0 0 6px ${lv.color}80`, flexShrink: 0 }} />
-      <span style={{ fontSize: large ? 13 : 11, fontWeight: 700, fontFamily: C.mono, color: lv.color, letterSpacing: 0.4 }}>
+      <span style={{ fontSize: large ? 13 : 11, fontWeight: 700, fontFamily: F.mono, color: lv.color, letterSpacing: 0.4 }}>
         L{level} · {lv.label}
       </span>
     </div>
@@ -7243,14 +7250,14 @@ function RvStepCard({ step, index, state, log, params, onSetParam, onRun, isLast
           style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "11px 14px", background: "transparent", border: "none", cursor: locked ? "default" : "pointer", textAlign: "left" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 1 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, fontFamily: C.mono, letterSpacing: 0.6, color: col, background: col + "15", border: `1px solid ${col}30`, borderRadius: 3, padding: "0 5px" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, fontFamily: F.mono, letterSpacing: 0.6, color: col, background: col + "15", border: `1px solid ${col}30`, borderRadius: 3, padding: "0 5px" }}>
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: locked ? C.textMuted : C.text, fontFamily: C.sans }}>{step.label}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: locked ? C.textMuted : C.text, fontFamily: F.sans }}>{step.label}</span>
               {done && <span style={{ fontSize: 11, fontWeight: 600, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 4, padding: "1px 6px" }}>✓ passed</span>}
               {running && <span style={{ fontSize: 11, color: step.color, background: step.color + "12", border: `1px solid ${step.color}30`, borderRadius: 4, padding: "1px 6px" }}>running…</span>}
             </div>
-            <span style={{ fontSize: 12, color: locked ? C.textMuted : C.textMid, fontFamily: C.sans }}>{step.desc}</span>
+            <span style={{ fontSize: 12, color: locked ? C.textMuted : C.textMid, fontFamily: F.sans }}>{step.desc}</span>
           </div>
           {!locked && <span style={{ color: C.textMuted, display: "flex", flexShrink: 0 }}>{expanded ? Ic.chevD(12) : Ic.chevR(12)}</span>}
         </button>
@@ -7258,12 +7265,12 @@ function RvStepCard({ step, index, state, log, params, onSetParam, onRun, isLast
           <div style={{ padding: "0 14px 14px", borderTop: `1px solid ${borderCol}`, background: "rgba(255,255,255,0.6)" }}>
             {step.params && step.params.length > 0 && (
               <div style={{ paddingTop: 12, marginBottom: 12 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans, marginBottom: 10 }}>Parameters</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans, marginBottom: 10 }}>Parameters</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {step.params.map(p => (
                     <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: C.sans }}>{p.label}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: F.sans }}>{p.label}</div>
                         <div style={{ fontSize: 12, color: C.textMuted }}>{p.hint}</div>
                       </div>
                       {p.type === "bool" ? (
@@ -7273,7 +7280,7 @@ function RvStepCard({ step, index, state, log, params, onSetParam, onRun, isLast
                         </button>
                       ) : p.type === "select" ? (
                         <select value={String(params[p.key] ?? "")} onChange={e => onSetParam(step.key, p.key, e.target.value)}
-                          style={{ border: `1.5px solid ${C.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 13, fontFamily: C.mono, color: C.text, background: C.surface, flexShrink: 0 }}>
+                          style={{ border: `1.5px solid ${C.border}`, borderRadius: 6, padding: "5px 8px", fontSize: 13, fontFamily: F.mono, color: C.text, background: C.surface, flexShrink: 0 }}>
                           {p.options.map(o => <option key={o} value={o}>{o}</option>)}
                         </select>
                       ) : null}
@@ -7289,7 +7296,7 @@ function RvStepCard({ step, index, state, log, params, onSetParam, onRun, isLast
                 background: running ? step.color + "20" : done ? "#f0fdf4" : step.color,
                 border: done ? "1.5px solid #bbf7d0" : "none",
                 color: running ? step.color : done ? "#16a34a" : "#fff",
-                fontSize: 13, fontWeight: 600, fontFamily: C.sans,
+                fontSize: 13, fontWeight: 600, fontFamily: F.sans,
                 cursor: running ? "wait" : "pointer",
                 transition: "all 0.15s", marginBottom: log ? 12 : 0,
                 boxShadow: !done && !running ? `0 2px 10px ${step.color}35` : "none",
@@ -7323,14 +7330,14 @@ function RvVerdictBanner({ allDone }: RvVerdictBannerProps) {
         {Ic.check(18)}
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#15803d", fontFamily: C.sans, marginBottom: 2 }}>Reactivation Verified — Reproducible ✓</div>
-        <div style={{ fontSize: 13, color: "#166534", fontFamily: C.sans }}>All four stages passed. The sealed REE is byte-for-byte reproducible on this machine.</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#15803d", fontFamily: F.sans, marginBottom: 2 }}>Reactivation Verified — Reproducible ✓</div>
+        <div style={{ fontSize: 13, color: "#166534", fontFamily: F.sans }}>All four stages passed. The sealed REE is byte-for-byte reproducible on this machine.</div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end", flexShrink: 0 }}>
-        <span style={{ fontSize: 11, color: "#166534", fontFamily: C.mono, fontWeight: 600 }}>
+        <span style={{ fontSize: 11, color: "#166534", fontFamily: F.mono, fontWeight: 600 }}>
           {new Date().toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
         </span>
-        <span style={{ fontSize: 10, color: "#16a34a", fontFamily: C.sans }}>by reviewer</span>
+        <span style={{ fontSize: 10, color: "#16a34a", fontFamily: F.sans }}>by reviewer</span>
       </div>
     </div>
   );
@@ -7358,15 +7365,15 @@ function RvProvenanceChain({ ree }: RvProvenanceChainProps) {
               {i < nodes.length - 1 && <div style={{ flex: 1, width: 2, background: set ? n.color + "40" : C.border, minHeight: 10 }} />}
             </div>
             <div style={{ flex: 1, paddingBottom: i < nodes.length - 1 ? 10 : 0, paddingTop: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: set ? C.textMid : C.textMuted, fontFamily: C.sans, marginBottom: 1 }}>{n.label}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: set ? C.textMid : C.textMuted, fontFamily: F.sans, marginBottom: 1 }}>{n.label}</div>
               {set ? (
                 n.href
-                  ? <a href={n.href} target="_blank" rel="noreferrer" style={{ fontSize: 11, fontFamily: C.mono, color: n.color, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: "100%" }}>
+                  ? <a href={n.href} target="_blank" rel="noreferrer" style={{ fontSize: 11, fontFamily: F.mono, color: n.color, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: "100%" }}>
                     {n.value.length > 50 ? n.value.slice(0, 50) + "…" : n.value}
                   </a>
-                  : <span style={{ fontSize: 11, fontFamily: C.mono, color: n.color, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{n.value}</span>
+                  : <span style={{ fontSize: 11, fontFamily: F.mono, color: n.color, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{n.value}</span>
               ) : (
-                <span style={{ fontSize: 11, fontFamily: C.sans, color: C.textMuted, fontStyle: "italic" }}>not set</span>
+                <span style={{ fontSize: 11, fontFamily: F.sans, color: C.textMuted, fontStyle: "italic" }}>not set</span>
               )}
             </div>
           </div>
@@ -7447,7 +7454,7 @@ function PodOrbitControl({ level, lv, stepStates, allDone, isRunningAll, onRunAl
           background: allDone ? "linear-gradient(135deg, #f0fdf4, #dcfce7)" : isRunningAll ? `${lv.color}18` : `linear-gradient(135deg, ${lv.color} 0%, ${lv.ink} 100%)`,
           color: allDone ? "#16a34a" : isRunningAll ? lv.color : "#fff",
           border: allDone ? "1.5px solid #bbf7d0" : isRunningAll ? `1.5px solid ${lv.color}35` : "none",
-          fontSize: 15, fontWeight: 700, fontFamily: C.sans, letterSpacing: 0.2,
+          fontSize: 15, fontWeight: 700, fontFamily: F.sans, letterSpacing: 0.2,
           cursor: isRunningAll || allDone ? "default" : "pointer",
           boxShadow: !allDone && !isRunningAll ? `0 6px 28px ${lv.color}45, 0 2px 10px ${lv.color}30, inset 0 1px 0 rgba(255,255,255,0.22)` : allDone ? "0 3px 14px #22c55e20" : "none",
           transition: "all 0.2s",
@@ -7470,7 +7477,7 @@ function PodOrbitControl({ level, lv, stepStates, allDone, isRunningAll, onRunAl
               transition: "all 0.3s",
             }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: isDone ? "#22c55e" : isRun ? step.color : C.borderMid, boxShadow: isRun ? `0 0 6px ${step.color}` : "none", transition: "all 0.3s" }} />
-              <span style={{ fontSize: 10, fontFamily: C.sans, fontWeight: isDone || isRun ? 600 : 400, color: isDone ? "#16a34a" : isRun ? step.color : C.textMuted }}>{step.label}</span>
+              <span style={{ fontSize: 10, fontFamily: F.sans, fontWeight: isDone || isRun ? 600 : 400, color: isDone ? "#16a34a" : isRun ? step.color : C.textMuted }}>{step.label}</span>
             </div>
           );
         })}
@@ -7525,17 +7532,17 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
           style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: C.textMuted, padding: "4px 8px", borderRadius: 6, transition: "all 0.12s" }}
           onMouseEnter={e => { e.currentTarget.style.color = C.textMid; e.currentTarget.style.background = C.surfaceAlt; }}
           onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.background = "none"; }}>
-          {Ic.arrowLeft()}<span style={{ fontSize: 13, fontFamily: C.sans }}>back</span>
+          {Ic.arrowLeft()}<span style={{ fontSize: 13, fontFamily: F.sans }}>back</span>
         </button>
         <div style={{ width: 1, height: 18, background: C.border }} />
         <span style={{ color: C.accent, display: "flex" }}>{Ic.layers()}</span>
         <span style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: -0.3 }}>REE Explorer</span>
-        <span style={{ fontSize: 13, color: C.borderMid, fontFamily: C.mono }}>/</span>
-        <span style={{ fontSize: 13, color: C.textMuted, fontFamily: C.mono }}>{ree.name || "untitled"}</span>
+        <span style={{ fontSize: 13, color: C.borderMid, fontFamily: F.mono }}>/</span>
+        <span style={{ fontSize: 13, color: C.textMuted, fontFamily: F.mono }}>{ree.name || "untitled"}</span>
         <div style={{ flex: 1 }} />
         <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6 }}>
           <span style={{ color: "#b45309", display: "flex" }}>{Ic.star(12)}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#92400e", fontFamily: C.sans, letterSpacing: 0.3 }}>REVIEWER MODE</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#92400e", fontFamily: F.sans, letterSpacing: 0.3 }}>REVIEWER MODE</span>
         </div>
       </header>
 
@@ -7543,19 +7550,19 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
         {/* Sidebar */}
         <aside style={{ width: 256, borderRight: `1px solid ${C.border}`, background: C.surface, overflowY: "auto", flexShrink: 0, display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "14px 16px 12px", background: `linear-gradient(160deg, ${lv.bg} 0%, ${C.surface} 100%)`, borderBottom: `1px solid ${lv.color}25` }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.4, color: lv.color, textTransform: "uppercase", fontFamily: C.sans, marginBottom: 5 }}>Specimen Pod</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: C.mono, marginBottom: 8, wordBreak: "break-all" }}>{ree.name}</div>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.4, color: lv.color, textTransform: "uppercase", fontFamily: F.sans, marginBottom: 5 }}>Specimen Pod</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: F.mono, marginBottom: 8, wordBreak: "break-all" }}>{ree.name}</div>
             <LevelBadge level={level} />
             <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, padding: "5px 9px", background: "rgba(255,255,255,0.7)", border: `1px solid ${lv.color}25`, borderRadius: 6 }}>
               <span style={{ color: lv.color, display: "flex", flexShrink: 0 }}>{Ic.lock(10)}</span>
               <div>
-                <div style={{ fontSize: 9, fontWeight: 600, color: lv.color, fontFamily: C.sans }}>Sealed</div>
-                <div style={{ fontSize: 10, fontFamily: C.mono, color: C.textMid }}>{sealDate}</div>
+                <div style={{ fontSize: 9, fontWeight: 600, color: lv.color, fontFamily: F.sans }}>Sealed</div>
+                <div style={{ fontSize: 10, fontFamily: F.mono, color: C.textMid }}>{sealDate}</div>
               </div>
             </div>
           </div>
           <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans, marginBottom: 10 }}>Metadata</div>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans, marginBottom: 10 }}>Metadata</div>
             <MetaRow label="Origin URL" value={ree.origin_url} mono href={ree.origin_url} />
             <MetaRow label="Runtime" value={ree.runtime} mono color={C.textMid} />
             <MetaRow label="Build Script" value={ree.build_runtime_script} mono color={C.textMid} />
@@ -7563,18 +7570,18 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
             <MetaRow label="SBOM" value={ree.sbom} mono color={C.textMid} />
             {ree.hardware_description && (
               <div style={{ paddingTop: 8 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans, marginBottom: 6 }}>Hardware</div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans, marginBottom: 6 }}>Hardware</div>
                 {Object.entries(ree.hardware_description).filter(([, v]) => v).map(([k, v]) => (
                   <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
-                    <span style={{ color: C.textMuted, fontFamily: C.sans }}>{k}</span>
-                    <span style={{ fontFamily: C.mono, color: C.textMid }}>{v}</span>
+                    <span style={{ color: C.textMuted, fontFamily: F.sans }}>{k}</span>
+                    <span style={{ fontFamily: F.mono, color: C.textMid }}>{v}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
           <div style={{ padding: "14px 16px" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: C.textMuted, textTransform: "uppercase", fontFamily: C.sans, marginBottom: 12 }}>Provenance</div>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: C.textMuted, textTransform: "uppercase", fontFamily: F.sans, marginBottom: 12 }}>Provenance</div>
             <RvProvenanceChain ree={ree} />
           </div>
         </aside>
