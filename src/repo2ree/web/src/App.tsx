@@ -49,7 +49,6 @@ interface ToastState {
   type: "success" | "error" | "info";
 }
 
-type PrState = "idle" | "loading" | "done";
 type StepState = "idle" | "loading" | "done";
 
 interface CablePoint {
@@ -234,11 +233,11 @@ function findVirtualFileByName(nodes: FileTreeNode[], name: string): FileTreeNod
 
 function normalizeSnapshotArchiveName(rawName: string): string {
   const trimmed = (rawName || "").trim();
-  if (!trimmed) return "source-original.tar.gz";
+  if (!trimmed) return "source.tar.gz";
   if (/\.tar\.gz$/i.test(trimmed)) return trimmed;
   if (/\.tgz$/i.test(trimmed)) return trimmed.replace(/\.tgz$/i, ".tar.gz");
   const stem = trimmed.replace(/\.(zip|tar|tar\.bz2|tar\.xz|tar\.zst|jar)$/i, "");
-  return `${stem || "source"}-original.tar.gz`;
+  return `${stem || "source"}.tar.gz`;
 }
 
 function listTreeFiles(nodes: FileTreeNode[], prefix = ""): Array<{ path: string; content: string }> {
@@ -453,7 +452,72 @@ const C = {
   navBg: "#0f172a", navText: "#94a3b8", navActive: "#e2e8f0",
 };
 
-// Level colors use a single-axis progress ramp (slate → indigo → blue → cyan → teal → emerald).
+// ── Page keys ─────────────────────────────────────────────────────────────────
+// Single source of truth for page/navigation string literals.
+// Using these constants instead of raw strings lets TypeScript catch typos
+// and makes refactoring (renaming a page) a one-line change.
+
+/** Top-level app pages (App component). */
+const APP_PAGE = {
+  LANDING: "landing",
+  EXPLORER: "explorer",
+  REVIEWER: "reviewer",
+} as const;
+type AppPage = typeof APP_PAGE[keyof typeof APP_PAGE];
+
+/** Explorer-internal pages (Explorer component). */
+const PAGE = {
+  SOURCE: "source",
+  METADATA: "metadata",
+  OVERVIEW: "overview",
+  SEAL: "seal",
+  ARCHIVE: "archive",
+  FILES: "files",
+  // Service pages — keys match Service.key values
+  EVALUATE: "evaluate",
+  BUILD: "build",
+  SBOM: "sbom",
+  ACTIVATION: "activation",
+  SWH: "swh",
+} as const;
+type ExplorerPage = typeof PAGE[keyof typeof PAGE];
+
+/** Maps a Ree field key to the Explorer page where it can be edited. */
+const FIELD_TO_PAGE: Record<string, ExplorerPage> = {
+  origin_url: PAGE.SOURCE,
+  source_type: PAGE.SOURCE,
+  _sourceAvailable: PAGE.SOURCE,
+  _sourceAcquiredBy: PAGE.SOURCE,
+  runtime: PAGE.BUILD,
+  build_runtime_script: PAGE.BUILD,
+  activation_script: PAGE.ACTIVATION,
+  sbom: PAGE.SBOM,
+  swhid: PAGE.SWH,
+  zenodo_doi: PAGE.ARCHIVE,
+  dataverse_doi: PAGE.ARCHIVE,
+};
+
+// ── Shared stable styles ───────────────────────────────────────────────────────
+// Styles that do NOT depend on props or state are defined here at module scope
+// so they are created once, not on every render of every component.
+
+/** Uppercase section label used throughout service pages and the overview. */
+const S_SECTION_LABEL: React.CSSProperties = {
+  fontSize: 11, letterSpacing: 1.2, color: C.textMuted,
+  fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700,
+};
+
+/** Card-style surface panel (no overflow setting — callers spread extras in). */
+const S_PANEL: React.CSSProperties = {
+  background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+};
+
+/** Small bold label used for panel column headers in the overview. */
+const S_PANEL_HEADER_LABEL: React.CSSProperties = {
+  fontSize: 11, fontWeight: 700, color: C.text, letterSpacing: 0.3, fontFamily: C.sans,
+};
+
+// ── Level colors use a single-axis progress ramp (slate → indigo → blue → cyan → teal → emerald).
 // This encodes only "how far along the scale" — not quality or urgency.
 // Semantic red/amber/green are reserved for true status signals (errors, warnings, success).
 const LEVELS: Level[] = [
@@ -654,14 +718,14 @@ function makeWorkspaceFromOrigin(originUrl: string, sourceType: Ree["source_type
         id: `src-${Date.now()}`,
         name: repoName || "repo",
         type: "folder",
-        tag: "source",
+        tag: PAGE.SOURCE,
         children: [
           ...seed,
           {
             id: `src-meta-${Date.now()}`,
             name: "EXTRACTION_NOTE.txt",
             type: "file",
-            tag: "source",
+            tag: PAGE.SOURCE,
             content: `Extracted from tarball source: ${originUrl}`,
           },
         ],
@@ -674,7 +738,7 @@ function makeWorkspaceFromOrigin(originUrl: string, sourceType: Ree["source_type
       id: `src-${Date.now()}`,
       name: repoName || "repo",
       type: "folder",
-      tag: "source",
+      tag: PAGE.SOURCE,
       children: seed,
     },
   ];
@@ -687,14 +751,14 @@ function makeWorkspaceFromArchiveUpload(archiveName: string): FileTreeNode[] {
       id: `up-${Date.now()}`,
       name: root,
       type: "folder",
-      tag: "source",
+      tag: PAGE.SOURCE,
       children: [
         ...cloneTree(MOCK_FILES),
         {
           id: `up-note-${Date.now()}`,
           name: "EXTRACTION_NOTE.txt",
           type: "file",
-          tag: "source",
+          tag: PAGE.SOURCE,
           content: `Extracted from uploaded archive: ${archiveName}`,
         },
       ],
@@ -1130,8 +1194,6 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
   const runtimeHint = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
   const templates = useMemo(() => defaultScriptTemplates(scriptKind, runtimeHint), [scriptKind, runtimeHint]);
   const [templateKey, setTemplateKey] = useState(() => templates[0]?.key || "");
-  // PR simulation state
-  const [prState, setPrState] = useState<PrState>("idle"); // idle | loading | done
 
   useEffect(() => {
     if (!templates.length) {
@@ -1152,7 +1214,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
   };
 
   const commitFile = (fname: string, content: string) => {
-    const newFile: FileTreeNode = { id: "vf-" + fname, name: fname, type: "file", tag: "source", content };
+    const newFile: FileTreeNode = { id: "vf-" + fname, name: fname, type: "file", tag: PAGE.SOURCE, content };
     const updated = [...files.filter(f => f.name !== fname), newFile];
     onFilesChange?.(updated);
     onReeChange?.({ ...ree, [fieldKey]: fname });
@@ -1162,16 +1224,6 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
     const fname = editorFilename.trim() || (scriptKind === "validate" ? "activation_test.sh" : "build_runtime.sh");
     commitFile(fname, editorContent);
     setMode("view");
-  };
-
-  const handleOpenPR = async () => {
-    // Simulate opening a PR — in a real integration this would call the GitHub/GitLab API
-    setPrState("loading");
-    await new Promise(r => setTimeout(r, 1400));
-    const fname = editorFilename.trim() || (scriptKind === "validate" ? "activation_test.sh" : "build_runtime.sh");
-    commitFile(fname, editorContent); // also registers the file locally
-    setPrState("done");
-    setTimeout(() => setPrState("idle"), 4000);
   };
 
   const handleUseTemplate = () => {
@@ -1321,30 +1373,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
                 <div style={{ width: 1, height: 16, background: C.border, flexShrink: 0 }} />
 
                 {/* Save action */}
-                {isRemoteGit ? (
-                  <button
-                    onClick={handleOpenPR}
-                    disabled={prState === "loading" || !editorContent.trim()}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 5,
-                      padding: "4px 10px", borderRadius: 5,
-                      cursor: prState === "loading" || !editorContent.trim() ? "default" : "pointer",
-                      border: `1px solid ${prState === "done" ? "#bbf7d0" : prBorder}`,
-                      background: prState === "done" ? "#f0fdf4" : prBg,
-                      fontSize: 11, fontWeight: 600, fontFamily: C.sans,
-                      color: prState === "done" ? "#16a34a" : prColor,
-                      transition: "all 0.15s", flexShrink: 0, whiteSpace: "nowrap",
-                      opacity: !editorContent.trim() ? 0.4 : 1,
-                    }}
-                    onMouseEnter={e => { if (prState === "idle" && editorContent.trim()) e.currentTarget.style.opacity = "0.8"; }}
-                    onMouseLeave={e => { e.currentTarget.style.opacity = !editorContent.trim() ? "0.4" : "1"; }}
-                  >
-                    <span style={{ display: "flex", animation: prState === "loading" ? "spin 0.9s linear infinite" : "none" }}>
-                      {prState === "done" ? Ic.check(11) : prState === "loading" ? Ic.loader(11) : Ic.upload(11)}
-                    </span>
-                    {prState === "done" ? "PR opened" : prState === "loading" ? "Opening PR…" : `Open PR on ${prHost}`}
-                  </button>
-                ) : (
+                {(
                   <button
                     onClick={handleSave}
                     disabled={!editorContent.trim()}
@@ -2098,8 +2127,10 @@ interface FieldTipsSidebarProps {
   onClear: () => void;
   tipFields?: string[];
   emptyMessage?: string;
+  generalTips?: string[];
+  generalTitle?: string;
 }
-function FieldTipsSidebar({ focusedField, onFocusField, onClear, tipFields, emptyMessage }: FieldTipsSidebarProps) {
+function FieldTipsSidebar({ focusedField, onFocusField, onClear, tipFields, emptyMessage, generalTips = [], generalTitle = "Step Purpose" }: FieldTipsSidebarProps) {
   const activeField = focusedField && (!tipFields || tipFields.includes(focusedField)) ? focusedField : null;
   const showFieldPicker = !!(tipFields && tipFields.length > 0 && onFocusField);
   const emptyText = emptyMessage || "Click any field — here or in the status bar above — to see examples, format rules, and commands.";
@@ -2120,6 +2151,20 @@ function FieldTipsSidebar({ focusedField, onFocusField, onClear, tipFields, empt
                 </button>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {generalTips.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{ color: C.textMid, display: "flex" }}>{Ic.info(13)}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, color: C.textMid, textTransform: "uppercase", fontFamily: C.sans }}>{generalTitle}</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {generalTips.map((tip, i) => (
+              <p key={i} style={{ margin: 0, fontSize: 12, color: C.textMid, lineHeight: 1.55 }}>{tip}</p>
+            ))}
           </div>
         </div>
       )}
@@ -2723,7 +2768,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
               <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <button
-                  onClick={() => onGoService("files")}
+                  onClick={() => onGoService(PAGE.FILES)}
                   style={{
                     ...inp(false, {
                       display: "flex",
@@ -2801,7 +2846,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
 
           {/* Next step nudge */}
           <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
-            <NextStepNudge stepKey="source" badges={badges} onGo={onGoService} />
+            <NextStepNudge stepKey={PAGE.SOURCE} badges={badges} onGo={onGoService} />
           </div>
 
         </div>
@@ -2811,6 +2856,10 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
         tipFields={["origin_url", "source_type", "_sourceAcquiredBy", "_sourceAvailable"]}
         focusedField={focusedField}
         onClear={() => setFocusedField(null)}
+        generalTips={[
+          "Bring source code into the local workspace before any downstream step.",
+          "Choose one acquisition path (download from origin or upload archive) and keep it consistent.",
+        ]}
       />
     </div>
   );
@@ -2903,7 +2952,7 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
           </FieldSection>
 
           <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
-            <NextStepNudge stepKey="metadata" badges={badges} onGo={onGoService} />
+            <NextStepNudge stepKey={PAGE.METADATA} badges={badges} onGo={onGoService} />
           </div>
         </div>
       </div>
@@ -2912,6 +2961,10 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
         tipFields={["name", "hardware_description"]}
         focusedField={focusedField}
         onClear={() => setFocusedField(null)}
+        generalTips={[
+          "Capture essential project and hardware context for reproducibility.",
+          "Use stable, descriptive values so builds can be interpreted and repeated later.",
+        ]}
       />
     </div>
   );
@@ -2926,8 +2979,8 @@ interface NextStepNudgeProps {
 }
 function NextStepNudge({ stepKey, badges, onGo }: NextStepNudgeProps) {
   const STEPS = [
-    { key: "source", nextKey: "metadata", nextLabel: "Provide Metadata", cond: () => true },
-    { key: "metadata", nextKey: "evaluate", nextLabel: "Evaluate", cond: () => true },
+    { key: PAGE.SOURCE, nextKey: PAGE.METADATA, nextLabel: "Provide Metadata", cond: () => true },
+    { key: PAGE.METADATA, nextKey: "evaluate", nextLabel: "Evaluate", cond: () => true },
     { key: "evaluate", nextKey: "build", nextLabel: "Build Runtime", cond: () => true },
     { key: "build", nextKey: "sbom", nextLabel: "Generate SBOM", cond: () => true },
     { key: "sbom", nextKey: "activation", nextLabel: "Test Activation", cond: () => true },
@@ -3043,7 +3096,7 @@ function ServiceActionSection({ color, running, runDone, disabled, idleLabel, ru
   const buttonLabel = running ? runningLabel : runDone ? doneLabel : idleLabel;
   return (
     <div style={{ padding: "20px 24px 16px", flexShrink: 0, borderBottom: `1px solid ${C.border}` }}>
-      <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 14 }}>Action</div>
+      <div style={{ ...S_SECTION_LABEL, marginBottom: 14 }}>Action</div>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <button onClick={onRun} disabled={disabled}
           style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", background: disabled ? `${color}22` : color, border: "none", borderRadius: 8, cursor: disabled ? "default" : "pointer", fontSize: 13, fontWeight: 700, color: disabled ? color : "#fff", fontFamily: C.sans, transition: "all 0.15s" }}>
@@ -3099,7 +3152,7 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
             e.currentTarget.style.borderLeftColor = "transparent";
           }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Step 1: Runtime Input</div>
+            <div style={S_SECTION_LABEL}>Step 1: Runtime Input</div>
             {tipTargetChip(focusedField === "runtime")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -3115,7 +3168,7 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
             </div>
 
             {!rt && (
-              <button onClick={() => onGo("build")}
+              <button onClick={() => onGo(PAGE.BUILD)}
                 style={{ width: "fit-content", display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontFamily: C.sans, color: sbomColor, background: `${sbomColor}12`, border: `1px solid ${sbomColor}40`, borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontWeight: 600 }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.96)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -3150,7 +3203,7 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
             e.currentTarget.style.borderLeftColor = "transparent";
           }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Step 2: Produced SBOM</div>
+            <div style={S_SECTION_LABEL}>Step 2: Produced SBOM</div>
             {tipTargetChip(focusedField === "sbom")}
           </div>
 
@@ -3173,7 +3226,7 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
             try { pkgCount = JSON.parse(sbomNode.content)?.packages?.length ?? null; } catch { }
             return (
               <div>
-                <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>SBOM Preview</div>
+                <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>SBOM Preview</div>
                 <div style={{ border: `1px solid ${sbomColor}20`, borderRadius: 10, overflow: "hidden" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: `${sbomColor}08`, borderBottom: `1px solid ${sbomColor}20` }}>
                     <span style={{ color: sbomColor, display: "flex" }}>{Ic.file(13)}</span>
@@ -3191,7 +3244,7 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
 
         {sbomScripts.length > 0 && (
           <div style={{ padding: "16px 24px 0", flexShrink: 0 }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 14 }}>Scripts</div>
+            <div style={{ ...S_SECTION_LABEL, marginBottom: 14 }}>Scripts</div>
             {sbomScripts.map(sf => (
               <ScriptPanel key={sf.fieldKey} scriptKind={sf.scriptKind || null} fieldKey={sf.fieldKey} files={files || MOCK_FILES} onFilesChange={onFilesChange} ree={ree} onReeChange={onReeChange} />
             ))}
@@ -3200,13 +3253,13 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
 
         {/* Log */}
         <div style={{ padding: "4px 24px 24px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>Output</div>
+          <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>Output</div>
           <LogPanel log={log} running={running} />
         </div>
 
         {/* Next step nudge */}
         <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
-          <NextStepNudge stepKey={"sbom"} badges={badges || {}} onGo={onGo || (() => {})} />
+          <NextStepNudge stepKey={PAGE.SBOM} badges={badges || {}} onGo={onGo || (() => {})} />
         </div>
 
         </div>
@@ -3217,6 +3270,10 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
           onFocusField={setFocusedField}
           onClear={() => setFocusedField(null)}
           emptyMessage="Choose a field to see examples, format rules, and commands."
+          generalTips={[
+            "Generate a machine-readable inventory of software in the runtime.",
+            "Run this after runtime is available so the SBOM reflects what is actually executed.",
+          ]}
         />
 
       </div>
@@ -3262,7 +3319,7 @@ function PageTestActivation({ svc, ree, log, running, runDone, badge, ts, onRun,
             e.currentTarget.style.borderLeftColor = "transparent";
           }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Fields</div>
+            <div style={S_SECTION_LABEL}>Fields</div>
             {tipTargetChip(focusedField === "activation_script")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -3285,12 +3342,12 @@ function PageTestActivation({ svc, ree, log, running, runDone, badge, ts, onRun,
           idleLabel="Run activation"
           runningLabel="Running…"
           helperText="Runs the activation test script in the runtime environment."
-          onRun={() => onRun && onRun("activation", params)}
+          onRun={() => onRun && onRun(PAGE.ACTIVATION, params)}
         />
 
         {/* Scripts */}
         <div style={{ padding: "16px 24px 0", flexShrink: 0 }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 14 }}>Scripts</div>
+          <div style={{ ...S_SECTION_LABEL, marginBottom: 14 }}>Scripts</div>
           {SVC_SCRIPT_FIELDS["activation"]?.map(sf => (
             <ScriptPanel key={sf.fieldKey} scriptKind={sf.scriptKind || null} fieldKey={sf.fieldKey} files={files || MOCK_FILES} onFilesChange={onFilesChange} ree={ree} onReeChange={onReeChange} saveToWorkspaceOnly />
           ))}
@@ -3298,13 +3355,13 @@ function PageTestActivation({ svc, ree, log, running, runDone, badge, ts, onRun,
 
         {/* Log */}
         <div style={{ padding: "4px 24px 24px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>Output</div>
+          <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>Output</div>
           <LogPanel log={log} running={running} />
         </div>
 
           {/* Next step nudge */}
           <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
-            <NextStepNudge stepKey={"activation"} badges={badges || {}} onGo={onGo || (() => {})} />
+            <NextStepNudge stepKey={PAGE.ACTIVATION} badges={badges || {}} onGo={onGo || (() => {})} />
           </div>
 
         </div>
@@ -3315,6 +3372,10 @@ function PageTestActivation({ svc, ree, log, running, runDone, badge, ts, onRun,
           onFocusField={setFocusedField}
           onClear={() => setFocusedField(null)}
           emptyMessage="Choose a field to see examples, format rules, and commands."
+          generalTips={[
+            "Verify the built runtime can start and activate cleanly.",
+            "Treat activation as a gate before archival to avoid preserving broken environments.",
+          ]}
         />
       </div>
     </div>
@@ -3753,7 +3814,7 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, ...S_SECTION_LABEL }}>
                       Evaluate Output · Reproducibility Score
                       {tipTargetChip(focusedField === "repro_level")}
                     </div>
@@ -3848,7 +3909,7 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
                 onClick={() => setFocusedField("detected_dependencies")}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>
+                  <div style={S_SECTION_LABEL}>
                     Detected Dependencies
                   </div>
                   {tipTargetChip(focusedField === "detected_dependencies")}
@@ -3934,6 +3995,10 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
           onFocusField={setFocusedField}
           onClear={() => setFocusedField(null)}
           emptyMessage="Choose either detected dependencies or repro level to see Evaluate-specific tips."
+          generalTips={[
+            "Score reproducibility maturity from the repository state in workspace.",
+            "Use this output to decide the next highest-impact improvement before Build.",
+          ]}
         />
       </div>
     </div>
@@ -4085,7 +4150,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
             e.currentTarget.style.borderLeftColor = "transparent";
           }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Step 1: Build Script</div>
+            <div style={S_SECTION_LABEL}>Step 1: Build Script</div>
             {tipTargetChip(focusedField === "build_runtime_script")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -4104,7 +4169,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
           )}
 
           <div style={{ marginTop: 14 }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 10 }}>Build Script Editor</div>
+            <div style={{ ...S_SECTION_LABEL, marginBottom: 10 }}>Build Script Editor</div>
             {SVC_SCRIPT_FIELDS[svc.key]?.map(sf => (
               <ScriptPanel
                 key={sf.fieldKey}
@@ -4137,7 +4202,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
             e.currentTarget.style.borderLeftColor = "transparent";
           }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Step 2: Expected Output</div>
+            <div style={S_SECTION_LABEL}>Step 2: Expected Output</div>
             {tipTargetChip(focusedField === "runtime")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -4158,7 +4223,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
           {/* Additional parameters */}
           {svc.params && svc.params.length > 0 && (
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 12 }}>Additional Parameters</div>
+              <div style={{ ...S_SECTION_LABEL, marginBottom: 12 }}>Additional Parameters</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}>
                 {svc.params.map(p => (
                   <div key={p.key} style={{ display: "flex", flexDirection: "column", gap: 5, flex: "0 1 auto" }}>
@@ -4200,7 +4265,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
 
         {/* BUILD OUTPUT VERIFICATION — Step 3 in workflow */}
         <div style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 12 }}>Step 3: Verify Build Output</div>
+          <div style={{ ...S_SECTION_LABEL, marginBottom: 12 }}>Step 3: Verify Build Output</div>
             <RuntimeOutputNode
               expectedOutput={expectedOutput}
               buildDone={runDone}
@@ -4243,7 +4308,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
           </div>
         ) : (
           <div style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 12 }}>Manual Override</div>
+            <div style={{ ...S_SECTION_LABEL, marginBottom: 12 }}>Manual Override</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>You chose to skip building — set the runtime field manually. This will override any automatic detection.</div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: metaRuntime ? "#f0fdf4" : C.surfaceAlt, border: `1.5px solid ${metaRuntime ? "#bbf7d0" : C.border}`, borderRadius: 8 }}>
@@ -4299,7 +4364,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
             e.currentTarget.style.borderLeftColor = "transparent";
           }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700 }}>Step 4: Final Runtime Field</div>
+            <div style={S_SECTION_LABEL}>Step 4: Final Runtime Field</div>
             {tipTargetChip(focusedField === "runtime")}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4341,7 +4406,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
 
         {/* Log */}
         <div style={{ padding: "4px 24px 24px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <div style={{ fontSize: 11, letterSpacing: 1.2, color: C.textMuted, fontFamily: C.sans, textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>Output</div>
+          <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>Output</div>
           <LogPanel log={log} running={running} />
         </div>
 
@@ -4358,6 +4423,10 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
           onFocusField={setFocusedField}
           onClear={() => setFocusedField(null)}
           emptyMessage="Choose a field to see examples, format rules, and commands."
+          generalTips={[
+            "Produce a reproducible runtime artifact from source and scripts.",
+            "Keep build outputs deterministic so later SBOM and activation checks are reliable.",
+          ]}
         />
 
       </div>
@@ -4578,7 +4647,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
 
       {/* Next step nudge */}
       <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
-        <NextStepNudge stepKey="archive" badges={badges || {}} onGo={onGo} />
+        <NextStepNudge stepKey={PAGE.ARCHIVE} badges={badges || {}} onGo={onGo} />
       </div>
     </div>
   );
@@ -4989,6 +5058,18 @@ interface PanelCableOverlayProps {
   badges: Badges;
   ree: Ree;
 }
+
+type PanelCableSide = "left" | "right" | "top";
+
+interface PanelCableSpec {
+  id: string;
+  ref: React.RefObject<HTMLDivElement>;
+  side: PanelCableSide;
+  color: string;
+  shadow: string;
+  connected: boolean;
+}
+
 function PanelCableOverlay({ containerRef, sourceRef, runtimeRef, metadataRef, swhRef, evaluateRef, sbomRef, sealRef, archiveRef, activationRef, podSvgRef, level, badges, ree }: PanelCableOverlayProps) {
   const lv = LEVELS[Math.min(level, 7)];
   // Store computed geometry as plain state so re-renders are cheap
@@ -5010,16 +5091,7 @@ function PanelCableOverlay({ containerRef, sourceRef, runtimeRef, metadataRef, s
   function measure() {
     const container = containerRef.current;
     const podSvg = podSvgRef.current;
-    const metadataEl = metadataRef.current;
-    const sourceEl = sourceRef.current;
-    const runtimeEl = runtimeRef.current;
-    const swhEl = swhRef.current;
-    const evaluateEl = evaluateRef.current;
-    const sbomEl = sbomRef.current;
-    const archiveEl = archiveRef.current;
-    const activationEl = activationRef.current;
-    const sealEl = sealRef.current;
-    if (!container || !podSvg || !metadataEl) return;
+    if (!container || !podSvg) return;
 
     const cRect = container.getBoundingClientRect();
 
@@ -5047,16 +5119,6 @@ function PanelCableOverlay({ containerRef, sourceRef, runtimeRef, metadataRef, s
       };
     }
 
-    const metadata = panelRel(metadataEl);
-    const source = panelRel(sourceEl);
-    const runtime = panelRel(runtimeEl);
-    const swh = panelRel(swhEl);
-    const evaluate = panelRel(evaluateEl);
-    const sbom = panelRel(sbomEl);
-    const seal = panelRel(sealEl);
-    const archive = panelRel(archiveEl);
-    const activation = panelRel(activationEl);
-
     // For each cable: panel connector point + sphere surface intercept.
     // The sphere intercept is the point on the sphere rim closest to the
     // panel connector (i.e. on the line from sphere centre → panel).
@@ -5071,64 +5133,46 @@ function PanelCableOverlay({ containerRef, sourceRef, runtimeRef, metadataRef, s
     const activationConnected = !!(badges && badges["activation"]);
     const sourceConnected = !!(ree && ree._sourceAvailable);
     const runtimeConnected = !!(ree && ree._runtimeIncluded);
+    const sbomConnected = !!(ree && ree.sbom && ree.sbom.trim());
+    const swhConnected = !!(ree && ree.swhid && ree.swhid.trim());
+    const evaluateConnected = !!(badges && badges["evaluate"]);
+    const sealConnected = !!(ree && ree._sealedAt);
 
-    const cables = [];
+    const panelSpecs: PanelCableSpec[] = [
+      { id: PAGE.SOURCE, ref: sourceRef, side: "right", color: "#f59e0b", shadow: "#92400e", connected: sourceConnected },
+      { id: "runtime", ref: runtimeRef, side: "right", color: "#0891b2", shadow: "#164e63", connected: runtimeConnected },
+      { id: "sbom", ref: sbomRef, side: "right", color: "#16a34a", shadow: "#14532d", connected: sbomConnected },
+      { id: "fields", ref: metadataRef, side: "right", color: "#22c55e", shadow: "#166534", connected: fieldsConnected },
+      { id: "archive", ref: archiveRef, side: "left", color: "#e4572e", shadow: "#7c2d12", connected: archiveConnected },
+      { id: "activation", ref: activationRef, side: "left", color: "#7c3aed", shadow: "#3b0764", connected: activationConnected },
+      { id: "swh", ref: swhRef, side: "left", color: "#e4572e", shadow: "#7c2d12", connected: swhConnected },
+      { id: "evaluate", ref: evaluateRef, side: "left", color: "#7c3aed", shadow: "#3b0764", connected: evaluateConnected },
+      { id: "seal", ref: sealRef, side: "top", color: "#f59e0b", shadow: "#78350f", connected: sealConnected },
+    ];
 
-    // Source panel → pod (always drawn)
-    if (source) {
-      const px = source.right, py = source.midY;
-      const pod = sphereIntercept(px, py);
-      cables.push({ id: "source", x1: px, y1: py, x2: pod.x, y2: pod.y, color: "#f59e0b", shadow: "#92400e", connected: sourceConnected });
-    }
+    const cables: Cable[] = [];
+    panelSpecs.forEach((panelSpec) => {
+      const panel = panelRel(panelSpec.ref.current);
+      if (!panel) return;
 
-    // Runtime panel → pod (always drawn)
-    if (runtime) {
-      const px = runtime.right, py = runtime.midY;
-      const pod = sphereIntercept(px, py);
-      cables.push({ id: "runtime", x1: px, y1: py, x2: pod.x, y2: pod.y, color: "#0891b2", shadow: "#164e63", connected: runtimeConnected });
-    }
+      let px = panel.midX;
+      let py = panel.midY;
+      if (panelSpec.side === "left") px = panel.left;
+      if (panelSpec.side === "right") px = panel.right;
+      if (panelSpec.side === "top") py = panel.top;
 
-    if (sbom) {
-      const sbomConnected = !!(ree && ree.sbom && ree.sbom.trim());
-      const px = sbom.right, py = sbom.midY;
       const pod = sphereIntercept(px, py);
-      cables.push({ id: "sbom", x1: px, y1: py, x2: pod.x, y2: pod.y, color: "#16a34a", shadow: "#14532d", connected: sbomConnected });
-    }
-
-    if (metadata) {
-      const px = metadata.right, py = metadata.midY;
-      const pod = sphereIntercept(px, py);
-      cables.push({ id: "fields", x1: px, y1: py, x2: pod.x, y2: pod.y, color: "#22c55e", shadow: "#166534", connected: fieldsConnected });
-    }
-    if (archive) {
-      const px = archive.left, py = archive.midY;
-      const pod = sphereIntercept(px, py);
-      cables.push({ id: "archive", x1: px, y1: py, x2: pod.x, y2: pod.y, color: "#e4572e", shadow: "#7c2d12", connected: archiveConnected });
-    }
-    if (activation) {
-      const px = activation.left, py = activation.midY;
-      const pod = sphereIntercept(px, py);
-      cables.push({ id: "activation", x1: px, y1: py, x2: pod.x, y2: pod.y, color: "#7c3aed", shadow: "#3b0764", connected: activationConnected });
-    }
-    if (swh) {
-      const swhConnected = !!(ree && ree.swhid && ree.swhid.trim());
-      const px = swh.left, py = swh.midY;
-      const pod = sphereIntercept(px, py);
-      cables.push({ id: "swh", x1: px, y1: py, x2: pod.x, y2: pod.y, color: "#e4572e", shadow: "#7c2d12", connected: swhConnected });
-    }
-    if (evaluate) {
-      const evaluateConnected = !!(badges && badges["evaluate"]);
-      const px = evaluate.left, py = evaluate.midY;
-      const pod = sphereIntercept(px, py);
-      cables.push({ id: "evaluate", x1: px, y1: py, x2: pod.x, y2: pod.y, color: "#7c3aed", shadow: "#3b0764", connected: evaluateConnected });
-    }
-
-    if (seal) {
-      const sealConnected = !!(ree && ree._sealedAt);
-      const px = seal.midX, py = seal.top;
-      const pod = sphereIntercept(px, py);
-      cables.push({ id: "seal", x1: px, y1: py, x2: pod.x, y2: pod.y, color: "#f59e0b", shadow: "#78350f", connected: sealConnected });
-    }
+      cables.push({
+        id: panelSpec.id,
+        x1: px,
+        y1: py,
+        x2: pod.x,
+        y2: pod.y,
+        color: panelSpec.color,
+        shadow: panelSpec.shadow,
+        connected: panelSpec.connected,
+      });
+    });
 
     // Decorative cables — computed in pod-SVG space then mapped to container coords.
     // These are rendered first in the overlay SVG so they sit behind everything.
@@ -5149,18 +5193,35 @@ function PanelCableOverlay({ containerRef, sourceRef, runtimeRef, metadataRef, s
     setGeo({ cables, decoCables, w, h });
   }
 
-  // Run measurement on every animation frame while mounted, so cables track
-  // layout changes (resize, collapse, scroll) without any special event wiring.
+  // Re-measure whenever logical state changes (level, badges, ree fields).
   React.useEffect(() => {
-    let alive = true;
-    function loop() {
-      if (!alive) return;
-      measure();
-      rafRef.current = requestAnimationFrame(loop);
-    }
-    rafRef.current = requestAnimationFrame(loop);
-    return () => { alive = false; cancelAnimationFrame(rafRef.current); };
-  }, [level, badges, ree]); // re-subscribe when logical state changes
+    // Schedule via rAF so layout is settled after the state-driven re-render.
+    rafRef.current = requestAnimationFrame(measure);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [level, badges, ree]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-measure whenever the container or any observed element is resized.
+  React.useEffect(() => {
+    const panelRefs = [
+      sourceRef,
+      runtimeRef,
+      metadataRef,
+      swhRef,
+      evaluateRef,
+      sbomRef,
+      sealRef,
+      archiveRef,
+      activationRef,
+    ];
+    const targets = [containerRef, ...panelRefs] as React.RefObject<Element>[];
+
+    const ro = new ResizeObserver(() => {
+      rafRef.current = requestAnimationFrame(measure);
+    });
+
+    targets.forEach(r => { if (r.current) ro.observe(r.current); });
+    return () => ro.disconnect();
+  }); // intentionally no dep array — refs may attach/detach between renders
 
   if (!geo) return null;
   const { cables, decoCables, w, h } = geo;
@@ -5350,8 +5411,7 @@ interface PageOverviewProps {
 function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timestamps = {}, onGoField, files = [], snapshotFiles = [], locked = false, onSeal, onPreviewReviewer, onDownloadRee }: PageOverviewProps) {
   const [showSealConfirm, setShowSealConfirm] = React.useState(false);
   const lv = LEVELS[Math.min(level, 7)];
-  const panel = (extra = {}) => ({ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, ...extra });
-  const headerLabel = { fontSize: 11, fontWeight: 700, color: C.text, letterSpacing: 0.3, fontFamily: C.sans };
+  const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({ ...S_PANEL, ...extra });
 
   // Cable overlay refs
   const cableContainerRef = useRef<HTMLDivElement>(null);
@@ -5522,7 +5582,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
           <div ref={sourceRef} style={panel({ overflow: "hidden" })}>
             <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: sourceIncluded ? "#f59e0b" : "#d1d5db", boxShadow: sourceIncluded ? "0 0 5px #f59e0b99" : "none", transition: "all 0.2s" }} />
-              <span style={headerLabel}>Source</span>
+              <span style={S_PANEL_HEADER_LABEL}>Source</span>
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, opacity: canIncludeSource ? 1 : 0.45 }}>
                 <span style={{ fontSize: 9, fontFamily: C.sans, fontWeight: 600, color: sourceIncluded ? "#92400e" : C.textMuted, letterSpacing: 0.3 }}>{sourceIncluded ? "Included" : "Include"}</span>
                 <button onClick={toggleSource} aria-pressed={sourceIncluded} disabled={!canIncludeSource}
@@ -5553,11 +5613,11 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 label="Files" value={ree._sourceAvailable ? (fileCount > 0 ? `${fileCount} file${fileCount !== 1 ? "s" : ""} · ${fmtBytes(totalBytes)}` : "downloaded") : null} filled={!!ree._sourceAvailable}
                 dotColor="#f59e0b" dotGlow="#f59e0b99" labelColor="#92400e" labelBg="#fffbeb" labelBorderColor="#f59e0b25"
                 emptyText="not downloaded" isLast
-                onClick={() => onNavigate && onNavigate("source")}
+                onClick={() => onNavigate && onNavigate(PAGE.SOURCE)}
               />
             </div>
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
-              <button onClick={() => onNavigate && onNavigate("source")}
+              <button onClick={() => onNavigate && onNavigate(PAGE.SOURCE)}
                 style={{ fontSize: 10, fontFamily: C.sans, color: "#92400e", background: "#fffbeb", border: "1px solid #f59e0b40", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -5573,7 +5633,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               display: "flex", alignItems: "center", gap: 8
             }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e" }} />
-              <span style={headerLabel}>Metadata</span>
+              <span style={S_PANEL_HEADER_LABEL}>Metadata</span>
               <span style={{
                 marginLeft: "auto", fontSize: 8, fontFamily: C.mono,
                 color: C.textMuted, letterSpacing: 0.5
@@ -5602,7 +5662,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               })}
             </div>
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
-              <button onClick={() => onNavigate && onNavigate("metadata")}
+              <button onClick={() => onNavigate && onNavigate(PAGE.METADATA)}
                 style={{ fontSize: 10, fontFamily: C.sans, color: C.text, background: "#f0fdf4", border: `1px solid ${C.border}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, marginTop: 2 }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -5615,7 +5675,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
           <div ref={runtimeRef} style={panel({ overflow: "hidden" })}>
             <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: runtimeIncluded ? "#0891b2" : "#d1d5db", boxShadow: runtimeIncluded ? "0 0 5px #0891b299" : "none", transition: "all 0.2s" }} />
-              <span style={headerLabel}>Runtime</span>
+              <span style={S_PANEL_HEADER_LABEL}>Runtime</span>
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, opacity: canIncludeRuntime ? 1 : 0.45 }}>
                 <span style={{ fontSize: 9, fontFamily: C.sans, fontWeight: 600, color: runtimeIncluded ? "#164e63" : C.textMuted, letterSpacing: 0.3 }}>{runtimeIncluded ? "Included" : "Include"}</span>
                 <button onClick={toggleRuntime} aria-pressed={runtimeIncluded} disabled={!canIncludeRuntime}
@@ -5631,13 +5691,13 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 label="Runtime" value={runtimeVal || null} filled={!!runtimeVal}
                 dotColor="#0891b2" dotGlow="#0891b299" labelColor="#164e63" labelBg="#ecfeff" labelBorderColor="#0891b225"
                 emptyText="not set"
-                onClick={() => onNavigate && onNavigate("build")}
+                onClick={() => onNavigate && onNavigate(PAGE.BUILD)}
               />
               {runtimeSizeStr && (
                 <PanelFieldRow
                   label="Size" value={runtimeSizeStr} filled={!!runtimeSizeStr}
                   dotColor="#0891b2" dotGlow="#0891b299" labelColor="#164e63" labelBg="#ecfeff" labelBorderColor="#0891b225"
-                  onClick={() => onNavigate && onNavigate("build")}
+                  onClick={() => onNavigate && onNavigate(PAGE.BUILD)}
                 />
               )}
               <PanelFieldRow
@@ -5649,7 +5709,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             </div>
             {/* Go to Build Runtime button */}
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
-              <button onClick={() => onNavigate && onNavigate("build")}
+              <button onClick={() => onNavigate && onNavigate(PAGE.BUILD)}
                 style={{ fontSize: 10, fontFamily: C.sans, color: "#0891b2", background: "#ecfeff", border: "1px solid #a5f3fc", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -5666,7 +5726,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               <div ref={sbomRef} style={panel({ overflow: "hidden" })}>
                 <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 5, height: 5, borderRadius: "50%", background: sbomVal ? color : "#d1d5db", boxShadow: sbomVal ? `0 0 5px ${color}99` : "none" }} />
-                  <span style={headerLabel}>SBOM</span>
+                  <span style={S_PANEL_HEADER_LABEL}>SBOM</span>
                   {earned && <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: C.mono, color, background: "#f0fdf4", border: `1px solid ${color}40`, borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>OK</span>}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column" }}>
@@ -5674,25 +5734,25 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                     label="SBOM Path" value={sbomVal || null} filled={!!sbomVal}
                     dotColor="#16a34a" dotGlow="#16a34a99" labelColor="#15803d" labelBg="#f0fdf4" labelBorderColor="#16a34a25"
                     emptyText="not set"
-                    onClick={() => onNavigate && onNavigate("sbom")}
+                    onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
                   />
                   {sbomMeta?.fmt && (
                     <PanelFieldRow
                       label="Format" value={sbomMeta.fmt} filled
                       dotColor="#16a34a" dotGlow="#16a34a99" labelColor="#15803d" labelBg="#f0fdf4" labelBorderColor="#16a34a25"
-                      onClick={() => onNavigate && onNavigate("sbom")}
+                      onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
                     />
                   )}
                   {sbomMeta?.pkgCount != null && (
                     <PanelFieldRow
                       label="Packages" value={`${sbomMeta.pkgCount} pkg${sbomMeta.pkgCount !== 1 ? "s" : ""}`} filled
                       dotColor="#16a34a" dotGlow="#16a34a99" labelColor="#15803d" labelBg="#f0fdf4" labelBorderColor="#16a34a25"
-                      isLast onClick={() => onNavigate && onNavigate("sbom")}
+                      isLast onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
                     />
                   )}
                 </div>
                 <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
-                  <button onClick={() => onNavigate && onNavigate("sbom")}
+                  <button onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
                     style={{ fontSize: 10, fontFamily: C.sans, color, background: "#f0fdf4", border: `1px solid ${color}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                     onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                     onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -5713,8 +5773,8 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
           {(() => {
             const sealed = locked && ree._sealedAt;
             const cableItems = [
-              { key: "metadata", label: "Metadata", live: (["name", "hardware_description"] as (keyof Ree)[]).filter(f => f === "hardware_description" ? Object.values((ree[f] as Record<string, string>) || {}).some(v => v) : !!ree[f]).length > 0 },
-              { key: "source", label: "Source", live: !!(ree._sourceAvailable) },
+              { key: PAGE.METADATA, label: "Metadata", live: (["name", "hardware_description"] as (keyof Ree)[]).filter(f => f === "hardware_description" ? Object.values((ree[f] as Record<string, string>) || {}).some(v => v) : !!ree[f]).length > 0 },
+              { key: PAGE.SOURCE, label: "Source", live: !!(ree._sourceAvailable) },
               { key: "runtime", label: "Runtime", live: !!(ree._runtimeIncluded) },
               { key: "swh", label: "Software Heritage", live: !!(ree.swhid) },
               { key: "sbom", label: "SBOM", live: !!(ree.sbom) },
@@ -5934,17 +5994,17 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
           <div ref={swhRef} style={panel({ overflow: "hidden" })}>
             <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#e4572e", boxShadow: ree.swhid ? "0 0 5px #e4572e99" : "none" }} />
-              <span style={headerLabel}>Software Heritage</span>
+              <span style={S_PANEL_HEADER_LABEL}>Software Heritage</span>
               <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: C.mono, color: "#e4572e", background: "#fff7f5", border: "1px solid #fbd0c4", borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>SWH</span>
             </div>
             <PanelFieldRow
               label="SWHID" value={ree.swhid || null} filled={!!ree.swhid}
               dotColor="#e4572e" dotGlow="#e4572e99" labelColor="#9a3412" labelBg="#fff7f5" labelBorderColor="#e4572e25"
               emptyText="not archived" isLast
-              onClick={() => onNavigate && onNavigate("swh")}
+              onClick={() => onNavigate && onNavigate(PAGE.SWH)}
             />
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
-              <button onClick={() => onNavigate && onNavigate("swh")}
+              <button onClick={() => onNavigate && onNavigate(PAGE.SWH)}
                 style={{ fontSize: 10, fontFamily: C.sans, color: "#9a3412", background: "#fff7f5", border: "1px solid #fbd0c4", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -5963,7 +6023,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               <div ref={evaluateRef} style={panel({ overflow: "hidden" })}>
                 <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 5, height: 5, borderRadius: "50%", background: earned ? svc.badge.color : "#d1d5db", boxShadow: earned ? `0 0 5px ${svc.badge.color}99` : "none" }} />
-                  <span style={headerLabel}>Evaluate</span>
+                  <span style={S_PANEL_HEADER_LABEL}>Evaluate</span>
                   {earned && <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: C.mono, color: svc.badge.color, background: svc.badge.bg, border: `1px solid ${svc.badge.color}40`, borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>OK</span>}
                 </div>
                 <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
@@ -6000,7 +6060,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
           <div ref={archiveRef} style={panel({ overflow: "hidden" })}>
             <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#059669" }} />
-              <span style={headerLabel}>Archival & DOIs</span>
+              <span style={S_PANEL_HEADER_LABEL}>Archival & DOIs</span>
             </div>
             {[
               { label: "Zenodo", field: "zenodo_doi" as keyof Ree, dotColor: "#3b8fd4", dotGlow: "#3b8fd499", labelColor: "#1e4d7a", labelBg: "#eff6ff", labelBorderColor: "#3b8fd425" },
@@ -6013,12 +6073,12 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                   label={r.label} value={filled ? val : null} filled={filled}
                   dotColor={r.dotColor} dotGlow={r.dotGlow} labelColor={r.labelColor} labelBg={r.labelBg} labelBorderColor={r.labelBorderColor}
                   emptyText="unregistered" isLast={i === 1}
-                  onClick={() => onNavigate && onNavigate("archive")}
+                  onClick={() => onNavigate && onNavigate(PAGE.ARCHIVE)}
                 />
               );
             })}
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
-              <button onClick={() => onNavigate && onNavigate("archive")}
+              <button onClick={() => onNavigate && onNavigate(PAGE.ARCHIVE)}
                 style={{ fontSize: 10, fontFamily: C.sans, color: "#059669", background: "#f0fdf4", border: "1px solid #6ee7b740", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -6038,7 +6098,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               <div ref={activationRef} style={panel({ overflow: "hidden" })}>
                 <div style={{ padding: "8px 12px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 5, height: 5, borderRadius: "50%", background: activationColor, boxShadow: activationEarned ? `0 0 5px ${activationColor}99` : "none" }} />
-                  <span style={headerLabel}>Test Activation</span>
+                  <span style={S_PANEL_HEADER_LABEL}>Test Activation</span>
                   {activationEarned && <span style={{ marginLeft: "auto", fontSize: 8, fontFamily: C.mono, color: activationColor, background: "#f5f3ff", border: `1px solid ${activationColor}40`, borderRadius: 2, padding: "0 4px", letterSpacing: 0.8 }}>OK</span>}
                 </div>
                 {/* activation_script field row */}
@@ -6049,7 +6109,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 />
                 {/* Go to Test Activation button */}
                 <div style={{ padding: "8px 12px" }}>
-                  <button onClick={() => onNavigate && onNavigate("activation")}
+                  <button onClick={() => onNavigate && onNavigate(PAGE.ACTIVATION)}
                     style={{ fontSize: 10, fontFamily: C.sans, color: activationColor, background: "#f5f3ff", border: `1px solid ${activationColor}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                     onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                     onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -6145,6 +6205,100 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// NAV COMPONENTS — defined at module scope so React never unmounts them on
+// Explorer re-renders (defining components inside render recreates their
+// identity every render, forcing React to unmount/remount).
+// ══════════════════════════════════════════════════════════════════════════════
+
+interface NavEntryButtonProps {
+  isActive: boolean;
+  navCollapsed: boolean;
+  title?: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+function NavEntryButton({ isActive, navCollapsed, title, onClick, children }: NavEntryButtonProps) {
+  return (
+    <button
+      title={title}
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center",
+        gap: navCollapsed ? 0 : 9,
+        padding: navCollapsed ? "8px 0" : "8px 10px",
+        justifyContent: navCollapsed ? "center" : "flex-start",
+        borderRadius: 7, border: "none", cursor: "pointer", width: "100%",
+        background: isActive ? C.accentBg : "transparent",
+        borderLeft: !navCollapsed && isActive ? `2px solid ${C.accent}` : "2px solid transparent",
+        transition: "all 0.12s", textAlign: "left",
+      }}
+      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = C.surfaceAlt; }}
+      onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+    >
+      {children}
+    </button>
+  );
+}
+
+interface ActionBtnProps {
+  title: string;
+  label: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  iconBg: string;
+  labelColor: string;
+  subtitleColor: string;
+  background: string;
+  border: string;
+  hoverBackground: string;
+  hoverBorder: string;
+  navCollapsed: boolean;
+  onClick: () => void;
+}
+function ActionBtn({
+  title, label, subtitle, icon, iconBg,
+  labelColor, subtitleColor, background, border,
+  hoverBackground, hoverBorder, navCollapsed, onClick,
+}: ActionBtnProps) {
+  return (
+    <button
+      title={navCollapsed ? title : undefined}
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center",
+        gap: navCollapsed ? 0 : 9,
+        padding: navCollapsed ? "8px 0" : "9px 10px",
+        justifyContent: navCollapsed ? "center" : "flex-start",
+        width: "100%", borderRadius: 7, cursor: "pointer",
+        background,
+        border: `1.5px solid ${border}`,
+        transition: "all 0.15s",
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = hoverBackground; e.currentTarget.style.borderColor = hoverBorder; }}
+      onMouseLeave={e => { e.currentTarget.style.background = background; e.currentTarget.style.borderColor = border; }}
+    >
+      <div style={{
+        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: iconBg, border: "none",
+      }}>
+        <span style={{ display: "flex", color: "#fff" }}>{icon}</span>
+      </div>
+      {!navCollapsed && (
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontFamily: C.sans, fontWeight: 700, color: labelColor, whiteSpace: "nowrap" }}>
+            {label}
+          </div>
+          <div style={{ fontSize: 10, color: subtitleColor, fontFamily: C.sans, marginTop: 1 }}>
+            {subtitle}
+          </div>
+        </div>
+      )}
+    </button>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // EXPLORER — shell with left nav
 // ══════════════════════════════════════════════════════════════════════════════
 interface ExplorerProps { onBack: () => void }
@@ -6158,7 +6312,7 @@ function Explorer({ onBack }: ExplorerProps) {
   const [serviceLogs, setServiceLogs] = useState<ServiceLogs>({});
   const [serviceParams, setServiceParams] = useState<ServiceParams>(() => initialServiceParams());
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [page, setPage] = useState("source"); // "source" | "metadata" | service key | "archive" | "overview" | "files"
+  const [page, setPage] = useState<ExplorerPage>(PAGE.SOURCE); // see PAGE constant for valid values
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [virtualFiles, setVirtualFiles] = useState<FileTreeNode[]>([]);
@@ -6390,14 +6544,14 @@ function Explorer({ onBack }: ExplorerProps) {
 
   // ── Workflow steps ─────────────────────────────────────────────────────────────
   const WORKFLOW_STEPS = [
-    { n: 1, key: "source", label: "Source Repo", IC: Ic.globe, svc: null, desc: "Set origin, type, and download source files" },
-    { n: 2, key: "metadata", label: "Provide Metadata", IC: Ic.grid, svc: null, desc: "Input metadata about the project" },
-    { n: 3, key: "evaluate", label: "Evaluate", IC: EVALUATE_SVC.IC, svc: EVALUATE_SVC, desc: "Score reproducibility level" },
-    { n: 4, key: "build", label: "Build Runtime", IC: Ic.cpu, svc: SERVICES.find(s => s.key === "build"), desc: "Build the runtime tarball" },
-    { n: 5, key: "sbom", label: "Generate SBOM", IC: Ic.package, svc: SERVICES.find(s => s.key === "sbom"), desc: "Scan runtime with syft" },
-    { n: 6, key: "activation", label: "Test Activation", IC: Ic.shield, svc: SERVICES.find(s => s.key === "activation"), desc: "Verify container activates" },
-    { n: 7, key: "archive", label: "Deposit & Share", IC: Ic.globe, svc: null, desc: "Archive and publish" },
-    { n: 8, key: "seal", label: "Seal", IC: Ic.lock, svc: null, desc: "Seal the REE" },
+    { n: 1, key: PAGE.SOURCE,     label: "Source Repo",     IC: Ic.globe,    svc: null,                                    desc: "Set origin, type, and download source files" },
+    { n: 2, key: PAGE.METADATA,   label: "Provide Metadata",IC: Ic.grid,     svc: null,                                    desc: "Input metadata about the project" },
+    { n: 3, key: PAGE.EVALUATE,   label: "Evaluate",        IC: EVALUATE_SVC.IC, svc: EVALUATE_SVC,                        desc: "Score reproducibility level" },
+    { n: 4, key: PAGE.BUILD,      label: "Build Runtime",   IC: Ic.cpu,      svc: SERVICES.find(s => s.key === PAGE.BUILD),      desc: "Build the runtime tarball" },
+    { n: 5, key: PAGE.SBOM,       label: "Generate SBOM",   IC: Ic.package,  svc: SERVICES.find(s => s.key === PAGE.SBOM),       desc: "Scan runtime with syft" },
+    { n: 6, key: PAGE.ACTIVATION, label: "Test Activation", IC: Ic.shield,   svc: SERVICES.find(s => s.key === PAGE.ACTIVATION), desc: "Verify container activates" },
+    { n: 7, key: PAGE.ARCHIVE,    label: "Deposit & Share", IC: Ic.globe,    svc: null,                                    desc: "Archive and publish" },
+    { n: 8, key: PAGE.SEAL,       label: "Seal",            IC: Ic.lock,     svc: null,                                    desc: "Seal the REE" },
   ];
 
   return (
@@ -6432,65 +6586,19 @@ function Explorer({ onBack }: ExplorerProps) {
           transition: "width 0.2s cubic-bezier(0.4,0,0.2,1)",
         }}>
 
-          {(() => {
-            const navEntryGap = navCollapsed ? 0 : 9;
-            const navEntryPadding = navCollapsed ? "8px 0" : "8px 10px";
-            const navEntryJustify: React.CSSProperties["justifyContent"] = navCollapsed ? "center" : "flex-start";
-
-            type NavEntryButtonProps = {
-              isActive: boolean;
-              title?: string;
-              onClick: () => void;
-              children: React.ReactNode;
-            };
-
-            type ActionBtnProps = {
-              title: string;
-              label: string;
-              subtitle: string;
-              icon: React.ReactNode;
-              iconBg: string;
-              labelColor: string;
-              subtitleColor: string;
-              background: string;
-              border: string;
-              hoverBackground: string;
-              hoverBorder: string;
-              onClick: () => void;
-            };
-
-            const NavEntryButton = ({ isActive, title, onClick, children }: NavEntryButtonProps) => (
-              <button
-                title={title}
-                onClick={onClick}
-                style={{
-                  display: "flex", alignItems: "center",
-                  gap: navEntryGap,
-                  padding: navEntryPadding,
-                  justifyContent: navEntryJustify,
-                  borderRadius: 7, border: "none", cursor: "pointer", width: "100%",
-                  background: isActive ? C.accentBg : "transparent",
-                  borderLeft: !navCollapsed && isActive ? `2px solid ${C.accent}` : "2px solid transparent",
-                  transition: "all 0.12s", textAlign: "left",
-                }}
-                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = C.surfaceAlt; }}
-                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
-              >
-                {children}
-              </button>
-            );
-
-            // Shared icon-button style factory
-            const iconBtn = (key: string, icon: React.ReactNode, label: string, subtitle?: string | null, isSquare = false) => {
+          {/* iconBtn: render helper (not a component — holds no state, safe to define inline) */}
+          {((): React.ReactNode => {
+            const iconBtn = (key: string, icon: React.ReactNode, label: string, subtitle?: string | null) => {
               const isActive = page === key;
               return (
                 <NavEntryButton
                   title={navCollapsed ? label : undefined}
-                  onClick={() => setPage(key)}
+                  onClick={() => setPage(key as ExplorerPage)}
                   isActive={isActive}
+                  navCollapsed={navCollapsed}
                 >
                   <div style={{
-                    width: 22, height: 22, borderRadius: isSquare ? 6 : 6, flexShrink: 0,
+                    width: 22, height: 22, borderRadius: 6, flexShrink: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     background: isActive ? C.accent : C.surfaceAlt,
                     border: isActive ? "none" : `1.5px solid ${C.border}`,
@@ -6517,56 +6625,6 @@ function Explorer({ onBack }: ExplorerProps) {
               );
             };
 
-            const actionBtn = ({
-              title,
-              label,
-              subtitle,
-              icon,
-              iconBg,
-              labelColor,
-              subtitleColor,
-              background,
-              border,
-              hoverBackground,
-              hoverBorder,
-              onClick,
-            }: ActionBtnProps) => (
-              <button
-                title={navCollapsed ? title : undefined}
-                onClick={onClick}
-                style={{
-                  display: "flex", alignItems: "center",
-                  gap: navCollapsed ? 0 : 9,
-                  padding: navCollapsed ? "8px 0" : "9px 10px",
-                  justifyContent: navCollapsed ? "center" : "flex-start",
-                  width: "100%", borderRadius: 7, cursor: "pointer",
-                  background,
-                  border: `1.5px solid ${border}`,
-                  transition: "all 0.15s",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = hoverBackground; e.currentTarget.style.borderColor = hoverBorder; }}
-                onMouseLeave={e => { e.currentTarget.style.background = background; e.currentTarget.style.borderColor = border; }}
-              >
-                <div style={{
-                  width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  background: iconBg, border: "none",
-                }}>
-                  <span style={{ display: "flex", color: "#fff" }}>{icon}</span>
-                </div>
-                {!navCollapsed && (
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontFamily: C.sans, fontWeight: 700, color: labelColor, whiteSpace: "nowrap" }}>
-                      {label}
-                    </div>
-                    <div style={{ fontSize: 10, color: subtitleColor, fontFamily: C.sans, marginTop: 1 }}>
-                      {subtitle}
-                    </div>
-                  </div>
-                )}
-              </button>
-            );
-
             return (
               <>
                 {/* Top toggle button */}
@@ -6589,10 +6647,10 @@ function Explorer({ onBack }: ExplorerProps) {
 
                 {/* Overview + Browse Files */}
                 <div style={{ padding: navCollapsed ? "8px 6px 4px" : "8px 8px 4px", borderBottom: `1px solid ${C.border}` }}>
-                  {iconBtn("overview", Ic.layers(12), "Overview", "pod · level · state", true)}
+                  {iconBtn("overview", Ic.layers(12), "Overview", "pod · level · state")}
                 </div>
                 <div style={{ padding: navCollapsed ? "4px 6px 8px" : "4px 8px 8px", borderBottom: `1px solid ${C.border}` }}>
-                  {iconBtn("files", Ic.files(12), "Browse Files", null, true)}
+                  {iconBtn("files", Ic.files(12), "Browse Files", null)}
                 </div>
 
                 {/* Workflow label */}
@@ -6609,10 +6667,10 @@ function Explorer({ onBack }: ExplorerProps) {
                     const isActive = page === step.key;
                     const svc = step.svc;
                     let hasRun = false;
-                    if (step.key === "source") hasRun = !!ree._sourceAvailable;
-                    else if (step.key === "metadata") hasRun = !!ree.name;
-                    else if (step.key === "overview" || step.key === "seal") hasRun = !!ree._sealedAt;
-                    else if (step.key === "archive") hasRun = !!badges["swh"] || !!badges["zenodo"] || !!badges["dataverse"];
+                    if (step.key === PAGE.SOURCE) hasRun = !!ree._sourceAvailable;
+                    else if (step.key === PAGE.METADATA) hasRun = !!ree.name;
+                    else if (step.key === PAGE.SEAL) hasRun = !!ree._sealedAt;
+                    else if (step.key === PAGE.ARCHIVE) hasRun = !!badges["swh"] || !!badges["zenodo"] || !!badges["dataverse"];
                     else hasRun = !!badges[step.key];
                     const running = svc && actionStates[step.key] === "loading";
                     const ts = timestamps[step.key];
@@ -6621,12 +6679,12 @@ function Explorer({ onBack }: ExplorerProps) {
 
                     return (
                       <div key={step.key} style={{ display: "flex", flexDirection: "column" }}>
-                        {NavEntryButton({
-                          title: navCollapsed ? `${step.n}. ${step.label}${tsShort ? ` — last run ${tsShort}` : ""}` : undefined,
-                          onClick: () => setPage(step.key),
-                          isActive,
-                          children: <>
-
+                        <NavEntryButton
+                          title={navCollapsed ? `${step.n}. ${step.label}${tsShort ? ` — last run ${tsShort}` : ""}` : undefined}
+                          onClick={() => setPage(step.key as ExplorerPage)}
+                          isActive={isActive}
+                          navCollapsed={navCollapsed}
+                        >
                           {/* Step bubble */}
                           <div style={{
                             width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
@@ -6659,8 +6717,7 @@ function Explorer({ onBack }: ExplorerProps) {
                               </div>
                             </div>
                           )}
-                          </>,
-                        })}
+                        </NavEntryButton>
 
                         {!isLast && (
                           <div style={{ marginLeft: navCollapsed ? 14 : 19, width: 2, height: 6, background: C.border, borderRadius: 99, marginTop: 1, marginBottom: 1 }} />
@@ -6678,36 +6735,38 @@ function Explorer({ onBack }: ExplorerProps) {
                 }}>
                   {/* Download button — always available (even if not sealed) */}
                   <div style={{ marginBottom: 8 }}>
-                    {actionBtn({
-                      title: "Download REE",
-                      label: "Download REE",
-                      subtitle: "export capsule.zip",
-                      icon: Ic.download(11),
-                      iconBg: "#2563eb",
-                      labelColor: "#1e3a8a",
-                      subtitleColor: C.textMuted,
-                      background: "#eef6ff",
-                      border: "#dbeafe",
-                      hoverBackground: "#e0f2ff",
-                      hoverBorder: "#93c5fd",
-                      onClick: handleDownloadRee,
-                    })}
+                    <ActionBtn
+                      title="Download REE"
+                      label="Download REE"
+                      subtitle="export capsule.zip"
+                      icon={Ic.download(11)}
+                      iconBg="#2563eb"
+                      labelColor="#1e3a8a"
+                      subtitleColor={C.textMuted}
+                      background="#eef6ff"
+                      border="#dbeafe"
+                      hoverBackground="#e0f2ff"
+                      hoverBorder="#93c5fd"
+                      navCollapsed={navCollapsed}
+                      onClick={handleDownloadRee}
+                    />
                   </div>
                   {/* Preview button — always available (even if not sealed) */}
-                  {actionBtn({
-                    title: "Preview as Reviewer",
-                    label: "Preview",
-                    subtitle: "reviewer's view",
-                    icon: Ic.star(11),
-                    iconBg: "#f59e0b",
-                    labelColor: "#92400e",
-                    subtitleColor: "#b45309",
-                    background: "#fef3c7",
-                    border: "#fde68a",
-                    hoverBackground: "#fef08a40",
-                    hoverBorder: "#f59e0b",
-                    onClick: () => setShowReviewerPreview(true),
-                  })}
+                  <ActionBtn
+                    title="Preview as Reviewer"
+                    label="Preview"
+                    subtitle="reviewer's view"
+                    icon={Ic.star(11)}
+                    iconBg="#f59e0b"
+                    labelColor="#92400e"
+                    subtitleColor="#b45309"
+                    background="#fef3c7"
+                    border="#fde68a"
+                    hoverBackground="#fef08a40"
+                    hoverBorder="#f59e0b"
+                    navCollapsed={navCollapsed}
+                    onClick={() => setShowReviewerPreview(true)}
+                  />
                 </div>
 
               </>
@@ -6729,28 +6788,15 @@ function Explorer({ onBack }: ExplorerProps) {
           </div>
           <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
 
-            {(page === "overview" || page === "seal") && (
+            {(page === PAGE.OVERVIEW || page === PAGE.SEAL) && (
               <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                <PageOverview ree={ree} onReeChange={setRee} level={level} onNavigate={key => setPage(key)} badges={badges} timestamps={timestamps} onGoField={key => {
-                  const fieldToPage: Record<string, string> = {
-                    origin_url: "source",
-                    source_type: "source",
-                    _sourceAvailable: "source",
-                    _sourceAcquiredBy: "source",
-                    runtime: "build",
-                    build_runtime_script: "build",
-                    activation_script: "activation",
-                    sbom: "sbom",
-                    swhid: "swh",
-                    zenodo_doi: "archive",
-                    dataverse_doi: "archive",
-                  };
-                  setPage(fieldToPage[String(key)] || "metadata");
+                <PageOverview ree={ree} onReeChange={setRee} level={level} onNavigate={key => setPage(key as ExplorerPage)} badges={badges} timestamps={timestamps} onGoField={key => {
+                  setPage(FIELD_TO_PAGE[String(key)] || PAGE.METADATA);
                   setFocusedField(key);
                 }} files={virtualFiles} snapshotFiles={immutableSourceSnapshotFiles} locked={locked} onSeal={handleSeal} onPreviewReviewer={() => setShowReviewerPreview(true)} onDownloadRee={ree._sealedAt ? handleDownloadRee : undefined} />
               </div>
             )}
-            {page === "source" && (
+            {page === PAGE.SOURCE && (
               <PageSourceRepoEntry
                 ree={ree}
                 onChange={setRee}
@@ -6764,17 +6810,17 @@ function Explorer({ onBack }: ExplorerProps) {
                 onRemoveWorkspaceSource={handleRemoveWorkspaceSource}
                 downloadRunning={actionStates["source"] === "loading"}
                 downloadDone={!!ree._sourceAvailable}
-                onGoService={key => setPage(key)}
+                onGoService={key => setPage(key as ExplorerPage)}
                 focusedField={focusedField}
                 setFocusedField={setFocusedField}
               />
             )}
-            {page === "metadata" && (
+            {page === PAGE.METADATA && (
               <PageMetadataEntry
                 ree={ree} onChange={setRee}
                 locked={locked} setLocked={setLocked}
                 badges={badges}
-                onGoService={key => setPage(key)}
+                onGoService={key => setPage(key as ExplorerPage)}
                 focusedField={focusedField} setFocusedField={setFocusedField}
               />
             )}
@@ -6807,10 +6853,10 @@ function Explorer({ onBack }: ExplorerProps) {
                     onGoFields={() => {
                       const sourceFieldKeys: (keyof Ree)[] = ["origin_url", "source_type", "_sourceAvailable"];
                       const hasSourceGap = missingRequirements(svc, ree).some(req => sourceFieldKeys.includes(req.field));
-                      setPage(hasSourceGap ? "source" : "metadata");
+                      setPage(hasSourceGap ? PAGE.SOURCE : PAGE.METADATA);
                     }}
                     badges={badges}
-                    onGo={key => setPage(key)}
+                    onGo={key => setPage(key as ExplorerPage)}
                     files={virtualFiles}
                     onFilesChange={setVirtualFiles}
                     onReeChange={setRee}
@@ -6821,7 +6867,7 @@ function Explorer({ onBack }: ExplorerProps) {
                 </div>
               );
             })}
-            {page === "archive" && (
+            {page === PAGE.ARCHIVE && (
               <div style={{ flex: 1, overflowY: "auto" }}>
                 <PageArchive
                   ree={ree}
@@ -6829,11 +6875,11 @@ function Explorer({ onBack }: ExplorerProps) {
                   logs={serviceLogs}
                   actionStates={actionStates}
                   onRun={runAction}
-                  onGo={key => setPage(key)}
+                  onGo={key => setPage(key as ExplorerPage)}
                 />
               </div>
             )}
-            {page === "files" && <div style={{ flex: 1, display: "flex", overflow: "hidden" }}><PageFiles files={virtualFiles} reeFiles={currentReeFiles} /></div>}
+            {page === PAGE.FILES && <div style={{ flex: 1, display: "flex", overflow: "hidden" }}><PageFiles files={virtualFiles} reeFiles={currentReeFiles} /></div>}
           </div>
         </main>
       </div>
@@ -6873,7 +6919,7 @@ function Explorer({ onBack }: ExplorerProps) {
 }
 
 // ── Landing ────────────────────────────────────────────────────────────────────
-interface LandingProps { onLoad: (page?: string) => void }
+interface LandingProps { onLoad: (page?: AppPage) => void }
 function Landing({ onLoad }: LandingProps) {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -6914,13 +6960,13 @@ function Landing({ onLoad }: LandingProps) {
             <span style={{ fontSize: 13, color: C.textMid, fontFamily: C.sans }}>Drop archive or <span style={{ color: C.accent }}>browse</span></span>
             <span style={{ fontSize: 11, color: C.textMuted, fontFamily: C.mono }}>.zip · .tar · .tar.gz</span>
           </button>
-          <button onClick={() => onLoad("explorer")} disabled={loading}
+          <button onClick={() => onLoad(APP_PAGE.EXPLORER)} disabled={loading}
             style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, cursor: "pointer", width: "100%", fontSize: 13, color: C.textMid, fontFamily: C.sans, transition: "background 0.13s, color 0.13s" }}
             onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.textMid; }}>
             ✦ Try with demo repository (Author)
           </button>
-          <button onClick={() => onLoad("reviewer")} disabled={loading}
+          <button onClick={() => onLoad(APP_PAGE.REVIEWER)} disabled={loading}
             style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, cursor: "pointer", width: "100%", fontSize: 13, color: C.textMid, fontFamily: C.sans, transition: "background 0.13s, color 0.13s" }}
             onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.textMid; }}>
@@ -7560,13 +7606,13 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
 
 
 export default function App() {
-  const [page, setPage] = useState("landing");
+  const [page, setPage] = useState<AppPage>(APP_PAGE.LANDING);
   return (
     <>
       <style>{GLOBAL_CSS}</style>
-      {page === "landing" && <Landing onLoad={p => setPage(p)} />}
-      {page === "explorer" && <Explorer onBack={() => setPage("landing")} />}
-      {page === "reviewer" && <ReviewerView onBack={() => setPage("landing")} />}
+      {page === APP_PAGE.LANDING && <Landing onLoad={p => setPage(p)} />}
+      {page === APP_PAGE.EXPLORER && <Explorer onBack={() => setPage(APP_PAGE.LANDING)} />}
+      {page === APP_PAGE.REVIEWER && <ReviewerView onBack={() => setPage(APP_PAGE.LANDING)} />}
     </>
   );
 }
