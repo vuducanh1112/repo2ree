@@ -34,9 +34,11 @@
           ];
 
           shellHook = ''
-            echo "❄️  Nix Shell Loaded"
-            echo "Node: $(node -v) | uv: $(uv --version) | kubectl: $(kubectl version --client --short 2>/dev/null || kubectl version --client)"
-            export PS1="\[\033[1;34m\][nix-shell]\[\033[0m\] \w $ " # custom the shell prompt
+            if [ -t 1 ]; then
+              echo "❄️  Nix Shell Loaded"
+              echo "Node: $(node -v) | uv: $(uv --version) | kubectl: $(kubectl version --client --short 2>/dev/null || kubectl version --client)"
+              export PS1="\[\033[1;34m\][nix-shell]\[\033[0m\] \w $ " # custom the shell prompt
+            fi
           '';
         };
       });
