@@ -4635,63 +4635,61 @@ function PageSourceRepoEntry({
             )}
 
             {repoMode === "url" && (
-              <>
-                <FieldRow
-                  fieldKey="source_type"
-                  required
-                  locked={locked}
-                  usedBy={fieldUsedBy("source_type")}
-                  onFocus={() => focus("source_type")}
-                  active={focusedField === "source_type"}
-                >
-                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    <select
-                      disabled={locked}
-                      value={originTypeDraft}
-                      onChange={(e) => {
-                        setOriginTypeDraft(e.target.value as Ree["source_type"]);
-                      }}
-                      onFocus={() => focus("source_type")}
-                      style={{ ...inp(locked), flex: 1 }}
-                    >
-                      <option value="">Select origin type</option>
-                      <option value="git">git</option>
-                      <option value="hg">hg</option>
-                      <option value="svn">svn</option>
-                      <option value="cvs">cvs</option>
-                      <option value="bzr">bzr</option>
-                      <option value="tarball">tarball</option>
-                    </select>
+              <FieldRow
+                fieldKey="source_type"
+                required
+                locked={locked}
+                usedBy={fieldUsedBy("source_type")}
+                onFocus={() => focus("source_type")}
+                active={focusedField === "source_type"}
+              >
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <select
+                    disabled={locked}
+                    value={originTypeDraft}
+                    onChange={(e) => {
+                      setOriginTypeDraft(e.target.value as Ree["source_type"]);
+                    }}
+                    onFocus={() => focus("source_type")}
+                    style={{ ...inp(locked), flex: 1 }}
+                  >
+                    <option value="">Select origin type</option>
+                    <option value="git">git</option>
+                    <option value="hg">hg</option>
+                    <option value="svn">svn</option>
+                    <option value="cvs">cvs</option>
+                    <option value="bzr">bzr</option>
+                    <option value="tarball">tarball</option>
+                  </select>
 
-                    <div>
-                      <button
-                        type="button"
-                        disabled={locked || !canDownload || downloadRunning}
-                        onClick={() => onDownloadSource(originTypeDraft)}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          padding: "8px 12px",
-                          borderRadius: 7,
-                          cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
-                          border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
-                          background: downloadDone ? "#f0fdf4" : C.accentBg,
-                          color: downloadDone ? "#15803d" : C.accent,
-                          fontSize: 13,
-                          fontWeight: 700,
-                          fontFamily: F.sans,
-                          width: "fit-content",
-                          opacity: locked || !canDownload ? 0.6 : 1,
-                        }}
-                      >
-                        {downloadRunning ? Ic.loader(13) : Ic.download(13)}
-                        {downloadLabel}
-                      </button>
-                    </div>
+                  <div>
+                    <button
+                      type="button"
+                      disabled={locked || !canDownload || downloadRunning}
+                      onClick={() => onDownloadSource(originTypeDraft)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "8px 12px",
+                        borderRadius: 7,
+                        cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
+                        border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
+                        background: downloadDone ? "#f0fdf4" : C.accentBg,
+                        color: downloadDone ? "#15803d" : C.accent,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        fontFamily: F.sans,
+                        width: "fit-content",
+                        opacity: locked || !canDownload ? 0.6 : 1,
+                      }}
+                    >
+                      {downloadRunning ? Ic.loader(13) : Ic.download(13)}
+                      {downloadLabel}
+                    </button>
                   </div>
-                </FieldRow>
-              </>
+                </div>
+              </FieldRow>
             )}
 
             <FieldRow
