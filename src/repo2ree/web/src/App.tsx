@@ -979,7 +979,7 @@ function Toast({ message, type, onClose }: ToastProps) {
     <div style={{ position: "fixed", bottom: 20, right: 20, zIndex: 2000, background: bg, border: `1px solid ${c}30`, borderLeft: `3px solid ${c}`, borderRadius: 8, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.08)", maxWidth: 340, animation: "slideIn 0.2s ease" }}>
       <span style={{ color: c, flexShrink: 0 }}>{Ic.info()}</span>
       <span style={{ fontSize: 14, color: C.text, fontFamily: F.sans, flex: 1 }}>{message}</span>
-      <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex" }}>{Ic.x()}</button>
+      <button type="button" onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex" }}>{Ic.x()}</button>
     </div>
   );
 }
@@ -1270,7 +1270,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
             const isActive = mode === t.key;
             const acc = tabAccent[t.key];
             return (
-              <button key={t.key} onClick={() => handleModeChange(t.key)}
+              <button type="button" key={t.key} onClick={() => handleModeChange(t.key)}
                 style={{
                   display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
                   background: isActive ? tabBg[t.key] : "transparent",
@@ -1296,7 +1296,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
         </div>
         {/* Right: collapse toggle (view mode only) */}
         {mode === "view" && (
-          <button onClick={() => setCollapsed(c => !c)}
+          <button type="button" onClick={() => setCollapsed(c => !c)}
             style={{ background: "none", border: "none", cursor: "pointer", padding: "8px 12px", color: C.textMuted, display: "flex", alignItems: "center" }}
             onMouseEnter={e => e.currentTarget.style.color = C.textMid}
             onMouseLeave={e => e.currentTarget.style.color = C.textMuted}
@@ -1359,7 +1359,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
                     >
                       {templates.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                     </select>
-                    <button
+                    <button type="button"
                       onClick={handleUseTemplate}
                       title="Insert selected template into editor"
                       style={{
@@ -1381,7 +1381,7 @@ function ScriptPanel({ scriptKind, fieldKey, files, onFilesChange, ree, onReeCha
 
                 {/* Save action */}
                 {(
-                  <button
+                  <button type="button"
                     onClick={handleSave}
                     disabled={!editorContent.trim()}
                     style={{
@@ -1577,7 +1577,7 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
 
           {/* Peek toggle — shown when file is matched */}
           {isValid && !disabled && (
-            <button
+            <button type="button"
               onClick={() => setPreviewOpen(o => !o)}
               title={previewOpen ? "Hide preview" : "Peek at file contents"}
               style={{
@@ -1600,7 +1600,7 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
 
           {/* Browse button */}
           {!disabled && (
-            <button
+            <button type="button"
               onClick={() => setOpen(o => !o)}
               title="Browse repository files"
               style={{
@@ -1699,7 +1699,7 @@ function FilePicker({ value, onChange, files, placeholder, disabled, onFocus, fi
                 {typeStyle.label}
               </span>
             </div>
-            <button
+            <button type="button"
               onClick={() => setPreviewOpen(false)}
               style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: "2px", borderRadius: 3 }}
               onMouseEnter={e => e.currentTarget.style.color = C.textMid}
@@ -2058,7 +2058,7 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.accent }} />
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.1, color: C.accent, textTransform: "uppercase", fontFamily: F.sans }}>Field guide</span>
         </div>
-        <button onClick={onDismiss} style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 2, borderRadius: 4 }}
+        <button type="button" onClick={onDismiss} style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 2, borderRadius: 4 }}
           onMouseEnter={e => e.currentTarget.style.color = C.text} onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
           {Ic.x(13)}
         </button>
@@ -2152,7 +2152,7 @@ function FieldTipsSidebar({ focusedField, onFocusField, onClear, tipFields, empt
             {(tipFields || []).map(fieldKey => {
               const isActive = activeField === fieldKey;
               return (
-                <button key={fieldKey} onClick={() => onFocusField(fieldKey)}
+                <button type="button" key={fieldKey} onClick={() => onFocusField(fieldKey)}
                   style={{ fontSize: 11, fontFamily: F.sans, fontWeight: 700, letterSpacing: 0.2, color: isActive ? C.accent : C.textMid, background: isActive ? C.accentBg : C.surfaceAlt, border: `1px solid ${isActive ? C.accentBorder : C.border}`, borderRadius: 99, padding: "3px 9px", cursor: "pointer" }}>
                   {FIELD_META[fieldKey]?.label || fieldKey}
                 </button>
@@ -2189,7 +2189,7 @@ function FieldTipsSidebar({ focusedField, onFocusField, onClear, tipFields, empt
               {workflowTipFields.map(fieldKey => {
                 const meta = FIELD_META[fieldKey];
                 return (
-                  <button key={fieldKey}
+                  <button type="button" key={fieldKey}
                     onClick={() => onFocusField?.(fieldKey)}
                     style={{ textAlign: "left", padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.accentBorder}`, background: C.surface, cursor: onFocusField ? "pointer" : "default", display: "flex", flexDirection: "column", gap: 3 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: C.text, fontFamily: F.sans }}>{meta?.label || fieldKey}</span>
@@ -2268,7 +2268,7 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
             style={{ ...inp(locked), paddingLeft: 32, borderColor: isDirty ? "#f59e0b" : undefined }}
           />
         </div>
-        <button
+        <button type="button"
           onClick={handleCheckReachable}
           disabled={locked || !draft.trim() || checkState === "checking"}
           style={{
@@ -2366,7 +2366,7 @@ function SourceUploadField({ locked, disabled = false, disabledReason, onCommit,
           <span style={{ color: "#16a34a", display: "flex" }}>{Ic.archive()}</span>
           <span style={{ flex: 1, fontSize: 13, fontFamily: F.mono, color: "#15803d", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{committedName}</span>
           {!locked && (
-            <button onClick={() => archiveRef.current?.click()}
+            <button type="button" onClick={() => archiveRef.current?.click()}
               disabled={inputDisabled}
               style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 5, cursor: "pointer", color: C.textMuted, fontSize: 11, fontFamily: F.sans, padding: "2px 8px", display: "flex", alignItems: "center", gap: 4 }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
@@ -2385,13 +2385,13 @@ function SourceUploadField({ locked, disabled = false, disabledReason, onCommit,
             <span style={{ flex: 1, fontSize: 13, fontFamily: F.mono, color: "#92400e", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {pending.archiveName}
             </span>
-            <button onClick={handleConfirm}
+            <button type="button" onClick={handleConfirm}
               style={{ background: "#fffbeb", border: "1.5px solid #f59e0b", borderRadius: 6, cursor: "pointer", color: "#b45309", fontSize: 12, fontWeight: 700, fontFamily: F.sans, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}
               onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.96)"}
               onMouseLeave={e => e.currentTarget.style.filter = "none"}>
               {Ic.check(11)} Add to workspace
             </button>
-            <button onClick={handleCancel}
+            <button type="button" onClick={handleCancel}
               style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 2, borderRadius: 4 }}
               onMouseEnter={e => e.currentTarget.style.color = "#dc2626"}
               onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
@@ -2526,7 +2526,7 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, usedBy, files }:
           ] as const).map(opt => {
             const isActive = mode === opt.id || (mode === "skip" && opt.id === "tarball");
             return (
-              <button key={opt.id} onClick={() => handleModeChange(opt.id)}
+              <button type="button" key={opt.id} onClick={() => handleModeChange(opt.id)}
                 disabled={locked}
                 style={{
                   flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
@@ -2692,7 +2692,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
             <div style={{ padding: "12px 0 0" }}>
               <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
                 {["url", "upload"].map(m => (
-                  <button key={m} onClick={() => {
+                  <button type="button" key={m} onClick={() => {
                     if (locked || m === repoMode) return;
                     onRepoModeChange(m);
                     if (m === "upload") setOriginTypeDraft("");
@@ -2738,7 +2738,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
                     </select>
 
                     <div>
-                      <button
+                      <button type="button"
                         disabled={locked || !canDownload || downloadRunning}
                         onClick={() => onDownloadSource(originTypeDraft)}
                         style={{
@@ -2774,7 +2774,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
             <FieldRow fieldKey="_sourceAvailable" required={false} locked={true} usedBy={[{ key: "evaluate", label: "Evaluate", color: "#7c3aed" }, { key: "build", label: "Build Runtime", color: "#0891b2" }]} onFocus={() => focus("_sourceAvailable")} active={focusedField === "_sourceAvailable"}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <button
+                <button type="button"
                   onClick={() => onGoService(PAGE.FILES)}
                   style={{
                     ...inp(false, {
@@ -2804,7 +2804,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
                     <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase", color: sourceIncluded ? C.textMid : C.textMuted, fontFamily: F.sans }}>Included</div>
                     <div style={{ fontSize: 10, fontWeight: 700, color: sourceIncluded ? "#b45309" : C.textMuted, fontFamily: F.sans }}>{sourceIncluded ? "Yes" : "No"}</div>
                   </div>
-                <button
+                <button type="button"
                   onClick={toggleSourceIncluded}
                   aria-pressed={sourceIncluded}
                   disabled={locked || !sourceInWorkspace}
@@ -2824,7 +2824,7 @@ function PageSourceRepoEntry({ ree, onChange, locked, repoMode, onRepoModeChange
                   <div style={{ position: "absolute", top: 2, left: sourceIncluded ? 18 : 2, width: 14, height: 14, borderRadius: "50%", background: "#fff", transition: "left 0.18s", boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />
                 </button>
                 {ree._sourceAvailable && (
-                  <button
+                  <button type="button"
                     disabled={locked}
                     onClick={onRemoveWorkspaceSource}
                     style={{
@@ -2910,7 +2910,7 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
             <h2 style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", fontFamily: F.sans, color: C.textMuted }}>Fields</h2>
           </div>
           {locked ? (
-            <button onClick={() => setLocked(false)}
+            <button type="button" onClick={() => setLocked(false)}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, cursor: "pointer", fontSize: 13, fontFamily: F.sans, color: "#92400e", fontWeight: 600, flexShrink: 0 }}>
               {Ic.unlock(13)} Unlock fields
             </button>
@@ -2937,7 +2937,7 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
                       onChange={e => { const ent = Object.entries(ree.hardware_description); ent[i] = [k, e.target.value]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
                       placeholder="value" style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: 1 }} />
                     {!locked && (
-                      <button onClick={() => { const ent = Object.entries(ree.hardware_description).filter((_, j) => j !== i); onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
+                      <button type="button" onClick={() => { const ent = Object.entries(ree.hardware_description).filter((_, j) => j !== i); onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
                         style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, padding: "4px", display: "flex", borderRadius: 5, flexShrink: 0 }}
                         onMouseEnter={e => { e.currentTarget.style.color = "#dc2626"; e.currentTarget.style.background = "#fef2f2"; }}
                         onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.background = "none"; }}>
@@ -2947,7 +2947,7 @@ function PageMetadataEntry({ ree, onChange, locked, setLocked, badges, onGoServi
                   </div>
                 ))}
                 {!locked && (
-                  <button onClick={() => { const ent = [...Object.entries(ree.hardware_description), ["", ""]]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
+                  <button type="button" onClick={() => { const ent = [...Object.entries(ree.hardware_description), ["", ""]]; onChange({ ...ree, hardware_description: Object.fromEntries(ent) }); }}
                     style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", background: "transparent", border: `1.5px dashed ${C.borderMid}`, borderRadius: 7, cursor: "pointer", fontSize: 13, fontFamily: F.sans, color: C.textMuted, transition: "border-color 0.14s,color 0.14s", marginTop: 4, width: "fit-content" }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderMid; e.currentTarget.style.color = C.textMuted; }}>
@@ -3012,7 +3012,7 @@ function NextStepNudge({ stepKey, badges, onGo }: NextStepNudgeProps) {
       <span style={{ fontSize: 13, color: C.textMid, fontFamily: F.sans, flex: 1 }}>
         Next step:
       </span>
-      <button onClick={() => onGo(step.nextKey)}
+      <button type="button" onClick={() => onGo(step.nextKey)}
         style={{
           display: "flex", alignItems: "center", gap: 5,
           padding: "5px 12px", borderRadius: 6, border: "none",
@@ -3105,7 +3105,7 @@ function ServiceActionSection({ color, running, runDone, disabled, idleLabel, ru
     <div style={{ padding: "20px 24px 16px", flexShrink: 0, borderBottom: `1px solid ${C.border}` }}>
       <div style={{ ...S_SECTION_LABEL, marginBottom: 14 }}>Action</div>
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={onRun} disabled={disabled}
+        <button type="button" onClick={onRun} disabled={disabled}
           style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", background: disabled ? `${color}22` : color, border: "none", borderRadius: 8, cursor: disabled ? "default" : "pointer", fontSize: 13, fontWeight: 700, color: disabled ? color : "#fff", fontFamily: F.sans, transition: "all 0.15s" }}>
           <span style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}>{running ? Ic.loader(14) : Ic.play(14)}</span>
           {buttonLabel}
@@ -3175,7 +3175,7 @@ function PageGenerateSBOM({ svc, ree, log, running, runDone, badge, ts, onRun, o
             </div>
 
             {!rt && (
-              <button onClick={() => onGo(PAGE.BUILD)}
+              <button type="button" onClick={() => onGo(PAGE.BUILD)}
                 style={{ width: "fit-content", display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontFamily: F.sans, color: sbomColor, background: `${sbomColor}12`, border: `1px solid ${sbomColor}40`, borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontWeight: 600 }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.96)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -3567,7 +3567,7 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
           { key: "range", label: `${rangeCount} range`, ...PIN_META.range },
           { key: "none", label: `${noneCount} unpinned`, ...PIN_META.none },
         ].map(s => (
-          <button key={s.key} onClick={() => setFilter(s.key)}
+          <button type="button" key={s.key} onClick={() => setFilter(s.key)}
             style={{
               fontSize: 11, fontFamily: F.sans, fontWeight: 600, color: s.color,
               background: filter === s.key ? s.bg : "transparent",
@@ -3595,7 +3595,7 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
           return (
             <div key={group.path} style={{ border: `1.5px solid ${ecoMeta.color}35`, borderRadius: 10, overflow: "hidden", background: "rgba(255,255,255,0.7)" }}>
               {/* Group header */}
-              <button onClick={() => toggle(group.path)}
+              <button type="button" onClick={() => toggle(group.path)}
                 style={{
                   width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 12px",
                   background: ecoMeta.color + "12",
@@ -3673,7 +3673,7 @@ function FileViewCard({ file, color, badge, icon }: FileViewCardProps) {
   const lines = (file.content || "").split("\n");
   return (
     <div style={{ border: `1.5px solid ${color}35`, borderRadius: 9, overflow: "hidden", marginBottom: 8 }}>
-      <button onClick={() => setOpen(o => !o)}
+      <button type="button" onClick={() => setOpen(o => !o)}
         style={{
           width: "100%", display: "flex", alignItems: "center", gap: 7, padding: "8px 11px",
           background: color + "12", borderBottom: open ? `1px solid ${color}22` : "none",
@@ -3772,7 +3772,7 @@ function PageEvaluate({ svc, ree, log, running, runDone, badge, ts, onRun, onGoF
                     <span key={r.field} style={{ fontSize: 12, fontFamily: F.sans, color: "#dc2626", background: "#fff", border: "1px solid #fecaca", borderRadius: 4, padding: "2px 8px" }}>{r.label}</span>
                   ))}
                 </div>
-                <button onClick={onGoFields} style={{ fontSize: 13, fontFamily: F.sans, color: C.accent, background: "transparent", border: `1px solid ${C.accentBorder}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
+                <button type="button" onClick={onGoFields} style={{ fontSize: 13, fontFamily: F.sans, color: C.accent, background: "transparent", border: `1px solid ${C.accentBorder}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
                   ← Go to Source Repo
                 </button>
               </div>
@@ -4237,7 +4237,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
                     <div style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: F.sans }}>{p.label}</div>
                     {p.hint && <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>{p.hint}</div>}
                     {p.type === "bool" ? (
-                      <button onClick={() => setParam(p.key, !Boolean(params[p.key]))}
+                      <button type="button" onClick={() => setParam(p.key, !Boolean(params[p.key]))}
                         style={{ width: 34, height: 19, borderRadius: 99, border: "none", cursor: "pointer", background: Boolean(params[p.key]) ? buildColor : C.borderMid, transition: "background 0.2s", position: "relative" }}>
                         <div style={{ position: "absolute", top: 2, left: Boolean(params[p.key]) ? 17 : 2, width: 15, height: 15, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.18)" }} />
                       </button>
@@ -4286,7 +4286,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
         {!showManualOverride ? (
           <div style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <button onClick={() => setShowManualOverride(true)}
+              <button type="button" onClick={() => setShowManualOverride(true)}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
                   padding: "9px 14px", borderRadius: 9,
@@ -4332,7 +4332,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
               </div>
               <RuntimeField locked={false} ree={ree} onChange={onReeChange} onFocus={() => setFocusedField("runtime")} active={false} usedBy={[]} files={files || MOCK_FILES} />
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setShowManualOverride(false)}
+                <button type="button" onClick={() => setShowManualOverride(false)}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 7,
                     padding: "7px 11px", borderRadius: 7,
@@ -4396,7 +4396,7 @@ function PageBuildRuntime({ svc, ree, log, running, runDone, badge, ts, onRun, o
                     <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.7, textTransform: "uppercase", color: includeRuntime ? "#164e63" : C.textMuted, fontFamily: F.sans }}>Included</div>
                     <div style={{ fontSize: 10, fontWeight: 700, color: includeRuntime ? "#0891b2" : C.textMuted, fontFamily: F.sans }}>{includeRuntime ? "Yes" : "No"}</div>
                   </div>
-                  <button
+                  <button type="button"
                     onClick={() => onReeChange?.({ ...ree, _runtimeIncluded: !includeRuntime })}
                     style={{ width: 34, height: 20, borderRadius: 99, border: "none", cursor: "pointer", background: includeRuntime ? "#06b6d4" : C.borderMid, transition: "background 0.2s", position: "relative", flexShrink: 0 }}>
                     <div style={{ position: "absolute", top: 2, left: includeRuntime ? 16 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.22)" }} />
@@ -4532,7 +4532,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
           const isActive = activeRepo === r.key;
           const isDone = !!badges[r.key];
           return (
-            <button key={r.key} onClick={() => setActiveRepo(r.key)}
+            <button type="button" key={r.key} onClick={() => setActiveRepo(r.key)}
               style={{
                 display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", borderRadius: 8,
                 border: `1.5px solid ${isActive ? r.color : isDone ? r.color + "40" : C.border}`,
@@ -4594,7 +4594,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                     <span style={{ fontSize: 12, color: C.textMuted }}>{p.hint}</span>
                   </div>
                   {p.type === "bool" ? (
-                    <button onClick={() => setParam(repo.key, p.key, !Boolean(getParam(repo.key, p.key)))}
+                    <button type="button" onClick={() => setParam(repo.key, p.key, !Boolean(getParam(repo.key, p.key)))}
                       style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 6, border: `1.5px solid ${Boolean(getParam(repo.key, p.key)) ? C.accent : C.border}`, background: Boolean(getParam(repo.key, p.key)) ? C.accentBg : C.bg, cursor: "pointer", width: "fit-content", transition: "all 0.15s" }}>
                       <div style={{ width: 30, height: 16, borderRadius: 99, background: Boolean(getParam(repo.key, p.key)) ? C.accent : C.borderMid, position: "relative", transition: "background 0.2s" }}>
                         <div style={{ position: "absolute", top: 2, left: Boolean(getParam(repo.key, p.key)) ? 16 : 2, width: 12, height: 12, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
@@ -4626,7 +4626,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
           )}
 
           {/* Deposit button */}
-          <button onClick={() => canRun && onRun(repo.key, Object.fromEntries(repo.params.map(p => [p.key, getParam(repo.key, p.key)])))}
+          <button type="button" onClick={() => canRun && onRun(repo.key, Object.fromEntries(repo.params.map(p => [p.key, getParam(repo.key, p.key)])))}
             disabled={!canRun}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", borderRadius: 9,
@@ -4750,7 +4750,7 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
             padding: "1px 5px", fontFamily: F.sans, flexShrink: 0
           }}>{label}</span>
         )}
-        <button onClick={copy}
+        <button type="button" onClick={copy}
           style={{
             background: "none", border: `1px solid ${C.border}`, borderRadius: 4,
             cursor: "pointer", padding: "2px 8px", fontSize: 10, fontFamily: F.sans,
@@ -4760,7 +4760,7 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
           onMouseLeave={e => { if (!copied) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textMuted; } }}>
           {copied ? "✓ copied" : "copy"}
         </button>
-        <button onClick={onClose}
+        <button type="button" onClick={onClose}
           style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, display: "flex", padding: 2, borderRadius: 4 }}
           onMouseEnter={e => e.currentTarget.style.color = C.text}
           onMouseLeave={e => e.currentTarget.style.color = C.textMuted}>
@@ -5347,7 +5347,7 @@ function PanelFieldRow({ label, value, emptyText = "not set", filled, dotColor, 
 
   return (
     <div style={{ position: "relative" }}>
-      <button
+      <button type="button"
         ref={rowRef}
         onClick={onClick}
         onMouseEnter={handleMouseEnter}
@@ -5592,7 +5592,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               <span style={S_PANEL_HEADER_LABEL}>Source</span>
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, opacity: canIncludeSource ? 1 : 0.45 }}>
                 <span style={{ fontSize: 9, fontFamily: F.sans, fontWeight: 600, color: sourceIncluded ? "#92400e" : C.textMuted, letterSpacing: 0.3 }}>{sourceIncluded ? "Included" : "Include"}</span>
-                <button onClick={toggleSource} aria-pressed={sourceIncluded} disabled={!canIncludeSource}
+                <button type="button" onClick={toggleSource} aria-pressed={sourceIncluded} disabled={!canIncludeSource}
                   style={{ width: 32, height: 16, borderRadius: 99, border: 'none', cursor: canIncludeSource ? 'pointer' : 'not-allowed', background: sourceIncluded ? '#f59e0b' : C.borderMid, position: 'relative', transition: 'all 0.18s', flexShrink: 0 }}
                   onMouseEnter={e => { if (!sourceIncluded && canIncludeSource) (e.currentTarget.style as any).filter = 'brightness(0.93)'; }}
                   onMouseLeave={e => { (e.currentTarget.style as any).filter = 'none'; }}>
@@ -5624,7 +5624,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               />
             </div>
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
-              <button onClick={() => onNavigate && onNavigate(PAGE.SOURCE)}
+              <button type="button" onClick={() => onNavigate && onNavigate(PAGE.SOURCE)}
                 style={{ fontSize: 10, fontFamily: F.sans, color: "#92400e", background: "#fffbeb", border: "1px solid #f59e0b40", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -5669,7 +5669,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               })}
             </div>
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
-              <button onClick={() => onNavigate && onNavigate(PAGE.METADATA)}
+              <button type="button" onClick={() => onNavigate && onNavigate(PAGE.METADATA)}
                 style={{ fontSize: 10, fontFamily: F.sans, color: C.text, background: "#f0fdf4", border: `1px solid ${C.border}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, marginTop: 2 }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -5685,7 +5685,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               <span style={S_PANEL_HEADER_LABEL}>Runtime</span>
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, opacity: canIncludeRuntime ? 1 : 0.45 }}>
                 <span style={{ fontSize: 9, fontFamily: F.sans, fontWeight: 600, color: runtimeIncluded ? "#164e63" : C.textMuted, letterSpacing: 0.3 }}>{runtimeIncluded ? "Included" : "Include"}</span>
-                <button onClick={toggleRuntime} aria-pressed={runtimeIncluded} disabled={!canIncludeRuntime}
+                <button type="button" onClick={toggleRuntime} aria-pressed={runtimeIncluded} disabled={!canIncludeRuntime}
                   style={{ width: 32, height: 16, borderRadius: 99, border: 'none', cursor: canIncludeRuntime ? 'pointer' : 'not-allowed', background: runtimeIncluded ? '#0891b2' : C.borderMid, position: 'relative', transition: 'all 0.18s', flexShrink: 0 }}
                   onMouseEnter={e => { if (!runtimeIncluded && canIncludeRuntime) (e.currentTarget.style as any).filter = 'brightness(0.93)'; }}
                   onMouseLeave={e => { (e.currentTarget.style as any).filter = 'none'; }}>
@@ -5716,7 +5716,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
             </div>
             {/* Go to Build Runtime button */}
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
-              <button onClick={() => onNavigate && onNavigate(PAGE.BUILD)}
+              <button type="button" onClick={() => onNavigate && onNavigate(PAGE.BUILD)}
                 style={{ fontSize: 10, fontFamily: F.sans, color: "#0891b2", background: "#ecfeff", border: "1px solid #a5f3fc", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -5759,7 +5759,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                   )}
                 </div>
                 <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
-                  <button onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
+                  <button type="button" onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
                     style={{ fontSize: 10, fontFamily: F.sans, color, background: "#f0fdf4", border: `1px solid ${color}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                     onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                     onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -5824,7 +5824,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                       ))}
                     </div>
                     {onPreviewReviewer && (
-                      <button
+                      <button type="button"
                         onClick={onPreviewReviewer}
                         style={{
                           marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
@@ -5842,7 +5842,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                       </button>
                     )}
                     {onDownloadRee && (
-                      <button
+                      <button type="button"
                         onClick={onDownloadRee}
                         style={{
                           marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
@@ -5928,7 +5928,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
 
                       {/* Actions */}
                       <div style={{ padding: "0 20px 16px", display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                        <button
+                        <button type="button"
                           onClick={() => setShowSealConfirm(false)}
                           style={{ padding: "8px 16px", borderRadius: 7, fontSize: 12, fontFamily: F.sans, fontWeight: 600, cursor: "pointer", background: C.surfaceAlt, color: C.textMid, border: `1.5px solid ${C.border}` }}
                           onMouseEnter={e => e.currentTarget.style.background = C.border}
@@ -5936,7 +5936,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                         >
                           Cancel
                         </button>
-                        <button
+                        <button type="button"
                           onClick={() => { setShowSealConfirm(false); onSeal && onSeal(); }}
                           style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", borderRadius: 7, fontSize: 12, fontFamily: F.sans, fontWeight: 700, cursor: "pointer", background: lv.color, color: "#fff", border: `1.5px solid ${lv.color}`, boxShadow: `0 2px 8px ${lv.color}50` }}
                           onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.9)"}
@@ -5977,7 +5977,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                         {allLive ? `L${level} · ${lv.label} — all panels connected` : `${missing.length} panel${missing.length !== 1 ? "s" : ""} not yet connected`}
                       </div>
                     </div>
-                    <button
+                    <button type="button"
                       onClick={() => setShowSealConfirm(true)}
                       style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 18px", borderRadius: 7, flexShrink: 0, fontSize: 12, fontFamily: F.sans, fontWeight: 700, letterSpacing: 0.3, cursor: "pointer", background: lv.color, color: "#fff", border: `1.5px solid ${lv.color}`, boxShadow: `0 2px 10px ${lv.color}50`, transition: "all 0.2s" }}
                       onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.92)"}
@@ -6011,7 +6011,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               onClick={() => onNavigate && onNavigate(PAGE.SWH)}
             />
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
-              <button onClick={() => onNavigate && onNavigate(PAGE.SWH)}
+              <button type="button" onClick={() => onNavigate && onNavigate(PAGE.SWH)}
                 style={{ fontSize: 10, fontFamily: F.sans, color: "#9a3412", background: "#fff7f5", border: "1px solid #fbd0c4", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -6052,7 +6052,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                       {earned ? "✓ score computed" : "run Evaluate"}
                     </span>
                   </div>
-                  <button onClick={() => onNavigate && onNavigate(svc.key)}
+                  <button type="button" onClick={() => onNavigate && onNavigate(svc.key)}
                     style={{ fontSize: 10, fontFamily: F.sans, color: svc.badge.color, background: svc.badge.bg, border: `1px solid ${svc.badge.color}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600 }}
                     onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                     onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -6085,7 +6085,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
               );
             })}
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
-              <button onClick={() => onNavigate && onNavigate(PAGE.ARCHIVE)}
+              <button type="button" onClick={() => onNavigate && onNavigate(PAGE.ARCHIVE)}
                 style={{ fontSize: 10, fontFamily: F.sans, color: "#059669", background: "#f0fdf4", border: "1px solid #6ee7b740", borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                 onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                 onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -6116,7 +6116,7 @@ function PageOverview({ ree, onReeChange, level, onNavigate, badges = {}, timest
                 />
                 {/* Go to Test Activation button */}
                 <div style={{ padding: "8px 12px" }}>
-                  <button onClick={() => onNavigate && onNavigate(PAGE.ACTIVATION)}
+                  <button type="button" onClick={() => onNavigate && onNavigate(PAGE.ACTIVATION)}
                     style={{ fontSize: 10, fontFamily: F.sans, color: activationColor, background: "#f5f3ff", border: `1px solid ${activationColor}40`, borderRadius: 5, padding: "4px 8px", cursor: "pointer", textAlign: "center", fontWeight: 600, width: "100%" }}
                     onMouseEnter={e => e.currentTarget.style.filter = "brightness(0.95)"}
                     onMouseLeave={e => e.currentTarget.style.filter = "none"}>
@@ -6226,7 +6226,7 @@ interface NavEntryButtonProps {
 }
 function NavEntryButton({ isActive, navCollapsed, title, onClick, children }: NavEntryButtonProps) {
   return (
-    <button
+    <button type="button"
       title={title}
       onClick={onClick}
       style={{
@@ -6268,7 +6268,7 @@ function ActionBtn({
   hoverBackground, hoverBorder, navCollapsed, onClick,
 }: ActionBtnProps) {
   return (
-    <button
+    <button type="button"
       title={navCollapsed ? title : undefined}
       onClick={onClick}
       style={{
@@ -6566,7 +6566,7 @@ function Explorer({ onBack }: ExplorerProps) {
 
       {/* Top bar */}
       <header style={{ height: 48, background: C.surface, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10, padding: "0 16px", position: "sticky", top: 0, zIndex: 100, flexShrink: 0, boxShadow: "0 1px 0 rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)" }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: C.textMuted, padding: "4px 8px", borderRadius: 6, transition: "all 0.12s" }}
+        <button type="button" onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: C.textMuted, padding: "4px 8px", borderRadius: 6, transition: "all 0.12s" }}
           onMouseEnter={e => { e.currentTarget.style.color = C.textMid; e.currentTarget.style.background = C.surfaceAlt; }}
           onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.background = "none"; }}>
           {Ic.arrowLeft()}<span style={{ fontSize: 13, fontFamily: F.sans }}>back</span>
@@ -6636,7 +6636,7 @@ function Explorer({ onBack }: ExplorerProps) {
               <>
                 {/* Top toggle button */}
                 <div style={{ padding: "6px 8px", borderBottom: `1px solid ${C.border}`, display: "flex", justifyContent: navCollapsed ? "center" : "flex-start" }}>
-                  <button
+                  <button type="button"
                     onClick={() => setNavCollapsed(c => !c)}
                     title={navCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                     style={{
@@ -6907,7 +6907,7 @@ function Explorer({ onBack }: ExplorerProps) {
             </div>
             <span style={{ fontSize: 11, color: "#475569", fontFamily: F.sans }}>— this is how a reviewer will see your sealed REE</span>
             <div style={{ flex: 1 }} />
-            <button
+            <button type="button"
               onClick={() => setShowReviewerPreview(false)}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 6, border: "1px solid #334155", background: "#1e293b", color: "#94a3b8", cursor: "pointer", fontSize: 12, fontFamily: F.sans, fontWeight: 600, transition: "all 0.15s" }}
               onMouseEnter={e => { e.currentTarget.style.background = "#334155"; e.currentTarget.style.color = "#e2e8f0"; }}
@@ -6949,7 +6949,7 @@ function Landing({ onLoad }: LandingProps) {
                 placeholder="https://github.com/org/repo"
                 style={{ width: "100%", border: `1.5px solid ${C.border}`, borderRadius: 8, padding: "8px 10px 8px 32px", fontSize: 14, fontFamily: F.mono, color: C.text, background: C.bg }} />
             </div>
-            <button onClick={go} disabled={loading}
+            <button type="button" onClick={go} disabled={loading}
               style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: F.sans, display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
               <span style={{ display: "flex", animation: loading ? "spin 0.9s linear infinite" : "none" }}>{loading ? Ic.loader() : Ic.play()}</span>
               {loading ? "…" : "Load"}
@@ -6959,7 +6959,7 @@ function Landing({ onLoad }: LandingProps) {
             <div style={{ flex: 1, height: 1, background: C.border }} /><span style={{ fontSize: 12, color: C.textMuted, fontFamily: F.mono }}>or</span><div style={{ flex: 1, height: 1, background: C.border }} />
           </div>
           <input ref={fileRef} type="file" style={{ display: "none" }} onChange={e => { if (e.target.files?.[0]) go(); }} accept=".zip,.tar,.tar.gz" />
-          <button onClick={() => fileRef.current?.click()} disabled={loading}
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={loading}
             style={{ background: C.bg, border: `1.5px dashed ${C.borderMid}`, borderRadius: 10, padding: 16, cursor: "pointer", width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "border-color 0.15s, background 0.15s" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.background = C.accentBg; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.borderMid; e.currentTarget.style.background = C.bg; }}>
@@ -6967,13 +6967,13 @@ function Landing({ onLoad }: LandingProps) {
             <span style={{ fontSize: 13, color: C.textMid, fontFamily: F.sans }}>Drop archive or <span style={{ color: C.accent }}>browse</span></span>
             <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono }}>.zip · .tar · .tar.gz</span>
           </button>
-          <button onClick={() => onLoad(APP_PAGE.EXPLORER)} disabled={loading}
+          <button type="button" onClick={() => onLoad(APP_PAGE.EXPLORER)} disabled={loading}
             style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, cursor: "pointer", width: "100%", fontSize: 13, color: C.textMid, fontFamily: F.sans, transition: "background 0.13s, color 0.13s" }}
             onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.textMid; }}>
             ✦ Try with demo repository (Author)
           </button>
-          <button onClick={() => onLoad(APP_PAGE.REVIEWER)} disabled={loading}
+          <button type="button" onClick={() => onLoad(APP_PAGE.REVIEWER)} disabled={loading}
             style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, cursor: "pointer", width: "100%", fontSize: 13, color: C.textMid, fontFamily: F.sans, transition: "background 0.13s, color 0.13s" }}
             onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.textMid; }}>
@@ -7176,7 +7176,7 @@ function MetaRow({ label, value, mono = false, href, color }: MetaRowProps) {
           </a>
           : value}
       </span>
-      <button onClick={handleCopy} title="Copy"
+      <button type="button" onClick={handleCopy} title="Copy"
         style={{ background: "none", border: "none", cursor: "pointer", color: copied ? "#22c55e" : C.textMuted, display: "flex", padding: 2, flexShrink: 0, borderRadius: 3, transition: "color 0.15s" }}
         onMouseEnter={e => e.currentTarget.style.color = C.textMid}
         onMouseLeave={e => e.currentTarget.style.color = copied ? "#22c55e" : C.textMuted}>
@@ -7246,7 +7246,7 @@ function RvStepCard({ step, index, state, log, params, onSetParam, onRun, isLast
         {!isLast && <div style={{ flex: 1, width: 2, minHeight: 20, marginTop: 4, background: done ? "#22c55e" : C.border, transition: "background 0.4s", borderRadius: 1 }} />}
       </div>
       <div style={{ flex: 1, marginBottom: isLast ? 0 : 14, background: bgCol, border: `1.5px solid ${borderCol}`, borderRadius: 10, overflow: "hidden", transition: "all 0.25s", opacity: locked ? 0.55 : 1 }}>
-        <button onClick={() => !locked && setExpanded(e => !e)} disabled={locked}
+        <button type="button" onClick={() => !locked && setExpanded(e => !e)} disabled={locked}
           style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "11px 14px", background: "transparent", border: "none", cursor: locked ? "default" : "pointer", textAlign: "left" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 1 }}>
@@ -7274,7 +7274,7 @@ function RvStepCard({ step, index, state, log, params, onSetParam, onRun, isLast
                         <div style={{ fontSize: 12, color: C.textMuted }}>{p.hint}</div>
                       </div>
                       {p.type === "bool" ? (
-                        <button onClick={() => onSetParam(step.key, p.key, !Boolean(params[p.key]))}
+                        <button type="button" onClick={() => onSetParam(step.key, p.key, !Boolean(params[p.key]))}
                           style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", background: Boolean(params[p.key]) ? step.color : C.borderMid, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
                           <div style={{ position: "absolute", top: 2, left: Boolean(params[p.key]) ? 20 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
                         </button>
@@ -7289,7 +7289,7 @@ function RvStepCard({ step, index, state, log, params, onSetParam, onRun, isLast
                 </div>
               </div>
             )}
-            <button onClick={() => onRun(step.key, params)} disabled={running}
+            <button type="button" onClick={() => onRun(step.key, params)} disabled={running}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
                 width: "100%", padding: "9px 14px", borderRadius: 8,
@@ -7445,7 +7445,7 @@ function PodOrbitControl({ level, lv, stepStates, allDone, isRunningAll, onRunAl
         <div style={{ width: 6, height: 6, borderRadius: "50%", background: lv.color, opacity: 0.35, marginTop: -1 }} />
       </div>
 
-      <button onClick={onRunAll} disabled={isRunningAll || allDone}
+      <button type="button" onClick={onRunAll} disabled={isRunningAll || allDone}
         onMouseEnter={e => { if (!isRunningAll && !allDone) e.currentTarget.style.transform = "translateY(-1px) scale(1.01)"; }}
         onMouseLeave={e => { e.currentTarget.style.transform = "none"; }}
         style={{
@@ -7528,7 +7528,7 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg }}>
       <header style={{ height: 48, background: C.surface, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10, padding: "0 16px", position: "sticky", top: 0, zIndex: 100, flexShrink: 0, boxShadow: "0 1px 0 rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)" }}>
-        <button onClick={onBack}
+        <button type="button" onClick={onBack}
           style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: C.textMuted, padding: "4px 8px", borderRadius: 6, transition: "all 0.12s" }}
           onMouseEnter={e => { e.currentTarget.style.color = C.textMid; e.currentTarget.style.background = C.surfaceAlt; }}
           onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.background = "none"; }}>
