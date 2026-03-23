@@ -1404,7 +1404,7 @@ function Toast({ message, type, onClose }: ToastProps) {
   useEffect(() => {
     const t = setTimeout(onClose, 4000);
     return () => clearTimeout(t);
-  }, []);
+  }, [onClose]);
   return (
     <div
       style={{
@@ -4494,7 +4494,7 @@ function PageSourceRepoEntry({
     if (!sourceInWorkspace && ree._sourceIncluded) {
       onChange({ ...ree, _sourceIncluded: false });
     }
-  }, [sourceInWorkspace, ree._sourceIncluded]);
+  }, [sourceInWorkspace, ree, onChange]);
 
   useEffect(() => {
     setOriginTypeDraft(ree.source_type || "");
@@ -9872,22 +9872,25 @@ function PanelCableOverlay({
 
   // Convert a point (px,py) in the pod SVG's local coordinate system to
   // coordinates relative to the overlay container.
-  function svgPtToContainer(
-    svg: SVGSVGElement,
-    container: HTMLElement,
-    px: number,
-    py: number,
-  ): { x: number; y: number } | null {
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return null;
-    const cRect = container.getBoundingClientRect();
-    return {
-      x: ctm.a * px + ctm.c * py + ctm.e - cRect.left,
-      y: ctm.b * px + ctm.d * py + ctm.f - cRect.top,
-    };
-  }
+  const svgPtToContainer = React.useCallback(
+    (
+      svg: SVGSVGElement,
+      container: HTMLElement,
+      px: number,
+      py: number,
+    ): { x: number; y: number } | null => {
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return null;
+      const cRect = container.getBoundingClientRect();
+      return {
+        x: ctm.a * px + ctm.c * py + ctm.e - cRect.left,
+        y: ctm.b * px + ctm.d * py + ctm.f - cRect.top,
+      };
+    },
+    [],
+  );
 
-  function measure() {
+  const measure = React.useCallback(() => {
     const container = containerRef.current;
     const podSvg = podSvgRef.current;
     if (!container || !podSvg) return;
@@ -9940,8 +9943,8 @@ function PanelCableOverlay({
     const activationConnected = !!(badges?.activation);
     const sourceConnected = !!(ree?._sourceAvailable);
     const runtimeConnected = !!(ree?._runtimeIncluded);
-    const sbomConnected = !!(ree && ree.sbom && ree.sbom.trim());
-    const swhConnected = !!(ree && ree.swhid && ree.swhid.trim());
+    const sbomConnected = !!(ree?.sbom?.trim());
+    const swhConnected = !!(ree?.swhid?.trim());
     const evaluateConnected = !!(badges?.evaluate);
     const sealConnected = !!(ree?._sealedAt);
 
@@ -10061,7 +10064,22 @@ function PanelCableOverlay({
     const w = cRect.width,
       h = cRect.height;
     setGeo({ cables, decoCables, w, h });
-  }
+  }, [
+    activationRef,
+    archiveRef,
+    badges,
+    containerRef,
+    evaluateRef,
+    metadataRef,
+    podSvgRef,
+    ree,
+    runtimeRef,
+    sbomRef,
+    sealRef,
+    sourceRef,
+    swhRef,
+    svgPtToContainer,
+  ]);
 
   // Re-measure whenever logical state changes (level, badges, ree fields).
   React.useEffect(() => {
@@ -10070,7 +10088,7 @@ function PanelCableOverlay({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [level, badges, ree]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [measure]);
 
   // Re-measure whenever the container or any observed element is resized.
   React.useEffect(() => {
@@ -10498,10 +10516,10 @@ function PageOverview({
     if (!sourceInWorkspace && ree._sourceIncluded) {
       onReeChange?.({ ...ree, _sourceIncluded: false });
     }
-  }, [sourceInWorkspace, ree._sourceIncluded]);
+  }, [sourceInWorkspace, ree, onReeChange]);
 
   // Runtime panel state
-  const runtimeVal = ree && ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime.trim() : "";
+  const runtimeVal = ree?.runtime && ree.runtime !== "__skipped__" ? ree.runtime.trim() : "";
   const runtimeIncluded = !!(ree?._runtimeIncluded);
   const canIncludeRuntime = !!runtimeVal;
   const toggleRuntime = () => {
@@ -10530,7 +10548,7 @@ function PageOverview({
   })();
 
   // SBOM metadata
-  const sbomVal = ree && ree.sbom ? ree.sbom.trim() : "";
+  const sbomVal = ree?.sbom ? ree.sbom.trim() : "";
   const sbomFile = sbomVal ? findFile(files, sbomVal.split("/").pop()) : null;
   const sbomMeta = (() => {
     if (!sbomFile) return null;
@@ -10723,10 +10741,10 @@ function PageOverview({
                   }}
                   onMouseEnter={(e) => {
                     if (!sourceIncluded && canIncludeSource)
-                      (e.currentTarget.style as any).filter = "brightness(0.93)";
+                      e.currentTarget.style.filter = "brightness(0.93)";
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget.style as any).filter = "none";
+                    e.currentTarget.style.filter = "none";
                   }}
                 >
                   <div
@@ -10972,10 +10990,10 @@ function PageOverview({
                   }}
                   onMouseEnter={(e) => {
                     if (!runtimeIncluded && canIncludeRuntime)
-                      (e.currentTarget.style as any).filter = "brightness(0.93)";
+                      e.currentTarget.style.filter = "brightness(0.93)";
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget.style as any).filter = "none";
+                    e.currentTarget.style.filter = "none";
                   }}
                 >
                   <div
@@ -12709,7 +12727,7 @@ function Explorer({ onBack }: ExplorerProps) {
       // If the caller provided an _expectedOutput param we record that as the produced runtime automatically.
       const runtimeTarget = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : null;
       const expectedOutput = String(
-        params && params._expectedOutput ? params._expectedOutput : "",
+        params?._expectedOutput ? params._expectedOutput : "",
       ).trim();
       const producedName = expectedOutput || runtimeTarget || "runtime.tar.gz";
       const isTarball = /\.(tar\.gz|tgz)$/i.test(producedName);
@@ -13994,7 +14012,7 @@ function ReviewLogPanel({ lines, running }: ReviewLogPanelProps) {
     }
     setDisplayed([]);
     let i = 0;
-    let timer;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     let active = true;
     const tick = () => {
       if (!active || i >= lines.length) return;
@@ -14010,6 +14028,7 @@ function ReviewLogPanel({ lines, running }: ReviewLogPanelProps) {
   }, [lines]);
 
   useEffect(() => {
+    if (displayed.length === 0) return;
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
   }, [displayed]);
 
