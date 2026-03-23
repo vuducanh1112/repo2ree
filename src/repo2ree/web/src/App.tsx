@@ -444,9 +444,10 @@ interface SvgProps {
   size?: number;
   fill?: string;
   sw?: number;
+  title?: string;
 }
 
-const Svg = ({ d, size = 15, fill = "none", sw = 1.6 }: SvgProps) => (
+const Svg = ({ d, size = 15, fill = "none", sw = 1.6, title = "icon" }: SvgProps) => (
   <svg
     width={size}
     height={size}
@@ -457,12 +458,14 @@ const Svg = ({ d, size = 15, fill = "none", sw = 1.6 }: SvgProps) => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
+    <title>{title}</title>
     <path d={d} />
   </svg>
 );
 const Ic = {
   folder: (s = 15) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
+      <title>Folder</title>
       <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
     </svg>
   ),
@@ -485,6 +488,7 @@ const Ic = {
   ),
   star: (s = 15) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <title>Star</title>
       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
     </svg>
   ),
@@ -506,6 +510,7 @@ const Ic = {
   layers: (s = 15) => <Svg size={s} d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />,
   play: (s = 15) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <title>Play</title>
       <path d="M5 3l14 9-14 9V3z" />
     </svg>
   ),
@@ -9759,6 +9764,7 @@ function PodWidget({ level, svgRef, size = 480 }: PodWidgetProps) {
         filter: `drop-shadow(0 4px 24px ${lv.color}28) drop-shadow(0 2px 8px ${POD_M.shadow})`,
       }}
     >
+      <title>Specimen Pod</title>
       <PodSphere CX={CX} CY={CY} SR={SR} level={level} />
     </svg>
   );
@@ -10084,6 +10090,7 @@ function PanelCableOverlay({
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="none"
     >
+      <title>Panel connections</title>
       <defs>
         {(decoCables || []).map((dc) => (
           <linearGradient
@@ -14754,6 +14761,7 @@ function PodOrbitControl({
           height={podSize}
           style={{ position: "absolute", inset: 0, overflow: "visible", zIndex: 2 }}
         >
+          <title>Reactivation steps</title>
           <circle
             cx={cx}
             cy={cy}
