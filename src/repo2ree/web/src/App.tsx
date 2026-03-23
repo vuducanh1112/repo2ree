@@ -1463,13 +1463,12 @@ function FileNode({
   const isFolder = node.type === "folder";
   const isSel = selectedId === node.id;
   const isHighlighted = !isFolder && highlightedPaths.has(node.name);
+  const handleNodeClick = () => (isFolder ? setOpen(!open) : onSelect(node));
   return (
     <div>
-      <div
-        onClick={() => (isFolder ? setOpen(!open) : onSelect(node))}
-        onKeyDown={(e) =>
-          triggerOnEnterOrSpace(e, () => (isFolder ? setOpen(!open) : onSelect(node)))
-        }
+      <button
+        type="button"
+        onClick={handleNodeClick}
         style={{
           display: "flex",
           alignItems: "center",
@@ -1485,6 +1484,8 @@ function FileNode({
           transition: "background 0.1s",
           userSelect: "none",
           color: isSel ? C.accent : isHighlighted ? "#92400e" : isFolder ? C.text : C.textMid,
+          textAlign: "left",
+          width: "100%",
         }}
         onMouseEnter={(e) =>
           !isSel && (e.currentTarget.style.background = isHighlighted ? "#fef3c7" : C.surfaceAlt)
@@ -1525,7 +1526,7 @@ function FileNode({
             REF
           </span>
         )}
-      </div>
+      </button>
       {isFolder &&
         open &&
         node.children?.map((c) => (
@@ -2502,10 +2503,10 @@ function FilePicker({
               </div>
             ) : (
               paths.map((p) => (
-                <div
+                <button
+                  type="button"
                   key={p}
                   onClick={() => handleSelect(p)}
-                  onKeyDown={(e) => triggerOnEnterOrSpace(e, () => handleSelect(p))}
                   style={{
                     padding: "7px 12px",
                     fontSize: 13,
@@ -2516,6 +2517,9 @@ function FilePicker({
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
+                    border: "none",
+                    textAlign: "left",
+                    width: "100%",
                   }}
                   onMouseEnter={(e) =>
                     draft !== p && (e.currentTarget.style.background = C.surfaceAlt)
@@ -2526,7 +2530,7 @@ function FilePicker({
                 >
                   <span style={{ display: "flex", opacity: 0.5 }}>{Ic.file(12)}</span>
                   {p}
-                </div>
+                </button>
               ))
             )}
           </div>
@@ -3034,23 +3038,15 @@ function FieldRow({
   const meta = FIELD_META[fieldKey] || { label: fieldKey, desc: "" };
   const tipEnabled = !!onFocus;
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: section container intentionally acts as full-surface tip target.
     <div
       id={`field-${fieldKey}`}
-      onFocus={onFocus}
-      onClick={() => onFocus?.()}
+      onClick={tipEnabled ? () => onFocus?.() : undefined}
+      role={tipEnabled ? "button" : undefined}
+      tabIndex={tipEnabled ? 0 : undefined}
       onKeyDown={(e) => {
         if (!tipEnabled) return;
         triggerOnEnterOrSpace(e, () => onFocus?.());
-      }}
-      onMouseEnter={(e) => {
-        if (!tipEnabled || active) return;
-        e.currentTarget.style.background = `${C.accentBg}45`;
-        e.currentTarget.style.borderLeftColor = C.accentBorder;
-      }}
-      onMouseLeave={(e) => {
-        if (!tipEnabled || active) return;
-        e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.borderLeftColor = "transparent";
       }}
       style={{
         display: "grid",
@@ -3912,7 +3908,7 @@ function SourceUploadField({
     setPending({ mode: "archive", archiveName: file.name });
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault();
     setDragging(false);
     if (inputDisabled) return;
@@ -3938,13 +3934,16 @@ function SourceUploadField({
       <input
         ref={archiveRef}
         type="file"
-        accept=".zip,.tar,.tar.gz,.tgz"
+        accept=".zip,.tar,.gz,.tgz,.tar.gz"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleArchive(file);
+          e.currentTarget.value = "";
+        }}
         style={{ display: "none" }}
-        onChange={(e) => handleArchive(e.target.files?.[0] as File)}
       />
 
-      {/* Committed archive */}
-      {committedName && !pending && (
+      {committedName && (
         <div
           style={{
             display: "flex",
@@ -4093,7 +4092,8 @@ function SourceUploadField({
 
       {/* Drop zone — always show if no committed file yet, or for replacement */}
       {!committedName && !pending && (
-        <div
+        <button
+          type="button"
           onDragOver={(e) => {
             e.preventDefault();
             if (!inputDisabled) setDragging(true);
@@ -4101,10 +4101,7 @@ function SourceUploadField({
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           onClick={() => !inputDisabled && archiveRef.current?.click()}
-          onKeyDown={(e) => {
-            if (inputDisabled) return;
-            triggerOnEnterOrSpace(e, () => archiveRef.current?.click());
-          }}
+          disabled={inputDisabled}
           style={{
             display: "flex",
             flexDirection: "column",
@@ -4118,6 +4115,8 @@ function SourceUploadField({
             background: dragging ? C.accentBg : C.bg,
             transition: "all 0.15s",
             opacity: inputDisabled ? 0.55 : 1,
+            width: "100%",
+            appearance: "none",
           }}
           onMouseEnter={(e) => {
             if (!inputDisabled) {
@@ -4143,7 +4142,7 @@ function SourceUploadField({
           <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono, marginTop: 4 }}>
             .zip · .tar · .tar.gz
           </span>
-        </div>
+        </button>
       )}
 
       {disabledReason && (
@@ -4217,26 +4216,18 @@ function RuntimeField({
     if (m === "skip") set("runtime", "__skipped__");
   };
 
-  const meta = FIELD_META["runtime"];
+  const meta = FIELD_META.runtime;
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: section container intentionally acts as full-surface tip target.
     <div
       id="field-runtime"
-      onFocus={onFocus}
-      onClick={() => onFocus?.()}
+      onClick={onFocus ? () => onFocus?.() : undefined}
+      role={onFocus ? "button" : undefined}
+      tabIndex={onFocus ? 0 : undefined}
       onKeyDown={(e) => {
         if (!onFocus) return;
         triggerOnEnterOrSpace(e, () => onFocus?.());
-      }}
-      onMouseEnter={(e) => {
-        if (!onFocus || active) return;
-        e.currentTarget.style.background = `${C.accentBg}45`;
-        e.currentTarget.style.borderLeftColor = C.accentBorder;
-      }}
-      onMouseLeave={(e) => {
-        if (!onFocus || active) return;
-        e.currentTarget.style.background = "transparent";
-        e.currentTarget.style.borderLeftColor = "transparent";
       }}
       style={{
         display: "grid",
@@ -4450,7 +4441,6 @@ function PageSourceRepoEntry({
   locked,
   repoMode,
   onRepoModeChange,
-  onSourceChange,
   badges,
   onDownloadSource,
   onWorkspaceUpload,
@@ -5467,6 +5457,7 @@ function PageGenerateSBOM({
           }}
         >
           {/* Step 1: Runtime input */}
+          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
           <div
             style={{
               padding: "20px 24px 16px",
@@ -5475,17 +5466,9 @@ function PageGenerateSBOM({
               ...tipTargetSectionStyle(focusedField === "runtime"),
             }}
             onClick={() => setFocusedField("runtime")}
+            role="button"
+            tabIndex={0}
             onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("runtime"))}
-            onMouseEnter={(e) => {
-              if (focusedField === "runtime") return;
-              e.currentTarget.style.background = `${C.accentBg}45`;
-              e.currentTarget.style.borderLeftColor = C.accentBorder;
-            }}
-            onMouseLeave={(e) => {
-              if (focusedField === "runtime") return;
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeftColor = "transparent";
-            }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <div style={S_SECTION_LABEL}>Step 1: Runtime Input</div>
@@ -5612,6 +5595,7 @@ function PageGenerateSBOM({
           />
 
           {/* Step 2: Produced SBOM */}
+          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
           <div
             style={{
               padding: "16px 24px",
@@ -5620,17 +5604,9 @@ function PageGenerateSBOM({
               ...tipTargetSectionStyle(focusedField === "sbom"),
             }}
             onClick={() => setFocusedField("sbom")}
+            role="button"
+            tabIndex={0}
             onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("sbom"))}
-            onMouseEnter={(e) => {
-              if (focusedField === "sbom") return;
-              e.currentTarget.style.background = `${C.accentBg}45`;
-              e.currentTarget.style.borderLeftColor = C.accentBorder;
-            }}
-            onMouseLeave={(e) => {
-              if (focusedField === "sbom") return;
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeftColor = "transparent";
-            }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <div style={S_SECTION_LABEL}>Step 2: Produced SBOM</div>
@@ -5880,9 +5856,8 @@ function PageTestActivation({
   onReeChange,
   missing,
   params,
-  setParam,
 }: ServicePageProps) {
-  const asLabel = FIELD_META["activation_script"]?.label || "Activation script";
+  const asLabel = FIELD_META.activation_script?.label || "Activation script";
   const buildColor = svc?.color || "#ef4444";
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
@@ -5922,6 +5897,7 @@ function PageTestActivation({
           }}
         >
           {/* Fields */}
+          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
           <div
             style={{
               padding: "20px 24px 16px",
@@ -5930,19 +5906,11 @@ function PageTestActivation({
               ...tipTargetSectionStyle(focusedField === "activation_script"),
             }}
             onClick={() => setFocusedField("activation_script")}
+            role="button"
+            tabIndex={0}
             onKeyDown={(e) =>
               triggerOnEnterOrSpace(e, () => setFocusedField("activation_script"))
             }
-            onMouseEnter={(e) => {
-              if (focusedField === "activation_script") return;
-              e.currentTarget.style.background = `${C.accentBg}45`;
-              e.currentTarget.style.borderLeftColor = C.accentBorder;
-            }}
-            onMouseLeave={(e) => {
-              if (focusedField === "activation_script") return;
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeftColor = "transparent";
-            }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <div style={S_SECTION_LABEL}>Fields</div>
@@ -6001,7 +5969,7 @@ function PageTestActivation({
           {/* Scripts */}
           <div style={{ padding: "16px 24px 0", flexShrink: 0 }}>
             <div style={{ ...S_SECTION_LABEL, marginBottom: 14 }}>Scripts</div>
-            {SVC_SCRIPT_FIELDS["activation"]?.map((sf) => (
+            {SVC_SCRIPT_FIELDS.activation?.map((sf) => (
               <ScriptPanel
                 key={sf.fieldKey}
                 scriptKind={sf.scriptKind || null}
@@ -6204,7 +6172,7 @@ function getManifestParser(filename: string): ((content: string) => DepPackage[]
   if (lower === "environment.yml" || lower === "environment.yaml")
     return DEP_PARSERS["environment.yml"];
   if (lower === "package.json") return DEP_PARSERS["package.json"];
-  if (lower === "pipfile") return DEP_PARSERS["Pipfile"];
+  if (lower === "pipfile") return DEP_PARSERS.Pipfile;
   return null;
 }
 
@@ -6954,6 +6922,7 @@ function PageEvaluate({
               />
 
               {/* Repro level score and ladder (Evaluate output) */}
+              {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
               <div
                 style={{
                   background: C.surface,
@@ -6972,6 +6941,8 @@ function PageEvaluate({
                   ...tipTargetSectionStyle(focusedField === "repro_level"),
                 }}
                 onClick={() => setFocusedField("repro_level")}
+                role="button"
+                tabIndex={0}
                 onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("repro_level"))}
               >
                 <div
@@ -7140,6 +7111,7 @@ function PageEvaluate({
               </div>
 
               {/* Dependency detection */}
+              {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
               <div
                 style={{
                   background: C.surface,
@@ -7158,6 +7130,8 @@ function PageEvaluate({
                   ...tipTargetSectionStyle(focusedField === "detected_dependencies"),
                 }}
                 onClick={() => setFocusedField("detected_dependencies")}
+                role="button"
+                tabIndex={0}
                 onKeyDown={(e) =>
                   triggerOnEnterOrSpace(e, () => setFocusedField("detected_dependencies"))
                 }
@@ -7657,6 +7631,7 @@ function PageBuildRuntime({
           }}
         >
           {/* BUILD SCRIPT — First step in workflow */}
+          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
           <div
             style={{
               padding: "20px 24px 16px",
@@ -7665,19 +7640,11 @@ function PageBuildRuntime({
               ...tipTargetSectionStyle(focusedField === "build_runtime_script"),
             }}
             onClick={() => setFocusedField("build_runtime_script")}
+            role="button"
+            tabIndex={0}
             onKeyDown={(e) =>
               triggerOnEnterOrSpace(e, () => setFocusedField("build_runtime_script"))
             }
-            onMouseEnter={(e) => {
-              if (focusedField === "build_runtime_script") return;
-              e.currentTarget.style.background = `${C.accentBg}45`;
-              e.currentTarget.style.borderLeftColor = C.accentBorder;
-            }}
-            onMouseLeave={(e) => {
-              if (focusedField === "build_runtime_script") return;
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeftColor = "transparent";
-            }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <div style={S_SECTION_LABEL}>Step 1: Build Script</div>
@@ -7757,6 +7724,7 @@ function PageBuildRuntime({
           </div>
 
           {/* EXPECTED OUTPUT — Second step in workflow */}
+          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
           <div
             style={{
               padding: "20px 24px 16px",
@@ -7765,17 +7733,9 @@ function PageBuildRuntime({
               ...tipTargetSectionStyle(focusedField === "runtime"),
             }}
             onClick={() => setFocusedField("runtime")}
+            role="button"
+            tabIndex={0}
             onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("runtime"))}
-            onMouseEnter={(e) => {
-              if (focusedField === "runtime") return;
-              e.currentTarget.style.background = `${C.accentBg}45`;
-              e.currentTarget.style.borderLeftColor = C.accentBorder;
-            }}
-            onMouseLeave={(e) => {
-              if (focusedField === "runtime") return;
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeftColor = "transparent";
-            }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <div style={S_SECTION_LABEL}>Step 2: Expected Output</div>
@@ -8143,6 +8103,7 @@ function PageBuildRuntime({
           )}
 
           {/* FINAL RUNTIME FIELD — Step 4 */}
+          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
           <div
             style={{
               padding: "16px 24px",
@@ -8151,17 +8112,9 @@ function PageBuildRuntime({
               ...tipTargetSectionStyle(focusedField === "runtime"),
             }}
             onClick={() => setFocusedField("runtime")}
+            role="button"
+            tabIndex={0}
             onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("runtime"))}
-            onMouseEnter={(e) => {
-              if (focusedField === "runtime") return;
-              e.currentTarget.style.background = `${C.accentBg}45`;
-              e.currentTarget.style.borderLeftColor = C.accentBorder;
-            }}
-            onMouseLeave={(e) => {
-              if (focusedField === "runtime") return;
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.borderLeftColor = "transparent";
-            }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <div style={S_SECTION_LABEL}>Step 4: Final Runtime Field</div>
@@ -11438,18 +11391,21 @@ function PageOverview({
                       alignItems: "center",
                       justifyContent: "center",
                     }}
-                    onClick={(e) => {
-                      if (e.target === e.currentTarget) setShowSealConfirm(false);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        e.preventDefault();
-                        setShowSealConfirm(false);
-                        return;
-                      }
-                      triggerOnEnterOrSpace(e, () => setShowSealConfirm(false));
-                    }}
                   >
+                    <button
+                      type="button"
+                      aria-label="Close confirmation"
+                      onClick={() => setShowSealConfirm(false)}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        margin: 0,
+                        cursor: "default",
+                      }}
+                    />
                     <div
                       style={{
                         background: C.surface,
@@ -11459,6 +11415,8 @@ function PageOverview({
                         border: `1.5px solid ${C.border}`,
                         boxShadow: "0 8px 40px rgba(0,0,0,0.22)",
                         overflow: "hidden",
+                        position: "relative",
+                        zIndex: 1,
                       }}
                     >
                       {/* Modal header */}
@@ -12093,7 +12051,7 @@ function PageOverview({
             const activationEarned = !!badges["activation"];
             const as = ree.activation_script;
             const asFilled = !!as;
-            const asLabel = FIELD_META["activation_script"]?.label || "Activation script";
+            const asLabel = FIELD_META.activation_script?.label || "Activation script";
             return (
               <div ref={activationRef} style={panel({ overflow: "hidden" })}>
                 <div
