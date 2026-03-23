@@ -2983,29 +2983,6 @@ docker run --rm --entrypoint="" ree:latest echo ok`,
   },
 };
 
-// Which fields each service reads from REE (for cross-linking)
-function svcReadableFields(svcKey: string): string[] {
-  const map = {
-    create: ["name", "origin_url"],
-    evaluate: [
-      "name",
-      "origin_url",
-      "source_type",
-      "_sourceAvailable",
-      "runtime",
-      "build_runtime_script",
-      "activation_script",
-      "sbom",
-      "swhid",
-    ],
-    build: ["_sourceAvailable", "runtime", "build_runtime_script"],
-    sbom: ["runtime", "sbom"],
-    activation: ["activation_script", "runtime"],
-    archive: ["origin_url", "sbom", "swhid"],
-  };
-  return map[svcKey] || [];
-}
-
 function missingRequirements(svc: Service, ree: Ree): ServiceRequire[] {
   return (svc.requires || []).filter((r) => !ree[r.field]);
 }
@@ -3061,7 +3038,6 @@ interface FieldRowProps {
   required?: boolean;
   children: React.ReactNode;
   locked?: boolean;
-  usedBy?: Array<{ key: string; label: string; color: string }>;
   onFocus?: () => void;
   active?: boolean;
 }
@@ -3070,7 +3046,6 @@ function FieldRow({
   required,
   children,
   locked,
-  usedBy = [],
   onFocus,
   active,
 }: FieldRowProps) {
@@ -3160,26 +3135,6 @@ function FieldRow({
         <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5, margin: "0 0 5px" }}>
           {meta.desc}
         </p>
-        {usedBy.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-            {usedBy.map((s) => (
-              <span
-                key={s.key}
-                style={{
-                  fontSize: 11,
-                  fontFamily: F.mono,
-                  color: s.color,
-                  background: `${s.color}10`,
-                  border: `1px solid ${s.color}30`,
-                  borderRadius: 3,
-                  padding: "1px 5px",
-                }}
-              >
-                {s.label}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
       <div style={{ paddingTop: 2 }}>{children}</div>
     </div>
@@ -4228,7 +4183,6 @@ interface RuntimeFieldProps {
   onChange: (ree: Ree) => void;
   onFocus?: () => void;
   active?: boolean;
-  usedBy?: Array<{ key: string; label: string; color: string }>;
   files: FileTreeNode[];
 }
 function RuntimeField({
@@ -4237,7 +4191,6 @@ function RuntimeField({
   onChange,
   onFocus,
   active,
-  usedBy,
   files,
 }: RuntimeFieldProps) {
   const val = ree.runtime || "";
@@ -4311,26 +4264,6 @@ function RuntimeField({
         <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5, margin: "0 0 5px" }}>
           {meta.desc}
         </p>
-        {usedBy && usedBy.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-            {usedBy.map((s) => (
-              <span
-                key={s.key}
-                style={{
-                  fontSize: 11,
-                  fontFamily: F.mono,
-                  color: s.color,
-                  background: `${s.color}10`,
-                  border: `1px solid ${s.color}30`,
-                  borderRadius: 3,
-                  padding: "1px 5px",
-                }}
-              >
-                {s.label}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Right: mode toggle + input */}
@@ -4517,10 +4450,6 @@ function PageSourceRepoEntry({
     }
   }, [focusedField]);
 
-  // For each field, which services use it
-  const fieldUsedBy = (fieldKey: string): Service[] =>
-    [EVALUATE_SVC, ...SERVICES].filter((s) => svcReadableFields(s.key).includes(fieldKey));
-
   const sourceFromUpload = ree._sourceAcquiredBy === "upload" && !!ree._sourceAvailable;
   const sourceFromDownload = ree._sourceAcquiredBy === "download" && !!ree._sourceAvailable;
   const sourceProvisionStatus = sourceFromUpload
@@ -4584,7 +4513,6 @@ function PageSourceRepoEntry({
             <FieldRow
               fieldKey="origin_url"
               locked={locked}
-              usedBy={fieldUsedBy("origin_url")}
               onFocus={() => focus("origin_url")}
               active={focusedField === "origin_url"}
             >
@@ -4649,7 +4577,6 @@ function PageSourceRepoEntry({
                 fieldKey="source_type"
                 required
                 locked={locked}
-                usedBy={fieldUsedBy("source_type")}
                 onFocus={() => focus("source_type")}
                 active={focusedField === "source_type"}
               >
@@ -4706,10 +4633,6 @@ function PageSourceRepoEntry({
               fieldKey="_sourceAcquiredBy"
               required={false}
               locked={true}
-              usedBy={[
-                { key: "evaluate", label: "Evaluate", color: "#7c3aed" },
-                { key: "build", label: "Build Runtime", color: "#0891b2" },
-              ]}
             >
               <input
                 disabled
@@ -4728,10 +4651,6 @@ function PageSourceRepoEntry({
               fieldKey="_sourceAvailable"
               required={false}
               locked={true}
-              usedBy={[
-                { key: "evaluate", label: "Evaluate", color: "#7c3aed" },
-                { key: "build", label: "Build Runtime", color: "#0891b2" },
-              ]}
               onFocus={() => focus("_sourceAvailable")}
               active={focusedField === "_sourceAvailable"}
             >
@@ -4943,9 +4862,6 @@ function PageMetadataEntry({
     }
   }, [focusedField]);
 
-  const fieldUsedBy = (fieldKey: string): Service[] =>
-    [EVALUATE_SVC, ...SERVICES].filter((s) => svcReadableFields(s.key).includes(fieldKey));
-
   const identityFilled = [ree.name].filter(Boolean).length;
   const hardwareFilled = Object.values(ree.hardware_description).filter((v) => v.trim?.()).length;
 
@@ -5010,7 +4926,6 @@ function PageMetadataEntry({
               fieldKey="name"
               required
               locked={locked}
-              usedBy={fieldUsedBy("name")}
               onFocus={() => focus("name")}
               active={focusedField === "name"}
             >
@@ -5035,7 +4950,6 @@ function PageMetadataEntry({
             <FieldRow
               fieldKey="hardware_description"
               locked={locked}
-              usedBy={fieldUsedBy("hardware_description")}
               onFocus={() => focus("hardware_description")}
               active={focusedField === "hardware_description"}
             >
@@ -7968,7 +7882,6 @@ function PageBuildRuntime({
                   onChange={onReeChange}
                   onFocus={() => setFocusedField("runtime")}
                   active={false}
-                  usedBy={[]}
                   files={files || MOCK_FILES}
                 />
                 <div style={{ display: "flex", gap: 8 }}>
