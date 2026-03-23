@@ -2987,18 +2987,6 @@ function missingRequirements(svc: Service, ree: Ree): ServiceRequire[] {
   return (svc.requires || []).filter((r) => !ree[r.field]);
 }
 
-function tipTargetSectionStyle(active: boolean): React.CSSProperties {
-  return {
-    cursor: "pointer",
-    background: active ? `${C.accentBg}75` : "transparent",
-    borderLeftWidth: 3,
-    borderLeftStyle: "solid",
-    borderLeftColor: active ? C.accent : "transparent",
-    boxShadow: active ? `inset 0 0 0 1px ${C.accentBorder}` : "none",
-    transition: "background 0.15s, box-shadow 0.15s, border-color 0.15s",
-  };
-}
-
 function tipTargetChip(active: boolean, idleLabel = "Click for tips"): React.ReactNode {
   return (
     <span
@@ -5405,26 +5393,18 @@ function PageGenerateSBOM({
             display: "flex",
             flexDirection: "column",
             minHeight: 0,
+            padding: "24px 28px",
+            gap: 16,
           }}
         >
           {/* Step 1: Runtime input */}
-          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
-          <div
-            style={{
-              padding: "20px 24px 16px",
-              flexShrink: 0,
-              borderBottom: `1px solid ${C.border}`,
-              ...tipTargetSectionStyle(focusedField === "runtime"),
-            }}
-            onClick={() => setFocusedField("runtime")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("runtime"))}
+          <FieldSection
+            title="Step 1: Runtime Input"
+            icon={Ic.cpu()}
+            filledCount={rt ? 1 : 0}
+            totalCount={1}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <div style={S_SECTION_LABEL}>Step 1: Runtime Input</div>
-              {tipTargetChip(focusedField === "runtime")}
-            </div>
+            <FieldRow fieldKey="runtime" onFocus={() => setFocusedField("runtime")} active={focusedField === "runtime"}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div
                 style={{
@@ -5531,7 +5511,8 @@ function PageGenerateSBOM({
                 </button>
               )}
             </div>
-          </div>
+            </FieldRow>
+          </FieldSection>
 
           <ServiceActionSection
             color={sbomColor}
@@ -5546,23 +5527,13 @@ function PageGenerateSBOM({
           />
 
           {/* Step 2: Produced SBOM */}
-          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
-          <div
-            style={{
-              padding: "16px 24px",
-              borderBottom: `1px solid ${C.border}`,
-              flexShrink: 0,
-              ...tipTargetSectionStyle(focusedField === "sbom"),
-            }}
-            onClick={() => setFocusedField("sbom")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("sbom"))}
+          <FieldSection
+            title="Step 2: Produced SBOM"
+            icon={Ic.package()}
+            filledCount={hasSbom ? 1 : 0}
+            totalCount={1}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <div style={S_SECTION_LABEL}>Step 2: Produced SBOM</div>
-              {tipTargetChip(focusedField === "sbom")}
-            </div>
+            <FieldRow fieldKey="sbom" onFocus={() => setFocusedField("sbom")} active={focusedField === "sbom"}>
 
             <div
               style={{
@@ -5735,7 +5706,8 @@ function PageGenerateSBOM({
             ) : (
               <div style={{ color: C.textMuted }}>No SBOM generated yet.</div>
             )}
-          </div>
+            </FieldRow>
+          </FieldSection>
 
           {sbomScripts.length > 0 && (
             <div style={{ padding: "16px 24px 0", flexShrink: 0 }}>
@@ -5842,28 +5814,18 @@ function PageTestActivation({
             display: "flex",
             flexDirection: "column",
             minHeight: 0,
+            padding: "24px 28px",
+            gap: 16,
           }}
         >
           {/* Fields */}
-          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
-          <div
-            style={{
-              padding: "20px 24px 16px",
-              flexShrink: 0,
-              borderBottom: `1px solid ${C.border}`,
-              ...tipTargetSectionStyle(focusedField === "activation_script"),
-            }}
-            onClick={() => setFocusedField("activation_script")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) =>
-              triggerOnEnterOrSpace(e, () => setFocusedField("activation_script"))
-            }
+          <FieldSection
+            title="Fields"
+            icon={Ic.play()}
+            filledCount={ree.activation_script ? 1 : 0}
+            totalCount={1}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <div style={S_SECTION_LABEL}>Fields</div>
-              {tipTargetChip(focusedField === "activation_script")}
-            </div>
+            <FieldRow fieldKey="activation_script" onFocus={() => setFocusedField("activation_script")} active={focusedField === "activation_script"}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -5901,7 +5863,8 @@ function PageTestActivation({
                 />
               </div>
             </div>
-          </div>
+            </FieldRow>
+          </FieldSection>
 
           <ServiceActionSection
             color={buildColor}
@@ -6628,7 +6591,7 @@ function PageEvaluate({
             padding: "24px 28px",
             display: "flex",
             flexDirection: "column",
-            gap: 0,
+            gap: 16,
           }}
         >
           {/* Missing requirements banner */}
@@ -6744,29 +6707,13 @@ function PageEvaluate({
               />
 
               {/* Repro level score and ladder (Evaluate output) */}
-              {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
-              <div
-                style={{
-                  background: C.surface,
-                  borderTopWidth: 1,
-                  borderTopStyle: "solid",
-                  borderTopColor: hasScoreOutput ? `${svc.color}55` : C.border,
-                  borderRightWidth: 1,
-                  borderRightStyle: "solid",
-                  borderRightColor: hasScoreOutput ? `${svc.color}55` : C.border,
-                  borderBottomWidth: 1,
-                  borderBottomStyle: "solid",
-                  borderBottomColor: hasScoreOutput ? `${svc.color}55` : C.border,
-                  borderRadius: 12,
-                  padding: "16px 18px",
-                  marginBottom: 20,
-                  ...tipTargetSectionStyle(focusedField === "repro_level"),
-                }}
-                onClick={() => setFocusedField("repro_level")}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("repro_level"))}
+              <FieldSection
+                title="Evaluate Output · Reproducibility Score"
+                icon={IC(14)}
+                filledCount={hasScoreOutput ? 1 : 0}
+                totalCount={1}
               >
+                <FieldRow fieldKey="repro_level" onFocus={() => setFocusedField("repro_level")} active={focusedField === "repro_level"}>
                 <div
                   style={{
                     display: "flex",
@@ -6777,12 +6724,6 @@ function PageEvaluate({
                   }}
                 >
                   <div>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 8, ...S_SECTION_LABEL }}
-                    >
-                      Evaluate Output · Reproducibility Score
-                      {tipTargetChip(focusedField === "repro_level")}
-                    </div>
                     <div
                       style={{
                         fontSize: 12,
@@ -6930,50 +6871,18 @@ function PageEvaluate({
                     );
                   })}
                 </div>
-              </div>
+                </FieldRow>
+              </FieldSection>
 
               {/* Dependency detection */}
-              {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
-              <div
-                style={{
-                  background: C.surface,
-                  borderTopWidth: 1,
-                  borderTopStyle: "solid",
-                  borderTopColor: C.border,
-                  borderRightWidth: 1,
-                  borderRightStyle: "solid",
-                  borderRightColor: C.border,
-                  borderBottomWidth: 1,
-                  borderBottomStyle: "solid",
-                  borderBottomColor: C.border,
-                  borderRadius: 12,
-                  padding: "16px 18px",
-                  marginBottom: 20,
-                  ...tipTargetSectionStyle(focusedField === "detected_dependencies"),
-                }}
-                onClick={() => setFocusedField("detected_dependencies")}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) =>
-                  triggerOnEnterOrSpace(e, () => setFocusedField("detected_dependencies"))
-                }
+              <FieldSection
+                title="Detected Dependencies"
+                icon={Ic.package()}
+                subtitle={!hasRun ? "run to scan" : undefined}
+                filledCount={depGroups.length > 0 ? 1 : 0}
+                totalCount={1}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <div style={S_SECTION_LABEL}>Detected Dependencies</div>
-                  {tipTargetChip(focusedField === "detected_dependencies")}
-                  {!hasRun && (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: C.textMuted,
-                        fontStyle: "italic",
-                        marginLeft: "auto",
-                      }}
-                    >
-                      run to scan
-                    </span>
-                  )}
-                </div>
+                <FieldRow fieldKey="detected_dependencies" onFocus={() => setFocusedField("detected_dependencies")} active={focusedField === "detected_dependencies"}>
 
                 {hasRun ? (
                   <>
@@ -7120,7 +7029,8 @@ function PageEvaluate({
                     ))}
                   </div>
                 )}
-              </div>
+                </FieldRow>
+              </FieldSection>
 
               {/* Log output */}
               <div
@@ -7447,28 +7357,18 @@ function PageBuildRuntime({
             display: "flex",
             flexDirection: "column",
             minHeight: 0,
+            padding: "24px 28px",
+            gap: 16,
           }}
         >
           {/* BUILD SCRIPT — First step in workflow */}
-          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
-          <div
-            style={{
-              padding: "20px 24px 16px",
-              flexShrink: 0,
-              borderBottom: `1px solid ${C.border}`,
-              ...tipTargetSectionStyle(focusedField === "build_runtime_script"),
-            }}
-            onClick={() => setFocusedField("build_runtime_script")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) =>
-              triggerOnEnterOrSpace(e, () => setFocusedField("build_runtime_script"))
-            }
+          <FieldSection
+            title="Step 1: Build Script"
+            icon={Ic.cpu()}
+            filledCount={ree.build_runtime_script ? 1 : 0}
+            totalCount={1}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <div style={S_SECTION_LABEL}>Step 1: Build Script</div>
-              {tipTargetChip(focusedField === "build_runtime_script")}
-            </div>
+            <FieldRow fieldKey="build_runtime_script" onFocus={() => setFocusedField("build_runtime_script")} active={focusedField === "build_runtime_script"}>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span
@@ -7540,26 +7440,17 @@ function PageBuildRuntime({
                 />
               ))}
             </div>
-          </div>
+            </FieldRow>
+          </FieldSection>
 
           {/* EXPECTED OUTPUT — Second step in workflow */}
-          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
-          <div
-            style={{
-              padding: "20px 24px 16px",
-              flexShrink: 0,
-              borderBottom: `1px solid ${C.border}`,
-              ...tipTargetSectionStyle(focusedField === "runtime"),
-            }}
-            onClick={() => setFocusedField("runtime")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("runtime"))}
+          <FieldSection
+            title="Step 2: Expected Output"
+            icon={Ic.archive()}
+            filledCount={expectedOutput ? 1 : 0}
+            totalCount={1}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <div style={S_SECTION_LABEL}>Step 2: Expected Output</div>
-              {tipTargetChip(focusedField === "runtime")}
-            </div>
+            <FieldRow fieldKey="runtime" onFocus={() => setFocusedField("runtime")} active={focusedField === "runtime"}>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span
@@ -7700,7 +7591,8 @@ function PageBuildRuntime({
                 </div>
               </div>
             )}
-          </div>
+            </FieldRow>
+          </FieldSection>
 
           {/* EXECUTION */}
           <ServiceActionSection
@@ -7921,23 +7813,13 @@ function PageBuildRuntime({
           )}
 
           {/* FINAL RUNTIME FIELD — Step 4 */}
-          {/* biome-ignore lint/a11y/useSemanticElements: section has nested controls; semantic button wrapper would be invalid. */}
-          <div
-            style={{
-              padding: "16px 24px",
-              borderBottom: `1px solid ${C.border}`,
-              flexShrink: 0,
-              ...tipTargetSectionStyle(focusedField === "runtime"),
-            }}
-            onClick={() => setFocusedField("runtime")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("runtime"))}
+          <FieldSection
+            title="Step 4: Final Runtime Field"
+            icon={Ic.archive()}
+            filledCount={finalRuntime ? 1 : 0}
+            totalCount={1}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <div style={S_SECTION_LABEL}>Step 4: Final Runtime Field</div>
-              {tipTargetChip(focusedField === "runtime")}
-            </div>
+            <FieldRow fieldKey="runtime" onFocus={() => setFocusedField("runtime")} active={focusedField === "runtime"}>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div
                 style={{
@@ -8108,7 +7990,8 @@ function PageBuildRuntime({
                   : "Set a runtime value first."}
               </div>
             </div>
-          </div>
+            </FieldRow>
+          </FieldSection>
 
           {/* Log */}
           <div
