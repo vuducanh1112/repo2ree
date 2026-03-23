@@ -1487,12 +1487,16 @@ function FileNode({
           textAlign: "left",
           width: "100%",
         }}
-        onMouseEnter={(e) =>
-          !isSel && (e.currentTarget.style.background = isHighlighted ? "#fef3c7" : C.surfaceAlt)
-        }
-        onMouseLeave={(e) =>
-          !isSel && (e.currentTarget.style.background = isHighlighted ? "#fef3c7" : "transparent")
-        }
+        onMouseEnter={(e) => {
+          if (!isSel) {
+            e.currentTarget.style.background = isHighlighted ? "#fef3c7" : C.surfaceAlt;
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isSel) {
+            e.currentTarget.style.background = isHighlighted ? "#fef3c7" : "transparent";
+          }
+        }}
       >
         {isFolder ? (
           <>
@@ -1961,8 +1965,15 @@ function ScriptPanel({
                 </div>
               ) : (
                 <div style={{ padding: "8px 0 10px" }}>
-                  {viewLines.map((line, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "baseline" }}>
+                  {(() => {
+                    let lineNumber = 0;
+                    const seenLines = new Map<string, number>();
+                    return viewLines.map((line) => {
+                      lineNumber += 1;
+                      const occurrence = (seenLines.get(line) ?? 0) + 1;
+                      seenLines.set(line, occurrence);
+                      return (
+                    <div key={`${line}::${occurrence}`} style={{ display: "flex", alignItems: "baseline" }}>
                       <span
                         style={{
                           display: "inline-block",
@@ -1977,7 +1988,7 @@ function ScriptPanel({
                           flexShrink: 0,
                         }}
                       >
-                        {i + 1}
+                        {lineNumber}
                       </span>
                       <span
                         style={{
@@ -2005,7 +2016,9 @@ function ScriptPanel({
                         {line || " "}
                       </span>
                     </div>
-                  ))}
+                      );
+                    });
+                  })()}
                 </div>
               )}
             </div>
@@ -2521,12 +2534,16 @@ function FilePicker({
                     textAlign: "left",
                     width: "100%",
                   }}
-                  onMouseEnter={(e) =>
-                    draft !== p && (e.currentTarget.style.background = C.surfaceAlt)
-                  }
-                  onMouseLeave={(e) =>
-                    draft !== p && (e.currentTarget.style.background = "transparent")
-                  }
+                  onMouseEnter={(e) => {
+                    if (draft !== p) {
+                      e.currentTarget.style.background = C.surfaceAlt;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (draft !== p) {
+                      e.currentTarget.style.background = "transparent";
+                    }
+                  }}
                 >
                   <span style={{ display: "flex", opacity: 0.5 }}>{Ic.file(12)}</span>
                   {p}
@@ -2630,55 +2647,67 @@ function FilePicker({
 
           {/* Code lines */}
           <div style={{ padding: "8px 0 6px" }}>
-            {previewLines.map((line, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 0 }}>
-                <span
-                  style={{
-                    display: "inline-block",
-                    minWidth: 36,
-                    textAlign: "right",
-                    paddingRight: 14,
-                    paddingLeft: 12,
-                    fontSize: 11,
-                    fontFamily: F.mono,
-                    color: C.borderMid,
-                    userSelect: "none",
-                    flexShrink: 0,
-                  }}
-                >
-                  {i + 1}
-                </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontFamily: F.mono,
-                    lineHeight: 1.7,
-                    color: line.startsWith("#")
-                      ? "#94a3b8"
-                      : line.startsWith("FROM") ||
-                          line.startsWith("RUN") ||
-                          line.startsWith("COPY") ||
-                          line.startsWith("CMD") ||
-                          line.startsWith("WORKDIR")
-                        ? "#0369a1"
-                        : line.startsWith("set ") ||
-                            line.startsWith("echo ") ||
-                            line.startsWith("docker ")
-                          ? "#15803d"
-                          : line.includes("=") && !line.includes("==")
-                            ? "#b45309"
-                            : C.text,
-                    whiteSpace: "pre",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    display: "block",
-                    paddingRight: 14,
-                  }}
-                >
-                  {line || " "}
-                </span>
-              </div>
-            ))}
+            {(() => {
+              let lineNumber = 0;
+              const seenLines = new Map<string, number>();
+              return previewLines.map((line) => {
+                lineNumber += 1;
+                const occurrence = (seenLines.get(line) ?? 0) + 1;
+                seenLines.set(line, occurrence);
+                return (
+                  <div
+                    key={`${line}::${occurrence}`}
+                    style={{ display: "flex", alignItems: "baseline", gap: 0 }}
+                  >
+                    <span
+                      style={{
+                        display: "inline-block",
+                        minWidth: 36,
+                        textAlign: "right",
+                        paddingRight: 14,
+                        paddingLeft: 12,
+                        fontSize: 11,
+                        fontFamily: F.mono,
+                        color: C.borderMid,
+                        userSelect: "none",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {lineNumber}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontFamily: F.mono,
+                        lineHeight: 1.7,
+                        color: line.startsWith("#")
+                          ? "#94a3b8"
+                          : line.startsWith("FROM") ||
+                              line.startsWith("RUN") ||
+                              line.startsWith("COPY") ||
+                              line.startsWith("CMD") ||
+                              line.startsWith("WORKDIR")
+                            ? "#0369a1"
+                            : line.startsWith("set ") ||
+                                line.startsWith("echo ") ||
+                                line.startsWith("docker ")
+                              ? "#15803d"
+                              : line.includes("=") && !line.includes("==")
+                                ? "#b45309"
+                                : C.text,
+                        whiteSpace: "pre",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        display: "block",
+                        paddingRight: 14,
+                      }}
+                    >
+                      {line || " "}
+                    </span>
+                  </div>
+                );
+              });
+            })()}
             {hasMore && (
               <div
                 style={{
@@ -2774,11 +2803,16 @@ function LogPanel({ log }: LogPanelProps) {
             Last run:{" "}
             {new Date(log.ts).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
           </div>
-          {log.lines.map((line, i) => {
-            const s = LOG_STYLE[line.type] || LOG_STYLE.info;
-            return (
+          {(() => {
+            const seenLines = new Map<string, number>();
+            return log.lines.map((line) => {
+              const lineSig = `${line.type}:${line.msg}`;
+              const occurrence = (seenLines.get(lineSig) ?? 0) + 1;
+              seenLines.set(lineSig, occurrence);
+              const s = LOG_STYLE[line.type] || LOG_STYLE.info;
+              return (
               <div
-                key={i}
+                key={`${lineSig}::${occurrence}`}
                 style={{
                   display: "flex",
                   padding: "3px 18px",
@@ -2803,8 +2837,9 @@ function LogPanel({ log }: LogPanelProps) {
                 </span>
                 <span style={{ color: s.color }}>{line.msg}</span>
               </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       )}
     </div>
@@ -3439,8 +3474,8 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
             Commands
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {meta.toolCommands.map((tc, i) => (
-              <div key={i}>
+            {meta.toolCommands.map((tc) => (
+              <div key={`${tc.label}:${tc.cmd}`}>
                 <div
                   style={{ fontSize: 11, color: C.textMuted, fontFamily: F.sans, marginBottom: 4 }}
                 >
@@ -3483,9 +3518,9 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
             Tools
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {meta.tools.map((t, i) => (
+            {meta.tools.map((t) => (
               <a
-                key={i}
+                key={t.url}
                 href={t.url}
                 target="_blank"
                 rel="noreferrer"
@@ -3614,8 +3649,8 @@ function FieldTipsSidebar({
             </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {generalTips.map((tip, i) => (
-              <p key={i} style={{ margin: 0, fontSize: 12, color: C.textMid, lineHeight: 1.55 }}>
+            {generalTips.map((tip) => (
+              <p key={tip} style={{ margin: 0, fontSize: 12, color: C.textMid, lineHeight: 1.55 }}>
                 {tip}
               </p>
             ))}
@@ -5004,7 +5039,7 @@ function PageMetadataEntry({
             >
               <div style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
                 {Object.entries(ree.hardware_description).map(([k, v], i) => (
-                  <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div key={k} style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <input
                       disabled={locked}
                       value={k}
@@ -5963,7 +5998,7 @@ function PageTestActivation({
             idleLabel="Run activation"
             runningLabel="Running…"
             helperText="Runs the activation test script in the runtime environment."
-            onRun={() => onRun && onRun(PAGE.ACTIVATION, params)}
+            onRun={() => onRun?.(PAGE.ACTIVATION, params)}
           />
 
           {/* Scripts */}
@@ -6442,7 +6477,7 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
                     const pm = PIN_META[pkg.pinned] || PIN_META.none;
                     return (
                       <div
-                        key={i}
+                        key={`${pkg.name}:${pkg.version ?? ""}:${pkg.raw}`}
                         style={{
                           display: "grid",
                           gridTemplateColumns: "1fr 130px 80px",
@@ -6618,8 +6653,15 @@ function FileViewCard({ file, color, badge, icon }: FileViewCardProps) {
       </button>
       {open && (
         <div style={{ maxHeight: 180, overflowY: "auto", background: C.surface }}>
-          {lines.map((line, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "baseline" }}>
+          {(() => {
+            let lineNumber = 0;
+            const seenLines = new Map<string, number>();
+            return lines.map((line) => {
+              lineNumber += 1;
+              const occurrence = (seenLines.get(line) ?? 0) + 1;
+              seenLines.set(line, occurrence);
+              return (
+            <div key={`${line}::${occurrence}`} style={{ display: "flex", alignItems: "baseline" }}>
               <span
                 style={{
                   minWidth: 32,
@@ -6633,7 +6675,7 @@ function FileViewCard({ file, color, badge, icon }: FileViewCardProps) {
                   flexShrink: 0,
                 }}
               >
-                {i + 1}
+                {lineNumber}
               </span>
               <span
                 style={{
@@ -6659,7 +6701,9 @@ function FileViewCard({ file, color, badge, icon }: FileViewCardProps) {
                 {line || " "}
               </span>
             </div>
-          ))}
+              );
+            });
+          })()}
         </div>
       )}
     </div>
@@ -8368,9 +8412,9 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
   // ID assigned after archival
   const assignedId = ree[repo.idField] as string | undefined;
 
-  const buildDone = !!badges["build"];
-  const sbomDone = !!badges["sbom"];
-  const activationDone = !!badges["activation"];
+  const buildDone = !!badges.build;
+  const sbomDone = !!badges.sbom;
+  const activationDone = !!badges.activation;
   const capstoneReady = buildDone && sbomDone && activationDone;
 
   return (
@@ -8690,6 +8734,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                 <div key={p.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
                     <label
+                      htmlFor={`repo-${repo.key}-param-${p.key}`}
                       style={{
                         fontSize: 13,
                         fontWeight: 600,
@@ -8703,6 +8748,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                   </div>
                   {p.type === "bool" ? (
                     <button
+                      id={`repo-${repo.key}-param-${p.key}`}
                       type="button"
                       onClick={() => setParam(repo.key, p.key, !getParam(repo.key, p.key))}
                       style={{
@@ -8753,6 +8799,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                     </button>
                   ) : p.type === "select" ? (
                     <select
+                      id={`repo-${repo.key}-param-${p.key}`}
                       value={String(getParam(repo.key, p.key) ?? "")}
                       onChange={(e) => setParam(repo.key, p.key, e.target.value)}
                       style={{
@@ -8773,6 +8820,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                     </select>
                   ) : (
                     <input
+                      id={`repo-${repo.key}-param-${p.key}`}
                       value={String(getParam(repo.key, p.key) ?? "")}
                       onChange={(e) => setParam(repo.key, p.key, e.target.value)}
                       style={{
@@ -9056,8 +9104,16 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
       </div>
       {/* Lines */}
       <div style={{ overflowY: "auto", flex: 1, padding: "8px 0" }}>
-        {lines.map((line, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "baseline" }}>
+        {(() => {
+          const lineCounts = new Map<string, number>();
+          return lines.map((line, i) => {
+            const n = lineCounts.get(line) ?? 0;
+            lineCounts.set(line, n + 1);
+            return (
+              <div
+                key={`dockerfile-line-${line}-${n}`}
+                style={{ display: "flex", alignItems: "baseline" }}
+              >
             <span
               style={{
                 minWidth: 40,
@@ -9073,7 +9129,7 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
             >
               {i + 1}
             </span>
-            <span
+                <span
               style={{
                 fontSize: 12,
                 fontFamily: F.mono,
@@ -9093,9 +9149,11 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
               }}
             >
               {line || " "}
-            </span>
-          </div>
-        ))}
+                </span>
+              </div>
+            );
+          });
+        })()}
       </div>
     </div>
   );
@@ -9327,7 +9385,7 @@ interface PodBoltRingProps {
 function PodBoltRing({ cx, cy, r, n = 8, bR = 4.5 }: PodBoltRingProps) {
   return Array.from({ length: n }).map((_, i) => {
     const a = (i / n) * Math.PI * 2 - Math.PI / 2;
-    return <PodBolt key={i} cx={cx + r * Math.cos(a)} cy={cy + r * Math.sin(a)} r={bR} />;
+    return <PodBolt key={`bolt-${a}`} cx={cx + r * Math.cos(a)} cy={cy + r * Math.sin(a)} r={bR} />;
   });
 }
 
@@ -9492,7 +9550,7 @@ function PodDepGraph({ level, lv }: PodDepGraphProps) {
           nb = cfg.nodes[b];
         return (
           <line
-            key={i}
+            key={`${a}-${b}`}
             x1={na.x}
             y1={na.y}
             x2={nb.x}
@@ -9504,7 +9562,7 @@ function PodDepGraph({ level, lv }: PodDepGraphProps) {
         );
       })}
       {cfg.nodes.map((n, i) => (
-        <g key={i}>
+        <g key={`${n.x}-${n.y}-${n.r}`}>
           <circle
             cx={n.x}
             cy={n.y}
@@ -9597,7 +9655,7 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
         const a = (i / 10) * Math.PI * 2;
         return Math.abs(Math.cos(a)) < 0.92 ? (
           <PodBolt
-            key={i}
+            key={`outer-bolt-${a}`}
             cx={CX + (SR - 5) * Math.cos(a)}
             cy={CY + SR * 0.13 * Math.sin(a)}
             r={3.8}
@@ -9678,7 +9736,7 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
         const px = CX + SR * 0.82 * Math.cos((s.a * Math.PI) / 180),
           py = CY + SR * 0.82 * Math.sin((s.a * Math.PI) / 180);
         return (
-          <g key={i}>
+          <g key={s.a}>
             <rect
               x={px - 5}
               y={py - 5}
@@ -11288,7 +11346,7 @@ function PageOverview({
                     <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 2 }}>
                       {cableItems.map((c, i) => (
                         <div
-                          key={i}
+                          key={c.label}
                           title={c.label}
                           style={{
                             flex: 1,
@@ -11644,7 +11702,7 @@ function PageOverview({
                     <div style={{ flex: 1, display: "flex", gap: 3, alignItems: "center" }}>
                       {cableItems.map((c, i) => (
                         <div
-                          key={i}
+                          key={c.label}
                           title={c.label}
                           style={{
                             flex: 1,
@@ -12141,7 +12199,7 @@ function PageOverview({
           const isCurrent = i === level;
           const isLast = i === LEVELS.length - 1;
           return (
-            <React.Fragment key={i}>
+            <React.Fragment key={lv.n}>
               <div
                 style={{
                   display: "flex",
@@ -13608,6 +13666,7 @@ function Landing({ onLoad }: LandingProps) {
           }}
         >
           <label
+            htmlFor="repo-url-input"
             style={{
               fontSize: 11,
               letterSpacing: 1.4,
@@ -13632,6 +13691,7 @@ function Landing({ onLoad }: LandingProps) {
                 {Ic.link()}
               </div>
               <input
+                id="repo-url-input"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && url.trim() && go()}
@@ -13983,14 +14043,22 @@ function ReviewLogPanel({ lines, running }: ReviewLogPanelProps) {
       {displayed.length === 0 && !running && (
         <span style={{ color: "#4a5568", fontStyle: "italic" }}>Output will appear here…</span>
       )}
-      {displayed.map((l, i) => (
-        <div key={i} style={{ color: typeColor[l.type] || "#e2e8f0" }}>
+      {(() => {
+        const seenLines = new Map<string, number>();
+        return displayed.map((l) => {
+          const lineSig = `${l.type}:${l.msg}`;
+          const occurrence = (seenLines.get(lineSig) ?? 0) + 1;
+          seenLines.set(lineSig, occurrence);
+          return (
+        <div key={`${lineSig}::${occurrence}`} style={{ color: typeColor[l.type] || "#e2e8f0" }}>
           <span style={{ color: typeColor[l.type] || "#64748b", userSelect: "none" }}>
             {typePrefix[l.type] || "  "}
           </span>
           {l.msg}
         </div>
-      ))}
+          );
+        });
+      })()}
       {running && (
         <div
           style={{ color: "#64748b", display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}
@@ -14603,7 +14671,7 @@ function RvProvenanceChain({ ree }: RvProvenanceChainProps) {
       {nodes.map((n, i) => {
         const set = !!n.value;
         return (
-          <div key={i} style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
+          <div key={n.label} style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
             <div
               style={{
                 display: "flex",
