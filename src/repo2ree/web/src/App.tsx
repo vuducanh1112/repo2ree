@@ -261,6 +261,16 @@ function findVirtualFileByName(nodes: FileTreeNode[], name: string): FileTreeNod
   return walk(nodes || []);
 }
 
+function triggerOnEnterOrSpace(
+  event: React.KeyboardEvent<HTMLElement>,
+  action: () => void,
+): void {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    action();
+  }
+}
+
 function normalizeSnapshotArchiveName(rawName: string): string {
   const trimmed = (rawName || "").trim();
   if (!trimmed) return "source.tar.gz";
@@ -1457,6 +1467,9 @@ function FileNode({
     <div>
       <div
         onClick={() => (isFolder ? setOpen(!open) : onSelect(node))}
+        onKeyDown={(e) =>
+          triggerOnEnterOrSpace(e, () => (isFolder ? setOpen(!open) : onSelect(node)))
+        }
         style={{
           display: "flex",
           alignItems: "center",
@@ -2492,6 +2505,7 @@ function FilePicker({
                 <div
                   key={p}
                   onClick={() => handleSelect(p)}
+                  onKeyDown={(e) => triggerOnEnterOrSpace(e, () => handleSelect(p))}
                   style={{
                     padding: "7px 12px",
                     fontSize: 13,
@@ -3024,6 +3038,10 @@ function FieldRow({
       id={`field-${fieldKey}`}
       onFocus={onFocus}
       onClick={() => onFocus?.()}
+      onKeyDown={(e) => {
+        if (!tipEnabled) return;
+        triggerOnEnterOrSpace(e, () => onFocus?.());
+      }}
       onMouseEnter={(e) => {
         if (!tipEnabled || active) return;
         e.currentTarget.style.background = `${C.accentBg}45`;
@@ -4083,6 +4101,10 @@ function SourceUploadField({
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           onClick={() => !inputDisabled && archiveRef.current?.click()}
+          onKeyDown={(e) => {
+            if (inputDisabled) return;
+            triggerOnEnterOrSpace(e, () => archiveRef.current?.click());
+          }}
           style={{
             display: "flex",
             flexDirection: "column",
@@ -4202,6 +4224,10 @@ function RuntimeField({
       id="field-runtime"
       onFocus={onFocus}
       onClick={() => onFocus?.()}
+      onKeyDown={(e) => {
+        if (!onFocus) return;
+        triggerOnEnterOrSpace(e, () => onFocus?.());
+      }}
       onMouseEnter={(e) => {
         if (!onFocus || active) return;
         e.currentTarget.style.background = `${C.accentBg}45`;
@@ -5278,7 +5304,8 @@ function ServicePageHeader({
             </span>
           )}
           {missingCount > 0 && (
-            <span
+            <button
+              type="button"
               style={{
                 fontSize: 11,
                 color: "#dc2626",
@@ -5294,7 +5321,7 @@ function ServicePageHeader({
               onClick={onGoFields}
             >
               {Ic.info(10)} {missingCount} missing field{missingCount > 1 ? "s" : ""} ← fix
-            </span>
+            </button>
           )}
         </div>
         <div style={{ fontSize: 12, color: C.textMuted, marginTop: 1 }}>{subtitle}</div>
@@ -5448,6 +5475,7 @@ function PageGenerateSBOM({
               ...tipTargetSectionStyle(focusedField === "runtime"),
             }}
             onClick={() => setFocusedField("runtime")}
+            onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("runtime"))}
             onMouseEnter={(e) => {
               if (focusedField === "runtime") return;
               e.currentTarget.style.background = `${C.accentBg}45`;
@@ -5592,6 +5620,7 @@ function PageGenerateSBOM({
               ...tipTargetSectionStyle(focusedField === "sbom"),
             }}
             onClick={() => setFocusedField("sbom")}
+            onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("sbom"))}
             onMouseEnter={(e) => {
               if (focusedField === "sbom") return;
               e.currentTarget.style.background = `${C.accentBg}45`;
@@ -5901,6 +5930,9 @@ function PageTestActivation({
               ...tipTargetSectionStyle(focusedField === "activation_script"),
             }}
             onClick={() => setFocusedField("activation_script")}
+            onKeyDown={(e) =>
+              triggerOnEnterOrSpace(e, () => setFocusedField("activation_script"))
+            }
             onMouseEnter={(e) => {
               if (focusedField === "activation_script") return;
               e.currentTarget.style.background = `${C.accentBg}45`;
@@ -6760,7 +6792,8 @@ function PageEvaluate({
               </span>
             )}
             {missing.length > 0 && (
-              <span
+              <button
+                type="button"
                 onClick={onGoFields}
                 style={{
                   fontSize: 11,
@@ -6776,7 +6809,7 @@ function PageEvaluate({
                 }}
               >
                 {Ic.info(10)} {missing.length} missing field{missing.length > 1 ? "s" : ""} ← fix
-              </span>
+              </button>
             )}
           </div>
           <div style={{ fontSize: 12, color: C.textMuted, marginTop: 1 }}>{svc.desc}</div>
@@ -6939,6 +6972,7 @@ function PageEvaluate({
                   ...tipTargetSectionStyle(focusedField === "repro_level"),
                 }}
                 onClick={() => setFocusedField("repro_level")}
+                onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("repro_level"))}
               >
                 <div
                   style={{
@@ -7124,6 +7158,9 @@ function PageEvaluate({
                   ...tipTargetSectionStyle(focusedField === "detected_dependencies"),
                 }}
                 onClick={() => setFocusedField("detected_dependencies")}
+                onKeyDown={(e) =>
+                  triggerOnEnterOrSpace(e, () => setFocusedField("detected_dependencies"))
+                }
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                   <div style={S_SECTION_LABEL}>Detected Dependencies</div>
@@ -7628,6 +7665,9 @@ function PageBuildRuntime({
               ...tipTargetSectionStyle(focusedField === "build_runtime_script"),
             }}
             onClick={() => setFocusedField("build_runtime_script")}
+            onKeyDown={(e) =>
+              triggerOnEnterOrSpace(e, () => setFocusedField("build_runtime_script"))
+            }
             onMouseEnter={(e) => {
               if (focusedField === "build_runtime_script") return;
               e.currentTarget.style.background = `${C.accentBg}45`;
@@ -7725,6 +7765,7 @@ function PageBuildRuntime({
               ...tipTargetSectionStyle(focusedField === "runtime"),
             }}
             onClick={() => setFocusedField("runtime")}
+            onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("runtime"))}
             onMouseEnter={(e) => {
               if (focusedField === "runtime") return;
               e.currentTarget.style.background = `${C.accentBg}45`;
@@ -8110,6 +8151,7 @@ function PageBuildRuntime({
               ...tipTargetSectionStyle(focusedField === "runtime"),
             }}
             onClick={() => setFocusedField("runtime")}
+            onKeyDown={(e) => triggerOnEnterOrSpace(e, () => setFocusedField("runtime"))}
             onMouseEnter={(e) => {
               if (focusedField === "runtime") return;
               e.currentTarget.style.background = `${C.accentBg}45`;
@@ -11398,6 +11440,14 @@ function PageOverview({
                     }}
                     onClick={(e) => {
                       if (e.target === e.currentTarget) setShowSealConfirm(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setShowSealConfirm(false);
+                        return;
+                      }
+                      triggerOnEnterOrSpace(e, () => setShowSealConfirm(false));
                     }}
                   >
                     <div
