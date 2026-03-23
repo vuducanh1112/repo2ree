@@ -1821,12 +1821,6 @@ function ScriptPanel({
   const tabAccent: Record<ScriptPanelMode, string> = { view: "#16a34a", write: "#7c3aed" };
   const tabBg: Record<ScriptPanelMode, string> = { view: "#f0fdf4", write: "#f5f3ff" };
 
-  // PR button label & forge icon
-  const prHost = isGitHub ? "GitHub" : isGitLab ? "GitLab" : null;
-  const prColor = isGitHub ? "#24292f" : "#fc6d26";
-  const prBg = isGitHub ? "#f6f8fa" : "#fff4ef";
-  const prBorder = isGitHub ? "#d0d7de" : "#fdb58b";
-
   return (
     <div
       style={{
@@ -5161,7 +5155,7 @@ interface NextStepNudgeProps {
   badges: Badges;
   onGo: (key: string) => void;
 }
-function NextStepNudge({ stepKey, badges, onGo }: NextStepNudgeProps) {
+function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
   const STEPS = [
     { key: PAGE.SOURCE, nextKey: PAGE.METADATA, nextLabel: "Provide Metadata", cond: () => true },
     { key: PAGE.METADATA, nextKey: "evaluate", nextLabel: "Evaluate", cond: () => true },
@@ -6728,7 +6722,6 @@ function PageEvaluate({
   files,
   missing,
   params,
-  setParam,
 }: ServicePageProps) {
   const depGroups = scanDependencies(files || MOCK_FILES);
   const hasRun = !!log;
@@ -9545,7 +9538,7 @@ function PodDepGraph({ level, lv }: PodDepGraphProps) {
   const cfg = POD_GRAPHS[level];
   return (
     <g>
-      {cfg.edges.map(([a, b], i) => {
+      {cfg.edges.map(([a, b]) => {
         const na = cfg.nodes[a],
           nb = cfg.nodes[b];
         return (
@@ -9561,7 +9554,7 @@ function PodDepGraph({ level, lv }: PodDepGraphProps) {
           />
         );
       })}
-      {cfg.nodes.map((n, i) => (
+      {cfg.nodes.map((n) => (
         <g key={`${n.x}-${n.y}-${n.r}`}>
           <circle
             cx={n.x}
@@ -9732,7 +9725,7 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
         { a: 55, col: level >= 4 ? "#0ea5e9" : POD_M.shadow },
         { a: 125, col: level >= 7 ? "#059669" : POD_M.shadow },
         { a: 235, col: POD_M.shadow },
-      ].map((s, i) => {
+      ].map((s) => {
         const px = CX + SR * 0.82 * Math.cos((s.a * Math.PI) / 180),
           py = CY + SR * 0.82 * Math.sin((s.a * Math.PI) / 180);
         return (
@@ -9944,13 +9937,13 @@ function PanelCableOverlay({
         (f) => ree && !!ree[f],
       ).length >= 2;
     const archiveConnected = !!(ree && (ree.zenodo_doi || ree.dataverse_doi));
-    const activationConnected = !!(badges && badges["activation"]);
-    const sourceConnected = !!(ree && ree._sourceAvailable);
-    const runtimeConnected = !!(ree && ree._runtimeIncluded);
+    const activationConnected = !!(badges?.activation);
+    const sourceConnected = !!(ree?._sourceAvailable);
+    const runtimeConnected = !!(ree?._runtimeIncluded);
     const sbomConnected = !!(ree && ree.sbom && ree.sbom.trim());
     const swhConnected = !!(ree && ree.swhid && ree.swhid.trim());
-    const evaluateConnected = !!(badges && badges["evaluate"]);
-    const sealConnected = !!(ree && ree._sealedAt);
+    const evaluateConnected = !!(badges?.evaluate);
+    const sealConnected = !!(ree?._sealedAt);
 
     const panelSpecs: PanelCableSpec[] = [
       {
@@ -10053,7 +10046,6 @@ function PanelCableOverlay({
 
     // Decorative cables — computed in pod-SVG space then mapped to container coords.
     // These are rendered first in the overlay SVG so they sit behind everything.
-    const SVG_W = 580;
     const decoCables = DECO_ANCHORS.map((anc) => {
       const sa = (anc.angle * Math.PI) / 180;
       // Start: sphere surface in pod-SVG coords
@@ -10499,22 +10491,22 @@ function PageOverview({
   const canIncludeSource = sourceInWorkspace;
   const toggleSource = () => {
     if (!canIncludeSource) return;
-    onReeChange && onReeChange({ ...ree, _sourceIncluded: !sourceIncluded });
+    onReeChange?.({ ...ree, _sourceIncluded: !sourceIncluded });
   };
 
   useEffect(() => {
     if (!sourceInWorkspace && ree._sourceIncluded) {
-      onReeChange && onReeChange({ ...ree, _sourceIncluded: false });
+      onReeChange?.({ ...ree, _sourceIncluded: false });
     }
   }, [sourceInWorkspace, ree._sourceIncluded]);
 
   // Runtime panel state
   const runtimeVal = ree && ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime.trim() : "";
-  const runtimeIncluded = !!(ree && ree._runtimeIncluded);
+  const runtimeIncluded = !!(ree?._runtimeIncluded);
   const canIncludeRuntime = !!runtimeVal;
   const toggleRuntime = () => {
     if (!canIncludeRuntime) return;
-    onReeChange && onReeChange({ ...ree, _runtimeIncluded: !runtimeIncluded });
+    onReeChange?.({ ...ree, _runtimeIncluded: !runtimeIncluded });
   };
 
   // Find runtime file in virtual tree and get its mock size
@@ -10763,7 +10755,7 @@ function PageOverview({
                 labelColor="#92400e"
                 labelBg="#fffbeb"
                 labelBorderColor="#f59e0b25"
-                onClick={() => onGoField && onGoField("origin_url")}
+                onClick={() => onGoField?.("origin_url")}
               />
               <PanelFieldRow
                 label="Origin Provisioning Status"
@@ -10774,7 +10766,7 @@ function PageOverview({
                 labelColor="#92400e"
                 labelBg="#fffbeb"
                 labelBorderColor="#f59e0b25"
-                onClick={() => onGoField && onGoField("_sourceAcquiredBy")}
+                onClick={() => onGoField?.("_sourceAcquiredBy")}
               />
               <PanelFieldRow
                 label="Origin Type"
@@ -10785,7 +10777,7 @@ function PageOverview({
                 labelColor="#92400e"
                 labelBg="#fffbeb"
                 labelBorderColor="#f59e0b25"
-                onClick={() => onGoField && onGoField("source_type")}
+                onClick={() => onGoField?.("source_type")}
               />
               <PanelFieldRow
                 label="Files"
@@ -10804,13 +10796,13 @@ function PageOverview({
                 labelBorderColor="#f59e0b25"
                 emptyText="not downloaded"
                 isLast
-                onClick={() => onNavigate && onNavigate(PAGE.SOURCE)}
+                onClick={() => onNavigate?.(PAGE.SOURCE)}
               />
             </div>
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
               <button
                 type="button"
-                onClick={() => onNavigate && onNavigate(PAGE.SOURCE)}
+                onClick={() => onNavigate?.(PAGE.SOURCE)}
                 style={{
                   fontSize: 10,
                   fontFamily: F.sans,
@@ -10898,7 +10890,7 @@ function PageOverview({
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
               <button
                 type="button"
-                onClick={() => onNavigate && onNavigate(PAGE.METADATA)}
+                onClick={() => onNavigate?.(PAGE.METADATA)}
                 style={{
                   fontSize: 10,
                   fontFamily: F.sans,
@@ -11013,7 +11005,7 @@ function PageOverview({
                 labelBg="#ecfeff"
                 labelBorderColor="#0891b225"
                 emptyText="not set"
-                onClick={() => onNavigate && onNavigate(PAGE.BUILD)}
+                onClick={() => onNavigate?.(PAGE.BUILD)}
               />
               {runtimeSizeStr && (
                 <PanelFieldRow
@@ -11025,7 +11017,7 @@ function PageOverview({
                   labelColor="#164e63"
                   labelBg="#ecfeff"
                   labelBorderColor="#0891b225"
-                  onClick={() => onNavigate && onNavigate(PAGE.BUILD)}
+                  onClick={() => onNavigate?.(PAGE.BUILD)}
                 />
               )}
               <PanelFieldRow
@@ -11039,14 +11031,14 @@ function PageOverview({
                 labelBorderColor="#0891b225"
                 emptyText="not set"
                 isLast
-                onClick={() => onGoField && onGoField("build_runtime_script")}
+                onClick={() => onGoField?.("build_runtime_script")}
               />
             </div>
             {/* Go to Build Runtime button */}
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
               <button
                 type="button"
-                onClick={() => onNavigate && onNavigate(PAGE.BUILD)}
+                onClick={() => onNavigate?.(PAGE.BUILD)}
                 style={{
                   fontSize: 10,
                   fontFamily: F.sans,
@@ -11070,7 +11062,7 @@ function PageOverview({
 
           {/* SBOM panel */}
           {(() => {
-            const earned = !!(badges && badges["sbom"]);
+            const earned = !!(badges?.sbom);
             const color = "#16a34a";
             return (
               <div ref={sbomRef} style={panel({ overflow: "hidden" })}>
@@ -11122,7 +11114,7 @@ function PageOverview({
                     labelBg="#f0fdf4"
                     labelBorderColor="#16a34a25"
                     emptyText="not set"
-                    onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
+                    onClick={() => onNavigate?.(PAGE.SBOM)}
                   />
                   {sbomMeta?.fmt && (
                     <PanelFieldRow
@@ -11134,7 +11126,7 @@ function PageOverview({
                       labelColor="#15803d"
                       labelBg="#f0fdf4"
                       labelBorderColor="#16a34a25"
-                      onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
+                      onClick={() => onNavigate?.(PAGE.SBOM)}
                     />
                   )}
                   {sbomMeta?.pkgCount != null && (
@@ -11148,14 +11140,14 @@ function PageOverview({
                       labelBg="#f0fdf4"
                       labelBorderColor="#16a34a25"
                       isLast
-                      onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
+                      onClick={() => onNavigate?.(PAGE.SBOM)}
                     />
                   )}
                 </div>
                 <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
                   <button
                     type="button"
-                    onClick={() => onNavigate && onNavigate(PAGE.SBOM)}
+                    onClick={() => onNavigate?.(PAGE.SBOM)}
                     style={{
                       fontSize: 10,
                       fontFamily: F.sans,
@@ -11214,7 +11206,7 @@ function PageOverview({
               { key: "runtime", label: "Runtime", live: !!ree._runtimeIncluded },
               { key: "swh", label: "Software Heritage", live: !!ree.swhid },
               { key: "sbom", label: "SBOM", live: !!ree.sbom },
-              { key: "evaluate", label: "Evaluate", live: !!(badges && badges["evaluate"]) },
+              { key: "evaluate", label: "Evaluate", live: !!(badges?.evaluate) },
               {
                 key: "archive",
                 label: "Archival & DOIs",
@@ -11223,7 +11215,7 @@ function PageOverview({
               {
                 key: "activation",
                 label: "Test Activation",
-                live: !!(badges && badges["activation"]),
+                live: !!(badges?.activation),
               },
             ];
             const liveCount = cableItems.filter((c) => c.live).length;
@@ -11344,7 +11336,7 @@ function PageOverview({
                       </span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 2 }}>
-                      {cableItems.map((c, i) => (
+                      {cableItems.map((c) => (
                         <div
                           key={c.label}
                           title={c.label}
@@ -11639,7 +11631,7 @@ function PageOverview({
                           type="button"
                           onClick={() => {
                             setShowSealConfirm(false);
-                            onSeal && onSeal();
+                            onSeal?.();
                           }}
                           style={{
                             display: "flex",
@@ -11700,7 +11692,7 @@ function PageOverview({
                       {liveCount}/{totalCables} connected
                     </span>
                     <div style={{ flex: 1, display: "flex", gap: 3, alignItems: "center" }}>
-                      {cableItems.map((c, i) => (
+                      {cableItems.map((c) => (
                         <div
                           key={c.label}
                           title={c.label}
@@ -11867,12 +11859,12 @@ function PageOverview({
               labelBorderColor="#e4572e25"
               emptyText="not archived"
               isLast
-              onClick={() => onNavigate && onNavigate(PAGE.SWH)}
+              onClick={() => onNavigate?.(PAGE.SWH)}
             />
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
               <button
                 type="button"
-                onClick={() => onNavigate && onNavigate(PAGE.SWH)}
+                onClick={() => onNavigate?.(PAGE.SWH)}
                 style={{
                   fontSize: 10,
                   fontFamily: F.sans,
@@ -12002,7 +11994,7 @@ function PageOverview({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onNavigate && onNavigate(svc.key)}
+                    onClick={() => onNavigate?.(svc.key)}
                     style={{
                       fontSize: 10,
                       fontFamily: F.sans,
@@ -12074,14 +12066,14 @@ function PageOverview({
                   labelBorderColor={r.labelBorderColor}
                   emptyText="unregistered"
                   isLast={i === 1}
-                  onClick={() => onNavigate && onNavigate(PAGE.ARCHIVE)}
+                  onClick={() => onNavigate?.(PAGE.ARCHIVE)}
                 />
               );
             })}
             <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
               <button
                 type="button"
-                onClick={() => onNavigate && onNavigate(PAGE.ARCHIVE)}
+                onClick={() => onNavigate?.(PAGE.ARCHIVE)}
                 style={{
                   fontSize: 10,
                   fontFamily: F.sans,
@@ -12106,7 +12098,7 @@ function PageOverview({
           {/* Test Activation panel */}
           {(() => {
             const activationColor = "#7c3aed";
-            const activationEarned = !!badges["activation"];
+            const activationEarned = !!badges?.activation;
             const as = ree.activation_script;
             const asFilled = !!as;
             const asLabel = FIELD_META.activation_script?.label || "Activation script";
@@ -12160,13 +12152,13 @@ function PageOverview({
                   labelBg="#f5f3ff"
                   labelBorderColor="#7c3aed25"
                   isLast
-                  onClick={() => onGoField && onGoField("activation_script")}
+                  onClick={() => onGoField?.("activation_script")}
                 />
                 {/* Go to Test Activation button */}
                 <div style={{ padding: "8px 12px" }}>
                   <button
                     type="button"
-                    onClick={() => onNavigate && onNavigate(PAGE.ACTIVATION)}
+                    onClick={() => onNavigate?.(PAGE.ACTIVATION)}
                     style={{
                       fontSize: 10,
                       fontFamily: F.sans,
@@ -13130,8 +13122,8 @@ function Explorer({ onBack }: ExplorerProps) {
                     else if (step.key === PAGE.METADATA) hasRun = !!ree.name;
                     else if (step.key === PAGE.SEAL) hasRun = !!ree._sealedAt;
                     else if (step.key === PAGE.ARCHIVE)
-                      hasRun = !!badges["swh"] || !!badges["zenodo"] || !!badges["dataverse"];
-                    else hasRun = !!badges[step.key];
+                      hasRun = !!badges?.swh || !!badges?.zenodo || !!badges?.dataverse;
+                    else hasRun = !!badges?.[step.key];
                     const running = svc && actionStates[step.key] === "loading";
                     const ts = timestamps[step.key];
                     const tsShort = ts
@@ -13408,7 +13400,7 @@ function Explorer({ onBack }: ExplorerProps) {
                 onDownloadSource={(originType) => handleDownloadSourceFiles(originType)}
                 onWorkspaceUpload={handleWorkspaceUpload}
                 onRemoveWorkspaceSource={handleRemoveWorkspaceSource}
-                downloadRunning={actionStates["source"] === "loading"}
+                downloadRunning={actionStates.source === "loading"}
                 downloadDone={!!ree._sourceAvailable}
                 onGoService={(key) => setPage(key as ExplorerPage)}
                 focusedField={focusedField}
