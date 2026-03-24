@@ -671,6 +671,11 @@ const S_SECTION_LABEL: React.CSSProperties = {
   fontWeight: 700,
 };
 
+const S_SECTION_LABEL_SMALL: React.CSSProperties = {
+  ...S_SECTION_LABEL,
+  fontSize: 9,
+};
+
 /** Card-style surface panel (no overflow setting — callers spread extras in). */
 const S_PANEL: React.CSSProperties = {
   background: C.surface,
@@ -3266,12 +3271,9 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.accent }} />
           <span
             style={{
-              fontSize: 11,
-              fontWeight: 700,
+              ...S_SECTION_LABEL,
               letterSpacing: 1.1,
               color: C.accent,
-              textTransform: "uppercase",
-              fontFamily: F.sans,
             }}
           >
             Field guide
@@ -3308,12 +3310,8 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
         <div style={{ marginBottom: 16 }}>
           <div
             style={{
-              fontSize: 11,
-              fontWeight: 700,
+              ...S_SECTION_LABEL,
               letterSpacing: 0.8,
-              color: C.textMuted,
-              textTransform: "uppercase",
-              fontFamily: F.sans,
               marginBottom: 6,
             }}
           >
@@ -3341,12 +3339,8 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
         <div style={{ marginBottom: 16 }}>
           <div
             style={{
-              fontSize: 11,
-              fontWeight: 700,
+              ...S_SECTION_LABEL,
               letterSpacing: 0.8,
-              color: C.textMuted,
-              textTransform: "uppercase",
-              fontFamily: F.sans,
               marginBottom: 6,
             }}
           >
@@ -3371,12 +3365,8 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
         <div style={{ marginBottom: 16 }}>
           <div
             style={{
-              fontSize: 11,
-              fontWeight: 700,
+              ...S_SECTION_LABEL,
               letterSpacing: 0.8,
-              color: C.textMuted,
-              textTransform: "uppercase",
-              fontFamily: F.sans,
               marginBottom: 6,
             }}
           >
@@ -3402,12 +3392,8 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
         <div style={{ marginBottom: 16 }}>
           <div
             style={{
-              fontSize: 11,
-              fontWeight: 700,
+              ...S_SECTION_LABEL,
               letterSpacing: 0.8,
-              color: C.textMuted,
-              textTransform: "uppercase",
-              fontFamily: F.sans,
               marginBottom: 8,
             }}
           >
@@ -3446,12 +3432,8 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
         <div>
           <div
             style={{
-              fontSize: 11,
-              fontWeight: 700,
+              ...S_SECTION_LABEL,
               letterSpacing: 0.8,
-              color: C.textMuted,
-              textTransform: "uppercase",
-              fontFamily: F.sans,
               marginBottom: 8,
             }}
           >
@@ -3532,12 +3514,8 @@ function FieldTipsSidebar({
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div
             style={{
-              fontSize: 11,
-              fontWeight: 700,
+              ...S_SECTION_LABEL,
               letterSpacing: 1.1,
-              color: C.textMuted,
-              textTransform: "uppercase",
-              fontFamily: F.sans,
             }}
           >
             Tips
@@ -3577,12 +3555,9 @@ function FieldTipsSidebar({
             <span style={{ color: C.textMid, display: "flex" }}>{Ic.info(13)}</span>
             <span
               style={{
-                fontSize: 11,
-                fontWeight: 700,
+                ...S_SECTION_LABEL,
                 letterSpacing: 0.8,
                 color: C.textMid,
-                textTransform: "uppercase",
-                fontFamily: F.sans,
               }}
             >
               {generalTitle}
@@ -3616,12 +3591,9 @@ function FieldTipsSidebar({
             <span style={{ color: C.accent, display: "flex" }}>{Ic.info(13)}</span>
             <span
               style={{
-                fontSize: 11,
-                fontWeight: 700,
+                ...S_SECTION_LABEL,
                 letterSpacing: 0.8,
                 color: C.accent,
-                textTransform: "uppercase",
-                fontFamily: F.sans,
               }}
             >
               Workflow tips
@@ -4690,12 +4662,9 @@ function PageSourceRepoEntry({
                     <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                       <div
                         style={{
-                          fontSize: 9,
-                          fontWeight: 700,
+                          ...S_SECTION_LABEL_SMALL,
                           letterSpacing: 0.7,
-                          textTransform: "uppercase",
                           color: sourceIncluded ? C.textMid : C.textMuted,
-                          fontFamily: F.sans,
                         }}
                       >
                         Included
@@ -5446,11 +5415,8 @@ function PageGenerateSBOM({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
-                      fontSize: 9,
-                      fontWeight: 700,
+                      ...S_SECTION_LABEL_SMALL,
                       letterSpacing: 0.8,
-                      fontFamily: F.sans,
-                      textTransform: "uppercase",
                       color: rt ? sbomColor : C.textMuted,
                       opacity: 0.7,
                       marginBottom: 1,
@@ -5576,11 +5542,8 @@ function PageGenerateSBOM({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    fontSize: 9,
-                    fontWeight: 700,
+                    ...S_SECTION_LABEL_SMALL,
                     letterSpacing: 0.8,
-                    fontFamily: F.sans,
-                    textTransform: "uppercase",
                     color: hasSbom ? "#16a34a" : C.textMuted,
                     opacity: 0.7,
                     marginBottom: 1,
@@ -6407,12 +6370,9 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
                       <span
                         key={h}
                         style={{
+                          ...S_SECTION_LABEL,
                           fontSize: 10,
-                          fontWeight: 700,
                           letterSpacing: 0.8,
-                          color: C.textMuted,
-                          textTransform: "uppercase",
-                          fontFamily: F.sans,
                         }}
                       >
                         {h}
@@ -7033,11 +6993,8 @@ function PageEvaluate({
             {/* Log output */}
             <div
               style={{
-                fontSize: 11,
+                ...S_SECTION_LABEL,
                 letterSpacing: 1.3,
-                color: C.textMuted,
-                fontFamily: F.sans,
-                textTransform: "uppercase",
                 fontWeight: 600,
                 marginBottom: 8,
               }}
@@ -7151,11 +7108,8 @@ function RuntimeOutputNode({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
-              fontSize: 9,
-              fontWeight: 700,
+              ...S_SECTION_LABEL_SMALL,
               letterSpacing: 0.8,
-              fontFamily: F.sans,
-              textTransform: "uppercase",
               color: col.text,
               opacity: 0.7,
               marginBottom: 1,
@@ -7716,11 +7670,8 @@ function PageBuildRuntime({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
-                        fontSize: 9,
-                        fontWeight: 700,
+                        ...S_SECTION_LABEL_SMALL,
                         letterSpacing: 0.8,
-                        fontFamily: F.sans,
-                        textTransform: "uppercase",
                         color: metaRuntime ? "#16a34a" : C.textMuted,
                         opacity: 0.7,
                         marginBottom: 1,
@@ -7847,11 +7798,8 @@ function PageBuildRuntime({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
-                      fontSize: 9,
-                      fontWeight: 700,
+                      ...S_SECTION_LABEL_SMALL,
                       letterSpacing: 0.8,
-                      fontFamily: F.sans,
-                      textTransform: "uppercase",
                       color: finalRuntime ? "#16a34a" : C.textMuted,
                       opacity: 0.7,
                       marginBottom: 1,
@@ -7908,12 +7856,9 @@ function PageBuildRuntime({
                     <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                       <div
                         style={{
-                          fontSize: 9,
-                          fontWeight: 700,
+                          ...S_SECTION_LABEL_SMALL,
                           letterSpacing: 0.7,
-                          textTransform: "uppercase",
                           color: includeRuntime ? "#164e63" : C.textMuted,
-                          fontFamily: F.sans,
                         }}
                       >
                         Included
@@ -8370,12 +8315,8 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
               />
               <span
                 style={{
-                  fontSize: 11,
-                  fontWeight: 700,
+                  ...S_SECTION_LABEL,
                   letterSpacing: 1,
-                  color: C.textMuted,
-                  textTransform: "uppercase",
-                  fontFamily: F.sans,
                 }}
               >
                 Parameters
@@ -8559,11 +8500,8 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div
             style={{
-              fontSize: 11,
+              ...S_SECTION_LABEL,
               letterSpacing: 1.3,
-              color: C.textMuted,
-              fontFamily: F.sans,
-              textTransform: "uppercase",
               fontWeight: 600,
             }}
           >
@@ -8846,12 +8784,11 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
       <div style={{ width: 3, height: 12, borderRadius: 99, background: color, flexShrink: 0 }} />
       <span
         style={{
+          ...S_SECTION_LABEL,
           fontSize: 10,
           fontWeight: 800,
           letterSpacing: 1.3,
           color: C.textMid,
-          textTransform: "uppercase",
-          fontFamily: F.sans,
           flex: 1,
         }}
       >
@@ -10286,12 +10223,9 @@ function PageOverview({
         <div>
           <div
             style={{
+              ...S_SECTION_LABEL,
               fontSize: 10,
               fontWeight: 600,
-              color: C.textMuted,
-              letterSpacing: 1.2,
-              textTransform: "uppercase",
-              fontFamily: F.sans,
               marginBottom: 4,
             }}
           >
@@ -12808,12 +12742,9 @@ function Explorer({ onBack }: ExplorerProps) {
                   <div style={{ padding: "10px 14px 4px" }}>
                     <span
                       style={{
+                        ...S_SECTION_LABEL,
                         fontSize: 10,
-                        fontWeight: 700,
                         letterSpacing: 1.3,
-                        color: C.textMuted,
-                        textTransform: "uppercase",
-                        fontFamily: F.sans,
                       }}
                     >
                       Workflow
@@ -13248,12 +13179,8 @@ function Explorer({ onBack }: ExplorerProps) {
               />
               <span
                 style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: 1.2,
+                  ...S_SECTION_LABEL,
                   color: "#94a3b8",
-                  fontFamily: F.sans,
-                  textTransform: "uppercase",
                 }}
               >
                 Reviewer Preview
@@ -13378,11 +13305,8 @@ function Landing({ onLoad }: LandingProps) {
           <label
             htmlFor="repo-url-input"
             style={{
-              fontSize: 11,
+              ...S_SECTION_LABEL,
               letterSpacing: 1.4,
-              color: C.textMuted,
-              fontFamily: F.sans,
-              textTransform: "uppercase",
             }}
           >
             Repository URL
@@ -14148,12 +14072,8 @@ function RvStepCard({
               <div style={{ paddingTop: 12, marginBottom: 12 }}>
                 <div
                   style={{
+                    ...S_SECTION_LABEL,
                     fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: 1.2,
-                    color: C.textMuted,
-                    textTransform: "uppercase",
-                    fontFamily: F.sans,
                     marginBottom: 10,
                   }}
                 >
@@ -14902,12 +14822,9 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
           >
             <div
               style={{
-                fontSize: 9,
-                fontWeight: 700,
+                ...S_SECTION_LABEL_SMALL,
                 letterSpacing: 1.4,
                 color: lv.color,
-                textTransform: "uppercase",
-                fontFamily: F.sans,
                 marginBottom: 5,
               }}
             >
@@ -14950,12 +14867,7 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
           <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
             <div
               style={{
-                fontSize: 9,
-                fontWeight: 700,
-                letterSpacing: 1.2,
-                color: C.textMuted,
-                textTransform: "uppercase",
-                fontFamily: F.sans,
+                ...S_SECTION_LABEL_SMALL,
                 marginBottom: 10,
               }}
             >
@@ -14975,12 +14887,7 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
               <div style={{ paddingTop: 8 }}>
                 <div
                   style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: 1.2,
-                    color: C.textMuted,
-                    textTransform: "uppercase",
-                    fontFamily: F.sans,
+                    ...S_SECTION_LABEL_SMALL,
                     marginBottom: 6,
                   }}
                 >
@@ -15008,12 +14915,7 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
           <div style={{ padding: "14px 16px" }}>
             <div
               style={{
-                fontSize: 9,
-                fontWeight: 700,
-                letterSpacing: 1.2,
-                color: C.textMuted,
-                textTransform: "uppercase",
-                fontFamily: F.sans,
+                ...S_SECTION_LABEL_SMALL,
                 marginBottom: 12,
               }}
             >
