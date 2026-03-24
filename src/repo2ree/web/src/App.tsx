@@ -1747,6 +1747,12 @@ function findFileByPath(nodes: FileTreeNode[], pathStr: string): FileTreeNode | 
   });
 }
 
+function fmtBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
 // Detect a rough file type from the path, used for syntax-hinting the preview.
 function fileType(path: string): string {
   if (!path) return "text";
@@ -10705,17 +10711,7 @@ function PageOverview({
   };
 
   // Find runtime file in virtual tree and get its mock size
-  function findFile(nodes: FileTreeNode[], name: string): FileTreeNode | null {
-    for (const n of nodes || []) {
-      if (n.type === "file" && n.name === name) return n;
-      if (n.children) {
-        const r = findFile(n.children, name);
-        if (r) return r;
-      }
-    }
-    return null;
-  }
-  const runtimeFile = runtimeVal ? findFile(files, runtimeVal.split("/").pop()) : null;
+  const runtimeFile = runtimeVal ? findVirtualFileByName(files, runtimeVal) : null;
   // Extract mock size string if present in content, else estimate from content length
   const runtimeSizeStr = (() => {
     if (!runtimeFile) return null;
@@ -10726,7 +10722,7 @@ function PageOverview({
 
   // SBOM metadata
   const sbomVal = ree?.sbom ? ree.sbom.trim() : "";
-  const sbomFile = sbomVal ? findFile(files, sbomVal.split("/").pop()) : null;
+  const sbomFile = sbomVal ? findVirtualFileByName(files, sbomVal) : null;
   const sbomMeta = (() => {
     if (!sbomFile) return null;
     try {
@@ -10750,25 +10746,12 @@ function PageOverview({
   })();
 
   // Compute source file stats
-  function flatFiles(nodes: FileTreeNode[]): FileTreeNode[] {
-    const out = [];
-    for (const n of nodes || []) {
-      if (n.type === "file") out.push(n);
-      else if (n.children) out.push(...flatFiles(n.children));
-    }
-    return out;
-  }
-  const allFiles = flatFiles(snapshotFiles);
+  const allFiles = listTreeFiles(snapshotFiles);
   const fileCount = allFiles.length;
   const totalBytes = allFiles.reduce(
     (s, f) => s + (f.content ? new TextEncoder().encode(f.content).length : 0),
     0,
   );
-  function fmtBytes(b: number): string {
-    if (b < 1024) return `${b} B`;
-    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-    return `${(b / (1024 * 1024)).toFixed(2)} MB`;
-  }
 
   return (
     <div
