@@ -269,19 +269,14 @@ function findVirtualFileByName(nodes: FileTreeNode[], name: string): FileTreeNod
   });
 }
 
-function triggerOnEnterOrSpace(
-  event: React.KeyboardEvent<HTMLElement>,
-  action: () => void,
-): void {
+function triggerOnEnterOrSpace(event: React.KeyboardEvent<HTMLElement>, action: () => void): void {
   if (event.key === "Enter" || event.key === " ") {
     event.preventDefault();
     action();
   }
 }
 
-function listTreeFiles(
-  nodes: FileTreeNode[],
-): Array<{ path: string; content: string }> {
+function listTreeFiles(nodes: FileTreeNode[]): Array<{ path: string; content: string }> {
   const files: Array<{ path: string; content: string }> = [];
   walkFileTree(nodes, (node, path) => {
     if (node.type === "file") files.push({ path, content: node.content ?? "" });
@@ -413,7 +408,10 @@ function buildCurrentReeArchiveEntries(
 
   if (ree._sourceIncluded && sourceSnapshotFiles.length > 0) {
     for (const file of listTreeFiles(sourceSnapshotFiles)) {
-      entries.push({ path: `${REE_SOURCE_REPO_PREFIX}${file.path}`, data: enc.encode(file.content) });
+      entries.push({
+        path: `${REE_SOURCE_REPO_PREFIX}${file.path}`,
+        data: enc.encode(file.content),
+      });
     }
 
     const archiveName = normalizeSnapshotArchiveName(
@@ -487,7 +485,13 @@ const Svg = ({ d, size = 15, fill = "none", sw = 1.6, title = "icon" }: SvgProps
 );
 const Ic = {
   folder: (s = 15) => (
-    <Svg size={s} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" fill="#f59e0b" sw={0} title="Folder" />
+    <Svg
+      size={s}
+      d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
+      fill="#f59e0b"
+      sw={0}
+      title="Folder"
+    />
   ),
   file: (s = 15) => (
     <Svg size={s} d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm0 0v6h6" sw={1.4} />
@@ -507,7 +511,13 @@ const Ic = {
     />
   ),
   star: (s = 15) => (
-    <Svg size={s} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" sw={0} title="Star" />
+    <Svg
+      size={s}
+      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+      fill="currentColor"
+      sw={0}
+      title="Star"
+    />
   ),
   check: (s = 15) => <Svg size={s} d="M20 6L9 17l-5-5" />,
   loader: (s = 15) => (
@@ -648,18 +658,6 @@ const hoverBrightness = (brightnessPercent: number = 95) => ({
   },
   onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
     e.currentTarget.style.filter = "none";
-  },
-});
-
-/** Combined handlers for complex hover effects (color + background) */
-const hoverColorAndBg = (enterColor: string, leaveColor: string, enterBg: string, leaveBg: string) => ({
-  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.color = enterColor;
-    e.currentTarget.style.background = enterBg;
-  },
-  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.color = leaveColor;
-    e.currentTarget.style.background = leaveBg;
   },
 });
 
@@ -3474,11 +3472,7 @@ function Toast({ message, type, onClose }: ToastProps) {
     >
       <span style={{ ...S_TOAST_ICON, color: c }}>{Ic.info()}</span>
       <span style={S_TOAST_MESSAGE}>{message}</span>
-      <button
-        type="button"
-        onClick={onClose}
-        style={S_TOAST_CLOSE}
-      >
+      <button type="button" onClick={onClose} style={S_TOAST_CLOSE}>
         {Ic.x()}
       </button>
     </div>
@@ -3530,22 +3524,14 @@ function FileNode({
       >
         {isFolder ? (
           <>
-            <span style={S_FILE_NODE_CHEVRON}>
-              {open ? Ic.chevD(12) : Ic.chevR(12)}
-            </span>
+            <span style={S_FILE_NODE_CHEVRON}>{open ? Ic.chevD(12) : Ic.chevR(12)}</span>
             {Ic.folder(14)}
           </>
         ) : (
           <span style={S_FILE_NODE_FILE_ICON}>{Ic.file(14)}</span>
         )}
-        <span style={S_FILE_NODE_NAME}>
-          {node.name}
-        </span>
-        {isHighlighted && !isSel && (
-          <span style={S_FILE_NODE_REF_BADGE}>
-            REF
-          </span>
-        )}
+        <span style={S_FILE_NODE_NAME}>{node.name}</span>
+        {isHighlighted && !isSel && <span style={S_FILE_NODE_REF_BADGE}>REF</span>}
       </button>
       {isFolder &&
         open &&
@@ -3944,31 +3930,27 @@ function ScriptPanel({
                       const occurrence = (seenLines.get(line) ?? 0) + 1;
                       seenLines.set(line, occurrence);
                       return (
-                    <div key={`${line}::${occurrence}`} style={S_SCRIPT_VIEW_LINE_ROW}>
-                      <span
-                        style={S_SCRIPT_VIEW_LINE_NO}
-                      >
-                        {lineNumber}
-                      </span>
-                      <span
-                        style={{
-                          ...S_SCRIPT_VIEW_CODE_BASE,
-                          color: line.startsWith("#")
-                            ? "#94a3b8"
-                            : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
-                              ? "#0369a1"
-                              : /^(set |echo |docker |pip |apt-get )/.test(line)
-                                ? "#15803d"
-                                : line.includes("=") &&
-                                    !line.startsWith(" ") &&
-                                    !line.includes("==")
-                                  ? "#b45309"
-                                  : C.text,
-                        }}
-                      >
-                        {line || " "}
-                      </span>
-                    </div>
+                        <div key={`${line}::${occurrence}`} style={S_SCRIPT_VIEW_LINE_ROW}>
+                          <span style={S_SCRIPT_VIEW_LINE_NO}>{lineNumber}</span>
+                          <span
+                            style={{
+                              ...S_SCRIPT_VIEW_CODE_BASE,
+                              color: line.startsWith("#")
+                                ? "#94a3b8"
+                                : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
+                                  ? "#0369a1"
+                                  : /^(set |echo |docker |pip |apt-get )/.test(line)
+                                    ? "#15803d"
+                                    : line.includes("=") &&
+                                        !line.startsWith(" ") &&
+                                        !line.includes("==")
+                                      ? "#b45309"
+                                      : C.text,
+                            }}
+                          >
+                            {line || " "}
+                          </span>
+                        </div>
                       );
                     });
                   })()}
@@ -3983,9 +3965,7 @@ function ScriptPanel({
               {/* Toolbar */}
               <div style={S_SCRIPT_WRITE_TOOLBAR}>
                 {/* Filename */}
-                <span style={S_SCRIPT_FILENAME_ICON}>
-                  {Ic.terminal(11)}
-                </span>
+                <span style={S_SCRIPT_FILENAME_ICON}>{Ic.terminal(11)}</span>
                 <input
                   value={editorFilename}
                   onChange={(e) => setEditorFilename(e.target.value)}
@@ -4071,9 +4051,7 @@ function ScriptPanel({
               />
 
               {/* Status bar */}
-              <div
-                style={S_SCRIPT_STATUS_BAR}
-              >
+              <div style={S_SCRIPT_STATUS_BAR}>
                 <span style={S_SCRIPT_STATUS_TEXT}>
                   {editorContent.split("\n").length} lines · Tab = 2 spaces
                 </span>
@@ -4374,9 +4352,7 @@ function FilePicker({
           <div style={S_FILE_PICKER_PREVIEW_HEADER}>
             <div style={S_FILE_PICKER_PREVIEW_HEADER_LEFT}>
               <span style={S_FILE_PICKER_PREVIEW_ICON}>{Ic.file(12)}</span>
-              <span style={S_FILE_PICKER_PREVIEW_PATH}>
-                {trimmedDraft}
-              </span>
+              <span style={S_FILE_PICKER_PREVIEW_PATH}>{trimmedDraft}</span>
               <span
                 style={{
                   ...S_FILE_PICKER_PREVIEW_KIND_BADGE_BASE,
@@ -4409,9 +4385,7 @@ function FilePicker({
                 seenLines.set(line, occurrence);
                 return (
                   <div key={`${line}::${occurrence}`} style={S_FILE_PICKER_PREVIEW_LINE_ROW}>
-                    <span style={S_FILE_PICKER_PREVIEW_LINE_NO}>
-                      {lineNumber}
-                    </span>
+                    <span style={S_FILE_PICKER_PREVIEW_LINE_NO}>{lineNumber}</span>
                     <span
                       style={{
                         ...S_FILE_PICKER_PREVIEW_CODE_BASE,
@@ -4538,32 +4512,32 @@ function LogPanel({ log }: LogPanelProps) {
               seenLines.set(lineSig, occurrence);
               const s = LOG_STYLE[line.type] || LOG_STYLE.info;
               return (
-              <div
-                key={`${lineSig}::${occurrence}`}
-                style={{
-                  display: "flex",
-                  padding: "3px 18px",
-                  background: s.bg,
-                  fontFamily: F.mono,
-                  fontSize: 13,
-                  lineHeight: 1.75,
-                }}
-              >
-                <span
+                <div
+                  key={`${lineSig}::${occurrence}`}
                   style={{
-                    color: s.color,
-                    fontWeight: 600,
-                    marginRight: 14,
-                    flexShrink: 0,
-                    fontSize: 11,
-                    opacity: 0.75,
-                    minWidth: 52,
+                    display: "flex",
+                    padding: "3px 18px",
+                    background: s.bg,
+                    fontFamily: F.mono,
+                    fontSize: 13,
+                    lineHeight: 1.75,
                   }}
                 >
-                  [{s.pre}]
-                </span>
-                <span style={{ color: s.color }}>{line.msg}</span>
-              </div>
+                  <span
+                    style={{
+                      color: s.color,
+                      fontWeight: 600,
+                      marginRight: 14,
+                      flexShrink: 0,
+                      fontSize: 11,
+                      opacity: 0.75,
+                      minWidth: 52,
+                    }}
+                  >
+                    [{s.pre}]
+                  </span>
+                  <span style={{ color: s.color }}>{line.msg}</span>
+                </div>
               );
             });
           })()}
@@ -4762,14 +4736,7 @@ interface FieldRowProps {
   onFocus?: () => void;
   active?: boolean;
 }
-function FieldRow({
-  fieldKey,
-  required,
-  children,
-  locked,
-  onFocus,
-  active,
-}: FieldRowProps) {
+function FieldRow({ fieldKey, required, children, locked, onFocus, active }: FieldRowProps) {
   const meta = FIELD_META[fieldKey] || { label: fieldKey, desc: "" };
   const tipEnabled = !!onFocus;
   return (
@@ -4802,20 +4769,10 @@ function FieldRow({
             {meta.label}
           </span>
           {tipEnabled && tipTargetChip(!!active)}
-          {required && (
-            <span style={S_FIELD_ROW_REQUIRED_BADGE}>
-              required
-            </span>
-          )}
-          {locked && fieldKey !== "swhid" && (
-            <span style={S_FIELD_ROW_LOCKED_BADGE}>
-              locked
-            </span>
-          )}
+          {required && <span style={S_FIELD_ROW_REQUIRED_BADGE}>required</span>}
+          {locked && fieldKey !== "swhid" && <span style={S_FIELD_ROW_LOCKED_BADGE}>locked</span>}
         </div>
-        <p style={S_FIELD_ROW_DESC}>
-          {meta.desc}
-        </p>
+        <p style={S_FIELD_ROW_DESC}>{meta.desc}</p>
       </div>
       <div style={S_FIELD_ROW_CONTENT}>{children}</div>
     </div>
@@ -4874,11 +4831,7 @@ function FieldSection({
         >
           {title}
         </span>
-        {subtitle && (
-          <span style={S_FIELD_SECTION_SUBTITLE}>
-            — {subtitle}
-          </span>
-        )}
+        {subtitle && <span style={S_FIELD_SECTION_SUBTITLE}>— {subtitle}</span>}
         <div style={S_FIELD_SECTION_FILLER} />
         {totalCount > 0 && (
           <div style={S_FIELD_SECTION_PROGRESS_ROW}>
@@ -4923,9 +4876,7 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       <div style={S_FIELD_TIP_CARD_HEADER}>
         <div style={S_FIELD_TIP_CARD_HEADER_LEFT}>
           <div style={S_FIELD_TIP_CARD_DOT} />
-          <span style={S_FIELD_TIP_CARD_HEADING}>
-            Field guide
-          </span>
+          <span style={S_FIELD_TIP_CARD_HEADING}>Field guide</span>
         </div>
         <button
           type="button"
@@ -4937,43 +4888,29 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
         </button>
       </div>
 
-      <div style={S_FIELD_TIP_CARD_TITLE}>
-        {meta.label}
-      </div>
-      <p style={S_FIELD_TIP_CARD_DESC}>
-        {meta.desc}
-      </p>
+      <div style={S_FIELD_TIP_CARD_TITLE}>{meta.label}</div>
+      <p style={S_FIELD_TIP_CARD_DESC}>{meta.desc}</p>
 
       {/* Example value */}
       {meta.example && (
         <div style={S_FIELD_TIP_CARD_BLOCK}>
-          <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>
-            Example
-          </div>
-          <div style={S_FIELD_TIP_CARD_EXAMPLE_BOX}>
-            {meta.example}
-          </div>
+          <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>Example</div>
+          <div style={S_FIELD_TIP_CARD_EXAMPLE_BOX}>{meta.example}</div>
         </div>
       )}
 
       {/* Format */}
       {meta.format && (
         <div style={S_FIELD_TIP_CARD_BLOCK}>
-          <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>
-            Format
-          </div>
-          <p style={S_FIELD_TIP_CARD_FORMAT_TEXT}>
-            {meta.format}
-          </p>
+          <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>Format</div>
+          <p style={S_FIELD_TIP_CARD_FORMAT_TEXT}>{meta.format}</p>
         </div>
       )}
 
       {/* How to */}
       {meta.howTo && (
         <div style={S_FIELD_TIP_CARD_BLOCK}>
-          <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>
-            How to get this
-          </div>
+          <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>How to get this</div>
           <pre
             style={{
               ...S_FIELD_TIP_CARD_HOWTO_BASE,
@@ -4988,18 +4925,12 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       {/* Tool commands */}
       {meta.toolCommands && meta.toolCommands.length > 0 && (
         <div style={S_FIELD_TIP_CARD_BLOCK}>
-          <div style={S_FIELD_TIP_CARD_COMMANDS_LABEL}>
-            Commands
-          </div>
+          <div style={S_FIELD_TIP_CARD_COMMANDS_LABEL}>Commands</div>
           <div style={S_FIELD_TIP_CARD_COMMANDS_LIST}>
             {meta.toolCommands.map((tc) => (
               <div key={`${tc.label}:${tc.cmd}`}>
-                <div style={S_FIELD_TIP_CARD_COMMAND_LABEL}>
-                  {tc.label}
-                </div>
-                <div style={S_FIELD_TIP_CARD_COMMAND_BOX}>
-                  {tc.cmd}
-                </div>
+                <div style={S_FIELD_TIP_CARD_COMMAND_LABEL}>{tc.label}</div>
+                <div style={S_FIELD_TIP_CARD_COMMAND_BOX}>{tc.cmd}</div>
               </div>
             ))}
           </div>
@@ -5009,9 +4940,7 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       {/* Tools / links */}
       {meta.tools && meta.tools.length > 0 && (
         <div>
-          <div style={S_FIELD_TIP_CARD_COMMANDS_LABEL}>
-            Tools
-          </div>
+          <div style={S_FIELD_TIP_CARD_COMMANDS_LABEL}>Tools</div>
           <div style={S_FIELD_TIP_CARD_TOOLS_WRAP}>
             {meta.tools.map((t) => (
               <a
@@ -5061,9 +4990,7 @@ function FieldTipsSidebar({
     <div style={S_FIELD_TIPS_SIDEBAR_ROOT}>
       {showFieldPicker && (
         <div style={S_FIELD_TIPS_GROUP}>
-          <div style={S_FIELD_TIPS_LABEL}>
-            Tips
-          </div>
+          <div style={S_FIELD_TIPS_LABEL}>Tips</div>
           <div style={S_FIELD_TIPS_CHIPS}>
             {(tipFields || []).map((fieldKey) => {
               const isActive = activeField === fieldKey;
@@ -5091,9 +5018,7 @@ function FieldTipsSidebar({
         <div style={S_FIELD_TIPS_GENERAL_WRAP}>
           <div style={S_FIELD_TIPS_GENERAL_HEAD}>
             <span style={S_FIELD_TIPS_GENERAL_ICON}>{Ic.info(13)}</span>
-            <span style={S_FIELD_TIPS_GENERAL_TITLE}>
-              {generalTitle}
-            </span>
+            <span style={S_FIELD_TIPS_GENERAL_TITLE}>{generalTitle}</span>
           </div>
           <div style={S_FIELD_TIPS_GENERAL_LIST}>
             {generalTips.map((tip) => (
@@ -5111,9 +5036,7 @@ function FieldTipsSidebar({
         <div style={S_FIELD_TIPS_WORKFLOW_BOX}>
           <div style={S_FIELD_TIPS_WORKFLOW_HEAD}>
             <span style={S_FIELD_TIPS_WORKFLOW_ICON}>{Ic.info(13)}</span>
-            <span style={S_FIELD_TIPS_WORKFLOW_TITLE}>
-              Workflow tips
-            </span>
+            <span style={S_FIELD_TIPS_WORKFLOW_TITLE}>Workflow tips</span>
           </div>
           <p style={S_FIELD_TIPS_WORKFLOW_TEXT}>
             No field selected. Here are the key tips for this page/workflow:
@@ -5131,12 +5054,8 @@ function FieldTipsSidebar({
                     cursor: onFocusField ? "pointer" : "default",
                   }}
                 >
-                  <span style={S_FIELD_TIPS_WORKFLOW_BTN_TITLE}>
-                    {meta?.label || fieldKey}
-                  </span>
-                  <span style={S_FIELD_TIPS_WORKFLOW_BTN_DESC}>
-                    {meta?.desc || ""}
-                  </span>
+                  <span style={S_FIELD_TIPS_WORKFLOW_BTN_TITLE}>{meta?.label || fieldKey}</span>
+                  <span style={S_FIELD_TIPS_WORKFLOW_BTN_DESC}>{meta?.desc || ""}</span>
                 </button>
               );
             })}
@@ -5193,9 +5112,7 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
     <div style={S_SOURCE_URL_ROOT}>
       <div style={S_SOURCE_URL_INPUT_ROW}>
         <div style={S_SOURCE_URL_INPUT_WRAP}>
-          <div style={S_SOURCE_URL_ICON}>
-            {Ic.link()}
-          </div>
+          <div style={S_SOURCE_URL_ICON}>{Ic.link()}</div>
           <input
             disabled={locked}
             value={draft}
@@ -5251,9 +5168,7 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
       {committedValue && !isDirty && (
         <div style={S_SOURCE_URL_COMMITTED}>
           {Ic.check(10)}
-          <span style={S_SOURCE_URL_COMMITTED_VALUE}>
-            {committedValue}
-          </span>
+          <span style={S_SOURCE_URL_COMMITTED_VALUE}>{committedValue}</span>
         </div>
       )}
       {checkState === "reachable" && checkedFor === draft.trim() && (
@@ -5335,9 +5250,7 @@ function SourceUploadField({
       {committedName && (
         <div style={S_SOURCE_UPLOAD_COMMITTED_ROW}>
           <span style={S_SOURCE_UPLOAD_COMMITTED_ICON}>{Ic.archive()}</span>
-          <span style={S_SOURCE_UPLOAD_COMMITTED_NAME}>
-            {committedName}
-          </span>
+          <span style={S_SOURCE_UPLOAD_COMMITTED_NAME}>{committedName}</span>
           {!locked && (
             <button
               type="button"
@@ -5364,9 +5277,7 @@ function SourceUploadField({
         <div style={S_SOURCE_UPLOAD_PENDING_WRAP}>
           <div style={S_SOURCE_UPLOAD_PENDING_ROW}>
             <span style={S_SOURCE_UPLOAD_PENDING_ICON}>{Ic.archive()}</span>
-            <span style={S_SOURCE_UPLOAD_PENDING_NAME}>
-              {pending.archiveName}
-            </span>
+            <span style={S_SOURCE_UPLOAD_PENDING_NAME}>{pending.archiveName}</span>
             <button
               type="button"
               onClick={handleConfirm}
@@ -5422,15 +5333,17 @@ function SourceUploadField({
             }
           }}
         >
-          <span style={{ ...S_SOURCE_UPLOAD_DROPZONE_ICON, color: dragging ? C.accent : C.textMuted }}>
+          <span
+            style={{ ...S_SOURCE_UPLOAD_DROPZONE_ICON, color: dragging ? C.accent : C.textMuted }}
+          >
             {Ic.upload(18)}
           </span>
-          <span style={{ ...S_SOURCE_UPLOAD_DROPZONE_TEXT, color: dragging ? C.accent : C.textMid }}>
+          <span
+            style={{ ...S_SOURCE_UPLOAD_DROPZONE_TEXT, color: dragging ? C.accent : C.textMid }}
+          >
             Drop archive or <span style={S_SOURCE_UPLOAD_BROWSE_HIGHLIGHT}>browse archive</span>
           </span>
-          <span style={S_SOURCE_UPLOAD_DROPZONE_HINT}>
-            .zip · .tar · .tar.gz
-          </span>
+          <span style={S_SOURCE_UPLOAD_DROPZONE_HINT}>.zip · .tar · .tar.gz</span>
         </button>
       )}
 
@@ -5460,14 +5373,7 @@ interface RuntimeFieldProps {
   active?: boolean;
   files: FileTreeNode[];
 }
-function RuntimeField({
-  locked,
-  ree,
-  onChange,
-  onFocus,
-  active,
-  files,
-}: RuntimeFieldProps) {
+function RuntimeField({ locked, ree, onChange, onFocus, active, files }: RuntimeFieldProps) {
   const val = ree.runtime || "";
   const isSkipped = val === "__skipped__";
   const isTarball = !isSkipped && /\.(tar\.gz|tgz)$/i.test(val);
@@ -5517,9 +5423,7 @@ function RuntimeField({
           </span>
           {!!onFocus && tipTargetChip(!!active)}
         </div>
-        <p style={S_FIELD_ROW_DESC}>
-          {meta.desc}
-        </p>
+        <p style={S_FIELD_ROW_DESC}>{meta.desc}</p>
       </div>
 
       {/* Right: mode toggle + input */}
@@ -5575,16 +5479,11 @@ function RuntimeField({
             />
             <div style={S_RUNTIME_HELP_TEXT}>
               Bundled into the REE archive on deposit. Produced by your build script via{" "}
-              <code style={S_RUNTIME_CODE_INLINE}>
-                docker save … | gzip
-              </code>
-              .
+              <code style={S_RUNTIME_CODE_INLINE}>docker save … | gzip</code>.
             </div>
             {isSkipped && (
               <div style={S_RUNTIME_WARN_BOX}>
-                <span style={S_RUNTIME_WARN_ICON}>
-                  {Ic.info(12)}
-                </span>
+                <span style={S_RUNTIME_WARN_ICON}>{Ic.info(12)}</span>
                 <div style={S_RUNTIME_WARN_TEXT}>
                   Tarball will <strong>not</strong> be bundled in the REE archive. Ensure it is
                   reproducible from the build script alone.
@@ -5719,311 +5618,307 @@ function PageSourceRepoEntry({
       <div style={S_WORKFLOW_PAGE_BODY}>
         {/* Scrollable left — fields */}
         <div style={S_WORKFLOW_PAGE_MAIN_SCROLL}>
-        <div style={S_WORKFLOW_PAGE_MAIN_COL}>
-          {/* Source — first, everything depends on it */}
-          <FieldSection
-            title="Source Repository"
-            icon={Ic.globe()}
-            filledCount={sourceFilled}
-            totalCount={3}
-          >
-            <FieldRow
-              fieldKey="origin_url"
-              locked={locked}
-              onFocus={() => focus("origin_url")}
-              active={focusedField === "origin_url"}
+          <div style={S_WORKFLOW_PAGE_MAIN_COL}>
+            {/* Source — first, everything depends on it */}
+            <FieldSection
+              title="Source Repository"
+              icon={Ic.globe()}
+              filledCount={sourceFilled}
+              totalCount={3}
             >
-              <SourceUrlField
-                locked={locked}
-                committedValue={ree.origin_url}
-                onCommit={(v) => {
-                  set("origin_url", v);
-                }}
-                onFocus={() => focus("origin_url")}
-              />
-            </FieldRow>
-
-            <div style={{ padding: "12px 0 0" }}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-                {["url", "upload"].map((m) => (
-                  <button
-                    type="button"
-                    key={m}
-                    onClick={() => {
-                      if (locked || m === repoMode) return;
-                      onRepoModeChange(m);
-                      if (m === "upload") setOriginTypeDraft("");
-                    }}
-                    style={{
-                      ...actionBtn({
-                        padding: "7px",
-                      }),
-                      flex: 1,
-                      cursor: locked ? "default" : "pointer",
-                      border: `1.5px solid ${repoMode === m ? C.accent : C.border}`,
-                      background: repoMode === m ? C.accentBg : C.surface,
-                      color: repoMode === m ? C.accent : C.textMid,
-                    }}
-                  >
-                    {m === "url" ? "⇢ Origin URL" : "⤒ Upload tarball"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {repoMode === "upload" && (
-              <SourceUploadField
-                locked={locked}
-                disabled={!canUpload}
-                disabledReason={
-                  sourceFromDownload
-                    ? "Source is already populated via origin download. Change source to switch method."
-                    : undefined
-                }
-                committedName={ree._uploadedArchive}
-                onCommit={(payload) => {
-                  onWorkspaceUpload(payload);
-                }}
-              />
-            )}
-
-            {repoMode === "url" && (
               <FieldRow
-                fieldKey="source_type"
-                required
+                fieldKey="origin_url"
                 locked={locked}
-                onFocus={() => focus("source_type")}
-                active={focusedField === "source_type"}
+                onFocus={() => focus("origin_url")}
+                active={focusedField === "origin_url"}
               >
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <select
-                    disabled={locked}
-                    value={originTypeDraft}
-                    onChange={(e) => {
-                      setOriginTypeDraft(e.target.value as Ree["source_type"]);
-                    }}
-                    onFocus={() => focus("source_type")}
-                    style={{ ...inp(locked), flex: 1 }}
-                  >
-                    <option value="">Select origin type</option>
-                    <option value="git">git</option>
-                    <option value="hg">hg</option>
-                    <option value="svn">svn</option>
-                    <option value="cvs">cvs</option>
-                    <option value="bzr">bzr</option>
-                    <option value="tarball">tarball</option>
-                  </select>
+                <SourceUrlField
+                  locked={locked}
+                  committedValue={ree.origin_url}
+                  onCommit={(v) => {
+                    set("origin_url", v);
+                  }}
+                  onFocus={() => focus("origin_url")}
+                />
+              </FieldRow>
 
-                  <div>
+              <div style={{ padding: "12px 0 0" }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+                  {["url", "upload"].map((m) => (
                     <button
                       type="button"
-                      disabled={locked || !canDownload || downloadRunning}
-                      onClick={() => onDownloadSource(originTypeDraft)}
+                      key={m}
+                      onClick={() => {
+                        if (locked || m === repoMode) return;
+                        onRepoModeChange(m);
+                        if (m === "upload") setOriginTypeDraft("");
+                      }}
                       style={{
                         ...actionBtn({
-                          fontWeight: 700,
+                          padding: "7px",
                         }),
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
-                        border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
-                        background: downloadDone ? "#f0fdf4" : C.accentBg,
-                        color: downloadDone ? "#15803d" : C.accent,
-                        width: "fit-content",
-                        opacity: locked || !canDownload ? 0.6 : 1,
+                        flex: 1,
+                        cursor: locked ? "default" : "pointer",
+                        border: `1.5px solid ${repoMode === m ? C.accent : C.border}`,
+                        background: repoMode === m ? C.accentBg : C.surface,
+                        color: repoMode === m ? C.accent : C.textMid,
                       }}
                     >
-                      {downloadRunning ? Ic.loader(13) : Ic.download(13)}
-                      {downloadLabel}
+                      {m === "url" ? "⇢ Origin URL" : "⤒ Upload tarball"}
                     </button>
-                  </div>
+                  ))}
                 </div>
-              </FieldRow>
-            )}
+              </div>
+              {repoMode === "upload" && (
+                <SourceUploadField
+                  locked={locked}
+                  disabled={!canUpload}
+                  disabledReason={
+                    sourceFromDownload
+                      ? "Source is already populated via origin download. Change source to switch method."
+                      : undefined
+                  }
+                  committedName={ree._uploadedArchive}
+                  onCommit={(payload) => {
+                    onWorkspaceUpload(payload);
+                  }}
+                />
+              )}
 
-            <FieldRow
-              fieldKey="_sourceAcquiredBy"
-              required={false}
-              locked={true}
-            >
-              <input
-                disabled
-                value={sourceProvisionStatus}
-                style={{
-                  ...inp(true, {
-                    cursor: "not-allowed",
-                    color: sourceInWorkspace ? C.text : C.textMuted,
-                    fontWeight: 600,
-                  }),
-                }}
-              />
-            </FieldRow>
+              {repoMode === "url" && (
+                <FieldRow
+                  fieldKey="source_type"
+                  required
+                  locked={locked}
+                  onFocus={() => focus("source_type")}
+                  active={focusedField === "source_type"}
+                >
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <select
+                      disabled={locked}
+                      value={originTypeDraft}
+                      onChange={(e) => {
+                        setOriginTypeDraft(e.target.value as Ree["source_type"]);
+                      }}
+                      onFocus={() => focus("source_type")}
+                      style={{ ...inp(locked), flex: 1 }}
+                    >
+                      <option value="">Select origin type</option>
+                      <option value="git">git</option>
+                      <option value="hg">hg</option>
+                      <option value="svn">svn</option>
+                      <option value="cvs">cvs</option>
+                      <option value="bzr">bzr</option>
+                      <option value="tarball">tarball</option>
+                    </select>
 
-            <FieldRow
-              fieldKey="_sourceAvailable"
-              required={false}
-              locked={true}
-              onFocus={() => focus("_sourceAvailable")}
-              active={focusedField === "_sourceAvailable"}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <button
-                    type="button"
-                    onClick={() => onGoService(PAGE.FILES)}
-                    style={{
-                      ...inp(false, {
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 8,
-                        cursor: "pointer",
-                      }),
-                      background: workspaceBrowseHover ? C.accentBg : C.surface,
-                      borderColor: workspaceBrowseHover ? C.accentBorder : C.border,
-                      flex: 1,
-                    }}
-                    title="Browse files"
-                    onMouseEnter={() => setWorkspaceBrowseHover(true)}
-                    onMouseLeave={() => setWorkspaceBrowseHover(false)}
-                  >
-                    <span
-                      style={{
-                        color: sourceInWorkspace ? "#15803d" : C.textMuted,
-                        fontWeight: 600,
-                        fontFamily: F.sans,
-                      }}
-                    >
-                      {sourceInWorkspace
-                        ? "Yes — repository is available in workspace"
-                        : "No — source not in workspace yet"}
-                    </span>
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        color: C.accent,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        fontFamily: F.sans,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {Ic.files(12)} Browse files
-                    </span>
-                  </button>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginLeft: 2,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                      <div
+                    <div>
+                      <button
+                        type="button"
+                        disabled={locked || !canDownload || downloadRunning}
+                        onClick={() => onDownloadSource(originTypeDraft)}
                         style={{
-                          ...S_SECTION_LABEL_SMALL,
-                          letterSpacing: 0.7,
-                          color: sourceIncluded ? C.textMid : C.textMuted,
+                          ...actionBtn({
+                            fontWeight: 700,
+                          }),
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
+                          border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
+                          background: downloadDone ? "#f0fdf4" : C.accentBg,
+                          color: downloadDone ? "#15803d" : C.accent,
+                          width: "fit-content",
+                          opacity: locked || !canDownload ? 0.6 : 1,
                         }}
                       >
-                        Included
-                      </div>
-                      <div
+                        {downloadRunning ? Ic.loader(13) : Ic.download(13)}
+                        {downloadLabel}
+                      </button>
+                    </div>
+                  </div>
+                </FieldRow>
+              )}
+
+              <FieldRow fieldKey="_sourceAcquiredBy" required={false} locked={true}>
+                <input
+                  disabled
+                  value={sourceProvisionStatus}
+                  style={{
+                    ...inp(true, {
+                      cursor: "not-allowed",
+                      color: sourceInWorkspace ? C.text : C.textMuted,
+                      fontWeight: 600,
+                    }),
+                  }}
+                />
+              </FieldRow>
+
+              <FieldRow
+                fieldKey="_sourceAvailable"
+                required={false}
+                locked={true}
+                onFocus={() => focus("_sourceAvailable")}
+                active={focusedField === "_sourceAvailable"}
+              >
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <button
+                      type="button"
+                      onClick={() => onGoService(PAGE.FILES)}
+                      style={{
+                        ...inp(false, {
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          cursor: "pointer",
+                        }),
+                        background: workspaceBrowseHover ? C.accentBg : C.surface,
+                        borderColor: workspaceBrowseHover ? C.accentBorder : C.border,
+                        flex: 1,
+                      }}
+                      title="Browse files"
+                      onMouseEnter={() => setWorkspaceBrowseHover(true)}
+                      onMouseLeave={() => setWorkspaceBrowseHover(false)}
+                    >
+                      <span
                         style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: sourceIncluded ? "#b45309" : C.textMuted,
+                          color: sourceInWorkspace ? "#15803d" : C.textMuted,
+                          fontWeight: 600,
                           fontFamily: F.sans,
                         }}
                       >
-                        {sourceIncluded ? "Yes" : "No"}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={toggleSourceIncluded}
-                      aria-pressed={sourceIncluded}
-                      disabled={locked || !sourceInWorkspace}
-                      title={
-                        !sourceInWorkspace
-                          ? "Source must be in workspace before it can be included"
-                          : sourceIncluded
-                            ? "Source will be included in final REE"
-                            : "Source will be excluded from final REE"
-                      }
-                      style={{
-                        width: 36,
-                        height: 18,
-                        borderRadius: 99,
-                        border: "none",
-                        cursor: locked || !sourceInWorkspace ? "not-allowed" : "pointer",
-                        background: sourceIncluded ? "#f59e0b" : C.borderMid,
-                        position: "relative",
-                        transition: "all 0.18s",
-                        flexShrink: 0,
-                        opacity: locked || !sourceInWorkspace ? 0.6 : 1,
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 2,
-                          left: sourceIncluded ? 18 : 2,
-                          width: 14,
-                          height: 14,
-                          borderRadius: "50%",
-                          background: "#fff",
-                          transition: "left 0.18s",
-                          boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
-                        }}
-                      />
-                    </button>
-                    {ree._sourceAvailable && (
-                      <button
-                        type="button"
-                        disabled={locked}
-                        onClick={onRemoveWorkspaceSource}
+                        {sourceInWorkspace
+                          ? "Yes — repository is available in workspace"
+                          : "No — source not in workspace yet"}
+                      </span>
+                      <span
                         style={{
                           display: "inline-flex",
                           alignItems: "center",
                           gap: 6,
-                          width: "fit-content",
-                          padding: "6px 10px",
-                          borderRadius: 6,
-                          border: "1px solid #fecaca",
-                          background: "#fef2f2",
-                          color: "#b91c1c",
+                          color: C.accent,
                           fontSize: 12,
+                          fontWeight: 700,
                           fontFamily: F.sans,
-                          fontWeight: 600,
-                          cursor: locked ? "not-allowed" : "pointer",
-                          opacity: locked ? 0.6 : 1,
+                          flexShrink: 0,
                         }}
                       >
-                        {Ic.x(12)} Remove source from workspace
+                        {Ic.files(12)} Browse files
+                      </span>
+                    </button>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginLeft: 2,
+                        flexShrink: 0,
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                        <div
+                          style={{
+                            ...S_SECTION_LABEL_SMALL,
+                            letterSpacing: 0.7,
+                            color: sourceIncluded ? C.textMid : C.textMuted,
+                          }}
+                        >
+                          Included
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: sourceIncluded ? "#b45309" : C.textMuted,
+                            fontFamily: F.sans,
+                          }}
+                        >
+                          {sourceIncluded ? "Yes" : "No"}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={toggleSourceIncluded}
+                        aria-pressed={sourceIncluded}
+                        disabled={locked || !sourceInWorkspace}
+                        title={
+                          !sourceInWorkspace
+                            ? "Source must be in workspace before it can be included"
+                            : sourceIncluded
+                              ? "Source will be included in final REE"
+                              : "Source will be excluded from final REE"
+                        }
+                        style={{
+                          width: 36,
+                          height: 18,
+                          borderRadius: 99,
+                          border: "none",
+                          cursor: locked || !sourceInWorkspace ? "not-allowed" : "pointer",
+                          background: sourceIncluded ? "#f59e0b" : C.borderMid,
+                          position: "relative",
+                          transition: "all 0.18s",
+                          flexShrink: 0,
+                          opacity: locked || !sourceInWorkspace ? 0.6 : 1,
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 2,
+                            left: sourceIncluded ? 18 : 2,
+                            width: 14,
+                            height: 14,
+                            borderRadius: "50%",
+                            background: "#fff",
+                            transition: "left 0.18s",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+                          }}
+                        />
                       </button>
-                    )}
+                      {ree._sourceAvailable && (
+                        <button
+                          type="button"
+                          disabled={locked}
+                          onClick={onRemoveWorkspaceSource}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            width: "fit-content",
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            border: "1px solid #fecaca",
+                            background: "#fef2f2",
+                            color: "#b91c1c",
+                            fontSize: 12,
+                            fontFamily: F.sans,
+                            fontWeight: 600,
+                            cursor: locked ? "not-allowed" : "pointer",
+                            opacity: locked ? 0.6 : 1,
+                          }}
+                        >
+                          {Ic.x(12)} Remove source from workspace
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
+                    {sourceIncluded
+                      ? "Original source snapshot will be packaged into the final REE archive (workspace edits are excluded)."
+                      : "Source files stay in workspace only and are excluded from the final REE archive."}
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
-                  {sourceIncluded
-                    ? "Original source snapshot will be packaged into the final REE archive (workspace edits are excluded)."
-                    : "Source files stay in workspace only and are excluded from the final REE archive."}
-                </div>
-              </div>
-            </FieldRow>
-          </FieldSection>
+              </FieldRow>
+            </FieldSection>
 
-          {/* Next step nudge */}
-          <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-            <NextStepNudge stepKey={PAGE.SOURCE} badges={badges} onGo={onGoService} />
+            {/* Next step nudge */}
+            <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
+              <NextStepNudge stepKey={PAGE.SOURCE} badges={badges} onGo={onGoService} />
+            </div>
           </div>
         </div>
-      </div>
 
         <FieldTipsSidebar
           tipFields={["origin_url", "source_type", "_sourceAcquiredBy", "_sourceAvailable"]}
@@ -6112,145 +6007,149 @@ function PageMetadataEntry({
       <div style={S_WORKFLOW_PAGE_BODY}>
         <div style={S_WORKFLOW_PAGE_MAIN_SCROLL}>
           <div style={S_WORKFLOW_PAGE_MAIN_COL}>
-          <FieldSection
-            title="Identity"
-            icon={Ic.package()}
-            filledCount={identityFilled}
-            totalCount={1}
-          >
-            <FieldRow
-              fieldKey="name"
-              required
-              locked={locked}
-              onFocus={() => focus("name")}
-              active={focusedField === "name"}
+            <FieldSection
+              title="Identity"
+              icon={Ic.package()}
+              filledCount={identityFilled}
+              totalCount={1}
             >
-              <input
-                disabled={locked}
-                value={ree.name}
-                onChange={(e) => set("name", e.target.value)}
+              <FieldRow
+                fieldKey="name"
+                required
+                locked={locked}
                 onFocus={() => focus("name")}
-                placeholder="my-project-v1.0"
-                style={inp(locked)}
-              />
-            </FieldRow>
-          </FieldSection>
+                active={focusedField === "name"}
+              >
+                <input
+                  disabled={locked}
+                  value={ree.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  onFocus={() => focus("name")}
+                  placeholder="my-project-v1.0"
+                  style={inp(locked)}
+                />
+              </FieldRow>
+            </FieldSection>
 
-          <FieldSection
-            title="Hardware"
-            icon={Ic.chip()}
-            subtitle="target machine specification"
-            filledCount={hardwareFilled > 0 ? 1 : 0}
-            totalCount={1}
-          >
-            <FieldRow
-              fieldKey="hardware_description"
-              locked={locked}
-              onFocus={() => focus("hardware_description")}
-              active={focusedField === "hardware_description"}
+            <FieldSection
+              title="Hardware"
+              icon={Ic.chip()}
+              subtitle="target machine specification"
+              filledCount={hardwareFilled > 0 ? 1 : 0}
+              totalCount={1}
             >
-              <div style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}>
-                {Object.entries(ree.hardware_description).map(([k, v], i) => (
-                  <div key={k} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <input
-                      disabled={locked}
-                      value={k}
-                      onChange={(e) => {
-                        const ent = Object.entries(ree.hardware_description);
-                        ent[i] = [e.target.value, v];
-                        onChange({ ...ree, hardware_description: Object.fromEntries(ent) });
-                      }}
-                      placeholder="key"
-                      style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: "0 0 36%" }}
-                    />
-                    <span style={{ color: C.textMuted, fontFamily: F.mono, flexShrink: 0 }}>:</span>
-                    <input
-                      disabled={locked}
-                      value={v}
-                      onChange={(e) => {
-                        const ent = Object.entries(ree.hardware_description);
-                        ent[i] = [k, e.target.value];
-                        onChange({ ...ree, hardware_description: Object.fromEntries(ent) });
-                      }}
-                      placeholder="value"
-                      style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: 1 }}
-                    />
-                    {!locked && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const ent = Object.entries(ree.hardware_description).filter(
-                            (_, j) => j !== i,
-                          );
+              <FieldRow
+                fieldKey="hardware_description"
+                locked={locked}
+                onFocus={() => focus("hardware_description")}
+                active={focusedField === "hardware_description"}
+              >
+                <div
+                  style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 6 }}
+                >
+                  {Object.entries(ree.hardware_description).map(([k, v], i) => (
+                    <div key={k} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <input
+                        disabled={locked}
+                        value={k}
+                        onChange={(e) => {
+                          const ent = Object.entries(ree.hardware_description);
+                          ent[i] = [e.target.value, v];
                           onChange({ ...ree, hardware_description: Object.fromEntries(ent) });
                         }}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
+                        placeholder="key"
+                        style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: "0 0 36%" }}
+                      />
+                      <span style={{ color: C.textMuted, fontFamily: F.mono, flexShrink: 0 }}>
+                        :
+                      </span>
+                      <input
+                        disabled={locked}
+                        value={v}
+                        onChange={(e) => {
+                          const ent = Object.entries(ree.hardware_description);
+                          ent[i] = [k, e.target.value];
+                          onChange({ ...ree, hardware_description: Object.fromEntries(ent) });
+                        }}
+                        placeholder="value"
+                        style={{ ...inp(locked, { width: "auto", fontSize: 14 }), flex: 1 }}
+                      />
+                      {!locked && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const ent = Object.entries(ree.hardware_description).filter(
+                              (_, j) => j !== i,
+                            );
+                            onChange({ ...ree, hardware_description: Object.fromEntries(ent) });
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: C.textMuted,
+                            padding: "4px",
+                            display: "flex",
+                            borderRadius: 5,
+                            flexShrink: 0,
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = "#dc2626";
+                            e.currentTarget.style.background = "#fef2f2";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = C.textMuted;
+                            e.currentTarget.style.background = "none";
+                          }}
+                        >
+                          {Ic.x()}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {!locked && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ent = [...Object.entries(ree.hardware_description), ["", ""]];
+                        onChange({ ...ree, hardware_description: Object.fromEntries(ent) });
+                      }}
+                      style={{
+                        ...actionBtn({
+                          border: `1.5px dashed ${C.borderMid}`,
+                          padding: "6px 10px",
+                          background: "transparent",
                           color: C.textMuted,
-                          padding: "4px",
-                          display: "flex",
-                          borderRadius: 5,
-                          flexShrink: 0,
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = "#dc2626";
-                          e.currentTarget.style.background = "#fef2f2";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = C.textMuted;
-                          e.currentTarget.style.background = "none";
-                        }}
-                      >
-                        {Ic.x()}
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {!locked && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const ent = [...Object.entries(ree.hardware_description), ["", ""]];
-                      onChange({ ...ree, hardware_description: Object.fromEntries(ent) });
-                    }}
-                    style={{
-                      ...actionBtn({
-                        border: `1.5px dashed ${C.borderMid}`,
-                        padding: "6px 10px",
-                        background: "transparent",
-                        color: C.textMuted,
-                        transition: "border-color 0.14s,color 0.14s",
-                      }),
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      cursor: "pointer",
-                      marginTop: 4,
-                      width: "fit-content",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = C.accent;
-                      e.currentTarget.style.color = C.accent;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = C.borderMid;
-                      e.currentTarget.style.color = C.textMuted;
-                    }}
-                  >
-                    {Ic.plus()} Add field
-                  </button>
-                )}
-              </div>
-            </FieldRow>
-          </FieldSection>
+                          transition: "border-color 0.14s,color 0.14s",
+                        }),
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        cursor: "pointer",
+                        marginTop: 4,
+                        width: "fit-content",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = C.accent;
+                        e.currentTarget.style.color = C.accent;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = C.borderMid;
+                        e.currentTarget.style.color = C.textMuted;
+                      }}
+                    >
+                      {Ic.plus()} Add field
+                    </button>
+                  )}
+                </div>
+              </FieldRow>
+            </FieldSection>
 
-          <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-            <NextStepNudge stepKey={PAGE.METADATA} badges={badges} onGo={onGoService} />
+            <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
+              <NextStepNudge stepKey={PAGE.METADATA} badges={badges} onGo={onGoService} />
+            </div>
           </div>
         </div>
-      </div>
 
         <FieldTipsSidebar
           tipFields={["name", "hardware_description"]}
@@ -6618,104 +6517,108 @@ function PageGenerateSBOM({
             filledCount={rt ? 1 : 0}
             totalCount={1}
           >
-            <FieldRow fieldKey="runtime" onFocus={() => setFocusedField("runtime")} active={focusedField === "runtime"}>
-            <div style={S_FIELD_STACK_GAP_14}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "10px 14px",
-                  background: rt ? "#ecfeff" : C.surfaceAlt,
-                  border: `1.5px solid ${rt ? `${sbomColor}50` : C.border}`,
-                  borderRadius: 9,
-                }}
-              >
+            <FieldRow
+              fieldKey="runtime"
+              onFocus={() => setFocusedField("runtime")}
+              active={focusedField === "runtime"}
+            >
+              <div style={S_FIELD_STACK_GAP_14}>
                 <div
                   style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 7,
-                    flexShrink: 0,
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    background: `${rt ? sbomColor : C.textMuted}18`,
+                    gap: 10,
+                    padding: "10px 14px",
+                    background: rt ? "#ecfeff" : C.surfaceAlt,
+                    border: `1.5px solid ${rt ? `${sbomColor}50` : C.border}`,
+                    borderRadius: 9,
                   }}
                 >
-                  <span style={{ color: rt ? sbomColor : C.textMuted, display: "flex" }}>
-                    {isTb ? Ic.archive(14) : Ic.cpu(14)}
-                  </span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
-                      ...S_SECTION_LABEL_SMALL,
-                      letterSpacing: 0.8,
-                      color: rt ? sbomColor : C.textMuted,
-                      opacity: 0.7,
-                      marginBottom: 1,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 7,
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: `${rt ? sbomColor : C.textMuted}18`,
                     }}
                   >
-                    Scan target · ree.runtime
+                    <span style={{ color: rt ? sbomColor : C.textMuted, display: "flex" }}>
+                      {isTb ? Ic.archive(14) : Ic.cpu(14)}
+                    </span>
                   </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      fontFamily: F.mono,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      color: rt ? sbomColor : C.textMuted,
-                    }}
-                  >
-                    {rt || (
-                      <span style={S_TEXT_ITALIC_11}>
-                        not set — set a runtime in the Build Runtime step first
-                      </span>
-                    )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        ...S_SECTION_LABEL_SMALL,
+                        letterSpacing: 0.8,
+                        color: rt ? sbomColor : C.textMuted,
+                        opacity: 0.7,
+                        marginBottom: 1,
+                      }}
+                    >
+                      Scan target · ree.runtime
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        fontFamily: F.mono,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        color: rt ? sbomColor : C.textMuted,
+                      }}
+                    >
+                      {rt || (
+                        <span style={S_TEXT_ITALIC_11}>
+                          not set — set a runtime in the Build Runtime step first
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  {rt && (
+                    <span
+                      style={{
+                        ...S_STATUS_BADGE_SM_BASE,
+                        color: sbomColor,
+                        background: `${sbomColor}12`,
+                        border: `1px solid ${sbomColor}40`,
+                      }}
+                    >
+                      {isTb ? "TARBALL" : "IMAGE"}
+                    </span>
+                  )}
                 </div>
-                {rt && (
-                  <span
+
+                {!rt && (
+                  <button
+                    type="button"
+                    onClick={() => onGo(PAGE.BUILD)}
                     style={{
-                      ...S_STATUS_BADGE_SM_BASE,
-                      color: sbomColor,
-                      background: `${sbomColor}12`,
-                      border: `1px solid ${sbomColor}40`,
+                      ...actionBtn({
+                        border: `1px solid ${sbomColor}40`,
+                        borderRadius: 6,
+                        padding: "5px 10px",
+                        fontSize: 12,
+                        color: sbomColor,
+                        background: `${sbomColor}12`,
+                      }),
+                      width: "fit-content",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      cursor: "pointer",
                     }}
+                    {...hoverBrightness(96)}
                   >
-                    {isTb ? "TARBALL" : "IMAGE"}
-                  </span>
+                    {Ic.chevR(12)} Go to Build Runtime
+                  </button>
                 )}
               </div>
-
-              {!rt && (
-                <button
-                  type="button"
-                  onClick={() => onGo(PAGE.BUILD)}
-                  style={{
-                    ...actionBtn({
-                      border: `1px solid ${sbomColor}40`,
-                      borderRadius: 6,
-                      padding: "5px 10px",
-                      fontSize: 12,
-                      color: sbomColor,
-                      background: `${sbomColor}12`,
-                    }),
-                    width: "fit-content",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    cursor: "pointer",
-                  }}
-                  {...hoverBrightness(96)}
-                >
-                  {Ic.chevR(12)} Go to Build Runtime
-                </button>
-              )}
-            </div>
             </FieldRow>
           </FieldSection>
 
@@ -6738,171 +6641,172 @@ function PageGenerateSBOM({
             filledCount={hasSbom ? 1 : 0}
             totalCount={1}
           >
-            <FieldRow fieldKey="sbom" onFocus={() => setFocusedField("sbom")} active={focusedField === "sbom"}>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "10px 14px",
-                background: hasSbom ? "#f0fdf4" : C.surfaceAlt,
-                border: `1.5px solid ${hasSbom ? "#bbf7d0" : C.border}`,
-                borderRadius: 9,
-                marginBottom: 12,
-              }}
+            <FieldRow
+              fieldKey="sbom"
+              onFocus={() => setFocusedField("sbom")}
+              active={focusedField === "sbom"}
             >
               <div
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 7,
-                  flexShrink: 0,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  background: hasSbom ? "#dcfce7" : `${C.border}40`,
+                  gap: 10,
+                  padding: "10px 14px",
+                  background: hasSbom ? "#f0fdf4" : C.surfaceAlt,
+                  border: `1.5px solid ${hasSbom ? "#bbf7d0" : C.border}`,
+                  borderRadius: 9,
+                  marginBottom: 12,
                 }}
               >
-                <span style={{ color: hasSbom ? "#16a34a" : C.textMuted, display: "flex" }}>
-                  {Ic.package(14)}
-                </span>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    ...S_SECTION_LABEL_SMALL,
-                    letterSpacing: 0.8,
-                    color: hasSbom ? "#16a34a" : C.textMuted,
-                    opacity: 0.7,
-                    marginBottom: 1,
+                    width: 28,
+                    height: 28,
+                    borderRadius: 7,
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: hasSbom ? "#dcfce7" : `${C.border}40`,
                   }}
                 >
-                  ree.sbom
+                  <span style={{ color: hasSbom ? "#16a34a" : C.textMuted, display: "flex" }}>
+                    {Ic.package(14)}
+                  </span>
                 </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    fontFamily: F.mono,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    color: hasSbom ? "#15803d" : C.textMuted,
-                  }}
-                >
-                  {hasSbom ? (
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      ...S_SECTION_LABEL_SMALL,
+                      letterSpacing: 0.8,
+                      color: hasSbom ? "#16a34a" : C.textMuted,
+                      opacity: 0.7,
+                      marginBottom: 1,
+                    }}
+                  >
                     ree.sbom
-                  ) : (
-                    <span style={S_TEXT_ITALIC_11}>
-                      not set — click Generate SBOM
-                    </span>
-                  )}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      fontFamily: F.mono,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      color: hasSbom ? "#15803d" : C.textMuted,
+                    }}
+                  >
+                    {hasSbom ? (
+                      ree.sbom
+                    ) : (
+                      <span style={S_TEXT_ITALIC_11}>not set — click Generate SBOM</span>
+                    )}
+                  </div>
                 </div>
+                {hasSbom && (
+                  <span
+                    style={{
+                      ...S_STATUS_BADGE_SM_BASE,
+                      color: "#16a34a",
+                      background: "#f0fdf4",
+                      border: "1px solid #bbf7d0",
+                    }}
+                  >
+                    SET
+                  </span>
+                )}
               </div>
-              {hasSbom && (
-                <span
-                  style={{
-                    ...S_STATUS_BADGE_SM_BASE,
-                    color: "#16a34a",
-                    background: "#f0fdf4",
-                    border: "1px solid #bbf7d0",
-                  }}
-                >
-                  SET
-                </span>
-              )}
-            </div>
 
-            {hasSbom ? (
-              (() => {
-                if (!sbomNode)
+              {hasSbom ? (
+                (() => {
+                  if (!sbomNode)
+                    return (
+                      <div style={{ color: C.textMuted }}>
+                        SBOM file was set but is not present in files.
+                      </div>
+                    );
+                  let pkgCount = null;
+                  try {
+                    pkgCount = JSON.parse(sbomNode.content)?.packages?.length ?? null;
+                  } catch {}
                   return (
-                    <div style={{ color: C.textMuted }}>
-                      SBOM file was set but is not present in files.
-                    </div>
-                  );
-                let pkgCount = null;
-                try {
-                  pkgCount = JSON.parse(sbomNode.content)?.packages?.length ?? null;
-                } catch {}
-                return (
-                  <div>
-                    <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>SBOM Preview</div>
-                    <div
-                      style={{
-                        border: `1px solid ${sbomColor}20`,
-                        borderRadius: 10,
-                        overflow: "hidden",
-                      }}
-                    >
+                    <div>
+                      <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>SBOM Preview</div>
                       <div
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "10px 14px",
-                          background: `${sbomColor}08`,
-                          borderBottom: `1px solid ${sbomColor}20`,
+                          border: `1px solid ${sbomColor}20`,
+                          borderRadius: 10,
+                          overflow: "hidden",
                         }}
                       >
-                        <span style={{ color: sbomColor, display: "flex" }}>{Ic.file(13)}</span>
-                        <span
+                        <div
                           style={{
-                            fontSize: 13,
-                            fontFamily: F.mono,
-                            fontWeight: 700,
-                            color: sbomColor,
-                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "10px 14px",
+                            background: `${sbomColor}08`,
+                            borderBottom: `1px solid ${sbomColor}20`,
                           }}
                         >
-                          {ree.sbom}
-                        </span>
-                        {pkgCount !== null && (
+                          <span style={{ color: sbomColor, display: "flex" }}>{Ic.file(13)}</span>
                           <span
                             style={{
-                              fontSize: 11,
-                              fontFamily: F.sans,
+                              fontSize: 13,
+                              fontFamily: F.mono,
+                              fontWeight: 700,
                               color: sbomColor,
-                              background: `${sbomColor}15`,
-                              border: `1px solid ${sbomColor}30`,
-                              borderRadius: 10,
-                              padding: "1px 8px",
+                              flex: 1,
                             }}
                           >
-                            {pkgCount} package{pkgCount !== 1 ? "s" : ""}
+                            {ree.sbom}
                           </span>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          background: "#0d1117",
-                          padding: "14px 16px",
-                          maxHeight: 340,
-                          overflowY: "auto",
-                        }}
-                      >
-                        <pre
+                          {pkgCount !== null && (
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontFamily: F.sans,
+                                color: sbomColor,
+                                background: `${sbomColor}15`,
+                                border: `1px solid ${sbomColor}30`,
+                                borderRadius: 10,
+                                padding: "1px 8px",
+                              }}
+                            >
+                              {pkgCount} package{pkgCount !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                        <div
                           style={{
-                            margin: 0,
-                            fontSize: 11,
-                            fontFamily: F.mono,
-                            color: "#7ee787",
-                            lineHeight: 1.6,
-                            whiteSpace: "pre-wrap",
-                            wordBreak: "break-all",
+                            background: "#0d1117",
+                            padding: "14px 16px",
+                            maxHeight: 340,
+                            overflowY: "auto",
                           }}
                         >
-                          {sbomNode.content}
-                        </pre>
+                          <pre
+                            style={{
+                              margin: 0,
+                              fontSize: 11,
+                              fontFamily: F.mono,
+                              color: "#7ee787",
+                              lineHeight: 1.6,
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-all",
+                            }}
+                          >
+                            {sbomNode.content}
+                          </pre>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })()
-            ) : (
-              <div style={{ color: C.textMuted }}>No SBOM generated yet.</div>
-            )}
+                  );
+                })()
+              ) : (
+                <div style={{ color: C.textMuted }}>No SBOM generated yet.</div>
+              )}
             </FieldRow>
           </FieldSection>
 
@@ -6995,31 +6899,31 @@ function PageTestActivation({
             filledCount={ree.activation_script ? 1 : 0}
             totalCount={1}
           >
-            <FieldRow fieldKey="activation_script" onFocus={() => setFocusedField("activation_script")} active={focusedField === "activation_script"}>
-            <div style={S_FIELD_STACK_GAP_14}>
-              <div style={S_FIELD_STACK_GAP_5}>
-                <div style={S_FLEX_ROW_CENTER_GAP_6}>
-                  <span style={S_FIELD_LABEL_TEXT_SM}>
-                    {asLabel}
-                  </span>
-                  <span style={S_FIELD_ROW_REQUIRED_BADGE}>
-                    required
-                  </span>
+            <FieldRow
+              fieldKey="activation_script"
+              onFocus={() => setFocusedField("activation_script")}
+              active={focusedField === "activation_script"}
+            >
+              <div style={S_FIELD_STACK_GAP_14}>
+                <div style={S_FIELD_STACK_GAP_5}>
+                  <div style={S_FLEX_ROW_CENTER_GAP_6}>
+                    <span style={S_FIELD_LABEL_TEXT_SM}>{asLabel}</span>
+                    <span style={S_FIELD_ROW_REQUIRED_BADGE}>required</span>
+                  </div>
+                  <div style={S_FIELD_HELP_TEXT_SMALL}>
+                    Shell script that loads the runtime and verifies the environment activates
+                    correctly
+                  </div>
+                  <FilePicker
+                    disabled={false}
+                    value={ree.activation_script}
+                    onChange={(v) => onReeChange?.({ ...ree, activation_script: v })}
+                    files={files || MOCK_FILES}
+                    placeholder="activation_test.sh"
+                    filterFn={(p) => /\.sh$/i.test(p)}
+                  />
                 </div>
-                <div style={S_FIELD_HELP_TEXT_SMALL}>
-                  Shell script that loads the runtime and verifies the environment activates
-                  correctly
-                </div>
-                <FilePicker
-                  disabled={false}
-                  value={ree.activation_script}
-                  onChange={(v) => onReeChange?.({ ...ree, activation_script: v })}
-                  files={files || MOCK_FILES}
-                  placeholder="activation_test.sh"
-                  filterFn={(p) => /\.sh$/i.test(p)}
-                />
               </div>
-            </div>
             </FieldRow>
           </FieldSection>
 
@@ -7805,7 +7709,6 @@ function PageEvaluate({
             </div>
           )}
 
-        
           <ServiceActionSection
             color={svc.color}
             running={running}
@@ -7821,14 +7724,18 @@ function PageEvaluate({
             onRun={() => onRun(svc.key, params)}
           />
 
-            {/* Repro level score and ladder (Evaluate output) */}
-            <FieldSection
-              title="Evaluate Output · Reproducibility Score"
-              icon={IC(14)}
-              filledCount={hasScoreOutput ? 1 : 0}
-              totalCount={1}
+          {/* Repro level score and ladder (Evaluate output) */}
+          <FieldSection
+            title="Evaluate Output · Reproducibility Score"
+            icon={IC(14)}
+            filledCount={hasScoreOutput ? 1 : 0}
+            totalCount={1}
+          >
+            <FieldRow
+              fieldKey="repro_level"
+              onFocus={() => setFocusedField("repro_level")}
+              active={focusedField === "repro_level"}
             >
-              <FieldRow fieldKey="repro_level" onFocus={() => setFocusedField("repro_level")} active={focusedField === "repro_level"}>
               <div
                 style={{
                   display: "flex",
@@ -7919,9 +7826,7 @@ function PageEvaluate({
                         >
                           {lv.label}
                         </div>
-                        <div style={S_FIELD_HELP_TEXT_SMALL}>
-                          {lv.desc}
-                        </div>
+                        <div style={S_FIELD_HELP_TEXT_SMALL}>{lv.desc}</div>
                         <div
                           style={{
                             marginTop: 5,
@@ -7986,19 +7891,22 @@ function PageEvaluate({
                   );
                 })}
               </div>
-              </FieldRow>
-            </FieldSection>
+            </FieldRow>
+          </FieldSection>
 
-            {/* Dependency detection */}
-            <FieldSection
-              title="Detected Dependencies"
-              icon={Ic.package()}
-              subtitle={!hasRun ? "run to scan" : undefined}
-              filledCount={depGroups.length > 0 ? 1 : 0}
-              totalCount={1}
+          {/* Dependency detection */}
+          <FieldSection
+            title="Detected Dependencies"
+            icon={Ic.package()}
+            subtitle={!hasRun ? "run to scan" : undefined}
+            filledCount={depGroups.length > 0 ? 1 : 0}
+            totalCount={1}
+          >
+            <FieldRow
+              fieldKey="detected_dependencies"
+              onFocus={() => setFocusedField("detected_dependencies")}
+              active={focusedField === "detected_dependencies"}
             >
-              <FieldRow fieldKey="detected_dependencies" onFocus={() => setFocusedField("detected_dependencies")} active={focusedField === "detected_dependencies"}>
-
               {hasRun ? (
                 <>
                   {depGroups.length > 0 ? (
@@ -8144,21 +8052,21 @@ function PageEvaluate({
                   ))}
                 </div>
               )}
-              </FieldRow>
-            </FieldSection>
+            </FieldRow>
+          </FieldSection>
 
-            {/* Log output */}
-            <div
-              style={{
-                ...S_SECTION_LABEL,
-                letterSpacing: 1.3,
-                fontWeight: 600,
-                marginBottom: 8,
-              }}
-            >
-              Output
-            </div>
-            <LogPanel log={log} running={running} />
+          {/* Log output */}
+          <div
+            style={{
+              ...S_SECTION_LABEL,
+              letterSpacing: 1.3,
+              fontWeight: 600,
+              marginBottom: 8,
+            }}
+          >
+            Output
+          </div>
+          <LogPanel log={log} running={running} />
 
           {/* Next step nudge */}
           <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
@@ -8441,65 +8349,65 @@ function PageBuildRuntime({
             filledCount={ree.build_runtime_script ? 1 : 0}
             totalCount={1}
           >
-            <FieldRow fieldKey="build_runtime_script" onFocus={() => setFocusedField("build_runtime_script")} active={focusedField === "build_runtime_script"}>
-            <div style={S_FIELD_STACK_GAP_5}>
-              <div style={S_FLEX_ROW_CENTER_GAP_6}>
-                <span style={S_FIELD_LABEL_TEXT_SM}>
-                  Shell script
-                </span>
-                <span style={S_FIELD_ROW_REQUIRED_BADGE}>
-                  required
-                </span>
-              </div>
-              <div style={S_FIELD_HELP_TEXT_SMALL}>
-                Script that builds your runtime environment. The script is responsible for exporting
-                the runtime to the file specified in "Expected output" below.
-              </div>
-              <FilePicker
-                disabled={false}
-                value={ree.build_runtime_script}
-                onChange={(v) => onReeChange?.({ ...ree, build_runtime_script: v })}
-                files={files || MOCK_FILES}
-                placeholder="build_runtime.sh"
-                filterFn={(p) => /\.sh$/i.test(p)}
-              />
-            </div>
-
-            {!ree.build_runtime_script && (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: "9px 12px",
-                  borderRadius: 7,
-                  background: "#ecfeff",
-                  border: "1px solid #a5f3fc",
-                  color: "#0e7490",
-                  fontSize: 11,
-                  fontFamily: F.sans,
-                  lineHeight: 1.4,
-                }}
-              >
-                No build script yet? Use a predefined default script in the editor below (Docker,
-                Nix, Conda, Python venv).
-              </div>
-            )}
-
-            <div style={{ marginTop: 14 }}>
-              <div style={{ ...S_SECTION_LABEL, marginBottom: 10 }}>Build Script Editor</div>
-              {SVC_SCRIPT_FIELDS[svc.key]?.map((sf) => (
-                <ScriptPanel
-                  key={sf.fieldKey}
-                  scriptKind={sf.scriptKind || null}
-                  fieldKey={sf.fieldKey}
+            <FieldRow
+              fieldKey="build_runtime_script"
+              onFocus={() => setFocusedField("build_runtime_script")}
+              active={focusedField === "build_runtime_script"}
+            >
+              <div style={S_FIELD_STACK_GAP_5}>
+                <div style={S_FLEX_ROW_CENTER_GAP_6}>
+                  <span style={S_FIELD_LABEL_TEXT_SM}>Shell script</span>
+                  <span style={S_FIELD_ROW_REQUIRED_BADGE}>required</span>
+                </div>
+                <div style={S_FIELD_HELP_TEXT_SMALL}>
+                  Script that builds your runtime environment. The script is responsible for
+                  exporting the runtime to the file specified in "Expected output" below.
+                </div>
+                <FilePicker
+                  disabled={false}
+                  value={ree.build_runtime_script}
+                  onChange={(v) => onReeChange?.({ ...ree, build_runtime_script: v })}
                   files={files || MOCK_FILES}
-                  onFilesChange={onFilesChange}
-                  ree={ree}
-                  onReeChange={onReeChange}
-                  onTemplateSuggestedOutput={(out) => setExpectedOutput(out)}
-                  saveToWorkspaceOnly
+                  placeholder="build_runtime.sh"
+                  filterFn={(p) => /\.sh$/i.test(p)}
                 />
-              ))}
-            </div>
+              </div>
+
+              {!ree.build_runtime_script && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: "9px 12px",
+                    borderRadius: 7,
+                    background: "#ecfeff",
+                    border: "1px solid #a5f3fc",
+                    color: "#0e7490",
+                    fontSize: 11,
+                    fontFamily: F.sans,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  No build script yet? Use a predefined default script in the editor below (Docker,
+                  Nix, Conda, Python venv).
+                </div>
+              )}
+
+              <div style={{ marginTop: 14 }}>
+                <div style={{ ...S_SECTION_LABEL, marginBottom: 10 }}>Build Script Editor</div>
+                {SVC_SCRIPT_FIELDS[svc.key]?.map((sf) => (
+                  <ScriptPanel
+                    key={sf.fieldKey}
+                    scriptKind={sf.scriptKind || null}
+                    fieldKey={sf.fieldKey}
+                    files={files || MOCK_FILES}
+                    onFilesChange={onFilesChange}
+                    ree={ree}
+                    onReeChange={onReeChange}
+                    onTemplateSuggestedOutput={(out) => setExpectedOutput(out)}
+                    saveToWorkspaceOnly
+                  />
+                ))}
+              </div>
             </FieldRow>
           </FieldSection>
 
@@ -8510,134 +8418,137 @@ function PageBuildRuntime({
             filledCount={expectedOutput ? 1 : 0}
             totalCount={1}
           >
-            <FieldRow fieldKey="runtime" onFocus={() => setFocusedField("runtime")} active={focusedField === "runtime"}>
-            <div style={S_FIELD_STACK_GAP_5}>
-              <div style={S_FLEX_ROW_CENTER_GAP_6}>
-                <span style={S_FIELD_LABEL_TEXT_SM}>
-                  Exported runtime file path
-                </span>
-                <span style={S_FIELD_ROW_REQUIRED_BADGE}>
-                  required
-                </span>
+            <FieldRow
+              fieldKey="runtime"
+              onFocus={() => setFocusedField("runtime")}
+              active={focusedField === "runtime"}
+            >
+              <div style={S_FIELD_STACK_GAP_5}>
+                <div style={S_FLEX_ROW_CENTER_GAP_6}>
+                  <span style={S_FIELD_LABEL_TEXT_SM}>Exported runtime file path</span>
+                  <span style={S_FIELD_ROW_REQUIRED_BADGE}>required</span>
+                </div>
+                <div style={S_FIELD_HELP_TEXT_SMALL}>
+                  The filepath where your build script will export the runtime (e.g.,{" "}
+                  <code style={{ fontFamily: F.mono, fontSize: 10 }}>runtime.tar.gz</code>).
+                </div>
+                <input
+                  value={expectedOutput}
+                  onChange={(e) => setExpectedOutput(e.target.value)}
+                  onFocus={() => setFocusedField("runtime")}
+                  placeholder="runtime.tar.gz"
+                  style={{
+                    border: `1.5px solid ${expectedOutput ? C.accentBorder : C.border}`,
+                    borderRadius: 6,
+                    padding: "5px 8px",
+                    fontSize: 11,
+                    fontFamily: F.mono,
+                    color: C.text,
+                    background: C.surface,
+                    width: "100%",
+                    boxSizing: "border-box",
+                  }}
+                />
               </div>
-              <div style={S_FIELD_HELP_TEXT_SMALL}>
-                The filepath where your build script will export the runtime (e.g.,{" "}
-                <code style={{ fontFamily: F.mono, fontSize: 10 }}>runtime.tar.gz</code>).
-              </div>
-              <input
-                value={expectedOutput}
-                onChange={(e) => setExpectedOutput(e.target.value)}
-                onFocus={() => setFocusedField("runtime")}
-                placeholder="runtime.tar.gz"
-                style={{
-                  border: `1.5px solid ${expectedOutput ? C.accentBorder : C.border}`,
-                  borderRadius: 6,
-                  padding: "5px 8px",
-                  fontSize: 11,
-                  fontFamily: F.mono,
-                  color: C.text,
-                  background: C.surface,
-                  width: "100%",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
 
-            {/* Additional parameters */}
-            {svc.params && svc.params.length > 0 && (
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-                <div style={S_SECTION_LABEL_MB12}>Additional Parameters</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}>
-                  {svc.params.map((p) => (
-                    <div
-                      key={p.key}
-                      style={{ display: "flex", flexDirection: "column", gap: 5, flex: "0 1 auto" }}
-                    >
+              {/* Additional parameters */}
+              {svc.params && svc.params.length > 0 && (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+                  <div style={S_SECTION_LABEL_MB12}>Additional Parameters</div>
+                  <div
+                    style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}
+                  >
+                    {svc.params.map((p) => (
                       <div
+                        key={p.key}
                         style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: C.textMid,
-                          fontFamily: F.sans,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 5,
+                          flex: "0 1 auto",
                         }}
                       >
-                        {p.label}
-                      </div>
-                      {p.hint && (
-                        <div style={S_FIELD_HELP_TEXT_SMALL}>
-                          {p.hint}
-                        </div>
-                      )}
-                      {p.type === "bool" ? (
-                        <button
-                          type="button"
-                          onClick={() => setParam(p.key, !params[p.key])}
+                        <div
                           style={{
-                            width: 34,
-                            height: 19,
-                            borderRadius: 99,
-                            border: "none",
-                            cursor: "pointer",
-                            background: params[p.key] ? buildColor : C.borderMid,
-                            transition: "background 0.2s",
-                            position: "relative",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: C.textMid,
+                            fontFamily: F.sans,
                           }}
                         >
-                          <div
+                          {p.label}
+                        </div>
+                        {p.hint && <div style={S_FIELD_HELP_TEXT_SMALL}>{p.hint}</div>}
+                        {p.type === "bool" ? (
+                          <button
+                            type="button"
+                            onClick={() => setParam(p.key, !params[p.key])}
                             style={{
-                              position: "absolute",
-                              top: 2,
-                              left: params[p.key] ? 17 : 2,
-                              width: 15,
-                              height: 15,
-                              borderRadius: "50%",
-                              background: "#fff",
-                              transition: "left 0.2s",
-                              boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
+                              width: 34,
+                              height: 19,
+                              borderRadius: 99,
+                              border: "none",
+                              cursor: "pointer",
+                              background: params[p.key] ? buildColor : C.borderMid,
+                              transition: "background 0.2s",
+                              position: "relative",
+                            }}
+                          >
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: 2,
+                                left: params[p.key] ? 17 : 2,
+                                width: 15,
+                                height: 15,
+                                borderRadius: "50%",
+                                background: "#fff",
+                                transition: "left 0.2s",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
+                              }}
+                            />
+                          </button>
+                        ) : p.type === "select" ? (
+                          <select
+                            value={String(params[p.key] ?? "")}
+                            onChange={(e) => setParam(p.key, e.target.value)}
+                            style={{
+                              border: `1.5px solid ${C.border}`,
+                              borderRadius: 6,
+                              padding: "5px 8px",
+                              fontSize: 11,
+                              fontFamily: F.mono,
+                              color: C.text,
+                              background: C.surface,
+                            }}
+                          >
+                            {p.options.map((o) => (
+                              <option key={o} value={o}>
+                                {o}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            value={String(params[p.key] ?? "")}
+                            onChange={(e) => setParam(p.key, e.target.value)}
+                            style={{
+                              border: `1.5px solid ${C.border}`,
+                              borderRadius: 6,
+                              padding: "5px 8px",
+                              fontSize: 11,
+                              fontFamily: F.mono,
+                              color: C.text,
+                              background: C.surface,
+                              boxSizing: "border-box",
                             }}
                           />
-                        </button>
-                      ) : p.type === "select" ? (
-                        <select
-                          value={String(params[p.key] ?? "")}
-                          onChange={(e) => setParam(p.key, e.target.value)}
-                          style={{
-                            border: `1.5px solid ${C.border}`,
-                            borderRadius: 6,
-                            padding: "5px 8px",
-                            fontSize: 11,
-                            fontFamily: F.mono,
-                            color: C.text,
-                            background: C.surface,
-                          }}
-                        >
-                          {p.options.map((o) => (
-                            <option key={o} value={o}>
-                              {o}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          value={String(params[p.key] ?? "")}
-                          onChange={(e) => setParam(p.key, e.target.value)}
-                          style={{
-                            border: `1.5px solid ${C.border}`,
-                            borderRadius: 6,
-                            padding: "5px 8px",
-                            fontSize: 11,
-                            fontFamily: F.mono,
-                            color: C.text,
-                            background: C.surface,
-                            boxSizing: "border-box",
-                          }}
-                        />
-                      )}
-                    </div>
-                  ))}
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             </FieldRow>
           </FieldSection>
 
@@ -8781,11 +8692,7 @@ function PageBuildRuntime({
                         color: metaRuntime ? "#15803d" : C.textMuted,
                       }}
                     >
-                      {metaRuntime || (
-                        <span style={S_TEXT_ITALIC_11}>
-                          not set
-                        </span>
-                      )}
+                      {metaRuntime || <span style={S_TEXT_ITALIC_11}>not set</span>}
                     </div>
                   </div>
                   {metaRuntime && (
@@ -8852,166 +8759,172 @@ function PageBuildRuntime({
             filledCount={finalRuntime ? 1 : 0}
             totalCount={1}
           >
-            <FieldRow fieldKey="runtime" onFocus={() => setFocusedField("runtime")} active={focusedField === "runtime"}>
-            <div style={S_FLEX_COL_GAP_8}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "10px 14px",
-                  background: finalRuntime ? "#f0fdf4" : C.surfaceAlt,
-                  border: `1.5px solid ${finalRuntime ? "#bbf7d0" : C.border}`,
-                  borderRadius: 8,
-                }}
-              >
+            <FieldRow
+              fieldKey="runtime"
+              onFocus={() => setFocusedField("runtime")}
+              active={focusedField === "runtime"}
+            >
+              <div style={S_FLEX_COL_GAP_8}>
                 <div
                   style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 7,
-                    flexShrink: 0,
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    background: finalRuntime ? "#dcfce7" : `${C.border}40`,
+                    gap: 10,
+                    padding: "10px 14px",
+                    background: finalRuntime ? "#f0fdf4" : C.surfaceAlt,
+                    border: `1.5px solid ${finalRuntime ? "#bbf7d0" : C.border}`,
+                    borderRadius: 8,
                   }}
                 >
-                  <span style={{ color: finalRuntime ? "#16a34a" : C.textMuted, display: "flex" }}>
-                    {Ic.archive(14)}
-                  </span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
-                      ...S_SECTION_LABEL_SMALL,
-                      letterSpacing: 0.8,
-                      color: finalRuntime ? "#16a34a" : C.textMuted,
-                      opacity: 0.7,
-                      marginBottom: 1,
-                    }}
-                  >
-                    ree.runtime
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      fontFamily: F.mono,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      color: finalRuntime ? "#15803d" : C.textMuted,
-                    }}
-                  >
-                    {finalRuntime || (
-                      <span style={S_TEXT_ITALIC_11}>
-                        not set yet — run build or set manually
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {finalRuntimeSize && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontFamily: F.mono,
-                      fontWeight: 700,
-                      color: finalRuntime ? "#166534" : C.textMuted,
-                      background: finalRuntime ? "#dcfce7" : C.surfaceAlt,
-                      border: `1px solid ${finalRuntime ? "#86efac" : C.border}`,
-                      borderRadius: 4,
-                      padding: "2px 7px",
+                      width: 28,
+                      height: 28,
+                      borderRadius: 7,
                       flexShrink: 0,
-                    }}
-                  >
-                    {finalRuntimeSize}
-                  </span>
-                )}
-                {finalRuntime && (
-                  <div
-                    style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
-                      marginLeft: 4,
-                      paddingLeft: 8,
-                      borderLeft: `1px solid ${finalRuntime ? "#bbf7d0" : C.border}`,
+                      justifyContent: "center",
+                      background: finalRuntime ? "#dcfce7" : `${C.border}40`,
                     }}
                   >
-                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                      <div
-                        style={{
-                          ...S_SECTION_LABEL_SMALL,
-                          letterSpacing: 0.7,
-                          color: includeRuntime ? "#164e63" : C.textMuted,
-                        }}
-                      >
-                        Included
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: includeRuntime ? "#0891b2" : C.textMuted,
-                          fontFamily: F.sans,
-                        }}
-                      >
-                        {includeRuntime ? "Yes" : "No"}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onReeChange?.({ ...ree, _runtimeIncluded: !includeRuntime })}
+                    <span
+                      style={{ color: finalRuntime ? "#16a34a" : C.textMuted, display: "flex" }}
+                    >
+                      {Ic.archive(14)}
+                    </span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
                       style={{
-                        width: 34,
-                        height: 20,
-                        borderRadius: 99,
-                        border: "none",
-                        cursor: "pointer",
-                        background: includeRuntime ? "#06b6d4" : C.borderMid,
-                        transition: "background 0.2s",
-                        position: "relative",
+                        ...S_SECTION_LABEL_SMALL,
+                        letterSpacing: 0.8,
+                        color: finalRuntime ? "#16a34a" : C.textMuted,
+                        opacity: 0.7,
+                        marginBottom: 1,
+                      }}
+                    >
+                      ree.runtime
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        fontFamily: F.mono,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        color: finalRuntime ? "#15803d" : C.textMuted,
+                      }}
+                    >
+                      {finalRuntime || (
+                        <span style={S_TEXT_ITALIC_11}>
+                          not set yet — run build or set manually
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {finalRuntimeSize && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontFamily: F.mono,
+                        fontWeight: 700,
+                        color: finalRuntime ? "#166534" : C.textMuted,
+                        background: finalRuntime ? "#dcfce7" : C.surfaceAlt,
+                        border: `1px solid ${finalRuntime ? "#86efac" : C.border}`,
+                        borderRadius: 4,
+                        padding: "2px 7px",
                         flexShrink: 0,
                       }}
                     >
-                      <div
+                      {finalRuntimeSize}
+                    </span>
+                  )}
+                  {finalRuntime && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginLeft: 4,
+                        paddingLeft: 8,
+                        borderLeft: `1px solid ${finalRuntime ? "#bbf7d0" : C.border}`,
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                        <div
+                          style={{
+                            ...S_SECTION_LABEL_SMALL,
+                            letterSpacing: 0.7,
+                            color: includeRuntime ? "#164e63" : C.textMuted,
+                          }}
+                        >
+                          Included
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: includeRuntime ? "#0891b2" : C.textMuted,
+                            fontFamily: F.sans,
+                          }}
+                        >
+                          {includeRuntime ? "Yes" : "No"}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onReeChange?.({ ...ree, _runtimeIncluded: !includeRuntime })}
                         style={{
-                          position: "absolute",
-                          top: 2,
-                          left: includeRuntime ? 16 : 2,
-                          width: 16,
-                          height: 16,
-                          borderRadius: "50%",
-                          background: "#fff",
-                          transition: "left 0.2s",
-                          boxShadow: "0 1px 3px rgba(0,0,0,0.22)",
+                          width: 34,
+                          height: 20,
+                          borderRadius: 99,
+                          border: "none",
+                          cursor: "pointer",
+                          background: includeRuntime ? "#06b6d4" : C.borderMid,
+                          transition: "background 0.2s",
+                          position: "relative",
+                          flexShrink: 0,
                         }}
-                      />
-                    </button>
-                  </div>
-                )}
-                {finalRuntime && (
-                  <span
-                    style={{
-                      ...S_STATUS_BADGE_SM_BASE,
-                      color: "#16a34a",
-                      background: "#f0fdf4",
-                      border: "1px solid #bbf7d0",
-                    }}
-                  >
-                    FINAL
-                  </span>
-                )}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 2,
+                            left: includeRuntime ? 16 : 2,
+                            width: 16,
+                            height: 16,
+                            borderRadius: "50%",
+                            background: "#fff",
+                            transition: "left 0.2s",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.22)",
+                          }}
+                        />
+                      </button>
+                    </div>
+                  )}
+                  {finalRuntime && (
+                    <span
+                      style={{
+                        ...S_STATUS_BADGE_SM_BASE,
+                        color: "#16a34a",
+                        background: "#f0fdf4",
+                        border: "1px solid #bbf7d0",
+                      }}
+                    >
+                      FINAL
+                    </span>
+                  )}
+                </div>
+                <div style={S_FIELD_HELP_TEXT_SMALL}>
+                  {finalRuntime
+                    ? includeRuntime
+                      ? "Runtime will be bundled in the REE archive."
+                      : "Runtime will not be bundled in the REE archive."
+                    : "Set a runtime value first."}
+                </div>
               </div>
-              <div style={S_FIELD_HELP_TEXT_SMALL}>
-                {finalRuntime
-                  ? includeRuntime
-                    ? "Runtime will be bundled in the REE archive."
-                    : "Runtime will not be bundled in the REE archive."
-                  : "Set a runtime value first."}
-              </div>
-            </div>
             </FieldRow>
           </FieldSection>
 
@@ -9099,486 +9012,500 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
 
       <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
         <div style={{ padding: 24, maxWidth: 860 }}>
-
-      {/* Capstone gate — warn if upstream steps are incomplete */}
-      {!capstoneReady && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 12,
-            padding: "12px 16px",
-            marginBottom: 20,
-            background: "#fffbeb",
-            border: "1px solid #fde68a",
-            borderRadius: 10,
-          }}
-        >
-          <span style={{ color: "#b45309", display: "flex", flexShrink: 0, marginTop: 1 }}>
-            {Ic.info()}
-          </span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#92400e", marginBottom: 4 }}>
-              Complete earlier steps before depositing
-            </div>
-            <div style={{ fontSize: 13, color: "#92400e", lineHeight: 1.5, marginBottom: 8 }}>
-              Archiving before building and validating risks depositing an environment that can't be
-              reproduced. Complete these steps first:
-            </div>
-            <div style={S_FLEX_ROW_GAP_8}>
-              {!buildDone && (
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontFamily: F.sans,
-                    color: "#92400e",
-                    background: "#fef3c7",
-                    border: "1px solid #fde68a",
-                    borderRadius: 4,
-                    padding: "2px 8px",
-                    fontWeight: 600,
-                  }}
-                >
-                  ✗ Build Runtime not run
-                </span>
-              )}
-              {!sbomDone && (
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontFamily: F.sans,
-                    color: "#92400e",
-                    background: "#fef3c7",
-                    border: "1px solid #fde68a",
-                    borderRadius: 4,
-                    padding: "2px 8px",
-                    fontWeight: 600,
-                  }}
-                >
-                  ✗ SBOM not generated
-                </span>
-              )}
-              {!activationDone && (
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontFamily: F.sans,
-                    color: "#92400e",
-                    background: "#fef3c7",
-                    border: "1px solid #fde68a",
-                    borderRadius: 4,
-                    padding: "2px 8px",
-                    fontWeight: 600,
-                  }}
-                >
-                  ✗ Activation test not run
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Repo selector tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {ARCHIVE_REPOS.map((r) => {
-          const isActive = activeRepo === r.key;
-          const isDone = !!badges[r.key];
-          return (
-            <button
-              type="button"
-              key={r.key}
-              onClick={() => setActiveRepo(r.key)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "9px 16px",
-                borderRadius: 8,
-                border: `1.5px solid ${isActive ? r.color : isDone ? `${r.color}40` : C.border}`,
-                background: isActive ? `${r.color}10` : isDone ? r.bg : C.surface,
-                cursor: "pointer",
-                transition: "all 0.15s",
-                flex: 1,
-                justifyContent: "center",
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.borderColor = `${r.color}70`;
-                  e.currentTarget.style.background = r.bg;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.borderColor = isDone ? `${r.color}40` : C.border;
-                  e.currentTarget.style.background = isDone ? r.bg : C.surface;
-                }
-              }}
-            >
-              {isDone && <span style={{ color: r.color, display: "flex" }}>{Ic.check(13)}</span>}
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: isActive ? 700 : 500,
-                  color: isActive ? r.color : isDone ? r.color : C.textMid,
-                  fontFamily: F.sans,
-                }}
-              >
-                {r.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {/* Left: repo info + params */}
-        <div style={S_FIELD_STACK_GAP_14}>
-          {/* Repo card */}
-          <div
-            style={{
-              background: C.surface,
-              border: `1.5px solid ${repo.border}`,
-              borderRadius: 10,
-              overflow: "hidden",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-            }}
-          >
-            <div
-              style={{
-                padding: "10px 16px",
-                background: repo.bg,
-                borderBottom: `1px solid ${repo.border}`,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <div
-                style={{
-                  width: 3,
-                  height: 16,
-                  borderRadius: 99,
-                  background: repo.color,
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{ fontSize: 14, fontWeight: 700, color: repo.color, fontFamily: F.sans }}
-              >
-                {repo.label}
-              </span>
-              <a
-                href={repo.url}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  marginLeft: "auto",
-                  fontSize: 11,
-                  fontFamily: F.mono,
-                  color: repo.color,
-                  opacity: 0.7,
-                  textDecoration: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 3,
-                }}
-              >
-                {Ic.link(10)} {repo.url.replace("https://", "")}
-              </a>
-            </div>
-            <div style={{ padding: "12px 16px" }}>
-              <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, margin: "0 0 12px" }}>
-                {repo.desc}
-              </p>
-              {/* Assigned ID */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "7px 10px",
-                  borderRadius: 7,
-                  background: assignedId ? repo.bg : C.surfaceAlt,
-                  border: `1px solid ${assignedId ? repo.border : C.border}`,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    fontFamily: F.mono,
-                    color: assignedId ? repo.color : C.textMuted,
-                    flexShrink: 0,
-                  }}
-                >
-                  {repo.idLabel}
-                </span>
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontFamily: F.mono,
-                    color: assignedId ? repo.color : C.textMuted,
-                    flex: 1,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {assignedId || repo.idPlaceholder}
-                </span>
-                {assignedId && (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: repo.color,
-                      background: repo.bg,
-                      border: `1px solid ${repo.border}`,
-                      borderRadius: 3,
-                      padding: "1px 5px",
-                      fontFamily: F.mono,
-                      fontWeight: 700,
-                      flexShrink: 0,
-                    }}
-                  >
-                    ✓ assigned
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Parameters */}
-          <div
-            style={{
-              background: C.surface,
-              border: `1px solid ${C.border}`,
-              borderRadius: 10,
-              overflow: "hidden",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-            }}
-          >
-            <div
-              style={{
-                padding: "8px 16px",
-                background: "#fafbfd",
-                borderBottom: `1px solid ${C.border}`,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <div
-                style={{
-                  width: 3,
-                  height: 14,
-                  borderRadius: 99,
-                  background: C.borderMid,
-                  flexShrink: 0,
-                }}
-              />
-              <span
-                style={{
-                  ...S_SECTION_LABEL,
-                  letterSpacing: 1,
-                }}
-              >
-                Parameters
-              </span>
-            </div>
-            <div
-              style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 10 }}
-            >
-              {repo.params.map((p) => (
-                <div key={p.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                    <label
-                      htmlFor={`repo-${repo.key}-param-${p.key}`}
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: C.textMid,
-                        fontFamily: F.sans,
-                      }}
-                    >
-                      {p.label}
-                    </label>
-                    <span style={{ fontSize: 12, color: C.textMuted }}>{p.hint}</span>
-                  </div>
-                  {p.type === "bool" ? (
-                    <button
-                      id={`repo-${repo.key}-param-${p.key}`}
-                      type="button"
-                      onClick={() => setParam(repo.key, p.key, !getParam(repo.key, p.key))}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 7,
-                        padding: "6px 10px",
-                        borderRadius: 6,
-                        border: `1.5px solid ${getParam(repo.key, p.key) ? C.accent : C.border}`,
-                        background: getParam(repo.key, p.key) ? C.accentBg : C.bg,
-                        cursor: "pointer",
-                        width: "fit-content",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 30,
-                          height: 16,
-                          borderRadius: 99,
-                          background: getParam(repo.key, p.key) ? C.accent : C.borderMid,
-                          position: "relative",
-                          transition: "background 0.2s",
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 2,
-                            left: getParam(repo.key, p.key) ? 16 : 2,
-                            width: 12,
-                            height: 12,
-                            borderRadius: "50%",
-                            background: "#fff",
-                            transition: "left 0.2s",
-                          }}
-                        />
-                      </div>
-                      <span
-                        style={{
-                          fontSize: 13,
-                          fontFamily: F.sans,
-                          color: getParam(repo.key, p.key) ? C.accent : C.textMuted,
-                        }}
-                      >
-                        {getParam(repo.key, p.key) ? "yes" : "no"}
-                      </span>
-                    </button>
-                  ) : p.type === "select" ? (
-                    <select
-                      id={`repo-${repo.key}-param-${p.key}`}
-                      value={String(getParam(repo.key, p.key) ?? "")}
-                      onChange={(e) => setParam(repo.key, p.key, e.target.value)}
-                      style={{
-                        border: `1.5px solid ${C.border}`,
-                        borderRadius: 7,
-                        padding: "6px 10px",
-                        fontSize: 14,
-                        fontFamily: F.mono,
-                        color: C.text,
-                        background: C.surface,
-                      }}
-                    >
-                      {p.options.map((o) => (
-                        <option key={o} value={o}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      id={`repo-${repo.key}-param-${p.key}`}
-                      value={String(getParam(repo.key, p.key) ?? "")}
-                      onChange={(e) => setParam(repo.key, p.key, e.target.value)}
-                      style={{
-                        border: `1.5px solid ${C.border}`,
-                        borderRadius: 7,
-                        padding: "6px 10px",
-                        fontSize: 14,
-                        fontFamily: F.mono,
-                        color: C.text,
-                        background: C.surface,
-                      }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Missing requirements warning */}
-          {missing.length > 0 && (
+          {/* Capstone gate — warn if upstream steps are incomplete */}
+          {!capstoneReady && (
             <div
               style={{
                 display: "flex",
                 alignItems: "flex-start",
-                gap: 8,
-                padding: "10px 13px",
-                background: "#fef3c7",
+                gap: 12,
+                padding: "12px 16px",
+                marginBottom: 20,
+                background: "#fffbeb",
                 border: "1px solid #fde68a",
-                borderRadius: 8,
+                borderRadius: 10,
               }}
             >
-              <span style={{ color: "#92400e", flexShrink: 0, marginTop: 1 }}>{Ic.info(13)}</span>
-              <div style={{ fontSize: 13, color: "#92400e", lineHeight: 1.5 }}>
-                <strong>Missing required fields:</strong> {missing.map((r) => r.label).join(", ")}
+              <span style={{ color: "#b45309", display: "flex", flexShrink: 0, marginTop: 1 }}>
+                {Ic.info()}
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#92400e", marginBottom: 4 }}>
+                  Complete earlier steps before depositing
+                </div>
+                <div style={{ fontSize: 13, color: "#92400e", lineHeight: 1.5, marginBottom: 8 }}>
+                  Archiving before building and validating risks depositing an environment that
+                  can't be reproduced. Complete these steps first:
+                </div>
+                <div style={S_FLEX_ROW_GAP_8}>
+                  {!buildDone && (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontFamily: F.sans,
+                        color: "#92400e",
+                        background: "#fef3c7",
+                        border: "1px solid #fde68a",
+                        borderRadius: 4,
+                        padding: "2px 8px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ✗ Build Runtime not run
+                    </span>
+                  )}
+                  {!sbomDone && (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontFamily: F.sans,
+                        color: "#92400e",
+                        background: "#fef3c7",
+                        border: "1px solid #fde68a",
+                        borderRadius: 4,
+                        padding: "2px 8px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ✗ SBOM not generated
+                    </span>
+                  )}
+                  {!activationDone && (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontFamily: F.sans,
+                        color: "#92400e",
+                        background: "#fef3c7",
+                        border: "1px solid #fde68a",
+                        borderRadius: 4,
+                        padding: "2px 8px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ✗ Activation test not run
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Deposit button */}
-          <button
-            type="button"
-            onClick={() =>
-              canRun &&
-              onRun(
-                repo.key,
-                Object.fromEntries(repo.params.map((p) => [p.key, getParam(repo.key, p.key)])),
-              )
-            }
-            disabled={!canRun}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              padding: "11px",
-              borderRadius: 9,
-              background: !canRun ? C.surfaceAlt : earned ? repo.bg : repo.color,
-              border: earned ? `1.5px solid ${repo.border}` : "none",
-              color: !canRun ? C.textMuted : earned ? repo.color : "#fff",
-              fontSize: 15,
-              fontWeight: 700,
-              fontFamily: F.sans,
-              cursor: canRun ? "pointer" : "default",
-              boxShadow: canRun && !earned ? `0 2px 12px ${repo.color}40` : "none",
-              transition: "all 0.2s",
-            }}
-          >
-            <span
-              style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}
-            >
-              {running ? Ic.loader(15) : earned ? Ic.check(15) : Ic.upload(15)}
-            </span>
-            {running
-              ? `Depositing to ${repo.label}…`
-              : earned
-                ? `Re-deposit to ${repo.label}`
-                : `Deposit to ${repo.label}`}
-          </button>
-        </div>
-
-        {/* Right: log output */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div
-            style={{
-              ...S_SECTION_LABEL,
-              letterSpacing: 1.3,
-              fontWeight: 600,
-            }}
-          >
-            Output
+          {/* Repo selector tabs */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+            {ARCHIVE_REPOS.map((r) => {
+              const isActive = activeRepo === r.key;
+              const isDone = !!badges[r.key];
+              return (
+                <button
+                  type="button"
+                  key={r.key}
+                  onClick={() => setActiveRepo(r.key)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "9px 16px",
+                    borderRadius: 8,
+                    border: `1.5px solid ${isActive ? r.color : isDone ? `${r.color}40` : C.border}`,
+                    background: isActive ? `${r.color}10` : isDone ? r.bg : C.surface,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    flex: 1,
+                    justifyContent: "center",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.borderColor = `${r.color}70`;
+                      e.currentTarget.style.background = r.bg;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.borderColor = isDone ? `${r.color}40` : C.border;
+                      e.currentTarget.style.background = isDone ? r.bg : C.surface;
+                    }
+                  }}
+                >
+                  {isDone && (
+                    <span style={{ color: r.color, display: "flex" }}>{Ic.check(13)}</span>
+                  )}
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: isActive ? 700 : 500,
+                      color: isActive ? r.color : isDone ? r.color : C.textMid,
+                      fontFamily: F.sans,
+                    }}
+                  >
+                    {r.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <LogPanel log={log} running={running} />
-        </div>
-      </div>
 
-      {/* Next step nudge */}
-      <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
-        <NextStepNudge stepKey={PAGE.ARCHIVE} badges={badges || {}} onGo={onGo} />
-      </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {/* Left: repo info + params */}
+            <div style={S_FIELD_STACK_GAP_14}>
+              {/* Repo card */}
+              <div
+                style={{
+                  background: C.surface,
+                  border: `1.5px solid ${repo.border}`,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "10px 16px",
+                    background: repo.bg,
+                    borderBottom: `1px solid ${repo.border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 3,
+                      height: 16,
+                      borderRadius: 99,
+                      background: repo.color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{ fontSize: 14, fontWeight: 700, color: repo.color, fontFamily: F.sans }}
+                  >
+                    {repo.label}
+                  </span>
+                  <a
+                    href={repo.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      marginLeft: "auto",
+                      fontSize: 11,
+                      fontFamily: F.mono,
+                      color: repo.color,
+                      opacity: 0.7,
+                      textDecoration: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 3,
+                    }}
+                  >
+                    {Ic.link(10)} {repo.url.replace("https://", "")}
+                  </a>
+                </div>
+                <div style={{ padding: "12px 16px" }}>
+                  <p
+                    style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, margin: "0 0 12px" }}
+                  >
+                    {repo.desc}
+                  </p>
+                  {/* Assigned ID */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "7px 10px",
+                      borderRadius: 7,
+                      background: assignedId ? repo.bg : C.surfaceAlt,
+                      border: `1px solid ${assignedId ? repo.border : C.border}`,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        fontFamily: F.mono,
+                        color: assignedId ? repo.color : C.textMuted,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {repo.idLabel}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontFamily: F.mono,
+                        color: assignedId ? repo.color : C.textMuted,
+                        flex: 1,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {assignedId || repo.idPlaceholder}
+                    </span>
+                    {assignedId && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: repo.color,
+                          background: repo.bg,
+                          border: `1px solid ${repo.border}`,
+                          borderRadius: 3,
+                          padding: "1px 5px",
+                          fontFamily: F.mono,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        ✓ assigned
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Parameters */}
+              <div
+                style={{
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "8px 16px",
+                    background: "#fafbfd",
+                    borderBottom: `1px solid ${C.border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 3,
+                      height: 14,
+                      borderRadius: 99,
+                      background: C.borderMid,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      ...S_SECTION_LABEL,
+                      letterSpacing: 1,
+                    }}
+                  >
+                    Parameters
+                  </span>
+                </div>
+                <div
+                  style={{
+                    padding: "10px 16px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                  }}
+                >
+                  {repo.params.map((p) => (
+                    <div key={p.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                        <label
+                          htmlFor={`repo-${repo.key}-param-${p.key}`}
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: C.textMid,
+                            fontFamily: F.sans,
+                          }}
+                        >
+                          {p.label}
+                        </label>
+                        <span style={{ fontSize: 12, color: C.textMuted }}>{p.hint}</span>
+                      </div>
+                      {p.type === "bool" ? (
+                        <button
+                          id={`repo-${repo.key}-param-${p.key}`}
+                          type="button"
+                          onClick={() => setParam(repo.key, p.key, !getParam(repo.key, p.key))}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 7,
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            border: `1.5px solid ${getParam(repo.key, p.key) ? C.accent : C.border}`,
+                            background: getParam(repo.key, p.key) ? C.accentBg : C.bg,
+                            cursor: "pointer",
+                            width: "fit-content",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 30,
+                              height: 16,
+                              borderRadius: 99,
+                              background: getParam(repo.key, p.key) ? C.accent : C.borderMid,
+                              position: "relative",
+                              transition: "background 0.2s",
+                            }}
+                          >
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: 2,
+                                left: getParam(repo.key, p.key) ? 16 : 2,
+                                width: 12,
+                                height: 12,
+                                borderRadius: "50%",
+                                background: "#fff",
+                                transition: "left 0.2s",
+                              }}
+                            />
+                          </div>
+                          <span
+                            style={{
+                              fontSize: 13,
+                              fontFamily: F.sans,
+                              color: getParam(repo.key, p.key) ? C.accent : C.textMuted,
+                            }}
+                          >
+                            {getParam(repo.key, p.key) ? "yes" : "no"}
+                          </span>
+                        </button>
+                      ) : p.type === "select" ? (
+                        <select
+                          id={`repo-${repo.key}-param-${p.key}`}
+                          value={String(getParam(repo.key, p.key) ?? "")}
+                          onChange={(e) => setParam(repo.key, p.key, e.target.value)}
+                          style={{
+                            border: `1.5px solid ${C.border}`,
+                            borderRadius: 7,
+                            padding: "6px 10px",
+                            fontSize: 14,
+                            fontFamily: F.mono,
+                            color: C.text,
+                            background: C.surface,
+                          }}
+                        >
+                          {p.options.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          id={`repo-${repo.key}-param-${p.key}`}
+                          value={String(getParam(repo.key, p.key) ?? "")}
+                          onChange={(e) => setParam(repo.key, p.key, e.target.value)}
+                          style={{
+                            border: `1.5px solid ${C.border}`,
+                            borderRadius: 7,
+                            padding: "6px 10px",
+                            fontSize: 14,
+                            fontFamily: F.mono,
+                            color: C.text,
+                            background: C.surface,
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Missing requirements warning */}
+              {missing.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 8,
+                    padding: "10px 13px",
+                    background: "#fef3c7",
+                    border: "1px solid #fde68a",
+                    borderRadius: 8,
+                  }}
+                >
+                  <span style={{ color: "#92400e", flexShrink: 0, marginTop: 1 }}>
+                    {Ic.info(13)}
+                  </span>
+                  <div style={{ fontSize: 13, color: "#92400e", lineHeight: 1.5 }}>
+                    <strong>Missing required fields:</strong>{" "}
+                    {missing.map((r) => r.label).join(", ")}
+                  </div>
+                </div>
+              )}
+
+              {/* Deposit button */}
+              <button
+                type="button"
+                onClick={() =>
+                  canRun &&
+                  onRun(
+                    repo.key,
+                    Object.fromEntries(repo.params.map((p) => [p.key, getParam(repo.key, p.key)])),
+                  )
+                }
+                disabled={!canRun}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  padding: "11px",
+                  borderRadius: 9,
+                  background: !canRun ? C.surfaceAlt : earned ? repo.bg : repo.color,
+                  border: earned ? `1.5px solid ${repo.border}` : "none",
+                  color: !canRun ? C.textMuted : earned ? repo.color : "#fff",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  fontFamily: F.sans,
+                  cursor: canRun ? "pointer" : "default",
+                  boxShadow: canRun && !earned ? `0 2px 12px ${repo.color}40` : "none",
+                  transition: "all 0.2s",
+                }}
+              >
+                <span
+                  style={{
+                    display: "flex",
+                    animation: running ? "spin 0.9s linear infinite" : "none",
+                  }}
+                >
+                  {running ? Ic.loader(15) : earned ? Ic.check(15) : Ic.upload(15)}
+                </span>
+                {running
+                  ? `Depositing to ${repo.label}…`
+                  : earned
+                    ? `Re-deposit to ${repo.label}`
+                    : `Deposit to ${repo.label}`}
+              </button>
+            </div>
+
+            {/* Right: log output */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div
+                style={{
+                  ...S_SECTION_LABEL,
+                  letterSpacing: 1.3,
+                  fontWeight: 600,
+                }}
+              >
+                Output
+              </div>
+              <LogPanel log={log} running={running} />
+            </div>
+          </div>
+
+          {/* Next step nudge */}
+          <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
+            <NextStepNudge stepKey={PAGE.ARCHIVE} badges={badges || {}} onGo={onGo} />
+          </div>
         </div>
       </div>
     </div>
@@ -9771,41 +9698,41 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
                 key={`dockerfile-line-${line}-${n}`}
                 style={{ display: "flex", alignItems: "baseline" }}
               >
-            <span
-              style={{
-                minWidth: 40,
-                textAlign: "right",
-                paddingRight: 14,
-                paddingLeft: 10,
-                fontSize: 10,
-                fontFamily: F.mono,
-                color: C.borderMid,
-                userSelect: "none",
-                flexShrink: 0,
-              }}
-            >
-              {i + 1}
-            </span>
                 <span
-              style={{
-                fontSize: 12,
-                fontFamily: F.mono,
-                lineHeight: 1.75,
-                whiteSpace: "pre",
-                display: "block",
-                paddingRight: 16,
-                color: line.startsWith("#")
-                  ? "#94a3b8"
-                  : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
-                    ? "#0369a1"
-                    : /^(set |echo |docker |pip )/.test(line)
-                      ? "#15803d"
-                      : /^\s*"/.test(line) && line.includes(":")
-                        ? "#b45309"
-                        : C.text,
-              }}
-            >
-              {line || " "}
+                  style={{
+                    minWidth: 40,
+                    textAlign: "right",
+                    paddingRight: 14,
+                    paddingLeft: 10,
+                    fontSize: 10,
+                    fontFamily: F.mono,
+                    color: C.borderMid,
+                    userSelect: "none",
+                    flexShrink: 0,
+                  }}
+                >
+                  {i + 1}
+                </span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontFamily: F.mono,
+                    lineHeight: 1.75,
+                    whiteSpace: "pre",
+                    display: "block",
+                    paddingRight: 16,
+                    color: line.startsWith("#")
+                      ? "#94a3b8"
+                      : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
+                        ? "#0369a1"
+                        : /^(set |echo |docker |pip )/.test(line)
+                          ? "#15803d"
+                          : /^\s*"/.test(line) && line.includes(":")
+                            ? "#b45309"
+                            : C.text,
+                  }}
+                >
+                  {line || " "}
                 </span>
               </div>
             );
@@ -9890,93 +9817,92 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
       />
 
       <div style={S_WORKFLOW_PAGE_BODY}>
-      {/* Single tree pane */}
-      <div
-        style={{
-          width: selectedFile ? 200 : 280,
-          borderRight: `1px solid ${C.border}`,
-          background: C.surface,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          flexShrink: 0,
-          transition: "width 0.18s",
-        }}
-      >
-        <div style={{ overflowY: "auto", flex: 1 }}>
-          {/* Workspace section */}
-          <SectionHeader label="Workspace" badge="read-only" color="#f59e0b" />
-          <div style={{ padding: "4px 4px 8px" }}>
-            {sourceFiles.map((n) => (
-              <FileNode
-                key={n.id}
-                node={n}
-                onSelect={(n) => setSelectedId(n.id)}
-                selectedId={selectedId}
-              />
-            ))}
-          </div>
-
-          {/* REE section */}
-          <SectionHeader
-            label="REE Files"
-            badge={`${reeFiles.length} file${reeFiles.length !== 1 ? "s" : ""}`}
-            color="#7c3aed"
-          />
-          <div style={{ padding: "4px 4px 8px" }}>
-            {reeFiles.length === 0 ? (
-              <div
-                style={{
-                  padding: "10px 12px",
-                  fontSize: 11,
-                  color: C.textMuted,
-                  fontFamily: F.sans,
-                  fontStyle: "italic",
-                }}
-              >
-                Run Create &amp; Build to generate files
-              </div>
-            ) : (
-              reeFileTree.map((n) => (
+        {/* Single tree pane */}
+        <div
+          style={{
+            width: selectedFile ? 200 : 280,
+            borderRight: `1px solid ${C.border}`,
+            background: C.surface,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            flexShrink: 0,
+            transition: "width 0.18s",
+          }}
+        >
+          <div style={{ overflowY: "auto", flex: 1 }}>
+            {/* Workspace section */}
+            <SectionHeader label="Workspace" badge="read-only" color="#f59e0b" />
+            <div style={{ padding: "4px 4px 8px" }}>
+              {sourceFiles.map((n) => (
                 <FileNode
                   key={n.id}
                   node={n}
                   onSelect={(n) => setSelectedId(n.id)}
                   selectedId={selectedId}
                 />
-              ))
-            )}
+              ))}
+            </div>
+
+            {/* REE section */}
+            <SectionHeader
+              label="REE Files"
+              badge={`${reeFiles.length} file${reeFiles.length !== 1 ? "s" : ""}`}
+              color="#7c3aed"
+            />
+            <div style={{ padding: "4px 4px 8px" }}>
+              {reeFiles.length === 0 ? (
+                <div
+                  style={{
+                    padding: "10px 12px",
+                    fontSize: 11,
+                    color: C.textMuted,
+                    fontFamily: F.sans,
+                    fontStyle: "italic",
+                  }}
+                >
+                  Run Create &amp; Build to generate files
+                </div>
+              ) : (
+                reeFileTree.map((n) => (
+                  <FileNode
+                    key={n.id}
+                    node={n}
+                    onSelect={(n) => setSelectedId(n.id)}
+                    selectedId={selectedId}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Viewer */}
-      {selectedFile ? (
-        <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
-          <FileViewer
-            file={selectedFile}
-            onClose={() => setSelectedId(null)}
-            label={reeFlatFiles.find((f) => f.id === selectedId) ? "ree" : "workspace"}
-          />
-        </div>
-      ) : (
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: C.textMuted,
-            flexDirection: "column",
-            gap: 8,
-            background: "#f8fafc",
-          }}
-        >
-          <span style={{ display: "flex", opacity: 0.3 }}>{Ic.file(28)}</span>
-          <span style={{ fontSize: 13, fontFamily: F.sans }}>Select a file to view</span>
-        </div>
-      )}
-
+        {/* Viewer */}
+        {selectedFile ? (
+          <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+            <FileViewer
+              file={selectedFile}
+              onClose={() => setSelectedId(null)}
+              label={reeFlatFiles.find((f) => f.id === selectedId) ? "ree" : "workspace"}
+            />
+          </div>
+        ) : (
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: C.textMuted,
+              flexDirection: "column",
+              gap: 8,
+              background: "#f8fafc",
+            }}
+          >
+            <span style={{ display: "flex", opacity: 0.3 }}>{Ic.file(28)}</span>
+            <span style={{ fontSize: 13, fontFamily: F.sans }}>Select a file to view</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -10617,13 +10543,13 @@ function PanelCableOverlay({
         (f) => ree && !!ree[f],
       ).length >= 2;
     const archiveConnected = !!(ree && (ree.zenodo_doi || ree.dataverse_doi));
-    const activationConnected = !!(badges?.activation);
-    const sourceConnected = !!(ree?._sourceAvailable);
-    const runtimeConnected = !!(ree?._runtimeIncluded);
-    const sbomConnected = !!(ree?.sbom?.trim());
-    const swhConnected = !!(ree?.swhid?.trim());
-    const evaluateConnected = !!(badges?.evaluate);
-    const sealConnected = !!(ree?._sealedAt);
+    const activationConnected = !!badges?.activation;
+    const sourceConnected = !!ree?._sourceAvailable;
+    const runtimeConnected = !!ree?._runtimeIncluded;
+    const sbomConnected = !!ree?.sbom?.trim();
+    const swhConnected = !!ree?.swhid?.trim();
+    const evaluateConnected = !!badges?.evaluate;
+    const sealConnected = !!ree?._sealedAt;
 
     const panelSpecs: PanelCableSpec[] = [
       {
@@ -11149,7 +11075,7 @@ function PageOverview({
 
   // Runtime panel state
   const runtimeVal = ree?.runtime && ree.runtime !== "__skipped__" ? ree.runtime.trim() : "";
-  const runtimeIncluded = !!(ree?._runtimeIncluded);
+  const runtimeIncluded = !!ree?._runtimeIncluded;
   const canIncludeRuntime = !!runtimeVal;
   const toggleRuntime = () => {
     if (!canIncludeRuntime) return;
@@ -11227,9 +11153,7 @@ function PageOverview({
       {/* ── Header ── */}
       <div style={S_OVERVIEW_HEADER_ROW}>
         <div>
-          <div style={S_OVERVIEW_HEADER_EYEBROW}>
-            Reproducible Execution Environment
-          </div>
+          <div style={S_OVERVIEW_HEADER_EYEBROW}>Reproducible Execution Environment</div>
           <div style={S_OVERVIEW_HEADER_TITLE}>
             {ree.name || "untitled-env"}
             <span
@@ -11245,16 +11169,11 @@ function PageOverview({
           </div>
         </div>
         <div style={S_OVERVIEW_HEADER_RULE} />
-        <div style={S_OVERVIEW_DATE}>
-          {new Date().toISOString().slice(0, 10)}
-        </div>
+        <div style={S_OVERVIEW_DATE}>{new Date().toISOString().slice(0, 10)}</div>
       </div>
 
       {/* ── Three columns ── */}
-      <div
-        ref={cableContainerRef}
-        style={S_OVERVIEW_COLUMNS}
-      >
+      <div ref={cableContainerRef} style={S_OVERVIEW_COLUMNS}>
         <PanelCableOverlay
           containerRef={cableContainerRef}
           sourceRef={sourceRef}
@@ -11273,14 +11192,10 @@ function PageOverview({
         />
 
         {/* Left — source + fields */}
-        <div
-          style={S_OVERVIEW_LEFT_COLUMN}
-        >
+        <div style={S_OVERVIEW_LEFT_COLUMN}>
           {/* Source panel */}
           <div ref={sourceRef} style={panel({ overflow: "hidden" })}>
-            <div
-              style={S_OVERVIEW_PANEL_HEADER_ROW}
-            >
+            <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
               <div
                 style={{
                   width: 5,
@@ -11471,9 +11386,7 @@ function PageOverview({
 
           {/* Runtime panel */}
           <div ref={runtimeRef} style={panel({ overflow: "hidden" })}>
-            <div
-              style={S_OVERVIEW_PANEL_HEADER_ROW}
-            >
+            <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
               <div
                 style={{
                   width: 5,
@@ -11586,13 +11499,11 @@ function PageOverview({
 
           {/* SBOM panel */}
           {(() => {
-            const earned = !!(badges?.sbom);
+            const earned = !!badges?.sbom;
             const color = "#16a34a";
             return (
               <div ref={sbomRef} style={panel({ overflow: "hidden" })}>
-                <div
-                  style={S_OVERVIEW_PANEL_HEADER_ROW}
-                >
+                <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
                   <div
                     style={{
                       width: 5,
@@ -11711,7 +11622,7 @@ function PageOverview({
               { key: "runtime", label: "Runtime", live: !!ree._runtimeIncluded },
               { key: "swh", label: "Software Heritage", live: !!ree.swhid },
               { key: "sbom", label: "SBOM", live: !!ree.sbom },
-              { key: "evaluate", label: "Evaluate", live: !!(badges?.evaluate) },
+              { key: "evaluate", label: "Evaluate", live: !!badges?.evaluate },
               {
                 key: "archive",
                 label: "Archival & DOIs",
@@ -11720,7 +11631,7 @@ function PageOverview({
               {
                 key: "activation",
                 label: "Test Activation",
-                live: !!(badges?.activation),
+                live: !!badges?.activation,
               },
             ];
             const liveCount = cableItems.filter((c) => c.live).length;
@@ -11777,20 +11688,12 @@ function PageOverview({
                   </div>
                   <div style={S_OVERVIEW_SEALED_BODY}>
                     <div style={S_OVERVIEW_SEALED_META_ROW}>
-                      <span style={S_OVERVIEW_SEALED_META_KEY}>
-                        hash
-                      </span>
-                      <span style={S_OVERVIEW_SEALED_HASH_VAL}>
-                        {ree._sealHash || "—"}
-                      </span>
+                      <span style={S_OVERVIEW_SEALED_META_KEY}>hash</span>
+                      <span style={S_OVERVIEW_SEALED_HASH_VAL}>{ree._sealHash || "—"}</span>
                     </div>
                     <div style={S_OVERVIEW_SEALED_META_ROW}>
-                      <span style={S_OVERVIEW_SEALED_META_KEY}>
-                        sealed
-                      </span>
-                      <span style={S_OVERVIEW_SEALED_DATE_VAL}>
-                        {sealDate}
-                      </span>
+                      <span style={S_OVERVIEW_SEALED_META_KEY}>sealed</span>
+                      <span style={S_OVERVIEW_SEALED_DATE_VAL}>{sealDate}</span>
                     </div>
                     <div style={S_OVERVIEW_SEALED_CABLE_ROW}>
                       {cableItems.map((c) => (
@@ -11885,9 +11788,7 @@ function PageOverview({
                             </span>
                           </div>
                           <div>
-                            <div style={S_OVERVIEW_SEAL_MODAL_TITLE}>
-                              Seal this REE?
-                            </div>
+                            <div style={S_OVERVIEW_SEAL_MODAL_TITLE}>Seal this REE?</div>
                             <div style={S_OVERVIEW_SEAL_MODAL_SUBTITLE}>
                               This action cannot be undone.
                             </div>
@@ -12036,9 +11937,7 @@ function PageOverview({
                   {/* Seal button row */}
                   <div style={S_OVERVIEW_SEAL_BUTTON_ROW}>
                     <div style={S_OVERVIEW_SEAL_BUTTON_TEXT_WRAP}>
-                      <div style={S_OVERVIEW_SEAL_BUTTON_TITLE}>
-                        Seal REE
-                      </div>
+                      <div style={S_OVERVIEW_SEAL_BUTTON_TITLE}>Seal REE</div>
                       <div
                         style={{
                           ...S_OVERVIEW_SEAL_BUTTON_SUBTITLE_BASE,
@@ -13665,7 +13564,9 @@ function Explorer({ onBack }: ExplorerProps) {
               );
             })}
             {page === PAGE.ARCHIVE && (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}
+              >
                 <PageArchive
                   ree={ree}
                   badges={badges}
@@ -13677,7 +13578,9 @@ function Explorer({ onBack }: ExplorerProps) {
               </div>
             )}
             {page === PAGE.FILES && (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+              <div
+                style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}
+              >
                 <PageFiles files={virtualFiles} reeFiles={currentReeFiles} />
               </div>
             )}
@@ -14238,12 +14141,15 @@ function ReviewLogPanel({ lines, running }: ReviewLogPanelProps) {
           const occurrence = (seenLines.get(lineSig) ?? 0) + 1;
           seenLines.set(lineSig, occurrence);
           return (
-        <div key={`${lineSig}::${occurrence}`} style={{ color: typeColor[l.type] || "#e2e8f0" }}>
-          <span style={{ color: typeColor[l.type] || "#64748b", userSelect: "none" }}>
-            {typePrefix[l.type] || "  "}
-          </span>
-          {l.msg}
-        </div>
+            <div
+              key={`${lineSig}::${occurrence}`}
+              style={{ color: typeColor[l.type] || "#e2e8f0" }}
+            >
+              <span style={{ color: typeColor[l.type] || "#64748b", userSelect: "none" }}>
+                {typePrefix[l.type] || "  "}
+              </span>
+              {l.msg}
+            </div>
           );
         });
       })()}
