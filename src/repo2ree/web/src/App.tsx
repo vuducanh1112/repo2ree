@@ -471,10 +471,7 @@ const Svg = ({ d, size = 15, fill = "none", sw = 1.6, title = "icon" }: SvgProps
 );
 const Ic = {
   folder: (s = 15) => (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
-      <title>Folder</title>
-      <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-    </svg>
+    <Svg size={s} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" fill="#f59e0b" sw={0} title="Folder" />
   ),
   file: (s = 15) => (
     <Svg size={s} d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm0 0v6h6" sw={1.4} />
@@ -494,10 +491,7 @@ const Ic = {
     />
   ),
   star: (s = 15) => (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <title>Star</title>
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-    </svg>
+    <Svg size={s} d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" sw={0} title="Star" />
   ),
   check: (s = 15) => <Svg size={s} d="M20 6L9 17l-5-5" />,
   loader: (s = 15) => (
@@ -515,12 +509,7 @@ const Ic = {
   ),
   shield: (s = 15) => <Svg size={s} d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
   layers: (s = 15) => <Svg size={s} d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />,
-  play: (s = 15) => (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <title>Play</title>
-      <path d="M5 3l14 9-14 9V3z" />
-    </svg>
-  ),
+  play: (s = 15) => <Svg size={s} d="M5 3l14 9-14 9V3z" fill="currentColor" sw={0} title="Play" />,
   plus: (s = 15) => <Svg size={s} d="M12 5v14M5 12h14" />,
   lock: (s = 15) => (
     <Svg
