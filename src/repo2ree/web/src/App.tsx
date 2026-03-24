@@ -242,20 +242,31 @@ function buildZipBlob(entries: ZipEntry[]): Blob {
   });
 }
 
+function walkFileTree<T>(
+  nodes: FileTreeNode[],
+  visit: (node: FileTreeNode, path: string) => T | null,
+  prefix = "",
+): T | null {
+  for (const node of nodes || []) {
+    const path = prefix ? `${prefix}/${node.name}` : node.name;
+    const result = visit(node, path);
+    if (result !== null) return result;
+    if (node.children?.length) {
+      const childResult = walkFileTree(node.children, visit, path);
+      if (childResult !== null) return childResult;
+    }
+  }
+  return null;
+}
+
 function findVirtualFileByName(nodes: FileTreeNode[], name: string): FileTreeNode | null {
   if (!name) return null;
   const base = name.split("/").pop();
-  function walk(items: FileTreeNode[]): FileTreeNode | null {
-    for (const item of items) {
-      if (item.type === "file" && item.name === base) return item;
-      if (item.children) {
-        const found = walk(item.children);
-        if (found) return found;
-      }
-    }
+  if (!base) return null;
+  return walkFileTree(nodes, (node) => {
+    if (node.type === "file" && node.name === base) return node;
     return null;
-  }
-  return walk(nodes || []);
+  });
 }
 
 function triggerOnEnterOrSpace(
@@ -279,17 +290,12 @@ function normalizeSnapshotArchiveName(rawName: string): string {
 
 function listTreeFiles(
   nodes: FileTreeNode[],
-  prefix = "",
 ): Array<{ path: string; content: string }> {
-  let files: Array<{ path: string; content: string }> = [];
-  for (const node of nodes || []) {
-    const path = prefix ? `${prefix}${node.name}` : node.name;
-    if (node.type === "file") {
-      files.push({ path, content: node.content ?? "" });
-    } else if (node.children) {
-      files = files.concat(listTreeFiles(node.children, `${path}/`));
-    }
-  }
+  const files: Array<{ path: string; content: string }> = [];
+  walkFileTree(nodes, (node, path) => {
+    if (node.type === "file") files.push({ path, content: node.content ?? "" });
+    return null;
+  });
   return files;
 }
 
@@ -1325,28 +1331,18 @@ function makeLogs(
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-function allFilePaths(nodes: FileTreeNode[], prefix = ""): string[] {
-  let paths = [];
-  for (const n of nodes) {
-    const p = prefix ? `${prefix}/${n.name}` : n.name;
-    if (n.type === "file") paths.push(p);
-    if (n.children) paths = paths.concat(allFilePaths(n.children, p));
-  }
-  return paths;
+function allFilePaths(nodes: FileTreeNode[]): string[] {
+  return listTreeFiles(nodes).map((file) => file.path);
 }
 
 // Walk the file tree and return the node matching a given path string, or null.
 function findFileByPath(nodes: FileTreeNode[], pathStr: string): FileTreeNode | null {
-  const parts = pathStr.replace(/^\//, "").split("/").filter(Boolean);
-  if (!parts.length) return null;
-  let cursor = nodes;
-  for (let i = 0; i < parts.length; i++) {
-    const node = cursor?.find((n) => n.name === parts[i]);
-    if (!node) return null;
-    if (i === parts.length - 1) return node.type === "file" ? node : null;
-    cursor = node.children;
-  }
-  return null;
+  const normalized = pathStr.replace(/^\//, "").split("/").filter(Boolean).join("/");
+  if (!normalized) return null;
+  return walkFileTree(nodes, (node, path) => {
+    if (node.type === "file" && path === normalized) return node;
+    return null;
+  });
 }
 
 // Detect a rough file type from the path, used for syntax-hinting the preview.
