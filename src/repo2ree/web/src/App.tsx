@@ -697,6 +697,2017 @@ const S_PANEL_HEADER_LABEL: React.CSSProperties = {
   fontFamily: F.sans,
 };
 
+const S_PANEL_FIELD_ROW_WRAP: React.CSSProperties = {
+  position: "relative",
+};
+
+const S_PANEL_FIELD_BUTTON_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "stretch",
+  width: "100%",
+  textAlign: "left",
+  border: "none",
+  transition: "background 0.12s",
+};
+
+const S_PANEL_FIELD_LABEL_CELL_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 5,
+  padding: "4px 8px",
+  minWidth: 80,
+  maxWidth: 80,
+  flexShrink: 0,
+};
+
+const S_PANEL_FIELD_DOT_BASE: React.CSSProperties = {
+  width: 5,
+  height: 5,
+  borderRadius: "50%",
+  flexShrink: 0,
+};
+
+const S_PANEL_FIELD_LABEL_TEXT_BASE: React.CSSProperties = {
+  fontSize: 10,
+  fontFamily: F.sans,
+  fontWeight: 600,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const S_PANEL_FIELD_VALUE_CELL: React.CSSProperties = {
+  padding: "4px 8px",
+  flex: 1,
+  minWidth: 0,
+};
+
+const S_PANEL_FIELD_VALUE_TEXT_BASE: React.CSSProperties = {
+  fontSize: 10,
+  fontFamily: F.mono,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  display: "block",
+};
+
+const S_PANEL_FIELD_TOOLTIP_BASE: React.CSSProperties = {
+  position: "fixed",
+  zIndex: 9999,
+  background: C.text,
+  color: "#fff",
+  fontFamily: F.mono,
+  fontSize: 11,
+  padding: "5px 9px",
+  borderRadius: 6,
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-all",
+  maxWidth: 320,
+  boxShadow: "0 4px 16px rgba(0,0,0,0.22)",
+  pointerEvents: "none",
+  lineHeight: 1.5,
+};
+
+const S_PANEL_FIELD_TOOLTIP_ARROW: React.CSSProperties = {
+  position: "absolute",
+  bottom: -5,
+  left: 14,
+  width: 10,
+  height: 10,
+  background: C.text,
+  transform: "rotate(45deg)",
+  borderRadius: 1,
+};
+
+const S_OVERVIEW_ROOT: React.CSSProperties = {
+  flex: 1,
+  overflowY: "auto",
+  padding: 28,
+};
+
+const S_OVERVIEW_HEADER_ROW: React.CSSProperties = {
+  marginBottom: 20,
+  display: "flex",
+  alignItems: "baseline",
+  gap: 14,
+};
+
+const S_OVERVIEW_HEADER_EYEBROW: React.CSSProperties = {
+  ...S_SECTION_LABEL,
+  fontSize: 10,
+  fontWeight: 600,
+  marginBottom: 4,
+};
+
+const S_OVERVIEW_HEADER_TITLE: React.CSSProperties = {
+  fontSize: 18,
+  fontWeight: 800,
+  color: C.text,
+  letterSpacing: 0.2,
+  fontFamily: F.mono,
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+};
+
+const S_OVERVIEW_LEVEL_BADGE_BASE: React.CSSProperties = {
+  fontSize: 9,
+  fontWeight: 700,
+  padding: "2px 8px",
+  borderRadius: 3,
+  letterSpacing: 1.5,
+  textTransform: "uppercase",
+};
+
+const S_OVERVIEW_HEADER_RULE: React.CSSProperties = {
+  flex: 1,
+  height: 1,
+  background: C.border,
+  marginBottom: 2,
+};
+
+const S_OVERVIEW_DATE: React.CSSProperties = {
+  fontSize: 9,
+  fontFamily: F.mono,
+  color: C.textMuted,
+  letterSpacing: 1,
+};
+
+const S_OVERVIEW_COLUMNS: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 18,
+  position: "relative",
+};
+
+const S_OVERVIEW_LEFT_COLUMN: React.CSSProperties = {
+  width: 196,
+  flexShrink: 0,
+  position: "relative",
+  zIndex: 1,
+  display: "flex",
+  flexDirection: "column",
+  gap: 14,
+};
+
+const S_OVERVIEW_PANEL_HEADER_ROW: React.CSSProperties = {
+  padding: "8px 12px",
+  borderBottom: `1px solid ${C.border}`,
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+};
+
+const S_OVERVIEW_PANEL_FIELDS: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+};
+
+const S_OVERVIEW_PANEL_STATUS_ROW_BASE: React.CSSProperties = {
+  marginLeft: "auto",
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+};
+
+const S_OVERVIEW_PANEL_INCLUDE_LABEL_BASE: React.CSSProperties = {
+  fontSize: 9,
+  fontFamily: F.sans,
+  fontWeight: 600,
+  letterSpacing: 0.3,
+};
+
+const S_OVERVIEW_PANEL_TOGGLE_BASE: React.CSSProperties = {
+  width: 32,
+  height: 16,
+  borderRadius: 99,
+  border: "none",
+  position: "relative",
+  transition: "all 0.18s",
+  flexShrink: 0,
+};
+
+const S_OVERVIEW_PANEL_TOGGLE_KNOB: React.CSSProperties = {
+  position: "absolute",
+  top: 2,
+  width: 12,
+  height: 12,
+  borderRadius: "50%",
+  background: "#fff",
+  transition: "left 0.18s",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+};
+
+const S_OVERVIEW_PANEL_FOOTER: React.CSSProperties = {
+  padding: "8px 12px",
+  borderTop: `1px solid ${C.border}`,
+};
+
+const S_OVERVIEW_PANEL_BUTTON_BASE: React.CSSProperties = {
+  fontSize: 10,
+  fontFamily: F.sans,
+  borderRadius: 5,
+  padding: "4px 8px",
+  cursor: "pointer",
+  textAlign: "center",
+  fontWeight: 600,
+  width: "100%",
+};
+
+const S_OVERVIEW_META_COUNT: React.CSSProperties = {
+  marginLeft: "auto",
+  fontSize: 8,
+  fontFamily: F.mono,
+  color: C.textMuted,
+  letterSpacing: 0.5,
+};
+
+const S_OVERVIEW_META_FOOTER: React.CSSProperties = {
+  padding: "10px 12px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 7,
+};
+
+const S_OVERVIEW_RIGHT_COLUMN: React.CSSProperties = {
+  width: 196,
+  flexShrink: 0,
+  display: "flex",
+  flexDirection: "column",
+  gap: 14,
+  position: "relative",
+  zIndex: 1,
+};
+
+const S_OVERVIEW_PANEL_BADGE_BASE: React.CSSProperties = {
+  marginLeft: "auto",
+  fontSize: 8,
+  fontFamily: F.mono,
+  borderRadius: 2,
+  padding: "0 4px",
+  letterSpacing: 0.8,
+};
+
+const S_OVERVIEW_SEALED_CARD_BASE: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 480,
+  background: C.surface,
+  borderRadius: 10,
+  overflow: "hidden",
+};
+
+const S_OVERVIEW_SEALED_HEADER_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "9px 14px",
+};
+
+const S_OVERVIEW_SEALED_ICON: React.CSSProperties = {
+  display: "flex",
+  flexShrink: 0,
+};
+
+const S_OVERVIEW_SEALED_TITLE_BASE: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  fontFamily: F.sans,
+  letterSpacing: 0.4,
+};
+
+const S_OVERVIEW_SEALED_LEVEL_BADGE_BASE: React.CSSProperties = {
+  marginLeft: "auto",
+  fontSize: 9,
+  fontFamily: F.mono,
+  borderRadius: 3,
+  padding: "1px 6px",
+  letterSpacing: 0.6,
+  fontWeight: 700,
+};
+
+const S_OVERVIEW_SEALED_BODY: React.CSSProperties = {
+  padding: "10px 14px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+};
+
+const S_OVERVIEW_SEALED_META_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+};
+
+const S_OVERVIEW_SEALED_META_KEY: React.CSSProperties = {
+  fontSize: 9,
+  fontFamily: F.sans,
+  color: C.textMuted,
+  flexShrink: 0,
+};
+
+const S_OVERVIEW_SEALED_HASH_VAL: React.CSSProperties = {
+  fontFamily: F.mono,
+  fontSize: 11,
+  color: C.text,
+  fontWeight: 600,
+  letterSpacing: 0.8,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const S_OVERVIEW_SEALED_DATE_VAL: React.CSSProperties = {
+  fontFamily: F.mono,
+  fontSize: 10,
+  color: C.textMid,
+};
+
+const S_OVERVIEW_SEALED_CABLE_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 3,
+  marginTop: 2,
+};
+
+const S_OVERVIEW_SEALED_ACTION_BTN_BASE: React.CSSProperties = {
+  marginTop: 6,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 7,
+  width: "100%",
+  padding: "8px 14px",
+  borderRadius: 7,
+  fontSize: 12,
+  fontWeight: 700,
+  fontFamily: F.sans,
+  cursor: "pointer",
+  transition: "all 0.15s",
+};
+
+const S_OVERVIEW_SEAL_MODAL_OVERLAY: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 9999,
+  background: "rgba(0,0,0,0.45)",
+  backdropFilter: "blur(3px)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const S_OVERVIEW_SEAL_MODAL_BACKDROP_BTN: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  border: "none",
+  background: "transparent",
+  padding: 0,
+  margin: 0,
+  cursor: "default",
+};
+
+const S_OVERVIEW_SEAL_MODAL_CARD: React.CSSProperties = {
+  background: C.surface,
+  borderRadius: 14,
+  width: 380,
+  maxWidth: "90vw",
+  border: `1.5px solid ${C.border}`,
+  boxShadow: "0 8px 40px rgba(0,0,0,0.22)",
+  overflow: "hidden",
+  position: "relative",
+  zIndex: 1,
+};
+
+const S_OVERVIEW_SEAL_MODAL_HEADER: React.CSSProperties = {
+  padding: "16px 20px 12px",
+  borderBottom: `1px solid ${C.border}`,
+};
+
+const S_OVERVIEW_SEAL_MODAL_HEADER_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+};
+
+const S_OVERVIEW_SEAL_MODAL_ICON_WRAP: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: 8,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+};
+
+const S_OVERVIEW_SEAL_MODAL_ICON: React.CSSProperties = {
+  display: "flex",
+};
+
+const S_OVERVIEW_SEAL_MODAL_TITLE: React.CSSProperties = {
+  fontSize: 14,
+  fontWeight: 700,
+  fontFamily: F.sans,
+  color: C.text,
+};
+
+const S_OVERVIEW_SEAL_MODAL_SUBTITLE: React.CSSProperties = {
+  fontSize: 11,
+  fontFamily: F.sans,
+  color: C.textMuted,
+  marginTop: 1,
+};
+
+const S_OVERVIEW_SEAL_MODAL_WARN_BOX: React.CSSProperties = {
+  margin: "12px 20px 0",
+  padding: "10px 12px",
+  borderRadius: 8,
+  background: "#fffbeb",
+  border: "1.5px solid #fde68a",
+};
+
+const S_OVERVIEW_SEAL_MODAL_WARN_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 8,
+};
+
+const S_OVERVIEW_SEAL_MODAL_WARN_ICON: React.CSSProperties = {
+  fontSize: 15,
+  flexShrink: 0,
+  lineHeight: 1.2,
+};
+
+const S_OVERVIEW_SEAL_MODAL_WARN_TITLE: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  fontFamily: F.sans,
+  color: "#92400e",
+  marginBottom: 5,
+};
+
+const S_OVERVIEW_SEAL_MODAL_WARN_LIST: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 3,
+};
+
+const S_OVERVIEW_SEAL_MODAL_WARN_ITEM: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+};
+
+const S_OVERVIEW_SEAL_MODAL_WARN_DOT: React.CSSProperties = {
+  width: 5,
+  height: 5,
+  borderRadius: "50%",
+  background: "#f59e0b",
+  flexShrink: 0,
+};
+
+const S_OVERVIEW_SEAL_MODAL_WARN_TEXT: React.CSSProperties = {
+  fontSize: 10,
+  fontFamily: F.sans,
+  color: "#92400e",
+};
+
+const S_OVERVIEW_SEAL_MODAL_BODY: React.CSSProperties = {
+  padding: "12px 20px",
+};
+
+const S_OVERVIEW_SEAL_MODAL_BODY_TEXT: React.CSSProperties = {
+  fontSize: 12,
+  fontFamily: F.sans,
+  color: C.textMid,
+  lineHeight: 1.6,
+};
+
+const S_OVERVIEW_SEAL_MODAL_ACTIONS: React.CSSProperties = {
+  padding: "0 20px 16px",
+  display: "flex",
+  gap: 8,
+  justifyContent: "flex-end",
+};
+
+const S_OVERVIEW_SEAL_MODAL_CANCEL_BTN: React.CSSProperties = {
+  padding: "8px 16px",
+  borderRadius: 7,
+  fontSize: 12,
+  fontFamily: F.sans,
+  fontWeight: 600,
+  cursor: "pointer",
+  background: C.surfaceAlt,
+  color: C.textMid,
+  border: `1.5px solid ${C.border}`,
+};
+
+const S_OVERVIEW_SEAL_MODAL_CONFIRM_BTN_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+  padding: "8px 18px",
+  borderRadius: 7,
+  fontSize: 12,
+  fontFamily: F.sans,
+  fontWeight: 700,
+  cursor: "pointer",
+  color: "#fff",
+};
+
+const S_OVERVIEW_SEAL_PROGRESS_ROW: React.CSSProperties = {
+  padding: "9px 14px",
+  borderBottom: `1px solid ${C.border}`,
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+};
+
+const S_OVERVIEW_SEAL_PROGRESS_TEXT: React.CSSProperties = {
+  fontSize: 10,
+  fontFamily: F.sans,
+  color: C.textMuted,
+  flexShrink: 0,
+};
+
+const S_OVERVIEW_SEAL_PROGRESS_BARS: React.CSSProperties = {
+  flex: 1,
+  display: "flex",
+  gap: 3,
+  alignItems: "center",
+};
+
+const S_OVERVIEW_SEAL_STATUS_BADGE_BASE: React.CSSProperties = {
+  fontSize: 9,
+  fontFamily: F.mono,
+  fontWeight: 700,
+  borderRadius: 3,
+  padding: "1px 6px",
+  letterSpacing: 0.5,
+  flexShrink: 0,
+};
+
+const S_OVERVIEW_SEAL_BUTTON_ROW: React.CSSProperties = {
+  padding: "10px 14px",
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+};
+
+const S_OVERVIEW_SEAL_BUTTON_TEXT_WRAP: React.CSSProperties = {
+  flex: 1,
+};
+
+const S_OVERVIEW_SEAL_BUTTON_TITLE: React.CSSProperties = {
+  fontSize: 11,
+  fontFamily: F.sans,
+  fontWeight: 600,
+  color: C.text,
+};
+
+const S_OVERVIEW_SEAL_BUTTON_SUBTITLE_BASE: React.CSSProperties = {
+  fontSize: 10,
+  fontFamily: F.sans,
+  marginTop: 2,
+};
+
+const S_OVERVIEW_SEAL_BUTTON_CTA: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+  padding: "8px 18px",
+  borderRadius: 7,
+  flexShrink: 0,
+  fontSize: 12,
+  fontFamily: F.sans,
+  fontWeight: 700,
+  letterSpacing: 0.3,
+  cursor: "pointer",
+  color: "#fff",
+  transition: "all 0.2s",
+};
+
+const S_OVERVIEW_SEAL_BUTTON_ICON: React.CSSProperties = {
+  display: "flex",
+};
+
+const S_SOURCE_UPLOAD_ROOT: React.CSSProperties = {
+  padding: "8px 0 14px",
+};
+
+const S_SOURCE_UPLOAD_HIDDEN_INPUT: React.CSSProperties = {
+  display: "none",
+};
+
+const S_SOURCE_UPLOAD_COMMITTED_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "10px 14px",
+  borderRadius: 8,
+  background: "#f0fdf4",
+  border: "1.5px solid #bbf7d0",
+  marginBottom: 8,
+};
+
+const S_SOURCE_UPLOAD_COMMITTED_ICON: React.CSSProperties = {
+  color: "#16a34a",
+  display: "flex",
+};
+
+const S_SOURCE_UPLOAD_COMMITTED_NAME: React.CSSProperties = {
+  flex: 1,
+  fontSize: 13,
+  fontFamily: F.mono,
+  color: "#15803d",
+  fontWeight: 600,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const S_SOURCE_UPLOAD_REPLACE_BTN: React.CSSProperties = {
+  background: "none",
+  border: `1px solid ${C.border}`,
+  borderRadius: 5,
+  cursor: "pointer",
+  color: C.textMuted,
+  fontSize: 11,
+  fontFamily: F.sans,
+  padding: "2px 8px",
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+};
+
+const S_SOURCE_UPLOAD_PENDING_WRAP: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 5,
+  marginBottom: 8,
+};
+
+const S_SOURCE_UPLOAD_PENDING_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "10px 14px",
+  borderRadius: 8,
+  background: "#fffbeb",
+  border: "1.5px solid #f59e0b",
+};
+
+const S_SOURCE_UPLOAD_PENDING_ICON: React.CSSProperties = {
+  color: "#d97706",
+  display: "flex",
+};
+
+const S_SOURCE_UPLOAD_PENDING_NAME: React.CSSProperties = {
+  flex: 1,
+  fontSize: 13,
+  fontFamily: F.mono,
+  color: "#92400e",
+  fontWeight: 600,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const S_SOURCE_UPLOAD_CONFIRM_BTN: React.CSSProperties = {
+  background: "#fffbeb",
+  border: "1.5px solid #f59e0b",
+  borderRadius: 6,
+  cursor: "pointer",
+  color: "#b45309",
+  fontSize: 12,
+  fontWeight: 700,
+  fontFamily: F.sans,
+  padding: "4px 10px",
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+  flexShrink: 0,
+};
+
+const S_SOURCE_UPLOAD_PENDING_CLOSE: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  color: C.textMuted,
+  display: "flex",
+  padding: 2,
+  borderRadius: 4,
+};
+
+const S_SOURCE_UPLOAD_RESET_HINT: React.CSSProperties = {
+  fontSize: 11,
+  color: "#92400e",
+  fontFamily: F.sans,
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+  paddingLeft: 2,
+};
+
+const S_SOURCE_UPLOAD_DROPZONE_BASE: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  padding: "22px 16px",
+  borderRadius: 8,
+  transition: "all 0.15s",
+  width: "100%",
+  appearance: "none",
+};
+
+const S_SOURCE_UPLOAD_DROPZONE_ICON: React.CSSProperties = {
+  display: "flex",
+};
+
+const S_SOURCE_UPLOAD_DROPZONE_TEXT: React.CSSProperties = {
+  fontSize: 13,
+  fontFamily: F.sans,
+};
+
+const S_SOURCE_UPLOAD_DROPZONE_HINT: React.CSSProperties = {
+  fontSize: 11,
+  color: C.textMuted,
+  fontFamily: F.mono,
+  marginTop: 4,
+};
+
+const S_SOURCE_UPLOAD_BROWSE_HIGHLIGHT: React.CSSProperties = {
+  color: C.accent,
+  fontWeight: 600,
+};
+
+const S_SOURCE_UPLOAD_STATUS_LINE_BASE: React.CSSProperties = {
+  marginTop: 6,
+  fontSize: 11,
+  fontFamily: F.sans,
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+};
+
+const S_FIELD_TIPS_SIDEBAR_ROOT: React.CSSProperties = {
+  width: 296,
+  borderLeft: `1px solid ${C.border}`,
+  background: C.surface,
+  overflowY: "auto",
+  padding: 20,
+  flexShrink: 0,
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+};
+
+const S_FIELD_TIPS_GROUP: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+};
+
+const S_FIELD_TIPS_LABEL: React.CSSProperties = {
+  ...S_SECTION_LABEL,
+  letterSpacing: 1.1,
+};
+
+const S_FIELD_TIPS_CHIPS: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 6,
+};
+
+const S_FIELD_TIPS_CHIP_BASE: React.CSSProperties = {
+  fontSize: 11,
+  fontFamily: F.sans,
+  fontWeight: 700,
+  letterSpacing: 0.2,
+  borderRadius: 99,
+  padding: "3px 9px",
+  cursor: "pointer",
+};
+
+const S_FIELD_TIPS_GENERAL_WRAP: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+};
+
+const S_FIELD_TIPS_GENERAL_HEAD: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+};
+
+const S_FIELD_TIPS_GENERAL_ICON: React.CSSProperties = {
+  color: C.textMid,
+  display: "flex",
+};
+
+const S_FIELD_TIPS_GENERAL_TITLE: React.CSSProperties = {
+  ...S_SECTION_LABEL,
+  letterSpacing: 0.8,
+  color: C.textMid,
+};
+
+const S_FIELD_TIPS_GENERAL_LIST: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+};
+
+const S_FIELD_TIPS_GENERAL_ITEM: React.CSSProperties = {
+  margin: 0,
+  fontSize: 12,
+  color: C.textMid,
+  lineHeight: 1.55,
+};
+
+const S_FIELD_TIPS_WORKFLOW_BOX: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+  padding: "12px 13px",
+  background: C.accentBg,
+  border: `1px solid ${C.accentBorder}`,
+  borderRadius: 9,
+};
+
+const S_FIELD_TIPS_WORKFLOW_HEAD: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+};
+
+const S_FIELD_TIPS_WORKFLOW_ICON: React.CSSProperties = {
+  color: C.accent,
+  display: "flex",
+};
+
+const S_FIELD_TIPS_WORKFLOW_TITLE: React.CSSProperties = {
+  ...S_SECTION_LABEL,
+  letterSpacing: 0.8,
+  color: C.accent,
+};
+
+const S_FIELD_TIPS_WORKFLOW_TEXT: React.CSSProperties = {
+  fontSize: 12,
+  color: C.textMid,
+  lineHeight: 1.55,
+  margin: 0,
+};
+
+const S_FIELD_TIPS_WORKFLOW_LIST: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+};
+
+const S_FIELD_TIPS_WORKFLOW_BTN_BASE: React.CSSProperties = {
+  textAlign: "left",
+  padding: "8px 10px",
+  borderRadius: 8,
+  border: `1px solid ${C.accentBorder}`,
+  background: C.surface,
+  display: "flex",
+  flexDirection: "column",
+  gap: 3,
+};
+
+const S_FIELD_TIPS_WORKFLOW_BTN_TITLE: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  color: C.text,
+  fontFamily: F.sans,
+};
+
+const S_FIELD_TIPS_WORKFLOW_BTN_DESC: React.CSSProperties = {
+  fontSize: 11,
+  color: C.textMuted,
+  lineHeight: 1.45,
+};
+
+const S_FIELD_TIPS_EMPTY_BOX: React.CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 8,
+  padding: "12px 13px",
+  background: C.accentBg,
+  border: `1px solid ${C.accentBorder}`,
+  borderRadius: 9,
+};
+
+const S_FIELD_TIPS_EMPTY_ICON: React.CSSProperties = {
+  color: C.accent,
+  flexShrink: 0,
+  marginTop: 1,
+};
+
+const S_FIELD_TIPS_EMPTY_TEXT: React.CSSProperties = {
+  fontSize: 13,
+  color: C.textMid,
+  lineHeight: 1.6,
+  margin: 0,
+};
+
+const S_SOURCE_URL_ROOT: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+};
+
+const S_SOURCE_URL_INPUT_ROW: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  alignItems: "stretch",
+};
+
+const S_SOURCE_URL_INPUT_WRAP: React.CSSProperties = {
+  flex: 1,
+  position: "relative",
+};
+
+const S_SOURCE_URL_ICON: React.CSSProperties = {
+  position: "absolute",
+  left: 10,
+  top: "50%",
+  transform: "translateY(-50%)",
+  color: C.textMuted,
+  pointerEvents: "none",
+};
+
+const S_SOURCE_URL_CHECK_BTN_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "7px 13px",
+  borderRadius: 7,
+  fontSize: 13,
+  fontWeight: 600,
+  fontFamily: F.sans,
+  flexShrink: 0,
+  transition: "all 0.15s",
+  whiteSpace: "nowrap",
+};
+
+const S_SOURCE_URL_STATUS_BASE: React.CSSProperties = {
+  fontSize: 11,
+  fontFamily: F.sans,
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+};
+
+const S_SOURCE_URL_COMMITTED: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 5,
+  fontSize: 11,
+  fontFamily: F.mono,
+  color: "#16a34a",
+};
+
+const S_SOURCE_URL_COMMITTED_VALUE: React.CSSProperties = {
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const S_FIELD_ROW_BASE: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "220px 1fr",
+  gap: 20,
+  alignItems: "start",
+  borderBottom: `1px solid ${C.border}`,
+  margin: "0 -20px",
+  padding: "18px 20px",
+  transition: "background 0.15s",
+  borderLeftWidth: 3,
+  borderLeftStyle: "solid",
+};
+
+const S_FIELD_ROW_HEAD: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 5,
+  marginBottom: 3,
+  flexWrap: "wrap",
+};
+
+const S_FIELD_ROW_LABEL_BASE: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 600,
+  fontFamily: F.sans,
+};
+
+const S_FIELD_ROW_REQUIRED_BADGE: React.CSSProperties = {
+  fontSize: 11,
+  color: "#ef4444",
+  fontWeight: 700,
+  fontFamily: F.sans,
+  background: "#fef2f2",
+  border: "1px solid #fecaca",
+  borderRadius: 3,
+  padding: "1px 4px",
+};
+
+const S_FIELD_ROW_LOCKED_BADGE: React.CSSProperties = {
+  fontSize: 11,
+  color: C.textMuted,
+  fontFamily: F.sans,
+  background: C.surfaceAlt,
+  border: `1px solid ${C.border}`,
+  borderRadius: 3,
+  padding: "1px 4px",
+};
+
+const S_FIELD_ROW_DESC: React.CSSProperties = {
+  fontSize: 13,
+  color: C.textMuted,
+  lineHeight: 1.5,
+  margin: "0 0 5px",
+};
+
+const S_FIELD_ROW_CONTENT: React.CSSProperties = {
+  paddingTop: 2,
+};
+
+const S_FIELD_STACK_GAP_14: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 14,
+};
+
+const S_FIELD_STACK_GAP_5: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 5,
+};
+
+const S_FIELD_HELP_TEXT_SMALL: React.CSSProperties = {
+  fontSize: 11,
+  color: C.textMuted,
+  lineHeight: 1.4,
+};
+
+const S_FLEX_ROW_GAP_8: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+};
+
+const S_FLEX_ROW_CENTER_GAP_6: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+};
+
+const S_FLEX_COL_GAP_8: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+};
+
+const S_FIELD_SECTION_CARD_BASE: React.CSSProperties = {
+  background: C.surface,
+  borderRadius: 10,
+  overflow: "hidden",
+  transition: "border-color 0.3s",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+};
+
+const S_FIELD_SECTION_HEADER_BASE: React.CSSProperties = {
+  padding: "11px 20px",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  transition: "background 0.3s",
+};
+
+const S_FIELD_SECTION_ACCENT_BAR_BASE: React.CSSProperties = {
+  width: 3,
+  height: 16,
+  borderRadius: 99,
+  flexShrink: 0,
+  transition: "background 0.3s",
+};
+
+const S_FIELD_SECTION_ICON: React.CSSProperties = {
+  display: "flex",
+};
+
+const S_FIELD_SECTION_TITLE_BASE: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: 1,
+  textTransform: "uppercase",
+  fontFamily: F.sans,
+};
+
+const S_FIELD_SECTION_SUBTITLE: React.CSSProperties = {
+  fontSize: 12,
+  color: C.textMuted,
+  fontWeight: 400,
+  textTransform: "none",
+  letterSpacing: 0,
+};
+
+const S_FIELD_SECTION_FILLER: React.CSSProperties = {
+  flex: 1,
+};
+
+const S_FIELD_SECTION_PROGRESS_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+};
+
+const S_FIELD_SECTION_PROGRESS_TRACK: React.CSSProperties = {
+  width: 40,
+  height: 3,
+  borderRadius: 99,
+  background: C.border,
+  overflow: "hidden",
+};
+
+const S_FIELD_SECTION_PROGRESS_VAL: React.CSSProperties = {
+  fontSize: 11,
+  fontFamily: F.mono,
+  fontWeight: 600,
+};
+
+const S_FIELD_SECTION_BODY: React.CSSProperties = {
+  padding: "0 20px",
+};
+
+const S_FIELD_TIP_CARD_ROOT: React.CSSProperties = {
+  background: C.surface,
+  border: `1px solid ${C.border}`,
+  borderRadius: 10,
+  boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+  padding: 16,
+  display: "flex",
+  flexDirection: "column",
+};
+
+const S_FIELD_TIP_CARD_HEADER: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: 10,
+};
+
+const S_FIELD_TIP_CARD_HEADER_LEFT: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+};
+
+const S_FIELD_TIP_CARD_DOT: React.CSSProperties = {
+  width: 8,
+  height: 8,
+  borderRadius: "50%",
+  background: C.accent,
+};
+
+const S_FIELD_TIP_CARD_HEADING: React.CSSProperties = {
+  ...S_SECTION_LABEL,
+  letterSpacing: 1.1,
+  color: C.accent,
+};
+
+const S_FIELD_TIP_CARD_CLOSE: React.CSSProperties = {
+  fontSize: 11,
+  fontFamily: F.sans,
+  color: C.textMuted,
+  background: C.surfaceAlt,
+  border: `1px solid ${C.border}`,
+  borderRadius: 6,
+  padding: "4px 8px",
+  cursor: "pointer",
+};
+
+const S_FIELD_LABEL_TEXT_SM: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 600,
+  color: C.textMid,
+  fontFamily: F.sans,
+};
+
+const S_TEXT_ITALIC_11: React.CSSProperties = {
+  fontStyle: "italic",
+  fontWeight: 400,
+  fontSize: 11,
+};
+
+const S_FIELD_TIP_CARD_TITLE: React.CSSProperties = {
+  fontSize: 15,
+  fontWeight: 700,
+  color: C.text,
+  marginBottom: 4,
+};
+
+const S_FIELD_TIP_CARD_DESC: React.CSSProperties = {
+  fontSize: 13,
+  color: C.textMid,
+  lineHeight: 1.6,
+  margin: "0 0 14px",
+};
+
+const S_FIELD_TIP_CARD_BLOCK: React.CSSProperties = {
+  marginBottom: 16,
+};
+
+const S_FIELD_TIP_CARD_BLOCK_LABEL: React.CSSProperties = {
+  ...S_SECTION_LABEL,
+  letterSpacing: 0.8,
+  marginBottom: 6,
+};
+
+const S_FIELD_TIP_CARD_EXAMPLE_BOX: React.CSSProperties = {
+  background: C.surfaceAlt,
+  border: `1px solid ${C.border}`,
+  borderRadius: 6,
+  padding: "9px 12px",
+  fontFamily: F.mono,
+  fontSize: 13,
+  color: C.accent,
+  wordBreak: "break-all",
+};
+
+const S_FIELD_TIP_CARD_FORMAT_TEXT: React.CSSProperties = {
+  fontSize: 13,
+  color: C.textMid,
+  lineHeight: 1.6,
+  margin: 0,
+  fontFamily: F.mono,
+};
+
+const S_FIELD_TIP_CARD_HOWTO_BASE: React.CSSProperties = {
+  fontSize: 13,
+  color: C.textMid,
+  lineHeight: 1.65,
+  margin: 0,
+  whiteSpace: "pre-wrap",
+};
+
+const S_FIELD_TIP_CARD_COMMANDS_LABEL: React.CSSProperties = {
+  ...S_SECTION_LABEL,
+  letterSpacing: 0.8,
+  marginBottom: 8,
+};
+
+const S_FIELD_TIP_CARD_COMMANDS_LIST: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+};
+
+const S_FIELD_TIP_CARD_COMMAND_LABEL: React.CSSProperties = {
+  fontSize: 11,
+  color: C.textMuted,
+  fontFamily: F.sans,
+  marginBottom: 4,
+};
+
+const S_FIELD_TIP_CARD_COMMAND_BOX: React.CSSProperties = {
+  background: "#0f172a",
+  borderRadius: 6,
+  padding: "10px 12px",
+  fontFamily: F.mono,
+  fontSize: 13,
+  color: "#94d2bd",
+  wordBreak: "break-all",
+  lineHeight: 1.6,
+};
+
+const S_FIELD_TIP_CARD_TOOLS_WRAP: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 6,
+};
+
+const S_FIELD_TIP_CARD_TOOL_LINK: React.CSSProperties = {
+  fontSize: 13,
+  fontFamily: F.sans,
+  color: C.accent,
+  background: C.accentBg,
+  border: `1px solid ${C.accentBorder}`,
+  borderRadius: 5,
+  padding: "4px 10px",
+  textDecoration: "none",
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+};
+
+const S_RUNTIME_RIGHT: React.CSSProperties = {
+  ...S_FIELD_ROW_CONTENT,
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+};
+
+const S_RUNTIME_MODE_ROW: React.CSSProperties = {
+  display: "flex",
+  gap: 5,
+};
+
+const S_RUNTIME_MODE_BTN_BASE: React.CSSProperties = {
+  flex: 1,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 5,
+  padding: "6px 8px",
+  borderRadius: 7,
+  fontSize: 11,
+  fontWeight: 600,
+  fontFamily: F.sans,
+  transition: "all 0.15s",
+};
+
+const S_RUNTIME_MODE_ICON: React.CSSProperties = {
+  display: "flex",
+};
+
+const S_RUNTIME_PICKER_WRAP: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+};
+
+const S_RUNTIME_HELP_TEXT: React.CSSProperties = {
+  fontSize: 11,
+  color: C.textMuted,
+  lineHeight: 1.5,
+};
+
+const S_RUNTIME_CODE_INLINE: React.CSSProperties = {
+  fontFamily: F.mono,
+  fontSize: 10.5,
+  background: C.surfaceAlt,
+  padding: "1px 4px",
+  borderRadius: 3,
+};
+
+const S_RUNTIME_WARN_BOX: React.CSSProperties = {
+  display: "flex",
+  gap: 8,
+  padding: "8px 11px",
+  background: "#fff7ed",
+  border: "1px solid #fde68a",
+  borderRadius: 7,
+};
+
+const S_RUNTIME_WARN_ICON: React.CSSProperties = {
+  color: "#d97706",
+  display: "flex",
+  flexShrink: 0,
+  marginTop: 1,
+};
+
+const S_RUNTIME_WARN_TEXT: React.CSSProperties = {
+  fontSize: 11,
+  color: "#92400e",
+  lineHeight: 1.5,
+};
+
+const S_WORKFLOW_PAGE_ROOT: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  height: "100%",
+  minHeight: 0,
+  overflow: "hidden",
+};
+
+const S_WORKFLOW_PAGE_BODY: React.CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  display: "flex",
+  overflow: "hidden",
+};
+
+const S_WORKFLOW_PAGE_MAIN_SCROLL: React.CSSProperties = {
+  flex: 1,
+  overflowY: "auto",
+  padding: 28,
+  minWidth: 0,
+};
+
+const S_WORKFLOW_PAGE_MAIN_COL: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 20,
+};
+
+const S_WORKFLOW_PAGE_NUDGE_WRAP: React.CSSProperties = {
+  padding: "0 24px 24px",
+  flexShrink: 0,
+};
+
+const S_WORKFLOW_PAGE_ROOT_ANIM: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  height: "100%",
+  minHeight: 0,
+  overflow: "hidden",
+  animation: "fadeUp 0.2s ease",
+};
+
+const S_WORKFLOW_SERVICE_ROOT: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  flex: 1,
+  minHeight: 0,
+  overflow: "hidden",
+  animation: "fadeUp 0.2s ease",
+};
+
+const S_WORKFLOW_SERVICE_MAIN_SCROLL: React.CSSProperties = {
+  flex: 1,
+  overflowY: "auto",
+  display: "flex",
+  flexDirection: "column",
+  minHeight: 0,
+  padding: "24px 28px",
+  gap: 16,
+};
+
+const S_WORKFLOW_PAGE_SCRIPTS_WRAP: React.CSSProperties = {
+  padding: "16px 24px 0",
+  flexShrink: 0,
+};
+
+const S_WORKFLOW_PAGE_LOG_WRAP: React.CSSProperties = {
+  padding: "4px 24px 24px",
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  minHeight: 0,
+};
+const S_WORKFLOW_BUILD_SECTION_WRAP: React.CSSProperties = {
+  padding: "16px 24px",
+  borderBottom: `1px solid ${C.border}`,
+  flexShrink: 0,
+};
+
+const S_STATUS_BADGE_SM_BASE: React.CSSProperties = {
+  fontSize: 10,
+  fontFamily: F.sans,
+  fontWeight: 700,
+  borderRadius: 4,
+  padding: "2px 7px",
+  flexShrink: 0,
+};
+
+const S_TEXT_MUTED_11: React.CSSProperties = {
+  fontSize: 11,
+  color: C.textMuted,
+};
+
+const S_SECTION_LABEL_MB12: React.CSSProperties = {
+  ...S_SECTION_LABEL,
+  marginBottom: 12,
+};
+
+const S_SCRIPT_PANEL_ROOT: React.CSSProperties = {
+  border: `1.5px solid ${C.border}`,
+  borderRadius: 10,
+  overflow: "hidden",
+  marginBottom: 20,
+  background: C.surface,
+};
+
+const S_SCRIPT_TAB_BAR_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  background: C.surfaceAlt,
+};
+
+const S_SCRIPT_TABS_WRAP: React.CSSProperties = {
+  display: "flex",
+  flex: 1,
+  overflow: "hidden",
+};
+
+const S_SCRIPT_TAB_BUTTON_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "8px 14px",
+  border: "none",
+  cursor: "pointer",
+  transition: "background 0.13s",
+  flexShrink: 0,
+};
+
+const S_SCRIPT_TAB_ICON: React.CSSProperties = {
+  display: "flex",
+};
+
+const S_SCRIPT_TAB_LABEL_BASE: React.CSSProperties = {
+  fontSize: 12,
+  whiteSpace: "nowrap",
+};
+
+const S_SCRIPT_TAB_TYPE_BADGE_BASE: React.CSSProperties = {
+  fontSize: 9,
+  fontWeight: 700,
+  fontFamily: F.mono,
+  letterSpacing: 0.6,
+  textTransform: "uppercase",
+  padding: "1px 4px",
+  borderRadius: 3,
+  marginLeft: 2,
+};
+
+const S_SCRIPT_COLLAPSE_BUTTON: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  padding: "8px 12px",
+  color: C.textMuted,
+  display: "flex",
+  alignItems: "center",
+};
+
+const S_SCRIPT_VIEW_SURFACE: React.CSSProperties = {
+  background: C.surfaceAlt,
+};
+
+const S_SCRIPT_VIEW_MESSAGE_BASE: React.CSSProperties = {
+  padding: "12px 16px",
+  fontSize: 12,
+  fontFamily: F.mono,
+};
+
+const S_SCRIPT_VIEW_LINES_WRAP: React.CSSProperties = {
+  padding: "8px 0 10px",
+};
+
+const S_SCRIPT_VIEW_LINE_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+};
+
+const S_SCRIPT_VIEW_LINE_NO: React.CSSProperties = {
+  display: "inline-block",
+  minWidth: 40,
+  textAlign: "right",
+  paddingRight: 16,
+  paddingLeft: 12,
+  fontSize: 11,
+  fontFamily: F.mono,
+  color: C.borderMid,
+  userSelect: "none",
+  flexShrink: 0,
+};
+
+const S_SCRIPT_VIEW_CODE_BASE: React.CSSProperties = {
+  fontSize: 12,
+  fontFamily: F.mono,
+  lineHeight: 1.75,
+  whiteSpace: "pre",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  display: "block",
+  paddingRight: 16,
+};
+
+const S_SCRIPT_WRITE_TOOLBAR: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "6px 10px",
+  borderBottom: `1px solid ${C.border}`,
+  background: C.surfaceAlt,
+};
+
+const S_SCRIPT_FILENAME_ICON: React.CSSProperties = {
+  color: C.textMuted,
+  display: "flex",
+  flexShrink: 0,
+};
+
+const S_SCRIPT_FILENAME_INPUT: React.CSSProperties = {
+  flex: 1,
+  border: "none",
+  background: "transparent",
+  fontSize: 12,
+  fontFamily: F.mono,
+  color: C.textMid,
+  outline: "none",
+  minWidth: 0,
+};
+
+const S_SCRIPT_TEMPLATE_SELECT: React.CSSProperties = {
+  border: `1.5px solid ${C.border}`,
+  borderRadius: 5,
+  padding: "4px 8px",
+  fontSize: 11,
+  fontFamily: F.sans,
+  color: C.textMid,
+  background: C.surface,
+};
+
+const S_SCRIPT_TEMPLATE_APPLY_BTN: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "4px 10px",
+  borderRadius: 5,
+  cursor: "pointer",
+  border: `1px solid ${C.border}`,
+  background: C.surface,
+  color: C.textMid,
+  fontSize: 11,
+  fontWeight: 600,
+  fontFamily: F.sans,
+  transition: "all 0.13s",
+  flexShrink: 0,
+  whiteSpace: "nowrap",
+};
+
+const S_SCRIPT_TOOLBAR_DIVIDER: React.CSSProperties = {
+  width: 1,
+  height: 16,
+  background: C.border,
+  flexShrink: 0,
+};
+
+const S_SCRIPT_SAVE_BTN_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 5,
+  padding: "4px 10px",
+  borderRadius: 5,
+  border: `1px solid ${C.accentBorder}`,
+  background: C.accentBg,
+  fontSize: 11,
+  fontWeight: 600,
+  fontFamily: F.sans,
+  color: C.accent,
+  transition: "all 0.13s",
+  flexShrink: 0,
+  whiteSpace: "nowrap",
+};
+
+const S_SCRIPT_EDITOR: React.CSSProperties = {
+  width: "100%",
+  minHeight: 200,
+  padding: "10px 14px",
+  fontFamily: F.mono,
+  fontSize: 12,
+  lineHeight: 1.7,
+  color: C.text,
+  background: C.surface,
+  border: "none",
+  resize: "vertical",
+  outline: "none",
+  tabSize: 2,
+  display: "block",
+};
+
+const S_SCRIPT_STATUS_BAR: React.CSSProperties = {
+  padding: "5px 12px",
+  background: C.surfaceAlt,
+  borderTop: `1px solid ${C.border}`,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+};
+
+const S_SCRIPT_STATUS_TEXT: React.CSSProperties = {
+  fontSize: 11,
+  fontFamily: F.mono,
+  color: C.textMuted,
+};
+
+const S_SCRIPT_REMOTE_HINT: React.CSSProperties = {
+  fontSize: 11,
+  fontFamily: F.sans,
+  color: C.textMuted,
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+};
+
+const S_FILE_PICKER_ROOT: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 0,
+};
+
+const S_FILE_PICKER_INPUT_WRAP: React.CSSProperties = {
+  position: "relative",
+};
+
+const S_FILE_PICKER_ROW_BASE: React.CSSProperties = {
+  display: "flex",
+  overflow: "hidden",
+  transition: "border-color 0.2s",
+};
+
+const S_FILE_PICKER_STATUS_ICON_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "0 8px 0 10px",
+  flexShrink: 0,
+  transition: "color 0.2s",
+};
+
+const S_FILE_PICKER_INPUT: React.CSSProperties = {
+  flex: 1,
+  border: "none",
+  padding: "7px 4px 7px 0",
+  fontSize: 14,
+  fontFamily: F.mono,
+  color: C.text,
+  background: "transparent",
+};
+
+const S_FILE_PICKER_TYPE_BADGE_WRAP: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  padding: "0 8px",
+  flexShrink: 0,
+};
+
+const S_FILE_PICKER_TYPE_BADGE_TEXT: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  fontFamily: F.mono,
+  letterSpacing: 0.5,
+  textTransform: "uppercase",
+};
+
+const S_FILE_PICKER_PEEK_BTN_BASE: React.CSSProperties = {
+  border: "none",
+  padding: "7px 9px",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+  fontSize: 11,
+  fontFamily: F.sans,
+  fontWeight: 600,
+  transition: "background 0.15s, color 0.15s",
+  flexShrink: 0,
+};
+
+const S_FILE_PICKER_PEEK_LABEL: React.CSSProperties = {
+  display: "none",
+};
+
+const S_FILE_PICKER_BROWSE_BTN_BASE: React.CSSProperties = {
+  border: "none",
+  padding: "7px 9px",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  transition: "background 0.15s, color 0.15s",
+};
+
+const S_FILE_PICKER_DROPDOWN: React.CSSProperties = {
+  position: "absolute",
+  top: "calc(100% + 4px)",
+  left: 0,
+  right: 0,
+  zIndex: 50,
+  background: C.surface,
+  border: `1px solid ${C.border}`,
+  borderRadius: 8,
+  boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+  maxHeight: 180,
+  overflowY: "auto",
+};
+
+const S_FILE_PICKER_EMPTY_STATE: React.CSSProperties = {
+  padding: "12px",
+  fontSize: 13,
+  color: C.textMuted,
+  fontFamily: F.sans,
+  textAlign: "center",
+};
+
+const S_FILE_PICKER_OPTION_BASE: React.CSSProperties = {
+  padding: "7px 12px",
+  fontSize: 13,
+  fontFamily: F.mono,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  border: "none",
+  textAlign: "left",
+  width: "100%",
+};
+
+const S_FILE_PICKER_OPTION_ICON: React.CSSProperties = {
+  display: "flex",
+  opacity: 0.5,
+};
+
+const S_FILE_PICKER_WARNING_STRIP: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "5px 10px",
+  background: "#fff7ed",
+  border: "1px solid #fed7aa",
+  borderTop: "none",
+  borderRadius: "0 0 6px 6px",
+  animation: "fadeUp 0.15s ease",
+};
+
+const S_FILE_PICKER_WARNING_TEXT: React.CSSProperties = {
+  fontSize: 11,
+  color: "#c2410c",
+  fontFamily: F.sans,
+};
+
+const S_FILE_PICKER_PREVIEW_PANEL: React.CSSProperties = {
+  border: "1.5px solid #22c55e",
+  borderTop: "none",
+  borderRadius: "0 0 7px 7px",
+  background: C.surfaceAlt,
+  overflow: "hidden",
+  animation: "fadeUp 0.15s ease",
+};
+
+const S_FILE_PICKER_PREVIEW_HEADER: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "5px 12px",
+  borderBottom: `1px solid ${C.border}`,
+  background: C.surface,
+};
+
+const S_FILE_PICKER_PREVIEW_HEADER_LEFT: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+};
+
+const S_FILE_PICKER_PREVIEW_ICON: React.CSSProperties = {
+  display: "flex",
+  color: "#16a34a",
+  opacity: 0.9,
+};
+
+const S_FILE_PICKER_PREVIEW_PATH: React.CSSProperties = {
+  fontSize: 11,
+  fontFamily: F.mono,
+  color: C.textMid,
+  letterSpacing: 0.3,
+};
+
+const S_FILE_PICKER_PREVIEW_KIND_BADGE_BASE: React.CSSProperties = {
+  fontSize: 9,
+  fontWeight: 700,
+  fontFamily: F.mono,
+  letterSpacing: 0.8,
+  textTransform: "uppercase",
+  padding: "1px 5px",
+  borderRadius: 3,
+};
+
+const S_FILE_PICKER_PREVIEW_CLOSE: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  color: C.textMuted,
+  display: "flex",
+  padding: "2px",
+  borderRadius: 3,
+};
+
+const S_FILE_PICKER_PREVIEW_LINES_WRAP: React.CSSProperties = {
+  padding: "8px 0 6px",
+};
+
+const S_FILE_PICKER_PREVIEW_LINE_ROW: React.CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+  gap: 0,
+};
+
+const S_FILE_PICKER_PREVIEW_LINE_NO: React.CSSProperties = {
+  display: "inline-block",
+  minWidth: 36,
+  textAlign: "right",
+  paddingRight: 14,
+  paddingLeft: 12,
+  fontSize: 11,
+  fontFamily: F.mono,
+  color: C.borderMid,
+  userSelect: "none",
+  flexShrink: 0,
+};
+
+const S_FILE_PICKER_PREVIEW_CODE_BASE: React.CSSProperties = {
+  fontSize: 12,
+  fontFamily: F.mono,
+  lineHeight: 1.7,
+  whiteSpace: "pre",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  display: "block",
+  paddingRight: 14,
+};
+
+const S_FILE_PICKER_PREVIEW_MORE: React.CSSProperties = {
+  padding: "4px 12px 2px 36px",
+  fontSize: 11,
+  fontFamily: F.mono,
+  color: C.textMuted,
+  fontStyle: "italic",
+};
+
+const S_TOAST_BASE: React.CSSProperties = {
+  position: "fixed",
+  bottom: 20,
+  right: 20,
+  zIndex: 2000,
+  borderRadius: 8,
+  padding: "10px 14px",
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+  maxWidth: 340,
+  animation: "slideIn 0.2s ease",
+};
+
+const S_TOAST_ICON: React.CSSProperties = {
+  flexShrink: 0,
+};
+
+const S_TOAST_MESSAGE: React.CSSProperties = {
+  fontSize: 14,
+  color: C.text,
+  fontFamily: F.sans,
+  flex: 1,
+};
+
+const S_TOAST_CLOSE: React.CSSProperties = {
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  color: C.textMuted,
+  display: "flex",
+};
+
+const S_FILE_NODE_BUTTON_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 5,
+  padding: "4px 8px",
+  borderRadius: 5,
+  cursor: "pointer",
+  fontSize: 13,
+  fontFamily: F.mono,
+  transition: "background 0.1s",
+  userSelect: "none",
+  textAlign: "left",
+  width: "100%",
+};
+
+const S_FILE_NODE_CHEVRON: React.CSSProperties = {
+  color: C.textMuted,
+  display: "flex",
+  width: 12,
+};
+
+const S_FILE_NODE_FILE_ICON: React.CSSProperties = {
+  marginLeft: 12,
+  display: "flex",
+};
+
+const S_FILE_NODE_NAME: React.CSSProperties = {
+  flex: 1,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const S_FILE_NODE_REF_BADGE: React.CSSProperties = {
+  fontSize: 9,
+  fontWeight: 700,
+  color: "#b45309",
+  background: "#fef3c7",
+  border: "1px solid #fde68a",
+  borderRadius: 3,
+  padding: "0 3px",
+  fontFamily: F.sans,
+  flexShrink: 0,
+};
+
 // ── Level colors use a single-axis progress ramp (slate → indigo → blue → cyan → teal → emerald).
 // This encodes only "how far along the scale" — not quality or urgency.
 // Semantic red/amber/green are reserved for true status signals (errors, warnings, success).
@@ -1402,35 +3413,18 @@ function Toast({ message, type, onClose }: ToastProps) {
   return (
     <div
       style={{
-        position: "fixed",
-        bottom: 20,
-        right: 20,
-        zIndex: 2000,
+        ...S_TOAST_BASE,
         background: bg,
         border: `1px solid ${c}30`,
         borderLeft: `3px solid ${c}`,
-        borderRadius: 8,
-        padding: "10px 14px",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-        maxWidth: 340,
-        animation: "slideIn 0.2s ease",
       }}
     >
-      <span style={{ color: c, flexShrink: 0 }}>{Ic.info()}</span>
-      <span style={{ fontSize: 14, color: C.text, fontFamily: F.sans, flex: 1 }}>{message}</span>
+      <span style={{ ...S_TOAST_ICON, color: c }}>{Ic.info()}</span>
+      <span style={S_TOAST_MESSAGE}>{message}</span>
       <button
         type="button"
         onClick={onClose}
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          color: C.textMuted,
-          display: "flex",
-        }}
+        style={S_TOAST_CLOSE}
       >
         {Ic.x()}
       </button>
@@ -1464,22 +3458,11 @@ function FileNode({
         type="button"
         onClick={handleNodeClick}
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 5,
-          padding: "4px 8px",
+          ...S_FILE_NODE_BUTTON_BASE,
           paddingLeft: 8 + depth * 14,
-          borderRadius: 5,
-          cursor: "pointer",
           background: isSel ? C.accentBg : isHighlighted ? "#fef3c7" : "transparent",
           border: isHighlighted && !isSel ? "1px solid #fde68a" : "1px solid transparent",
-          fontSize: 13,
-          fontFamily: F.mono,
-          transition: "background 0.1s",
-          userSelect: "none",
           color: isSel ? C.accent : isHighlighted ? "#92400e" : isFolder ? C.text : C.textMid,
-          textAlign: "left",
-          width: "100%",
         }}
         onMouseEnter={(e) => {
           if (!isSel) {
@@ -1494,33 +3477,19 @@ function FileNode({
       >
         {isFolder ? (
           <>
-            <span style={{ color: C.textMuted, display: "flex", width: 12 }}>
+            <span style={S_FILE_NODE_CHEVRON}>
               {open ? Ic.chevD(12) : Ic.chevR(12)}
             </span>
             {Ic.folder(14)}
           </>
         ) : (
-          <span style={{ marginLeft: 12, display: "flex" }}>{Ic.file(14)}</span>
+          <span style={S_FILE_NODE_FILE_ICON}>{Ic.file(14)}</span>
         )}
-        <span
-          style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-        >
+        <span style={S_FILE_NODE_NAME}>
           {node.name}
         </span>
         {isHighlighted && !isSel && (
-          <span
-            style={{
-              fontSize: 9,
-              fontWeight: 700,
-              color: "#b45309",
-              background: "#fef3c7",
-              border: "1px solid #fde68a",
-              borderRadius: 3,
-              padding: "0 3px",
-              fontFamily: F.sans,
-              flexShrink: 0,
-            }}
-          >
+          <span style={S_FILE_NODE_REF_BADGE}>
             REF
           </span>
         )}
@@ -1815,25 +3784,15 @@ function ScriptPanel({
   const tabAccent: Record<ScriptPanelMode, string> = { view: "#16a34a", write: "#7c3aed" };
 
   return (
-    <div
-      style={{
-        border: `1.5px solid ${C.border}`,
-        borderRadius: 10,
-        overflow: "hidden",
-        marginBottom: 20,
-        background: C.surface,
-      }}
-    >
+    <div style={S_SCRIPT_PANEL_ROOT}>
       {/* Tab bar */}
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
+          ...S_SCRIPT_TAB_BAR_BASE,
           borderBottom: collapsed && mode === "view" ? "none" : `1px solid ${C.border}`,
-          background: C.surfaceAlt,
         }}
       >
-        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <div style={S_SCRIPT_TABS_WRAP}>
           {TABS.map((t) => {
             const isActive = mode === t.key;
             const acc = tabAccent[t.key];
@@ -1843,17 +3802,10 @@ function ScriptPanel({
                 key={t.key}
                 onClick={() => handleModeChange(t.key)}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "8px 14px",
+                  ...S_SCRIPT_TAB_BUTTON_BASE,
                   background: isActive ? tabBg[t.key] : "transparent",
-                  border: "none",
                   borderRight: `1px solid ${C.border}`,
                   borderBottom: isActive ? `2px solid ${acc}` : "2px solid transparent",
-                  cursor: "pointer",
-                  transition: "background 0.13s",
-                  flexShrink: 0,
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) e.currentTarget.style.background = `${C.border}40`;
@@ -1862,15 +3814,14 @@ function ScriptPanel({
                   if (!isActive) e.currentTarget.style.background = "transparent";
                 }}
               >
-                <span style={{ display: "flex", color: isActive ? acc : C.textMuted }}>
+                <span style={{ ...S_SCRIPT_TAB_ICON, color: isActive ? acc : C.textMuted }}>
                   {t.icon(12)}
                 </span>
                 <span
                   style={{
-                    fontSize: 12,
+                    ...S_SCRIPT_TAB_LABEL_BASE,
                     fontFamily: t.key === "view" ? F.mono : F.sans,
                     color: isActive ? acc : C.textMid,
-                    whiteSpace: "nowrap",
                     fontWeight: isActive ? 600 : 400,
                   }}
                 >
@@ -1879,17 +3830,10 @@ function ScriptPanel({
                 {t.key === "view" && (
                   <span
                     style={{
-                      fontSize: 9,
-                      fontWeight: 700,
-                      fontFamily: F.mono,
-                      letterSpacing: 0.6,
-                      textTransform: "uppercase",
-                      padding: "1px 4px",
-                      borderRadius: 3,
+                      ...S_SCRIPT_TAB_TYPE_BADGE_BASE,
                       background: typeStyle.bg,
                       color: typeStyle.color,
                       border: `1px solid ${typeStyle.border}`,
-                      marginLeft: 2,
                     }}
                   >
                     {typeStyle.label}
@@ -1904,15 +3848,7 @@ function ScriptPanel({
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "8px 12px",
-              color: C.textMuted,
-              display: "flex",
-              alignItems: "center",
-            }}
+            style={S_SCRIPT_COLLAPSE_BUTTON}
             onMouseEnter={(e) => (e.currentTarget.style.color = C.textMid)}
             onMouseLeave={(e) => (e.currentTarget.style.color = C.textMuted)}
           >
@@ -1926,13 +3862,11 @@ function ScriptPanel({
         <>
           {/* VIEW: read-only light code display */}
           {mode === "view" && (
-            <div style={{ background: C.surfaceAlt }}>
+            <div style={S_SCRIPT_VIEW_SURFACE}>
               {viewLines === null ? (
                 <div
                   style={{
-                    padding: "12px 16px",
-                    fontSize: 12,
-                    fontFamily: F.mono,
+                    ...S_SCRIPT_VIEW_MESSAGE_BASE,
                     color: "#f97316",
                   }}
                 >
@@ -1941,9 +3875,7 @@ function ScriptPanel({
               ) : viewLines.length === 0 ? (
                 <div
                   style={{
-                    padding: "12px 16px",
-                    fontSize: 12,
-                    fontFamily: F.mono,
+                    ...S_SCRIPT_VIEW_MESSAGE_BASE,
                     color: C.textMuted,
                     fontStyle: "italic",
                   }}
@@ -1951,7 +3883,7 @@ function ScriptPanel({
                   (empty file)
                 </div>
               ) : (
-                <div style={{ padding: "8px 0 10px" }}>
+                <div style={S_SCRIPT_VIEW_LINES_WRAP}>
                   {(() => {
                     let lineNumber = 0;
                     const seenLines = new Map<string, number>();
@@ -1960,28 +3892,15 @@ function ScriptPanel({
                       const occurrence = (seenLines.get(line) ?? 0) + 1;
                       seenLines.set(line, occurrence);
                       return (
-                    <div key={`${line}::${occurrence}`} style={{ display: "flex", alignItems: "baseline" }}>
+                    <div key={`${line}::${occurrence}`} style={S_SCRIPT_VIEW_LINE_ROW}>
                       <span
-                        style={{
-                          display: "inline-block",
-                          minWidth: 40,
-                          textAlign: "right",
-                          paddingRight: 16,
-                          paddingLeft: 12,
-                          fontSize: 11,
-                          fontFamily: F.mono,
-                          color: C.borderMid,
-                          userSelect: "none",
-                          flexShrink: 0,
-                        }}
+                        style={S_SCRIPT_VIEW_LINE_NO}
                       >
                         {lineNumber}
                       </span>
                       <span
                         style={{
-                          fontSize: 12,
-                          fontFamily: F.mono,
-                          lineHeight: 1.75,
+                          ...S_SCRIPT_VIEW_CODE_BASE,
                           color: line.startsWith("#")
                             ? "#94a3b8"
                             : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
@@ -1993,11 +3912,6 @@ function ScriptPanel({
                                     !line.includes("==")
                                   ? "#b45309"
                                   : C.text,
-                          whiteSpace: "pre",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          display: "block",
-                          paddingRight: 16,
                         }}
                       >
                         {line || " "}
@@ -2015,34 +3929,16 @@ function ScriptPanel({
           {mode === "write" && (
             <div>
               {/* Toolbar */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "6px 10px",
-                  borderBottom: `1px solid ${C.border}`,
-                  background: C.surfaceAlt,
-                }}
-              >
+              <div style={S_SCRIPT_WRITE_TOOLBAR}>
                 {/* Filename */}
-                <span style={{ color: C.textMuted, display: "flex", flexShrink: 0 }}>
+                <span style={S_SCRIPT_FILENAME_ICON}>
                   {Ic.terminal(11)}
                 </span>
                 <input
                   value={editorFilename}
                   onChange={(e) => setEditorFilename(e.target.value)}
                   placeholder="filename.sh"
-                  style={{
-                    flex: 1,
-                    border: "none",
-                    background: "transparent",
-                    fontSize: 12,
-                    fontFamily: F.mono,
-                    color: C.textMid,
-                    outline: "none",
-                    minWidth: 0,
-                  }}
+                  style={S_SCRIPT_FILENAME_INPUT}
                 />
 
                 {/* Template selector */}
@@ -2051,15 +3947,7 @@ function ScriptPanel({
                     <select
                       value={templateKey}
                       onChange={(e) => setTemplateKey(e.target.value)}
-                      style={{
-                        border: `1.5px solid ${C.border}`,
-                        borderRadius: 5,
-                        padding: "4px 8px",
-                        fontSize: 11,
-                        fontFamily: F.sans,
-                        color: C.textMid,
-                        background: C.surface,
-                      }}
+                      style={S_SCRIPT_TEMPLATE_SELECT}
                     >
                       {templates.map((t) => (
                         <option key={t.key} value={t.key}>
@@ -2071,23 +3959,7 @@ function ScriptPanel({
                       type="button"
                       onClick={handleUseTemplate}
                       title="Insert selected template into editor"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "4px 10px",
-                        borderRadius: 5,
-                        cursor: "pointer",
-                        border: `1px solid ${C.border}`,
-                        background: C.surface,
-                        color: C.textMid,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        fontFamily: F.sans,
-                        transition: "all 0.13s",
-                        flexShrink: 0,
-                        whiteSpace: "nowrap",
-                      }}
+                      style={S_SCRIPT_TEMPLATE_APPLY_BTN}
                       onMouseEnter={(e) => {
                         if (e.currentTarget) e.currentTarget.style.background = C.surfaceAlt;
                       }}
@@ -2100,7 +3972,7 @@ function ScriptPanel({
                   </>
                 )}
 
-                <div style={{ width: 1, height: 16, background: C.border, flexShrink: 0 }} />
+                <div style={S_SCRIPT_TOOLBAR_DIVIDER} />
 
                 {/* Save action */}
                 {
@@ -2109,21 +3981,8 @@ function ScriptPanel({
                     onClick={handleSave}
                     disabled={!editorContent.trim()}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                      padding: "4px 10px",
-                      borderRadius: 5,
+                      ...S_SCRIPT_SAVE_BTN_BASE,
                       cursor: !editorContent.trim() ? "default" : "pointer",
-                      border: `1px solid ${C.accentBorder}`,
-                      background: C.accentBg,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      fontFamily: F.sans,
-                      color: C.accent,
-                      transition: "all 0.13s",
-                      flexShrink: 0,
-                      whiteSpace: "nowrap",
                       opacity: !editorContent.trim() ? 0.4 : 1,
                     }}
                     onMouseEnter={(e) => {
@@ -2144,21 +4003,7 @@ function ScriptPanel({
                 onChange={(e) => setEditorContent(e.target.value)}
                 placeholder={"#!/bin/bash\nset -euo pipefail\n\n# Write your script here..."}
                 spellCheck={false}
-                style={{
-                  width: "100%",
-                  minHeight: 200,
-                  padding: "10px 14px",
-                  fontFamily: F.mono,
-                  fontSize: 12,
-                  lineHeight: 1.7,
-                  color: C.text,
-                  background: C.surface,
-                  border: "none",
-                  resize: "vertical",
-                  outline: "none",
-                  tabSize: 2,
-                  display: "block",
-                }}
+                style={S_SCRIPT_EDITOR}
                 onKeyDown={(e) => {
                   if (e.key === "Tab") {
                     e.preventDefault();
@@ -2175,29 +4020,13 @@ function ScriptPanel({
 
               {/* Status bar */}
               <div
-                style={{
-                  padding: "5px 12px",
-                  background: C.surfaceAlt,
-                  borderTop: `1px solid ${C.border}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
+                style={S_SCRIPT_STATUS_BAR}
               >
-                <span style={{ fontSize: 11, fontFamily: F.mono, color: C.textMuted }}>
+                <span style={S_SCRIPT_STATUS_TEXT}>
                   {editorContent.split("\n").length} lines · Tab = 2 spaces
                 </span>
                 {isRemoteGit && (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: F.sans,
-                      color: C.textMuted,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
+                  <span style={S_SCRIPT_REMOTE_HINT}>
                     {Ic.link(10)}
                     <span>{isGitHub ? "github.com" : "gitlab.com"} · changes go via PR</span>
                   </span>
@@ -2311,17 +4140,15 @@ function FilePicker({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+    <div style={S_FILE_PICKER_ROOT}>
       {/* Input row */}
-      <div style={{ position: "relative" }}>
+      <div style={S_FILE_PICKER_INPUT_WRAP}>
         <div
           style={{
-            display: "flex",
+            ...S_FILE_PICKER_ROW_BASE,
             border: `1.5px solid ${borderColor}`,
             borderRadius: isValid && previewOpen ? "7px 7px 0 0" : "7px",
             background: disabled ? C.surfaceAlt : C.surface,
-            overflow: "hidden",
-            transition: "border-color 0.2s",
             boxShadow: isValid
               ? `0 0 0 3px #22c55e10`
               : notFound || wrongFormat
@@ -2332,13 +4159,8 @@ function FilePicker({
           {/* Status indicator left of input */}
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0 8px 0 10px",
-              flexShrink: 0,
+              ...S_FILE_PICKER_STATUS_ICON_BASE,
               color: notFound || wrongFormat ? "#f97316" : isValid ? "#22c55e" : C.textMuted,
-              transition: "color 0.2s",
             }}
           >
             {notFound || wrongFormat ? (
@@ -2359,37 +4181,22 @@ function FilePicker({
             disabled={disabled}
             placeholder={placeholder || "path/to/file"}
             onFocus={onFocus}
-            style={{
-              flex: 1,
-              border: "none",
-              padding: "7px 4px 7px 0",
-              fontSize: 14,
-              fontFamily: F.mono,
-              color: C.text,
-              background: "transparent",
-            }}
+            style={S_FILE_PICKER_INPUT}
           />
 
           {/* Type badge — shown when file is matched */}
           {isValid && (
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                padding: "0 8px",
+                ...S_FILE_PICKER_TYPE_BADGE_WRAP,
                 borderLeft: `1px solid ${typeStyle.border}`,
                 background: typeStyle.bg,
-                flexShrink: 0,
               }}
             >
               <span
                 style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  fontFamily: F.mono,
-                  letterSpacing: 0.5,
+                  ...S_FILE_PICKER_TYPE_BADGE_TEXT,
                   color: typeStyle.color,
-                  textTransform: "uppercase",
                 }}
               >
                 {typeStyle.label}
@@ -2404,20 +4211,10 @@ function FilePicker({
               onClick={() => setPreviewOpen((o) => !o)}
               title={previewOpen ? "Hide preview" : "Peek at file contents"}
               style={{
+                ...S_FILE_PICKER_PEEK_BTN_BASE,
                 background: previewOpen ? "#f0fdf4" : C.surfaceAlt,
-                border: "none",
                 borderLeft: `1px solid ${previewOpen ? "#bbf7d0" : C.border}`,
-                padding: "7px 9px",
-                cursor: "pointer",
                 color: previewOpen ? "#16a34a" : C.textMid,
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                fontSize: 11,
-                fontFamily: F.sans,
-                fontWeight: 600,
-                transition: "background 0.15s, color 0.15s",
-                flexShrink: 0,
               }}
               onMouseEnter={(e) => {
                 if (!previewOpen) {
@@ -2433,7 +4230,7 @@ function FilePicker({
               }}
             >
               {Ic.terminal(13)}
-              <span style={{ display: "none" }}>{previewOpen ? "hide" : "peek"}</span>
+              <span style={S_FILE_PICKER_PEEK_LABEL}>{previewOpen ? "hide" : "peek"}</span>
             </button>
           )}
 
@@ -2444,15 +4241,10 @@ function FilePicker({
               onClick={() => setOpen((o) => !o)}
               title="Browse repository files"
               style={{
+                ...S_FILE_PICKER_BROWSE_BTN_BASE,
                 background: open ? C.accentBg : C.surfaceAlt,
-                border: "none",
                 borderLeft: `1px solid ${C.border}`,
-                padding: "7px 9px",
-                cursor: "pointer",
                 color: open ? C.accent : C.textMid,
-                display: "flex",
-                alignItems: "center",
-                transition: "background 0.15s, color 0.15s",
               }}
               onMouseEnter={(e) => {
                 if (!open) {
@@ -2474,31 +4266,9 @@ function FilePicker({
 
         {/* Browse dropdown */}
         {open && (
-          <div
-            style={{
-              position: "absolute",
-              top: "calc(100% + 4px)",
-              left: 0,
-              right: 0,
-              zIndex: 50,
-              background: C.surface,
-              border: `1px solid ${C.border}`,
-              borderRadius: 8,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
-              maxHeight: 180,
-              overflowY: "auto",
-            }}
-          >
+          <div style={S_FILE_PICKER_DROPDOWN}>
             {paths.length === 0 ? (
-              <div
-                style={{
-                  padding: "12px",
-                  fontSize: 13,
-                  color: C.textMuted,
-                  fontFamily: F.sans,
-                  textAlign: "center",
-                }}
-              >
+              <div style={S_FILE_PICKER_EMPTY_STATE}>
                 {filterFn ? "No matching files in repository" : "No files in repository"}
               </div>
             ) : (
@@ -2508,18 +4278,9 @@ function FilePicker({
                   key={p}
                   onClick={() => handleSelect(p)}
                   style={{
-                    padding: "7px 12px",
-                    fontSize: 13,
-                    fontFamily: F.mono,
-                    cursor: "pointer",
+                    ...S_FILE_PICKER_OPTION_BASE,
                     background: draft === p ? C.accentBg : "transparent",
                     color: draft === p ? C.accent : C.textMid,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    border: "none",
-                    textAlign: "left",
-                    width: "100%",
                   }}
                   onMouseEnter={(e) => {
                     if (draft !== p) {
@@ -2532,7 +4293,7 @@ function FilePicker({
                     }
                   }}
                 >
-                  <span style={{ display: "flex", opacity: 0.5 }}>{Ic.file(12)}</span>
+                  <span style={S_FILE_PICKER_OPTION_ICON}>{Ic.file(12)}</span>
                   {p}
                 </button>
               ))
@@ -2543,20 +4304,8 @@ function FilePicker({
 
       {/* Not-found / wrong-format warning strip */}
       {(notFound || wrongFormat) && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "5px 10px",
-            background: "#fff7ed",
-            border: `1px solid #fed7aa`,
-            borderTop: "none",
-            borderRadius: "0 0 6px 6px",
-            animation: "fadeUp 0.15s ease",
-          }}
-        >
-          <span style={{ fontSize: 11, color: "#c2410c", fontFamily: F.sans }}>
+        <div style={S_FILE_PICKER_WARNING_STRIP}>
+          <span style={S_FILE_PICKER_WARNING_TEXT}>
             {wrongFormat && notFound
               ? `Wrong format — expected ${placeholder || "the required format"}. File not found either.`
               : wrongFormat
@@ -2568,43 +4317,17 @@ function FilePicker({
 
       {/* Inline file preview panel */}
       {isValid && previewOpen && (
-        <div
-          style={{
-            border: `1.5px solid #22c55e`,
-            borderTop: "none",
-            borderRadius: "0 0 7px 7px",
-            background: C.surfaceAlt,
-            overflow: "hidden",
-            animation: "fadeUp 0.15s ease",
-          }}
-        >
+        <div style={S_FILE_PICKER_PREVIEW_PANEL}>
           {/* Preview header */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "5px 12px",
-              borderBottom: `1px solid ${C.border}`,
-              background: C.surface,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span style={{ display: "flex", color: "#16a34a", opacity: 0.9 }}>{Ic.file(12)}</span>
-              <span
-                style={{ fontSize: 11, fontFamily: F.mono, color: C.textMid, letterSpacing: 0.3 }}
-              >
+          <div style={S_FILE_PICKER_PREVIEW_HEADER}>
+            <div style={S_FILE_PICKER_PREVIEW_HEADER_LEFT}>
+              <span style={S_FILE_PICKER_PREVIEW_ICON}>{Ic.file(12)}</span>
+              <span style={S_FILE_PICKER_PREVIEW_PATH}>
                 {trimmedDraft}
               </span>
               <span
                 style={{
-                  fontSize: 9,
-                  fontWeight: 700,
-                  fontFamily: F.mono,
-                  letterSpacing: 0.8,
-                  textTransform: "uppercase",
-                  padding: "1px 5px",
-                  borderRadius: 3,
+                  ...S_FILE_PICKER_PREVIEW_KIND_BADGE_BASE,
                   background: typeStyle.bg,
                   color: typeStyle.color,
                   border: `1px solid ${typeStyle.border}`,
@@ -2616,15 +4339,7 @@ function FilePicker({
             <button
               type="button"
               onClick={() => setPreviewOpen(false)}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: C.textMuted,
-                display: "flex",
-                padding: "2px",
-                borderRadius: 3,
-              }}
+              style={S_FILE_PICKER_PREVIEW_CLOSE}
               onMouseEnter={(e) => (e.currentTarget.style.color = C.textMid)}
               onMouseLeave={(e) => (e.currentTarget.style.color = C.textMuted)}
             >
@@ -2633,7 +4348,7 @@ function FilePicker({
           </div>
 
           {/* Code lines */}
-          <div style={{ padding: "8px 0 6px" }}>
+          <div style={S_FILE_PICKER_PREVIEW_LINES_WRAP}>
             {(() => {
               let lineNumber = 0;
               const seenLines = new Map<string, number>();
@@ -2642,31 +4357,13 @@ function FilePicker({
                 const occurrence = (seenLines.get(line) ?? 0) + 1;
                 seenLines.set(line, occurrence);
                 return (
-                  <div
-                    key={`${line}::${occurrence}`}
-                    style={{ display: "flex", alignItems: "baseline", gap: 0 }}
-                  >
-                    <span
-                      style={{
-                        display: "inline-block",
-                        minWidth: 36,
-                        textAlign: "right",
-                        paddingRight: 14,
-                        paddingLeft: 12,
-                        fontSize: 11,
-                        fontFamily: F.mono,
-                        color: C.borderMid,
-                        userSelect: "none",
-                        flexShrink: 0,
-                      }}
-                    >
+                  <div key={`${line}::${occurrence}`} style={S_FILE_PICKER_PREVIEW_LINE_ROW}>
+                    <span style={S_FILE_PICKER_PREVIEW_LINE_NO}>
                       {lineNumber}
                     </span>
                     <span
                       style={{
-                        fontSize: 12,
-                        fontFamily: F.mono,
-                        lineHeight: 1.7,
+                        ...S_FILE_PICKER_PREVIEW_CODE_BASE,
                         color: line.startsWith("#")
                           ? "#94a3b8"
                           : line.startsWith("FROM") ||
@@ -2682,11 +4379,6 @@ function FilePicker({
                               : line.includes("=") && !line.includes("==")
                                 ? "#b45309"
                                 : C.text,
-                        whiteSpace: "pre",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        display: "block",
-                        paddingRight: 14,
                       }}
                     >
                       {line || " "}
@@ -2696,15 +4388,7 @@ function FilePicker({
               });
             })()}
             {hasMore && (
-              <div
-                style={{
-                  padding: "4px 12px 2px 36px",
-                  fontSize: 11,
-                  fontFamily: F.mono,
-                  color: C.textMuted,
-                  fontStyle: "italic",
-                }}
-              >
+              <div style={S_FILE_PICKER_PREVIEW_MORE}>
                 … {(matchedFile.content || "").split("\n").length - PREVIEW_LINES} more lines
               </div>
             )}
@@ -3044,80 +4728,40 @@ function FieldRow({
         triggerOnEnterOrSpace(e, () => onFocus?.());
       }}
       style={{
-        display: "grid",
-        gridTemplateColumns: "220px 1fr",
-        gap: 20,
-        alignItems: "start",
-        borderBottom: `1px solid ${C.border}`,
+        ...S_FIELD_ROW_BASE,
         background: active ? `${C.accentBg}75` : "transparent",
-        margin: "0 -20px",
-        padding: "18px 20px",
-        transition: "background 0.15s",
         cursor: tipEnabled ? "pointer" : "default",
-        borderLeftWidth: 3,
-        borderLeftStyle: "solid",
         borderLeftColor: active ? C.accent : "transparent",
         boxShadow: active ? `inset 0 0 0 1px ${C.accentBorder}` : "none",
       }}
     >
       <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            marginBottom: 3,
-            flexWrap: "wrap",
-          }}
-        >
+        <div style={S_FIELD_ROW_HEAD}>
           <span
             style={{
-              fontSize: 13,
-              fontWeight: 600,
+              ...S_FIELD_ROW_LABEL_BASE,
               color: active ? C.accent : C.text,
-              fontFamily: F.sans,
             }}
           >
             {meta.label}
           </span>
           {tipEnabled && tipTargetChip(!!active)}
           {required && (
-            <span
-              style={{
-                fontSize: 11,
-                color: "#ef4444",
-                fontWeight: 700,
-                fontFamily: F.sans,
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                borderRadius: 3,
-                padding: "1px 4px",
-              }}
-            >
+            <span style={S_FIELD_ROW_REQUIRED_BADGE}>
               required
             </span>
           )}
           {locked && fieldKey !== "swhid" && (
-            <span
-              style={{
-                fontSize: 11,
-                color: C.textMuted,
-                fontFamily: F.sans,
-                background: C.surfaceAlt,
-                border: `1px solid ${C.border}`,
-                borderRadius: 3,
-                padding: "1px 4px",
-              }}
-            >
+            <span style={S_FIELD_ROW_LOCKED_BADGE}>
               locked
             </span>
           )}
         </div>
-        <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5, margin: "0 0 5px" }}>
+        <p style={S_FIELD_ROW_DESC}>
           {meta.desc}
         </p>
       </div>
-      <div style={{ paddingTop: 2 }}>{children}</div>
+      <div style={S_FIELD_ROW_CONTENT}>{children}</div>
     </div>
   );
 }
@@ -3145,74 +4789,44 @@ function FieldSection({
   return (
     <div
       style={{
-        background: C.surface,
+        ...S_FIELD_SECTION_CARD_BASE,
         border: `1px solid ${allFilled ? "#22c55e40" : C.border}`,
-        borderRadius: 10,
-        overflow: "hidden",
-        transition: "border-color 0.3s",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
       }}
     >
       <div
         style={{
-          padding: "11px 20px",
+          ...S_FIELD_SECTION_HEADER_BASE,
           borderBottom: `1px solid ${allFilled ? "#22c55e30" : C.border}`,
           background: allFilled ? "#f0fdf4" : "#fafbfd",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          transition: "background 0.3s",
         }}
       >
         {/* Accent bar */}
         <div
           style={{
-            width: 3,
-            height: 16,
-            borderRadius: 99,
+            ...S_FIELD_SECTION_ACCENT_BAR_BASE,
             background: allFilled ? "#22c55e" : someFilled ? "#f59e0b" : C.borderMid,
-            flexShrink: 0,
-            transition: "background 0.3s",
           }}
         />
-        <span style={{ color: allFilled ? "#16a34a" : C.textMuted, display: "flex" }}>{icon}</span>
+        <span style={{ ...S_FIELD_SECTION_ICON, color: allFilled ? "#16a34a" : C.textMuted }}>
+          {icon}
+        </span>
         <span
           style={{
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: 1,
+            ...S_FIELD_SECTION_TITLE_BASE,
             color: allFilled ? "#15803d" : C.text,
-            textTransform: "uppercase",
-            fontFamily: F.sans,
           }}
         >
           {title}
         </span>
         {subtitle && (
-          <span
-            style={{
-              fontSize: 12,
-              color: C.textMuted,
-              fontWeight: 400,
-              textTransform: "none",
-              letterSpacing: 0,
-            }}
-          >
+          <span style={S_FIELD_SECTION_SUBTITLE}>
             — {subtitle}
           </span>
         )}
-        <div style={{ flex: 1 }} />
+        <div style={S_FIELD_SECTION_FILLER} />
         {totalCount > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div
-              style={{
-                width: 40,
-                height: 3,
-                borderRadius: 99,
-                background: C.border,
-                overflow: "hidden",
-              }}
-            >
+          <div style={S_FIELD_SECTION_PROGRESS_ROW}>
+            <div style={S_FIELD_SECTION_PROGRESS_TRACK}>
               <div
                 style={{
                   width: `${pct}%`,
@@ -3225,10 +4839,8 @@ function FieldSection({
             </div>
             <span
               style={{
-                fontSize: 11,
-                fontFamily: F.mono,
+                ...S_FIELD_SECTION_PROGRESS_VAL,
                 color: allFilled ? "#16a34a" : someFilled ? "#92400e" : C.textMuted,
-                fontWeight: 600,
               }}
             >
               {filledCount}/{totalCount}
@@ -3236,7 +4848,7 @@ function FieldSection({
           </div>
         )}
       </div>
-      <div style={{ padding: "0 20px" }}>{children}</div>
+      <div style={S_FIELD_SECTION_BODY}>{children}</div>
     </div>
   );
 }
@@ -3250,42 +4862,19 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
   const meta = FIELD_META[fieldKey];
   if (!meta) return null;
   return (
-    <div
-      style={{ display: "flex", flexDirection: "column", gap: 4, animation: "fadeUp 0.15s ease" }}
-    >
+    <div style={S_FIELD_TIP_CARD_ROOT}>
       {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 12,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.accent }} />
-          <span
-            style={{
-              ...S_SECTION_LABEL,
-              letterSpacing: 1.1,
-              color: C.accent,
-            }}
-          >
+      <div style={S_FIELD_TIP_CARD_HEADER}>
+        <div style={S_FIELD_TIP_CARD_HEADER_LEFT}>
+          <div style={S_FIELD_TIP_CARD_DOT} />
+          <span style={S_FIELD_TIP_CARD_HEADING}>
             Field guide
           </span>
         </div>
         <button
           type="button"
           onClick={onDismiss}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: C.textMuted,
-            display: "flex",
-            padding: 2,
-            borderRadius: 4,
-          }}
+          style={S_FIELD_TIP_CARD_CLOSE}
           onMouseEnter={(e) => (e.currentTarget.style.color = C.text)}
           onMouseLeave={(e) => (e.currentTarget.style.color = C.textMuted)}
         >
@@ -3293,37 +4882,20 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
         </button>
       </div>
 
-      <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+      <div style={S_FIELD_TIP_CARD_TITLE}>
         {meta.label}
       </div>
-      <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, margin: "0 0 14px" }}>
+      <p style={S_FIELD_TIP_CARD_DESC}>
         {meta.desc}
       </p>
 
       {/* Example value */}
       {meta.example && (
-        <div style={{ marginBottom: 16 }}>
-          <div
-            style={{
-              ...S_SECTION_LABEL,
-              letterSpacing: 0.8,
-              marginBottom: 6,
-            }}
-          >
+        <div style={S_FIELD_TIP_CARD_BLOCK}>
+          <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>
             Example
           </div>
-          <div
-            style={{
-              background: C.surfaceAlt,
-              border: `1px solid ${C.border}`,
-              borderRadius: 6,
-              padding: "9px 12px",
-              fontFamily: F.mono,
-              fontSize: 13,
-              color: C.accent,
-              wordBreak: "break-all",
-            }}
-          >
+          <div style={S_FIELD_TIP_CARD_EXAMPLE_BOX}>
             {meta.example}
           </div>
         </div>
@@ -3331,25 +4903,11 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
 
       {/* Format */}
       {meta.format && (
-        <div style={{ marginBottom: 16 }}>
-          <div
-            style={{
-              ...S_SECTION_LABEL,
-              letterSpacing: 0.8,
-              marginBottom: 6,
-            }}
-          >
+        <div style={S_FIELD_TIP_CARD_BLOCK}>
+          <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>
             Format
           </div>
-          <p
-            style={{
-              fontSize: 13,
-              color: C.textMid,
-              lineHeight: 1.6,
-              margin: 0,
-              fontFamily: F.mono,
-            }}
-          >
+          <p style={S_FIELD_TIP_CARD_FORMAT_TEXT}>
             {meta.format}
           </p>
         </div>
@@ -3357,23 +4915,13 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
 
       {/* How to */}
       {meta.howTo && (
-        <div style={{ marginBottom: 16 }}>
-          <div
-            style={{
-              ...S_SECTION_LABEL,
-              letterSpacing: 0.8,
-              marginBottom: 6,
-            }}
-          >
+        <div style={S_FIELD_TIP_CARD_BLOCK}>
+          <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>
             How to get this
           </div>
           <pre
             style={{
-              fontSize: 13,
-              color: C.textMid,
-              lineHeight: 1.65,
-              margin: 0,
-              whiteSpace: "pre-wrap",
+              ...S_FIELD_TIP_CARD_HOWTO_BASE,
               fontFamily: meta.howTo.includes("\n") ? F.mono : "inherit",
             }}
           >
@@ -3384,36 +4932,17 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
 
       {/* Tool commands */}
       {meta.toolCommands && meta.toolCommands.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div
-            style={{
-              ...S_SECTION_LABEL,
-              letterSpacing: 0.8,
-              marginBottom: 8,
-            }}
-          >
+        <div style={S_FIELD_TIP_CARD_BLOCK}>
+          <div style={S_FIELD_TIP_CARD_COMMANDS_LABEL}>
             Commands
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={S_FIELD_TIP_CARD_COMMANDS_LIST}>
             {meta.toolCommands.map((tc) => (
               <div key={`${tc.label}:${tc.cmd}`}>
-                <div
-                  style={{ fontSize: 11, color: C.textMuted, fontFamily: F.sans, marginBottom: 4 }}
-                >
+                <div style={S_FIELD_TIP_CARD_COMMAND_LABEL}>
                   {tc.label}
                 </div>
-                <div
-                  style={{
-                    background: "#0f172a",
-                    borderRadius: 6,
-                    padding: "10px 12px",
-                    fontFamily: F.mono,
-                    fontSize: 13,
-                    color: "#94d2bd",
-                    wordBreak: "break-all",
-                    lineHeight: 1.6,
-                  }}
-                >
+                <div style={S_FIELD_TIP_CARD_COMMAND_BOX}>
                   {tc.cmd}
                 </div>
               </div>
@@ -3425,35 +4954,17 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       {/* Tools / links */}
       {meta.tools && meta.tools.length > 0 && (
         <div>
-          <div
-            style={{
-              ...S_SECTION_LABEL,
-              letterSpacing: 0.8,
-              marginBottom: 8,
-            }}
-          >
+          <div style={S_FIELD_TIP_CARD_COMMANDS_LABEL}>
             Tools
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <div style={S_FIELD_TIP_CARD_TOOLS_WRAP}>
             {meta.tools.map((t) => (
               <a
                 key={t.url}
                 href={t.url}
                 target="_blank"
                 rel="noreferrer"
-                style={{
-                  fontSize: 13,
-                  fontFamily: F.sans,
-                  color: C.accent,
-                  background: C.accentBg,
-                  border: `1px solid ${C.accentBorder}`,
-                  borderRadius: 5,
-                  padding: "4px 10px",
-                  textDecoration: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
+                style={S_FIELD_TIP_CARD_TOOL_LINK}
               >
                 {Ic.link(11)} {t.label}
               </a>
@@ -3492,30 +5003,13 @@ function FieldTipsSidebar({
   const workflowTipFields = (tipFields || []).filter((fieldKey) => !!FIELD_META[fieldKey]);
 
   return (
-    <div
-      style={{
-        width: 296,
-        borderLeft: `1px solid ${C.border}`,
-        background: C.surface,
-        overflowY: "auto",
-        padding: 20,
-        flexShrink: 0,
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-      }}
-    >
+    <div style={S_FIELD_TIPS_SIDEBAR_ROOT}>
       {showFieldPicker && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div
-            style={{
-              ...S_SECTION_LABEL,
-              letterSpacing: 1.1,
-            }}
-          >
+        <div style={S_FIELD_TIPS_GROUP}>
+          <div style={S_FIELD_TIPS_LABEL}>
             Tips
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <div style={S_FIELD_TIPS_CHIPS}>
             {(tipFields || []).map((fieldKey) => {
               const isActive = activeField === fieldKey;
               return (
@@ -3524,16 +5018,10 @@ function FieldTipsSidebar({
                   key={fieldKey}
                   onClick={() => onFocusField(fieldKey)}
                   style={{
-                    fontSize: 11,
-                    fontFamily: F.sans,
-                    fontWeight: 700,
-                    letterSpacing: 0.2,
+                    ...S_FIELD_TIPS_CHIP_BASE,
                     color: isActive ? C.accent : C.textMid,
                     background: isActive ? C.accentBg : C.surfaceAlt,
                     border: `1px solid ${isActive ? C.accentBorder : C.border}`,
-                    borderRadius: 99,
-                    padding: "3px 9px",
-                    cursor: "pointer",
                   }}
                 >
                   {FIELD_META[fieldKey]?.label || fieldKey}
@@ -3545,22 +5033,16 @@ function FieldTipsSidebar({
       )}
 
       {generalTips.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ color: C.textMid, display: "flex" }}>{Ic.info(13)}</span>
-            <span
-              style={{
-                ...S_SECTION_LABEL,
-                letterSpacing: 0.8,
-                color: C.textMid,
-              }}
-            >
+        <div style={S_FIELD_TIPS_GENERAL_WRAP}>
+          <div style={S_FIELD_TIPS_GENERAL_HEAD}>
+            <span style={S_FIELD_TIPS_GENERAL_ICON}>{Ic.info(13)}</span>
+            <span style={S_FIELD_TIPS_GENERAL_TITLE}>
               {generalTitle}
             </span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={S_FIELD_TIPS_GENERAL_LIST}>
             {generalTips.map((tip) => (
-              <p key={tip} style={{ margin: 0, fontSize: 12, color: C.textMid, lineHeight: 1.55 }}>
+              <p key={tip} style={S_FIELD_TIPS_GENERAL_ITEM}>
                 {tip}
               </p>
             ))}
@@ -3571,33 +5053,17 @@ function FieldTipsSidebar({
       {activeField ? (
         <FieldTipCard fieldKey={activeField} onDismiss={onClear} />
       ) : workflowTipFields.length > 0 ? (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-            padding: "12px 13px",
-            background: C.accentBg,
-            border: `1px solid ${C.accentBorder}`,
-            borderRadius: 9,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ color: C.accent, display: "flex" }}>{Ic.info(13)}</span>
-            <span
-              style={{
-                ...S_SECTION_LABEL,
-                letterSpacing: 0.8,
-                color: C.accent,
-              }}
-            >
+        <div style={S_FIELD_TIPS_WORKFLOW_BOX}>
+          <div style={S_FIELD_TIPS_WORKFLOW_HEAD}>
+            <span style={S_FIELD_TIPS_WORKFLOW_ICON}>{Ic.info(13)}</span>
+            <span style={S_FIELD_TIPS_WORKFLOW_TITLE}>
               Workflow tips
             </span>
           </div>
-          <p style={{ fontSize: 12, color: C.textMid, lineHeight: 1.55, margin: 0 }}>
+          <p style={S_FIELD_TIPS_WORKFLOW_TEXT}>
             No field selected. Here are the key tips for this page/workflow:
           </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={S_FIELD_TIPS_WORKFLOW_LIST}>
             {workflowTipFields.map((fieldKey) => {
               const meta = FIELD_META[fieldKey];
               return (
@@ -3606,23 +5072,14 @@ function FieldTipsSidebar({
                   key={fieldKey}
                   onClick={() => onFocusField?.(fieldKey)}
                   style={{
-                    textAlign: "left",
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    border: `1px solid ${C.accentBorder}`,
-                    background: C.surface,
+                    ...S_FIELD_TIPS_WORKFLOW_BTN_BASE,
                     cursor: onFocusField ? "pointer" : "default",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 3,
                   }}
                 >
-                  <span
-                    style={{ fontSize: 12, fontWeight: 700, color: C.text, fontFamily: F.sans }}
-                  >
+                  <span style={S_FIELD_TIPS_WORKFLOW_BTN_TITLE}>
                     {meta?.label || fieldKey}
                   </span>
-                  <span style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.45 }}>
+                  <span style={S_FIELD_TIPS_WORKFLOW_BTN_DESC}>
                     {meta?.desc || ""}
                   </span>
                 </button>
@@ -3631,19 +5088,9 @@ function FieldTipsSidebar({
           </div>
         </div>
       ) : (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 8,
-            padding: "12px 13px",
-            background: C.accentBg,
-            border: `1px solid ${C.accentBorder}`,
-            borderRadius: 9,
-          }}
-        >
-          <span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}>{Ic.info(13)}</span>
-          <p style={{ fontSize: 13, color: C.textMid, lineHeight: 1.6, margin: 0 }}>{emptyText}</p>
+        <div style={S_FIELD_TIPS_EMPTY_BOX}>
+          <span style={S_FIELD_TIPS_EMPTY_ICON}>{Ic.info(13)}</span>
+          <p style={S_FIELD_TIPS_EMPTY_TEXT}>{emptyText}</p>
         </div>
       )}
     </div>
@@ -3688,19 +5135,10 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
-        <div style={{ flex: 1, position: "relative" }}>
-          <div
-            style={{
-              position: "absolute",
-              left: 10,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: C.textMuted,
-              pointerEvents: "none",
-            }}
-          >
+    <div style={S_SOURCE_URL_ROOT}>
+      <div style={S_SOURCE_URL_INPUT_ROW}>
+        <div style={S_SOURCE_URL_INPUT_WRAP}>
+          <div style={S_SOURCE_URL_ICON}>
             {Ic.link()}
           </div>
           <input
@@ -3734,21 +5172,11 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
           onClick={handleCheckReachable}
           disabled={locked || !draft.trim() || checkState === "checking"}
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "7px 13px",
-            borderRadius: 7,
+            ...S_SOURCE_URL_CHECK_BTN_BASE,
             cursor: locked || !draft.trim() || checkState === "checking" ? "default" : "pointer",
             border: `1.5px solid ${draft.trim() ? C.accentBorder : C.border}`,
             background: draft.trim() ? C.accentBg : C.surfaceAlt,
             color: draft.trim() ? C.accent : C.textMuted,
-            fontSize: 13,
-            fontWeight: 600,
-            fontFamily: F.sans,
-            flexShrink: 0,
-            transition: "all 0.15s",
-            whiteSpace: "nowrap",
             opacity: locked ? 0.5 : 1,
           }}
           onMouseEnter={(e) => {
@@ -3761,61 +5189,25 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
         </button>
       </div>
       {isDirty && draft.trim() && (
-        <div
-          style={{
-            fontSize: 11,
-            color: "#92400e",
-            fontFamily: F.sans,
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
+        <div style={{ ...S_SOURCE_URL_STATUS_BASE, color: "#92400e" }}>
           {Ic.info(10)} Setting a new source will reset all workflow results.
         </div>
       )}
       {committedValue && !isDirty && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            fontSize: 11,
-            fontFamily: F.mono,
-            color: "#16a34a",
-          }}
-        >
+        <div style={S_SOURCE_URL_COMMITTED}>
           {Ic.check(10)}
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={S_SOURCE_URL_COMMITTED_VALUE}>
             {committedValue}
           </span>
         </div>
       )}
       {checkState === "reachable" && checkedFor === draft.trim() && (
-        <div
-          style={{
-            fontSize: 11,
-            color: "#15803d",
-            fontFamily: F.sans,
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
+        <div style={{ ...S_SOURCE_URL_STATUS_BASE, color: "#15803d" }}>
           {Ic.check(10)} URL reachable
         </div>
       )}
       {checkState === "unreachable" && checkedFor === draft.trim() && (
-        <div
-          style={{
-            fontSize: 11,
-            color: "#b45309",
-            fontFamily: F.sans,
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
+        <div style={{ ...S_SOURCE_URL_STATUS_BASE, color: "#b45309" }}>
           {Ic.info(10)} URL not reachable (or invalid format)
         </div>
       )}
@@ -3872,7 +5264,7 @@ function SourceUploadField({
   const handleCancel = () => setPending(null);
 
   return (
-    <div style={{ padding: "8px 0 14px" }}>
+    <div style={S_SOURCE_UPLOAD_ROOT}>
       <input
         ref={archiveRef}
         type="file"
@@ -3882,35 +5274,13 @@ function SourceUploadField({
           if (file) handleArchive(file);
           e.currentTarget.value = "";
         }}
-        style={{ display: "none" }}
+        style={S_SOURCE_UPLOAD_HIDDEN_INPUT}
       />
 
       {committedName && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "10px 14px",
-            borderRadius: 8,
-            background: "#f0fdf4",
-            border: "1.5px solid #bbf7d0",
-            marginBottom: 8,
-          }}
-        >
-          <span style={{ color: "#16a34a", display: "flex" }}>{Ic.archive()}</span>
-          <span
-            style={{
-              flex: 1,
-              fontSize: 13,
-              fontFamily: F.mono,
-              color: "#15803d",
-              fontWeight: 600,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
+        <div style={S_SOURCE_UPLOAD_COMMITTED_ROW}>
+          <span style={S_SOURCE_UPLOAD_COMMITTED_ICON}>{Ic.archive()}</span>
+          <span style={S_SOURCE_UPLOAD_COMMITTED_NAME}>
             {committedName}
           </span>
           {!locked && (
@@ -3918,19 +5288,7 @@ function SourceUploadField({
               type="button"
               onClick={() => archiveRef.current?.click()}
               disabled={inputDisabled}
-              style={{
-                background: "none",
-                border: `1px solid ${C.border}`,
-                borderRadius: 5,
-                cursor: "pointer",
-                color: C.textMuted,
-                fontSize: 11,
-                fontFamily: F.sans,
-                padding: "2px 8px",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-              }}
+              style={S_SOURCE_UPLOAD_REPLACE_BTN}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = C.accent;
                 e.currentTarget.style.color = C.accent;
@@ -3948,51 +5306,16 @@ function SourceUploadField({
 
       {/* Pending confirmation */}
       {pending && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 8 }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "10px 14px",
-              borderRadius: 8,
-              background: "#fffbeb",
-              border: "1.5px solid #f59e0b",
-            }}
-          >
-            <span style={{ color: "#d97706", display: "flex" }}>{Ic.archive()}</span>
-            <span
-              style={{
-                flex: 1,
-                fontSize: 13,
-                fontFamily: F.mono,
-                color: "#92400e",
-                fontWeight: 600,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
+        <div style={S_SOURCE_UPLOAD_PENDING_WRAP}>
+          <div style={S_SOURCE_UPLOAD_PENDING_ROW}>
+            <span style={S_SOURCE_UPLOAD_PENDING_ICON}>{Ic.archive()}</span>
+            <span style={S_SOURCE_UPLOAD_PENDING_NAME}>
               {pending.archiveName}
             </span>
             <button
               type="button"
               onClick={handleConfirm}
-              style={{
-                background: "#fffbeb",
-                border: "1.5px solid #f59e0b",
-                borderRadius: 6,
-                cursor: "pointer",
-                color: "#b45309",
-                fontSize: 12,
-                fontWeight: 700,
-                fontFamily: F.sans,
-                padding: "4px 10px",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                flexShrink: 0,
-              }}
+              style={S_SOURCE_UPLOAD_CONFIRM_BTN}
               onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.96)")}
               onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
             >
@@ -4001,32 +5324,14 @@ function SourceUploadField({
             <button
               type="button"
               onClick={handleCancel}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: C.textMuted,
-                display: "flex",
-                padding: 2,
-                borderRadius: 4,
-              }}
+              style={S_SOURCE_UPLOAD_PENDING_CLOSE}
               onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")}
               onMouseLeave={(e) => (e.currentTarget.style.color = C.textMuted)}
             >
               {Ic.x(13)}
             </button>
           </div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "#92400e",
-              fontFamily: F.sans,
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              paddingLeft: 2,
-            }}
-          >
+          <div style={S_SOURCE_UPLOAD_RESET_HINT}>
             {Ic.info(10)} Setting a new source will reset all workflow results.
           </div>
         </div>
@@ -4045,20 +5350,11 @@ function SourceUploadField({
           onClick={() => !inputDisabled && archiveRef.current?.click()}
           disabled={inputDisabled}
           style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            padding: "22px 16px",
-            borderRadius: 8,
+            ...S_SOURCE_UPLOAD_DROPZONE_BASE,
             cursor: inputDisabled ? "default" : "pointer",
             border: `1.5px dashed ${dragging ? C.accent : C.borderMid}`,
             background: dragging ? C.accentBg : C.bg,
-            transition: "all 0.15s",
             opacity: inputDisabled ? 0.55 : 1,
-            width: "100%",
-            appearance: "none",
           }}
           onMouseEnter={(e) => {
             if (!inputDisabled) {
@@ -4073,48 +5369,26 @@ function SourceUploadField({
             }
           }}
         >
-          <span style={{ color: dragging ? C.accent : C.textMuted, display: "flex" }}>
+          <span style={{ ...S_SOURCE_UPLOAD_DROPZONE_ICON, color: dragging ? C.accent : C.textMuted }}>
             {Ic.upload(18)}
           </span>
-          <span
-            style={{ fontSize: 13, color: dragging ? C.accent : C.textMid, fontFamily: F.sans }}
-          >
-            Drop archive or <span style={{ color: C.accent, fontWeight: 600 }}>browse archive</span>
+          <span style={{ ...S_SOURCE_UPLOAD_DROPZONE_TEXT, color: dragging ? C.accent : C.textMid }}>
+            Drop archive or <span style={S_SOURCE_UPLOAD_BROWSE_HIGHLIGHT}>browse archive</span>
           </span>
-          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono, marginTop: 4 }}>
+          <span style={S_SOURCE_UPLOAD_DROPZONE_HINT}>
             .zip · .tar · .tar.gz
           </span>
         </button>
       )}
 
       {disabledReason && (
-        <div
-          style={{
-            marginTop: 6,
-            fontSize: 11,
-            color: C.textMuted,
-            fontFamily: F.sans,
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
+        <div style={{ ...S_SOURCE_UPLOAD_STATUS_LINE_BASE, color: C.textMuted }}>
           {Ic.info(10)} {disabledReason}
         </div>
       )}
 
       {dropError && (
-        <div
-          style={{
-            marginTop: 6,
-            fontSize: 11,
-            color: "#b45309",
-            fontFamily: F.sans,
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
+        <div style={{ ...S_SOURCE_UPLOAD_STATUS_LINE_BASE, color: "#b45309" }}>
           {Ic.info(10)} {dropError}
         </div>
       )}
@@ -4170,54 +5444,35 @@ function RuntimeField({
         triggerOnEnterOrSpace(e, () => onFocus?.());
       }}
       style={{
-        display: "grid",
-        gridTemplateColumns: "220px 1fr",
-        gap: 20,
-        alignItems: "start",
-        borderBottom: `1px solid ${C.border}`,
+        ...S_FIELD_ROW_BASE,
         background: active ? `${C.accentBg}75` : "transparent",
-        margin: "0 -20px",
-        padding: "18px 20px",
-        transition: "background 0.15s",
         cursor: onFocus ? "pointer" : "default",
-        borderLeftWidth: 3,
-        borderLeftStyle: "solid",
         borderLeftColor: active ? C.accent : "transparent",
         boxShadow: active ? `inset 0 0 0 1px ${C.accentBorder}` : "none",
       }}
     >
       {/* Left: label + description + used-by */}
       <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            marginBottom: 3,
-            flexWrap: "wrap",
-          }}
-        >
+        <div style={S_FIELD_ROW_HEAD}>
           <span
             style={{
-              fontSize: 13,
-              fontWeight: 600,
+              ...S_FIELD_ROW_LABEL_BASE,
               color: active ? C.accent : C.text,
-              fontFamily: F.sans,
             }}
           >
             {meta.label}
           </span>
           {!!onFocus && tipTargetChip(!!active)}
         </div>
-        <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5, margin: "0 0 5px" }}>
+        <p style={S_FIELD_ROW_DESC}>
           {meta.desc}
         </p>
       </div>
 
       {/* Right: mode toggle + input */}
-      <div style={{ paddingTop: 2, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={S_RUNTIME_RIGHT}>
         {/* mode toggle: Tarball | Image ref only */}
-        <div style={{ display: "flex", gap: 5 }}>
+        <div style={S_RUNTIME_MODE_ROW}>
           {(
             [
               { id: "tarball", label: "Tarball", icon: Ic.archive },
@@ -4232,21 +5487,11 @@ function RuntimeField({
                 onClick={() => handleModeChange(opt.id)}
                 disabled={locked}
                 style={{
-                  flex: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 5,
-                  padding: "6px 8px",
-                  borderRadius: 7,
+                  ...S_RUNTIME_MODE_BTN_BASE,
                   cursor: locked ? "default" : "pointer",
                   border: `1.5px solid ${isActive ? C.accent : C.border}`,
                   background: isActive ? C.accentBg : C.surface,
-                  fontSize: 11,
-                  fontWeight: 600,
                   color: isActive ? C.accent : C.textMid,
-                  fontFamily: F.sans,
-                  transition: "all 0.15s",
                   opacity: locked ? 0.6 : 1,
                 }}
                 onMouseEnter={(e) => {
@@ -4256,7 +5501,7 @@ function RuntimeField({
                   if (!locked && !isActive) e.currentTarget.style.borderColor = C.border;
                 }}
               >
-                <span style={{ display: "flex" }}>{opt.icon(11)}</span>
+                <span style={S_RUNTIME_MODE_ICON}>{opt.icon(11)}</span>
                 {opt.label}
               </button>
             );
@@ -4265,7 +5510,7 @@ function RuntimeField({
 
         {/* tarball mode: file picker */}
         {(mode === "tarball" || mode === "skip") && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={S_RUNTIME_PICKER_WRAP}>
             <FilePicker
               disabled={locked}
               value={isTarball ? val : ""}
@@ -4275,36 +5520,19 @@ function RuntimeField({
               onFocus={onFocus}
               filterFn={(p) => /\.(tar\.gz|tgz)$/i.test(p)}
             />
-            <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.5 }}>
+            <div style={S_RUNTIME_HELP_TEXT}>
               Bundled into the REE archive on deposit. Produced by your build script via{" "}
-              <code
-                style={{
-                  fontFamily: F.mono,
-                  fontSize: 10.5,
-                  background: C.surfaceAlt,
-                  padding: "1px 4px",
-                  borderRadius: 3,
-                }}
-              >
+              <code style={S_RUNTIME_CODE_INLINE}>
                 docker save … | gzip
               </code>
               .
             </div>
             {isSkipped && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  padding: "8px 11px",
-                  background: "#fff7ed",
-                  border: "1px solid #fde68a",
-                  borderRadius: 7,
-                }}
-              >
-                <span style={{ color: "#d97706", display: "flex", flexShrink: 0, marginTop: 1 }}>
+              <div style={S_RUNTIME_WARN_BOX}>
+                <span style={S_RUNTIME_WARN_ICON}>
                   {Ic.info(12)}
                 </span>
-                <div style={{ fontSize: 11, color: "#92400e", lineHeight: 1.5 }}>
+                <div style={S_RUNTIME_WARN_TEXT}>
                   Tarball will <strong>not</strong> be bundled in the REE archive. Ensure it is
                   reproducible from the build script alone.
                 </div>
@@ -4315,7 +5543,7 @@ function RuntimeField({
 
         {/* image ref mode: free text */}
         {mode === "image" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={S_RUNTIME_PICKER_WRAP}>
             <input
               disabled={locked}
               value={isImageRef ? val : ""}
@@ -4324,7 +5552,7 @@ function RuntimeField({
               placeholder="ree:latest  or  sha256:abc123…"
               style={inp(locked)}
             />
-            <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.5 }}>
+            <div style={S_RUNTIME_HELP_TEXT}>
               A Docker/Podman image name or digest. Not bundled in the REE — the image must be
               rebuilt from the build script. Used by the SBOM step as the syft scan target.
             </div>
@@ -4423,15 +5651,7 @@ function PageSourceRepoEntry({
         : "Download source files locally";
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        minHeight: 0,
-        overflow: "hidden",
-      }}
-    >
+    <div style={S_WORKFLOW_PAGE_ROOT}>
       <WorkflowPageHeader
         color="#f59e0b"
         icon={Ic.globe(18)}
@@ -4443,10 +5663,10 @@ function PageSourceRepoEntry({
         ]}
       />
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+      <div style={S_WORKFLOW_PAGE_BODY}>
         {/* Scrollable left — fields */}
-        <div style={{ flex: 1, overflowY: "auto", padding: 28, minWidth: 0 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={S_WORKFLOW_PAGE_MAIN_SCROLL}>
+        <div style={S_WORKFLOW_PAGE_MAIN_COL}>
           {/* Source — first, everything depends on it */}
           <FieldSection
             title="Source Repository"
@@ -4751,7 +5971,7 @@ function PageSourceRepoEntry({
           </FieldSection>
 
           {/* Next step nudge */}
-          <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
+          <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
             <NextStepNudge stepKey={PAGE.SOURCE} badges={badges} onGo={onGoService} />
           </div>
         </div>
@@ -4804,15 +6024,7 @@ function PageMetadataEntry({
   const hardwareFilled = Object.values(ree.hardware_description).filter((v) => v.trim?.()).length;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        minHeight: 0,
-        overflow: "hidden",
-      }}
-    >
+    <div style={S_WORKFLOW_PAGE_ROOT}>
       <WorkflowPageHeader
         color="#22c55e"
         icon={Ic.grid(18)}
@@ -4849,9 +6061,9 @@ function PageMetadataEntry({
         }
       />
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
-        <div style={{ flex: 1, overflowY: "auto", padding: 28, minWidth: 0 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={S_WORKFLOW_PAGE_BODY}>
+        <div style={S_WORKFLOW_PAGE_MAIN_SCROLL}>
+          <div style={S_WORKFLOW_PAGE_MAIN_COL}>
           <FieldSection
             title="Identity"
             icon={Ic.package()}
@@ -4987,7 +6199,7 @@ function PageMetadataEntry({
             </FieldRow>
           </FieldSection>
 
-          <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
+          <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
             <NextStepNudge stepKey={PAGE.METADATA} badges={badges} onGo={onGoService} />
           </div>
         </div>
@@ -5300,7 +6512,7 @@ function ServiceActionSection({
           </span>
           {buttonLabel}
         </button>
-        <div style={{ fontSize: 11, color: C.textMuted }}>{helperText}</div>
+        <div style={S_TEXT_MUTED_11}>{helperText}</div>
       </div>
     </div>
   );
@@ -5334,16 +6546,7 @@ function PageGenerateSBOM({
   const sbomScripts = SVC_SCRIPT_FIELDS[svc.key] || [];
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        minHeight: 0,
-        overflow: "hidden",
-        animation: "fadeUp 0.2s ease",
-      }}
-    >
+    <div style={S_WORKFLOW_SERVICE_ROOT}>
       {/* Top strip */}
       <WorkflowPageHeader
         color={svc.color}
@@ -5358,19 +6561,9 @@ function PageGenerateSBOM({
         onGoFields={onGoFields}
       />
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+      <div style={S_WORKFLOW_PAGE_BODY}>
         {/* Body */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 0,
-            padding: "24px 28px",
-            gap: 16,
-          }}
-        >
+        <div style={S_WORKFLOW_SERVICE_MAIN_SCROLL}>
           {/* Step 1: Runtime input */}
           <FieldSection
             title="Step 1: Runtime Input"
@@ -5379,7 +6572,7 @@ function PageGenerateSBOM({
             totalCount={1}
           >
             <FieldRow fieldKey="runtime" onFocus={() => setFocusedField("runtime")} active={focusedField === "runtime"}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={S_FIELD_STACK_GAP_14}>
               <div
                 style={{
                   display: "flex",
@@ -5431,7 +6624,7 @@ function PageGenerateSBOM({
                     }}
                   >
                     {rt || (
-                      <span style={{ fontStyle: "italic", fontWeight: 400, fontSize: 11 }}>
+                      <span style={S_TEXT_ITALIC_11}>
                         not set — set a runtime in the Build Runtime step first
                       </span>
                     )}
@@ -5440,15 +6633,10 @@ function PageGenerateSBOM({
                 {rt && (
                   <span
                     style={{
-                      fontSize: 10,
-                      fontFamily: F.sans,
-                      fontWeight: 700,
+                      ...S_STATUS_BADGE_SM_BASE,
                       color: sbomColor,
                       background: `${sbomColor}12`,
                       border: `1px solid ${sbomColor}40`,
-                      borderRadius: 4,
-                      padding: "2px 7px",
-                      flexShrink: 0,
                     }}
                   >
                     {isTb ? "TARBALL" : "IMAGE"}
@@ -5560,7 +6748,7 @@ function PageGenerateSBOM({
                   {hasSbom ? (
                     ree.sbom
                   ) : (
-                    <span style={{ fontStyle: "italic", fontWeight: 400, fontSize: 11 }}>
+                    <span style={S_TEXT_ITALIC_11}>
                       not set — click Generate SBOM
                     </span>
                   )}
@@ -5569,15 +6757,10 @@ function PageGenerateSBOM({
               {hasSbom && (
                 <span
                   style={{
-                    fontSize: 10,
-                    fontFamily: F.sans,
-                    fontWeight: 700,
+                    ...S_STATUS_BADGE_SM_BASE,
                     color: "#16a34a",
                     background: "#f0fdf4",
                     border: "1px solid #bbf7d0",
-                    borderRadius: 4,
-                    padding: "2px 7px",
-                    flexShrink: 0,
                   }}
                 >
                   SET
@@ -5678,7 +6861,7 @@ function PageGenerateSBOM({
           </FieldSection>
 
           {sbomScripts.length > 0 && (
-            <div style={{ padding: "16px 24px 0", flexShrink: 0 }}>
+            <div style={S_WORKFLOW_PAGE_SCRIPTS_WRAP}>
               <div style={{ ...S_SECTION_LABEL, marginBottom: 14 }}>Scripts</div>
               {sbomScripts.map((sf) => (
                 <ScriptPanel
@@ -5695,21 +6878,13 @@ function PageGenerateSBOM({
           )}
 
           {/* Log */}
-          <div
-            style={{
-              padding: "4px 24px 24px",
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 0,
-            }}
-          >
+          <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
             <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>Output</div>
             <LogPanel log={log} running={running} />
           </div>
 
           {/* Next step nudge */}
-          <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
+          <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
             <NextStepNudge stepKey={PAGE.SBOM} badges={badges || {}} onGo={onGo || (() => {})} />
           </div>
         </div>
@@ -5749,16 +6924,7 @@ function PageTestActivation({
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        minHeight: 0,
-        overflow: "hidden",
-        animation: "fadeUp 0.2s ease",
-      }}
-    >
+    <div style={S_WORKFLOW_SERVICE_ROOT}>
       {/* Top strip */}
       <WorkflowPageHeader
         color={svc.color}
@@ -5773,19 +6939,9 @@ function PageTestActivation({
         onGoFields={onGoFields}
       />
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+      <div style={S_WORKFLOW_PAGE_BODY}>
         {/* Body */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 0,
-            padding: "24px 28px",
-            gap: 16,
-          }}
-        >
+        <div style={S_WORKFLOW_SERVICE_MAIN_SCROLL}>
           {/* Fields */}
           <FieldSection
             title="Fields"
@@ -5794,30 +6950,17 @@ function PageTestActivation({
             totalCount={1}
           >
             <FieldRow fieldKey="activation_script" onFocus={() => setFocusedField("activation_script")} active={focusedField === "activation_script"}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span
-                    style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: F.sans }}
-                  >
+            <div style={S_FIELD_STACK_GAP_14}>
+              <div style={S_FIELD_STACK_GAP_5}>
+                <div style={S_FLEX_ROW_CENTER_GAP_6}>
+                  <span style={S_FIELD_LABEL_TEXT_SM}>
                     {asLabel}
                   </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "#ef4444",
-                      fontWeight: 700,
-                      fontFamily: F.sans,
-                      background: "#fef2f2",
-                      border: "1px solid #fecaca",
-                      borderRadius: 3,
-                      padding: "1px 4px",
-                    }}
-                  >
+                  <span style={S_FIELD_ROW_REQUIRED_BADGE}>
                     required
                   </span>
                 </div>
-                <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
+                <div style={S_FIELD_HELP_TEXT_SMALL}>
                   Shell script that loads the runtime and verifies the environment activates
                   correctly
                 </div>
@@ -5846,7 +6989,7 @@ function PageTestActivation({
           />
 
           {/* Scripts */}
-          <div style={{ padding: "16px 24px 0", flexShrink: 0 }}>
+          <div style={S_WORKFLOW_PAGE_SCRIPTS_WRAP}>
             <div style={{ ...S_SECTION_LABEL, marginBottom: 14 }}>Scripts</div>
             {SVC_SCRIPT_FIELDS.activation?.map((sf) => (
               <ScriptPanel
@@ -5863,21 +7006,13 @@ function PageTestActivation({
           </div>
 
           {/* Log */}
-          <div
-            style={{
-              padding: "4px 24px 24px",
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 0,
-            }}
-          >
+          <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
             <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>Output</div>
             <LogPanel log={log} running={running} />
           </div>
 
           {/* Next step nudge */}
-          <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
+          <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
             <NextStepNudge
               stepKey={PAGE.ACTIVATION}
               badges={badges || {}}
@@ -6511,16 +7646,7 @@ function PageEvaluate({
   const completionPct = Math.round((level / (LEVELS.length - 1)) * 100);
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        minHeight: 0,
-        overflow: "hidden",
-        animation: "fadeUp 0.2s ease",
-      }}
-    >
+    <div style={S_WORKFLOW_SERVICE_ROOT}>
       <WorkflowPageHeader
         color={svc.color}
         icon={IC(18)}
@@ -6535,19 +7661,9 @@ function PageEvaluate({
       />
 
       {/* ══ Body: left controls + log | right tips ══ */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+      <div style={S_WORKFLOW_PAGE_BODY}>
         {/* ── LEFT: parameters + run + log ── */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            minHeight: 0,
-            padding: "24px 28px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 16,
-          }}
-        >
+        <div style={S_WORKFLOW_SERVICE_MAIN_SCROLL}>
           {/* Missing requirements banner */}
           {missing.length > 0 && (
             <div
@@ -6757,7 +7873,7 @@ function PageEvaluate({
                         >
                           {lv.label}
                         </div>
-                        <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
+                        <div style={S_FIELD_HELP_TEXT_SMALL}>
                           {lv.desc}
                         </div>
                         <div
@@ -7150,15 +8266,10 @@ function RuntimeOutputNode({
         {state === "found" && (
           <span
             style={{
-              fontSize: 10,
-              fontFamily: F.sans,
-              fontWeight: 700,
+              ...S_STATUS_BADGE_SM_BASE,
               color: imageColor,
               background: `${imageColor}18`,
               border: `1px solid ${imageColor}40`,
-              borderRadius: 4,
-              padding: "2px 7px",
-              flexShrink: 0,
             }}
           >
             FOUND
@@ -7167,15 +8278,10 @@ function RuntimeOutputNode({
         {state === "missing" && (
           <span
             style={{
-              fontSize: 10,
-              fontFamily: F.sans,
-              fontWeight: 700,
+              ...S_STATUS_BADGE_SM_BASE,
               color: "#dc2626",
               background: "#fef2f2",
               border: "1px solid #fecaca",
-              borderRadius: 4,
-              padding: "2px 7px",
-              flexShrink: 0,
             }}
           >
             NOT FOUND
@@ -7184,15 +8290,10 @@ function RuntimeOutputNode({
         {alreadySet && (
           <span
             style={{
-              fontSize: 10,
-              fontFamily: F.sans,
-              fontWeight: 700,
+              ...S_STATUS_BADGE_SM_BASE,
               color: "#16a34a",
               background: "#f0fdf4",
               border: "1px solid #bbf7d0",
-              borderRadius: 4,
-              padding: "2px 7px",
-              flexShrink: 0,
             }}
           >
             SET
@@ -7268,16 +8369,7 @@ function PageBuildRuntime({
     : null;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        minHeight: 0,
-        overflow: "hidden",
-        animation: "fadeUp 0.2s ease",
-      }}
-    >
+    <div style={S_WORKFLOW_SERVICE_ROOT}>
       {/* Top strip */}
       <WorkflowPageHeader
         color={svc.color}
@@ -7293,19 +8385,9 @@ function PageBuildRuntime({
         onGoFields={onGoFields}
       />
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+      <div style={S_WORKFLOW_PAGE_BODY}>
         {/* Scrollable body */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 0,
-            padding: "24px 28px",
-            gap: 16,
-          }}
-        >
+        <div style={S_WORKFLOW_SERVICE_MAIN_SCROLL}>
           {/* BUILD SCRIPT — First step in workflow */}
           <FieldSection
             title="Step 1: Build Script"
@@ -7314,29 +8396,16 @@ function PageBuildRuntime({
             totalCount={1}
           >
             <FieldRow fieldKey="build_runtime_script" onFocus={() => setFocusedField("build_runtime_script")} active={focusedField === "build_runtime_script"}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span
-                  style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: F.sans }}
-                >
+            <div style={S_FIELD_STACK_GAP_5}>
+              <div style={S_FLEX_ROW_CENTER_GAP_6}>
+                <span style={S_FIELD_LABEL_TEXT_SM}>
                   Shell script
                 </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "#ef4444",
-                    fontWeight: 700,
-                    fontFamily: F.sans,
-                    background: "#fef2f2",
-                    border: "1px solid #fecaca",
-                    borderRadius: 3,
-                    padding: "1px 4px",
-                  }}
-                >
+                <span style={S_FIELD_ROW_REQUIRED_BADGE}>
                   required
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
+              <div style={S_FIELD_HELP_TEXT_SMALL}>
                 Script that builds your runtime environment. The script is responsible for exporting
                 the runtime to the file specified in "Expected output" below.
               </div>
@@ -7396,29 +8465,16 @@ function PageBuildRuntime({
             totalCount={1}
           >
             <FieldRow fieldKey="runtime" onFocus={() => setFocusedField("runtime")} active={focusedField === "runtime"}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span
-                  style={{ fontSize: 12, fontWeight: 600, color: C.textMid, fontFamily: F.sans }}
-                >
+            <div style={S_FIELD_STACK_GAP_5}>
+              <div style={S_FLEX_ROW_CENTER_GAP_6}>
+                <span style={S_FIELD_LABEL_TEXT_SM}>
                   Exported runtime file path
                 </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "#ef4444",
-                    fontWeight: 700,
-                    fontFamily: F.sans,
-                    background: "#fef2f2",
-                    border: "1px solid #fecaca",
-                    borderRadius: 3,
-                    padding: "1px 4px",
-                  }}
-                >
+                <span style={S_FIELD_ROW_REQUIRED_BADGE}>
                   required
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
+              <div style={S_FIELD_HELP_TEXT_SMALL}>
                 The filepath where your build script will export the runtime (e.g.,{" "}
                 <code style={{ fontFamily: F.mono, fontSize: 10 }}>runtime.tar.gz</code>).
               </div>
@@ -7444,7 +8500,7 @@ function PageBuildRuntime({
             {/* Additional parameters */}
             {svc.params && svc.params.length > 0 && (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-                <div style={{ ...S_SECTION_LABEL, marginBottom: 12 }}>Additional Parameters</div>
+                <div style={S_SECTION_LABEL_MB12}>Additional Parameters</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}>
                   {svc.params.map((p) => (
                     <div
@@ -7462,7 +8518,7 @@ function PageBuildRuntime({
                         {p.label}
                       </div>
                       {p.hint && (
-                        <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
+                        <div style={S_FIELD_HELP_TEXT_SMALL}>
                           {p.hint}
                         </div>
                       )}
@@ -7553,10 +8609,8 @@ function PageBuildRuntime({
           />
 
           {/* BUILD OUTPUT VERIFICATION — Step 3 in workflow */}
-          <div
-            style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}
-          >
-            <div style={{ ...S_SECTION_LABEL, marginBottom: 12 }}>Step 3: Verify Build Output</div>
+          <div style={S_WORKFLOW_BUILD_SECTION_WRAP}>
+            <div style={S_SECTION_LABEL_MB12}>Step 3: Verify Build Output</div>
             <RuntimeOutputNode
               expectedOutput={expectedOutput}
               buildDone={runDone}
@@ -7568,9 +8622,7 @@ function PageBuildRuntime({
 
           {/* MANUAL OVERRIDE — Optional (hidden behind explicit toggle) */}
           {!showManualOverride ? (
-            <div
-              style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}
-            >
+            <div style={S_WORKFLOW_BUILD_SECTION_WRAP}>
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 <button
                   type="button"
@@ -7620,18 +8672,16 @@ function PageBuildRuntime({
                   Skip building the runtime and manually set it instead. Not Recommended, please try
                   to make it work using a build script and running the build.
                 </button>
-                <div style={{ fontSize: 11, color: C.textMuted }}>
+                <div style={S_TEXT_MUTED_11}>
                   Only do this if for some reason you cannot build the runtime automatically.
                 </div>
               </div>
             </div>
           ) : (
-            <div
-              style={{ padding: "16px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}
-            >
-              <div style={{ ...S_SECTION_LABEL, marginBottom: 12 }}>Manual Override</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
+            <div style={S_WORKFLOW_BUILD_SECTION_WRAP}>
+              <div style={S_SECTION_LABEL_MB12}>Manual Override</div>
+              <div style={S_FLEX_COL_GAP_8}>
+                <div style={S_FIELD_HELP_TEXT_SMALL}>
                   You chose to skip building — set the runtime field manually. This will override
                   any automatic detection.
                 </div>
@@ -7686,7 +8736,7 @@ function PageBuildRuntime({
                       }}
                     >
                       {metaRuntime || (
-                        <span style={{ fontStyle: "italic", fontWeight: 400, fontSize: 11 }}>
+                        <span style={S_TEXT_ITALIC_11}>
                           not set
                         </span>
                       )}
@@ -7695,15 +8745,10 @@ function PageBuildRuntime({
                   {metaRuntime && (
                     <span
                       style={{
-                        fontSize: 10,
-                        fontFamily: F.sans,
-                        fontWeight: 700,
+                        ...S_STATUS_BADGE_SM_BASE,
                         color: "#16a34a",
                         background: "#f0fdf4",
                         border: "1px solid #bbf7d0",
-                        borderRadius: 4,
-                        padding: "2px 7px",
-                        flexShrink: 0,
                       }}
                     >
                       SET
@@ -7718,7 +8763,7 @@ function PageBuildRuntime({
                   active={false}
                   files={files || MOCK_FILES}
                 />
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={S_FLEX_ROW_GAP_8}>
                   <button
                     type="button"
                     onClick={() => setShowManualOverride(false)}
@@ -7762,7 +8807,7 @@ function PageBuildRuntime({
             totalCount={1}
           >
             <FieldRow fieldKey="runtime" onFocus={() => setFocusedField("runtime")} active={focusedField === "runtime"}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={S_FLEX_COL_GAP_8}>
               <div
                 style={{
                   display: "flex",
@@ -7814,7 +8859,7 @@ function PageBuildRuntime({
                     }}
                   >
                     {finalRuntime || (
-                      <span style={{ fontStyle: "italic", fontWeight: 400, fontSize: 11 }}>
+                      <span style={S_TEXT_ITALIC_11}>
                         not set yet — run build or set manually
                       </span>
                     )}
@@ -7903,22 +8948,17 @@ function PageBuildRuntime({
                 {finalRuntime && (
                   <span
                     style={{
-                      fontSize: 10,
-                      fontFamily: F.sans,
-                      fontWeight: 700,
+                      ...S_STATUS_BADGE_SM_BASE,
                       color: "#16a34a",
                       background: "#f0fdf4",
                       border: "1px solid #bbf7d0",
-                      borderRadius: 4,
-                      padding: "2px 7px",
-                      flexShrink: 0,
                     }}
                   >
                     FINAL
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
+              <div style={S_FIELD_HELP_TEXT_SMALL}>
                 {finalRuntime
                   ? includeRuntime
                     ? "Runtime will be bundled in the REE archive."
@@ -7930,21 +8970,13 @@ function PageBuildRuntime({
           </FieldSection>
 
           {/* Log */}
-          <div
-            style={{
-              padding: "4px 24px 24px",
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 0,
-            }}
-          >
+          <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
             <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>Output</div>
             <LogPanel log={log} running={running} />
           </div>
 
           {/* Next step nudge */}
-          <div style={{ padding: "0 24px 24px", flexShrink: 0 }}>
+          <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
             <NextStepNudge stepKey={svc.key} badges={badges || {}} onGo={onGo || (() => {})} />
           </div>
         </div>
@@ -8007,16 +9039,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
   const capstoneReady = buildDone && sbomDone && activationDone;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        minHeight: 0,
-        overflow: "hidden",
-        animation: "fadeUp 0.2s ease",
-      }}
-    >
+    <div style={S_WORKFLOW_PAGE_ROOT_ANIM}>
       <WorkflowPageHeader
         color={repo.color}
         icon={Ic.globe(18)}
@@ -8056,7 +9079,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
               Archiving before building and validating risks depositing an environment that can't be
               reproduced. Complete these steps first:
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={S_FLEX_ROW_GAP_8}>
               {!buildDone && (
                 <span
                   style={{
@@ -8164,7 +9187,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {/* Left: repo info + params */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={S_FIELD_STACK_GAP_14}>
           {/* Repo card */}
           <div
             style={{
@@ -8809,16 +9832,7 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
   );
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        minHeight: 0,
-        overflow: "hidden",
-        animation: "fadeUp 0.2s ease",
-      }}
-    >
+    <div style={S_WORKFLOW_SERVICE_ROOT}>
       <WorkflowPageHeader
         color="#6366f1"
         icon={Ic.files(18)}
@@ -8830,7 +9844,7 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
         ]}
       />
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
+      <div style={S_WORKFLOW_PAGE_BODY}>
       {/* Single tree pane */}
       <div
         style={{
@@ -9935,7 +10949,7 @@ function PanelFieldRow({
   };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={S_PANEL_FIELD_ROW_WRAP}>
       <button
         type="button"
         ref={rowRef}
@@ -9943,66 +10957,42 @@ function PanelFieldRow({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         style={{
-          display: "flex",
-          alignItems: "stretch",
-          width: "100%",
-          textAlign: "left",
+          ...S_PANEL_FIELD_BUTTON_BASE,
           background: hovered && onClick ? C.surfaceAlt : "transparent",
-          border: "none",
           borderBottom: isLast ? "none" : `1px solid ${C.border}`,
           cursor: onClick ? "pointer" : "default",
-          transition: "background 0.12s",
         }}
       >
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "4px 8px",
-            minWidth: 80,
-            maxWidth: 80,
-            flexShrink: 0,
+            ...S_PANEL_FIELD_LABEL_CELL_BASE,
             borderRight: `1px solid ${filled ? labelBorderColor : C.border}`,
             background: filled ? labelBg : "transparent",
           }}
         >
           <div
             style={{
-              width: 5,
-              height: 5,
-              borderRadius: "50%",
-              flexShrink: 0,
+              ...S_PANEL_FIELD_DOT_BASE,
               background: filled ? dotColor : "#d1d5db",
               boxShadow: filled ? `0 0 5px ${dotGlow}` : "none",
             }}
           />
           <span
             style={{
-              fontSize: 10,
-              fontFamily: F.sans,
+              ...S_PANEL_FIELD_LABEL_TEXT_BASE,
               color: filled ? labelColor : C.textMuted,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
             }}
           >
             {label}
           </span>
         </div>
-        <div style={{ padding: "4px 8px", flex: 1, minWidth: 0 }}>
+        <div style={S_PANEL_FIELD_VALUE_CELL}>
           <span
             ref={valueRef}
             style={{
-              fontSize: 10,
-              fontFamily: F.mono,
+              ...S_PANEL_FIELD_VALUE_TEXT_BASE,
               color: filled ? C.textMid : C.textMuted,
               fontStyle: filled ? "normal" : "italic",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              display: "block",
             }}
           >
             {filled ? value : emptyText}
@@ -10012,37 +11002,13 @@ function PanelFieldRow({
       {showTooltip && tooltipPos && (
         <div
           style={{
-            position: "fixed",
+            ...S_PANEL_FIELD_TOOLTIP_BASE,
             left: tooltipPos.x,
             top: tooltipPos.y - 34,
-            zIndex: 9999,
-            background: C.text,
-            color: "#fff",
-            fontFamily: F.mono,
-            fontSize: 11,
-            padding: "5px 9px",
-            borderRadius: 6,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-all",
-            maxWidth: 320,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.22)",
-            pointerEvents: "none",
-            lineHeight: 1.5,
           }}
         >
           {value}
-          <div
-            style={{
-              position: "absolute",
-              bottom: -5,
-              left: 14,
-              width: 10,
-              height: 10,
-              background: C.text,
-              transform: "rotate(45deg)",
-              borderRadius: 1,
-            }}
-          />
+          <div style={S_PANEL_FIELD_TOOLTIP_ARROW} />
         </div>
       )}
     </div>
@@ -10212,52 +11178,29 @@ function PageOverview({
   }
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: 28 }}>
+    <div style={S_OVERVIEW_ROOT}>
       {/* ── Header ── */}
-      <div style={{ marginBottom: 20, display: "flex", alignItems: "baseline", gap: 14 }}>
+      <div style={S_OVERVIEW_HEADER_ROW}>
         <div>
-          <div
-            style={{
-              ...S_SECTION_LABEL,
-              fontSize: 10,
-              fontWeight: 600,
-              marginBottom: 4,
-            }}
-          >
+          <div style={S_OVERVIEW_HEADER_EYEBROW}>
             Reproducible Execution Environment
           </div>
-          <div
-            style={{
-              fontSize: 18,
-              fontWeight: 800,
-              color: C.text,
-              letterSpacing: 0.2,
-              fontFamily: F.mono,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
+          <div style={S_OVERVIEW_HEADER_TITLE}>
             {ree.name || "untitled-env"}
             <span
               style={{
-                fontSize: 9,
-                fontWeight: 700,
-                padding: "2px 8px",
-                borderRadius: 3,
+                ...S_OVERVIEW_LEVEL_BADGE_BASE,
                 background: `${lv.color}16`,
                 color: lv.color,
                 border: `1px solid ${lv.color}40`,
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
               }}
             >
               {lv.label}
             </span>
           </div>
         </div>
-        <div style={{ flex: 1, height: 1, background: C.border, marginBottom: 2 }} />
-        <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, letterSpacing: 1 }}>
+        <div style={S_OVERVIEW_HEADER_RULE} />
+        <div style={S_OVERVIEW_DATE}>
           {new Date().toISOString().slice(0, 10)}
         </div>
       </div>
@@ -10265,7 +11208,7 @@ function PageOverview({
       {/* ── Three columns ── */}
       <div
         ref={cableContainerRef}
-        style={{ display: "flex", alignItems: "flex-start", gap: 18, position: "relative" }}
+        style={S_OVERVIEW_COLUMNS}
       >
         <PanelCableOverlay
           containerRef={cableContainerRef}
@@ -10286,26 +11229,12 @@ function PageOverview({
 
         {/* Left — source + fields */}
         <div
-          style={{
-            width: 196,
-            flexShrink: 0,
-            position: "relative",
-            zIndex: 1,
-            display: "flex",
-            flexDirection: "column",
-            gap: 14,
-          }}
+          style={S_OVERVIEW_LEFT_COLUMN}
         >
           {/* Source panel */}
           <div ref={sourceRef} style={panel({ overflow: "hidden" })}>
             <div
-              style={{
-                padding: "8px 12px",
-                borderBottom: `1px solid ${C.border}`,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
+              style={S_OVERVIEW_PANEL_HEADER_ROW}
             >
               <div
                 style={{
@@ -10320,20 +11249,14 @@ function PageOverview({
               <span style={S_PANEL_HEADER_LABEL}>Source</span>
               <div
                 style={{
-                  marginLeft: "auto",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
+                  ...S_OVERVIEW_PANEL_STATUS_ROW_BASE,
                   opacity: canIncludeSource ? 1 : 0.45,
                 }}
               >
                 <span
                   style={{
-                    fontSize: 9,
-                    fontFamily: F.sans,
-                    fontWeight: 600,
+                    ...S_OVERVIEW_PANEL_INCLUDE_LABEL_BASE,
                     color: sourceIncluded ? "#92400e" : C.textMuted,
-                    letterSpacing: 0.3,
                   }}
                 >
                   {sourceIncluded ? "Included" : "Include"}
@@ -10344,15 +11267,9 @@ function PageOverview({
                   aria-pressed={sourceIncluded}
                   disabled={!canIncludeSource}
                   style={{
-                    width: 32,
-                    height: 16,
-                    borderRadius: 99,
-                    border: "none",
+                    ...S_OVERVIEW_PANEL_TOGGLE_BASE,
                     cursor: canIncludeSource ? "pointer" : "not-allowed",
                     background: sourceIncluded ? "#f59e0b" : C.borderMid,
-                    position: "relative",
-                    transition: "all 0.18s",
-                    flexShrink: 0,
                   }}
                   onMouseEnter={(e) => {
                     if (!sourceIncluded && canIncludeSource)
@@ -10364,21 +11281,14 @@ function PageOverview({
                 >
                   <div
                     style={{
-                      position: "absolute",
-                      top: 2,
+                      ...S_OVERVIEW_PANEL_TOGGLE_KNOB,
                       left: sourceIncluded ? 16 : 2,
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: "#fff",
-                      transition: "left 0.18s",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
                     }}
                   />
                 </button>
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={S_OVERVIEW_PANEL_FIELDS}>
               <PanelFieldRow
                 label="Origin URL"
                 value={ree.origin_url || null}
@@ -10432,22 +11342,15 @@ function PageOverview({
                 onClick={() => onNavigate?.(PAGE.SOURCE)}
               />
             </div>
-            <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
+            <div style={S_OVERVIEW_PANEL_FOOTER}>
               <button
                 type="button"
                 onClick={() => onNavigate?.(PAGE.SOURCE)}
                 style={{
-                  fontSize: 10,
-                  fontFamily: F.sans,
+                  ...S_OVERVIEW_PANEL_BUTTON_BASE,
                   color: "#92400e",
                   background: "#fffbeb",
                   border: "1px solid #f59e0b40",
-                  borderRadius: 5,
-                  padding: "4px 8px",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  fontWeight: 600,
-                  width: "100%",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
                 onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
@@ -10459,26 +11362,10 @@ function PageOverview({
 
           {/* Metadata panel */}
           <div ref={leftPanelRef} style={panel({ overflow: "hidden" })}>
-            <div
-              style={{
-                padding: "8px 12px",
-                borderBottom: `1px solid ${C.border}`,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
+            <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e" }} />
               <span style={S_PANEL_HEADER_LABEL}>Metadata</span>
-              <span
-                style={{
-                  marginLeft: "auto",
-                  fontSize: 8,
-                  fontFamily: F.mono,
-                  color: C.textMuted,
-                  letterSpacing: 0.5,
-                }}
-              >
+              <span style={S_OVERVIEW_META_COUNT}>
                 {
                   (["name", "hardware_description"] as (keyof Ree)[]).filter((f) =>
                     f === "hardware_description"
@@ -10489,7 +11376,7 @@ function PageOverview({
                 /2
               </span>
             </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={S_OVERVIEW_PANEL_FIELDS}>
               {(["name", "hardware_description"] as (keyof Ree)[]).map((f, fi) => {
                 const isHw = f === "hardware_description";
                 const rawVal = ree[f];
@@ -10520,21 +11407,15 @@ function PageOverview({
                 );
               })}
             </div>
-            <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
+            <div style={S_OVERVIEW_META_FOOTER}>
               <button
                 type="button"
                 onClick={() => onNavigate?.(PAGE.METADATA)}
                 style={{
-                  fontSize: 10,
-                  fontFamily: F.sans,
+                  ...S_OVERVIEW_PANEL_BUTTON_BASE,
                   color: C.text,
                   background: "#f0fdf4",
                   border: `1px solid ${C.border}40`,
-                  borderRadius: 5,
-                  padding: "4px 8px",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  fontWeight: 600,
                   marginTop: 2,
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
@@ -10548,13 +11429,7 @@ function PageOverview({
           {/* Runtime panel */}
           <div ref={runtimeRef} style={panel({ overflow: "hidden" })}>
             <div
-              style={{
-                padding: "8px 12px",
-                borderBottom: `1px solid ${C.border}`,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
+              style={S_OVERVIEW_PANEL_HEADER_ROW}
             >
               <div
                 style={{
@@ -10569,20 +11444,14 @@ function PageOverview({
               <span style={S_PANEL_HEADER_LABEL}>Runtime</span>
               <div
                 style={{
-                  marginLeft: "auto",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
+                  ...S_OVERVIEW_PANEL_STATUS_ROW_BASE,
                   opacity: canIncludeRuntime ? 1 : 0.45,
                 }}
               >
                 <span
                   style={{
-                    fontSize: 9,
-                    fontFamily: F.sans,
-                    fontWeight: 600,
+                    ...S_OVERVIEW_PANEL_INCLUDE_LABEL_BASE,
                     color: runtimeIncluded ? "#164e63" : C.textMuted,
-                    letterSpacing: 0.3,
                   }}
                 >
                   {runtimeIncluded ? "Included" : "Include"}
@@ -10593,15 +11462,9 @@ function PageOverview({
                   aria-pressed={runtimeIncluded}
                   disabled={!canIncludeRuntime}
                   style={{
-                    width: 32,
-                    height: 16,
-                    borderRadius: 99,
-                    border: "none",
+                    ...S_OVERVIEW_PANEL_TOGGLE_BASE,
                     cursor: canIncludeRuntime ? "pointer" : "not-allowed",
                     background: runtimeIncluded ? "#0891b2" : C.borderMid,
-                    position: "relative",
-                    transition: "all 0.18s",
-                    flexShrink: 0,
                   }}
                   onMouseEnter={(e) => {
                     if (!runtimeIncluded && canIncludeRuntime)
@@ -10613,21 +11476,14 @@ function PageOverview({
                 >
                   <div
                     style={{
-                      position: "absolute",
-                      top: 2,
+                      ...S_OVERVIEW_PANEL_TOGGLE_KNOB,
                       left: runtimeIncluded ? 16 : 2,
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: "#fff",
-                      transition: "left 0.18s",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
                     }}
                   />
                 </button>
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={S_OVERVIEW_PANEL_FIELDS}>
               <PanelFieldRow
                 label="Runtime"
                 value={runtimeVal || null}
@@ -10668,22 +11524,15 @@ function PageOverview({
               />
             </div>
             {/* Go to Build Runtime button */}
-            <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
+            <div style={S_OVERVIEW_PANEL_FOOTER}>
               <button
                 type="button"
                 onClick={() => onNavigate?.(PAGE.BUILD)}
                 style={{
-                  fontSize: 10,
-                  fontFamily: F.sans,
+                  ...S_OVERVIEW_PANEL_BUTTON_BASE,
                   color: "#0891b2",
                   background: "#ecfeff",
                   border: "1px solid #a5f3fc",
-                  borderRadius: 5,
-                  padding: "4px 8px",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  fontWeight: 600,
-                  width: "100%",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
                 onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
@@ -10700,13 +11549,7 @@ function PageOverview({
             return (
               <div ref={sbomRef} style={panel({ overflow: "hidden" })}>
                 <div
-                  style={{
-                    padding: "8px 12px",
-                    borderBottom: `1px solid ${C.border}`,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
+                  style={S_OVERVIEW_PANEL_HEADER_ROW}
                 >
                   <div
                     style={{
@@ -10721,22 +11564,17 @@ function PageOverview({
                   {earned && (
                     <span
                       style={{
-                        marginLeft: "auto",
-                        fontSize: 8,
-                        fontFamily: F.mono,
+                        ...S_OVERVIEW_PANEL_BADGE_BASE,
                         color,
                         background: "#f0fdf4",
                         border: `1px solid ${color}40`,
-                        borderRadius: 2,
-                        padding: "0 4px",
-                        letterSpacing: 0.8,
                       }}
                     >
                       OK
                     </span>
                   )}
                 </div>
-                <div style={{ display: "flex", flexDirection: "column" }}>
+                <div style={S_OVERVIEW_PANEL_FIELDS}>
                   <PanelFieldRow
                     label="SBOM Path"
                     value={sbomVal || null}
@@ -10777,22 +11615,15 @@ function PageOverview({
                     />
                   )}
                 </div>
-                <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
+                <div style={S_OVERVIEW_PANEL_FOOTER}>
                   <button
                     type="button"
                     onClick={() => onNavigate?.(PAGE.SBOM)}
                     style={{
-                      fontSize: 10,
-                      fontFamily: F.sans,
+                      ...S_OVERVIEW_PANEL_BUTTON_BASE,
                       color,
                       background: "#f0fdf4",
                       border: `1px solid ${color}40`,
-                      borderRadius: 5,
-                      padding: "4px 8px",
-                      cursor: "pointer",
-                      textAlign: "center",
-                      fontWeight: 600,
-                      width: "100%",
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
                     onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
@@ -10869,106 +11700,58 @@ function PageOverview({
                 <div
                   ref={sealRef}
                   style={{
-                    width: "100%",
-                    maxWidth: 480,
-                    background: C.surface,
+                    ...S_OVERVIEW_SEALED_CARD_BASE,
                     border: `1.5px solid ${lv.color}50`,
-                    borderRadius: 10,
-                    overflow: "hidden",
                     boxShadow: `0 0 0 3px ${lv.color}14, 0 2px 12px rgba(0,0,0,0.07)`,
                   }}
                 >
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "9px 14px",
+                      ...S_OVERVIEW_SEALED_HEADER_BASE,
                       borderBottom: `1px solid ${lv.color}30`,
                       background: `${lv.color}0c`,
                     }}
                   >
-                    <span style={{ color: lv.color, display: "flex", flexShrink: 0 }}>
+                    <span style={{ ...S_OVERVIEW_SEALED_ICON, color: lv.color }}>
                       {Ic.lock(13)}
                     </span>
                     <span
                       style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        fontFamily: F.sans,
+                        ...S_OVERVIEW_SEALED_TITLE_BASE,
                         color: lv.color,
-                        letterSpacing: 0.4,
                       }}
                     >
                       REE SEALED
                     </span>
                     <span
                       style={{
-                        marginLeft: "auto",
-                        fontSize: 9,
-                        fontFamily: F.mono,
+                        ...S_OVERVIEW_SEALED_LEVEL_BADGE_BASE,
                         color: lv.color,
                         background: `${lv.color}18`,
                         border: `1px solid ${lv.color}40`,
-                        borderRadius: 3,
-                        padding: "1px 6px",
-                        letterSpacing: 0.6,
-                        fontWeight: 700,
                       }}
                     >
                       L{level} · {lv.label}
                     </span>
                   </div>
-                  <div
-                    style={{
-                      padding: "10px 14px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 6,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span
-                        style={{
-                          fontSize: 9,
-                          fontFamily: F.sans,
-                          color: C.textMuted,
-                          flexShrink: 0,
-                        }}
-                      >
+                  <div style={S_OVERVIEW_SEALED_BODY}>
+                    <div style={S_OVERVIEW_SEALED_META_ROW}>
+                      <span style={S_OVERVIEW_SEALED_META_KEY}>
                         hash
                       </span>
-                      <span
-                        style={{
-                          fontFamily: F.mono,
-                          fontSize: 11,
-                          color: C.text,
-                          fontWeight: 600,
-                          letterSpacing: 0.8,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
+                      <span style={S_OVERVIEW_SEALED_HASH_VAL}>
                         {ree._sealHash || "—"}
                       </span>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span
-                        style={{
-                          fontSize: 9,
-                          fontFamily: F.sans,
-                          color: C.textMuted,
-                          flexShrink: 0,
-                        }}
-                      >
+                    <div style={S_OVERVIEW_SEALED_META_ROW}>
+                      <span style={S_OVERVIEW_SEALED_META_KEY}>
                         sealed
                       </span>
-                      <span style={{ fontFamily: F.mono, fontSize: 10, color: C.textMid }}>
+                      <span style={S_OVERVIEW_SEALED_DATE_VAL}>
                         {sealDate}
                       </span>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 2 }}>
+                    <div style={S_OVERVIEW_SEALED_CABLE_ROW}>
                       {cableItems.map((c) => (
                         <div
                           key={c.label}
@@ -10988,22 +11771,10 @@ function PageOverview({
                         type="button"
                         onClick={onPreviewReviewer}
                         style={{
-                          marginTop: 6,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 7,
-                          width: "100%",
-                          padding: "8px 14px",
-                          borderRadius: 7,
+                          ...S_OVERVIEW_SEALED_ACTION_BTN_BASE,
                           background: `linear-gradient(135deg, ${lv.color}18 0%, ${lv.color}0c 100%)`,
                           border: `1.5px solid ${lv.color}50`,
                           color: lv.color,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          fontFamily: F.sans,
-                          cursor: "pointer",
-                          transition: "all 0.15s",
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.background = `${lv.color}28`;
@@ -11023,22 +11794,10 @@ function PageOverview({
                         type="button"
                         onClick={onDownloadRee}
                         style={{
-                          marginTop: 6,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 7,
-                          width: "100%",
-                          padding: "8px 14px",
-                          borderRadius: 7,
+                          ...S_OVERVIEW_SEALED_ACTION_BTN_BASE,
                           background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
                           border: "1.5px solid #86efac",
                           color: "#15803d",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          fontFamily: F.sans,
-                          cursor: "pointer",
-                          transition: "all 0.15s",
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.background = "#bbf7d0";
@@ -11063,83 +11822,32 @@ function PageOverview({
               <>
                 {/* Confirmation modal */}
                 {showSealConfirm && (
-                  <div
-                    style={{
-                      position: "fixed",
-                      inset: 0,
-                      zIndex: 9999,
-                      background: "rgba(0,0,0,0.45)",
-                      backdropFilter: "blur(3px)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
+                  <div style={S_OVERVIEW_SEAL_MODAL_OVERLAY}>
                     <button
                       type="button"
                       aria-label="Close confirmation"
                       onClick={() => setShowSealConfirm(false)}
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        border: "none",
-                        background: "transparent",
-                        padding: 0,
-                        margin: 0,
-                        cursor: "default",
-                      }}
+                      style={S_OVERVIEW_SEAL_MODAL_BACKDROP_BTN}
                     />
-                    <div
-                      style={{
-                        background: C.surface,
-                        borderRadius: 14,
-                        width: 380,
-                        maxWidth: "90vw",
-                        border: `1.5px solid ${C.border}`,
-                        boxShadow: "0 8px 40px rgba(0,0,0,0.22)",
-                        overflow: "hidden",
-                        position: "relative",
-                        zIndex: 1,
-                      }}
-                    >
+                    <div style={S_OVERVIEW_SEAL_MODAL_CARD}>
                       {/* Modal header */}
-                      <div
-                        style={{ padding: "16px 20px 12px", borderBottom: `1px solid ${C.border}` }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={S_OVERVIEW_SEAL_MODAL_HEADER}>
+                        <div style={S_OVERVIEW_SEAL_MODAL_HEADER_ROW}>
                           <div
                             style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 8,
+                              ...S_OVERVIEW_SEAL_MODAL_ICON_WRAP,
                               background: `${lv.color}18`,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0,
                             }}
                           >
-                            <span style={{ color: lv.color, display: "flex" }}>{Ic.lock(16)}</span>
+                            <span style={{ ...S_OVERVIEW_SEAL_MODAL_ICON, color: lv.color }}>
+                              {Ic.lock(16)}
+                            </span>
                           </div>
                           <div>
-                            <div
-                              style={{
-                                fontSize: 14,
-                                fontWeight: 700,
-                                fontFamily: F.sans,
-                                color: C.text,
-                              }}
-                            >
+                            <div style={S_OVERVIEW_SEAL_MODAL_TITLE}>
                               Seal this REE?
                             </div>
-                            <div
-                              style={{
-                                fontSize: 11,
-                                fontFamily: F.sans,
-                                color: C.textMuted,
-                                marginTop: 1,
-                              }}
-                            >
+                            <div style={S_OVERVIEW_SEAL_MODAL_SUBTITLE}>
                               This action cannot be undone.
                             </div>
                           </div>
@@ -11148,48 +11856,19 @@ function PageOverview({
 
                       {/* Warning: missing cables */}
                       {!allLive && (
-                        <div
-                          style={{
-                            margin: "12px 20px 0",
-                            padding: "10px 12px",
-                            borderRadius: 8,
-                            background: "#fffbeb",
-                            border: "1.5px solid #fde68a",
-                          }}
-                        >
-                          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                            <span style={{ fontSize: 15, flexShrink: 0, lineHeight: 1.2 }}>⚠️</span>
+                        <div style={S_OVERVIEW_SEAL_MODAL_WARN_BOX}>
+                          <div style={S_OVERVIEW_SEAL_MODAL_WARN_ROW}>
+                            <span style={S_OVERVIEW_SEAL_MODAL_WARN_ICON}>⚠️</span>
                             <div>
-                              <div
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  fontFamily: F.sans,
-                                  color: "#92400e",
-                                  marginBottom: 5,
-                                }}
-                              >
+                              <div style={S_OVERVIEW_SEAL_MODAL_WARN_TITLE}>
                                 {missing.length} panel{missing.length !== 1 ? "s" : ""} not
                                 connected
                               </div>
-                              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                              <div style={S_OVERVIEW_SEAL_MODAL_WARN_LIST}>
                                 {missing.map((m) => (
-                                  <div
-                                    key={m.key}
-                                    style={{ display: "flex", alignItems: "center", gap: 6 }}
-                                  >
-                                    <div
-                                      style={{
-                                        width: 5,
-                                        height: 5,
-                                        borderRadius: "50%",
-                                        background: "#f59e0b",
-                                        flexShrink: 0,
-                                      }}
-                                    />
-                                    <span
-                                      style={{ fontSize: 10, fontFamily: F.sans, color: "#92400e" }}
-                                    >
+                                  <div key={m.key} style={S_OVERVIEW_SEAL_MODAL_WARN_ITEM}>
+                                    <div style={S_OVERVIEW_SEAL_MODAL_WARN_DOT} />
+                                    <span style={S_OVERVIEW_SEAL_MODAL_WARN_TEXT}>
                                       {m.label} — not completed
                                     </span>
                                   </div>
@@ -11201,15 +11880,8 @@ function PageOverview({
                       )}
 
                       {/* Body copy */}
-                      <div style={{ padding: "12px 20px" }}>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            fontFamily: F.sans,
-                            color: C.textMid,
-                            lineHeight: 1.6,
-                          }}
-                        >
+                      <div style={S_OVERVIEW_SEAL_MODAL_BODY}>
+                        <div style={S_OVERVIEW_SEAL_MODAL_BODY_TEXT}>
                           {allLive ? (
                             <>
                               All <strong>{totalCables}</strong> panels are connected. The REE will
@@ -11233,28 +11905,11 @@ function PageOverview({
                       </div>
 
                       {/* Actions */}
-                      <div
-                        style={{
-                          padding: "0 20px 16px",
-                          display: "flex",
-                          gap: 8,
-                          justifyContent: "flex-end",
-                        }}
-                      >
+                      <div style={S_OVERVIEW_SEAL_MODAL_ACTIONS}>
                         <button
                           type="button"
                           onClick={() => setShowSealConfirm(false)}
-                          style={{
-                            padding: "8px 16px",
-                            borderRadius: 7,
-                            fontSize: 12,
-                            fontFamily: F.sans,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            background: C.surfaceAlt,
-                            color: C.textMid,
-                            border: `1.5px solid ${C.border}`,
-                          }}
+                          style={S_OVERVIEW_SEAL_MODAL_CANCEL_BTN}
                           onMouseEnter={(e) => (e.currentTarget.style.background = C.border)}
                           onMouseLeave={(e) => (e.currentTarget.style.background = C.surfaceAlt)}
                         >
@@ -11267,17 +11922,8 @@ function PageOverview({
                             onSeal?.();
                           }}
                           style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 7,
-                            padding: "8px 18px",
-                            borderRadius: 7,
-                            fontSize: 12,
-                            fontFamily: F.sans,
-                            fontWeight: 700,
-                            cursor: "pointer",
+                            ...S_OVERVIEW_SEAL_MODAL_CONFIRM_BTN_BASE,
                             background: lv.color,
-                            color: "#fff",
                             border: `1.5px solid ${lv.color}`,
                             boxShadow: `0 2px 8px ${lv.color}50`,
                           }}
@@ -11305,26 +11951,11 @@ function PageOverview({
                   }}
                 >
                   {/* Progress row */}
-                  <div
-                    style={{
-                      padding: "9px 14px",
-                      borderBottom: `1px solid ${C.border}`,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontFamily: F.sans,
-                        color: C.textMuted,
-                        flexShrink: 0,
-                      }}
-                    >
+                  <div style={S_OVERVIEW_SEAL_PROGRESS_ROW}>
+                    <span style={S_OVERVIEW_SEAL_PROGRESS_TEXT}>
                       {liveCount}/{totalCables} connected
                     </span>
-                    <div style={{ flex: 1, display: "flex", gap: 3, alignItems: "center" }}>
+                    <div style={S_OVERVIEW_SEAL_PROGRESS_BARS}>
                       {cableItems.map((c) => (
                         <div
                           key={c.label}
@@ -11342,16 +11973,10 @@ function PageOverview({
                     {allLive ? (
                       <span
                         style={{
-                          fontSize: 9,
-                          fontFamily: F.mono,
-                          fontWeight: 700,
+                          ...S_OVERVIEW_SEAL_STATUS_BADGE_BASE,
                           color: lv.color,
                           background: `${lv.color}14`,
                           border: `1px solid ${lv.color}40`,
-                          borderRadius: 3,
-                          padding: "1px 6px",
-                          letterSpacing: 0.5,
-                          flexShrink: 0,
                         }}
                       >
                         ready
@@ -11359,16 +11984,10 @@ function PageOverview({
                     ) : (
                       <span
                         style={{
-                          fontSize: 9,
-                          fontFamily: F.mono,
-                          fontWeight: 700,
+                          ...S_OVERVIEW_SEAL_STATUS_BADGE_BASE,
                           color: "#d97706",
                           background: "#fffbeb",
                           border: "1px solid #fde68a",
-                          borderRadius: 3,
-                          padding: "1px 6px",
-                          letterSpacing: 0.5,
-                          flexShrink: 0,
                         }}
                       >
                         incomplete
@@ -11376,21 +11995,15 @@ function PageOverview({
                     )}
                   </div>
                   {/* Seal button row */}
-                  <div
-                    style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div
-                        style={{ fontSize: 11, fontFamily: F.sans, fontWeight: 600, color: C.text }}
-                      >
+                  <div style={S_OVERVIEW_SEAL_BUTTON_ROW}>
+                    <div style={S_OVERVIEW_SEAL_BUTTON_TEXT_WRAP}>
+                      <div style={S_OVERVIEW_SEAL_BUTTON_TITLE}>
                         Seal REE
                       </div>
                       <div
                         style={{
-                          fontSize: 10,
-                          fontFamily: F.sans,
+                          ...S_OVERVIEW_SEAL_BUTTON_SUBTITLE_BASE,
                           color: allLive ? C.textMuted : "#d97706",
-                          marginTop: 2,
                         }}
                       >
                         {allLive
@@ -11402,27 +12015,15 @@ function PageOverview({
                       type="button"
                       onClick={() => setShowSealConfirm(true)}
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 7,
-                        padding: "8px 18px",
-                        borderRadius: 7,
-                        flexShrink: 0,
-                        fontSize: 12,
-                        fontFamily: F.sans,
-                        fontWeight: 700,
-                        letterSpacing: 0.3,
-                        cursor: "pointer",
+                        ...S_OVERVIEW_SEAL_BUTTON_CTA,
                         background: lv.color,
-                        color: "#fff",
                         border: `1.5px solid ${lv.color}`,
                         boxShadow: `0 2px 10px ${lv.color}50`,
-                        transition: "all 0.2s",
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.92)")}
                       onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
                     >
-                      <span style={{ display: "flex" }}>{Ic.lock(13)}</span>
+                      <span style={S_OVERVIEW_SEAL_BUTTON_ICON}>{Ic.lock(13)}</span>
                       Seal
                     </button>
                   </div>
@@ -11433,28 +12034,10 @@ function PageOverview({
         </div>
 
         {/* Right — swh + evaluate + archive + verification */}
-        <div
-          style={{
-            width: 196,
-            flexShrink: 0,
-            display: "flex",
-            flexDirection: "column",
-            gap: 14,
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
+        <div style={S_OVERVIEW_RIGHT_COLUMN}>
           {/* Software Heritage panel */}
           <div ref={swhRef} style={panel({ overflow: "hidden" })}>
-            <div
-              style={{
-                padding: "8px 12px",
-                borderBottom: `1px solid ${C.border}`,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
+            <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
               <div
                 style={{
                   width: 5,
@@ -11467,15 +12050,10 @@ function PageOverview({
               <span style={S_PANEL_HEADER_LABEL}>Software Heritage</span>
               <span
                 style={{
-                  marginLeft: "auto",
-                  fontSize: 8,
-                  fontFamily: F.mono,
+                  ...S_OVERVIEW_PANEL_BADGE_BASE,
                   color: "#e4572e",
                   background: "#fff7f5",
                   border: "1px solid #fbd0c4",
-                  borderRadius: 2,
-                  padding: "0 4px",
-                  letterSpacing: 0.8,
                 }}
               >
                 SWH
@@ -11494,22 +12072,15 @@ function PageOverview({
               isLast
               onClick={() => onNavigate?.(PAGE.SWH)}
             />
-            <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
+            <div style={S_OVERVIEW_PANEL_FOOTER}>
               <button
                 type="button"
                 onClick={() => onNavigate?.(PAGE.SWH)}
                 style={{
-                  fontSize: 10,
-                  fontFamily: F.sans,
+                  ...S_OVERVIEW_PANEL_BUTTON_BASE,
                   color: "#9a3412",
                   background: "#fff7f5",
                   border: "1px solid #fbd0c4",
-                  borderRadius: 5,
-                  padding: "4px 8px",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  fontWeight: 600,
-                  width: "100%",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
                 onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
@@ -11535,15 +12106,7 @@ function PageOverview({
               : null;
             return (
               <div ref={evaluateRef} style={panel({ overflow: "hidden" })}>
-                <div
-                  style={{
-                    padding: "8px 12px",
-                    borderBottom: `1px solid ${C.border}`,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
+                <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
                   <div
                     style={{
                       width: 5,
@@ -11557,25 +12120,18 @@ function PageOverview({
                   {earned && (
                     <span
                       style={{
-                        marginLeft: "auto",
-                        fontSize: 8,
-                        fontFamily: F.mono,
+                        ...S_OVERVIEW_PANEL_BADGE_BASE,
                         color: svc.badge.color,
                         background: svc.badge.bg,
                         border: `1px solid ${svc.badge.color}40`,
-                        borderRadius: 2,
-                        padding: "0 4px",
-                        letterSpacing: 0.8,
                       }}
                     >
                       OK
                     </span>
                   )}
                 </div>
-                <div
-                  style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={S_OVERVIEW_META_FOOTER}>
+                  <div style={S_FLEX_ROW_CENTER_GAP_6}>
                     <span
                       style={{ display: "flex", color: earned ? svc.badge.color : C.textMuted }}
                     >
@@ -11630,16 +12186,10 @@ function PageOverview({
                     type="button"
                     onClick={() => onNavigate?.(svc.key)}
                     style={{
-                      fontSize: 10,
-                      fontFamily: F.sans,
+                      ...S_OVERVIEW_PANEL_BUTTON_BASE,
                       color: svc.badge.color,
                       background: svc.badge.bg,
                       border: `1px solid ${svc.badge.color}40`,
-                      borderRadius: 5,
-                      padding: "4px 8px",
-                      cursor: "pointer",
-                      textAlign: "center",
-                      fontWeight: 600,
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
                     onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
@@ -11653,15 +12203,7 @@ function PageOverview({
 
           {/* Archival & DOIs — Zenodo + Dataverse only */}
           <div ref={archiveRef} style={panel({ overflow: "hidden" })}>
-            <div
-              style={{
-                padding: "8px 12px",
-                borderBottom: `1px solid ${C.border}`,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
+            <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#059669" }} />
               <span style={S_PANEL_HEADER_LABEL}>Archival & DOIs</span>
             </div>
@@ -11704,22 +12246,15 @@ function PageOverview({
                 />
               );
             })}
-            <div style={{ padding: "8px 12px", borderTop: `1px solid ${C.border}` }}>
+            <div style={S_OVERVIEW_PANEL_FOOTER}>
               <button
                 type="button"
                 onClick={() => onNavigate?.(PAGE.ARCHIVE)}
                 style={{
-                  fontSize: 10,
-                  fontFamily: F.sans,
+                  ...S_OVERVIEW_PANEL_BUTTON_BASE,
                   color: "#059669",
                   background: "#f0fdf4",
                   border: "1px solid #6ee7b740",
-                  borderRadius: 5,
-                  padding: "4px 8px",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  fontWeight: 600,
-                  width: "100%",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
                 onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
@@ -11738,15 +12273,7 @@ function PageOverview({
             const asLabel = FIELD_META.activation_script?.label || "Activation script";
             return (
               <div ref={activationRef} style={panel({ overflow: "hidden" })}>
-                <div
-                  style={{
-                    padding: "8px 12px",
-                    borderBottom: `1px solid ${C.border}`,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
+                <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
                   <div
                     style={{
                       width: 5,
@@ -11760,15 +12287,10 @@ function PageOverview({
                   {activationEarned && (
                     <span
                       style={{
-                        marginLeft: "auto",
-                        fontSize: 8,
-                        fontFamily: F.mono,
+                        ...S_OVERVIEW_PANEL_BADGE_BASE,
                         color: activationColor,
                         background: "#f5f3ff",
                         border: `1px solid ${activationColor}40`,
-                        borderRadius: 2,
-                        padding: "0 4px",
-                        letterSpacing: 0.8,
                       }}
                     >
                       OK
@@ -11789,22 +12311,15 @@ function PageOverview({
                   onClick={() => onGoField?.("activation_script")}
                 />
                 {/* Go to Test Activation button */}
-                <div style={{ padding: "8px 12px" }}>
+                <div style={S_OVERVIEW_PANEL_FOOTER}>
                   <button
                     type="button"
                     onClick={() => onNavigate?.(PAGE.ACTIVATION)}
                     style={{
-                      fontSize: 10,
-                      fontFamily: F.sans,
+                      ...S_OVERVIEW_PANEL_BUTTON_BASE,
                       color: activationColor,
                       background: "#f5f3ff",
                       border: `1px solid ${activationColor}40`,
-                      borderRadius: 5,
-                      padding: "4px 8px",
-                      cursor: "pointer",
-                      textAlign: "center",
-                      fontWeight: 600,
-                      width: "100%",
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
                     onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
@@ -13162,7 +13677,7 @@ function Explorer({ onBack }: ExplorerProps) {
               flexShrink: 0,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={S_FLEX_ROW_CENTER_GAP_6}>
               <div
                 style={{
                   width: 8,
@@ -13306,7 +13821,7 @@ function Landing({ onLoad }: LandingProps) {
           >
             Repository URL
           </label>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={S_FLEX_ROW_GAP_8}>
             <div style={{ flex: 1, position: "relative" }}>
               <div
                 style={{
