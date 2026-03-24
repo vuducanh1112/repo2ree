@@ -903,14 +903,23 @@ const S_OVERVIEW_PANEL_FOOTER: React.CSSProperties = {
   borderTop: `1px solid ${C.border}`,
 };
 
-const S_OVERVIEW_PANEL_BUTTON_BASE: React.CSSProperties = {
-  fontSize: 10,
+const S_ACTION_BUTTON_BASE: React.CSSProperties = {
+  border: `1.5px solid ${C.border}`,
+  borderRadius: 7,
+  padding: "8px 12px",
+  fontSize: 13,
+  fontWeight: 600,
   fontFamily: F.sans,
+  transition: "all 0.15s",
+};
+
+const S_OVERVIEW_PANEL_BUTTON_BASE: React.CSSProperties = {
+  ...S_ACTION_BUTTON_BASE,
+  fontSize: 10,
   borderRadius: 5,
   padding: "4px 8px",
   cursor: "pointer",
   textAlign: "center",
-  fontWeight: 600,
   width: "100%",
 };
 
@@ -1030,6 +1039,7 @@ const S_OVERVIEW_SEALED_CABLE_ROW: React.CSSProperties = {
 };
 
 const S_OVERVIEW_SEALED_ACTION_BTN_BASE: React.CSSProperties = {
+  ...S_ACTION_BUTTON_BASE,
   marginTop: 6,
   display: "flex",
   alignItems: "center",
@@ -1037,12 +1047,9 @@ const S_OVERVIEW_SEALED_ACTION_BTN_BASE: React.CSSProperties = {
   gap: 7,
   width: "100%",
   padding: "8px 14px",
-  borderRadius: 7,
   fontSize: 12,
   fontWeight: 700,
-  fontFamily: F.sans,
   cursor: "pointer",
-  transition: "all 0.15s",
 };
 
 const S_OVERVIEW_SEAL_MODAL_OVERLAY: React.CSSProperties = {
@@ -1190,10 +1197,10 @@ const S_OVERVIEW_SEAL_MODAL_ACTIONS: React.CSSProperties = {
 };
 
 const S_OVERVIEW_SEAL_MODAL_CANCEL_BTN: React.CSSProperties = {
+  ...S_ACTION_BUTTON_BASE,
   padding: "8px 16px",
   borderRadius: 7,
   fontSize: 12,
-  fontFamily: F.sans,
   fontWeight: 600,
   cursor: "pointer",
   background: C.surfaceAlt,
@@ -1202,13 +1209,13 @@ const S_OVERVIEW_SEAL_MODAL_CANCEL_BTN: React.CSSProperties = {
 };
 
 const S_OVERVIEW_SEAL_MODAL_CONFIRM_BTN_BASE: React.CSSProperties = {
+  ...S_ACTION_BUTTON_BASE,
   display: "flex",
   alignItems: "center",
   gap: 7,
   padding: "8px 18px",
   borderRadius: 7,
   fontSize: 12,
-  fontFamily: F.sans,
   fontWeight: 700,
   cursor: "pointer",
   color: "#fff",
@@ -1271,6 +1278,7 @@ const S_OVERVIEW_SEAL_BUTTON_SUBTITLE_BASE: React.CSSProperties = {
 };
 
 const S_OVERVIEW_SEAL_BUTTON_CTA: React.CSSProperties = {
+  ...S_ACTION_BUTTON_BASE,
   display: "flex",
   alignItems: "center",
   gap: 7,
@@ -1278,7 +1286,6 @@ const S_OVERVIEW_SEAL_BUTTON_CTA: React.CSSProperties = {
   borderRadius: 7,
   flexShrink: 0,
   fontSize: 12,
-  fontFamily: F.sans,
   fontWeight: 700,
   letterSpacing: 0.3,
   cursor: "pointer",
@@ -4400,7 +4407,7 @@ function FilePicker({
 }
 
 // ── Form helpers ───────────────────────────────────────────────────────────────
-const inp = (locked, extra = {}) => ({
+const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
   width: "100%",
   border: `1.5px solid ${C.border}`,
   borderRadius: 7,
@@ -4410,6 +4417,11 @@ const inp = (locked, extra = {}) => ({
   color: C.text,
   background: locked ? C.surfaceAlt : C.surface,
   transition: "border-color 0.15s, box-shadow 0.15s",
+  ...extra,
+});
+
+const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+  ...S_ACTION_BUTTON_BASE,
   ...extra,
 });
 
@@ -5702,17 +5714,14 @@ function PageSourceRepoEntry({
                       if (m === "upload") setOriginTypeDraft("");
                     }}
                     style={{
+                      ...actionBtn({
+                        padding: "7px",
+                      }),
                       flex: 1,
-                      padding: "7px",
-                      borderRadius: 7,
                       cursor: locked ? "default" : "pointer",
                       border: `1.5px solid ${repoMode === m ? C.accent : C.border}`,
                       background: repoMode === m ? C.accentBg : C.surface,
-                      fontSize: 13,
-                      fontWeight: 600,
                       color: repoMode === m ? C.accent : C.textMid,
-                      fontFamily: F.sans,
-                      transition: "all 0.15s",
                     }}
                   >
                     {m === "url" ? "⇢ Origin URL" : "⤒ Upload tarball"}
@@ -5769,18 +5778,16 @@ function PageSourceRepoEntry({
                       disabled={locked || !canDownload || downloadRunning}
                       onClick={() => onDownloadSource(originTypeDraft)}
                       style={{
+                        ...actionBtn({
+                          fontWeight: 700,
+                        }),
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 6,
-                        padding: "8px 12px",
-                        borderRadius: 7,
                         cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
                         border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
                         background: downloadDone ? "#f0fdf4" : C.accentBg,
                         color: downloadDone ? "#15803d" : C.accent,
-                        fontSize: 13,
-                        fontWeight: 700,
-                        fontFamily: F.sans,
                         width: "fit-content",
                         opacity: locked || !canDownload ? 0.6 : 1,
                       }}
@@ -6168,18 +6175,17 @@ function PageMetadataEntry({
                       onChange({ ...ree, hardware_description: Object.fromEntries(ent) });
                     }}
                     style={{
+                      ...actionBtn({
+                        border: `1.5px dashed ${C.borderMid}`,
+                        padding: "6px 10px",
+                        background: "transparent",
+                        color: C.textMuted,
+                        transition: "border-color 0.14s,color 0.14s",
+                      }),
                       display: "flex",
                       alignItems: "center",
                       gap: 6,
-                      padding: "6px 10px",
-                      background: "transparent",
-                      border: `1.5px dashed ${C.borderMid}`,
-                      borderRadius: 7,
                       cursor: "pointer",
-                      fontSize: 13,
-                      fontFamily: F.sans,
-                      color: C.textMuted,
-                      transition: "border-color 0.14s,color 0.14s",
                       marginTop: 4,
                       width: "fit-content",
                     }}
@@ -6258,19 +6264,18 @@ function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
         type="button"
         onClick={() => onGo(step.nextKey)}
         style={{
+          ...actionBtn({
+            border: "none",
+            padding: "5px 12px",
+            background: C.accent,
+            color: "#fff",
+          }),
           display: "flex",
           alignItems: "center",
           gap: 5,
-          padding: "5px 12px",
-          borderRadius: 6,
-          border: "none",
-          background: C.accent,
-          color: "#fff",
-          fontSize: 13,
-          fontWeight: 600,
-          fontFamily: F.sans,
           cursor: "pointer",
           flexShrink: 0,
+          borderRadius: 6,
           transition: "background 0.13s",
         }}
         onMouseEnter={(e) => (e.currentTarget.style.background = "#1d4ed8")}
@@ -6397,12 +6402,15 @@ function WorkflowPageHeader({
             <button
               type="button"
               style={{
-                fontSize: 11,
-                color: "#dc2626",
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                borderRadius: 99,
-                padding: "2px 9px",
+                ...actionBtn({
+                  fontSize: 11,
+                  borderRadius: 99,
+                  padding: "2px 9px",
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#dc2626",
+                  transition: "all 0.12s",
+                }),
                 display: "flex",
                 alignItems: "center",
                 gap: 4,
@@ -6490,19 +6498,18 @@ function ServiceActionSection({
           onClick={onRun}
           disabled={disabled}
           style={{
+            ...actionBtn({
+              border: "none",
+              borderRadius: 8,
+              padding: "8px 18px",
+              fontWeight: 700,
+            }),
             display: "flex",
             alignItems: "center",
             gap: 7,
-            padding: "8px 18px",
             background: disabled ? `${color}22` : color,
-            border: "none",
-            borderRadius: 8,
             cursor: disabled ? "default" : "pointer",
-            fontSize: 13,
-            fontWeight: 700,
             color: disabled ? color : "#fff",
-            fontFamily: F.sans,
-            transition: "all 0.15s",
           }}
         >
           <span
@@ -6649,19 +6656,19 @@ function PageGenerateSBOM({
                   type="button"
                   onClick={() => onGo(PAGE.BUILD)}
                   style={{
+                    ...actionBtn({
+                      border: `1px solid ${sbomColor}40`,
+                      borderRadius: 6,
+                      padding: "5px 10px",
+                      fontSize: 12,
+                      color: sbomColor,
+                      background: `${sbomColor}12`,
+                    }),
                     width: "fit-content",
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
-                    fontSize: 12,
-                    fontFamily: F.sans,
-                    color: sbomColor,
-                    background: `${sbomColor}12`,
-                    border: `1px solid ${sbomColor}40`,
-                    borderRadius: 6,
-                    padding: "5px 10px",
                     cursor: "pointer",
-                    fontWeight: 600,
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.96)")}
                   onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
@@ -7351,16 +7358,16 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
             key={s.key}
             onClick={() => setFilter(s.key)}
             style={{
-              fontSize: 11,
-              fontFamily: F.sans,
-              fontWeight: 600,
+              ...actionBtn({
+                fontSize: 11,
+                borderRadius: 99,
+                padding: "3px 10px",
+                transition: "all 0.12s",
+              }),
               color: s.color,
               background: filter === s.key ? s.bg : "transparent",
               border: `1.5px solid ${filter === s.key ? s.border : C.border}`,
-              borderRadius: 99,
-              padding: "3px 10px",
               cursor: "pointer",
-              transition: "all 0.12s",
             }}
             onMouseEnter={(e) => {
               if (filter !== s.key) {
@@ -7705,13 +7712,13 @@ function PageEvaluate({
                   type="button"
                   onClick={onGoFields}
                   style={{
-                    fontSize: 13,
-                    fontFamily: F.sans,
-                    color: C.accent,
-                    background: "transparent",
-                    border: `1px solid ${C.accentBorder}`,
-                    borderRadius: 6,
-                    padding: "4px 10px",
+                    ...actionBtn({
+                      border: `1px solid ${C.accentBorder}`,
+                      borderRadius: 6,
+                      padding: "4px 10px",
+                      background: "transparent",
+                      color: C.accent,
+                    }),
                     cursor: "pointer",
                   }}
                 >
@@ -9670,15 +9677,15 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
           type="button"
           onClick={copy}
           style={{
-            background: "none",
-            border: `1px solid ${C.border}`,
-            borderRadius: 4,
-            cursor: "pointer",
-            padding: "2px 8px",
-            fontSize: 10,
-            fontFamily: F.sans,
-            color: copied ? "#16a34a" : C.textMuted,
-            transition: "all 0.12s",
+            ...actionBtn({
+              background: "none",
+              border: `1px solid ${C.border}`,
+              borderRadius: 4,
+              padding: "2px 8px",
+              fontSize: 10,
+              color: copied ? "#16a34a" : C.textMuted,
+              transition: "all 0.12s",
+            }),
             flexShrink: 0,
           }}
           onMouseEnter={(e) => {
@@ -12596,17 +12603,17 @@ function ActionBtn({
       title={navCollapsed ? title : undefined}
       onClick={onClick}
       style={{
+        ...actionBtn({
+          padding: navCollapsed ? "8px 0" : "9px 10px",
+          background,
+          border: `1.5px solid ${border}`,
+        }),
         display: "flex",
         alignItems: "center",
         gap: navCollapsed ? 0 : 9,
-        padding: navCollapsed ? "8px 0" : "9px 10px",
         justifyContent: navCollapsed ? "center" : "flex-start",
         width: "100%",
-        borderRadius: 7,
         cursor: "pointer",
-        background,
-        border: `1.5px solid ${border}`,
-        transition: "all 0.15s",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = hoverBackground;
@@ -13704,19 +13711,18 @@ function Explorer({ onBack }: ExplorerProps) {
               type="button"
               onClick={() => setShowReviewerPreview(false)}
               style={{
+                ...actionBtn({
+                  padding: "5px 12px",
+                  borderRadius: 6,
+                  border: "1px solid #334155",
+                  background: "#1e293b",
+                  color: "#94a3b8",
+                  fontSize: 12,
+                }),
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "5px 12px",
-                borderRadius: 6,
-                border: "1px solid #334155",
-                background: "#1e293b",
-                color: "#94a3b8",
                 cursor: "pointer",
-                fontSize: 12,
-                fontFamily: F.sans,
-                fontWeight: 600,
-                transition: "all 0.15s",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "#334155";
@@ -13857,15 +13863,19 @@ function Landing({ onLoad }: LandingProps) {
               onClick={go}
               disabled={loading}
               style={{
+                ...actionBtn({
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "8px 16px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  background: C.accent,
+                  color: "#fff",
+                  transition: "all 0.12s",
+                }),
                 background: C.accent,
                 color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                padding: "8px 16px",
                 cursor: "pointer",
-                fontSize: 14,
-                fontWeight: 600,
-                fontFamily: F.sans,
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
@@ -13936,16 +13946,19 @@ function Landing({ onLoad }: LandingProps) {
             onClick={() => onLoad(APP_PAGE.EXPLORER)}
             disabled={loading}
             style={{
+              ...actionBtn({
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: 8,
+                background: "transparent",
+                color: C.textMid,
+                fontWeight: 400,
+                transition: "background 0.13s, color 0.13s",
+              }),
               background: "transparent",
-              border: `1px solid ${C.border}`,
-              borderRadius: 8,
-              padding: 8,
               cursor: "pointer",
               width: "100%",
-              fontSize: 13,
               color: C.textMid,
-              fontFamily: F.sans,
-              transition: "background 0.13s, color 0.13s",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = C.surfaceAlt;
@@ -13963,16 +13976,19 @@ function Landing({ onLoad }: LandingProps) {
             onClick={() => onLoad(APP_PAGE.REVIEWER)}
             disabled={loading}
             style={{
+              ...actionBtn({
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: 8,
+                background: "transparent",
+                color: C.textMid,
+                fontWeight: 400,
+                transition: "background 0.13s, color 0.13s",
+              }),
               background: "transparent",
-              border: `1px solid ${C.border}`,
-              borderRadius: 8,
-              padding: 8,
               cursor: "pointer",
               width: "100%",
-              fontSize: 13,
               color: C.textMid,
-              fontFamily: F.sans,
-              transition: "background 0.13s, color 0.13s",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = C.surfaceAlt;
@@ -14667,21 +14683,20 @@ function RvStepCard({
               onClick={() => onRun(step.key, params)}
               disabled={running}
               style={{
+                ...actionBtn({
+                  padding: "9px 14px",
+                  borderRadius: 8,
+                  border: done ? "1.5px solid #bbf7d0" : "none",
+                  background: running ? `${step.color}20` : done ? "#f0fdf4" : step.color,
+                  color: running ? step.color : done ? "#16a34a" : "#fff",
+                  fontWeight: 600,
+                }),
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 7,
                 width: "100%",
-                padding: "9px 14px",
-                borderRadius: 8,
-                background: running ? `${step.color}20` : done ? "#f0fdf4" : step.color,
-                border: done ? "1.5px solid #bbf7d0" : "none",
-                color: running ? step.color : done ? "#16a34a" : "#fff",
-                fontSize: 13,
-                fontWeight: 600,
-                fontFamily: F.sans,
                 cursor: running ? "wait" : "pointer",
-                transition: "all 0.15s",
                 marginBottom: log ? 12 : 0,
                 boxShadow: !done && !running ? `0 2px 10px ${step.color}35` : "none",
               }}
