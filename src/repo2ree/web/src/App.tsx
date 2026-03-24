@@ -10519,6 +10519,24 @@ function PanelFieldRow({
   );
 }
 
+interface OverviewPanelFieldProps {
+  label: string;
+  value: string | null | undefined;
+  emptyText?: string;
+  filled: boolean;
+  onClick?: () => void;
+}
+
+interface OverviewPanelProps {
+  color: string;
+  label: string;
+  fields: OverviewPanelFieldProps[];
+  badge?: string;
+  footerLabel: string;
+  onFooterClick: () => void;
+  headerExtra?: React.ReactNode;
+}
+
 interface PageOverviewProps {
   ree: Ree;
   onReeChange: (ree: Ree) => void;
@@ -10559,6 +10577,101 @@ function PageOverview({
     },
     ...extra,
   });
+
+  // Define OverviewPanel component here so it has access to panel()
+  const OverviewPanel = React.forwardRef<HTMLDivElement, OverviewPanelProps>(
+    ({ color, label, fields, badge, footerLabel, onFooterClick, headerExtra }, ref) => {
+      const getLighterColor = (hex: string) => hex + "99";
+      const getDarkerInkColor = (hex: string) => {
+        const colorMap: Record<string, string> = {
+          "#f59e0b": "#92400e",
+          "#0891b2": "#164e63",
+          "#16a34a": "#15803d",
+          "#e4572e": "#9a3412",
+          "#059669": "#065f46",
+        };
+        return colorMap[hex] || hex;
+      };
+      const getBackgroundColor = (hex: string) => {
+        const bgMap: Record<string, string> = {
+          "#f59e0b": "#fffbeb",
+          "#0891b2": "#ecfeff",
+          "#16a34a": "#f0fdf4",
+          "#e4572e": "#fff7f5",
+          "#059669": "#f0fdf4",
+        };
+        return bgMap[hex] || "#f5f3ff";
+      };
+
+      const dotGlow = getLighterColor(color);
+      const labelColor = getDarkerInkColor(color);
+      const labelBg = getBackgroundColor(color);
+      const labelBorderColor = color + "25";
+
+      return (
+        <div ref={ref} style={panel({ overflow: "hidden" })}>
+          <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
+            <div
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: color,
+                boxShadow: `0 0 5px ${dotGlow}`,
+              }}
+            />
+            <span style={S_PANEL_HEADER_LABEL}>{label}</span>
+            {badge && (
+              <span
+                style={{
+                  ...S_OVERVIEW_PANEL_BADGE_BASE,
+                  color,
+                  background: labelBg,
+                  border: `1px solid ${color}40`,
+                }}
+              >
+                {badge}
+              </span>
+            )}
+            {headerExtra && <div style={{ marginLeft: "auto" }}>{headerExtra}</div>}
+          </div>
+          <div style={S_OVERVIEW_PANEL_FIELDS}>
+            {fields.map((field, idx) => (
+              <PanelFieldRow
+                key={field.label}
+                label={field.label}
+                value={field.value}
+                emptyText={field.emptyText}
+                filled={field.filled}
+                dotColor={color}
+                dotGlow={dotGlow}
+                labelColor={labelColor}
+                labelBg={labelBg}
+                labelBorderColor={labelBorderColor}
+                onClick={field.onClick}
+                isLast={idx === fields.length - 1}
+              />
+            ))}
+          </div>
+          <div style={S_OVERVIEW_PANEL_FOOTER}>
+            <button
+              type="button"
+              onClick={onFooterClick}
+              style={{
+                ...S_OVERVIEW_PANEL_BUTTON_BASE,
+                color: labelColor,
+                background: labelBg,
+                border: `1px solid ${color}40`,
+              }}
+              {...hoverBrightness(95)}
+            >
+              → {footerLabel}
+            </button>
+          </div>
+        </div>
+      );
+    },
+  );
 
   // Cable overlay refs
   const cableContainerRef = useRef<HTMLDivElement>(null);
@@ -10782,19 +10895,45 @@ function PageOverview({
           }}
         >
           {/* Source panel */}
-          <div ref={sourceRef} style={panel({ overflow: "hidden" })}>
-            <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
-              <div
-                style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: "50%",
-                  background: sourceIncluded ? "#f59e0b" : "#d1d5db",
-                  boxShadow: sourceIncluded ? "0 0 5px #f59e0b99" : "none",
-                  transition: "all 0.2s",
-                }}
-              />
-              <span style={S_PANEL_HEADER_LABEL}>Source</span>
+          <OverviewPanel
+            ref={sourceRef}
+            color="#f59e0b"
+            label="Source"
+            fields={[
+              {
+                label: "Origin URL",
+                value: ree.origin_url || null,
+                filled: !!ree.origin_url,
+                onClick: () => onGoField?.("origin_url"),
+              },
+              {
+                label: "Origin Provisioning Status",
+                value: sourceProvisionStatus,
+                filled: !!ree._sourceAcquiredBy,
+                onClick: () => onGoField?.("_sourceAcquiredBy"),
+              },
+              {
+                label: "Origin Type",
+                value: ree.source_type || null,
+                filled: !!ree.source_type,
+                onClick: () => onGoField?.("source_type"),
+              },
+              {
+                label: "Files",
+                value:
+                  ree._sourceAvailable
+                    ? fileCount > 0
+                      ? `${fileCount} file${fileCount !== 1 ? "s" : ""} · ${fmtBytes(totalBytes)}`
+                      : "downloaded"
+                    : null,
+                filled: !!ree._sourceAvailable,
+                emptyText: "not downloaded",
+                onClick: () => onNavigate?.(PAGE.SOURCE),
+              },
+            ]}
+            footerLabel="Go to Source"
+            onFooterClick={() => onNavigate?.(PAGE.SOURCE)}
+            headerExtra={
               <div
                 style={{
                   ...S_OVERVIEW_PANEL_STATUS_ROW_BASE,
@@ -10816,77 +10955,8 @@ function PageOverview({
                   onChange={toggleSource}
                 />
               </div>
-            </div>
-            <div style={S_OVERVIEW_PANEL_FIELDS}>
-              <PanelFieldRow
-                label="Origin URL"
-                value={ree.origin_url || null}
-                filled={!!ree.origin_url}
-                dotColor="#f59e0b"
-                dotGlow="#f59e0b99"
-                labelColor="#92400e"
-                labelBg="#fffbeb"
-                labelBorderColor="#f59e0b25"
-                onClick={() => onGoField?.("origin_url")}
-              />
-              <PanelFieldRow
-                label="Origin Provisioning Status"
-                value={sourceProvisionStatus}
-                filled={!!ree._sourceAcquiredBy}
-                dotColor="#f59e0b"
-                dotGlow="#f59e0b99"
-                labelColor="#92400e"
-                labelBg="#fffbeb"
-                labelBorderColor="#f59e0b25"
-                onClick={() => onGoField?.("_sourceAcquiredBy")}
-              />
-              <PanelFieldRow
-                label="Origin Type"
-                value={ree.source_type || null}
-                filled={!!ree.source_type}
-                dotColor="#f59e0b"
-                dotGlow="#f59e0b99"
-                labelColor="#92400e"
-                labelBg="#fffbeb"
-                labelBorderColor="#f59e0b25"
-                onClick={() => onGoField?.("source_type")}
-              />
-              <PanelFieldRow
-                label="Files"
-                value={
-                  ree._sourceAvailable
-                    ? fileCount > 0
-                      ? `${fileCount} file${fileCount !== 1 ? "s" : ""} · ${fmtBytes(totalBytes)}`
-                      : "downloaded"
-                    : null
-                }
-                filled={!!ree._sourceAvailable}
-                dotColor="#f59e0b"
-                dotGlow="#f59e0b99"
-                labelColor="#92400e"
-                labelBg="#fffbeb"
-                labelBorderColor="#f59e0b25"
-                emptyText="not downloaded"
-                isLast
-                onClick={() => onNavigate?.(PAGE.SOURCE)}
-              />
-            </div>
-            <div style={S_OVERVIEW_PANEL_FOOTER}>
-              <button
-                type="button"
-                onClick={() => onNavigate?.(PAGE.SOURCE)}
-                style={{
-                  ...S_OVERVIEW_PANEL_BUTTON_BASE,
-                  color: "#92400e",
-                  background: "#fffbeb",
-                  border: "1px solid #f59e0b40",
-                }}
-                {...hoverBrightness(95)}
-              >
-                → Go to Source
-              </button>
-            </div>
-          </div>
+            }
+          />
 
           {/* Metadata panel */}
           <div ref={leftPanelRef} style={panel({ overflow: "hidden" })}>
@@ -10962,19 +11032,39 @@ function PageOverview({
           </div>
 
           {/* Runtime panel */}
-          <div ref={runtimeRef} style={panel({ overflow: "hidden" })}>
-            <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
-              <div
-                style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: "50%",
-                  background: runtimeIncluded ? "#0891b2" : "#d1d5db",
-                  boxShadow: runtimeIncluded ? "0 0 5px #0891b299" : "none",
-                  transition: "all 0.2s",
-                }}
-              />
-              <span style={S_PANEL_HEADER_LABEL}>Runtime</span>
+          <OverviewPanel
+            ref={runtimeRef}
+            color="#0891b2"
+            label="Runtime"
+            fields={[
+              {
+                label: "Runtime",
+                value: runtimeVal || null,
+                filled: !!runtimeVal,
+                emptyText: "not set",
+                onClick: () => onNavigate?.(PAGE.BUILD),
+              },
+              ...(runtimeSizeStr
+                ? [
+                    {
+                      label: "Size",
+                      value: runtimeSizeStr,
+                      filled: !!runtimeSizeStr,
+                      onClick: () => onNavigate?.(PAGE.BUILD),
+                    },
+                  ]
+                : []),
+              {
+                label: "Build Script",
+                value: ree.build_runtime_script || null,
+                filled: !!ree.build_runtime_script,
+                emptyText: "not set",
+                onClick: () => onGoField?.("build_runtime_script"),
+              },
+            ]}
+            footerLabel="Go to Build Runtime"
+            onFooterClick={() => onNavigate?.(PAGE.BUILD)}
+            headerExtra={
               <div
                 style={{
                   ...S_OVERVIEW_PANEL_STATUS_ROW_BASE,
@@ -10996,152 +11086,48 @@ function PageOverview({
                   onChange={toggleRuntime}
                 />
               </div>
-            </div>
-            <div style={S_OVERVIEW_PANEL_FIELDS}>
-              <PanelFieldRow
-                label="Runtime"
-                value={runtimeVal || null}
-                filled={!!runtimeVal}
-                dotColor="#0891b2"
-                dotGlow="#0891b299"
-                labelColor="#164e63"
-                labelBg="#ecfeff"
-                labelBorderColor="#0891b225"
-                emptyText="not set"
-                onClick={() => onNavigate?.(PAGE.BUILD)}
-              />
-              {runtimeSizeStr && (
-                <PanelFieldRow
-                  label="Size"
-                  value={runtimeSizeStr}
-                  filled={!!runtimeSizeStr}
-                  dotColor="#0891b2"
-                  dotGlow="#0891b299"
-                  labelColor="#164e63"
-                  labelBg="#ecfeff"
-                  labelBorderColor="#0891b225"
-                  onClick={() => onNavigate?.(PAGE.BUILD)}
-                />
-              )}
-              <PanelFieldRow
-                label="Build Script"
-                value={ree.build_runtime_script || null}
-                filled={!!ree.build_runtime_script}
-                dotColor="#0891b2"
-                dotGlow="#0891b299"
-                labelColor="#164e63"
-                labelBg="#ecfeff"
-                labelBorderColor="#0891b225"
-                emptyText="not set"
-                isLast
-                onClick={() => onGoField?.("build_runtime_script")}
-              />
-            </div>
-            {/* Go to Build Runtime button */}
-            <div style={S_OVERVIEW_PANEL_FOOTER}>
-              <button
-                type="button"
-                onClick={() => onNavigate?.(PAGE.BUILD)}
-                style={{
-                  ...S_OVERVIEW_PANEL_BUTTON_BASE,
-                  color: "#0891b2",
-                  background: "#ecfeff",
-                  border: "1px solid #a5f3fc",
-                }}
-                {...hoverBrightness(95)}
-              >
-                → Go to Build Runtime
-              </button>
-            </div>
-          </div>
+            }
+          />
 
           {/* SBOM panel */}
           {(() => {
             const earned = !!badges?.sbom;
             const color = "#16a34a";
+            const sbomFields: OverviewPanelFieldProps[] = [
+              {
+                label: "SBOM Path",
+                value: sbomVal || null,
+                filled: !!sbomVal,
+                emptyText: "not set",
+                onClick: () => onNavigate?.(PAGE.SBOM),
+              },
+            ];
+            if (sbomMeta?.fmt) {
+              sbomFields.push({
+                label: "Format",
+                value: sbomMeta.fmt,
+                filled: true,
+                onClick: () => onNavigate?.(PAGE.SBOM),
+              });
+            }
+            if (sbomMeta?.pkgCount != null) {
+              sbomFields.push({
+                label: "Packages",
+                value: `${sbomMeta.pkgCount} pkg${sbomMeta.pkgCount !== 1 ? "s" : ""}`,
+                filled: true,
+                onClick: () => onNavigate?.(PAGE.SBOM),
+              });
+            }
             return (
-              <div ref={sbomRef} style={panel({ overflow: "hidden" })}>
-                <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
-                  <div
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: sbomVal ? color : "#d1d5db",
-                      boxShadow: sbomVal ? `0 0 5px ${color}99` : "none",
-                    }}
-                  />
-                  <span style={S_PANEL_HEADER_LABEL}>SBOM</span>
-                  {earned && (
-                    <span
-                      style={{
-                        ...S_OVERVIEW_PANEL_BADGE_BASE,
-                        color,
-                        background: "#f0fdf4",
-                        border: `1px solid ${color}40`,
-                      }}
-                    >
-                      OK
-                    </span>
-                  )}
-                </div>
-                <div style={S_OVERVIEW_PANEL_FIELDS}>
-                  <PanelFieldRow
-                    label="SBOM Path"
-                    value={sbomVal || null}
-                    filled={!!sbomVal}
-                    dotColor="#16a34a"
-                    dotGlow="#16a34a99"
-                    labelColor="#15803d"
-                    labelBg="#f0fdf4"
-                    labelBorderColor="#16a34a25"
-                    emptyText="not set"
-                    onClick={() => onNavigate?.(PAGE.SBOM)}
-                  />
-                  {sbomMeta?.fmt && (
-                    <PanelFieldRow
-                      label="Format"
-                      value={sbomMeta.fmt}
-                      filled
-                      dotColor="#16a34a"
-                      dotGlow="#16a34a99"
-                      labelColor="#15803d"
-                      labelBg="#f0fdf4"
-                      labelBorderColor="#16a34a25"
-                      onClick={() => onNavigate?.(PAGE.SBOM)}
-                    />
-                  )}
-                  {sbomMeta?.pkgCount != null && (
-                    <PanelFieldRow
-                      label="Packages"
-                      value={`${sbomMeta.pkgCount} pkg${sbomMeta.pkgCount !== 1 ? "s" : ""}`}
-                      filled
-                      dotColor="#16a34a"
-                      dotGlow="#16a34a99"
-                      labelColor="#15803d"
-                      labelBg="#f0fdf4"
-                      labelBorderColor="#16a34a25"
-                      isLast
-                      onClick={() => onNavigate?.(PAGE.SBOM)}
-                    />
-                  )}
-                </div>
-                <div style={S_OVERVIEW_PANEL_FOOTER}>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate?.(PAGE.SBOM)}
-                    style={{
-                      ...S_OVERVIEW_PANEL_BUTTON_BASE,
-                      color,
-                      background: "#f0fdf4",
-                      border: `1px solid ${color}40`,
-                    }}
-                    {...hoverBrightness(95)}
-                  >
-                    → Generate SBOM
-                  </button>
-                </div>
-              </div>
+              <OverviewPanel
+                ref={sbomRef}
+                color={color}
+                label="SBOM"
+                badge={earned ? "OK" : undefined}
+                fields={sbomFields}
+                footerLabel="Generate SBOM"
+                onFooterClick={() => onNavigate?.(PAGE.SBOM)}
+              />
             );
           })()}
         </div>
@@ -11997,66 +11983,29 @@ function PageOverview({
           })()}
 
           {/* Archival & DOIs — Zenodo + Dataverse only */}
-          <div ref={archiveRef} style={panel({ overflow: "hidden" })}>
-            <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#059669" }} />
-              <span style={S_PANEL_HEADER_LABEL}>Archival & DOIs</span>
-            </div>
-            {[
+          <OverviewPanel
+            ref={archiveRef}
+            color="#059669"
+            label="Archival & DOIs"
+            fields={[
               {
                 label: "Zenodo",
-                field: "zenodo_doi" as keyof Ree,
-                dotColor: "#3b8fd4",
-                dotGlow: "#3b8fd499",
-                labelColor: "#1e4d7a",
-                labelBg: "#eff6ff",
-                labelBorderColor: "#3b8fd425",
+                value: ree.zenodo_doi ? (ree.zenodo_doi as string) : null,
+                filled: !!ree.zenodo_doi && (ree.zenodo_doi as string).trim().length > 0,
+                emptyText: "unregistered",
+                onClick: () => onNavigate?.(PAGE.ARCHIVE),
               },
               {
                 label: "Dataverse",
-                field: "dataverse_doi" as keyof Ree,
-                dotColor: "#8b6fd4",
-                dotGlow: "#8b6fd499",
-                labelColor: "#4c1d95",
-                labelBg: "#f5f3ff",
-                labelBorderColor: "#8b6fd425",
+                value: ree.dataverse_doi ? (ree.dataverse_doi as string) : null,
+                filled: !!ree.dataverse_doi && (ree.dataverse_doi as string).trim().length > 0,
+                emptyText: "unregistered",
+                onClick: () => onNavigate?.(PAGE.ARCHIVE),
               },
-            ].map((r, i) => {
-              const val = ree[r.field] as string | undefined;
-              const filled = !!(val && val.trim().length > 0);
-              return (
-                <PanelFieldRow
-                  key={r.field}
-                  label={r.label}
-                  value={filled ? val : null}
-                  filled={filled}
-                  dotColor={r.dotColor}
-                  dotGlow={r.dotGlow}
-                  labelColor={r.labelColor}
-                  labelBg={r.labelBg}
-                  labelBorderColor={r.labelBorderColor}
-                  emptyText="unregistered"
-                  isLast={i === 1}
-                  onClick={() => onNavigate?.(PAGE.ARCHIVE)}
-                />
-              );
-            })}
-            <div style={S_OVERVIEW_PANEL_FOOTER}>
-              <button
-                type="button"
-                onClick={() => onNavigate?.(PAGE.ARCHIVE)}
-                style={{
-                  ...S_OVERVIEW_PANEL_BUTTON_BASE,
-                  color: "#059669",
-                  background: "#f0fdf4",
-                  border: "1px solid #6ee7b740",
-                }}
-                {...hoverBrightness(95)}
-              >
-                → Go to Archival & DOIs
-              </button>
-            </div>
-          </div>
+            ]}
+            footerLabel="Go to Archival & DOIs"
+            onFooterClick={() => onNavigate?.(PAGE.ARCHIVE)}
+          />
 
           {/* Test Activation panel */}
           {(() => {
