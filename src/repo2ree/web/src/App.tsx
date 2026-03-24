@@ -13,91 +13,6 @@ interface Level {
   fix: string | null;
 }
 
-interface ServiceParam {
-  key: string;
-  label: string;
-  type: "bool" | "select" | "text";
-  default: boolean | string;
-  hint: string;
-  options?: string[];
-}
-
-interface ServiceRequire {
-  field: keyof Ree;
-  label: string;
-}
-
-interface ServiceBadge {
-  label: string;
-  color: string;
-  bg: string;
-}
-
-interface Service {
-  key: string;
-  label: string;
-  IC: (s?: number) => JSX.Element;
-  color: string;
-  badge: ServiceBadge;
-  desc: string;
-  requires: ServiceRequire[];
-  params: ServiceParam[];
-}
-
-interface ToastState {
-  message: string;
-  type: "success" | "error" | "info";
-}
-
-type StepState = "idle" | "loading" | "done";
-
-interface CablePoint {
-  id: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-}
-
-interface Cable extends CablePoint {
-  color: string;
-  shadow: string;
-  connected: boolean;
-}
-
-interface CableGeo {
-  cables: Cable[];
-  decoCables: CablePoint[];
-  w: number;
-  h: number;
-}
-
-interface Ree {
-  name: string;
-  swhid: string;
-  origin_url: string;
-  source_type: "" | "git" | "svn" | "hg" | "cvs" | "bzr" | "tarball";
-  detected_dependencies?: string;
-  repro_level?: string;
-  runtime: string;
-  build_runtime_script: string;
-  sbom: string;
-  activation_script: string;
-  hardware_description: Record<string, string>;
-  zenodo_doi?: string;
-  dataverse_doi?: string;
-  _evalLevel?: number;
-  _sealedAt?: string;
-  _sealHash?: string;
-  _sourceIncluded?: boolean;
-  _sourceAvailable?: boolean;
-  _sourceAcquiredBy?: "download" | "upload";
-  _runtimeIncluded?: boolean;
-  _uploadedArchive?: string;
-  _sourceSnapshotArchive?: string;
-  _sourceSnapshotCapturedAt?: string;
-}
-
 interface FileTreeNode {
   id: string;
   name: string;
@@ -155,6 +70,88 @@ type Timestamps = Record<string, string>;
 type ActionStates = Record<string, "loading" | "done">;
 type ServiceLogs = Record<string, LogEntry>;
 type ServiceParams = Record<string, Record<string, unknown>>;
+
+interface Ree {
+  name: string;
+  origin_url: string;
+  source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball";
+  runtime: string;
+  build_runtime_script: string;
+  activation_script: string;
+  sbom: string;
+  swhid: string;
+  zenodo_doi?: string;
+  dataverse_doi?: string;
+  repro_level?: string;
+  detected_dependencies?: string;
+  hardware_description: Record<string, string>;
+  _evalLevel?: number;
+  _sealedAt?: string;
+  _sealHash?: string;
+  _sourceAvailable?: boolean;
+  _sourceIncluded?: boolean;
+  _sourceAcquiredBy?: "download" | "upload" | "";
+  _uploadedArchive?: string;
+  _sourceSnapshotArchive?: string;
+  _sourceSnapshotCapturedAt?: string;
+  _runtimeIncluded?: boolean;
+}
+
+interface ServiceBadge {
+  label: string;
+  color: string;
+  bg: string;
+}
+
+interface ServiceRequire {
+  field: keyof Ree;
+  label: string;
+}
+
+interface ServiceParam {
+  key: string;
+  label: string;
+  type: "bool" | "select" | "text";
+  default: string | boolean;
+  hint?: string;
+  options?: string[];
+}
+
+interface Service {
+  key: string;
+  label: string;
+  IC: (size?: number) => JSX.Element;
+  color: string;
+  badge: ServiceBadge;
+  desc: string;
+  requires: ServiceRequire[];
+  params: ServiceParam[];
+}
+
+interface Cable {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: string;
+  shadow: string;
+  connected: boolean;
+}
+
+interface CableGeo {
+  cables: Cable[];
+  decoCables: Array<{ id: string; x1: number; y1: number; x2: number; y2: number }>;
+  w: number;
+  h: number;
+}
+
+interface ToastState {
+  message: string;
+  type: "info" | "success" | "error";
+}
+
+type StepState = "idle" | "loading" | "done";
 
 // ── ZIP builder ────────────────────────────────────────────────────────────────
 function _zipU32(n: number): number[] {
@@ -1817,9 +1814,8 @@ function ScriptPanel({
         ]
       : []),
   ];
-
-  const tabAccent: Record<ScriptPanelMode, string> = { view: "#16a34a", write: "#7c3aed" };
   const tabBg: Record<ScriptPanelMode, string> = { view: "#f0fdf4", write: "#f5f3ff" };
+  const tabAccent: Record<ScriptPanelMode, string> = { view: "#16a34a", write: "#7c3aed" };
 
   return (
     <div
@@ -4463,33 +4459,29 @@ function PageSourceRepoEntry({
         : "Download source files locally";
 
   return (
-    <div style={{ display: "flex", height: "100%", minHeight: 0, overflow: "hidden" }}>
-      {/* Scrollable left — fields */}
-      <div style={{ flex: 1, overflowY: "auto", padding: 28, minWidth: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 18,
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-                fontFamily: F.sans,
-                color: C.textMuted,
-              }}
-            >
-              Fields
-            </h2>
-          </div>
-        </div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+      }}
+    >
+      <WorkflowPageHeader
+        color="#f59e0b"
+        icon={Ic.globe(18)}
+        title="Source Repo"
+        subtitle="Set origin, source type, and populate source files into the workspace"
+        tips={[
+          "Bring source code into the local workspace before any downstream step.",
+          "Choose one acquisition path (download from origin or upload archive) and keep it consistent.",
+        ]}
+      />
 
+      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+        {/* Scrollable left — fields */}
+        <div style={{ flex: 1, overflowY: "auto", padding: 28, minWidth: 0 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Source — first, everything depends on it */}
           <FieldSection
@@ -4804,15 +4796,12 @@ function PageSourceRepoEntry({
         </div>
       </div>
 
-      <FieldTipsSidebar
-        tipFields={["origin_url", "source_type", "_sourceAcquiredBy", "_sourceAvailable"]}
-        focusedField={focusedField}
-        onClear={() => setFocusedField(null)}
-        generalTips={[
-          "Bring source code into the local workspace before any downstream step.",
-          "Choose one acquisition path (download from origin or upload archive) and keep it consistent.",
-        ]}
-      />
+        <FieldTipsSidebar
+          tipFields={["origin_url", "source_type", "_sourceAcquiredBy", "_sourceAvailable"]}
+          focusedField={focusedField}
+          onClear={() => setFocusedField(null)}
+        />
+      </div>
     </div>
   );
 }
@@ -4854,31 +4843,26 @@ function PageMetadataEntry({
   const hardwareFilled = Object.values(ree.hardware_description).filter((v) => v.trim?.()).length;
 
   return (
-    <div style={{ display: "flex", height: "100%", minHeight: 0, overflow: "hidden" }}>
-      <div style={{ flex: 1, overflowY: "auto", padding: 28, minWidth: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 18,
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-                fontFamily: F.sans,
-                color: C.textMuted,
-              }}
-            >
-              Fields
-            </h2>
-          </div>
-          {locked ? (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+      }}
+    >
+      <WorkflowPageHeader
+        color="#22c55e"
+        icon={Ic.grid(18)}
+        title="Provide Metadata"
+        subtitle="Capture project identity and hardware context needed for reproducibility"
+        tips={[
+          "Capture essential project and hardware context for reproducibility.",
+          "Use stable, descriptive values so builds can be interpreted and repeated later.",
+        ]}
+        rightAction={
+          locked ? (
             <button
               type="button"
               onClick={() => setLocked(false)}
@@ -4900,10 +4884,13 @@ function PageMetadataEntry({
             >
               {Ic.unlock(13)} Unlock fields
             </button>
-          ) : null}
-        </div>
+          ) : null
+        }
+      />
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: 28, minWidth: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <FieldSection
             title="Identity"
             icon={Ic.package()}
@@ -5045,15 +5032,12 @@ function PageMetadataEntry({
         </div>
       </div>
 
-      <FieldTipsSidebar
-        tipFields={["name", "hardware_description"]}
-        focusedField={focusedField}
-        onClear={() => setFocusedField(null)}
-        generalTips={[
-          "Capture essential project and hardware context for reproducibility.",
-          "Use stable, descriptive values so builds can be interpreted and repeated later.",
-        ]}
-      />
+        <FieldTipsSidebar
+          tipFields={["name", "hardware_description"]}
+          focusedField={focusedField}
+          onClear={() => setFocusedField(null)}
+        />
+      </div>
     </div>
   );
 }
@@ -5156,31 +5140,35 @@ interface ServicePageProps {
   setParam: (key: string, value: unknown) => void;
 }
 
-interface ServicePageHeaderProps {
-  svc: Service;
+interface WorkflowPageHeaderProps {
+  color: string;
   icon: JSX.Element;
   title: string;
   subtitle: string;
-  runDone: boolean;
-  badge: ServiceBadge | null;
+  tips?: string[];
+  runDone?: boolean;
+  badge?: ServiceBadge | null;
   ts?: string;
   timestampPrefix?: string;
-  missingCount: number;
-  onGoFields: () => void;
+  missingCount?: number;
+  onGoFields?: () => void;
+  rightAction?: React.ReactNode;
 }
 
-function ServicePageHeader({
-  svc,
+function WorkflowPageHeader({
+  color,
   icon,
   title,
   subtitle,
+  tips = [],
   runDone,
   badge,
   ts,
   timestampPrefix = "Last run",
-  missingCount,
+  missingCount = 0,
   onGoFields,
-}: ServicePageHeaderProps) {
+  rightAction,
+}: WorkflowPageHeaderProps) {
   return (
     <div
       style={{
@@ -5199,8 +5187,8 @@ function ServicePageHeader({
           width: 36,
           height: 36,
           borderRadius: 10,
-          background: `${svc.color}18`,
-          color: svc.color,
+          background: `${color}18`,
+          color,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -5232,7 +5220,7 @@ function ServicePageHeader({
               {Ic.check(10)} {badge.label}
             </span>
           )}
-          {missingCount > 0 && (
+          {missingCount > 0 && onGoFields && (
             <button
               type="button"
               style={{
@@ -5254,7 +5242,31 @@ function ServicePageHeader({
           )}
         </div>
         <div style={{ fontSize: 12, color: C.textMuted, marginTop: 1 }}>{subtitle}</div>
+        {tips.length > 0 && (
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+            {tips.map((tip) => (
+              <div
+                key={tip}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 6,
+                  fontSize: 11,
+                  color: C.textMid,
+                  lineHeight: 1.4,
+                  fontFamily: F.sans,
+                }}
+              >
+                <span style={{ color, display: "flex", marginTop: 1, flexShrink: 0 }}>
+                  {Ic.info(10)}
+                </span>
+                <span>{tip}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+      {rightAction}
       {runDone && ts && (
         <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono, flexShrink: 0 }}>
           {timestampPrefix}{" "}
@@ -5372,11 +5384,12 @@ function PageGenerateSBOM({
       }}
     >
       {/* Top strip */}
-      <ServicePageHeader
-        svc={svc}
+      <WorkflowPageHeader
+        color={svc.color}
         icon={Ic.package(18)}
         title="Generate SBOM"
         subtitle="Generate a machine-readable SBOM from the runtime image/tarball"
+        tips={descToTwoTierTips(svc.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -5752,7 +5765,6 @@ function PageGenerateSBOM({
           onFocusField={setFocusedField}
           onClear={() => setFocusedField(null)}
           emptyMessage="Choose a field to see examples, format rules, and commands."
-          generalTips={descToTwoTierTips(svc.desc)}
         />
       </div>
     </div>
@@ -5793,11 +5805,12 @@ function PageTestActivation({
       }}
     >
       {/* Top strip */}
-      <ServicePageHeader
-        svc={svc}
+      <WorkflowPageHeader
+        color={svc.color}
         icon={Ic.play(18)}
         title={svc?.label || "Test activation"}
         subtitle="Run the activation test script to verify the runtime loads and activates correctly"
+        tips={descToTwoTierTips(svc.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -5924,7 +5937,6 @@ function PageTestActivation({
           onFocusField={setFocusedField}
           onClear={() => setFocusedField(null)}
           emptyMessage="Choose a field to see examples, format rules, and commands."
-          generalTips={descToTwoTierTips(svc.desc)}
         />
       </div>
     </div>
@@ -6493,92 +6505,18 @@ function PageEvaluate({
         animation: "fadeUp 0.2s ease",
       }}
     >
-      {/* ══ Header strip ══ */}
-      <div
-        style={{
-          flexShrink: 0,
-          padding: "16px 28px 14px",
-          borderBottom: `1px solid ${C.border}`,
-          background: "rgba(255,255,255,0.7)",
-          backdropFilter: "blur(8px)",
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-        }}
-      >
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: `${svc.color}18`,
-            color: svc.color,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          {IC(18)}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 16, fontWeight: 700, color: C.text, letterSpacing: -0.2 }}>
-              {svc.label}
-            </span>
-            {runDone && badge && (
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: badge.color,
-                  background: badge.bg,
-                  border: `1px solid ${badge.color}40`,
-                  borderRadius: 99,
-                  padding: "2px 9px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                {Ic.check(10)} {badge.label}
-              </span>
-            )}
-            {missing.length > 0 && (
-              <button
-                type="button"
-                onClick={onGoFields}
-                style={{
-                  fontSize: 11,
-                  color: "#dc2626",
-                  background: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  borderRadius: 99,
-                  padding: "2px 9px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  cursor: "pointer",
-                }}
-              >
-                {Ic.info(10)} {missing.length} missing field{missing.length > 1 ? "s" : ""} ← fix
-              </button>
-            )}
-          </div>
-          <div style={{ fontSize: 12, color: C.textMuted, marginTop: 1 }}>{svc.desc}</div>
-        </div>
-        {runDone && ts && (
-          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono, flexShrink: 0 }}>
-            Last run{" "}
-            {new Date(ts).toLocaleString([], {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        )}
-      </div>
+      <WorkflowPageHeader
+        color={svc.color}
+        icon={IC(18)}
+        title={svc.label}
+        subtitle={svc.desc}
+        tips={descToTwoTierTips(svc.desc)}
+        runDone={runDone}
+        badge={badge}
+        ts={ts}
+        missingCount={missing.length}
+        onGoFields={onGoFields}
+      />
 
       {/* ══ Body: left controls + log | right tips ══ */}
       <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
@@ -7062,7 +7000,6 @@ function PageEvaluate({
           onFocusField={setFocusedField}
           onClear={() => setFocusedField(null)}
           emptyMessage="Choose either detected dependencies or repro level to see Evaluate-specific tips."
-          generalTips={descToTwoTierTips(svc.desc)}
         />
       </div>
     </div>
@@ -7335,11 +7272,12 @@ function PageBuildRuntime({
       }}
     >
       {/* Top strip */}
-      <ServicePageHeader
-        svc={svc}
+      <WorkflowPageHeader
+        color={svc.color}
         icon={Ic.cpu(18)}
         title={svc.label}
         subtitle={svc.desc}
+        tips={descToTwoTierTips(svc.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -8019,7 +7957,6 @@ function PageBuildRuntime({
           onFocusField={setFocusedField}
           onClear={() => setFocusedField(null)}
           emptyMessage="Choose a field to see examples, format rules, and commands."
-          generalTips={descToTwoTierTips(svc.desc)}
         />
       </div>
     </div>
@@ -8072,24 +8009,29 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
   const capstoneReady = buildDone && sbomDone && activationDone;
 
   return (
-    <div style={{ padding: 24, maxWidth: 860, animation: "fadeUp 0.2s ease" }}>
-      <div style={{ marginBottom: 22 }}>
-        <h2
-          style={{
-            fontSize: 21,
-            fontWeight: 700,
-            color: C.text,
-            letterSpacing: -0.4,
-            marginBottom: 4,
-          }}
-        >
-          Deposit & Share
-        </h2>
-        <p style={{ fontSize: 13, color: C.textMuted }}>
-          Deposit your REE to a long-term research archive to obtain a citable, permanent
-          identifier.
-        </p>
-      </div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+        animation: "fadeUp 0.2s ease",
+      }}
+    >
+      <WorkflowPageHeader
+        color={repo.color}
+        icon={Ic.globe(18)}
+        title="Deposit & Share"
+        subtitle="Deposit your REE to a long-term archive and receive a citable permanent identifier"
+        tips={[
+          "Complete Build Runtime, SBOM, and Activation before depositing.",
+          "Choose one repository and provide the parameters required by that archive.",
+        ]}
+      />
+
+      <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+        <div style={{ padding: 24, maxWidth: 860 }}>
 
       {/* Capstone gate — warn if upstream steps are incomplete */}
       {!capstoneReady && (
@@ -8577,6 +8519,8 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
       <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
         <NextStepNudge stepKey={PAGE.ARCHIVE} badges={badges || {}} onGo={onGo} />
       </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -8875,7 +8819,28 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
   );
 
   return (
-    <div style={{ display: "flex", flex: 1, overflow: "hidden", animation: "fadeUp 0.2s ease" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+        overflow: "hidden",
+        animation: "fadeUp 0.2s ease",
+      }}
+    >
+      <WorkflowPageHeader
+        color="#6366f1"
+        icon={Ic.files(18)}
+        title="Files"
+        subtitle="Inspect workspace inputs and generated REE files side by side"
+        tips={[
+          "Use this view to verify paths referenced by source, runtime, scripts, and SBOM fields.",
+          "Workspace is read-only here; run workflow actions to generate or update REE files.",
+        ]}
+      />
+
+      <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
       {/* Single tree pane */}
       <div
         style={{
@@ -8962,6 +8927,8 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
           <span style={{ fontSize: 13, fontFamily: F.sans }}>Select a file to view</span>
         </div>
       )}
+
+      </div>
     </div>
   );
 }
@@ -10561,7 +10528,7 @@ function PageOverview({
                     labelBg="#f0fdf4"
                     labelBorderColor="#22c55e25"
                     isLast={fi === 1}
-                    onClick={() => (onGoField ? onGoField(f) : undefined)}
+                    onClick={() => (onGoField ? onGoField(String(f)) : undefined)}
                   />
                 );
               })}
@@ -12018,7 +11985,7 @@ function PageOverview({
                         border: `1px solid ${C.border}`,
                       }}
                     >
-                      {displayVal}
+                      {String(displayVal)}
                     </pre>
                   ) : (
                     <span
@@ -13151,7 +13118,7 @@ function Explorer({ onBack }: ExplorerProps) {
               );
             })}
             {page === PAGE.ARCHIVE && (
-              <div style={{ flex: 1, overflowY: "auto" }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 <PageArchive
                   ree={ree}
                   badges={badges}
@@ -13163,7 +13130,7 @@ function Explorer({ onBack }: ExplorerProps) {
               </div>
             )}
             {page === PAGE.FILES && (
-              <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 <PageFiles files={virtualFiles} reeFiles={currentReeFiles} />
               </div>
             )}
