@@ -627,21 +627,28 @@ const TOKENS = {
 const C = TOKENS.color;
 const F = TOKENS.font;
 
-// ── Hover handlers ─────────────────────────────────────────────────────────────
-// Reusable hover utilities to replace 60+ repeated imperative onMouseEnter/Leave patterns
-// These centralize color/style hover logic for better maintainability and consistency
+// ── Hover Helpers ─────────────────────────────────────────────────────────────
+/**
+ * Centralized hover utilities replacing 60+ imperative onMouseEnter/onMouseLeave patterns.
+ * 
+ * USAGE PATTERNS:
+ * 
+ * 1. Simple hover effects:
+ *    <div {...hoverColor(C.primary, C.text)} />
+ *    <button {...hoverBg(C.bgLight, C.bg)} />
+ * 
+ * 2. Conditional hovers (preferred over ternary spreads):
+ *    <div {...hoverIf(!isSelected, hoverBg(C.bgHover, C.bg))} />
+ *    Instead of: {...(!isSelected ? hoverBg(...) : {})}
+ * 
+ * 3. Combined properties:
+ *    <button {...hoverBg(C.bgLight, C.bg)} {...hoverColor(C.primary, C.text)} />
+ * 
+ * 4. With Toggle component:
+ *    <Toggle {...hoverBrightness(93)} on={true} ... />
+ */
 
-/** Simple color hover — transitions between two colors on hover */
-const hoverColor = (enterColor: string, leaveColor: string) => ({
-  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.color = enterColor;
-  },
-  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.color = leaveColor;
-  },
-});
-
-/** Background color hover — transitions between two backgrounds on hover */
+/** Background color hover — smooth transition between two backgrounds */
 const hoverBg = (enterBg: string, leaveBg: string) => ({
   onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
     e.currentTarget.style.background = enterBg;
@@ -651,7 +658,27 @@ const hoverBg = (enterBg: string, leaveBg: string) => ({
   },
 });
 
-/** Filter brightness hover — useful for subtle hover effects on buttons */
+/** Border color hover — smooth transition between two border colors */
+const hoverBorderColor = (enterBorder: string, leaveBorder: string) => ({
+  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.borderColor = enterBorder;
+  },
+  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.borderColor = leaveBorder;
+  },
+});
+
+/** Text color hover — smooth transition between two text colors */
+const hoverColor = (enterColor: string, leaveColor: string) => ({
+  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.color = enterColor;
+  },
+  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.color = leaveColor;
+  },
+});
+
+/** Filter brightness hover — subtle dimming effect; default 95% brightness */
 const hoverBrightness = (brightnessPercent: number = 95) => ({
   onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
     e.currentTarget.style.filter = `brightness(${brightnessPercent / 100})`;
@@ -660,6 +687,76 @@ const hoverBrightness = (brightnessPercent: number = 95) => ({
     e.currentTarget.style.filter = "none";
   },
 });
+
+/** Conditional hover helper — eliminates {...(cond ? handlers : {})} ternary spreads */
+const hoverIf = <T extends object>(condition: boolean, handlers: T): T | object =>
+  condition ? handlers : {};
+
+interface ToggleProps {
+  on: boolean;
+  disabled?: boolean;
+  color: string;
+  onChange: () => void;
+  title?: string;
+  width?: number;
+  height?: number;
+  knobSize?: number;
+  padding?: number;
+  offColor?: string;
+  style?: React.CSSProperties;
+}
+
+function Toggle({
+  on,
+  disabled = false,
+  color,
+  onChange,
+  title,
+  width = 32,
+  height = 16,
+  knobSize = 12,
+  padding = 2,
+  offColor = C.borderMid,
+  style,
+}: ToggleProps) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      aria-pressed={on}
+      disabled={disabled}
+      title={title}
+      style={{
+        width,
+        height,
+        borderRadius: 99,
+        border: "none",
+        cursor: disabled ? "not-allowed" : "pointer",
+        background: on ? color : offColor,
+        position: "relative",
+        transition: "all 0.18s",
+        flexShrink: 0,
+        opacity: disabled ? 0.6 : 1,
+        ...style,
+      }}
+      {...(disabled ? {} : hoverBrightness(93))}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: padding,
+          left: on ? width - knobSize - padding : padding,
+          width: knobSize,
+          height: knobSize,
+          borderRadius: "50%",
+          background: "#fff",
+          transition: "left 0.18s",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+        }}
+      />
+    </button>
+  );
+}
 
 // ── Page keys ─────────────────────────────────────────────────────────────────
 // Single source of truth for page/navigation string literals.
@@ -760,27 +857,6 @@ const S_OVERVIEW_PANEL_INCLUDE_LABEL_BASE: React.CSSProperties = {
   fontFamily: F.sans,
   fontWeight: 600,
   letterSpacing: 0.3,
-};
-
-const S_OVERVIEW_PANEL_TOGGLE_BASE: React.CSSProperties = {
-  width: 32,
-  height: 16,
-  borderRadius: 99,
-  border: "none",
-  position: "relative",
-  transition: "all 0.18s",
-  flexShrink: 0,
-};
-
-const S_OVERVIEW_PANEL_TOGGLE_KNOB: React.CSSProperties = {
-  position: "absolute",
-  top: 2,
-  width: 12,
-  height: 12,
-  borderRadius: "50%",
-  background: "#fff",
-  transition: "left 0.18s",
-  boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
 };
 
 const S_OVERVIEW_PANEL_FOOTER: React.CSSProperties = {
@@ -1910,16 +1986,10 @@ function FileNode({
           border: isHighlighted && !isSel ? "1px solid #fde68a" : "1px solid transparent",
           color: isSel ? C.accent : isHighlighted ? "#92400e" : isFolder ? C.text : C.textMid,
         }}
-        onMouseEnter={(e) => {
-          if (!isSel) {
-            e.currentTarget.style.background = isHighlighted ? "#fef3c7" : C.surfaceAlt;
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isSel) {
-            e.currentTarget.style.background = isHighlighted ? "#fef3c7" : "transparent";
-          }
-        }}
+        {...hoverIf(
+          !isSel,
+          hoverBg(isHighlighted ? "#fef3c7" : C.surfaceAlt, isHighlighted ? "#fef3c7" : "transparent"),
+        )}
       >
         {isFolder ? (
           <>
@@ -2312,12 +2382,7 @@ function ScriptPanel({
                   borderRight: `1px solid ${C.border}`,
                   borderBottom: isActive ? `2px solid ${acc}` : "2px solid transparent",
                 }}
-                onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.background = `${C.border}40`;
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) e.currentTarget.style.background = "transparent";
-                }}
+                {...hoverIf(!isActive, hoverBg(`${C.border}40`, "transparent"))}
               >
                 <span
                   style={{
@@ -2573,12 +2638,7 @@ function ScriptPanel({
                         flexShrink: 0,
                         whiteSpace: "nowrap",
                       }}
-                      onMouseEnter={(e) => {
-                        if (e.currentTarget) e.currentTarget.style.background = C.surfaceAlt;
-                      }}
-                      onMouseLeave={(e) => {
-                        if (e.currentTarget) e.currentTarget.style.background = C.surface;
-                      }}
+                      {...hoverBg(C.surfaceAlt, C.surface)}
                     >
                       {Ic.plus(12)} Apply template
                     </button>
@@ -2620,12 +2680,7 @@ function ScriptPanel({
                       cursor: !editorContent.trim() ? "default" : "pointer",
                       opacity: !editorContent.trim() ? 0.4 : 1,
                     }}
-                    onMouseEnter={(e) => {
-                      if (editorContent.trim()) e.currentTarget.style.background = "#dbeafe";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = C.accentBg;
-                    }}
+                    {...hoverIf(!!editorContent.trim(), hoverBg("#dbeafe", C.accentBg))}
                   >
                     {Ic.check(11)} Save to workspace
                   </button>
@@ -2939,18 +2994,8 @@ function FilePicker({
                 borderLeft: `1px solid ${previewOpen ? "#bbf7d0" : C.border}`,
                 color: previewOpen ? "#16a34a" : C.textMid,
               }}
-              onMouseEnter={(e) => {
-                if (!previewOpen) {
-                  e.currentTarget.style.background = C.accentBg;
-                  e.currentTarget.style.color = C.accent;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!previewOpen) {
-                  e.currentTarget.style.background = C.surfaceAlt;
-                  e.currentTarget.style.color = C.textMid;
-                }
-              }}
+              {...hoverIf(!previewOpen, hoverBg(C.accentBg, C.surfaceAlt))}
+              {...hoverIf(!previewOpen, hoverColor(C.accent, C.textMid))}
             >
               {Ic.terminal(13)}
               <span
@@ -2982,18 +3027,8 @@ function FilePicker({
                 borderLeft: `1px solid ${C.border}`,
                 color: open ? C.accent : C.textMid,
               }}
-              onMouseEnter={(e) => {
-                if (!open) {
-                  e.currentTarget.style.background = C.accentBg;
-                  e.currentTarget.style.color = C.accent;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!open) {
-                  e.currentTarget.style.background = C.surfaceAlt;
-                  e.currentTarget.style.color = C.textMid;
-                }
-              }}
+              {...hoverIf(!open, hoverBg(C.accentBg, C.surfaceAlt))}
+              {...hoverIf(!open, hoverColor(C.accent, C.textMid))}
             >
               {Ic.folder()}
             </button>
@@ -3051,16 +3086,7 @@ function FilePicker({
                     background: draft === p ? C.accentBg : "transparent",
                     color: draft === p ? C.accent : C.textMid,
                   }}
-                  onMouseEnter={(e) => {
-                    if (draft !== p) {
-                      e.currentTarget.style.background = C.surfaceAlt;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (draft !== p) {
-                      e.currentTarget.style.background = "transparent";
-                    }
-                  }}
+                  {...hoverIf(draft !== p, hoverBg(C.surfaceAlt, "transparent"))}
                 >
                   <span
                     style={{
@@ -4457,11 +4483,7 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
             color: draft.trim() ? C.accent : C.textMuted,
             opacity: locked ? 0.5 : 1,
           }}
-          onMouseEnter={(e) => {
-            if (!locked && draft.trim() && checkState !== "checking")
-              e.currentTarget.style.filter = "brightness(0.96)";
-          }}
-          onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+          {...hoverIf(!locked && !!draft.trim() && checkState !== "checking", hoverBrightness(96))}
         >
           {checkState === "checking" ? Ic.loader(13) : Ic.link(13)} Check reachable
         </button>
@@ -4629,14 +4651,8 @@ function SourceUploadField({
                 alignItems: "center",
                 gap: 4,
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = C.accent;
-                e.currentTarget.style.color = C.accent;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = C.border;
-                e.currentTarget.style.color = C.textMuted;
-              }}
+              {...hoverBorderColor(C.accent, C.border)}
+              {...hoverColor(C.accent, C.textMuted)}
             >
               {Ic.upload(11)} Replace
             </button>
@@ -4955,12 +4971,7 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, files }: Runtime
                   color: isActive ? C.accent : C.textMid,
                   opacity: locked ? 0.6 : 1,
                 }}
-                onMouseEnter={(e) => {
-                  if (!locked && !isActive) e.currentTarget.style.borderColor = C.borderMid;
-                }}
-                onMouseLeave={(e) => {
-                  if (!locked && !isActive) e.currentTarget.style.borderColor = C.border;
-                }}
+                {...hoverIf(!locked && !isActive, hoverBorderColor(C.borderMid, C.border))}
               >
                 <span
                   style={{
@@ -5138,7 +5149,6 @@ function PageSourceRepoEntry({
   const canDownload =
     !!ree.origin_url && !!originTypeDraft && repoMode === "url" && !sourceFromUpload;
   const canUpload = repoMode === "upload" && !sourceFromDownload;
-  const [workspaceBrowseHover, setWorkspaceBrowseHover] = React.useState(false);
   const downloadLabel = downloadRunning
     ? "Downloading source..."
     : sourceFromUpload
@@ -5319,13 +5329,13 @@ function PageSourceRepoEntry({
                           gap: 8,
                           cursor: "pointer",
                         }),
-                        background: workspaceBrowseHover ? C.accentBg : C.surface,
-                        borderColor: workspaceBrowseHover ? C.accentBorder : C.border,
+                        background: C.surface,
+                        borderColor: C.border,
                         flex: 1,
                       }}
                       title="Browse files"
-                      onMouseEnter={() => setWorkspaceBrowseHover(true)}
-                      onMouseLeave={() => setWorkspaceBrowseHover(false)}
+                      {...hoverBg(C.accentBg, C.surface)}
+                      {...hoverBorderColor(C.accentBorder, C.border)}
                     >
                       <span
                         style={{
@@ -5383,11 +5393,11 @@ function PageSourceRepoEntry({
                           {sourceIncluded ? "Yes" : "No"}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={toggleSourceIncluded}
-                        aria-pressed={sourceIncluded}
+                      <Toggle
+                        on={sourceIncluded}
                         disabled={locked || !sourceInWorkspace}
+                        color="#f59e0b"
+                        onChange={toggleSourceIncluded}
                         title={
                           !sourceInWorkspace
                             ? "Source must be in workspace before it can be included"
@@ -5395,33 +5405,10 @@ function PageSourceRepoEntry({
                               ? "Source will be included in final REE"
                               : "Source will be excluded from final REE"
                         }
-                        style={{
-                          width: 36,
-                          height: 18,
-                          borderRadius: 99,
-                          border: "none",
-                          cursor: locked || !sourceInWorkspace ? "not-allowed" : "pointer",
-                          background: sourceIncluded ? "#f59e0b" : C.borderMid,
-                          position: "relative",
-                          transition: "all 0.18s",
-                          flexShrink: 0,
-                          opacity: locked || !sourceInWorkspace ? 0.6 : 1,
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 2,
-                            left: sourceIncluded ? 18 : 2,
-                            width: 14,
-                            height: 14,
-                            borderRadius: "50%",
-                            background: "#fff",
-                            transition: "left 0.18s",
-                            boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
-                          }}
-                        />
-                      </button>
+                        width={36}
+                        height={18}
+                        knobSize={14}
+                      />
                       {ree._sourceAvailable && (
                         <button
                           type="button"
@@ -5638,14 +5625,8 @@ function PageMetadataEntry({
                             borderRadius: 5,
                             flexShrink: 0,
                           }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.color = "#dc2626";
-                            e.currentTarget.style.background = "#fef2f2";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.color = C.textMuted;
-                            e.currentTarget.style.background = "none";
-                          }}
+                          {...hoverColor("#dc2626", C.textMuted)}
+                          {...hoverBg("#fef2f2", "transparent")}
                         >
                           {Ic.x()}
                         </button>
@@ -5674,14 +5655,8 @@ function PageMetadataEntry({
                         marginTop: 4,
                         width: "fit-content",
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = C.accent;
-                        e.currentTarget.style.color = C.accent;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = C.borderMid;
-                        e.currentTarget.style.color = C.textMuted;
-                      }}
+                      {...hoverBorderColor(C.accent, C.borderMid)}
+                      {...hoverColor(C.accent, C.textMuted)}
                     >
                       {Ic.plus()} Add field
                     </button>
@@ -6857,18 +6832,8 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
               border: `1.5px solid ${filter === s.key ? s.border : C.border}`,
               cursor: "pointer",
             }}
-            onMouseEnter={(e) => {
-              if (filter !== s.key) {
-                e.currentTarget.style.background = s.bg;
-                e.currentTarget.style.borderColor = s.border;
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (filter !== s.key) {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.borderColor = C.border;
-              }
-            }}
+            {...hoverIf(filter !== s.key, hoverBg(s.bg, "transparent"))}
+            {...hoverIf(filter !== s.key, hoverBorderColor(s.border, C.border))}
           >
             {s.label}
           </button>
@@ -6917,8 +6882,7 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
                   textAlign: "left",
                   transition: "background 0.12s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = `${ecoMeta.color}1e`)}
-                onMouseLeave={(e) => (e.currentTarget.style.background = `${ecoMeta.color}12`)}
+                {...hoverBg(`${ecoMeta.color}1e`, `${ecoMeta.color}12`)}
               >
                 <span style={{ display: "flex", color: ecoMeta.color }}>{Ic.file(13)}</span>
                 <span
@@ -8144,18 +8108,8 @@ function PageBuildRuntime({
                     boxShadow: "0 1px 2px rgba(154,52,18,0.14)",
                     transition: "all 0.14s ease",
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#ffedd5";
-                    e.currentTarget.style.borderColor = "#fb923c";
-                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(154,52,18,0.18)";
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#fff7ed";
-                    e.currentTarget.style.borderColor = "#fdba74";
-                    e.currentTarget.style.boxShadow = "0 1px 2px rgba(154,52,18,0.14)";
-                    e.currentTarget.style.transform = "translateY(0)";
-                  }}
+                    {...hoverBg("#ffedd5", "#fff7ed")}
+                    {...hoverBorderColor("#fb923c", "#fdba74")}
                 >
                   <span
                     style={{
@@ -8279,16 +8233,9 @@ function PageBuildRuntime({
                       color: C.textMid,
                       transition: "all 0.14s ease",
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = C.surface;
-                      e.currentTarget.style.borderColor = C.accentBorder;
-                      e.currentTarget.style.color = C.accent;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = C.surfaceAlt;
-                      e.currentTarget.style.borderColor = C.borderMid;
-                      e.currentTarget.style.color = C.textMid;
-                    }}
+                    {...hoverBg(C.surface, C.surfaceAlt)}
+                    {...hoverBorderColor(C.accentBorder, C.borderMid)}
+                    {...hoverColor(C.accent, C.textMid)}
                   >
                     {Ic.arrowLeft(12)} Back to build flow
                   </button>
@@ -8418,35 +8365,14 @@ function PageBuildRuntime({
                           {includeRuntime ? "Yes" : "No"}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => onReeChange?.({ ...ree, _runtimeIncluded: !includeRuntime })}
-                        style={{
-                          width: 34,
-                          height: 20,
-                          borderRadius: 99,
-                          border: "none",
-                          cursor: "pointer",
-                          background: includeRuntime ? "#06b6d4" : C.borderMid,
-                          transition: "background 0.2s",
-                          position: "relative",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 2,
-                            left: includeRuntime ? 16 : 2,
-                            width: 16,
-                            height: 16,
-                            borderRadius: "50%",
-                            background: "#fff",
-                            transition: "left 0.2s",
-                            boxShadow: "0 1px 3px rgba(0,0,0,0.22)",
-                          }}
-                        />
-                      </button>
+                      <Toggle
+                        on={includeRuntime}
+                        color="#06b6d4"
+                        onChange={() => onReeChange?.({ ...ree, _runtimeIncluded: !includeRuntime })}
+                        width={34}
+                        height={20}
+                        knobSize={16}
+                      />
                     </div>
                   )}
                   {finalRuntime && (
@@ -8668,18 +8594,11 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                     flex: 1,
                     justifyContent: "center",
                   }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.borderColor = `${r.color}70`;
-                      e.currentTarget.style.background = r.bg;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.borderColor = isDone ? `${r.color}40` : C.border;
-                      e.currentTarget.style.background = isDone ? r.bg : C.surface;
-                    }
-                  }}
+                  {...hoverIf(
+                    !isActive,
+                    hoverBorderColor(`${r.color}70`, isDone ? `${r.color}40` : C.border),
+                  )}
+                  {...hoverIf(!isActive, hoverBg(r.bg, isDone ? r.bg : C.surface))}
                 >
                   {isDone && (
                     <span style={{ color: r.color, display: "flex" }}>{Ic.check(13)}</span>
@@ -9208,18 +9127,8 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
             }),
             flexShrink: 0,
           }}
-          onMouseEnter={(e) => {
-            if (!copied) {
-              e.currentTarget.style.borderColor = C.accent;
-              e.currentTarget.style.color = C.accent;
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!copied) {
-              e.currentTarget.style.borderColor = C.border;
-              e.currentTarget.style.color = C.textMuted;
-            }
-          }}
+          {...hoverIf(!copied, hoverBorderColor(C.accent, C.border))}
+          {...hoverIf(!copied, hoverColor(C.accent, C.textMuted))}
         >
           {copied ? "✓ copied" : "copy"}
         </button>
@@ -10900,31 +10809,12 @@ function PageOverview({
                 >
                   {sourceIncluded ? "Included" : "Include"}
                 </span>
-                <button
-                  type="button"
-                  onClick={toggleSource}
-                  aria-pressed={sourceIncluded}
+                <Toggle
+                  on={sourceIncluded}
                   disabled={!canIncludeSource}
-                  style={{
-                    ...S_OVERVIEW_PANEL_TOGGLE_BASE,
-                    cursor: canIncludeSource ? "pointer" : "not-allowed",
-                    background: sourceIncluded ? "#f59e0b" : C.borderMid,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!sourceIncluded && canIncludeSource)
-                      e.currentTarget.style.filter = "brightness(0.93)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.filter = "none";
-                  }}
-                >
-                  <div
-                    style={{
-                      ...S_OVERVIEW_PANEL_TOGGLE_KNOB,
-                      left: sourceIncluded ? 16 : 2,
-                    }}
-                  />
-                </button>
+                  color="#f59e0b"
+                  onChange={toggleSource}
+                />
               </div>
             </div>
             <div style={S_OVERVIEW_PANEL_FIELDS}>
@@ -11099,31 +10989,12 @@ function PageOverview({
                 >
                   {runtimeIncluded ? "Included" : "Include"}
                 </span>
-                <button
-                  type="button"
-                  onClick={toggleRuntime}
-                  aria-pressed={runtimeIncluded}
+                <Toggle
+                  on={runtimeIncluded}
                   disabled={!canIncludeRuntime}
-                  style={{
-                    ...S_OVERVIEW_PANEL_TOGGLE_BASE,
-                    cursor: canIncludeRuntime ? "pointer" : "not-allowed",
-                    background: runtimeIncluded ? "#0891b2" : C.borderMid,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!runtimeIncluded && canIncludeRuntime)
-                      e.currentTarget.style.filter = "brightness(0.93)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.filter = "none";
-                  }}
-                >
-                  <div
-                    style={{
-                      ...S_OVERVIEW_PANEL_TOGGLE_KNOB,
-                      left: runtimeIncluded ? 16 : 2,
-                    }}
-                  />
-                </button>
+                  color="#0891b2"
+                  onChange={toggleRuntime}
+                />
               </div>
             </div>
             <div style={S_OVERVIEW_PANEL_FIELDS}>
@@ -11474,14 +11345,11 @@ function PageOverview({
                           border: `1.5px solid ${lv.color}50`,
                           color: lv.color,
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = `${lv.color}28`;
-                          e.currentTarget.style.borderColor = `${lv.color}80`;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = `linear-gradient(135deg, ${lv.color}18 0%, ${lv.color}0c 100%)`;
-                          e.currentTarget.style.borderColor = `${lv.color}50`;
-                        }}
+                        {...hoverBg(
+                          `${lv.color}28`,
+                          `linear-gradient(135deg, ${lv.color}18 0%, ${lv.color}0c 100%)`,
+                        )}
+                        {...hoverBorderColor(`${lv.color}80`, `${lv.color}50`)}
                       >
                         {Ic.star(12)}
                         Preview as Reviewer
@@ -11497,15 +11365,8 @@ function PageOverview({
                           border: "1.5px solid #86efac",
                           color: "#15803d",
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = "#bbf7d0";
-                          e.currentTarget.style.borderColor = "#4ade80";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background =
-                            "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)";
-                          e.currentTarget.style.borderColor = "#86efac";
-                        }}
+                        {...hoverBg("#bbf7d0", "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)")}
+                        {...hoverBorderColor("#4ade80", "#86efac")}
                       >
                         {Ic.download(12)}
                         Download REE
@@ -12480,12 +12341,7 @@ function NavEntryButton({ isActive, navCollapsed, title, onClick, children }: Na
         transition: "all 0.12s",
         textAlign: "left",
       }}
-      onMouseEnter={(e) => {
-        if (!isActive) e.currentTarget.style.background = C.surfaceAlt;
-      }}
-      onMouseLeave={(e) => {
-        if (!isActive) e.currentTarget.style.background = "transparent";
-      }}
+      {...hoverIf(!isActive, hoverBg(C.surfaceAlt, "transparent"))}
     >
       {children}
     </button>
@@ -12540,14 +12396,8 @@ function ActionBtn({
         width: "100%",
         cursor: "pointer",
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = hoverBackground;
-        e.currentTarget.style.borderColor = hoverBorder;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = background;
-        e.currentTarget.style.borderColor = border;
-      }}
+      {...hoverBg(hoverBackground, background)}
+      {...hoverBorderColor(hoverBorder, border)}
     >
       <div
         style={{
@@ -13012,14 +12862,8 @@ function Explorer({ onBack }: ExplorerProps) {
             borderRadius: 6,
             transition: "all 0.12s",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = C.textMid;
-            e.currentTarget.style.background = C.surfaceAlt;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = C.textMuted;
-            e.currentTarget.style.background = "none";
-          }}
+          {...hoverColor(C.textMid, C.textMuted)}
+          {...hoverBg(C.surfaceAlt, "transparent")}
         >
           {Ic.arrowLeft()}
           <span style={{ fontSize: 13, fontFamily: F.sans }}>back</span>
@@ -13148,14 +12992,8 @@ function Explorer({ onBack }: ExplorerProps) {
                       transition: "all 0.12s",
                       flexShrink: 0,
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = C.surfaceAlt;
-                      e.currentTarget.style.color = C.textMid;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.color = C.textMuted;
-                    }}
+                    {...hoverBg(C.surfaceAlt, "transparent")}
+                    {...hoverColor(C.textMid, C.textMuted)}
                   >
                     {Ic.menu(15)}
                   </button>
@@ -13653,14 +13491,8 @@ function Explorer({ onBack }: ExplorerProps) {
                 gap: 6,
                 cursor: "pointer",
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#334155";
-                e.currentTarget.style.color = "#e2e8f0";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#1e293b";
-                e.currentTarget.style.color = "#94a3b8";
-              }}
+              {...hoverBg("#334155", "#1e293b")}
+              {...hoverColor("#e2e8f0", "#94a3b8")}
             >
               {Ic.x(12)} Exit Preview
             </button>
@@ -13853,14 +13685,8 @@ function Landing({ onLoad }: LandingProps) {
               gap: 5,
               transition: "border-color 0.15s, background 0.15s",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = C.accent;
-              e.currentTarget.style.background = C.accentBg;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = C.borderMid;
-              e.currentTarget.style.background = C.bg;
-            }}
+            {...hoverBorderColor(C.accent, C.borderMid)}
+            {...hoverBg(C.accentBg, C.bg)}
           >
             <span style={{ color: C.accent }}>{Ic.upload()}</span>
             <span style={{ fontSize: 13, color: C.textMid, fontFamily: F.sans }}>
@@ -13889,14 +13715,8 @@ function Landing({ onLoad }: LandingProps) {
               width: "100%",
               color: C.textMid,
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = C.surfaceAlt;
-              e.currentTarget.style.color = C.text;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = C.textMid;
-            }}
+            {...hoverBg(C.surfaceAlt, "transparent")}
+            {...hoverColor(C.text, C.textMid)}
           >
             ✦ Try with demo repository (Author)
           </button>
@@ -13919,14 +13739,8 @@ function Landing({ onLoad }: LandingProps) {
               width: "100%",
               color: C.textMid,
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = C.surfaceAlt;
-              e.currentTarget.style.color = C.text;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = C.textMid;
-            }}
+            {...hoverBg(C.surfaceAlt, "transparent")}
+            {...hoverColor(C.text, C.textMid)}
           >
             ✦ Review a sealed pod (Reviewer)
           </button>
@@ -14277,8 +14091,7 @@ function MetaRow({ label, value, mono = false, href, color }: MetaRowProps) {
           borderRadius: 3,
           transition: "color 0.15s",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = C.textMid)}
-        onMouseLeave={(e) => (e.currentTarget.style.color = copied ? "#22c55e" : C.textMuted)}
+        {...hoverColor(C.textMid, copied ? "#22c55e" : C.textMuted)}
       >
         {copied ? Ic.check(11) : Ic.copy(11)}
       </button>
@@ -15209,14 +15022,8 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
             borderRadius: 6,
             transition: "all 0.12s",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = C.textMid;
-            e.currentTarget.style.background = C.surfaceAlt;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = C.textMuted;
-            e.currentTarget.style.background = "none";
-          }}
+          {...hoverColor(C.textMid, C.textMuted)}
+          {...hoverBg(C.surfaceAlt, "transparent")}
         >
           {Ic.arrowLeft()}
           <span style={{ fontSize: 13, fontFamily: F.sans }}>back</span>
