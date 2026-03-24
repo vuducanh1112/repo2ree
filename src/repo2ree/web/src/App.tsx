@@ -330,6 +330,26 @@ function buildSnapshotArchiveContent(
   ].join("\n");
 }
 
+const REE_ROOT_PREFIX = "ree/";
+const REE_MANIFEST_PATH = `${REE_ROOT_PREFIX}ree.json`;
+const REE_SBOM_PATH = `${REE_ROOT_PREFIX}sbom.json`;
+const REE_RUNTIME_PATH = `${REE_ROOT_PREFIX}runtime.tar.gz`;
+const REE_SOURCE_REPO_PREFIX = `${REE_ROOT_PREFIX}source-repo/`;
+
+const REE_ARCHIVE_TAG_BY_PATH: Record<string, string> = {
+  [REE_MANIFEST_PATH]: "Manifest",
+  [REE_SBOM_PATH]: "SBOM",
+  [REE_RUNTIME_PATH]: "Runtime",
+};
+
+function resolveReeArchiveEntryTag(path: string): string {
+  const knownTag = REE_ARCHIVE_TAG_BY_PATH[path];
+  if (knownTag) return knownTag;
+  if (path.startsWith(REE_SOURCE_REPO_PREFIX)) return "Source";
+  if (path.startsWith(REE_ROOT_PREFIX)) return "Workspace";
+  return "REE";
+}
+
 function buildCurrentReeArchiveEntries(
   ree: Ree,
   virtualFiles: FileTreeNode[],
@@ -366,14 +386,14 @@ function buildCurrentReeArchiveEntries(
     source_snapshot_captured_at: ree._sourceSnapshotCapturedAt || null,
     runtime_included: !!ree._runtimeIncluded,
   };
-  entries.push({ path: "ree/ree.json", data: enc.encode(JSON.stringify(manifest, null, 2)) });
+  entries.push({ path: REE_MANIFEST_PATH, data: enc.encode(JSON.stringify(manifest, null, 2)) });
 
   if (ree.sbom && ree.sbom !== "__skipped__") {
     const sbomNode = findVirtualFileByName(virtualFiles, ree.sbom);
     const sbomContent =
       sbomNode?.content ??
       JSON.stringify({ note: "SBOM not yet generated — run Generate SBOM first" }, null, 2);
-    entries.push({ path: "ree/sbom.json", data: enc.encode(sbomContent) });
+    entries.push({ path: REE_SBOM_PATH, data: enc.encode(sbomContent) });
   }
 
   if (ree._runtimeIncluded && ree.runtime && ree.runtime !== "__skipped__") {
@@ -381,12 +401,12 @@ function buildCurrentReeArchiveEntries(
     const runtimeContent =
       runtimeNode?.content ??
       `# Runtime placeholder\n# ref: ${ree.runtime}\n# Enable "Build Runtime" to produce the real tarball.`;
-    entries.push({ path: "ree/runtime.tar.gz", data: enc.encode(runtimeContent) });
+    entries.push({ path: REE_RUNTIME_PATH, data: enc.encode(runtimeContent) });
   }
 
   if (ree._sourceIncluded && sourceSnapshotFiles.length > 0) {
     for (const file of listTreeFiles(sourceSnapshotFiles)) {
-      entries.push({ path: `ree/source-repo/${file.path}`, data: enc.encode(file.content) });
+      entries.push({ path: `${REE_SOURCE_REPO_PREFIX}${file.path}`, data: enc.encode(file.content) });
     }
 
     const archiveName = normalizeSnapshotArchiveName(
@@ -396,7 +416,7 @@ function buildCurrentReeArchiveEntries(
       sourceSnapshotFiles,
       ree._sourceSnapshotCapturedAt,
     );
-    entries.push({ path: `ree/${archiveName}`, data: enc.encode(archiveContent) });
+    entries.push({ path: `${REE_ROOT_PREFIX}${archiveName}`, data: enc.encode(archiveContent) });
   }
 
   const selectedScripts: Array<{
@@ -415,7 +435,7 @@ function buildCurrentReeArchiveEntries(
     if (sourcePaths.has(normalizeWorkspacePath(selectedFile.path))) continue;
     const archivePath = archiveWorkspacePath(selectedPath);
     if (!archivePath) continue;
-    const reePath = `ree/${archivePath}`;
+    const reePath = `${REE_ROOT_PREFIX}${archivePath}`;
     if (entries.some((e) => e.path === reePath)) continue;
     entries.push({ path: reePath, data: enc.encode(selectedFile.content || "") });
   }
@@ -429,18 +449,7 @@ function reeArchiveEntriesToFiles(entries: ZipEntry[]): ReeFile[] {
     id: `ree-archive-${idx}`,
     name: entry.path,
     type: "file",
-    tag:
-      entry.path === "ree/ree.json"
-        ? "Manifest"
-        : entry.path === "ree/sbom.json"
-          ? "SBOM"
-          : entry.path === "ree/runtime.tar.gz"
-            ? "Runtime"
-            : entry.path.startsWith("ree/source-repo/")
-              ? "Source"
-              : entry.path.startsWith("ree/")
-                ? "Workspace"
-                : "REE",
+    tag: resolveReeArchiveEntryTag(entry.path),
     content: dec.decode(entry.data),
   }));
 }
@@ -2739,6 +2748,7 @@ const LOG_STYLE: Record<LogLineType, LogStyleEntry> = {
 
 interface LogPanelProps {
   log: LogEntry | null;
+  running?: boolean;
 }
 function LogPanel({ log }: LogPanelProps) {
   return (
