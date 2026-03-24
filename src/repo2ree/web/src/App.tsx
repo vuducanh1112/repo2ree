@@ -2739,7 +2739,6 @@ const LOG_STYLE: Record<LogLineType, LogStyleEntry> = {
 
 interface LogPanelProps {
   log: LogEntry | null;
-  running?: boolean;
 }
 function LogPanel({ log }: LogPanelProps) {
   return (
