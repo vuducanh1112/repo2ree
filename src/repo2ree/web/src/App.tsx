@@ -781,33 +781,32 @@ const LEVELS: Level[] = [
   },
 ];
 
-const EVALUATE_SVC: Service = {
-  key: "evaluate",
-  label: "Evaluate",
-  IC: Ic.star,
-  color: "#7c3aed",
-  badge: { label: "Evaluated", color: "#7c3aed", bg: "#f5f3ff" },
-  desc: "Get a quick reproducibility score for this repository. This scans the repository contents to assign a level.",
-  requires: [{ field: "_sourceAvailable", label: "Source loaded in workspace" }],
-  params: [
-    {
-      key: "strict",
-      label: "Strict mode",
-      type: "bool",
-      default: false,
-      hint: "Fail if any optional fields are missing",
-    },
-    {
-      key: "swhid_check",
-      label: "Check SWHID",
-      type: "bool",
-      default: true,
-      hint: "Verify the SWHID is resolvable at Software Heritage",
-    },
-  ],
-};
-
 const SERVICES: Service[] = [
+  {
+    key: "evaluate",
+    label: "Evaluate",
+    IC: Ic.star,
+    color: "#7c3aed",
+    badge: { label: "Evaluated", color: "#7c3aed", bg: "#f5f3ff" },
+    desc: "Get a quick reproducibility score for this repository. This scans the repository contents to assign a level.",
+    requires: [{ field: "_sourceAvailable", label: "Source loaded in workspace" }],
+    params: [
+      {
+        key: "strict",
+        label: "Strict mode",
+        type: "bool",
+        default: false,
+        hint: "Fail if any optional fields are missing",
+      },
+      {
+        key: "swhid_check",
+        label: "Check SWHID",
+        type: "bool",
+        default: true,
+        hint: "Verify the SWHID is resolvable at Software Heritage",
+      },
+    ],
+  },
   {
     key: "build",
     label: "Build Runtime",
@@ -888,9 +887,7 @@ function defaultParamsForService(svc: Service): Record<string, unknown> {
 }
 
 function initialServiceParams(): ServiceParams {
-  return Object.fromEntries(
-    [EVALUATE_SVC, ...SERVICES].map((svc) => [svc.key, defaultParamsForService(svc)]),
-  );
+  return Object.fromEntries(SERVICES.map((svc) => [svc.key, defaultParamsForService(svc)]));
 }
 
 // ── Archival repositories ──────────────────────────────────────────────────────
@@ -6150,6 +6147,70 @@ function scanDependencies(nodes: FileTreeNode[], path = ""): DepGroup[] {
   return results;
 }
 
+function computeEvaluateLevelFromFiles(nodes: FileTreeNode[]): number {
+  const files = nodes || [];
+  const allPaths = allFilePaths(files).map((p) => p.toLowerCase());
+  const hasReadme = allPaths.some((p) => p.endsWith("readme.md") || p.endsWith("readme.txt"));
+
+  const manifestPaths = allPaths.filter((p) => {
+    const base = p.split("/").pop() || "";
+    return !!getManifestParser(base);
+  });
+  const hasManifest = manifestPaths.length > 0;
+
+  const depGroups = scanDependencies(files);
+  const deps = depGroups.flatMap((group) => group.packages);
+  const hasTopPins = deps.some((dep) => dep.pinned === "exact");
+
+  const lockFiles = new Set([
+    "poetry.lock",
+    "pipfile.lock",
+    "uv.lock",
+    "pdm.lock",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "conda-lock.yml",
+    "conda-lock.yaml",
+  ]);
+  const hasLockfile = allPaths.some((p) => lockFiles.has(p.split("/").pop() || ""));
+
+  const hasContainer = allPaths.some((p) => {
+    const name = p.split("/").pop() || "";
+    return (
+      name === "dockerfile" ||
+      name === "containerfile" ||
+      name.startsWith("dockerfile.") ||
+      name.startsWith("containerfile.") ||
+      name === "docker-compose.yml" ||
+      name === "docker-compose.yaml"
+    );
+  });
+
+  const hasNix = allPaths.some((p) => p.endsWith(".nix"));
+  const hasBeyondSignals = allPaths.some((p) => {
+    const name = p.split("/").pop() || "";
+    return (
+      name.includes("reproduc") ||
+      name.includes("determin") ||
+      name.includes("provenance") ||
+      name.includes("hardware") ||
+      name.includes("swhid")
+    );
+  });
+
+  let level = 0;
+  if (hasReadme) level = 1;
+  if (hasManifest) level = 2;
+  if (hasTopPins) level = 3;
+  if (hasLockfile) level = 4;
+  if (hasContainer) level = 5;
+  if (hasNix) level = 6;
+  if (hasNix && hasBeyondSignals) level = 7;
+
+  return Math.max(0, Math.min(level, LEVELS.length - 1));
+}
+
 // ── DependencyPanel ───────────────────────────────────────────────────────────
 interface DependencyPanelProps {
   depGroups: DepGroup[];
@@ -6627,371 +6688,368 @@ function PageEvaluate({
             </div>
           )}
 
-          {svc.key !== "sbom" && svc.key !== "activation" && (
-            <>
-              <ServiceActionSection
-                color={svc.color}
-                running={running}
-                runDone={runDone}
-                disabled={running || !sourceLoadedInWorkspace}
-                idleLabel="Run"
-                runningLabel="Running…"
-                helperText={
-                  sourceLoadedInWorkspace
-                    ? "Run evaluation with the selected parameters."
-                    : "Load source into workspace first. Evaluate is enabled only after source download/upload succeeds."
-                }
-                onRun={() => onRun(svc.key, params)}
-              />
+        
+          <ServiceActionSection
+            color={svc.color}
+            running={running}
+            runDone={runDone}
+            disabled={running || !sourceLoadedInWorkspace}
+            idleLabel="Run"
+            runningLabel="Running…"
+            helperText={
+              sourceLoadedInWorkspace
+                ? "Run evaluation with the selected parameters."
+                : "Load source into workspace first. Evaluate is enabled only after source download/upload succeeds."
+            }
+            onRun={() => onRun(svc.key, params)}
+          />
 
-              {/* Repro level score and ladder (Evaluate output) */}
-              <FieldSection
-                title="Evaluate Output · Reproducibility Score"
-                icon={IC(14)}
-                filledCount={hasScoreOutput ? 1 : 0}
-                totalCount={1}
-              >
-                <FieldRow fieldKey="repro_level" onFocus={() => setFocusedField("repro_level")} active={focusedField === "repro_level"}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    marginBottom: 10,
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: hasScoreOutput ? currentLevel.ink : C.textMuted,
-                        marginTop: 2,
-                        fontWeight: hasScoreOutput ? 600 : 500,
-                      }}
-                    >
-                      {hasScoreOutput
-                        ? `Computed from latest completed Evaluate run · Standing level ${standing}`
-                        : "No Evaluate output yet. Complete a run to generate the level."}
-                    </div>
-                  </div>
-                  <LevelBadge level={level} />
-                </div>
-
-                <div
-                  style={{
-                    height: 7,
-                    borderRadius: 99,
-                    background: C.surfaceAlt,
-                    border: `1px solid ${C.border}`,
-                    overflow: "hidden",
-                    marginBottom: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${hasScoreOutput ? completionPct : 0}%`,
-                      height: "100%",
-                      background: currentLevel.color,
-                      transition: "width 0.24s ease",
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {LEVELS.map((lv, idx) => {
-                    const reached = hasScoreOutput && idx <= level;
-                    const active = hasScoreOutput && idx === level;
-                    return (
-                      <div
-                        key={lv.n}
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 8,
-                          padding: "7px 8px",
-                          borderRadius: 8,
-                          border: `1px solid ${active ? `${lv.color}55` : C.border}`,
-                          background: active ? lv.bg : "transparent",
-                          opacity: hasScoreOutput ? 1 : 0.9,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            fontFamily: F.mono,
-                            color: reached ? lv.ink : C.textMuted,
-                            background: reached ? lv.bg : C.surfaceAlt,
-                            border: `1px solid ${reached ? `${lv.color}55` : C.border}`,
-                            borderRadius: 99,
-                            padding: "1px 7px",
-                            flexShrink: 0,
-                            marginTop: 1,
-                          }}
-                        >
-                          L{lv.n}
-                        </span>
-                        <div style={{ minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              fontWeight: active ? 700 : 600,
-                              color: reached ? C.text : C.textMid,
-                            }}
-                          >
-                            {lv.label}
-                          </div>
-                          <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
-                            {lv.desc}
-                          </div>
-                          <div
-                            style={{
-                              marginTop: 5,
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 4,
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                gap: 6,
-                                padding: "4px 6px",
-                                borderRadius: 6,
-                                background: "#fffbeb",
-                                border: "1px solid #fde68a",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  display: "flex",
-                                  color: "#b45309",
-                                  flexShrink: 0,
-                                  marginTop: 1,
-                                }}
-                              >
-                                {Ic.info(11)}
-                              </span>
-                              <span style={{ fontSize: 11, color: "#92400e", lineHeight: 1.35 }}>
-                                {lv.problem || "No major bottleneck called out at this level."}
-                              </span>
-                            </div>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                gap: 6,
-                                padding: "4px 6px",
-                                borderRadius: 6,
-                                background: "#f0fdf4",
-                                border: "1px solid #bbf7d0",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  display: "flex",
-                                  color: "#15803d",
-                                  flexShrink: 0,
-                                  marginTop: 1,
-                                }}
-                              >
-                                {Ic.check(11)}
-                              </span>
-                              <span style={{ fontSize: 11, color: "#166534", lineHeight: 1.35 }}>
-                                {lv.fix || "No additional fix suggested at this level."}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                </FieldRow>
-              </FieldSection>
-
-              {/* Dependency detection */}
-              <FieldSection
-                title="Detected Dependencies"
-                icon={Ic.package()}
-                subtitle={!hasRun ? "run to scan" : undefined}
-                filledCount={depGroups.length > 0 ? 1 : 0}
-                totalCount={1}
-              >
-                <FieldRow fieldKey="detected_dependencies" onFocus={() => setFocusedField("detected_dependencies")} active={focusedField === "detected_dependencies"}>
-
-                {hasRun ? (
-                  <>
-                    {depGroups.length > 0 ? (
-                      <DependencyPanel depGroups={depGroups} />
-                    ) : (
-                      <div
-                        style={{
-                          border: `1.5px dashed ${C.borderMid}`,
-                          borderRadius: 10,
-                          padding: "16px",
-                          textAlign: "center",
-                          color: C.textMuted,
-                          marginBottom: 12,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            marginBottom: 6,
-                            opacity: 0.4,
-                          }}
-                        >
-                          {Ic.package(20)}
-                        </div>
-                        <div style={{ fontSize: 12, fontFamily: F.sans }}>
-                          No manifest files found
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: C.textMuted,
-                            fontFamily: F.sans,
-                            marginTop: 3,
-                          }}
-                        >
-                          Add requirements.txt, pyproject.toml, environment.yml, or package.json.
-                        </div>
-                      </div>
-                    )}
-
-                    {(() => {
-                      let containerCount = 0;
-                      let nixCount = 0;
-                      const scan = (nodes) => {
-                        for (const n of nodes || []) {
-                          if (n.type === "folder") scan(n.children);
-                          else {
-                            const lo = n.name.toLowerCase();
-                            if (
-                              lo === "dockerfile" ||
-                              lo === "containerfile" ||
-                              lo.startsWith("dockerfile.") ||
-                              lo.startsWith("containerfile.") ||
-                              lo === "docker-compose.yml" ||
-                              lo === "docker-compose.yaml"
-                            )
-                              containerCount += 1;
-                            if (lo.endsWith(".nix")) nixCount += 1;
-                          }
-                        }
-                      };
-                      scan(files || MOCK_FILES);
-                      return (
-                        <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color: "#0e7490",
-                              background: "#ecfeff",
-                              border: "1px solid #a5f3fc",
-                              borderRadius: 99,
-                              padding: "3px 10px",
-                              fontFamily: F.sans,
-                              fontWeight: 600,
-                            }}
-                          >
-                            Container files: {containerCount}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color: "#6d28d9",
-                              background: "#f5f3ff",
-                              border: "1px solid #ddd6fe",
-                              borderRadius: 99,
-                              padding: "3px 10px",
-                              fontFamily: F.sans,
-                              fontWeight: 600,
-                            }}
-                          >
-                            Nix files: {nixCount}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {[
-                      {
-                        label: "requirements.txt",
-                        hint: "pip — per-package pins",
-                        color: "#3b82f6",
-                      },
-                      { label: "pyproject.toml", hint: "pip / hatch / poetry", color: "#8b5cf6" },
-                      { label: "environment.yml", hint: "conda + bioconda", color: "#22c55e" },
-                      { label: "package.json", hint: "npm / yarn dependencies", color: "#dc2626" },
-                      { label: "Dockerfile", hint: "container environment", color: "#0891b2" },
-                      { label: "*.nix", hint: "declarative system env", color: "#7c3aed" },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "7px 10px",
-                          border: `1.5px dashed ${item.color}30`,
-                          borderRadius: 8,
-                          background: `${item.color}05`,
-                          opacity: 0.7,
-                        }}
-                      >
-                        <span style={{ display: "flex", color: item.color, opacity: 0.6 }}>
-                          {Ic.file(12)}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            fontFamily: F.mono,
-                            color: item.color,
-                            fontWeight: 600,
-                            flex: 1,
-                          }}
-                        >
-                          {item.label}
-                        </span>
-                        <span style={{ fontSize: 10, color: C.textMuted, fontFamily: F.sans }}>
-                          {item.hint}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                </FieldRow>
-              </FieldSection>
-
-              {/* Log output */}
+            {/* Repro level score and ladder (Evaluate output) */}
+            <FieldSection
+              title="Evaluate Output · Reproducibility Score"
+              icon={IC(14)}
+              filledCount={hasScoreOutput ? 1 : 0}
+              totalCount={1}
+            >
+              <FieldRow fieldKey="repro_level" onFocus={() => setFocusedField("repro_level")} active={focusedField === "repro_level"}>
               <div
                 style={{
-                  fontSize: 11,
-                  letterSpacing: 1.3,
-                  color: C.textMuted,
-                  fontFamily: F.sans,
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                  marginBottom: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  marginBottom: 10,
                 }}
               >
-                Output
+                <div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: hasScoreOutput ? currentLevel.ink : C.textMuted,
+                      marginTop: 2,
+                      fontWeight: hasScoreOutput ? 600 : 500,
+                    }}
+                  >
+                    {hasScoreOutput
+                      ? `Computed from latest completed Evaluate run · Standing level ${standing}`
+                      : "No Evaluate output yet. Complete a run to generate the level."}
+                  </div>
+                </div>
+                <LevelBadge level={level} />
               </div>
-              <LogPanel log={log} running={running} />
 
-              {/* Next step nudge */}
-              <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
-                <NextStepNudge stepKey={svc.key} badges={badges || {}} onGo={onGo || (() => {})} />
+              <div
+                style={{
+                  height: 7,
+                  borderRadius: 99,
+                  background: C.surfaceAlt,
+                  border: `1px solid ${C.border}`,
+                  overflow: "hidden",
+                  marginBottom: 12,
+                }}
+              >
+                <div
+                  style={{
+                    width: `${hasScoreOutput ? completionPct : 0}%`,
+                    height: "100%",
+                    background: currentLevel.color,
+                    transition: "width 0.24s ease",
+                  }}
+                />
               </div>
-            </>
-          )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {LEVELS.map((lv, idx) => {
+                  const reached = hasScoreOutput && idx <= level;
+                  const active = hasScoreOutput && idx === level;
+                  return (
+                    <div
+                      key={lv.n}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 8,
+                        padding: "7px 8px",
+                        borderRadius: 8,
+                        border: `1px solid ${active ? `${lv.color}55` : C.border}`,
+                        background: active ? lv.bg : "transparent",
+                        opacity: hasScoreOutput ? 1 : 0.9,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          fontFamily: F.mono,
+                          color: reached ? lv.ink : C.textMuted,
+                          background: reached ? lv.bg : C.surfaceAlt,
+                          border: `1px solid ${reached ? `${lv.color}55` : C.border}`,
+                          borderRadius: 99,
+                          padding: "1px 7px",
+                          flexShrink: 0,
+                          marginTop: 1,
+                        }}
+                      >
+                        L{lv.n}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: active ? 700 : 600,
+                            color: reached ? C.text : C.textMid,
+                          }}
+                        >
+                          {lv.label}
+                        </div>
+                        <div style={{ fontSize: 11, color: C.textMuted, lineHeight: 1.4 }}>
+                          {lv.desc}
+                        </div>
+                        <div
+                          style={{
+                            marginTop: 5,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 4,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 6,
+                              padding: "4px 6px",
+                              borderRadius: 6,
+                              background: "#fffbeb",
+                              border: "1px solid #fde68a",
+                            }}
+                          >
+                            <span
+                              style={{
+                                display: "flex",
+                                color: "#b45309",
+                                flexShrink: 0,
+                                marginTop: 1,
+                              }}
+                            >
+                              {Ic.info(11)}
+                            </span>
+                            <span style={{ fontSize: 11, color: "#92400e", lineHeight: 1.35 }}>
+                              {lv.problem || "No major bottleneck called out at this level."}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 6,
+                              padding: "4px 6px",
+                              borderRadius: 6,
+                              background: "#f0fdf4",
+                              border: "1px solid #bbf7d0",
+                            }}
+                          >
+                            <span
+                              style={{
+                                display: "flex",
+                                color: "#15803d",
+                                flexShrink: 0,
+                                marginTop: 1,
+                              }}
+                            >
+                              {Ic.check(11)}
+                            </span>
+                            <span style={{ fontSize: 11, color: "#166534", lineHeight: 1.35 }}>
+                              {lv.fix || "No additional fix suggested at this level."}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              </FieldRow>
+            </FieldSection>
+
+            {/* Dependency detection */}
+            <FieldSection
+              title="Detected Dependencies"
+              icon={Ic.package()}
+              subtitle={!hasRun ? "run to scan" : undefined}
+              filledCount={depGroups.length > 0 ? 1 : 0}
+              totalCount={1}
+            >
+              <FieldRow fieldKey="detected_dependencies" onFocus={() => setFocusedField("detected_dependencies")} active={focusedField === "detected_dependencies"}>
+
+              {hasRun ? (
+                <>
+                  {depGroups.length > 0 ? (
+                    <DependencyPanel depGroups={depGroups} />
+                  ) : (
+                    <div
+                      style={{
+                        border: `1.5px dashed ${C.borderMid}`,
+                        borderRadius: 10,
+                        padding: "16px",
+                        textAlign: "center",
+                        color: C.textMuted,
+                        marginBottom: 12,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          marginBottom: 6,
+                          opacity: 0.4,
+                        }}
+                      >
+                        {Ic.package(20)}
+                      </div>
+                      <div style={{ fontSize: 12, fontFamily: F.sans }}>
+                        No manifest files found
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: C.textMuted,
+                          fontFamily: F.sans,
+                          marginTop: 3,
+                        }}
+                      >
+                        Add requirements.txt, pyproject.toml, environment.yml, or package.json.
+                      </div>
+                    </div>
+                  )}
+
+                  {(() => {
+                    let containerCount = 0;
+                    let nixCount = 0;
+                    const scan = (nodes) => {
+                      for (const n of nodes || []) {
+                        if (n.type === "folder") scan(n.children);
+                        else {
+                          const lo = n.name.toLowerCase();
+                          if (
+                            lo === "dockerfile" ||
+                            lo === "containerfile" ||
+                            lo.startsWith("dockerfile.") ||
+                            lo.startsWith("containerfile.") ||
+                            lo === "docker-compose.yml" ||
+                            lo === "docker-compose.yaml"
+                          )
+                            containerCount += 1;
+                          if (lo.endsWith(".nix")) nixCount += 1;
+                        }
+                      }
+                    };
+                    scan(files || MOCK_FILES);
+                    return (
+                      <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "#0e7490",
+                            background: "#ecfeff",
+                            border: "1px solid #a5f3fc",
+                            borderRadius: 99,
+                            padding: "3px 10px",
+                            fontFamily: F.sans,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Container files: {containerCount}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "#6d28d9",
+                            background: "#f5f3ff",
+                            border: "1px solid #ddd6fe",
+                            borderRadius: 99,
+                            padding: "3px 10px",
+                            fontFamily: F.sans,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Nix files: {nixCount}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[
+                    {
+                      label: "requirements.txt",
+                      hint: "pip — per-package pins",
+                      color: "#3b82f6",
+                    },
+                    { label: "pyproject.toml", hint: "pip / hatch / poetry", color: "#8b5cf6" },
+                    { label: "environment.yml", hint: "conda + bioconda", color: "#22c55e" },
+                    { label: "package.json", hint: "npm / yarn dependencies", color: "#dc2626" },
+                    { label: "Dockerfile", hint: "container environment", color: "#0891b2" },
+                    { label: "*.nix", hint: "declarative system env", color: "#7c3aed" },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "7px 10px",
+                        border: `1.5px dashed ${item.color}30`,
+                        borderRadius: 8,
+                        background: `${item.color}05`,
+                        opacity: 0.7,
+                      }}
+                    >
+                      <span style={{ display: "flex", color: item.color, opacity: 0.6 }}>
+                        {Ic.file(12)}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontFamily: F.mono,
+                          color: item.color,
+                          fontWeight: 600,
+                          flex: 1,
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                      <span style={{ fontSize: 10, color: C.textMuted, fontFamily: F.sans }}>
+                        {item.hint}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              </FieldRow>
+            </FieldSection>
+
+            {/* Log output */}
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: 1.3,
+                color: C.textMuted,
+                fontFamily: F.sans,
+                textTransform: "uppercase",
+                fontWeight: 600,
+                marginBottom: 8,
+              }}
+            >
+              Output
+            </div>
+            <LogPanel log={log} running={running} />
+
+          {/* Next step nudge */}
+          <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
+            <NextStepNudge stepKey={svc.key} badges={badges || {}} onGo={onGo || (() => {})} />
+          </div>
         </div>
 
         <FieldTipsSidebar
@@ -11534,7 +11592,8 @@ function PageOverview({
 
           {/* Evaluate panel */}
           {(() => {
-            const svc = EVALUATE_SVC;
+            const svc = SERVICES.find((s) => s.key === PAGE.EVALUATE);
+            if (!svc) return null;
             const earned = !!badges[svc.key];
             const ts = timestamps[svc.key];
             const dateStr = ts
@@ -12334,28 +12393,14 @@ function Explorer({ onBack }: ExplorerProps) {
     showToast("Source files removed from workspace — choose download or upload again", "info");
   };
 
-  const runAction = async (key: string, params: Record<string, unknown> = {}) => {
-    setActionStates((s) => ({ ...s, [key]: "loading" }));
-    await new Promise((r) => setTimeout(r, 1600 + Math.random() * 700));
-
-    const newLevel = key === "evaluate" ? Math.min(7, level + 1) : level;
-    const lines = makeLogs(key, ree, params, newLevel);
-    const ts = new Date().toISOString();
-
-    setServiceLogs((l) => ({ ...l, [key]: { lines, ts } }));
-    setActionStates((s) => ({ ...s, [key]: "done" }));
-    setBadges((b) => ({ ...b, [key]: true }));
-    setTimestamps((t) => ({ ...t, [key]: ts }));
-
-    if (key === "create") {
-      setLocked(true);
-      showToast("REE created — fields locked", "success");
-    } else if (key === "build") {
-      // Produce mock output matching the declared runtime target.
-      // If the caller provided an _expectedOutput param we record that as the produced runtime automatically.
+  const SERVICE_RUN_HANDLERS: Record<
+    string,
+    (params: Record<string, unknown>, newLevel: number) => void
+  > = {
+    build: (serviceParams) => {
       const runtimeTarget = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : null;
       const expectedOutput = String(
-        params?._expectedOutput ? params._expectedOutput : "",
+        serviceParams?._expectedOutput ? serviceParams._expectedOutput : "",
       ).trim();
       const producedName = expectedOutput || runtimeTarget || "runtime.tar.gz";
       const isTarball = /\.(tar\.gz|tgz)$/i.test(producedName);
@@ -12371,7 +12416,6 @@ function Explorer({ onBack }: ExplorerProps) {
         setVirtualFiles((f) => [...f.filter((n) => n.name !== producedName), mockRuntime]);
         producedRuntimePath = producedName;
       }
-      // Auto-set runtime only when the expected output file is actually produced.
       if (expectedOutput && producedRuntimePath && producedRuntimePath === expectedOutput) {
         setRee((r) => ({ ...r, runtime: expectedOutput, _runtimeIncluded: true }));
       } else if (expectedOutput && !producedRuntimePath) {
@@ -12381,8 +12425,8 @@ function Explorer({ onBack }: ExplorerProps) {
         );
       }
       showToast(`Build complete${producedName ? ` — ${producedName} produced` : ""}`, "success");
-    } else if (key === "sbom") {
-      // Produce mock sbom.spdx.json
+    },
+    sbom: () => {
       const sbomContent = JSON.stringify(
         {
           spdxVersion: "SPDX-2.3",
@@ -12435,9 +12479,11 @@ function Explorer({ onBack }: ExplorerProps) {
       ]);
       setRee((r) => ({ ...r, sbom: fname }));
       showToast("SBOM generated — sbom.spdx.json", "success");
-    } else if (key === "activation") {
+    },
+    activation: () => {
       showToast("Activation test passed — container started cleanly", "success");
-    } else if (key === "evaluate") {
+    },
+    evaluate: (_, newLevel) => {
       const depSummary = (() => {
         const groups = scanDependencies(virtualFiles || MOCK_FILES);
         const depCount = groups.reduce((sum, group) => sum + group.packages.length, 0);
@@ -12451,6 +12497,32 @@ function Explorer({ onBack }: ExplorerProps) {
         detected_dependencies: depSummary,
       }));
       showToast(`L${newLevel} · ${LEVELS[Math.min(newLevel, 7)].label}`, "success");
+    },
+  };
+
+  const runAction = async (key: string, params: Record<string, unknown> = {}) => {
+    setActionStates((s) => ({ ...s, [key]: "loading" }));
+    await new Promise((r) => setTimeout(r, 1600 + Math.random() * 700));
+
+    const isEvaluateRun = key === PAGE.EVALUATE;
+    const newLevel = isEvaluateRun ? computeEvaluateLevelFromFiles(virtualFiles || []) : level;
+    const lines = makeLogs(key, ree, params, newLevel);
+    const ts = new Date().toISOString();
+
+    setServiceLogs((l) => ({ ...l, [key]: { lines, ts } }));
+    setActionStates((s) => ({ ...s, [key]: "done" }));
+    setBadges((b) => ({ ...b, [key]: true }));
+    setTimestamps((t) => ({ ...t, [key]: ts }));
+
+    const serviceHandler = SERVICE_RUN_HANDLERS[key];
+    if (serviceHandler) {
+      serviceHandler(params, newLevel);
+      return;
+    }
+
+    if (key === "create") {
+      setLocked(true);
+      showToast("REE created — fields locked", "success");
     } else if (key === "swh") {
       const swhid = `swh:1:dir:${Math.random().toString(16).slice(2, 14)}`;
       setRee((r) => ({ ...r, swhid }));
@@ -12464,8 +12536,8 @@ function Explorer({ onBack }: ExplorerProps) {
       setRee((r) => ({ ...r, dataverse_doi: doi }));
       showToast("Dataset published on Dataverse — DOI assigned", "success");
     } else {
-      const svc = [EVALUATE_SVC, ...SERVICES].find((s) => s.key === key);
-      showToast(`${svc.label} completed`, "success");
+      const svc = SERVICES.find((s) => s.key === key);
+      showToast(`${svc?.label ?? key} completed`, "success");
     }
   };
 
@@ -12491,8 +12563,8 @@ function Explorer({ onBack }: ExplorerProps) {
       n: 3,
       key: PAGE.EVALUATE,
       label: "Evaluate",
-      IC: EVALUATE_SVC.IC,
-      svc: EVALUATE_SVC,
+      IC: Ic.star,
+      svc: SERVICES.find((s) => s.key === PAGE.EVALUATE),
       desc: "Score reproducibility level",
     },
     {
@@ -13065,7 +13137,7 @@ function Explorer({ onBack }: ExplorerProps) {
                 setFocusedField={setFocusedField}
               />
             )}
-            {[EVALUATE_SVC, ...SERVICES].map((svc) => {
+            {SERVICES.map((svc) => {
               if (page !== svc.key) return null;
               const ServicePageComponent = SERVICE_PAGE_COMPONENTS[svc.key];
               if (!ServicePageComponent) return null;
