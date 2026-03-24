@@ -726,12 +726,6 @@ const S_SECTION_LABEL_SMALL: React.CSSProperties = {
 };
 
 /** Card-style surface panel (no overflow setting — callers spread extras in). */
-const S_PANEL: React.CSSProperties = {
-  background: C.surface,
-  border: `1px solid ${C.border}`,
-  borderRadius: 8,
-};
-
 /** Small bold label used for panel column headers in the overview. */
 const S_PANEL_HEADER_LABEL: React.CSSProperties = {
   fontSize: 11,
@@ -739,159 +733,6 @@ const S_PANEL_HEADER_LABEL: React.CSSProperties = {
   color: C.text,
   letterSpacing: 0.3,
   fontFamily: F.sans,
-};
-
-const S_PANEL_FIELD_ROW_WRAP: React.CSSProperties = {
-  position: "relative",
-};
-
-const S_PANEL_FIELD_BUTTON_BASE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "stretch",
-  width: "100%",
-  textAlign: "left",
-  border: "none",
-  transition: "background 0.12s",
-};
-
-const S_PANEL_FIELD_LABEL_CELL_BASE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 5,
-  padding: "4px 8px",
-  minWidth: 80,
-  maxWidth: 80,
-  flexShrink: 0,
-};
-
-const S_PANEL_FIELD_DOT_BASE: React.CSSProperties = {
-  width: 5,
-  height: 5,
-  borderRadius: "50%",
-  flexShrink: 0,
-};
-
-const S_PANEL_FIELD_LABEL_TEXT_BASE: React.CSSProperties = {
-  fontSize: 10,
-  fontFamily: F.sans,
-  fontWeight: 600,
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-};
-
-const S_PANEL_FIELD_VALUE_CELL: React.CSSProperties = {
-  padding: "4px 8px",
-  flex: 1,
-  minWidth: 0,
-};
-
-const S_PANEL_FIELD_VALUE_TEXT_BASE: React.CSSProperties = {
-  fontSize: 10,
-  fontFamily: F.mono,
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  display: "block",
-};
-
-const S_PANEL_FIELD_TOOLTIP_BASE: React.CSSProperties = {
-  position: "fixed",
-  zIndex: 9999,
-  background: C.text,
-  color: "#fff",
-  fontFamily: F.mono,
-  fontSize: 11,
-  padding: "5px 9px",
-  borderRadius: 6,
-  whiteSpace: "pre-wrap",
-  wordBreak: "break-all",
-  maxWidth: 320,
-  boxShadow: "0 4px 16px rgba(0,0,0,0.22)",
-  pointerEvents: "none",
-  lineHeight: 1.5,
-};
-
-const S_PANEL_FIELD_TOOLTIP_ARROW: React.CSSProperties = {
-  position: "absolute",
-  bottom: -5,
-  left: 14,
-  width: 10,
-  height: 10,
-  background: C.text,
-  transform: "rotate(45deg)",
-  borderRadius: 1,
-};
-
-const S_OVERVIEW_ROOT: React.CSSProperties = {
-  flex: 1,
-  overflowY: "auto",
-  padding: 28,
-};
-
-const S_OVERVIEW_HEADER_ROW: React.CSSProperties = {
-  marginBottom: 20,
-  display: "flex",
-  alignItems: "baseline",
-  gap: 14,
-};
-
-const S_OVERVIEW_HEADER_EYEBROW: React.CSSProperties = {
-  ...S_SECTION_LABEL,
-  fontSize: 10,
-  fontWeight: 600,
-  marginBottom: 4,
-};
-
-const S_OVERVIEW_HEADER_TITLE: React.CSSProperties = {
-  fontSize: 18,
-  fontWeight: 800,
-  color: C.text,
-  letterSpacing: 0.2,
-  fontFamily: F.mono,
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-};
-
-const S_OVERVIEW_LEVEL_BADGE_BASE: React.CSSProperties = {
-  fontSize: 9,
-  fontWeight: 700,
-  padding: "2px 8px",
-  borderRadius: 3,
-  letterSpacing: 1.5,
-  textTransform: "uppercase",
-};
-
-const S_OVERVIEW_HEADER_RULE: React.CSSProperties = {
-  flex: 1,
-  height: 1,
-  background: C.border,
-  marginBottom: 2,
-};
-
-const S_OVERVIEW_DATE: React.CSSProperties = {
-  fontSize: 9,
-  fontFamily: F.mono,
-  color: C.textMuted,
-  letterSpacing: 1,
-};
-
-const S_OVERVIEW_COLUMNS: React.CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  gap: 18,
-  position: "relative",
-};
-
-const S_OVERVIEW_LEFT_COLUMN: React.CSSProperties = {
-  width: 196,
-  flexShrink: 0,
-  position: "relative",
-  zIndex: 1,
-  display: "flex",
-  flexDirection: "column",
-  gap: 14,
 };
 
 const S_OVERVIEW_PANEL_HEADER_ROW: React.CSSProperties = {
@@ -967,29 +808,11 @@ const S_OVERVIEW_PANEL_BUTTON_BASE: React.CSSProperties = {
   width: "100%",
 };
 
-const S_OVERVIEW_META_COUNT: React.CSSProperties = {
-  marginLeft: "auto",
-  fontSize: 8,
-  fontFamily: F.mono,
-  color: C.textMuted,
-  letterSpacing: 0.5,
-};
-
 const S_OVERVIEW_META_FOOTER: React.CSSProperties = {
   padding: "10px 12px",
   display: "flex",
   flexDirection: "column",
   gap: 7,
-};
-
-const S_OVERVIEW_RIGHT_COLUMN: React.CSSProperties = {
-  width: 196,
-  flexShrink: 0,
-  display: "flex",
-  flexDirection: "column",
-  gap: 14,
-  position: "relative",
-  zIndex: 1,
 };
 
 const S_OVERVIEW_PANEL_BADGE_BASE: React.CSSProperties = {
@@ -999,50 +822,6 @@ const S_OVERVIEW_PANEL_BADGE_BASE: React.CSSProperties = {
   borderRadius: 2,
   padding: "0 4px",
   letterSpacing: 0.8,
-};
-
-const S_OVERVIEW_SEALED_CARD_BASE: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 480,
-  background: C.surface,
-  borderRadius: 10,
-  overflow: "hidden",
-};
-
-const S_OVERVIEW_SEALED_HEADER_BASE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "9px 14px",
-};
-
-const S_OVERVIEW_SEALED_ICON: React.CSSProperties = {
-  display: "flex",
-  flexShrink: 0,
-};
-
-const S_OVERVIEW_SEALED_TITLE_BASE: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  fontFamily: F.sans,
-  letterSpacing: 0.4,
-};
-
-const S_OVERVIEW_SEALED_LEVEL_BADGE_BASE: React.CSSProperties = {
-  marginLeft: "auto",
-  fontSize: 9,
-  fontFamily: F.mono,
-  borderRadius: 3,
-  padding: "1px 6px",
-  letterSpacing: 0.6,
-  fontWeight: 700,
-};
-
-const S_OVERVIEW_SEALED_BODY: React.CSSProperties = {
-  padding: "10px 14px",
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
 };
 
 const S_OVERVIEW_SEALED_META_ROW: React.CSSProperties = {
@@ -1056,30 +835,6 @@ const S_OVERVIEW_SEALED_META_KEY: React.CSSProperties = {
   fontFamily: F.sans,
   color: C.textMuted,
   flexShrink: 0,
-};
-
-const S_OVERVIEW_SEALED_HASH_VAL: React.CSSProperties = {
-  fontFamily: F.mono,
-  fontSize: 11,
-  color: C.text,
-  fontWeight: 600,
-  letterSpacing: 0.8,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
-
-const S_OVERVIEW_SEALED_DATE_VAL: React.CSSProperties = {
-  fontFamily: F.mono,
-  fontSize: 10,
-  color: C.textMid,
-};
-
-const S_OVERVIEW_SEALED_CABLE_ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 3,
-  marginTop: 2,
 };
 
 const S_OVERVIEW_SEALED_ACTION_BTN_BASE: React.CSSProperties = {
@@ -1096,197 +851,6 @@ const S_OVERVIEW_SEALED_ACTION_BTN_BASE: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const S_OVERVIEW_SEAL_MODAL_OVERLAY: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  zIndex: 9999,
-  background: "rgba(0,0,0,0.45)",
-  backdropFilter: "blur(3px)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const S_OVERVIEW_SEAL_MODAL_BACKDROP_BTN: React.CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  border: "none",
-  background: "transparent",
-  padding: 0,
-  margin: 0,
-  cursor: "default",
-};
-
-const S_OVERVIEW_SEAL_MODAL_CARD: React.CSSProperties = {
-  background: C.surface,
-  borderRadius: 14,
-  width: 380,
-  maxWidth: "90vw",
-  border: `1.5px solid ${C.border}`,
-  boxShadow: "0 8px 40px rgba(0,0,0,0.22)",
-  overflow: "hidden",
-  position: "relative",
-  zIndex: 1,
-};
-
-const S_OVERVIEW_SEAL_MODAL_HEADER: React.CSSProperties = {
-  padding: "16px 20px 12px",
-  borderBottom: `1px solid ${C.border}`,
-};
-
-const S_OVERVIEW_SEAL_MODAL_HEADER_ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-};
-
-const S_OVERVIEW_SEAL_MODAL_ICON_WRAP: React.CSSProperties = {
-  width: 32,
-  height: 32,
-  borderRadius: 8,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
-
-const S_OVERVIEW_SEAL_MODAL_ICON: React.CSSProperties = {
-  display: "flex",
-};
-
-const S_OVERVIEW_SEAL_MODAL_TITLE: React.CSSProperties = {
-  fontSize: 14,
-  fontWeight: 700,
-  fontFamily: F.sans,
-  color: C.text,
-};
-
-const S_OVERVIEW_SEAL_MODAL_SUBTITLE: React.CSSProperties = {
-  fontSize: 11,
-  fontFamily: F.sans,
-  color: C.textMuted,
-  marginTop: 1,
-};
-
-const S_OVERVIEW_SEAL_MODAL_WARN_BOX: React.CSSProperties = {
-  margin: "12px 20px 0",
-  padding: "10px 12px",
-  borderRadius: 8,
-  background: "#fffbeb",
-  border: "1.5px solid #fde68a",
-};
-
-const S_OVERVIEW_SEAL_MODAL_WARN_ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  gap: 8,
-};
-
-const S_OVERVIEW_SEAL_MODAL_WARN_ICON: React.CSSProperties = {
-  fontSize: 15,
-  flexShrink: 0,
-  lineHeight: 1.2,
-};
-
-const S_OVERVIEW_SEAL_MODAL_WARN_TITLE: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  fontFamily: F.sans,
-  color: "#92400e",
-  marginBottom: 5,
-};
-
-const S_OVERVIEW_SEAL_MODAL_WARN_LIST: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 3,
-};
-
-const S_OVERVIEW_SEAL_MODAL_WARN_ITEM: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-};
-
-const S_OVERVIEW_SEAL_MODAL_WARN_DOT: React.CSSProperties = {
-  width: 5,
-  height: 5,
-  borderRadius: "50%",
-  background: "#f59e0b",
-  flexShrink: 0,
-};
-
-const S_OVERVIEW_SEAL_MODAL_WARN_TEXT: React.CSSProperties = {
-  fontSize: 10,
-  fontFamily: F.sans,
-  color: "#92400e",
-};
-
-const S_OVERVIEW_SEAL_MODAL_BODY: React.CSSProperties = {
-  padding: "12px 20px",
-};
-
-const S_OVERVIEW_SEAL_MODAL_BODY_TEXT: React.CSSProperties = {
-  fontSize: 12,
-  fontFamily: F.sans,
-  color: C.textMid,
-  lineHeight: 1.6,
-};
-
-const S_OVERVIEW_SEAL_MODAL_ACTIONS: React.CSSProperties = {
-  padding: "0 20px 16px",
-  display: "flex",
-  gap: 8,
-  justifyContent: "flex-end",
-};
-
-const S_OVERVIEW_SEAL_MODAL_CANCEL_BTN: React.CSSProperties = {
-  ...S_ACTION_BUTTON_BASE,
-  padding: "8px 16px",
-  borderRadius: 7,
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: "pointer",
-  background: C.surfaceAlt,
-  color: C.textMid,
-  border: `1.5px solid ${C.border}`,
-};
-
-const S_OVERVIEW_SEAL_MODAL_CONFIRM_BTN_BASE: React.CSSProperties = {
-  ...S_ACTION_BUTTON_BASE,
-  display: "flex",
-  alignItems: "center",
-  gap: 7,
-  padding: "8px 18px",
-  borderRadius: 7,
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-  color: "#fff",
-};
-
-const S_OVERVIEW_SEAL_PROGRESS_ROW: React.CSSProperties = {
-  padding: "9px 14px",
-  borderBottom: `1px solid ${C.border}`,
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-};
-
-const S_OVERVIEW_SEAL_PROGRESS_TEXT: React.CSSProperties = {
-  fontSize: 10,
-  fontFamily: F.sans,
-  color: C.textMuted,
-  flexShrink: 0,
-};
-
-const S_OVERVIEW_SEAL_PROGRESS_BARS: React.CSSProperties = {
-  flex: 1,
-  display: "flex",
-  gap: 3,
-  alignItems: "center",
-};
-
 const S_OVERVIEW_SEAL_STATUS_BADGE_BASE: React.CSSProperties = {
   fontSize: 9,
   fontFamily: F.mono,
@@ -1295,202 +859,6 @@ const S_OVERVIEW_SEAL_STATUS_BADGE_BASE: React.CSSProperties = {
   padding: "1px 6px",
   letterSpacing: 0.5,
   flexShrink: 0,
-};
-
-const S_OVERVIEW_SEAL_BUTTON_ROW: React.CSSProperties = {
-  padding: "10px 14px",
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-};
-
-const S_OVERVIEW_SEAL_BUTTON_TEXT_WRAP: React.CSSProperties = {
-  flex: 1,
-};
-
-const S_OVERVIEW_SEAL_BUTTON_TITLE: React.CSSProperties = {
-  fontSize: 11,
-  fontFamily: F.sans,
-  fontWeight: 600,
-  color: C.text,
-};
-
-const S_OVERVIEW_SEAL_BUTTON_SUBTITLE_BASE: React.CSSProperties = {
-  fontSize: 10,
-  fontFamily: F.sans,
-  marginTop: 2,
-};
-
-const S_OVERVIEW_SEAL_BUTTON_CTA: React.CSSProperties = {
-  ...S_ACTION_BUTTON_BASE,
-  display: "flex",
-  alignItems: "center",
-  gap: 7,
-  padding: "8px 18px",
-  borderRadius: 7,
-  flexShrink: 0,
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: 0.3,
-  cursor: "pointer",
-  color: "#fff",
-  transition: "all 0.2s",
-};
-
-const S_OVERVIEW_SEAL_BUTTON_ICON: React.CSSProperties = {
-  display: "flex",
-};
-
-const S_SOURCE_UPLOAD_ROOT: React.CSSProperties = {
-  padding: "8px 0 14px",
-};
-
-const S_SOURCE_UPLOAD_HIDDEN_INPUT: React.CSSProperties = {
-  display: "none",
-};
-
-const S_SOURCE_UPLOAD_COMMITTED_ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  padding: "10px 14px",
-  borderRadius: 8,
-  background: "#f0fdf4",
-  border: "1.5px solid #bbf7d0",
-  marginBottom: 8,
-};
-
-const S_SOURCE_UPLOAD_COMMITTED_ICON: React.CSSProperties = {
-  color: "#16a34a",
-  display: "flex",
-};
-
-const S_SOURCE_UPLOAD_COMMITTED_NAME: React.CSSProperties = {
-  flex: 1,
-  fontSize: 13,
-  fontFamily: F.mono,
-  color: "#15803d",
-  fontWeight: 600,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
-
-const S_SOURCE_UPLOAD_REPLACE_BTN: React.CSSProperties = {
-  background: "none",
-  border: `1px solid ${C.border}`,
-  borderRadius: 5,
-  cursor: "pointer",
-  color: C.textMuted,
-  fontSize: 11,
-  fontFamily: F.sans,
-  padding: "2px 8px",
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-};
-
-const S_SOURCE_UPLOAD_PENDING_WRAP: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 5,
-  marginBottom: 8,
-};
-
-const S_SOURCE_UPLOAD_PENDING_ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  padding: "10px 14px",
-  borderRadius: 8,
-  background: "#fffbeb",
-  border: "1.5px solid #f59e0b",
-};
-
-const S_SOURCE_UPLOAD_PENDING_ICON: React.CSSProperties = {
-  color: "#d97706",
-  display: "flex",
-};
-
-const S_SOURCE_UPLOAD_PENDING_NAME: React.CSSProperties = {
-  flex: 1,
-  fontSize: 13,
-  fontFamily: F.mono,
-  color: "#92400e",
-  fontWeight: 600,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
-
-const S_SOURCE_UPLOAD_CONFIRM_BTN: React.CSSProperties = {
-  background: "#fffbeb",
-  border: "1.5px solid #f59e0b",
-  borderRadius: 6,
-  cursor: "pointer",
-  color: "#b45309",
-  fontSize: 12,
-  fontWeight: 700,
-  fontFamily: F.sans,
-  padding: "4px 10px",
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-  flexShrink: 0,
-};
-
-const S_SOURCE_UPLOAD_PENDING_CLOSE: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  color: C.textMuted,
-  display: "flex",
-  padding: 2,
-  borderRadius: 4,
-};
-
-const S_SOURCE_UPLOAD_RESET_HINT: React.CSSProperties = {
-  fontSize: 11,
-  color: "#92400e",
-  fontFamily: F.sans,
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-  paddingLeft: 2,
-};
-
-const S_SOURCE_UPLOAD_DROPZONE_BASE: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 6,
-  padding: "22px 16px",
-  borderRadius: 8,
-  transition: "all 0.15s",
-  width: "100%",
-  appearance: "none",
-};
-
-const S_SOURCE_UPLOAD_DROPZONE_ICON: React.CSSProperties = {
-  display: "flex",
-};
-
-const S_SOURCE_UPLOAD_DROPZONE_TEXT: React.CSSProperties = {
-  fontSize: 13,
-  fontFamily: F.sans,
-};
-
-const S_SOURCE_UPLOAD_DROPZONE_HINT: React.CSSProperties = {
-  fontSize: 11,
-  color: C.textMuted,
-  fontFamily: F.mono,
-  marginTop: 4,
-};
-
-const S_SOURCE_UPLOAD_BROWSE_HIGHLIGHT: React.CSSProperties = {
-  color: C.accent,
-  fontWeight: 600,
 };
 
 const S_SOURCE_UPLOAD_STATUS_LINE_BASE: React.CSSProperties = {
@@ -1502,229 +870,12 @@ const S_SOURCE_UPLOAD_STATUS_LINE_BASE: React.CSSProperties = {
   gap: 4,
 };
 
-const S_FIELD_TIPS_SIDEBAR_ROOT: React.CSSProperties = {
-  width: 296,
-  borderLeft: `1px solid ${C.border}`,
-  background: C.surface,
-  overflowY: "auto",
-  padding: 20,
-  flexShrink: 0,
-  display: "flex",
-  flexDirection: "column",
-  gap: 16,
-};
-
-const S_FIELD_TIPS_GROUP: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-};
-
-const S_FIELD_TIPS_LABEL: React.CSSProperties = {
-  ...S_SECTION_LABEL,
-  letterSpacing: 1.1,
-};
-
-const S_FIELD_TIPS_CHIPS: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 6,
-};
-
-const S_FIELD_TIPS_CHIP_BASE: React.CSSProperties = {
-  fontSize: 11,
-  fontFamily: F.sans,
-  fontWeight: 700,
-  letterSpacing: 0.2,
-  borderRadius: 99,
-  padding: "3px 9px",
-  cursor: "pointer",
-};
-
-const S_FIELD_TIPS_GENERAL_WRAP: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-};
-
-const S_FIELD_TIPS_GENERAL_HEAD: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 7,
-};
-
-const S_FIELD_TIPS_GENERAL_ICON: React.CSSProperties = {
-  color: C.textMid,
-  display: "flex",
-};
-
-const S_FIELD_TIPS_GENERAL_TITLE: React.CSSProperties = {
-  ...S_SECTION_LABEL,
-  letterSpacing: 0.8,
-  color: C.textMid,
-};
-
-const S_FIELD_TIPS_GENERAL_LIST: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-};
-
-const S_FIELD_TIPS_GENERAL_ITEM: React.CSSProperties = {
-  margin: 0,
-  fontSize: 12,
-  color: C.textMid,
-  lineHeight: 1.55,
-};
-
-const S_FIELD_TIPS_WORKFLOW_BOX: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-  padding: "12px 13px",
-  background: C.accentBg,
-  border: `1px solid ${C.accentBorder}`,
-  borderRadius: 9,
-};
-
-const S_FIELD_TIPS_WORKFLOW_HEAD: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 7,
-};
-
-const S_FIELD_TIPS_WORKFLOW_ICON: React.CSSProperties = {
-  color: C.accent,
-  display: "flex",
-};
-
-const S_FIELD_TIPS_WORKFLOW_TITLE: React.CSSProperties = {
-  ...S_SECTION_LABEL,
-  letterSpacing: 0.8,
-  color: C.accent,
-};
-
-const S_FIELD_TIPS_WORKFLOW_TEXT: React.CSSProperties = {
-  fontSize: 12,
-  color: C.textMid,
-  lineHeight: 1.55,
-  margin: 0,
-};
-
-const S_FIELD_TIPS_WORKFLOW_LIST: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-};
-
-const S_FIELD_TIPS_WORKFLOW_BTN_BASE: React.CSSProperties = {
-  textAlign: "left",
-  padding: "8px 10px",
-  borderRadius: 8,
-  border: `1px solid ${C.accentBorder}`,
-  background: C.surface,
-  display: "flex",
-  flexDirection: "column",
-  gap: 3,
-};
-
-const S_FIELD_TIPS_WORKFLOW_BTN_TITLE: React.CSSProperties = {
-  fontSize: 12,
-  fontWeight: 700,
-  color: C.text,
-  fontFamily: F.sans,
-};
-
-const S_FIELD_TIPS_WORKFLOW_BTN_DESC: React.CSSProperties = {
-  fontSize: 11,
-  color: C.textMuted,
-  lineHeight: 1.45,
-};
-
-const S_FIELD_TIPS_EMPTY_BOX: React.CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  gap: 8,
-  padding: "12px 13px",
-  background: C.accentBg,
-  border: `1px solid ${C.accentBorder}`,
-  borderRadius: 9,
-};
-
-const S_FIELD_TIPS_EMPTY_ICON: React.CSSProperties = {
-  color: C.accent,
-  flexShrink: 0,
-  marginTop: 1,
-};
-
-const S_FIELD_TIPS_EMPTY_TEXT: React.CSSProperties = {
-  fontSize: 13,
-  color: C.textMid,
-  lineHeight: 1.6,
-  margin: 0,
-};
-
-const S_SOURCE_URL_ROOT: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-};
-
-const S_SOURCE_URL_INPUT_ROW: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-  alignItems: "stretch",
-};
-
-const S_SOURCE_URL_INPUT_WRAP: React.CSSProperties = {
-  flex: 1,
-  position: "relative",
-};
-
-const S_SOURCE_URL_ICON: React.CSSProperties = {
-  position: "absolute",
-  left: 10,
-  top: "50%",
-  transform: "translateY(-50%)",
-  color: C.textMuted,
-  pointerEvents: "none",
-};
-
-const S_SOURCE_URL_CHECK_BTN_BASE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "7px 13px",
-  borderRadius: 7,
-  fontSize: 13,
-  fontWeight: 600,
-  fontFamily: F.sans,
-  flexShrink: 0,
-  transition: "all 0.15s",
-  whiteSpace: "nowrap",
-};
-
 const S_SOURCE_URL_STATUS_BASE: React.CSSProperties = {
   fontSize: 11,
   fontFamily: F.sans,
   display: "flex",
   alignItems: "center",
   gap: 4,
-};
-
-const S_SOURCE_URL_COMMITTED: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 5,
-  fontSize: 11,
-  fontFamily: F.mono,
-  color: "#16a34a",
-};
-
-const S_SOURCE_URL_COMMITTED_VALUE: React.CSSProperties = {
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
 };
 
 const S_FIELD_ROW_BASE: React.CSSProperties = {
@@ -1761,16 +912,6 @@ const S_FIELD_ROW_REQUIRED_BADGE: React.CSSProperties = {
   fontFamily: F.sans,
   background: "#fef2f2",
   border: "1px solid #fecaca",
-  borderRadius: 3,
-  padding: "1px 4px",
-};
-
-const S_FIELD_ROW_LOCKED_BADGE: React.CSSProperties = {
-  fontSize: 11,
-  color: C.textMuted,
-  fontFamily: F.sans,
-  background: C.surfaceAlt,
-  border: `1px solid ${C.border}`,
   borderRadius: 3,
   padding: "1px 4px",
 };
@@ -1821,125 +962,6 @@ const S_FLEX_COL_GAP_8: React.CSSProperties = {
   gap: 8,
 };
 
-const S_FIELD_SECTION_CARD_BASE: React.CSSProperties = {
-  background: C.surface,
-  borderRadius: 10,
-  overflow: "hidden",
-  transition: "border-color 0.3s",
-  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-};
-
-const S_FIELD_SECTION_HEADER_BASE: React.CSSProperties = {
-  padding: "11px 20px",
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  transition: "background 0.3s",
-};
-
-const S_FIELD_SECTION_ACCENT_BAR_BASE: React.CSSProperties = {
-  width: 3,
-  height: 16,
-  borderRadius: 99,
-  flexShrink: 0,
-  transition: "background 0.3s",
-};
-
-const S_FIELD_SECTION_ICON: React.CSSProperties = {
-  display: "flex",
-};
-
-const S_FIELD_SECTION_TITLE_BASE: React.CSSProperties = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: 1,
-  textTransform: "uppercase",
-  fontFamily: F.sans,
-};
-
-const S_FIELD_SECTION_SUBTITLE: React.CSSProperties = {
-  fontSize: 12,
-  color: C.textMuted,
-  fontWeight: 400,
-  textTransform: "none",
-  letterSpacing: 0,
-};
-
-const S_FIELD_SECTION_FILLER: React.CSSProperties = {
-  flex: 1,
-};
-
-const S_FIELD_SECTION_PROGRESS_ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-};
-
-const S_FIELD_SECTION_PROGRESS_TRACK: React.CSSProperties = {
-  width: 40,
-  height: 3,
-  borderRadius: 99,
-  background: C.border,
-  overflow: "hidden",
-};
-
-const S_FIELD_SECTION_PROGRESS_VAL: React.CSSProperties = {
-  fontSize: 11,
-  fontFamily: F.mono,
-  fontWeight: 600,
-};
-
-const S_FIELD_SECTION_BODY: React.CSSProperties = {
-  padding: "0 20px",
-};
-
-const S_FIELD_TIP_CARD_ROOT: React.CSSProperties = {
-  background: C.surface,
-  border: `1px solid ${C.border}`,
-  borderRadius: 10,
-  boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
-  padding: 16,
-  display: "flex",
-  flexDirection: "column",
-};
-
-const S_FIELD_TIP_CARD_HEADER: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  marginBottom: 10,
-};
-
-const S_FIELD_TIP_CARD_HEADER_LEFT: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 7,
-};
-
-const S_FIELD_TIP_CARD_DOT: React.CSSProperties = {
-  width: 8,
-  height: 8,
-  borderRadius: "50%",
-  background: C.accent,
-};
-
-const S_FIELD_TIP_CARD_HEADING: React.CSSProperties = {
-  ...S_SECTION_LABEL,
-  letterSpacing: 1.1,
-  color: C.accent,
-};
-
-const S_FIELD_TIP_CARD_CLOSE: React.CSSProperties = {
-  fontSize: 11,
-  fontFamily: F.sans,
-  color: C.textMuted,
-  background: C.surfaceAlt,
-  border: `1px solid ${C.border}`,
-  borderRadius: 6,
-  padding: "4px 8px",
-  cursor: "pointer",
-};
-
 const S_FIELD_LABEL_TEXT_SM: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
@@ -1953,20 +975,6 @@ const S_TEXT_ITALIC_11: React.CSSProperties = {
   fontSize: 11,
 };
 
-const S_FIELD_TIP_CARD_TITLE: React.CSSProperties = {
-  fontSize: 15,
-  fontWeight: 700,
-  color: C.text,
-  marginBottom: 4,
-};
-
-const S_FIELD_TIP_CARD_DESC: React.CSSProperties = {
-  fontSize: 13,
-  color: C.textMid,
-  lineHeight: 1.6,
-  margin: "0 0 14px",
-};
-
 const S_FIELD_TIP_CARD_BLOCK: React.CSSProperties = {
   marginBottom: 16,
 };
@@ -1977,111 +985,10 @@ const S_FIELD_TIP_CARD_BLOCK_LABEL: React.CSSProperties = {
   marginBottom: 6,
 };
 
-const S_FIELD_TIP_CARD_EXAMPLE_BOX: React.CSSProperties = {
-  background: C.surfaceAlt,
-  border: `1px solid ${C.border}`,
-  borderRadius: 6,
-  padding: "9px 12px",
-  fontFamily: F.mono,
-  fontSize: 13,
-  color: C.accent,
-  wordBreak: "break-all",
-};
-
-const S_FIELD_TIP_CARD_FORMAT_TEXT: React.CSSProperties = {
-  fontSize: 13,
-  color: C.textMid,
-  lineHeight: 1.6,
-  margin: 0,
-  fontFamily: F.mono,
-};
-
-const S_FIELD_TIP_CARD_HOWTO_BASE: React.CSSProperties = {
-  fontSize: 13,
-  color: C.textMid,
-  lineHeight: 1.65,
-  margin: 0,
-  whiteSpace: "pre-wrap",
-};
-
 const S_FIELD_TIP_CARD_COMMANDS_LABEL: React.CSSProperties = {
   ...S_SECTION_LABEL,
   letterSpacing: 0.8,
   marginBottom: 8,
-};
-
-const S_FIELD_TIP_CARD_COMMANDS_LIST: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-};
-
-const S_FIELD_TIP_CARD_COMMAND_LABEL: React.CSSProperties = {
-  fontSize: 11,
-  color: C.textMuted,
-  fontFamily: F.sans,
-  marginBottom: 4,
-};
-
-const S_FIELD_TIP_CARD_COMMAND_BOX: React.CSSProperties = {
-  background: "#0f172a",
-  borderRadius: 6,
-  padding: "10px 12px",
-  fontFamily: F.mono,
-  fontSize: 13,
-  color: "#94d2bd",
-  wordBreak: "break-all",
-  lineHeight: 1.6,
-};
-
-const S_FIELD_TIP_CARD_TOOLS_WRAP: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 6,
-};
-
-const S_FIELD_TIP_CARD_TOOL_LINK: React.CSSProperties = {
-  fontSize: 13,
-  fontFamily: F.sans,
-  color: C.accent,
-  background: C.accentBg,
-  border: `1px solid ${C.accentBorder}`,
-  borderRadius: 5,
-  padding: "4px 10px",
-  textDecoration: "none",
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-};
-
-const S_RUNTIME_RIGHT: React.CSSProperties = {
-  ...S_FIELD_ROW_CONTENT,
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-};
-
-const S_RUNTIME_MODE_ROW: React.CSSProperties = {
-  display: "flex",
-  gap: 5,
-};
-
-const S_RUNTIME_MODE_BTN_BASE: React.CSSProperties = {
-  flex: 1,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 5,
-  padding: "6px 8px",
-  borderRadius: 7,
-  fontSize: 11,
-  fontWeight: 600,
-  fontFamily: F.sans,
-  transition: "all 0.15s",
-};
-
-const S_RUNTIME_MODE_ICON: React.CSSProperties = {
-  display: "flex",
 };
 
 const S_RUNTIME_PICKER_WRAP: React.CSSProperties = {
@@ -2093,36 +1000,6 @@ const S_RUNTIME_PICKER_WRAP: React.CSSProperties = {
 const S_RUNTIME_HELP_TEXT: React.CSSProperties = {
   fontSize: 11,
   color: C.textMuted,
-  lineHeight: 1.5,
-};
-
-const S_RUNTIME_CODE_INLINE: React.CSSProperties = {
-  fontFamily: F.mono,
-  fontSize: 10.5,
-  background: C.surfaceAlt,
-  padding: "1px 4px",
-  borderRadius: 3,
-};
-
-const S_RUNTIME_WARN_BOX: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-  padding: "8px 11px",
-  background: "#fff7ed",
-  border: "1px solid #fde68a",
-  borderRadius: 7,
-};
-
-const S_RUNTIME_WARN_ICON: React.CSSProperties = {
-  color: "#d97706",
-  display: "flex",
-  flexShrink: 0,
-  marginTop: 1,
-};
-
-const S_RUNTIME_WARN_TEXT: React.CSSProperties = {
-  fontSize: 11,
-  color: "#92400e",
   lineHeight: 1.5,
 };
 
@@ -2157,15 +1034,6 @@ const S_WORKFLOW_PAGE_MAIN_COL: React.CSSProperties = {
 const S_WORKFLOW_PAGE_NUDGE_WRAP: React.CSSProperties = {
   padding: "0 24px 24px",
   flexShrink: 0,
-};
-
-const S_WORKFLOW_PAGE_ROOT_ANIM: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  height: "100%",
-  minHeight: 0,
-  overflow: "hidden",
-  animation: "fadeUp 0.2s ease",
 };
 
 const S_WORKFLOW_SERVICE_ROOT: React.CSSProperties = {
@@ -2224,539 +1092,10 @@ const S_SECTION_LABEL_MB12: React.CSSProperties = {
   marginBottom: 12,
 };
 
-const S_SCRIPT_PANEL_ROOT: React.CSSProperties = {
-  border: `1.5px solid ${C.border}`,
-  borderRadius: 10,
-  overflow: "hidden",
-  marginBottom: 20,
-  background: C.surface,
-};
-
-const S_SCRIPT_TAB_BAR_BASE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  background: C.surfaceAlt,
-};
-
-const S_SCRIPT_TABS_WRAP: React.CSSProperties = {
-  display: "flex",
-  flex: 1,
-  overflow: "hidden",
-};
-
-const S_SCRIPT_TAB_BUTTON_BASE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "8px 14px",
-  border: "none",
-  cursor: "pointer",
-  transition: "background 0.13s",
-  flexShrink: 0,
-};
-
-const S_SCRIPT_TAB_ICON: React.CSSProperties = {
-  display: "flex",
-};
-
-const S_SCRIPT_TAB_LABEL_BASE: React.CSSProperties = {
-  fontSize: 12,
-  whiteSpace: "nowrap",
-};
-
-const S_SCRIPT_TAB_TYPE_BADGE_BASE: React.CSSProperties = {
-  fontSize: 9,
-  fontWeight: 700,
-  fontFamily: F.mono,
-  letterSpacing: 0.6,
-  textTransform: "uppercase",
-  padding: "1px 4px",
-  borderRadius: 3,
-  marginLeft: 2,
-};
-
-const S_SCRIPT_COLLAPSE_BUTTON: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  padding: "8px 12px",
-  color: C.textMuted,
-  display: "flex",
-  alignItems: "center",
-};
-
-const S_SCRIPT_VIEW_SURFACE: React.CSSProperties = {
-  background: C.surfaceAlt,
-};
-
 const S_SCRIPT_VIEW_MESSAGE_BASE: React.CSSProperties = {
   padding: "12px 16px",
   fontSize: 12,
   fontFamily: F.mono,
-};
-
-const S_SCRIPT_VIEW_LINES_WRAP: React.CSSProperties = {
-  padding: "8px 0 10px",
-};
-
-const S_SCRIPT_VIEW_LINE_ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "baseline",
-};
-
-const S_SCRIPT_VIEW_LINE_NO: React.CSSProperties = {
-  display: "inline-block",
-  minWidth: 40,
-  textAlign: "right",
-  paddingRight: 16,
-  paddingLeft: 12,
-  fontSize: 11,
-  fontFamily: F.mono,
-  color: C.borderMid,
-  userSelect: "none",
-  flexShrink: 0,
-};
-
-const S_SCRIPT_VIEW_CODE_BASE: React.CSSProperties = {
-  fontSize: 12,
-  fontFamily: F.mono,
-  lineHeight: 1.75,
-  whiteSpace: "pre",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  display: "block",
-  paddingRight: 16,
-};
-
-const S_SCRIPT_WRITE_TOOLBAR: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "6px 10px",
-  borderBottom: `1px solid ${C.border}`,
-  background: C.surfaceAlt,
-};
-
-const S_SCRIPT_FILENAME_ICON: React.CSSProperties = {
-  color: C.textMuted,
-  display: "flex",
-  flexShrink: 0,
-};
-
-const S_SCRIPT_FILENAME_INPUT: React.CSSProperties = {
-  flex: 1,
-  border: "none",
-  background: "transparent",
-  fontSize: 12,
-  fontFamily: F.mono,
-  color: C.textMid,
-  outline: "none",
-  minWidth: 0,
-};
-
-const S_SCRIPT_TEMPLATE_SELECT: React.CSSProperties = {
-  border: `1.5px solid ${C.border}`,
-  borderRadius: 5,
-  padding: "4px 8px",
-  fontSize: 11,
-  fontFamily: F.sans,
-  color: C.textMid,
-  background: C.surface,
-};
-
-const S_SCRIPT_TEMPLATE_APPLY_BTN: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "4px 10px",
-  borderRadius: 5,
-  cursor: "pointer",
-  border: `1px solid ${C.border}`,
-  background: C.surface,
-  color: C.textMid,
-  fontSize: 11,
-  fontWeight: 600,
-  fontFamily: F.sans,
-  transition: "all 0.13s",
-  flexShrink: 0,
-  whiteSpace: "nowrap",
-};
-
-const S_SCRIPT_TOOLBAR_DIVIDER: React.CSSProperties = {
-  width: 1,
-  height: 16,
-  background: C.border,
-  flexShrink: 0,
-};
-
-const S_SCRIPT_SAVE_BTN_BASE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 5,
-  padding: "4px 10px",
-  borderRadius: 5,
-  border: `1px solid ${C.accentBorder}`,
-  background: C.accentBg,
-  fontSize: 11,
-  fontWeight: 600,
-  fontFamily: F.sans,
-  color: C.accent,
-  transition: "all 0.13s",
-  flexShrink: 0,
-  whiteSpace: "nowrap",
-};
-
-const S_SCRIPT_EDITOR: React.CSSProperties = {
-  width: "100%",
-  minHeight: 200,
-  padding: "10px 14px",
-  fontFamily: F.mono,
-  fontSize: 12,
-  lineHeight: 1.7,
-  color: C.text,
-  background: C.surface,
-  border: "none",
-  resize: "vertical",
-  outline: "none",
-  tabSize: 2,
-  display: "block",
-};
-
-const S_SCRIPT_STATUS_BAR: React.CSSProperties = {
-  padding: "5px 12px",
-  background: C.surfaceAlt,
-  borderTop: `1px solid ${C.border}`,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-};
-
-const S_SCRIPT_STATUS_TEXT: React.CSSProperties = {
-  fontSize: 11,
-  fontFamily: F.mono,
-  color: C.textMuted,
-};
-
-const S_SCRIPT_REMOTE_HINT: React.CSSProperties = {
-  fontSize: 11,
-  fontFamily: F.sans,
-  color: C.textMuted,
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-};
-
-const S_FILE_PICKER_ROOT: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 0,
-};
-
-const S_FILE_PICKER_INPUT_WRAP: React.CSSProperties = {
-  position: "relative",
-};
-
-const S_FILE_PICKER_ROW_BASE: React.CSSProperties = {
-  display: "flex",
-  overflow: "hidden",
-  transition: "border-color 0.2s",
-};
-
-const S_FILE_PICKER_STATUS_ICON_BASE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "0 8px 0 10px",
-  flexShrink: 0,
-  transition: "color 0.2s",
-};
-
-const S_FILE_PICKER_INPUT: React.CSSProperties = {
-  flex: 1,
-  border: "none",
-  padding: "7px 4px 7px 0",
-  fontSize: 14,
-  fontFamily: F.mono,
-  color: C.text,
-  background: "transparent",
-};
-
-const S_FILE_PICKER_TYPE_BADGE_WRAP: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  padding: "0 8px",
-  flexShrink: 0,
-};
-
-const S_FILE_PICKER_TYPE_BADGE_TEXT: React.CSSProperties = {
-  fontSize: 10,
-  fontWeight: 700,
-  fontFamily: F.mono,
-  letterSpacing: 0.5,
-  textTransform: "uppercase",
-};
-
-const S_FILE_PICKER_PEEK_BTN_BASE: React.CSSProperties = {
-  border: "none",
-  padding: "7px 9px",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-  fontSize: 11,
-  fontFamily: F.sans,
-  fontWeight: 600,
-  transition: "background 0.15s, color 0.15s",
-  flexShrink: 0,
-};
-
-const S_FILE_PICKER_PEEK_LABEL: React.CSSProperties = {
-  display: "none",
-};
-
-const S_FILE_PICKER_BROWSE_BTN_BASE: React.CSSProperties = {
-  border: "none",
-  padding: "7px 9px",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  transition: "background 0.15s, color 0.15s",
-};
-
-const S_FILE_PICKER_DROPDOWN: React.CSSProperties = {
-  position: "absolute",
-  top: "calc(100% + 4px)",
-  left: 0,
-  right: 0,
-  zIndex: 50,
-  background: C.surface,
-  border: `1px solid ${C.border}`,
-  borderRadius: 8,
-  boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
-  maxHeight: 180,
-  overflowY: "auto",
-};
-
-const S_FILE_PICKER_EMPTY_STATE: React.CSSProperties = {
-  padding: "12px",
-  fontSize: 13,
-  color: C.textMuted,
-  fontFamily: F.sans,
-  textAlign: "center",
-};
-
-const S_FILE_PICKER_OPTION_BASE: React.CSSProperties = {
-  padding: "7px 12px",
-  fontSize: 13,
-  fontFamily: F.mono,
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  border: "none",
-  textAlign: "left",
-  width: "100%",
-};
-
-const S_FILE_PICKER_OPTION_ICON: React.CSSProperties = {
-  display: "flex",
-  opacity: 0.5,
-};
-
-const S_FILE_PICKER_WARNING_STRIP: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "5px 10px",
-  background: "#fff7ed",
-  border: "1px solid #fed7aa",
-  borderTop: "none",
-  borderRadius: "0 0 6px 6px",
-  animation: "fadeUp 0.15s ease",
-};
-
-const S_FILE_PICKER_WARNING_TEXT: React.CSSProperties = {
-  fontSize: 11,
-  color: "#c2410c",
-  fontFamily: F.sans,
-};
-
-const S_FILE_PICKER_PREVIEW_PANEL: React.CSSProperties = {
-  border: "1.5px solid #22c55e",
-  borderTop: "none",
-  borderRadius: "0 0 7px 7px",
-  background: C.surfaceAlt,
-  overflow: "hidden",
-  animation: "fadeUp 0.15s ease",
-};
-
-const S_FILE_PICKER_PREVIEW_HEADER: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "5px 12px",
-  borderBottom: `1px solid ${C.border}`,
-  background: C.surface,
-};
-
-const S_FILE_PICKER_PREVIEW_HEADER_LEFT: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 7,
-};
-
-const S_FILE_PICKER_PREVIEW_ICON: React.CSSProperties = {
-  display: "flex",
-  color: "#16a34a",
-  opacity: 0.9,
-};
-
-const S_FILE_PICKER_PREVIEW_PATH: React.CSSProperties = {
-  fontSize: 11,
-  fontFamily: F.mono,
-  color: C.textMid,
-  letterSpacing: 0.3,
-};
-
-const S_FILE_PICKER_PREVIEW_KIND_BADGE_BASE: React.CSSProperties = {
-  fontSize: 9,
-  fontWeight: 700,
-  fontFamily: F.mono,
-  letterSpacing: 0.8,
-  textTransform: "uppercase",
-  padding: "1px 5px",
-  borderRadius: 3,
-};
-
-const S_FILE_PICKER_PREVIEW_CLOSE: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  color: C.textMuted,
-  display: "flex",
-  padding: "2px",
-  borderRadius: 3,
-};
-
-const S_FILE_PICKER_PREVIEW_LINES_WRAP: React.CSSProperties = {
-  padding: "8px 0 6px",
-};
-
-const S_FILE_PICKER_PREVIEW_LINE_ROW: React.CSSProperties = {
-  display: "flex",
-  alignItems: "baseline",
-  gap: 0,
-};
-
-const S_FILE_PICKER_PREVIEW_LINE_NO: React.CSSProperties = {
-  display: "inline-block",
-  minWidth: 36,
-  textAlign: "right",
-  paddingRight: 14,
-  paddingLeft: 12,
-  fontSize: 11,
-  fontFamily: F.mono,
-  color: C.borderMid,
-  userSelect: "none",
-  flexShrink: 0,
-};
-
-const S_FILE_PICKER_PREVIEW_CODE_BASE: React.CSSProperties = {
-  fontSize: 12,
-  fontFamily: F.mono,
-  lineHeight: 1.7,
-  whiteSpace: "pre",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  display: "block",
-  paddingRight: 14,
-};
-
-const S_FILE_PICKER_PREVIEW_MORE: React.CSSProperties = {
-  padding: "4px 12px 2px 36px",
-  fontSize: 11,
-  fontFamily: F.mono,
-  color: C.textMuted,
-  fontStyle: "italic",
-};
-
-const S_TOAST_BASE: React.CSSProperties = {
-  position: "fixed",
-  bottom: 20,
-  right: 20,
-  zIndex: 2000,
-  borderRadius: 8,
-  padding: "10px 14px",
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-  maxWidth: 340,
-  animation: "slideIn 0.2s ease",
-};
-
-const S_TOAST_ICON: React.CSSProperties = {
-  flexShrink: 0,
-};
-
-const S_TOAST_MESSAGE: React.CSSProperties = {
-  fontSize: 14,
-  color: C.text,
-  fontFamily: F.sans,
-  flex: 1,
-};
-
-const S_TOAST_CLOSE: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  color: C.textMuted,
-  display: "flex",
-};
-
-const S_FILE_NODE_BUTTON_BASE: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 5,
-  padding: "4px 8px",
-  borderRadius: 5,
-  cursor: "pointer",
-  fontSize: 13,
-  fontFamily: F.mono,
-  transition: "background 0.1s",
-  userSelect: "none",
-  textAlign: "left",
-  width: "100%",
-};
-
-const S_FILE_NODE_CHEVRON: React.CSSProperties = {
-  color: C.textMuted,
-  display: "flex",
-  width: 12,
-};
-
-const S_FILE_NODE_FILE_ICON: React.CSSProperties = {
-  marginLeft: 12,
-  display: "flex",
-};
-
-const S_FILE_NODE_NAME: React.CSSProperties = {
-  flex: 1,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-};
-
-const S_FILE_NODE_REF_BADGE: React.CSSProperties = {
-  fontSize: 9,
-  fontWeight: 700,
-  color: "#b45309",
-  background: "#fef3c7",
-  border: "1px solid #fde68a",
-  borderRadius: 3,
-  padding: "0 3px",
-  fontFamily: F.sans,
-  flexShrink: 0,
 };
 
 // ── Level colors use a single-axis progress ramp (slate → indigo → blue → cyan → teal → emerald).
@@ -3464,15 +1803,56 @@ function Toast({ message, type, onClose }: ToastProps) {
   return (
     <div
       style={{
-        ...S_TOAST_BASE,
+        ...{
+          position: "fixed",
+          bottom: 20,
+          right: 20,
+          zIndex: 2000,
+          borderRadius: 8,
+          padding: "10px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+          maxWidth: 340,
+          animation: "slideIn 0.2s ease",
+        },
         background: bg,
         border: `1px solid ${c}30`,
         borderLeft: `3px solid ${c}`,
       }}
     >
-      <span style={{ ...S_TOAST_ICON, color: c }}>{Ic.info()}</span>
-      <span style={S_TOAST_MESSAGE}>{message}</span>
-      <button type="button" onClick={onClose} style={S_TOAST_CLOSE}>
+      <span
+        style={{
+          ...{
+            flexShrink: 0,
+          },
+          color: c,
+        }}
+      >
+        {Ic.info()}
+      </span>
+      <span
+        style={{
+          fontSize: 14,
+          color: C.text,
+          fontFamily: F.sans,
+          flex: 1,
+        }}
+      >
+        {message}
+      </span>
+      <button
+        type="button"
+        onClick={onClose}
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          color: C.textMuted,
+          display: "flex",
+        }}
+      >
         {Ic.x()}
       </button>
     </div>
@@ -3505,7 +1885,20 @@ function FileNode({
         type="button"
         onClick={handleNodeClick}
         style={{
-          ...S_FILE_NODE_BUTTON_BASE,
+          ...{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "4px 8px",
+            borderRadius: 5,
+            cursor: "pointer",
+            fontSize: 13,
+            fontFamily: F.mono,
+            transition: "background 0.1s",
+            userSelect: "none",
+            textAlign: "left",
+            width: "100%",
+          },
           paddingLeft: 8 + depth * 14,
           background: isSel ? C.accentBg : isHighlighted ? "#fef3c7" : "transparent",
           border: isHighlighted && !isSel ? "1px solid #fde68a" : "1px solid transparent",
@@ -3524,14 +1917,54 @@ function FileNode({
       >
         {isFolder ? (
           <>
-            <span style={S_FILE_NODE_CHEVRON}>{open ? Ic.chevD(12) : Ic.chevR(12)}</span>
+            <span
+              style={{
+                color: C.textMuted,
+                display: "flex",
+                width: 12,
+              }}
+            >
+              {open ? Ic.chevD(12) : Ic.chevR(12)}
+            </span>
             {Ic.folder(14)}
           </>
         ) : (
-          <span style={S_FILE_NODE_FILE_ICON}>{Ic.file(14)}</span>
+          <span
+            style={{
+              marginLeft: 12,
+              display: "flex",
+            }}
+          >
+            {Ic.file(14)}
+          </span>
         )}
-        <span style={S_FILE_NODE_NAME}>{node.name}</span>
-        {isHighlighted && !isSel && <span style={S_FILE_NODE_REF_BADGE}>REF</span>}
+        <span
+          style={{
+            flex: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {node.name}
+        </span>
+        {isHighlighted && !isSel && (
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: "#b45309",
+              background: "#fef3c7",
+              border: "1px solid #fde68a",
+              borderRadius: 3,
+              padding: "0 3px",
+              fontFamily: F.sans,
+              flexShrink: 0,
+            }}
+          >
+            REF
+          </span>
+        )}
       </button>
       {isFolder &&
         open &&
@@ -3823,15 +2256,33 @@ function ScriptPanel({
   const tabAccent: Record<ScriptPanelMode, string> = { view: "#16a34a", write: "#7c3aed" };
 
   return (
-    <div style={S_SCRIPT_PANEL_ROOT}>
+    <div
+      style={{
+        border: `1.5px solid ${C.border}`,
+        borderRadius: 10,
+        overflow: "hidden",
+        marginBottom: 20,
+        background: C.surface,
+      }}
+    >
       {/* Tab bar */}
       <div
         style={{
-          ...S_SCRIPT_TAB_BAR_BASE,
+          ...{
+            display: "flex",
+            alignItems: "center",
+            background: C.surfaceAlt,
+          },
           borderBottom: collapsed && mode === "view" ? "none" : `1px solid ${C.border}`,
         }}
       >
-        <div style={S_SCRIPT_TABS_WRAP}>
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            overflow: "hidden",
+          }}
+        >
           {TABS.map((t) => {
             const isActive = mode === t.key;
             const acc = tabAccent[t.key];
@@ -3841,7 +2292,16 @@ function ScriptPanel({
                 key={t.key}
                 onClick={() => handleModeChange(t.key)}
                 style={{
-                  ...S_SCRIPT_TAB_BUTTON_BASE,
+                  ...{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "8px 14px",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "background 0.13s",
+                    flexShrink: 0,
+                  },
                   background: isActive ? tabBg[t.key] : "transparent",
                   borderRight: `1px solid ${C.border}`,
                   borderBottom: isActive ? `2px solid ${acc}` : "2px solid transparent",
@@ -3853,12 +2313,22 @@ function ScriptPanel({
                   if (!isActive) e.currentTarget.style.background = "transparent";
                 }}
               >
-                <span style={{ ...S_SCRIPT_TAB_ICON, color: isActive ? acc : C.textMuted }}>
+                <span
+                  style={{
+                    ...{
+                      display: "flex",
+                    },
+                    color: isActive ? acc : C.textMuted,
+                  }}
+                >
                   {t.icon(12)}
                 </span>
                 <span
                   style={{
-                    ...S_SCRIPT_TAB_LABEL_BASE,
+                    ...{
+                      fontSize: 12,
+                      whiteSpace: "nowrap",
+                    },
                     fontFamily: t.key === "view" ? F.mono : F.sans,
                     color: isActive ? acc : C.textMid,
                     fontWeight: isActive ? 600 : 400,
@@ -3869,7 +2339,16 @@ function ScriptPanel({
                 {t.key === "view" && (
                   <span
                     style={{
-                      ...S_SCRIPT_TAB_TYPE_BADGE_BASE,
+                      ...{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        fontFamily: F.mono,
+                        letterSpacing: 0.6,
+                        textTransform: "uppercase",
+                        padding: "1px 4px",
+                        borderRadius: 3,
+                        marginLeft: 2,
+                      },
                       background: typeStyle.bg,
                       color: typeStyle.color,
                       border: `1px solid ${typeStyle.border}`,
@@ -3887,7 +2366,15 @@ function ScriptPanel({
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            style={S_SCRIPT_COLLAPSE_BUTTON}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "8px 12px",
+              color: C.textMuted,
+              display: "flex",
+              alignItems: "center",
+            }}
             {...hoverColor(C.textMid, C.textMuted)}
           >
             {collapsed ? Ic.chevD(13) : Ic.chevR(13)}
@@ -3900,7 +2387,11 @@ function ScriptPanel({
         <>
           {/* VIEW: read-only light code display */}
           {mode === "view" && (
-            <div style={S_SCRIPT_VIEW_SURFACE}>
+            <div
+              style={{
+                background: C.surfaceAlt,
+              }}
+            >
               {viewLines === null ? (
                 <div
                   style={{
@@ -3921,7 +2412,11 @@ function ScriptPanel({
                   (empty file)
                 </div>
               ) : (
-                <div style={S_SCRIPT_VIEW_LINES_WRAP}>
+                <div
+                  style={{
+                    padding: "8px 0 10px",
+                  }}
+                >
                   {(() => {
                     let lineNumber = 0;
                     const seenLines = new Map<string, number>();
@@ -3930,11 +2425,41 @@ function ScriptPanel({
                       const occurrence = (seenLines.get(line) ?? 0) + 1;
                       seenLines.set(line, occurrence);
                       return (
-                        <div key={`${line}::${occurrence}`} style={S_SCRIPT_VIEW_LINE_ROW}>
-                          <span style={S_SCRIPT_VIEW_LINE_NO}>{lineNumber}</span>
+                        <div
+                          key={`${line}::${occurrence}`}
+                          style={{
+                            display: "flex",
+                            alignItems: "baseline",
+                          }}
+                        >
                           <span
                             style={{
-                              ...S_SCRIPT_VIEW_CODE_BASE,
+                              display: "inline-block",
+                              minWidth: 40,
+                              textAlign: "right",
+                              paddingRight: 16,
+                              paddingLeft: 12,
+                              fontSize: 11,
+                              fontFamily: F.mono,
+                              color: C.borderMid,
+                              userSelect: "none",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {lineNumber}
+                          </span>
+                          <span
+                            style={{
+                              ...{
+                                fontSize: 12,
+                                fontFamily: F.mono,
+                                lineHeight: 1.75,
+                                whiteSpace: "pre",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                display: "block",
+                                paddingRight: 16,
+                              },
                               color: line.startsWith("#")
                                 ? "#94a3b8"
                                 : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
@@ -3963,14 +2488,40 @@ function ScriptPanel({
           {mode === "write" && (
             <div>
               {/* Toolbar */}
-              <div style={S_SCRIPT_WRITE_TOOLBAR}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 10px",
+                  borderBottom: `1px solid ${C.border}`,
+                  background: C.surfaceAlt,
+                }}
+              >
                 {/* Filename */}
-                <span style={S_SCRIPT_FILENAME_ICON}>{Ic.terminal(11)}</span>
+                <span
+                  style={{
+                    color: C.textMuted,
+                    display: "flex",
+                    flexShrink: 0,
+                  }}
+                >
+                  {Ic.terminal(11)}
+                </span>
                 <input
                   value={editorFilename}
                   onChange={(e) => setEditorFilename(e.target.value)}
                   placeholder="filename.sh"
-                  style={S_SCRIPT_FILENAME_INPUT}
+                  style={{
+                    flex: 1,
+                    border: "none",
+                    background: "transparent",
+                    fontSize: 12,
+                    fontFamily: F.mono,
+                    color: C.textMid,
+                    outline: "none",
+                    minWidth: 0,
+                  }}
                 />
 
                 {/* Template selector */}
@@ -3979,7 +2530,15 @@ function ScriptPanel({
                     <select
                       value={templateKey}
                       onChange={(e) => setTemplateKey(e.target.value)}
-                      style={S_SCRIPT_TEMPLATE_SELECT}
+                      style={{
+                        border: `1.5px solid ${C.border}`,
+                        borderRadius: 5,
+                        padding: "4px 8px",
+                        fontSize: 11,
+                        fontFamily: F.sans,
+                        color: C.textMid,
+                        background: C.surface,
+                      }}
                     >
                       {templates.map((t) => (
                         <option key={t.key} value={t.key}>
@@ -3991,7 +2550,23 @@ function ScriptPanel({
                       type="button"
                       onClick={handleUseTemplate}
                       title="Insert selected template into editor"
-                      style={S_SCRIPT_TEMPLATE_APPLY_BTN}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "4px 10px",
+                        borderRadius: 5,
+                        cursor: "pointer",
+                        border: `1px solid ${C.border}`,
+                        background: C.surface,
+                        color: C.textMid,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        fontFamily: F.sans,
+                        transition: "all 0.13s",
+                        flexShrink: 0,
+                        whiteSpace: "nowrap",
+                      }}
                       onMouseEnter={(e) => {
                         if (e.currentTarget) e.currentTarget.style.background = C.surfaceAlt;
                       }}
@@ -4004,7 +2579,14 @@ function ScriptPanel({
                   </>
                 )}
 
-                <div style={S_SCRIPT_TOOLBAR_DIVIDER} />
+                <div
+                  style={{
+                    width: 1,
+                    height: 16,
+                    background: C.border,
+                    flexShrink: 0,
+                  }}
+                />
 
                 {/* Save action */}
                 {
@@ -4013,7 +2595,22 @@ function ScriptPanel({
                     onClick={handleSave}
                     disabled={!editorContent.trim()}
                     style={{
-                      ...S_SCRIPT_SAVE_BTN_BASE,
+                      ...{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "4px 10px",
+                        borderRadius: 5,
+                        border: `1px solid ${C.accentBorder}`,
+                        background: C.accentBg,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        fontFamily: F.sans,
+                        color: C.accent,
+                        transition: "all 0.13s",
+                        flexShrink: 0,
+                        whiteSpace: "nowrap",
+                      },
                       cursor: !editorContent.trim() ? "default" : "pointer",
                       opacity: !editorContent.trim() ? 0.4 : 1,
                     }}
@@ -4035,7 +2632,21 @@ function ScriptPanel({
                 onChange={(e) => setEditorContent(e.target.value)}
                 placeholder={"#!/bin/bash\nset -euo pipefail\n\n# Write your script here..."}
                 spellCheck={false}
-                style={S_SCRIPT_EDITOR}
+                style={{
+                  width: "100%",
+                  minHeight: 200,
+                  padding: "10px 14px",
+                  fontFamily: F.mono,
+                  fontSize: 12,
+                  lineHeight: 1.7,
+                  color: C.text,
+                  background: C.surface,
+                  border: "none",
+                  resize: "vertical",
+                  outline: "none",
+                  tabSize: 2,
+                  display: "block",
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Tab") {
                     e.preventDefault();
@@ -4051,12 +2662,36 @@ function ScriptPanel({
               />
 
               {/* Status bar */}
-              <div style={S_SCRIPT_STATUS_BAR}>
-                <span style={S_SCRIPT_STATUS_TEXT}>
+              <div
+                style={{
+                  padding: "5px 12px",
+                  background: C.surfaceAlt,
+                  borderTop: `1px solid ${C.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontFamily: F.mono,
+                    color: C.textMuted,
+                  }}
+                >
                   {editorContent.split("\n").length} lines · Tab = 2 spaces
                 </span>
                 {isRemoteGit && (
-                  <span style={S_SCRIPT_REMOTE_HINT}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontFamily: F.sans,
+                      color: C.textMuted,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
                     {Ic.link(10)}
                     <span>{isGitHub ? "github.com" : "gitlab.com"} · changes go via PR</span>
                   </span>
@@ -4170,12 +2805,26 @@ function FilePicker({
   };
 
   return (
-    <div style={S_FILE_PICKER_ROOT}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 0,
+      }}
+    >
       {/* Input row */}
-      <div style={S_FILE_PICKER_INPUT_WRAP}>
+      <div
+        style={{
+          position: "relative",
+        }}
+      >
         <div
           style={{
-            ...S_FILE_PICKER_ROW_BASE,
+            ...{
+              display: "flex",
+              overflow: "hidden",
+              transition: "border-color 0.2s",
+            },
             border: `1.5px solid ${borderColor}`,
             borderRadius: isValid && previewOpen ? "7px 7px 0 0" : "7px",
             background: disabled ? C.surfaceAlt : C.surface,
@@ -4189,7 +2838,14 @@ function FilePicker({
           {/* Status indicator left of input */}
           <div
             style={{
-              ...S_FILE_PICKER_STATUS_ICON_BASE,
+              ...{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 8px 0 10px",
+                flexShrink: 0,
+                transition: "color 0.2s",
+              },
               color: notFound || wrongFormat ? "#f97316" : isValid ? "#22c55e" : C.textMuted,
             }}
           >
@@ -4211,21 +2867,40 @@ function FilePicker({
             disabled={disabled}
             placeholder={placeholder || "path/to/file"}
             onFocus={onFocus}
-            style={S_FILE_PICKER_INPUT}
+            style={{
+              flex: 1,
+              border: "none",
+              padding: "7px 4px 7px 0",
+              fontSize: 14,
+              fontFamily: F.mono,
+              color: C.text,
+              background: "transparent",
+            }}
           />
 
           {/* Type badge — shown when file is matched */}
           {isValid && (
             <div
               style={{
-                ...S_FILE_PICKER_TYPE_BADGE_WRAP,
+                ...{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "0 8px",
+                  flexShrink: 0,
+                },
                 borderLeft: `1px solid ${typeStyle.border}`,
                 background: typeStyle.bg,
               }}
             >
               <span
                 style={{
-                  ...S_FILE_PICKER_TYPE_BADGE_TEXT,
+                  ...{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    fontFamily: F.mono,
+                    letterSpacing: 0.5,
+                    textTransform: "uppercase",
+                  },
                   color: typeStyle.color,
                 }}
               >
@@ -4241,7 +2916,19 @@ function FilePicker({
               onClick={() => setPreviewOpen((o) => !o)}
               title={previewOpen ? "Hide preview" : "Peek at file contents"}
               style={{
-                ...S_FILE_PICKER_PEEK_BTN_BASE,
+                ...{
+                  border: "none",
+                  padding: "7px 9px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 11,
+                  fontFamily: F.sans,
+                  fontWeight: 600,
+                  transition: "background 0.15s, color 0.15s",
+                  flexShrink: 0,
+                },
                 background: previewOpen ? "#f0fdf4" : C.surfaceAlt,
                 borderLeft: `1px solid ${previewOpen ? "#bbf7d0" : C.border}`,
                 color: previewOpen ? "#16a34a" : C.textMid,
@@ -4260,7 +2947,13 @@ function FilePicker({
               }}
             >
               {Ic.terminal(13)}
-              <span style={S_FILE_PICKER_PEEK_LABEL}>{previewOpen ? "hide" : "peek"}</span>
+              <span
+                style={{
+                  display: "none",
+                }}
+              >
+                {previewOpen ? "hide" : "peek"}
+              </span>
             </button>
           )}
 
@@ -4271,7 +2964,14 @@ function FilePicker({
               onClick={() => setOpen((o) => !o)}
               title="Browse repository files"
               style={{
-                ...S_FILE_PICKER_BROWSE_BTN_BASE,
+                ...{
+                  border: "none",
+                  padding: "7px 9px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  transition: "background 0.15s, color 0.15s",
+                },
                 background: open ? C.accentBg : C.surfaceAlt,
                 borderLeft: `1px solid ${C.border}`,
                 color: open ? C.accent : C.textMid,
@@ -4296,9 +2996,31 @@ function FilePicker({
 
         {/* Browse dropdown */}
         {open && (
-          <div style={S_FILE_PICKER_DROPDOWN}>
+          <div
+            style={{
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              left: 0,
+              right: 0,
+              zIndex: 50,
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
+              maxHeight: 180,
+              overflowY: "auto",
+            }}
+          >
             {paths.length === 0 ? (
-              <div style={S_FILE_PICKER_EMPTY_STATE}>
+              <div
+                style={{
+                  padding: "12px",
+                  fontSize: 13,
+                  color: C.textMuted,
+                  fontFamily: F.sans,
+                  textAlign: "center",
+                }}
+              >
                 {filterFn ? "No matching files in repository" : "No files in repository"}
               </div>
             ) : (
@@ -4308,7 +3030,18 @@ function FilePicker({
                   key={p}
                   onClick={() => handleSelect(p)}
                   style={{
-                    ...S_FILE_PICKER_OPTION_BASE,
+                    ...{
+                      padding: "7px 12px",
+                      fontSize: 13,
+                      fontFamily: F.mono,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      border: "none",
+                      textAlign: "left",
+                      width: "100%",
+                    },
                     background: draft === p ? C.accentBg : "transparent",
                     color: draft === p ? C.accent : C.textMid,
                   }}
@@ -4323,7 +3056,14 @@ function FilePicker({
                     }
                   }}
                 >
-                  <span style={S_FILE_PICKER_OPTION_ICON}>{Ic.file(12)}</span>
+                  <span
+                    style={{
+                      display: "flex",
+                      opacity: 0.5,
+                    }}
+                  >
+                    {Ic.file(12)}
+                  </span>
                   {p}
                 </button>
               ))
@@ -4334,8 +3074,26 @@ function FilePicker({
 
       {/* Not-found / wrong-format warning strip */}
       {(notFound || wrongFormat) && (
-        <div style={S_FILE_PICKER_WARNING_STRIP}>
-          <span style={S_FILE_PICKER_WARNING_TEXT}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 10px",
+            background: "#fff7ed",
+            border: "1px solid #fed7aa",
+            borderTop: "none",
+            borderRadius: "0 0 6px 6px",
+            animation: "fadeUp 0.15s ease",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 11,
+              color: "#c2410c",
+              fontFamily: F.sans,
+            }}
+          >
             {wrongFormat && notFound
               ? `Wrong format — expected ${placeholder || "the required format"}. File not found either.`
               : wrongFormat
@@ -4347,15 +3105,64 @@ function FilePicker({
 
       {/* Inline file preview panel */}
       {isValid && previewOpen && (
-        <div style={S_FILE_PICKER_PREVIEW_PANEL}>
+        <div
+          style={{
+            border: "1.5px solid #22c55e",
+            borderTop: "none",
+            borderRadius: "0 0 7px 7px",
+            background: C.surfaceAlt,
+            overflow: "hidden",
+            animation: "fadeUp 0.15s ease",
+          }}
+        >
           {/* Preview header */}
-          <div style={S_FILE_PICKER_PREVIEW_HEADER}>
-            <div style={S_FILE_PICKER_PREVIEW_HEADER_LEFT}>
-              <span style={S_FILE_PICKER_PREVIEW_ICON}>{Ic.file(12)}</span>
-              <span style={S_FILE_PICKER_PREVIEW_PATH}>{trimmedDraft}</span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "5px 12px",
+              borderBottom: `1px solid ${C.border}`,
+              background: C.surface,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+              }}
+            >
               <span
                 style={{
-                  ...S_FILE_PICKER_PREVIEW_KIND_BADGE_BASE,
+                  display: "flex",
+                  color: "#16a34a",
+                  opacity: 0.9,
+                }}
+              >
+                {Ic.file(12)}
+              </span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontFamily: F.mono,
+                  color: C.textMid,
+                  letterSpacing: 0.3,
+                }}
+              >
+                {trimmedDraft}
+              </span>
+              <span
+                style={{
+                  ...{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    fontFamily: F.mono,
+                    letterSpacing: 0.8,
+                    textTransform: "uppercase",
+                    padding: "1px 5px",
+                    borderRadius: 3,
+                  },
                   background: typeStyle.bg,
                   color: typeStyle.color,
                   border: `1px solid ${typeStyle.border}`,
@@ -4367,7 +3174,15 @@ function FilePicker({
             <button
               type="button"
               onClick={() => setPreviewOpen(false)}
-              style={S_FILE_PICKER_PREVIEW_CLOSE}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: C.textMuted,
+                display: "flex",
+                padding: "2px",
+                borderRadius: 3,
+              }}
               {...hoverColor(C.textMid, C.textMuted)}
             >
               {Ic.x(12)}
@@ -4375,7 +3190,11 @@ function FilePicker({
           </div>
 
           {/* Code lines */}
-          <div style={S_FILE_PICKER_PREVIEW_LINES_WRAP}>
+          <div
+            style={{
+              padding: "8px 0 6px",
+            }}
+          >
             {(() => {
               let lineNumber = 0;
               const seenLines = new Map<string, number>();
@@ -4384,11 +3203,42 @@ function FilePicker({
                 const occurrence = (seenLines.get(line) ?? 0) + 1;
                 seenLines.set(line, occurrence);
                 return (
-                  <div key={`${line}::${occurrence}`} style={S_FILE_PICKER_PREVIEW_LINE_ROW}>
-                    <span style={S_FILE_PICKER_PREVIEW_LINE_NO}>{lineNumber}</span>
+                  <div
+                    key={`${line}::${occurrence}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: 0,
+                    }}
+                  >
                     <span
                       style={{
-                        ...S_FILE_PICKER_PREVIEW_CODE_BASE,
+                        display: "inline-block",
+                        minWidth: 36,
+                        textAlign: "right",
+                        paddingRight: 14,
+                        paddingLeft: 12,
+                        fontSize: 11,
+                        fontFamily: F.mono,
+                        color: C.borderMid,
+                        userSelect: "none",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {lineNumber}
+                    </span>
+                    <span
+                      style={{
+                        ...{
+                          fontSize: 12,
+                          fontFamily: F.mono,
+                          lineHeight: 1.7,
+                          whiteSpace: "pre",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          display: "block",
+                          paddingRight: 14,
+                        },
                         color: line.startsWith("#")
                           ? "#94a3b8"
                           : line.startsWith("FROM") ||
@@ -4413,7 +3263,15 @@ function FilePicker({
               });
             })()}
             {hasMore && (
-              <div style={S_FILE_PICKER_PREVIEW_MORE}>
+              <div
+                style={{
+                  padding: "4px 12px 2px 36px",
+                  fontSize: 11,
+                  fontFamily: F.mono,
+                  color: C.textMuted,
+                  fontStyle: "italic",
+                }}
+              >
                 … {(matchedFile.content || "").split("\n").length - PREVIEW_LINES} more lines
               </div>
             )}
@@ -4770,7 +3628,21 @@ function FieldRow({ fieldKey, required, children, locked, onFocus, active }: Fie
           </span>
           {tipEnabled && tipTargetChip(!!active)}
           {required && <span style={S_FIELD_ROW_REQUIRED_BADGE}>required</span>}
-          {locked && fieldKey !== "swhid" && <span style={S_FIELD_ROW_LOCKED_BADGE}>locked</span>}
+          {locked && fieldKey !== "swhid" && (
+            <span
+              style={{
+                fontSize: 11,
+                color: C.textMuted,
+                fontFamily: F.sans,
+                background: C.surfaceAlt,
+                border: `1px solid ${C.border}`,
+                borderRadius: 3,
+                padding: "1px 4px",
+              }}
+            >
+              locked
+            </span>
+          )}
         </div>
         <p style={S_FIELD_ROW_DESC}>{meta.desc}</p>
       </div>
@@ -4802,13 +3674,25 @@ function FieldSection({
   return (
     <div
       style={{
-        ...S_FIELD_SECTION_CARD_BASE,
+        ...{
+          background: C.surface,
+          borderRadius: 10,
+          overflow: "hidden",
+          transition: "border-color 0.3s",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+        },
         border: `1px solid ${allFilled ? "#22c55e40" : C.border}`,
       }}
     >
       <div
         style={{
-          ...S_FIELD_SECTION_HEADER_BASE,
+          ...{
+            padding: "11px 20px",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            transition: "background 0.3s",
+          },
           borderBottom: `1px solid ${allFilled ? "#22c55e30" : C.border}`,
           background: allFilled ? "#f0fdf4" : "#fafbfd",
         }}
@@ -4816,26 +3700,75 @@ function FieldSection({
         {/* Accent bar */}
         <div
           style={{
-            ...S_FIELD_SECTION_ACCENT_BAR_BASE,
+            ...{
+              width: 3,
+              height: 16,
+              borderRadius: 99,
+              flexShrink: 0,
+              transition: "background 0.3s",
+            },
             background: allFilled ? "#22c55e" : someFilled ? "#f59e0b" : C.borderMid,
           }}
         />
-        <span style={{ ...S_FIELD_SECTION_ICON, color: allFilled ? "#16a34a" : C.textMuted }}>
+        <span
+          style={{
+            ...{
+              display: "flex",
+            },
+            color: allFilled ? "#16a34a" : C.textMuted,
+          }}
+        >
           {icon}
         </span>
         <span
           style={{
-            ...S_FIELD_SECTION_TITLE_BASE,
+            ...{
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              fontFamily: F.sans,
+            },
             color: allFilled ? "#15803d" : C.text,
           }}
         >
           {title}
         </span>
-        {subtitle && <span style={S_FIELD_SECTION_SUBTITLE}>— {subtitle}</span>}
-        <div style={S_FIELD_SECTION_FILLER} />
+        {subtitle && (
+          <span
+            style={{
+              fontSize: 12,
+              color: C.textMuted,
+              fontWeight: 400,
+              textTransform: "none",
+              letterSpacing: 0,
+            }}
+          >
+            — {subtitle}
+          </span>
+        )}
+        <div
+          style={{
+            flex: 1,
+          }}
+        />
         {totalCount > 0 && (
-          <div style={S_FIELD_SECTION_PROGRESS_ROW}>
-            <div style={S_FIELD_SECTION_PROGRESS_TRACK}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 3,
+                borderRadius: 99,
+                background: C.border,
+                overflow: "hidden",
+              }}
+            >
               <div
                 style={{
                   width: `${pct}%`,
@@ -4848,7 +3781,11 @@ function FieldSection({
             </div>
             <span
               style={{
-                ...S_FIELD_SECTION_PROGRESS_VAL,
+                ...{
+                  fontSize: 11,
+                  fontFamily: F.mono,
+                  fontWeight: 600,
+                },
                 color: allFilled ? "#16a34a" : someFilled ? "#92400e" : C.textMuted,
               }}
             >
@@ -4857,7 +3794,13 @@ function FieldSection({
           </div>
         )}
       </div>
-      <div style={S_FIELD_SECTION_BODY}>{children}</div>
+      <div
+        style={{
+          padding: "0 20px",
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -4871,31 +3814,109 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
   const meta = FIELD_META[fieldKey];
   if (!meta) return null;
   return (
-    <div style={S_FIELD_TIP_CARD_ROOT}>
+    <div
+      style={{
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 10,
+        boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+        padding: 16,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       {/* Header */}
-      <div style={S_FIELD_TIP_CARD_HEADER}>
-        <div style={S_FIELD_TIP_CARD_HEADER_LEFT}>
-          <div style={S_FIELD_TIP_CARD_DOT} />
-          <span style={S_FIELD_TIP_CARD_HEADING}>Field guide</span>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 10,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+          }}
+        >
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: C.accent,
+            }}
+          />
+          <span
+            style={{
+              ...S_SECTION_LABEL,
+              letterSpacing: 1.1,
+              color: C.accent,
+            }}
+          >
+            Field guide
+          </span>
         </div>
         <button
           type="button"
           onClick={onDismiss}
-          style={S_FIELD_TIP_CARD_CLOSE}
+          style={{
+            fontSize: 11,
+            fontFamily: F.sans,
+            color: C.textMuted,
+            background: C.surfaceAlt,
+            border: `1px solid ${C.border}`,
+            borderRadius: 6,
+            padding: "4px 8px",
+            cursor: "pointer",
+          }}
           {...hoverColor(C.text, C.textMuted)}
         >
           {Ic.x(13)}
         </button>
       </div>
 
-      <div style={S_FIELD_TIP_CARD_TITLE}>{meta.label}</div>
-      <p style={S_FIELD_TIP_CARD_DESC}>{meta.desc}</p>
+      <div
+        style={{
+          fontSize: 15,
+          fontWeight: 700,
+          color: C.text,
+          marginBottom: 4,
+        }}
+      >
+        {meta.label}
+      </div>
+      <p
+        style={{
+          fontSize: 13,
+          color: C.textMid,
+          lineHeight: 1.6,
+          margin: "0 0 14px",
+        }}
+      >
+        {meta.desc}
+      </p>
 
       {/* Example value */}
       {meta.example && (
         <div style={S_FIELD_TIP_CARD_BLOCK}>
           <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>Example</div>
-          <div style={S_FIELD_TIP_CARD_EXAMPLE_BOX}>{meta.example}</div>
+          <div
+            style={{
+              background: C.surfaceAlt,
+              border: `1px solid ${C.border}`,
+              borderRadius: 6,
+              padding: "9px 12px",
+              fontFamily: F.mono,
+              fontSize: 13,
+              color: C.accent,
+              wordBreak: "break-all",
+            }}
+          >
+            {meta.example}
+          </div>
         </div>
       )}
 
@@ -4903,7 +3924,17 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       {meta.format && (
         <div style={S_FIELD_TIP_CARD_BLOCK}>
           <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>Format</div>
-          <p style={S_FIELD_TIP_CARD_FORMAT_TEXT}>{meta.format}</p>
+          <p
+            style={{
+              fontSize: 13,
+              color: C.textMid,
+              lineHeight: 1.6,
+              margin: 0,
+              fontFamily: F.mono,
+            }}
+          >
+            {meta.format}
+          </p>
         </div>
       )}
 
@@ -4913,7 +3944,13 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
           <div style={S_FIELD_TIP_CARD_BLOCK_LABEL}>How to get this</div>
           <pre
             style={{
-              ...S_FIELD_TIP_CARD_HOWTO_BASE,
+              ...{
+                fontSize: 13,
+                color: C.textMid,
+                lineHeight: 1.65,
+                margin: 0,
+                whiteSpace: "pre-wrap",
+              },
               fontFamily: meta.howTo.includes("\n") ? F.mono : "inherit",
             }}
           >
@@ -4926,11 +3963,39 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       {meta.toolCommands && meta.toolCommands.length > 0 && (
         <div style={S_FIELD_TIP_CARD_BLOCK}>
           <div style={S_FIELD_TIP_CARD_COMMANDS_LABEL}>Commands</div>
-          <div style={S_FIELD_TIP_CARD_COMMANDS_LIST}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
             {meta.toolCommands.map((tc) => (
               <div key={`${tc.label}:${tc.cmd}`}>
-                <div style={S_FIELD_TIP_CARD_COMMAND_LABEL}>{tc.label}</div>
-                <div style={S_FIELD_TIP_CARD_COMMAND_BOX}>{tc.cmd}</div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: C.textMuted,
+                    fontFamily: F.sans,
+                    marginBottom: 4,
+                  }}
+                >
+                  {tc.label}
+                </div>
+                <div
+                  style={{
+                    background: "#0f172a",
+                    borderRadius: 6,
+                    padding: "10px 12px",
+                    fontFamily: F.mono,
+                    fontSize: 13,
+                    color: "#94d2bd",
+                    wordBreak: "break-all",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {tc.cmd}
+                </div>
               </div>
             ))}
           </div>
@@ -4941,14 +4006,32 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
       {meta.tools && meta.tools.length > 0 && (
         <div>
           <div style={S_FIELD_TIP_CARD_COMMANDS_LABEL}>Tools</div>
-          <div style={S_FIELD_TIP_CARD_TOOLS_WRAP}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+            }}
+          >
             {meta.tools.map((t) => (
               <a
                 key={t.url}
                 href={t.url}
                 target="_blank"
                 rel="noreferrer"
-                style={S_FIELD_TIP_CARD_TOOL_LINK}
+                style={{
+                  fontSize: 13,
+                  fontFamily: F.sans,
+                  color: C.accent,
+                  background: C.accentBg,
+                  border: `1px solid ${C.accentBorder}`,
+                  borderRadius: 5,
+                  padding: "4px 10px",
+                  textDecoration: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
               >
                 {Ic.link(11)} {t.label}
               </a>
@@ -4987,11 +4070,42 @@ function FieldTipsSidebar({
   const workflowTipFields = (tipFields || []).filter((fieldKey) => !!FIELD_META[fieldKey]);
 
   return (
-    <div style={S_FIELD_TIPS_SIDEBAR_ROOT}>
+    <div
+      style={{
+        width: 296,
+        borderLeft: `1px solid ${C.border}`,
+        background: C.surface,
+        overflowY: "auto",
+        padding: 20,
+        flexShrink: 0,
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+      }}
+    >
       {showFieldPicker && (
-        <div style={S_FIELD_TIPS_GROUP}>
-          <div style={S_FIELD_TIPS_LABEL}>Tips</div>
-          <div style={S_FIELD_TIPS_CHIPS}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          <div
+            style={{
+              ...S_SECTION_LABEL,
+              letterSpacing: 1.1,
+            }}
+          >
+            Tips
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+            }}
+          >
             {(tipFields || []).map((fieldKey) => {
               const isActive = activeField === fieldKey;
               return (
@@ -5000,7 +4114,15 @@ function FieldTipsSidebar({
                   key={fieldKey}
                   onClick={() => onFocusField(fieldKey)}
                   style={{
-                    ...S_FIELD_TIPS_CHIP_BASE,
+                    ...{
+                      fontSize: 11,
+                      fontFamily: F.sans,
+                      fontWeight: 700,
+                      letterSpacing: 0.2,
+                      borderRadius: 99,
+                      padding: "3px 9px",
+                      cursor: "pointer",
+                    },
                     color: isActive ? C.accent : C.textMid,
                     background: isActive ? C.accentBg : C.surfaceAlt,
                     border: `1px solid ${isActive ? C.accentBorder : C.border}`,
@@ -5015,14 +4137,55 @@ function FieldTipsSidebar({
       )}
 
       {generalTips.length > 0 && (
-        <div style={S_FIELD_TIPS_GENERAL_WRAP}>
-          <div style={S_FIELD_TIPS_GENERAL_HEAD}>
-            <span style={S_FIELD_TIPS_GENERAL_ICON}>{Ic.info(13)}</span>
-            <span style={S_FIELD_TIPS_GENERAL_TITLE}>{generalTitle}</span>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+            }}
+          >
+            <span
+              style={{
+                color: C.textMid,
+                display: "flex",
+              }}
+            >
+              {Ic.info(13)}
+            </span>
+            <span
+              style={{
+                ...S_SECTION_LABEL,
+                letterSpacing: 0.8,
+                color: C.textMid,
+              }}
+            >
+              {generalTitle}
+            </span>
           </div>
-          <div style={S_FIELD_TIPS_GENERAL_LIST}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
             {generalTips.map((tip) => (
-              <p key={tip} style={S_FIELD_TIPS_GENERAL_ITEM}>
+              <p
+                key={tip}
+                style={{
+                  margin: 0,
+                  fontSize: 12,
+                  color: C.textMid,
+                  lineHeight: 1.55,
+                }}
+              >
                 {tip}
               </p>
             ))}
@@ -5033,15 +4196,59 @@ function FieldTipsSidebar({
       {activeField ? (
         <FieldTipCard fieldKey={activeField} onDismiss={onClear} />
       ) : workflowTipFields.length > 0 ? (
-        <div style={S_FIELD_TIPS_WORKFLOW_BOX}>
-          <div style={S_FIELD_TIPS_WORKFLOW_HEAD}>
-            <span style={S_FIELD_TIPS_WORKFLOW_ICON}>{Ic.info(13)}</span>
-            <span style={S_FIELD_TIPS_WORKFLOW_TITLE}>Workflow tips</span>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            padding: "12px 13px",
+            background: C.accentBg,
+            border: `1px solid ${C.accentBorder}`,
+            borderRadius: 9,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+            }}
+          >
+            <span
+              style={{
+                color: C.accent,
+                display: "flex",
+              }}
+            >
+              {Ic.info(13)}
+            </span>
+            <span
+              style={{
+                ...S_SECTION_LABEL,
+                letterSpacing: 0.8,
+                color: C.accent,
+              }}
+            >
+              Workflow tips
+            </span>
           </div>
-          <p style={S_FIELD_TIPS_WORKFLOW_TEXT}>
+          <p
+            style={{
+              fontSize: 12,
+              color: C.textMid,
+              lineHeight: 1.55,
+              margin: 0,
+            }}
+          >
             No field selected. Here are the key tips for this page/workflow:
           </p>
-          <div style={S_FIELD_TIPS_WORKFLOW_LIST}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
             {workflowTipFields.map((fieldKey) => {
               const meta = FIELD_META[fieldKey];
               return (
@@ -5050,21 +4257,74 @@ function FieldTipsSidebar({
                   key={fieldKey}
                   onClick={() => onFocusField?.(fieldKey)}
                   style={{
-                    ...S_FIELD_TIPS_WORKFLOW_BTN_BASE,
+                    ...{
+                      textAlign: "left",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: `1px solid ${C.accentBorder}`,
+                      background: C.surface,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 3,
+                    },
                     cursor: onFocusField ? "pointer" : "default",
                   }}
                 >
-                  <span style={S_FIELD_TIPS_WORKFLOW_BTN_TITLE}>{meta?.label || fieldKey}</span>
-                  <span style={S_FIELD_TIPS_WORKFLOW_BTN_DESC}>{meta?.desc || ""}</span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: C.text,
+                      fontFamily: F.sans,
+                    }}
+                  >
+                    {meta?.label || fieldKey}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: C.textMuted,
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    {meta?.desc || ""}
+                  </span>
                 </button>
               );
             })}
           </div>
         </div>
       ) : (
-        <div style={S_FIELD_TIPS_EMPTY_BOX}>
-          <span style={S_FIELD_TIPS_EMPTY_ICON}>{Ic.info(13)}</span>
-          <p style={S_FIELD_TIPS_EMPTY_TEXT}>{emptyText}</p>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+            padding: "12px 13px",
+            background: C.accentBg,
+            border: `1px solid ${C.accentBorder}`,
+            borderRadius: 9,
+          }}
+        >
+          <span
+            style={{
+              color: C.accent,
+              flexShrink: 0,
+              marginTop: 1,
+            }}
+          >
+            {Ic.info(13)}
+          </span>
+          <p
+            style={{
+              fontSize: 13,
+              color: C.textMid,
+              lineHeight: 1.6,
+              margin: 0,
+            }}
+          >
+            {emptyText}
+          </p>
         </div>
       )}
     </div>
@@ -5109,10 +4369,38 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
   };
 
   return (
-    <div style={S_SOURCE_URL_ROOT}>
-      <div style={S_SOURCE_URL_INPUT_ROW}>
-        <div style={S_SOURCE_URL_INPUT_WRAP}>
-          <div style={S_SOURCE_URL_ICON}>{Ic.link()}</div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "stretch",
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              left: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: C.textMuted,
+              pointerEvents: "none",
+            }}
+          >
+            {Ic.link()}
+          </div>
           <input
             disabled={locked}
             value={draft}
@@ -5144,7 +4432,19 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
           onClick={handleCheckReachable}
           disabled={locked || !draft.trim() || checkState === "checking"}
           style={{
-            ...S_SOURCE_URL_CHECK_BTN_BASE,
+            ...{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "7px 13px",
+              borderRadius: 7,
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: F.sans,
+              flexShrink: 0,
+              transition: "all 0.15s",
+              whiteSpace: "nowrap",
+            },
             cursor: locked || !draft.trim() || checkState === "checking" ? "default" : "pointer",
             border: `1.5px solid ${draft.trim() ? C.accentBorder : C.border}`,
             background: draft.trim() ? C.accentBg : C.surfaceAlt,
@@ -5166,9 +4466,26 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
         </div>
       )}
       {committedValue && !isDirty && (
-        <div style={S_SOURCE_URL_COMMITTED}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            fontSize: 11,
+            fontFamily: F.mono,
+            color: "#16a34a",
+          }}
+        >
           {Ic.check(10)}
-          <span style={S_SOURCE_URL_COMMITTED_VALUE}>{committedValue}</span>
+          <span
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {committedValue}
+          </span>
         </div>
       )}
       {checkState === "reachable" && checkedFor === draft.trim() && (
@@ -5234,7 +4551,11 @@ function SourceUploadField({
   const handleCancel = () => setPending(null);
 
   return (
-    <div style={S_SOURCE_UPLOAD_ROOT}>
+    <div
+      style={{
+        padding: "8px 0 14px",
+      }}
+    >
       <input
         ref={archiveRef}
         type="file"
@@ -5244,19 +4565,64 @@ function SourceUploadField({
           if (file) handleArchive(file);
           e.currentTarget.value = "";
         }}
-        style={S_SOURCE_UPLOAD_HIDDEN_INPUT}
+        style={{
+          display: "none",
+        }}
       />
 
       {committedName && (
-        <div style={S_SOURCE_UPLOAD_COMMITTED_ROW}>
-          <span style={S_SOURCE_UPLOAD_COMMITTED_ICON}>{Ic.archive()}</span>
-          <span style={S_SOURCE_UPLOAD_COMMITTED_NAME}>{committedName}</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 14px",
+            borderRadius: 8,
+            background: "#f0fdf4",
+            border: "1.5px solid #bbf7d0",
+            marginBottom: 8,
+          }}
+        >
+          <span
+            style={{
+              color: "#16a34a",
+              display: "flex",
+            }}
+          >
+            {Ic.archive()}
+          </span>
+          <span
+            style={{
+              flex: 1,
+              fontSize: 13,
+              fontFamily: F.mono,
+              color: "#15803d",
+              fontWeight: 600,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {committedName}
+          </span>
           {!locked && (
             <button
               type="button"
               onClick={() => archiveRef.current?.click()}
               disabled={inputDisabled}
-              style={S_SOURCE_UPLOAD_REPLACE_BTN}
+              style={{
+                background: "none",
+                border: `1px solid ${C.border}`,
+                borderRadius: 5,
+                cursor: "pointer",
+                color: C.textMuted,
+                fontSize: 11,
+                fontFamily: F.sans,
+                padding: "2px 8px",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = C.accent;
                 e.currentTarget.style.color = C.accent;
@@ -5274,14 +4640,65 @@ function SourceUploadField({
 
       {/* Pending confirmation */}
       {pending && (
-        <div style={S_SOURCE_UPLOAD_PENDING_WRAP}>
-          <div style={S_SOURCE_UPLOAD_PENDING_ROW}>
-            <span style={S_SOURCE_UPLOAD_PENDING_ICON}>{Ic.archive()}</span>
-            <span style={S_SOURCE_UPLOAD_PENDING_NAME}>{pending.archiveName}</span>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 5,
+            marginBottom: 8,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "10px 14px",
+              borderRadius: 8,
+              background: "#fffbeb",
+              border: "1.5px solid #f59e0b",
+            }}
+          >
+            <span
+              style={{
+                color: "#d97706",
+                display: "flex",
+              }}
+            >
+              {Ic.archive()}
+            </span>
+            <span
+              style={{
+                flex: 1,
+                fontSize: 13,
+                fontFamily: F.mono,
+                color: "#92400e",
+                fontWeight: 600,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {pending.archiveName}
+            </span>
             <button
               type="button"
               onClick={handleConfirm}
-              style={S_SOURCE_UPLOAD_CONFIRM_BTN}
+              style={{
+                background: "#fffbeb",
+                border: "1.5px solid #f59e0b",
+                borderRadius: 6,
+                cursor: "pointer",
+                color: "#b45309",
+                fontSize: 12,
+                fontWeight: 700,
+                fontFamily: F.sans,
+                padding: "4px 10px",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                flexShrink: 0,
+              }}
               {...hoverBrightness(96)}
             >
               {Ic.check(11)} Add to workspace
@@ -5289,13 +4706,31 @@ function SourceUploadField({
             <button
               type="button"
               onClick={handleCancel}
-              style={S_SOURCE_UPLOAD_PENDING_CLOSE}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: C.textMuted,
+                display: "flex",
+                padding: 2,
+                borderRadius: 4,
+              }}
               {...hoverColor("#dc2626", C.textMuted)}
             >
               {Ic.x(13)}
             </button>
           </div>
-          <div style={S_SOURCE_UPLOAD_RESET_HINT}>
+          <div
+            style={{
+              fontSize: 11,
+              color: "#92400e",
+              fontFamily: F.sans,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              paddingLeft: 2,
+            }}
+          >
             {Ic.info(10)} Setting a new source will reset all workflow results.
           </div>
         </div>
@@ -5314,7 +4749,18 @@ function SourceUploadField({
           onClick={() => !inputDisabled && archiveRef.current?.click()}
           disabled={inputDisabled}
           style={{
-            ...S_SOURCE_UPLOAD_DROPZONE_BASE,
+            ...{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              padding: "22px 16px",
+              borderRadius: 8,
+              transition: "all 0.15s",
+              width: "100%",
+              appearance: "none",
+            },
             cursor: inputDisabled ? "default" : "pointer",
             border: `1.5px dashed ${dragging ? C.accent : C.borderMid}`,
             background: dragging ? C.accentBg : C.bg,
@@ -5334,16 +4780,44 @@ function SourceUploadField({
           }}
         >
           <span
-            style={{ ...S_SOURCE_UPLOAD_DROPZONE_ICON, color: dragging ? C.accent : C.textMuted }}
+            style={{
+              ...{
+                display: "flex",
+              },
+              color: dragging ? C.accent : C.textMuted,
+            }}
           >
             {Ic.upload(18)}
           </span>
           <span
-            style={{ ...S_SOURCE_UPLOAD_DROPZONE_TEXT, color: dragging ? C.accent : C.textMid }}
+            style={{
+              ...{
+                fontSize: 13,
+                fontFamily: F.sans,
+              },
+              color: dragging ? C.accent : C.textMid,
+            }}
           >
-            Drop archive or <span style={S_SOURCE_UPLOAD_BROWSE_HIGHLIGHT}>browse archive</span>
+            Drop archive or{" "}
+            <span
+              style={{
+                color: C.accent,
+                fontWeight: 600,
+              }}
+            >
+              browse archive
+            </span>
           </span>
-          <span style={S_SOURCE_UPLOAD_DROPZONE_HINT}>.zip · .tar · .tar.gz</span>
+          <span
+            style={{
+              fontSize: 11,
+              color: C.textMuted,
+              fontFamily: F.mono,
+              marginTop: 4,
+            }}
+          >
+            .zip · .tar · .tar.gz
+          </span>
         </button>
       )}
 
@@ -5427,9 +4901,21 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, files }: Runtime
       </div>
 
       {/* Right: mode toggle + input */}
-      <div style={S_RUNTIME_RIGHT}>
+      <div
+        style={{
+          ...S_FIELD_ROW_CONTENT,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
         {/* mode toggle: Tarball | Image ref only */}
-        <div style={S_RUNTIME_MODE_ROW}>
+        <div
+          style={{
+            display: "flex",
+            gap: 5,
+          }}
+        >
           {(
             [
               { id: "tarball", label: "Tarball", icon: Ic.archive },
@@ -5444,7 +4930,19 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, files }: Runtime
                 onClick={() => handleModeChange(opt.id)}
                 disabled={locked}
                 style={{
-                  ...S_RUNTIME_MODE_BTN_BASE,
+                  ...{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 5,
+                    padding: "6px 8px",
+                    borderRadius: 7,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: F.sans,
+                    transition: "all 0.15s",
+                  },
                   cursor: locked ? "default" : "pointer",
                   border: `1.5px solid ${isActive ? C.accent : C.border}`,
                   background: isActive ? C.accentBg : C.surface,
@@ -5458,7 +4956,13 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, files }: Runtime
                   if (!locked && !isActive) e.currentTarget.style.borderColor = C.border;
                 }}
               >
-                <span style={S_RUNTIME_MODE_ICON}>{opt.icon(11)}</span>
+                <span
+                  style={{
+                    display: "flex",
+                  }}
+                >
+                  {opt.icon(11)}
+                </span>
                 {opt.label}
               </button>
             );
@@ -5479,12 +4983,47 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, files }: Runtime
             />
             <div style={S_RUNTIME_HELP_TEXT}>
               Bundled into the REE archive on deposit. Produced by your build script via{" "}
-              <code style={S_RUNTIME_CODE_INLINE}>docker save … | gzip</code>.
+              <code
+                style={{
+                  fontFamily: F.mono,
+                  fontSize: 10.5,
+                  background: C.surfaceAlt,
+                  padding: "1px 4px",
+                  borderRadius: 3,
+                }}
+              >
+                docker save … | gzip
+              </code>
+              .
             </div>
             {isSkipped && (
-              <div style={S_RUNTIME_WARN_BOX}>
-                <span style={S_RUNTIME_WARN_ICON}>{Ic.info(12)}</span>
-                <div style={S_RUNTIME_WARN_TEXT}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  padding: "8px 11px",
+                  background: "#fff7ed",
+                  border: "1px solid #fde68a",
+                  borderRadius: 7,
+                }}
+              >
+                <span
+                  style={{
+                    color: "#d97706",
+                    display: "flex",
+                    flexShrink: 0,
+                    marginTop: 1,
+                  }}
+                >
+                  {Ic.info(12)}
+                </span>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "#92400e",
+                    lineHeight: 1.5,
+                  }}
+                >
                   Tarball will <strong>not</strong> be bundled in the REE archive. Ensure it is
                   reproducible from the build script alone.
                 </div>
@@ -8998,7 +8537,16 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
   const capstoneReady = buildDone && sbomDone && activationDone;
 
   return (
-    <div style={S_WORKFLOW_PAGE_ROOT_ANIM}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+        animation: "fadeUp 0.2s ease",
+      }}
+    >
       <WorkflowPageHeader
         color={repo.color}
         icon={Ic.globe(18)}
@@ -10920,7 +10468,11 @@ function PanelFieldRow({
   };
 
   return (
-    <div style={S_PANEL_FIELD_ROW_WRAP}>
+    <div
+      style={{
+        position: "relative",
+      }}
+    >
       <button
         type="button"
         ref={rowRef}
@@ -10928,7 +10480,14 @@ function PanelFieldRow({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         style={{
-          ...S_PANEL_FIELD_BUTTON_BASE,
+          ...{
+            display: "flex",
+            alignItems: "stretch",
+            width: "100%",
+            textAlign: "left",
+            border: "none",
+            transition: "background 0.12s",
+          },
           background: hovered && onClick ? C.surfaceAlt : "transparent",
           borderBottom: isLast ? "none" : `1px solid ${C.border}`,
           cursor: onClick ? "pointer" : "default",
@@ -10936,32 +10495,65 @@ function PanelFieldRow({
       >
         <div
           style={{
-            ...S_PANEL_FIELD_LABEL_CELL_BASE,
+            ...{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 8px",
+              minWidth: 80,
+              maxWidth: 80,
+              flexShrink: 0,
+            },
             borderRight: `1px solid ${filled ? labelBorderColor : C.border}`,
             background: filled ? labelBg : "transparent",
           }}
         >
           <div
             style={{
-              ...S_PANEL_FIELD_DOT_BASE,
+              ...{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                flexShrink: 0,
+              },
               background: filled ? dotColor : "#d1d5db",
               boxShadow: filled ? `0 0 5px ${dotGlow}` : "none",
             }}
           />
           <span
             style={{
-              ...S_PANEL_FIELD_LABEL_TEXT_BASE,
+              ...{
+                fontSize: 10,
+                fontFamily: F.sans,
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              },
               color: filled ? labelColor : C.textMuted,
             }}
           >
             {label}
           </span>
         </div>
-        <div style={S_PANEL_FIELD_VALUE_CELL}>
+        <div
+          style={{
+            padding: "4px 8px",
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
           <span
             ref={valueRef}
             style={{
-              ...S_PANEL_FIELD_VALUE_TEXT_BASE,
+              ...{
+                fontSize: 10,
+                fontFamily: F.mono,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "block",
+              },
               color: filled ? C.textMid : C.textMuted,
               fontStyle: filled ? "normal" : "italic",
             }}
@@ -10973,13 +10565,39 @@ function PanelFieldRow({
       {showTooltip && tooltipPos && (
         <div
           style={{
-            ...S_PANEL_FIELD_TOOLTIP_BASE,
+            ...{
+              position: "fixed",
+              zIndex: 9999,
+              background: C.text,
+              color: "#fff",
+              fontFamily: F.mono,
+              fontSize: 11,
+              padding: "5px 9px",
+              borderRadius: 6,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-all",
+              maxWidth: 320,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.22)",
+              pointerEvents: "none",
+              lineHeight: 1.5,
+            },
             left: tooltipPos.x,
             top: tooltipPos.y - 34,
           }}
         >
           {value}
-          <div style={S_PANEL_FIELD_TOOLTIP_ARROW} />
+          <div
+            style={{
+              position: "absolute",
+              bottom: -5,
+              left: 14,
+              width: 10,
+              height: 10,
+              background: C.text,
+              transform: "rotate(45deg)",
+              borderRadius: 1,
+            }}
+          />
         </div>
       )}
     </div>
@@ -11019,7 +10637,11 @@ function PageOverview({
   const [showSealConfirm, setShowSealConfirm] = React.useState(false);
   const lv = LEVELS[Math.min(level, 7)];
   const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({
-    ...S_PANEL,
+    ...{
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: 8,
+    },
     ...extra,
   });
 
@@ -11149,16 +10771,56 @@ function PageOverview({
   }
 
   return (
-    <div style={S_OVERVIEW_ROOT}>
+    <div
+      style={{
+        flex: 1,
+        overflowY: "auto",
+        padding: 28,
+      }}
+    >
       {/* ── Header ── */}
-      <div style={S_OVERVIEW_HEADER_ROW}>
+      <div
+        style={{
+          marginBottom: 20,
+          display: "flex",
+          alignItems: "baseline",
+          gap: 14,
+        }}
+      >
         <div>
-          <div style={S_OVERVIEW_HEADER_EYEBROW}>Reproducible Execution Environment</div>
-          <div style={S_OVERVIEW_HEADER_TITLE}>
+          <div
+            style={{
+              ...S_SECTION_LABEL,
+              fontSize: 10,
+              fontWeight: 600,
+              marginBottom: 4,
+            }}
+          >
+            Reproducible Execution Environment
+          </div>
+          <div
+            style={{
+              fontSize: 18,
+              fontWeight: 800,
+              color: C.text,
+              letterSpacing: 0.2,
+              fontFamily: F.mono,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
             {ree.name || "untitled-env"}
             <span
               style={{
-                ...S_OVERVIEW_LEVEL_BADGE_BASE,
+                ...{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  borderRadius: 3,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                },
                 background: `${lv.color}16`,
                 color: lv.color,
                 border: `1px solid ${lv.color}40`,
@@ -11168,12 +10830,36 @@ function PageOverview({
             </span>
           </div>
         </div>
-        <div style={S_OVERVIEW_HEADER_RULE} />
-        <div style={S_OVERVIEW_DATE}>{new Date().toISOString().slice(0, 10)}</div>
+        <div
+          style={{
+            flex: 1,
+            height: 1,
+            background: C.border,
+            marginBottom: 2,
+          }}
+        />
+        <div
+          style={{
+            fontSize: 9,
+            fontFamily: F.mono,
+            color: C.textMuted,
+            letterSpacing: 1,
+          }}
+        >
+          {new Date().toISOString().slice(0, 10)}
+        </div>
       </div>
 
       {/* ── Three columns ── */}
-      <div ref={cableContainerRef} style={S_OVERVIEW_COLUMNS}>
+      <div
+        ref={cableContainerRef}
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 18,
+          position: "relative",
+        }}
+      >
         <PanelCableOverlay
           containerRef={cableContainerRef}
           sourceRef={sourceRef}
@@ -11192,7 +10878,17 @@ function PageOverview({
         />
 
         {/* Left — source + fields */}
-        <div style={S_OVERVIEW_LEFT_COLUMN}>
+        <div
+          style={{
+            width: 196,
+            flexShrink: 0,
+            position: "relative",
+            zIndex: 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+          }}
+        >
           {/* Source panel */}
           <div ref={sourceRef} style={panel({ overflow: "hidden" })}>
             <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
@@ -11324,7 +11020,15 @@ function PageOverview({
             <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e" }} />
               <span style={S_PANEL_HEADER_LABEL}>Metadata</span>
-              <span style={S_OVERVIEW_META_COUNT}>
+              <span
+                style={{
+                  marginLeft: "auto",
+                  fontSize: 8,
+                  fontFamily: F.mono,
+                  color: C.textMuted,
+                  letterSpacing: 0.5,
+                }}
+              >
                 {
                   (["name", "hardware_description"] as (keyof Ree)[]).filter((f) =>
                     f === "hardware_description"
@@ -11652,24 +11356,48 @@ function PageOverview({
                 <div
                   ref={sealRef}
                   style={{
-                    ...S_OVERVIEW_SEALED_CARD_BASE,
+                    ...{
+                      width: "100%",
+                      maxWidth: 480,
+                      background: C.surface,
+                      borderRadius: 10,
+                      overflow: "hidden",
+                    },
                     border: `1.5px solid ${lv.color}50`,
                     boxShadow: `0 0 0 3px ${lv.color}14, 0 2px 12px rgba(0,0,0,0.07)`,
                   }}
                 >
                   <div
                     style={{
-                      ...S_OVERVIEW_SEALED_HEADER_BASE,
+                      ...{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "9px 14px",
+                      },
                       borderBottom: `1px solid ${lv.color}30`,
                       background: `${lv.color}0c`,
                     }}
                   >
-                    <span style={{ ...S_OVERVIEW_SEALED_ICON, color: lv.color }}>
+                    <span
+                      style={{
+                        ...{
+                          display: "flex",
+                          flexShrink: 0,
+                        },
+                        color: lv.color,
+                      }}
+                    >
                       {Ic.lock(13)}
                     </span>
                     <span
                       style={{
-                        ...S_OVERVIEW_SEALED_TITLE_BASE,
+                        ...{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          fontFamily: F.sans,
+                          letterSpacing: 0.4,
+                        },
                         color: lv.color,
                       }}
                     >
@@ -11677,7 +11405,15 @@ function PageOverview({
                     </span>
                     <span
                       style={{
-                        ...S_OVERVIEW_SEALED_LEVEL_BADGE_BASE,
+                        ...{
+                          marginLeft: "auto",
+                          fontSize: 9,
+                          fontFamily: F.mono,
+                          borderRadius: 3,
+                          padding: "1px 6px",
+                          letterSpacing: 0.6,
+                          fontWeight: 700,
+                        },
                         color: lv.color,
                         background: `${lv.color}18`,
                         border: `1px solid ${lv.color}40`,
@@ -11686,16 +11422,51 @@ function PageOverview({
                       L{level} · {lv.label}
                     </span>
                   </div>
-                  <div style={S_OVERVIEW_SEALED_BODY}>
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                    }}
+                  >
                     <div style={S_OVERVIEW_SEALED_META_ROW}>
                       <span style={S_OVERVIEW_SEALED_META_KEY}>hash</span>
-                      <span style={S_OVERVIEW_SEALED_HASH_VAL}>{ree._sealHash || "—"}</span>
+                      <span
+                        style={{
+                          fontFamily: F.mono,
+                          fontSize: 11,
+                          color: C.text,
+                          fontWeight: 600,
+                          letterSpacing: 0.8,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {ree._sealHash || "—"}
+                      </span>
                     </div>
                     <div style={S_OVERVIEW_SEALED_META_ROW}>
                       <span style={S_OVERVIEW_SEALED_META_KEY}>sealed</span>
-                      <span style={S_OVERVIEW_SEALED_DATE_VAL}>{sealDate}</span>
+                      <span
+                        style={{
+                          fontFamily: F.mono,
+                          fontSize: 10,
+                          color: C.textMid,
+                        }}
+                      >
+                        {sealDate}
+                      </span>
                     </div>
-                    <div style={S_OVERVIEW_SEALED_CABLE_ROW}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 3,
+                        marginTop: 2,
+                      }}
+                    >
                       {cableItems.map((c) => (
                         <div
                           key={c.label}
@@ -11766,30 +11537,103 @@ function PageOverview({
               <>
                 {/* Confirmation modal */}
                 {showSealConfirm && (
-                  <div style={S_OVERVIEW_SEAL_MODAL_OVERLAY}>
+                  <div
+                    style={{
+                      position: "fixed",
+                      inset: 0,
+                      zIndex: 9999,
+                      background: "rgba(0,0,0,0.45)",
+                      backdropFilter: "blur(3px)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     <button
                       type="button"
                       aria-label="Close confirmation"
                       onClick={() => setShowSealConfirm(false)}
-                      style={S_OVERVIEW_SEAL_MODAL_BACKDROP_BTN}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        margin: 0,
+                        cursor: "default",
+                      }}
                     />
-                    <div style={S_OVERVIEW_SEAL_MODAL_CARD}>
+                    <div
+                      style={{
+                        background: C.surface,
+                        borderRadius: 14,
+                        width: 380,
+                        maxWidth: "90vw",
+                        border: `1.5px solid ${C.border}`,
+                        boxShadow: "0 8px 40px rgba(0,0,0,0.22)",
+                        overflow: "hidden",
+                        position: "relative",
+                        zIndex: 1,
+                      }}
+                    >
                       {/* Modal header */}
-                      <div style={S_OVERVIEW_SEAL_MODAL_HEADER}>
-                        <div style={S_OVERVIEW_SEAL_MODAL_HEADER_ROW}>
+                      <div
+                        style={{
+                          padding: "16px 20px 12px",
+                          borderBottom: `1px solid ${C.border}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
                           <div
                             style={{
-                              ...S_OVERVIEW_SEAL_MODAL_ICON_WRAP,
+                              ...{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              },
                               background: `${lv.color}18`,
                             }}
                           >
-                            <span style={{ ...S_OVERVIEW_SEAL_MODAL_ICON, color: lv.color }}>
+                            <span
+                              style={{
+                                ...{
+                                  display: "flex",
+                                },
+                                color: lv.color,
+                              }}
+                            >
                               {Ic.lock(16)}
                             </span>
                           </div>
                           <div>
-                            <div style={S_OVERVIEW_SEAL_MODAL_TITLE}>Seal this REE?</div>
-                            <div style={S_OVERVIEW_SEAL_MODAL_SUBTITLE}>
+                            <div
+                              style={{
+                                fontSize: 14,
+                                fontWeight: 700,
+                                fontFamily: F.sans,
+                                color: C.text,
+                              }}
+                            >
+                              Seal this REE?
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 11,
+                                fontFamily: F.sans,
+                                color: C.textMuted,
+                                marginTop: 1,
+                              }}
+                            >
                               This action cannot be undone.
                             </div>
                           </div>
@@ -11798,19 +11642,76 @@ function PageOverview({
 
                       {/* Warning: missing cables */}
                       {!allLive && (
-                        <div style={S_OVERVIEW_SEAL_MODAL_WARN_BOX}>
-                          <div style={S_OVERVIEW_SEAL_MODAL_WARN_ROW}>
-                            <span style={S_OVERVIEW_SEAL_MODAL_WARN_ICON}>⚠️</span>
+                        <div
+                          style={{
+                            margin: "12px 20px 0",
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            background: "#fffbeb",
+                            border: "1.5px solid #fde68a",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 8,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 15,
+                                flexShrink: 0,
+                                lineHeight: 1.2,
+                              }}
+                            >
+                              ⚠️
+                            </span>
                             <div>
-                              <div style={S_OVERVIEW_SEAL_MODAL_WARN_TITLE}>
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  fontFamily: F.sans,
+                                  color: "#92400e",
+                                  marginBottom: 5,
+                                }}
+                              >
                                 {missing.length} panel{missing.length !== 1 ? "s" : ""} not
                                 connected
                               </div>
-                              <div style={S_OVERVIEW_SEAL_MODAL_WARN_LIST}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 3,
+                                }}
+                              >
                                 {missing.map((m) => (
-                                  <div key={m.key} style={S_OVERVIEW_SEAL_MODAL_WARN_ITEM}>
-                                    <div style={S_OVERVIEW_SEAL_MODAL_WARN_DOT} />
-                                    <span style={S_OVERVIEW_SEAL_MODAL_WARN_TEXT}>
+                                  <div
+                                    key={m.key}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 6,
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        width: 5,
+                                        height: 5,
+                                        borderRadius: "50%",
+                                        background: "#f59e0b",
+                                        flexShrink: 0,
+                                      }}
+                                    />
+                                    <span
+                                      style={{
+                                        fontSize: 10,
+                                        fontFamily: F.sans,
+                                        color: "#92400e",
+                                      }}
+                                    >
                                       {m.label} — not completed
                                     </span>
                                   </div>
@@ -11822,8 +11723,19 @@ function PageOverview({
                       )}
 
                       {/* Body copy */}
-                      <div style={S_OVERVIEW_SEAL_MODAL_BODY}>
-                        <div style={S_OVERVIEW_SEAL_MODAL_BODY_TEXT}>
+                      <div
+                        style={{
+                          padding: "12px 20px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontFamily: F.sans,
+                            color: C.textMid,
+                            lineHeight: 1.6,
+                          }}
+                        >
                           {allLive ? (
                             <>
                               All <strong>{totalCables}</strong> panels are connected. The REE will
@@ -11847,11 +11759,28 @@ function PageOverview({
                       </div>
 
                       {/* Actions */}
-                      <div style={S_OVERVIEW_SEAL_MODAL_ACTIONS}>
+                      <div
+                        style={{
+                          padding: "0 20px 16px",
+                          display: "flex",
+                          gap: 8,
+                          justifyContent: "flex-end",
+                        }}
+                      >
                         <button
                           type="button"
                           onClick={() => setShowSealConfirm(false)}
-                          style={S_OVERVIEW_SEAL_MODAL_CANCEL_BTN}
+                          style={{
+                            ...S_ACTION_BUTTON_BASE,
+                            padding: "8px 16px",
+                            borderRadius: 7,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            background: C.surfaceAlt,
+                            color: C.textMid,
+                            border: `1.5px solid ${C.border}`,
+                          }}
                           {...hoverBg(C.border, C.surfaceAlt)}
                         >
                           Cancel
@@ -11863,7 +11792,18 @@ function PageOverview({
                             onSeal?.();
                           }}
                           style={{
-                            ...S_OVERVIEW_SEAL_MODAL_CONFIRM_BTN_BASE,
+                            ...{
+                              ...S_ACTION_BUTTON_BASE,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 7,
+                              padding: "8px 18px",
+                              borderRadius: 7,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              color: "#fff",
+                            },
                             background: lv.color,
                             border: `1.5px solid ${lv.color}`,
                             boxShadow: `0 2px 8px ${lv.color}50`,
@@ -11891,11 +11831,33 @@ function PageOverview({
                   }}
                 >
                   {/* Progress row */}
-                  <div style={S_OVERVIEW_SEAL_PROGRESS_ROW}>
-                    <span style={S_OVERVIEW_SEAL_PROGRESS_TEXT}>
+                  <div
+                    style={{
+                      padding: "9px 14px",
+                      borderBottom: `1px solid ${C.border}`,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontFamily: F.sans,
+                        color: C.textMuted,
+                        flexShrink: 0,
+                      }}
+                    >
                       {liveCount}/{totalCables} connected
                     </span>
-                    <div style={S_OVERVIEW_SEAL_PROGRESS_BARS}>
+                    <div
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        gap: 3,
+                        alignItems: "center",
+                      }}
+                    >
                       {cableItems.map((c) => (
                         <div
                           key={c.label}
@@ -11935,12 +11897,36 @@ function PageOverview({
                     )}
                   </div>
                   {/* Seal button row */}
-                  <div style={S_OVERVIEW_SEAL_BUTTON_ROW}>
-                    <div style={S_OVERVIEW_SEAL_BUTTON_TEXT_WRAP}>
-                      <div style={S_OVERVIEW_SEAL_BUTTON_TITLE}>Seal REE</div>
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        flex: 1,
+                      }}
+                    >
                       <div
                         style={{
-                          ...S_OVERVIEW_SEAL_BUTTON_SUBTITLE_BASE,
+                          fontSize: 11,
+                          fontFamily: F.sans,
+                          fontWeight: 600,
+                          color: C.text,
+                        }}
+                      >
+                        Seal REE
+                      </div>
+                      <div
+                        style={{
+                          ...{
+                            fontSize: 10,
+                            fontFamily: F.sans,
+                            marginTop: 2,
+                          },
                           color: allLive ? C.textMuted : "#d97706",
                         }}
                       >
@@ -11953,14 +11939,34 @@ function PageOverview({
                       type="button"
                       onClick={() => setShowSealConfirm(true)}
                       style={{
-                        ...S_OVERVIEW_SEAL_BUTTON_CTA,
+                        ...{
+                          ...S_ACTION_BUTTON_BASE,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 7,
+                          padding: "8px 18px",
+                          borderRadius: 7,
+                          flexShrink: 0,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          letterSpacing: 0.3,
+                          cursor: "pointer",
+                          color: "#fff",
+                          transition: "all 0.2s",
+                        },
                         background: lv.color,
                         border: `1.5px solid ${lv.color}`,
                         boxShadow: `0 2px 10px ${lv.color}50`,
                       }}
                       {...hoverBrightness(92)}
                     >
-                      <span style={S_OVERVIEW_SEAL_BUTTON_ICON}>{Ic.lock(13)}</span>
+                      <span
+                        style={{
+                          display: "flex",
+                        }}
+                      >
+                        {Ic.lock(13)}
+                      </span>
                       Seal
                     </button>
                   </div>
@@ -11971,7 +11977,17 @@ function PageOverview({
         </div>
 
         {/* Right — swh + evaluate + archive + verification */}
-        <div style={S_OVERVIEW_RIGHT_COLUMN}>
+        <div
+          style={{
+            width: 196,
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
           {/* Software Heritage panel */}
           <div ref={swhRef} style={panel({ overflow: "hidden" })}>
             <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
