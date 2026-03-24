@@ -617,6 +617,52 @@ const TOKENS = {
 const C = TOKENS.color;
 const F = TOKENS.font;
 
+// ── Hover handlers ─────────────────────────────────────────────────────────────
+// Reusable hover utilities to replace 60+ repeated imperative onMouseEnter/Leave patterns
+// These centralize color/style hover logic for better maintainability and consistency
+
+/** Simple color hover — transitions between two colors on hover */
+const hoverColor = (enterColor: string, leaveColor: string) => ({
+  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.color = enterColor;
+  },
+  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.color = leaveColor;
+  },
+});
+
+/** Background color hover — transitions between two backgrounds on hover */
+const hoverBg = (enterBg: string, leaveBg: string) => ({
+  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.background = enterBg;
+  },
+  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.background = leaveBg;
+  },
+});
+
+/** Filter brightness hover — useful for subtle hover effects on buttons */
+const hoverBrightness = (brightnessPercent: number = 95) => ({
+  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.filter = `brightness(${brightnessPercent / 100})`;
+  },
+  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.filter = "none";
+  },
+});
+
+/** Combined handlers for complex hover effects (color + background) */
+const hoverColorAndBg = (enterColor: string, leaveColor: string, enterBg: string, leaveBg: string) => ({
+  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.color = enterColor;
+    e.currentTarget.style.background = enterBg;
+  },
+  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    e.currentTarget.style.color = leaveColor;
+    e.currentTarget.style.background = leaveBg;
+  },
+});
+
 // ── Page keys ─────────────────────────────────────────────────────────────────
 // Single source of truth for page/navigation string literals.
 // Using these constants instead of raw strings lets TypeScript catch typos
@@ -3856,8 +3902,7 @@ function ScriptPanel({
             type="button"
             onClick={() => setCollapsed((c) => !c)}
             style={S_SCRIPT_COLLAPSE_BUTTON}
-            onMouseEnter={(e) => (e.currentTarget.style.color = C.textMid)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = C.textMuted)}
+            {...hoverColor(C.textMid, C.textMuted)}
           >
             {collapsed ? Ic.chevD(13) : Ic.chevR(13)}
           </button>
@@ -4347,8 +4392,7 @@ function FilePicker({
               type="button"
               onClick={() => setPreviewOpen(false)}
               style={S_FILE_PICKER_PREVIEW_CLOSE}
-              onMouseEnter={(e) => (e.currentTarget.style.color = C.textMid)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = C.textMuted)}
+              {...hoverColor(C.textMid, C.textMuted)}
             >
               {Ic.x(12)}
             </button>
@@ -4887,8 +4931,7 @@ function FieldTipCard({ fieldKey, onDismiss }: FieldTipCardProps) {
           type="button"
           onClick={onDismiss}
           style={S_FIELD_TIP_CARD_CLOSE}
-          onMouseEnter={(e) => (e.currentTarget.style.color = C.text)}
-          onMouseLeave={(e) => (e.currentTarget.style.color = C.textMuted)}
+          {...hoverColor(C.text, C.textMuted)}
         >
           {Ic.x(13)}
         </button>
@@ -5328,8 +5371,7 @@ function SourceUploadField({
               type="button"
               onClick={handleConfirm}
               style={S_SOURCE_UPLOAD_CONFIRM_BTN}
-              onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.96)")}
-              onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+              {...hoverBrightness(96)}
             >
               {Ic.check(11)} Add to workspace
             </button>
@@ -5337,8 +5379,7 @@ function SourceUploadField({
               type="button"
               onClick={handleCancel}
               style={S_SOURCE_UPLOAD_PENDING_CLOSE}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = C.textMuted)}
+              {...hoverColor("#dc2626", C.textMuted)}
             >
               {Ic.x(13)}
             </button>
@@ -6278,8 +6319,7 @@ function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
           borderRadius: 6,
           transition: "background 0.13s",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "#1d4ed8")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = C.accent)}
+        {...hoverBg("#1d4ed8", C.accent)}
       >
         {step.nextLabel} →
       </button>
@@ -6670,8 +6710,7 @@ function PageGenerateSBOM({
                     gap: 6,
                     cursor: "pointer",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.96)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                  {...hoverBrightness(96)}
                 >
                   {Ic.chevR(12)} Go to Build Runtime
                 </button>
@@ -9715,8 +9754,7 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
             padding: 2,
             borderRadius: 4,
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = C.text)}
-          onMouseLeave={(e) => (e.currentTarget.style.color = C.textMuted)}
+          {...hoverColor(C.text, C.textMuted)}
         >
           {Ic.x(12)}
         </button>
@@ -11359,8 +11397,7 @@ function PageOverview({
                   background: "#fffbeb",
                   border: "1px solid #f59e0b40",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
-                onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                {...hoverBrightness(95)}
               >
                 → Go to Source
               </button>
@@ -11425,8 +11462,7 @@ function PageOverview({
                   border: `1px solid ${C.border}40`,
                   marginTop: 2,
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
-                onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                {...hoverBrightness(95)}
               >
                 → Edit Metadata
               </button>
@@ -11541,8 +11577,7 @@ function PageOverview({
                   background: "#ecfeff",
                   border: "1px solid #a5f3fc",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
-                onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                {...hoverBrightness(95)}
               >
                 → Go to Build Runtime
               </button>
@@ -11632,8 +11667,7 @@ function PageOverview({
                       background: "#f0fdf4",
                       border: `1px solid ${color}40`,
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                    {...hoverBrightness(95)}
                   >
                     → Generate SBOM
                   </button>
@@ -11917,8 +11951,7 @@ function PageOverview({
                           type="button"
                           onClick={() => setShowSealConfirm(false)}
                           style={S_OVERVIEW_SEAL_MODAL_CANCEL_BTN}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = C.border)}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = C.surfaceAlt)}
+                          {...hoverBg(C.border, C.surfaceAlt)}
                         >
                           Cancel
                         </button>
@@ -11934,8 +11967,7 @@ function PageOverview({
                             border: `1.5px solid ${lv.color}`,
                             boxShadow: `0 2px 8px ${lv.color}50`,
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.9)")}
-                          onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                          {...hoverBrightness(90)}
                         >
                           <span style={{ display: "flex" }}>{Ic.lock(12)}</span>
                           {allLive ? "Seal REE" : "Seal anyway"}
@@ -12027,8 +12059,7 @@ function PageOverview({
                         border: `1.5px solid ${lv.color}`,
                         boxShadow: `0 2px 10px ${lv.color}50`,
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.92)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                      {...hoverBrightness(92)}
                     >
                       <span style={S_OVERVIEW_SEAL_BUTTON_ICON}>{Ic.lock(13)}</span>
                       Seal
@@ -12089,8 +12120,7 @@ function PageOverview({
                   background: "#fff7f5",
                   border: "1px solid #fbd0c4",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
-                onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                {...hoverBrightness(95)}
               >
                 → Go to Software Heritage
               </button>
@@ -12198,8 +12228,7 @@ function PageOverview({
                       background: svc.badge.bg,
                       border: `1px solid ${svc.badge.color}40`,
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                    {...hoverBrightness(95)}
                   >
                     → Go to Evaluate
                   </button>
@@ -12263,8 +12292,7 @@ function PageOverview({
                   background: "#f0fdf4",
                   border: "1px solid #6ee7b740",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
-                onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                {...hoverBrightness(95)}
               >
                 → Go to Archival & DOIs
               </button>
@@ -12328,8 +12356,7 @@ function PageOverview({
                       background: "#f5f3ff",
                       border: `1px solid ${activationColor}40`,
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.95)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+                    {...hoverBrightness(95)}
                   >
                     → Go to Test Activation
                   </button>
