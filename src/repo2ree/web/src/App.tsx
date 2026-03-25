@@ -153,6 +153,15 @@ interface ToastState {
 
 type StepState = "idle" | "loading" | "done";
 
+function useFocusScroll(focusedField: string | null) {
+  useEffect(() => {
+    if (!focusedField) return;
+    document
+      .getElementById(`field-${focusedField}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusedField]);
+}
+
 // ── ZIP builder ────────────────────────────────────────────────────────────────
 function _zipU32(n: number): number[] {
   return [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff];
@@ -5127,12 +5136,7 @@ function PageSourceRepoEntry({
     setOriginTypeDraft(ree.source_type || "");
   }, [ree.source_type]);
 
-  useEffect(() => {
-    if (focusedField) {
-      const el = document.getElementById(`field-${focusedField}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [focusedField]);
+  useFocusScroll(focusedField);
 
   const sourceFromUpload = ree._sourceAcquiredBy === "upload" && !!ree._sourceAvailable;
   const sourceFromDownload = ree._sourceAcquiredBy === "download" && !!ree._sourceAvailable;
@@ -5488,12 +5492,7 @@ function PageMetadataEntry({
   const set = (k: string, v: unknown) => onChange({ ...ree, [k]: v });
   const focus = (key: string) => setFocusedField(key);
 
-  useEffect(() => {
-    if (focusedField) {
-      const el = document.getElementById(`field-${focusedField}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [focusedField]);
+  useFocusScroll(focusedField);
 
   const identityFilled = [ree.name].filter(Boolean).length;
   const hardwareFilled = Object.values(ree.hardware_description).filter((v) => v.trim?.()).length;
