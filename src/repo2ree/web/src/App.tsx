@@ -117,6 +117,13 @@ interface ServiceParam {
   options?: string[];
 }
 
+interface RequirementsBannerProps {
+  status: "missing" | "met";
+  items?: ServiceRequire[];
+  onAction?: () => void;
+  actionLabel?: string;
+}
+
 interface Service {
   key: string;
   label: string;
@@ -7081,6 +7088,93 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
   );
 }
 
+function RequirementsBanner({
+  status,
+  items = [],
+  onAction,
+  actionLabel,
+}: RequirementsBannerProps) {
+  const isMissing = status === "missing";
+
+  return (
+    <div
+      style={{
+        background: isMissing ? "#fef2f2" : "#f0fdf4",
+        border: `1px solid ${isMissing ? "#fecaca" : "#bbf7d0"}`,
+        borderRadius: 10,
+        padding: "12px 16px",
+        marginBottom: 20,
+        display: "flex",
+        gap: 12,
+        alignItems: "flex-start",
+      }}
+    >
+      <span
+        style={{
+          color: isMissing ? "#dc2626" : "#16a34a",
+          flexShrink: 0,
+          marginTop: 1,
+          display: "flex",
+        }}
+      >
+        {isMissing ? Ic.info() : Ic.check()}
+      </span>
+      <div style={{ flex: 1 }}>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: isMissing ? "#dc2626" : "#16a34a",
+            marginBottom: items.length > 0 ? 5 : 0,
+          }}
+        >
+          {isMissing ? "Missing required fields" : "All required fields set"}
+        </div>
+
+        {items.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: onAction ? 8 : 0 }}>
+            {items.map((item) => (
+              <span
+                key={item.field}
+                style={{
+                  fontSize: 12,
+                  fontFamily: F.sans,
+                  color: isMissing ? "#dc2626" : "#16a34a",
+                  background: isMissing ? "#fff" : "#dcfce7",
+                  border: `1px solid ${isMissing ? "#fecaca" : "#bbf7d0"}`,
+                  borderRadius: 4,
+                  padding: "2px 8px",
+                }}
+              >
+                {item.label}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {onAction && actionLabel && (
+          <button
+            type="button"
+            onClick={onAction}
+            style={{
+              ...actionBtn({
+                border: `1px solid ${C.accentBorder}`,
+                borderRadius: 6,
+                padding: "4px 10px",
+                background: "transparent",
+                color: C.accent,
+              }),
+              cursor: "pointer",
+            }}
+          >
+            {actionLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // PAGE: EVALUATE (full-width layout with dependency detection panel)
 // ══════════════════════════════════════════════════════════════════════════════
@@ -7132,97 +7226,17 @@ function PageEvaluate({
         <div style={S_WORKFLOW_SERVICE_MAIN_SCROLL}>
           {/* Missing requirements banner */}
           {missing.length > 0 && (
-            <div
-              style={{
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                borderRadius: 10,
-                padding: "12px 16px",
-                marginBottom: 20,
-                display: "flex",
-                gap: 12,
-                alignItems: "flex-start",
-              }}
-            >
-              <span style={{ color: "#dc2626", flexShrink: 0, marginTop: 1 }}>{Ic.info()}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#dc2626", marginBottom: 5 }}>
-                  Missing required fields
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
-                  {missing.map((requiredField) => (
-                    <span
-                      key={requiredField.field}
-                      style={{
-                        fontSize: 12,
-                        fontFamily: F.sans,
-                        color: "#dc2626",
-                        background: "#fff",
-                        border: "1px solid #fecaca",
-                        borderRadius: 4,
-                        padding: "2px 8px",
-                      }}
-                    >
-                      {requiredField.label}
-                    </span>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={onGoFields}
-                  style={{
-                    ...actionBtn({
-                      border: `1px solid ${C.accentBorder}`,
-                      borderRadius: 6,
-                      padding: "4px 10px",
-                      background: "transparent",
-                      color: C.accent,
-                    }),
-                    cursor: "pointer",
-                  }}
-                >
-                  ← Go to Source Repo
-                </button>
-              </div>
-            </div>
+            <RequirementsBanner
+              status="missing"
+              items={missing}
+              onAction={onGoFields}
+              actionLabel="← Go to Source Repo"
+            />
           )}
 
           {/* All required fields set banner */}
           {svc.requires && svc.requires.length > 0 && missing.length === 0 && (
-            <div
-              style={{
-                background: "#f0fdf4",
-                border: "1px solid #bbf7d0",
-                borderRadius: 10,
-                padding: "10px 14px",
-                marginBottom: 20,
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <span style={{ color: "#16a34a", display: "flex", flexShrink: 0 }}>{Ic.check()}</span>
-              <span style={{ fontSize: 13, color: "#16a34a", fontFamily: F.sans, fontWeight: 600 }}>
-                All required fields set:
-              </span>
-              {svc.requires.map((requiredField) => (
-                <span
-                  key={requiredField.field}
-                  style={{
-                    fontSize: 12,
-                    fontFamily: F.sans,
-                    color: "#16a34a",
-                    background: "#dcfce7",
-                    border: "1px solid #bbf7d0",
-                    borderRadius: 4,
-                    padding: "2px 7px",
-                  }}
-                >
-                  {requiredField.label}
-                </span>
-              ))}
-            </div>
+            <RequirementsBanner status="met" items={svc.requires} />
           )}
 
           <ServiceActionSection
@@ -8918,27 +8932,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
               </div>
 
               {/* Missing requirements warning */}
-              {missing.length > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 8,
-                    padding: "10px 13px",
-                    background: "#fef3c7",
-                    border: "1px solid #fde68a",
-                    borderRadius: 8,
-                  }}
-                >
-                  <span style={{ color: "#92400e", flexShrink: 0, marginTop: 1 }}>
-                    {Ic.info(13)}
-                  </span>
-                  <div style={{ fontSize: 13, color: "#92400e", lineHeight: 1.5 }}>
-                    <strong>Missing required fields:</strong>{" "}
-                    {missing.map((requiredField) => requiredField.label).join(", ")}
-                  </div>
-                </div>
-              )}
+              {missing.length > 0 && <RequirementsBanner status="missing" items={missing} />}
 
               {/* Deposit button */}
               <button
