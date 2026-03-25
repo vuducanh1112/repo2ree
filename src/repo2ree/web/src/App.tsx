@@ -163,11 +163,11 @@ function useFocusScroll(focusedField: string | null) {
 }
 
 // ── ZIP builder ────────────────────────────────────────────────────────────────
-function _zipU32(n: number): number[] {
-  return [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >> 24) & 0xff];
+function _zipU32(value: number): number[] {
+  return [value & 0xff, (value >> 8) & 0xff, (value >> 16) & 0xff, (value >> 24) & 0xff];
 }
-function _zipU16(n: number): number[] {
-  return [n & 0xff, (n >> 8) & 0xff];
+function _zipU16(value: number): number[] {
+  return [value & 0xff, (value >> 8) & 0xff];
 }
 function _crc32(data: Uint8Array): number {
   let c = 0xffffffff;
@@ -187,10 +187,10 @@ function buildZipBlob(entries: ZipEntry[]): Blob {
   const central: number[] = [];
   const offsets: number[] = [];
   let off = 0;
-  for (const e of entries) {
-    const name = enc.encode(e.path);
-    const crc = _crc32(e.data);
-    const sz = e.data.length;
+  for (const entry of entries) {
+    const name = enc.encode(entry.path);
+    const crc = _crc32(entry.data);
+    const sz = entry.data.length;
     offsets.push(off);
     const local = [
       ..._zipU32(0x04034b50),
@@ -205,7 +205,7 @@ function buildZipBlob(entries: ZipEntry[]): Blob {
       ..._zipU16(name.length),
       ..._zipU16(0),
       ...Array.from(name),
-      ...Array.from(e.data),
+      ...Array.from(entry.data),
     ];
     localParts.push(...local);
     off += local.length;
@@ -450,7 +450,7 @@ function buildCurrentReeArchiveEntries(
     const archivePath = archiveWorkspacePath(selectedPath);
     if (!archivePath) continue;
     const reePath = `${REE_ROOT_PREFIX}${archivePath}`;
-    if (entries.some((e) => e.path === reePath)) continue;
+    if (entries.some((entry) => entry.path === reePath)) continue;
     entries.push({ path: reePath, data: enc.encode(selectedFile.content || "") });
   }
 
@@ -639,61 +639,61 @@ const F = TOKENS.font;
 // ── Hover Helpers ─────────────────────────────────────────────────────────────
 /**
  * Centralized hover utilities replacing 60+ imperative onMouseEnter/onMouseLeave patterns.
- * 
+ *
  * USAGE PATTERNS:
- * 
+ *
  * 1. Simple hover effects:
  *    <div {...hoverColor(C.primary, C.text)} />
  *    <button {...hoverBg(C.bgLight, C.bg)} />
- * 
+ *
  * 2. Conditional hovers (preferred over ternary spreads):
  *    <div {...hoverIf(!isSelected, hoverBg(C.bgHover, C.bg))} />
  *    Instead of: {...(!isSelected ? hoverBg(...) : {})}
- * 
+ *
  * 3. Combined properties:
  *    <button {...hoverBg(C.bgLight, C.bg)} {...hoverColor(C.primary, C.text)} />
- * 
+ *
  * 4. With Toggle component:
  *    <Toggle {...hoverBrightness(93)} on={true} ... />
  */
 
 /** Background color hover — smooth transition between two backgrounds */
 const hoverBg = (enterBg: string, leaveBg: string) => ({
-  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.background = enterBg;
+  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    mouseEvent.currentTarget.style.background = enterBg;
   },
-  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.background = leaveBg;
+  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    mouseEvent.currentTarget.style.background = leaveBg;
   },
 });
 
 /** Border color hover — smooth transition between two border colors */
 const hoverBorderColor = (enterBorder: string, leaveBorder: string) => ({
-  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.borderColor = enterBorder;
+  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    mouseEvent.currentTarget.style.borderColor = enterBorder;
   },
-  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.borderColor = leaveBorder;
+  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    mouseEvent.currentTarget.style.borderColor = leaveBorder;
   },
 });
 
 /** Text color hover — smooth transition between two text colors */
 const hoverColor = (enterColor: string, leaveColor: string) => ({
-  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.color = enterColor;
+  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    mouseEvent.currentTarget.style.color = enterColor;
   },
-  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.color = leaveColor;
+  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    mouseEvent.currentTarget.style.color = leaveColor;
   },
 });
 
 /** Filter brightness hover — subtle dimming effect; default 95% brightness */
 const hoverBrightness = (brightnessPercent: number = 95) => ({
-  onMouseEnter: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.filter = `brightness(${brightnessPercent / 100})`;
+  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    mouseEvent.currentTarget.style.filter = `brightness(${brightnessPercent / 100})`;
   },
-  onMouseLeave: (e: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
-    e.currentTarget.style.filter = "none";
+  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+    mouseEvent.currentTarget.style.filter = "none";
   },
 });
 
@@ -1698,61 +1698,61 @@ function makeLogs(
   params: Record<string, unknown>,
   newLevel: number,
 ): LogLine[] {
-  const L = (type: LogLineType, msg: string): LogLine => ({ type, msg });
+  const makeLogLine = (type: LogLineType, msg: string): LogLine => ({ type, msg });
   const maps = {
     create: [
-      L("info", "Validating REE fields..."),
-      L("info", `  name:              ${ree.name || "(empty)"}`),
-      L("info", `  origin_url:        ${ree.origin_url || "(empty)"}`),
-      L("info", `  build_script:      ${ree.build_runtime_script || "(empty)"}`),
-      L("info", `  sbom:              ${ree.sbom || "(empty)"}`),
-      L("info", `  activation:        ${ree.activation_script || "(empty)"}`),
-      L("info", "Registering REE object..."),
-      L("ok", `REE id: ree-${Math.random().toString(16).slice(2, 10)}`),
-      L("ok", "Manifest ready for download."),
+      makeLogLine("info", "Validating REE fields..."),
+      makeLogLine("info", `  name:              ${ree.name || "(empty)"}`),
+      makeLogLine("info", `  origin_url:        ${ree.origin_url || "(empty)"}`),
+      makeLogLine("info", `  build_script:      ${ree.build_runtime_script || "(empty)"}`),
+      makeLogLine("info", `  sbom:              ${ree.sbom || "(empty)"}`),
+      makeLogLine("info", `  activation:        ${ree.activation_script || "(empty)"}`),
+      makeLogLine("info", "Registering REE object..."),
+      makeLogLine("ok", `REE id: ree-${Math.random().toString(16).slice(2, 10)}`),
+      makeLogLine("ok", "Manifest ready for download."),
     ],
     evaluate: [
-      L("info", `Strict mode:      ${params.strict ? "yes" : "no"}`),
-      L("info", `SWHID check:      ${params.swhid_check !== false ? "yes" : "no"}`),
-      L("info", "Scanning repository structure..."),
-      L("info", `  runtime:         ${ree.runtime || "not set"}`),
-      L("info", `  sbom:            ${ree.sbom || "not set"}`),
-      L("info", `  build_script:    ${ree.build_runtime_script || "not set"}`),
-      L("info", `  activation:      ${ree.activation_script || "not set"}`),
+      makeLogLine("info", `Strict mode:      ${params.strict ? "yes" : "no"}`),
+      makeLogLine("info", `SWHID check:      ${params.swhid_check !== false ? "yes" : "no"}`),
+      makeLogLine("info", "Scanning repository structure..."),
+      makeLogLine("info", `  runtime:         ${ree.runtime || "not set"}`),
+      makeLogLine("info", `  sbom:            ${ree.sbom || "not set"}`),
+      makeLogLine("info", `  build_script:    ${ree.build_runtime_script || "not set"}`),
+      makeLogLine("info", `  activation:      ${ree.activation_script || "not set"}`),
       ree.swhid
-        ? L("ok", `SWHID resolves: ${ree.swhid}`)
-        : L("warn", "No SWHID — not yet archived"),
-      L("info", "Computing score..."),
-      L("ok", `Reproducibility level: L${newLevel} (${LEVELS[newLevel].label})`),
+        ? makeLogLine("ok", `SWHID resolves: ${ree.swhid}`)
+        : makeLogLine("warn", "No SWHID — not yet archived"),
+      makeLogLine("info", "Computing score..."),
+      makeLogLine("ok", `Reproducibility level: L${newLevel} (${LEVELS[newLevel].label})`),
     ],
     build: [
-      L("info", `Platform:  ${params.platform || "linux/amd64"}`),
-      L("info", `No-cache:  ${params.no_cache !== false ? "yes" : "no"}`),
-      L("info", `Reading ${ree.build_runtime_script || "build_runtime.sh"}...`),
-      L("info", "Pulling base image: python:3.11.7-slim-bookworm"),
-      L(
+      makeLogLine("info", `Platform:  ${params.platform || "linux/amd64"}`),
+      makeLogLine("info", `No-cache:  ${params.no_cache !== false ? "yes" : "no"}`),
+      makeLogLine("info", `Reading ${ree.build_runtime_script || "build_runtime.sh"}...`),
+      makeLogLine("info", "Pulling base image: python:3.11.7-slim-bookworm"),
+      makeLogLine(
         "info",
         "$ DOCKER_BUILDKIT=1 docker build --no-cache --platform=" +
           (params.platform || "linux/amd64") +
           " -t ree:latest .",
       ),
-      L("out", "Step 1/5 : FROM python:3.11.7-slim-bookworm"),
-      L("out", "Step 2/5 : WORKDIR /app"),
-      L("out", "Step 3/5 : COPY requirements.txt ."),
-      L("out", "Step 4/5 : RUN pip install --no-cache-dir -r requirements.txt"),
-      L("out", "Step 5/5 : COPY src/ ./src/"),
-      L("info", "$ docker save ree:latest | gzip > runtime.tar.gz"),
-      L(
+      makeLogLine("out", "Step 1/5 : FROM python:3.11.7-slim-bookworm"),
+      makeLogLine("out", "Step 2/5 : WORKDIR /app"),
+      makeLogLine("out", "Step 3/5 : COPY requirements.txt ."),
+      makeLogLine("out", "Step 4/5 : RUN pip install --no-cache-dir -r requirements.txt"),
+      makeLogLine("out", "Step 5/5 : COPY src/ ./src/"),
+      makeLogLine("info", "$ docker save ree:latest | gzip > runtime.tar.gz"),
+      makeLogLine(
         "ok",
         "Build complete. Output: " +
           (ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "runtime.tar.gz"),
       ),
-      L("ok", "runtime.tar.gz written. Build successful."),
+      makeLogLine("ok", "runtime.tar.gz written. Build successful."),
     ],
     sbom: [
-      L("info", `Format:    ${params.format || "spdx-json"}`),
-      L("info", `Target:    ${ree.runtime || "(not set)"}`),
-      L(
+      makeLogLine("info", `Format:    ${params.format || "spdx-json"}`),
+      makeLogLine("info", `Target:    ${ree.runtime || "(not set)"}`),
+      makeLogLine(
         "info",
         "$ syft " +
           (ree.runtime || "runtime.tar.gz") +
@@ -1760,61 +1760,61 @@ function makeLogs(
           (params.format || "spdx-json") +
           "=sbom.spdx.json",
       ),
-      L("out", " ✔ Loaded image layers"),
-      L("out", " ✔ Parsed image configuration"),
-      L("out", " ✔ Catalogued contents"),
-      L("out", "   ├── numpy 1.26.4"),
-      L("out", "   ├── pandas 2.2.1"),
-      L("out", "   ├── scipy 1.12.0"),
-      L("out", "   ├── biopython 1.83"),
-      L("out", "   └── ... 42 packages total"),
-      L("info", "Writing sbom.spdx.json..."),
-      L("ok", "SBOM generated: sbom.spdx.json"),
+      makeLogLine("out", " ✔ Loaded image layers"),
+      makeLogLine("out", " ✔ Parsed image configuration"),
+      makeLogLine("out", " ✔ Catalogued contents"),
+      makeLogLine("out", "   ├── numpy 1.26.4"),
+      makeLogLine("out", "   ├── pandas 2.2.1"),
+      makeLogLine("out", "   ├── scipy 1.12.0"),
+      makeLogLine("out", "   ├── biopython 1.83"),
+      makeLogLine("out", "   └── ... 42 packages total"),
+      makeLogLine("info", "Writing sbom.spdx.json..."),
+      makeLogLine("ok", "SBOM generated: sbom.spdx.json"),
     ],
     activation: [
-      L("info", `Timeout: ${params.timeout || "60"}s`),
-      L("info", `Reading ${ree.activation_script || "activation_test.sh"}...`),
-      L("info", `$ docker load < ${ree.runtime || "runtime.tar.gz"}`),
-      L("out", "Loaded image: ree:latest"),
-      L("info", '$ docker run --rm --entrypoint="" ree:latest echo ok'),
-      L("out", "ok"),
-      L("ok", "Container started and exited cleanly. Activation test passed."),
+      makeLogLine("info", `Timeout: ${params.timeout || "60"}s`),
+      makeLogLine("info", `Reading ${ree.activation_script || "activation_test.sh"}...`),
+      makeLogLine("info", `$ docker load < ${ree.runtime || "runtime.tar.gz"}`),
+      makeLogLine("out", "Loaded image: ree:latest"),
+      makeLogLine("info", '$ docker run --rm --entrypoint="" ree:latest echo ok'),
+      makeLogLine("out", "ok"),
+      makeLogLine("ok", "Container started and exited cleanly. Activation test passed."),
     ],
     swh: [
-      L("info", `Visit type:     ${params.visit_type || "git"}`),
-      L("info", `Metadata only:  ${params.metadata_only ? "yes" : "no"}`),
-      L("info", "Preparing immutable source snapshot archive..."),
-      L("info", `Snapshot: ${ree._sourceSnapshotArchive || "source-original.tar.gz"}`),
-      L("info", "Connecting to Software Heritage API..."),
-      L("info", `Depositing: ${ree.origin_url || ree.name}`),
-      L("info", "Waiting for ingestion confirmation..."),
-      L("info", "Computing SWHID from tree hash..."),
-      L("ok", "Deposit accepted."),
-      L("ok", `SWHID: swh:1:dir:${Math.random().toString(16).slice(2, 14)}`),
+      makeLogLine("info", `Visit type:     ${params.visit_type || "git"}`),
+      makeLogLine("info", `Metadata only:  ${params.metadata_only ? "yes" : "no"}`),
+      makeLogLine("info", "Preparing immutable source snapshot archive..."),
+      makeLogLine("info", `Snapshot: ${ree._sourceSnapshotArchive || "source-original.tar.gz"}`),
+      makeLogLine("info", "Connecting to Software Heritage API..."),
+      makeLogLine("info", `Depositing: ${ree.origin_url || ree.name}`),
+      makeLogLine("info", "Waiting for ingestion confirmation..."),
+      makeLogLine("info", "Computing SWHID from tree hash..."),
+      makeLogLine("ok", "Deposit accepted."),
+      makeLogLine("ok", `SWHID: swh:1:dir:${Math.random().toString(16).slice(2, 14)}`),
     ],
     zenodo: [
-      L("info", `Access level:   ${params.access || "open"}`),
-      L("info", `Community:      ${params.community || "(none)"}`),
-      L("info", "Creating deposition on Zenodo..."),
-      L("info", `Uploading SBOM: ${ree.sbom || "sbom.spdx.json"}`),
-      L("info", `Uploading manifest: ${ree.name || "ree"}.manifest.json`),
-      L("info", "Setting metadata (title, creators, description)..."),
-      L("info", "Publishing deposition..."),
-      L("ok", "Deposition published."),
-      L("ok", `DOI: 10.5281/zenodo.${Math.floor(Math.random() * 9000000 + 1000000)}`),
+      makeLogLine("info", `Access level:   ${params.access || "open"}`),
+      makeLogLine("info", `Community:      ${params.community || "(none)"}`),
+      makeLogLine("info", "Creating deposition on Zenodo..."),
+      makeLogLine("info", `Uploading SBOM: ${ree.sbom || "sbom.spdx.json"}`),
+      makeLogLine("info", `Uploading manifest: ${ree.name || "ree"}.manifest.json`),
+      makeLogLine("info", "Setting metadata (title, creators, description)..."),
+      makeLogLine("info", "Publishing deposition..."),
+      makeLogLine("ok", "Deposition published."),
+      makeLogLine("ok", `DOI: 10.5281/zenodo.${Math.floor(Math.random() * 9000000 + 1000000)}`),
     ],
     dataverse: [
-      L("info", `Server:     ${params.server || "https://dataverse.harvard.edu"}`),
-      L("info", `Dataverse:  ${params.dataverse || "root"}`),
-      L("info", "Creating dataset..."),
-      L("info", "Uploading files..."),
-      L("info", "Setting metadata fields..."),
-      L("info", "Publishing dataset..."),
-      L("ok", "Dataset published."),
-      L("ok", `Handle: hdl:1902.1/${Math.floor(Math.random() * 90000 + 10000)}`),
+      makeLogLine("info", `Server:     ${params.server || "https://dataverse.harvard.edu"}`),
+      makeLogLine("info", `Dataverse:  ${params.dataverse || "root"}`),
+      makeLogLine("info", "Creating dataset..."),
+      makeLogLine("info", "Uploading files..."),
+      makeLogLine("info", "Setting metadata fields..."),
+      makeLogLine("info", "Publishing dataset..."),
+      makeLogLine("ok", "Dataset published."),
+      makeLogLine("ok", `Handle: hdl:1902.1/${Math.floor(Math.random() * 90000 + 10000)}`),
     ],
   };
-  return maps[key] || [L("ok", "Done.")];
+  return maps[key] || [makeLogLine("ok", "Done.")];
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -1997,7 +1997,10 @@ function FileNode({
         }}
         {...hoverIf(
           !isSel,
-          hoverBg(isHighlighted ? "#fef3c7" : C.surfaceAlt, isHighlighted ? "#fef3c7" : "transparent"),
+          hoverBg(
+            isHighlighted ? "#fef3c7" : C.surfaceAlt,
+            isHighlighted ? "#fef3c7" : "transparent",
+          ),
         )}
       >
         {isFolder ? (
@@ -2590,7 +2593,7 @@ function ScriptPanel({
                 </span>
                 <input
                   value={editorFilename}
-                  onChange={(e) => setEditorFilename(e.target.value)}
+                  onChange={(event) => setEditorFilename(event.target.value)}
                   placeholder="filename.sh"
                   style={{
                     flex: 1,
@@ -2609,7 +2612,7 @@ function ScriptPanel({
                   <>
                     <select
                       value={templateKey}
-                      onChange={(e) => setTemplateKey(e.target.value)}
+                      onChange={(event) => setTemplateKey(event.target.value)}
                       style={{
                         border: `1.5px solid ${C.border}`,
                         borderRadius: 5,
@@ -2699,7 +2702,7 @@ function ScriptPanel({
               {/* Editor area */}
               <textarea
                 value={editorContent}
-                onChange={(e) => setEditorContent(e.target.value)}
+                onChange={(event) => setEditorContent(event.target.value)}
                 placeholder={"#!/bin/bash\nset -euo pipefail\n\n# Write your script here..."}
                 spellCheck={false}
                 style={{
@@ -2717,15 +2720,17 @@ function ScriptPanel({
                   tabSize: 2,
                   display: "block",
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Tab") {
-                    e.preventDefault();
-                    const target = e.currentTarget;
-                    const s = target.selectionStart;
-                    const en = target.selectionEnd;
-                    setEditorContent(`${editorContent.slice(0, s)}  ${editorContent.slice(en)}`);
+                onKeyDown={(event) => {
+                  if (event.key === "Tab") {
+                    event.preventDefault();
+                    const target = event.currentTarget;
+                    const selectionStart = target.selectionStart;
+                    const selectionEnd = target.selectionEnd;
+                    setEditorContent(
+                      `${editorContent.slice(0, selectionStart)}  ${editorContent.slice(selectionEnd)}`,
+                    );
                     requestAnimationFrame(() => {
-                      target.selectionStart = target.selectionEnd = s + 2;
+                      target.selectionStart = target.selectionEnd = selectionStart + 2;
                     });
                   }
                 }}
@@ -2933,7 +2938,7 @@ function FilePicker({
 
           <input
             value={draft}
-            onChange={(e) => handleDraftChange(e.target.value)}
+            onChange={(event) => handleDraftChange(event.target.value)}
             disabled={disabled}
             placeholder={placeholder || "path/to/file"}
             onFocus={onFocus}
@@ -3590,7 +3595,7 @@ docker run --rm --entrypoint="" ree:latest echo ok`,
 };
 
 function missingRequirements(svc: Service, ree: Ree): ServiceRequire[] {
-  return (svc.requires || []).filter((r) => !ree[r.field]);
+  return (svc.requires || []).filter((requiredField) => !ree[requiredField.field]);
 }
 
 function tipTargetChip(active: boolean, idleLabel = "Click for tips"): React.ReactNode {
@@ -3645,9 +3650,9 @@ function FieldRow({ fieldKey, required, children, locked, onFocus, active }: Fie
       onClick={tipEnabled ? () => onFocus?.() : undefined}
       role={tipEnabled ? "button" : undefined}
       tabIndex={tipEnabled ? 0 : undefined}
-      onKeyDown={(e) => {
+      onKeyDown={(event) => {
         if (!tipEnabled) return;
-        triggerOnEnterOrSpace(e, () => onFocus?.());
+        triggerOnEnterOrSpace(event, () => onFocus?.());
       }}
       style={{
         ...S_FIELD_ROW_BASE,
@@ -4403,7 +4408,7 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
     if (!candidate) return;
     setCheckState("checking");
     setCheckedFor(candidate);
-    await new Promise((r) => setTimeout(r, 700));
+    await new Promise((resolve) => setTimeout(resolve, 700));
     const reachable = /^https?:\/\/[^\s]+$/i.test(candidate);
     setCheckState(reachable ? "reachable" : "unreachable");
     if (reachable) onCommit(candidate);
@@ -4445,8 +4450,8 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
           <input
             disabled={locked}
             value={draft}
-            onChange={(e) => {
-              const next = e.target.value;
+            onChange={(event) => {
+              const next = event.target.value;
               setDraft(next);
               if (!next.trim()) {
                 onCommit("");
@@ -4457,8 +4462,8 @@ function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrl
               }
             }}
             onFocus={onFocus}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && draft.trim()) handleCheckReachable();
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && draft.trim()) handleCheckReachable();
             }}
             placeholder="https://github.com/org/repo"
             style={{
@@ -4566,11 +4571,11 @@ function SourceUploadField({
     setPending({ mode: "archive", archiveName: file.name });
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
-    e.preventDefault();
+  const handleDrop = (dragEvent: React.DragEvent<HTMLElement>) => {
+    dragEvent.preventDefault();
     setDragging(false);
     if (inputDisabled) return;
-    const files = e.dataTransfer.files;
+    const files = dragEvent.dataTransfer.files;
     if (!files || files.length === 0) return;
     if (files.length !== 1 || !/\.(zip|tar|tar\.gz|tgz)$/i.test(files[0].name)) {
       setDropError("Only a single tarball/archive upload is allowed for direct repo upload.");
@@ -4597,10 +4602,10 @@ function SourceUploadField({
         ref={archiveRef}
         type="file"
         accept=".zip,.tar,.gz,.tgz,.tar.gz"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
+        onChange={(event) => {
+          const file = event.target.files?.[0];
           if (file) handleArchive(file);
-          e.currentTarget.value = "";
+          event.currentTarget.value = "";
         }}
         style={{
           display: "none",
@@ -4771,8 +4776,8 @@ function SourceUploadField({
       {!committedName && !pending && (
         <button
           type="button"
-          onDragOver={(e) => {
-            e.preventDefault();
+          onDragOver={(dragEvent) => {
+            dragEvent.preventDefault();
             if (!inputDisabled) setDragging(true);
           }}
           onDragLeave={() => setDragging(false)}
@@ -4797,16 +4802,16 @@ function SourceUploadField({
             background: dragging ? C.accentBg : C.bg,
             opacity: inputDisabled ? 0.55 : 1,
           }}
-          onMouseEnter={(e) => {
+          onMouseEnter={(mouseEvent) => {
             if (!inputDisabled) {
-              e.currentTarget.style.borderColor = C.accent;
-              e.currentTarget.style.background = C.accentBg;
+              mouseEvent.currentTarget.style.borderColor = C.accent;
+              mouseEvent.currentTarget.style.background = C.accentBg;
             }
           }}
-          onMouseLeave={(e) => {
+          onMouseLeave={(mouseEvent) => {
             if (!dragging) {
-              e.currentTarget.style.borderColor = C.borderMid;
-              e.currentTarget.style.background = C.bg;
+              mouseEvent.currentTarget.style.borderColor = C.borderMid;
+              mouseEvent.currentTarget.style.background = C.bg;
             }
           }}
         >
@@ -4903,9 +4908,9 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, files }: Runtime
       onClick={onFocus ? () => onFocus?.() : undefined}
       role={onFocus ? "button" : undefined}
       tabIndex={onFocus ? 0 : undefined}
-      onKeyDown={(e) => {
+      onKeyDown={(event) => {
         if (!onFocus) return;
-        triggerOnEnterOrSpace(e, () => onFocus?.());
+        triggerOnEnterOrSpace(event, () => onFocus?.());
       }}
       style={{
         ...S_FIELD_ROW_BASE,
@@ -5064,7 +5069,7 @@ function RuntimeField({ locked, ree, onChange, onFocus, active, files }: Runtime
             <input
               disabled={locked}
               value={isImageRef ? val : ""}
-              onChange={(e) => set("runtime", e.target.value)}
+              onChange={(event) => set("runtime", event.target.value)}
               onFocus={onFocus}
               placeholder="ree:latest  or  sha256:abc123…"
               style={inp(locked)}
@@ -5256,8 +5261,8 @@ function PageSourceRepoEntry({
                     <select
                       disabled={locked}
                       value={originTypeDraft}
-                      onChange={(e) => {
-                        setOriginTypeDraft(e.target.value as Ree["source_type"]);
+                      onChange={(event) => {
+                        setOriginTypeDraft(event.target.value as Ree["source_type"]);
                       }}
                       onFocus={() => focus("source_type")}
                       style={{ ...inp(locked), flex: 1 }}
@@ -5554,7 +5559,7 @@ function PageMetadataEntry({
                 <input
                   disabled={locked}
                   value={ree.name}
-                  onChange={(e) => set("name", e.target.value)}
+                  onChange={(event) => set("name", event.target.value)}
                   onFocus={() => focus("name")}
                   placeholder="my-project-v1.0"
                   style={inp(locked)}
@@ -5583,9 +5588,9 @@ function PageMetadataEntry({
                       <input
                         disabled={locked}
                         value={k}
-                        onChange={(e) => {
+                        onChange={(event) => {
                           const ent = Object.entries(ree.hardware_description);
-                          ent[i] = [e.target.value, v];
+                          ent[i] = [event.target.value, v];
                           onChange({ ...ree, hardware_description: Object.fromEntries(ent) });
                         }}
                         placeholder="key"
@@ -5597,9 +5602,9 @@ function PageMetadataEntry({
                       <input
                         disabled={locked}
                         value={v}
-                        onChange={(e) => {
+                        onChange={(event) => {
                           const ent = Object.entries(ree.hardware_description);
-                          ent[i] = [k, e.target.value];
+                          ent[i] = [k, event.target.value];
                           onChange({ ...ree, hardware_description: Object.fromEntries(ent) });
                         }}
                         placeholder="value"
@@ -5698,7 +5703,7 @@ function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
     { key: "archive", nextKey: "seal", nextLabel: "Seal", cond: () => true },
     { key: "seal", nextKey: null, nextLabel: null, cond: () => false },
   ];
-  const step = STEPS.find((s) => s.key === stepKey);
+  const step = STEPS.find((workflowStep) => workflowStep.key === stepKey);
   if (!step || !step.nextKey || !step.nextLabel) return null;
 
   return (
@@ -6783,17 +6788,17 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
   );
   const [filter, setFilter] = useState("all"); // all | exact | range | none
 
-  const totalPkgs = depGroups.reduce((s, g) => s + g.packages.length, 0);
+  const totalPkgs = depGroups.reduce((sum, group) => sum + group.packages.length, 0);
   const pinnedCount = depGroups.reduce(
-    (s, g) => s + g.packages.filter((p) => p.pinned === "exact").length,
+    (sum, group) => sum + group.packages.filter((pkg) => pkg.pinned === "exact").length,
     0,
   );
   const rangeCount = depGroups.reduce(
-    (s, g) => s + g.packages.filter((p) => p.pinned === "range").length,
+    (sum, group) => sum + group.packages.filter((pkg) => pkg.pinned === "range").length,
     0,
   );
   const noneCount = depGroups.reduce(
-    (s, g) => s + g.packages.filter((p) => p.pinned === "none").length,
+    (sum, group) => sum + group.packages.filter((pkg) => pkg.pinned === "none").length,
     0,
   );
 
@@ -6814,11 +6819,11 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
           { key: "exact", label: `${pinnedCount} pinned`, ...PIN_META.exact },
           { key: "range", label: `${rangeCount} range`, ...PIN_META.range },
           { key: "none", label: `${noneCount} unpinned`, ...PIN_META.none },
-        ].map((s) => (
+        ].map((summaryFilter) => (
           <button
             type="button"
-            key={s.key}
-            onClick={() => setFilter(s.key)}
+            key={summaryFilter.key}
+            onClick={() => setFilter(summaryFilter.key)}
             style={{
               ...actionBtn({
                 fontSize: 11,
@@ -6826,15 +6831,18 @@ function DependencyPanel({ depGroups }: DependencyPanelProps) {
                 padding: "3px 10px",
                 transition: "all 0.12s",
               }),
-              color: s.color,
-              background: filter === s.key ? s.bg : "transparent",
-              border: `1.5px solid ${filter === s.key ? s.border : C.border}`,
+              color: summaryFilter.color,
+              background: filter === summaryFilter.key ? summaryFilter.bg : "transparent",
+              border: `1.5px solid ${filter === summaryFilter.key ? summaryFilter.border : C.border}`,
               cursor: "pointer",
             }}
-            {...hoverIf(filter !== s.key, hoverBg(s.bg, "transparent"))}
-            {...hoverIf(filter !== s.key, hoverBorderColor(s.border, C.border))}
+            {...hoverIf(filter !== summaryFilter.key, hoverBg(summaryFilter.bg, "transparent"))}
+            {...hoverIf(
+              filter !== summaryFilter.key,
+              hoverBorderColor(summaryFilter.border, C.border),
+            )}
           >
-            {s.label}
+            {summaryFilter.label}
           </button>
         ))}
       </div>
@@ -7142,9 +7150,9 @@ function PageEvaluate({
                   Missing required fields
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 8 }}>
-                  {missing.map((r) => (
+                  {missing.map((requiredField) => (
                     <span
-                      key={r.field}
+                      key={requiredField.field}
                       style={{
                         fontSize: 12,
                         fontFamily: F.sans,
@@ -7155,7 +7163,7 @@ function PageEvaluate({
                         padding: "2px 8px",
                       }}
                     >
-                      {r.label}
+                      {requiredField.label}
                     </span>
                   ))}
                 </div>
@@ -7198,9 +7206,9 @@ function PageEvaluate({
               <span style={{ fontSize: 13, color: "#16a34a", fontFamily: F.sans, fontWeight: 600 }}>
                 All required fields set:
               </span>
-              {svc.requires.map((r) => (
+              {svc.requires.map((requiredField) => (
                 <span
-                  key={r.field}
+                  key={requiredField.field}
                   style={{
                     fontSize: 12,
                     fontFamily: F.sans,
@@ -7211,7 +7219,7 @@ function PageEvaluate({
                     padding: "2px 7px",
                   }}
                 >
-                  {r.label}
+                  {requiredField.label}
                 </span>
               ))}
             </div>
@@ -7291,20 +7299,20 @@ function PageEvaluate({
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {LEVELS.map((lv, idx) => {
+                {LEVELS.map((levelConfig, idx) => {
                   const reached = hasScoreOutput && idx <= level;
                   const active = hasScoreOutput && idx === level;
                   return (
                     <div
-                      key={lv.n}
+                      key={levelConfig.n}
                       style={{
                         display: "flex",
                         alignItems: "flex-start",
                         gap: 8,
                         padding: "7px 8px",
                         borderRadius: 8,
-                        border: `1px solid ${active ? `${lv.color}55` : C.border}`,
-                        background: active ? lv.bg : "transparent",
+                        border: `1px solid ${active ? `${levelConfig.color}55` : C.border}`,
+                        background: active ? levelConfig.bg : "transparent",
                         opacity: hasScoreOutput ? 1 : 0.9,
                       }}
                     >
@@ -7313,16 +7321,16 @@ function PageEvaluate({
                           fontSize: 10,
                           fontWeight: 700,
                           fontFamily: F.mono,
-                          color: reached ? lv.ink : C.textMuted,
-                          background: reached ? lv.bg : C.surfaceAlt,
-                          border: `1px solid ${reached ? `${lv.color}55` : C.border}`,
+                          color: reached ? levelConfig.ink : C.textMuted,
+                          background: reached ? levelConfig.bg : C.surfaceAlt,
+                          border: `1px solid ${reached ? `${levelConfig.color}55` : C.border}`,
                           borderRadius: 99,
                           padding: "1px 7px",
                           flexShrink: 0,
                           marginTop: 1,
                         }}
                       >
-                        L{lv.n}
+                        L{levelConfig.n}
                       </span>
                       <div style={{ minWidth: 0 }}>
                         <div
@@ -7332,9 +7340,9 @@ function PageEvaluate({
                             color: reached ? C.text : C.textMid,
                           }}
                         >
-                          {lv.label}
+                          {levelConfig.label}
                         </div>
-                        <div style={S_FIELD_HELP_TEXT_SMALL}>{lv.desc}</div>
+                        <div style={S_FIELD_HELP_TEXT_SMALL}>{levelConfig.desc}</div>
                         <div
                           style={{
                             marginTop: 5,
@@ -7365,7 +7373,8 @@ function PageEvaluate({
                               {Ic.info(11)}
                             </span>
                             <span style={{ fontSize: 11, color: "#92400e", lineHeight: 1.35 }}>
-                              {lv.problem || "No major bottleneck called out at this level."}
+                              {levelConfig.problem ||
+                                "No major bottleneck called out at this level."}
                             </span>
                           </div>
                           <div
@@ -7390,7 +7399,7 @@ function PageEvaluate({
                               {Ic.check(11)}
                             </span>
                             <span style={{ fontSize: 11, color: "#166534", lineHeight: 1.35 }}>
-                              {lv.fix || "No additional fix suggested at this level."}
+                              {levelConfig.fix || "No additional fix suggested at this level."}
                             </span>
                           </div>
                         </div>
@@ -7460,10 +7469,10 @@ function PageEvaluate({
                     let containerCount = 0;
                     let nixCount = 0;
                     const scan = (nodes) => {
-                      for (const n of nodes || []) {
-                        if (n.type === "folder") scan(n.children);
+                      for (const node of nodes || []) {
+                        if (node.type === "folder") scan(node.children);
                         else {
-                          const lo = n.name.toLowerCase();
+                          const lo = node.name.toLowerCase();
                           if (
                             lo === "dockerfile" ||
                             lo === "containerfile" ||
@@ -7616,15 +7625,15 @@ function RuntimeOutputNode({
 
   const fileExists = isTarball
     ? !!(function find(nodes) {
-        for (const n of nodes || []) {
+        for (const node of nodes || []) {
           if (
-            n.type === "file" &&
-            (n.name === expectedOutput || expectedOutput.endsWith(`/${n.name}`))
+            node.type === "file" &&
+            (node.name === expectedOutput || expectedOutput.endsWith(`/${node.name}`))
           )
-            return n;
-          if (n.children) {
-            const r = find(n.children);
-            if (r) return r;
+            return node;
+          if (node.children) {
+            const foundNode = find(node.children);
+            if (foundNode) return foundNode;
           }
         }
       })(files || [])
@@ -7942,7 +7951,7 @@ function PageBuildRuntime({
                 </div>
                 <input
                   value={expectedOutput}
-                  onChange={(e) => setExpectedOutput(e.target.value)}
+                  onChange={(event) => setExpectedOutput(event.target.value)}
                   onFocus={() => setFocusedField("runtime")}
                   placeholder="runtime.tar.gz"
                   style={{
@@ -8019,7 +8028,7 @@ function PageBuildRuntime({
                         ) : p.type === "select" ? (
                           <select
                             value={String(params[p.key] ?? "")}
-                            onChange={(e) => setParam(p.key, e.target.value)}
+                            onChange={(event) => setParam(p.key, event.target.value)}
                             style={{
                               border: `1.5px solid ${C.border}`,
                               borderRadius: 6,
@@ -8039,7 +8048,7 @@ function PageBuildRuntime({
                         ) : (
                           <input
                             value={String(params[p.key] ?? "")}
-                            onChange={(e) => setParam(p.key, e.target.value)}
+                            onChange={(event) => setParam(p.key, event.target.value)}
                             style={{
                               border: `1.5px solid ${C.border}`,
                               borderRadius: 6,
@@ -8107,8 +8116,8 @@ function PageBuildRuntime({
                     boxShadow: "0 1px 2px rgba(154,52,18,0.14)",
                     transition: "all 0.14s ease",
                   }}
-                    {...hoverBg("#ffedd5", "#fff7ed")}
-                    {...hoverBorderColor("#fb923c", "#fdba74")}
+                  {...hoverBg("#ffedd5", "#fff7ed")}
+                  {...hoverBorderColor("#fb923c", "#fdba74")}
                 >
                   <span
                     style={{
@@ -8367,7 +8376,9 @@ function PageBuildRuntime({
                       <Toggle
                         on={includeRuntime}
                         color="#06b6d4"
-                        onChange={() => onReeChange?.({ ...ree, _runtimeIncluded: !includeRuntime })}
+                        onChange={() =>
+                          onReeChange?.({ ...ree, _runtimeIncluded: !includeRuntime })
+                        }
                         width={34}
                         height={20}
                         knobSize={16}
@@ -8442,21 +8453,24 @@ interface PageArchiveProps {
 }
 function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchiveProps) {
   const [activeRepo, setActiveRepo] = useState("swh");
-  const repo = ARCHIVE_REPOS.find((r) => r.key === activeRepo) || ARCHIVE_REPOS[0];
+  const repo =
+    ARCHIVE_REPOS.find((archiveRepo) => archiveRepo.key === activeRepo) || ARCHIVE_REPOS[0];
   const earned = !!badges[activeRepo];
   const running = actionStates[activeRepo] === "loading";
   const log = logs[activeRepo];
   const [params, setParams] = useState<Record<string, string | boolean>>(() =>
     Object.fromEntries(
-      ARCHIVE_REPOS.flatMap((r) => r.params.map((p) => [`${r.key}_${p.key}`, p.default])),
+      ARCHIVE_REPOS.flatMap((archiveRepo) =>
+        archiveRepo.params.map((param) => [`${archiveRepo.key}_${param.key}`, param.default]),
+      ),
     ),
   );
   const getParam = (repoKey: string, paramKey: string): string | boolean =>
     params[`${repoKey}_${paramKey}`];
   const setParam = (repoKey: string, paramKey: string, val: string | boolean) =>
-    setParams((p) => ({ ...p, [`${repoKey}_${paramKey}`]: val }));
+    setParams((prevParams) => ({ ...prevParams, [`${repoKey}_${paramKey}`]: val }));
 
-  const missing = repo.requires.filter((r) => !ree[r.field]);
+  const missing = repo.requires.filter((requiredField) => !ree[requiredField.field]);
   const canRun = missing.length === 0 && !running;
 
   // ID assigned after archival
@@ -8572,22 +8586,26 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
 
           {/* Repo selector tabs */}
           <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-            {ARCHIVE_REPOS.map((r) => {
-              const isActive = activeRepo === r.key;
-              const isDone = !!badges[r.key];
+            {ARCHIVE_REPOS.map((archiveRepo) => {
+              const isActive = activeRepo === archiveRepo.key;
+              const isDone = !!badges[archiveRepo.key];
               return (
                 <button
                   type="button"
-                  key={r.key}
-                  onClick={() => setActiveRepo(r.key)}
+                  key={archiveRepo.key}
+                  onClick={() => setActiveRepo(archiveRepo.key)}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
                     padding: "9px 16px",
                     borderRadius: 8,
-                    border: `1.5px solid ${isActive ? r.color : isDone ? `${r.color}40` : C.border}`,
-                    background: isActive ? `${r.color}10` : isDone ? r.bg : C.surface,
+                    border: `1.5px solid ${isActive ? archiveRepo.color : isDone ? `${archiveRepo.color}40` : C.border}`,
+                    background: isActive
+                      ? `${archiveRepo.color}10`
+                      : isDone
+                        ? archiveRepo.bg
+                        : C.surface,
                     cursor: "pointer",
                     transition: "all 0.15s",
                     flex: 1,
@@ -8595,22 +8613,30 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                   }}
                   {...hoverIf(
                     !isActive,
-                    hoverBorderColor(`${r.color}70`, isDone ? `${r.color}40` : C.border),
+                    hoverBorderColor(
+                      `${archiveRepo.color}70`,
+                      isDone ? `${archiveRepo.color}40` : C.border,
+                    ),
                   )}
-                  {...hoverIf(!isActive, hoverBg(r.bg, isDone ? r.bg : C.surface))}
+                  {...hoverIf(
+                    !isActive,
+                    hoverBg(archiveRepo.bg, isDone ? archiveRepo.bg : C.surface),
+                  )}
                 >
                   {isDone && (
-                    <span style={{ color: r.color, display: "flex" }}>{Ic.check(13)}</span>
+                    <span style={{ color: archiveRepo.color, display: "flex" }}>
+                      {Ic.check(13)}
+                    </span>
                   )}
                   <span
                     style={{
                       fontSize: 13,
                       fontWeight: isActive ? 700 : 500,
-                      color: isActive ? r.color : isDone ? r.color : C.textMid,
+                      color: isActive ? archiveRepo.color : isDone ? archiveRepo.color : C.textMid,
                       fontFamily: F.sans,
                     }}
                   >
-                    {r.label}
+                    {archiveRepo.label}
                   </span>
                 </button>
               );
@@ -8853,7 +8879,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                         <select
                           id={`repo-${repo.key}-param-${p.key}`}
                           value={String(getParam(repo.key, p.key) ?? "")}
-                          onChange={(e) => setParam(repo.key, p.key, e.target.value)}
+                          onChange={(event) => setParam(repo.key, p.key, event.target.value)}
                           style={{
                             border: `1.5px solid ${C.border}`,
                             borderRadius: 7,
@@ -8874,7 +8900,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                         <input
                           id={`repo-${repo.key}-param-${p.key}`}
                           value={String(getParam(repo.key, p.key) ?? "")}
-                          onChange={(e) => setParam(repo.key, p.key, e.target.value)}
+                          onChange={(event) => setParam(repo.key, p.key, event.target.value)}
                           style={{
                             border: `1.5px solid ${C.border}`,
                             borderRadius: 7,
@@ -8909,7 +8935,7 @@ function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchi
                   </span>
                   <div style={{ fontSize: 13, color: "#92400e", lineHeight: 1.5 }}>
                     <strong>Missing required fields:</strong>{" "}
-                    {missing.map((r) => r.label).join(", ")}
+                    {missing.map((requiredField) => requiredField.label).join(", ")}
                   </div>
                 </div>
               )}
@@ -9006,7 +9032,7 @@ function buildReeFileTree(reeFiles: ReeFile[]): FileTreeNode[] {
     folderName: string,
     folderPath: string,
   ): FileTreeNode {
-    const existing = nodes.find((n) => n.type === "folder" && n.name === folderName);
+    const existing = nodes.find((node) => node.type === "folder" && node.name === folderName);
     if (existing) return existing;
     const created: FileTreeNode = {
       id: `ree-dir-${folderPath}`,
@@ -9033,7 +9059,9 @@ function buildReeFileTree(reeFiles: ReeFile[]): FileTreeNode[] {
     }
 
     const fileName = parts[parts.length - 1];
-    const existingFileIdx = cursor.findIndex((n) => n.type === "file" && n.name === fileName);
+    const existingFileIdx = cursor.findIndex(
+      (node) => node.type === "file" && node.name === fileName,
+    );
     const fileNode: FileTreeNode = {
       id: file.id,
       name: fileName,
@@ -9153,11 +9181,11 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
         {(() => {
           const lineCounts = new Map<string, number>();
           return lines.map((line, i) => {
-            const n = lineCounts.get(line) ?? 0;
-            lineCounts.set(line, n + 1);
+            const occurrenceIndex = lineCounts.get(line) ?? 0;
+            lineCounts.set(line, occurrenceIndex + 1);
             return (
               <div
-                key={`dockerfile-line-${line}-${n}`}
+                key={`dockerfile-line-${line}-${occurrenceIndex}`}
                 style={{ display: "flex", alignItems: "baseline" }}
               >
                 <span
@@ -9296,11 +9324,11 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
             {/* Workspace section */}
             <SectionHeader label="Workspace" badge="read-only" color="#f59e0b" />
             <div style={{ padding: "4px 4px 8px" }}>
-              {sourceFiles.map((n) => (
+              {sourceFiles.map((sourceNode) => (
                 <FileNode
-                  key={n.id}
-                  node={n}
-                  onSelect={(n) => setSelectedId(n.id)}
+                  key={sourceNode.id}
+                  node={sourceNode}
+                  onSelect={(selectedNode) => setSelectedId(selectedNode.id)}
                   selectedId={selectedId}
                 />
               ))}
@@ -9326,11 +9354,11 @@ function PageFiles({ files, reeFiles }: PageFilesProps) {
                   Run Create &amp; Build to generate files
                 </div>
               ) : (
-                reeFileTree.map((n) => (
+                reeFileTree.map((reeNode) => (
                   <FileNode
-                    key={n.id}
-                    node={n}
-                    onSelect={(n) => setSelectedId(n.id)}
+                    key={reeNode.id}
+                    node={reeNode}
+                    onSelect={(selectedNode) => setSelectedId(selectedNode.id)}
                     selectedId={selectedId}
                   />
                 ))
@@ -9583,9 +9611,9 @@ const POD_GRAPHS: (PodGraph | null)[] = [
 
 interface PodDepGraphProps {
   level: number;
-  lv: Level;
+  levelMeta: Level;
 }
-function PodDepGraph({ level, lv }: PodDepGraphProps) {
+function PodDepGraph({ level, levelMeta }: PodDepGraphProps) {
   if (level === 0)
     return (
       <g opacity="0.3">
@@ -9613,23 +9641,31 @@ function PodDepGraph({ level, lv }: PodDepGraphProps) {
             y1={na.y}
             x2={nb.x}
             y2={nb.y}
-            stroke={lv.color}
+            stroke={levelMeta.color}
             strokeWidth="1.6"
             opacity="0.38"
           />
         );
       })}
-      {cfg.nodes.map((n) => (
-        <g key={`${n.x}-${n.y}-${n.r}`}>
+      {cfg.nodes.map((graphNode) => (
+        <g key={`${graphNode.x}-${graphNode.y}-${graphNode.r}`}>
           <circle
-            cx={n.x}
-            cy={n.y}
-            r={n.r}
-            fill={n.root ? lv.color : C.surface}
-            stroke={lv.color}
-            strokeWidth={n.root ? 0 : 1.8}
+            cx={graphNode.x}
+            cy={graphNode.y}
+            r={graphNode.r}
+            fill={graphNode.root ? levelMeta.color : C.surface}
+            stroke={levelMeta.color}
+            strokeWidth={graphNode.root ? 0 : 1.8}
           />
-          {n.root && <circle cx={n.x} cy={n.y} r={n.r * 0.38} fill="#fff" opacity="0.75" />}
+          {graphNode.root && (
+            <circle
+              cx={graphNode.x}
+              cy={graphNode.y}
+              r={graphNode.r * 0.38}
+              fill="#fff"
+              opacity="0.75"
+            />
+          )}
         </g>
       ))}
     </g>
@@ -9643,7 +9679,7 @@ interface PodSphereProps {
   level: number;
 }
 function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
-  const lv = LEVELS[Math.min(level, 7)],
+  const levelMeta = LEVELS[Math.min(level, 7)],
     frac = level / 7;
   return (
     <g>
@@ -9654,12 +9690,12 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
           <stop offset="100%" stopColor={POD_M.shadow} />
         </radialGradient>
         <radialGradient id="ovPortholeBg" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={lv.bg} />
-          <stop offset="100%" stopColor={lv.bg} stopOpacity="0.55" />
+          <stop offset="0%" stopColor={levelMeta.bg} />
+          <stop offset="100%" stopColor={levelMeta.bg} stopOpacity="0.55" />
         </radialGradient>
         <radialGradient id="ovPortholeGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={lv.color} stopOpacity="0.12" />
-          <stop offset="100%" stopColor={lv.color} stopOpacity="0" />
+          <stop offset="0%" stopColor={levelMeta.color} stopOpacity="0.12" />
+          <stop offset="100%" stopColor={levelMeta.color} stopOpacity="0" />
         </radialGradient>
         <radialGradient id="ovPortholeGloss" cx="32%" cy="28%" r="56%">
           <stop offset="0%" stopColor="#fff" stopOpacity="0.55" />
@@ -9756,15 +9792,15 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
       <circle cx={CX} cy={CY} r={SR * 0.45} fill="url(#ovPortholeBg)" />
       {level > 0 &&
         (() => {
-          const r = SR * 0.43,
+          const progressRadius = SR * 0.43,
             ang = frac * 2 * Math.PI,
-            x2 = CX + r * Math.sin(ang),
-            y2 = CY - r * Math.cos(ang);
+            x2 = CX + progressRadius * Math.sin(ang),
+            y2 = CY - progressRadius * Math.cos(ang);
           return (
             <path
-              d={`M ${CX} ${CY - r} A ${r} ${r} 0 ${frac > 0.5 ? 1 : 0} 1 ${x2} ${y2}`}
+              d={`M ${CX} ${CY - progressRadius} A ${progressRadius} ${progressRadius} 0 ${frac > 0.5 ? 1 : 0} 1 ${x2} ${y2}`}
               fill="none"
-              stroke={lv.color}
+              stroke={levelMeta.color}
               strokeWidth="3.5"
               opacity="0.5"
               strokeLinecap="round"
@@ -9773,7 +9809,7 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
         })()}
       <circle cx={CX} cy={CY} r={SR * 0.44} fill="url(#ovPortholeGlow)" />
       <g transform={`translate(${CX},${CY})`} clipPath="url(#ovPortholeClip)">
-        <PodDepGraph level={level} lv={lv} />
+        <PodDepGraph level={level} levelMeta={levelMeta} />
       </g>
       <circle cx={CX} cy={CY} r={SR * 0.45} fill="url(#ovPortholeGloss)" opacity="0.5" />
       <ellipse
@@ -9790,11 +9826,11 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
         { a: 55, col: level >= 4 ? "#0ea5e9" : POD_M.shadow },
         { a: 125, col: level >= 7 ? "#059669" : POD_M.shadow },
         { a: 235, col: POD_M.shadow },
-      ].map((s) => {
-        const px = CX + SR * 0.82 * Math.cos((s.a * Math.PI) / 180),
-          py = CY + SR * 0.82 * Math.sin((s.a * Math.PI) / 180);
+      ].map((indicator) => {
+        const px = CX + SR * 0.82 * Math.cos((indicator.a * Math.PI) / 180),
+          py = CY + SR * 0.82 * Math.sin((indicator.a * Math.PI) / 180);
         return (
-          <g key={s.a}>
+          <g key={indicator.a}>
             <rect
               x={px - 5}
               y={py - 5}
@@ -9805,7 +9841,7 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
               stroke={POD_M.deep}
               strokeWidth="0.8"
             />
-            <circle cx={px} cy={py} r="3" fill={s.col} opacity="0.9" />
+            <circle cx={px} cy={py} r="3" fill={indicator.col} opacity="0.9" />
           </g>
         );
       })}
@@ -9825,17 +9861,17 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
         textAnchor="middle"
         fontSize="7"
         fontFamily={F.mono}
-        fill={lv.ink}
+        fill={levelMeta.ink}
         letterSpacing="1.5"
       >
-        {lv.short}
+        {levelMeta.short}
       </text>
       <circle
         cx={CX}
         cy={CY}
         r={SR}
         fill="none"
-        stroke={lv.color}
+        stroke={levelMeta.color}
         strokeWidth="1.5"
         opacity="0.4"
       />
@@ -9857,7 +9893,7 @@ interface PodWidgetProps {
   size?: number;
 }
 function PodWidget({ level, svgRef, size = 480 }: PodWidgetProps) {
-  const lv = LEVELS[Math.min(level, 7)];
+  const levelMeta = LEVELS[Math.min(level, 7)];
   const W = 580,
     H = 580,
     CX = 290,
@@ -9872,7 +9908,7 @@ function PodWidget({ level, svgRef, size = 480 }: PodWidgetProps) {
       style={{
         flexShrink: 0,
         overflow: "visible",
-        filter: `drop-shadow(0 4px 24px ${lv.color}28) drop-shadow(0 2px 8px ${POD_M.shadow})`,
+        filter: `drop-shadow(0 4px 24px ${levelMeta.color}28) drop-shadow(0 2px 8px ${POD_M.shadow})`,
       }}
     >
       <title>Specimen Pod</title>
@@ -9930,7 +9966,7 @@ function PanelCableOverlay({
   badges,
   ree,
 }: PanelCableOverlayProps) {
-  const lv = LEVELS[Math.min(level, 7)];
+  const levelMeta = LEVELS[Math.min(level, 7)];
   // Store computed geometry as plain state so re-renders are cheap
   const [geo, setGeo] = React.useState<CableGeo | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -9980,13 +10016,13 @@ function PanelCableOverlay({
       el: HTMLElement | null,
     ): { left: number; right: number; midY: number; midX: number; top: number } | null {
       if (!el) return null;
-      const r = el.getBoundingClientRect();
+      const rect = el.getBoundingClientRect();
       return {
-        left: r.left - cRect.left,
-        right: r.right - cRect.left,
-        midY: (r.top + r.bottom) / 2 - cRect.top,
-        midX: (r.left + r.right) / 2 - cRect.left,
-        top: r.top - cRect.top,
+        left: rect.left - cRect.left,
+        right: rect.right - cRect.left,
+        midY: (rect.top + rect.bottom) / 2 - cRect.top,
+        midX: (rect.left + rect.right) / 2 - cRect.left,
+        top: rect.top - cRect.top,
       };
     }
 
@@ -10174,8 +10210,8 @@ function PanelCableOverlay({
       rafRef.current = requestAnimationFrame(measure);
     });
 
-    targets.forEach((r) => {
-      if (r.current) ro.observe(r.current);
+    targets.forEach((targetRef) => {
+      if (targetRef.current) ro.observe(targetRef.current);
     });
     return () => ro.disconnect();
   }); // intentionally no dep array — refs may attach/detach between renders
@@ -10286,7 +10322,7 @@ function PanelCableOverlay({
       {cables.map((c) => {
         const color = c.connected ? c.color : "#94a3b8";
         const shadow = c.connected ? c.shadow : "#334155";
-        const inner = c.connected ? lv.bg : "#e2e8f0";
+        const inner = c.connected ? levelMeta.bg : "#e2e8f0";
         const d = cablePath(c.x1, c.y1, c.x2, c.y2);
         const dHL = cableHL(c.x1, c.y1, c.x2, c.y2);
         return (
@@ -10368,9 +10404,9 @@ function PanelFieldRow({
 
   const showTooltip = hovered && filled && value && isOverflowing;
 
-  const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleMouseEnter = (mouseEvent: React.MouseEvent<HTMLButtonElement>) => {
     setHovered(true);
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect = mouseEvent.currentTarget.getBoundingClientRect();
     setTooltipPos({ x: rect.left, y: rect.top });
     if (valueRef.current) {
       setIsOverflowing(valueRef.current.scrollWidth > valueRef.current.offsetWidth);
@@ -10567,7 +10603,7 @@ function PageOverview({
   onDownloadRee,
 }: PageOverviewProps) {
   const [showSealConfirm, setShowSealConfirm] = React.useState(false);
-  const lv = LEVELS[Math.min(level, 7)];
+  const levelMeta = LEVELS[Math.min(level, 7)];
   const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({
     ...{
       background: C.surface,
@@ -10580,7 +10616,7 @@ function PageOverview({
   // Define OverviewPanel component here so it has access to panel()
   const OverviewPanel = React.forwardRef<HTMLDivElement, OverviewPanelProps>(
     ({ color, label, fields, badge, footerLabel, onFooterClick, headerExtra }, ref) => {
-      const getLighterColor = (hex: string) => hex + "99";
+      const getLighterColor = (hex: string) => `${hex}99`;
       const getDarkerInkColor = (hex: string) => {
         const colorMap: Record<string, string> = {
           "#f59e0b": "#92400e",
@@ -10605,7 +10641,7 @@ function PageOverview({
       const dotGlow = getLighterColor(color);
       const labelColor = getDarkerInkColor(color);
       const labelBg = getBackgroundColor(color);
-      const labelBorderColor = color + "25";
+      const labelBorderColor = `${color}25`;
 
       return (
         <div ref={ref} style={panel({ overflow: "hidden" })}>
@@ -10770,7 +10806,8 @@ function PageOverview({
   const allFiles = listTreeFiles(snapshotFiles);
   const fileCount = allFiles.length;
   const totalBytes = allFiles.reduce(
-    (s, f) => s + (f.content ? new TextEncoder().encode(f.content).length : 0),
+    (totalSize, file) =>
+      totalSize + (file.content ? new TextEncoder().encode(file.content).length : 0),
     0,
   );
 
@@ -10825,12 +10862,12 @@ function PageOverview({
                   letterSpacing: 1.5,
                   textTransform: "uppercase",
                 },
-                background: `${lv.color}16`,
-                color: lv.color,
-                border: `1px solid ${lv.color}40`,
+                background: `${levelMeta.color}16`,
+                color: levelMeta.color,
+                border: `1px solid ${levelMeta.color}40`,
               }}
             >
-              {lv.label}
+              {levelMeta.label}
             </span>
           </div>
         </div>
@@ -10919,12 +10956,11 @@ function PageOverview({
               },
               {
                 label: "Files",
-                value:
-                  ree._sourceAvailable
-                    ? fileCount > 0
-                      ? `${fileCount} file${fileCount !== 1 ? "s" : ""} · ${fmtBytes(totalBytes)}`
-                      : "downloaded"
-                    : null,
+                value: ree._sourceAvailable
+                  ? fileCount > 0
+                    ? `${fileCount} file${fileCount !== 1 ? "s" : ""} · ${fmtBytes(totalBytes)}`
+                    : "downloaded"
+                  : null,
                 filled: !!ree._sourceAvailable,
                 emptyText: "not downloaded",
                 onClick: () => onNavigate?.(PAGE.SOURCE),
@@ -11181,7 +11217,7 @@ function PageOverview({
             const totalCables = cableItems.length;
             const allLive = liveCount === totalCables;
             const missing = cableItems.filter((c) => !c.live);
-            const lv = LEVELS[Math.min(level, 7)];
+            const currentLevelMeta = LEVELS[Math.min(level, 7)];
 
             if (sealed) {
               const sealDate = new Date(ree._sealedAt).toLocaleString([], {
@@ -11202,8 +11238,8 @@ function PageOverview({
                       borderRadius: 10,
                       overflow: "hidden",
                     },
-                    border: `1.5px solid ${lv.color}50`,
-                    boxShadow: `0 0 0 3px ${lv.color}14, 0 2px 12px rgba(0,0,0,0.07)`,
+                    border: `1.5px solid ${currentLevelMeta.color}50`,
+                    boxShadow: `0 0 0 3px ${currentLevelMeta.color}14, 0 2px 12px rgba(0,0,0,0.07)`,
                   }}
                 >
                   <div
@@ -11214,8 +11250,8 @@ function PageOverview({
                         gap: 8,
                         padding: "9px 14px",
                       },
-                      borderBottom: `1px solid ${lv.color}30`,
-                      background: `${lv.color}0c`,
+                      borderBottom: `1px solid ${currentLevelMeta.color}30`,
+                      background: `${currentLevelMeta.color}0c`,
                     }}
                   >
                     <span
@@ -11224,7 +11260,7 @@ function PageOverview({
                           display: "flex",
                           flexShrink: 0,
                         },
-                        color: lv.color,
+                        color: currentLevelMeta.color,
                       }}
                     >
                       {Ic.lock(13)}
@@ -11237,7 +11273,7 @@ function PageOverview({
                           fontFamily: F.sans,
                           letterSpacing: 0.4,
                         },
-                        color: lv.color,
+                        color: currentLevelMeta.color,
                       }}
                     >
                       REE SEALED
@@ -11253,12 +11289,12 @@ function PageOverview({
                           letterSpacing: 0.6,
                           fontWeight: 700,
                         },
-                        color: lv.color,
-                        background: `${lv.color}18`,
-                        border: `1px solid ${lv.color}40`,
+                        color: currentLevelMeta.color,
+                        background: `${currentLevelMeta.color}18`,
+                        border: `1px solid ${currentLevelMeta.color}40`,
                       }}
                     >
-                      L{level} · {lv.label}
+                      L{level} · {currentLevelMeta.label}
                     </span>
                   </div>
                   <div
@@ -11314,7 +11350,7 @@ function PageOverview({
                             flex: 1,
                             height: 3,
                             borderRadius: 99,
-                            background: c.live ? lv.color : "#d1d5db",
+                            background: c.live ? currentLevelMeta.color : "#d1d5db",
                             opacity: c.live ? 0.85 : 0.4,
                           }}
                         />
@@ -11326,15 +11362,18 @@ function PageOverview({
                         onClick={onPreviewReviewer}
                         style={{
                           ...S_OVERVIEW_SEALED_ACTION_BTN_BASE,
-                          background: `linear-gradient(135deg, ${lv.color}18 0%, ${lv.color}0c 100%)`,
-                          border: `1.5px solid ${lv.color}50`,
-                          color: lv.color,
+                          background: `linear-gradient(135deg, ${currentLevelMeta.color}18 0%, ${currentLevelMeta.color}0c 100%)`,
+                          border: `1.5px solid ${currentLevelMeta.color}50`,
+                          color: currentLevelMeta.color,
                         }}
                         {...hoverBg(
-                          `${lv.color}28`,
-                          `linear-gradient(135deg, ${lv.color}18 0%, ${lv.color}0c 100%)`,
+                          `${currentLevelMeta.color}28`,
+                          `linear-gradient(135deg, ${currentLevelMeta.color}18 0%, ${currentLevelMeta.color}0c 100%)`,
                         )}
-                        {...hoverBorderColor(`${lv.color}80`, `${lv.color}50`)}
+                        {...hoverBorderColor(
+                          `${currentLevelMeta.color}80`,
+                          `${currentLevelMeta.color}50`,
+                        )}
                       >
                         {Ic.star(12)}
                         Preview as Reviewer
@@ -11430,7 +11469,7 @@ function PageOverview({
                                 justifyContent: "center",
                                 flexShrink: 0,
                               },
-                              background: `${lv.color}18`,
+                              background: `${currentLevelMeta.color}18`,
                             }}
                           >
                             <span
@@ -11438,7 +11477,7 @@ function PageOverview({
                                 ...{
                                   display: "flex",
                                 },
-                                color: lv.color,
+                                color: currentLevelMeta.color,
                               }}
                             >
                               {Ic.lock(16)}
@@ -11570,7 +11609,7 @@ function PageOverview({
                               All <strong>{totalCables}</strong> panels are connected. The REE will
                               be frozen at{" "}
                               <strong>
-                                L{level} · {lv.label}
+                                L{level} · {currentLevelMeta.label}
                               </strong>{" "}
                               and become read-only.
                             </>
@@ -11578,7 +11617,7 @@ function PageOverview({
                             <>
                               Sealing now will freeze the REE at{" "}
                               <strong>
-                                L{level} · {lv.label}
+                                L{level} · {currentLevelMeta.label}
                               </strong>{" "}
                               with incomplete data. You can still seal, but the missing panels will
                               not be part of the record.
@@ -11633,9 +11672,9 @@ function PageOverview({
                               cursor: "pointer",
                               color: "#fff",
                             },
-                            background: lv.color,
-                            border: `1.5px solid ${lv.color}`,
-                            boxShadow: `0 2px 8px ${lv.color}50`,
+                            background: currentLevelMeta.color,
+                            border: `1.5px solid ${currentLevelMeta.color}`,
+                            boxShadow: `0 2px 8px ${currentLevelMeta.color}50`,
                           }}
                           {...hoverBrightness(90)}
                         >
@@ -11695,7 +11734,7 @@ function PageOverview({
                             flex: 1,
                             height: 3,
                             borderRadius: 99,
-                            background: c.live ? lv.color : C.border,
+                            background: c.live ? currentLevelMeta.color : C.border,
                             transition: "background 0.3s",
                           }}
                         />
@@ -11705,9 +11744,9 @@ function PageOverview({
                       <span
                         style={{
                           ...S_OVERVIEW_SEAL_STATUS_BADGE_BASE,
-                          color: lv.color,
-                          background: `${lv.color}14`,
-                          border: `1px solid ${lv.color}40`,
+                          color: currentLevelMeta.color,
+                          background: `${currentLevelMeta.color}14`,
+                          border: `1px solid ${currentLevelMeta.color}40`,
                         }}
                       >
                         ready
@@ -11760,7 +11799,7 @@ function PageOverview({
                         }}
                       >
                         {allLive
-                          ? `L${level} · ${lv.label} — all panels connected`
+                          ? `L${level} · ${currentLevelMeta.label} — all panels connected`
                           : `${missing.length} panel${missing.length !== 1 ? "s" : ""} not yet connected`}
                       </div>
                     </div>
@@ -11783,9 +11822,9 @@ function PageOverview({
                           color: "#fff",
                           transition: "all 0.2s",
                         },
-                        background: lv.color,
-                        border: `1.5px solid ${lv.color}`,
-                        boxShadow: `0 2px 10px ${lv.color}50`,
+                        background: currentLevelMeta.color,
+                        border: `1.5px solid ${currentLevelMeta.color}`,
+                        boxShadow: `0 2px 10px ${currentLevelMeta.color}50`,
                       }}
                       {...hoverBrightness(92)}
                     >
@@ -11873,7 +11912,7 @@ function PageOverview({
 
           {/* Evaluate panel */}
           {(() => {
-            const svc = SERVICES.find((s) => s.key === PAGE.EVALUATE);
+            const svc = SERVICES.find((service) => service.key === PAGE.EVALUATE);
             if (!svc) return null;
             const earned = !!badges[svc.key];
             const ts = timestamps[svc.key];
@@ -12076,12 +12115,12 @@ function PageOverview({
 
       {/* ── Horizontal level strip ── */}
       <div style={{ marginTop: 20, display: "flex", alignItems: "center" }}>
-        {LEVELS.map((lv, i) => {
+        {LEVELS.map((levelConfig, i) => {
           const isReached = i <= level;
           const isCurrent = i === level;
           const isLast = i === LEVELS.length - 1;
           return (
-            <React.Fragment key={lv.n}>
+            <React.Fragment key={levelConfig.n}>
               <div
                 style={{
                   display: "flex",
@@ -12096,9 +12135,9 @@ function PageOverview({
                     width: isCurrent ? 14 : 9,
                     height: isCurrent ? 14 : 9,
                     borderRadius: "50%",
-                    background: isReached ? lv.color : C.border,
-                    border: isCurrent ? `2.5px solid ${lv.color}` : "none",
-                    boxShadow: isCurrent ? `0 0 0 4px ${lv.color}22` : "none",
+                    background: isReached ? levelConfig.color : C.border,
+                    border: isCurrent ? `2.5px solid ${levelConfig.color}` : "none",
+                    boxShadow: isCurrent ? `0 0 0 4px ${levelConfig.color}22` : "none",
                     flexShrink: 0,
                   }}
                 />
@@ -12108,9 +12147,9 @@ function PageOverview({
                     fontWeight: 700,
                     fontFamily: F.mono,
                     letterSpacing: 0.4,
-                    color: isReached ? lv.ink : C.textMuted,
-                    background: isReached ? `${lv.color}18` : C.surfaceAlt,
-                    border: `1px solid ${isReached ? `${lv.color}40` : C.border}`,
+                    color: isReached ? levelConfig.ink : C.textMuted,
+                    background: isReached ? `${levelConfig.color}18` : C.surfaceAlt,
+                    border: `1px solid ${isReached ? `${levelConfig.color}40` : C.border}`,
                     borderRadius: 3,
                     padding: "0 5px",
                     lineHeight: "18px",
@@ -12128,7 +12167,7 @@ function PageOverview({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {lv.label}
+                  {levelConfig.label}
                 </span>
               </div>
               {!isLast && (
@@ -12137,7 +12176,7 @@ function PageOverview({
                     height: 2,
                     flex: 1,
                     maxWidth: 28,
-                    background: i < level ? lv.color : C.border,
+                    background: i < level ? levelConfig.color : C.border,
                     borderRadius: 1,
                     flexShrink: 0,
                     marginBottom: 34,
@@ -12434,7 +12473,11 @@ function Explorer({ onBack }: ExplorerProps) {
     const sealHash =
       "sha256:" +
       Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
-    setRee((r) => ({ ...r, _sealedAt: new Date().toISOString(), _sealHash: sealHash }));
+    setRee((prevRee) => ({
+      ...prevRee,
+      _sealedAt: new Date().toISOString(),
+      _sealHash: sealHash,
+    }));
     setLocked(true);
     showToast("REE sealed — now read-only", "success");
   };
@@ -12459,8 +12502,8 @@ function Explorer({ onBack }: ExplorerProps) {
     setServiceLogs({});
     setActionStates({});
     setServiceParams(initialServiceParams());
-    setRee((r) => ({
-      ...r,
+    setRee((prevRee) => ({
+      ...prevRee,
       build_runtime_script: "",
       activation_script: "",
       sbom: "",
@@ -12496,12 +12539,12 @@ function Explorer({ onBack }: ExplorerProps) {
       return;
     }
     handleSourceChange({ silent: true });
-    setActionStates((s) => ({ ...s, source: "loading" }));
-    await new Promise((r) => setTimeout(r, 1400));
-    setActionStates((s) => ({ ...s, source: "done" }));
-    setBadges((b) => ({ ...b, source: true }));
+    setActionStates((prevStates) => ({ ...prevStates, source: "loading" }));
+    await new Promise((resolve) => setTimeout(resolve, 1400));
+    setActionStates((prevStates) => ({ ...prevStates, source: "done" }));
+    setBadges((prevBadges) => ({ ...prevBadges, source: true }));
     const ts = new Date().toISOString();
-    setTimestamps((t) => ({ ...t, source: ts }));
+    setTimestamps((prevTimestamps) => ({ ...prevTimestamps, source: ts }));
     const workspaceFiles = makeWorkspaceFromOrigin(ree.origin_url, originType);
     const snapshotFiles = cloneTree(workspaceFiles);
     const repoBase =
@@ -12513,8 +12556,8 @@ function Explorer({ onBack }: ExplorerProps) {
     setVirtualFiles(workspaceFiles);
     setImmutableSourceSnapshotFiles(snapshotFiles);
     setImmutableSourceSnapshotArchiveName(snapshotArchiveName);
-    setRee((r) => ({
-      ...r,
+    setRee((prevRee) => ({
+      ...prevRee,
       source_type: originType,
       _sourceAvailable: true,
       _sourceAcquiredBy: "download",
@@ -12548,8 +12591,8 @@ function Explorer({ onBack }: ExplorerProps) {
     setVirtualFiles(workspaceFiles);
     setImmutableSourceSnapshotFiles(snapshotFiles);
     setImmutableSourceSnapshotArchiveName(snapshotArchiveName);
-    setRee((r) => ({
-      ...r,
+    setRee((prevRee) => ({
+      ...prevRee,
       _uploadedArchive: archiveName,
       source_type: "",
       _sourceAvailable: true,
@@ -12557,8 +12600,8 @@ function Explorer({ onBack }: ExplorerProps) {
       _sourceSnapshotArchive: snapshotArchiveName,
       _sourceSnapshotCapturedAt: ts,
     }));
-    setBadges((b) => ({ ...b, source: true }));
-    setTimestamps((t) => ({ ...t, source: ts }));
+    setBadges((prevBadges) => ({ ...prevBadges, source: true }));
+    setTimestamps((prevTimestamps) => ({ ...prevTimestamps, source: ts }));
     showToast("Archive extracted into workspace", "success");
   };
 
@@ -12587,11 +12630,14 @@ function Explorer({ onBack }: ExplorerProps) {
           tag: "runtime",
           content: `[mock binary — docker save | gzip output]\nBuilt: ${new Date().toISOString()}\nSize: ~1.2 GB (mock)`,
         };
-        setVirtualFiles((f) => [...f.filter((n) => n.name !== producedName), mockRuntime]);
+        setVirtualFiles((prevFiles) => [
+          ...prevFiles.filter((node) => node.name !== producedName),
+          mockRuntime,
+        ]);
         producedRuntimePath = producedName;
       }
       if (expectedOutput && producedRuntimePath && producedRuntimePath === expectedOutput) {
-        setRee((r) => ({ ...r, runtime: expectedOutput, _runtimeIncluded: true }));
+        setRee((prevRee) => ({ ...prevRee, runtime: expectedOutput, _runtimeIncluded: true }));
       } else if (expectedOutput && !producedRuntimePath) {
         showToast(
           `Build finished, but expected runtime file was not produced: ${expectedOutput}`,
@@ -12647,11 +12693,11 @@ function Explorer({ onBack }: ExplorerProps) {
         2,
       );
       const fname = "sbom.spdx.json";
-      setVirtualFiles((f) => [
-        ...f.filter((n) => n.name !== fname),
+      setVirtualFiles((prevFiles) => [
+        ...prevFiles.filter((node) => node.name !== fname),
         { id: "vf-sbom", name: fname, type: "file", tag: "sbom", content: sbomContent },
       ]);
-      setRee((r) => ({ ...r, sbom: fname }));
+      setRee((prevRee) => ({ ...prevRee, sbom: fname }));
       showToast("SBOM generated — sbom.spdx.json", "success");
     },
     activation: () => {
@@ -12664,8 +12710,8 @@ function Explorer({ onBack }: ExplorerProps) {
         const manifestCount = groups.length;
         return `${depCount} dependenc${depCount === 1 ? "y" : "ies"} across ${manifestCount} manifest file${manifestCount === 1 ? "" : "s"}`;
       })();
-      setRee((r) => ({
-        ...r,
+      setRee((prevRee) => ({
+        ...prevRee,
         _evalLevel: newLevel,
         repro_level: `L${newLevel} · ${LEVELS[Math.min(newLevel, 7)].label}`,
         detected_dependencies: depSummary,
@@ -12675,18 +12721,18 @@ function Explorer({ onBack }: ExplorerProps) {
   };
 
   const runAction = async (key: string, params: Record<string, unknown> = {}) => {
-    setActionStates((s) => ({ ...s, [key]: "loading" }));
-    await new Promise((r) => setTimeout(r, 1600 + Math.random() * 700));
+    setActionStates((prevStates) => ({ ...prevStates, [key]: "loading" }));
+    await new Promise((resolve) => setTimeout(resolve, 1600 + Math.random() * 700));
 
     const isEvaluateRun = key === PAGE.EVALUATE;
     const newLevel = isEvaluateRun ? computeEvaluateLevelFromFiles(virtualFiles || []) : level;
     const lines = makeLogs(key, ree, params, newLevel);
     const ts = new Date().toISOString();
 
-    setServiceLogs((l) => ({ ...l, [key]: { lines, ts } }));
-    setActionStates((s) => ({ ...s, [key]: "done" }));
-    setBadges((b) => ({ ...b, [key]: true }));
-    setTimestamps((t) => ({ ...t, [key]: ts }));
+    setServiceLogs((prevLogs) => ({ ...prevLogs, [key]: { lines, ts } }));
+    setActionStates((prevStates) => ({ ...prevStates, [key]: "done" }));
+    setBadges((prevBadges) => ({ ...prevBadges, [key]: true }));
+    setTimestamps((prevTimestamps) => ({ ...prevTimestamps, [key]: ts }));
 
     const serviceHandler = SERVICE_RUN_HANDLERS[key];
     if (serviceHandler) {
@@ -12699,18 +12745,18 @@ function Explorer({ onBack }: ExplorerProps) {
       showToast("REE created — fields locked", "success");
     } else if (key === "swh") {
       const swhid = `swh:1:dir:${Math.random().toString(16).slice(2, 14)}`;
-      setRee((r) => ({ ...r, swhid }));
+      setRee((prevRee) => ({ ...prevRee, swhid }));
       showToast("Archived at Software Heritage — SWHID assigned", "success");
     } else if (key === "zenodo") {
       const doi = `10.5281/zenodo.${Math.floor(Math.random() * 9000000 + 1000000)}`;
-      setRee((r) => ({ ...r, zenodo_doi: doi }));
+      setRee((prevRee) => ({ ...prevRee, zenodo_doi: doi }));
       showToast("Published on Zenodo — DOI assigned", "success");
     } else if (key === "dataverse") {
       const doi = `doi:10.5072/DVN/${Math.floor(Math.random() * 900000 + 100000)}`;
-      setRee((r) => ({ ...r, dataverse_doi: doi }));
+      setRee((prevRee) => ({ ...prevRee, dataverse_doi: doi }));
       showToast("Dataset published on Dataverse — DOI assigned", "success");
     } else {
-      const svc = SERVICES.find((s) => s.key === key);
+      const svc = SERVICES.find((service) => service.key === key);
       showToast(`${svc?.label ?? key} completed`, "success");
     }
   };
@@ -12738,7 +12784,7 @@ function Explorer({ onBack }: ExplorerProps) {
       key: PAGE.EVALUATE,
       label: "Evaluate",
       IC: Ic.star,
-      svc: SERVICES.find((s) => s.key === PAGE.EVALUATE),
+      svc: SERVICES.find((service) => service.key === PAGE.EVALUATE),
       desc: "Score reproducibility level",
     },
     {
@@ -12746,7 +12792,7 @@ function Explorer({ onBack }: ExplorerProps) {
       key: PAGE.BUILD,
       label: "Build Runtime",
       IC: Ic.cpu,
-      svc: SERVICES.find((s) => s.key === PAGE.BUILD),
+      svc: SERVICES.find((service) => service.key === PAGE.BUILD),
       desc: "Build the runtime tarball",
     },
     {
@@ -12754,7 +12800,7 @@ function Explorer({ onBack }: ExplorerProps) {
       key: PAGE.SBOM,
       label: "Generate SBOM",
       IC: Ic.package,
-      svc: SERVICES.find((s) => s.key === PAGE.SBOM),
+      svc: SERVICES.find((service) => service.key === PAGE.SBOM),
       desc: "Scan runtime with syft",
     },
     {
@@ -12762,7 +12808,7 @@ function Explorer({ onBack }: ExplorerProps) {
       key: PAGE.ACTIVATION,
       label: "Test Activation",
       IC: Ic.shield,
-      svc: SERVICES.find((s) => s.key === PAGE.ACTIVATION),
+      svc: SERVICES.find((service) => service.key === PAGE.ACTIVATION),
       desc: "Verify container activates",
     },
     {
@@ -13465,7 +13511,7 @@ function Landing({ onLoad }: LandingProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const go = async () => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     setLoading(false);
     onLoad();
   };
@@ -13552,8 +13598,8 @@ function Landing({ onLoad }: LandingProps) {
               <input
                 id="repo-url-input"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && url.trim() && go()}
+                onChange={(event) => setUrl(event.target.value)}
+                onKeyDown={(event) => event.key === "Enter" && url.trim() && go()}
                 placeholder="https://github.com/org/repo"
                 style={{
                   width: "100%",
@@ -13611,8 +13657,8 @@ function Landing({ onLoad }: LandingProps) {
             ref={fileRef}
             type="file"
             style={{ display: "none" }}
-            onChange={(e) => {
-              if (e.target.files?.[0]) go();
+            onChange={(event) => {
+              if (event.target.files?.[0]) go();
             }}
             accept=".zip,.tar,.tar.gz"
           />
@@ -14053,7 +14099,7 @@ interface LevelBadgeProps {
   large?: boolean;
 }
 function LevelBadge({ level, large = false }: LevelBadgeProps) {
-  const lv = LEVELS[Math.min(level, 7)];
+  const levelMeta = LEVELS[Math.min(level, 7)];
   return (
     <div
       style={{
@@ -14061,8 +14107,8 @@ function LevelBadge({ level, large = false }: LevelBadgeProps) {
         alignItems: "center",
         gap: large ? 8 : 5,
         padding: large ? "6px 12px" : "3px 8px",
-        background: lv.bg,
-        border: `1.5px solid ${lv.color}40`,
+        background: levelMeta.bg,
+        border: `1.5px solid ${levelMeta.color}40`,
         borderRadius: large ? 8 : 5,
       }}
     >
@@ -14071,8 +14117,8 @@ function LevelBadge({ level, large = false }: LevelBadgeProps) {
           width: large ? 8 : 6,
           height: large ? 8 : 6,
           borderRadius: "50%",
-          background: lv.color,
-          boxShadow: `0 0 6px ${lv.color}80`,
+          background: levelMeta.color,
+          boxShadow: `0 0 6px ${levelMeta.color}80`,
           flexShrink: 0,
         }}
       />
@@ -14081,11 +14127,11 @@ function LevelBadge({ level, large = false }: LevelBadgeProps) {
           fontSize: large ? 13 : 11,
           fontWeight: 700,
           fontFamily: F.mono,
-          color: lv.color,
+          color: levelMeta.color,
           letterSpacing: 0.4,
         }}
       >
-        L{level} · {lv.label}
+        L{level} · {levelMeta.label}
       </span>
     </div>
   );
@@ -14196,7 +14242,7 @@ function RvStepCard({
       >
         <button
           type="button"
-          onClick={() => !locked && setExpanded((e) => !e)}
+          onClick={() => !locked && setExpanded((isExpanded) => !isExpanded)}
           disabled={locked}
           style={{
             width: "100%",
@@ -14347,7 +14393,7 @@ function RvStepCard({
                       ) : p.type === "select" ? (
                         <select
                           value={String(params[p.key] ?? "")}
-                          onChange={(e) => onSetParam(step.key, p.key, e.target.value)}
+                          onChange={(event) => onSetParam(step.key, p.key, event.target.value)}
                           style={{
                             border: `1.5px solid ${C.border}`,
                             borderRadius: 6,
@@ -14517,10 +14563,10 @@ function RvProvenanceChain({ ree }: RvProvenanceChainProps) {
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      {nodes.map((n, i) => {
-        const set = !!n.value;
+      {nodes.map((node, i) => {
+        const set = !!node.value;
         return (
-          <div key={n.label} style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
+          <div key={node.label} style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
             <div
               style={{
                 display: "flex",
@@ -14535,23 +14581,23 @@ function RvProvenanceChain({ ree }: RvProvenanceChainProps) {
                   width: 20,
                   height: 20,
                   borderRadius: "50%",
-                  background: set ? `${n.color}18` : C.surfaceAlt,
-                  border: `2px solid ${set ? n.color : C.borderMid}`,
+                  background: set ? `${node.color}18` : C.surfaceAlt,
+                  border: `2px solid ${set ? node.color : C.borderMid}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: set ? n.color : C.textMuted,
+                  color: set ? node.color : C.textMuted,
                   flexShrink: 0,
                 }}
               >
-                {n.icon(9)}
+                {node.icon(9)}
               </div>
               {i < nodes.length - 1 && (
                 <div
                   style={{
                     flex: 1,
                     width: 2,
-                    background: set ? `${n.color}40` : C.border,
+                    background: set ? `${node.color}40` : C.border,
                     minHeight: 10,
                   }}
                 />
@@ -14574,18 +14620,18 @@ function RvProvenanceChain({ ree }: RvProvenanceChainProps) {
                   marginBottom: 1,
                 }}
               >
-                {n.label}
+                {node.label}
               </div>
               {set ? (
-                n.href ? (
+                node.href ? (
                   <a
-                    href={n.href}
+                    href={node.href}
                     target="_blank"
                     rel="noreferrer"
                     style={{
                       fontSize: 11,
                       fontFamily: F.mono,
-                      color: n.color,
+                      color: node.color,
                       textDecoration: "none",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -14594,21 +14640,21 @@ function RvProvenanceChain({ ree }: RvProvenanceChainProps) {
                       maxWidth: "100%",
                     }}
                   >
-                    {n.value.length > 50 ? `${n.value.slice(0, 50)}…` : n.value}
+                    {node.value.length > 50 ? `${node.value.slice(0, 50)}…` : node.value}
                   </a>
                 ) : (
                   <span
                     style={{
                       fontSize: 11,
                       fontFamily: F.mono,
-                      color: n.color,
+                      color: node.color,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
                       display: "block",
                     }}
                   >
-                    {n.value}
+                    {node.value}
                   </span>
                 )
               ) : (
@@ -14634,7 +14680,7 @@ function RvProvenanceChain({ ree }: RvProvenanceChainProps) {
 // ── Pod Orbit Control — pod + arc progress ring + launch button ────────────────
 interface PodOrbitControlProps {
   level: number;
-  lv: Level;
+  levelMeta: Level;
   stepStates: Record<string, StepState>;
   allDone: boolean;
   isRunningAll: boolean;
@@ -14642,7 +14688,7 @@ interface PodOrbitControlProps {
 }
 function PodOrbitControl({
   level,
-  lv,
+  levelMeta,
   stepStates,
   allDone,
   isRunningAll,
@@ -14661,9 +14707,9 @@ function PodOrbitControl({
     return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
   };
   const arcD = (startDeg, endDeg, r = ringR) => {
-    const s = ringPt(startDeg, r),
-      e = ringPt(endDeg, r);
-    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${endDeg - startDeg > 180 ? 1 : 0} 1 ${e.x} ${e.y}`;
+    const startPoint = ringPt(startDeg, r),
+      endPoint = ringPt(endDeg, r);
+    return `M ${startPoint.x} ${startPoint.y} A ${r} ${r} 0 ${endDeg - startDeg > 180 ? 1 : 0} 1 ${endPoint.x} ${endPoint.y}`;
   };
 
   return (
@@ -14692,7 +14738,7 @@ function PodOrbitControl({
             cy={cy}
             r={ringR}
             fill="none"
-            stroke={lv.color}
+            stroke={levelMeta.color}
             strokeWidth="1"
             opacity="0.12"
             strokeDasharray="4 6"
@@ -14703,14 +14749,14 @@ function PodOrbitControl({
             const state = stepStates[step.key];
             const isDone = state === "done",
               isRun = state === "loading";
-            const color = isDone ? "#22c55e" : isRun ? step.color : `${lv.color}30`;
+            const color = isDone ? "#22c55e" : isRun ? step.color : `${levelMeta.color}30`;
             const width = isDone ? 9 : isRun ? 10 : 5;
             const midPt = ringPt(startDeg + segDeg / 2, ringR + 20);
             return (
               <g key={step.key}>
                 <path
                   d={arcD(startDeg, endDeg)}
-                  stroke={`${lv.color}15`}
+                  stroke={`${levelMeta.color}15`}
                   strokeWidth="10"
                   fill="none"
                   strokeLinecap="round"
@@ -14737,7 +14783,7 @@ function PodOrbitControl({
                   cx={midPt.x}
                   cy={midPt.y}
                   r={isDone ? 6 : isRun ? 5 : 4}
-                  fill={isDone ? "#22c55e" : isRun ? step.color : `${lv.color}50`}
+                  fill={isDone ? "#22c55e" : isRun ? step.color : `${levelMeta.color}50`}
                   style={{ transition: "all 0.3s" }}
                 />
                 {isDone && <circle cx={midPt.x} cy={midPt.y} r={2.5} fill="white" />}
@@ -14763,7 +14809,7 @@ function PodOrbitControl({
           style={{
             width: 2,
             height: 16,
-            background: `linear-gradient(to bottom, ${lv.color}60, ${lv.color}20)`,
+            background: `linear-gradient(to bottom, ${levelMeta.color}60, ${levelMeta.color}20)`,
             borderRadius: 1,
           }}
         />
@@ -14772,7 +14818,7 @@ function PodOrbitControl({
             width: 6,
             height: 6,
             borderRadius: "50%",
-            background: lv.color,
+            background: levelMeta.color,
             opacity: 0.35,
             marginTop: -1,
           }}
@@ -14783,12 +14829,12 @@ function PodOrbitControl({
         type="button"
         onClick={onRunAll}
         disabled={isRunningAll || allDone}
-        onMouseEnter={(e) => {
+        onMouseEnter={(mouseEvent) => {
           if (!isRunningAll && !allDone)
-            e.currentTarget.style.transform = "translateY(-1px) scale(1.01)";
+            mouseEvent.currentTarget.style.transform = "translateY(-1px) scale(1.01)";
         }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "none";
+        onMouseLeave={(mouseEvent) => {
+          mouseEvent.currentTarget.style.transform = "none";
         }}
         style={{
           display: "flex",
@@ -14799,13 +14845,13 @@ function PodOrbitControl({
           background: allDone
             ? "linear-gradient(135deg, #f0fdf4, #dcfce7)"
             : isRunningAll
-              ? `${lv.color}18`
-              : `linear-gradient(135deg, ${lv.color} 0%, ${lv.ink} 100%)`,
-          color: allDone ? "#16a34a" : isRunningAll ? lv.color : "#fff",
+              ? `${levelMeta.color}18`
+              : `linear-gradient(135deg, ${levelMeta.color} 0%, ${levelMeta.ink} 100%)`,
+          color: allDone ? "#16a34a" : isRunningAll ? levelMeta.color : "#fff",
           border: allDone
             ? "1.5px solid #bbf7d0"
             : isRunningAll
-              ? `1.5px solid ${lv.color}35`
+              ? `1.5px solid ${levelMeta.color}35`
               : "none",
           fontSize: 15,
           fontWeight: 700,
@@ -14814,7 +14860,7 @@ function PodOrbitControl({
           cursor: isRunningAll || allDone ? "default" : "pointer",
           boxShadow:
             !allDone && !isRunningAll
-              ? `0 6px 28px ${lv.color}45, 0 2px 10px ${lv.color}30, inset 0 1px 0 rgba(255,255,255,0.22)`
+              ? `0 6px 28px ${levelMeta.color}45, 0 2px 10px ${levelMeta.color}30, inset 0 1px 0 rgba(255,255,255,0.22)`
               : allDone
                 ? "0 3px 14px #22c55e20"
                 : "none",
@@ -14894,7 +14940,7 @@ interface ReviewerViewProps {
 function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
   const ree = reeInput || SEALED_DEMO_REE;
   const level = ree._evalLevel ?? 5;
-  const lv = LEVELS[Math.min(level, 7)];
+  const levelMeta = LEVELS[Math.min(level, 7)];
   const sealDate = ree._sealedAt
     ? new Date(ree._sealedAt).toLocaleString([], {
         year: "numeric",
@@ -14909,9 +14955,9 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
   const [stepLogs, setStepLogs] = useState<Record<string, LogLine[]>>({});
   const initParams = () =>
     Object.fromEntries(
-      REACTIVATION_STEPS.map((s) => [
-        s.key,
-        Object.fromEntries((s.params || []).map((p) => [p.key, p.default])),
+      REACTIVATION_STEPS.map((step) => [
+        step.key,
+        Object.fromEntries((step.params || []).map((param) => [param.key, param.default])),
       ]),
     );
   const [stepParams, setStepParams] = useState<Record<string, Record<string, unknown>>>(initParams);
@@ -14920,15 +14966,21 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
     setStepParams((p) => ({ ...p, [stepKey]: { ...p[stepKey], [paramKey]: val } }));
 
   const runStep = async (key, params) => {
-    const step = REACTIVATION_STEPS.find((s) => s.key === key);
-    setStepStates((s) => ({ ...s, [key]: "loading" }));
-    setStepLogs((l) => ({ ...l, [key]: step.logLines(ree, params) }));
-    await new Promise((r) => setTimeout(r, 1200 + step.logLines(ree, params).length * 80));
-    setStepStates((s) => ({ ...s, [key]: "done" }));
+    const step = REACTIVATION_STEPS.find((reactivationStep) => reactivationStep.key === key);
+    setStepStates((prevStates) => ({ ...prevStates, [key]: "loading" }));
+    setStepLogs((prevLogs) => ({ ...prevLogs, [key]: step.logLines(ree, params) }));
+    await new Promise((resolve) =>
+      setTimeout(resolve, 1200 + step.logLines(ree, params).length * 80),
+    );
+    setStepStates((prevStates) => ({ ...prevStates, [key]: "done" }));
   };
 
-  const allDone = REACTIVATION_STEPS.every((s) => stepStates[s.key] === "done");
-  const isRunningAll = REACTIVATION_STEPS.some((s) => stepStates[s.key] === "loading");
+  const allDone = REACTIVATION_STEPS.every(
+    (reactivationStep) => stepStates[reactivationStep.key] === "done",
+  );
+  const isRunningAll = REACTIVATION_STEPS.some(
+    (reactivationStep) => stepStates[reactivationStep.key] === "loading",
+  );
 
   const runAll = async () => {
     for (const step of REACTIVATION_STEPS) {
@@ -15028,15 +15080,15 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
           <div
             style={{
               padding: "14px 16px 12px",
-              background: `linear-gradient(160deg, ${lv.bg} 0%, ${C.surface} 100%)`,
-              borderBottom: `1px solid ${lv.color}25`,
+              background: `linear-gradient(160deg, ${levelMeta.bg} 0%, ${C.surface} 100%)`,
+              borderBottom: `1px solid ${levelMeta.color}25`,
             }}
           >
             <div
               style={{
                 ...S_SECTION_LABEL_SMALL,
                 letterSpacing: 1.4,
-                color: lv.color,
+                color: levelMeta.color,
                 marginBottom: 5,
               }}
             >
@@ -15063,13 +15115,22 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
                 gap: 6,
                 padding: "5px 9px",
                 background: "rgba(255,255,255,0.7)",
-                border: `1px solid ${lv.color}25`,
+                border: `1px solid ${levelMeta.color}25`,
                 borderRadius: 6,
               }}
             >
-              <span style={{ color: lv.color, display: "flex", flexShrink: 0 }}>{Ic.lock(10)}</span>
+              <span style={{ color: levelMeta.color, display: "flex", flexShrink: 0 }}>
+                {Ic.lock(10)}
+              </span>
               <div>
-                <div style={{ fontSize: 9, fontWeight: 600, color: lv.color, fontFamily: F.sans }}>
+                <div
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: levelMeta.color,
+                    fontFamily: F.sans,
+                  }}
+                >
                   Sealed
                 </div>
                 <div style={{ fontSize: 10, fontFamily: F.mono, color: C.textMid }}>{sealDate}</div>
@@ -15143,7 +15204,7 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
             flex: 1,
             overflowY: "auto",
             minWidth: 0,
-            background: `linear-gradient(180deg, ${lv.bg}50 0%, ${C.bg} 320px)`,
+            background: `linear-gradient(180deg, ${levelMeta.bg}50 0%, ${C.bg} 320px)`,
           }}
         >
           <div
@@ -15156,7 +15217,7 @@ function ReviewerView({ ree: reeInput, onBack }: ReviewerViewProps) {
           >
             <PodOrbitControl
               level={level}
-              lv={lv}
+              levelMeta={levelMeta}
               stepStates={stepStates}
               allDone={allDone}
               isRunningAll={isRunningAll}
