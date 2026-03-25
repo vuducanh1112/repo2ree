@@ -644,62 +644,41 @@ const C = TOKENS.color;
 const F = TOKENS.font;
 
 // ── Hover Helpers ─────────────────────────────────────────────────────────────
-/**
- * Centralized hover utilities replacing 60+ imperative onMouseEnter/onMouseLeave patterns.
- *
- * USAGE PATTERNS:
- *
- * 1. Simple hover effects:
- *    <div {...hoverColor(C.primary, C.text)} />
- *    <button {...hoverBg(C.bgLight, C.bg)} />
- *
- * 2. Conditional hovers (preferred over ternary spreads):
- *    <div {...hoverIf(!isSelected, hoverBg(C.bgHover, C.bg))} />
- *    Instead of: {...(!isSelected ? hoverBg(...) : {})}
- *
- * 3. Combined properties:
- *    <button {...hoverBg(C.bgLight, C.bg)} {...hoverColor(C.primary, C.text)} />
- *
- * 4. With Toggle component:
- *    <Toggle {...hoverBrightness(93)} on={true} ... />
- */
-
-/** Background color hover — smooth transition between two backgrounds */
 const hoverBg = (enterBg: string, leaveBg: string) => ({
-  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLElement>) => {
     mouseEvent.currentTarget.style.background = enterBg;
   },
-  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLElement>) => {
     mouseEvent.currentTarget.style.background = leaveBg;
   },
 });
 
 /** Border color hover — smooth transition between two border colors */
 const hoverBorderColor = (enterBorder: string, leaveBorder: string) => ({
-  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLElement>) => {
     mouseEvent.currentTarget.style.borderColor = enterBorder;
   },
-  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLElement>) => {
     mouseEvent.currentTarget.style.borderColor = leaveBorder;
   },
 });
 
 /** Text color hover — smooth transition between two text colors */
 const hoverColor = (enterColor: string, leaveColor: string) => ({
-  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLElement>) => {
     mouseEvent.currentTarget.style.color = enterColor;
   },
-  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLElement>) => {
     mouseEvent.currentTarget.style.color = leaveColor;
   },
 });
 
 /** Filter brightness hover — subtle dimming effect; default 95% brightness */
 const hoverBrightness = (brightnessPercent: number = 95) => ({
-  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+  onMouseEnter: (mouseEvent: React.MouseEvent<HTMLElement>) => {
     mouseEvent.currentTarget.style.filter = `brightness(${brightnessPercent / 100})`;
   },
-  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLButtonElement | HTMLDivElement>) => {
+  onMouseLeave: (mouseEvent: React.MouseEvent<HTMLElement>) => {
     mouseEvent.currentTarget.style.filter = "none";
   },
 });
