@@ -1,0 +1,105 @@
+import type { Ree } from "./ree";
+
+export interface Level {
+  n: number;
+  label: string;
+  color: string;
+  bg: string;
+  ink: string;
+  short: string;
+  desc: string;
+  problem: string | null;
+  fix: string | null;
+}
+
+export interface ServiceBadge {
+  label: string;
+  color: string;
+  bg: string;
+}
+
+export interface ServiceRequire {
+  field: keyof Ree;
+  label: string;
+}
+
+export interface ServiceParam {
+  key: string;
+  label: string;
+  type: "bool" | "select" | "text";
+  default: string | boolean;
+  hint?: string;
+  options?: string[];
+}
+
+export interface Service {
+  key: string;
+  label: string;
+  IC: (size?: number) => JSX.Element;
+  color: string;
+  badge: ServiceBadge;
+  desc: string;
+  requires: ServiceRequire[];
+  params: ServiceParam[];
+}
+
+export interface Cable {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: string;
+  shadow: string;
+  connected: boolean;
+}
+
+export interface CableGeo {
+  cables: Cable[];
+  decoCables: Array<{ id: string; x1: number; y1: number; x2: number; y2: number }>;
+  w: number;
+  h: number;
+}
+
+export interface RequirementsBannerProps {
+  status: "missing" | "met";
+  items?: ServiceRequire[];
+  onAction?: () => void;
+  actionLabel?: string;
+}
+
+export interface ToastState {
+  message: string;
+  type: "info" | "success" | "error";
+}
+
+export type StepState = "idle" | "loading" | "done";
+export type AppPage = "landing" | "explorer" | "reviewer";
+export type ExplorerPage =
+  | "source"
+  | "metadata"
+  | "overview"
+  | "seal"
+  | "archive"
+  | "files"
+  | "evaluate"
+  | "build"
+  | "sbom"
+  | "activation"
+  | "swh";
+
+export interface ArchiveRepo {
+  key: string;
+  label: string;
+  shortLabel: string;
+  color: string;
+  bg: string;
+  border: string;
+  url: string;
+  desc: string;
+  idLabel: string;
+  idField: keyof Ree;
+  idPlaceholder: string;
+  params: ServiceParam[];
+  requires: ServiceRequire[];
+}
