@@ -1,0 +1,200 @@
+import { LEVELS } from "../../../../constants/levels";
+import { PAGE } from "../../../../constants/pages";
+import { SERVICES } from "../../../../constants/services";
+import type { LogEntry as WorkspaceServiceLogEntry } from "../../../../services/workspaceService";
+import type { FileTreeNode, Ree } from "../../../../types";
+import {
+  computeEvaluateLevelFromFiles,
+  scanDependencies,
+} from "../../../dependencies/dependencyParser";
+import { makeLogs } from "../../services/logGenerator";
+import type { ShowToast, WorkflowSetters } from "./types";
+
+interface CreateServiceRunHandlersArgs {
+  ree: Ree;
+  virtualFiles: FileTreeNode[];
+  setRee: WorkflowSetters["setRee"];
+  persistWorkspaceFile: (path: string, content: string) => void;
+  showToast: ShowToast;
+}
+
+export function createServiceRunHandlers({
+  ree,
+  virtualFiles,
+  setRee,
+  persistWorkspaceFile,
+  showToast,
+}: CreateServiceRunHandlersArgs): Record<
+  string,
+  (params: Record<string, unknown>, newLevel: number) => void
+> {
+  return {
+    build: (runParams) => {
+      const runtimeTarget = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : null;
+      const expectedOutput = String(
+        runParams?._expectedOutput ? runParams._expectedOutput : "",
+      ).trim();
+      const producedName = expectedOutput || runtimeTarget || "runtime.tar.gz";
+      const isTarball = /\.(tar\.gz|tgz)$/i.test(producedName);
+      let producedRuntimePath: string | null = null;
+      if (isTarball) {
+        persistWorkspaceFile(
+          producedName,
+          `[mock binary — docker save | gzip output]\nBuilt: ${new Date().toISOString()}\nSize: ~1.2 GB (mock)`,
+        );
+        producedRuntimePath = producedName;
+      }
+      if (expectedOutput && producedRuntimePath && producedRuntimePath === expectedOutput) {
+        setRee((prevRee) => ({ ...prevRee, runtime: expectedOutput, _runtimeIncluded: true }));
+      } else if (expectedOutput && !producedRuntimePath) {
+        showToast(
+          `Build finished, but expected runtime file was not produced: ${expectedOutput}`,
+          "error",
+        );
+      }
+      showToast(`Build complete${producedName ? ` — ${producedName} produced` : ""}`, "success");
+    },
+    sbom: () => {
+      const sbomContent = JSON.stringify(
+        {
+          spdxVersion: "SPDX-2.3",
+          dataLicense: "CC0-1.0",
+          SPDXID: "SPDXRef-DOCUMENT",
+          name: `${ree.name || "ree"}-sbom`,
+          documentNamespace: `https://example.org/sbom/${ree.name || "ree"}-${Date.now()}`,
+          creationInfo: {
+            created: new Date().toISOString(),
+            creators: ["Tool: syft via REE Explorer"],
+          },
+          packages: [
+            {
+              SPDXID: "SPDXRef-numpy",
+              name: "numpy",
+              versionInfo: "1.26.4",
+              downloadLocation: "NOASSERTION",
+              filesAnalyzed: false,
+            },
+            {
+              SPDXID: "SPDXRef-pandas",
+              name: "pandas",
+              versionInfo: "2.2.1",
+              downloadLocation: "NOASSERTION",
+              filesAnalyzed: false,
+            },
+            {
+              SPDXID: "SPDXRef-scipy",
+              name: "scipy",
+              versionInfo: "1.12.0",
+              downloadLocation: "NOASSERTION",
+              filesAnalyzed: false,
+            },
+            {
+              SPDXID: "SPDXRef-biopython",
+              name: "biopython",
+              versionInfo: "1.83",
+              downloadLocation: "NOASSERTION",
+              filesAnalyzed: false,
+            },
+          ],
+        },
+        null,
+        2,
+      );
+      const fname = "sbom.spdx.json";
+      persistWorkspaceFile(fname, sbomContent);
+      setRee((prevRee) => ({ ...prevRee, sbom: fname }));
+      showToast("SBOM generated — sbom.spdx.json", "success");
+    },
+    activation: () => {
+      showToast("Activation test passed — container started cleanly", "success");
+    },
+    evaluate: (_, newLevel) => {
+      const depSummary = (() => {
+        const groups = scanDependencies(virtualFiles || []);
+        const depCount = groups.reduce((sum, group) => sum + group.packages.length, 0);
+        const manifestCount = groups.length;
+        return `${depCount} dependenc${depCount === 1 ? "y" : "ies"} across ${manifestCount} manifest file${manifestCount === 1 ? "" : "s"}`;
+      })();
+      setRee((prevRee) => ({
+        ...prevRee,
+        _evalLevel: newLevel,
+        repro_level: `L${newLevel} · ${LEVELS[Math.min(newLevel, 7)].label}`,
+        detected_dependencies: depSummary,
+      }));
+      showToast(`L${newLevel} · ${LEVELS[Math.min(newLevel, 7)].label}`, "success");
+    },
+  };
+}
+
+interface ExecuteServiceRunArgs {
+  key: string;
+  params: Record<string, unknown>;
+  ree: Ree;
+  level: number;
+  virtualFiles: FileTreeNode[];
+  setActionStates: WorkflowSetters["setActionStates"];
+  setServiceLogs: WorkflowSetters["setServiceLogs"];
+  setBadges: WorkflowSetters["setBadges"];
+  setTimestamps: WorkflowSetters["setTimestamps"];
+  setLocked: WorkflowSetters["setLocked"];
+  setRee: WorkflowSetters["setRee"];
+  showToast: ShowToast;
+  serviceRunHandlers: Record<string, (params: Record<string, unknown>, newLevel: number) => void>;
+}
+
+export async function executeServiceRunAction({
+  key,
+  params,
+  ree,
+  level,
+  virtualFiles,
+  setActionStates,
+  setServiceLogs,
+  setBadges,
+  setTimestamps,
+  setLocked,
+  setRee,
+  showToast,
+  serviceRunHandlers,
+}: ExecuteServiceRunArgs): Promise<WorkspaceServiceLogEntry> {
+  setActionStates((prevStates) => ({ ...prevStates, [key]: "loading" }));
+  await new Promise((resolve) => setTimeout(resolve, 1600 + Math.random() * 700));
+
+  const isEvaluateRun = key === PAGE.EVALUATE;
+  const newLevel = isEvaluateRun ? computeEvaluateLevelFromFiles(virtualFiles || []) : level;
+  const lines = makeLogs(key, ree, params, newLevel);
+  const ts = new Date().toISOString();
+
+  setServiceLogs((prevLogs) => ({ ...prevLogs, [key]: { lines, ts } }));
+  setActionStates((prevStates) => ({ ...prevStates, [key]: "done" }));
+  setBadges((prevBadges) => ({ ...prevBadges, [key]: true }));
+  setTimestamps((prevTimestamps) => ({ ...prevTimestamps, [key]: ts }));
+
+  const serviceHandler = serviceRunHandlers[key];
+  if (serviceHandler) {
+    serviceHandler(params, newLevel);
+    return { lines, ts };
+  }
+
+  if (key === "create") {
+    setLocked(true);
+    showToast("REE created — fields locked", "success");
+  } else if (key === "swh") {
+    const swhid = `swh:1:dir:${Math.random().toString(16).slice(2, 14)}`;
+    setRee((prevRee) => ({ ...prevRee, swhid }));
+    showToast("Archived at Software Heritage — SWHID assigned", "success");
+  } else if (key === "zenodo") {
+    const doi = `10.5281/zenodo.${Math.floor(Math.random() * 9000000 + 1000000)}`;
+    setRee((prevRee) => ({ ...prevRee, zenodo_doi: doi }));
+    showToast("Published on Zenodo — DOI assigned", "success");
+  } else if (key === "dataverse") {
+    const doi = `doi:10.5072/DVN/${Math.floor(Math.random() * 900000 + 100000)}`;
+    setRee((prevRee) => ({ ...prevRee, dataverse_doi: doi }));
+    showToast("Dataset published on Dataverse — DOI assigned", "success");
+  } else {
+    const svc = SERVICES.find((service) => service.key === key);
+    showToast(`${svc?.label ?? key} completed`, "success");
+  }
+
+  return { lines, ts };
+}

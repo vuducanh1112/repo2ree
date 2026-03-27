@@ -1,8 +1,7 @@
-import type React from "react";
 import { useState } from "react";
 import { Ic } from "../../components/Icon";
 import { ARCHIVE_REPOS } from "../../constants/archiveRepos";
-import { PAGE } from "../../constants/pages";
+import { type ExplorerPage, PAGE } from "../../constants/pages";
 import {
   C,
   F,
@@ -14,33 +13,12 @@ import {
   S_SECTION_LABEL,
 } from "../../constants/theme";
 import type { ActionStates, Badges, Ree, ServiceLogs } from "../../types/ree";
-import type { ServiceRequire } from "../../types/services";
-
-interface WorkflowPageHeaderProps {
-  color: string;
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  tips: string[];
-}
-
-interface RequirementsBannerProps {
-  status: "missing" | "met";
-  items?: ServiceRequire[];
-  onAction?: () => void;
-  actionLabel?: string;
-}
-
-interface LogPanelProps {
-  log: ServiceLogs[string] | null | undefined;
-  running?: boolean;
-}
-
-interface NextStepNudgeProps {
-  stepKey: string;
-  badges: Badges;
-  onGo: (key: string) => void;
-}
+import { LogPanel } from "../explorer/components/inputs/logPanel";
+import {
+  NextStepNudge,
+  RequirementsBanner,
+  WorkflowPageHeader,
+} from "../explorer/components/workflow/pageChrome";
 
 export interface PageArchiveProps {
   ree: Ree;
@@ -48,25 +26,10 @@ export interface PageArchiveProps {
   logs: ServiceLogs;
   actionStates: ActionStates;
   onRun: (key: string, params: Record<string, unknown>) => void;
-  onGo: (key: string) => void;
-  WorkflowPageHeaderComponent: React.ComponentType<WorkflowPageHeaderProps>;
-  RequirementsBannerComponent: React.ComponentType<RequirementsBannerProps>;
-  LogPanelComponent: React.ComponentType<LogPanelProps>;
-  NextStepNudgeComponent: React.ComponentType<NextStepNudgeProps>;
+  onGo: (key: ExplorerPage) => void;
 }
 
-export function PageArchive({
-  ree,
-  badges,
-  logs,
-  actionStates,
-  onRun,
-  onGo,
-  WorkflowPageHeaderComponent,
-  RequirementsBannerComponent,
-  LogPanelComponent,
-  NextStepNudgeComponent,
-}: PageArchiveProps) {
+export function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchiveProps) {
   const [activeRepo, setActiveRepo] = useState("swh");
   const repo =
     ARCHIVE_REPOS.find((archiveRepo) => archiveRepo.key === activeRepo) || ARCHIVE_REPOS[0];
@@ -108,7 +71,7 @@ export function PageArchive({
         animation: "fadeUp 0.2s ease",
       }}
     >
-      <WorkflowPageHeaderComponent
+      <WorkflowPageHeader
         color={repo.color}
         icon={Ic.globe(18)}
         title="Deposit & Share"
@@ -520,9 +483,7 @@ export function PageArchive({
                 </div>
               </div>
 
-              {missing.length > 0 && (
-                <RequirementsBannerComponent status="missing" items={missing} />
-              )}
+              {missing.length > 0 && <RequirementsBanner status="missing" items={missing} />}
 
               <button
                 type="button"
@@ -570,12 +531,12 @@ export function PageArchive({
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ ...S_SECTION_LABEL, letterSpacing: 1.3, fontWeight: 600 }}>Output</div>
-              <LogPanelComponent log={log} running={running} />
+              <LogPanel log={log} running={running} />
             </div>
           </div>
 
           <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
-            <NextStepNudgeComponent stepKey={PAGE.ARCHIVE} badges={badges || {}} onGo={onGo} />
+            <NextStepNudge stepKey={PAGE.ARCHIVE} badges={badges || {}} onGo={onGo} />
           </div>
         </div>
       </div>

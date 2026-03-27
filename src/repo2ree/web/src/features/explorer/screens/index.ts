@@ -4,6 +4,7 @@ export { PageGenerateSBOM } from "./PageGenerateSBOM";
 export { PageMetadataEntry } from "./PageMetadataEntry";
 export { PageSourceRepoEntry } from "./PageSourceRepoEntry";
 export { PageTestActivation } from "./PageTestActivation";
+export { SVC_SCRIPT_FIELDS } from "./sharedWorkflowConstants";
 export {
   allFilePaths,
   defaultScriptTemplates,
@@ -11,7 +12,6 @@ export {
   type ScriptTemplate,
 } from "./sharedWorkflowHelpers";
 export type {
-  ExplorerScreensUi,
   PageMetadataEntryProps,
   PageSourceRepoEntryProps,
   ServicePageProps,

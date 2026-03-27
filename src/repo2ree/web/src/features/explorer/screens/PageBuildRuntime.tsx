@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Ic } from "../../../components/Icon";
 import {
   C,
+  hoverBg,
+  hoverBorderColor,
+  hoverColor,
   S_FIELD_HELP_TEXT_SMALL,
   S_FIELD_LABEL_TEXT_SM,
   S_FIELD_ROW_REQUIRED_BADGE,
@@ -21,28 +24,42 @@ import {
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
 import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
+import { LogPanel } from "../components/inputs/logPanel";
+import { FilePicker, ScriptPanel } from "../components/inputs/scriptAndFile";
+import { RuntimeField } from "../components/inputs/sourceRuntime";
+import {
+  descToTwoTierTips,
+  FieldRow,
+  FieldSection,
+  FieldTipsSidebar,
+} from "../components/workflow/fieldTips";
+import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
+import { RuntimeOutputNode, ServiceActionSection } from "../components/workflow/servicePanels";
+import { SVC_SCRIPT_FIELDS } from "./sharedWorkflowConstants";
+import { findFileByPath } from "./sharedWorkflowHelpers";
 import type { ServicePageProps } from "./sharedWorkflowUi";
 
 export function PageBuildRuntime({
   svc,
   ree,
+  badges,
+  virtualFiles,
   log,
   running,
   runDone,
   badge,
   ts,
   onRun,
-  onGoFields,
-  badges,
   onGo,
-  files,
-  onFilesChange,
-  onReeChange,
+  onGoFields,
   missing,
   params,
   setParam,
-  ui,
+  onReeChange,
+  onFilesChange,
 }: ServicePageProps) {
+  const files = virtualFiles;
+
   const [expectedOutput, setExpectedOutput] = useState(() =>
     ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "",
   );
@@ -55,8 +72,8 @@ export function PageBuildRuntime({
   const finalRuntime = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
   const includeRuntime = !!ree._runtimeIncluded && !!finalRuntime;
   const finalRuntimeFile = finalRuntime
-    ? ui.findFileByPath(files || [], finalRuntime) ||
-      ui.findFileByPath(files || [], finalRuntime.split("/").pop() || "")
+    ? findFileByPath(files || [], finalRuntime) ||
+      findFileByPath(files || [], finalRuntime.split("/").pop() || "")
     : null;
   const finalRuntimeSize = finalRuntimeFile
     ? (() => {
@@ -69,23 +86,6 @@ export function PageBuildRuntime({
       })()
     : null;
 
-  const {
-    WorkflowPageHeader,
-    FieldSection,
-    FieldRow,
-    FilePicker,
-    ScriptPanel,
-    ServiceActionSection,
-    RuntimeOutputNode,
-    RuntimeField,
-    LogPanel,
-    NextStepNudge,
-    FieldTipsSidebar,
-    hoverBg,
-    hoverBorderColor,
-    hoverColor,
-  } = ui;
-
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
       <WorkflowPageHeader
@@ -93,7 +93,7 @@ export function PageBuildRuntime({
         icon={Ic.cpu(18)}
         title={svc.label}
         subtitle={svc.desc}
-        tips={ui.descToTwoTierTips(svc.desc)}
+        tips={descToTwoTierTips(svc.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -154,7 +154,7 @@ export function PageBuildRuntime({
 
               <div style={{ marginTop: 14 }}>
                 <div style={{ ...S_SECTION_LABEL, marginBottom: 10 }}>Build Script Editor</div>
-                {ui.SVC_SCRIPT_FIELDS[svc.key]?.map((sf) => (
+                {SVC_SCRIPT_FIELDS[svc.key]?.map((sf) => (
                   <ScriptPanel
                     key={sf.fieldKey}
                     scriptKind={sf.scriptKind || null}

@@ -1,6 +1,6 @@
-import type React from "react";
 import { useState } from "react";
 import { Ic } from "../../components/Icon";
+import { LevelBadge } from "../../components/LevelBadge";
 import { LEVELS } from "../../constants/levels";
 import { C, F, hoverBg, hoverColor, S_SECTION_LABEL_SMALL } from "../../constants/theme";
 import type { LogLine, Ree } from "../../types/ree";
@@ -17,7 +17,6 @@ interface ReviewerViewProps {
   ree?: Ree;
   onBack: () => void;
   defaultRee: Ree;
-  LevelBadge: React.ComponentType<{ level: number; large?: boolean }>;
   PodOrbitControl: React.ComponentType<{
     level: number;
     levelMeta: Level;
@@ -32,7 +31,6 @@ export function ReviewerView({
   ree: reeInput,
   onBack,
   defaultRee,
-  LevelBadge,
   PodOrbitControl,
 }: ReviewerViewProps) {
   const ree = reeInput || defaultRee;

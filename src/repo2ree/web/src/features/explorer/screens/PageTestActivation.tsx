@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Ic } from "../../../components/Icon";
+import { FIELD_META } from "../../../constants/fieldMeta";
 import { PAGE } from "../../../constants/pages";
 import {
   S_FIELD_HELP_TEXT_SMALL,
@@ -17,42 +18,42 @@ import {
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
 import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
+import { LogPanel } from "../components/inputs/logPanel";
+import { FilePicker, ScriptPanel } from "../components/inputs/scriptAndFile";
+import {
+  descToTwoTierTips,
+  FieldRow,
+  FieldSection,
+  FieldTipsSidebar,
+} from "../components/workflow/fieldTips";
+import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
+import { ServiceActionSection } from "../components/workflow/servicePanels";
+import { SVC_SCRIPT_FIELDS } from "./sharedWorkflowConstants";
 import type { ServicePageProps } from "./sharedWorkflowUi";
 
 export function PageTestActivation({
   svc,
   ree,
+  badges,
+  virtualFiles,
   log,
   running,
   runDone,
   badge,
   ts,
   onRun,
-  onGoFields,
-  badges,
   onGo,
-  files,
-  onFilesChange,
-  onReeChange,
+  onGoFields,
   missing,
   params,
-  ui,
+  onReeChange,
+  onFilesChange,
 }: ServicePageProps) {
-  const asLabel = ui.FIELD_META.activation_script?.label || "Activation script";
+  const files = virtualFiles;
+
+  const asLabel = FIELD_META.activation_script?.label || "Activation script";
   const buildColor = svc?.color || "#ef4444";
   const [focusedField, setFocusedField] = useState<string | null>(null);
-
-  const {
-    WorkflowPageHeader,
-    FieldSection,
-    FieldRow,
-    FilePicker,
-    ServiceActionSection,
-    ScriptPanel,
-    LogPanel,
-    NextStepNudge,
-    FieldTipsSidebar,
-  } = ui;
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
@@ -61,7 +62,7 @@ export function PageTestActivation({
         icon={Ic.play(18)}
         title={svc?.label || "Test activation"}
         subtitle="Run the activation test script to verify the runtime loads and activates correctly"
-        tips={ui.descToTwoTierTips(svc.desc)}
+        tips={descToTwoTierTips(svc.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -113,12 +114,12 @@ export function PageTestActivation({
             idleLabel="Run activation"
             runningLabel="Running…"
             helperText="Runs the activation test script in the runtime environment."
-            onRun={() => onRun?.(PAGE.ACTIVATION, params)}
+            onRun={() => onRun(svc.key, params)}
           />
 
           <div style={S_WORKFLOW_PAGE_SCRIPTS_WRAP}>
             <div style={{ ...S_SECTION_LABEL, marginBottom: 14 }}>Scripts</div>
-            {ui.SVC_SCRIPT_FIELDS.activation?.map((sf) => (
+            {SVC_SCRIPT_FIELDS.activation?.map((sf) => (
               <ScriptPanel
                 key={sf.fieldKey}
                 scriptKind={sf.scriptKind || null}

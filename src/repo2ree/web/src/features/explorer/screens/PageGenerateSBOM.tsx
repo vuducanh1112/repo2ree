@@ -1,9 +1,11 @@
+import type React from "react";
 import { useState } from "react";
 import { Ic } from "../../../components/Icon";
 import { PAGE } from "../../../constants/pages";
 import {
   C,
   F,
+  S_ACTION_BUTTON_BASE,
   S_FIELD_STACK_GAP_14,
   S_SECTION_LABEL,
   S_SECTION_LABEL_SMALL,
@@ -17,47 +19,53 @@ import {
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
 import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
+import { LogPanel } from "../components/inputs/logPanel";
+import { ScriptPanel } from "../components/inputs/scriptAndFile";
+import {
+  descToTwoTierTips,
+  FieldRow,
+  FieldSection,
+  FieldTipsSidebar,
+} from "../components/workflow/fieldTips";
+import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
+import { ServiceActionSection } from "../components/workflow/servicePanels";
+import { SVC_SCRIPT_FIELDS } from "./sharedWorkflowConstants";
+import { findFileByPath } from "./sharedWorkflowHelpers";
 import type { ServicePageProps } from "./sharedWorkflowUi";
+
+const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+  ...S_ACTION_BUTTON_BASE,
+  ...extra,
+});
 
 export function PageGenerateSBOM({
   svc,
   ree,
+  badges,
+  virtualFiles,
   log,
   running,
   runDone,
   badge,
   ts,
   onRun,
-  onGoFields,
-  badges,
   onGo,
-  files,
-  onFilesChange,
-  onReeChange,
+  onGoFields,
   missing,
   params,
-  ui,
+  onReeChange,
+  onFilesChange,
 }: ServicePageProps) {
+  const files = virtualFiles;
+
   const sbomColor = svc.color;
   const rt = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : null;
   const isTb = rt && /\.(tar\.gz|tgz)$/i.test(rt);
   const hasSbom = !!(ree.sbom && ree.sbom !== "__skipped__");
-  const sbomNode = hasSbom ? ui.findFileByPath(files || [], ree.sbom) : null;
+  const sbomNode = hasSbom ? findFileByPath(files || [], ree.sbom) : null;
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const sbomScripts = ui.SVC_SCRIPT_FIELDS[svc.key] || [];
-
-  const {
-    WorkflowPageHeader,
-    FieldSection,
-    FieldRow,
-    ServiceActionSection,
-    ScriptPanel,
-    LogPanel,
-    NextStepNudge,
-    FieldTipsSidebar,
-    actionBtn,
-  } = ui;
+  const sbomScripts = SVC_SCRIPT_FIELDS[svc.key] || [];
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
@@ -66,7 +74,7 @@ export function PageGenerateSBOM({
         icon={Ic.package(18)}
         title="Generate SBOM"
         subtitle="Generate a machine-readable SBOM from the runtime image/tarball"
-        tips={ui.descToTwoTierTips(svc.desc)}
+        tips={descToTwoTierTips(svc.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}

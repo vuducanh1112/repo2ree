@@ -1,7 +1,12 @@
+import type React from "react";
 import { Ic } from "../../../components/Icon";
 import {
   C,
   F,
+  hoverBg,
+  hoverBorderColor,
+  hoverColor,
+  S_ACTION_BUTTON_BASE,
   S_WORKFLOW_PAGE_BODY,
   S_WORKFLOW_PAGE_MAIN_COL,
   S_WORKFLOW_PAGE_MAIN_SCROLL,
@@ -9,39 +14,47 @@ import {
   S_WORKFLOW_PAGE_ROOT,
 } from "../../../constants/theme";
 import { useFocusScroll } from "../../../hooks/useFocusScroll";
+import { FieldRow, FieldSection, FieldTipsSidebar } from "../components/workflow/fieldTips";
+import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
 import type { PageMetadataEntryProps } from "./sharedWorkflowUi";
+
+const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+  ...S_ACTION_BUTTON_BASE,
+  ...extra,
+});
+
+const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
+  width: "100%",
+  border: `1.5px solid ${C.border}`,
+  borderRadius: 7,
+  padding: "9px 12px",
+  fontSize: 14,
+  fontFamily: F.mono,
+  color: C.text,
+  background: locked ? C.surfaceAlt : C.surface,
+  transition: "border-color 0.15s, box-shadow 0.15s",
+  ...extra,
+});
 
 export function PageMetadataEntry({
   ree,
-  onChange,
   locked,
-  setLocked,
   badges,
-  onGoService,
   focusedField,
-  setFocusedField,
-  ui,
+  onReeChange,
+  onLockedChange,
+  onGoService,
+  onFocusedFieldChange,
 }: PageMetadataEntryProps) {
+  const onChange = onReeChange;
+
   const set = (k: string, v: unknown) => onChange({ ...ree, [k]: v });
-  const focus = (key: string) => setFocusedField(key);
+  const focus = (key: string) => onFocusedFieldChange(key);
 
   useFocusScroll(focusedField);
 
   const identityFilled = [ree.name].filter(Boolean).length;
   const hardwareFilled = Object.values(ree.hardware_description).filter((v) => v.trim?.()).length;
-
-  const {
-    WorkflowPageHeader,
-    FieldSection,
-    FieldRow,
-    NextStepNudge,
-    FieldTipsSidebar,
-    inp,
-    actionBtn,
-    hoverColor,
-    hoverBg,
-    hoverBorderColor,
-  } = ui;
 
   return (
     <div style={S_WORKFLOW_PAGE_ROOT}>
@@ -58,7 +71,7 @@ export function PageMetadataEntry({
           locked ? (
             <button
               type="button"
-              onClick={() => setLocked(false)}
+              onClick={() => onLockedChange(false)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -219,7 +232,7 @@ export function PageMetadataEntry({
         <FieldTipsSidebar
           tipFields={["name", "hardware_description"]}
           focusedField={focusedField}
-          onClear={() => setFocusedField(null)}
+          onClear={() => onFocusedFieldChange(null)}
         />
       </div>
     </div>

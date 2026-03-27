@@ -16,6 +16,7 @@ import {
 import { MOCK_FILES } from "../../services/dummyWorkspaceService";
 import type { ReeFile } from "../../types/ree";
 import type { FileTreeNode } from "../../types/workspace";
+import { WorkflowPageHeader } from "../explorer/components/workflow/pageChrome";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,
@@ -241,16 +242,9 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
 export interface PageFilesProps {
   files: FileTreeNode[];
   reeFiles: ReeFile[];
-  WorkflowPageHeaderComponent: React.ComponentType<{
-    color: string;
-    icon: React.ReactNode;
-    title: string;
-    subtitle: string;
-    tips: string[];
-  }>;
 }
 
-export function PageFiles({ files, reeFiles, WorkflowPageHeaderComponent }: PageFilesProps) {
+export function PageFiles({ files, reeFiles }: PageFilesProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const sourceFiles = files || MOCK_FILES;
   const reeFileTree = useMemo(() => buildReeFileTree(reeFiles), [reeFiles]);
@@ -315,7 +309,7 @@ export function PageFiles({ files, reeFiles, WorkflowPageHeaderComponent }: Page
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
-      <WorkflowPageHeaderComponent
+      <WorkflowPageHeader
         color="#6366f1"
         icon={Ic.files(18)}
         title="Files"

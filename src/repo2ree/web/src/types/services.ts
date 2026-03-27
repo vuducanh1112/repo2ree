@@ -1,4 +1,7 @@
+import type { AppPage, ExplorerPage } from "../constants/pages";
 import type { Ree } from "./ree";
+
+export type { AppPage, ExplorerPage };
 
 export interface Level {
   n: number;
@@ -74,19 +77,6 @@ export interface ToastState {
 }
 
 export type StepState = "idle" | "loading" | "done";
-export type AppPage = "landing" | "explorer" | "reviewer";
-export type ExplorerPage =
-  | "source"
-  | "metadata"
-  | "overview"
-  | "seal"
-  | "archive"
-  | "files"
-  | "evaluate"
-  | "build"
-  | "sbom"
-  | "activation"
-  | "swh";
 
 export interface ArchiveRepo {
   key: string;

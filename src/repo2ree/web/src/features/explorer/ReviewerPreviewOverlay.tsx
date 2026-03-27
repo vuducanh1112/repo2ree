@@ -10,13 +10,13 @@ import {
 } from "../../constants/theme";
 import type { Ree } from "../../types/ree";
 import type { Level, StepState } from "../../types/services";
+import { ReviewerView } from "../reviewer/ReviewerView";
 
 interface ReviewerPreviewOverlayProps {
   open: boolean;
   ree: Ree;
   onClose: () => void;
   defaultRee: Ree;
-  LevelBadge: React.ComponentType<{ level: number; large?: boolean }>;
   PodOrbitControl: React.ComponentType<{
     level: number;
     levelMeta: Level;
@@ -24,20 +24,6 @@ interface ReviewerPreviewOverlayProps {
     allDone: boolean;
     isRunningAll: boolean;
     onRunAll: () => void;
-  }>;
-  ReviewerViewComponent: React.ComponentType<{
-    ree?: Ree;
-    onBack: () => void;
-    defaultRee: Ree;
-    LevelBadge: React.ComponentType<{ level: number; large?: boolean }>;
-    PodOrbitControl: React.ComponentType<{
-      level: number;
-      levelMeta: Level;
-      stepStates: Record<string, StepState>;
-      allDone: boolean;
-      isRunningAll: boolean;
-      onRunAll: () => void;
-    }>;
   }>;
 }
 
@@ -51,9 +37,7 @@ export function ReviewerPreviewOverlay({
   ree,
   onClose,
   defaultRee,
-  LevelBadge,
   PodOrbitControl,
-  ReviewerViewComponent,
 }: ReviewerPreviewOverlayProps) {
   if (!open) return null;
 
@@ -126,11 +110,10 @@ export function ReviewerPreviewOverlay({
         </button>
       </div>
       <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <ReviewerViewComponent
+        <ReviewerView
           ree={ree}
           onBack={onClose}
           defaultRee={defaultRee}
-          LevelBadge={LevelBadge}
           PodOrbitControl={PodOrbitControl}
         />
       </div>

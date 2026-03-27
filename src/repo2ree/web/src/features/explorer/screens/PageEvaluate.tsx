@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Ic } from "../../../components/Icon";
+import { LevelBadge } from "../../../components/LevelBadge";
 import { LEVELS } from "../../../constants/levels";
 import {
   C,
@@ -12,25 +13,39 @@ import {
 } from "../../../constants/theme";
 import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
 import { scanDependencies } from "../../dependencies/dependencyParser";
+import { LogPanel } from "../components/inputs/logPanel";
+import {
+  descToTwoTierTips,
+  FieldRow,
+  FieldSection,
+  FieldTipsSidebar,
+} from "../components/workflow/fieldTips";
+import {
+  NextStepNudge,
+  RequirementsBanner,
+  WorkflowPageHeader,
+} from "../components/workflow/pageChrome";
+import { DependencyPanel, ServiceActionSection } from "../components/workflow/servicePanels";
 import type { ServicePageProps } from "./sharedWorkflowUi";
 
 export function PageEvaluate({
   svc,
   ree,
+  badges,
+  virtualFiles,
   log,
   running,
   runDone,
   badge,
   ts,
   onRun,
-  onGoFields,
-  badges,
   onGo,
-  files,
+  onGoFields,
   missing,
   params,
-  ui,
 }: ServicePageProps) {
+  const files = virtualFiles;
+
   const depGroups = scanDependencies(files || MOCK_FILES);
   const hasRun = !!log;
   const hasScoreOutput = !!runDone;
@@ -42,19 +57,6 @@ export function PageEvaluate({
   const standing = `${level + 1} / ${LEVELS.length}`;
   const completionPct = Math.round((level / (LEVELS.length - 1)) * 100);
 
-  const {
-    WorkflowPageHeader,
-    RequirementsBanner,
-    ServiceActionSection,
-    FieldSection,
-    FieldRow,
-    LevelBadge,
-    DependencyPanel,
-    LogPanel,
-    NextStepNudge,
-    FieldTipsSidebar,
-  } = ui;
-
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
       <WorkflowPageHeader
@@ -62,7 +64,7 @@ export function PageEvaluate({
         icon={IC(18)}
         title={svc.label}
         subtitle={svc.desc}
-        tips={ui.descToTwoTierTips(svc.desc)}
+        tips={descToTwoTierTips(svc.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}

@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useState } from "react";
 import { Ic } from "../../../components/Icon";
 import { Toggle } from "../../../components/Toggle";
@@ -5,6 +6,9 @@ import { PAGE } from "../../../constants/pages";
 import {
   C,
   F,
+  hoverBg,
+  hoverBorderColor,
+  S_ACTION_BUTTON_BASE,
   S_SECTION_LABEL_SMALL,
   S_WORKFLOW_PAGE_BODY,
   S_WORKFLOW_PAGE_MAIN_COL,
@@ -13,27 +17,50 @@ import {
   S_WORKFLOW_PAGE_ROOT,
 } from "../../../constants/theme";
 import { useFocusScroll } from "../../../hooks/useFocusScroll";
+import { SourceUploadField, SourceUrlField } from "../components/inputs/sourceRuntime";
+import { FieldRow, FieldSection, FieldTipsSidebar } from "../components/workflow/fieldTips";
+import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
 import type { PageSourceRepoEntryProps } from "./sharedWorkflowUi";
+
+const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+  ...S_ACTION_BUTTON_BASE,
+  ...extra,
+});
+
+const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
+  width: "100%",
+  border: `1.5px solid ${C.border}`,
+  borderRadius: 7,
+  padding: "9px 12px",
+  fontSize: 14,
+  fontFamily: F.mono,
+  color: C.text,
+  background: locked ? C.surfaceAlt : C.surface,
+  transition: "border-color 0.15s, box-shadow 0.15s",
+  ...extra,
+});
 
 export function PageSourceRepoEntry({
   ree,
-  onChange,
   locked,
   repoMode,
-  onRepoModeChange,
   badges,
+  actionStates,
+  focusedField,
+  onReeChange,
+  onRepoModeChange,
+  onGoService,
+  onFocusedFieldChange,
   onDownloadSource,
   onWorkspaceUpload,
   onRemoveWorkspaceSource,
-  downloadRunning,
-  downloadDone,
-  onGoService,
-  focusedField,
-  setFocusedField,
-  ui,
 }: PageSourceRepoEntryProps) {
+  const onChange = onReeChange;
+  const downloadRunning = actionStates.source === "loading";
+  const downloadDone = !!ree._sourceAvailable;
+
   const set = (k: string, v: unknown) => onChange({ ...ree, [k]: v });
-  const focus = (key: string) => setFocusedField(key);
+  const focus = (key: string) => onFocusedFieldChange(key);
   const [originTypeDraft, setOriginTypeDraft] = useState<
     "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | ""
   >(ree.source_type || "");
@@ -79,20 +106,6 @@ export function PageSourceRepoEntry({
         ? "Source downloaded"
         : "Download source files locally";
 
-  const {
-    WorkflowPageHeader,
-    FieldSection,
-    FieldRow,
-    SourceUrlField,
-    SourceUploadField,
-    NextStepNudge,
-    FieldTipsSidebar,
-    actionBtn,
-    inp,
-    hoverBg,
-    hoverBorderColor,
-  } = ui;
-
   return (
     <div style={S_WORKFLOW_PAGE_ROOT}>
       <WorkflowPageHeader
@@ -133,7 +146,7 @@ export function PageSourceRepoEntry({
 
               <div style={{ padding: "12px 0 0" }}>
                 <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-                  {["url", "upload"].map((m) => (
+                  {(["url", "upload"] as const).map((m) => (
                     <button
                       type="button"
                       key={m}
@@ -397,7 +410,7 @@ export function PageSourceRepoEntry({
         <FieldTipsSidebar
           tipFields={["origin_url", "source_type", "_sourceAcquiredBy", "_sourceAvailable"]}
           focusedField={focusedField}
-          onClear={() => setFocusedField(null)}
+          onClear={() => onFocusedFieldChange(null)}
         />
       </div>
     </div>
