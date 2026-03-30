@@ -1,5 +1,5 @@
 import { APP_PAGE } from "./constants/pages";
-import { AppProvider, useAppContext } from "./context";
+import { AppProvider, appActions, appSelectors, useAppContext } from "./context";
 import { ExplorerView } from "./features/explorer/ExplorerView";
 import { LandingView } from "./features/landing/LandingView";
 import { PodOrbitControl } from "./features/reviewer/PodOrbitControl";
@@ -63,19 +63,17 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
 }
 
 function AppShell() {
-  const {
-    state: { appPage },
-    setAppPage,
-  } = useAppContext();
+  const { state, dispatch } = useAppContext();
+  const appPage = appSelectors.page(state);
 
   return (
     <>
       <style>{GLOBAL_CSS}</style>
       <AppRoutes
         page={appPage}
-        onGoLanding={() => setAppPage(APP_PAGE.LANDING)}
-        onGoExplorer={() => setAppPage(APP_PAGE.EXPLORER)}
-        onGoReviewer={() => setAppPage(APP_PAGE.REVIEWER)}
+        onGoLanding={() => dispatch(appActions.setPage(APP_PAGE.LANDING))}
+        onGoExplorer={() => dispatch(appActions.setPage(APP_PAGE.EXPLORER))}
+        onGoReviewer={() => dispatch(appActions.setPage(APP_PAGE.REVIEWER))}
         LandingView={LandingView}
         ExplorerView={ExplorerRouteView}
         ReviewerView={ReviewerRouteView}

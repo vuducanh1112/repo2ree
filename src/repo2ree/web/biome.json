@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": ["src/App.tsx", "!dist", "!node_modules", "!.vite", "!build"]
+		"includes": ["src/**/*.{ts,tsx}", "!dist", "!node_modules", "!.vite", "!build"]
 	},
 	"formatter": {
 		"enabled": true,

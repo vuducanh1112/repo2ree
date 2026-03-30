@@ -8,6 +8,8 @@ export interface LogEntry {
   ts: string;
 }
 
+export type WorkspaceServiceLogEntry = LogEntry;
+
 export interface ReeProject<TFile = unknown> {
   id: string;
   files: TFile[];
@@ -16,14 +18,14 @@ export interface ReeProject<TFile = unknown> {
 export interface IWorkspaceService<TFile = unknown> {
   getWorkspace(id: string): Promise<ReeProject<TFile>>;
   updateFile(id: string, path: string, content: string): Promise<void>;
-  runScript(id: string, scriptKey: string): Promise<LogEntry>;
+  runScript(id: string, scriptKey: string): Promise<WorkspaceServiceLogEntry>;
   resetWorkspace(id: string, newSource: string): Promise<void>;
 }
 
 interface WorkspaceServiceDelegates<TFile = unknown> {
   getWorkspace: (id: string) => Promise<ReeProject<TFile>>;
   updateFile: (id: string, path: string, content: string) => Promise<void>;
-  runScript: (id: string, scriptKey: string) => Promise<LogEntry>;
+  runScript: (id: string, scriptKey: string) => Promise<WorkspaceServiceLogEntry>;
   resetWorkspace: (id: string, newSource: string) => Promise<void>;
 }
 

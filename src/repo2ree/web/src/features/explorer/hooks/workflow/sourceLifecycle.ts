@@ -1,5 +1,8 @@
+import type React from "react";
 import { PAGE } from "../../../../constants/pages";
 import { initialServiceParams } from "../../../../constants/services";
+import type { AppAction } from "../../../../context";
+import { explorerActions } from "../../../../context";
 import {
   cloneDummyWorkspaceTree,
   createInMemoryDummyWorkspaceService,
@@ -9,17 +12,11 @@ import {
 } from "../../../../services/dummyWorkspaceService";
 import type {
   IWorkspaceService,
-  LogEntry as WorkspaceServiceLogEntry,
+  WorkspaceServiceLogEntry,
 } from "../../../../services/workspaceService";
-import type {
-  FileTreeNode,
-  Ree,
-  ServiceParams,
-  SourceUploadCommit,
-  Timestamps,
-} from "../../../../types";
+import type { FileTreeNode, Ree, ServiceParams, SourceUploadCommit } from "../../../../types";
 import { normalizeSnapshotArchiveName, normalizeWorkspacePath } from "../../../../utils";
-import type { ShowToast, WorkflowSetters } from "./types";
+import type { ShowToast } from "./types";
 
 export const WORKSPACE_ID = "active";
 
@@ -41,36 +38,11 @@ export function upsertWorkspaceFile(
 }
 
 export function resetWorkflowOnSourceChange(
-  setters: WorkflowSetters,
+  dispatch: React.Dispatch<AppAction>,
   showToast: ShowToast,
   options: { silent?: boolean } = {},
 ): void {
-  setters.setBadges({});
-  setters.setTimestamps({});
-  setters.setServiceLogs({});
-  setters.setActionStates({});
-  setters.setServiceParams(initialServiceParams());
-  setters.setRee((prevRee) => ({
-    ...prevRee,
-    runtime: "",
-    build_runtime_script: "",
-    activation_script: "",
-    sbom: "",
-    swhid: "",
-    detected_dependencies: "",
-    repro_level: "",
-    _evalLevel: 0,
-    _sourceAvailable: false,
-    _sourceAcquiredBy: undefined,
-    _runtimeIncluded: false,
-    zenodo_doi: "",
-    _uploadedArchive: "",
-    _sourceSnapshotArchive: "",
-    _sourceSnapshotCapturedAt: "",
-  }));
-  setters.setVirtualFiles([]);
-  setters.setImmutableSourceSnapshotFiles([]);
-  setters.setImmutableSourceSnapshotArchiveName("");
+  dispatch(explorerActions.resetWorkflowOnSourceChange(initialServiceParams()));
   if (!options.silent) {
     showToast("Source changed — workflow status and scripts reset", "info");
   }
@@ -80,10 +52,7 @@ interface CreateWorkspaceServiceArgs {
   ree: Ree;
   virtualFiles: FileTreeNode[];
   serviceParams: ServiceParams;
-  setRee: WorkflowSetters["setRee"];
-  setVirtualFiles: WorkflowSetters["setVirtualFiles"];
-  setImmutableSourceSnapshotFiles: WorkflowSetters["setImmutableSourceSnapshotFiles"];
-  setImmutableSourceSnapshotArchiveName: WorkflowSetters["setImmutableSourceSnapshotArchiveName"];
+  dispatch: React.Dispatch<AppAction>;
   executeServiceRun: (
     key: string,
     params?: Record<string, unknown>,
@@ -94,34 +63,34 @@ export function createExplorerWorkspaceService({
   ree,
   virtualFiles,
   serviceParams,
-  setRee,
-  setVirtualFiles,
-  setImmutableSourceSnapshotFiles,
-  setImmutableSourceSnapshotArchiveName,
+  dispatch,
   executeServiceRun,
 }: CreateWorkspaceServiceArgs): IWorkspaceService<FileTreeNode> {
   return createInMemoryDummyWorkspaceService<FileTreeNode, Ree["source_type"]>({
     getWorkspaceFiles: () => virtualFiles,
-    updateWorkspaceFiles: setVirtualFiles,
+    updateWorkspaceFiles: (virtualFilesUpdate) =>
+      dispatch(explorerActions.setVirtualFiles(virtualFilesUpdate)),
     upsertFile: (previous, path, content) => upsertWorkspaceFile(previous, path, content),
     runScript: async (scriptKey: string): Promise<WorkspaceServiceLogEntry> => {
       const params = serviceParams[scriptKey] ?? {};
       return executeServiceRun(scriptKey, params);
     },
     clearWorkspace: () => {
-      setVirtualFiles([]);
-      setImmutableSourceSnapshotFiles([]);
-      setImmutableSourceSnapshotArchiveName("");
-      setRee((prevRee) => ({
-        ...prevRee,
-        runtime: "",
-        _sourceAvailable: false,
-        _sourceAcquiredBy: undefined,
-        _runtimeIncluded: false,
-        _uploadedArchive: "",
-        _sourceSnapshotArchive: "",
-        _sourceSnapshotCapturedAt: "",
-      }));
+      dispatch(explorerActions.setVirtualFiles([]));
+      dispatch(explorerActions.setImmutableSourceSnapshotFiles([]));
+      dispatch(explorerActions.setImmutableSourceSnapshotArchiveName(""));
+      dispatch(
+        explorerActions.setRee((prevRee) => ({
+          ...prevRee,
+          runtime: "",
+          _sourceAvailable: false,
+          _sourceAcquiredBy: undefined,
+          _runtimeIncluded: false,
+          _uploadedArchive: "",
+          _sourceSnapshotArchive: "",
+          _sourceSnapshotCapturedAt: "",
+        })),
+      );
     },
     loadWorkspaceFromUpload: (archiveName: string) => {
       const ts = new Date().toISOString();
@@ -133,18 +102,20 @@ export function createExplorerWorkspaceService({
       const snapshotFiles = cloneDummyWorkspaceTree(workspaceFiles);
       const snapshotArchiveName = normalizeSnapshotArchiveName(archiveName);
 
-      setVirtualFiles(workspaceFiles);
-      setImmutableSourceSnapshotFiles(snapshotFiles);
-      setImmutableSourceSnapshotArchiveName(snapshotArchiveName);
-      setRee((prevRee) => ({
-        ...prevRee,
-        _uploadedArchive: archiveName,
-        source_type: "",
-        _sourceAvailable: true,
-        _sourceAcquiredBy: "upload",
-        _sourceSnapshotArchive: snapshotArchiveName,
-        _sourceSnapshotCapturedAt: ts,
-      }));
+      dispatch(explorerActions.setVirtualFiles(workspaceFiles));
+      dispatch(explorerActions.setImmutableSourceSnapshotFiles(snapshotFiles));
+      dispatch(explorerActions.setImmutableSourceSnapshotArchiveName(snapshotArchiveName));
+      dispatch(
+        explorerActions.setRee((prevRee) => ({
+          ...prevRee,
+          _uploadedArchive: archiveName,
+          source_type: "",
+          _sourceAvailable: true,
+          _sourceAcquiredBy: "upload",
+          _sourceSnapshotArchive: snapshotArchiveName,
+          _sourceSnapshotCapturedAt: ts,
+        })),
+      );
     },
     loadWorkspaceFromDownload: (sourceUrl: string, sourceType: Ree["source_type"]) => {
       if (!sourceUrl || !sourceType) return;
@@ -164,19 +135,21 @@ export function createExplorerWorkspaceService({
         ) || "source";
       const snapshotArchiveName = normalizeSnapshotArchiveName(`${repoBase}-original.tar.gz`);
 
-      setVirtualFiles(workspaceFiles);
-      setImmutableSourceSnapshotFiles(snapshotFiles);
-      setImmutableSourceSnapshotArchiveName(snapshotArchiveName);
-      setRee((prevRee) => ({
-        ...prevRee,
-        origin_url: sourceUrl,
-        source_type: sourceType,
-        _sourceAvailable: true,
-        _sourceAcquiredBy: "download",
-        _uploadedArchive: "",
-        _sourceSnapshotArchive: snapshotArchiveName,
-        _sourceSnapshotCapturedAt: ts,
-      }));
+      dispatch(explorerActions.setVirtualFiles(workspaceFiles));
+      dispatch(explorerActions.setImmutableSourceSnapshotFiles(snapshotFiles));
+      dispatch(explorerActions.setImmutableSourceSnapshotArchiveName(snapshotArchiveName));
+      dispatch(
+        explorerActions.setRee((prevRee) => ({
+          ...prevRee,
+          origin_url: sourceUrl,
+          source_type: sourceType,
+          _sourceAvailable: true,
+          _sourceAcquiredBy: "download",
+          _uploadedArchive: "",
+          _sourceSnapshotArchive: snapshotArchiveName,
+          _sourceSnapshotCapturedAt: ts,
+        })),
+      );
     },
     getDefaultSource: () => ree.origin_url,
     getDefaultSourceType: () => ree.source_type || "git",
@@ -186,9 +159,7 @@ export function createExplorerWorkspaceService({
 interface CreateSourceActionsArgs {
   ree: Ree;
   workspaceService: IWorkspaceService<FileTreeNode>;
-  setActionStates: WorkflowSetters["setActionStates"];
-  setBadges: WorkflowSetters["setBadges"];
-  setTimestamps: WorkflowSetters["setTimestamps"];
+  dispatch: React.Dispatch<AppAction>;
   onSourceChange: (options?: { silent?: boolean }) => void;
   showToast: ShowToast;
 }
@@ -196,9 +167,7 @@ interface CreateSourceActionsArgs {
 export function createSourceActions({
   ree,
   workspaceService,
-  setActionStates,
-  setBadges,
-  setTimestamps,
+  dispatch,
   onSourceChange,
   showToast,
 }: CreateSourceActionsArgs) {
@@ -215,12 +184,16 @@ export function createSourceActions({
       return;
     }
     onSourceChange({ silent: true });
-    setActionStates((prevStates) => ({ ...prevStates, source: "loading" }));
+    dispatch(
+      explorerActions.setActionStates((prevStates) => ({ ...prevStates, source: "loading" })),
+    );
     await new Promise((resolve) => setTimeout(resolve, 1400));
-    setActionStates((prevStates) => ({ ...prevStates, source: "done" }));
-    setBadges((prevBadges) => ({ ...prevBadges, source: true }));
+    dispatch(explorerActions.setActionStates((prevStates) => ({ ...prevStates, source: "done" })));
+    dispatch(explorerActions.setBadges((prevBadges) => ({ ...prevBadges, source: true })));
     const ts = new Date().toISOString();
-    setTimestamps((prevTimestamps: Timestamps) => ({ ...prevTimestamps, source: ts }));
+    dispatch(
+      explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, source: ts })),
+    );
     await workspaceService.resetWorkspace(
       WORKSPACE_ID,
       JSON.stringify({ mode: "download", source: ree.origin_url, sourceType: originType }),
@@ -249,8 +222,10 @@ export function createSourceActions({
       WORKSPACE_ID,
       JSON.stringify({ mode: "upload", archiveName }),
     );
-    setBadges((prevBadges) => ({ ...prevBadges, source: true }));
-    setTimestamps((prevTimestamps: Timestamps) => ({ ...prevTimestamps, source: ts }));
+    dispatch(explorerActions.setBadges((prevBadges) => ({ ...prevBadges, source: true })));
+    dispatch(
+      explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, source: ts })),
+    );
     showToast("Archive extracted into workspace", "success");
   };
 

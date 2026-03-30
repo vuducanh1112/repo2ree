@@ -49,13 +49,13 @@ interface ExplorerMainContentProps {
   virtualFiles: FileTreeNode[];
   immutableSourceSnapshotFiles: FileTreeNode[];
   currentReeFiles: ReeFile[];
-  setRee: React.Dispatch<React.SetStateAction<Ree>>;
-  setLocked: React.Dispatch<React.SetStateAction<boolean>>;
-  setRepoMode: React.Dispatch<React.SetStateAction<"url" | "upload">>;
-  setPage: React.Dispatch<React.SetStateAction<ExplorerPage>>;
-  setFocusedField: React.Dispatch<React.SetStateAction<string | null>>;
-  setVirtualFiles: React.Dispatch<React.SetStateAction<FileTreeNode[]>>;
-  setServiceParams: React.Dispatch<React.SetStateAction<ServiceParams>>;
+  onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
+  onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
+  onRepoModeChange: React.Dispatch<React.SetStateAction<"url" | "upload">>;
+  onPageChange: React.Dispatch<React.SetStateAction<ExplorerPage>>;
+  onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
+  onVirtualFilesChange: React.Dispatch<React.SetStateAction<FileTreeNode[]>>;
+  onServiceParamsChange: React.Dispatch<React.SetStateAction<ServiceParams>>;
   onSeal: () => void;
   onDownloadRee: () => void;
   onPreviewReviewer: () => void;
@@ -80,13 +80,13 @@ export function ExplorerMainContent({
   virtualFiles,
   immutableSourceSnapshotFiles,
   currentReeFiles,
-  setRee,
-  setLocked,
-  setRepoMode,
-  setPage,
-  setFocusedField,
-  setVirtualFiles,
-  setServiceParams,
+  onReeChange,
+  onLockedChange,
+  onRepoModeChange,
+  onPageChange,
+  onFocusedFieldChange,
+  onVirtualFilesChange,
+  onServiceParamsChange,
   onSeal,
   onDownloadRee,
   onPreviewReviewer,
@@ -165,14 +165,14 @@ export function ExplorerMainContent({
           <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             <PageOverview
               ree={ree}
-              onReeChange={setRee}
+              onReeChange={onReeChange}
               level={level}
-              onNavigate={(key) => setPage(key)}
+              onNavigate={(key) => onPageChange(key)}
               badges={badges}
               timestamps={timestamps}
               onGoField={(key) => {
-                setPage(explorerPageForField(String(key)));
-                setFocusedField(String(key));
+                onPageChange(explorerPageForField(String(key)));
+                onFocusedFieldChange(String(key));
               }}
               files={virtualFiles}
               snapshotFiles={immutableSourceSnapshotFiles}
@@ -191,10 +191,10 @@ export function ExplorerMainContent({
             badges={badges}
             actionStates={actionStates}
             focusedField={focusedField}
-            onReeChange={setRee}
-            onRepoModeChange={setRepoMode}
-            onGoService={(key) => setPage(key)}
-            onFocusedFieldChange={setFocusedField}
+            onReeChange={onReeChange}
+            onRepoModeChange={onRepoModeChange}
+            onGoService={(key) => onPageChange(key)}
+            onFocusedFieldChange={onFocusedFieldChange}
             onDownloadSource={(originType) => onDownloadSourceFiles(originType)}
             onWorkspaceUpload={onWorkspaceUpload}
             onRemoveWorkspaceSource={onRemoveWorkspaceSource}
@@ -206,10 +206,10 @@ export function ExplorerMainContent({
             locked={locked}
             badges={badges}
             focusedField={focusedField}
-            onReeChange={setRee}
-            onLockedChange={setLocked}
-            onGoService={(key) => setPage(key)}
-            onFocusedFieldChange={setFocusedField}
+            onReeChange={onReeChange}
+            onLockedChange={onLockedChange}
+            onGoService={(key) => onPageChange(key)}
+            onFocusedFieldChange={onFocusedFieldChange}
           />
         )}
         {SERVICES.map((svc) => {
@@ -226,7 +226,7 @@ export function ExplorerMainContent({
           const missing = missingRequirements(svc, ree);
 
           const setParam = (paramKey: string, value: unknown) => {
-            setServiceParams((prev) => ({
+            onServiceParamsChange((prev) => ({
               ...prev,
               [svc.key]: {
                 ...(prev[svc.key] ?? defaultParamsForService(svc)),
@@ -251,7 +251,7 @@ export function ExplorerMainContent({
                 badge={badges[svc.key] ? svc.badge : null}
                 ts={timestamps[svc.key]}
                 onRun={onRunAction}
-                onGo={(key) => setPage(key)}
+                onGo={(key) => onPageChange(key)}
                 onGoFields={() => {
                   const sourceFieldKeys: (keyof Ree)[] = [
                     "origin_url",
@@ -261,10 +261,10 @@ export function ExplorerMainContent({
                   const hasSourceGap = missing.some((requirement) =>
                     sourceFieldKeys.includes(requirement.field),
                   );
-                  setPage(hasSourceGap ? PAGE.SOURCE : PAGE.METADATA);
+                  onPageChange(hasSourceGap ? PAGE.SOURCE : PAGE.METADATA);
                 }}
-                onReeChange={setRee}
-                onFilesChange={setVirtualFiles}
+                onReeChange={onReeChange}
+                onFilesChange={onVirtualFilesChange}
                 missing={missing}
                 params={params}
                 setParam={setParam}
@@ -280,7 +280,7 @@ export function ExplorerMainContent({
               logs={serviceLogs}
               actionStates={actionStates}
               onRun={onRunAction}
-              onGo={(key) => setPage(key)}
+              onGo={(key) => onPageChange(key)}
             />
           </div>
         )}

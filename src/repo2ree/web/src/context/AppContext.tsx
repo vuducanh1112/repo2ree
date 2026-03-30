@@ -1,41 +1,15 @@
 import type { ReactNode } from "react";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useReducer } from "react";
 import { APP_PAGE, PAGE } from "../constants/pages";
 import { initialServiceParams } from "../constants/services";
 import { normalizeExplorerPage } from "../features/explorer/utils/navigation";
-import type {
-  ActionStates,
-  AppPage,
-  Badges,
-  ExplorerPage,
-  FileTreeNode,
-  Ree,
-  ServiceLogs,
-  ServiceParams,
-  Timestamps,
-  ToastState,
-} from "../types";
-import type { AppContextState } from "./types";
+import type { Ree } from "../types";
+import { ACTION_TYPES } from "./actionTypes";
+import type { AppAction, AppContextState, StateUpdater } from "./types";
 
 interface AppContextValue {
   state: AppContextState;
-  setAppPage: React.Dispatch<React.SetStateAction<AppPage>>;
-  setRee: React.Dispatch<React.SetStateAction<Ree>>;
-  setLocked: React.Dispatch<React.SetStateAction<boolean>>;
-  setRepoMode: React.Dispatch<React.SetStateAction<"url" | "upload">>;
-  setActionStates: React.Dispatch<React.SetStateAction<ActionStates>>;
-  setBadges: React.Dispatch<React.SetStateAction<Badges>>;
-  setTimestamps: React.Dispatch<React.SetStateAction<Timestamps>>;
-  setServiceLogs: React.Dispatch<React.SetStateAction<ServiceLogs>>;
-  setServiceParams: React.Dispatch<React.SetStateAction<ServiceParams>>;
-  setToast: React.Dispatch<React.SetStateAction<ToastState | null>>;
-  setExplorerPage: React.Dispatch<React.SetStateAction<ExplorerPage>>;
-  setFocusedField: React.Dispatch<React.SetStateAction<string | null>>;
-  setNavCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
-  setVirtualFiles: React.Dispatch<React.SetStateAction<FileTreeNode[]>>;
-  setImmutableSourceSnapshotFiles: React.Dispatch<React.SetStateAction<FileTreeNode[]>>;
-  setImmutableSourceSnapshotArchiveName: React.Dispatch<React.SetStateAction<string>>;
-  setShowReviewerPreview: React.Dispatch<React.SetStateAction<boolean>>;
+  dispatch: React.Dispatch<AppAction>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -45,103 +19,238 @@ interface AppProviderProps {
   initialExplorerRee: Ree;
 }
 
-export function AppProvider({ children, initialExplorerRee }: AppProviderProps) {
-  const [appPage, setAppPage] = useState<AppPage>(APP_PAGE.LANDING);
-  const [ree, setRee] = useState<Ree>(initialExplorerRee);
-  const [locked, setLocked] = useState(false);
-  const [repoMode, setRepoMode] = useState<"url" | "upload">("url");
-  const [actionStates, setActionStates] = useState<ActionStates>({});
-  const [badges, setBadges] = useState<Badges>({});
-  const [timestamps, setTimestamps] = useState<Timestamps>({});
-  const [serviceLogs, setServiceLogs] = useState<ServiceLogs>({});
-  const [serviceParams, setServiceParams] = useState<ServiceParams>(() => initialServiceParams());
-  const [toast, setToast] = useState<ToastState | null>(null);
-  const [explorerPage, setExplorerPageState] = useState<ExplorerPage>(PAGE.SOURCE);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [navCollapsed, setNavCollapsed] = useState(false);
-  const [virtualFiles, setVirtualFiles] = useState<FileTreeNode[]>([]);
-  const [immutableSourceSnapshotFiles, setImmutableSourceSnapshotFiles] = useState<FileTreeNode[]>(
-    [],
-  );
-  const [immutableSourceSnapshotArchiveName, setImmutableSourceSnapshotArchiveName] = useState("");
-  const [showReviewerPreview, setShowReviewerPreview] = useState(false);
+function resolveUpdater<T>(previous: T, updater: StateUpdater<T>): T {
+  if (typeof updater === "function") {
+    return (updater as (value: T) => T)(previous);
+  }
+  return updater;
+}
 
-  const setExplorerPage = useCallback<React.Dispatch<React.SetStateAction<ExplorerPage>>>(
-    (nextPage) => {
-      setExplorerPageState((previousPage) => {
-        const resolvedPage =
-          typeof nextPage === "function" ? nextPage(previousPage) : normalizeExplorerPage(nextPage);
-        return normalizeExplorerPage(resolvedPage, previousPage);
-      });
+function createInitialState(initialExplorerRee: Ree): AppContextState {
+  return {
+    appPage: APP_PAGE.LANDING,
+    explorer: {
+      ree: initialExplorerRee,
+      locked: false,
+      repoMode: "url",
+      actionStates: {},
+      badges: {},
+      timestamps: {},
+      serviceLogs: {},
+      serviceParams: initialServiceParams(),
+      toast: null,
+      page: PAGE.SOURCE,
+      focusedField: null,
+      navCollapsed: false,
+      virtualFiles: [],
+      immutableSourceSnapshotFiles: [],
+      immutableSourceSnapshotArchiveName: "",
+      showReviewerPreview: false,
     },
-    [],
-  );
+  };
+}
 
-  const state = useMemo<AppContextState>(
-    () => ({
-      appPage,
-      explorer: {
-        ree,
-        locked,
-        repoMode,
-        actionStates,
-        badges,
-        timestamps,
-        serviceLogs,
-        serviceParams,
-        toast,
-        page: explorerPage,
-        focusedField,
-        navCollapsed,
-        virtualFiles,
-        immutableSourceSnapshotFiles,
-        immutableSourceSnapshotArchiveName,
-        showReviewerPreview,
-      },
-    }),
-    [
-      appPage,
-      ree,
-      locked,
-      repoMode,
-      actionStates,
-      badges,
-      timestamps,
-      serviceLogs,
-      serviceParams,
-      toast,
-      explorerPage,
-      focusedField,
-      navCollapsed,
-      virtualFiles,
-      immutableSourceSnapshotFiles,
-      immutableSourceSnapshotArchiveName,
-      showReviewerPreview,
-    ],
-  );
+function appReducer(state: AppContextState, action: AppAction): AppContextState {
+  switch (action.type) {
+    case ACTION_TYPES.app.setPage: {
+      return { ...state, appPage: resolveUpdater(state.appPage, action.page) };
+    }
+    case ACTION_TYPES.explorer.setRee: {
+      return {
+        ...state,
+        explorer: { ...state.explorer, ree: resolveUpdater(state.explorer.ree, action.ree) },
+      };
+    }
+    case ACTION_TYPES.explorer.setLocked: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          locked: resolveUpdater(state.explorer.locked, action.locked),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setRepoMode: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          repoMode: resolveUpdater(state.explorer.repoMode, action.repoMode),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setActionStates: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          actionStates: resolveUpdater(state.explorer.actionStates, action.actionStates),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setBadges: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          badges: resolveUpdater(state.explorer.badges, action.badges),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setTimestamps: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          timestamps: resolveUpdater(state.explorer.timestamps, action.timestamps),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setServiceLogs: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          serviceLogs: resolveUpdater(state.explorer.serviceLogs, action.serviceLogs),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setServiceParams: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          serviceParams: resolveUpdater(state.explorer.serviceParams, action.serviceParams),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setToast: {
+      return {
+        ...state,
+        explorer: { ...state.explorer, toast: resolveUpdater(state.explorer.toast, action.toast) },
+      };
+    }
+    case ACTION_TYPES.explorer.setPage: {
+      const candidate = resolveUpdater(state.explorer.page, action.page);
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          page: normalizeExplorerPage(candidate, state.explorer.page),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setFocusedField: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          focusedField: resolveUpdater(state.explorer.focusedField, action.focusedField),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setNavCollapsed: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          navCollapsed: resolveUpdater(state.explorer.navCollapsed, action.navCollapsed),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setVirtualFiles: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          virtualFiles: resolveUpdater(state.explorer.virtualFiles, action.virtualFiles),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setImmutableSourceSnapshotFiles: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          immutableSourceSnapshotFiles: resolveUpdater(
+            state.explorer.immutableSourceSnapshotFiles,
+            action.immutableSourceSnapshotFiles,
+          ),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setImmutableSourceSnapshotArchiveName: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          immutableSourceSnapshotArchiveName: resolveUpdater(
+            state.explorer.immutableSourceSnapshotArchiveName,
+            action.immutableSourceSnapshotArchiveName,
+          ),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.setShowReviewerPreview: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          showReviewerPreview: resolveUpdater(
+            state.explorer.showReviewerPreview,
+            action.showReviewerPreview,
+          ),
+        },
+      };
+    }
+    case ACTION_TYPES.explorer.resetWorkflowOnSourceChange: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          badges: {},
+          timestamps: {},
+          serviceLogs: {},
+          actionStates: {},
+          serviceParams: action.serviceParams,
+          ree: {
+            ...state.explorer.ree,
+            runtime: "",
+            build_runtime_script: "",
+            activation_script: "",
+            sbom: "",
+            swhid: "",
+            detected_dependencies: "",
+            repro_level: "",
+            _evalLevel: 0,
+            _sourceAvailable: false,
+            _sourceAcquiredBy: undefined,
+            _runtimeIncluded: false,
+            zenodo_doi: "",
+            _uploadedArchive: "",
+            _sourceSnapshotArchive: "",
+            _sourceSnapshotCapturedAt: "",
+          },
+          virtualFiles: [],
+          immutableSourceSnapshotFiles: [],
+          immutableSourceSnapshotArchiveName: "",
+        },
+      };
+    }
+    default:
+      return state;
+  }
+}
+
+export function AppProvider({ children, initialExplorerRee }: AppProviderProps) {
+  const [state, dispatch] = useReducer(appReducer, initialExplorerRee, createInitialState);
 
   const value = useMemo(
     () => ({
       state,
-      setAppPage,
-      setRee,
-      setLocked,
-      setRepoMode,
-      setActionStates,
-      setBadges,
-      setTimestamps,
-      setServiceLogs,
-      setServiceParams,
-      setToast,
-      setExplorerPage,
-      setFocusedField,
-      setNavCollapsed,
-      setVirtualFiles,
-      setImmutableSourceSnapshotFiles,
-      setImmutableSourceSnapshotArchiveName,
-      setShowReviewerPreview,
+      dispatch,
     }),
-    [state, setExplorerPage],
+    [state],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

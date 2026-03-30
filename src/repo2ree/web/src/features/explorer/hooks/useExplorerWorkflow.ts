@@ -1,15 +1,7 @@
 import type React from "react";
-import type {
-  ActionStates,
-  Badges,
-  FileTreeNode,
-  Ree,
-  ServiceLogs,
-  ServiceParams,
-  Timestamps,
-  ToastState,
-  ZipEntry,
-} from "../../../types";
+import type { AppAction } from "../../../context";
+import { explorerActions } from "../../../context";
+import type { FileTreeNode, Ree, ServiceParams, ToastState, ZipEntry } from "../../../types";
 import { buildZipBlob } from "../../../utils";
 import { createServiceRunHandlers, executeServiceRunAction } from "./workflow/serviceRuns";
 import {
@@ -18,74 +10,43 @@ import {
   resetWorkflowOnSourceChange,
   upsertWorkspaceFile,
 } from "./workflow/sourceLifecycle";
-import type { WorkflowSetters } from "./workflow/types";
 
 interface UseExplorerWorkflowArgs {
+  dispatch: React.Dispatch<AppAction>;
   ree: Ree;
   level: number;
   virtualFiles: FileTreeNode[];
   serviceParams: ServiceParams;
   currentReeArchiveEntries: ZipEntry[];
-  setRee: React.Dispatch<React.SetStateAction<Ree>>;
-  setLocked: React.Dispatch<React.SetStateAction<boolean>>;
-  setActionStates: React.Dispatch<React.SetStateAction<ActionStates>>;
-  setBadges: React.Dispatch<React.SetStateAction<Badges>>;
-  setTimestamps: React.Dispatch<React.SetStateAction<Timestamps>>;
-  setServiceLogs: React.Dispatch<React.SetStateAction<ServiceLogs>>;
-  setServiceParams: React.Dispatch<React.SetStateAction<ServiceParams>>;
-  setToast: React.Dispatch<React.SetStateAction<ToastState | null>>;
-  setVirtualFiles: React.Dispatch<React.SetStateAction<FileTreeNode[]>>;
-  setImmutableSourceSnapshotFiles: React.Dispatch<React.SetStateAction<FileTreeNode[]>>;
-  setImmutableSourceSnapshotArchiveName: React.Dispatch<React.SetStateAction<string>>;
 }
 
 export function useExplorerWorkflow({
+  dispatch,
   ree,
   level,
   virtualFiles,
   serviceParams,
   currentReeArchiveEntries,
-  setRee,
-  setLocked,
-  setActionStates,
-  setBadges,
-  setTimestamps,
-  setServiceLogs,
-  setServiceParams,
-  setToast,
-  setVirtualFiles,
-  setImmutableSourceSnapshotFiles,
-  setImmutableSourceSnapshotArchiveName,
 }: UseExplorerWorkflowArgs) {
-  const setters: WorkflowSetters = {
-    setRee,
-    setLocked,
-    setActionStates,
-    setBadges,
-    setTimestamps,
-    setServiceLogs,
-    setServiceParams,
-    setToast,
-    setVirtualFiles,
-    setImmutableSourceSnapshotFiles,
-    setImmutableSourceSnapshotArchiveName,
-  };
-
   const showToast = (msg: string, type: ToastState["type"] = "info") =>
-    setToast({ message: msg, type });
+    dispatch(explorerActions.setToast({ message: msg, type }));
 
   const handleSourceChange = (options: { silent?: boolean } = {}) => {
-    resetWorkflowOnSourceChange(setters, showToast, options);
+    resetWorkflowOnSourceChange(dispatch, showToast, options);
   };
 
   const persistWorkspaceFile = (path: string, content: string) => {
-    setVirtualFiles((previousFiles) => upsertWorkspaceFile(previousFiles, path, content));
+    dispatch(
+      explorerActions.setVirtualFiles((previousFiles) =>
+        upsertWorkspaceFile(previousFiles, path, content),
+      ),
+    );
   };
 
   const serviceRunHandlers = createServiceRunHandlers({
     ree,
     virtualFiles,
-    setRee,
+    dispatch,
     persistWorkspaceFile,
     showToast,
   });
@@ -97,12 +58,7 @@ export function useExplorerWorkflow({
       ree,
       level,
       virtualFiles,
-      setActionStates,
-      setServiceLogs,
-      setBadges,
-      setTimestamps,
-      setLocked,
-      setRee,
+      dispatch,
       showToast,
       serviceRunHandlers,
     });
@@ -112,10 +68,7 @@ export function useExplorerWorkflow({
     ree,
     virtualFiles,
     serviceParams,
-    setRee,
-    setVirtualFiles,
-    setImmutableSourceSnapshotFiles,
-    setImmutableSourceSnapshotArchiveName,
+    dispatch,
     executeServiceRun,
   });
 
@@ -123,9 +76,7 @@ export function useExplorerWorkflow({
     createSourceActions({
       ree,
       workspaceService,
-      setActionStates,
-      setBadges,
-      setTimestamps,
+      dispatch,
       onSourceChange: handleSourceChange,
       showToast,
     });
@@ -134,12 +85,14 @@ export function useExplorerWorkflow({
     const sealHash =
       "sha256:" +
       Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
-    setRee((prevRee) => ({
-      ...prevRee,
-      _sealedAt: new Date().toISOString(),
-      _sealHash: sealHash,
-    }));
-    setLocked(true);
+    dispatch(
+      explorerActions.setRee((prevRee) => ({
+        ...prevRee,
+        _sealedAt: new Date().toISOString(),
+        _sealHash: sealHash,
+      })),
+    );
+    dispatch(explorerActions.setLocked(true));
     showToast("REE sealed — now read-only", "success");
   };
 
@@ -157,7 +110,12 @@ export function useExplorerWorkflow({
   };
 
   const runAction = async (key: string, params: Record<string, unknown> = {}) => {
-    setServiceParams((prev) => ({ ...prev, [key]: { ...(prev[key] ?? {}), ...params } }));
+    dispatch(
+      explorerActions.setServiceParams((prev) => ({
+        ...prev,
+        [key]: { ...(prev[key] ?? {}), ...params },
+      })),
+    );
     await executeServiceRun(key, params);
   };
 
