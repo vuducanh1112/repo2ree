@@ -1,14 +1,11 @@
 import type React from "react";
-import { useMemo } from "react";
 import { Ic } from "../../components/Icon";
 import { Toast } from "../../components/Toast";
 import { C, F, hoverBg, hoverColor } from "../../constants/theme";
-import { explorerActions, explorerSelectors, useAppContext } from "../../context";
-import type { ExplorerPage, FileTreeNode, Ree, ServiceParams } from "../../types";
-import { buildCurrentReeArchiveEntries, reeArchiveEntriesToFiles } from "../../utils";
+import type { Ree } from "../../types";
 import { ExplorerMainContent } from "./ExplorerMainContent";
 import { ExplorerSidebar } from "./ExplorerSidebar";
-import { useExplorerWorkflow } from "./hooks/useExplorerWorkflow";
+import { useExplorerController } from "./hooks/useExplorerController";
 import { ReviewerPreviewOverlay } from "./ReviewerPreviewOverlay";
 
 interface ExplorerProps {
@@ -25,94 +22,9 @@ interface ExplorerProps {
 }
 
 export function ExplorerView({ onBack, sealedDemoRee, PodOrbitControl }: ExplorerProps) {
-  const { state, dispatch } = useAppContext();
-  const explorer = explorerSelectors.state(state);
-  const {
-    ree,
-    locked,
-    actionStates,
-    badges,
-    timestamps,
-    serviceLogs,
-    serviceParams,
-    toast,
-    page,
-    repoMode,
-    focusedField,
-    navCollapsed,
-    virtualFiles,
-    immutableSourceSnapshotFiles,
-    immutableSourceSnapshotArchiveName,
-    showReviewerPreview,
-  } = explorer;
-
-  const onPageChange: React.Dispatch<React.SetStateAction<ExplorerPage>> = (page) => {
-    dispatch(explorerActions.setPage(page));
-  };
-  const onNavCollapsedChange: React.Dispatch<React.SetStateAction<boolean>> = (navCollapsed) => {
-    dispatch(explorerActions.setNavCollapsed(navCollapsed));
-  };
-  const onReeChange: React.Dispatch<React.SetStateAction<Ree>> = (ree) => {
-    dispatch(explorerActions.setRee(ree));
-  };
-  const onLockedChange: React.Dispatch<React.SetStateAction<boolean>> = (locked) => {
-    dispatch(explorerActions.setLocked(locked));
-  };
-  const onRepoModeChange: React.Dispatch<React.SetStateAction<"url" | "upload">> = (repoMode) => {
-    dispatch(explorerActions.setRepoMode(repoMode));
-  };
-  const onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>> = (
-    focusedField,
-  ) => {
-    dispatch(explorerActions.setFocusedField(focusedField));
-  };
-  const onVirtualFilesChange: React.Dispatch<React.SetStateAction<FileTreeNode[]>> = (
-    virtualFiles,
-  ) => {
-    dispatch(explorerActions.setVirtualFiles(virtualFiles));
-  };
-  const onServiceParamsChange: React.Dispatch<React.SetStateAction<ServiceParams>> = (
-    serviceParams,
-  ) => {
-    dispatch(explorerActions.setServiceParams(serviceParams));
-  };
-  const onShowReviewerPreviewChange: React.Dispatch<React.SetStateAction<boolean>> = (
-    showReviewerPreview,
-  ) => {
-    dispatch(explorerActions.setShowReviewerPreview(showReviewerPreview));
-  };
-
-  const currentReeArchiveEntries = useMemo(
-    () =>
-      buildCurrentReeArchiveEntries(
-        ree,
-        virtualFiles,
-        immutableSourceSnapshotFiles,
-        immutableSourceSnapshotArchiveName,
-      ),
-    [ree, virtualFiles, immutableSourceSnapshotFiles, immutableSourceSnapshotArchiveName],
-  );
-  const currentReeFiles = useMemo(
-    () => reeArchiveEntriesToFiles(currentReeArchiveEntries),
-    [currentReeArchiveEntries],
-  );
-
-  const level = ree._evalLevel ?? 0;
-  const {
-    handleSeal,
-    handleDownloadRee,
-    handleDownloadSourceFiles,
-    handleWorkspaceUpload,
-    handleRemoveWorkspaceSource,
-    runAction,
-  } = useExplorerWorkflow({
-    dispatch,
-    ree,
-    level,
-    virtualFiles,
-    serviceParams,
-    currentReeArchiveEntries,
-  });
+  const { state, commands } = useExplorerController();
+  const { ree, actionStates, badges, timestamps, toast, page, navCollapsed, showReviewerPreview } =
+    state;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg }}>
@@ -173,56 +85,21 @@ export function ExplorerView({ onBack, sealedDemoRee, PodOrbitControl }: Explore
           actionStates={actionStates}
           badges={badges}
           timestamps={timestamps}
-          setPage={onPageChange}
-          setNavCollapsed={onNavCollapsedChange}
-          onDownloadRee={handleDownloadRee}
-          onPreviewReviewer={() => onShowReviewerPreviewChange(true)}
+          setPage={commands.setPage}
+          setNavCollapsed={commands.setNavCollapsed}
+          onDownloadRee={commands.onDownloadRee}
+          onPreviewReviewer={commands.openReviewerPreview}
         />
 
-        <ExplorerMainContent
-          page={page}
-          ree={ree}
-          level={level}
-          locked={locked}
-          repoMode={repoMode}
-          focusedField={focusedField}
-          badges={badges}
-          timestamps={timestamps}
-          serviceLogs={serviceLogs}
-          serviceParams={serviceParams}
-          actionStates={actionStates}
-          virtualFiles={virtualFiles}
-          immutableSourceSnapshotFiles={immutableSourceSnapshotFiles}
-          currentReeFiles={currentReeFiles}
-          onReeChange={onReeChange}
-          onLockedChange={onLockedChange}
-          onRepoModeChange={onRepoModeChange}
-          onPageChange={onPageChange}
-          onFocusedFieldChange={onFocusedFieldChange}
-          onVirtualFilesChange={onVirtualFilesChange}
-          onServiceParamsChange={onServiceParamsChange}
-          onSeal={handleSeal}
-          onDownloadRee={handleDownloadRee}
-          onPreviewReviewer={() => onShowReviewerPreviewChange(true)}
-          onDownloadSourceFiles={handleDownloadSourceFiles}
-          onWorkspaceUpload={handleWorkspaceUpload}
-          onRemoveWorkspaceSource={handleRemoveWorkspaceSource}
-          onRunAction={runAction}
-        />
+        <ExplorerMainContent state={state} commands={commands} />
       </div>
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => dispatch(explorerActions.setToast(null))}
-        />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={commands.clearToast} />}
 
       <ReviewerPreviewOverlay
         open={showReviewerPreview}
         ree={ree}
-        onClose={() => onShowReviewerPreviewChange(false)}
+        onClose={commands.closeReviewerPreview}
         defaultRee={sealedDemoRee}
         PodOrbitControl={PodOrbitControl}
       />

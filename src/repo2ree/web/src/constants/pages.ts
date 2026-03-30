@@ -1,15 +1,5 @@
 import type { Ree } from "../types/ree";
 
-// Top-level app pages (App component).
-export const APP_PAGE = {
-  LANDING: "landing",
-  EXPLORER: "explorer",
-  REVIEWER: "reviewer",
-} as const;
-
-export type AppPage = (typeof APP_PAGE)[keyof typeof APP_PAGE];
-export const APP_PAGES = Object.values(APP_PAGE) as AppPage[];
-
 // Explorer-internal pages (Explorer component).
 export const PAGE = {
   SOURCE: "source",
@@ -24,6 +14,15 @@ export const PAGE = {
   SBOM: "sbom",
   ACTIVATION: "activation",
 } as const;
+
+export const APP_ROUTE = {
+  ROOT: "/",
+  EXPLORER: "/explorer",
+  REVIEWER: "/reviewer",
+} as const;
+
+export type AppRoutePath = (typeof APP_ROUTE)[keyof typeof APP_ROUTE];
+export type AppLoadRoutePath = typeof APP_ROUTE.EXPLORER | typeof APP_ROUTE.REVIEWER;
 
 export type ExplorerPage = (typeof PAGE)[keyof typeof PAGE];
 export const EXPLORER_PAGES = Object.values(PAGE) as ExplorerPage[];
@@ -42,11 +41,6 @@ export const FIELD_TO_PAGE: Partial<Record<keyof Ree, ExplorerPage>> = {
   zenodo_doi: PAGE.ARCHIVE,
   dataverse_doi: PAGE.ARCHIVE,
 };
-
-// Type guard to ensure only valid page names are used
-export function isValidAppPage(value: string): value is AppPage {
-  return APP_PAGES.includes(value as AppPage);
-}
 
 export function isValidExplorerPage(value: string): value is ExplorerPage {
   return EXPLORER_PAGES.includes(value as ExplorerPage);

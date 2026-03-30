@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Ic } from "../../components/Icon";
 import { C, F, hoverColor, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../../constants/theme";
 import type { LogLine, Ree } from "../../types/ree";
-import type { ServiceParam, StepState } from "../../types/services";
+import type { ServiceParam, ServiceParamValue, StepState } from "../../types/services";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,
@@ -11,14 +11,17 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 });
 
 export interface ReactivationStep {
-  key: string;
+  key: ReactivationStepKey;
   label: string;
   icon: (s?: number) => JSX.Element;
   color: string;
   desc: string;
   params?: ServiceParam[];
-  logLines: (ree: Ree, params?: Record<string, unknown>) => LogLine[];
+  logLines: (ree: Ree, params?: ReactivationParams) => LogLine[];
 }
+
+export type ReactivationStepKey = "fetch" | "rebuild" | "diffcheck" | "activate";
+export type ReactivationParams = Record<string, ServiceParamValue>;
 
 export const REACTIVATION_STEPS: ReactivationStep[] = [
   {
@@ -151,8 +154,20 @@ function ReviewLogPanel({ lines, running }: ReviewLogPanelProps) {
     if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
   }, [displayed]);
 
-  const typeColor = { ok: "#22c55e", error: "#ef4444", warn: "#f59e0b", info: "#94a3b8" };
-  const typePrefix = { ok: "✓ ", error: "✗ ", warn: "⚠ ", info: "  " };
+  const typeColor: Record<LogLine["type"], string> = {
+    ok: "#22c55e",
+    err: "#ef4444",
+    warn: "#f59e0b",
+    info: "#94a3b8",
+    out: "#e2e8f0",
+  };
+  const typePrefix: Record<LogLine["type"], string> = {
+    ok: "✓ ",
+    err: "✗ ",
+    warn: "⚠ ",
+    info: "  ",
+    out: "  ",
+  };
 
   return (
     <div
@@ -334,9 +349,9 @@ interface RvStepCardProps {
   index: number;
   state: StepState;
   log: LogLine[] | null;
-  params: Record<string, unknown>;
-  onSetParam: (stepKey: string, paramKey: string, value: unknown) => void;
-  onRun: (key: string, params: Record<string, unknown>) => void;
+  params: ReactivationParams;
+  onSetParam: (stepKey: ReactivationStepKey, paramKey: string, value: ServiceParamValue) => void;
+  onRun: (key: ReactivationStepKey, params: ReactivationParams) => void;
   isLast: boolean;
   prevDone: boolean;
 }
@@ -597,7 +612,7 @@ export function RvStepCard({
                             flexShrink: 0,
                           }}
                         >
-                          {p.options.map((o) => (
+                          {(p.options ?? []).map((o) => (
                             <option key={o} value={o}>
                               {o}
                             </option>
@@ -758,6 +773,7 @@ export function RvProvenanceChain({ ree }: RvProvenanceChainProps) {
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {nodes.map((node, i) => {
         const set = !!node.value;
+        const nodeValue = node.value ?? "";
         return (
           <div key={node.label} style={{ display: "flex", gap: 10, alignItems: "stretch" }}>
             <div
@@ -833,7 +849,7 @@ export function RvProvenanceChain({ ree }: RvProvenanceChainProps) {
                       maxWidth: "100%",
                     }}
                   >
-                    {node.value.length > 50 ? `${node.value.slice(0, 50)}…` : node.value}
+                    {nodeValue.length > 50 ? `${nodeValue.slice(0, 50)}…` : nodeValue}
                   </a>
                 ) : (
                   <span
@@ -847,7 +863,7 @@ export function RvProvenanceChain({ ree }: RvProvenanceChainProps) {
                       display: "block",
                     }}
                   >
-                    {node.value}
+                    {nodeValue}
                   </span>
                 )
               ) : (

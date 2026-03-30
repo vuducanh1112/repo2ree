@@ -18,7 +18,7 @@ import { PanelFieldRow } from "./PanelFieldRow";
 
 interface SourcePanelProps {
   ree: Ree;
-  sourceRef: React.RefObject<HTMLDivElement | null>;
+  sourceRef: React.RefObject<HTMLDivElement>;
   fileCount: number;
   fileSummary: string;
   onGoField: (key: string) => void;

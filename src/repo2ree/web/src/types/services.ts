@@ -1,7 +1,7 @@
-import type { AppPage, ExplorerPage } from "../constants/pages";
+import type { ExplorerPage } from "../constants/pages";
 import type { Ree } from "./ree";
 
-export type { AppPage, ExplorerPage };
+export type { ExplorerPage };
 
 export interface Level {
   n: number;
@@ -35,6 +35,9 @@ export interface ServiceParam {
   options?: string[];
 }
 
+export type ServiceParamValue = string | boolean;
+export type GenericServiceParams = Record<string, ServiceParamValue>;
+
 export interface Service {
   key: string;
   label: string;
@@ -45,6 +48,42 @@ export interface Service {
   requires: ServiceRequire[];
   params: ServiceParam[];
 }
+
+export type WorkflowServiceKey = "evaluate" | "build" | "sbom" | "activation";
+
+export interface WorkflowServiceParamsByKey {
+  evaluate: {
+    strict: boolean;
+    swhid_check: boolean;
+  };
+  build: {
+    no_cache: boolean;
+    platform: string;
+  };
+  sbom: {
+    format: string;
+  };
+  activation: {
+    timeout: string;
+    verbose: boolean;
+  };
+}
+
+export type WorkflowServiceParams = {
+  [K in WorkflowServiceKey]: WorkflowServiceParamsByKey[K];
+};
+
+export interface WorkflowServiceRunParamsByKey {
+  evaluate: WorkflowServiceParamsByKey["evaluate"];
+  build: WorkflowServiceParamsByKey["build"] & {
+    _expectedOutput?: string;
+  };
+  sbom: WorkflowServiceParamsByKey["sbom"];
+  activation: WorkflowServiceParamsByKey["activation"];
+}
+
+export type WorkflowServiceRunParams<K extends WorkflowServiceKey = WorkflowServiceKey> =
+  WorkflowServiceRunParamsByKey[K];
 
 export interface Cable {
   id: string;

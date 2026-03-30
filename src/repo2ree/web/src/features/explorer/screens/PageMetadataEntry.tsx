@@ -48,7 +48,8 @@ export function PageMetadataEntry({
 }: PageMetadataEntryProps) {
   const onChange = onReeChange;
 
-  const set = (k: string, v: unknown) => onChange({ ...ree, [k]: v });
+  const set = <K extends keyof typeof ree>(k: K, v: (typeof ree)[K]) =>
+    onChange({ ...ree, [k]: v } as typeof ree);
   const focus = (key: string) => onFocusedFieldChange(key);
 
   useFocusScroll(focusedField);

@@ -1,50 +1,38 @@
-import { APP_PAGE } from "../constants/pages";
-import type { AppPage } from "../types";
-import { ExplorerPage } from "./ExplorerPage";
-import { LandingPage } from "./LandingPage";
-import { ReviewerPage } from "./ReviewerPage";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { SEALED_DEMO_REE } from "../app/demoRee";
+import { APP_ROUTE } from "../constants/pages";
+import { ExplorerView } from "../features/explorer/ExplorerView";
+import { LandingView } from "../features/landing/LandingView";
+import { PodOrbitControl } from "../features/reviewer/PodOrbitControl";
+import { ReviewerView } from "../features/reviewer/ReviewerView";
 
-interface AppRoutesProps {
-  page: AppPage;
-  onGoLanding: () => void;
-  onGoExplorer: () => void;
-  onGoReviewer: () => void;
-  LandingView: React.ComponentType<{ onLoad: (page: AppPage) => void }>;
-  ExplorerView: React.ComponentType<{ onBack: () => void }>;
-  ReviewerView: React.ComponentType<{ onBack: () => void }>;
-}
+export function AppRoutes() {
+  const navigate = useNavigate();
 
-export function AppRoutes({
-  page,
-  onGoLanding,
-  onGoExplorer,
-  onGoReviewer,
-  LandingView,
-  ExplorerView,
-  ReviewerView,
-}: AppRoutesProps) {
-  if (page === APP_PAGE.LANDING) {
-    return (
-      <LandingPage
-        LandingView={LandingView}
-        onLoad={(nextPage) => {
-          if (nextPage === APP_PAGE.EXPLORER) {
-            onGoExplorer();
-            return;
-          }
-          if (nextPage === APP_PAGE.REVIEWER) {
-            onGoReviewer();
-            return;
-          }
-          onGoLanding();
-        }}
+  return (
+    <Routes>
+      <Route path={APP_ROUTE.ROOT} element={<LandingView onLoad={(path) => navigate(path)} />} />
+      <Route
+        path={APP_ROUTE.EXPLORER}
+        element={
+          <ExplorerView
+            onBack={() => navigate(APP_ROUTE.ROOT)}
+            sealedDemoRee={SEALED_DEMO_REE}
+            PodOrbitControl={PodOrbitControl}
+          />
+        }
       />
-    );
-  }
-
-  if (page === APP_PAGE.EXPLORER) {
-    return <ExplorerPage ExplorerView={ExplorerView} onBack={onGoLanding} />;
-  }
-
-  return <ReviewerPage ReviewerView={ReviewerView} onBack={onGoLanding} />;
+      <Route
+        path={APP_ROUTE.REVIEWER}
+        element={
+          <ReviewerView
+            onBack={() => navigate(APP_ROUTE.ROOT)}
+            defaultRee={SEALED_DEMO_REE}
+            PodOrbitControl={PodOrbitControl}
+          />
+        }
+      />
+      <Route path="*" element={<Navigate to={APP_ROUTE.ROOT} replace />} />
+    </Routes>
+  );
 }

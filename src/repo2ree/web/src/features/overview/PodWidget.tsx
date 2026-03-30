@@ -214,6 +214,7 @@ function PodDepGraph({ level, levelMeta }: PodDepGraphProps) {
       </g>
     );
   const cfg = POD_GRAPHS[level];
+  if (!cfg) return null;
   return (
     <g>
       {cfg.edges.map(([a, b]) => {

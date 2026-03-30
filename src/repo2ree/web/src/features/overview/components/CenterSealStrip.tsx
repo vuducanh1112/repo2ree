@@ -24,7 +24,7 @@ interface CenterSealStripProps {
   onSeal: () => void;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
-  sealRef: React.RefObject<HTMLDivElement | null>;
+  sealRef: React.RefObject<HTMLDivElement>;
 }
 
 export function CenterSealStrip({
@@ -73,7 +73,7 @@ export function CenterSealStrip({
   const currentLevelMeta = LEVELS[Math.min(level, 7)];
 
   if (sealed) {
-    const sealDate = new Date(ree._sealedAt).toLocaleString([], {
+    const sealDate = new Date(ree._sealedAt ?? new Date().toISOString()).toLocaleString([], {
       year: "numeric",
       month: "short",
       day: "numeric",

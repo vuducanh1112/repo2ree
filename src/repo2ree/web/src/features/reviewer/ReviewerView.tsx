@@ -4,10 +4,12 @@ import { LevelBadge } from "../../components/LevelBadge";
 import { LEVELS } from "../../constants/levels";
 import { C, F, hoverBg, hoverColor, S_SECTION_LABEL_SMALL } from "../../constants/theme";
 import type { LogLine, Ree } from "../../types/ree";
-import type { Level, StepState } from "../../types/services";
+import type { Level, ServiceParamValue, StepState } from "../../types/services";
 import {
   MetaRow,
   REACTIVATION_STEPS,
+  type ReactivationParams,
+  type ReactivationStepKey,
   RvProvenanceChain,
   RvStepCard,
   RvVerdictBanner,
@@ -46,21 +48,22 @@ export function ReviewerView({
       })
     : "unknown";
 
-  const [stepStates, setStepStates] = useState<Record<string, StepState>>({});
-  const [stepLogs, setStepLogs] = useState<Record<string, LogLine[]>>({});
-  const initParams = () =>
+  const [stepStates, setStepStates] = useState<Partial<Record<ReactivationStepKey, StepState>>>({});
+  const [stepLogs, setStepLogs] = useState<Partial<Record<ReactivationStepKey, LogLine[]>>>({});
+  const initParams = (): Record<ReactivationStepKey, ReactivationParams> =>
     Object.fromEntries(
       REACTIVATION_STEPS.map((step) => [
         step.key,
         Object.fromEntries((step.params || []).map((param) => [param.key, param.default])),
       ]),
-    );
-  const [stepParams, setStepParams] = useState<Record<string, Record<string, unknown>>>(initParams);
+    ) as Record<ReactivationStepKey, ReactivationParams>;
+  const [stepParams, setStepParams] =
+    useState<Record<ReactivationStepKey, ReactivationParams>>(initParams);
 
-  const setParam = (stepKey: string, paramKey: string, val: unknown) =>
+  const setParam = (stepKey: ReactivationStepKey, paramKey: string, val: ServiceParamValue) =>
     setStepParams((p) => ({ ...p, [stepKey]: { ...p[stepKey], [paramKey]: val } }));
 
-  const runStep = async (key: string, params: Record<string, unknown>) => {
+  const runStep = async (key: ReactivationStepKey, params: ReactivationParams) => {
     const step = REACTIVATION_STEPS.find((reactivationStep) => reactivationStep.key === key);
     if (!step) return;
     setStepStates((prevStates) => ({ ...prevStates, [key]: "loading" }));

@@ -12,12 +12,10 @@ export function fmtBytes(bytes: number): string {
  */
 export function fileType(path: string): string {
   if (!path) return "text";
-  const ext = path.split(".").pop().toLowerCase();
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  const baseName = path.split("/").pop()?.toLowerCase() ?? "";
   if (["sh", "bash"].includes(ext)) return "shell";
-  if (
-    ["dockerfile", "containerfile"].includes(path.split("/").pop().toLowerCase()) ||
-    ext === "dockerfile"
-  )
+  if (["dockerfile", "containerfile"].includes(baseName) || ext === "dockerfile")
     return "dockerfile";
   if (["json", "jsonc"].includes(ext)) return "json";
   if (["py"].includes(ext)) return "python";

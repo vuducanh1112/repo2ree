@@ -2,7 +2,7 @@ import type React from "react";
 import { useRef, useState } from "react";
 import { Ic } from "../../components/Icon";
 import { LEVELS } from "../../constants/levels";
-import { APP_PAGE } from "../../constants/pages";
+import { APP_ROUTE, type AppLoadRoutePath } from "../../constants/pages";
 import {
   C,
   F,
@@ -13,10 +13,9 @@ import {
   S_FLEX_ROW_GAP_8,
   S_SECTION_LABEL,
 } from "../../constants/theme";
-import type { AppPage } from "../../types";
 
 export interface LandingViewProps {
-  onLoad: (page: AppPage) => void;
+  onLoad: (path: AppLoadRoutePath) => void;
 }
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
@@ -33,7 +32,7 @@ export function LandingView({ onLoad }: LandingViewProps) {
     setLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setLoading(false);
-    onLoad(APP_PAGE.EXPLORER);
+    onLoad(APP_ROUTE.EXPLORER);
   };
 
   return (
@@ -213,7 +212,7 @@ export function LandingView({ onLoad }: LandingViewProps) {
           </button>
           <button
             type="button"
-            onClick={() => onLoad(APP_PAGE.EXPLORER)}
+            onClick={() => onLoad(APP_ROUTE.EXPLORER)}
             disabled={loading}
             style={{
               ...actionBtn({
@@ -237,7 +236,7 @@ export function LandingView({ onLoad }: LandingViewProps) {
           </button>
           <button
             type="button"
-            onClick={() => onLoad(APP_PAGE.REVIEWER)}
+            onClick={() => onLoad(APP_ROUTE.REVIEWER)}
             disabled={loading}
             style={{
               ...actionBtn({

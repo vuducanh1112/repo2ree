@@ -219,93 +219,97 @@ export function PageBuildRuntime({
                   <div
                     style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}
                   >
-                    {svc.params.map((p) => (
-                      <div
-                        key={p.key}
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 5,
-                          flex: "0 1 auto",
-                        }}
-                      >
+                    {svc.params.map((p) => {
+                      const paramValue = params[p.key as keyof typeof params];
+
+                      return (
                         <div
+                          key={p.key}
                           style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: C.textMid,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 5,
+                            flex: "0 1 auto",
                           }}
                         >
-                          {p.label}
-                        </div>
-                        {p.hint && <div style={S_FIELD_HELP_TEXT_SMALL}>{p.hint}</div>}
-                        {p.type === "bool" ? (
-                          <button
-                            type="button"
-                            onClick={() => setParam(p.key, !params[p.key])}
+                          <div
                             style={{
-                              width: 34,
-                              height: 19,
-                              borderRadius: 99,
-                              border: "none",
-                              cursor: "pointer",
-                              background: params[p.key] ? buildColor : C.borderMid,
-                              transition: "background 0.2s",
-                              position: "relative",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: C.textMid,
                             }}
                           >
-                            <div
+                            {p.label}
+                          </div>
+                          {p.hint && <div style={S_FIELD_HELP_TEXT_SMALL}>{p.hint}</div>}
+                          {p.type === "bool" ? (
+                            <button
+                              type="button"
+                              onClick={() => setParam(p.key, !paramValue)}
                               style={{
-                                position: "absolute",
-                                top: 2,
-                                left: params[p.key] ? 17 : 2,
-                                width: 15,
-                                height: 15,
-                                borderRadius: "50%",
-                                background: "#fff",
-                                transition: "left 0.2s",
-                                boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
+                                width: 34,
+                                height: 19,
+                                borderRadius: 99,
+                                border: "none",
+                                cursor: "pointer",
+                                background: paramValue ? buildColor : C.borderMid,
+                                transition: "background 0.2s",
+                                position: "relative",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: 2,
+                                  left: paramValue ? 17 : 2,
+                                  width: 15,
+                                  height: 15,
+                                  borderRadius: "50%",
+                                  background: "#fff",
+                                  transition: "left 0.2s",
+                                  boxShadow: "0 1px 3px rgba(0,0,0,0.18)",
+                                }}
+                              />
+                            </button>
+                          ) : p.type === "select" ? (
+                            <select
+                              value={String(paramValue ?? "")}
+                              onChange={(event) => setParam(p.key, event.target.value)}
+                              style={{
+                                border: `1.5px solid ${C.border}`,
+                                borderRadius: 6,
+                                padding: "5px 8px",
+                                fontSize: 11,
+                                fontFamily: "JetBrains Mono, monospace",
+                                color: C.text,
+                                background: C.surface,
+                              }}
+                            >
+                              {(p.options ?? []).map((o) => (
+                                <option key={o} value={o}>
+                                  {o}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              value={String(paramValue ?? "")}
+                              onChange={(event) => setParam(p.key, event.target.value)}
+                              style={{
+                                border: `1.5px solid ${C.border}`,
+                                borderRadius: 6,
+                                padding: "5px 8px",
+                                fontSize: 11,
+                                fontFamily: "JetBrains Mono, monospace",
+                                color: C.text,
+                                background: C.surface,
+                                boxSizing: "border-box",
                               }}
                             />
-                          </button>
-                        ) : p.type === "select" ? (
-                          <select
-                            value={String(params[p.key] ?? "")}
-                            onChange={(event) => setParam(p.key, event.target.value)}
-                            style={{
-                              border: `1.5px solid ${C.border}`,
-                              borderRadius: 6,
-                              padding: "5px 8px",
-                              fontSize: 11,
-                              fontFamily: "JetBrains Mono, monospace",
-                              color: C.text,
-                              background: C.surface,
-                            }}
-                          >
-                            {p.options.map((o) => (
-                              <option key={o} value={o}>
-                                {o}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            value={String(params[p.key] ?? "")}
-                            onChange={(event) => setParam(p.key, event.target.value)}
-                            style={{
-                              border: `1.5px solid ${C.border}`,
-                              borderRadius: 6,
-                              padding: "5px 8px",
-                              fontSize: 11,
-                              fontFamily: "JetBrains Mono, monospace",
-                              color: C.text,
-                              background: C.surface,
-                              boxSizing: "border-box",
-                            }}
-                          />
-                        )}
-                      </div>
-                    ))}
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

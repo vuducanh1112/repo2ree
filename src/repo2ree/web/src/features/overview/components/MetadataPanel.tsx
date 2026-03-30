@@ -18,7 +18,7 @@ interface MetadataPanelProps {
   ree: Ree;
   onGoField: (key: string) => void;
   onNavigate: (key: ExplorerPage) => void;
-  metadataRef: React.RefObject<HTMLDivElement | null>;
+  metadataRef: React.RefObject<HTMLDivElement>;
 }
 
 export function MetadataPanel({ ree, onGoField, onNavigate, metadataRef }: MetadataPanelProps) {

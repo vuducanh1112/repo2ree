@@ -27,10 +27,10 @@ interface RightRailPanelsProps {
   level: number;
   onNavigate: (key: ExplorerPageType) => void;
   onGoField: (key: string) => void;
-  swhRef: React.RefObject<HTMLDivElement | null>;
-  evaluateRef: React.RefObject<HTMLDivElement | null>;
-  archiveRef: React.RefObject<HTMLDivElement | null>;
-  activationRef: React.RefObject<HTMLDivElement | null>;
+  swhRef: React.RefObject<HTMLDivElement>;
+  evaluateRef: React.RefObject<HTMLDivElement>;
+  archiveRef: React.RefObject<HTMLDivElement>;
+  activationRef: React.RefObject<HTMLDivElement>;
 }
 
 const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({

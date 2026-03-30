@@ -299,7 +299,7 @@ export function PageGenerateSBOM({
                     );
                   let pkgCount = null;
                   try {
-                    pkgCount = JSON.parse(sbomNode.content)?.packages?.length ?? null;
+                    pkgCount = JSON.parse(sbomNode.content ?? "{}")?.packages?.length ?? null;
                   } catch {}
                   return (
                     <div>

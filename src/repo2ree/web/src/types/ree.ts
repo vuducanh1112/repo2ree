@@ -1,3 +1,5 @@
+import type { WorkflowServiceParams } from "./services";
+
 export interface Ree {
   name: string;
   origin_url: string;
@@ -28,7 +30,7 @@ export type Badges = Record<string, boolean>;
 export type Timestamps = Record<string, string>;
 export type ActionStates = Record<string, "loading" | "done">;
 export type ServiceLogs = Record<string, LogEntry>;
-export type ServiceParams = Record<string, Record<string, unknown>>;
+export type ServiceParams = WorkflowServiceParams;
 
 export interface LogLine {
   type: "info" | "ok" | "warn" | "err" | "out";

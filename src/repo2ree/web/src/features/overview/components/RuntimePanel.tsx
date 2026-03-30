@@ -21,7 +21,7 @@ import { PanelFieldRow } from "./PanelFieldRow";
 interface RuntimePanelProps {
   ree: Ree;
   files: FileTreeNode[];
-  runtimeRef: React.RefObject<HTMLDivElement | null>;
+  runtimeRef: React.RefObject<HTMLDivElement>;
   onGoField: (key: string) => void;
   onNavigate: (key: ExplorerPage) => void;
   onReeChange: (ree: Ree) => void;

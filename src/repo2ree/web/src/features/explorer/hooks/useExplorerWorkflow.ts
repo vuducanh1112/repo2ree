@@ -1,7 +1,17 @@
 import type React from "react";
+import { isWorkflowServiceKey } from "../../../constants/services";
 import type { AppAction } from "../../../context";
 import { explorerActions } from "../../../context";
-import type { FileTreeNode, Ree, ServiceParams, ToastState, ZipEntry } from "../../../types";
+import type {
+  FileTreeNode,
+  GenericServiceParams,
+  Ree,
+  ServiceParams,
+  ToastState,
+  WorkflowServiceKey,
+  WorkflowServiceRunParams,
+  ZipEntry,
+} from "../../../types";
 import { buildZipBlob } from "../../../utils";
 import { createServiceRunHandlers, executeServiceRunAction } from "./workflow/serviceRuns";
 import {
@@ -51,7 +61,7 @@ export function useExplorerWorkflow({
     showToast,
   });
 
-  const executeServiceRun = async (key: string, params: Record<string, unknown> = {}) => {
+  const executeServiceRun = async (key: string, params: GenericServiceParams = {}) => {
     return executeServiceRunAction({
       key,
       params,
@@ -109,15 +119,24 @@ export function useExplorerWorkflow({
     showToast(`Downloaded ${ree.name || "ree"}-capsule.zip`, "success");
   };
 
-  const runAction = async (key: string, params: Record<string, unknown> = {}) => {
-    dispatch(
-      explorerActions.setServiceParams((prev) => ({
-        ...prev,
-        [key]: { ...(prev[key] ?? {}), ...params },
-      })),
-    );
+  const runAction = async (key: string, params: GenericServiceParams = {}) => {
+    if (isWorkflowServiceKey(key)) {
+      dispatch(
+        explorerActions.setServiceParams((prev) => ({
+          ...prev,
+          [key]: { ...prev[key], ...params },
+        })),
+      );
+    }
     await executeServiceRun(key, params);
   };
+
+  async function runWorkflowAction<K extends WorkflowServiceKey>(
+    key: K,
+    params: WorkflowServiceRunParams<K>,
+  ): Promise<void> {
+    await runAction(key, params);
+  }
 
   return {
     handleSeal,
@@ -126,5 +145,6 @@ export function useExplorerWorkflow({
     handleWorkspaceUpload,
     handleRemoveWorkspaceSource,
     runAction,
+    runWorkflowAction,
   };
 }

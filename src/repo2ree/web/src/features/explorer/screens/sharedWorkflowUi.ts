@@ -8,8 +8,11 @@ import type {
   Ree,
   Service,
   ServiceBadge,
+  ServiceParamValue,
   ServiceRequire,
   SourceUploadCommit,
+  WorkflowServiceKey,
+  WorkflowServiceRunParams,
 } from "../../../types";
 
 export interface PageSourceRepoEntryProps {
@@ -40,7 +43,7 @@ export interface PageMetadataEntryProps {
 }
 
 export interface ServicePageProps {
-  svc: Service;
+  svc: Service & { key: WorkflowServiceKey };
   ree: Ree;
   badges: Badges;
   virtualFiles: FileTreeNode[];
@@ -49,12 +52,12 @@ export interface ServicePageProps {
   runDone: boolean;
   badge: ServiceBadge | null;
   ts: string | undefined;
-  onRun: (key: string, params: Record<string, unknown>) => void;
+  onRun: (key: WorkflowServiceKey, params: WorkflowServiceRunParams) => void;
   onGo: (key: ExplorerPage) => void;
   onGoFields: () => void;
   onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
   onFilesChange: React.Dispatch<React.SetStateAction<FileTreeNode[]>>;
   missing: ServiceRequire[];
-  params: Record<string, unknown>;
-  setParam: (key: string, value: unknown) => void;
+  params: WorkflowServiceRunParams;
+  setParam: (key: string, value: ServiceParamValue) => void;
 }

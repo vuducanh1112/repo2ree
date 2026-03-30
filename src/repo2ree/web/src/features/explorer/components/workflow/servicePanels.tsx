@@ -118,9 +118,9 @@ export function DependencyPanel({ depGroups }: DependencyPanelProps) {
             bg: C.surfaceAlt,
             border: C.border,
           },
-          { key: "exact", label: `${pinnedCount} pinned`, ...PIN_META.exact },
-          { key: "range", label: `${rangeCount} range`, ...PIN_META.range },
-          { key: "none", label: `${noneCount} unpinned`, ...PIN_META.none },
+          { key: "exact", ...PIN_META.exact, label: `${pinnedCount} pinned` },
+          { key: "range", ...PIN_META.range, label: `${rangeCount} range` },
+          { key: "none", ...PIN_META.none, label: `${noneCount} unpinned` },
         ].map((summaryFilter) => (
           <button
             type="button"

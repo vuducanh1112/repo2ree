@@ -15,6 +15,7 @@ import type {
   WorkspaceServiceLogEntry,
 } from "../../../../services/workspaceService";
 import type { FileTreeNode, Ree, ServiceParams, SourceUploadCommit } from "../../../../types";
+import type { GenericServiceParams } from "../../../../types/services";
 import { normalizeSnapshotArchiveName, normalizeWorkspacePath } from "../../../../utils";
 import type { ShowToast } from "./types";
 
@@ -55,7 +56,7 @@ interface CreateWorkspaceServiceArgs {
   dispatch: React.Dispatch<AppAction>;
   executeServiceRun: (
     key: string,
-    params?: Record<string, unknown>,
+    params?: GenericServiceParams,
   ) => Promise<WorkspaceServiceLogEntry>;
 }
 
@@ -72,7 +73,8 @@ export function createExplorerWorkspaceService({
       dispatch(explorerActions.setVirtualFiles(virtualFilesUpdate)),
     upsertFile: (previous, path, content) => upsertWorkspaceFile(previous, path, content),
     runScript: async (scriptKey: string): Promise<WorkspaceServiceLogEntry> => {
-      const params = serviceParams[scriptKey] ?? {};
+      const params =
+        (serviceParams as Partial<Record<string, GenericServiceParams>>)[scriptKey] ?? {};
       return executeServiceRun(scriptKey, params);
     },
     clearWorkspace: () => {

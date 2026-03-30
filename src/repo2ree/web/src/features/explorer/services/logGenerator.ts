@@ -1,5 +1,6 @@
 import { LEVELS } from "../../../constants/levels";
 import type { LogLine, Ree } from "../../../types";
+import type { GenericServiceParams } from "../../../types/services";
 
 type LogLineType = LogLine["type"];
 
@@ -10,7 +11,7 @@ type LogLineType = LogLine["type"];
 export function makeLogs(
   key: string,
   ree: Ree,
-  params: Record<string, unknown>,
+  params: GenericServiceParams,
   newLevel: number,
 ): LogLine[] {
   const makeLogLine = (type: LogLineType, msg: string): LogLine => ({ type, msg });

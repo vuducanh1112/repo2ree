@@ -152,11 +152,17 @@ export function PanelCableOverlay({
       };
     }
 
+    const sphereCenter = sphereC;
+    const sphereRadius = sphereR;
+
     function sphereIntercept(panelX: number, panelY: number): { x: number; y: number } {
-      const dx = panelX - sphereC.x,
-        dy = panelY - sphereC.y;
+      const dx = panelX - sphereCenter.x,
+        dy = panelY - sphereCenter.y;
       const len = Math.hypot(dx, dy) || 1;
-      return { x: sphereC.x + (dx / len) * sphereR, y: sphereC.y + (dy / len) * sphereR };
+      return {
+        x: sphereCenter.x + (dx / len) * sphereRadius,
+        y: sphereCenter.y + (dy / len) * sphereRadius,
+      };
     }
 
     const fieldsConnected =
@@ -279,7 +285,17 @@ export function PanelCableOverlay({
       const end = svgPtToContainer(podSvg, container, endSvg.x, endSvg.y);
       if (!start || !end) return null;
       return { id: anc.id, x1: start.x, y1: start.y, x2: end.x, y2: end.y };
-    }).filter(Boolean);
+    }).filter(
+      (
+        cable,
+      ): cable is {
+        id: string;
+        x1: number;
+        y1: number;
+        x2: number;
+        y2: number;
+      } => cable !== null,
+    );
 
     const w = cRect.width,
       h = cRect.height;

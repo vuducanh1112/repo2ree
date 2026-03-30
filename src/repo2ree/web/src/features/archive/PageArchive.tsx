@@ -13,6 +13,7 @@ import {
   S_SECTION_LABEL,
 } from "../../constants/theme";
 import type { ActionStates, Badges, Ree, ServiceLogs } from "../../types/ree";
+import type { GenericServiceParams } from "../../types/services";
 import { LogPanel } from "../explorer/components/inputs/logPanel";
 import {
   NextStepNudge,
@@ -25,7 +26,7 @@ export interface PageArchiveProps {
   badges: Badges;
   logs: ServiceLogs;
   actionStates: ActionStates;
-  onRun: (key: string, params: Record<string, unknown>) => void;
+  onRun: (key: string, params: GenericServiceParams) => void;
   onGo: (key: ExplorerPage) => void;
 }
 
@@ -456,7 +457,7 @@ export function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: Pa
                             background: C.surface,
                           }}
                         >
-                          {p.options.map((o) => (
+                          {(p.options ?? []).map((o) => (
                             <option key={o} value={o}>
                               {o}
                             </option>

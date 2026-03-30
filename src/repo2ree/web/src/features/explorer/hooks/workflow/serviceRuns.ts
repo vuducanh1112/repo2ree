@@ -1,11 +1,17 @@
 import type React from "react";
 import { LEVELS } from "../../../../constants/levels";
 import { PAGE } from "../../../../constants/pages";
-import { SERVICES } from "../../../../constants/services";
+import { isWorkflowServiceKey, SERVICES } from "../../../../constants/services";
 import type { AppAction } from "../../../../context";
 import { explorerActions } from "../../../../context";
 import type { WorkspaceServiceLogEntry } from "../../../../services/workspaceService";
-import type { FileTreeNode, Ree } from "../../../../types";
+import type {
+  FileTreeNode,
+  Ree,
+  WorkflowServiceKey,
+  WorkflowServiceRunParamsByKey,
+} from "../../../../types";
+import type { GenericServiceParams } from "../../../../types/services";
 import {
   computeEvaluateLevelFromFiles,
   scanDependencies,
@@ -21,16 +27,17 @@ interface CreateServiceRunHandlersArgs {
   showToast: ShowToast;
 }
 
+type ServiceRunHandlerMap = {
+  [K in WorkflowServiceKey]: (params: WorkflowServiceRunParamsByKey[K], newLevel: number) => void;
+};
+
 export function createServiceRunHandlers({
   ree,
   virtualFiles,
   dispatch,
   persistWorkspaceFile,
   showToast,
-}: CreateServiceRunHandlersArgs): Record<
-  string,
-  (params: Record<string, unknown>, newLevel: number) => void
-> {
+}: CreateServiceRunHandlersArgs): ServiceRunHandlerMap {
   return {
     build: (runParams) => {
       const runtimeTarget = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : null;
@@ -139,13 +146,13 @@ export function createServiceRunHandlers({
 
 interface ExecuteServiceRunArgs {
   key: string;
-  params: Record<string, unknown>;
+  params: GenericServiceParams;
   ree: Ree;
   level: number;
   virtualFiles: FileTreeNode[];
   dispatch: React.Dispatch<AppAction>;
   showToast: ShowToast;
-  serviceRunHandlers: Record<string, (params: Record<string, unknown>, newLevel: number) => void>;
+  serviceRunHandlers: ServiceRunHandlerMap;
 }
 
 export async function executeServiceRunAction({
@@ -171,9 +178,19 @@ export async function executeServiceRunAction({
   dispatch(explorerActions.setBadges((prevBadges) => ({ ...prevBadges, [key]: true })));
   dispatch(explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, [key]: ts })));
 
-  const serviceHandler = serviceRunHandlers[key];
-  if (serviceHandler) {
-    serviceHandler(params, newLevel);
+  if (isWorkflowServiceKey(key)) {
+    if (key === "evaluate") {
+      serviceRunHandlers.evaluate(params as WorkflowServiceRunParamsByKey["evaluate"], newLevel);
+    } else if (key === "build") {
+      serviceRunHandlers.build(params as WorkflowServiceRunParamsByKey["build"], newLevel);
+    } else if (key === "sbom") {
+      serviceRunHandlers.sbom(params as WorkflowServiceRunParamsByKey["sbom"], newLevel);
+    } else {
+      serviceRunHandlers.activation(
+        params as WorkflowServiceRunParamsByKey["activation"],
+        newLevel,
+      );
+    }
     return { lines, ts };
   }
 

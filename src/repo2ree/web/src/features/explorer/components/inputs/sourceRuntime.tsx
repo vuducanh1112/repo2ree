@@ -565,7 +565,7 @@ export function RuntimeField({ locked, ree, onChange, onFocus, active, files }: 
   const isImageRef = !isSkipped && !!val && !isTarball;
   const mode = isSkipped ? "skip" : isImageRef ? "image" : "tarball";
 
-  const set = (k: string, v: unknown) => onChange({ ...ree, [k]: v });
+  const set = <K extends keyof Ree>(k: K, v: Ree[K]) => onChange({ ...ree, [k]: v } as Ree);
 
   const handleModeChange = (m: "tarball" | "image" | "skip") => {
     if (locked) return;

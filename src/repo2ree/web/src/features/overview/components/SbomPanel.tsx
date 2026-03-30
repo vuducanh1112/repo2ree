@@ -18,7 +18,7 @@ interface SbomPanelProps {
   ree: Ree;
   files: FileTreeNode[];
   badges: Badges;
-  sbomRef: React.RefObject<HTMLDivElement | null>;
+  sbomRef: React.RefObject<HTMLDivElement>;
   onNavigate: (key: ExplorerPage) => void;
 }
 

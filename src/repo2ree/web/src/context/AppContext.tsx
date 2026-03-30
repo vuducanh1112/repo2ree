@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useReducer } from "react";
-import { APP_PAGE, PAGE } from "../constants/pages";
+import { PAGE } from "../constants/pages";
 import { initialServiceParams } from "../constants/services";
 import { normalizeExplorerPage } from "../features/explorer/utils/navigation";
 import type { Ree } from "../types";
@@ -28,7 +28,6 @@ function resolveUpdater<T>(previous: T, updater: StateUpdater<T>): T {
 
 function createInitialState(initialExplorerRee: Ree): AppContextState {
   return {
-    appPage: APP_PAGE.LANDING,
     explorer: {
       ree: initialExplorerRee,
       locked: false,
@@ -52,9 +51,6 @@ function createInitialState(initialExplorerRee: Ree): AppContextState {
 
 function appReducer(state: AppContextState, action: AppAction): AppContextState {
   switch (action.type) {
-    case ACTION_TYPES.app.setPage: {
-      return { ...state, appPage: resolveUpdater(state.appPage, action.page) };
-    }
     case ACTION_TYPES.explorer.setRee: {
       return {
         ...state,

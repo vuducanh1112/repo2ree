@@ -1,6 +1,5 @@
 import type {
   ActionStates,
-  AppPage,
   Badges,
   ExplorerPage,
   FileTreeNode,
@@ -34,12 +33,10 @@ export interface ExplorerState {
 }
 
 export interface AppContextState {
-  appPage: AppPage;
   explorer: ExplorerState;
 }
 
 export type AppAction =
-  | { type: typeof ACTION_TYPES.app.setPage; page: StateUpdater<AppPage> }
   | { type: typeof ACTION_TYPES.explorer.setRee; ree: StateUpdater<Ree> }
   | { type: typeof ACTION_TYPES.explorer.setLocked; locked: StateUpdater<boolean> }
   | { type: typeof ACTION_TYPES.explorer.setRepoMode; repoMode: StateUpdater<"url" | "upload"> }

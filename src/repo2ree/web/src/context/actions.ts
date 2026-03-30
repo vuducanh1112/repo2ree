@@ -1,6 +1,5 @@
 import type {
   ActionStates,
-  AppPage,
   Badges,
   ExplorerPage,
   FileTreeNode,
@@ -12,10 +11,6 @@ import type {
 } from "../types";
 import { ACTION_TYPES } from "./actionTypes";
 import type { AppAction, StateUpdater } from "./types";
-
-export const appActions = {
-  setPage: (page: StateUpdater<AppPage>): AppAction => ({ type: ACTION_TYPES.app.setPage, page }),
-};
 
 export const explorerActions = {
   setRee: (ree: StateUpdater<Ree>): AppAction => ({ type: ACTION_TYPES.explorer.setRee, ree }),

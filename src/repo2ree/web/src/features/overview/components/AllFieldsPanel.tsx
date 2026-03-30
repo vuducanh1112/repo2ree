@@ -42,7 +42,7 @@ export function AllFieldsPanel({ ree }: AllFieldsPanelProps) {
               value === "" ||
               (typeof value === "object" && Object.keys(value).length === 0);
 
-            let displayValue: string | unknown = isEmpty ? "not set" : value;
+            let displayValue: string = isEmpty ? "not set" : String(value);
             if (typeof value === "object" && value !== null && !isEmpty) {
               displayValue = JSON.stringify(value, null, 2);
             }

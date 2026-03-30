@@ -1,7 +1,14 @@
 import { Ic } from "../components/Icon";
-import type { Service } from "../types";
+import type {
+  Service,
+  WorkflowServiceKey,
+  WorkflowServiceParams,
+  WorkflowServiceParamsByKey,
+} from "../types";
 
-export const SERVICES: Service[] = [
+type WorkflowService = Service & { key: WorkflowServiceKey };
+
+export const SERVICES: WorkflowService[] = [
   {
     key: "evaluate",
     label: "Evaluate",
@@ -102,10 +109,20 @@ export const SERVICES: Service[] = [
   },
 ];
 
-export function defaultParamsForService(svc: Service): Record<string, unknown> {
-  return Object.fromEntries((svc.params || []).map((p) => [p.key, p.default]));
+export function defaultParamsForService<K extends WorkflowServiceKey>(
+  svc: Extract<WorkflowService, { key: K }>,
+): WorkflowServiceParamsByKey[K] {
+  return Object.fromEntries(
+    (svc.params || []).map((p) => [p.key, p.default]),
+  ) as WorkflowServiceParamsByKey[K];
 }
 
-export function initialServiceParams(): Record<string, Record<string, unknown>> {
-  return Object.fromEntries(SERVICES.map((svc) => [svc.key, defaultParamsForService(svc)]));
+export function initialServiceParams(): WorkflowServiceParams {
+  return Object.fromEntries(
+    SERVICES.map((svc) => [svc.key, defaultParamsForService(svc)]),
+  ) as WorkflowServiceParams;
+}
+
+export function isWorkflowServiceKey(key: string): key is WorkflowServiceKey {
+  return SERVICES.some((service) => service.key === key);
 }

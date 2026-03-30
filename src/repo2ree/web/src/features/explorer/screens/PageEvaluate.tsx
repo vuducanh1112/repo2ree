@@ -330,7 +330,7 @@ export function PageEvaluate({
                     let nixCount = 0;
                     const scan = (nodes: typeof files) => {
                       for (const node of nodes || []) {
-                        if (node.type === "folder") scan(node.children);
+                        if (node.type === "folder") scan(node.children ?? []);
                         else {
                           const lo = node.name.toLowerCase();
                           if (

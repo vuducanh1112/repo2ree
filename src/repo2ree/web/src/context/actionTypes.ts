@@ -1,7 +1,4 @@
 export const ACTION_TYPES = {
-  app: {
-    setPage: "app/setPage",
-  },
   explorer: {
     setRee: "explorer/setRee",
     setLocked: "explorer/setLocked",

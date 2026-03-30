@@ -36,7 +36,9 @@ export function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
     { key: PAGE.SEAL, nextKey: null, nextLabel: null, cond: () => false },
   ];
   const step = STEPS.find((workflowStep) => workflowStep.key === stepKey);
-  if (!step || !step.nextKey || !step.nextLabel) return null;
+  const nextKey = step?.nextKey;
+  const nextLabel = step?.nextLabel;
+  if (!step || !nextKey || !nextLabel) return null;
 
   return (
     <div
@@ -58,7 +60,7 @@ export function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
       </span>
       <button
         type="button"
-        onClick={() => onGo(step.nextKey)}
+        onClick={() => onGo(nextKey)}
         style={{
           ...actionBtn({
             border: "none",
@@ -76,7 +78,7 @@ export function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
         }}
         {...hoverBg("#1d4ed8", C.accent)}
       >
-        {step.nextLabel} →
+        {nextLabel} →
       </button>
     </div>
   );
