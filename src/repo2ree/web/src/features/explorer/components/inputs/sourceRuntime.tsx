@@ -248,7 +248,7 @@ export function SourceUploadField({
   const handleArchive = (file: File) => {
     if (!file || inputDisabled) return;
     setDropError(null);
-    setPending({ mode: "archive", archiveName: file.name });
+    setPending({ mode: "archive", archiveName: file.name, archiveFile: file });
   };
 
   const handleDrop = (dragEvent: React.DragEvent<HTMLElement>) => {

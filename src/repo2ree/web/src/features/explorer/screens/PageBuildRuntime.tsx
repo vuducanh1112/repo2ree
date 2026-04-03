@@ -57,6 +57,7 @@ export function PageBuildRuntime({
   setParam,
   onReeChange,
   onFilesChange,
+  onPersistWorkspaceFile,
 }: ServicePageProps) {
   const files = virtualFiles;
 
@@ -161,6 +162,7 @@ export function PageBuildRuntime({
                     fieldKey={sf.fieldKey}
                     files={files || MOCK_FILES}
                     onFilesChange={onFilesChange}
+                    onPersistWorkspaceFile={onPersistWorkspaceFile}
                     ree={ree}
                     onReeChange={onReeChange}
                     onTemplateSuggestedOutput={(out) => setExpectedOutput(out)}
@@ -325,7 +327,14 @@ export function PageBuildRuntime({
             runningLabel="Building…"
             doneLabel="Re-build"
             helperText="Execute the build script and record build logs."
-            onRun={() => onRun(svc.key, { ...params, _expectedOutput: expectedOutput })}
+            onRun={() =>
+              onRun(svc.key, {
+                ...params,
+                build_runtime_script_path: ree.build_runtime_script,
+                produced_runtime_path: expectedOutput,
+                _expectedOutput: expectedOutput,
+              })
+            }
           />
 
           <div style={S_WORKFLOW_BUILD_SECTION_WRAP}>

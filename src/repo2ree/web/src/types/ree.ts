@@ -61,6 +61,7 @@ export interface DepGroup {
 export interface SourceUploadCommit {
   mode: "archive";
   archiveName?: string;
+  archiveFile?: File;
 }
 
 export interface ReeFile {

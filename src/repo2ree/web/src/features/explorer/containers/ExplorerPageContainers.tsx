@@ -162,6 +162,7 @@ export function ServicePageContainer({ state, commands }: ExplorerPageContainerP
         onGoFields={goToRequirements}
         onReeChange={commands.setRee}
         onFilesChange={commands.setVirtualFiles}
+        onPersistWorkspaceFile={commands.onPersistWorkspaceFile}
         missing={missing}
         params={params}
         setParam={setParam}

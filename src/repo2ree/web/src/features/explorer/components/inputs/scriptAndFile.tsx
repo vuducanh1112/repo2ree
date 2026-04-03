@@ -41,6 +41,11 @@ interface ScriptPanelProps {
   fieldKey: keyof Ree;
   files: FileTreeNode[];
   onFilesChange?: (files: FileTreeNode[]) => void;
+  onPersistWorkspaceFile?: (
+    previousPath: string | undefined,
+    path: string,
+    content: string,
+  ) => Promise<void>;
   ree: Ree;
   onReeChange?: (ree: Ree) => void;
   onTemplateSuggestedOutput?: (output: string) => void;
@@ -52,6 +57,7 @@ export function ScriptPanel({
   fieldKey,
   files,
   onFilesChange,
+  onPersistWorkspaceFile,
   ree,
   onReeChange,
   onTemplateSuggestedOutput,
@@ -101,7 +107,9 @@ export function ScriptPanel({
     setCollapsed(false);
   };
 
-  const commitFile = (fname: string, content: string) => {
+  const commitFile = async (fname: string, content: string) => {
+    const previousPath = scriptPath || undefined;
+    const previousName = previousPath?.split("/").pop() || previousPath;
     const newFile: FileTreeNode = {
       id: `vf-${fname}`,
       name: fname,
@@ -109,16 +117,20 @@ export function ScriptPanel({
       tag: PAGE.SOURCE,
       content,
     };
-    const updated = [...files.filter((f) => f.name !== fname), newFile];
+    const updated = [
+      ...files.filter((f) => f.name !== fname && f.name !== previousName),
+      newFile,
+    ];
     onFilesChange?.(updated);
     onReeChange?.({ ...ree, [fieldKey]: fname });
+    await onPersistWorkspaceFile?.(previousPath, fname, content);
   };
 
   const handleSave = () => {
     const fname =
       editorFilename.trim() ||
       (scriptKind === "validate" ? "activation_test.sh" : "build_runtime.sh");
-    commitFile(fname, editorContent);
+    void commitFile(fname, editorContent);
     setMode("view");
   };
 

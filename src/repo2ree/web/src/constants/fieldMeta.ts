@@ -132,7 +132,7 @@ docker run --rm --entrypoint="" ree:latest echo ok`,
   sbom: {
     label: "SBOM",
     desc: "Stores the generated inventory file of software in your runtime. Technically, this field is auto-populated with the SPDX 2.3 SBOM output from Generate SBOM.",
-    example: "sbom.spdx.json",
+    example: "sbom.json",
     format: "SPDX 2.3 JSON. Generated automatically — assigned only after running Generate SBOM.",
     howTo:
       "Go to the Generate SBOM step and click Run after your runtime is ready. The SBOM file is produced and the sbom field is set automatically.",

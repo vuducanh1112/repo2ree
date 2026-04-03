@@ -76,9 +76,13 @@ export type WorkflowServiceParams = {
 export interface WorkflowServiceRunParamsByKey {
   evaluate: WorkflowServiceParamsByKey["evaluate"];
   build: WorkflowServiceParamsByKey["build"] & {
+    build_runtime_script_path?: string;
+    produced_runtime_path?: string;
     _expectedOutput?: string;
   };
-  sbom: WorkflowServiceParamsByKey["sbom"];
+  sbom: WorkflowServiceParamsByKey["sbom"] & {
+    produced_runtime_path?: string;
+  };
   activation: WorkflowServiceParamsByKey["activation"];
 }
 

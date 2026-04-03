@@ -1,7 +1,9 @@
+import { useRef } from "react";
 import type React from "react";
 import { isWorkflowServiceKey } from "../../../constants/services";
 import type { AppAction } from "../../../context";
 import { explorerActions } from "../../../context";
+import type { IWorkspaceService } from "../../../services/workspaceService";
 import type {
   FileTreeNode,
   GenericServiceParams,
@@ -18,8 +20,9 @@ import {
   createExplorerWorkspaceService,
   createSourceActions,
   resetWorkflowOnSourceChange,
-  upsertWorkspaceFile,
+  WORKSPACE_ID,
 } from "./workflow/sourceLifecycle";
+import { createRemoteWorkspaceService } from "../../../services/remoteWorkspaceService";
 
 interface UseExplorerWorkflowArgs {
   dispatch: React.Dispatch<AppAction>;
@@ -41,27 +44,76 @@ export function useExplorerWorkflow({
   const showToast = (msg: string, type: ToastState["type"] = "info") =>
     dispatch(explorerActions.setToast({ message: msg, type }));
 
+  const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
+  const explicitMode = String(env.VITE_WORKSPACE_SERVICE_MODE || "").toLowerCase();
+  const workspaceServiceMode = explicitMode || (env.VITE_API_BASE_URL ? "remote" : "mock");
+  const remoteWorkspaceServiceRef = useRef<IWorkspaceService<FileTreeNode> | null>(null);
+  if (workspaceServiceMode === "remote" && !remoteWorkspaceServiceRef.current) {
+    remoteWorkspaceServiceRef.current = createRemoteWorkspaceService({
+      baseUrl: env.VITE_API_BASE_URL || "",
+    });
+  }
+
+  let workspaceService: IWorkspaceService<FileTreeNode>;
+
   const handleSourceChange = (options: { silent?: boolean } = {}) => {
     resetWorkflowOnSourceChange(dispatch, showToast, options);
   };
 
-  const persistWorkspaceFile = (path: string, content: string) => {
-    dispatch(
-      explorerActions.setVirtualFiles((previousFiles) =>
-        upsertWorkspaceFile(previousFiles, path, content),
-      ),
-    );
+  const remoteWorkspaceService = remoteWorkspaceServiceRef.current;
+  workspaceService =
+    workspaceServiceMode === "remote"
+      ? remoteWorkspaceService ||
+        (() => {
+          throw new Error("Remote workspace service is not initialized");
+        })()
+      : createExplorerWorkspaceService({
+          ree,
+          virtualFiles,
+          serviceParams,
+          dispatch,
+          executeServiceRun,
+        });
+
+  const refreshWorkspaceFiles = async (): Promise<FileTreeNode[]> => {
+    const workspace = await workspaceService.getWorkspace(WORKSPACE_ID);
+    dispatch(explorerActions.setVirtualFiles(workspace.files));
+    return workspace.files;
+  };
+
+  const persistWorkspaceFile = async (
+    previousPath: string | undefined,
+    path: string,
+    content: string,
+  ): Promise<void> => {
+    try {
+      const previousName = (previousPath || "").trim();
+      if (previousName && previousName !== path && workspaceService.deleteFile) {
+        await workspaceService.deleteFile(WORKSPACE_ID, previousName);
+      }
+      await workspaceService.updateFile(WORKSPACE_ID, path, content);
+      await refreshWorkspaceFiles();
+      showToast(`Saved ${path} to workspace`, "success");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? `Failed to save ${path}: ${error.message}` : `Failed to save ${path}`,
+        "error",
+      );
+    }
   };
 
   const serviceRunHandlers = createServiceRunHandlers({
     ree,
     virtualFiles,
     dispatch,
-    persistWorkspaceFile,
+    persistWorkspaceFile: (path: string, content: string) => {
+      void persistWorkspaceFile(undefined, path, content);
+    },
     showToast,
+    workspaceServiceMode: workspaceServiceMode === "remote" ? "remote" : "mock",
   });
 
-  const executeServiceRun = async (key: string, params: GenericServiceParams = {}) => {
+  async function executeServiceRun(key: string, params: GenericServiceParams = {}) {
     return executeServiceRunAction({
       key,
       params,
@@ -71,16 +123,10 @@ export function useExplorerWorkflow({
       dispatch,
       showToast,
       serviceRunHandlers,
+      workspaceService,
+      workspaceId: WORKSPACE_ID,
     });
-  };
-
-  const workspaceService = createExplorerWorkspaceService({
-    ree,
-    virtualFiles,
-    serviceParams,
-    dispatch,
-    executeServiceRun,
-  });
+  }
 
   const { handleDownloadSourceFiles, handleWorkspaceUpload, handleRemoveWorkspaceSource } =
     createSourceActions({
@@ -144,6 +190,7 @@ export function useExplorerWorkflow({
     handleDownloadSourceFiles,
     handleWorkspaceUpload,
     handleRemoveWorkspaceSource,
+    persistWorkspaceFile,
     runAction,
     runWorkflowAction,
   };

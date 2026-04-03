@@ -48,6 +48,7 @@ export function PageTestActivation({
   params,
   onReeChange,
   onFilesChange,
+  onPersistWorkspaceFile,
 }: ServicePageProps) {
   const files = virtualFiles;
 
@@ -126,6 +127,7 @@ export function PageTestActivation({
                 fieldKey={sf.fieldKey}
                 files={files || MOCK_FILES}
                 onFilesChange={onFilesChange}
+                onPersistWorkspaceFile={onPersistWorkspaceFile}
                 ree={ree}
                 onReeChange={onReeChange}
                 saveToWorkspaceOnly

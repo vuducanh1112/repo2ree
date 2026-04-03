@@ -1,4 +1,12 @@
-import type { IWorkspaceService, LogEntry, ReeProject } from "./workspaceService";
+import type {
+  IWorkspaceService,
+  LogEntry,
+  ReeProject,
+  WorkflowRunLogChunk,
+  WorkflowRunRecord,
+  WorkspaceResetPayload,
+} from "./workspaceService";
+import { parseWorkspaceResetPayload } from "./workspaceService";
 
 export interface DummyWorkspaceFileNode {
   id: string;
@@ -9,19 +17,11 @@ export interface DummyWorkspaceFileNode {
   children?: DummyWorkspaceFileNode[];
 }
 
-type ResetMode = "download" | "upload" | "clear";
-
-interface WorkspaceResetPayload<TSourceType = string> {
-  mode?: ResetMode;
-  source?: string;
-  sourceType?: TSourceType;
-  archiveName?: string;
-}
-
 interface CreateInMemoryDummyWorkspaceServiceOptions<TFile, TSourceType = string> {
   getWorkspaceFiles: () => TFile[];
   updateWorkspaceFiles: (updater: (previous: TFile[]) => TFile[]) => void;
   upsertFile: (previous: TFile[], path: string, content: string) => TFile[];
+  deleteFile: (previous: TFile[], path: string) => TFile[];
   runScript: (scriptKey: string) => Promise<LogEntry>;
   clearWorkspace: () => void;
   loadWorkspaceFromUpload: (archiveName: string) => void;
@@ -154,7 +154,7 @@ export const MOCK_FILES: DummyWorkspaceFileNode[] = [
   },
   {
     id: "4",
-    name: "sbom.spdx.json",
+    name: "sbom.json",
     type: "file",
     content: `{\n  "spdxVersion": "SPDX-2.3",\n  "dataLicense": "CC0-1.0",\n  "name": "ree-sbom"\n}`,
   },
@@ -191,20 +191,53 @@ export const MOCK_FILES: DummyWorkspaceFileNode[] = [
   { id: "10", name: "runtime.tar.gz", type: "file", content: "(binary content)" },
 ];
 
-function parseWorkspaceResetPayload<TSourceType = string>(
-  newSource: string,
-  fallbackSourceType: TSourceType,
-): WorkspaceResetPayload<TSourceType> {
-  try {
-    return newSource ? JSON.parse(newSource) : {};
-  } catch {
-    return { mode: "download", source: newSource, sourceType: fallbackSourceType };
-  }
-}
-
 export function createInMemoryDummyWorkspaceService<TFile, TSourceType = string>(
   options: CreateInMemoryDummyWorkspaceServiceOptions<TFile, TSourceType>,
 ): IWorkspaceService<TFile> {
+  const runStore = new Map<
+    string,
+    {
+      run: WorkflowRunRecord;
+      lines: LogEntry["lines"];
+    }
+  >();
+
+  const toLogChunk = (runId: string, cursor?: string): WorkflowRunLogChunk => {
+    const runState = runStore.get(runId);
+    if (!runState) {
+      return { lines: [], hasMore: false };
+    }
+    const startIndex = Number(cursor || "0");
+    const lines = runState.lines.slice(startIndex, startIndex + 20);
+    const nextCursor = startIndex + lines.length;
+    return {
+      lines,
+      hasMore: nextCursor < runState.lines.length,
+      nextCursor: nextCursor < runState.lines.length ? String(nextCursor) : undefined,
+    };
+  };
+
+  const applyResetRequest = async (
+    request: WorkspaceResetPayload<TSourceType | string>,
+  ): Promise<void> => {
+    const mode = request.mode || "clear";
+
+    if (mode === "clear") {
+      options.clearWorkspace();
+      return;
+    }
+
+    if (mode === "upload") {
+      options.loadWorkspaceFromUpload(request.archiveName || "source.tar.gz");
+      return;
+    }
+
+    const source = request.source || options.getDefaultSource();
+    const sourceType = (request.sourceType || options.getDefaultSourceType()) as TSourceType;
+    if (!source) return;
+    options.loadWorkspaceFromDownload(source, sourceType);
+  };
+
   return {
     getWorkspace: async (id: string): Promise<ReeProject<TFile>> => ({
       id,
@@ -213,27 +246,64 @@ export function createInMemoryDummyWorkspaceService<TFile, TSourceType = string>
     updateFile: async (_id: string, path: string, content: string): Promise<void> => {
       options.updateWorkspaceFiles((previous) => options.upsertFile(previous, path, content));
     },
+    deleteFile: async (_id: string, path: string): Promise<void> => {
+      options.updateWorkspaceFiles((previous) => options.deleteFile(previous, path));
+    },
     runScript: async (_id: string, scriptKey: string): Promise<LogEntry> => {
       return options.runScript(scriptKey);
     },
+    startWorkflowRun: async (_id: string, scriptKey: string): Promise<WorkflowRunRecord> => {
+      const runId = `mock-run-${scriptKey}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const createdAt = new Date().toISOString();
+      const run: WorkflowRunRecord = {
+        runId,
+        status: "running",
+        createdAt,
+        startedAt: createdAt,
+      };
+      runStore.set(runId, {
+        run,
+        lines: [
+          { type: "info", msg: `Starting ${scriptKey} workflow` },
+          { type: "out", msg: `${scriptKey}: running in mock workspace service` },
+        ],
+      });
+
+      setTimeout(() => {
+        const current = runStore.get(runId);
+        if (!current) return;
+        current.run = {
+          ...current.run,
+          status: "succeeded",
+          finishedAt: new Date().toISOString(),
+        };
+        current.lines = [...current.lines, { type: "ok", msg: `${scriptKey} completed` }];
+        runStore.set(runId, current);
+      }, 900);
+
+      return run;
+    },
+    getWorkflowRun: async (_id: string, runId: string): Promise<WorkflowRunRecord> => {
+      const state = runStore.get(runId);
+      if (!state) {
+        return {
+          runId,
+          status: "failed",
+          createdAt: new Date().toISOString(),
+          finishedAt: new Date().toISOString(),
+        };
+      }
+      return state.run;
+    },
+    getWorkflowRunLogs: async (_id: string, runId: string, cursor?: string) => {
+      return toLogChunk(runId, cursor);
+    },
+    resetWorkspaceRequest: async (_id: string, request): Promise<void> => {
+      await applyResetRequest(request);
+    },
     resetWorkspace: async (_id: string, newSource: string): Promise<void> => {
       const parsedSource = parseWorkspaceResetPayload(newSource, options.getDefaultSourceType());
-      const mode = parsedSource.mode || "clear";
-
-      if (mode === "clear") {
-        options.clearWorkspace();
-        return;
-      }
-
-      if (mode === "upload") {
-        options.loadWorkspaceFromUpload(parsedSource.archiveName || "source.tar.gz");
-        return;
-      }
-
-      const source = parsedSource.source || options.getDefaultSource();
-      const sourceType = parsedSource.sourceType || options.getDefaultSourceType();
-      if (!source) return;
-      options.loadWorkspaceFromDownload(source, sourceType);
+      await applyResetRequest(parsedSource);
     },
   };
 }

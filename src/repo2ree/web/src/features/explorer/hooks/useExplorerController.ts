@@ -58,6 +58,7 @@ export function useExplorerController() {
     handleDownloadSourceFiles,
     handleWorkspaceUpload,
     handleRemoveWorkspaceSource,
+    persistWorkspaceFile,
     runAction,
     runWorkflowAction,
   } = useExplorerWorkflow({
@@ -97,6 +98,7 @@ export function useExplorerController() {
       key: K,
       params: WorkflowServiceRunParams<K>,
     ) => runWorkflowAction(key, params),
+    onPersistWorkspaceFile: persistWorkspaceFile,
   };
 
   return {

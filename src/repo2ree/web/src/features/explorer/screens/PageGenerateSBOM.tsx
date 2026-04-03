@@ -55,6 +55,7 @@ export function PageGenerateSBOM({
   params,
   onReeChange,
   onFilesChange,
+  onPersistWorkspaceFile,
 }: ServicePageProps) {
   const files = virtualFiles;
 
@@ -203,7 +204,12 @@ export function PageGenerateSBOM({
             runningLabel="Generating…"
             doneLabel="Regenerate SBOM"
             helperText="Generate an SPDX JSON SBOM from the selected runtime."
-            onRun={() => onRun(svc.key, params)}
+            onRun={() =>
+              onRun(svc.key, {
+                ...params,
+                produced_runtime_path: ree.runtime,
+              })
+            }
           />
 
           <FieldSection
@@ -391,6 +397,7 @@ export function PageGenerateSBOM({
                   fieldKey={sf.fieldKey}
                   files={files || MOCK_FILES}
                   onFilesChange={onFilesChange}
+                    onPersistWorkspaceFile={onPersistWorkspaceFile}
                   ree={ree}
                   onReeChange={onReeChange}
                 />

@@ -36,6 +36,7 @@ export function buildCurrentReeArchiveEntries(
   const sourcePaths = new Set(
     listTreeFiles(sourceSnapshotFiles).map((f) => normalizeWorkspacePath(f.path)),
   );
+  let runtimeIncludedInArchive = false;
 
   const manifest = {
     ree_version: "1.0",
@@ -58,9 +59,8 @@ export function buildCurrentReeArchiveEntries(
     source_acquired_by: ree._sourceAcquiredBy || null,
     source_snapshot_archive: ree._sourceSnapshotArchive || null,
     source_snapshot_captured_at: ree._sourceSnapshotCapturedAt || null,
-    runtime_included: !!ree._runtimeIncluded,
+    runtime_included: false,
   };
-  entries.push({ path: REE_MANIFEST_PATH, data: enc.encode(JSON.stringify(manifest, null, 2)) });
 
   if (ree.sbom && ree.sbom !== "__skipped__") {
     const sbomNode = findVirtualFileByName(virtualFiles, ree.sbom);
@@ -72,11 +72,15 @@ export function buildCurrentReeArchiveEntries(
 
   if (ree._runtimeIncluded && ree.runtime && ree.runtime !== "__skipped__") {
     const runtimeNode = findVirtualFileByName(virtualFiles, ree.runtime);
-    const runtimeContent =
-      runtimeNode?.content ??
-      `# Runtime placeholder\n# ref: ${ree.runtime}\n# Enable "Build Runtime" to produce the real tarball.`;
-    entries.push({ path: REE_RUNTIME_PATH, data: enc.encode(runtimeContent) });
+    const runtimeContent = runtimeNode?.content;
+    if (runtimeContent && runtimeContent.trim().length > 0) {
+      entries.push({ path: REE_RUNTIME_PATH, data: enc.encode(runtimeContent) });
+      runtimeIncludedInArchive = true;
+    }
   }
+
+  manifest.runtime_included = runtimeIncludedInArchive;
+  entries.push({ path: REE_MANIFEST_PATH, data: enc.encode(JSON.stringify(manifest, null, 2)) });
 
   if (ree._sourceIncluded && sourceSnapshotFiles.length > 0) {
     for (const file of listTreeFiles(sourceSnapshotFiles)) {

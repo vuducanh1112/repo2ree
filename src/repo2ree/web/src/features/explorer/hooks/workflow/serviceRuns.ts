@@ -4,7 +4,10 @@ import { PAGE } from "../../../../constants/pages";
 import { isWorkflowServiceKey, SERVICES } from "../../../../constants/services";
 import type { AppAction } from "../../../../context";
 import { explorerActions } from "../../../../context";
-import type { WorkspaceServiceLogEntry } from "../../../../services/workspaceService";
+import type {
+  IWorkspaceService,
+  WorkspaceServiceLogEntry,
+} from "../../../../services/workspaceService";
 import type {
   FileTreeNode,
   Ree,
@@ -17,6 +20,7 @@ import {
   scanDependencies,
 } from "../../../dependencies/dependencyParser";
 import { makeLogs } from "../../services/logGenerator";
+import { pollWorkflowRun } from "./pollWorkflowRun";
 import type { ShowToast } from "./types";
 
 interface CreateServiceRunHandlersArgs {
@@ -25,6 +29,7 @@ interface CreateServiceRunHandlersArgs {
   dispatch: React.Dispatch<AppAction>;
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
+  workspaceServiceMode: "remote" | "mock";
 }
 
 type ServiceRunHandlerMap = {
@@ -37,6 +42,7 @@ export function createServiceRunHandlers({
   dispatch,
   persistWorkspaceFile,
   showToast,
+  workspaceServiceMode,
 }: CreateServiceRunHandlersArgs): ServiceRunHandlerMap {
   return {
     build: (runParams) => {
@@ -47,14 +53,14 @@ export function createServiceRunHandlers({
       const producedName = expectedOutput || runtimeTarget || "runtime.tar.gz";
       const isTarball = /\.(tar\.gz|tgz)$/i.test(producedName);
       let producedRuntimePath: string | null = null;
-      if (isTarball) {
+      if (workspaceServiceMode === "mock" && isTarball) {
         persistWorkspaceFile(
           producedName,
           `[mock binary — docker save | gzip output]\nBuilt: ${new Date().toISOString()}\nSize: ~1.2 GB (mock)`,
         );
         producedRuntimePath = producedName;
       }
-      if (expectedOutput && producedRuntimePath && producedRuntimePath === expectedOutput) {
+      if (expectedOutput && (workspaceServiceMode === "remote" || producedRuntimePath === expectedOutput)) {
         dispatch(
           explorerActions.setRee((prevRee) => ({
             ...prevRee,
@@ -62,7 +68,7 @@ export function createServiceRunHandlers({
             _runtimeIncluded: true,
           })),
         );
-      } else if (expectedOutput && !producedRuntimePath) {
+      } else if (workspaceServiceMode === "mock" && expectedOutput && !producedRuntimePath) {
         showToast(
           `Build finished, but expected runtime file was not produced: ${expectedOutput}`,
           "error",
@@ -71,6 +77,12 @@ export function createServiceRunHandlers({
       showToast(`Build complete${producedName ? ` — ${producedName} produced` : ""}`, "success");
     },
     sbom: () => {
+      if (workspaceServiceMode === "remote") {
+        dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, sbom: "sbom.json" })));
+        showToast("SBOM generated — sbom.json", "success");
+        return;
+      }
+
       const sbomContent = JSON.stringify(
         {
           spdxVersion: "SPDX-2.3",
@@ -116,10 +128,10 @@ export function createServiceRunHandlers({
         null,
         2,
       );
-      const fname = "sbom.spdx.json";
+      const fname = "sbom.json";
       persistWorkspaceFile(fname, sbomContent);
       dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, sbom: fname })));
-      showToast("SBOM generated — sbom.spdx.json", "success");
+      showToast("SBOM generated — sbom.json", "success");
     },
     activation: () => {
       showToast("Activation test passed — container started cleanly", "success");
@@ -153,6 +165,8 @@ interface ExecuteServiceRunArgs {
   dispatch: React.Dispatch<AppAction>;
   showToast: ShowToast;
   serviceRunHandlers: ServiceRunHandlerMap;
+  workspaceService: IWorkspaceService<FileTreeNode>;
+  workspaceId: string;
 }
 
 export async function executeServiceRunAction({
@@ -164,8 +178,88 @@ export async function executeServiceRunAction({
   dispatch,
   showToast,
   serviceRunHandlers,
+  workspaceService,
+  workspaceId,
 }: ExecuteServiceRunArgs): Promise<WorkspaceServiceLogEntry> {
   dispatch(explorerActions.setActionStates((prevStates) => ({ ...prevStates, [key]: "loading" })));
+
+  if (key !== "evaluate" && workspaceService.startWorkflowRun && workspaceService.getWorkflowRun) {
+    const runParams =
+      key === "activation"
+        ? {
+          ...params,
+          activation_script: ree.activation_script,
+        }
+        : params;
+    const run = await workspaceService.startWorkflowRun(workspaceId, key, runParams);
+    const polledRun = await pollWorkflowRun(workspaceService, {
+      workspaceId,
+      runId: run.runId,
+    });
+    const lines = polledRun.lines;
+    const ts = polledRun.ts;
+
+    dispatch(explorerActions.setServiceLogs((prevLogs) => ({ ...prevLogs, [key]: { lines, ts } })));
+    dispatch(explorerActions.setActionStates((prevStates) => ({ ...prevStates, [key]: "done" })));
+    dispatch(explorerActions.setBadges((prevBadges) => ({ ...prevBadges, [key]: true })));
+    dispatch(explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, [key]: ts })));
+
+    if (polledRun.status === "failed" || polledRun.status === "canceled") {
+      showToast(`${key} ${polledRun.status}`, "error");
+      return { lines, ts };
+    }
+
+    if (key === "build" || key === "sbom") {
+      try {
+        const workspace = await workspaceService.getWorkspace(workspaceId);
+        dispatch(explorerActions.setVirtualFiles(workspace.files));
+      } catch {
+        // Keep run success status; UI can still show logs even if refresh fails.
+      }
+    }
+
+    const isEvaluateRun = key === PAGE.EVALUATE;
+    const newLevel = isEvaluateRun ? computeEvaluateLevelFromFiles(virtualFiles || []) : level;
+
+    if (isWorkflowServiceKey(key)) {
+      if (key === "evaluate") {
+        serviceRunHandlers.evaluate(params as WorkflowServiceRunParamsByKey["evaluate"], newLevel);
+      } else if (key === "build") {
+        serviceRunHandlers.build(params as WorkflowServiceRunParamsByKey["build"], newLevel);
+      } else if (key === "sbom") {
+        serviceRunHandlers.sbom(params as WorkflowServiceRunParamsByKey["sbom"], newLevel);
+      } else {
+        serviceRunHandlers.activation(
+          params as WorkflowServiceRunParamsByKey["activation"],
+          newLevel,
+        );
+      }
+      return { lines, ts };
+    }
+
+    if (key === "create") {
+      dispatch(explorerActions.setLocked(true));
+      showToast("REE created — fields locked", "success");
+    } else if (key === "swh") {
+      const swhid = `swh:1:dir:${Math.random().toString(16).slice(2, 14)}`;
+      dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, swhid })));
+      showToast("Archived at Software Heritage — SWHID assigned", "success");
+    } else if (key === "zenodo") {
+      const doi = `10.5281/zenodo.${Math.floor(Math.random() * 9000000 + 1000000)}`;
+      dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, zenodo_doi: doi })));
+      showToast("Published on Zenodo — DOI assigned", "success");
+    } else if (key === "dataverse") {
+      const doi = `doi:10.5072/DVN/${Math.floor(Math.random() * 900000 + 100000)}`;
+      dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, dataverse_doi: doi })));
+      showToast("Dataset published on Dataverse — DOI assigned", "success");
+    } else {
+      const svc = SERVICES.find((service) => service.key === key);
+      showToast(`${svc?.label ?? key} completed`, "success");
+    }
+
+    return { lines, ts };
+  }
+
   await new Promise((resolve) => setTimeout(resolve, 1600 + Math.random() * 700));
 
   const isEvaluateRun = key === PAGE.EVALUATE;
