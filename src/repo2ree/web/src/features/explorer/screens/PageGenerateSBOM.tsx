@@ -49,6 +49,7 @@ export function PageGenerateSBOM({
   badge,
   ts,
   onRun,
+  onCancel,
   onGo,
   onGoFields,
   missing,
@@ -204,6 +205,7 @@ export function PageGenerateSBOM({
             runningLabel="Generating…"
             doneLabel="Regenerate SBOM"
             helperText="Generate an SPDX JSON SBOM from the selected runtime."
+            onCancel={() => onCancel?.(svc.key)}
             onRun={() =>
               onRun(svc.key, {
                 ...params,

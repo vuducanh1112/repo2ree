@@ -4,6 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 
+from repo2ree.service.api.run_management import (
+    _append_run_log,
+    _is_cancel_requested,
+    _run_summary,
+    _start_background_run,
+)
 from repo2ree.service.api.settings import service_settings
 from repo2ree.service.metadata.database import get_session
 from repo2ree.service.metadata.ree_record import REERecord
@@ -185,7 +191,39 @@ def delete_workspace_route(workspace_id: str):
 @manage_ree_router.post("/api/v1/workspaces/{workspace_id}/source:acquire")
 def acquire_source_route(workspace_id: str, payload: SourceAcquirePayload):
     try:
-        return acquire_source(workspace_id, payload)
+        request_payload = {
+            "mode": "download",
+            "originUrl": payload.originUrl,
+            "sourceType": payload.sourceType,
+        }
+
+        def _runner(ws_id: str, run_id: str):
+            _append_run_log(
+                ws_id,
+                run_id,
+                "system",
+                "info",
+                f"Starting source acquisition from {payload.originUrl}",
+            )
+            if _is_cancel_requested(ws_id, run_id):
+                _append_run_log(
+                    ws_id, run_id, "system", "warn", "Source acquisition canceled"
+                )
+                return "canceled", request_payload
+            acquire_source(ws_id, payload)
+            _append_run_log(
+                ws_id, run_id, "system", "info", "Source acquisition succeeded"
+            )
+            return "succeeded", request_payload
+
+        run_state = _start_background_run(
+            workspace_id=workspace_id,
+            operation="source",
+            request_payload=request_payload,
+            run_id_prefix="source",
+            runner=_runner,
+        )
+        return _run_summary(run_state)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -214,9 +252,39 @@ async def store_upload_bytes_route(
 @manage_ree_router.post("/api/v1/workspaces/{workspace_id}/source:upload-complete")
 def upload_complete_route(workspace_id: str, payload: SourceUploadCompletePayload):
     try:
-        return complete_source_upload(
-            workspace_id, payload.uploadToken, payload.archiveName
+        request_payload = {
+            "mode": "upload",
+            "uploadToken": payload.uploadToken,
+            "archiveName": payload.archiveName,
+        }
+
+        def _runner(ws_id: str, run_id: str):
+            _append_run_log(
+                ws_id,
+                run_id,
+                "system",
+                "info",
+                f"Starting source upload extraction for {payload.archiveName}",
+            )
+            if _is_cancel_requested(ws_id, run_id):
+                _append_run_log(
+                    ws_id, run_id, "system", "warn", "Source upload canceled"
+                )
+                return "canceled", request_payload
+            complete_source_upload(ws_id, payload.uploadToken, payload.archiveName)
+            _append_run_log(
+                ws_id, run_id, "system", "info", "Source upload extraction succeeded"
+            )
+            return "succeeded", request_payload
+
+        run_state = _start_background_run(
+            workspace_id=workspace_id,
+            operation="source",
+            request_payload=request_payload,
+            run_id_prefix="source",
+            runner=_runner,
         )
+        return _run_summary(run_state)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

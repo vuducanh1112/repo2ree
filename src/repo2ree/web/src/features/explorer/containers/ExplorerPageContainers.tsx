@@ -102,6 +102,7 @@ export function SourcePageContainer({ state, commands }: ExplorerPageContainerPr
       onGoService={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
       onDownloadSource={commands.onDownloadSourceFiles}
+      onCancelSource={() => commands.onCancelAction("source")}
       onWorkspaceUpload={(payload: SourceUploadCommit) => commands.onWorkspaceUpload(payload)}
       onRemoveWorkspaceSource={commands.onRemoveWorkspaceSource}
     />
@@ -158,6 +159,7 @@ export function ServicePageContainer({ state, commands }: ExplorerPageContainerP
         badge={badge}
         ts={ts}
         onRun={commands.onRunWorkflowAction}
+        onCancel={commands.onCancelAction}
         onGo={commands.setPage}
         onGoFields={goToRequirements}
         onReeChange={commands.setRee}

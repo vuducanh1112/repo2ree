@@ -27,6 +27,7 @@ export interface PageSourceRepoEntryProps {
   onGoService: (key: ExplorerPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
   onDownloadSource: (originType: Ree["source_type"]) => void;
+  onCancelSource: () => void;
   onWorkspaceUpload: (payload: SourceUploadCommit) => void;
   onRemoveWorkspaceSource: () => void;
 }
@@ -53,6 +54,7 @@ export interface ServicePageProps {
   badge: ServiceBadge | null;
   ts: string | undefined;
   onRun: (key: WorkflowServiceKey, params: WorkflowServiceRunParams) => void;
+  onCancel?: (key: WorkflowServiceKey) => void;
   onGo: (key: ExplorerPage) => void;
   onGoFields: () => void;
   onReeChange: React.Dispatch<React.SetStateAction<Ree>>;

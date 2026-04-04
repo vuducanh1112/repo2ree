@@ -61,6 +61,7 @@ export function useExplorerController() {
     persistWorkspaceFile,
     runAction,
     runWorkflowAction,
+    cancelWorkflowAction,
   } = useExplorerWorkflow({
     dispatch,
     ree,
@@ -94,6 +95,7 @@ export function useExplorerController() {
     onWorkspaceUpload: (payload: SourceUploadCommit) => handleWorkspaceUpload(payload),
     onRemoveWorkspaceSource: handleRemoveWorkspaceSource,
     onRunAction: runAction,
+    onCancelAction: cancelWorkflowAction,
     onRunWorkflowAction: <K extends WorkflowServiceKey>(
       key: K,
       params: WorkflowServiceRunParams<K>,

@@ -63,6 +63,7 @@ export interface IWorkspaceService<TFile = unknown> {
   ) => Promise<WorkflowRunRecord>;
   getWorkflowRun?: (id: string, runId: string) => Promise<WorkflowRunRecord>;
   getWorkflowRunLogs?: (id: string, runId: string, cursor?: string) => Promise<WorkflowRunLogChunk>;
+  cancelWorkflowRun?: (id: string, runId: string) => Promise<WorkflowRunStatus>;
 }
 
 interface WorkspaceServiceDelegates<TFile = unknown> {
@@ -79,6 +80,7 @@ interface WorkspaceServiceDelegates<TFile = unknown> {
   ) => Promise<WorkflowRunRecord>;
   getWorkflowRun?: (id: string, runId: string) => Promise<WorkflowRunRecord>;
   getWorkflowRunLogs?: (id: string, runId: string, cursor?: string) => Promise<WorkflowRunLogChunk>;
+  cancelWorkflowRun?: (id: string, runId: string) => Promise<WorkflowRunStatus>;
 }
 
 export function createDummyWorkspaceService<TFile = unknown>(
@@ -94,6 +96,7 @@ export function createDummyWorkspaceService<TFile = unknown>(
     startWorkflowRun: delegates.startWorkflowRun,
     getWorkflowRun: delegates.getWorkflowRun,
     getWorkflowRunLogs: delegates.getWorkflowRunLogs,
+    cancelWorkflowRun: delegates.cancelWorkflowRun,
   };
 }
 

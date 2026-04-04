@@ -52,6 +52,7 @@ export function PageSourceRepoEntry({
   onGoService,
   onFocusedFieldChange,
   onDownloadSource,
+  onCancelSource,
   onWorkspaceUpload,
   onRemoveWorkspaceSource,
 }: PageSourceRepoEntryProps) {
@@ -171,6 +172,29 @@ export function PageSourceRepoEntry({
                     </button>
                   ))}
                 </div>
+                {downloadRunning && (
+                  <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      onClick={onCancelSource}
+                      style={{
+                        ...actionBtn({
+                          fontWeight: 700,
+                          padding: "7px 12px",
+                        }),
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        border: "1.5px solid #fecdd3",
+                        background: "#fff1f2",
+                        color: "#be123c",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {Ic.x(12)} Cancel current source operation
+                    </button>
+                  </div>
+                )}
               </div>
               {repoMode === "upload" && (
                 <SourceUploadField
@@ -225,28 +249,51 @@ export function PageSourceRepoEntry({
                     </select>
 
                     <div>
-                      <button
-                        type="button"
-                        disabled={locked || !canDownload || downloadRunning}
-                        onClick={() => onDownloadSource(originTypeDraft)}
-                        style={{
-                          ...actionBtn({
-                            fontWeight: 700,
-                          }),
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
-                          border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
-                          background: downloadDone ? "#f0fdf4" : C.accentBg,
-                          color: downloadDone ? "#15803d" : C.accent,
-                          width: "fit-content",
-                          opacity: locked || !canDownload ? 0.6 : 1,
-                        }}
-                      >
-                        {downloadRunning ? Ic.loader(13) : Ic.download(13)}
-                        {downloadLabel}
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          type="button"
+                          disabled={locked || !canDownload || downloadRunning}
+                          onClick={() => onDownloadSource(originTypeDraft)}
+                          style={{
+                            ...actionBtn({
+                              fontWeight: 700,
+                            }),
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
+                            border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
+                            background: downloadDone ? "#f0fdf4" : C.accentBg,
+                            color: downloadDone ? "#15803d" : C.accent,
+                            width: "fit-content",
+                            opacity: locked || !canDownload ? 0.6 : 1,
+                          }}
+                        >
+                          {downloadRunning ? Ic.loader(13) : Ic.download(13)}
+                          {downloadLabel}
+                        </button>
+                        {downloadRunning && (
+                          <button
+                            type="button"
+                            onClick={onCancelSource}
+                            style={{
+                              ...actionBtn({
+                                fontWeight: 700,
+                                padding: "8px 12px",
+                              }),
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              border: "1.5px solid #fecdd3",
+                              background: "#fff1f2",
+                              color: "#be123c",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {Ic.x(12)} Cancel
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </FieldRow>

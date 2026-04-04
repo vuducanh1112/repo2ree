@@ -6,15 +6,15 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree.service.api.build_runtime import (
-    _persist_run_state,
-    _require_workspace,
+from repo2ree.service.api.run_management import (
+    _append_run_log,
+    _is_cancel_requested,
     _run_summary,
+    _start_background_run,
 )
 from repo2ree.service.storage.workspace_files import (
     read_workspace_metadata,
@@ -296,31 +296,43 @@ def create_activation_run_state(
     workspace_id: str,
     payload: CreateActivationTestRunPayload,
 ) -> dict[str, Any]:
-    _require_workspace(workspace_id)
-    created_at = _utc_now()
-    started_at = created_at
-    run_id = f"activation-{uuid4().hex}"
     activation_script_path = resolve_activation_script_path(
         workspace_id,
         params={},
         activation_script_path=payload.activation_script_path,
     )
-    status, logs, outputs = run_activation_test(
-        workspace_id=workspace_id,
-        run_id=run_id,
-        activation_script_path=activation_script_path,
-    )
     request_payload = {"activation_script_path": activation_script_path}
-    return _persist_run_state(
+
+    def _runner(ws_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        if _is_cancel_requested(ws_id, run_id):
+            _append_run_log(ws_id, run_id, "system", "warn", "Activation run canceled")
+            return "canceled", {"activationScriptPath": activation_script_path}
+        status, logs, outputs = run_activation_test(
+            workspace_id=ws_id,
+            run_id=run_id,
+            activation_script_path=activation_script_path,
+        )
+        for entry in logs:
+            _append_run_log(
+                ws_id,
+                run_id,
+                str(entry.get("stream") or "system"),
+                str(entry.get("level") or "info"),
+                str(entry.get("message") or ""),
+            )
+        if _is_cancel_requested(ws_id, run_id) and status not in {
+            "failed",
+            "succeeded",
+        }:
+            return "canceled", outputs
+        return status, outputs
+
+    return _start_background_run(
         workspace_id=workspace_id,
-        run_id=run_id,
         operation="activation",
-        status=status,
-        created_at=created_at,
-        started_at=started_at,
-        outputs=outputs,
-        logs=logs,
         request_payload=request_payload,
+        run_id_prefix="activation",
+        runner=_runner,
     )
 
 

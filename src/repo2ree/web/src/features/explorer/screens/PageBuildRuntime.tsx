@@ -50,6 +50,7 @@ export function PageBuildRuntime({
   badge,
   ts,
   onRun,
+  onCancel,
   onGo,
   onGoFields,
   missing,
@@ -327,6 +328,7 @@ export function PageBuildRuntime({
             runningLabel="Building…"
             doneLabel="Re-build"
             helperText="Execute the build script and record build logs."
+            onCancel={() => onCancel?.(svc.key)}
             onRun={() =>
               onRun(svc.key, {
                 ...params,

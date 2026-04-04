@@ -7,6 +7,7 @@ import type {
   SourceAcquireRequestDto,
   UploadInitRequestDto,
   UploadInitResponseDto,
+  WorkflowRunDto,
   WorkspaceDetailDto,
   WorkspaceSummaryDto,
 } from "./types";
@@ -97,8 +98,8 @@ export class WorkspaceApi {
   async acquireSource(
     workspaceId: string,
     payload: SourceAcquireRequestDto,
-  ): Promise<{ runId: string; status: string }> {
-    return this.client.request<{ runId: string; status: string }>(
+  ): Promise<WorkflowRunDto> {
+    return this.client.request<WorkflowRunDto>(
       endpoints.workspaceSourceAcquire(workspaceId),
       {
         method: "POST",
@@ -124,8 +125,8 @@ export class WorkspaceApi {
     workspaceId: string,
     uploadToken: string,
     archiveName: string,
-  ): Promise<{ sourceSnapshotId: string; status: string }> {
-    return this.client.request<{ sourceSnapshotId: string; status: string }>(
+  ): Promise<WorkflowRunDto> {
+    return this.client.request<WorkflowRunDto>(
       endpoints.workspaceSourceUploadComplete(workspaceId),
       {
         method: "POST",

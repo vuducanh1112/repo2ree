@@ -9,6 +9,7 @@ interface PollWorkflowRunOptions {
   workspaceId: string;
   runId: string;
   maxIterations?: number;
+  onUpdate?: (update: PollWorkflowRunResult) => void;
 }
 
 interface PollWorkflowRunResult {
@@ -33,20 +34,21 @@ async function readAvailableLogs(
   workspaceService: IWorkspaceService,
   workspaceId: string,
   runId: string,
+  cursor?: string,
 ): Promise<LogLine[]> {
   if (!workspaceService.getWorkflowRunLogs) {
     return [];
   }
 
   const lines: LogLine[] = [];
-  let cursor: string | undefined;
+  let nextCursor = cursor;
   for (let i = 0; i < 20; i += 1) {
-    const chunk = await workspaceService.getWorkflowRunLogs(workspaceId, runId, cursor);
+    const chunk = await workspaceService.getWorkflowRunLogs(workspaceId, runId, nextCursor);
     lines.push(...chunk.lines);
     if (!chunk.hasMore || !chunk.nextCursor) {
       break;
     }
-    cursor = chunk.nextCursor;
+    nextCursor = chunk.nextCursor;
   }
   return lines;
 }
@@ -69,13 +71,40 @@ export async function pollWorkflowRun(
 
   const maxIterations = options.maxIterations || 90;
   let latestRun = await workspaceService.getWorkflowRun(options.workspaceId, options.runId);
+  let logCursor: string | undefined;
+  let aggregatedLines: LogLine[] = [];
+
+  const pullLogs = async (): Promise<void> => {
+    if (!workspaceService.getWorkflowRunLogs) return;
+    const chunk = await workspaceService.getWorkflowRunLogs(
+      options.workspaceId,
+      options.runId,
+      logCursor,
+    );
+    aggregatedLines = [...aggregatedLines, ...chunk.lines];
+    logCursor = chunk.nextCursor;
+  };
 
   for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+    await pullLogs();
+    const snapshot: PollWorkflowRunResult = {
+      status: latestRun.status,
+      lines: aggregatedLines,
+      ts: resolveRunTimestamp(latestRun),
+    };
+    options.onUpdate?.(snapshot);
+
     if (TERMINAL_STATUSES.has(latestRun.status)) {
-      const lines = await readAvailableLogs(workspaceService, options.workspaceId, options.runId);
+      const lines = await readAvailableLogs(
+        workspaceService,
+        options.workspaceId,
+        options.runId,
+        logCursor,
+      );
+      aggregatedLines = [...aggregatedLines, ...lines];
       return {
         status: latestRun.status,
-        lines,
+        lines: aggregatedLines,
         ts: resolveRunTimestamp(latestRun),
       };
     }
@@ -84,10 +113,16 @@ export async function pollWorkflowRun(
     latestRun = await workspaceService.getWorkflowRun(options.workspaceId, options.runId);
   }
 
-  const lines = await readAvailableLogs(workspaceService, options.workspaceId, options.runId);
+  const lines = await readAvailableLogs(
+    workspaceService,
+    options.workspaceId,
+    options.runId,
+    logCursor,
+  );
+  aggregatedLines = [...aggregatedLines, ...lines];
   return {
     status: latestRun.status,
-    lines: [...lines, { type: "warn", msg: "Run still active after polling window ended" }],
+    lines: [...aggregatedLines, { type: "warn", msg: "Run still active after polling window ended" }],
     ts: resolveRunTimestamp(latestRun),
   };
 }

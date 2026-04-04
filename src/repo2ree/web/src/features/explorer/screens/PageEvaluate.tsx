@@ -39,6 +39,7 @@ export function PageEvaluate({
   badge,
   ts,
   onRun,
+  onCancel,
   onGo,
   onGoFields,
   missing,
@@ -99,6 +100,7 @@ export function PageEvaluate({
                 ? "Run evaluation with the selected parameters."
                 : "Load source into workspace first. Evaluate is enabled only after source download/upload succeeds."
             }
+            onCancel={() => onCancel?.(svc.key)}
             onRun={() => onRun(svc.key, params)}
           />
 

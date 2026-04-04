@@ -41,6 +41,7 @@ export function useExplorerWorkflow({
   serviceParams,
   currentReeArchiveEntries,
 }: UseExplorerWorkflowArgs) {
+  const activeRunIdsRef = useRef<Record<string, string>>({});
   const showToast = (msg: string, type: ToastState["type"] = "info") =>
     dispatch(explorerActions.setToast({ message: msg, type }));
 
@@ -125,6 +126,12 @@ export function useExplorerWorkflow({
       serviceRunHandlers,
       workspaceService,
       workspaceId: WORKSPACE_ID,
+      onRunStarted: (actionKey, runId) => {
+        activeRunIdsRef.current[actionKey] = runId;
+      },
+      onRunFinished: (actionKey) => {
+        delete activeRunIdsRef.current[actionKey];
+      },
     });
   }
 
@@ -135,6 +142,12 @@ export function useExplorerWorkflow({
       dispatch,
       onSourceChange: handleSourceChange,
       showToast,
+      onRunStarted: (actionKey, runId) => {
+        activeRunIdsRef.current[actionKey] = runId;
+      },
+      onRunFinished: (actionKey) => {
+        delete activeRunIdsRef.current[actionKey];
+      },
     });
 
   const handleSeal = () => {
@@ -184,6 +197,22 @@ export function useExplorerWorkflow({
     await runAction(key, params);
   }
 
+  const cancelWorkflowAction = async (key: string) => {
+    const runId = activeRunIdsRef.current[key];
+    if (!runId || !workspaceService.cancelWorkflowRun) {
+      return;
+    }
+    try {
+      await workspaceService.cancelWorkflowRun(WORKSPACE_ID, runId);
+      showToast(`Cancel requested for ${key}`, "info");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? `Failed to cancel ${key}: ${error.message}` : `Failed to cancel ${key}`,
+        "error",
+      );
+    }
+  };
+
   return {
     handleSeal,
     handleDownloadRee,
@@ -193,5 +222,6 @@ export function useExplorerWorkflow({
     persistWorkspaceFile,
     runAction,
     runWorkflowAction,
+    cancelWorkflowAction,
   };
 }

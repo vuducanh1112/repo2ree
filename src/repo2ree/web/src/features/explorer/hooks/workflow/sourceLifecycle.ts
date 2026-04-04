@@ -19,6 +19,7 @@ import { serializeWorkspaceResetPayload } from "../../../../services/workspaceSe
 import type { FileTreeNode, Ree, ServiceParams, SourceUploadCommit } from "../../../../types";
 import type { GenericServiceParams } from "../../../../types/services";
 import { normalizeSnapshotArchiveName, normalizeWorkspacePath } from "../../../../utils";
+import { pollWorkflowRun } from "./pollWorkflowRun";
 import type { ShowToast } from "./types";
 
 export const WORKSPACE_ID = "active";
@@ -199,6 +200,8 @@ interface CreateSourceActionsArgs {
   dispatch: React.Dispatch<AppAction>;
   onSourceChange: (options?: { silent?: boolean }) => void;
   showToast: ShowToast;
+  onRunStarted?: (key: string, runId: string) => void;
+  onRunFinished?: (key: string) => void;
 }
 
 export function createSourceActions({
@@ -207,6 +210,8 @@ export function createSourceActions({
   dispatch,
   onSourceChange,
   showToast,
+  onRunStarted,
+  onRunFinished,
 }: CreateSourceActionsArgs) {
   const cloneTree = (nodes: FileTreeNode[]): FileTreeNode[] =>
     nodes.map((node) => ({
@@ -236,20 +241,49 @@ export function createSourceActions({
     dispatch(
       explorerActions.setActionStates((prevStates) => ({ ...prevStates, source: "loading" })),
     );
-    await new Promise((resolve) => setTimeout(resolve, 1400));
+    if (!workspaceService.startWorkflowRun || !workspaceService.getWorkflowRun) {
+      await workspaceService.resetWorkspace(
+        WORKSPACE_ID,
+        serializeWorkspaceResetPayload({
+          mode: "download",
+          source: ree.origin_url,
+          sourceType: originType,
+        }),
+      );
+    } else {
+      const run = await workspaceService.startWorkflowRun(WORKSPACE_ID, "source", {
+        mode: "download",
+        source: ree.origin_url,
+        sourceType: originType,
+      });
+      onRunStarted?.("source", run.runId);
+      const result = await pollWorkflowRun(workspaceService, {
+        workspaceId: WORKSPACE_ID,
+        runId: run.runId,
+        onUpdate: (update) => {
+          dispatch(
+            explorerActions.setServiceLogs((prevLogs) => ({
+              ...prevLogs,
+              source: { lines: update.lines, ts: update.ts },
+            })),
+          );
+        },
+      });
+      onRunFinished?.("source");
+      if (result.status === "failed" || result.status === "canceled") {
+        dispatch(
+          explorerActions.setActionStates((prevStates) => ({ ...prevStates, source: "done" })),
+        );
+        showToast(`Source ${result.status}`, "error");
+        return;
+      }
+    }
+
     dispatch(explorerActions.setActionStates((prevStates) => ({ ...prevStates, source: "done" })));
     dispatch(explorerActions.setBadges((prevBadges) => ({ ...prevBadges, source: true })));
     const initialTs = new Date().toISOString();
     dispatch(
       explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, source: initialTs })),
-    );
-    await workspaceService.resetWorkspace(
-      WORKSPACE_ID,
-      serializeWorkspaceResetPayload({
-        mode: "download",
-        source: ree.origin_url,
-        sourceType: originType,
-      }),
     );
     const workspaceFiles = await refreshWorkspaceFiles();
     const snapshotFiles = cloneTree(workspaceFiles);
@@ -294,6 +328,9 @@ export function createSourceActions({
     const archiveName = payload.archiveName || "source.tar.gz";
     const runUpload = async () => {
       try {
+        dispatch(
+          explorerActions.setActionStates((prevStates) => ({ ...prevStates, source: "loading" })),
+        );
         let archiveContentBase64: string | undefined;
         if (payload.archiveFile) {
           const rawBuffer = await payload.archiveFile.arrayBuffer();
@@ -305,10 +342,39 @@ export function createSourceActions({
           archiveContentBase64 = btoa(binary);
         }
 
-        await workspaceService.resetWorkspace(
-          WORKSPACE_ID,
-          serializeWorkspaceResetPayload({ mode: "upload", archiveName, archiveContentBase64 }),
-        );
+        if (!workspaceService.startWorkflowRun || !workspaceService.getWorkflowRun) {
+          await workspaceService.resetWorkspace(
+            WORKSPACE_ID,
+            serializeWorkspaceResetPayload({ mode: "upload", archiveName, archiveContentBase64 }),
+          );
+        } else {
+          const run = await workspaceService.startWorkflowRun(WORKSPACE_ID, "source", {
+            mode: "upload",
+            archiveName,
+            archiveContentBase64,
+          });
+          onRunStarted?.("source", run.runId);
+          const result = await pollWorkflowRun(workspaceService, {
+            workspaceId: WORKSPACE_ID,
+            runId: run.runId,
+            onUpdate: (update) => {
+              dispatch(
+                explorerActions.setServiceLogs((prevLogs) => ({
+                  ...prevLogs,
+                  source: { lines: update.lines, ts: update.ts },
+                })),
+              );
+            },
+          });
+          onRunFinished?.("source");
+          if (result.status === "failed" || result.status === "canceled") {
+            dispatch(
+              explorerActions.setActionStates((prevStates) => ({ ...prevStates, source: "done" })),
+            );
+            showToast(`Source ${result.status}`, "error");
+            return;
+          }
+        }
         const workspaceFiles = await refreshWorkspaceFiles();
         const snapshotFiles = cloneTree(workspaceFiles);
         const snapshotArchiveName = normalizeSnapshotArchiveName(archiveName);
@@ -330,8 +396,14 @@ export function createSourceActions({
         dispatch(
           explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, source: ts })),
         );
+        dispatch(
+          explorerActions.setActionStates((prevStates) => ({ ...prevStates, source: "done" })),
+        );
         showToast("Archive extracted into workspace", "success");
       } catch (error) {
+        dispatch(
+          explorerActions.setActionStates((prevStates) => ({ ...prevStates, source: "done" })),
+        );
         showToast(
           error instanceof Error
             ? `Failed to extract archive: ${error.message}`

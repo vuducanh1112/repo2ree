@@ -76,6 +76,7 @@ export type WorkflowOperationDto =
   | "build"
   | "sbom"
   | "activation"
+  | "source"
   | "swh"
   | "zenodo"
   | "dataverse";

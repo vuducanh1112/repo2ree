@@ -42,6 +42,7 @@ export function PageTestActivation({
   badge,
   ts,
   onRun,
+  onCancel,
   onGo,
   onGoFields,
   missing,
@@ -115,6 +116,7 @@ export function PageTestActivation({
             idleLabel="Run activation"
             runningLabel="Running…"
             helperText="Runs the activation test script in the runtime environment."
+            onCancel={() => onCancel?.(svc.key)}
             onRun={() => onRun(svc.key, params)}
           />
 

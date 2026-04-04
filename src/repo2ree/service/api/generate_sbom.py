@@ -3,18 +3,19 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree.service.api.build_runtime import (
-    _persist_run_state,
-    _require_workspace,
+from repo2ree.service.api.run_management import (
+    _append_run_log,
+    _is_cancel_requested,
     _run_summary,
-    _utc_now,
+    _start_background_run,
 )
 from repo2ree.service.storage.workspace_files import (
+    WorkspacePatchPayload,
+    patch_workspace,
     read_workspace_metadata,
     workspace_dir,
     write_file_content,
@@ -111,6 +112,10 @@ def generate_dummy_sbom_for_runtime(
         sbom_relative_path,
         json.dumps(sbom_payload, indent=2),
     )
+    patch_workspace(
+        workspace_id,
+        WorkspacePatchPayload(reePatch={"sbom": sbom_relative_path}),
+    )
 
     return {
         "sbomRelativePath": sbom_relative_path,
@@ -123,60 +128,44 @@ def create_generate_sbom_run_state(
     workspace_id: str,
     payload: CreateGenerateSbomRunPayload,
 ) -> dict[str, Any]:
-    _require_workspace(workspace_id)
-    created_at = _utc_now()
-    started_at = created_at
-    run_id = f"sbom-{uuid4().hex}"
     runtime_path = resolve_sbom_runtime_path(
         workspace_id=workspace_id,
         produced_runtime_path=payload.produced_runtime_path,
         params={},
     )
-    outputs = generate_dummy_sbom_for_runtime(
-        workspace_id=workspace_id,
-        runtime_relative_path=runtime_path,
-    )
     request_payload = {"produced_runtime_path": runtime_path}
-    logs = [
-        {
-            "seq": 1,
-            "ts": _utc_now(),
-            "stream": "system",
-            "level": "info",
-            "message": f"Starting sbom run {run_id}",
-        },
-        {
-            "seq": 2,
-            "ts": _utc_now(),
-            "stream": "system",
-            "level": "info",
-            "message": f"Runtime input: {runtime_path}",
-        },
-        {
-            "seq": 3,
-            "ts": _utc_now(),
-            "stream": "system",
-            "level": "info",
-            "message": f"Generated SBOM: {outputs['sbomRelativePath']}",
-        },
-        {
-            "seq": 4,
-            "ts": _utc_now(),
-            "stream": "system",
-            "level": "info",
-            "message": "SBOM run succeeded",
-        },
-    ]
-    return _persist_run_state(
+
+    def _runner(ws_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        _append_run_log(ws_id, run_id, "system", "info", f"Starting sbom run {run_id}")
+        _append_run_log(
+            ws_id, run_id, "system", "info", f"Runtime input: {runtime_path}"
+        )
+        if _is_cancel_requested(ws_id, run_id):
+            _append_run_log(ws_id, run_id, "system", "warn", "SBOM run canceled")
+            return "canceled", {
+                "runtimeRelativePath": runtime_path,
+                "format": "spdx-json",
+            }
+        outputs = generate_dummy_sbom_for_runtime(
+            workspace_id=ws_id,
+            runtime_relative_path=runtime_path,
+        )
+        _append_run_log(
+            ws_id,
+            run_id,
+            "system",
+            "info",
+            f"Generated SBOM: {outputs['sbomRelativePath']}",
+        )
+        _append_run_log(ws_id, run_id, "system", "info", "SBOM run succeeded")
+        return "succeeded", outputs
+
+    return _start_background_run(
         workspace_id=workspace_id,
-        run_id=run_id,
         operation="sbom",
-        status="succeeded",
-        created_at=created_at,
-        started_at=started_at,
-        outputs=outputs,
-        logs=logs,
         request_payload=request_payload,
+        run_id_prefix="sbom",
+        runner=_runner,
     )
 
 

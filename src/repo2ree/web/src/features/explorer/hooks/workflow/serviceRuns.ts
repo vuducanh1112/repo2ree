@@ -167,6 +167,8 @@ interface ExecuteServiceRunArgs {
   serviceRunHandlers: ServiceRunHandlerMap;
   workspaceService: IWorkspaceService<FileTreeNode>;
   workspaceId: string;
+  onRunStarted?: (key: string, runId: string) => void;
+  onRunFinished?: (key: string) => void;
 }
 
 export async function executeServiceRunAction({
@@ -180,6 +182,8 @@ export async function executeServiceRunAction({
   serviceRunHandlers,
   workspaceService,
   workspaceId,
+  onRunStarted,
+  onRunFinished,
 }: ExecuteServiceRunArgs): Promise<WorkspaceServiceLogEntry> {
   dispatch(explorerActions.setActionStates((prevStates) => ({ ...prevStates, [key]: "loading" })));
 
@@ -191,73 +195,90 @@ export async function executeServiceRunAction({
           activation_script: ree.activation_script,
         }
         : params;
-    const run = await workspaceService.startWorkflowRun(workspaceId, key, runParams);
-    const polledRun = await pollWorkflowRun(workspaceService, {
-      workspaceId,
-      runId: run.runId,
-    });
+    let runId: string | null = null;
+    try {
+      const run = await workspaceService.startWorkflowRun(workspaceId, key, runParams);
+      runId = run.runId;
+      onRunStarted?.(key, run.runId);
+      const polledRun = await pollWorkflowRun(workspaceService, {
+        workspaceId,
+        runId: run.runId,
+        onUpdate: (update) => {
+          dispatch(
+            explorerActions.setServiceLogs((prevLogs) => ({
+              ...prevLogs,
+              [key]: { lines: update.lines, ts: update.ts },
+            })),
+          );
+        },
+      });
     const lines = polledRun.lines;
     const ts = polledRun.ts;
 
-    dispatch(explorerActions.setServiceLogs((prevLogs) => ({ ...prevLogs, [key]: { lines, ts } })));
-    dispatch(explorerActions.setActionStates((prevStates) => ({ ...prevStates, [key]: "done" })));
-    dispatch(explorerActions.setBadges((prevBadges) => ({ ...prevBadges, [key]: true })));
-    dispatch(explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, [key]: ts })));
+      dispatch(explorerActions.setServiceLogs((prevLogs) => ({ ...prevLogs, [key]: { lines, ts } })));
+      dispatch(explorerActions.setActionStates((prevStates) => ({ ...prevStates, [key]: "done" })));
+      dispatch(explorerActions.setBadges((prevBadges) => ({ ...prevBadges, [key]: true })));
+      dispatch(explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, [key]: ts })));
 
-    if (polledRun.status === "failed" || polledRun.status === "canceled") {
-      showToast(`${key} ${polledRun.status}`, "error");
-      return { lines, ts };
-    }
-
-    if (key === "build" || key === "sbom") {
-      try {
-        const workspace = await workspaceService.getWorkspace(workspaceId);
-        dispatch(explorerActions.setVirtualFiles(workspace.files));
-      } catch {
-        // Keep run success status; UI can still show logs even if refresh fails.
+      if (polledRun.status === "failed" || polledRun.status === "canceled") {
+        showToast(`${key} ${polledRun.status}`, "error");
+        return { lines, ts };
       }
-    }
 
-    const isEvaluateRun = key === PAGE.EVALUATE;
-    const newLevel = isEvaluateRun ? computeEvaluateLevelFromFiles(virtualFiles || []) : level;
+      if (key === "build" || key === "sbom") {
+        try {
+          const workspace = await workspaceService.getWorkspace(workspaceId);
+          dispatch(explorerActions.setVirtualFiles(workspace.files));
+        } catch {
+          // Keep run success status; UI can still show logs even if refresh fails.
+        }
+      }
 
-    if (isWorkflowServiceKey(key)) {
-      if (key === "evaluate") {
-        serviceRunHandlers.evaluate(params as WorkflowServiceRunParamsByKey["evaluate"], newLevel);
-      } else if (key === "build") {
-        serviceRunHandlers.build(params as WorkflowServiceRunParamsByKey["build"], newLevel);
-      } else if (key === "sbom") {
-        serviceRunHandlers.sbom(params as WorkflowServiceRunParamsByKey["sbom"], newLevel);
+      const isEvaluateRun = key === PAGE.EVALUATE;
+      const newLevel = isEvaluateRun ? computeEvaluateLevelFromFiles(virtualFiles || []) : level;
+
+      if (isWorkflowServiceKey(key)) {
+        if (key === "evaluate") {
+          serviceRunHandlers.evaluate(params as WorkflowServiceRunParamsByKey["evaluate"], newLevel);
+        } else if (key === "build") {
+          serviceRunHandlers.build(params as WorkflowServiceRunParamsByKey["build"], newLevel);
+        } else if (key === "sbom") {
+          serviceRunHandlers.sbom(params as WorkflowServiceRunParamsByKey["sbom"], newLevel);
+        } else {
+          serviceRunHandlers.activation(
+            params as WorkflowServiceRunParamsByKey["activation"],
+            newLevel,
+          );
+        }
+        return { lines, ts };
+      }
+
+      if (key === "create") {
+        dispatch(explorerActions.setLocked(true));
+        showToast("REE created — fields locked", "success");
+      } else if (key === "swh") {
+        const swhid = `swh:1:dir:${Math.random().toString(16).slice(2, 14)}`;
+        dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, swhid })));
+        showToast("Archived at Software Heritage — SWHID assigned", "success");
+      } else if (key === "zenodo") {
+        const doi = `10.5281/zenodo.${Math.floor(Math.random() * 9000000 + 1000000)}`;
+        dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, zenodo_doi: doi })));
+        showToast("Published on Zenodo — DOI assigned", "success");
+      } else if (key === "dataverse") {
+        const doi = `doi:10.5072/DVN/${Math.floor(Math.random() * 900000 + 100000)}`;
+        dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, dataverse_doi: doi })));
+        showToast("Dataset published on Dataverse — DOI assigned", "success");
       } else {
-        serviceRunHandlers.activation(
-          params as WorkflowServiceRunParamsByKey["activation"],
-          newLevel,
-        );
+        const svc = SERVICES.find((service) => service.key === key);
+        showToast(`${svc?.label ?? key} completed`, "success");
       }
+
       return { lines, ts };
+    } finally {
+      if (runId) {
+        onRunFinished?.(key);
+      }
     }
-
-    if (key === "create") {
-      dispatch(explorerActions.setLocked(true));
-      showToast("REE created — fields locked", "success");
-    } else if (key === "swh") {
-      const swhid = `swh:1:dir:${Math.random().toString(16).slice(2, 14)}`;
-      dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, swhid })));
-      showToast("Archived at Software Heritage — SWHID assigned", "success");
-    } else if (key === "zenodo") {
-      const doi = `10.5281/zenodo.${Math.floor(Math.random() * 9000000 + 1000000)}`;
-      dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, zenodo_doi: doi })));
-      showToast("Published on Zenodo — DOI assigned", "success");
-    } else if (key === "dataverse") {
-      const doi = `doi:10.5072/DVN/${Math.floor(Math.random() * 900000 + 100000)}`;
-      dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, dataverse_doi: doi })));
-      showToast("Dataset published on Dataverse — DOI assigned", "success");
-    } else {
-      const svc = SERVICES.find((service) => service.key === key);
-      showToast(`${svc?.label ?? key} completed`, "success");
-    }
-
-    return { lines, ts };
   }
 
   await new Promise((resolve) => setTimeout(resolve, 1600 + Math.random() * 700));
@@ -269,6 +290,7 @@ export async function executeServiceRunAction({
 
   dispatch(explorerActions.setServiceLogs((prevLogs) => ({ ...prevLogs, [key]: { lines, ts } })));
   dispatch(explorerActions.setActionStates((prevStates) => ({ ...prevStates, [key]: "done" })));
+  onRunFinished?.(key);
   dispatch(explorerActions.setBadges((prevBadges) => ({ ...prevBadges, [key]: true })));
   dispatch(explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, [key]: ts })));
 

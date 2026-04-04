@@ -31,6 +31,7 @@ interface ServiceActionSectionProps {
   doneLabel?: string;
   helperText: string;
   onRun: () => void;
+  onCancel?: () => void;
 }
 export function ServiceActionSection({
   color,
@@ -42,6 +43,7 @@ export function ServiceActionSection({
   doneLabel = "Re-run",
   helperText,
   onRun,
+  onCancel,
 }: ServiceActionSectionProps) {
   const buttonLabel = running ? runningLabel : runDone ? doneLabel : idleLabel;
   return (
@@ -76,6 +78,28 @@ export function ServiceActionSection({
           </span>
           {buttonLabel}
         </button>
+        {running && onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              ...actionBtn({
+                borderRadius: 8,
+                padding: "8px 14px",
+                fontWeight: 700,
+              }),
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              background: "#fff1f2",
+              border: "1.5px solid #fecdd3",
+              color: "#be123c",
+              cursor: "pointer",
+            }}
+          >
+            {Ic.x(14)} Cancel
+          </button>
+        )}
         <div style={S_TEXT_MUTED_11}>{helperText}</div>
       </div>
     </div>

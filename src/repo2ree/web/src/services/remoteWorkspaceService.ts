@@ -158,6 +158,28 @@ export function createRemoteWorkspaceService(
           params.activation_script_path ?? params.activation_script ?? "",
         ),
       });
+    } else if (scriptKey === "source") {
+      const mode = String(params.mode || "");
+      if (mode === "download") {
+        run = await workspaceApi.acquireSource(workspaceId, {
+          originUrl: String(params.source ?? ""),
+          sourceType: (String(params.sourceType ?? "git") as "git" | "tarball" | "zip"),
+        });
+      } else if (mode === "upload") {
+        const archiveName = String(params.archiveName || "source.tar.gz");
+        const init = await workspaceApi.initUpload(workspaceId, {
+          fileName: archiveName,
+          size: 0,
+          contentType: "application/gzip",
+        });
+        if (params.archiveContentBase64) {
+          const archiveData = decodeBase64ToArrayBuffer(String(params.archiveContentBase64));
+          await workspaceApi.uploadSourceBytes(init.uploadUrl, archiveData);
+        }
+        run = await workspaceApi.completeUpload(workspaceId, init.uploadToken, archiveName);
+      } else {
+        throw new Error("Unsupported source workflow mode");
+      }
     } else {
       throw new Error(`Unsupported remote workflow operation: ${scriptKey}`);
     }
@@ -195,6 +217,12 @@ export function createRemoteWorkspaceService(
       nextCursor: logs.nextCursor,
       hasMore: logs.hasMore,
     };
+  };
+
+  const cancelWorkflowRun = async (id: string, runId: string) => {
+    const workspaceId = await ensureWorkspaceId(id);
+    const response = await runsApi.cancelRun(workspaceId, runId);
+    return mapStatus(response.status);
   };
 
   const resetWorkspaceRequest = async (
@@ -284,5 +312,6 @@ export function createRemoteWorkspaceService(
     startWorkflowRun,
     getWorkflowRun,
     getWorkflowRunLogs,
+    cancelWorkflowRun,
   };
 }
