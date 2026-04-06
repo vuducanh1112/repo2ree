@@ -1,6 +1,7 @@
 export interface LogLine {
   type: "info" | "ok" | "warn" | "err" | "out";
   msg: string;
+  ts?: string;
 }
 
 export interface LogEntry {

@@ -59,7 +59,11 @@ export interface ServicePageProps {
   onGoFields: () => void;
   onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
   onFilesChange: React.Dispatch<React.SetStateAction<FileTreeNode[]>>;
-  onPersistWorkspaceFile: (previousPath: string | undefined, path: string, content: string) => Promise<void>;
+  onPersistWorkspaceFile: (
+    previousPath: string | undefined,
+    path: string,
+    content: string,
+  ) => Promise<void>;
   missing: ServiceRequire[];
   params: WorkflowServiceRunParams;
   setParam: (key: string, value: ServiceParamValue) => void;

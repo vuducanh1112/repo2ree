@@ -60,7 +60,10 @@ export function createServiceRunHandlers({
         );
         producedRuntimePath = producedName;
       }
-      if (expectedOutput && (workspaceServiceMode === "remote" || producedRuntimePath === expectedOutput)) {
+      if (
+        expectedOutput &&
+        (workspaceServiceMode === "remote" || producedRuntimePath === expectedOutput)
+      ) {
         dispatch(
           explorerActions.setRee((prevRee) => ({
             ...prevRee,
@@ -191,9 +194,9 @@ export async function executeServiceRunAction({
     const runParams =
       key === "activation"
         ? {
-          ...params,
-          activation_script: ree.activation_script,
-        }
+            ...params,
+            activation_script: ree.activation_script,
+          }
         : params;
     let runId: string | null = null;
     try {
@@ -212,13 +215,17 @@ export async function executeServiceRunAction({
           );
         },
       });
-    const lines = polledRun.lines;
-    const ts = polledRun.ts;
+      const lines = polledRun.lines;
+      const ts = polledRun.ts;
 
-      dispatch(explorerActions.setServiceLogs((prevLogs) => ({ ...prevLogs, [key]: { lines, ts } })));
+      dispatch(
+        explorerActions.setServiceLogs((prevLogs) => ({ ...prevLogs, [key]: { lines, ts } })),
+      );
       dispatch(explorerActions.setActionStates((prevStates) => ({ ...prevStates, [key]: "done" })));
       dispatch(explorerActions.setBadges((prevBadges) => ({ ...prevBadges, [key]: true })));
-      dispatch(explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, [key]: ts })));
+      dispatch(
+        explorerActions.setTimestamps((prevTimestamps) => ({ ...prevTimestamps, [key]: ts })),
+      );
 
       if (polledRun.status === "failed" || polledRun.status === "canceled") {
         showToast(`${key} ${polledRun.status}`, "error");
@@ -239,7 +246,10 @@ export async function executeServiceRunAction({
 
       if (isWorkflowServiceKey(key)) {
         if (key === "evaluate") {
-          serviceRunHandlers.evaluate(params as WorkflowServiceRunParamsByKey["evaluate"], newLevel);
+          serviceRunHandlers.evaluate(
+            params as WorkflowServiceRunParamsByKey["evaluate"],
+            newLevel,
+          );
         } else if (key === "build") {
           serviceRunHandlers.build(params as WorkflowServiceRunParamsByKey["build"], newLevel);
         } else if (key === "sbom") {

@@ -399,7 +399,7 @@ export function PageGenerateSBOM({
                   fieldKey={sf.fieldKey}
                   files={files || MOCK_FILES}
                   onFilesChange={onFilesChange}
-                    onPersistWorkspaceFile={onPersistWorkspaceFile}
+                  onPersistWorkspaceFile={onPersistWorkspaceFile}
                   ree={ree}
                   onReeChange={onReeChange}
                 />

@@ -111,20 +111,20 @@ export class WorkflowRunsApi {
 
 export function mapRunLogsToLegacy(
   lines: WorkflowLogEntryDto[],
-): Array<{ type: "info" | "ok" | "warn" | "err" | "out"; msg: string }> {
+): Array<{ type: "info" | "ok" | "warn" | "err" | "out"; msg: string; ts?: string }> {
   return lines.map((line) => {
     if (line.level === "error") {
-      return { type: "err", msg: line.message };
+      return { type: "err", msg: line.message, ts: line.ts };
     }
     if (line.level === "warn") {
-      return { type: "warn", msg: line.message };
+      return { type: "warn", msg: line.message, ts: line.ts };
     }
     if (line.stream === "stdout") {
-      return { type: "out", msg: line.message };
+      return { type: "out", msg: line.message, ts: line.ts };
     }
     if (line.level === "debug") {
-      return { type: "info", msg: line.message };
+      return { type: "info", msg: line.message, ts: line.ts };
     }
-    return { type: "ok", msg: line.message };
+    return { type: "ok", msg: line.message, ts: line.ts };
   });
 }

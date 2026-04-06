@@ -117,10 +117,7 @@ export function ScriptPanel({
       tag: PAGE.SOURCE,
       content,
     };
-    const updated = [
-      ...files.filter((f) => f.name !== fname && f.name !== previousName),
-      newFile,
-    ];
+    const updated = [...files.filter((f) => f.name !== fname && f.name !== previousName), newFile];
     onFilesChange?.(updated);
     onReeChange?.({ ...ree, [fieldKey]: fname });
     await onPersistWorkspaceFile?.(previousPath, fname, content);

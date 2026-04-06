@@ -1,8 +1,4 @@
-import type {
-  WorkflowRunDto,
-  WorkflowRunStatusDto,
-  WorkspaceDetailDto,
-} from "../api";
+import type { WorkflowRunDto, WorkflowRunStatusDto, WorkspaceDetailDto } from "../api";
 import { ApiClient, mapRunLogsToLegacy, WorkflowRunsApi, WorkspaceApi } from "../api";
 import type { FileTreeNode } from "../types";
 import type {
@@ -165,7 +161,7 @@ export function createRemoteWorkspaceService(
       if (mode === "download") {
         run = await workspaceApi.acquireSource(workspaceId, {
           originUrl: String(params.source ?? ""),
-          sourceType: (String(params.sourceType ?? "git") as "git" | "tarball" | "zip"),
+          sourceType: String(params.sourceType ?? "git") as "git" | "tarball" | "zip",
         });
       } else if (mode === "upload") {
         const archiveName = String(params.archiveName || "source.tar.gz");

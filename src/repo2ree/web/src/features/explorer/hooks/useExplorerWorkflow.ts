@@ -1,8 +1,9 @@
-import { useRef } from "react";
 import type React from "react";
+import { useRef } from "react";
 import { isWorkflowServiceKey } from "../../../constants/services";
 import type { AppAction } from "../../../context";
 import { explorerActions } from "../../../context";
+import { createRemoteWorkspaceService } from "../../../services/remoteWorkspaceService";
 import type { IWorkspaceService } from "../../../services/workspaceService";
 import type {
   FileTreeNode,
@@ -22,7 +23,6 @@ import {
   resetWorkflowOnSourceChange,
   WORKSPACE_ID,
 } from "./workflow/sourceLifecycle";
-import { createRemoteWorkspaceService } from "../../../services/remoteWorkspaceService";
 
 interface UseExplorerWorkflowArgs {
   dispatch: React.Dispatch<AppAction>;
@@ -97,7 +97,9 @@ export function useExplorerWorkflow({
       showToast(`Saved ${path} to workspace`, "success");
     } catch (error) {
       showToast(
-        error instanceof Error ? `Failed to save ${path}: ${error.message}` : `Failed to save ${path}`,
+        error instanceof Error
+          ? `Failed to save ${path}: ${error.message}`
+          : `Failed to save ${path}`,
         "error",
       );
     }
@@ -260,7 +262,9 @@ export function useExplorerWorkflow({
       showToast(`Cancel requested for ${key}`, "info");
     } catch (error) {
       showToast(
-        error instanceof Error ? `Failed to cancel ${key}: ${error.message}` : `Failed to cancel ${key}`,
+        error instanceof Error
+          ? `Failed to cancel ${key}: ${error.message}`
+          : `Failed to cancel ${key}`,
         "error",
       );
     }

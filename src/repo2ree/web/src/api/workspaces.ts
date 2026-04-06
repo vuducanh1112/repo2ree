@@ -99,13 +99,10 @@ export class WorkspaceApi {
     workspaceId: string,
     payload: SourceAcquireRequestDto,
   ): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(
-      endpoints.workspaceSourceAcquire(workspaceId),
-      {
-        method: "POST",
-        body: JSON.stringify(payload),
-      },
-    );
+    return this.client.request<WorkflowRunDto>(endpoints.workspaceSourceAcquire(workspaceId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   }
 
   async initUpload(

@@ -94,44 +94,6 @@ export class ApiClient {
     return response.arrayBuffer();
   }
 
-  async requestArrayBuffer(
-    path: string,
-    init: RequestInit = {},
-    searchParams?: URLSearchParams,
-  ): Promise<ArrayBuffer> {
-    const url = this.buildUrl(path, searchParams);
-    const headers: Record<string, string> = {
-      ...this.headers,
-      ...(init.headers as Record<string, string> | undefined),
-    };
-
-    const response = await fetch(url, {
-      ...init,
-      headers,
-    });
-
-    if (!response.ok) {
-      let errorPayload: ApiErrorEnvelope | null = null;
-      try {
-        const isJson = response.headers.get("content-type")?.includes("application/json");
-        if (isJson) {
-          errorPayload = (await response.json()) as ApiErrorEnvelope;
-        }
-      } catch {
-        errorPayload = null;
-      }
-
-      throw new ApiRequestError(
-        response.status,
-        errorPayload?.error.code || "request_failed",
-        errorPayload?.error.message || response.statusText,
-        errorPayload?.error.details,
-      );
-    }
-
-    return response.arrayBuffer();
-  }
-
   private buildUrl(path: string, searchParams?: URLSearchParams): string {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
     const url = `${this.baseUrl}${normalizedPath}`;

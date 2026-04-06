@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Ic } from "../../../../components/Icon";
 import { C, F } from "../../../../constants/theme";
 import type { LogEntry, LogLine } from "../../../../types";
@@ -21,21 +22,74 @@ interface LogPanelProps {
   log: LogEntry | null;
   running?: boolean;
 }
+
+function formatLineTimestamp(ts?: string): string {
+  if (!ts) return "--:--:--";
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return "--:--:--";
+  return date.toLocaleTimeString([], {
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 export function LogPanel({ log }: LogPanelProps) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+
+  const copyText = useMemo(() => {
+    if (!log) return "";
+    return log.lines
+      .map((line) => {
+        const s = LOG_STYLE[line.type] || LOG_STYLE.info;
+        const ts = formatLineTimestamp(line.ts || log.ts);
+        return `${ts} [${s.pre.trim() || "OUT"}] ${line.msg}`;
+      })
+      .join("\n");
+  }, [log]);
+
+  const onCopyLogs = async () => {
+    if (!copyText) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(copyText);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = copyText;
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 1500);
+    } catch {
+      setCopyState("error");
+      window.setTimeout(() => setCopyState("idle"), 2000);
+    }
+  };
+
   return (
     <div
       style={{
         flex: 1,
-        overflow: "auto",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
         background: "#f8fafc",
         borderRadius: 10,
         border: `1px solid ${C.border}`,
         minHeight: 200,
+        maxHeight: 360,
       }}
     >
       {!log ? (
         <div
           style={{
+            flex: 1,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -50,58 +104,111 @@ export function LogPanel({ log }: LogPanelProps) {
           <span style={{ fontSize: 13, fontFamily: F.sans }}>No output yet</span>
         </div>
       ) : (
-        <div style={{ padding: "12px 0" }}>
+        <>
           <div
             style={{
-              padding: "6px 18px 12px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+              padding: "10px 14px",
               fontSize: 11,
               color: C.textMuted,
               fontFamily: F.mono,
               borderBottom: `1px solid ${C.border}`,
-              marginBottom: 4,
+              background: C.surface,
+              boxShadow: "0 1px 0 rgba(15, 23, 42, 0.04)",
+              flexShrink: 0,
             }}
           >
-            Last run:{" "}
-            {new Date(log.ts).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+            <span>
+              Last run:{" "}
+              {new Date(log.ts).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+            </span>
+            <button
+              type="button"
+              onClick={onCopyLogs}
+              style={{
+                border: `1px solid ${C.border}`,
+                borderRadius: 6,
+                background: C.surface,
+                color: C.text,
+                fontFamily: F.sans,
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "4px 8px",
+                cursor: copyText ? "pointer" : "not-allowed",
+                opacity: copyText ? 1 : 0.65,
+              }}
+              disabled={!copyText}
+              aria-label="Copy logs"
+            >
+              {copyState === "copied"
+                ? "Copied"
+                : copyState === "error"
+                  ? "Copy failed"
+                  : "Copy logs"}
+            </button>
           </div>
-          {(() => {
-            const seenLines = new Map<string, number>();
-            return log.lines.map((line) => {
-              const lineSig = `${line.type}:${line.msg}`;
-              const occurrence = (seenLines.get(lineSig) ?? 0) + 1;
-              seenLines.set(lineSig, occurrence);
-              const s = LOG_STYLE[line.type] || LOG_STYLE.info;
-              return (
-                <div
-                  key={`${lineSig}::${occurrence}`}
-                  style={{
-                    display: "flex",
-                    padding: "3px 18px",
-                    background: s.bg,
-                    fontFamily: F.mono,
-                    fontSize: 13,
-                    lineHeight: 1.75,
-                  }}
-                >
-                  <span
+
+          <div
+            style={{
+              overflowY: "auto",
+              overflowX: "hidden",
+              flex: 1,
+              padding: "8px 0",
+            }}
+          >
+            {(() => {
+              const seenLines = new Map<string, number>();
+              return log.lines.map((line) => {
+                const lineSig = `${line.type}:${line.msg}`;
+                const occurrence = (seenLines.get(lineSig) ?? 0) + 1;
+                seenLines.set(lineSig, occurrence);
+                const s = LOG_STYLE[line.type] || LOG_STYLE.info;
+                return (
+                  <div
+                    key={`${lineSig}::${occurrence}`}
                     style={{
-                      color: s.color,
-                      fontWeight: 600,
-                      marginRight: 14,
-                      flexShrink: 0,
-                      fontSize: 11,
-                      opacity: 0.75,
-                      minWidth: 52,
+                      display: "flex",
+                      padding: "3px 14px",
+                      background: s.bg,
+                      fontFamily: F.mono,
+                      fontSize: 13,
+                      lineHeight: 1.75,
                     }}
                   >
-                    [{s.pre}]
-                  </span>
-                  <span style={{ color: s.color }}>{line.msg}</span>
-                </div>
-              );
-            });
-          })()}
-        </div>
+                    <span
+                      style={{
+                        color: s.color,
+                        fontWeight: 600,
+                        marginRight: 14,
+                        flexShrink: 0,
+                        fontSize: 11,
+                        opacity: 0.75,
+                        minWidth: 52,
+                      }}
+                    >
+                      [{s.pre}]
+                    </span>
+                    <span
+                      style={{
+                        color: C.textMuted,
+                        marginRight: 10,
+                        flexShrink: 0,
+                        fontSize: 11,
+                        minWidth: 58,
+                      }}
+                    >
+                      {formatLineTimestamp(line.ts || log.ts)}
+                    </span>
+                    <span style={{ color: s.color }}>{line.msg}</span>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </>
       )}
     </div>
   );

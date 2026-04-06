@@ -10,9 +10,9 @@ import type {
   WorkflowServiceRunParams,
 } from "../../../types";
 import {
-  REE_RUNTIME_PATH,
   buildCurrentReeArchiveEntries,
   findVirtualFileByName,
+  REE_RUNTIME_PATH,
   reeArchiveEntriesToFiles,
 } from "../../../utils";
 import { useExplorerWorkflow } from "./useExplorerWorkflow";
@@ -51,33 +51,28 @@ export function useExplorerController() {
     [ree, virtualFiles, immutableSourceSnapshotFiles, immutableSourceSnapshotArchiveName],
   );
 
-  const currentReeFiles = useMemo(
-    () => {
-      const files = reeArchiveEntriesToFiles(currentReeArchiveEntries);
-      if (!(ree._runtimeIncluded && ree.runtime && ree.runtime !== "__skipped__")) {
-        return files;
-      }
+  const currentReeFiles = useMemo(() => {
+    const files = reeArchiveEntriesToFiles(currentReeArchiveEntries);
+    if (!(ree._runtimeIncluded && ree.runtime && ree.runtime !== "__skipped__")) {
+      return files;
+    }
 
-      const workspaceRuntimeFile = findVirtualFileByName(virtualFiles, ree.runtime);
-      if (!workspaceRuntimeFile) {
-        return files;
-      }
+    const workspaceRuntimeFile = findVirtualFileByName(virtualFiles, ree.runtime);
+    if (!workspaceRuntimeFile) {
+      return files;
+    }
 
-      return files.map((file) =>
-        file.name === REE_RUNTIME_PATH
-          ? {
-              ...file,
-              content: workspaceRuntimeFile.content,
-              size:
-                typeof workspaceRuntimeFile.size === "number"
-                  ? workspaceRuntimeFile.size
-                  : file.size,
-            }
-          : file,
-      );
-    },
-    [currentReeArchiveEntries, ree._runtimeIncluded, ree.runtime, virtualFiles],
-  );
+    return files.map((file) =>
+      file.name === REE_RUNTIME_PATH
+        ? {
+            ...file,
+            content: workspaceRuntimeFile.content,
+            size:
+              typeof workspaceRuntimeFile.size === "number" ? workspaceRuntimeFile.size : file.size,
+          }
+        : file,
+    );
+  }, [currentReeArchiveEntries, ree._runtimeIncluded, ree.runtime, virtualFiles]);
 
   const level = ree._evalLevel ?? 0;
   const {

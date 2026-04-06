@@ -226,14 +226,14 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
                     color: hasBinaryContent
                       ? C.textMuted
                       : line.startsWith("#")
-                      ? "#94a3b8"
-                      : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
-                        ? "#0369a1"
-                        : /^(set |echo |docker |pip )/.test(line)
-                          ? "#15803d"
-                          : /^\s*"/.test(line) && line.includes(":")
-                            ? "#b45309"
-                            : C.text,
+                        ? "#94a3b8"
+                        : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
+                          ? "#0369a1"
+                          : /^(set |echo |docker |pip )/.test(line)
+                            ? "#15803d"
+                            : /^\s*"/.test(line) && line.includes(":")
+                              ? "#b45309"
+                              : C.text,
                   }}
                 >
                   {line || " "}

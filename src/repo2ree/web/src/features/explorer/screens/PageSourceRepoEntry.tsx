@@ -261,7 +261,8 @@ export function PageSourceRepoEntry({
                             display: "inline-flex",
                             alignItems: "center",
                             gap: 6,
-                            cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
+                            cursor:
+                              locked || !canDownload || downloadRunning ? "default" : "pointer",
                             border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
                             background: downloadDone ? "#f0fdf4" : C.accentBg,
                             color: downloadDone ? "#15803d" : C.accent,

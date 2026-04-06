@@ -45,10 +45,13 @@ async function readAvailableLogs(
   for (let i = 0; i < 20; i += 1) {
     const chunk = await workspaceService.getWorkflowRunLogs(workspaceId, runId, nextCursor);
     lines.push(...chunk.lines);
-    if (!chunk.hasMore || !chunk.nextCursor) {
+    if (!chunk.hasMore && !chunk.lines.length) {
       break;
     }
-    nextCursor = chunk.nextCursor;
+    nextCursor = chunk.nextCursor || String((Number(nextCursor || "0") || 0) + chunk.lines.length);
+    if (!chunk.hasMore) {
+      break;
+    }
   }
   return lines;
 }
@@ -72,17 +75,20 @@ export async function pollWorkflowRun(
   const maxIterations = options.maxIterations || 90;
   let latestRun = await workspaceService.getWorkflowRun(options.workspaceId, options.runId);
   let logCursor: string | undefined;
+  let fetchedLogCount = 0;
   let aggregatedLines: LogLine[] = [];
 
   const pullLogs = async (): Promise<void> => {
     if (!workspaceService.getWorkflowRunLogs) return;
+    const requestCursor = logCursor || String(fetchedLogCount);
     const chunk = await workspaceService.getWorkflowRunLogs(
       options.workspaceId,
       options.runId,
-      logCursor,
+      requestCursor,
     );
     aggregatedLines = [...aggregatedLines, ...chunk.lines];
-    logCursor = chunk.nextCursor;
+    fetchedLogCount += chunk.lines.length;
+    logCursor = chunk.nextCursor || String(fetchedLogCount);
   };
 
   for (let iteration = 0; iteration < maxIterations; iteration += 1) {
@@ -122,7 +128,10 @@ export async function pollWorkflowRun(
   aggregatedLines = [...aggregatedLines, ...lines];
   return {
     status: latestRun.status,
-    lines: [...aggregatedLines, { type: "warn", msg: "Run still active after polling window ended" }],
+    lines: [
+      ...aggregatedLines,
+      { type: "warn", msg: "Run still active after polling window ended" },
+    ],
     ts: resolveRunTimestamp(latestRun),
   };
 }
