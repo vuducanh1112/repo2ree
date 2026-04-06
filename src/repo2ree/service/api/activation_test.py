@@ -111,6 +111,7 @@ def run_activation_test(
     script_in_container = Path("/workspace") / script_abs_path.relative_to(
         workspace_path
     )
+    script_dir_in_container = script_in_container.parent
 
     entries: list[dict[str, Any]] = []
     seq = 1
@@ -155,7 +156,7 @@ def run_activation_test(
         "-lc",
         (
             "set -e; "
-            "cd /workspace; "
+            f"cd {shlex.quote(str(script_dir_in_container))}; "
             f"echo '--- activation_script ({shlex.quote(activation_script_path)}) ---'; "
             f"cat {shlex.quote(str(script_in_container))}; "
             "echo '--- end activation_script ---'; "

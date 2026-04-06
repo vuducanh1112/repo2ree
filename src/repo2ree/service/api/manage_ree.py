@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from sqlmodel import Session, select
 
@@ -16,6 +16,7 @@ from repo2ree.service.metadata.ree_record import REERecord
 from repo2ree.service.storage.workspace_files import (
     SourceAcquirePayload,
     SourceUploadCompletePayload,
+    build_workspace_ree_archive,
     UploadInitPayload,
     WorkspaceCreatePayload,
     WorkspaceFileContentPayload,
@@ -29,6 +30,7 @@ from repo2ree.service.storage.workspace_files import (
     list_files,
     list_workspace_metadata,
     read_file_content,
+    read_file_bytes,
     read_workspace_metadata,
     patch_workspace,
     remove_source,
@@ -333,6 +335,17 @@ def get_workspace_file_content_route(workspace_id: str, path: str = Query(...)):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@manage_ree_router.get("/api/v1/workspaces/{workspace_id}/files/raw")
+def get_workspace_file_raw_route(workspace_id: str, path: str = Query(...)):
+    try:
+        content = read_file_bytes(workspace_id, path)
+        return Response(content=content, media_type="application/octet-stream")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @manage_ree_router.put("/api/v1/workspaces/{workspace_id}/files/content")
 def put_workspace_file_content_route(
     workspace_id: str, payload: WorkspaceFileContentPayload
@@ -349,6 +362,17 @@ def put_workspace_file_content_route(
 def delete_workspace_file_content_route(workspace_id: str, path: str = Query(...)):
     try:
         return delete_file_content(workspace_id, path)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@manage_ree_router.get("/api/v1/workspaces/{workspace_id}/ree-archive")
+def download_workspace_ree_archive_route(workspace_id: str):
+    try:
+        archive_bytes = build_workspace_ree_archive(workspace_id)
+        return Response(content=archive_bytes, media_type="application/zip")
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

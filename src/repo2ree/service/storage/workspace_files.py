@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import shutil
 import subprocess
@@ -214,6 +215,7 @@ def _workspace_files_with_content(workspace_id: str) -> list[dict[str, Any]]:
             {
                 "path": relative_path,
                 "kind": _file_kind(relative_path),
+                "size": file_path.stat().st_size,
                 "content": _read_text_if_possible(file_path),
             }
         )
@@ -309,6 +311,120 @@ def read_file_content(workspace_id: str, path: str) -> dict[str, Any]:
     if not file_path.exists() or not file_path.is_file():
         raise FileNotFoundError(path)
     return {"content": file_path.read_text(encoding="utf-8"), "updatedAt": _utc_now()}
+
+
+def read_file_bytes(workspace_id: str, path: str) -> bytes:
+    file_path = _resolve_workspace_path(workspace_id, path)
+    if not file_path.exists() or not file_path.is_file():
+        raise FileNotFoundError(path)
+    return file_path.read_bytes()
+
+
+def _normalize_workspace_path(path: str) -> str:
+    return (path or "").lstrip("/").strip()
+
+
+def _archive_workspace_path(path: str) -> str:
+    return _normalize_workspace_path(path).replace("..", "_")
+
+
+def build_workspace_ree_archive(workspace_id: str) -> bytes:
+    metadata = _read_metadata(workspace_id)
+    ree_draft = dict(metadata.get("reeDraft") or {})
+    files = _workspace_files_with_content(workspace_id)
+
+    runtime_path = _normalize_workspace_path(str(ree_draft.get("runtime") or ""))
+    sbom_path = _normalize_workspace_path(str(ree_draft.get("sbom") or ""))
+    build_script_path = _normalize_workspace_path(
+        str(ree_draft.get("build_runtime_script") or "")
+    )
+    activation_script_path = _normalize_workspace_path(
+        str(ree_draft.get("activation_script") or "")
+    )
+
+    manifest = {
+        "ree_version": "1.0",
+        "name": metadata.get("name") or f"workspace-{workspace_id[:8]}",
+        "origin_url": metadata.get("externalRef") or None,
+        "source_type": (metadata.get("source") or {}).get("sourceType")
+        if isinstance(metadata.get("source"), dict)
+        else None,
+        "runtime": runtime_path or None,
+        "build_script": build_script_path or None,
+        "activation_script": activation_script_path or None,
+        "sbom": sbom_path or None,
+        "swhid": metadata.get("reeDraft", {}).get("swhid") or None,
+        "zenodo_doi": metadata.get("reeDraft", {}).get("zenodo_doi") or None,
+        "dataverse_doi": metadata.get("reeDraft", {}).get("dataverse_doi") or None,
+        "hardware_description": metadata.get("reeDraft", {}).get("hardware_description")
+        or {},
+        "sealed_at": metadata.get("reeDraft", {}).get("_sealedAt") or None,
+        "seal_hash": metadata.get("reeDraft", {}).get("_sealHash") or None,
+        "eval_level": metadata.get("reeDraft", {}).get("_evalLevel") or 0,
+        "source_included": bool(metadata.get("reeDraft", {}).get("_sourceIncluded")),
+        "source_available": bool(metadata.get("reeDraft", {}).get("_sourceAvailable")),
+        "source_acquired_by": metadata.get("reeDraft", {}).get("_sourceAcquiredBy")
+        or None,
+        "source_snapshot_archive": metadata.get("reeDraft", {}).get(
+            "_sourceSnapshotArchive"
+        )
+        or None,
+        "source_snapshot_captured_at": metadata.get("reeDraft", {}).get(
+            "_sourceSnapshotCapturedAt"
+        )
+        or None,
+        "runtime_included": bool(metadata.get("reeDraft", {}).get("_runtimeIncluded")),
+    }
+
+    excluded_paths = {
+        p
+        for p in [runtime_path, sbom_path, build_script_path, activation_script_path]
+        if p
+    }
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("ree/ree.json", json.dumps(manifest, indent=2, sort_keys=True))
+
+        if runtime_path and runtime_path in excluded_paths:
+            runtime_file = _resolve_workspace_path(workspace_id, runtime_path)
+            if runtime_file.exists() and runtime_file.is_file():
+                archive.writestr("ree/runtime.tar.gz", runtime_file.read_bytes())
+
+        if sbom_path and sbom_path in excluded_paths:
+            sbom_file = _resolve_workspace_path(workspace_id, sbom_path)
+            if sbom_file.exists() and sbom_file.is_file():
+                archive.writestr("ree/sbom.json", sbom_file.read_bytes())
+
+        if build_script_path and build_script_path in excluded_paths:
+            build_script_file = _resolve_workspace_path(workspace_id, build_script_path)
+            if build_script_file.exists() and build_script_file.is_file():
+                archive.writestr(
+                    f"ree/{_archive_workspace_path(build_script_path)}",
+                    build_script_file.read_bytes(),
+                )
+
+        if activation_script_path and activation_script_path in excluded_paths:
+            activation_script_file = _resolve_workspace_path(
+                workspace_id, activation_script_path
+            )
+            if activation_script_file.exists() and activation_script_file.is_file():
+                archive.writestr(
+                    f"ree/{_archive_workspace_path(activation_script_path)}",
+                    activation_script_file.read_bytes(),
+                )
+
+        if manifest["source_included"]:
+            for file in files:
+                file_path = file["path"]
+                if file_path in excluded_paths:
+                    continue
+                archive.writestr(
+                    f"ree/source-repo/{file_path}",
+                    _resolve_workspace_path(workspace_id, file_path).read_bytes(),
+                )
+
+    return buffer.getvalue()
 
 
 def write_file_content(workspace_id: str, path: str, content: str) -> dict[str, Any]:

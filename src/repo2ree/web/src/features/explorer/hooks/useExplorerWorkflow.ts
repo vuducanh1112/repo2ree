@@ -166,16 +166,69 @@ export function useExplorerWorkflow({
   };
 
   const handleDownloadRee = () => {
-    const blob = buildZipBlob(currentReeArchiveEntries);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(ree.name || "ree").replace(/[^a-z0-9_-]/gi, "_")}-capsule.zip`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast(`Downloaded ${ree.name || "ree"}-capsule.zip`, "success");
+    const runDownload = async () => {
+      if (workspaceService.getReeArchive) {
+        try {
+          if (workspaceService.updateReeDraft) {
+            await workspaceService.updateReeDraft(WORKSPACE_ID, {
+              name: ree.name || "",
+              origin_url: ree.origin_url || "",
+              source_type: ree.source_type || "",
+              runtime: ree.runtime || "",
+              build_runtime_script: ree.build_runtime_script || "",
+              activation_script: ree.activation_script || "",
+              sbom: ree.sbom || "",
+              swhid: ree.swhid || "",
+              zenodo_doi: ree.zenodo_doi || "",
+              dataverse_doi: ree.dataverse_doi || "",
+              hardware_description: ree.hardware_description || {},
+              _sealedAt: ree._sealedAt || "",
+              _sealHash: ree._sealHash || "",
+              _evalLevel: ree._evalLevel ?? 0,
+              _sourceIncluded: !!ree._sourceIncluded,
+              _sourceAvailable: !!ree._sourceAvailable,
+              _sourceAcquiredBy: ree._sourceAcquiredBy || "",
+              _sourceSnapshotArchive: ree._sourceSnapshotArchive || "",
+              _sourceSnapshotCapturedAt: ree._sourceSnapshotCapturedAt || "",
+              _runtimeIncluded: !!ree._runtimeIncluded,
+            });
+          }
+          const archiveBytes = await workspaceService.getReeArchive(WORKSPACE_ID);
+          const blob = new Blob([archiveBytes], { type: "application/zip" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${(ree.name || "ree").replace(/[^a-z0-9_-]/gi, "_")}-capsule.zip`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast(`Downloaded ${ree.name || "ree"}-capsule.zip`, "success");
+          return;
+        } catch (error) {
+          showToast(
+            error instanceof Error
+              ? `Backend archive download failed: ${error.message}`
+              : "Backend archive download failed",
+            "error",
+          );
+          return;
+        }
+      }
+
+      const blob = buildZipBlob(currentReeArchiveEntries);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(ree.name || "ree").replace(/[^a-z0-9_-]/gi, "_")}-capsule.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Downloaded ${ree.name || "ree"}-capsule.zip`, "success");
+    };
+
+    void runDownload();
   };
 
   const runAction = async (key: string, params: GenericServiceParams = {}) => {

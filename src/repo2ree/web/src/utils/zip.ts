@@ -118,6 +118,7 @@ export function reeArchiveEntriesToFiles(entries: ZipEntry[]): ReeFile[] {
     name: entry.path,
     type: "file",
     tag: resolveReeArchiveEntryTag(entry.path),
+    size: entry.data.length,
     content: dec.decode(entry.data),
   }));
 }

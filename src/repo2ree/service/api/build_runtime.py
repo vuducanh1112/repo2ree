@@ -67,6 +67,7 @@ def _docker_build_run(
     script_in_container = Path("/workspace") / script_abs_path.relative_to(
         workspace_path
     )
+    script_dir_in_container = script_in_container.parent
     runtime_abs_path = _resolve_workspace_relative_path(
         workspace_id, runtime_relative_path
     )
@@ -130,13 +131,11 @@ def _docker_build_run(
         "-lc",
         (
             "set -e; "
-            "cd /workspace; "
+            f"cd {shlex.quote(str(script_dir_in_container))}; "
             f"echo '--- build_runtime_script ({shlex.quote(script_relative_path)}) ---'; "
             f"cat {shlex.quote(str(script_in_container))}; "
             "echo '--- end build_runtime_script ---'; "
-            f"sh {shlex.quote(str(script_in_container))}; "
-            f"sh -c ls {workspace_path}/*/"
-            f"echo 'Expected runtime path: {shlex.quote(str(runtime_in_container))}'"
+            f"sh {shlex.quote(str(script_in_container))}"
         ),
     ]
     docker_exec_check_cmd = [
@@ -314,6 +313,7 @@ def _docker_build_run(
         if line.strip():
             _append_run_log(workspace_id, run_id, "stderr", "warn", line)
 
+    runtime_available = False
     if exec_result.returncode == 0:
         _append_run_log(
             workspace_id,
@@ -352,6 +352,7 @@ def _docker_build_run(
                 docker_cp_back_cmd, capture_output=True, text=True
             )
             if cp_back_result.returncode == 0:
+                runtime_available = True
                 _append_run_log(
                     workspace_id,
                     run_id,
@@ -364,7 +365,7 @@ def _docker_build_run(
                     workspace_id,
                     run_id,
                     "system",
-                    "warn",
+                    "error",
                     f"Produced runtime could not be copied from container at {runtime_relative_path}",
                 )
                 if cp_back_result.stderr.strip():
@@ -378,7 +379,7 @@ def _docker_build_run(
                 workspace_id,
                 run_id,
                 "system",
-                "warn",
+                "error",
                 f"Produced runtime not found in container at {runtime_relative_path}",
             )
     else:
@@ -395,7 +396,9 @@ def _docker_build_run(
     except Exception:
         pass
 
-    status = "succeeded" if exec_result.returncode == 0 else "failed"
+    status = (
+        "succeeded" if exec_result.returncode == 0 and runtime_available else "failed"
+    )
     final_level = "info" if status == "succeeded" else "error"
     _append_run_log(
         workspace_id,

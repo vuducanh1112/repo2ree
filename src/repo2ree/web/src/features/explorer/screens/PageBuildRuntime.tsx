@@ -79,6 +79,12 @@ export function PageBuildRuntime({
     : null;
   const finalRuntimeSize = finalRuntimeFile
     ? (() => {
+        if (typeof finalRuntimeFile.size === "number" && finalRuntimeFile.size > 0) {
+          const b = finalRuntimeFile.size;
+          if (b < 1024) return `${b} B`;
+          if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+          return `${(b / (1024 * 1024)).toFixed(2)} MB`;
+        }
         const m = (finalRuntimeFile.content || "").match(/Size:\s*(~?[\d.]+ ?[KMGT]?B)/i);
         if (m) return m[1];
         const b = new TextEncoder().encode(finalRuntimeFile.content || "").length;

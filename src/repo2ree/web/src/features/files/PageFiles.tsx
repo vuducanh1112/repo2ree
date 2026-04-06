@@ -16,6 +16,7 @@ import {
 import { MOCK_FILES } from "../../services/dummyWorkspaceService";
 import type { ReeFile } from "../../types/ree";
 import type { FileTreeNode } from "../../types/workspace";
+import { fmtBytes } from "../../utils/formatting";
 import { WorkflowPageHeader } from "../explorer/components/workflow/pageChrome";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
@@ -75,6 +76,7 @@ function buildReeFileTree(reeFiles: ReeFile[]): FileTreeNode[] {
       name: fileName,
       type: "file",
       content: file.content,
+      size: file.size,
       tag: file.tag,
     };
     if (existingFileIdx >= 0) cursor[existingFileIdx] = fileNode;
@@ -92,12 +94,16 @@ interface FileViewerProps {
 
 function FileViewer({ file, onClose, label }: FileViewerProps) {
   const [copied, setCopied] = useState(false);
+  const hasBinaryContent = !file.content && typeof file.size === "number" && file.size > 0;
+  const binaryLabel = hasBinaryContent ? `Binary file (${fmtBytes(file.size || 0)})` : null;
   const copy = () => {
-    navigator.clipboard?.writeText(file.content || "");
+    navigator.clipboard?.writeText(file.content || binaryLabel || "");
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
-  const lines = (file.content || "").split("\n");
+  const lines = hasBinaryContent
+    ? [binaryLabel || "Binary file", "Content preview is unavailable for this file type."]
+    : (file.content || "").split("\n");
 
   return (
     <div
@@ -217,7 +223,9 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
                     whiteSpace: "pre",
                     display: "block",
                     paddingRight: 16,
-                    color: line.startsWith("#")
+                    color: hasBinaryContent
+                      ? C.textMuted
+                      : line.startsWith("#")
                       ? "#94a3b8"
                       : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
                         ? "#0369a1"

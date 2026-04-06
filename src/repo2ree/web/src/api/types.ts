@@ -23,6 +23,7 @@ export interface WorkspaceSummaryDto {
 export interface WorkspaceFileDto {
   path: string;
   content?: string;
+  size?: number;
   kind: "source" | "generated";
   etag?: string;
 }
@@ -35,6 +36,19 @@ export interface ReeDraftDto {
   sbom: string;
   build_runtime_script: string;
   activation_script: string;
+  swhid: string;
+  zenodo_doi: string;
+  dataverse_doi: string;
+  hardware_description: Record<string, unknown>;
+  _sealedAt: string;
+  _sealHash: string;
+  _evalLevel: number;
+  _sourceIncluded: boolean;
+  _sourceAvailable: boolean;
+  _sourceAcquiredBy: string;
+  _sourceSnapshotArchive: string;
+  _sourceSnapshotCapturedAt: string;
+  _runtimeIncluded: boolean;
 }
 
 export interface WorkspaceDetailDto extends WorkspaceSummaryDto {

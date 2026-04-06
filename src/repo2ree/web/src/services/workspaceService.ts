@@ -52,7 +52,10 @@ export interface ReeProject<TFile = unknown> {
 export interface IWorkspaceService<TFile = unknown> {
   getWorkspace(id: string): Promise<ReeProject<TFile>>;
   updateFile(id: string, path: string, content: string): Promise<void>;
+  updateReeDraft?(id: string, reePatch: Record<string, unknown>): Promise<void>;
   deleteFile?(id: string, path: string): Promise<void>;
+  getFileBytes?(id: string, path: string): Promise<ArrayBuffer>;
+  getReeArchive?(id: string): Promise<ArrayBuffer>;
   runScript(id: string, scriptKey: string): Promise<WorkspaceServiceLogEntry>;
   resetWorkspace(id: string, newSource: string): Promise<void>;
   resetWorkspaceRequest?: (id: string, request: WorkspaceResetPayload) => Promise<void>;
@@ -69,7 +72,10 @@ export interface IWorkspaceService<TFile = unknown> {
 interface WorkspaceServiceDelegates<TFile = unknown> {
   getWorkspace: (id: string) => Promise<ReeProject<TFile>>;
   updateFile: (id: string, path: string, content: string) => Promise<void>;
+  updateReeDraft?: (id: string, reePatch: Record<string, unknown>) => Promise<void>;
   deleteFile?: (id: string, path: string) => Promise<void>;
+  getFileBytes?: (id: string, path: string) => Promise<ArrayBuffer>;
+  getReeArchive?: (id: string) => Promise<ArrayBuffer>;
   runScript: (id: string, scriptKey: string) => Promise<WorkspaceServiceLogEntry>;
   resetWorkspace: (id: string, newSource: string) => Promise<void>;
   resetWorkspaceRequest?: (id: string, request: WorkspaceResetPayload) => Promise<void>;
@@ -89,7 +95,10 @@ export function createDummyWorkspaceService<TFile = unknown>(
   return {
     getWorkspace: delegates.getWorkspace,
     updateFile: delegates.updateFile,
+    updateReeDraft: delegates.updateReeDraft,
     deleteFile: delegates.deleteFile,
+    getFileBytes: delegates.getFileBytes,
+    getReeArchive: delegates.getReeArchive,
     runScript: delegates.runScript,
     resetWorkspace: delegates.resetWorkspace,
     resetWorkspaceRequest: delegates.resetWorkspaceRequest,

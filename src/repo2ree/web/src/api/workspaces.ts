@@ -147,17 +147,32 @@ export class WorkspaceApi {
   async getFiles(
     workspaceId: string,
     query: WorkspaceFilesQuery = {},
-  ): Promise<{ nodes: Array<{ path: string; kind: string }> }> {
+  ): Promise<{ nodes: Array<{ path: string; kind: string; size?: number }> }> {
     const searchParams = new URLSearchParams();
     if (query.path) searchParams.set("path", query.path);
     if (typeof query.recursive === "boolean")
       searchParams.set("recursive", String(query.recursive));
     if (query.scope) searchParams.set("scope", query.scope);
-    return this.client.request<{ nodes: Array<{ path: string; kind: string }> }>(
+    return this.client.request<{ nodes: Array<{ path: string; kind: string; size?: number }> }>(
       endpoints.workspaceFiles(workspaceId),
       { method: "GET" },
       searchParams,
     );
+  }
+
+  async getFileBytes(workspaceId: string, path: string): Promise<ArrayBuffer> {
+    const searchParams = new URLSearchParams({ path });
+    return this.client.requestArrayBuffer(
+      endpoints.workspaceFileRaw(workspaceId),
+      { method: "GET" },
+      searchParams,
+    );
+  }
+
+  async getReeArchive(workspaceId: string): Promise<ArrayBuffer> {
+    return this.client.requestArrayBuffer(endpoints.workspaceReeArchive(workspaceId), {
+      method: "GET",
+    });
   }
 
   async getFileContent(workspaceId: string, path: string): Promise<WorkspaceFileContentResponse> {

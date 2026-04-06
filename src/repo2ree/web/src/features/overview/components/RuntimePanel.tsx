@@ -56,6 +56,9 @@ export function RuntimePanel({
   const runtimeFile = runtimeVal ? findVirtualFileByName(files, runtimeVal) : null;
   const runtimeSizeStr = (() => {
     if (!runtimeFile) return null;
+    if (typeof runtimeFile.size === "number" && runtimeFile.size > 0) {
+      return fmtBytes(runtimeFile.size);
+    }
     const match = (runtimeFile.content || "").match(/Size:\s*(~?[\d.]+ ?[KMGT]?B)/i);
     if (match) return match[1];
     return fmtBytes(new TextEncoder().encode(runtimeFile.content || "").length);

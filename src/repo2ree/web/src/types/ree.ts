@@ -70,6 +70,7 @@ export interface ReeFile {
   type: "file";
   tag?: string;
   content?: string;
+  size?: number;
 }
 
 export interface ZipEntry {

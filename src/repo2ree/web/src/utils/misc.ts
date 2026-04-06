@@ -73,8 +73,25 @@ export function buildCurrentReeArchiveEntries(
   if (ree._runtimeIncluded && ree.runtime && ree.runtime !== "__skipped__") {
     const runtimeNode = findVirtualFileByName(virtualFiles, ree.runtime);
     const runtimeContent = runtimeNode?.content;
-    if (runtimeContent && runtimeContent.trim().length > 0) {
-      entries.push({ path: REE_RUNTIME_PATH, data: enc.encode(runtimeContent) });
+    const hasTextContent = !!(runtimeContent && runtimeContent.trim().length > 0);
+    const hasBinarySize = typeof runtimeNode?.size === "number" && runtimeNode.size > 0;
+
+    const runtimePreviewContent = hasTextContent
+      ? runtimeContent || ""
+      : hasBinarySize
+        ? JSON.stringify(
+            {
+              note: "binary-runtime-placeholder",
+              runtime_path: ree.runtime,
+              runtime_size_bytes: runtimeNode?.size,
+            },
+            null,
+            2,
+          )
+        : "";
+
+    if (hasTextContent || hasBinarySize) {
+      entries.push({ path: REE_RUNTIME_PATH, data: enc.encode(runtimePreviewContent) });
       runtimeIncludedInArchive = true;
     }
   }

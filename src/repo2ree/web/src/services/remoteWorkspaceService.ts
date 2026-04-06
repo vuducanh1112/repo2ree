@@ -30,6 +30,7 @@ function upsertTreeFile(
   roots: FileTreeNode[],
   relativePath: string,
   content: string | undefined,
+  size: number | undefined,
   kind: string,
 ): void {
   const parts = relativePath.split("/").filter(Boolean);
@@ -65,6 +66,7 @@ function upsertTreeFile(
     name: fileName,
     type: "file",
     content,
+    size,
     tag: kind,
   };
   const existingIndex = cursor.findIndex((node) => node.type === "file" && node.name === fileName);
@@ -81,7 +83,7 @@ function mapWorkspace(workspace: WorkspaceDetailDto): ReeProject<FileTreeNode> {
     if (!file.path) {
       continue;
     }
-    upsertTreeFile(files, file.path, file.content, file.kind);
+    upsertTreeFile(files, file.path, file.content, file.size, file.kind);
   }
 
   return {
@@ -284,6 +286,18 @@ export function createRemoteWorkspaceService(
     updateFile: async (id: string, path: string, content: string): Promise<void> => {
       const workspaceId = await ensureWorkspaceId(id);
       await workspaceApi.putFileContent(workspaceId, { path, content });
+    },
+    updateReeDraft: async (id: string, reePatch: Record<string, unknown>): Promise<void> => {
+      const workspaceId = await ensureWorkspaceId(id);
+      await workspaceApi.patchWorkspace(workspaceId, { reePatch });
+    },
+    getFileBytes: async (id: string, path: string): Promise<ArrayBuffer> => {
+      const workspaceId = await ensureWorkspaceId(id);
+      return workspaceApi.getFileBytes(workspaceId, path);
+    },
+    getReeArchive: async (id: string): Promise<ArrayBuffer> => {
+      const workspaceId = await ensureWorkspaceId(id);
+      return workspaceApi.getReeArchive(workspaceId);
     },
     deleteFile: async (id: string, path: string): Promise<void> => {
       const workspaceId = await ensureWorkspaceId(id);

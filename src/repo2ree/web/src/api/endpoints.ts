@@ -16,6 +16,10 @@ export const endpoints = {
     `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/files`,
   workspaceFileContent: (workspaceId: string) =>
     `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/files/content`,
+  workspaceFileRaw: (workspaceId: string) =>
+    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/files/raw`,
+  workspaceReeArchive: (workspaceId: string) =>
+    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/ree-archive`,
   workspaceBuildRuntime: (workspaceId: string) =>
     `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/build-runtime`,
   workspaceGenerateSbom: (workspaceId: string) =>
