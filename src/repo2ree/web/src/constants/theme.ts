@@ -67,7 +67,7 @@ export const hoverIf = <T extends object>(condition: boolean, handlers: T): T | 
 
 // ── Reusable Style Constants ───────────────────────────────────────────────────
 export const S_SECTION_LABEL: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 12,
   letterSpacing: 1.2,
   color: C.textMuted,
   fontFamily: F.sans,
@@ -77,7 +77,7 @@ export const S_SECTION_LABEL: React.CSSProperties = {
 
 export const S_SECTION_LABEL_SMALL: React.CSSProperties = {
   ...S_SECTION_LABEL,
-  fontSize: 9,
+  fontSize: 10,
 };
 
 export const S_PANEL_HEADER_LABEL: React.CSSProperties = {
@@ -109,7 +109,7 @@ export const S_OVERVIEW_PANEL_STATUS_ROW_BASE: React.CSSProperties = {
 };
 
 export const S_OVERVIEW_PANEL_INCLUDE_LABEL_BASE: React.CSSProperties = {
-  fontSize: 9,
+  fontSize: 10,
   fontFamily: F.sans,
   fontWeight: 600,
   letterSpacing: 0.3,
@@ -132,7 +132,7 @@ export const S_ACTION_BUTTON_BASE: React.CSSProperties = {
 
 export const S_OVERVIEW_PANEL_BUTTON_BASE: React.CSSProperties = {
   ...S_ACTION_BUTTON_BASE,
-  fontSize: 10,
+  fontSize: 11,
   borderRadius: 5,
   padding: "4px 8px",
   cursor: "pointer",
@@ -149,7 +149,7 @@ export const S_OVERVIEW_META_FOOTER: React.CSSProperties = {
 
 export const S_OVERVIEW_PANEL_BADGE_BASE: React.CSSProperties = {
   marginLeft: "auto",
-  fontSize: 8,
+  fontSize: 10,
   fontFamily: F.mono,
   borderRadius: 2,
   padding: "0 4px",
@@ -163,7 +163,7 @@ export const S_OVERVIEW_SEALED_META_ROW: React.CSSProperties = {
 };
 
 export const S_OVERVIEW_SEALED_META_KEY: React.CSSProperties = {
-  fontSize: 9,
+  fontSize: 10,
   fontFamily: F.sans,
   color: C.textMuted,
   flexShrink: 0,
@@ -184,7 +184,7 @@ export const S_OVERVIEW_SEALED_ACTION_BTN_BASE: React.CSSProperties = {
 };
 
 export const S_OVERVIEW_SEAL_STATUS_BADGE_BASE: React.CSSProperties = {
-  fontSize: 9,
+  fontSize: 10,
   fontFamily: F.mono,
   fontWeight: 700,
   borderRadius: 3,

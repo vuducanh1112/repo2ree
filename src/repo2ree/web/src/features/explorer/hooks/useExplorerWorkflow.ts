@@ -15,7 +15,7 @@ import type {
   WorkflowServiceRunParams,
   ZipEntry,
 } from "../../../types";
-import { buildZipBlob } from "../../../utils";
+import { buildZipBlob, REE_SBOM_PATH, resolveRuntimeArchiveEntryPath } from "../../../utils";
 import { createServiceRunHandlers, executeServiceRunAction } from "./workflow/serviceRuns";
 import {
   createExplorerWorkspaceService,
@@ -167,6 +167,32 @@ export function useExplorerWorkflow({
     showToast("REE sealed — now read-only", "success");
   };
 
+  const downloadWorkspaceFile = async (path: string, suggestedName?: string): Promise<void> => {
+    try {
+      if (!workspaceService.getFileBytes) {
+        throw new Error("Workspace file download is not supported by this service");
+      }
+      const fileBytes = await workspaceService.getFileBytes(WORKSPACE_ID, path);
+      const blob = new Blob([fileBytes], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = (suggestedName || path.split("/").pop() || "workspace-file").replace(/\\/g, "_");
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Downloaded ${a.download}`, "success");
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? `Failed to download ${path}: ${error.message}`
+          : `Failed to download ${path}`,
+        "error",
+      );
+    }
+  };
+
   const handleDownloadRee = () => {
     const runDownload = async () => {
       if (workspaceService.getReeArchive) {
@@ -218,7 +244,35 @@ export function useExplorerWorkflow({
         }
       }
 
-      const blob = buildZipBlob(currentReeArchiveEntries);
+      let fallbackEntries: ZipEntry[] = [...currentReeArchiveEntries];
+      if (workspaceService.getFileBytes) {
+        if (ree.sbom && ree.sbom !== "__skipped__") {
+          try {
+            const sbomBytes = await workspaceService.getFileBytes(WORKSPACE_ID, ree.sbom);
+            const sbomData = new Uint8Array(sbomBytes);
+            fallbackEntries = fallbackEntries.map((entry) =>
+              entry.path === REE_SBOM_PATH ? { ...entry, data: sbomData } : entry,
+            );
+          } catch {
+            // Keep fallback entry as-is when raw download is unavailable.
+          }
+        }
+
+        if (ree._runtimeIncluded && ree.runtime && ree.runtime !== "__skipped__") {
+          try {
+            const runtimeBytes = await workspaceService.getFileBytes(WORKSPACE_ID, ree.runtime);
+            const runtimeData = new Uint8Array(runtimeBytes);
+            const runtimeArchivePath = resolveRuntimeArchiveEntryPath(ree.runtime);
+            fallbackEntries = fallbackEntries.map((entry) =>
+              entry.path === runtimeArchivePath ? { ...entry, data: runtimeData } : entry,
+            );
+          } catch {
+            // Keep fallback entry as-is when raw download is unavailable.
+          }
+        }
+      }
+
+      const blob = buildZipBlob(fallbackEntries);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -276,6 +330,7 @@ export function useExplorerWorkflow({
     handleDownloadSourceFiles,
     handleWorkspaceUpload,
     handleRemoveWorkspaceSource,
+    downloadWorkspaceFile,
     persistWorkspaceFile,
     runAction,
     runWorkflowAction,

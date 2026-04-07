@@ -40,7 +40,7 @@ export function Toast({ message, type, onClose }: ToastProps) {
         fontFamily: F.sans,
         color: config.color,
         boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        animation: "slideUp 0.3s ease",
+        animation: "slideIn 0.3s ease",
         maxWidth: 400,
         zIndex: 9999,
       }}

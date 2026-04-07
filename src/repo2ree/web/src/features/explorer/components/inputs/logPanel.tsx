@@ -3,6 +3,9 @@ import { Ic } from "../../../../components/Icon";
 import { C, F } from "../../../../constants/theme";
 import type { LogEntry, LogLine } from "../../../../types";
 
+const MAX_RENDER_LOG_LINES = 800;
+const MAX_COPY_LOG_LINES = 2000;
+
 type LogLineType = LogLine["type"];
 
 interface LogStyleEntry {
@@ -38,16 +41,31 @@ function formatLineTimestamp(ts?: string): string {
 export function LogPanel({ log }: LogPanelProps) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
+  const renderLines = useMemo(() => {
+    if (!log) return [];
+    if (log.lines.length <= MAX_RENDER_LOG_LINES) return log.lines;
+    return log.lines.slice(log.lines.length - MAX_RENDER_LOG_LINES);
+  }, [log]);
+
+  const copyLines = useMemo(() => {
+    if (!log) return [];
+    if (log.lines.length <= MAX_COPY_LOG_LINES) return log.lines;
+    return log.lines.slice(log.lines.length - MAX_COPY_LOG_LINES);
+  }, [log]);
+
+  const renderTruncated = !!log && log.lines.length > renderLines.length;
+  const copyTruncated = !!log && log.lines.length > copyLines.length;
+
   const copyText = useMemo(() => {
     if (!log) return "";
-    return log.lines
+    return copyLines
       .map((line) => {
         const s = LOG_STYLE[line.type] || LOG_STYLE.info;
         const ts = formatLineTimestamp(line.ts || log.ts);
         return `${ts} [${s.pre.trim() || "OUT"}] ${line.msg}`;
       })
       .join("\n");
-  }, [log]);
+  }, [copyLines, log]);
 
   const onCopyLogs = async () => {
     if (!copyText) return;
@@ -159,9 +177,25 @@ export function LogPanel({ log }: LogPanelProps) {
               padding: "8px 0",
             }}
           >
+            {renderTruncated && (
+              <div
+                style={{
+                  margin: "0 14px 8px",
+                  padding: "7px 10px",
+                  borderRadius: 6,
+                  border: `1px solid ${C.border}`,
+                  background: C.surfaceAlt,
+                  color: C.textMuted,
+                  fontSize: 11,
+                  fontFamily: F.sans,
+                }}
+              >
+                Showing last {renderLines.length} lines to keep the UI responsive.
+              </div>
+            )}
             {(() => {
               const seenLines = new Map<string, number>();
-              return log.lines.map((line) => {
+              return renderLines.map((line) => {
                 const lineSig = `${line.type}:${line.msg}`;
                 const occurrence = (seenLines.get(lineSig) ?? 0) + 1;
                 seenLines.set(lineSig, occurrence);
@@ -208,6 +242,20 @@ export function LogPanel({ log }: LogPanelProps) {
               });
             })()}
           </div>
+          {copyTruncated && (
+            <div
+              style={{
+                padding: "6px 14px 9px",
+                borderTop: `1px solid ${C.border}`,
+                color: C.textMuted,
+                fontSize: 10.5,
+                fontFamily: F.sans,
+                background: C.surface,
+              }}
+            >
+              Copy includes last {copyLines.length} lines.
+            </div>
+          )}
         </>
       )}
     </div>

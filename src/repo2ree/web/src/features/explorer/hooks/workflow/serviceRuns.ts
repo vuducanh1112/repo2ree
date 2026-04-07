@@ -51,7 +51,7 @@ export function createServiceRunHandlers({
         runParams?._expectedOutput ? runParams._expectedOutput : "",
       ).trim();
       const producedName = expectedOutput || runtimeTarget || "runtime.tar.gz";
-      const isTarball = /\.(tar\.gz|tgz)$/i.test(producedName);
+      const isTarball = /\.(tar|tar\.gz|tgz)$/i.test(producedName);
       let producedRuntimePath: string | null = null;
       if (workspaceServiceMode === "mock" && isTarball) {
         persistWorkspaceFile(

@@ -14,6 +14,8 @@ import type { Badges, ExplorerPage, FileTreeNode, Ree } from "../../../types";
 import { findVirtualFileByName } from "../../../utils";
 import { PanelFieldRow } from "./PanelFieldRow";
 
+const SBOM_PANEL_PARSE_CHAR_LIMIT = 200_000;
+
 interface SbomPanelProps {
   ree: Ree;
   files: FileTreeNode[];
@@ -38,6 +40,9 @@ export function SbomPanel({ ree, files, badges, sbomRef, onNavigate }: SbomPanel
 
   const sbomMeta = (() => {
     if (!sbomFile) return null;
+    if (!sbomFile.content || sbomFile.content.length > SBOM_PANEL_PARSE_CHAR_LIMIT) {
+      return null;
+    }
     try {
       const parsed = JSON.parse(sbomFile.content || "{}");
       const pkgCount = Array.isArray(parsed.packages)

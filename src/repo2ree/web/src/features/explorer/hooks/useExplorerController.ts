@@ -12,8 +12,8 @@ import type {
 import {
   buildCurrentReeArchiveEntries,
   findVirtualFileByName,
-  REE_RUNTIME_PATH,
   reeArchiveEntriesToFiles,
+  resolveRuntimeArchiveEntryPath,
 } from "../../../utils";
 import { useExplorerWorkflow } from "./useExplorerWorkflow";
 
@@ -57,13 +57,15 @@ export function useExplorerController() {
       return files;
     }
 
+    const runtimeArchivePath = resolveRuntimeArchiveEntryPath(ree.runtime);
+
     const workspaceRuntimeFile = findVirtualFileByName(virtualFiles, ree.runtime);
     if (!workspaceRuntimeFile) {
       return files;
     }
 
     return files.map((file) =>
-      file.name === REE_RUNTIME_PATH
+      file.name === runtimeArchivePath
         ? {
             ...file,
             content: workspaceRuntimeFile.content,
@@ -81,6 +83,7 @@ export function useExplorerController() {
     handleDownloadSourceFiles,
     handleWorkspaceUpload,
     handleRemoveWorkspaceSource,
+    downloadWorkspaceFile,
     persistWorkspaceFile,
     runAction,
     runWorkflowAction,
@@ -117,6 +120,7 @@ export function useExplorerController() {
     onDownloadSourceFiles: handleDownloadSourceFiles,
     onWorkspaceUpload: (payload: SourceUploadCommit) => handleWorkspaceUpload(payload),
     onRemoveWorkspaceSource: handleRemoveWorkspaceSource,
+    onDownloadWorkspaceFile: downloadWorkspaceFile,
     onRunAction: runAction,
     onCancelAction: cancelWorkflowAction,
     onRunWorkflowAction: <K extends WorkflowServiceKey>(

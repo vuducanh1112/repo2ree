@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Ic } from "../../../components/Icon";
 import { PAGE } from "../../../constants/pages";
 import {
@@ -38,6 +38,9 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...extra,
 });
 
+const SBOM_PARSE_CHAR_LIMIT = 300_000;
+const SBOM_PREVIEW_CHAR_LIMIT = 120_000;
+
 export function PageGenerateSBOM({
   svc,
   ree,
@@ -67,7 +70,23 @@ export function PageGenerateSBOM({
   const sbomNode = hasSbom ? findFileByPath(files || [], ree.sbom) : null;
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
+  const sbomText = sbomNode?.content || "";
+  const sbomUnavailable = !!sbomNode && !sbomNode.content && (sbomNode.size || 0) > 0;
+  const sbomTooLargeForPreview = sbomText.length > SBOM_PREVIEW_CHAR_LIMIT;
+  const sbomPreviewText = sbomTooLargeForPreview
+    ? `${sbomText.slice(0, SBOM_PREVIEW_CHAR_LIMIT)}\n\n... preview truncated ...`
+    : sbomText;
+
   const sbomScripts = SVC_SCRIPT_FIELDS[svc.key] || [];
+  const pkgCount = useMemo(() => {
+    if (!hasSbom || !sbomNode?.content) return null;
+    if (sbomNode.content.length > SBOM_PARSE_CHAR_LIMIT) return null;
+    try {
+      return JSON.parse(sbomNode.content)?.packages?.length ?? null;
+    } catch {
+      return null;
+    }
+  }, [hasSbom, sbomNode?.content]);
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
@@ -305,10 +324,13 @@ export function PageGenerateSBOM({
                         SBOM file was set but is not present in files.
                       </div>
                     );
-                  let pkgCount = null;
-                  try {
-                    pkgCount = JSON.parse(sbomNode.content ?? "{}")?.packages?.length ?? null;
-                  } catch {}
+                  if (sbomUnavailable)
+                    return (
+                      <div style={{ color: C.textMuted }}>
+                        SBOM file is present but too large to inline in memory. Use the Files page
+                        to inspect/download it.
+                      </div>
+                    );
                   return (
                     <div>
                       <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>SBOM Preview</div>
@@ -376,10 +398,15 @@ export function PageGenerateSBOM({
                               wordBreak: "break-all",
                             }}
                           >
-                            {sbomNode.content}
+                            {sbomPreviewText}
                           </pre>
                         </div>
                       </div>
+                      {sbomTooLargeForPreview && (
+                        <div style={{ marginTop: 8, fontSize: 11, color: C.textMuted }}>
+                          Preview truncated to keep the UI responsive.
+                        </div>
+                      )}
                     </div>
                   );
                 })()

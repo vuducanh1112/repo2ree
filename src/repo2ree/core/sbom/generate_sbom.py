@@ -2,8 +2,8 @@ from pathlib import Path
 import tempfile
 import json
 
-from repo2ree.dockerfile_utils.build_image import build_docker_image
-from repo2ree.dockerfile_utils.extract_files import extract_file_from_image
+from repo2ree.core.dockerfile_utils.build_image import build_docker_image
+from repo2ree.core.dockerfile_utils.extract_files import extract_file_from_image
 
 
 def generate_sbom(runtime_path: Path, output_dir: Path) -> Path:
@@ -13,15 +13,16 @@ def generate_sbom(runtime_path: Path, output_dir: Path) -> Path:
     ##############
 
     syft_image_name = "ghcr.io/anchore/syft:v1.36.0"
-    syft_image_digest = (
-        "sha256:788d70164a2aa4cab235bc6f92956438050bceb8f04a27b9fe6f820469470216"
-    )
+    # syft_image_digest = (
+    #    "sha256:788d70164a2aa4cab235bc6f92956438050bceb8f04a27b9fe6f820469470216"
+    # )
 
     dockerfile_contents = ""
-    dockerfile_contents += f"FROM {syft_image_name}@{syft_image_digest}\n"
+    # dockerfile_contents += f"FROM {syft_image_name}@{syft_image_digest}\n"
+    dockerfile_contents += f"FROM {syft_image_name}\n"
     dockerfile_contents += "WORKDIR /workdir\n"
     dockerfile_contents += f"COPY {runtime_path.name} /workdir/{runtime_path.name}\n"
-    dockerfile_contents += f'RUN ["/syft", "/workdir/{runtime_path.name}", "-o", "json=/workdir/sbom.json"]'
+    dockerfile_contents += f'RUN ["/syft", "docker-archive:/workdir/{runtime_path.name}", "-o", "json=/workdir/sbom.json"]'
 
     with tempfile.TemporaryDirectory() as tmpdir:
         dockerfile_path = Path(tmpdir) / "Dockerfile-syft"

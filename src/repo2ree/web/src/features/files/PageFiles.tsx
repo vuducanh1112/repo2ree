@@ -24,11 +24,65 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...extra,
 });
 
+const FILE_VIEWER_MAX_CHARS = 120_000;
+const FILE_VIEWER_MAX_LINES = 2_000;
+
+const TEXT_FILE_EXTENSIONS = new Set([
+  "txt",
+  "md",
+  "json",
+  "yaml",
+  "yml",
+  "xml",
+  "toml",
+  "ini",
+  "cfg",
+  "conf",
+  "sh",
+  "py",
+  "js",
+  "ts",
+  "tsx",
+  "jsx",
+  "css",
+  "html",
+  "csv",
+  "log",
+  "dockerfile",
+]);
+
+function isLikelyTextFile(fileName: string): boolean {
+  const lower = fileName.toLowerCase();
+  if (lower === "dockerfile" || lower.endsWith(".dockerfile")) {
+    return true;
+  }
+  const ext = lower.includes(".") ? lower.split(".").pop() || "" : "";
+  return TEXT_FILE_EXTENSIONS.has(ext);
+}
+
 function flattenTree(nodes: FileTreeNode[]): FileTreeNode[] {
   const result: FileTreeNode[] = [];
   for (const node of nodes || []) {
     if (node.type === "folder") result.push(...flattenTree(node.children || []));
     else result.push(node);
+  }
+  return result;
+}
+
+interface FlatTreeEntry {
+  node: FileTreeNode;
+  path: string;
+}
+
+function flattenTreeWithPaths(nodes: FileTreeNode[], prefix = ""): FlatTreeEntry[] {
+  const result: FlatTreeEntry[] = [];
+  for (const node of nodes || []) {
+    const currentPath = prefix ? `${prefix}/${node.name}` : node.name;
+    if (node.type === "folder") {
+      result.push(...flattenTreeWithPaths(node.children || [], currentPath));
+    } else {
+      result.push({ node, path: currentPath });
+    }
   }
   return result;
 }
@@ -90,20 +144,52 @@ interface FileViewerProps {
   file: FileTreeNode | ReeFile;
   onClose: () => void;
   label?: string;
+  onDownload?: () => Promise<void>;
 }
 
-function FileViewer({ file, onClose, label }: FileViewerProps) {
+function FileViewer({ file, onClose, label, onDownload }: FileViewerProps) {
   const [copied, setCopied] = useState(false);
-  const hasBinaryContent = !file.content && typeof file.size === "number" && file.size > 0;
+  const [downloading, setDownloading] = useState(false);
+  const likelyTextFile = isLikelyTextFile(file.name);
+  const unavailableInlineText =
+    !file.content && typeof file.size === "number" && file.size > 0 && likelyTextFile;
+  const hasBinaryContent =
+    !file.content && typeof file.size === "number" && file.size > 0 && !likelyTextFile;
   const binaryLabel = hasBinaryContent ? `Binary file (${fmtBytes(file.size || 0)})` : null;
+  const textUnavailableLabel = unavailableInlineText
+    ? `Text file (${fmtBytes(file.size || 0)}) was not inlined to keep memory usage low.`
+    : null;
+  const shouldOfferDownload = (unavailableInlineText || hasBinaryContent) && !!onDownload;
+  const fullText = file.content || "";
+  const truncatedByChars = !hasBinaryContent && fullText.length > FILE_VIEWER_MAX_CHARS;
+  const previewText = truncatedByChars ? fullText.slice(0, FILE_VIEWER_MAX_CHARS) : fullText;
+  const previewLines = previewText.split("\n");
+  const truncatedByLines = !hasBinaryContent && previewLines.length > FILE_VIEWER_MAX_LINES;
+  const truncated = truncatedByChars || truncatedByLines;
   const copy = () => {
     navigator.clipboard?.writeText(file.content || binaryLabel || "");
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
+  const download = async () => {
+    if (!onDownload || downloading) return;
+    setDownloading(true);
+    try {
+      await onDownload();
+    } finally {
+      setDownloading(false);
+    }
+  };
   const lines = hasBinaryContent
     ? [binaryLabel || "Binary file", "Content preview is unavailable for this file type."]
-    : (file.content || "").split("\n");
+    : unavailableInlineText
+      ? [
+          textUnavailableLabel || "Text preview unavailable",
+          "Open/download raw content if you need full file contents.",
+        ]
+      : truncatedByLines
+        ? previewLines.slice(0, FILE_VIEWER_MAX_LINES)
+        : previewLines;
 
   return (
     <div
@@ -152,26 +238,50 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
             {label}
           </span>
         )}
-        <button
-          type="button"
-          onClick={copy}
-          style={{
-            ...actionBtn({
-              background: "none",
-              border: `1px solid ${C.border}`,
-              borderRadius: 4,
-              padding: "2px 8px",
-              fontSize: 10,
-              color: copied ? "#16a34a" : C.textMuted,
-              transition: "all 0.12s",
-            }),
-            flexShrink: 0,
-          }}
-          {...hoverIf(!copied, hoverBorderColor(C.accent, C.border))}
-          {...hoverIf(!copied, hoverColor(C.accent, C.textMuted))}
-        >
-          {copied ? "✓ copied" : "copy"}
-        </button>
+        {shouldOfferDownload ? (
+          <button
+            type="button"
+            onClick={download}
+            style={{
+              ...actionBtn({
+                background: "none",
+                border: `1px solid ${C.border}`,
+                borderRadius: 4,
+                padding: "2px 8px",
+                fontSize: 10,
+                color: C.textMuted,
+                transition: "all 0.12s",
+              }),
+              flexShrink: 0,
+            }}
+            {...hoverIf(!downloading, hoverBorderColor(C.accent, C.border))}
+            {...hoverIf(!downloading, hoverColor(C.accent, C.textMuted))}
+            disabled={downloading}
+          >
+            {downloading ? "downloading…" : "download"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={copy}
+            style={{
+              ...actionBtn({
+                background: "none",
+                border: `1px solid ${C.border}`,
+                borderRadius: 4,
+                padding: "2px 8px",
+                fontSize: 10,
+                color: copied ? "#16a34a" : C.textMuted,
+                transition: "all 0.12s",
+              }),
+              flexShrink: 0,
+            }}
+            {...hoverIf(!copied, hoverBorderColor(C.accent, C.border))}
+            {...hoverIf(!copied, hoverColor(C.accent, C.textMuted))}
+          >
+            {copied ? "✓ copied" : "copy"}
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}
@@ -190,6 +300,22 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
         </button>
       </div>
       <div style={{ overflowY: "auto", flex: 1, padding: "8px 0" }}>
+        {truncated && (
+          <div
+            style={{
+              margin: "0 10px 8px",
+              padding: "8px 10px",
+              borderRadius: 6,
+              border: `1px solid ${C.border}`,
+              background: C.surfaceAlt,
+              fontSize: 11,
+              color: C.textMuted,
+              fontFamily: F.sans,
+            }}
+          >
+            Preview truncated to keep the UI responsive.
+          </div>
+        )}
         {(() => {
           const lineCounts = new Map<string, number>();
           return lines.map((line, i) => {
@@ -225,15 +351,17 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
                     paddingRight: 16,
                     color: hasBinaryContent
                       ? C.textMuted
-                      : line.startsWith("#")
-                        ? "#94a3b8"
-                        : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
-                          ? "#0369a1"
-                          : /^(set |echo |docker |pip )/.test(line)
-                            ? "#15803d"
-                            : /^\s*"/.test(line) && line.includes(":")
-                              ? "#b45309"
-                              : C.text,
+                      : unavailableInlineText
+                        ? C.textMuted
+                        : line.startsWith("#")
+                          ? "#94a3b8"
+                          : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
+                            ? "#0369a1"
+                            : /^(set |echo |docker |pip )/.test(line)
+                              ? "#15803d"
+                              : /^\s*"/.test(line) && line.includes(":")
+                                ? "#b45309"
+                                : C.text,
                   }}
                 >
                   {line || " "}
@@ -250,16 +378,24 @@ function FileViewer({ file, onClose, label }: FileViewerProps) {
 export interface PageFilesProps {
   files: FileTreeNode[];
   reeFiles: ReeFile[];
+  onDownloadWorkspaceFile?: (path: string, suggestedName?: string) => Promise<void>;
 }
 
-export function PageFiles({ files, reeFiles }: PageFilesProps) {
+export function PageFiles({ files, reeFiles, onDownloadWorkspaceFile }: PageFilesProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const sourceFiles = files || MOCK_FILES;
   const reeFileTree = useMemo(() => buildReeFileTree(reeFiles), [reeFiles]);
+  const sourceFlatEntries = useMemo(() => flattenTreeWithPaths(sourceFiles), [sourceFiles]);
+  const reeFlatEntries = useMemo(() => flattenTreeWithPaths(reeFileTree), [reeFileTree]);
   const reeFlatFiles = useMemo(() => flattenTree(reeFileTree), [reeFileTree]);
 
-  const allFiles = [...flattenTree(sourceFiles), ...reeFlatFiles];
-  const selectedFile = selectedId ? allFiles.find((f) => f.id === selectedId) || null : null;
+  const selectedSourceEntry = selectedId
+    ? sourceFlatEntries.find((entry) => entry.node.id === selectedId) || null
+    : null;
+  const selectedReeEntry = selectedId
+    ? reeFlatEntries.find((entry) => entry.node.id === selectedId) || null
+    : null;
+  const selectedFile = selectedSourceEntry?.node || selectedReeEntry?.node || null;
 
   const SectionHeader = ({
     label,
@@ -392,6 +528,11 @@ export function PageFiles({ files, reeFiles }: PageFilesProps) {
               file={selectedFile}
               onClose={() => setSelectedId(null)}
               label={reeFlatFiles.find((f) => f.id === selectedId) ? "ree" : "workspace"}
+              onDownload={
+                selectedSourceEntry?.path && onDownloadWorkspaceFile
+                  ? () => onDownloadWorkspaceFile(selectedSourceEntry.path, selectedFile.name)
+                  : undefined
+              }
             />
           </div>
         ) : (

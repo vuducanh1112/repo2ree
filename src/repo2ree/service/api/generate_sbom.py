@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree.core.sbom.generate_sbom import generate_sbom
 from repo2ree.service.api.run_management import (
     _append_run_log,
     _is_cancel_requested,
@@ -16,9 +16,7 @@ from repo2ree.service.api.run_management import (
 from repo2ree.service.storage.workspace_files import (
     WorkspacePatchPayload,
     patch_workspace,
-    read_workspace_metadata,
     workspace_dir,
-    write_file_content,
 )
 
 
@@ -68,50 +66,29 @@ def resolve_sbom_runtime_path(
             status_code=400, detail=f"Runtime tarball not found: {runtime_path}"
         )
 
-    if not runtime_path.lower().endswith((".tar.gz", ".tgz")):
+    if not runtime_path.lower().endswith((".tar", ".tar.gz", ".tgz")):
         raise HTTPException(
             status_code=400,
-            detail="SBOM generation currently supports runtime tarballs only (.tar.gz or .tgz)",
+            detail="SBOM generation currently supports runtime tarballs only (.tar, .tar.gz, or .tgz)",
         )
 
     return runtime_path
 
 
-def generate_dummy_sbom_for_runtime(
+def generate_sbom_for_runtime(
     workspace_id: str, runtime_relative_path: str
 ) -> dict[str, Any]:
-    metadata = read_workspace_metadata(workspace_id)
-    ree_draft = dict(metadata.get("reeDraft") or {})
-    ree_name = str(ree_draft.get("name") or f"workspace-{workspace_id[:8]}")
-
-    sbom_payload = {
-        "spdxVersion": "SPDX-2.3",
-        "dataLicense": "CC0-1.0",
-        "SPDXID": "SPDXRef-DOCUMENT",
-        "name": f"{ree_name}-sbom",
-        "documentNamespace": f"https://example.org/repo2ree/sbom/{workspace_id}",
-        "creationInfo": {
-            "created": "1970-01-01T00:00:00Z",
-            "creators": ["Tool: repo2ree dummy sbom generator"],
-        },
-        "runtime": runtime_relative_path,
-        "packages": [
-            {
-                "SPDXID": "SPDXRef-root-runtime",
-                "name": Path(runtime_relative_path).name,
-                "versionInfo": "unknown",
-                "downloadLocation": "NOASSERTION",
-                "filesAnalyzed": False,
-            }
-        ],
-    }
-
-    sbom_relative_path = "sbom.json"
-    write_file_content(
-        workspace_id,
-        sbom_relative_path,
-        json.dumps(sbom_payload, indent=2),
+    runtime_abs_path = _resolve_workspace_relative_path(
+        workspace_id, runtime_relative_path
     )
+    output_dir = workspace_dir(workspace_id)
+    generated_sbom_path = generate_sbom(runtime_abs_path, output_dir)
+    sbom_relative_path = "sbom.json"
+    if generated_sbom_path.name != sbom_relative_path:
+        raise RuntimeError(
+            f"Unexpected generated SBOM filename: {generated_sbom_path.name}"
+        )
+
     patch_workspace(
         workspace_id,
         WorkspacePatchPayload(reePatch={"sbom": sbom_relative_path}),
@@ -146,10 +123,20 @@ def create_generate_sbom_run_state(
                 "runtimeRelativePath": runtime_path,
                 "format": "spdx-json",
             }
-        outputs = generate_dummy_sbom_for_runtime(
-            workspace_id=ws_id,
-            runtime_relative_path=runtime_path,
-        )
+        try:
+            outputs = generate_sbom_for_runtime(
+                workspace_id=ws_id,
+                runtime_relative_path=runtime_path,
+            )
+        except Exception as exc:
+            _append_run_log(
+                ws_id,
+                run_id,
+                "system",
+                "error",
+                f"SBOM generation failed: {exc}",
+            )
+            raise
         _append_run_log(
             ws_id,
             run_id,

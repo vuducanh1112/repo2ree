@@ -194,7 +194,7 @@ export function ArchivePageContainer({ state, commands }: ExplorerPageContainerP
   );
 }
 
-export function FilesPageContainer({ state }: Pick<ExplorerPageContainerProps, "state">) {
+export function FilesPageContainer({ state, commands }: ExplorerPageContainerProps) {
   const { page, virtualFiles, currentReeFiles } = state;
 
   if (page !== PAGE.FILES) {
@@ -203,7 +203,11 @@ export function FilesPageContainer({ state }: Pick<ExplorerPageContainerProps, "
 
   return (
     <ContentSection>
-      <FilesPage files={virtualFiles} reeFiles={currentReeFiles} />
+      <FilesPage
+        files={virtualFiles}
+        reeFiles={currentReeFiles}
+        onDownloadWorkspaceFile={commands.onDownloadWorkspaceFile}
+      />
     </ContentSection>
   );
 }

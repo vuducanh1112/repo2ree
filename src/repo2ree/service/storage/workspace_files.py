@@ -182,6 +182,19 @@ def _read_text_if_possible(path: Path) -> str | None:
         return None
 
 
+_MAX_INLINE_TEXT_BYTES = 1024 * 1024
+_MAX_INLINE_SBOM_BYTES = 8 * 1024 * 1024
+
+
+def _should_inline_file_content(relative_path: str, size: int) -> bool:
+    lower_path = relative_path.lower()
+    if lower_path.endswith("sbom.json") and size > _MAX_INLINE_SBOM_BYTES:
+        return False
+    if size > _MAX_INLINE_TEXT_BYTES:
+        return False
+    return True
+
+
 def list_workspace_metadata(status: str | None = None) -> list[dict[str, Any]]:
     ensure_workspace_root()
     records: list[dict[str, Any]] = []
@@ -211,12 +224,15 @@ def _workspace_files_with_content(workspace_id: str) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     for file_path in _iter_workspace_files(workspace_id):
         relative_path = _relative_workspace_path(workspace_id, file_path)
+        file_size = file_path.stat().st_size
         entries.append(
             {
                 "path": relative_path,
                 "kind": _file_kind(relative_path),
-                "size": file_path.stat().st_size,
-                "content": _read_text_if_possible(file_path),
+                "size": file_size,
+                "content": _read_text_if_possible(file_path)
+                if _should_inline_file_content(relative_path, file_size)
+                else None,
             }
         )
     return entries
@@ -389,7 +405,10 @@ def build_workspace_ree_archive(workspace_id: str) -> bytes:
         if runtime_path and runtime_path in excluded_paths:
             runtime_file = _resolve_workspace_path(workspace_id, runtime_path)
             if runtime_file.exists() and runtime_file.is_file():
-                archive.writestr("ree/runtime.tar.gz", runtime_file.read_bytes())
+                archive.writestr(
+                    f"ree/{_archive_workspace_path(runtime_path)}",
+                    runtime_file.read_bytes(),
+                )
 
         if sbom_path and sbom_path in excluded_paths:
             sbom_file = _resolve_workspace_path(workspace_id, sbom_path)

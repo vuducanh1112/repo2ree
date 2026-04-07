@@ -19,6 +19,8 @@ interface PollWorkflowRunResult {
 }
 
 const TERMINAL_STATUSES = new Set<WorkflowRunStatus>(["succeeded", "failed", "canceled"]);
+const MAX_LOG_LINES = 2000;
+const MAX_LOG_MESSAGE_CHARS = 4000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -28,6 +30,21 @@ function resolvePollDelay(iteration: number): number {
   if (iteration < 10) return 1000;
   if (iteration < 30) return 2500;
   return 5000;
+}
+
+function sanitizeLine(line: LogLine): LogLine {
+  if (line.msg.length <= MAX_LOG_MESSAGE_CHARS) return line;
+  return {
+    ...line,
+    msg: `${line.msg.slice(0, MAX_LOG_MESSAGE_CHARS)}… [truncated]`,
+  };
+}
+
+function mergeCappedLines(existing: LogLine[], incoming: LogLine[]): LogLine[] {
+  if (incoming.length === 0) return existing;
+  const merged = [...existing, ...incoming.map(sanitizeLine)];
+  if (merged.length <= MAX_LOG_LINES) return merged;
+  return merged.slice(merged.length - MAX_LOG_LINES);
 }
 
 async function readAvailableLogs(
@@ -44,7 +61,7 @@ async function readAvailableLogs(
   let nextCursor = cursor;
   for (let i = 0; i < 20; i += 1) {
     const chunk = await workspaceService.getWorkflowRunLogs(workspaceId, runId, nextCursor);
-    lines.push(...chunk.lines);
+    lines.push(...chunk.lines.map(sanitizeLine));
     if (!chunk.hasMore && !chunk.lines.length) {
       break;
     }
@@ -86,7 +103,7 @@ export async function pollWorkflowRun(
       options.runId,
       requestCursor,
     );
-    aggregatedLines = [...aggregatedLines, ...chunk.lines];
+    aggregatedLines = mergeCappedLines(aggregatedLines, chunk.lines);
     fetchedLogCount += chunk.lines.length;
     logCursor = chunk.nextCursor || String(fetchedLogCount);
   };
@@ -107,7 +124,7 @@ export async function pollWorkflowRun(
         options.runId,
         logCursor,
       );
-      aggregatedLines = [...aggregatedLines, ...lines];
+      aggregatedLines = mergeCappedLines(aggregatedLines, lines);
       return {
         status: latestRun.status,
         lines: aggregatedLines,
@@ -125,13 +142,12 @@ export async function pollWorkflowRun(
     options.runId,
     logCursor,
   );
-  aggregatedLines = [...aggregatedLines, ...lines];
+  aggregatedLines = mergeCappedLines(aggregatedLines, lines);
   return {
     status: latestRun.status,
-    lines: [
-      ...aggregatedLines,
+    lines: mergeCappedLines(aggregatedLines, [
       { type: "warn", msg: "Run still active after polling window ended" },
-    ],
+    ]),
     ts: resolveRunTimestamp(latestRun),
   };
 }

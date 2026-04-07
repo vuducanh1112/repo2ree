@@ -36,6 +36,7 @@ export function buildCurrentReeArchiveEntries(
   const sourcePaths = new Set(
     listTreeFiles(sourceSnapshotFiles).map((f) => normalizeWorkspacePath(f.path)),
   );
+  const runtimeArchivePath = resolveRuntimeArchiveEntryPath(ree.runtime);
   let runtimeIncludedInArchive = false;
 
   const manifest = {
@@ -64,9 +65,19 @@ export function buildCurrentReeArchiveEntries(
 
   if (ree.sbom && ree.sbom !== "__skipped__") {
     const sbomNode = findVirtualFileByName(virtualFiles, ree.sbom);
-    const sbomContent =
-      sbomNode?.content ??
-      JSON.stringify({ note: "SBOM not yet generated — run Generate SBOM first" }, null, 2);
+    const sbomContent = sbomNode?.content
+      ? sbomNode.content
+      : sbomNode && typeof sbomNode.size === "number" && sbomNode.size > 0
+        ? JSON.stringify(
+            {
+              note: "SBOM exists in workspace but content preview was omitted due size",
+              sbom_path: ree.sbom,
+              sbom_size_bytes: sbomNode.size,
+            },
+            null,
+            2,
+          )
+        : JSON.stringify({ note: "SBOM not yet generated — run Generate SBOM first" }, null, 2);
     entries.push({ path: REE_SBOM_PATH, data: enc.encode(sbomContent) });
   }
 
@@ -91,7 +102,7 @@ export function buildCurrentReeArchiveEntries(
         : "";
 
     if (hasTextContent || hasBinarySize) {
-      entries.push({ path: REE_RUNTIME_PATH, data: enc.encode(runtimePreviewContent) });
+      entries.push({ path: runtimeArchivePath, data: enc.encode(runtimePreviewContent) });
       runtimeIncludedInArchive = true;
     }
   }
@@ -139,4 +150,13 @@ export function buildCurrentReeArchiveEntries(
   }
 
   return entries;
+}
+
+export function resolveRuntimeArchiveEntryPath(runtimePath?: string): string {
+  const normalized = normalizeWorkspacePath(runtimePath || "");
+  const archived = archiveWorkspacePath(normalized);
+  if (!archived) {
+    return REE_RUNTIME_PATH;
+  }
+  return `${REE_ROOT_PREFIX}${archived}`;
 }

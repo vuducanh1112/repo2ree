@@ -130,7 +130,7 @@ export function ReviewerView({
         <div style={{ width: 1, height: 18, background: C.border }} />
         <span style={{ color: C.accent, display: "flex" }}>{Ic.layers()}</span>
         <span style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: -0.3 }}>
-          REE Explorer
+          REE Reviewer
         </span>
         <span style={{ fontSize: 13, color: C.borderMid, fontFamily: F.mono }}>/</span>
         <span style={{ fontSize: 13, color: C.textMuted, fontFamily: F.mono }}>

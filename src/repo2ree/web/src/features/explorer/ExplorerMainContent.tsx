@@ -37,7 +37,7 @@ export function ExplorerMainContent({ state, commands }: ExplorerMainContentProp
         <MetadataPageContainer state={state} commands={commands} />
         <ServicePageContainer state={state} commands={commands} />
         <ArchivePageContainer state={state} commands={commands} />
-        <FilesPageContainer state={state} />
+        <FilesPageContainer state={state} commands={commands} />
       </div>
     </main>
   );

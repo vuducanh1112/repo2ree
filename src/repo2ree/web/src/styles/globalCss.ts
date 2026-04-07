@@ -11,6 +11,13 @@ export const GLOBAL_CSS = `
   ::-webkit-scrollbar-thumb { background:#c4cdd9; border-radius:99px; }
   ::-webkit-scrollbar-thumb:hover { background:#8896a5; }
   input, select, button, textarea { font-family:inherit; outline:none; }
-  input:focus, select:focus { border-color:#2563eb !important; box-shadow:0 0 0 3px #2563eb18 !important; }
+  input:focus, select:focus, textarea:focus { border-color:#2563eb !important; box-shadow:0 0 0 3px #2563eb18 !important; }
+  :where(button, [role="button"], a, input, select, textarea):focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+  :where(button, [role="button"], a, input, select, textarea):focus:not(:focus-visible) {
+    outline: none;
+  }
   .nav-item { transition: background 0.12s, color 0.12s; }
 `;

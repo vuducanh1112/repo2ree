@@ -415,7 +415,7 @@ export function RuntimeOutputNode({
   imageColor,
   files,
 }: RuntimeOutputNodeProps) {
-  const isTarball = expectedOutput && /\.(tar\.gz|tgz)$/i.test(expectedOutput);
+  const isTarball = expectedOutput && /\.(tar|tar\.gz|tgz)$/i.test(expectedOutput);
   const alreadySet = expectedOutput && ree.runtime === expectedOutput;
 
   const fileExists = isTarball
