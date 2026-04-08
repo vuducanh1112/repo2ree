@@ -26,6 +26,8 @@ export const endpoints = {
     `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/generate-sbom`,
   workspaceActivationTest: (workspaceId: string) =>
     `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/activation-test`,
+  workspaceEvaluate: (workspaceId: string) =>
+    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/evaluate`,
   workspaceRuns: (workspaceId: string) =>
     `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/runs`,
   workspaceRun: (workspaceId: string, runId: string) =>

@@ -121,6 +121,12 @@ export interface CreateActivationTestRunRequestDto {
   idempotencyKey?: string;
 }
 
+export interface CreateEvaluateRunRequestDto {
+  strict: boolean;
+  swhid_check: boolean;
+  idempotencyKey?: string;
+}
+
 export interface WorkflowRunDto {
   runId: string;
   workspaceId: string;

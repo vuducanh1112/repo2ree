@@ -80,6 +80,10 @@ def retry_workspace_run(workspace_id: str, run_id: str):
         CreateActivationTestRunPayload,
         create_activation_run_state,
     )
+    from repo2ree.service.api.evaluate import (
+        CreateEvaluateRunPayload,
+        create_evaluate_run_state,
+    )
     from repo2ree.service.api.generate_sbom import (
         CreateGenerateSbomRunPayload,
         create_generate_sbom_run_state,
@@ -106,6 +110,12 @@ def retry_workspace_run(workspace_id: str, run_id: str):
             activation_script_path=request_payload.get("activation_script_path", "")
         )
         return _run_summary(create_activation_run_state(workspace_id, payload))
+    if operation == "evaluate":
+        payload = CreateEvaluateRunPayload(
+            strict=bool(request_payload.get("strict", False)),
+            swhid_check=bool(request_payload.get("swhid_check", True)),
+        )
+        return _run_summary(create_evaluate_run_state(workspace_id, payload))
     raise HTTPException(
         status_code=400, detail=f"Unsupported operation for retry: {operation}"
     )

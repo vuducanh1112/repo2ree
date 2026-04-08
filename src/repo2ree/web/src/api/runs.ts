@@ -4,6 +4,7 @@ import type {
   ApiListResponse,
   CreateActivationTestRunRequestDto,
   CreateBuildRuntimeRunRequestDto,
+  CreateEvaluateRunRequestDto,
   CreateGenerateSbomRunRequestDto,
   WorkflowLogEntryDto,
   WorkflowLogsDto,
@@ -52,6 +53,16 @@ export class WorkflowRunsApi {
     payload: CreateActivationTestRunRequestDto,
   ): Promise<WorkflowRunDto> {
     return this.client.request<WorkflowRunDto>(endpoints.workspaceActivationTest(workspaceId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async createEvaluateRun(
+    workspaceId: string,
+    payload: CreateEvaluateRunRequestDto,
+  ): Promise<WorkflowRunDto> {
+    return this.client.request<WorkflowRunDto>(endpoints.workspaceEvaluate(workspaceId), {
       method: "POST",
       body: JSON.stringify(payload),
     });

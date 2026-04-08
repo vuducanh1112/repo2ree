@@ -190,7 +190,7 @@ export async function executeServiceRunAction({
 }: ExecuteServiceRunArgs): Promise<WorkspaceServiceLogEntry> {
   dispatch(explorerActions.setActionStates((prevStates) => ({ ...prevStates, [key]: "loading" })));
 
-  if (key !== "evaluate" && workspaceService.startWorkflowRun && workspaceService.getWorkflowRun) {
+  if (workspaceService.startWorkflowRun && workspaceService.getWorkflowRun) {
     const runParams =
       key === "activation"
         ? {

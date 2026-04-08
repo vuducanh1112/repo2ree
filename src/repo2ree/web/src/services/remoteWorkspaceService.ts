@@ -156,6 +156,11 @@ export function createRemoteWorkspaceService(
           params.activation_script_path ?? params.activation_script ?? "",
         ),
       });
+    } else if (scriptKey === "evaluate") {
+      run = await runsApi.createEvaluateRun(workspaceId, {
+        strict: Boolean(params.strict),
+        swhid_check: Boolean(params.swhid_check),
+      });
     } else if (scriptKey === "source") {
       const mode = String(params.mode || "");
       if (mode === "download") {
