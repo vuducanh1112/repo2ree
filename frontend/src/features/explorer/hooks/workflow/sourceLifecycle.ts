@@ -146,6 +146,8 @@ export function createExplorerWorkspaceService({
       dispatch(
         explorerActions.setRee((prevRee) => ({
           ...prevRee,
+          origin_url: "",
+          _sourceIncluded: true,
           _uploadedArchive: archiveName,
           source_type: "",
           _sourceAvailable: true,
@@ -225,7 +227,7 @@ export function createSourceActions({
     return workspace.files;
   };
 
-  const handleDownloadSourceFiles = async (originType: Ree["source_type"]) => {
+  const handleDownloadSourceFiles = async (originType: Ree["source_type"], sourceUrl: string) => {
     if (ree._sourceAvailable && ree._sourceAcquiredBy === "upload") {
       showToast(
         "Source already provided via tarball upload. Change source to switch method.",
@@ -233,7 +235,8 @@ export function createSourceActions({
       );
       return;
     }
-    if (!ree.origin_url || !originType) {
+    const normalizedSourceUrl = sourceUrl.trim();
+    if (!normalizedSourceUrl || !originType) {
       showToast("Set origin URL and origin type first", "error");
       return;
     }
@@ -246,14 +249,14 @@ export function createSourceActions({
         WORKSPACE_ID,
         serializeWorkspaceResetPayload({
           mode: "download",
-          source: ree.origin_url,
+          source: normalizedSourceUrl,
           sourceType: originType,
         }),
       );
     } else {
       const run = await workspaceService.startWorkflowRun(WORKSPACE_ID, "source", {
         mode: "download",
-        source: ree.origin_url,
+        source: normalizedSourceUrl,
         sourceType: originType,
       });
       onRunStarted?.("source", run.runId);
@@ -289,7 +292,7 @@ export function createSourceActions({
     const snapshotFiles = cloneTree(workspaceFiles);
     const ts = new Date().toISOString();
     const repoBase =
-      (ree.origin_url.split("/").filter(Boolean).pop() || "source").replace(
+      (normalizedSourceUrl.split("/").filter(Boolean).pop() || "source").replace(
         /\.(git|tar\.gz|tgz|zip)$/i,
         "",
       ) || "source";
@@ -299,7 +302,7 @@ export function createSourceActions({
     dispatch(
       explorerActions.setRee((prevRee) => ({
         ...prevRee,
-        origin_url: ree.origin_url,
+        origin_url: normalizedSourceUrl,
         source_type: originType,
         _sourceAvailable: workspaceFiles.length > 0,
         _sourceAcquiredBy: "download",
@@ -384,6 +387,8 @@ export function createSourceActions({
         dispatch(
           explorerActions.setRee((prevRee) => ({
             ...prevRee,
+            origin_url: "",
+            _sourceIncluded: true,
             _uploadedArchive: archiveName,
             source_type: "",
             _sourceAvailable: workspaceFiles.length > 0,
@@ -429,6 +434,7 @@ export function createSourceActions({
         dispatch(
           explorerActions.setRee((prevRee) => ({
             ...prevRee,
+            origin_url: "",
             _sourceAvailable: false,
             _sourceAcquiredBy: undefined,
             _uploadedArchive: "",

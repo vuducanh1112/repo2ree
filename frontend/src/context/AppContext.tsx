@@ -26,10 +26,24 @@ function resolveUpdater<T>(previous: T, updater: StateUpdater<T>): T {
   return updater;
 }
 
+function enforceSourceOriginContract(ree: Ree): Ree {
+  const hasDownloadedSource = !!ree._sourceAvailable && ree._sourceAcquiredBy === "download";
+  const hasUploadedSource = !!ree._sourceAvailable && ree._sourceAcquiredBy === "upload";
+
+  let nextRee = ree;
+  if (!hasDownloadedSource && nextRee.origin_url) {
+    nextRee = { ...nextRee, origin_url: "" };
+  }
+  if (hasUploadedSource && !nextRee._sourceIncluded) {
+    nextRee = { ...nextRee, _sourceIncluded: true };
+  }
+  return nextRee;
+}
+
 function createInitialState(initialExplorerRee: Ree): AppContextState {
   return {
     explorer: {
-      ree: initialExplorerRee,
+      ree: enforceSourceOriginContract(initialExplorerRee),
       locked: false,
       repoMode: "url",
       actionStates: {},
@@ -52,9 +66,10 @@ function createInitialState(initialExplorerRee: Ree): AppContextState {
 function appReducer(state: AppContextState, action: AppAction): AppContextState {
   switch (action.type) {
     case ACTION_TYPES.explorer.setRee: {
+      const nextRee = enforceSourceOriginContract(resolveUpdater(state.explorer.ree, action.ree));
       return {
         ...state,
-        explorer: { ...state.explorer, ree: resolveUpdater(state.explorer.ree, action.ree) },
+        explorer: { ...state.explorer, ree: nextRee },
       };
     }
     case ACTION_TYPES.explorer.setLocked: {
@@ -211,6 +226,7 @@ function appReducer(state: AppContextState, action: AppAction): AppContextState 
           serviceParams: action.serviceParams,
           ree: {
             ...state.explorer.ree,
+            origin_url: "",
             runtime: "",
             build_runtime_script: "",
             activation_script: "",

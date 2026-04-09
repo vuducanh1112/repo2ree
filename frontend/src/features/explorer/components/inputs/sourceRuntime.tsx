@@ -327,7 +327,7 @@ export function SourceUploadField({
           >
             {committedName}
           </span>
-          {!locked && (
+          {!inputDisabled && (
             <button
               type="button"
               onClick={() => archiveRef.current?.click()}

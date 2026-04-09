@@ -6,10 +6,7 @@ import { PAGE } from "../../../constants/pages";
 import {
   C,
   F,
-  hoverBg,
-  hoverBorderColor,
   S_ACTION_BUTTON_BASE,
-  S_SECTION_LABEL_SMALL,
   S_WORKFLOW_PAGE_BODY,
   S_WORKFLOW_PAGE_MAIN_COL,
   S_WORKFLOW_PAGE_MAIN_SCROLL,
@@ -17,8 +14,9 @@ import {
   S_WORKFLOW_PAGE_ROOT,
 } from "../../../constants/theme";
 import { useFocusScroll } from "../../../hooks/useFocusScroll";
+import { LogPanel } from "../components/inputs/logPanel";
 import { SourceUploadField, SourceUrlField } from "../components/inputs/sourceRuntime";
-import { FieldRow, FieldSection, FieldTipsSidebar } from "../components/workflow/fieldTips";
+import { FieldRow, FieldTipsSidebar } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
 import type { PageSourceRepoEntryProps } from "./sharedWorkflowUi";
 
@@ -40,12 +38,48 @@ const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSPropert
   ...extra,
 });
 
+const chapterCard = (active: boolean): React.CSSProperties => ({
+  border: `1.5px solid ${active ? C.accentBorder : C.border}`,
+  background: active ? C.accentBg : C.surface,
+  borderRadius: 12,
+  padding: 14,
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+  boxShadow: active ? "0 8px 20px rgba(37,99,235,0.07)" : "0 4px 12px rgba(15,23,42,0.04)",
+  transition: "border-color 0.2s, background 0.2s, box-shadow 0.2s",
+});
+
+const statusChip = (active: boolean, tone: "neutral" | "good" | "warn"): React.CSSProperties => {
+  const toneColor =
+    tone === "good"
+      ? { border: "#bbf7d0", bg: "#f0fdf4", text: "#166534" }
+      : tone === "warn"
+        ? { border: "#fde68a", bg: "#fffbeb", text: "#92400e" }
+        : { border: C.border, bg: C.surfaceAlt, text: C.textMid };
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    border: `1px solid ${active ? toneColor.border : C.border}`,
+    background: active ? toneColor.bg : C.surface,
+    color: active ? toneColor.text : C.textMuted,
+    borderRadius: 999,
+    padding: "5px 10px",
+    fontSize: 12,
+    fontWeight: 700,
+    fontFamily: F.sans,
+  };
+};
+
 export function PageSourceRepoEntry({
   ree,
   locked,
   repoMode,
   badges,
   actionStates,
+  log,
+  running,
   focusedField,
   onReeChange,
   onRepoModeChange,
@@ -60,16 +94,16 @@ export function PageSourceRepoEntry({
   const downloadRunning = actionStates.source === "loading";
   const downloadDone = !!ree._sourceAvailable;
 
-  const set = <K extends keyof typeof ree>(k: K, v: (typeof ree)[K]) =>
-    onChange({ ...ree, [k]: v } as typeof ree);
   const focus = (key: string) => onFocusedFieldChange(key);
   const [originTypeDraft, setOriginTypeDraft] = useState<
     "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | ""
   >(ree.source_type || "");
+  const [originUrlDraft, setOriginUrlDraft] = useState(ree.origin_url || "");
   const sourceInWorkspace = !!ree._sourceAvailable;
   const sourceIncluded = sourceInWorkspace && !!ree._sourceIncluded;
   const toggleSourceIncluded = () => {
-    if (locked || !sourceInWorkspace) return;
+    focus("_sourceAvailable");
+    if (locked || !sourceInWorkspace || ree._sourceAcquiredBy === "upload") return;
     onChange({ ...ree, _sourceIncluded: !sourceIncluded });
   };
 
@@ -83,30 +117,35 @@ export function PageSourceRepoEntry({
     setOriginTypeDraft(ree.source_type || "");
   }, [ree.source_type]);
 
+  useEffect(() => {
+    setOriginUrlDraft(ree.origin_url || "");
+  }, [ree.origin_url]);
+
   useFocusScroll(focusedField);
 
   const sourceFromUpload = ree._sourceAcquiredBy === "upload" && !!ree._sourceAvailable;
   const sourceFromDownload = ree._sourceAcquiredBy === "download" && !!ree._sourceAvailable;
-  const sourceProvisionStatus = sourceFromUpload
-    ? "Uploaded archive"
-    : sourceFromDownload
-      ? "Downloaded from origin"
-      : "Not provided yet";
-  const sourceFilled = [
-    ree.origin_url,
-    ree._sourceAcquiredBy,
-    ree._sourceAvailable ? "yes" : "",
-  ].filter(Boolean).length;
+  const sourceConfigLocked = sourceInWorkspace;
+  const originInputLocked = locked || sourceInWorkspace;
+  const sourceIncludedLocked = locked || !sourceInWorkspace || sourceFromUpload;
+  const sourceIncludedEffective = sourceFromUpload ? true : sourceIncluded;
+  const workspaceLoadProgress = sourceInWorkspace ? 1 : 0;
   const canDownload =
-    !!ree.origin_url && !!originTypeDraft && repoMode === "url" && !sourceFromUpload;
-  const canUpload = repoMode === "upload" && !sourceFromDownload;
+    !!originUrlDraft && !!originTypeDraft && repoMode === "url" && !sourceInWorkspace;
+  const canUpload = repoMode === "upload" && !sourceInWorkspace;
   const downloadLabel = downloadRunning
     ? "Downloading source..."
-    : sourceFromUpload
-      ? "Source uploaded"
-      : sourceFromDownload
-        ? "Source downloaded"
-        : "Download source files locally";
+    : sourceFromDownload
+      ? "Source downloaded"
+      : sourceFromUpload
+        ? "Source currently from upload"
+        : "Download source to workspace";
+
+  const acquisitionNarrative = sourceFromUpload
+    ? "Source arrived from an uploaded archive."
+    : sourceFromDownload
+      ? "Source was fetched from origin into this workspace."
+      : "No source snapshot yet — choose a method above to continue.";
 
   return (
     <div style={S_WORKFLOW_PAGE_ROOT}>
@@ -114,105 +153,165 @@ export function PageSourceRepoEntry({
         color="#f59e0b"
         icon={Ic.globe(18)}
         title="Source Repo"
-        subtitle="Set origin, source type, and populate source files into the workspace"
+        subtitle="Tell the source story in three steps: choose, acquire, then confirm snapshot behavior"
         tips={[
-          "Bring source code into the local workspace before any downstream step.",
-          "Choose one acquisition path (download from origin or upload archive) and keep it consistent.",
+          "Pick one acquisition path and complete it end-to-end before moving on.",
+          "Once source is present, decide whether that snapshot is included in the final REE archive.",
         ]}
       />
 
       <div style={S_WORKFLOW_PAGE_BODY}>
         <div style={S_WORKFLOW_PAGE_MAIN_SCROLL}>
           <div style={S_WORKFLOW_PAGE_MAIN_COL}>
-            <FieldSection
-              title="Source Repository"
-              icon={Ic.globe()}
-              filledCount={sourceFilled}
-              totalCount={3}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 10,
+                padding: "0 2px",
+              }}
             >
-              <FieldRow
-                fieldKey="origin_url"
-                locked={locked}
-                onFocus={() => focus("origin_url")}
-                active={focusedField === "origin_url"}
-              >
-                <SourceUrlField
-                  locked={locked}
-                  committedValue={ree.origin_url}
-                  onCommit={(v) => {
-                    set("origin_url", v);
-                  }}
-                  onFocus={() => focus("origin_url")}
-                />
-              </FieldRow>
+              <div style={{ fontFamily: F.sans, fontSize: 13, color: C.textMid, fontWeight: 700 }}>
+                Workspace Source Progress
+              </div>
+              <div style={{ fontFamily: F.mono, fontSize: 12, color: C.textMuted }}>
+                {workspaceLoadProgress}/1 loaded
+              </div>
+            </div>
 
-              <div style={{ padding: "12px 0 0" }}>
-                <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
-                  {(["url", "upload"] as const).map((m) => (
+            <div
+              style={chapterCard(
+                focusedField === "origin_url" || focusedField === "_sourceAcquiredBy",
+              )}
+            >
+              <div
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+              >
+                <div style={{ fontFamily: F.sans, fontWeight: 800, color: C.text }}>
+                  1. Choose source path
+                </div>
+                <span style={{ ...statusChip(true, "neutral") }}>
+                  {repoMode === "url" ? Ic.globe(12) : Ic.upload(12)}{" "}
+                  {repoMode === "url" ? "Origin URL" : "Upload archive"}
+                </span>
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                {(["url", "upload"] as const).map((m) => {
+                  const active = repoMode === m;
+                  return (
                     <button
                       type="button"
                       key={m}
                       onClick={() => {
-                        if (locked || m === repoMode) return;
+                        focus("_sourceAcquiredBy");
+                        if (locked || sourceConfigLocked || m === repoMode) return;
                         onRepoModeChange(m);
-                        if (m === "upload") setOriginTypeDraft("");
+                        if (m === "upload") {
+                          setOriginTypeDraft("");
+                          setOriginUrlDraft("");
+                        }
                       }}
                       style={{
-                        ...actionBtn({
-                          padding: "7px",
-                        }),
+                        ...actionBtn({ padding: "8px 10px", fontWeight: active ? 800 : 700 }),
                         flex: 1,
-                        cursor: locked ? "default" : "pointer",
-                        border: `1.5px solid ${repoMode === m ? C.accent : C.border}`,
-                        background: repoMode === m ? C.accentBg : C.surface,
-                        color: repoMode === m ? C.accent : C.textMid,
+                        cursor: locked || sourceConfigLocked ? "not-allowed" : "pointer",
+                        border: `1.5px solid ${active ? C.accent : C.border}`,
+                        background: active ? C.accentBg : C.surface,
+                        color: active ? C.accent : C.textMid,
+                        opacity: locked || sourceConfigLocked ? 0.5 : 1,
                       }}
                     >
-                      {m === "url" ? "⇢ Origin URL" : "⤒ Upload tarball"}
+                      {m === "url" ? "Use origin URL" : "Upload tarball"}
                     </button>
-                  ))}
-                </div>
-                {downloadRunning && (
-                  <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
-                    <button
-                      type="button"
-                      onClick={onCancelSource}
-                      style={{
-                        ...actionBtn({
-                          fontWeight: 700,
-                          padding: "7px 12px",
-                        }),
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        border: "1.5px solid #fecdd3",
-                        background: "#fff1f2",
-                        color: "#be123c",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {Ic.x(12)} Cancel current source operation
-                    </button>
-                  </div>
-                )}
+                  );
+                })}
               </div>
-              {repoMode === "upload" && (
-                <SourceUploadField
-                  locked={locked}
-                  disabled={!canUpload}
-                  disabledReason={
-                    sourceFromDownload
-                      ? "Source is already populated via origin download. Change source to switch method."
-                      : undefined
-                  }
-                  committedName={ree._uploadedArchive}
-                  onCommit={(payload) => {
-                    onWorkspaceUpload(payload);
+
+              {sourceConfigLocked && (
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1.5px solid #fde68a",
+                    background: "#fffbeb",
+                    color: "#92400e",
+                    fontSize: 12,
+                    fontFamily: F.sans,
+                    fontWeight: 700,
                   }}
-                />
+                >
+                  {Ic.lock(12)} Source configuration is locked until workspace source is cleared.
+                </div>
               )}
 
+              <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
+                {repoMode === "url"
+                  ? "Point to an origin and fetch files into this workspace."
+                  : "Bring a source snapshot directly from a local tarball."}
+              </div>
+            </div>
+
+            <div
+              style={{
+                ...chapterCard(focusedField === "source_type" || focusedField === "origin_url"),
+                marginTop: 12,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ fontFamily: F.sans, fontWeight: 800, color: C.text }}>
+                  2. Acquire source snapshot
+                </div>
+              </div>
+
+              {sourceFromUpload && (
+                <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
+                  Uploaded source is always included so the archive remains reproducible.
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
+                {sourceIncludedEffective
+                  ? "Including source in the REE keeps reproduction independent of future origin availability."
+                  : "If source is excluded from the REE, reproduction may depend on origin availability later."}
+              </div>
+
               {repoMode === "url" && (
+                <FieldRow
+                  fieldKey="origin_url"
+                  locked={locked}
+                  onFocus={() => focus("origin_url")}
+                  active={focusedField === "origin_url"}
+                >
+                  <SourceUrlField
+                    locked={originInputLocked}
+                    committedValue={originUrlDraft}
+                    onCommit={(v) => {
+                      setOriginUrlDraft(v);
+                    }}
+                    onFocus={() => focus("origin_url")}
+                  />
+                  {sourceConfigLocked && (
+                    <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
+                      Origin URL is locked after source is loaded. Clear workspace source to set a
+                      different URL.
+                    </div>
+                  )}
+                </FieldRow>
+              )}
+
+              {repoMode === "url" ? (
                 <FieldRow
                   fieldKey="source_type"
                   required
@@ -222,7 +321,7 @@ export function PageSourceRepoEntry({
                 >
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <select
-                      disabled={locked}
+                      disabled={locked || sourceConfigLocked}
                       value={originTypeDraft}
                       onChange={(event) => {
                         setOriginTypeDraft(
@@ -237,7 +336,7 @@ export function PageSourceRepoEntry({
                         );
                       }}
                       onFocus={() => focus("source_type")}
-                      style={{ ...inp(locked), flex: 1 }}
+                      style={{ ...inp(locked || sourceConfigLocked), flex: 1 }}
                     >
                       <option value="">Select origin type</option>
                       <option value="git">git</option>
@@ -248,207 +347,190 @@ export function PageSourceRepoEntry({
                       <option value="tarball">tarball</option>
                     </select>
 
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <button
-                          type="button"
-                          disabled={locked || !canDownload || downloadRunning}
-                          onClick={() => onDownloadSource(originTypeDraft)}
-                          style={{
-                            ...actionBtn({
-                              fontWeight: 700,
-                            }),
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            cursor:
-                              locked || !canDownload || downloadRunning ? "default" : "pointer",
-                            border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
-                            background: downloadDone ? "#f0fdf4" : C.accentBg,
-                            color: downloadDone ? "#15803d" : C.accent,
-                            width: "fit-content",
-                            opacity: locked || !canDownload ? 0.6 : 1,
-                          }}
-                        >
-                          {downloadRunning ? Ic.loader(13) : Ic.download(13)}
-                          {downloadLabel}
-                        </button>
-                        {downloadRunning && (
-                          <button
-                            type="button"
-                            onClick={onCancelSource}
-                            style={{
-                              ...actionBtn({
-                                fontWeight: 700,
-                                padding: "8px 12px",
-                              }),
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                              border: "1.5px solid #fecdd3",
-                              background: "#fff1f2",
-                              color: "#be123c",
-                              cursor: "pointer",
-                            }}
-                          >
-                            {Ic.x(12)} Cancel
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </FieldRow>
-              )}
-
-              <FieldRow fieldKey="_sourceAcquiredBy" required={false} locked={true}>
-                <input
-                  disabled
-                  value={sourceProvisionStatus}
-                  style={{
-                    ...inp(true, {
-                      cursor: "not-allowed",
-                      color: sourceInWorkspace ? C.text : C.textMuted,
-                      fontWeight: 600,
-                    }),
-                  }}
-                />
-              </FieldRow>
-
-              <FieldRow
-                fieldKey="_sourceAvailable"
-                required={false}
-                locked={true}
-                onFocus={() => focus("_sourceAvailable")}
-                active={focusedField === "_sourceAvailable"}
-              >
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <button
                       type="button"
-                      onClick={() => onGoService(PAGE.FILES)}
+                      disabled={locked || !canDownload || downloadRunning}
+                      onClick={() => onDownloadSource(originTypeDraft, originUrlDraft)}
                       style={{
-                        ...inp(false, {
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 8,
-                          cursor: "pointer",
-                        }),
-                        background: C.surface,
-                        borderColor: C.border,
-                        flex: 1,
+                        ...actionBtn({ fontWeight: 800 }),
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        cursor: locked || !canDownload || downloadRunning ? "default" : "pointer",
+                        border: `1.5px solid ${downloadDone ? "#22c55e" : C.accent}`,
+                        background: downloadDone ? "#f0fdf4" : C.accentBg,
+                        color: downloadDone ? "#15803d" : C.accent,
+                        width: "fit-content",
+                        opacity: locked || !canDownload ? 0.6 : 1,
                       }}
-                      title="Browse files"
-                      {...hoverBg(C.accentBg, C.surface)}
-                      {...hoverBorderColor(C.accentBorder, C.border)}
                     >
-                      <span
+                      {downloadRunning ? Ic.loader(13) : Ic.download(13)}
+                      {downloadLabel}
+                    </button>
+
+                    {downloadRunning && (
+                      <button
+                        type="button"
+                        onClick={onCancelSource}
                         style={{
-                          color: sourceInWorkspace ? "#15803d" : C.textMuted,
-                          fontWeight: 600,
-                          fontFamily: F.sans,
-                        }}
-                      >
-                        {sourceInWorkspace
-                          ? "Yes — repository is available in workspace"
-                          : "No — source not in workspace yet"}
-                      </span>
-                      <span
-                        style={{
+                          ...actionBtn({ fontWeight: 700, padding: "8px 12px" }),
                           display: "inline-flex",
                           alignItems: "center",
                           gap: 6,
-                          color: C.accent,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          fontFamily: F.sans,
-                          flexShrink: 0,
+                          border: "1.5px solid #fecdd3",
+                          background: "#fff1f2",
+                          color: "#be123c",
+                          cursor: "pointer",
                         }}
                       >
-                        {Ic.files(12)} Browse files
-                      </span>
-                    </button>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        marginLeft: 2,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                        <div
-                          style={{
-                            ...S_SECTION_LABEL_SMALL,
-                            letterSpacing: 0.7,
-                            color: sourceIncluded ? C.textMid : C.textMuted,
-                          }}
-                        >
-                          Included
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: sourceIncluded ? "#b45309" : C.textMuted,
-                            fontFamily: F.sans,
-                          }}
-                        >
-                          {sourceIncluded ? "Yes" : "No"}
-                        </div>
-                      </div>
-                      <Toggle
-                        on={sourceIncluded}
-                        disabled={locked || !sourceInWorkspace}
-                        color="#f59e0b"
-                        onChange={toggleSourceIncluded}
-                        title={
-                          !sourceInWorkspace
-                            ? "Source must be in workspace before it can be included"
-                            : sourceIncluded
-                              ? "Source will be included in final REE"
-                              : "Source will be excluded from final REE"
-                        }
-                        width={36}
-                        height={18}
-                        knobSize={14}
-                      />
-                      {ree._sourceAvailable && (
-                        <button
-                          type="button"
-                          disabled={locked}
-                          onClick={onRemoveWorkspaceSource}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            width: "fit-content",
-                            padding: "6px 10px",
-                            borderRadius: 6,
-                            border: "1px solid #fecaca",
-                            background: "#fef2f2",
-                            color: "#b91c1c",
-                            fontSize: 12,
-                            fontFamily: F.sans,
-                            fontWeight: 600,
-                            cursor: locked ? "not-allowed" : "pointer",
-                            opacity: locked ? 0.6 : 1,
-                          }}
-                        >
-                          {Ic.x(12)} Remove source from workspace
-                        </button>
-                      )}
-                    </div>
+                        {Ic.x(12)} Cancel
+                      </button>
+                    )}
                   </div>
-                  <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
-                    {sourceIncluded
-                      ? "Original source snapshot will be packaged into the final REE archive (workspace edits are excluded)."
-                      : "Source files stay in workspace only and are excluded from the final REE archive."}
-                  </div>
+                </FieldRow>
+              ) : (
+                <SourceUploadField
+                  locked={locked}
+                  disabled={!canUpload}
+                  disabledReason={
+                    sourceInWorkspace
+                      ? "Source is already loaded in workspace. Clear workspace source to switch method."
+                      : undefined
+                  }
+                  committedName={ree._uploadedArchive}
+                  onCommit={(payload) => {
+                    onWorkspaceUpload(payload);
+                  }}
+                />
+              )}
+            </div>
+
+            <div style={{ ...chapterCard(focusedField === "_sourceAvailable"), marginTop: 12 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ fontFamily: F.sans, fontWeight: 800, color: C.text }}>
+                  3. Workspace actions
                 </div>
-              </FieldRow>
-            </FieldSection>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: sourceIncludedEffective ? "#b45309" : C.textMid,
+                      fontFamily: F.sans,
+                    }}
+                  >
+                    Include snapshot in REE
+                  </span>
+                  <Toggle
+                    on={sourceIncludedEffective}
+                    disabled={sourceIncludedLocked}
+                    color="#f59e0b"
+                    onChange={toggleSourceIncluded}
+                    title={
+                      sourceFromUpload
+                        ? "Uploads are always included in final REE to preserve source."
+                        : !sourceInWorkspace
+                          ? "Load source into workspace first"
+                          : sourceIncludedEffective
+                            ? "Source will be included in final REE"
+                            : "Source will be excluded from final REE"
+                    }
+                    width={36}
+                    height={18}
+                    knobSize={14}
+                  />
+                </div>
+              </div>
+
+              <div style={{ fontSize: 13, color: C.textMid, fontFamily: F.sans }}>
+                {acquisitionNarrative}
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    focus("_sourceAvailable");
+                    onGoService(PAGE.FILES);
+                  }}
+                  style={{
+                    ...actionBtn({
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      cursor: "pointer",
+                    }),
+                    border: `1.5px solid ${C.border}`,
+                    background: C.surface,
+                    color: C.textMid,
+                  }}
+                  title="Browse files"
+                >
+                  {Ic.files(12)} Browse workspace files
+                </button>
+
+                {ree._sourceAvailable && (
+                  <button
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      focus("_sourceAvailable");
+                      onRemoveWorkspaceSource();
+                    }}
+                    style={{
+                      ...actionBtn({
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "8px 12px",
+                        fontWeight: 800,
+                      }),
+                      border: "1.5px solid #fca5a5",
+                      background: "#fee2e2",
+                      color: "#991b1b",
+                      cursor: locked ? "not-allowed" : "pointer",
+                      opacity: locked ? 0.6 : 1,
+                    }}
+                  >
+                    {Ic.x(12)} Clear workspace source
+                  </button>
+                )}
+              </div>
+
+              <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
+                {sourceIncludedEffective
+                  ? "The original source snapshot will be packaged into the final REE archive (workspace edits are excluded)."
+                  : "Source files remain available for local work but are excluded from the final REE archive."}
+              </div>
+            </div>
+
+            <div style={{ ...chapterCard(false), marginTop: 12 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ fontFamily: F.sans, fontWeight: 800, color: C.text }}>
+                  Source acquisition logs
+                </div>
+                <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
+                  {running ? "Streaming" : "Latest run"}
+                </div>
+              </div>
+              <LogPanel log={log} running={running} />
+            </div>
 
             <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
               <NextStepNudge stepKey={PAGE.SOURCE} badges={badges} onGo={onGoService} />
@@ -456,11 +538,13 @@ export function PageSourceRepoEntry({
           </div>
         </div>
 
-        <FieldTipsSidebar
-          tipFields={["origin_url", "source_type", "_sourceAcquiredBy", "_sourceAvailable"]}
-          focusedField={focusedField}
-          onClear={() => onFocusedFieldChange(null)}
-        />
+        {focusedField && (
+          <FieldTipsSidebar
+            tipFields={["origin_url", "source_type", "_sourceAcquiredBy", "_sourceAvailable"]}
+            focusedField={focusedField}
+            onClear={() => onFocusedFieldChange(null)}
+          />
+        )}
       </div>
     </div>
   );

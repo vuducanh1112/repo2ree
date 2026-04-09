@@ -292,7 +292,7 @@ export function ExplorerSidebar({
                     letterSpacing: 0.2,
                   }}
                 >
-                  Specimen Pod
+                  REE
                 </div>
                 <span
                   style={{

@@ -21,12 +21,14 @@ export interface PageSourceRepoEntryProps {
   repoMode: "url" | "upload";
   badges: Badges;
   actionStates: ActionStates;
+  log: LogEntry | null;
+  running: boolean;
   focusedField: string | null;
   onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
   onRepoModeChange: React.Dispatch<React.SetStateAction<"url" | "upload">>;
   onGoService: (key: ExplorerPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
-  onDownloadSource: (originType: Ree["source_type"]) => void;
+  onDownloadSource: (originType: Ree["source_type"], sourceUrl: string) => void;
   onCancelSource: () => void;
   onWorkspaceUpload: (payload: SourceUploadCommit) => void;
   onRemoveWorkspaceSource: () => void;

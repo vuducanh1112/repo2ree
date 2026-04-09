@@ -83,7 +83,7 @@ export function OverviewPageContainer({ state, commands }: ExplorerPageContainer
 }
 
 export function SourcePageContainer({ state, commands }: ExplorerPageContainerProps) {
-  const { page, ree, locked, repoMode, badges, actionStates, focusedField } = state;
+  const { page, ree, locked, repoMode, badges, actionStates, focusedField, serviceLogs } = state;
 
   if (page !== PAGE.SOURCE) {
     return null;
@@ -96,6 +96,8 @@ export function SourcePageContainer({ state, commands }: ExplorerPageContainerPr
       repoMode={repoMode}
       badges={badges}
       actionStates={actionStates}
+      log={serviceLogs.source || null}
+      running={actionStates.source === "loading"}
       focusedField={focusedField}
       onReeChange={commands.setRee}
       onRepoModeChange={commands.setRepoMode}
