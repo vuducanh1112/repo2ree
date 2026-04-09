@@ -477,14 +477,18 @@ export interface PodWidgetProps {
   level: number;
   svgRef?: React.RefObject<SVGSVGElement>;
   size?: number;
+  compact?: boolean;
 }
-export function PodWidget({ level, svgRef, size = 480 }: PodWidgetProps) {
+export function PodWidget({ level, svgRef, size = 480, compact = false }: PodWidgetProps) {
   const levelMeta = LEVELS[Math.min(level, 7)];
   const W = 580,
     H = 580,
     CX = 290,
     CY = 290,
     SR = 118;
+  const shadow = compact
+    ? `drop-shadow(0 1px 4px ${levelMeta.color}20)`
+    : `drop-shadow(0 4px 24px ${levelMeta.color}28) drop-shadow(0 2px 8px ${POD_M.shadow})`;
   return (
     <svg
       ref={svgRef}
@@ -494,7 +498,7 @@ export function PodWidget({ level, svgRef, size = 480 }: PodWidgetProps) {
       style={{
         flexShrink: 0,
         overflow: "visible",
-        filter: `drop-shadow(0 4px 24px ${levelMeta.color}28) drop-shadow(0 2px 8px ${POD_M.shadow})`,
+        filter: shadow,
       }}
     >
       <title>Specimen Pod</title>

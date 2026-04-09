@@ -4,6 +4,7 @@ import {
   F,
   hoverBg,
   hoverBorderColor,
+  hoverColor,
   hoverIf,
   S_ACTION_BUTTON_BASE,
 } from "../../constants/theme";
@@ -35,15 +36,17 @@ export function NavEntryButton({
         padding: navCollapsed ? "8px 0" : "8px 10px",
         justifyContent: navCollapsed ? "center" : "flex-start",
         borderRadius: 7,
-        border: "none",
+        border: `1px solid ${isActive ? C.accentBorder : C.border}`,
         cursor: "pointer",
         width: "100%",
         background: isActive ? C.accentBg : "transparent",
-        borderLeft: !navCollapsed && isActive ? `2px solid ${C.accent}` : "2px solid transparent",
-        transition: "all 0.12s",
+        boxShadow: isActive ? `inset 2px 0 0 ${C.accent}` : "none",
+        transition: "all 0.14s",
         textAlign: "left",
       }}
       {...hoverIf(!isActive, hoverBg(C.surfaceAlt, "transparent"))}
+      {...hoverIf(!isActive, hoverBorderColor(C.borderMid, C.border))}
+      {...hoverIf(!isActive, hoverColor(C.text, C.textMid))}
     >
       {children}
     </button>

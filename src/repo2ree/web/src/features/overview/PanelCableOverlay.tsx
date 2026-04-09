@@ -1,22 +1,7 @@
 import React, { useRef } from "react";
 import { LEVELS } from "../../constants/levels";
-import { PAGE } from "../../constants/pages";
-
-interface ReeLike {
-  name?: string;
-  origin_url?: string;
-  runtime?: string;
-  build_runtime_script?: string;
-  sbom?: string;
-  swhid?: string;
-  zenodo_doi?: string;
-  dataverse_doi?: string;
-  _sealedAt?: string;
-  _sourceAvailable?: boolean;
-  _runtimeIncluded?: boolean;
-}
-
-type BadgesLike = Record<string, boolean>;
+import type { Badges, Ree } from "../../types";
+import { getPodCableStates } from "./podCableState";
 
 interface Cable {
   id: string;
@@ -68,8 +53,8 @@ export interface PanelCableOverlayProps {
   activationRef: React.RefObject<HTMLDivElement>;
   podSvgRef: React.RefObject<SVGSVGElement>;
   level: number;
-  badges: BadgesLike;
-  ree: ReeLike;
+  badges: Badges;
+  ree: Ree;
 }
 
 type PanelCableSide = "left" | "right" | "top";
@@ -165,91 +150,81 @@ export function PanelCableOverlay({
       };
     }
 
-    const fieldsConnected =
-      (["name", "origin_url", "runtime", "build_runtime_script"] as (keyof ReeLike)[]).filter(
-        (f) => ree && !!ree[f],
-      ).length >= 2;
-    const archiveConnected = !!(ree && (ree.zenodo_doi || ree.dataverse_doi));
-    const activationConnected = !!badges?.activation;
-    const sourceConnected = !!ree?._sourceAvailable;
-    const runtimeConnected = !!ree?._runtimeIncluded;
-    const sbomConnected = !!ree?.sbom?.trim();
-    const swhConnected = !!ree?.swhid?.trim();
-    const evaluateConnected = !!badges?.evaluate;
-    const sealConnected = !!ree?._sealedAt;
+    const cableStates = getPodCableStates(ree, badges);
+    const cableById = Object.fromEntries(cableStates.map((cable) => [cable.id, cable]));
 
     const panelSpecs: PanelCableSpec[] = [
       {
-        id: PAGE.SOURCE,
+        id: "source",
         ref: sourceRef,
         side: "right",
-        color: "#f59e0b",
-        shadow: "#92400e",
-        connected: sourceConnected,
+        color: cableById.source?.color || "#f59e0b",
+        shadow: cableById.source?.shadow || "#92400e",
+        connected: !!cableById.source?.connected,
       },
       {
         id: "runtime",
         ref: runtimeRef,
         side: "right",
-        color: "#0891b2",
-        shadow: "#164e63",
-        connected: runtimeConnected,
+        color: cableById.runtime?.color || "#0891b2",
+        shadow: cableById.runtime?.shadow || "#164e63",
+        connected: !!cableById.runtime?.connected,
       },
       {
         id: "sbom",
         ref: sbomRef,
         side: "right",
-        color: "#16a34a",
-        shadow: "#14532d",
-        connected: sbomConnected,
+        color: cableById.sbom?.color || "#16a34a",
+        shadow: cableById.sbom?.shadow || "#14532d",
+        connected: !!cableById.sbom?.connected,
       },
       {
         id: "fields",
         ref: metadataRef,
         side: "right",
-        color: "#22c55e",
-        shadow: "#166534",
-        connected: fieldsConnected,
+        color: cableById.fields?.color || "#22c55e",
+        shadow: cableById.fields?.shadow || "#166534",
+        connected: !!cableById.fields?.connected,
       },
       {
         id: "archive",
         ref: archiveRef,
         side: "left",
-        color: "#e4572e",
-        shadow: "#7c2d12",
-        connected: archiveConnected,
+        color: cableById.archive?.color || "#e4572e",
+        shadow: cableById.archive?.shadow || "#7c2d12",
+        connected: !!cableById.archive?.connected,
       },
       {
         id: "activation",
         ref: activationRef,
         side: "left",
-        color: "#7c3aed",
-        shadow: "#3b0764",
-        connected: activationConnected,
+        color: cableById.activation?.color || "#7c3aed",
+        shadow: cableById.activation?.shadow || "#3b0764",
+        connected: !!cableById.activation?.connected,
       },
       {
         id: "swh",
         ref: swhRef,
         side: "left",
-        color: "#e4572e",
-        shadow: "#7c2d12",
-        connected: swhConnected,
+        color: cableById.swh?.color || "#e4572e",
+        shadow: cableById.swh?.shadow || "#7c2d12",
+        connected: !!cableById.swh?.connected,
       },
       {
         id: "evaluate",
         ref: evaluateRef,
         side: "left",
-        color: "#7c3aed",
-        shadow: "#3b0764",
-        connected: evaluateConnected,
+        color: cableById.evaluate?.color || "#7c3aed",
+        shadow: cableById.evaluate?.shadow || "#3b0764",
+        connected: !!cableById.evaluate?.connected,
       },
       {
         id: "seal",
         ref: sealRef,
         side: "top",
-        color: "#f59e0b",
-        shadow: "#78350f",
-        connected: sealConnected,
+        color: cableById.seal?.color || "#f59e0b",
+        shadow: cableById.seal?.shadow || "#78350f",
+        connected: !!cableById.seal?.connected,
       },
     ];
 

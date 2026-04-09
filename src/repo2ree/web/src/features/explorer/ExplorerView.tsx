@@ -23,8 +23,7 @@ interface ExplorerProps {
 
 export function ExplorerView({ onBack, sealedDemoRee, PodOrbitControl }: ExplorerProps) {
   const { state, commands } = useExplorerController();
-  const { ree, actionStates, badges, timestamps, toast, page, navCollapsed, showReviewerPreview } =
-    state;
+  const { ree, badges, timestamps, toast, page, navCollapsed, showReviewerPreview } = state;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg }}>
@@ -82,7 +81,6 @@ export function ExplorerView({ onBack, sealedDemoRee, PodOrbitControl }: Explore
           page={page}
           ree={ree}
           navCollapsed={navCollapsed}
-          actionStates={actionStates}
           badges={badges}
           timestamps={timestamps}
           setPage={commands.setPage}

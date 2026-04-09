@@ -1,8 +1,11 @@
 import { Ic } from "../../components/Icon";
+import { LEVELS } from "../../constants/levels";
 import { PAGE } from "../../constants/pages";
 import { SERVICES } from "../../constants/services";
 import { C, F, hoverBg, hoverColor, S_SECTION_LABEL } from "../../constants/theme";
-import type { ActionStates, Badges, ExplorerPage, Ree, Service, Timestamps } from "../../types";
+import type { Badges, ExplorerPage, Ree, Service, Timestamps } from "../../types";
+import { PodWidget } from "../overview/PodWidget";
+import { getPodCableStates } from "../overview/podCableState";
 import { ActionBtn, NavEntryButton } from "./ExplorerNav";
 
 interface WorkflowStep {
@@ -98,7 +101,6 @@ interface ExplorerSidebarProps {
   page: ExplorerPage;
   ree: Ree;
   navCollapsed: boolean;
-  actionStates: ActionStates;
   badges: Badges;
   timestamps: Timestamps;
   setPage: (page: ExplorerPage) => void;
@@ -111,7 +113,6 @@ export function ExplorerSidebar({
   page,
   ree,
   navCollapsed,
-  actionStates,
   badges,
   timestamps,
   setPage,
@@ -119,6 +120,19 @@ export function ExplorerSidebar({
   onDownloadRee,
   onPreviewReviewer,
 }: ExplorerSidebarProps) {
+  const level = Math.min(ree._evalLevel ?? 0, LEVELS.length - 1);
+  const levelMeta = LEVELS[level];
+  const isOverviewActive = page === PAGE.OVERVIEW;
+
+  const cableStates = getPodCableStates(ree, badges);
+  const leftCables = cableStates
+    .filter((cable) => cable.podSide === "left")
+    .sort((firstCable, secondCable) => firstCable.podRank - secondCable.podRank);
+  const rightCables = cableStates
+    .filter((cable) => cable.podSide === "right")
+    .sort((firstCable, secondCable) => firstCable.podRank - secondCable.podRank);
+  const topCable = cableStates.find((cable) => cable.podSide === "top") || null;
+
   const iconBtn = (
     key: ExplorerPage,
     icon: React.ReactNode,
@@ -231,12 +245,212 @@ export function ExplorerSidebar({
 
       <div
         style={{
-          padding: navCollapsed ? "8px 6px 4px" : "8px 8px 4px",
+          padding: navCollapsed ? "8px 4px 8px" : "8px 8px 10px",
           borderBottom: `1px solid ${C.border}`,
         }}
       >
-        {iconBtn(PAGE.OVERVIEW, Ic.layers(12), "Overview", "pod · level · state")}
+        <button
+          type="button"
+          title={navCollapsed ? "Overview" : undefined}
+          onClick={() => setPage(PAGE.OVERVIEW)}
+          style={{
+            width: "100%",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            padding: navCollapsed ? "6px 0" : "4px 2px 2px",
+            borderRadius: 10,
+          }}
+          {...hoverBg(C.surfaceAlt, "transparent")}
+        >
+          {navCollapsed ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: 40,
+              }}
+            >
+              <PodWidget level={level} size={40} compact />
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontFamily: F.sans,
+                    fontWeight: 700,
+                    color: isOverviewActive ? C.accent : C.text,
+                    letterSpacing: 0.2,
+                  }}
+                >
+                  Specimen Pod
+                </div>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontFamily: F.mono,
+                    color: levelMeta.ink,
+                    background: levelMeta.bg,
+                    border: `1px solid ${levelMeta.color}44`,
+                    borderRadius: 99,
+                    padding: "1px 6px",
+                  }}
+                >
+                  L{level}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto 1fr",
+                  alignItems: "center",
+                  gap: 6,
+                  borderRadius: 10,
+                  padding: "6px 6px",
+                  background: isOverviewActive ? `${levelMeta.color}08` : "transparent",
+                  outline: isOverviewActive
+                    ? `1px solid ${levelMeta.color}44`
+                    : "1px solid transparent",
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {leftCables.map((cable) => {
+                    const on = cable.connected;
+                    return (
+                      <div
+                        key={cable.id}
+                        style={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 28,
+                            height: 2,
+                            borderRadius: 99,
+                            background: on ? cable.color : C.border,
+                            opacity: on ? 0.9 : 0.55,
+                            boxShadow: on ? `0 0 7px ${cable.color}55` : "none",
+                          }}
+                        />
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: on ? cable.color : C.borderMid,
+                            boxShadow: on ? `0 0 8px ${cable.color}88` : "none",
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <PodWidget level={level} size={66} compact />
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                  {rightCables.map((cable) => {
+                    const on = cable.connected;
+                    return (
+                      <div
+                        key={cable.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: on ? cable.color : C.borderMid,
+                            boxShadow: on ? `0 0 8px ${cable.color}88` : "none",
+                          }}
+                        />
+                        <span
+                          style={{
+                            width: 28,
+                            height: 2,
+                            borderRadius: 99,
+                            background: on ? cable.color : C.border,
+                            opacity: on ? 0.9 : 0.55,
+                            boxShadow: on ? `0 0 7px ${cable.color}55` : "none",
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {topCable && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    marginTop: -2,
+                    marginBottom: 2,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 2,
+                      height: 10,
+                      borderRadius: 99,
+                      background: topCable.connected ? topCable.color : C.border,
+                      opacity: topCable.connected ? 0.95 : 0.55,
+                      boxShadow: topCable.connected ? `0 0 7px ${topCable.color}55` : "none",
+                    }}
+                  />
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                  gap: 6,
+                }}
+              >
+                {cableStates.map((cable) => {
+                  const on = cable.connected;
+                  return (
+                    <div
+                      key={cable.id}
+                      style={{
+                        fontSize: 9,
+                        color: on ? C.textMid : C.textMuted,
+                        fontFamily: F.mono,
+                        textAlign: "center",
+                        opacity: on ? 0.95 : 0.75,
+                      }}
+                    >
+                      {cable.connected ? "✓" : "·"} {cable.label}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </button>
       </div>
+
       <div
         style={{
           padding: navCollapsed ? "4px 6px 8px" : "4px 8px 8px",
@@ -247,8 +461,19 @@ export function ExplorerSidebar({
       </div>
 
       {!navCollapsed && (
-        <div style={{ padding: "10px 14px 4px" }}>
+        <div style={{ padding: "10px 14px 4px", display: "flex", justifyContent: "space-between" }}>
           <span style={{ ...S_SECTION_LABEL, fontSize: 10, letterSpacing: 1.3 }}>Workflow</span>
+          <span
+            style={{
+              fontSize: 10,
+              color: C.textMuted,
+              fontFamily: F.mono,
+              letterSpacing: 0.3,
+            }}
+          >
+            {WORKFLOW_STEPS.filter((step) => hasWorkflowStepRun(step.key, ree, badges)).length}/
+            {WORKFLOW_STEPS.length}
+          </span>
         </div>
       )}
       {navCollapsed && <div style={{ height: 8 }} />}
@@ -265,7 +490,6 @@ export function ExplorerSidebar({
         {WORKFLOW_STEPS.map((step, index) => {
           const isActive = page === step.key;
           const hasRun = hasWorkflowStepRun(step.key, ree, badges);
-          const isRunning = !!step.svc && actionStates[step.key] === "loading";
           const timestamp = timestamps[step.key];
           const tsShort = timestamp
             ? new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -299,29 +523,15 @@ export function ExplorerSidebar({
                     transition: "all 0.2s",
                   }}
                 >
-                  {isRunning ? (
-                    <span
-                      style={{
-                        display: "flex",
-                        color: C.accent,
-                        animation: "spin 0.9s linear infinite",
-                      }}
-                    >
-                      {Ic.loader(11)}
-                    </span>
-                  ) : (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        fontFamily: F.mono,
-                        color: isActive ? "#fff" : C.textMuted,
-                      }}
-                    >
-                      {step.n}
-                    </span>
-                  )}
-                  {hasRun && !isRunning && !isActive && (
+                  <span
+                    style={{
+                      display: "flex",
+                      color: isActive ? "#fff" : C.textMuted,
+                    }}
+                  >
+                    {step.IC(12)}
+                  </span>
+                  {hasRun && !isActive && (
                     <div
                       style={{
                         position: "absolute",
@@ -361,7 +571,7 @@ export function ExplorerSidebar({
                         marginTop: 1,
                       }}
                     >
-                      {isRunning ? "running…" : tsShort ? `last run ${tsShort}` : step.desc}
+                      {tsShort ? `last run ${tsShort}` : step.desc}
                     </div>
                   </div>
                 )}
@@ -373,10 +583,11 @@ export function ExplorerSidebar({
                     marginLeft: navCollapsed ? 14 : 19,
                     width: 2,
                     height: 6,
-                    background: C.border,
+                    background: hasRun ? C.accentBorder : C.border,
                     borderRadius: 99,
                     marginTop: 1,
                     marginBottom: 1,
+                    opacity: hasRun ? 0.85 : 0.6,
                   }}
                 />
               )}
