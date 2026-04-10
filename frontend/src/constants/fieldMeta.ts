@@ -1,4 +1,4 @@
-export interface FieldMeta {
+interface FieldMeta {
   label: string;
   desc: string;
   example?: string;

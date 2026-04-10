@@ -1,4 +1,4 @@
-export const TOKENS = {
+const TOKENS = {
   color: {
     bg: "#f4f6f9",
     surface: "#ffffff",

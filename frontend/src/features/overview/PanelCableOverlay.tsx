@@ -40,7 +40,7 @@ const DECO_ANCHORS: DecoAnchor[] = [
   { id: "d10", angle: 337, dist: 355 },
 ];
 
-export interface PanelCableOverlayProps {
+interface PanelCableOverlayProps {
   containerRef: React.RefObject<HTMLDivElement>;
   sourceRef: React.RefObject<HTMLDivElement>;
   runtimeRef: React.RefObject<HTMLDivElement>;

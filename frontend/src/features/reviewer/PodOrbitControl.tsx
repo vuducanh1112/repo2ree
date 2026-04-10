@@ -5,7 +5,7 @@ import type { Level, StepState } from "../../types";
 import { PodWidget } from "../overview/PodWidget";
 import { REACTIVATION_STEPS } from "./reviewerSupport";
 
-export interface PodOrbitControlProps {
+interface PodOrbitControlProps {
   level: number;
   levelMeta: Level;
   stepStates: Record<string, StepState>;

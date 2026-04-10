@@ -473,7 +473,7 @@ function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
   );
 }
 
-export interface PodWidgetProps {
+interface PodWidgetProps {
   level: number;
   svgRef?: React.RefObject<SVGSVGElement>;
   size?: number;

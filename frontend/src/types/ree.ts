@@ -43,22 +43,6 @@ export interface LogEntry {
   ts: string;
 }
 
-export interface DepPackage {
-  name: string;
-  version: string | null;
-  raw: string;
-  pinned: "exact" | "range" | "none";
-  dev?: boolean;
-  ecosystem?: string;
-}
-
-export interface DepGroup {
-  file: string;
-  path: string;
-  ecosystem: string;
-  packages: DepPackage[];
-}
-
 export interface SourceUploadCommit {
   mode: "archive";
   archiveName?: string;

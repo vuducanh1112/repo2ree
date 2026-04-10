@@ -97,13 +97,13 @@ export const REE_SBOM_PATH = `${REE_ROOT_PREFIX}sbom.json`;
 export const REE_RUNTIME_PATH = `${REE_ROOT_PREFIX}runtime.tar.gz`;
 export const REE_SOURCE_REPO_PREFIX = `${REE_ROOT_PREFIX}source-repo/`;
 
-export const REE_ARCHIVE_TAG_BY_PATH: Record<string, string> = {
+const REE_ARCHIVE_TAG_BY_PATH: Record<string, string> = {
   [REE_MANIFEST_PATH]: "Manifest",
   [REE_SBOM_PATH]: "SBOM",
   [REE_RUNTIME_PATH]: "Runtime",
 };
 
-export function resolveReeArchiveEntryTag(path: string): string {
+function resolveReeArchiveEntryTag(path: string): string {
   const knownTag = REE_ARCHIVE_TAG_BY_PATH[path];
   if (knownTag) return knownTag;
   if (path.startsWith(REE_SOURCE_REPO_PREFIX)) return "Source";

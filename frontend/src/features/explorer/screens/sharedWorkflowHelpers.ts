@@ -14,7 +14,7 @@ export function findFileByPath(nodes: FileTreeNode[], pathStr: string): FileTree
   });
 }
 
-export interface ScriptTemplate {
+interface ScriptTemplate {
   key: string;
   label: string;
   filename: string;

@@ -12,25 +12,25 @@ import type {
   WorkspaceSummaryDto,
 } from "./types";
 
-export interface ListWorkspacesQuery {
+interface ListWorkspacesQuery {
   cursor?: string;
   limit?: number;
   status?: string;
 }
 
-export interface WorkspaceFilesQuery {
+interface WorkspaceFilesQuery {
   path?: string;
   recursive?: boolean;
   scope?: "source" | "generated" | "all";
 }
 
-export interface WorkspaceFileContentResponse {
+interface WorkspaceFileContentResponse {
   content: string;
   etag?: string;
   updatedAt?: string;
 }
 
-export interface PutWorkspaceFileContentRequest {
+interface PutWorkspaceFileContentRequest {
   path: string;
   content: string;
   ifMatch?: string;

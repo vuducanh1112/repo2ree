@@ -1,9 +1,9 @@
 import { PAGE } from "../../constants/pages";
 import type { Badges, Ree } from "../../types";
 
-export type PodCableSide = "left" | "right" | "top";
+type PodCableSide = "left" | "right" | "top";
 
-export interface PodCableState {
+interface PodCableState {
   id: string;
   label: string;
   side: PodCableSide;

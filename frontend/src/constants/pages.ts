@@ -21,11 +21,10 @@ export const APP_ROUTE = {
   REVIEWER: "/reviewer",
 } as const;
 
-export type AppRoutePath = (typeof APP_ROUTE)[keyof typeof APP_ROUTE];
 export type AppLoadRoutePath = typeof APP_ROUTE.EXPLORER | typeof APP_ROUTE.REVIEWER;
 
 export type ExplorerPage = (typeof PAGE)[keyof typeof PAGE];
-export const EXPLORER_PAGES = Object.values(PAGE) as ExplorerPage[];
+const EXPLORER_PAGES = Object.values(PAGE) as ExplorerPage[];
 
 // Maps a Ree field key to the Explorer page where it can be edited.
 export const FIELD_TO_PAGE: Partial<Record<keyof Ree, ExplorerPage>> = {

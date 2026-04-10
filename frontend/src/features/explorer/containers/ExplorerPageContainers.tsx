@@ -26,7 +26,7 @@ const SERVICE_PAGE_COMPONENTS: Record<string, (props: ServicePageProps) => JSX.E
 
 type ExplorerController = ReturnType<typeof useExplorerController>;
 
-export interface ExplorerPageContainerProps {
+interface ExplorerPageContainerProps {
   state: ExplorerController["state"];
   commands: ExplorerController["commands"];
 }

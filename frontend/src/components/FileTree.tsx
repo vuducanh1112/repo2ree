@@ -128,26 +128,3 @@ export function FileNode({
     </div>
   );
 }
-
-interface FileTreeProps {
-  nodes: FileTreeNode[];
-  onSelect: (node: FileTreeNode) => void;
-  selectedId: string | null;
-  highlightedPaths?: Set<string>;
-}
-
-export function FileTree({ nodes, onSelect, selectedId, highlightedPaths }: FileTreeProps) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {nodes.map((node) => (
-        <FileNode
-          key={node.id}
-          node={node}
-          onSelect={onSelect}
-          selectedId={selectedId}
-          highlightedPaths={highlightedPaths}
-        />
-      ))}
-    </div>
-  );
-}

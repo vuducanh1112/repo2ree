@@ -21,7 +21,7 @@ import {
   WorkflowPageHeader,
 } from "../explorer/components/workflow/pageChrome";
 
-export interface PageArchiveProps {
+interface PageArchiveProps {
   ree: Ree;
   badges: Badges;
   logs: ServiceLogs;

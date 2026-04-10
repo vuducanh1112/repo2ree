@@ -24,11 +24,7 @@ import type { ShowToast } from "./types";
 
 export const WORKSPACE_ID = "active";
 
-export function upsertWorkspaceFile(
-  nodes: FileTreeNode[],
-  path: string,
-  content: string,
-): FileTreeNode[] {
+function upsertWorkspaceFile(nodes: FileTreeNode[], path: string, content: string): FileTreeNode[] {
   const normalizedPath = normalizeWorkspacePath(path);
   const name = normalizedPath.split("/").pop() || normalizedPath || "file.txt";
   const updatedFile: FileTreeNode = {
@@ -41,7 +37,7 @@ export function upsertWorkspaceFile(
   return [...nodes.filter((node) => !(node.type === "file" && node.name === name)), updatedFile];
 }
 
-export function removeWorkspaceFile(nodes: FileTreeNode[], path: string): FileTreeNode[] {
+function removeWorkspaceFile(nodes: FileTreeNode[], path: string): FileTreeNode[] {
   const normalizedPath = normalizeWorkspacePath(path);
   const name = normalizedPath.split("/").pop() || normalizedPath || "file.txt";
 

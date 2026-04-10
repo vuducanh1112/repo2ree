@@ -1,11 +1,11 @@
 import type { ApiErrorEnvelope } from "./types";
 
-export interface ApiClientOptions {
+interface ApiClientOptions {
   baseUrl?: string;
   headers?: Record<string, string>;
 }
 
-export class ApiRequestError extends Error {
+class ApiRequestError extends Error {
   status: number;
   code: string;
   details?: Record<string, unknown>;

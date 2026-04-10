@@ -1,7 +1,7 @@
 import React from "react";
 import { C, F } from "../../../constants/theme";
 
-export interface PanelFieldRowProps {
+interface PanelFieldRowProps {
   label: string;
   value: string | null | undefined;
   emptyText?: string;

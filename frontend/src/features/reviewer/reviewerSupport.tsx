@@ -10,7 +10,7 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...extra,
 });
 
-export interface ReactivationStep {
+interface ReactivationStep {
   key: ReactivationStepKey;
   label: string;
   icon: (s?: number) => JSX.Element;

@@ -375,7 +375,7 @@ function FileViewer({ file, onClose, label, onDownload }: FileViewerProps) {
   );
 }
 
-export interface PageFilesProps {
+interface PageFilesProps {
   files: FileTreeNode[];
   reeFiles: ReeFile[];
   onDownloadWorkspaceFile?: (path: string, suggestedName?: string) => Promise<void>;

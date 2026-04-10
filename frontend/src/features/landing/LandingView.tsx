@@ -14,7 +14,7 @@ import {
   S_SECTION_LABEL,
 } from "../../constants/theme";
 
-export interface LandingViewProps {
+interface LandingViewProps {
   onLoad: (path: AppLoadRoutePath) => void;
 }
 

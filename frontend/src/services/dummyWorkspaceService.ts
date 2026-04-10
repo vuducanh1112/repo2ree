@@ -8,7 +8,7 @@ import type {
 } from "./workspaceService";
 import { parseWorkspaceResetPayload } from "./workspaceService";
 
-export interface DummyWorkspaceFileNode {
+interface DummyWorkspaceFileNode {
   id: string;
   name: string;
   type: "file" | "folder";

@@ -137,5 +137,3 @@ export const Ic = {
   ),
   menu: (s = 15) => <Svg size={s} d="M3 12h18M3 6h18M3 18h18" />,
 };
-
-export default Ic;

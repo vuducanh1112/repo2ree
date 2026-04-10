@@ -12,14 +12,14 @@ import type {
   WorkflowRunStatusDto,
 } from "./types";
 
-export interface ListRunsQuery {
+interface ListRunsQuery {
   operation?: string;
   status?: WorkflowRunStatusDto;
   cursor?: string;
   limit?: number;
 }
 
-export interface ListRunLogsQuery {
+interface ListRunLogsQuery {
   cursor?: string;
   limit?: number;
   sinceTs?: string;

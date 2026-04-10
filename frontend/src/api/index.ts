@@ -1,5 +1,4 @@
-export { ApiClient, ApiRequestError } from "./client";
-export { endpoints } from "./endpoints";
+export { ApiClient } from "./client";
 export { mapRunLogsToLegacy, WorkflowRunsApi } from "./runs";
 export type * from "./types";
 export { WorkspaceApi } from "./workspaces";
