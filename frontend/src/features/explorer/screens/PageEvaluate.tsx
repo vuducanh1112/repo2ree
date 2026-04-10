@@ -8,6 +8,8 @@ import {
   S_FIELD_HELP_TEXT_SMALL,
   S_SECTION_LABEL,
   S_WORKFLOW_PAGE_BODY,
+  S_WORKFLOW_PAGE_LOG_WRAP,
+  S_WORKFLOW_PAGE_NUDGE_WRAP,
   S_WORKFLOW_SERVICE_MAIN_SCROLL,
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
@@ -393,34 +395,36 @@ export function PageEvaluate({
             </FieldRow>
           </FieldSection>
 
-          <div style={workflowSectionCardStyle(false)}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                flexWrap: "wrap",
-              }}
-            >
+          <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
+            <div style={workflowSectionCardStyle(false)}>
               <div
                 style={{
-                  ...S_SECTION_LABEL,
-                  letterSpacing: 1.3,
-                  fontWeight: 600,
-                  marginBottom: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
                 }}
               >
-                Output
+                <div
+                  style={{
+                    ...S_SECTION_LABEL,
+                    letterSpacing: 1.3,
+                    fontWeight: 600,
+                    marginBottom: 0,
+                  }}
+                >
+                  Output
+                </div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>
+                  {running ? "Streaming" : "Latest run"}
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: C.textMuted }}>
-                {running ? "Streaming" : "Latest run"}
-              </div>
+              <LogPanel log={log} running={running} />
             </div>
-            <LogPanel log={log} running={running} />
           </div>
 
-          <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
+          <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
             <NextStepNudge stepKey={svc.key} badges={badges || {}} onGo={onGo || (() => {})} />
           </div>
         </div>
