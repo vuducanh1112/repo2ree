@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Ic } from "../../../components/Icon";
 import {
   C,
@@ -13,7 +13,6 @@ import {
   S_FLEX_ROW_GAP_8,
   S_SECTION_LABEL,
   S_SECTION_LABEL_MB12,
-  S_STATUS_BADGE_SM_BASE,
   S_TEXT_ITALIC_11,
   S_TEXT_MUTED_11,
   S_WORKFLOW_BUILD_SECTION_WRAP,
@@ -35,9 +34,46 @@ import {
 } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
 import { RuntimeOutputNode, ServiceActionSection } from "../components/workflow/servicePanels";
+import {
+  RUNTIME_STATUS_BADGE_STYLE,
+  runtimeFieldCardStyle,
+  runtimeFieldIconColor,
+  runtimeFieldIconWrapStyle,
+  runtimeFieldKeyStyle,
+  runtimeFieldValueStyle,
+  runtimeIncludedLabelStyle,
+  runtimeIncludedToggleKnobStyle,
+  runtimeIncludedToggleTrackStyle,
+  runtimeIncludedValueStyle,
+  runtimeIncludedWrapStyle,
+  runtimeSizeBadgeStyle,
+  workflowSectionCardStyle,
+  workflowToneSurfaceStyle,
+} from "../components/workflow/statusUiStyles";
 import { SVC_SCRIPT_FIELDS } from "./sharedWorkflowConstants";
 import { findFileByPath } from "./sharedWorkflowHelpers";
 import type { ServicePageProps } from "./sharedWorkflowUi";
+
+function formatByteSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function deriveRuntimeFileSize(
+  runtimeFile: { size?: number; content?: string } | null,
+): string | null {
+  if (!runtimeFile) return null;
+  if (typeof runtimeFile.size === "number" && runtimeFile.size > 0) {
+    return formatByteSize(runtimeFile.size);
+  }
+  const sizeMatch = (runtimeFile.content || "").match(/Size:\s*(~?[\d.]+ ?[KMGT]?B)/i);
+  if (sizeMatch) {
+    return sizeMatch[1];
+  }
+  const bytes = new TextEncoder().encode(runtimeFile.content || "").length;
+  return formatByteSize(bytes);
+}
 
 export function PageBuildRuntime({
   svc,
@@ -70,29 +106,20 @@ export function PageBuildRuntime({
 
   const buildColor = svc.color;
   const imageColor = "#0891b2";
-  const metaRuntime = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : null;
   const finalRuntime = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
+  const metaRuntime = finalRuntime || null;
   const includeRuntime = !!ree._runtimeIncluded && !!finalRuntime;
-  const finalRuntimeFile = finalRuntime
-    ? findFileByPath(files || [], finalRuntime) ||
+  const finalRuntimeFile = useMemo(() => {
+    if (!finalRuntime) return null;
+    return (
+      findFileByPath(files || [], finalRuntime) ||
       findFileByPath(files || [], finalRuntime.split("/").pop() || "")
-    : null;
-  const finalRuntimeSize = finalRuntimeFile
-    ? (() => {
-        if (typeof finalRuntimeFile.size === "number" && finalRuntimeFile.size > 0) {
-          const b = finalRuntimeFile.size;
-          if (b < 1024) return `${b} B`;
-          if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-          return `${(b / (1024 * 1024)).toFixed(2)} MB`;
-        }
-        const m = (finalRuntimeFile.content || "").match(/Size:\s*(~?[\d.]+ ?[KMGT]?B)/i);
-        if (m) return m[1];
-        const b = new TextEncoder().encode(finalRuntimeFile.content || "").length;
-        if (b < 1024) return `${b} B`;
-        if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-        return `${(b / (1024 * 1024)).toFixed(2)} MB`;
-      })()
-    : null;
+    );
+  }, [files, finalRuntime]);
+  const finalRuntimeSize = useMemo(
+    () => deriveRuntimeFileSize(finalRuntimeFile),
+    [finalRuntimeFile],
+  );
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
@@ -148,9 +175,7 @@ export function PageBuildRuntime({
                     marginTop: 12,
                     padding: "9px 12px",
                     borderRadius: 7,
-                    background: "#ecfeff",
-                    border: "1px solid #a5f3fc",
-                    color: "#0e7490",
+                    ...workflowToneSurfaceStyle("info"),
                     fontSize: 11,
                     lineHeight: 1.4,
                   }}
@@ -368,13 +393,13 @@ export function PageBuildRuntime({
                     gap: 8,
                     padding: "9px 14px",
                     borderRadius: 9,
-                    border: "1.5px solid #fdba74",
-                    background: "#fff7ed",
+                    ...workflowToneSurfaceStyle("warn"),
+                    borderWidth: "1.5px",
+                    borderStyle: "solid",
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 700,
-                    color: "#9a3412",
-                    boxShadow: "0 1px 2px rgba(154,52,18,0.14)",
+                    boxShadow: "0 1px 2px rgba(146,64,14,0.14)",
                     transition: "all 0.14s ease",
                   }}
                   {...hoverBg("#ffedd5", "#fff7ed")}
@@ -388,8 +413,8 @@ export function PageBuildRuntime({
                       alignItems: "center",
                       justifyContent: "center",
                       borderRadius: 5,
-                      background: "#fed7aa",
-                      color: "#9a3412",
+                      background: "#fde68a",
+                      color: "#92400e",
                     }}
                   >
                     {Ic.x(12)}
@@ -410,73 +435,19 @@ export function PageBuildRuntime({
                   You chose to skip building — set the runtime field manually. This will override
                   any automatic detection.
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 14px",
-                    background: metaRuntime ? "#f0fdf4" : C.surfaceAlt,
-                    border: `1.5px solid ${metaRuntime ? "#bbf7d0" : C.border}`,
-                    borderRadius: 8,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 7,
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: metaRuntime ? "#dcfce7" : `${C.border}40`,
-                    }}
-                  >
-                    <span style={{ color: metaRuntime ? "#16a34a" : C.textMuted, display: "flex" }}>
+                <div style={runtimeFieldCardStyle(!!metaRuntime)}>
+                  <div style={runtimeFieldIconWrapStyle(!!metaRuntime)}>
+                    <span style={{ color: runtimeFieldIconColor(!!metaRuntime), display: "flex" }}>
                       {Ic.files(14)}
                     </span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        textTransform: "uppercase",
-                        letterSpacing: 0.8,
-                        color: metaRuntime ? "#16a34a" : C.textMuted,
-                        opacity: 0.7,
-                        marginBottom: 1,
-                        fontWeight: 700,
-                      }}
-                    >
-                      ree.runtime
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        fontFamily: "JetBrains Mono, monospace",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        color: metaRuntime ? "#15803d" : C.textMuted,
-                      }}
-                    >
+                    <div style={runtimeFieldKeyStyle(!!metaRuntime)}>ree.runtime</div>
+                    <div style={runtimeFieldValueStyle(!!metaRuntime)}>
                       {metaRuntime || <span style={S_TEXT_ITALIC_11}>not set</span>}
                     </div>
                   </div>
-                  {metaRuntime && (
-                    <span
-                      style={{
-                        ...S_STATUS_BADGE_SM_BASE,
-                        color: "#16a34a",
-                        background: "#f0fdf4",
-                        border: "1px solid #bbf7d0",
-                      }}
-                    >
-                      SET
-                    </span>
-                  )}
+                  {metaRuntime && <span style={RUNTIME_STATUS_BADGE_STYLE}>SET</span>}
                 </div>
                 <RuntimeField
                   locked={false}
@@ -527,60 +498,15 @@ export function PageBuildRuntime({
               active={focusedField === "runtime"}
             >
               <div style={S_FLEX_COL_GAP_8}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 14px",
-                    background: finalRuntime ? "#f0fdf4" : C.surfaceAlt,
-                    border: `1.5px solid ${finalRuntime ? "#bbf7d0" : C.border}`,
-                    borderRadius: 8,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 7,
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: finalRuntime ? "#dcfce7" : `${C.border}40`,
-                    }}
-                  >
-                    <span
-                      style={{ color: finalRuntime ? "#16a34a" : C.textMuted, display: "flex" }}
-                    >
+                <div style={runtimeFieldCardStyle(!!finalRuntime)}>
+                  <div style={runtimeFieldIconWrapStyle(!!finalRuntime)}>
+                    <span style={{ color: runtimeFieldIconColor(!!finalRuntime), display: "flex" }}>
                       {Ic.archive(14)}
                     </span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 10,
-                        textTransform: "uppercase",
-                        letterSpacing: 0.8,
-                        color: finalRuntime ? "#16a34a" : C.textMuted,
-                        opacity: 0.7,
-                        marginBottom: 1,
-                        fontWeight: 700,
-                      }}
-                    >
-                      ree.runtime
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        fontFamily: "JetBrains Mono, monospace",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        color: finalRuntime ? "#15803d" : C.textMuted,
-                      }}
-                    >
+                    <div style={runtimeFieldKeyStyle(!!finalRuntime)}>ree.runtime</div>
+                    <div style={runtimeFieldValueStyle(!!finalRuntime)}>
                       {finalRuntime || (
                         <span style={S_TEXT_ITALIC_11}>
                           not set yet — run build or set manually
@@ -589,95 +515,26 @@ export function PageBuildRuntime({
                     </div>
                   </div>
                   {finalRuntimeSize && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontFamily: "JetBrains Mono, monospace",
-                        fontWeight: 700,
-                        color: finalRuntime ? "#166534" : C.textMuted,
-                        background: finalRuntime ? "#dcfce7" : C.surfaceAlt,
-                        border: `1px solid ${finalRuntime ? "#86efac" : C.border}`,
-                        borderRadius: 4,
-                        padding: "2px 7px",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {finalRuntimeSize}
-                    </span>
+                    <span style={runtimeSizeBadgeStyle(!!finalRuntime)}>{finalRuntimeSize}</span>
                   )}
                   {finalRuntime && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        marginLeft: 4,
-                        paddingLeft: 8,
-                        borderLeft: `1px solid ${finalRuntime ? "#bbf7d0" : C.border}`,
-                      }}
-                    >
+                    <div style={runtimeIncludedWrapStyle(!!finalRuntime)}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                        <div
-                          style={{
-                            fontSize: 10,
-                            textTransform: "uppercase",
-                            letterSpacing: 0.7,
-                            color: includeRuntime ? "#164e63" : C.textMuted,
-                            fontWeight: 700,
-                          }}
-                        >
-                          Included
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: includeRuntime ? "#0891b2" : C.textMuted,
-                          }}
-                        >
+                        <div style={runtimeIncludedLabelStyle(includeRuntime)}>Included</div>
+                        <div style={runtimeIncludedValueStyle(includeRuntime)}>
                           {includeRuntime ? "Yes" : "No"}
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => onReeChange?.({ ...ree, _runtimeIncluded: !includeRuntime })}
-                        style={{
-                          width: 34,
-                          height: 20,
-                          border: "none",
-                          borderRadius: 99,
-                          cursor: "pointer",
-                          background: includeRuntime ? "#06b6d4" : C.borderMid,
-                          position: "relative",
-                        }}
+                        style={runtimeIncludedToggleTrackStyle(includeRuntime)}
                       >
-                        <span
-                          style={{
-                            position: "absolute",
-                            top: 2,
-                            left: includeRuntime ? 16 : 2,
-                            width: 16,
-                            height: 16,
-                            borderRadius: "50%",
-                            background: "#fff",
-                            transition: "left 0.2s",
-                          }}
-                        />
+                        <span style={runtimeIncludedToggleKnobStyle(includeRuntime)} />
                       </button>
                     </div>
                   )}
-                  {finalRuntime && (
-                    <span
-                      style={{
-                        ...S_STATUS_BADGE_SM_BASE,
-                        color: "#16a34a",
-                        background: "#f0fdf4",
-                        border: "1px solid #bbf7d0",
-                      }}
-                    >
-                      FINAL
-                    </span>
-                  )}
+                  {finalRuntime && <span style={RUNTIME_STATUS_BADGE_STYLE}>FINAL</span>}
                 </div>
                 <div style={S_FIELD_HELP_TEXT_SMALL}>
                   {finalRuntime
@@ -691,8 +548,23 @@ export function PageBuildRuntime({
           </FieldSection>
 
           <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
-            <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>Output</div>
-            <LogPanel log={log} running={running} />
+            <div style={workflowSectionCardStyle(false)}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ ...S_SECTION_LABEL, marginBottom: 0 }}>Output</div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>
+                  {running ? "Streaming" : "Latest run"}
+                </div>
+              </div>
+              <LogPanel log={log} running={running} />
+            </div>
           </div>
 
           <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>

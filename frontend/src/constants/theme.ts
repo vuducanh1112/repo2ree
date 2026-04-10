@@ -451,7 +451,7 @@ export const S_WORKFLOW_PAGE_SCRIPTS_WRAP: React.CSSProperties = {
 };
 
 export const S_WORKFLOW_PAGE_LOG_WRAP: React.CSSProperties = {
-  padding: "4px 24px 24px",
+  padding: "4px 0 24px",
   flex: 1,
   display: "flex",
   flexDirection: "column",

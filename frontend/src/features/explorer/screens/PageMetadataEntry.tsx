@@ -16,6 +16,7 @@ import {
 import { useFocusScroll } from "../../../hooks/useFocusScroll";
 import { FieldRow, FieldSection, FieldTipsSidebar } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
+import { workflowToneSurfaceStyle } from "../components/workflow/statusUiStyles";
 import type { PageMetadataEntryProps } from "./sharedWorkflowUi";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
@@ -78,13 +79,11 @@ export function PageMetadataEntry({
                 alignItems: "center",
                 gap: 6,
                 padding: "6px 12px",
-                background: "#fef3c7",
-                border: "1px solid #fde68a",
+                ...workflowToneSurfaceStyle("warn"),
                 borderRadius: 6,
                 cursor: "pointer",
                 fontSize: 13,
                 fontFamily: F.sans,
-                color: "#92400e",
                 fontWeight: 600,
                 flexShrink: 0,
               }}

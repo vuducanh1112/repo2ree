@@ -2,6 +2,11 @@ import { useMemo, useState } from "react";
 import { Ic } from "../../../../components/Icon";
 import { C, F } from "../../../../constants/theme";
 import type { LogEntry, LogLine } from "../../../../types";
+import {
+  WORKFLOW_LOG_EMPTY_STYLE,
+  WORKFLOW_LOG_PANEL_HEADER_STYLE,
+  WORKFLOW_LOG_PANEL_ROOT_STYLE,
+} from "../workflow/statusUiStyles";
 
 const MAX_RENDER_LOG_LINES = 800;
 const MAX_COPY_LOG_LINES = 2000;
@@ -38,7 +43,7 @@ function formatLineTimestamp(ts?: string): string {
   });
 }
 
-export function LogPanel({ log }: LogPanelProps) {
+export function LogPanel({ log, running = false }: LogPanelProps) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
   const renderLines = useMemo(() => {
@@ -67,6 +72,19 @@ export function LogPanel({ log }: LogPanelProps) {
       .join("\n");
   }, [copyLines, log]);
 
+  const renderedEntries = useMemo(() => {
+    const seenLines = new Map<string, number>();
+    return renderLines.map((line) => {
+      const lineSig = `${line.type}:${line.msg}`;
+      const occurrence = (seenLines.get(lineSig) ?? 0) + 1;
+      seenLines.set(lineSig, occurrence);
+      return {
+        key: `${lineSig}::${occurrence}`,
+        line,
+        style: LOG_STYLE[line.type] || LOG_STYLE.info,
+      };
+    });
+  }, [renderLines]);
   const onCopyLogs = async () => {
     if (!copyText) return;
     try {
@@ -91,57 +109,21 @@ export function LogPanel({ log }: LogPanelProps) {
   };
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        background: "#f8fafc",
-        borderRadius: 10,
-        border: `1px solid ${C.border}`,
-        minHeight: 200,
-        maxHeight: 360,
-      }}
-    >
+    <div style={WORKFLOW_LOG_PANEL_ROOT_STYLE}>
       {!log ? (
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-            minHeight: 200,
-            gap: 8,
-            color: C.textMuted,
-          }}
-        >
+        <div style={WORKFLOW_LOG_EMPTY_STYLE}>
           {Ic.terminal()}
           <span style={{ fontSize: 13, fontFamily: F.sans }}>No output yet</span>
         </div>
       ) : (
         <>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 10,
-              padding: "10px 14px",
-              fontSize: 11,
-              color: C.textMuted,
-              fontFamily: F.mono,
-              borderBottom: `1px solid ${C.border}`,
-              background: C.surface,
-              boxShadow: "0 1px 0 rgba(15, 23, 42, 0.04)",
-              flexShrink: 0,
-            }}
-          >
+          <div style={WORKFLOW_LOG_PANEL_HEADER_STYLE}>
             <span>
               Last run:{" "}
               {new Date(log.ts).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+            </span>
+            <span style={{ color: running ? C.accent : C.textMuted, marginLeft: "auto" }}>
+              {running ? "Running" : "Idle"}
             </span>
             <button
               type="button"
@@ -193,54 +175,45 @@ export function LogPanel({ log }: LogPanelProps) {
                 Showing last {renderLines.length} lines to keep the UI responsive.
               </div>
             )}
-            {(() => {
-              const seenLines = new Map<string, number>();
-              return renderLines.map((line) => {
-                const lineSig = `${line.type}:${line.msg}`;
-                const occurrence = (seenLines.get(lineSig) ?? 0) + 1;
-                seenLines.set(lineSig, occurrence);
-                const s = LOG_STYLE[line.type] || LOG_STYLE.info;
-                return (
-                  <div
-                    key={`${lineSig}::${occurrence}`}
-                    style={{
-                      display: "flex",
-                      padding: "3px 14px",
-                      background: s.bg,
-                      fontFamily: F.mono,
-                      fontSize: 13,
-                      lineHeight: 1.75,
-                    }}
-                  >
-                    <span
-                      style={{
-                        color: s.color,
-                        fontWeight: 600,
-                        marginRight: 14,
-                        flexShrink: 0,
-                        fontSize: 11,
-                        opacity: 0.75,
-                        minWidth: 52,
-                      }}
-                    >
-                      [{s.pre}]
-                    </span>
-                    <span
-                      style={{
-                        color: C.textMuted,
-                        marginRight: 10,
-                        flexShrink: 0,
-                        fontSize: 11,
-                        minWidth: 58,
-                      }}
-                    >
-                      {formatLineTimestamp(line.ts || log.ts)}
-                    </span>
-                    <span style={{ color: s.color }}>{line.msg}</span>
-                  </div>
-                );
-              });
-            })()}
+            {renderedEntries.map(({ key, line, style: s }) => (
+              <div
+                key={key}
+                style={{
+                  display: "flex",
+                  padding: "3px 14px",
+                  background: s.bg,
+                  fontFamily: F.mono,
+                  fontSize: 13,
+                  lineHeight: 1.75,
+                }}
+              >
+                <span
+                  style={{
+                    color: s.color,
+                    fontWeight: 600,
+                    marginRight: 14,
+                    flexShrink: 0,
+                    fontSize: 11,
+                    opacity: 0.75,
+                    minWidth: 52,
+                  }}
+                >
+                  [{s.pre}]
+                </span>
+                <span
+                  style={{
+                    color: C.textMuted,
+                    marginRight: 10,
+                    flexShrink: 0,
+                    fontSize: 11,
+                    minWidth: 58,
+                  }}
+                >
+                  {formatLineTimestamp(line.ts || log.ts)}
+                </span>
+                <span style={{ color: s.color }}>{line.msg}</span>
+              </div>
+            ))}
           </div>
           {copyTruncated && (
             <div

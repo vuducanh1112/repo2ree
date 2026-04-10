@@ -26,6 +26,13 @@ import {
   WorkflowPageHeader,
 } from "../components/workflow/pageChrome";
 import { DependencyPanel, ServiceActionSection } from "../components/workflow/servicePanels";
+import {
+  workflowSectionCardStyle,
+  workflowStatusBadgeStyle,
+  workflowToneIconStyle,
+  workflowTonePanelStyle,
+  workflowToneTextStyle,
+} from "../components/workflow/statusUiStyles";
 import type { ServicePageProps } from "./sharedWorkflowUi";
 
 export function PageEvaluate({
@@ -214,54 +221,16 @@ export function PageEvaluate({
                             gap: 4,
                           }}
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: 6,
-                              padding: "4px 6px",
-                              borderRadius: 6,
-                              background: "#fffbeb",
-                              border: "1px solid #fde68a",
-                            }}
-                          >
-                            <span
-                              style={{
-                                display: "flex",
-                                color: "#b45309",
-                                flexShrink: 0,
-                                marginTop: 1,
-                              }}
-                            >
-                              {Ic.info(11)}
-                            </span>
-                            <span style={{ fontSize: 11, color: "#92400e", lineHeight: 1.35 }}>
+                          <div style={workflowTonePanelStyle("warn")}>
+                            <span style={workflowToneIconStyle("warn")}>{Ic.info(11)}</span>
+                            <span style={workflowToneTextStyle("warn")}>
                               {levelConfig.problem ||
                                 "No major bottleneck called out at this level."}
                             </span>
                           </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: 6,
-                              padding: "4px 6px",
-                              borderRadius: 6,
-                              background: "#f0fdf4",
-                              border: "1px solid #bbf7d0",
-                            }}
-                          >
-                            <span
-                              style={{
-                                display: "flex",
-                                color: "#15803d",
-                                flexShrink: 0,
-                                marginTop: 1,
-                              }}
-                            >
-                              {Ic.check(11)}
-                            </span>
-                            <span style={{ fontSize: 11, color: "#166534", lineHeight: 1.35 }}>
+                          <div style={workflowTonePanelStyle("good")}>
+                            <span style={workflowToneIconStyle("good")}>{Ic.check(11)}</span>
+                            <span style={workflowToneTextStyle("good")}>
                               {levelConfig.fix || "No additional fix suggested at this level."}
                             </span>
                           </div>
@@ -353,28 +322,18 @@ export function PageEvaluate({
                       <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <span
                           style={{
+                            ...workflowStatusBadgeStyle("#0e7490"),
                             fontSize: 11,
-                            color: "#0e7490",
-                            background: "#ecfeff",
-                            border: "1px solid #a5f3fc",
-                            borderRadius: 99,
                             padding: "3px 10px",
-                            fontFamily: F.sans,
-                            fontWeight: 600,
                           }}
                         >
                           Container files: {containerCount}
                         </span>
                         <span
                           style={{
+                            ...workflowStatusBadgeStyle("#6d28d9"),
                             fontSize: 11,
-                            color: "#6d28d9",
-                            background: "#f5f3ff",
-                            border: "1px solid #ddd6fe",
-                            borderRadius: 99,
                             padding: "3px 10px",
-                            fontFamily: F.sans,
-                            fontWeight: 600,
                           }}
                         >
                           Nix files: {nixCount}
@@ -434,17 +393,32 @@ export function PageEvaluate({
             </FieldRow>
           </FieldSection>
 
-          <div
-            style={{
-              ...S_SECTION_LABEL,
-              letterSpacing: 1.3,
-              fontWeight: 600,
-              marginBottom: 8,
-            }}
-          >
-            Output
+          <div style={workflowSectionCardStyle(false)}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              <div
+                style={{
+                  ...S_SECTION_LABEL,
+                  letterSpacing: 1.3,
+                  fontWeight: 600,
+                  marginBottom: 0,
+                }}
+              >
+                Output
+              </div>
+              <div style={{ fontSize: 12, color: C.textMuted }}>
+                {running ? "Streaming" : "Latest run"}
+              </div>
+            </div>
+            <LogPanel log={log} running={running} />
           </div>
-          <LogPanel log={log} running={running} />
 
           <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
             <NextStepNudge stepKey={svc.key} badges={badges || {}} onGo={onGo || (() => {})} />

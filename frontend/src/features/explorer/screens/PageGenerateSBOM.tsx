@@ -8,8 +8,6 @@ import {
   S_ACTION_BUTTON_BASE,
   S_FIELD_STACK_GAP_14,
   S_SECTION_LABEL,
-  S_SECTION_LABEL_SMALL,
-  S_STATUS_BADGE_SM_BASE,
   S_TEXT_ITALIC_11,
   S_WORKFLOW_PAGE_BODY,
   S_WORKFLOW_PAGE_LOG_WRAP,
@@ -29,6 +27,15 @@ import {
 } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
 import { ServiceActionSection } from "../components/workflow/servicePanels";
+import {
+  RUNTIME_STATUS_BADGE_STYLE,
+  workflowSectionCardStyle,
+  workflowStatusBadgeStyle,
+  workflowStatusCardStyle,
+  workflowStatusIconWrapStyle,
+  workflowStatusKeyStyle,
+  workflowStatusValueStyle,
+} from "../components/workflow/statusUiStyles";
 import { SVC_SCRIPT_FIELDS } from "./sharedWorkflowConstants";
 import { findFileByPath } from "./sharedWorkflowHelpers";
 import type { ServicePageProps } from "./sharedWorkflowUi";
@@ -117,56 +124,17 @@ export function PageGenerateSBOM({
               active={focusedField === "runtime"}
             >
               <div style={S_FIELD_STACK_GAP_14}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 14px",
-                    background: rt ? "#ecfeff" : C.surfaceAlt,
-                    border: `1.5px solid ${rt ? `${sbomColor}50` : C.border}`,
-                    borderRadius: 9,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 7,
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: `${rt ? sbomColor : C.textMuted}18`,
-                    }}
-                  >
+                <div style={workflowStatusCardStyle(!!rt, sbomColor)}>
+                  <div style={workflowStatusIconWrapStyle(!!rt, sbomColor)}>
                     <span style={{ color: rt ? sbomColor : C.textMuted, display: "flex" }}>
                       {isTb ? Ic.archive(14) : Ic.cpu(14)}
                     </span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        ...S_SECTION_LABEL_SMALL,
-                        letterSpacing: 0.8,
-                        color: rt ? sbomColor : C.textMuted,
-                        opacity: 0.7,
-                        marginBottom: 1,
-                      }}
-                    >
+                    <div style={workflowStatusKeyStyle(!!rt, sbomColor)}>
                       Scan target · ree.runtime
                     </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        fontFamily: F.mono,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        color: rt ? sbomColor : C.textMuted,
-                      }}
-                    >
+                    <div style={workflowStatusValueStyle(!!rt, sbomColor)}>
                       {rt || (
                         <span style={S_TEXT_ITALIC_11}>
                           not set — set a runtime in the Build Runtime step first
@@ -175,14 +143,7 @@ export function PageGenerateSBOM({
                     </div>
                   </div>
                   {rt && (
-                    <span
-                      style={{
-                        ...S_STATUS_BADGE_SM_BASE,
-                        color: sbomColor,
-                        background: `${sbomColor}12`,
-                        border: `1px solid ${sbomColor}40`,
-                      }}
-                    >
+                    <span style={workflowStatusBadgeStyle(sbomColor)}>
                       {isTb ? "TARBALL" : "IMAGE"}
                     </span>
                   )}
@@ -244,57 +205,15 @@ export function PageGenerateSBOM({
               onFocus={() => setFocusedField("sbom")}
               active={focusedField === "sbom"}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "10px 14px",
-                  background: hasSbom ? "#f0fdf4" : C.surfaceAlt,
-                  border: `1.5px solid ${hasSbom ? "#bbf7d0" : C.border}`,
-                  borderRadius: 9,
-                  marginBottom: 12,
-                }}
-              >
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 7,
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: hasSbom ? "#dcfce7" : `${C.border}40`,
-                  }}
-                >
+              <div style={{ ...workflowStatusCardStyle(hasSbom, "#16a34a"), marginBottom: 12 }}>
+                <div style={workflowStatusIconWrapStyle(hasSbom, "#16a34a")}>
                   <span style={{ color: hasSbom ? "#16a34a" : C.textMuted, display: "flex" }}>
                     {Ic.package(14)}
                   </span>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      ...S_SECTION_LABEL_SMALL,
-                      letterSpacing: 0.8,
-                      color: hasSbom ? "#16a34a" : C.textMuted,
-                      opacity: 0.7,
-                      marginBottom: 1,
-                    }}
-                  >
-                    ree.sbom
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      fontFamily: F.mono,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      color: hasSbom ? "#15803d" : C.textMuted,
-                    }}
-                  >
+                  <div style={workflowStatusKeyStyle(hasSbom, "#16a34a")}>ree.sbom</div>
+                  <div style={workflowStatusValueStyle(hasSbom, "#15803d")}>
                     {hasSbom ? (
                       ree.sbom
                     ) : (
@@ -302,18 +221,7 @@ export function PageGenerateSBOM({
                     )}
                   </div>
                 </div>
-                {hasSbom && (
-                  <span
-                    style={{
-                      ...S_STATUS_BADGE_SM_BASE,
-                      color: "#16a34a",
-                      background: "#f0fdf4",
-                      border: "1px solid #bbf7d0",
-                    }}
-                  >
-                    SET
-                  </span>
-                )}
+                {hasSbom && <span style={RUNTIME_STATUS_BADGE_STYLE}>SET</span>}
               </div>
 
               {hasSbom ? (
@@ -435,8 +343,23 @@ export function PageGenerateSBOM({
           )}
 
           <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
-            <div style={{ ...S_SECTION_LABEL, marginBottom: 8 }}>Output</div>
-            <LogPanel log={log} running={running} />
+            <div style={workflowSectionCardStyle(false)}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ ...S_SECTION_LABEL, marginBottom: 0 }}>Output</div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>
+                  {running ? "Streaming" : "Latest run"}
+                </div>
+              </div>
+              <LogPanel log={log} running={running} />
+            </div>
           </div>
 
           <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>

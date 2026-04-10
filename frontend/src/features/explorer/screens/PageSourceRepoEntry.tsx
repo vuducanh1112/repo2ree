@@ -7,6 +7,7 @@ import {
   C,
   F,
   S_ACTION_BUTTON_BASE,
+  S_SECTION_LABEL,
   S_WORKFLOW_PAGE_BODY,
   S_WORKFLOW_PAGE_MAIN_COL,
   S_WORKFLOW_PAGE_MAIN_SCROLL,
@@ -18,7 +19,16 @@ import { LogPanel } from "../components/inputs/logPanel";
 import { SourceUploadField, SourceUrlField } from "../components/inputs/sourceRuntime";
 import { FieldRow, FieldTipsSidebar } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
+import {
+  SOURCE_CONFIG_LOCK_STYLE,
+  sourceClearButtonTone,
+  sourceIncludedLabelStyle,
+  workflowSectionCardStyle,
+} from "../components/workflow/statusUiStyles";
 import type { PageSourceRepoEntryProps } from "./sharedWorkflowUi";
+
+const SOURCE_TYPE_OPTIONS = ["git", "hg", "svn", "cvs", "bzr", "tarball"] as const;
+type SourceTypeOption = (typeof SOURCE_TYPE_OPTIONS)[number];
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,
@@ -39,15 +49,8 @@ const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSPropert
 });
 
 const chapterCard = (active: boolean): React.CSSProperties => ({
-  border: `1.5px solid ${active ? C.accentBorder : C.border}`,
-  background: active ? C.accentBg : C.surface,
-  borderRadius: 12,
-  padding: 14,
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-  boxShadow: active ? "0 8px 20px rgba(37,99,235,0.07)" : "0 4px 12px rgba(15,23,42,0.04)",
-  transition: "border-color 0.2s, background 0.2s, box-shadow 0.2s",
+  ...workflowSectionCardStyle(active),
+  background: active ? `${C.accentBg}66` : C.surface,
 });
 
 const statusChip = (active: boolean, tone: "neutral" | "good" | "warn"): React.CSSProperties => {
@@ -90,28 +93,32 @@ export function PageSourceRepoEntry({
   onWorkspaceUpload,
   onRemoveWorkspaceSource,
 }: PageSourceRepoEntryProps) {
-  const onChange = onReeChange;
   const downloadRunning = actionStates.source === "loading";
-  const downloadDone = !!ree._sourceAvailable;
 
   const focus = (key: string) => onFocusedFieldChange(key);
-  const [originTypeDraft, setOriginTypeDraft] = useState<
-    "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | ""
-  >(ree.source_type || "");
+  const [originTypeDraft, setOriginTypeDraft] = useState<SourceTypeOption | "">(
+    ree.source_type || "",
+  );
   const [originUrlDraft, setOriginUrlDraft] = useState(ree.origin_url || "");
   const sourceInWorkspace = !!ree._sourceAvailable;
   const sourceIncluded = sourceInWorkspace && !!ree._sourceIncluded;
+  const sourceFromUpload = ree._sourceAcquiredBy === "upload" && sourceInWorkspace;
+  const sourceFromDownload = ree._sourceAcquiredBy === "download" && sourceInWorkspace;
+  const sourceConfigLocked = sourceInWorkspace;
+  const downloadDone = sourceFromDownload;
+  const sourceInteractionLocked = locked || sourceConfigLocked;
+
   const toggleSourceIncluded = () => {
     focus("_sourceAvailable");
     if (locked || !sourceInWorkspace || ree._sourceAcquiredBy === "upload") return;
-    onChange({ ...ree, _sourceIncluded: !sourceIncluded });
+    onReeChange({ ...ree, _sourceIncluded: !sourceIncluded });
   };
 
   useEffect(() => {
     if (!sourceInWorkspace && ree._sourceIncluded) {
-      onChange({ ...ree, _sourceIncluded: false });
+      onReeChange({ ...ree, _sourceIncluded: false });
     }
-  }, [sourceInWorkspace, ree, onChange]);
+  }, [sourceInWorkspace, ree, onReeChange]);
 
   useEffect(() => {
     setOriginTypeDraft(ree.source_type || "");
@@ -123,9 +130,6 @@ export function PageSourceRepoEntry({
 
   useFocusScroll(focusedField);
 
-  const sourceFromUpload = ree._sourceAcquiredBy === "upload" && !!ree._sourceAvailable;
-  const sourceFromDownload = ree._sourceAcquiredBy === "download" && !!ree._sourceAvailable;
-  const sourceConfigLocked = sourceInWorkspace;
   const originInputLocked = locked || sourceInWorkspace;
   const sourceIncludedLocked = locked || !sourceInWorkspace || sourceFromUpload;
   const sourceIncludedEffective = sourceFromUpload ? true : sourceIncluded;
@@ -206,7 +210,7 @@ export function PageSourceRepoEntry({
                       key={m}
                       onClick={() => {
                         focus("_sourceAcquiredBy");
-                        if (locked || sourceConfigLocked || m === repoMode) return;
+                        if (sourceInteractionLocked || m === repoMode) return;
                         onRepoModeChange(m);
                         if (m === "upload") {
                           setOriginTypeDraft("");
@@ -216,11 +220,11 @@ export function PageSourceRepoEntry({
                       style={{
                         ...actionBtn({ padding: "8px 10px", fontWeight: active ? 800 : 700 }),
                         flex: 1,
-                        cursor: locked || sourceConfigLocked ? "not-allowed" : "pointer",
+                        cursor: sourceInteractionLocked ? "not-allowed" : "pointer",
                         border: `1.5px solid ${active ? C.accent : C.border}`,
                         background: active ? C.accentBg : C.surface,
                         color: active ? C.accent : C.textMid,
-                        opacity: locked || sourceConfigLocked ? 0.5 : 1,
+                        opacity: sourceInteractionLocked ? 0.5 : 1,
                       }}
                     >
                       {m === "url" ? "Use origin URL" : "Upload tarball"}
@@ -230,21 +234,7 @@ export function PageSourceRepoEntry({
               </div>
 
               {sourceConfigLocked && (
-                <div
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 7,
-                    padding: "6px 10px",
-                    borderRadius: 8,
-                    border: "1.5px solid #fde68a",
-                    background: "#fffbeb",
-                    color: "#92400e",
-                    fontSize: 12,
-                    fontFamily: F.sans,
-                    fontWeight: 700,
-                  }}
-                >
+                <div style={SOURCE_CONFIG_LOCK_STYLE}>
                   {Ic.lock(12)} Source configuration is locked until workspace source is cleared.
                 </div>
               )}
@@ -324,27 +314,17 @@ export function PageSourceRepoEntry({
                       disabled={locked || sourceConfigLocked}
                       value={originTypeDraft}
                       onChange={(event) => {
-                        setOriginTypeDraft(
-                          event.target.value as
-                            | "git"
-                            | "hg"
-                            | "svn"
-                            | "cvs"
-                            | "bzr"
-                            | "tarball"
-                            | "",
-                        );
+                        setOriginTypeDraft(event.target.value as SourceTypeOption | "");
                       }}
                       onFocus={() => focus("source_type")}
                       style={{ ...inp(locked || sourceConfigLocked), flex: 1 }}
                     >
                       <option value="">Select origin type</option>
-                      <option value="git">git</option>
-                      <option value="hg">hg</option>
-                      <option value="svn">svn</option>
-                      <option value="cvs">cvs</option>
-                      <option value="bzr">bzr</option>
-                      <option value="tarball">tarball</option>
+                      {SOURCE_TYPE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
                     </select>
 
                     <button
@@ -419,14 +399,7 @@ export function PageSourceRepoEntry({
                   3. Workspace actions
                 </div>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: sourceIncludedEffective ? "#b45309" : C.textMid,
-                      fontFamily: F.sans,
-                    }}
-                  >
+                  <span style={sourceIncludedLabelStyle(sourceIncludedEffective)}>
                     Include snapshot in REE
                   </span>
                   <Toggle
@@ -493,11 +466,7 @@ export function PageSourceRepoEntry({
                         padding: "8px 12px",
                         fontWeight: 800,
                       }),
-                      border: "1.5px solid #fca5a5",
-                      background: "#fee2e2",
-                      color: "#991b1b",
-                      cursor: locked ? "not-allowed" : "pointer",
-                      opacity: locked ? 0.6 : 1,
+                      ...sourceClearButtonTone(locked),
                     }}
                   >
                     {Ic.x(12)} Clear workspace source
@@ -512,7 +481,7 @@ export function PageSourceRepoEntry({
               </div>
             </div>
 
-            <div style={{ ...chapterCard(false), marginTop: 12 }}>
+            <div style={{ ...workflowSectionCardStyle(false), marginTop: 12 }}>
               <div
                 style={{
                   display: "flex",
@@ -522,10 +491,8 @@ export function PageSourceRepoEntry({
                   flexWrap: "wrap",
                 }}
               >
-                <div style={{ fontFamily: F.sans, fontWeight: 800, color: C.text }}>
-                  Source acquisition logs
-                </div>
-                <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
+                <div style={{ ...S_SECTION_LABEL, marginBottom: 0 }}>Source acquisition logs</div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>
                   {running ? "Streaming" : "Latest run"}
                 </div>
               </div>
