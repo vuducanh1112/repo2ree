@@ -7,7 +7,6 @@ import {
   C,
   F,
   S_ACTION_BUTTON_BASE,
-  S_SECTION_LABEL,
   S_WORKFLOW_PAGE_BODY,
   S_WORKFLOW_PAGE_MAIN_COL,
   S_WORKFLOW_PAGE_MAIN_SCROLL,
@@ -15,10 +14,10 @@ import {
   S_WORKFLOW_PAGE_ROOT,
 } from "../../../constants/theme";
 import { useFocusScroll } from "../../../hooks/useFocusScroll";
-import { LogPanel } from "../components/inputs/logPanel";
 import { SourceUploadField, SourceUrlField } from "../components/inputs/sourceRuntime";
 import { FieldRow, FieldTipsSidebar } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
+import { WorkflowLogSection } from "../components/workflow/servicePanels";
 import {
   SOURCE_CONFIG_LOCK_STYLE,
   sourceClearButtonTone,
@@ -481,22 +480,8 @@ export function PageSourceRepoEntry({
               </div>
             </div>
 
-            <div style={{ ...workflowSectionCardStyle(false), marginTop: 12 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ ...S_SECTION_LABEL, marginBottom: 0 }}>Source acquisition logs</div>
-                <div style={{ fontSize: 12, color: C.textMuted }}>
-                  {running ? "Streaming" : "Latest run"}
-                </div>
-              </div>
-              <LogPanel log={log} running={running} />
+            <div style={{ marginTop: 12 }}>
+              <WorkflowLogSection log={log} running={running} title="Source acquisition logs" />
             </div>
 
             <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>

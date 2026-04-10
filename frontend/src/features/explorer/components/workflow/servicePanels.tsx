@@ -13,8 +13,10 @@ import {
   S_STATUS_BADGE_SM_BASE,
   S_TEXT_MUTED_11,
 } from "../../../../constants/theme";
-import type { FileTreeNode, Ree } from "../../../../types";
+import type { FileTreeNode, LogEntry, Ree } from "../../../../types";
 import { type DepGroup, ECO_META, PIN_META } from "../../../dependencies/dependencyParser";
+import { LogPanel } from "../inputs/logPanel";
+import { workflowSectionCardStyle } from "./statusUiStyles";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,
@@ -102,6 +104,39 @@ export function ServiceActionSection({
         )}
         <div style={S_TEXT_MUTED_11}>{helperText}</div>
       </div>
+    </div>
+  );
+}
+
+interface WorkflowLogSectionProps {
+  log: LogEntry | null;
+  running: boolean;
+  title?: string;
+  titleStyle?: React.CSSProperties;
+}
+export function WorkflowLogSection({
+  log,
+  running,
+  title = "Output",
+  titleStyle,
+}: WorkflowLogSectionProps) {
+  return (
+    <div style={workflowSectionCardStyle(false)}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ ...S_SECTION_LABEL, marginBottom: 0, ...titleStyle }}>{title}</div>
+        <div style={{ fontSize: 12, color: C.textMuted }}>
+          {running ? "Streaming" : "Latest run"}
+        </div>
+      </div>
+      <LogPanel log={log} running={running} />
     </div>
   );
 }

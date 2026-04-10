@@ -6,7 +6,6 @@ import {
   C,
   F,
   S_FIELD_HELP_TEXT_SMALL,
-  S_SECTION_LABEL,
   S_WORKFLOW_PAGE_BODY,
   S_WORKFLOW_PAGE_LOG_WRAP,
   S_WORKFLOW_PAGE_NUDGE_WRAP,
@@ -15,7 +14,6 @@ import {
 } from "../../../constants/theme";
 import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
 import { scanDependencies } from "../../dependencies/dependencyParser";
-import { LogPanel } from "../components/inputs/logPanel";
 import {
   descToTwoTierTips,
   FieldRow,
@@ -27,9 +25,12 @@ import {
   RequirementsBanner,
   WorkflowPageHeader,
 } from "../components/workflow/pageChrome";
-import { DependencyPanel, ServiceActionSection } from "../components/workflow/servicePanels";
 import {
-  workflowSectionCardStyle,
+  DependencyPanel,
+  ServiceActionSection,
+  WorkflowLogSection,
+} from "../components/workflow/servicePanels";
+import {
   workflowStatusBadgeStyle,
   workflowToneIconStyle,
   workflowTonePanelStyle,
@@ -396,32 +397,11 @@ export function PageEvaluate({
           </FieldSection>
 
           <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
-            <div style={workflowSectionCardStyle(false)}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div
-                  style={{
-                    ...S_SECTION_LABEL,
-                    letterSpacing: 1.3,
-                    fontWeight: 600,
-                    marginBottom: 0,
-                  }}
-                >
-                  Output
-                </div>
-                <div style={{ fontSize: 12, color: C.textMuted }}>
-                  {running ? "Streaming" : "Latest run"}
-                </div>
-              </div>
-              <LogPanel log={log} running={running} />
-            </div>
+            <WorkflowLogSection
+              log={log}
+              running={running}
+              titleStyle={{ letterSpacing: 1.3, fontWeight: 600 }}
+            />
           </div>
 
           <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>

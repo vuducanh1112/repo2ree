@@ -3,7 +3,6 @@ import { Ic } from "../../../components/Icon";
 import { FIELD_META } from "../../../constants/fieldMeta";
 import { PAGE } from "../../../constants/pages";
 import {
-  C,
   S_FIELD_HELP_TEXT_SMALL,
   S_FIELD_LABEL_TEXT_SM,
   S_FIELD_ROW_REQUIRED_BADGE,
@@ -19,7 +18,6 @@ import {
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
 import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
-import { LogPanel } from "../components/inputs/logPanel";
 import { FilePicker, ScriptPanel } from "../components/inputs/scriptAndFile";
 import {
   descToTwoTierTips,
@@ -28,8 +26,7 @@ import {
   FieldTipsSidebar,
 } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
-import { ServiceActionSection } from "../components/workflow/servicePanels";
-import { workflowSectionCardStyle } from "../components/workflow/statusUiStyles";
+import { ServiceActionSection, WorkflowLogSection } from "../components/workflow/servicePanels";
 import { SVC_SCRIPT_FIELDS } from "./sharedWorkflowConstants";
 import type { ServicePageProps } from "./sharedWorkflowUi";
 
@@ -140,23 +137,7 @@ export function PageTestActivation({
           </div>
 
           <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
-            <div style={workflowSectionCardStyle(false)}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ ...S_SECTION_LABEL, marginBottom: 0 }}>Output</div>
-                <div style={{ fontSize: 12, color: C.textMuted }}>
-                  {running ? "Streaming" : "Latest run"}
-                </div>
-              </div>
-              <LogPanel log={log} running={running} />
-            </div>
+            <WorkflowLogSection log={log} running={running} />
           </div>
 
           <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
