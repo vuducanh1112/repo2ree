@@ -55,128 +55,197 @@ function parsePinStatus(version: string | null | undefined): PinStatus {
   return "none";
 }
 
-const DEP_PARSERS: Record<string, (content: string) => DepPackage[]> = {
-  "requirements.txt": (content) => {
-    const pkgs: DepPackage[] = [];
-    for (const raw of content.split("\n")) {
-      const line = raw.replace(/#.*$/, "").trim();
-      if (!line || line.startsWith("-") || line.startsWith("http")) continue;
-      const m = line.match(/^([A-Za-z0-9_\-.]+)(\[.*?\])?\s*([!<>=~,\s0-9.*]+)?$/);
-      if (!m) continue;
-      const name = m[1];
-      const version = (m[3] || "").trim() || null;
-      pkgs.push({ name, version, raw: line, pinned: parsePinStatus(version) });
+function parseDependencySpec(src: string): { name: string; version: string | null } | null {
+  const match = src.match(/^([A-Za-z0-9_\-.]+)(\[.*?\])?\s*([!<>=~,\s0-9.*"']+)?$/);
+  if (!match) return null;
+  const name = match[1];
+  const version = (match[3] || "").replace(/["']/g, "").trim() || null;
+  return { name, version };
+}
+
+function parseEnvironmentDependencyEntry(
+  entry: string,
+): { name: string; version: string | null } | null {
+  const match = entry.match(/^([A-Za-z0-9_\-.]+)\s*([=<>!~][=<>!~\s0-9.*]+)?$/);
+  if (!match) return null;
+  const name = match[1];
+  const rawVersion = (match[2] || "").trim() || null;
+  const version = rawVersion ? rawVersion.replace(/^=(?!=)/, "==") : null;
+  return { name, version };
+}
+
+function getEcosystemFromFilename(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower === "package.json") return "npm";
+  if (lower === "pyproject.toml") return "toml";
+  if (lower.includes("environment")) return "conda";
+  return "pip";
+}
+
+function scanDependenciesAtPath(nodes: FileTreeNode[], path = ""): DepGroup[] {
+  const results: DepGroup[] = [];
+  for (const node of nodes || []) {
+    const fullPath = path ? `${path}/${node.name}` : node.name;
+    if (node.type === "folder") {
+      results.push(...scanDependenciesAtPath(node.children || [], fullPath));
+      continue;
     }
-    return pkgs;
-  },
-  "pyproject.toml": (content) => {
-    const pkgs: DepPackage[] = [];
-    let inDeps = false;
-    for (const raw of content.split("\n")) {
-      const line = raw.trim();
-      if (line === "[project.dependencies]" || line === "dependencies = [") {
-        inDeps = true;
-        continue;
-      }
-      if (inDeps && line.startsWith("[") && !line.startsWith("dependencies")) {
-        inDeps = false;
-      }
-      const quoted = line.match(/^["']([^"']+)["'],?$/);
-      const src = quoted?.[1] || (inDeps ? line.replace(/,$/, "") : null);
-      if (!src) continue;
-      const m = src.match(/^([A-Za-z0-9_\-.]+)(\[.*?\])?\s*([!<>=~,\s0-9.*"']+)?$/);
-      if (!m) continue;
-      const name = m[1];
-      const version = (m[3] || "").replace(/["']/g, "").trim() || null;
-      pkgs.push({ name, version, raw: src, pinned: parsePinStatus(version) });
+
+    const parser = getManifestParser(node.name);
+    if (!parser) continue;
+
+    const packages = parser(node.content || "");
+    if (packages.length === 0) continue;
+    results.push({
+      file: node.name,
+      path: fullPath,
+      ecosystem: getEcosystemFromFilename(node.name),
+      packages,
+    });
+  }
+  return results;
+}
+
+function parseRequirements(content: string): DepPackage[] {
+  const pkgs: DepPackage[] = [];
+  for (const raw of content.split("\n")) {
+    const line = raw.replace(/#.*$/, "").trim();
+    if (!line || line.startsWith("-") || line.startsWith("http")) continue;
+    const match = line.match(/^([A-Za-z0-9_\-.]+)(\[.*?\])?\s*([!<>=~,\s0-9.*]+)?$/);
+    if (!match) continue;
+    const name = match[1];
+    const version = (match[3] || "").trim() || null;
+    pkgs.push({ name, version, raw: line, pinned: parsePinStatus(version) });
+  }
+  return pkgs;
+}
+
+function parsePyproject(content: string): DepPackage[] {
+  const pkgs: DepPackage[] = [];
+  let inDeps = false;
+
+  for (const raw of content.split("\n")) {
+    const line = raw.trim();
+    if (line === "[project.dependencies]" || line === "dependencies = [") {
+      inDeps = true;
+      continue;
     }
-    return pkgs;
-  },
-  "environment.yml": (content) => {
+    if (inDeps && line.startsWith("[") && !line.startsWith("dependencies")) {
+      inDeps = false;
+    }
+
+    const quoted = line.match(/^["']([^"']+)["'],?$/);
+    const src = quoted?.[1] || (inDeps ? line.replace(/,$/, "") : null);
+    if (!src) continue;
+
+    const parsed = parseDependencySpec(src);
+    if (!parsed) continue;
+
+    pkgs.push({
+      name: parsed.name,
+      version: parsed.version,
+      raw: src,
+      pinned: parsePinStatus(parsed.version),
+    });
+  }
+
+  return pkgs;
+}
+
+function parseEnvironment(content: string): DepPackage[] {
+  const pkgs: DepPackage[] = [];
+  let inDeps = false;
+  let inPip = false;
+
+  for (const raw of content.split("\n")) {
+    const line = raw.trim();
+    if (line === "dependencies:") {
+      inDeps = true;
+      continue;
+    }
+    if (!inDeps) continue;
+    if (line === "- pip:") {
+      inPip = true;
+      continue;
+    }
+    if (!line.startsWith("-") || line.startsWith("- pip:")) continue;
+
+    const entry = line
+      .slice(1)
+      .trim()
+      .replace(/^["']|["']$/g, "");
+    const parsed = parseEnvironmentDependencyEntry(entry);
+    if (!parsed) continue;
+
+    pkgs.push({
+      name: parsed.name,
+      version: parsed.version,
+      raw: entry,
+      pinned: parsePinStatus(parsed.version),
+      ecosystem: inPip ? "pip" : "conda",
+    });
+  }
+
+  return pkgs;
+}
+
+function parsePackageJson(content: string): DepPackage[] {
+  try {
+    const obj = JSON.parse(content) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
     const pkgs: DepPackage[] = [];
-    let inDeps = false;
-    let inPip = false;
-    for (const raw of content.split("\n")) {
-      const line = raw.trim();
-      if (line === "dependencies:") {
-        inDeps = true;
-        continue;
-      }
-      if (inDeps && line === "- pip:") {
-        inPip = true;
-        continue;
-      }
-      if (!inDeps) continue;
-      if (line.startsWith("-") && !line.startsWith("- pip:")) {
-        const entry = line
-          .slice(1)
-          .trim()
-          .replace(/^["']|["']$/g, "");
-        const m = entry.match(/^([A-Za-z0-9_\-.]+)\s*([=<>!~][=<>!~\s0-9.*]+)?$/);
-        if (!m) continue;
-        const name = m[1];
-        const rawVer = (m[2] || "").trim() || null;
-        const version = rawVer ? rawVer.replace(/^=(?!=)/, "==") : null;
+    const add = (deps: Record<string, string> | undefined, dev: boolean) => {
+      for (const [name, version] of Object.entries(deps || {})) {
         pkgs.push({
           name,
           version,
-          raw: entry,
+          raw: `${name}: ${version}`,
           pinned: parsePinStatus(version),
-          ecosystem: inPip ? "pip" : "conda",
+          dev,
         });
       }
-    }
+    };
+    add(obj.dependencies, false);
+    add(obj.devDependencies, true);
     return pkgs;
-  },
-  "package.json": (content) => {
-    try {
-      const obj = JSON.parse(content) as {
-        dependencies?: Record<string, string>;
-        devDependencies?: Record<string, string>;
-      };
-      const pkgs: DepPackage[] = [];
-      const add = (deps: Record<string, string> | undefined, dev: boolean) => {
-        for (const [name, version] of Object.entries(deps || {})) {
-          pkgs.push({
-            name,
-            version,
-            raw: `${name}: ${version}`,
-            pinned: parsePinStatus(version),
-            dev,
-          });
-        }
-      };
-      add(obj.dependencies, false);
-      add(obj.devDependencies, true);
-      return pkgs;
-    } catch {
-      return [];
+  } catch {
+    return [];
+  }
+}
+
+function parsePipfile(content: string): DepPackage[] {
+  const pkgs: DepPackage[] = [];
+  let inSection = false;
+  for (const raw of content.split("\n")) {
+    const line = raw.trim();
+    if (line === "[packages]" || line === "[dev-packages]") {
+      inSection = true;
+      continue;
     }
-  },
-  Pipfile: (content) => {
-    const pkgs: DepPackage[] = [];
-    let inSection = false;
-    for (const raw of content.split("\n")) {
-      const line = raw.trim();
-      if (line === "[packages]" || line === "[dev-packages]") {
-        inSection = true;
-        continue;
-      }
-      if (line.startsWith("[") && line !== "[packages]" && line !== "[dev-packages]") {
-        inSection = false;
-      }
-      if (!inSection) continue;
-      const m = line.match(/^([A-Za-z0-9_\-.]+)\s*=\s*["']([^"']*)["']/);
-      if (!m) continue;
-      pkgs.push({
-        name: m[1],
-        version: m[2] === "*" ? null : m[2],
-        raw: line,
-        pinned: parsePinStatus(m[2] === "*" ? null : m[2]),
-      });
+    if (line.startsWith("[") && line !== "[packages]" && line !== "[dev-packages]") {
+      inSection = false;
     }
-    return pkgs;
-  },
+    if (!inSection) continue;
+    const match = line.match(/^([A-Za-z0-9_\-.]+)\s*=\s*["']([^"']*)["']/);
+    if (!match) continue;
+    pkgs.push({
+      name: match[1],
+      version: match[2] === "*" ? null : match[2],
+      raw: line,
+      pinned: parsePinStatus(match[2] === "*" ? null : match[2]),
+    });
+  }
+  return pkgs;
+}
+
+const DEP_PARSERS: Record<string, (content: string) => DepPackage[]> = {
+  "requirements.txt": parseRequirements,
+  "pyproject.toml": parsePyproject,
+  "environment.yml": parseEnvironment,
+  "package.json": parsePackageJson,
+  Pipfile: parsePipfile,
 };
 
 function getManifestParser(filename: string): ((content: string) => DepPackage[]) | null {
@@ -194,30 +263,7 @@ function getManifestParser(filename: string): ((content: string) => DepPackage[]
 }
 
 export function scanDependencies(nodes: FileTreeNode[], path = ""): DepGroup[] {
-  const results: DepGroup[] = [];
-  for (const node of nodes || []) {
-    const fullPath = path ? `${path}/${node.name}` : node.name;
-    if (node.type === "folder") {
-      results.push(...scanDependencies(node.children || [], fullPath));
-    } else {
-      const parser = getManifestParser(node.name);
-      if (!parser) continue;
-      const lower = node.name.toLowerCase();
-      const eco =
-        lower === "package.json"
-          ? "npm"
-          : lower === "pyproject.toml"
-            ? "toml"
-            : lower.includes("environment")
-              ? "conda"
-              : "pip";
-      const packages = parser(node.content || "");
-      if (packages.length > 0) {
-        results.push({ file: node.name, path: fullPath, ecosystem: eco, packages });
-      }
-    }
-  }
-  return results;
+  return scanDependenciesAtPath(nodes, path);
 }
 
 export function computeEvaluateLevelFromFiles(nodes: FileTreeNode[]): number {

@@ -118,8 +118,8 @@ export function FieldRow({ fieldKey, required, children, locked, onFocus, active
 
 interface FieldSectionProps {
   title: string;
-  icon: React.ReactNode;
-  subtitle?: string;
+  icon?: React.ReactNode;
+  subtitle?: React.ReactNode;
   children: React.ReactNode;
   filledCount: number;
   totalCount: number;
@@ -173,16 +173,18 @@ export function FieldSection({
             background: allFilled ? "#22c55e" : someFilled ? "#f59e0b" : C.borderMid,
           }}
         />
-        <span
-          style={{
-            ...{
-              display: "flex",
-            },
-            color: allFilled ? "#16a34a" : C.textMuted,
-          }}
-        >
-          {icon}
-        </span>
+        {icon && (
+          <span
+            style={{
+              ...{
+                display: "flex",
+              },
+              color: allFilled ? "#16a34a" : C.textMuted,
+            }}
+          >
+            {icon}
+          </span>
+        )}
         <span
           style={{
             ...{
@@ -207,7 +209,7 @@ export function FieldSection({
               letterSpacing: 0,
             }}
           >
-            — {subtitle}
+            {typeof subtitle === "string" ? `— ${subtitle}` : subtitle}
           </span>
         )}
         <div

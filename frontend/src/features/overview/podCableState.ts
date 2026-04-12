@@ -15,10 +15,8 @@ interface PodCableState {
 }
 
 export function getPodCableStates(ree: Ree, badges: Badges): PodCableState[] {
-  const fieldsConnected =
-    (["name", "origin_url", "runtime", "build_runtime_script"] as const).filter(
-      (fieldKey) => !!ree[fieldKey],
-    ).length >= 2;
+  const hasName = !!ree.name?.trim();
+  const fieldsConnected = hasName;
 
   const archiveConnected = !!(ree.zenodo_doi || ree.dataverse_doi);
   const activationConnected = !!badges?.activation;

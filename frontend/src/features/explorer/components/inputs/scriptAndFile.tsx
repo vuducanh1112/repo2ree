@@ -145,7 +145,7 @@ export function ScriptPanel({
   const typeStyle = FILE_TYPE_COLORS[ftype] || FILE_TYPE_COLORS.text;
   const viewLines = existingFile ? (existingFile.content || "").split("\n") : null;
 
-  const TABS: Array<{ key: ScriptPanelMode; label: string; icon: (s?: number) => JSX.Element }> = [
+  const Tabs: Array<{ key: ScriptPanelMode; label: string; icon: (s?: number) => JSX.Element }> = [
     ...(hasScript ? [{ key: "view" as ScriptPanelMode, label: scriptPath, icon: Ic.file }] : []),
     ...(!reviewerMode && scriptKind
       ? [
@@ -187,7 +187,7 @@ export function ScriptPanel({
             overflow: "hidden",
           }}
         >
-          {TABS.map((t) => {
+          {Tabs.map((t) => {
             const isActive = mode === t.key;
             const acc = tabAccent[t.key];
             return (

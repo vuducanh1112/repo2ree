@@ -15,7 +15,7 @@ interface NextStepNudgeProps {
   onGo: (key: ExplorerPage) => void;
 }
 export function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
-  const STEPS: Array<{
+  const Steps: Array<{
     key: ExplorerPage;
     nextKey: ExplorerPage | null;
     nextLabel: string | null;
@@ -35,7 +35,7 @@ export function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
     { key: PAGE.ARCHIVE, nextKey: PAGE.SEAL, nextLabel: "Seal", cond: () => true },
     { key: PAGE.SEAL, nextKey: null, nextLabel: null, cond: () => false },
   ];
-  const step = STEPS.find((workflowStep) => workflowStep.key === stepKey);
+  const step = Steps.find((workflowStep) => workflowStep.key === stepKey);
   const nextKey = step?.nextKey;
   const nextLabel = step?.nextLabel;
   if (!step || !nextKey || !nextLabel) return null;

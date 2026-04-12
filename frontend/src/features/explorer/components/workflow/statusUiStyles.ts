@@ -52,20 +52,6 @@ export const WORKFLOW_LOG_EMPTY_STYLE: React.CSSProperties = {
   color: C.textMuted,
 };
 
-export const SOURCE_CONFIG_LOCK_STYLE: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 7,
-  padding: "6px 10px",
-  borderRadius: 8,
-  border: "1.5px solid #fde68a",
-  background: "#fffbeb",
-  color: "#92400e",
-  fontSize: 12,
-  fontFamily: F.sans,
-  fontWeight: 700,
-};
-
 export const workflowStatusCardStyle = (
   isSet: boolean,
   accentColor: string,

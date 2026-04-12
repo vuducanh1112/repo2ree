@@ -483,9 +483,9 @@ export function PodWidget({ level, svgRef, size = 480, compact = false }: PodWid
   const levelMeta = LEVELS[Math.min(level, 7)];
   const W = 580,
     H = 580,
-    CX = 290,
-    CY = 290,
-    SR = 118;
+    Cx = 290,
+    Cy = 290,
+    Sr = 118;
   const shadow = compact
     ? `drop-shadow(0 1px 4px ${levelMeta.color}20)`
     : `drop-shadow(0 4px 24px ${levelMeta.color}28) drop-shadow(0 2px 8px ${POD_M.shadow})`;
@@ -502,7 +502,7 @@ export function PodWidget({ level, svgRef, size = 480, compact = false }: PodWid
       }}
     >
       <title>Specimen Pod</title>
-      <PodSphere CX={CX} CY={CY} SR={SR} level={level} />
+      <PodSphere CX={Cx} CY={Cy} SR={Sr} level={level} />
     </svg>
   );
 }

@@ -68,6 +68,228 @@ interface PanelCableSpec {
   connected: boolean;
 }
 
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface PanelRect {
+  left: number;
+  right: number;
+  midY: number;
+  midX: number;
+  top: number;
+}
+
+interface PanelRefs {
+  sourceRef: React.RefObject<HTMLDivElement>;
+  runtimeRef: React.RefObject<HTMLDivElement>;
+  metadataRef: React.RefObject<HTMLDivElement>;
+  sbomRef: React.RefObject<HTMLDivElement>;
+  archiveRef: React.RefObject<HTMLDivElement>;
+  activationRef: React.RefObject<HTMLDivElement>;
+  swhRef: React.RefObject<HTMLDivElement>;
+  evaluateRef: React.RefObject<HTMLDivElement>;
+  sealRef: React.RefObject<HTMLDivElement>;
+}
+
+interface CableStateLite {
+  color?: string;
+  shadow?: string;
+  connected?: boolean;
+}
+
+interface PanelSpecConfig {
+  id: string;
+  refKey: keyof PanelRefs;
+  side: PanelCableSide;
+  defaultColor: string;
+  defaultShadow: string;
+}
+
+type SvgToContainer = (
+  svg: SVGSVGElement,
+  container: HTMLElement,
+  px: number,
+  py: number,
+) => { x: number; y: number } | null;
+
+const PANEL_SPEC_CONFIGS: PanelSpecConfig[] = [
+  {
+    id: "source",
+    refKey: "sourceRef",
+    side: "right",
+    defaultColor: "#f59e0b",
+    defaultShadow: "#92400e",
+  },
+  {
+    id: "runtime",
+    refKey: "runtimeRef",
+    side: "right",
+    defaultColor: "#0891b2",
+    defaultShadow: "#164e63",
+  },
+  {
+    id: "sbom",
+    refKey: "sbomRef",
+    side: "right",
+    defaultColor: "#16a34a",
+    defaultShadow: "#14532d",
+  },
+  {
+    id: "fields",
+    refKey: "metadataRef",
+    side: "right",
+    defaultColor: "#22c55e",
+    defaultShadow: "#166534",
+  },
+  {
+    id: "archive",
+    refKey: "archiveRef",
+    side: "left",
+    defaultColor: "#e4572e",
+    defaultShadow: "#7c2d12",
+  },
+  {
+    id: "activation",
+    refKey: "activationRef",
+    side: "left",
+    defaultColor: "#7c3aed",
+    defaultShadow: "#3b0764",
+  },
+  {
+    id: "swh",
+    refKey: "swhRef",
+    side: "left",
+    defaultColor: "#e4572e",
+    defaultShadow: "#7c2d12",
+  },
+  {
+    id: "evaluate",
+    refKey: "evaluateRef",
+    side: "left",
+    defaultColor: "#7c3aed",
+    defaultShadow: "#3b0764",
+  },
+  {
+    id: "seal",
+    refKey: "sealRef",
+    side: "top",
+    defaultColor: "#f59e0b",
+    defaultShadow: "#78350f",
+  },
+];
+
+function getPanelRect(el: HTMLElement | null, containerRect: DOMRect): PanelRect | null {
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  return {
+    left: rect.left - containerRect.left,
+    right: rect.right - containerRect.left,
+    midY: (rect.top + rect.bottom) / 2 - containerRect.top,
+    midX: (rect.left + rect.right) / 2 - containerRect.left,
+    top: rect.top - containerRect.top,
+  };
+}
+
+function sphereIntercept(
+  panelX: number,
+  panelY: number,
+  sphereCenter: Point,
+  sphereRadius: number,
+): Point {
+  const dx = panelX - sphereCenter.x;
+  const dy = panelY - sphereCenter.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return {
+    x: sphereCenter.x + (dx / len) * sphereRadius,
+    y: sphereCenter.y + (dy / len) * sphereRadius,
+  };
+}
+
+function buildPanelCables(
+  panelSpecs: PanelCableSpec[],
+  containerRect: DOMRect,
+  sphereCenter: Point,
+  sphereRadius: number,
+): Cable[] {
+  const cables: Cable[] = [];
+  for (const panelSpec of panelSpecs) {
+    const panel = getPanelRect(panelSpec.ref.current, containerRect);
+    if (!panel) continue;
+
+    let px = panel.midX;
+    let py = panel.midY;
+    if (panelSpec.side === "left") px = panel.left;
+    if (panelSpec.side === "right") px = panel.right;
+    if (panelSpec.side === "top") py = panel.top;
+
+    const pod = sphereIntercept(px, py, sphereCenter, sphereRadius);
+    cables.push({
+      id: panelSpec.id,
+      x1: px,
+      y1: py,
+      x2: pod.x,
+      y2: pod.y,
+      color: panelSpec.color,
+      shadow: panelSpec.shadow,
+      connected: panelSpec.connected,
+    });
+  }
+  return cables;
+}
+
+function buildPanelSpecs(
+  cableById: Record<string, CableStateLite | undefined>,
+  refs: PanelRefs,
+): PanelCableSpec[] {
+  return PANEL_SPEC_CONFIGS.map((config) => {
+    const cable = cableById[config.id];
+    return {
+      id: config.id,
+      ref: refs[config.refKey],
+      side: config.side,
+      color: cable?.color || config.defaultColor,
+      shadow: cable?.shadow || config.defaultShadow,
+      connected: !!cable?.connected,
+    };
+  });
+}
+
+function buildDecoCables(
+  svgPtToContainer: SvgToContainer,
+  podSvg: SVGSVGElement,
+  container: HTMLElement,
+  svgCenter: Point,
+  sphereRadius: number,
+) {
+  return DECO_ANCHORS.map((anc) => {
+    const sa = (anc.angle * Math.PI) / 180;
+    const startSvg = {
+      x: svgCenter.x + sphereRadius * Math.cos(sa),
+      y: svgCenter.y + sphereRadius * Math.sin(sa),
+    };
+    const endSvg = {
+      x: svgCenter.x + anc.dist * Math.cos(sa),
+      y: svgCenter.y + anc.dist * Math.sin(sa),
+    };
+    const start = svgPtToContainer(podSvg, container, startSvg.x, startSvg.y);
+    const end = svgPtToContainer(podSvg, container, endSvg.x, endSvg.y);
+    if (!start || !end) return null;
+    return { id: anc.id, x1: start.x, y1: start.y, x2: end.x, y2: end.y };
+  }).filter(
+    (
+      cable,
+    ): cable is {
+      id: string;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+    } => cable !== null,
+  );
+}
+
 export function PanelCableOverlay({
   containerRef,
   sourceRef,
@@ -112,164 +334,45 @@ export function PanelCableOverlay({
     if (!container || !podSvg) return;
 
     const cRect = container.getBoundingClientRect();
-    const SVG_CX = 290,
-      SVG_CY = 290,
-      SVG_SR = 118;
+    const SvgCx = 290,
+      SvgCy = 290,
+      SvgSr = 118;
 
-    const sphereC = svgPtToContainer(podSvg, container, SVG_CX, SVG_CY);
+    const sphereC = svgPtToContainer(podSvg, container, SvgCx, SvgCy);
     if (!sphereC) return;
 
-    const sphereEdge = svgPtToContainer(podSvg, container, SVG_CX + SVG_SR, SVG_CY);
+    const sphereEdge = svgPtToContainer(podSvg, container, SvgCx + SvgSr, SvgCy);
     if (!sphereEdge) return;
     const sphereR = sphereEdge.x - sphereC.x;
-
-    function panelRel(
-      el: HTMLElement | null,
-    ): { left: number; right: number; midY: number; midX: number; top: number } | null {
-      if (!el) return null;
-      const rect = el.getBoundingClientRect();
-      return {
-        left: rect.left - cRect.left,
-        right: rect.right - cRect.left,
-        midY: (rect.top + rect.bottom) / 2 - cRect.top,
-        midX: (rect.left + rect.right) / 2 - cRect.left,
-        top: rect.top - cRect.top,
-      };
-    }
 
     const sphereCenter = sphereC;
     const sphereRadius = sphereR;
 
-    function sphereIntercept(panelX: number, panelY: number): { x: number; y: number } {
-      const dx = panelX - sphereCenter.x,
-        dy = panelY - sphereCenter.y;
-      const len = Math.hypot(dx, dy) || 1;
-      return {
-        x: sphereCenter.x + (dx / len) * sphereRadius,
-        y: sphereCenter.y + (dy / len) * sphereRadius,
-      };
-    }
-
     const cableStates = getPodCableStates(ree, badges);
-    const cableById = Object.fromEntries(cableStates.map((cable) => [cable.id, cable]));
-
-    const panelSpecs: PanelCableSpec[] = [
-      {
-        id: "source",
-        ref: sourceRef,
-        side: "right",
-        color: cableById.source?.color || "#f59e0b",
-        shadow: cableById.source?.shadow || "#92400e",
-        connected: !!cableById.source?.connected,
-      },
-      {
-        id: "runtime",
-        ref: runtimeRef,
-        side: "right",
-        color: cableById.runtime?.color || "#0891b2",
-        shadow: cableById.runtime?.shadow || "#164e63",
-        connected: !!cableById.runtime?.connected,
-      },
-      {
-        id: "sbom",
-        ref: sbomRef,
-        side: "right",
-        color: cableById.sbom?.color || "#16a34a",
-        shadow: cableById.sbom?.shadow || "#14532d",
-        connected: !!cableById.sbom?.connected,
-      },
-      {
-        id: "fields",
-        ref: metadataRef,
-        side: "right",
-        color: cableById.fields?.color || "#22c55e",
-        shadow: cableById.fields?.shadow || "#166534",
-        connected: !!cableById.fields?.connected,
-      },
-      {
-        id: "archive",
-        ref: archiveRef,
-        side: "left",
-        color: cableById.archive?.color || "#e4572e",
-        shadow: cableById.archive?.shadow || "#7c2d12",
-        connected: !!cableById.archive?.connected,
-      },
-      {
-        id: "activation",
-        ref: activationRef,
-        side: "left",
-        color: cableById.activation?.color || "#7c3aed",
-        shadow: cableById.activation?.shadow || "#3b0764",
-        connected: !!cableById.activation?.connected,
-      },
-      {
-        id: "swh",
-        ref: swhRef,
-        side: "left",
-        color: cableById.swh?.color || "#e4572e",
-        shadow: cableById.swh?.shadow || "#7c2d12",
-        connected: !!cableById.swh?.connected,
-      },
-      {
-        id: "evaluate",
-        ref: evaluateRef,
-        side: "left",
-        color: cableById.evaluate?.color || "#7c3aed",
-        shadow: cableById.evaluate?.shadow || "#3b0764",
-        connected: !!cableById.evaluate?.connected,
-      },
-      {
-        id: "seal",
-        ref: sealRef,
-        side: "top",
-        color: cableById.seal?.color || "#f59e0b",
-        shadow: cableById.seal?.shadow || "#78350f",
-        connected: !!cableById.seal?.connected,
-      },
-    ];
-
-    const cables: Cable[] = [];
-    panelSpecs.forEach((panelSpec) => {
-      const panel = panelRel(panelSpec.ref.current);
-      if (!panel) return;
-
-      let px = panel.midX;
-      let py = panel.midY;
-      if (panelSpec.side === "left") px = panel.left;
-      if (panelSpec.side === "right") px = panel.right;
-      if (panelSpec.side === "top") py = panel.top;
-
-      const pod = sphereIntercept(px, py);
-      cables.push({
-        id: panelSpec.id,
-        x1: px,
-        y1: py,
-        x2: pod.x,
-        y2: pod.y,
-        color: panelSpec.color,
-        shadow: panelSpec.shadow,
-        connected: panelSpec.connected,
-      });
+    const cableById = Object.fromEntries(cableStates.map((cable) => [cable.id, cable])) as Record<
+      string,
+      CableStateLite | undefined
+    >;
+    const panelSpecs = buildPanelSpecs(cableById, {
+      sourceRef,
+      runtimeRef,
+      metadataRef,
+      sbomRef,
+      archiveRef,
+      activationRef,
+      swhRef,
+      evaluateRef,
+      sealRef,
     });
 
-    const decoCables = DECO_ANCHORS.map((anc) => {
-      const sa = (anc.angle * Math.PI) / 180;
-      const startSvg = { x: SVG_CX + SVG_SR * Math.cos(sa), y: SVG_CY + SVG_SR * Math.sin(sa) };
-      const endSvg = { x: SVG_CX + anc.dist * Math.cos(sa), y: SVG_CY + anc.dist * Math.sin(sa) };
-      const start = svgPtToContainer(podSvg, container, startSvg.x, startSvg.y);
-      const end = svgPtToContainer(podSvg, container, endSvg.x, endSvg.y);
-      if (!start || !end) return null;
-      return { id: anc.id, x1: start.x, y1: start.y, x2: end.x, y2: end.y };
-    }).filter(
-      (
-        cable,
-      ): cable is {
-        id: string;
-        x1: number;
-        y1: number;
-        x2: number;
-        y2: number;
-      } => cable !== null,
+    const cables = buildPanelCables(panelSpecs, cRect, sphereCenter, sphereRadius);
+
+    const decoCables = buildDecoCables(
+      svgPtToContainer,
+      podSvg,
+      container,
+      { x: SvgCx, y: SvgCy },
+      SvgSr,
     );
 
     const w = cRect.width,
@@ -317,9 +420,9 @@ export function PanelCableOverlay({
       rafRef.current = requestAnimationFrame(measure);
     });
 
-    targets.forEach((targetRef) => {
+    for (const targetRef of targets) {
       if (targetRef.current) ro.observe(targetRef.current);
-    });
+    }
     return () => ro.disconnect();
   });
 
@@ -337,7 +440,7 @@ export function PanelCableOverlay({
     return `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
   }
 
-  function cableHL(x1: number, y1: number, x2: number, y2: number): string {
+  function cableHl(x1: number, y1: number, x2: number, y2: number): string {
     const dx = x2 - x1;
     const len = Math.hypot(dx, y2 - y1);
     const droop = len * 0.13;
@@ -387,7 +490,7 @@ export function PanelCableOverlay({
       </defs>
       {(decoCables || []).map((dc) => {
         const d = cablePath(dc.x1, dc.y1, dc.x2, dc.y2);
-        const dHL = cableHL(dc.x1, dc.y1, dc.x2, dc.y2);
+        const dHl = cableHl(dc.x1, dc.y1, dc.x2, dc.y2);
         return (
           <g key={dc.id} opacity="0.32" mask={`url(#oDecoMask_${dc.id})`}>
             <path
@@ -415,7 +518,7 @@ export function PanelCableOverlay({
               strokeLinecap="round"
             />
             <path
-              d={dHL}
+              d={dHl}
               fill="none"
               stroke="#ffffff"
               strokeWidth="1.5"
@@ -430,7 +533,7 @@ export function PanelCableOverlay({
         const shadow = c.connected ? c.shadow : "#334155";
         const inner = c.connected ? levelMeta.bg : "#e2e8f0";
         const d = cablePath(c.x1, c.y1, c.x2, c.y2);
-        const dHL = cableHL(c.x1, c.y1, c.x2, c.y2);
+        const dHl = cableHl(c.x1, c.y1, c.x2, c.y2);
         return (
           <g key={c.id} opacity={c.connected ? 1 : 0.38}>
             <path
@@ -458,7 +561,7 @@ export function PanelCableOverlay({
               strokeLinecap="round"
             />
             <path
-              d={dHL}
+              d={dHl}
               fill="none"
               stroke="#ffffff"
               strokeWidth="1.8"
