@@ -11,20 +11,13 @@ from repo2ree.service.api.activation_test import activation_test_router
 from repo2ree.service.api.evaluate import evaluate_router
 from repo2ree.service.api.runs import runs_router
 from repo2ree.service.api.manage_ree import manage_ree_router
-from repo2ree.service.api.analyze_dependencies import analyze_dependencies_router
 from fastapi.middleware.cors import CORSMiddleware
-from repo2ree.service.metadata.database import init_db
-from repo2ree.service.storage.init_storage import (
-    create_blob_storage_if_not_exists,
-    create_workspace_storage_if_not_exists,
-)
+from repo2ree.service.storage.init_storage import create_workspace_storage_if_not_exists
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # This runs ON STARTUP
-    init_db()
-    create_blob_storage_if_not_exists()
     create_workspace_storage_if_not_exists()
     yield
     # This runs ON SHUTDOWN (clean up if needed)
@@ -44,7 +37,6 @@ app.include_router(activation_test_router)
 app.include_router(evaluate_router)
 app.include_router(runs_router)
 app.include_router(manage_ree_router)
-app.include_router(analyze_dependencies_router)
 
 
 @app.exception_handler(FastAPIHTTPException)
