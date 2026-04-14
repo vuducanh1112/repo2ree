@@ -69,6 +69,15 @@ export class ApiClient {
     init: RequestInit = {},
     searchParams?: URLSearchParams,
   ): Promise<ArrayBuffer> {
+    const result = await this.requestArrayBufferWithMeta(path, init, searchParams);
+    return result.bytes;
+  }
+
+  async requestArrayBufferWithMeta(
+    path: string,
+    init: RequestInit = {},
+    searchParams?: URLSearchParams,
+  ): Promise<{ bytes: ArrayBuffer; headers: Headers }> {
     const url = this.buildUrl(path, searchParams);
     const headers: Record<string, string> = {
       ...this.headers,
@@ -91,7 +100,7 @@ export class ApiClient {
       );
     }
 
-    return response.arrayBuffer();
+    return { bytes: await response.arrayBuffer(), headers: response.headers };
   }
 
   private buildUrl(path: string, searchParams?: URLSearchParams): string {

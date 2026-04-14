@@ -22,13 +22,13 @@ from repo2ree.service.api.run_management import (
 runs_router = APIRouter()
 
 
-@runs_router.get("/api/v1/workspaces/{workspace_id}/runs")
+@runs_router.get("/api/v1/rees/{ree_id}/runs")
 def list_workspace_runs(
-    workspace_id: str,
+    ree_id: str,
     cursor: str | None = Query(None),
     limit: int | None = Query(None),
 ):
-    runs = _list_run_states(workspace_id)
+    runs = _list_run_states(ree_id)
     runs.sort(key=lambda item: item.get("createdAt", ""), reverse=True)
     page, next_cursor, has_more = _paginate(runs, cursor=cursor, limit=limit)
     items = [
@@ -36,7 +36,7 @@ def list_workspace_runs(
             key: run[key]
             for key in (
                 "runId",
-                "workspaceId",
+                "reeId",
                 "operation",
                 "status",
                 "createdAt",
@@ -50,20 +50,20 @@ def list_workspace_runs(
     return {"items": items, "nextCursor": next_cursor, "hasMore": has_more}
 
 
-@runs_router.get("/api/v1/workspaces/{workspace_id}/runs/{run_id}")
-def get_workspace_run(workspace_id: str, run_id: str):
-    run_state = _get_run_state(workspace_id, run_id)
+@runs_router.get("/api/v1/rees/{ree_id}/runs/{run_id}")
+def get_workspace_run(ree_id: str, run_id: str):
+    run_state = _get_run_state(ree_id, run_id)
     return _run_summary(run_state)
 
 
-@runs_router.get("/api/v1/workspaces/{workspace_id}/runs/{run_id}/logs")
+@runs_router.get("/api/v1/rees/{ree_id}/runs/{run_id}/logs")
 def get_workspace_run_logs(
-    workspace_id: str,
+    ree_id: str,
     run_id: str,
     cursor: str | None = Query(None),
     limit: int | None = Query(None),
 ):
-    run_state = _get_run_state(workspace_id, run_id)
+    run_state = _get_run_state(ree_id, run_id)
     logs = run_state.get("logs", [])
     page, next_cursor, has_more = _paginate(logs, cursor=cursor, limit=limit)
     return {
@@ -74,8 +74,8 @@ def get_workspace_run_logs(
     }
 
 
-@runs_router.post("/api/v1/workspaces/{workspace_id}/runs/{run_id}:retry")
-def retry_workspace_run(workspace_id: str, run_id: str):
+@runs_router.post("/api/v1/rees/{ree_id}/runs/{run_id}:retry")
+def retry_workspace_run(ree_id: str, run_id: str):
     from repo2ree.service.api.activation_test import (
         CreateActivationTestRunPayload,
         create_activation_run_state,
@@ -89,7 +89,7 @@ def retry_workspace_run(workspace_id: str, run_id: str):
         create_generate_sbom_run_state,
     )
 
-    run_state = _get_run_state(workspace_id, run_id)
+    run_state = _get_run_state(ree_id, run_id)
     request_payload = run_state.get("request", {})
     operation = run_state["operation"]
     if operation == "build":
@@ -99,38 +99,38 @@ def retry_workspace_run(workspace_id: str, run_id: str):
             ),
             produced_runtime_path=request_payload.get("produced_runtime_path", ""),
         )
-        return _run_summary(create_build_run_state(workspace_id, payload))
+        return _run_summary(create_build_run_state(ree_id, payload))
     if operation == "sbom":
         payload = CreateGenerateSbomRunPayload(
             produced_runtime_path=request_payload.get("produced_runtime_path", "")
         )
-        return _run_summary(create_generate_sbom_run_state(workspace_id, payload))
+        return _run_summary(create_generate_sbom_run_state(ree_id, payload))
     if operation == "activation":
         payload = CreateActivationTestRunPayload(
             activation_script_path=request_payload.get("activation_script_path", "")
         )
-        return _run_summary(create_activation_run_state(workspace_id, payload))
+        return _run_summary(create_activation_run_state(ree_id, payload))
     if operation == "evaluate":
         payload = CreateEvaluateRunPayload(
             strict=bool(request_payload.get("strict", False)),
             swhid_check=bool(request_payload.get("swhid_check", True)),
         )
-        return _run_summary(create_evaluate_run_state(workspace_id, payload))
+        return _run_summary(create_evaluate_run_state(ree_id, payload))
     raise HTTPException(
         status_code=400, detail=f"Unsupported operation for retry: {operation}"
     )
 
 
-@runs_router.post("/api/v1/workspaces/{workspace_id}/runs/{run_id}:cancel")
-def cancel_workspace_run(workspace_id: str, run_id: str):
-    run_state = _get_run_state(workspace_id, run_id)
+@runs_router.post("/api/v1/rees/{ree_id}/runs/{run_id}:cancel")
+def cancel_workspace_run(ree_id: str, run_id: str):
+    run_state = _get_run_state(ree_id, run_id)
     current_status = run_state.get("status")
     if current_status in {"succeeded", "failed", "canceled"}:
         return {"status": current_status}
 
-    _mark_cancel_requested(workspace_id, run_id)
+    _mark_cancel_requested(ree_id, run_id)
     _append_run_log(
-        workspace_id,
+        ree_id,
         run_id,
         "system",
         "warn",
@@ -160,5 +160,5 @@ def cancel_workspace_run(workspace_id: str, run_id: str):
         except Exception:
             pass
 
-    refreshed = _get_run_state(workspace_id, run_id)
+    refreshed = _get_run_state(ree_id, run_id)
     return {"status": refreshed["status"]}

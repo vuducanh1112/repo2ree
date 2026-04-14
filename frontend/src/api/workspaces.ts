@@ -36,6 +36,22 @@ interface PutWorkspaceFileContentRequest {
   ifMatch?: string;
 }
 
+function parseContentDispositionFilename(contentDisposition: string | null): string | undefined {
+  if (!contentDisposition) return undefined;
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1].trim());
+    } catch {
+      return utf8Match[1].trim();
+    }
+  }
+  const quoted = contentDisposition.match(/filename="([^"]+)"/i);
+  if (quoted?.[1]) return quoted[1].trim();
+  const plain = contentDisposition.match(/filename=([^;]+)/i);
+  return plain?.[1]?.trim();
+}
+
 export class WorkspaceApi {
   constructor(private readonly client: ApiClient) {}
 
@@ -166,10 +182,17 @@ export class WorkspaceApi {
     );
   }
 
-  async getReeArchive(workspaceId: string): Promise<ArrayBuffer> {
-    return this.client.requestArrayBuffer(endpoints.workspaceReeArchive(workspaceId), {
-      method: "GET",
-    });
+  async getReeArchive(workspaceId: string): Promise<{ bytes: ArrayBuffer; fileName?: string }> {
+    const response = await this.client.requestArrayBufferWithMeta(
+      endpoints.workspaceReeArchive(workspaceId),
+      {
+        method: "GET",
+      },
+    );
+    return {
+      bytes: response.bytes,
+      fileName: parseContentDispositionFilename(response.headers.get("content-disposition")),
+    };
   }
 
   async getFileContent(workspaceId: string, path: string): Promise<WorkspaceFileContentResponse> {

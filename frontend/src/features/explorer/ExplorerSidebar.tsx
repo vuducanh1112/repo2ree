@@ -607,7 +607,7 @@ export function ExplorerSidebar({
           <ActionBtn
             title="Download REE"
             label="Download REE"
-            subtitle="export capsule.zip"
+            subtitle="export backend archive"
             icon={Ic.download(11)}
             iconBg="#2563eb"
             labelColor="#1e3a8a"

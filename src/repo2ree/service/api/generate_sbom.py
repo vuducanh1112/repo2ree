@@ -30,8 +30,8 @@ class CreateGenerateSbomRunPayload(BaseModel):
     idempotencyKey: str | None = None
 
 
-def _resolve_workspace_relative_path(workspace_id: str, relative_path: str) -> Path:
-    root = workspace_dir(workspace_id).resolve()
+def _resolve_workspace_relative_path(ree_id: str, relative_path: str) -> Path:
+    root = workspace_dir(ree_id).resolve()
     candidate = (root / relative_path).resolve()
     try:
         candidate.relative_to(root)
@@ -43,7 +43,7 @@ def _resolve_workspace_relative_path(workspace_id: str, relative_path: str) -> P
 
 
 def resolve_sbom_runtime_path(
-    workspace_id: str,
+    ree_id: str,
     produced_runtime_path: str | None,
     params: dict[str, Any],
 ) -> str:
@@ -60,7 +60,7 @@ def resolve_sbom_runtime_path(
             status_code=400, detail="produced_runtime_path is required for sbom runs"
         )
 
-    runtime_abs_path = _resolve_workspace_relative_path(workspace_id, runtime_path)
+    runtime_abs_path = _resolve_workspace_relative_path(ree_id, runtime_path)
     if not runtime_abs_path.exists() or not runtime_abs_path.is_file():
         raise HTTPException(
             status_code=400, detail=f"Runtime tarball not found: {runtime_path}"
@@ -76,12 +76,10 @@ def resolve_sbom_runtime_path(
 
 
 def generate_sbom_for_runtime(
-    workspace_id: str, runtime_relative_path: str
+    ree_id: str, runtime_relative_path: str
 ) -> dict[str, Any]:
-    runtime_abs_path = _resolve_workspace_relative_path(
-        workspace_id, runtime_relative_path
-    )
-    output_dir = workspace_dir(workspace_id)
+    runtime_abs_path = _resolve_workspace_relative_path(ree_id, runtime_relative_path)
+    output_dir = workspace_dir(ree_id)
     generated_sbom_path = generate_sbom(runtime_abs_path, output_dir)
     sbom_relative_path = "sbom.json"
     if generated_sbom_path.name != sbom_relative_path:
@@ -90,7 +88,7 @@ def generate_sbom_for_runtime(
         )
 
     patch_workspace(
-        workspace_id,
+        ree_id,
         WorkspacePatchPayload(reePatch={"sbom": sbom_relative_path}),
     )
 
@@ -102,11 +100,11 @@ def generate_sbom_for_runtime(
 
 
 def create_generate_sbom_run_state(
-    workspace_id: str,
+    ree_id: str,
     payload: CreateGenerateSbomRunPayload,
 ) -> dict[str, Any]:
     runtime_path = resolve_sbom_runtime_path(
-        workspace_id=workspace_id,
+        ree_id=ree_id,
         produced_runtime_path=payload.produced_runtime_path,
         params={},
     )
@@ -125,7 +123,7 @@ def create_generate_sbom_run_state(
             }
         try:
             outputs = generate_sbom_for_runtime(
-                workspace_id=ws_id,
+                ree_id=ws_id,
                 runtime_relative_path=runtime_path,
             )
         except Exception as exc:
@@ -148,7 +146,7 @@ def create_generate_sbom_run_state(
         return "succeeded", outputs
 
     return _start_background_run(
-        workspace_id=workspace_id,
+        ree_id=ree_id,
         operation="sbom",
         request_payload=request_payload,
         run_id_prefix="sbom",
@@ -156,9 +154,9 @@ def create_generate_sbom_run_state(
     )
 
 
-@generate_sbom_router.post("/api/v1/workspaces/{workspace_id}/generate-sbom")
+@generate_sbom_router.post("/api/v1/rees/{ree_id}/generate-sbom")
 def create_workspace_generate_sbom_run(
-    workspace_id: str, payload: CreateGenerateSbomRunPayload
+    ree_id: str, payload: CreateGenerateSbomRunPayload
 ):
-    run_state = create_generate_sbom_run_state(workspace_id, payload)
+    run_state = create_generate_sbom_run_state(ree_id, payload)
     return _run_summary(run_state)

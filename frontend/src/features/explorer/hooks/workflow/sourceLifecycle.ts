@@ -111,6 +111,7 @@ export function createExplorerWorkspaceService({
     },
     clearWorkspace: () => {
       dispatch(explorerActions.setVirtualFiles([]));
+      dispatch(explorerActions.setWorkspaceReeFiles([]));
       dispatch(explorerActions.setImmutableSourceSnapshotFiles([]));
       dispatch(explorerActions.setImmutableSourceSnapshotArchiveName(""));
       dispatch(
@@ -137,6 +138,7 @@ export function createExplorerWorkspaceService({
       const snapshotArchiveName = normalizeSnapshotArchiveName(archiveName);
 
       dispatch(explorerActions.setVirtualFiles(workspaceFiles));
+      dispatch(explorerActions.setWorkspaceReeFiles([]));
       dispatch(explorerActions.setImmutableSourceSnapshotFiles(snapshotFiles));
       dispatch(explorerActions.setImmutableSourceSnapshotArchiveName(snapshotArchiveName));
       dispatch(
@@ -172,6 +174,7 @@ export function createExplorerWorkspaceService({
       const snapshotArchiveName = normalizeSnapshotArchiveName(`${repoBase}-original.tar.gz`);
 
       dispatch(explorerActions.setVirtualFiles(workspaceFiles));
+      dispatch(explorerActions.setWorkspaceReeFiles([]));
       dispatch(explorerActions.setImmutableSourceSnapshotFiles(snapshotFiles));
       dispatch(explorerActions.setImmutableSourceSnapshotArchiveName(snapshotArchiveName));
       dispatch(
@@ -220,6 +223,10 @@ export function createSourceActions({
   const refreshWorkspaceFiles = async () => {
     const workspace = await workspaceService.getWorkspace(WORKSPACE_ID);
     dispatch(explorerActions.setVirtualFiles(workspace.files));
+    dispatch(explorerActions.setWorkspaceReeFiles(workspace.reeFiles || []));
+    if (workspace.ree) {
+      dispatch(explorerActions.setRee(workspace.ree));
+    }
     return workspace.files;
   };
 

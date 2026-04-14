@@ -1,41 +1,40 @@
 const API_V1_BASE = "/api/v1";
 
 export const endpoints = {
-  workspaces: () => `${API_V1_BASE}/workspaces`,
-  workspace: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}`,
+  workspaces: () => `${API_V1_BASE}/rees`,
+  workspace: (workspaceId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}`,
   workspaceSourceAcquire: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/source:acquire`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/source:acquire`,
   workspaceSourceUploadInit: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/source:upload-init`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/source:upload-init`,
   workspaceSourceUploadComplete: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/source:upload-complete`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/source:upload-complete`,
   workspaceSource: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/source`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/source`,
   workspaceFiles: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/files`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/files`,
   workspaceFileContent: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/files/content`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/files/content`,
   workspaceFileRaw: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/files/raw`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/files/raw`,
   workspaceReeArchive: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/ree-archive`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/ree-archive`,
   workspaceBuildRuntime: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/build-runtime`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/build-runtime`,
   workspaceGenerateSbom: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/generate-sbom`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/generate-sbom`,
   workspaceActivationTest: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/activation-test`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/activation-test`,
   workspaceEvaluate: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/evaluate`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/evaluate`,
   workspaceRuns: (workspaceId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/runs`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/runs`,
   workspaceRun: (workspaceId: string, runId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}`,
   workspaceRunCancel: (workspaceId: string, runId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}:cancel`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}:cancel`,
   workspaceRunRetry: (workspaceId: string, runId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}:retry`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}:retry`,
   workspaceRunLogs: (workspaceId: string, runId: string) =>
-    `${API_V1_BASE}/workspaces/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/logs`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/logs`,
 };

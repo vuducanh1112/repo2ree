@@ -4,17 +4,12 @@ import type {
   ExplorerPage,
   FileTreeNode,
   Ree,
+  ReeFile,
   ServiceParams,
   SourceUploadCommit,
   WorkflowServiceKey,
   WorkflowServiceRunParams,
 } from "../../../types";
-import {
-  buildCurrentReeArchiveEntries,
-  findVirtualFileByName,
-  reeArchiveEntriesToFiles,
-  resolveRuntimeArchiveEntryPath,
-} from "../../../utils";
 import { useExplorerWorkflow } from "./useExplorerWorkflow";
 
 export function useExplorerController() {
@@ -35,46 +30,12 @@ export function useExplorerController() {
     focusedField,
     navCollapsed,
     virtualFiles,
+    workspaceReeFiles,
     immutableSourceSnapshotFiles,
-    immutableSourceSnapshotArchiveName,
     showReviewerPreview,
   } = explorer;
 
-  const currentReeArchiveEntries = useMemo(
-    () =>
-      buildCurrentReeArchiveEntries(
-        ree,
-        virtualFiles,
-        immutableSourceSnapshotFiles,
-        immutableSourceSnapshotArchiveName,
-      ),
-    [ree, virtualFiles, immutableSourceSnapshotFiles, immutableSourceSnapshotArchiveName],
-  );
-
-  const currentReeFiles = useMemo(() => {
-    const files = reeArchiveEntriesToFiles(currentReeArchiveEntries);
-    if (!(ree._runtimeIncluded && ree.runtime && ree.runtime !== "__skipped__")) {
-      return files;
-    }
-
-    const runtimeArchivePath = resolveRuntimeArchiveEntryPath(ree.runtime);
-
-    const workspaceRuntimeFile = findVirtualFileByName(virtualFiles, ree.runtime);
-    if (!workspaceRuntimeFile) {
-      return files;
-    }
-
-    return files.map((file) =>
-      file.name === runtimeArchivePath
-        ? {
-            ...file,
-            content: workspaceRuntimeFile.content,
-            size:
-              typeof workspaceRuntimeFile.size === "number" ? workspaceRuntimeFile.size : file.size,
-          }
-        : file,
-    );
-  }, [currentReeArchiveEntries, ree._runtimeIncluded, ree.runtime, virtualFiles]);
+  const currentReeFiles = useMemo<ReeFile[]>(() => workspaceReeFiles || [], [workspaceReeFiles]);
 
   const level = ree._evalLevel ?? 0;
   const {
@@ -94,7 +55,6 @@ export function useExplorerController() {
     level,
     virtualFiles,
     serviceParams,
-    currentReeArchiveEntries,
   });
 
   const commands = {
@@ -145,6 +105,7 @@ export function useExplorerController() {
       focusedField,
       navCollapsed,
       virtualFiles,
+      workspaceReeFiles,
       immutableSourceSnapshotFiles,
       showReviewerPreview,
       level,

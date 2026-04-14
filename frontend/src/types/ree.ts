@@ -3,7 +3,7 @@ import type { WorkflowServiceParams } from "./services";
 export interface Ree {
   name: string;
   origin_url: string;
-  source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball";
+  source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
   runtime: string;
   build_runtime_script: string;
   activation_script: string;
@@ -24,6 +24,7 @@ export interface Ree {
   _sourceSnapshotArchive?: string;
   _sourceSnapshotCapturedAt?: string;
   _runtimeIncluded?: boolean;
+  _downloadableFiles?: string[];
 }
 
 export type Badges = Record<string, boolean>;
@@ -56,9 +57,4 @@ export interface ReeFile {
   tag?: string;
   content?: string;
   size?: number;
-}
-
-export interface ZipEntry {
-  path: string;
-  data: Uint8Array;
 }

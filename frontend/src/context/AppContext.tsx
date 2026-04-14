@@ -56,6 +56,7 @@ function createInitialState(initialExplorerRee: Ree): AppContextState {
       focusedField: null,
       navCollapsed: false,
       virtualFiles: [],
+      workspaceReeFiles: [],
       immutableSourceSnapshotFiles: [],
       immutableSourceSnapshotArchiveName: "",
       showReviewerPreview: false,
@@ -178,6 +179,18 @@ function appReducer(state: AppContextState, action: AppAction): AppContextState 
         },
       };
     }
+    case ACTION_TYPES.explorer.setWorkspaceReeFiles: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          workspaceReeFiles: resolveUpdater(
+            state.explorer.workspaceReeFiles,
+            action.workspaceReeFiles,
+          ),
+        },
+      };
+    }
     case ACTION_TYPES.explorer.setImmutableSourceSnapshotFiles: {
       return {
         ...state,
@@ -244,6 +257,7 @@ function appReducer(state: AppContextState, action: AppAction): AppContextState 
             _sourceSnapshotCapturedAt: "",
           },
           virtualFiles: [],
+          workspaceReeFiles: [],
           immutableSourceSnapshotFiles: [],
           immutableSourceSnapshotArchiveName: "",
         },

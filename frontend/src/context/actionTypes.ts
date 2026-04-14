@@ -13,6 +13,7 @@ export const ACTION_TYPES = {
     setFocusedField: "explorer/setFocusedField",
     setNavCollapsed: "explorer/setNavCollapsed",
     setVirtualFiles: "explorer/setVirtualFiles",
+    setWorkspaceReeFiles: "explorer/setWorkspaceReeFiles",
     setImmutableSourceSnapshotFiles: "explorer/setImmutableSourceSnapshotFiles",
     setImmutableSourceSnapshotArchiveName: "explorer/setImmutableSourceSnapshotArchiveName",
     setShowReviewerPreview: "explorer/setShowReviewerPreview",

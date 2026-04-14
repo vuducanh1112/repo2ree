@@ -211,14 +211,14 @@ def _compute_level(
 
 
 def _compute_evaluate_outputs(
-    workspace_id: str,
+    ree_id: str,
     strict: bool,
     swhid_check: bool,
     renovate_stdout: str,
     renovate_exit_code: int,
 ) -> dict[str, Any]:
-    workspace_path = workspace_dir(workspace_id).resolve()
-    metadata = read_workspace_metadata(workspace_id)
+    workspace_path = workspace_dir(ree_id).resolve()
+    metadata = read_workspace_metadata(ree_id)
     ree_draft = metadata.get("reeDraft") or {}
     has_swhid = bool(str(ree_draft.get("swhid") or "").strip())
 
@@ -246,7 +246,7 @@ def _compute_evaluate_outputs(
     repro_level = f"L{level} · {_LEVEL_LABELS[level]}"
 
     patch_workspace(
-        workspace_id,
+        ree_id,
         WorkspacePatchPayload(
             reePatch={
                 "_evalLevel": level,
@@ -269,7 +269,7 @@ def _compute_evaluate_outputs(
 
 
 def create_evaluate_run_state(
-    workspace_id: str,
+    ree_id: str,
     payload: CreateEvaluateRunPayload,
 ) -> dict[str, Any]:
     request_payload = {
@@ -334,7 +334,7 @@ def create_evaluate_run_state(
                 f"Renovate failed (exit code {completed.returncode})",
             )
             outputs = _compute_evaluate_outputs(
-                workspace_id=ws_id,
+                ree_id=ws_id,
                 strict=False,
                 swhid_check=bool(payload.swhid_check),
                 renovate_stdout=completed.stdout,
@@ -343,7 +343,7 @@ def create_evaluate_run_state(
             return "failed", outputs
 
         outputs = _compute_evaluate_outputs(
-            workspace_id=ws_id,
+            ree_id=ws_id,
             strict=bool(payload.strict),
             swhid_check=bool(payload.swhid_check),
             renovate_stdout=completed.stdout,
@@ -353,7 +353,7 @@ def create_evaluate_run_state(
         return "succeeded", outputs
 
     return _start_background_run(
-        workspace_id=workspace_id,
+        ree_id=ree_id,
         operation="evaluate",
         request_payload=request_payload,
         run_id_prefix="evaluate",
@@ -361,7 +361,7 @@ def create_evaluate_run_state(
     )
 
 
-@evaluate_router.post("/api/v1/workspaces/{workspace_id}/evaluate")
-def create_workspace_evaluate_run(workspace_id: str, payload: CreateEvaluateRunPayload):
-    run_state = create_evaluate_run_state(workspace_id, payload)
+@evaluate_router.post("/api/v1/rees/{ree_id}/evaluate")
+def create_workspace_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload):
+    run_state = create_evaluate_run_state(ree_id, payload)
     return _run_summary(run_state)

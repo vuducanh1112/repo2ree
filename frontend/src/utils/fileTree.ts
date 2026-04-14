@@ -35,17 +35,3 @@ export function listTreeFiles(nodes: FileTreeNode[]): Array<{ path: string; cont
   });
   return files;
 }
-
-export function buildSnapshotArchiveContent(
-  sourceSnapshotFiles: FileTreeNode[],
-  capturedAt?: string,
-): string {
-  const files = listTreeFiles(sourceSnapshotFiles);
-  return [
-    "# Immutable source snapshot",
-    `captured_at=${capturedAt || new Date().toISOString()}`,
-    `file_count=${files.length}`,
-    "",
-    ...files.flatMap((file) => [`>>> ${file.path}`, file.content, ""]),
-  ].join("\n");
-}

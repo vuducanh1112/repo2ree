@@ -24,7 +24,7 @@ import {
 } from "../components/workflow/statusUiStyles";
 import type { PageSourceRepoEntryProps } from "./sharedWorkflowUi";
 
-const SOURCE_TYPE_OPTIONS = ["git", "hg", "svn", "cvs", "bzr", "tarball"] as const;
+const SOURCE_TYPE_OPTIONS = ["git", "hg", "svn", "cvs", "bzr", "tarball", "zip"] as const;
 type SourceTypeOption = (typeof SOURCE_TYPE_OPTIONS)[number];
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({

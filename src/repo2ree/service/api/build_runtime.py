@@ -30,8 +30,8 @@ class CreateBuildRuntimeRunPayload(_StrictRequestModel):
     idempotencyKey: str | None = None
 
 
-def _resolve_workspace_relative_path(workspace_id: str, relative_path: str) -> Path:
-    root = workspace_dir(workspace_id).resolve()
+def _resolve_workspace_relative_path(ree_id: str, relative_path: str) -> Path:
+    root = workspace_dir(ree_id).resolve()
     candidate = (root / relative_path).resolve()
     try:
         candidate.relative_to(root)
@@ -50,15 +50,13 @@ def _require_non_empty_path(path_value: str, field_name: str) -> str:
 
 
 def _docker_build_run(
-    workspace_id: str,
+    ree_id: str,
     run_id: str,
     script_relative_path: str,
     runtime_relative_path: str,
 ) -> tuple[str, dict[str, Any]]:
-    workspace_path = workspace_dir(workspace_id).resolve()
-    script_abs_path = _resolve_workspace_relative_path(
-        workspace_id, script_relative_path
-    )
+    workspace_path = workspace_dir(ree_id).resolve()
+    script_abs_path = _resolve_workspace_relative_path(ree_id, script_relative_path)
     if not script_abs_path.exists() or not script_abs_path.is_file():
         raise HTTPException(
             status_code=400, detail=f"Build script not found: {script_relative_path}"
@@ -68,32 +66,28 @@ def _docker_build_run(
         workspace_path
     )
     script_dir_in_container = script_in_container.parent
-    runtime_abs_path = _resolve_workspace_relative_path(
-        workspace_id, runtime_relative_path
-    )
+    runtime_abs_path = _resolve_workspace_relative_path(ree_id, runtime_relative_path)
     runtime_in_container = Path("/workspace") / runtime_abs_path.relative_to(
         workspace_path
     )
 
+    _append_run_log(ree_id, run_id, "system", "info", f"Starting build run {run_id}")
     _append_run_log(
-        workspace_id, run_id, "system", "info", f"Starting build run {run_id}"
-    )
-    _append_run_log(
-        workspace_id,
+        ree_id,
         run_id,
         "system",
         "info",
         "Starting container image docker:latest",
     )
     _append_run_log(
-        workspace_id,
+        ree_id,
         run_id,
         "system",
         "info",
         f"Build script: {script_relative_path}",
     )
     _append_run_log(
-        workspace_id,
+        ree_id,
         run_id,
         "system",
         "info",
@@ -150,19 +144,19 @@ def _docker_build_run(
     docker_rm_cmd = ["sudo", docker_bin, "rm", "-f", container_name]
 
     _append_run_log(
-        workspace_id,
+        ree_id,
         run_id,
         "system",
         "info",
         "$ " + " ".join(shlex.quote(token) for token in docker_create_cmd),
     )
     create_result = subprocess.run(docker_create_cmd, capture_output=True, text=True)
-    if _is_cancel_requested(workspace_id, run_id):
+    if _is_cancel_requested(ree_id, run_id):
         try:
             subprocess.run(docker_rm_cmd, capture_output=True, text=True)
         except Exception:
             pass
-        _append_run_log(workspace_id, run_id, "system", "warn", "Build run canceled")
+        _append_run_log(ree_id, run_id, "system", "warn", "Build run canceled")
         return (
             "canceled",
             {
@@ -174,9 +168,9 @@ def _docker_build_run(
     if create_result.returncode != 0:
         for line in create_result.stderr.splitlines():
             if line.strip():
-                _append_run_log(workspace_id, run_id, "stderr", "warn", line)
+                _append_run_log(ree_id, run_id, "stderr", "warn", line)
         _append_run_log(
-            workspace_id,
+            ree_id,
             run_id,
             "system",
             "error",
@@ -191,19 +185,19 @@ def _docker_build_run(
         return "failed", outputs
 
     _append_run_log(
-        workspace_id,
+        ree_id,
         run_id,
         "system",
         "info",
         "$ " + " ".join(shlex.quote(token) for token in docker_cp_cmd),
     )
     cp_result = subprocess.run(docker_cp_cmd, capture_output=True, text=True)
-    if _is_cancel_requested(workspace_id, run_id):
+    if _is_cancel_requested(ree_id, run_id):
         try:
             subprocess.run(docker_rm_cmd, capture_output=True, text=True)
         except Exception:
             pass
-        _append_run_log(workspace_id, run_id, "system", "warn", "Build run canceled")
+        _append_run_log(ree_id, run_id, "system", "warn", "Build run canceled")
         return (
             "canceled",
             {
@@ -215,9 +209,9 @@ def _docker_build_run(
     if cp_result.returncode != 0:
         for line in cp_result.stderr.splitlines():
             if line.strip():
-                _append_run_log(workspace_id, run_id, "stderr", "warn", line)
+                _append_run_log(ree_id, run_id, "stderr", "warn", line)
         _append_run_log(
-            workspace_id,
+            ree_id,
             run_id,
             "system",
             "error",
@@ -236,19 +230,19 @@ def _docker_build_run(
         return "failed", outputs
 
     _append_run_log(
-        workspace_id,
+        ree_id,
         run_id,
         "system",
         "info",
         "$ " + " ".join(shlex.quote(token) for token in docker_start_cmd),
     )
     start_result = subprocess.run(docker_start_cmd, capture_output=True, text=True)
-    if _is_cancel_requested(workspace_id, run_id):
+    if _is_cancel_requested(ree_id, run_id):
         try:
             subprocess.run(docker_rm_cmd, capture_output=True, text=True)
         except Exception:
             pass
-        _append_run_log(workspace_id, run_id, "system", "warn", "Build run canceled")
+        _append_run_log(ree_id, run_id, "system", "warn", "Build run canceled")
         return (
             "canceled",
             {
@@ -260,12 +254,12 @@ def _docker_build_run(
     if start_result.returncode != 0:
         for line in start_result.stdout.splitlines():
             if line.strip():
-                _append_run_log(workspace_id, run_id, "stdout", "info", line)
+                _append_run_log(ree_id, run_id, "stdout", "info", line)
         for line in start_result.stderr.splitlines():
             if line.strip():
-                _append_run_log(workspace_id, run_id, "stderr", "warn", line)
+                _append_run_log(ree_id, run_id, "stderr", "warn", line)
         _append_run_log(
-            workspace_id,
+            ree_id,
             run_id,
             "system",
             "error",
@@ -284,19 +278,19 @@ def _docker_build_run(
         return "failed", outputs
 
     _append_run_log(
-        workspace_id,
+        ree_id,
         run_id,
         "system",
         "info",
         "$ " + " ".join(shlex.quote(token) for token in docker_exec_script_cmd),
     )
     exec_result = subprocess.run(docker_exec_script_cmd, capture_output=True, text=True)
-    if _is_cancel_requested(workspace_id, run_id):
+    if _is_cancel_requested(ree_id, run_id):
         try:
             subprocess.run(docker_rm_cmd, capture_output=True, text=True)
         except Exception:
             pass
-        _append_run_log(workspace_id, run_id, "system", "warn", "Build run canceled")
+        _append_run_log(ree_id, run_id, "system", "warn", "Build run canceled")
         return (
             "canceled",
             {
@@ -308,22 +302,22 @@ def _docker_build_run(
 
     for line in exec_result.stdout.splitlines():
         if line.strip():
-            _append_run_log(workspace_id, run_id, "stdout", "info", line)
+            _append_run_log(ree_id, run_id, "stdout", "info", line)
     for line in exec_result.stderr.splitlines():
         if line.strip():
-            _append_run_log(workspace_id, run_id, "stderr", "warn", line)
+            _append_run_log(ree_id, run_id, "stderr", "warn", line)
 
     runtime_available = False
     if exec_result.returncode == 0:
         _append_run_log(
-            workspace_id,
+            ree_id,
             run_id,
             "system",
             "info",
             "Build script executed (exit code 0)",
         )
         _append_run_log(
-            workspace_id,
+            ree_id,
             run_id,
             "system",
             "info",
@@ -342,7 +336,7 @@ def _docker_build_run(
                 str(runtime_abs_path),
             ]
             _append_run_log(
-                workspace_id,
+                ree_id,
                 run_id,
                 "system",
                 "info",
@@ -354,7 +348,7 @@ def _docker_build_run(
             if cp_back_result.returncode == 0:
                 runtime_available = True
                 _append_run_log(
-                    workspace_id,
+                    ree_id,
                     run_id,
                     "system",
                     "info",
@@ -362,7 +356,7 @@ def _docker_build_run(
                 )
             else:
                 _append_run_log(
-                    workspace_id,
+                    ree_id,
                     run_id,
                     "system",
                     "error",
@@ -371,12 +365,10 @@ def _docker_build_run(
                 if cp_back_result.stderr.strip():
                     for line in cp_back_result.stderr.splitlines():
                         if line.strip():
-                            _append_run_log(
-                                workspace_id, run_id, "stderr", "warn", line
-                            )
+                            _append_run_log(ree_id, run_id, "stderr", "warn", line)
         else:
             _append_run_log(
-                workspace_id,
+                ree_id,
                 run_id,
                 "system",
                 "error",
@@ -384,7 +376,7 @@ def _docker_build_run(
             )
     else:
         _append_run_log(
-            workspace_id,
+            ree_id,
             run_id,
             "system",
             "error",
@@ -401,7 +393,7 @@ def _docker_build_run(
     )
     final_level = "info" if status == "succeeded" else "error"
     _append_run_log(
-        workspace_id,
+        ree_id,
         run_id,
         "system",
         final_level,
@@ -418,7 +410,7 @@ def _docker_build_run(
 
 
 def create_build_run_state(
-    workspace_id: str,
+    ree_id: str,
     payload: CreateBuildRuntimeRunPayload,
 ) -> dict[str, Any]:
     script_path = _require_non_empty_path(
@@ -434,12 +426,12 @@ def create_build_run_state(
         "produced_runtime_path": runtime_path,
     }
     return _start_background_run(
-        workspace_id=workspace_id,
+        ree_id=ree_id,
         operation="build",
         request_payload=request_payload,
         run_id_prefix="build",
         runner=lambda ws_id, run_id: _docker_build_run(
-            workspace_id=ws_id,
+            ree_id=ws_id,
             run_id=run_id,
             script_relative_path=script_path,
             runtime_relative_path=runtime_path,
@@ -447,11 +439,11 @@ def create_build_run_state(
     )
 
 
-@build_runtime_router.post("/api/v1/workspaces/{workspace_id}/build-runtime")
+@build_runtime_router.post("/api/v1/rees/{ree_id}/build-runtime")
 def create_workspace_build_runtime_run(
-    workspace_id: str, payload: CreateBuildRuntimeRunPayload
+    ree_id: str, payload: CreateBuildRuntimeRunPayload
 ):
     from repo2ree.service.api.run_management import _run_summary
 
-    run_state = create_build_run_state(workspace_id, payload)
+    run_state = create_build_run_state(ree_id, payload)
     return _run_summary(run_state)

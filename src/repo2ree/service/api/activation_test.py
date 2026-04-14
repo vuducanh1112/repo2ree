@@ -55,8 +55,8 @@ def _append_log(
     return seq + 1
 
 
-def _resolve_workspace_relative_path(workspace_id: str, relative_path: str) -> Path:
-    root = workspace_dir(workspace_id).resolve()
+def _resolve_workspace_relative_path(ree_id: str, relative_path: str) -> Path:
+    root = workspace_dir(ree_id).resolve()
     candidate = (root / relative_path).resolve()
     try:
         candidate.relative_to(root)
@@ -68,12 +68,12 @@ def _resolve_workspace_relative_path(workspace_id: str, relative_path: str) -> P
 
 
 def resolve_activation_script_path(
-    workspace_id: str,
+    ree_id: str,
     *,
     params: dict[str, Any] | None = None,
     activation_script_path: str | None = None,
 ) -> str:
-    metadata = read_workspace_metadata(workspace_id)
+    metadata = read_workspace_metadata(ree_id)
     ree_draft = dict(metadata.get("reeDraft") or {})
     params = dict(params or {})
     script_path = (
@@ -90,7 +90,7 @@ def resolve_activation_script_path(
     if not script_path:
         raise HTTPException(status_code=400, detail="activation_script is required")
 
-    script_abs_path = _resolve_workspace_relative_path(workspace_id, script_path)
+    script_abs_path = _resolve_workspace_relative_path(ree_id, script_path)
     if not script_abs_path.exists() or not script_abs_path.is_file():
         raise HTTPException(
             status_code=400, detail=f"Activation script not found: {script_path}"
@@ -100,14 +100,12 @@ def resolve_activation_script_path(
 
 
 def run_activation_test(
-    workspace_id: str,
+    ree_id: str,
     run_id: str,
     activation_script_path: str,
 ) -> tuple[str, list[dict[str, Any]], dict[str, Any]]:
-    workspace_path = workspace_dir(workspace_id).resolve()
-    script_abs_path = _resolve_workspace_relative_path(
-        workspace_id, activation_script_path
-    )
+    workspace_path = workspace_dir(ree_id).resolve()
+    script_abs_path = _resolve_workspace_relative_path(ree_id, activation_script_path)
     script_in_container = Path("/workspace") / script_abs_path.relative_to(
         workspace_path
     )
@@ -294,11 +292,11 @@ def run_activation_test(
 
 
 def create_activation_run_state(
-    workspace_id: str,
+    ree_id: str,
     payload: CreateActivationTestRunPayload,
 ) -> dict[str, Any]:
     activation_script_path = resolve_activation_script_path(
-        workspace_id,
+        ree_id,
         params={},
         activation_script_path=payload.activation_script_path,
     )
@@ -309,7 +307,7 @@ def create_activation_run_state(
             _append_run_log(ws_id, run_id, "system", "warn", "Activation run canceled")
             return "canceled", {"activationScriptPath": activation_script_path}
         status, logs, outputs = run_activation_test(
-            workspace_id=ws_id,
+            ree_id=ws_id,
             run_id=run_id,
             activation_script_path=activation_script_path,
         )
@@ -329,7 +327,7 @@ def create_activation_run_state(
         return status, outputs
 
     return _start_background_run(
-        workspace_id=workspace_id,
+        ree_id=ree_id,
         operation="activation",
         request_payload=request_payload,
         run_id_prefix="activation",
@@ -337,9 +335,9 @@ def create_activation_run_state(
     )
 
 
-@activation_test_router.post("/api/v1/workspaces/{workspace_id}/activation-test")
+@activation_test_router.post("/api/v1/rees/{ree_id}/activation-test")
 def create_workspace_activation_test_run(
-    workspace_id: str, payload: CreateActivationTestRunPayload
+    ree_id: str, payload: CreateActivationTestRunPayload
 ):
-    run_state = create_activation_run_state(workspace_id, payload)
+    run_state = create_activation_run_state(ree_id, payload)
     return _run_summary(run_state)

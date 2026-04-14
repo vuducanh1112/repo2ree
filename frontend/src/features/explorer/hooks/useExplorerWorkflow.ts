@@ -1,5 +1,5 @@
 import type React from "react";
-import { useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { isWorkflowServiceKey } from "../../../constants/services";
 import type { AppAction } from "../../../context";
 import { explorerActions } from "../../../context";
@@ -13,9 +13,7 @@ import type {
   ToastState,
   WorkflowServiceKey,
   WorkflowServiceRunParams,
-  ZipEntry,
 } from "../../../types";
-import { buildZipBlob, REE_SBOM_PATH, resolveRuntimeArchiveEntryPath } from "../../../utils";
 import { createServiceRunHandlers, executeServiceRunAction } from "./workflow/serviceRuns";
 import {
   createExplorerWorkspaceService,
@@ -30,7 +28,6 @@ interface UseExplorerWorkflowArgs {
   level: number;
   virtualFiles: FileTreeNode[];
   serviceParams: ServiceParams;
-  currentReeArchiveEntries: ZipEntry[];
 }
 
 export function useExplorerWorkflow({
@@ -39,19 +36,25 @@ export function useExplorerWorkflow({
   level,
   virtualFiles,
   serviceParams,
-  currentReeArchiveEntries,
 }: UseExplorerWorkflowArgs) {
   const activeRunIdsRef = useRef<Record<string, string>>({});
+  const lastSyncedReeRef = useRef<string>("");
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = (msg: string, type: ToastState["type"] = "info") =>
     dispatch(explorerActions.setToast({ message: msg, type }));
 
   const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
   const explicitMode = String(env.VITE_WORKSPACE_SERVICE_MODE || "").toLowerCase();
   const workspaceServiceMode = explicitMode || (env.VITE_API_BASE_URL ? "remote" : "mock");
+  const reeIdFromQuery =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("reeId") || undefined
+      : undefined;
   const remoteWorkspaceServiceRef = useRef<IWorkspaceService<FileTreeNode> | null>(null);
   if (workspaceServiceMode === "remote" && !remoteWorkspaceServiceRef.current) {
     remoteWorkspaceServiceRef.current = createRemoteWorkspaceService({
       baseUrl: env.VITE_API_BASE_URL || "",
+      initialWorkspaceId: reeIdFromQuery,
     });
   }
 
@@ -76,11 +79,85 @@ export function useExplorerWorkflow({
           executeServiceRun,
         });
 
-  const refreshWorkspaceFiles = async (): Promise<FileTreeNode[]> => {
+  const refreshWorkspaceFiles = useCallback(async (): Promise<FileTreeNode[]> => {
     const workspace = await workspaceService.getWorkspace(WORKSPACE_ID);
     dispatch(explorerActions.setVirtualFiles(workspace.files));
+    dispatch(explorerActions.setWorkspaceReeFiles(workspace.reeFiles || []));
+    if (workspace.ree) {
+      dispatch(explorerActions.setRee(workspace.ree));
+    }
     return workspace.files;
-  };
+  }, [dispatch, workspaceService]);
+
+  const buildReePatch = useCallback(
+    () => ({
+      name: ree.name || "",
+      origin_url: ree.origin_url || "",
+      source_type: ree.source_type || "",
+      runtime: ree.runtime || "",
+      build_runtime_script: ree.build_runtime_script || "",
+      activation_script: ree.activation_script || "",
+      sbom: ree.sbom || "",
+      swhid: ree.swhid || "",
+      zenodo_doi: ree.zenodo_doi || "",
+      dataverse_doi: ree.dataverse_doi || "",
+      repro_level: ree.repro_level || "",
+      detected_dependencies: ree.detected_dependencies || "",
+      hardware_description: ree.hardware_description || {},
+      _sealedAt: ree._sealedAt || "",
+      _sealHash: ree._sealHash || "",
+      _evalLevel: ree._evalLevel ?? 0,
+      _sourceIncluded: !!ree._sourceIncluded,
+      _sourceAvailable: !!ree._sourceAvailable,
+      _sourceAcquiredBy: ree._sourceAcquiredBy || "",
+      _uploadedArchive: ree._uploadedArchive || "",
+      _sourceSnapshotArchive: ree._sourceSnapshotArchive || "",
+      _sourceSnapshotCapturedAt: ree._sourceSnapshotCapturedAt || "",
+      _runtimeIncluded: !!ree._runtimeIncluded,
+      _downloadableFiles: ree._downloadableFiles || [],
+    }),
+    [ree],
+  );
+
+  useEffect(() => {
+    if (workspaceServiceMode !== "remote") {
+      return;
+    }
+    void refreshWorkspaceFiles();
+  }, [workspaceServiceMode, refreshWorkspaceFiles]);
+
+  useEffect(() => {
+    if (workspaceServiceMode !== "remote" || !workspaceService.updateReeDraft) {
+      return;
+    }
+    const patch = buildReePatch();
+    const patchKey = JSON.stringify(patch);
+    if (patchKey === lastSyncedReeRef.current) {
+      return;
+    }
+    if (syncTimerRef.current) {
+      clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = null;
+    }
+    syncTimerRef.current = setTimeout(() => {
+      void (async () => {
+        try {
+          await workspaceService.updateReeDraft?.(WORKSPACE_ID, patch);
+          lastSyncedReeRef.current = patchKey;
+          await refreshWorkspaceFiles();
+        } catch {
+          // Keep local metadata editable; backend sync can be retried on next change.
+        }
+      })();
+    }, 300);
+
+    return () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
+    };
+  }, [workspaceServiceMode, workspaceService, buildReePatch, refreshWorkspaceFiles]);
 
   const persistWorkspaceFile = async (
     previousPath: string | undefined,
@@ -195,93 +272,43 @@ export function useExplorerWorkflow({
 
   const handleDownloadRee = () => {
     const runDownload = async () => {
-      if (workspaceService.getReeArchive) {
-        try {
-          if (workspaceService.updateReeDraft) {
-            await workspaceService.updateReeDraft(WORKSPACE_ID, {
-              name: ree.name || "",
-              origin_url: ree.origin_url || "",
-              source_type: ree.source_type || "",
-              runtime: ree.runtime || "",
-              build_runtime_script: ree.build_runtime_script || "",
-              activation_script: ree.activation_script || "",
-              sbom: ree.sbom || "",
-              swhid: ree.swhid || "",
-              zenodo_doi: ree.zenodo_doi || "",
-              dataverse_doi: ree.dataverse_doi || "",
-              hardware_description: ree.hardware_description || {},
-              _sealedAt: ree._sealedAt || "",
-              _sealHash: ree._sealHash || "",
-              _evalLevel: ree._evalLevel ?? 0,
-              _sourceIncluded: !!ree._sourceIncluded,
-              _sourceAvailable: !!ree._sourceAvailable,
-              _sourceAcquiredBy: ree._sourceAcquiredBy || "",
-              _sourceSnapshotArchive: ree._sourceSnapshotArchive || "",
-              _sourceSnapshotCapturedAt: ree._sourceSnapshotCapturedAt || "",
-              _runtimeIncluded: !!ree._runtimeIncluded,
-            });
-          }
-          const archiveBytes = await workspaceService.getReeArchive(WORKSPACE_ID);
-          const blob = new Blob([archiveBytes], { type: "application/zip" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `${(ree.name || "ree").replace(/[^a-z0-9_-]/gi, "_")}-capsule.zip`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          showToast(`Downloaded ${ree.name || "ree"}-capsule.zip`, "success");
-          return;
-        } catch (error) {
-          showToast(
-            error instanceof Error
-              ? `Backend archive download failed: ${error.message}`
-              : "Backend archive download failed",
-            "error",
-          );
-          return;
-        }
+      const fallbackReeName = (ree.name || "").trim().replace(/[^A-Za-z0-9._-]+/g, "_") || "ree";
+      const fallbackArchiveName = `${fallbackReeName}.zip`;
+
+      if (!workspaceService.getReeArchive) {
+        showToast("REE archive download requires backend workspace service", "error");
+        return;
       }
 
-      let fallbackEntries: ZipEntry[] = [...currentReeArchiveEntries];
-      if (workspaceService.getFileBytes) {
-        if (ree.sbom && ree.sbom !== "__skipped__") {
-          try {
-            const sbomBytes = await workspaceService.getFileBytes(WORKSPACE_ID, ree.sbom);
-            const sbomData = new Uint8Array(sbomBytes);
-            fallbackEntries = fallbackEntries.map((entry) =>
-              entry.path === REE_SBOM_PATH ? { ...entry, data: sbomData } : entry,
-            );
-          } catch {
-            // Keep fallback entry as-is when raw download is unavailable.
-          }
+      try {
+        if (workspaceService.updateReeDraft) {
+          await workspaceService.updateReeDraft(WORKSPACE_ID, buildReePatch());
         }
-
-        if (ree._runtimeIncluded && ree.runtime && ree.runtime !== "__skipped__") {
-          try {
-            const runtimeBytes = await workspaceService.getFileBytes(WORKSPACE_ID, ree.runtime);
-            const runtimeData = new Uint8Array(runtimeBytes);
-            const runtimeArchivePath = resolveRuntimeArchiveEntryPath(ree.runtime);
-            fallbackEntries = fallbackEntries.map((entry) =>
-              entry.path === runtimeArchivePath ? { ...entry, data: runtimeData } : entry,
-            );
-          } catch {
-            // Keep fallback entry as-is when raw download is unavailable.
-          }
+        const archiveDownload = await workspaceService.getReeArchive(WORKSPACE_ID);
+        const archiveFileName = archiveDownload.fileName || fallbackArchiveName;
+        const blob = new Blob([archiveDownload.bytes], { type: "application/zip" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        if (archiveFileName) {
+          a.download = archiveFileName;
         }
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast(
+          archiveFileName ? `Downloaded ${archiveFileName}` : "Downloaded archive",
+          "success",
+        );
+      } catch (error) {
+        showToast(
+          error instanceof Error
+            ? `Backend archive download failed: ${error.message}`
+            : "Backend archive download failed",
+          "error",
+        );
       }
-
-      const blob = buildZipBlob(fallbackEntries);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${(ree.name || "ree").replace(/[^a-z0-9_-]/gi, "_")}-capsule.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast(`Downloaded ${ree.name || "ree"}-capsule.zip`, "success");
     };
 
     void runDownload();

@@ -5,13 +5,11 @@ from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
-from repo2ree.service.api.create_ree import create_ree_router
 from repo2ree.service.api.build_runtime import build_runtime_router
 from repo2ree.service.api.generate_sbom import generate_sbom_router
 from repo2ree.service.api.activation_test import activation_test_router
 from repo2ree.service.api.evaluate import evaluate_router
 from repo2ree.service.api.runs import runs_router
-from repo2ree.service.api.validate_runtime import validate_runtime_router
 from repo2ree.service.api.manage_ree import manage_ree_router
 from repo2ree.service.api.analyze_dependencies import analyze_dependencies_router
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,13 +38,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(create_ree_router)
 app.include_router(build_runtime_router)
 app.include_router(generate_sbom_router)
 app.include_router(activation_test_router)
 app.include_router(evaluate_router)
 app.include_router(runs_router)
-app.include_router(validate_runtime_router)
 app.include_router(manage_ree_router)
 app.include_router(analyze_dependencies_router)
 

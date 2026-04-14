@@ -1,5 +1,7 @@
 import type React from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { ApiClient } from "../../api/client";
+import { WorkspaceApi } from "../../api/workspaces";
 import { Ic } from "../../components/Icon";
 import { LEVELS } from "../../constants/levels";
 import { APP_ROUTE, type AppLoadRoutePath } from "../../constants/pages";
@@ -7,10 +9,8 @@ import {
   C,
   F,
   hoverBg,
-  hoverBorderColor,
   hoverColor,
   S_ACTION_BUTTON_BASE,
-  S_FLEX_ROW_GAP_8,
   S_SECTION_LABEL,
 } from "../../constants/theme";
 
@@ -24,15 +24,27 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 });
 
 export function LandingView({ onLoad }: LandingViewProps) {
-  const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [loadingCreate, setLoadingCreate] = useState(false);
 
-  const go = async () => {
-    setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setLoading(false);
-    onLoad(APP_ROUTE.EXPLORER);
+  const createRee = async () => {
+    setLoadingCreate(true);
+    try {
+      const env =
+        (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
+      const client = new ApiClient({
+        baseUrl: env.VITE_API_BASE_URL || "",
+      });
+      const workspaceApi = new WorkspaceApi(client);
+      const workspace = await workspaceApi.createWorkspace({
+        sourceMode: "upload",
+        name: "Explorer Workspace",
+      });
+      onLoad(`${APP_ROUTE.EXPLORER}?reeId=${encodeURIComponent(workspace.reeId)}`);
+    } catch {
+      onLoad(APP_ROUTE.EXPLORER);
+    } finally {
+      setLoadingCreate(false);
+    }
   };
 
   return (
@@ -93,151 +105,58 @@ export function LandingView({ onLoad }: LandingViewProps) {
             gap: 12,
           }}
         >
-          <label
-            htmlFor="repo-url-input"
+          <div
             style={{
               ...S_SECTION_LABEL,
               letterSpacing: 1.4,
             }}
           >
-            Repository URL
-          </label>
-          <div style={S_FLEX_ROW_GAP_8}>
-            <div style={{ flex: 1, position: "relative" }}>
-              <div
-                style={{
-                  position: "absolute",
-                  left: 10,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: C.textMuted,
-                }}
-              >
-                {Ic.link()}
-              </div>
-              <input
-                id="repo-url-input"
-                value={url}
-                onChange={(event) => setUrl(event.target.value)}
-                onKeyDown={(event) => event.key === "Enter" && url.trim() && go()}
-                placeholder="https://github.com/org/repo"
-                style={{
-                  width: "100%",
-                  border: `1.5px solid ${C.border}`,
-                  borderRadius: 8,
-                  padding: "8px 10px 8px 32px",
-                  fontSize: 14,
-                  fontFamily: F.mono,
-                  color: C.text,
-                  background: C.bg,
-                }}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={go}
-              disabled={loading}
-              style={{
-                ...actionBtn({
-                  border: "none",
-                  borderRadius: 8,
-                  padding: "8px 16px",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  background: C.accent,
-                  color: "#fff",
-                  transition: "all 0.12s",
-                }),
-                background: C.accent,
-                color: "#fff",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                flexShrink: 0,
-              }}
-            >
-              <span
-                style={{
-                  display: "flex",
-                  animation: loading ? "spin 0.9s linear infinite" : "none",
-                }}
-              >
-                {loading ? Ic.loader() : Ic.play()}
-              </span>
-              {loading ? "…" : "Load"}
-            </button>
+            Choose Action
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ flex: 1, height: 1, background: C.border }} />
-            <span style={{ fontSize: 12, color: C.textMuted, fontFamily: F.mono }}>or</span>
-            <div style={{ flex: 1, height: 1, background: C.border }} />
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            style={{ display: "none" }}
-            onChange={(event) => {
-              if (event.target.files?.[0]) go();
-            }}
-            accept=".zip,.tar,.tar.gz"
-          />
           <button
             type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={loading}
+            onClick={() => {
+              void createRee();
+            }}
+            disabled={loadingCreate}
             style={{
-              background: C.bg,
-              border: `1.5px dashed ${C.borderMid}`,
+              ...actionBtn({
+                border: "none",
+                borderRadius: 8,
+                padding: "10px 16px",
+                fontSize: 14,
+                fontWeight: 600,
+                background: C.accent,
+                color: "#fff",
+                transition: "all 0.12s",
+              }),
               borderRadius: 10,
-              padding: 16,
+              background: C.accent,
+              color: "#fff",
               cursor: "pointer",
               width: "100%",
               display: "flex",
-              flexDirection: "column",
               alignItems: "center",
               gap: 5,
-              transition: "border-color 0.15s, background 0.15s",
+              justifyContent: "center",
             }}
-            {...hoverBorderColor(C.accent, C.borderMid)}
-            {...hoverBg(C.accentBg, C.bg)}
           >
-            <span style={{ color: C.accent }}>{Ic.upload()}</span>
-            <span style={{ fontSize: 13, color: C.textMid, fontFamily: F.sans }}>
-              Drop archive or <span style={{ color: C.accent }}>browse</span>
+            <span
+              style={{
+                display: "flex",
+                animation: loadingCreate ? "spin 0.9s linear infinite" : "none",
+              }}
+            >
+              {loadingCreate ? Ic.loader() : Ic.play()}
             </span>
-            <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono }}>
-              .zip · .tar · .tar.gz
+            <span style={{ fontSize: 14, fontWeight: 600 }}>
+              {loadingCreate ? "Creating…" : "Create REE"}
             </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onLoad(APP_ROUTE.EXPLORER)}
-            disabled={loading}
-            style={{
-              ...actionBtn({
-                border: `1px solid ${C.border}`,
-                borderRadius: 8,
-                padding: 8,
-                background: "transparent",
-                color: C.textMid,
-                fontWeight: 400,
-                transition: "background 0.13s, color 0.13s",
-              }),
-              background: "transparent",
-              cursor: "pointer",
-              width: "100%",
-              color: C.textMid,
-            }}
-            {...hoverBg(C.surfaceAlt, "transparent")}
-            {...hoverColor(C.text, C.textMid)}
-          >
-            ✦ Try with demo repository (Author)
           </button>
           <button
             type="button"
             onClick={() => onLoad(APP_ROUTE.REVIEWER)}
-            disabled={loading}
+            disabled={loadingCreate}
             style={{
               ...actionBtn({
                 border: `1px solid ${C.border}`,
@@ -256,7 +175,7 @@ export function LandingView({ onLoad }: LandingViewProps) {
             {...hoverBg(C.surfaceAlt, "transparent")}
             {...hoverColor(C.text, C.textMid)}
           >
-            ✦ Review a sealed pod (Reviewer)
+            Review REE
           </button>
         </div>
         <div

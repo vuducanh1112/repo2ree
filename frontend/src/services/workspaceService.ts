@@ -1,3 +1,5 @@
+import type { Ree, ReeFile } from "../types";
+
 export interface LogLine {
   type: "info" | "ok" | "warn" | "err" | "out";
   msg: string;
@@ -45,9 +47,16 @@ export interface WorkflowRunLogChunk {
   hasMore: boolean;
 }
 
+export interface WorkspaceBinaryDownload {
+  bytes: ArrayBuffer;
+  fileName?: string;
+}
+
 export interface ReeProject<TFile = unknown> {
   id: string;
   files: TFile[];
+  reeFiles?: ReeFile[];
+  ree?: Ree;
 }
 
 export interface IWorkspaceService<TFile = unknown> {
@@ -56,7 +65,7 @@ export interface IWorkspaceService<TFile = unknown> {
   updateReeDraft?(id: string, reePatch: Record<string, unknown>): Promise<void>;
   deleteFile?(id: string, path: string): Promise<void>;
   getFileBytes?(id: string, path: string): Promise<ArrayBuffer>;
-  getReeArchive?(id: string): Promise<ArrayBuffer>;
+  getReeArchive?(id: string): Promise<WorkspaceBinaryDownload>;
   runScript(id: string, scriptKey: string): Promise<WorkspaceServiceLogEntry>;
   resetWorkspace(id: string, newSource: string): Promise<void>;
   resetWorkspaceRequest?: (id: string, request: WorkspaceResetPayload) => Promise<void>;

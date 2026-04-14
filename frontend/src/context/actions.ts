@@ -4,6 +4,7 @@ import type {
   ExplorerPage,
   FileTreeNode,
   Ree,
+  ReeFile,
   ServiceLogs,
   ServiceParams,
   Timestamps,
@@ -61,6 +62,10 @@ export const explorerActions = {
   setVirtualFiles: (virtualFiles: StateUpdater<FileTreeNode[]>): AppAction => ({
     type: ACTION_TYPES.explorer.setVirtualFiles,
     virtualFiles,
+  }),
+  setWorkspaceReeFiles: (workspaceReeFiles: StateUpdater<ReeFile[]>): AppAction => ({
+    type: ACTION_TYPES.explorer.setWorkspaceReeFiles,
+    workspaceReeFiles,
   }),
   setImmutableSourceSnapshotFiles: (
     immutableSourceSnapshotFiles: StateUpdater<FileTreeNode[]>,

@@ -4,6 +4,7 @@ import type {
   ExplorerPage,
   FileTreeNode,
   Ree,
+  ReeFile,
   ServiceLogs,
   ServiceParams,
   Timestamps,
@@ -27,6 +28,7 @@ export interface ExplorerState {
   focusedField: string | null;
   navCollapsed: boolean;
   virtualFiles: FileTreeNode[];
+  workspaceReeFiles: ReeFile[];
   immutableSourceSnapshotFiles: FileTreeNode[];
   immutableSourceSnapshotArchiveName: string;
   showReviewerPreview: boolean;
@@ -58,6 +60,10 @@ export type AppAction =
   | {
       type: typeof ACTION_TYPES.explorer.setVirtualFiles;
       virtualFiles: StateUpdater<FileTreeNode[]>;
+    }
+  | {
+      type: typeof ACTION_TYPES.explorer.setWorkspaceReeFiles;
+      workspaceReeFiles: StateUpdater<ReeFile[]>;
     }
   | {
       type: typeof ACTION_TYPES.explorer.setImmutableSourceSnapshotFiles;

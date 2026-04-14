@@ -1,6 +1,7 @@
 import type { WorkflowRunDto, WorkflowRunStatusDto, WorkspaceDetailDto } from "../api";
 import { ApiClient, mapRunLogsToLegacy, WorkflowRunsApi, WorkspaceApi } from "../api";
-import type { FileTreeNode } from "../types";
+import type { FileTreeNode, Ree } from "../types";
+import type { ReeFile } from "../types/ree";
 import type {
   IWorkspaceService,
   LogLine,
@@ -14,6 +15,7 @@ import { parseWorkspaceResetPayload } from "./workspaceService";
 interface CreateRemoteWorkspaceServiceOptions {
   baseUrl?: string;
   headers?: Record<string, string>;
+  initialWorkspaceId?: string;
 }
 
 const TERMINAL_STATUSES = new Set<WorkflowRunStatusDto>(["succeeded", "failed", "canceled"]);
@@ -82,9 +84,56 @@ function mapWorkspace(workspace: WorkspaceDetailDto): ReeProject<FileTreeNode> {
     upsertTreeFile(files, file.path, file.content, file.size, file.kind);
   }
 
+  const reeFiles: ReeFile[] = (workspace.reeFiles || []).map((file, index) => ({
+    id: `remote-ree-${index}-${file.path}`,
+    name: file.path,
+    type: "file",
+    tag: file.tag || "REE",
+    content: file.content,
+    size: file.size,
+  }));
+
+  const draft = workspace.reeDraft || {};
+  const ree: Ree = {
+    name: String(draft.name ?? workspace.name ?? ""),
+    origin_url: String(draft.origin_url ?? workspace.externalRef ?? ""),
+    source_type: (draft.source_type as Ree["source_type"]) || "",
+    runtime: String(draft.runtime ?? ""),
+    build_runtime_script: String(draft.build_runtime_script ?? ""),
+    activation_script: String(draft.activation_script ?? ""),
+    sbom: String(draft.sbom ?? ""),
+    swhid: String(draft.swhid ?? ""),
+    zenodo_doi: draft.zenodo_doi ? String(draft.zenodo_doi) : undefined,
+    dataverse_doi: draft.dataverse_doi ? String(draft.dataverse_doi) : undefined,
+    repro_level: draft.repro_level ? String(draft.repro_level) : undefined,
+    detected_dependencies: draft.detected_dependencies
+      ? String(draft.detected_dependencies)
+      : undefined,
+    hardware_description: (draft.hardware_description as Record<string, string>) || {},
+    _evalLevel: Number(draft._evalLevel ?? 0),
+    _sealedAt: draft._sealedAt ? String(draft._sealedAt) : undefined,
+    _sealHash: draft._sealHash ? String(draft._sealHash) : undefined,
+    _sourceAvailable: Boolean(draft._sourceAvailable),
+    _sourceIncluded: Boolean(draft._sourceIncluded),
+    _sourceAcquiredBy: (draft._sourceAcquiredBy as Ree["_sourceAcquiredBy"]) || undefined,
+    _uploadedArchive: draft._uploadedArchive ? String(draft._uploadedArchive) : undefined,
+    _sourceSnapshotArchive: draft._sourceSnapshotArchive
+      ? String(draft._sourceSnapshotArchive)
+      : undefined,
+    _sourceSnapshotCapturedAt: draft._sourceSnapshotCapturedAt
+      ? String(draft._sourceSnapshotCapturedAt)
+      : undefined,
+    _runtimeIncluded: Boolean(draft._runtimeIncluded),
+    _downloadableFiles: Array.isArray(draft._downloadableFiles)
+      ? draft._downloadableFiles.map((item) => String(item))
+      : [],
+  };
+
   return {
-    id: workspace.workspaceId,
+    id: workspace.reeId,
     files,
+    reeFiles,
+    ree,
   };
 }
 
@@ -110,7 +159,7 @@ export function createRemoteWorkspaceService(
   });
   const workspaceApi = new WorkspaceApi(client);
   const runsApi = new WorkflowRunsApi(client);
-  let resolvedWorkspaceId: string | null = null;
+  let resolvedWorkspaceId: string | null = options.initialWorkspaceId || null;
 
   const ensureWorkspaceId = async (requestedId: string): Promise<string> => {
     if (requestedId && requestedId !== "active") {
@@ -124,7 +173,7 @@ export function createRemoteWorkspaceService(
       sourceMode: "upload",
       name: "Explorer Workspace",
     });
-    resolvedWorkspaceId = created.workspaceId;
+    resolvedWorkspaceId = created.reeId;
     return resolvedWorkspaceId;
   };
 
@@ -296,7 +345,7 @@ export function createRemoteWorkspaceService(
       const workspaceId = await ensureWorkspaceId(id);
       return workspaceApi.getFileBytes(workspaceId, path);
     },
-    getReeArchive: async (id: string): Promise<ArrayBuffer> => {
+    getReeArchive: async (id: string) => {
       const workspaceId = await ensureWorkspaceId(id);
       return workspaceApi.getReeArchive(workspaceId);
     },

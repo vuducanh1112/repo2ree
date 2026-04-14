@@ -12,7 +12,7 @@ export interface ApiListResponse<TItem> {
 }
 
 export interface WorkspaceSummaryDto {
-  workspaceId: string;
+  reeId: string;
   externalRef?: string;
   name: string;
   status: "draft" | "ready" | "sealed" | "archived";
@@ -28,6 +28,14 @@ export interface WorkspaceFileDto {
   etag?: string;
 }
 
+export interface WorkspaceReeFileDto {
+  path: string;
+  content?: string;
+  size?: number;
+  kind: "ree";
+  tag?: string;
+}
+
 export interface ReeDraftDto {
   name: string;
   origin_url: string;
@@ -39,6 +47,8 @@ export interface ReeDraftDto {
   swhid: string;
   zenodo_doi: string;
   dataverse_doi: string;
+  repro_level: string;
+  detected_dependencies: string;
   hardware_description: Record<string, unknown>;
   _sealedAt: string;
   _sealHash: string;
@@ -46,14 +56,17 @@ export interface ReeDraftDto {
   _sourceIncluded: boolean;
   _sourceAvailable: boolean;
   _sourceAcquiredBy: string;
+  _uploadedArchive: string;
   _sourceSnapshotArchive: string;
   _sourceSnapshotCapturedAt: string;
   _runtimeIncluded: boolean;
+  _downloadableFiles: string[];
 }
 
 export interface WorkspaceDetailDto extends WorkspaceSummaryDto {
   reeDraft: Partial<ReeDraftDto>;
   files?: WorkspaceFileDto[];
+  reeFiles?: WorkspaceReeFileDto[];
 }
 
 export interface CreateWorkspaceRequestDto {
@@ -129,7 +142,7 @@ export interface CreateEvaluateRunRequestDto {
 
 export interface WorkflowRunDto {
   runId: string;
-  workspaceId: string;
+  reeId: string;
   operation: WorkflowOperationDto;
   status: WorkflowRunStatusDto;
   createdAt: string;
