@@ -54,7 +54,7 @@ def _create_run_state(
     created_at: str,
     request_payload: dict[str, Any],
 ) -> dict[str, Any]:
-    run_state = {
+    run_state: dict[str, Any] = {
         "runId": run_id,
         "reeId": ree_id,
         "operation": operation,

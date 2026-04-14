@@ -93,29 +93,29 @@ def retry_workspace_run(ree_id: str, run_id: str):
     request_payload = run_state.get("request", {})
     operation = run_state["operation"]
     if operation == "build":
-        payload = CreateBuildRuntimeRunPayload(
+        build_payload = CreateBuildRuntimeRunPayload(
             build_runtime_script_path=request_payload.get(
                 "build_runtime_script_path", ""
             ),
             produced_runtime_path=request_payload.get("produced_runtime_path", ""),
         )
-        return _run_summary(create_build_run_state(ree_id, payload))
+        return _run_summary(create_build_run_state(ree_id, build_payload))
     if operation == "sbom":
-        payload = CreateGenerateSbomRunPayload(
+        sbom_payload = CreateGenerateSbomRunPayload(
             produced_runtime_path=request_payload.get("produced_runtime_path", "")
         )
-        return _run_summary(create_generate_sbom_run_state(ree_id, payload))
+        return _run_summary(create_generate_sbom_run_state(ree_id, sbom_payload))
     if operation == "activation":
-        payload = CreateActivationTestRunPayload(
+        activation_payload = CreateActivationTestRunPayload(
             activation_script_path=request_payload.get("activation_script_path", "")
         )
-        return _run_summary(create_activation_run_state(ree_id, payload))
+        return _run_summary(create_activation_run_state(ree_id, activation_payload))
     if operation == "evaluate":
-        payload = CreateEvaluateRunPayload(
+        evaluate_payload = CreateEvaluateRunPayload(
             strict=bool(request_payload.get("strict", False)),
             swhid_check=bool(request_payload.get("swhid_check", True)),
         )
-        return _run_summary(create_evaluate_run_state(ree_id, payload))
+        return _run_summary(create_evaluate_run_state(ree_id, evaluate_payload))
     raise HTTPException(
         status_code=400, detail=f"Unsupported operation for retry: {operation}"
     )

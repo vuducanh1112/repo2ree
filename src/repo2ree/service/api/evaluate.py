@@ -147,7 +147,7 @@ def _analyze_workspace_files(workspace_path: Path) -> dict[str, bool]:
 
 
 def _analyze_dependencies(renovate_payload: dict[str, Any] | None) -> dict[str, Any]:
-    package_files = {}
+    package_files: dict[str, Any] = {}
     if isinstance(renovate_payload, dict):
         package_files = renovate_payload.get("packageFiles") or {}
     if not isinstance(package_files, dict):
