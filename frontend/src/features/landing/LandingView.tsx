@@ -1,6 +1,7 @@
 import type React from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ApiClient } from "../../api/client";
+import { ReviewsApi } from "../../api/reviews";
 import { WorkspaceApi } from "../../api/workspaces";
 import { Ic } from "../../components/Icon";
 import { LEVELS } from "../../constants/levels";
@@ -25,6 +26,9 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 
 export function LandingView({ onLoad }: LandingViewProps) {
   const [loadingCreate, setLoadingCreate] = useState(false);
+  const [loadingReviewUpload, setLoadingReviewUpload] = useState(false);
+  const [reviewError, setReviewError] = useState<string>("");
+  const reviewZipInputRef = useRef<HTMLInputElement | null>(null);
 
   const createRee = async () => {
     setLoadingCreate(true);
@@ -45,6 +49,54 @@ export function LandingView({ onLoad }: LandingViewProps) {
     } finally {
       setLoadingCreate(false);
     }
+  };
+
+  const startReviewFromZip = async (file: File) => {
+    setLoadingReviewUpload(true);
+    setReviewError("");
+    try {
+      const env =
+        (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
+      const client = new ApiClient({
+        baseUrl: env.VITE_API_BASE_URL || "",
+      });
+      const reviewsApi = new ReviewsApi(client);
+
+      const init = await reviewsApi.initReviewUpload({
+        fileName: file.name,
+        size: file.size,
+        contentType: file.type || "application/zip",
+      });
+
+      await reviewsApi.uploadReviewBytes(init.uploadUrl, await file.arrayBuffer());
+      await reviewsApi.completeReviewUpload(init.reviewId, {
+        uploadToken: init.uploadToken,
+        archiveName: file.name,
+      });
+
+      onLoad(`${APP_ROUTE.REVIEWER}?reviewId=${encodeURIComponent(init.reviewId)}`);
+    } catch (error) {
+      setReviewError(
+        error instanceof Error
+          ? error.message
+          : "Failed to start review. Upload a ZIP containing ree/ree.json.",
+      );
+    } finally {
+      setLoadingReviewUpload(false);
+    }
+  };
+
+  const handleReviewZipSelection: React.ChangeEventHandler<HTMLInputElement> = (event) => {
+    const selectedFile = event.target.files?.[0];
+    event.currentTarget.value = "";
+    if (!selectedFile) {
+      return;
+    }
+    if (!selectedFile.name.toLowerCase().endsWith(".zip")) {
+      setReviewError("Review upload requires a .zip archive containing ree/ree.json.");
+      return;
+    }
+    void startReviewFromZip(selectedFile);
   };
 
   return (
@@ -155,8 +207,8 @@ export function LandingView({ onLoad }: LandingViewProps) {
           </button>
           <button
             type="button"
-            onClick={() => onLoad(APP_ROUTE.REVIEWER)}
-            disabled={loadingCreate}
+            onClick={() => reviewZipInputRef.current?.click()}
+            disabled={loadingCreate || loadingReviewUpload}
             style={{
               ...actionBtn({
                 border: `1px solid ${C.border}`,
@@ -175,8 +227,18 @@ export function LandingView({ onLoad }: LandingViewProps) {
             {...hoverBg(C.surfaceAlt, "transparent")}
             {...hoverColor(C.text, C.textMid)}
           >
-            Review REE
+            {loadingReviewUpload ? "Uploading Review ZIP…" : "Review REE"}
           </button>
+          <input
+            ref={reviewZipInputRef}
+            type="file"
+            accept=".zip,application/zip"
+            onChange={handleReviewZipSelection}
+            style={{ display: "none" }}
+          />
+          {reviewError && (
+            <div style={{ fontSize: 12, color: "#b91c1c", lineHeight: 1.4 }}>{reviewError}</div>
+          )}
         </div>
         <div
           style={{

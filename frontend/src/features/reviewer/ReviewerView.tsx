@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Ic } from "../../components/Icon";
 import { LevelBadge } from "../../components/LevelBadge";
 import { LEVELS } from "../../constants/levels";
 import { C, F, hoverBg, hoverColor, S_SECTION_LABEL_SMALL } from "../../constants/theme";
-import type { LogLine, Ree } from "../../types/ree";
+import type { LogLine, Ree, ReeFile } from "../../types/ree";
 import type { Level, ServiceParamValue, StepState } from "../../types/services";
+import { PageFiles } from "../files/PageFiles";
 import {
   MetaRow,
   REACTIVATION_STEPS,
@@ -17,6 +18,7 @@ import {
 
 interface ReviewerViewProps {
   ree?: Ree;
+  reviewFiles?: Array<{ path: string; size?: number }>;
   onBack: () => void;
   defaultRee: Ree;
   PodOrbitControl: React.ComponentType<{
@@ -31,11 +33,13 @@ interface ReviewerViewProps {
 
 export function ReviewerView({
   ree: reeInput,
+  reviewFiles = [],
   onBack,
   defaultRee,
   PodOrbitControl,
 }: ReviewerViewProps) {
   const ree = reeInput || defaultRee;
+  const [reviewerPage, setReviewerPage] = useState<"review" | "files">("review");
   const level = ree._evalLevel ?? 5;
   const levelMeta = LEVELS[Math.min(level, 7)];
   const sealDate = ree._sealedAt
@@ -87,6 +91,17 @@ export function ReviewerView({
       await runStep(step.key, stepParams[step.key]);
     }
   };
+  const reviewReeFiles = useMemo<ReeFile[]>(
+    () =>
+      (reviewFiles || []).map((file, index) => ({
+        id: `review-file-${index}-${file.path}`,
+        name: file.path,
+        type: "file",
+        tag: "REE",
+        size: file.size,
+      })),
+    [reviewFiles],
+  );
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg }}>
@@ -242,6 +257,67 @@ export function ReviewerView({
                 marginBottom: 10,
               }}
             >
+              Navigation
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <button
+                type="button"
+                onClick={() => setReviewerPage("review")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  border: `1px solid ${reviewerPage === "review" ? levelMeta.color : C.border}`,
+                  borderRadius: 7,
+                  background: reviewerPage === "review" ? `${levelMeta.bg}` : C.surface,
+                  color: reviewerPage === "review" ? levelMeta.color : C.textMid,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: F.sans,
+                  padding: "7px 9px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                {...hoverBg(
+                  C.surfaceAlt,
+                  reviewerPage === "review" ? `${levelMeta.bg}` : C.surface,
+                )}
+              >
+                <span style={{ display: "flex" }}>{Ic.shield(13)}</span>
+                Review
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewerPage("files")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  border: `1px solid ${reviewerPage === "files" ? levelMeta.color : C.border}`,
+                  borderRadius: 7,
+                  background: reviewerPage === "files" ? `${levelMeta.bg}` : C.surface,
+                  color: reviewerPage === "files" ? levelMeta.color : C.textMid,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: F.sans,
+                  padding: "7px 9px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                {...hoverBg(C.surfaceAlt, reviewerPage === "files" ? `${levelMeta.bg}` : C.surface)}
+              >
+                <span style={{ display: "flex" }}>{Ic.file(13)}</span>
+                Files ({reviewFiles.length})
+              </button>
+            </div>
+          </div>
+          <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
+            <div
+              style={{
+                ...S_SECTION_LABEL_SMALL,
+                marginBottom: 10,
+              }}
+            >
               Metadata
             </div>
             <MetaRow label="Origin URL" value={ree.origin_url} mono href={ree.origin_url} />
@@ -304,49 +380,60 @@ export function ReviewerView({
             background: `linear-gradient(180deg, ${levelMeta.bg}50 0%, ${C.bg} 320px)`,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              borderBottom: `1px solid ${C.border}`,
-              paddingBottom: 28,
-            }}
-          >
-            <PodOrbitControl
-              level={level}
-              levelMeta={levelMeta}
-              stepStates={stepStates}
-              allDone={allDone}
-              isRunningAll={isRunningAll}
-              onRunAll={runAll}
-            />
-          </div>
-          <div style={{ padding: "20px 28px" }}>
-            {allDone && (
-              <div style={{ marginBottom: 20 }}>
-                <RvVerdictBanner allDone={allDone} />
+          {reviewerPage === "review" ? (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  borderBottom: `1px solid ${C.border}`,
+                  paddingBottom: 28,
+                }}
+              >
+                <PodOrbitControl
+                  level={level}
+                  levelMeta={levelMeta}
+                  stepStates={stepStates}
+                  allDone={allDone}
+                  isRunningAll={isRunningAll}
+                  onRunAll={runAll}
+                />
               </div>
-            )}
-            <div style={{ maxWidth: 660 }}>
-              {REACTIVATION_STEPS.map((step, i) => {
-                const prevDone = i === 0 || stepStates[REACTIVATION_STEPS[i - 1].key] === "done";
-                return (
-                  <RvStepCard
-                    key={step.key}
-                    step={step}
-                    index={i}
-                    state={stepStates[step.key] || "idle"}
-                    log={stepLogs[step.key] || null}
-                    params={stepParams[step.key]}
-                    onSetParam={setParam}
-                    onRun={runStep}
-                    isLast={i === REACTIVATION_STEPS.length - 1}
-                    prevDone={prevDone}
-                  />
-                );
-              })}
+              <div style={{ padding: "20px 28px" }}>
+                {allDone && (
+                  <div style={{ marginBottom: 20 }}>
+                    <RvVerdictBanner allDone={allDone} />
+                  </div>
+                )}
+                <div style={{ maxWidth: 660 }}>
+                  {REACTIVATION_STEPS.map((step, i) => {
+                    const prevDone =
+                      i === 0 || stepStates[REACTIVATION_STEPS[i - 1].key] === "done";
+                    return (
+                      <RvStepCard
+                        key={step.key}
+                        step={step}
+                        index={i}
+                        state={stepStates[step.key] || "idle"}
+                        log={stepLogs[step.key] || null}
+                        params={stepParams[step.key]}
+                        onSetParam={setParam}
+                        onRun={runStep}
+                        isLast={i === REACTIVATION_STEPS.length - 1}
+                        prevDone={prevDone}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ padding: "20px 28px" }}>
+              <div style={{ maxWidth: 980 }}>
+                <PageFiles files={[]} reeFiles={reviewReeFiles} />
+              </div>
             </div>
-          </div>
+          )}
         </main>
       </div>
     </div>

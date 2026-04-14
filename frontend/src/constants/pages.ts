@@ -24,7 +24,8 @@ export const APP_ROUTE = {
 export type AppLoadRoutePath =
   | typeof APP_ROUTE.EXPLORER
   | typeof APP_ROUTE.REVIEWER
-  | `${typeof APP_ROUTE.EXPLORER}?${string}`;
+  | `${typeof APP_ROUTE.EXPLORER}?${string}`
+  | `${typeof APP_ROUTE.REVIEWER}?${string}`;
 
 export type ExplorerPage = (typeof PAGE)[keyof typeof PAGE];
 const EXPLORER_PAGES = Object.values(PAGE) as ExplorerPage[];

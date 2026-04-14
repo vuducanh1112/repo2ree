@@ -37,4 +37,10 @@ export const endpoints = {
     `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}:retry`,
   workspaceRunLogs: (workspaceId: string, runId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/runs/${encodeURIComponent(runId)}/logs`,
+  reviewUploadInit: () => `${API_V1_BASE}/reviews:upload-init`,
+  reviewUploadBytes: (reviewId: string, uploadToken: string) =>
+    `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}/upload/${encodeURIComponent(uploadToken)}`,
+  reviewUploadComplete: (reviewId: string) =>
+    `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}:upload-complete`,
+  review: (reviewId: string) => `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}`,
 };
