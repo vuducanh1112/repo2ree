@@ -24,7 +24,6 @@ WorkspaceStatus = Literal["draft", "ready", "sealed", "archived"]
 
 REE_ROOT_PREFIX = "ree/"
 REE_MANIFEST_ENTRY_PATH = f"{REE_ROOT_PREFIX}ree.json"
-REE_SBOM_ENTRY_PATH = f"{REE_ROOT_PREFIX}sbom.json"
 
 
 class WorkspaceCreatePayload(BaseModel):
@@ -321,25 +320,31 @@ def _build_ree_download_entries(
     ]
 
     optional_entries = [
-        (
-            manifest.get("runtime"),
-            f"{REE_ROOT_PREFIX}{_archive_workspace_path(str(manifest.get('runtime') or ''))}",
-            "Runtime",
-        ),
-        (manifest.get("sbom"), REE_SBOM_ENTRY_PATH, "SBOM"),
-        (
-            manifest.get("build_script"),
-            f"{REE_ROOT_PREFIX}{_archive_workspace_path(str(manifest.get('build_script') or ''))}",
-            "Workspace",
-        ),
-        (
-            manifest.get("activation_script"),
-            f"{REE_ROOT_PREFIX}{_archive_workspace_path(str(manifest.get('activation_script') or ''))}",
-            "Workspace",
-        ),
+        {
+            "workspace_path": manifest.get("runtime"),
+            "archive_path": _archive_root_file_path(
+                str(manifest.get("runtime") or ""), "runtime"
+            ),
+            "tag": "Runtime",
+            "enabled": bool(manifest.get("runtime_included")),
+        },
+        {
+            "workspace_path": manifest.get("sbom"),
+            "archive_path": _archive_root_file_path(
+                str(manifest.get("sbom") or ""), "sbom.json"
+            ),
+            "tag": "SBOM",
+            "enabled": True,
+        },
     ]
 
-    for workspace_path, archive_path, tag in optional_entries:
+    for entry in optional_entries:
+        workspace_path = entry["workspace_path"]
+        archive_path = str(entry["archive_path"])
+        tag = str(entry["tag"])
+        enabled = bool(entry["enabled"])
+        if not enabled:
+            continue
         normalized = _normalize_workspace_path(str(workspace_path or ""))
         if not normalized or normalized not in excluded_paths:
             continue
@@ -573,6 +578,14 @@ def _normalize_workspace_path(path: str) -> str:
 
 def _archive_workspace_path(path: str) -> str:
     return _normalize_workspace_path(path).replace("..", "_")
+
+
+def _archive_root_file_path(path: str, fallback_name: str) -> str:
+    normalized = _normalize_workspace_path(path)
+    filename = _safe_filename(
+        Path(normalized).name if normalized else None, fallback_name
+    )
+    return f"{REE_ROOT_PREFIX}{filename}"
 
 
 def build_workspace_ree_archive(ree_id: str) -> bytes:
@@ -851,12 +864,25 @@ def remove_source(ree_id: str) -> dict[str, Any]:
     _clear_workspace_content(ree_id)
     metadata = _read_metadata(ree_id)
     metadata["status"] = "draft"
+    metadata["externalRef"] = None
     metadata["source"] = None
-    metadata["reeDraft"] = (
+    cleared_ree = (
         _ree_from_metadata(metadata)
         .with_source(None)
-        .model_dump(by_alias=True, exclude_none=True)
+        .model_copy(
+            update={
+                "origin_url": "",
+                "source_type": "",
+                "runtime": "",
+                "build_runtime_script": "",
+                "activation_script": "",
+                "sbom": "",
+                "source_included": False,
+                "runtime_included": False,
+            }
+        )
     )
+    metadata["reeDraft"] = cleared_ree.model_dump(by_alias=True, exclude_none=True)
     return {
         "invalidatedSteps": ["source", "workflow"],
         "workspace": get_workspace(
