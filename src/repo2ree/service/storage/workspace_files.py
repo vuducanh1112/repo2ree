@@ -409,11 +409,14 @@ def _snapshot_archive_name(seed: str | None, fallback: str = "source") -> str:
     return f"{normalized}-snapshot.tar.gz"
 
 
-def _save_workspace_snapshot_archive(ree_id: str, archive_name: str) -> str:
+def _save_workspace_snapshot_archive(
+    ree_id: str, source_path: Path, archive_name: str
+) -> str:
     archive_file_name = _snapshot_archive_name(archive_name, "source")
     archive_path = ree_dir(ree_id) / archive_file_name
     with tarfile.open(archive_path, mode="w:gz") as tar:
-        tar.add(workspace_dir(ree_id), arcname="source-repo")
+        for item in sorted(source_path.iterdir(), key=lambda path: path.name):
+            tar.add(item, arcname=item.name)
     return archive_file_name
 
 
@@ -697,6 +700,7 @@ def acquire_source(ree_id: str, payload: SourceAcquirePayload) -> dict[str, Any]
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_dir_path = Path(tmp_dir)
+        acquired_source_path: Path | None = None
         if payload.sourceType == "git":
             clone_dir = tmp_dir_path / "repo"
             try:
@@ -712,21 +716,29 @@ def acquire_source(ree_id: str, payload: SourceAcquirePayload) -> dict[str, Any]
             except subprocess.CalledProcessError as exc:
                 raise RuntimeError(exc.stderr.strip() or "git clone failed") from exc
             _copy_tree_contents(clone_dir, root)
+            acquired_source_path = clone_dir
         else:
             archive_name = _safe_filename(
                 Path(urlparse(payload.originUrl).path).name, "source.archive"
             )
             archive_path = tmp_dir_path / archive_name
+            extract_dir = tmp_dir_path / "extracted"
+            extract_dir.mkdir(parents=True, exist_ok=True)
             _download_or_open_local(payload.originUrl, archive_path)
             if payload.sourceType == "zip" or archive_path.suffix.lower() == ".zip":
-                _safe_extract_zip(archive_path, root)
+                _safe_extract_zip(archive_path, extract_dir)
             else:
-                _safe_extract_tar(archive_path, root)
+                _safe_extract_tar(archive_path, extract_dir)
+            _copy_tree_contents(extract_dir, root)
+            acquired_source_path = extract_dir
 
-    snapshot_archive = _save_workspace_snapshot_archive(
-        ree_id,
-        Path(urlparse(payload.originUrl).path).name or "source",
-    )
+        assert acquired_source_path is not None
+        snapshot_archive = _save_workspace_snapshot_archive(
+            ree_id,
+            acquired_source_path,
+            Path(urlparse(payload.originUrl).path).name or "source",
+        )
+
     snapshot_captured_at = _utc_now()
     metadata["source"]["snapshotArchive"] = snapshot_archive
     metadata["source"]["snapshotCapturedAt"] = snapshot_captured_at
@@ -786,11 +798,17 @@ def complete_source_upload(
             tmp.write(staged_bytes)
             tmp_path = Path(tmp.name)
         try:
-            archive_suffix = archive_name.lower()
-            if archive_suffix.endswith(".zip"):
-                _safe_extract_zip(tmp_path, root)
-            else:
-                _safe_extract_tar(tmp_path, root)
+            with tempfile.TemporaryDirectory() as extract_dir:
+                extracted_source = Path(extract_dir)
+                archive_suffix = archive_name.lower()
+                if archive_suffix.endswith(".zip"):
+                    _safe_extract_zip(tmp_path, extracted_source)
+                else:
+                    _safe_extract_tar(tmp_path, extracted_source)
+                _copy_tree_contents(extracted_source, root)
+                snapshot_archive = _save_workspace_snapshot_archive(
+                    ree_id, extracted_source, archive_name
+                )
         finally:
             tmp_path.unlink(missing_ok=True)
     else:
@@ -798,10 +816,10 @@ def complete_source_upload(
             f"# {archive_name}\n\nArchive upload completed without bytes.\n",
             encoding="utf-8",
         )
+        snapshot_archive = _save_workspace_snapshot_archive(ree_id, root, archive_name)
 
     staged_archive.unlink(missing_ok=True)
 
-    snapshot_archive = _save_workspace_snapshot_archive(ree_id, archive_name)
     snapshot_captured_at = _utc_now()
 
     metadata = _read_metadata(ree_id)
