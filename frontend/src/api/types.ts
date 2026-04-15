@@ -125,6 +125,7 @@ export interface ReviewDetailDto {
   archiveName?: string;
   reeDraft: Partial<ReeDraftDto>;
   files?: Array<{ path: string; size?: number }>;
+  workspaceFiles?: Array<{ path: string; size?: number }>;
 }
 
 export interface ReviewUploadCompleteResponseDto {

@@ -1,9 +1,10 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Ic } from "../../components/Icon";
 import { C, F, hoverColor, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../../constants/theme";
 import type { LogLine, Ree } from "../../types/ree";
 import type { ServiceParam, ServiceParamValue, StepState } from "../../types/services";
+import { WorkflowLogSection } from "../explorer/components/workflow/servicePanels";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,
@@ -20,28 +21,33 @@ interface ReactivationStep {
   logLines: (ree: Ree, params?: ReactivationParams) => LogLine[];
 }
 
-export type ReactivationStepKey = "fetch" | "rebuild" | "diffcheck" | "activate";
+export type ReactivationStepKey = "acquire_source" | "build_runtime" | "test_activation";
 export type ReactivationParams = Record<string, ServiceParamValue>;
 
 export const REACTIVATION_STEPS: ReactivationStep[] = [
   {
-    key: "fetch",
-    label: "Fetch Archive",
+    key: "acquire_source",
+    label: "Acquire Source",
     icon: Ic.archive,
     color: "#0891b2",
-    desc: "Download the sealed REE archive from Software Heritage or Zenodo.",
-    logLines: (ree) => [
-      { type: "info", msg: "Fetching REE archive from registry…" },
-      { type: "info", msg: `  SWHID: ${ree.swhid || "(not set)"}` },
-      { type: "info", msg: `  DOI:   ${ree.zenodo_doi || "(not set)"}` },
-      { type: "info", msg: "Verifying archive checksum…" },
-      { type: "ok", msg: "SHA-256 matches manifest ✓" },
-      { type: "ok", msg: `Archive fetched — ${ree.name}.ree.tar.gz (1.4 GB)` },
-    ],
+    desc: "Acquire source when it is not included in the uploaded review package.",
+    logLines: (ree) =>
+      ree._sourceIncluded
+        ? [
+            { type: "info", msg: "Source already included in uploaded archive." },
+            { type: "ok", msg: "Source acquisition skipped ✓" },
+          ]
+        : [
+            { type: "info", msg: "Acquiring source snapshot…" },
+            { type: "info", msg: `  Origin: ${ree.origin_url || "(not set)"}` },
+            { type: "info", msg: `  SWHID:  ${ree.swhid || "(not set)"}` },
+            { type: "info", msg: `  DOI:    ${ree.zenodo_doi || "(not set)"}` },
+            { type: "ok", msg: "Source snapshot acquired ✓" },
+          ],
   },
   {
-    key: "rebuild",
-    label: "Rebuild Runtime",
+    key: "build_runtime",
+    label: "Build Runtime",
     icon: Ic.cpu,
     color: "#7c3aed",
     desc: "Execute the build script from scratch with --no-cache to reconstruct the container image.",
@@ -80,30 +86,8 @@ export const REACTIVATION_STEPS: ReactivationStep[] = [
     ],
   },
   {
-    key: "diffcheck",
-    label: "Diff Check",
-    icon: Ic.refresh,
-    color: "#b45309",
-    desc: "Compare the rebuilt image digest against the sealed artifact's manifest hash.",
-    logLines: () => [
-      { type: "info", msg: "Digesting sealed runtime.tar.gz …" },
-      {
-        type: "info",
-        msg: "  Original: sha256:4a8f2e1c3b9d6e7f2a1c3b9d6e7f2a1c3b9d6e7f2a1c3b9d6e7f2a1c3b9d6e7f",
-      },
-      { type: "info", msg: "Digesting rebuilt runtime.tar.gz …" },
-      {
-        type: "info",
-        msg: "  Rebuilt:  sha256:4a8f2e1c3b9d6e7f2a1c3b9d6e7f2a1c3b9d6e7f2a1c3b9d6e7f2a1c3b9d6e7f",
-      },
-      { type: "ok", msg: "Digests match — environment is byte-for-byte reproducible ✓" },
-      { type: "info", msg: "SBOM component diff: 0 additions, 0 removals" },
-      { type: "ok", msg: "SBOM unchanged ✓" },
-    ],
-  },
-  {
-    key: "activate",
-    label: "Activate & Verify",
+    key: "test_activation",
+    label: "Test Activation",
     icon: Ic.shield,
     color: "#16a34a",
     desc: "Load the rebuilt runtime and run the activation script to verify the environment starts cleanly.",
@@ -117,109 +101,6 @@ export const REACTIVATION_STEPS: ReactivationStep[] = [
     ],
   },
 ];
-
-interface ReviewLogPanelProps {
-  lines: LogLine[] | null;
-  running: boolean;
-}
-
-function ReviewLogPanel({ lines, running }: ReviewLogPanelProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [displayed, setDisplayed] = useState<LogLine[]>([]);
-
-  useEffect(() => {
-    if (!lines) {
-      setDisplayed([]);
-      return;
-    }
-    setDisplayed([]);
-    let i = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let active = true;
-    const tick = () => {
-      if (!active || i >= lines.length) return;
-      const nextLine = lines[i++];
-      setDisplayed((d) => [...d, nextLine]);
-      timer = setTimeout(tick, 80 + Math.random() * 60);
-    };
-    tick();
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [lines]);
-
-  useEffect(() => {
-    if (displayed.length === 0) return;
-    if (ref.current) ref.current.scrollTop = ref.current.scrollHeight;
-  }, [displayed]);
-
-  const typeColor: Record<LogLine["type"], string> = {
-    ok: "#22c55e",
-    err: "#ef4444",
-    warn: "#f59e0b",
-    info: "#94a3b8",
-    out: "#e2e8f0",
-  };
-  const typePrefix: Record<LogLine["type"], string> = {
-    ok: "✓ ",
-    err: "✗ ",
-    warn: "⚠ ",
-    info: "  ",
-    out: "  ",
-  };
-
-  return (
-    <div
-      ref={ref}
-      style={{
-        background: "#0d1117",
-        borderRadius: 8,
-        border: "1px solid #1e293b",
-        minHeight: 160,
-        maxHeight: 260,
-        overflowY: "auto",
-        padding: "12px 14px",
-        fontFamily: F.mono,
-        fontSize: 12,
-        lineHeight: 1.8,
-      }}
-    >
-      {displayed.length === 0 && !running && (
-        <span style={{ color: "#4a5568", fontStyle: "italic" }}>Output will appear here…</span>
-      )}
-      {(() => {
-        const seenLines = new Map<string, number>();
-        return displayed.map((l) => {
-          const lineSig = `${l.type}:${l.msg}`;
-          const occurrence = (seenLines.get(lineSig) ?? 0) + 1;
-          seenLines.set(lineSig, occurrence);
-          return (
-            <div
-              key={`${lineSig}::${occurrence}`}
-              style={{ color: typeColor[l.type] || "#e2e8f0" }}
-            >
-              <span style={{ color: typeColor[l.type] || "#64748b", userSelect: "none" }}>
-                {typePrefix[l.type] || "  "}
-              </span>
-              {l.msg}
-            </div>
-          );
-        });
-      })()}
-      {running && (
-        <div
-          style={{ color: "#64748b", display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}
-        >
-          <span style={{ animation: "spin 0.9s linear infinite", display: "inline-flex" }}>
-            {Ic.loader(11)}
-          </span>
-          <span>running…</span>
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface MetaRowProps {
   label: string;
@@ -351,7 +232,8 @@ interface RvStepCardProps {
   log: LogLine[] | null;
   params: ReactivationParams;
   onSetParam: (stepKey: ReactivationStepKey, paramKey: string, value: ServiceParamValue) => void;
-  onRun: (key: ReactivationStepKey, params: ReactivationParams) => void;
+  onRun: (key: ReactivationStepKey, params: ReactivationParams) => boolean | Promise<boolean>;
+  onCancel?: (key: ReactivationStepKey) => void | Promise<void>;
   isLast: boolean;
   prevDone: boolean;
 }
@@ -364,6 +246,7 @@ export function RvStepCard({
   params,
   onSetParam,
   onRun,
+  onCancel,
   isLast,
   prevDone,
 }: RvStepCardProps) {
@@ -657,7 +540,37 @@ export function RvStepCard({
               </span>
               {running ? "Running…" : done ? "Re-run" : `Run ${step.label}`}
             </button>
-            {log && <ReviewLogPanel lines={log} running={running} />}
+            {running && onCancel && (
+              <button
+                type="button"
+                onClick={() => onCancel(step.key)}
+                style={{
+                  ...actionBtn({
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    background: "#fff1f2",
+                    border: "1.5px solid #fecdd3",
+                    color: "#be123c",
+                    fontWeight: 700,
+                  }),
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 7,
+                  width: "100%",
+                  marginBottom: log ? 12 : 0,
+                }}
+              >
+                {Ic.x(13)} Cancel
+              </button>
+            )}
+            {log && (
+              <WorkflowLogSection
+                log={{ lines: log, ts: log[log.length - 1]?.ts || new Date().toISOString() }}
+                running={running}
+                title="Output"
+              />
+            )}
           </div>
         )}
       </div>

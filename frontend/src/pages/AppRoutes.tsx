@@ -49,17 +49,20 @@ function mapReviewDraftToRee(review: ReviewDetailDto): Ree {
 
 function ReviewerRouteView({ onBack }: { onBack: () => void }) {
   const location = useLocation();
+  const reviewId = new URLSearchParams(location.search).get("reviewId") || undefined;
   const [reviewRee, setReviewRee] = useState<Ree | undefined>(undefined);
   const [reviewFiles, setReviewFiles] = useState<Array<{ path: string; size?: number }>>([]);
+  const [reviewWorkspaceFiles, setReviewWorkspaceFiles] = useState<
+    Array<{ path: string; size?: number }>
+  >([]);
   const [loadingReview, setLoadingReview] = useState(false);
   const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const reviewId = params.get("reviewId");
     if (!reviewId) {
       setReviewRee(undefined);
       setReviewFiles([]);
+      setReviewWorkspaceFiles([]);
       setLoadError("");
       setLoadingReview(false);
       return;
@@ -83,6 +86,9 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
           setReviewFiles(
             (detail.files || []).map((file) => ({ path: file.path, size: file.size })),
           );
+          setReviewWorkspaceFiles(
+            (detail.workspaceFiles || []).map((file) => ({ path: file.path, size: file.size })),
+          );
         }
       } catch (error) {
         if (!canceled) {
@@ -99,7 +105,7 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
     return () => {
       canceled = true;
     };
-  }, [location.search]);
+  }, [reviewId]);
 
   if (loadingReview) {
     return <div style={{ padding: 24 }}>Loading review…</div>;
@@ -111,8 +117,10 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
 
   return (
     <ReviewerView
+      reviewId={reviewId}
       ree={reviewRee}
       reviewFiles={reviewFiles}
+      reviewWorkspaceFiles={reviewWorkspaceFiles}
       onBack={onBack}
       defaultRee={SEALED_DEMO_REE}
       PodOrbitControl={PodOrbitControl}

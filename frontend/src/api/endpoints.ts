@@ -43,4 +43,16 @@ export const endpoints = {
   reviewUploadComplete: (reviewId: string) =>
     `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}:upload-complete`,
   review: (reviewId: string) => `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}`,
+  reviewSourceAcquire: (reviewId: string) =>
+    `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}/source:acquire`,
+  reviewBuildRuntime: (reviewId: string) =>
+    `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}/build-runtime`,
+  reviewActivationTest: (reviewId: string) =>
+    `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}/activation-test`,
+  reviewRun: (reviewId: string, runId: string) =>
+    `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}/runs/${encodeURIComponent(runId)}`,
+  reviewRunCancel: (reviewId: string, runId: string) =>
+    `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}/runs/${encodeURIComponent(runId)}:cancel`,
+  reviewRunLogs: (reviewId: string, runId: string) =>
+    `${API_V1_BASE}/reviews/${encodeURIComponent(reviewId)}/runs/${encodeURIComponent(runId)}/logs`,
 };

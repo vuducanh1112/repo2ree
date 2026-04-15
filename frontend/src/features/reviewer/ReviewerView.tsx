@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ApiClient, mapRunLogsToLegacy, ReviewsApi } from "../../api";
 import { Ic } from "../../components/Icon";
 import { LevelBadge } from "../../components/LevelBadge";
 import { LEVELS } from "../../constants/levels";
 import { C, F, hoverBg, hoverColor, S_SECTION_LABEL_SMALL } from "../../constants/theme";
 import type { LogLine, Ree, ReeFile } from "../../types/ree";
 import type { Level, ServiceParamValue, StepState } from "../../types/services";
+import type { FileTreeNode } from "../../types/workspace";
 import { PageFiles } from "../files/PageFiles";
 import {
   MetaRow,
@@ -17,8 +19,10 @@ import {
 } from "./reviewerSupport";
 
 interface ReviewerViewProps {
+  reviewId?: string;
   ree?: Ree;
   reviewFiles?: Array<{ path: string; size?: number }>;
+  reviewWorkspaceFiles?: Array<{ path: string; size?: number }>;
   onBack: () => void;
   defaultRee: Ree;
   PodOrbitControl: React.ComponentType<{
@@ -31,15 +35,64 @@ interface ReviewerViewProps {
   }>;
 }
 
+function buildTreeFromPaths(files: Array<{ path: string; size?: number }>, idPrefix: string) {
+  const roots: FileTreeNode[] = [];
+  for (const file of files) {
+    const parts = (file.path || "").split("/").filter(Boolean);
+    if (parts.length === 0) continue;
+
+    let cursor = roots;
+    let currentPrefix = "";
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      const part = parts[i];
+      currentPrefix = currentPrefix ? `${currentPrefix}/${part}` : part;
+      let folder = cursor.find((node) => node.type === "folder" && node.name === part);
+      if (!folder) {
+        folder = {
+          id: `${idPrefix}-dir-${currentPrefix}`,
+          name: part,
+          type: "folder",
+          children: [],
+        };
+        cursor.push(folder);
+      }
+      if (!folder.children) {
+        folder.children = [];
+      }
+      cursor = folder.children;
+    }
+
+    const fileName = parts[parts.length - 1];
+    const fileNode: FileTreeNode = {
+      id: `${idPrefix}-file-${file.path}`,
+      name: fileName,
+      type: "file",
+      size: file.size,
+      tag: "workspace",
+    };
+    const existingIdx = cursor.findIndex((node) => node.type === "file" && node.name === fileName);
+    if (existingIdx >= 0) {
+      cursor[existingIdx] = fileNode;
+    } else {
+      cursor.push(fileNode);
+    }
+  }
+  return roots;
+}
+
 export function ReviewerView({
+  reviewId,
   ree: reeInput,
   reviewFiles = [],
+  reviewWorkspaceFiles = [],
   onBack,
   defaultRee,
   PodOrbitControl,
 }: ReviewerViewProps) {
   const ree = reeInput || defaultRee;
   const [reviewerPage, setReviewerPage] = useState<"review" | "files">("review");
+  const [reviewRootFilesState, setReviewRootFilesState] = useState(reviewFiles);
+  const [reviewWorkspaceFilesState, setReviewWorkspaceFilesState] = useState(reviewWorkspaceFiles);
   const level = ree._evalLevel ?? 5;
   const levelMeta = LEVELS[Math.min(level, 7)];
   const sealDate = ree._sealedAt
@@ -54,6 +107,35 @@ export function ReviewerView({
 
   const [stepStates, setStepStates] = useState<Partial<Record<ReactivationStepKey, StepState>>>({});
   const [stepLogs, setStepLogs] = useState<Partial<Record<ReactivationStepKey, LogLine[]>>>({});
+  const [stepRunIds, setStepRunIds] = useState<Partial<Record<ReactivationStepKey, string>>>({});
+  const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
+  const apiClient = useMemo(
+    () =>
+      new ApiClient({
+        baseUrl: env.VITE_API_BASE_URL || "",
+      }),
+    [env.VITE_API_BASE_URL],
+  );
+  const reviewsApi = useMemo(() => new ReviewsApi(apiClient), [apiClient]);
+
+  useEffect(() => {
+    setReviewRootFilesState(reviewFiles);
+  }, [reviewFiles]);
+
+  useEffect(() => {
+    setReviewWorkspaceFilesState(reviewWorkspaceFiles);
+  }, [reviewWorkspaceFiles]);
+
+  const refreshReviewFiles = async () => {
+    if (!reviewId) return;
+    const detail = await reviewsApi.getReview(reviewId);
+    setReviewRootFilesState(
+      (detail.files || []).map((file) => ({ path: file.path, size: file.size })),
+    );
+    setReviewWorkspaceFilesState(
+      (detail.workspaceFiles || []).map((file) => ({ path: file.path, size: file.size })),
+    );
+  };
   const initParams = (): Record<ReactivationStepKey, ReactivationParams> =>
     Object.fromEntries(
       REACTIVATION_STEPS.map((step) => [
@@ -67,15 +149,149 @@ export function ReviewerView({
   const setParam = (stepKey: ReactivationStepKey, paramKey: string, val: ServiceParamValue) =>
     setStepParams((p) => ({ ...p, [stepKey]: { ...p[stepKey], [paramKey]: val } }));
 
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const isTerminalStatus = (status: string) =>
+    status === "succeeded" || status === "failed" || status === "canceled";
+
+  const runBackendStep = async (key: ReactivationStepKey): Promise<LogLine[]> => {
+    if (!reviewId) {
+      const localStep = REACTIVATION_STEPS.find((reactivationStep) => reactivationStep.key === key);
+      return localStep ? localStep.logLines(ree, stepParams[key]) : [];
+    }
+
+    if (key === "acquire_source" && ree._sourceIncluded) {
+      return [
+        { type: "info", msg: "Source already included in uploaded archive." },
+        { type: "ok", msg: "Source acquisition skipped ✓" },
+      ];
+    }
+
+    let runId = "";
+    if (key === "acquire_source") {
+      if (!ree.origin_url || !ree.source_type) {
+        throw new Error("origin_url and source_type are required to acquire source");
+      }
+      const sourceRun = await reviewsApi.acquireSource(reviewId);
+      runId = sourceRun.runId;
+    } else if (key === "build_runtime") {
+      const buildRun = await reviewsApi.createBuildRuntimeRun(reviewId, {
+        build_runtime_script_path: ree.build_runtime_script,
+        produced_runtime_path: ree.runtime,
+      });
+      runId = buildRun.runId;
+    } else {
+      const activationRun = await reviewsApi.createActivationTestRun(reviewId, {
+        activation_script_path: ree.activation_script,
+      });
+      runId = activationRun.runId;
+    }
+    setStepRunIds((prev) => ({ ...prev, [key]: runId }));
+
+    const collected: LogLine[] = [];
+    const seen = new Set<string>();
+    let cursor: string | undefined;
+
+    for (let i = 0; i < 120; i += 1) {
+      const logs = await reviewsApi.listRunLogs(reviewId, runId, cursor);
+      const mapped = mapRunLogsToLegacy(logs.entries);
+      for (const line of mapped) {
+        const keyPart = `${line.ts || ""}::${line.type}::${line.msg}`;
+        if (seen.has(keyPart)) continue;
+        seen.add(keyPart);
+        collected.push(line);
+      }
+      cursor = logs.nextCursor;
+      setStepLogs((prevLogs) => ({ ...prevLogs, [key]: [...collected] }));
+
+      if (isTerminalStatus(logs.runStatus)) {
+        while (logs.hasMore && cursor) {
+          const nextLogs = await reviewsApi.listRunLogs(reviewId, runId, cursor);
+          for (const line of mapRunLogsToLegacy(nextLogs.entries)) {
+            const keyPart = `${line.ts || ""}::${line.type}::${line.msg}`;
+            if (seen.has(keyPart)) continue;
+            seen.add(keyPart);
+            collected.push(line);
+          }
+          cursor = nextLogs.nextCursor;
+        }
+        const run = await reviewsApi.getRun(reviewId, runId);
+        if (run.status === "canceled") {
+          collected.push({ type: "warn", msg: "Run canceled" });
+        } else if (run.status !== "succeeded") {
+          collected.push({ type: "err", msg: `Run ended with status: ${run.status}` });
+        }
+        setStepRunIds((prev) => ({ ...prev, [key]: "" }));
+        return collected;
+      }
+
+      await sleep(i < 10 ? 700 : i < 40 ? 1200 : 2000);
+    }
+
+    collected.push({ type: "warn", msg: "Run polling timed out before completion" });
+    setStepRunIds((prev) => ({ ...prev, [key]: "" }));
+    return collected;
+  };
+
   const runStep = async (key: ReactivationStepKey, params: ReactivationParams) => {
-    const step = REACTIVATION_STEPS.find((reactivationStep) => reactivationStep.key === key);
-    if (!step) return;
+    void params;
+    if (!REACTIVATION_STEPS.find((reactivationStep) => reactivationStep.key === key)) return false;
     setStepStates((prevStates) => ({ ...prevStates, [key]: "loading" }));
-    setStepLogs((prevLogs) => ({ ...prevLogs, [key]: step.logLines(ree, params) }));
-    await new Promise((resolve) =>
-      setTimeout(resolve, 1200 + step.logLines(ree, params).length * 80),
-    );
-    setStepStates((prevStates) => ({ ...prevStates, [key]: "done" }));
+    setStepLogs((prevLogs) => ({ ...prevLogs, [key]: [] }));
+    try {
+      const lines = await runBackendStep(key);
+      setStepLogs((prevLogs) => ({ ...prevLogs, [key]: lines }));
+      const hasError = lines.some((line) => line.type === "err");
+      setStepStates((prevStates) => ({ ...prevStates, [key]: hasError ? "idle" : "done" }));
+      if (!hasError) {
+        try {
+          await refreshReviewFiles();
+        } catch {
+          setStepLogs((prevLogs) => ({
+            ...prevLogs,
+            [key]: [
+              ...(prevLogs[key] || []),
+              { type: "warn", msg: "Run succeeded, but failed to refresh file list" },
+            ],
+          }));
+        }
+      }
+      return !hasError;
+    } catch (error) {
+      setStepLogs((prevLogs) => ({
+        ...prevLogs,
+        [key]: [
+          {
+            type: "err",
+            msg: error instanceof Error ? error.message : "Failed to execute step",
+          },
+        ],
+      }));
+      setStepStates((prevStates) => ({ ...prevStates, [key]: "idle" }));
+      return false;
+    }
+  };
+
+  const cancelStep = async (key: ReactivationStepKey) => {
+    const runId = stepRunIds[key];
+    if (!reviewId || !runId) return;
+    try {
+      await reviewsApi.cancelRun(reviewId, runId);
+      setStepLogs((prevLogs) => ({
+        ...prevLogs,
+        [key]: [...(prevLogs[key] || []), { type: "warn", msg: "Cancel requested by reviewer" }],
+      }));
+    } catch (error) {
+      setStepLogs((prevLogs) => ({
+        ...prevLogs,
+        [key]: [
+          ...(prevLogs[key] || []),
+          {
+            type: "err",
+            msg: error instanceof Error ? error.message : "Failed to cancel run",
+          },
+        ],
+      }));
+    }
   };
 
   const allDone = REACTIVATION_STEPS.every(
@@ -88,19 +304,26 @@ export function ReviewerView({
   const runAll = async () => {
     for (const step of REACTIVATION_STEPS) {
       if (stepStates[step.key] === "done") continue;
-      await runStep(step.key, stepParams[step.key]);
+      const succeeded = await runStep(step.key, stepParams[step.key]);
+      if (!succeeded) break;
     }
   };
+
   const reviewReeFiles = useMemo<ReeFile[]>(
     () =>
-      (reviewFiles || []).map((file, index) => ({
+      (reviewRootFilesState || []).map((file, index) => ({
         id: `review-file-${index}-${file.path}`,
         name: file.path,
         type: "file",
         tag: "REE",
         size: file.size,
       })),
-    [reviewFiles],
+    [reviewRootFilesState],
+  );
+
+  const reviewWorkspaceTree = useMemo<FileTreeNode[]>(
+    () => buildTreeFromPaths(reviewWorkspaceFilesState || [], "review-workspace"),
+    [reviewWorkspaceFilesState],
   );
 
   return (
@@ -307,7 +530,7 @@ export function ReviewerView({
                 {...hoverBg(C.surfaceAlt, reviewerPage === "files" ? `${levelMeta.bg}` : C.surface)}
               >
                 <span style={{ display: "flex" }}>{Ic.file(13)}</span>
-                Files ({reviewFiles.length})
+                Files ({reviewRootFilesState.length + reviewWorkspaceFilesState.length})
               </button>
             </div>
           </div>
@@ -419,6 +642,7 @@ export function ReviewerView({
                         params={stepParams[step.key]}
                         onSetParam={setParam}
                         onRun={runStep}
+                        onCancel={cancelStep}
                         isLast={i === REACTIVATION_STEPS.length - 1}
                         prevDone={prevDone}
                       />
@@ -430,7 +654,7 @@ export function ReviewerView({
           ) : (
             <div style={{ padding: "20px 28px" }}>
               <div style={{ maxWidth: 980 }}>
-                <PageFiles files={[]} reeFiles={reviewReeFiles} />
+                <PageFiles files={reviewWorkspaceTree} reeFiles={reviewReeFiles} />
               </div>
             </div>
           )}
