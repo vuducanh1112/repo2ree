@@ -30,6 +30,35 @@ interface UseExplorerWorkflowArgs {
   serviceParams: ServiceParams;
 }
 
+function toReePatch(ree: Ree) {
+  return {
+    name: ree.name || "",
+    origin_url: ree.origin_url || "",
+    source_type: ree.source_type || "",
+    runtime: ree.runtime || "",
+    build_runtime_script: ree.build_runtime_script || "",
+    activation_script: ree.activation_script || "",
+    sbom: ree.sbom || "",
+    swhid: ree.swhid || "",
+    zenodo_doi: ree.zenodo_doi || "",
+    dataverse_doi: ree.dataverse_doi || "",
+    repro_level: ree.repro_level || "",
+    detected_dependencies: ree.detected_dependencies || "",
+    hardware_description: ree.hardware_description || {},
+    _sealedAt: ree._sealedAt || "",
+    _sealHash: ree._sealHash || "",
+    _evalLevel: ree._evalLevel ?? 0,
+    _sourceIncluded: !!ree._sourceIncluded,
+    _sourceAvailable: !!ree._sourceAvailable,
+    _sourceAcquiredBy: ree._sourceAcquiredBy || "",
+    _uploadedArchive: ree._uploadedArchive || "",
+    _sourceSnapshotArchive: ree._sourceSnapshotArchive || "",
+    _sourceSnapshotCapturedAt: ree._sourceSnapshotCapturedAt || "",
+    _runtimeIncluded: !!ree._runtimeIncluded,
+    _downloadableFiles: ree._downloadableFiles || [],
+  };
+}
+
 export function useExplorerWorkflow({
   dispatch,
   ree,
@@ -39,6 +68,9 @@ export function useExplorerWorkflow({
 }: UseExplorerWorkflowArgs) {
   const activeRunIdsRef = useRef<Record<string, string>>({});
   const lastSyncedReeRef = useRef<string>("");
+  const latestLocalPatchKeyRef = useRef<string>("");
+  const isSyncingReeRef = useRef<boolean>(false);
+  const hasHydratedRemoteReeRef = useRef<boolean>(false);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = (msg: string, type: ToastState["type"] = "info") =>
     dispatch(explorerActions.setToast({ message: msg, type }));
@@ -79,51 +111,42 @@ export function useExplorerWorkflow({
           executeServiceRun,
         });
 
-  const refreshWorkspaceFiles = useCallback(async (): Promise<FileTreeNode[]> => {
-    const workspace = await workspaceService.getWorkspace(WORKSPACE_ID);
-    dispatch(explorerActions.setVirtualFiles(workspace.files));
-    dispatch(explorerActions.setWorkspaceReeFiles(workspace.reeFiles || []));
-    if (workspace.ree) {
-      dispatch(explorerActions.setRee(workspace.ree));
-    }
-    return workspace.files;
-  }, [dispatch, workspaceService]);
-
-  const buildReePatch = useCallback(
-    () => ({
-      name: ree.name || "",
-      origin_url: ree.origin_url || "",
-      source_type: ree.source_type || "",
-      runtime: ree.runtime || "",
-      build_runtime_script: ree.build_runtime_script || "",
-      activation_script: ree.activation_script || "",
-      sbom: ree.sbom || "",
-      swhid: ree.swhid || "",
-      zenodo_doi: ree.zenodo_doi || "",
-      dataverse_doi: ree.dataverse_doi || "",
-      repro_level: ree.repro_level || "",
-      detected_dependencies: ree.detected_dependencies || "",
-      hardware_description: ree.hardware_description || {},
-      _sealedAt: ree._sealedAt || "",
-      _sealHash: ree._sealHash || "",
-      _evalLevel: ree._evalLevel ?? 0,
-      _sourceIncluded: !!ree._sourceIncluded,
-      _sourceAvailable: !!ree._sourceAvailable,
-      _sourceAcquiredBy: ree._sourceAcquiredBy || "",
-      _uploadedArchive: ree._uploadedArchive || "",
-      _sourceSnapshotArchive: ree._sourceSnapshotArchive || "",
-      _sourceSnapshotCapturedAt: ree._sourceSnapshotCapturedAt || "",
-      _runtimeIncluded: !!ree._runtimeIncluded,
-      _downloadableFiles: ree._downloadableFiles || [],
-    }),
-    [ree],
+  const refreshWorkspaceFiles = useCallback(
+    async (options: { forceReeHydration?: boolean } = {}): Promise<FileTreeNode[]> => {
+      const { forceReeHydration = false } = options;
+      const workspace = await workspaceService.getWorkspace(WORKSPACE_ID);
+      dispatch(explorerActions.setVirtualFiles(workspace.files));
+      dispatch(explorerActions.setWorkspaceReeFiles(workspace.reeFiles || []));
+      if (workspace.ree) {
+        const hasUnsyncedLocalChanges = latestLocalPatchKeyRef.current !== lastSyncedReeRef.current;
+        const hasPendingLocalSync =
+          hasUnsyncedLocalChanges || !!syncTimerRef.current || isSyncingReeRef.current;
+        const shouldHydrateRee =
+          forceReeHydration || !hasHydratedRemoteReeRef.current || !hasPendingLocalSync;
+        if (shouldHydrateRee) {
+          dispatch(explorerActions.setRee(workspace.ree));
+          const hydratedPatchKey = JSON.stringify(toReePatch(workspace.ree));
+          lastSyncedReeRef.current = hydratedPatchKey;
+          latestLocalPatchKeyRef.current = hydratedPatchKey;
+          hasHydratedRemoteReeRef.current = true;
+        }
+      }
+      return workspace.files;
+    },
+    [dispatch, workspaceService],
   );
+
+  const buildReePatch = useCallback(() => toReePatch(ree), [ree]);
+
+  useEffect(() => {
+    latestLocalPatchKeyRef.current = JSON.stringify(buildReePatch());
+  }, [buildReePatch]);
 
   useEffect(() => {
     if (workspaceServiceMode !== "remote") {
       return;
     }
-    void refreshWorkspaceFiles();
+    void refreshWorkspaceFiles({ forceReeHydration: true });
   }, [workspaceServiceMode, refreshWorkspaceFiles]);
 
   useEffect(() => {
@@ -141,12 +164,15 @@ export function useExplorerWorkflow({
     }
     syncTimerRef.current = setTimeout(() => {
       void (async () => {
+        isSyncingReeRef.current = true;
         try {
           await workspaceService.updateReeDraft?.(WORKSPACE_ID, patch);
           lastSyncedReeRef.current = patchKey;
           await refreshWorkspaceFiles();
         } catch {
           // Keep local metadata editable; backend sync can be retried on next change.
+        } finally {
+          isSyncingReeRef.current = false;
         }
       })();
     }, 300);
