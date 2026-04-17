@@ -141,6 +141,13 @@ async function showcaseScroll(page: Page, deltaY = 700) {
 	await page.waitForTimeout(700);
 }
 
+async function showcasePanel(page: Page, locator: Locator, narration: string) {
+	await expect(locator).toBeVisible({ timeout: 10000 });
+	await locator.scrollIntoViewIfNeeded();
+	await showDemoFocus(locator, narration);
+	await page.waitForTimeout(1200);
+}
+
 test("upload source archive into workspace", async ({ page }) => {
 	test.setTimeout(180000);
 
@@ -206,6 +213,12 @@ test("upload source archive into workspace", async ({ page }) => {
 			const escapedNodeName = nodeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 			await expect(page.getByRole("button", { name: new RegExp(escapedNodeName) })).toBeVisible();
 		}
+		await clickDemo(
+			page,
+			page.getByRole("button", { name: /main\.py/i }).first(),
+			"Inspect the uploaded files. Here: python_hello_world/main.py",
+		);
+		await page.waitForTimeout(1000);
 		await showcaseScroll(page, 700);
 		await showcaseScroll(page, -700);
 	});
@@ -217,7 +230,7 @@ test("upload source archive into workspace", async ({ page }) => {
 			"Provide project metadata",
 		);
 		await expect(main.getByText("Provide Metadata", { exact: true })).toBeVisible();
-		await fillDemo(page, page.getByPlaceholder("my-project-v1.0"), "ree-hello-world", "Fill project slug");
+		await fillDemo(page, page.getByPlaceholder("my-project-v1.0"), "ree-hello-world", "Change REE name");
 		await expect(page.getByPlaceholder("my-project-v1.0")).toHaveValue("ree-hello-world");
 	});
 
@@ -225,11 +238,16 @@ test("upload source archive into workspace", async ({ page }) => {
 		await clickDemo(
 			page,
 			page.getByRole("button", { name: /Evaluate.*Score reproducibility level/ }),
-			"Run evaluate stage",
+			"Evaluate the projects risks to reproducibility, by analyzing declared dependencies",
 		);
 		await expect(main.getByText("Evaluate", { exact: true })).toBeVisible();
-		await clickDemo(page, main.getByRole("button", { name: /^Play Run$/ }), "Execute evaluation");
+		await clickDemo(page, main.getByRole("button", { name: /^Play Run$/ }), "Run evaluation to obtain reproducibility score");
 		await expect(main.getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 20000 });
+		await showcasePanel(
+			page,
+			main.getByText("Output", { exact: true }).first(),
+			"Review output logs",
+		);
 		await expectOverviewCableActive("Evaluate");
 	});
 
@@ -254,6 +272,11 @@ test("upload source archive into workspace", async ({ page }) => {
 		);
 		await clickDemo(page, main.getByRole("button", { name: /Run build/ }), "Run runtime build");
 		await expect(main.getByRole("button", { name: /Re-build/ })).toBeVisible({ timeout: 20000 });
+		await showcasePanel(
+			page,
+			main.getByText("Output", { exact: true }).first(),
+			"Review build logs",
+		);
 		await expectOverviewCableActive("Runtime");
 		const buildOutputVerification = main
 			.locator("div")
@@ -274,6 +297,11 @@ test("upload source archive into workspace", async ({ page }) => {
 		await clickDemo(page, main.getByRole("button", { name: /^Play Generate SBOM$/ }), "Run SBOM scan");
 		await expect(main.getByRole("button", { name: /Regenerate SBOM/ })).toBeVisible({ timeout: 20000 });
 		await expect(main.getByText("SBOM run succeeded", { exact: true })).toBeVisible({ timeout: 20000 });
+		await showcasePanel(
+			page,
+			main.getByText("Output", { exact: true }).first(),
+			"Review SBOM logs",
+		);
 		await expectOverviewCableActive("SBOM");
 	});
 
@@ -294,6 +322,11 @@ test("upload source archive into workspace", async ({ page }) => {
 		);
 		await clickDemo(page, main.getByRole("button", { name: /Run activation/ }), "Execute activation");
 		await expect(main.getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 20000 });
+		await showcasePanel(
+			page,
+			main.getByText("Output", { exact: true }).first(),
+			"Review activation logs",
+		);
 		await expectOverviewCableActive("Activation");
 	});
 
@@ -304,10 +337,12 @@ test("upload source archive into workspace", async ({ page }) => {
 		await expect(main.getByText("Seal this REE\?", { exact: true })).toBeVisible();
 		await clickDemo(page, main.getByRole("button", { name: /Seal (REE|anyway)/ }), "Finalize seal");
 		await expect(main.getByText("REE SEALED", { exact: true })).toBeVisible({ timeout: 20000 });
+		const sealedDownloadButton = main.getByRole("button", { name: /Download REE/ }).first();
+		await expect(sealedDownloadButton).toBeVisible();
 
 		const [download] = await Promise.all([
 			page.waitForEvent("download"),
-			main.getByRole("button", { name: /Download REE/ }).first().click(),
+			clickDemo(page, sealedDownloadButton, "Download sealed REE package"),
 		]);
 		await expect(download.suggestedFilename()).toMatch(/\.zip$/i);
 	});
