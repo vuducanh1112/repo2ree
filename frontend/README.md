@@ -24,3 +24,11 @@ VITE_API_BASE_URL=http://localhost:8000 npm run dev -- --host
 ```
 
 The UI fetches REE metadata from `/api/ree` and details from `/api/ree/:id`.
+
+
+
+4. e2e test
+
+```bash
+npm --prefix /repo2ree/frontend exec -- playwright test -c /repo2ree/playwright.config.ts /repo2ree/tests/e2e/ree-create-python-hello-world.spec.ts
+```
