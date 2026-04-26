@@ -14,13 +14,13 @@ fe-checks:
 
 be-checks:
 	@echo "Running backend checks..."
-	cd src/repo2ree && \
-		echo "Running ruff check..." && \
-		ruff check service && \
-		echo "Running ruff format..." && \
-		ruff format service && \
-		echo "Running mypy..." && \
-		mypy service
+
+	@echo "Running ruff check..."
+	ruff check api/src
+	@echo "Running ruff format..."
+	ruff format api/src
+	@echo "Running mypy..."
+	mypy api/src
 
 
 e2e-tests:

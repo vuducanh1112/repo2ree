@@ -7,7 +7,7 @@ Quick start (from repository root):
 1. Start backend fastapi from the repo root dir
 
 ```bash
-sudo env "PATH=$PATH" uvicorn repo2ree.service.api.main:app --reload
+sudo env "PATH=$PATH" uvicorn repo2ree_api.main:app --reload
 ```
 
 2. Install frontend deps

@@ -1,3 +1,5 @@
 {
-    "biome.lsp.bin": "./.vscode/biome-wrapper.sh"
+    "biome.lsp.bin": "./.vscode/biome-wrapper.sh",
+    "python.defaultInterpreterPath": "/repo2ree/.venv/bin/python",
+
 }

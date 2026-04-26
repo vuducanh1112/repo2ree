@@ -1,0 +1,17 @@
+[project]
+name = "repo2ree-cli"
+version = "0.1.0"
+dependencies = [
+    "repo2ree-core",
+    "click~=8.2.1",
+]
+
+[tool.uv.sources]
+repo2ree-core = { workspace = true }
+
+[project.scripts]
+repo2ree = "repo2ree_cli.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
