@@ -2,7 +2,7 @@ services:
   dev:
     build: 
       context: .
-      dockerfile: .devcontainer/Dockerfile
+      dockerfile: docker/dev/Dockerfile
     volumes:
       # Mount the current directory to /repo2ree in the devcontainer, using cached mode for better performance
       - .:/repo2ree:cached

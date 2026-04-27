@@ -3,6 +3,7 @@
   "dockerComposeFile": "../docker-compose.yml",
   "service": "dev",
   "workspaceFolder": "/repo2ree",
+  "remoteUser": "nixuser",
 
   "customizations": {
     "vscode": {

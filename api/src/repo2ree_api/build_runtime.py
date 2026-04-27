@@ -98,7 +98,6 @@ def _docker_build_run(
     docker_bin = shutil.which("docker") or "docker"
     container_name = f"repo2ree-build-{run_id}"
     docker_create_cmd = [
-        "sudo",
         docker_bin,
         "create",
         "--name",
@@ -110,15 +109,13 @@ def _docker_build_run(
         "infinity",
     ]
     docker_cp_cmd = [
-        "sudo",
         docker_bin,
         "cp",
         f"{workspace_path}/.",
         f"{container_name}:/workspace",
     ]
-    docker_start_cmd = ["sudo", docker_bin, "start", container_name]
+    docker_start_cmd = [docker_bin, "start", container_name]
     docker_exec_script_cmd = [
-        "sudo",
         docker_bin,
         "exec",
         container_name,
@@ -134,7 +131,6 @@ def _docker_build_run(
         ),
     ]
     docker_exec_check_cmd = [
-        "sudo",
         docker_bin,
         "exec",
         container_name,
@@ -142,7 +138,7 @@ def _docker_build_run(
         "-lc",
         f"test -f {shlex.quote(str(runtime_in_container))}",
     ]
-    docker_rm_cmd = ["sudo", docker_bin, "rm", "-f", container_name]
+    docker_rm_cmd = [docker_bin, "rm", "-f", container_name]
 
     _append_run_log(
         ree_id,
@@ -330,7 +326,6 @@ def _docker_build_run(
 
         if check_result.returncode == 0:
             docker_cp_back_cmd = [
-                "sudo",
                 docker_bin,
                 "cp",
                 f"{container_name}:{runtime_in_container}",

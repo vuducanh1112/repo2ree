@@ -126,7 +126,6 @@ def run_activation_test(
     docker_bin = shutil.which("docker") or "docker"
     container_name = f"repo2ree-activation-{run_id}"
     docker_create_cmd = [
-        "sudo",
         docker_bin,
         "create",
         "--name",
@@ -138,15 +137,13 @@ def run_activation_test(
         "infinity",
     ]
     docker_cp_cmd = [
-        "sudo",
         docker_bin,
         "cp",
         f"{workspace_path}/.",
         f"{container_name}:/workspace",
     ]
-    docker_start_cmd = ["sudo", docker_bin, "start", container_name]
+    docker_start_cmd = [docker_bin, "start", container_name]
     docker_exec_script_cmd = [
-        "sudo",
         docker_bin,
         "exec",
         container_name,
@@ -161,7 +158,7 @@ def run_activation_test(
             f"sh {shlex.quote(str(script_in_container))}"
         ),
     ]
-    docker_rm_cmd = ["sudo", docker_bin, "rm", "-f", container_name]
+    docker_rm_cmd = [docker_bin, "rm", "-f", container_name]
 
     seq = _append_log(
         entries,

@@ -142,7 +142,7 @@ def cancel_workspace_run(ree_id: str, run_id: str):
         container_name = f"repo2ree-build-{run_id}"
         try:
             subprocess.run(
-                ["sudo", docker_bin, "rm", "-f", container_name],
+                [docker_bin, "rm", "-f", container_name],
                 capture_output=True,
                 text=True,
             )
@@ -152,7 +152,7 @@ def cancel_workspace_run(ree_id: str, run_id: str):
         container_name = f"repo2ree-activation-{run_id}"
         try:
             subprocess.run(
-                ["sudo", docker_bin, "rm", "-f", container_name],
+                [docker_bin, "rm", "-f", container_name],
                 capture_output=True,
                 text=True,
             )

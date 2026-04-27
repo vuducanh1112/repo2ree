@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     sudo \
     ca-certificates \
     direnv \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user (Nix requires a home directory and non-root is best practice)
@@ -47,4 +48,9 @@ COPY .envrc ./
 RUN echo 'eval "$(direnv hook bash)"' >> /home/$USER/.bashrc && \
     direnv allow .
 
+USER root
+COPY docker/dev/dev-entrypoint.sh /usr/local/bin/dev-entrypoint.sh
+RUN chmod +x /usr/local/bin/dev-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/dev-entrypoint.sh"]
 CMD ["bash"]

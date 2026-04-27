@@ -300,7 +300,6 @@ def _run_review_build_runtime(
     docker_bin = shutil.which("docker") or "docker"
     container_name = f"repo2ree-review-build-{run_id}"
     docker_create_cmd = [
-        "sudo",
         docker_bin,
         "create",
         "--name",
@@ -312,15 +311,13 @@ def _run_review_build_runtime(
         "infinity",
     ]
     docker_cp_cmd = [
-        "sudo",
         docker_bin,
         "cp",
         f"{mount_root}/.",
         f"{container_name}:/workspace",
     ]
-    docker_start_cmd = ["sudo", docker_bin, "start", container_name]
+    docker_start_cmd = [docker_bin, "start", container_name]
     docker_exec_script_cmd = [
-        "sudo",
         docker_bin,
         "exec",
         container_name,
@@ -333,13 +330,12 @@ def _run_review_build_runtime(
         ),
     ]
     docker_cp_back_cmd = [
-        "sudo",
         docker_bin,
         "cp",
         f"{container_name}:{runtime_in_container}",
         str(runtime_abs_path),
     ]
-    docker_rm_cmd = ["sudo", docker_bin, "rm", "-f", container_name]
+    docker_rm_cmd = [docker_bin, "rm", "-f", container_name]
 
     for cmd in (
         docker_create_cmd,
@@ -407,7 +403,6 @@ def _run_review_activation(
     docker_bin = shutil.which("docker") or "docker"
     container_name = f"repo2ree-review-activation-{run_id}"
     docker_create_cmd = [
-        "sudo",
         docker_bin,
         "create",
         "--name",
@@ -419,15 +414,13 @@ def _run_review_activation(
         "infinity",
     ]
     docker_cp_cmd = [
-        "sudo",
         docker_bin,
         "cp",
         f"{mount_root}/.",
         f"{container_name}:/workspace",
     ]
-    docker_start_cmd = ["sudo", docker_bin, "start", container_name]
+    docker_start_cmd = [docker_bin, "start", container_name]
     docker_exec_script_cmd = [
-        "sudo",
         docker_bin,
         "exec",
         container_name,
@@ -439,7 +432,7 @@ def _run_review_activation(
             f"sh {shlex.quote(str(script_in_container))}"
         ),
     ]
-    docker_rm_cmd = ["sudo", docker_bin, "rm", "-f", container_name]
+    docker_rm_cmd = [docker_bin, "rm", "-f", container_name]
 
     for cmd in (
         docker_create_cmd,
@@ -616,7 +609,7 @@ def review_run_cancel_route(review_id: str, run_id: str):
         container_name = f"repo2ree-review-build-{run_id}"
         try:
             subprocess.run(
-                ["sudo", docker_bin, "rm", "-f", container_name],
+                [docker_bin, "rm", "-f", container_name],
                 capture_output=True,
                 text=True,
             )
@@ -626,7 +619,7 @@ def review_run_cancel_route(review_id: str, run_id: str):
         container_name = f"repo2ree-review-activation-{run_id}"
         try:
             subprocess.run(
-                ["sudo", docker_bin, "rm", "-f", container_name],
+                [docker_bin, "rm", "-f", container_name],
                 capture_output=True,
                 text=True,
             )

@@ -1,33 +1,40 @@
 # repo2ree Web UI
 
-Simple Vite + React frontend to browse REEs produced by the backend.
+Simple Vite + React frontend for the repo2ree API.
 
-Quick start (from repository root):
+## Demo run
 
-1. Start backend fastapi from the repo root dir
-
-```bash
-sudo env "PATH=$PATH" uvicorn repo2ree_api.main:app --reload
-```
-
-2. Install frontend deps
+From the repository root:
 
 ```bash
-cd src/repo2ree/web
-npm install
+docker compose -f docker-compose.demo.yml up --build
 ```
 
-3. Run (dev server proxied to backend at http://localhost:8000)
+Then open `http://localhost:3000`.
+
+The frontend talks to the backend at `http://localhost:8000`.
+
+## Local development
+
+1. Start the backend from the repository root:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8000 npm run dev -- --host
+uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The UI fetches REE metadata from `/api/ree` and details from `/api/ree/:id`.
+2. Install frontend dependencies:
 
+```bash
+npm --prefix frontend ci
+```
 
+3. Start the frontend dev server:
 
-4. e2e test
+```bash
+VITE_API_BASE_URL=http://localhost:8000 npm --prefix frontend run dev -- --host
+```
+
+## E2E test
 
 ```bash
 npm --prefix /repo2ree/frontend exec -- playwright test -c /repo2ree/playwright.config.ts /repo2ree/tests/e2e/ree-create-python-hello-world.spec.ts

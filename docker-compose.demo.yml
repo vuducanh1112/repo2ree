@@ -1,0 +1,27 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/demo/backend.Dockerfile
+    environment:
+      WORKSPACE_STORAGE_DIR: ${DEMO_WORKSPACE_STORAGE_DIR:-/app/.repo2ree/workspaces}
+      REVIEWS_STORAGE_DIR: ${DEMO_REVIEWS_STORAGE_DIR:-/app/.repo2ree/reviews}
+    ports:
+      - "8000:8000"
+    volumes:
+      - repo2ree-demo-data:/app/.repo2ree
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/demo/frontend.Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  repo2ree-demo-data:
