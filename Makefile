@@ -7,7 +7,7 @@ fe-checks:
 		echo "Running TypeScript compiler..." && \
 		npx tsc && \
 		echo "Running Biome..." && \
-		npx biome check --write src && \
+		npx biome check --write src tests playwright.config.ts && \
 		echo "Running knip..." && \
 		npx knip
 
@@ -25,5 +25,6 @@ be-checks:
 
 e2e-tests:
 	@echo "Running end-to-end tests..."
-	npm --prefix /repo2ree/frontend exec -- playwright test -c /repo2ree/playwright.config.ts /repo2ree/tests/e2e/ree-create-python-hello-world.spec.ts
+	cd frontend && \
+		npm exec -- playwright test -c playwright.config.ts tests/e2e/ree-create-python-hello-world.spec.ts
 	
