@@ -49,7 +49,7 @@ export interface Service {
   params: ServiceParam[];
 }
 
-export type WorkflowServiceKey = "evaluate" | "build" | "sbom" | "activation";
+export type WorkflowServiceKey = "evaluate" | "build" | "hbom" | "sbom" | "activation";
 
 export interface WorkflowServiceParamsByKey {
   evaluate: {
@@ -60,6 +60,7 @@ export interface WorkflowServiceParamsByKey {
     no_cache: boolean;
     platform: string;
   };
+  hbom: Record<string, never>;
   sbom: {
     format: string;
   };
@@ -80,6 +81,7 @@ export interface WorkflowServiceRunParamsByKey {
     produced_runtime_path?: string;
     _expectedOutput?: string;
   };
+  hbom: WorkflowServiceParamsByKey["hbom"];
   sbom: WorkflowServiceParamsByKey["sbom"] & {
     produced_runtime_path?: string;
   };

@@ -158,18 +158,15 @@ export function normalizeHBOM(raw: unknown): HBOM {
   };
 }
 
-export function hbomComponentCount(hbom: HBOM): number {
-  return [
-    Object.keys(hbom.cpus).length,
-    Object.keys(hbom.gpus).length,
-    Object.keys(hbom.memory).length,
-    Object.keys(hbom.storage).length,
-    Object.keys(hbom.network).length,
-  ].reduce((total, count) => total + count, 0);
-}
-
 export function hbomHasAnyComponents(hbom: HBOM): boolean {
-  return hbomComponentCount(hbom) > 0;
+  return (
+    Object.keys(hbom.cpus).length +
+      Object.keys(hbom.gpus).length +
+      Object.keys(hbom.memory).length +
+      Object.keys(hbom.storage).length +
+      Object.keys(hbom.network).length >
+    0
+  );
 }
 
 export function hbomSummaryLines(hbom: HBOM): string[] {

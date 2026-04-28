@@ -24,6 +24,7 @@ import {
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
 import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
+import type { WorkflowServiceRunParams } from "../../../types";
 import { FilePicker, ScriptPanel } from "../components/inputs/scriptAndFile";
 import { RuntimeField } from "../components/inputs/sourceRuntime";
 import {
@@ -104,6 +105,12 @@ export function PageBuildRuntime({
   const [expectedOutput, setExpectedOutput] = useState(() =>
     ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "",
   );
+  const buildParams: WorkflowServiceRunParams<"build"> = {
+    ...(params as WorkflowServiceRunParams<"build">),
+    build_runtime_script_path: ree.build_runtime_script,
+    produced_runtime_path: expectedOutput,
+    _expectedOutput: expectedOutput,
+  };
   const [showManualOverride, setShowManualOverride] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
@@ -363,14 +370,7 @@ export function PageBuildRuntime({
             doneLabel="Re-build"
             helperText="Execute the build script and record build logs."
             onCancel={() => onCancel?.(svc.key)}
-            onRun={() =>
-              onRun(svc.key, {
-                ...params,
-                build_runtime_script_path: ree.build_runtime_script,
-                produced_runtime_path: expectedOutput,
-                _expectedOutput: expectedOutput,
-              })
-            }
+            onRun={() => onRun(svc.key, buildParams)}
           />
 
           <div style={S_WORKFLOW_BUILD_SECTION_WRAP}>

@@ -11,7 +11,7 @@ from fastapi import HTTPException
 from repo2ree_api.storage.workspace_files import workspace_exists
 
 
-RunOperation = Literal["build", "sbom", "activation", "source", "evaluate"]
+RunOperation = Literal["build", "sbom", "hbom", "activation", "source", "evaluate"]
 
 
 _RUN_STORE: dict[str, dict[str, dict[str, Any]]] = {}

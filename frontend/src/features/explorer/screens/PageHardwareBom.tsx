@@ -22,9 +22,10 @@ import type {
   NetworkDefinition,
   StorageDefinition,
 } from "../../../types";
-import { emptyHBOM, hbomComponentCount } from "../../../utils/hbom";
+import { emptyHBOM } from "../../../utils/hbom";
 import { FieldRow, FieldSection, FieldTipsSidebar } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
+import { ServiceActionSection, WorkflowLogSection } from "../components/workflow/servicePanels";
 import { workflowToneSurfaceStyle } from "../components/workflow/statusUiStyles";
 import type { PageHardwareBomProps } from "./sharedWorkflowUi";
 
@@ -385,31 +386,50 @@ function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: HBOM): HBOM {
   return nextHBOM;
 }
 
+function hbomSyncKey(hbom: HBOM): string {
+  return JSON.stringify(hbom);
+}
+
 export function PageHardwareBom({
   ree,
   locked,
   badges,
+  log,
+  running,
+  runDone,
+  ts,
   focusedField,
   onReeChange,
   onLockedChange,
   onGoService,
   onFocusedFieldChange,
+  onRun,
+  onCancel,
 }: PageHardwareBomProps) {
   const focus = (key: string) => onFocusedFieldChange(key);
   const [draft, setDraft] = React.useState<HardwareBomDraft>(() =>
     draftFromHBOM(ree.hardware_description),
   );
+  const pendingLocalHbomKeyRef = React.useRef<string | null>(null);
 
   useFocusScroll(focusedField);
 
-  const draftHBOM = hbomFromDraft(draft, ree.hardware_description);
-  const draftComponentCount = hbomComponentCount(draftHBOM);
+  React.useEffect(() => {
+    const incomingKey = hbomSyncKey(ree.hardware_description);
+    if (pendingLocalHbomKeyRef.current === incomingKey) {
+      pendingLocalHbomKeyRef.current = null;
+      return;
+    }
+    setDraft((previous) => draftFromHBOM(ree.hardware_description, previous));
+  }, [ree.hardware_description]);
 
   const updateDraft = (nextDraft: HardwareBomDraft) => {
+    const nextHBOM = hbomFromDraft(nextDraft, ree.hardware_description);
+    pendingLocalHbomKeyRef.current = hbomSyncKey(nextHBOM);
     setDraft(nextDraft);
     onReeChange({
       ...ree,
-      hardware_description: hbomFromDraft(nextDraft, ree.hardware_description),
+      hardware_description: nextHBOM,
     });
   };
 
@@ -1091,6 +1111,7 @@ export function PageHardwareBom({
         tips={[
           "Each category is keyed by device model, matching the structured HBOM format stored in the REE draft.",
           "Only the device model is required. Other fields can stay at their defaults and will persist immediately.",
+          "Use Profile This Machine to prefill the table, then adjust any rows manually before moving on.",
         ]}
         rightAction={
           locked ? (
@@ -1121,17 +1142,11 @@ export function PageHardwareBom({
         <div style={S_WORKFLOW_PAGE_MAIN_SCROLL}>
           <div style={S_WORKFLOW_PAGE_MAIN_COL}>
             <FieldSection
-              title="Hardware Bill Of Materials"
+              title="CPU"
               icon={Ic.chip()}
-              subtitle="single-machine structured profile"
-              filledCount={draftComponentCount}
-              totalCount={
-                draft.cpus.length +
-                draft.gpus.length +
-                draft.memory.length +
-                draft.storage.length +
-                draft.network.length
-              }
+              subtitle="processor packages and topology"
+              filledCount={draft.cpus.length}
+              totalCount={draft.cpus.length}
             >
               <FieldRow
                 fieldKey="hardware_description"
@@ -1139,9 +1154,7 @@ export function PageHardwareBom({
                 onFocus={() => focus("hardware_description")}
                 active={focusedField === "hardware_description"}
               >
-                <div
-                  style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 18 }}
-                >
+                <div style={{ padding: "12px 0" }}>
                   <HardwareCardSection
                     title="CPUs"
                     rows={draft.cpus}
@@ -1156,7 +1169,24 @@ export function PageHardwareBom({
                     onAdd={() => updateDraft({ ...draft, cpus: [...draft.cpus, newCpuRow()] })}
                     addLabel="Add CPU"
                   />
+                </div>
+              </FieldRow>
+            </FieldSection>
 
+            <FieldSection
+              title="GPU"
+              icon={Ic.chip()}
+              subtitle="accelerators and graphics devices"
+              filledCount={draft.gpus.length}
+              totalCount={draft.gpus.length}
+            >
+              <FieldRow
+                fieldKey="hardware_description"
+                locked={locked}
+                onFocus={() => focus("hardware_description")}
+                active={focusedField === "hardware_description"}
+              >
+                <div style={{ padding: "12px 0" }}>
                   <HardwareCardSection
                     title="GPUs"
                     rows={draft.gpus}
@@ -1171,7 +1201,24 @@ export function PageHardwareBom({
                     onAdd={() => updateDraft({ ...draft, gpus: [...draft.gpus, newGpuRow()] })}
                     addLabel="Add GPU"
                   />
+                </div>
+              </FieldRow>
+            </FieldSection>
 
+            <FieldSection
+              title="Memory"
+              icon={Ic.chip()}
+              subtitle="modules and aggregate RAM assumptions"
+              filledCount={draft.memory.length}
+              totalCount={draft.memory.length}
+            >
+              <FieldRow
+                fieldKey="hardware_description"
+                locked={locked}
+                onFocus={() => focus("hardware_description")}
+                active={focusedField === "hardware_description"}
+              >
+                <div style={{ padding: "12px 0" }}>
                   <HardwareCardSection
                     title="Memory"
                     rows={draft.memory}
@@ -1188,7 +1235,24 @@ export function PageHardwareBom({
                     }
                     addLabel="Add memory"
                   />
+                </div>
+              </FieldRow>
+            </FieldSection>
 
+            <FieldSection
+              title="Storage"
+              icon={Ic.chip()}
+              subtitle="disks, SSDs, and runtime capacity"
+              filledCount={draft.storage.length}
+              totalCount={draft.storage.length}
+            >
+              <FieldRow
+                fieldKey="hardware_description"
+                locked={locked}
+                onFocus={() => focus("hardware_description")}
+                active={focusedField === "hardware_description"}
+              >
+                <div style={{ padding: "12px 0" }}>
                   <HardwareCardSection
                     title="Storage"
                     rows={draft.storage}
@@ -1205,7 +1269,24 @@ export function PageHardwareBom({
                     }
                     addLabel="Add storage"
                   />
+                </div>
+              </FieldRow>
+            </FieldSection>
 
+            <FieldSection
+              title="Network"
+              icon={Ic.chip()}
+              subtitle="host interfaces and bandwidth"
+              filledCount={draft.network.length}
+              totalCount={draft.network.length}
+            >
+              <FieldRow
+                fieldKey="hardware_description"
+                locked={locked}
+                onFocus={() => focus("hardware_description")}
+                active={focusedField === "hardware_description"}
+              >
+                <div style={{ padding: "12px 0" }}>
                   <HardwareCardSection
                     title="Network"
                     rows={draft.network}
@@ -1225,6 +1306,25 @@ export function PageHardwareBom({
                 </div>
               </FieldRow>
             </FieldSection>
+
+            <ServiceActionSection
+              color="#0f766e"
+              running={running}
+              runDone={runDone}
+              disabled={running}
+              idleLabel="Profile This Machine"
+              runningLabel="Profiling…"
+              doneLabel="Re-profile Machine"
+              helperText="Detects local CPU, GPU, memory, storage, and network details, then fills the HBOM table."
+              onCancel={() => onCancel?.("hbom")}
+              onRun={() => onRun("hbom", {})}
+            />
+
+            <WorkflowLogSection
+              log={log}
+              running={running}
+              title={ts ? "Machine profiling logs" : "Profiling logs"}
+            />
 
             <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
               <NextStepNudge stepKey="hbom" badges={badges} onGo={onGoService} />

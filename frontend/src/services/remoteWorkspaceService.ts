@@ -194,6 +194,10 @@ export function createRemoteWorkspaceService(
           params.produced_runtime_path ?? params.runtime ?? params._expectedOutput ?? "",
         ),
       });
+    } else if (scriptKey === "hbom") {
+      run = await runsApi.createGenerateHbomRun(workspaceId, {
+        idempotencyKey: params.idempotencyKey == null ? undefined : String(params.idempotencyKey),
+      });
     } else if (scriptKey === "sbom") {
       run = await runsApi.createGenerateSbomRun(workspaceId, {
         produced_runtime_path: String(

@@ -15,6 +15,7 @@ import type {
   WorkflowServiceRunParamsByKey,
 } from "../../../../types";
 import type { GenericServiceParams } from "../../../../types/services";
+import { emptyHBOM } from "../../../../utils/hbom";
 import {
   computeEvaluateLevelFromFiles,
   scanDependencies,
@@ -78,6 +79,55 @@ export function createServiceRunHandlers({
         );
       }
       showToast(`Build complete${producedName ? ` — ${producedName} produced` : ""}`, "success");
+    },
+    hbom: () => {
+      if (workspaceServiceMode === "remote") {
+        showToast("HBOM profiled from the current machine", "success");
+        return;
+      }
+
+      dispatch(
+        explorerActions.setRee((prevRee) => ({
+          ...prevRee,
+          hardware_description: {
+            ...emptyHBOM(),
+            cpus: {
+              "Intel Xeon Mock Host": {
+                vendor: "Intel",
+                quantity: 2,
+                cores_per_cpu: 24,
+                threads_per_core: 2,
+                architecture: "x86_64",
+                extra_info: { logical_cpus: 96, profile_source: "mock" },
+              },
+            },
+            memory: {
+              "Installed Memory": {
+                vendor: "",
+                quantity: 1,
+                capacity_gb: 256,
+                memory_type: "DDR5",
+                speed_mt_s: 0,
+                extra_info: { aggregate: true, profile_source: "mock" },
+              },
+            },
+            storage: {
+              "Mock NVMe": {
+                vendor: "Mock",
+                quantity: 1,
+                capacity_gb: 2048,
+                storage_type: "NVMe",
+                interface: "PCIe",
+                extra_info: { profile_source: "mock" },
+              },
+            },
+            gpus: {},
+            network: {},
+            extra_info: { profiled_on: "mock-host" },
+          },
+        })),
+      );
+      showToast("HBOM profiled from the mock machine", "success");
     },
     sbom: () => {
       if (workspaceServiceMode === "remote") {
@@ -232,10 +282,13 @@ export async function executeServiceRunAction({
         return { lines, ts };
       }
 
-      if (key === "build" || key === "sbom") {
+      if (key === "build" || key === "sbom" || key === "hbom") {
         try {
           const workspace = await workspaceService.getWorkspace(workspaceId);
           dispatch(explorerActions.setVirtualFiles(workspace.files));
+          if (workspace.ree) {
+            dispatch(explorerActions.setRee(workspace.ree));
+          }
         } catch {
           // Keep run success status; UI can still show logs even if refresh fails.
         }
@@ -250,6 +303,8 @@ export async function executeServiceRunAction({
             params as WorkflowServiceRunParamsByKey["evaluate"],
             newLevel,
           );
+        } else if (key === "hbom") {
+          serviceRunHandlers.hbom(params as WorkflowServiceRunParamsByKey["hbom"], newLevel);
         } else if (key === "build") {
           serviceRunHandlers.build(params as WorkflowServiceRunParamsByKey["build"], newLevel);
         } else if (key === "sbom") {
@@ -307,6 +362,8 @@ export async function executeServiceRunAction({
   if (isWorkflowServiceKey(key)) {
     if (key === "evaluate") {
       serviceRunHandlers.evaluate(params as WorkflowServiceRunParamsByKey["evaluate"], newLevel);
+    } else if (key === "hbom") {
+      serviceRunHandlers.hbom(params as WorkflowServiceRunParamsByKey["hbom"], newLevel);
     } else if (key === "build") {
       serviceRunHandlers.build(params as WorkflowServiceRunParamsByKey["build"], newLevel);
     } else if (key === "sbom") {

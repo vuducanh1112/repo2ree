@@ -9,6 +9,57 @@ from repo2ree_core.hbom import HBOM
 SourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]
 SourceAcquiredBy = Literal["", "download", "upload"]
 
+_HBOM_COMPONENT_FIELD_MAP = {
+    "cpus": "cpus",
+    "cpu": "cpus",
+    "gpus": "gpus",
+    "gpu": "gpus",
+    "memory": "memory",
+    "storage": "storage",
+    "network": "network",
+}
+
+
+def _normalize_hbom_component_mapping(value: Any) -> dict[str, Any]:
+    if isinstance(value, Mapping):
+        return {str(key): item for key, item in value.items()}
+    return {}
+
+
+def _normalize_hbom_payload(value: Mapping[str, Any]) -> dict[str, Any]:
+    normalized: dict[str, Any] = {
+        "cpus": {},
+        "gpus": {},
+        "memory": {},
+        "storage": {},
+        "network": {},
+        "extra_info": {},
+    }
+
+    for raw_key, item in value.items():
+        key = str(raw_key)
+        component_field = _HBOM_COMPONENT_FIELD_MAP.get(key)
+        if component_field:
+            if isinstance(item, Mapping):
+                normalized[component_field] = _normalize_hbom_component_mapping(item)
+            else:
+                normalized["extra_info"][key] = item
+            continue
+        if key == "extra_info":
+            if isinstance(item, Mapping):
+                normalized["extra_info"].update(
+                    {
+                        str(extra_key): extra_value
+                        for extra_key, extra_value in item.items()
+                    }
+                )
+            else:
+                normalized["extra_info"][key] = item
+            continue
+        normalized["extra_info"][key] = item
+
+    return normalized
+
 
 class REE(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -52,10 +103,7 @@ class REE(BaseModel):
         if isinstance(value, HBOM):
             return value
         if isinstance(value, Mapping):
-            known_keys = {"cpus", "gpus", "memory", "storage", "network", "extra_info"}
-            if any(key in value for key in known_keys):
-                return value
-            return {"extra_info": {str(key): item for key, item in value.items()}}
+            return _normalize_hbom_payload(value)
         return value
 
     @classmethod

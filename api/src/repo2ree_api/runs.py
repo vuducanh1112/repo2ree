@@ -25,6 +25,10 @@ from repo2ree_api.evaluate import (
     CreateEvaluateRunPayload,
     create_evaluate_run_state,
 )
+from repo2ree_api.generate_hbom import (
+    CreateGenerateHbomRunPayload,
+    create_generate_hbom_run_state,
+)
 from repo2ree_api.generate_sbom import (
     CreateGenerateSbomRunPayload,
     create_generate_sbom_run_state,
@@ -104,6 +108,11 @@ def retry_workspace_run(ree_id: str, run_id: str):
             produced_runtime_path=request_payload.get("produced_runtime_path", "")
         )
         return _run_summary(create_generate_sbom_run_state(ree_id, sbom_payload))
+    if operation == "hbom":
+        hbom_payload = CreateGenerateHbomRunPayload(
+            idempotencyKey=request_payload.get("idempotencyKey")
+        )
+        return _run_summary(create_generate_hbom_run_state(ree_id, hbom_payload))
     if operation == "activation":
         activation_payload = CreateActivationTestRunPayload(
             activation_script_path=request_payload.get("activation_script_path", "")

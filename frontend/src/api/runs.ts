@@ -5,6 +5,7 @@ import type {
   CreateActivationTestRunRequestDto,
   CreateBuildRuntimeRunRequestDto,
   CreateEvaluateRunRequestDto,
+  CreateGenerateHbomRunRequestDto,
   CreateGenerateSbomRunRequestDto,
   WorkflowLogEntryDto,
   WorkflowLogsDto,
@@ -43,6 +44,16 @@ export class WorkflowRunsApi {
     payload: CreateGenerateSbomRunRequestDto,
   ): Promise<WorkflowRunDto> {
     return this.client.request<WorkflowRunDto>(endpoints.workspaceGenerateSbom(workspaceId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async createGenerateHbomRun(
+    workspaceId: string,
+    payload: CreateGenerateHbomRunRequestDto = {},
+  ): Promise<WorkflowRunDto> {
+    return this.client.request<WorkflowRunDto>(endpoints.workspaceGenerateHbom(workspaceId), {
       method: "POST",
       body: JSON.stringify(payload),
     });

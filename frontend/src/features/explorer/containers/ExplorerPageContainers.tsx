@@ -134,7 +134,7 @@ export function MetadataPageContainer({ state, commands }: ExplorerPageContainer
 }
 
 export function HardwareBomPageContainer({ state, commands }: ExplorerPageContainerProps) {
-  const { page, ree, locked, badges, focusedField } = state;
+  const { page, ree, locked, badges, focusedField, serviceLogs, actionStates, timestamps } = state;
 
   if (page !== PAGE.HBOM) {
     return null;
@@ -145,11 +145,17 @@ export function HardwareBomPageContainer({ state, commands }: ExplorerPageContai
       ree={ree}
       locked={locked}
       badges={badges}
+      log={serviceLogs.hbom || null}
+      running={actionStates.hbom === "loading"}
+      runDone={!!badges.hbom}
+      ts={timestamps.hbom}
       focusedField={focusedField}
       onReeChange={commands.setRee}
       onLockedChange={commands.setLocked}
       onGoService={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
+      onRun={commands.onRunWorkflowAction}
+      onCancel={commands.onCancelAction}
     />
   );
 }

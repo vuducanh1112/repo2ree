@@ -136,6 +136,7 @@ export interface ReviewUploadCompleteResponseDto {
 export type WorkflowOperationDto =
   | "evaluate"
   | "build"
+  | "hbom"
   | "sbom"
   | "activation"
   | "source"
@@ -161,6 +162,10 @@ export interface CreateBuildRuntimeRunRequestDto {
 
 export interface CreateGenerateSbomRunRequestDto {
   produced_runtime_path: string;
+  idempotencyKey?: string;
+}
+
+export interface CreateGenerateHbomRunRequestDto {
   idempotencyKey?: string;
 }
 

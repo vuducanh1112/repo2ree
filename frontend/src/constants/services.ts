@@ -64,6 +64,16 @@ export const SERVICES: WorkflowService[] = [
     ],
   },
   {
+    key: "hbom",
+    label: "Profile Machine",
+    IC: Ic.chip,
+    color: "#0f766e",
+    badge: { label: "HBOM profiled", color: "#0f766e", bg: "#ecfeff" },
+    desc: "Inspect the current machine and prefill the HBOM with detected CPU, GPU, memory, storage, and network details.",
+    requires: [],
+    params: [],
+  },
+  {
     key: "sbom",
     label: "Generate SBOM",
     IC: Ic.package,

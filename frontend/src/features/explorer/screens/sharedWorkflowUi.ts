@@ -49,11 +49,17 @@ export interface PageHardwareBomProps {
   ree: Ree;
   locked: boolean;
   badges: Badges;
+  log: LogEntry | null;
+  running: boolean;
+  runDone: boolean;
+  ts?: string;
   focusedField: string | null;
   onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
   onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
   onGoService: (key: ExplorerPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
+  onRun: (key: WorkflowServiceKey, params: WorkflowServiceRunParams) => void;
+  onCancel?: (key: WorkflowServiceKey) => void;
 }
 
 export interface ServicePageProps {
@@ -66,7 +72,7 @@ export interface ServicePageProps {
   runDone: boolean;
   badge: ServiceBadge | null;
   ts: string | undefined;
-  onRun: (key: WorkflowServiceKey, params: WorkflowServiceRunParams) => void;
+  onRun: <K extends WorkflowServiceKey>(key: K, params: WorkflowServiceRunParams<K>) => void;
   onCancel?: (key: WorkflowServiceKey) => void;
   onGo: (key: ExplorerPage) => void;
   onGoFields: () => void;

@@ -21,6 +21,8 @@ export const endpoints = {
     `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/ree-archive`,
   workspaceBuildRuntime: (workspaceId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/build-runtime`,
+  workspaceGenerateHbom: (workspaceId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/generate-hbom`,
   workspaceGenerateSbom: (workspaceId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(workspaceId)}/generate-sbom`,
   workspaceActivationTest: (workspaceId: string) =>
