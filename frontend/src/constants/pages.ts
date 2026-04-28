@@ -1,4 +1,4 @@
-import type { Ree } from "../types/ree";
+import type { Ree } from "../types/reeModel";
 
 // Explorer-internal pages (Explorer component).
 export const PAGE = {
