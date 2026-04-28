@@ -15,6 +15,7 @@ import {
   S_OVERVIEW_SEALED_META_ROW,
 } from "../../../constants/theme";
 import type { Badges, Ree } from "../../../types";
+import { hbomHasAnyComponents } from "../../../utils/hbom";
 
 interface CenterSealStripProps {
   ree: Ree;
@@ -43,12 +44,12 @@ export function CenterSealStrip({
     {
       key: PAGE.METADATA,
       label: "Metadata",
-      live:
-        (["name", "hardware_description"] as (keyof Ree)[]).filter((field) =>
-          field === "hardware_description"
-            ? Object.values((ree[field] as Record<string, string>) || {}).some((value) => value)
-            : !!ree[field],
-        ).length > 0,
+      live: !!ree.name,
+    },
+    {
+      key: PAGE.HBOM,
+      label: "HBOM",
+      live: hbomHasAnyComponents(ree.hardware_description),
     },
     { key: PAGE.SOURCE, label: "Source", live: !!ree._sourceAvailable },
     { key: "runtime", label: "Runtime", live: !!ree._runtimeIncluded },

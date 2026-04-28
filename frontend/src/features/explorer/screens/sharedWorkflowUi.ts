@@ -45,6 +45,17 @@ export interface PageMetadataEntryProps {
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
+export interface PageHardwareBomProps {
+  ree: Ree;
+  locked: boolean;
+  badges: Badges;
+  focusedField: string | null;
+  onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
+  onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
+  onGoService: (key: ExplorerPage) => void;
+  onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
 export interface ServicePageProps {
   svc: Service & { key: WorkflowServiceKey };
   ree: Ree;

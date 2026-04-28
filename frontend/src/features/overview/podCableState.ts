@@ -1,5 +1,6 @@
 import { PAGE } from "../../constants/pages";
 import type { Badges, Ree } from "../../types";
+import { hbomHasAnyComponents } from "../../utils/hbom";
 
 type PodCableSide = "left" | "right" | "top";
 
@@ -17,6 +18,7 @@ interface PodCableState {
 export function getPodCableStates(ree: Ree, badges: Badges): PodCableState[] {
   const hasName = !!ree.name?.trim();
   const fieldsConnected = hasName;
+  const hbomConnected = hbomHasAnyComponents(ree.hardware_description);
 
   const archiveConnected = !!(ree.zenodo_doi || ree.dataverse_doi);
   const activationConnected = !!badges?.activation;
@@ -43,7 +45,7 @@ export function getPodCableStates(ree: Ree, badges: Badges): PodCableState[] {
       label: "Runtime",
       side: "right",
       podSide: "left",
-      podRank: 3,
+      podRank: 4,
       color: "#0891b2",
       shadow: "#164e63",
       connected: runtimeConnected,
@@ -53,7 +55,7 @@ export function getPodCableStates(ree: Ree, badges: Badges): PodCableState[] {
       label: "SBOM",
       side: "right",
       podSide: "left",
-      podRank: 4,
+      podRank: 5,
       color: "#16a34a",
       shadow: "#14532d",
       connected: sbomConnected,
@@ -67,6 +69,16 @@ export function getPodCableStates(ree: Ree, badges: Badges): PodCableState[] {
       color: "#22c55e",
       shadow: "#166534",
       connected: fieldsConnected,
+    },
+    {
+      id: PAGE.HBOM,
+      label: "HBOM",
+      side: "right",
+      podSide: "left",
+      podRank: 3,
+      color: "#0f766e",
+      shadow: "#134e4a",
+      connected: hbomConnected,
     },
     {
       id: "archive",

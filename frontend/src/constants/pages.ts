@@ -4,6 +4,7 @@ import type { Ree } from "../types/ree";
 export const PAGE = {
   SOURCE: "source",
   METADATA: "metadata",
+  HBOM: "hbom",
   OVERVIEW: "overview",
   SEAL: "seal",
   ARCHIVE: "archive",
@@ -36,6 +37,7 @@ export const FIELD_TO_PAGE: Partial<Record<keyof Ree, ExplorerPage>> = {
   source_type: PAGE.SOURCE,
   _sourceAvailable: PAGE.SOURCE,
   _sourceAcquiredBy: PAGE.SOURCE,
+  hardware_description: PAGE.HBOM,
   runtime: PAGE.BUILD,
   build_runtime_script: PAGE.BUILD,
   activation_script: PAGE.ACTIVATION,

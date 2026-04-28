@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
-import { PAGE } from "../../../constants/pages";
 import { defaultParamsForService, SERVICES } from "../../../constants/services";
-import type { Ree, ServiceParamValue, WorkflowServiceRunParams } from "../../../types";
+import type { ServiceParamValue, WorkflowServiceRunParams } from "../../../types";
+import { explorerPageForField } from "../utils/navigation";
 import { missingRequirements } from "../utils/requirements";
 import type { useExplorerController } from "./useExplorerController";
 
@@ -52,9 +52,12 @@ export function useServicePageController({ state, commands }: UseServicePageCont
   );
 
   const goToRequirements = useCallback(() => {
-    const sourceFieldKeys: (keyof Ree)[] = ["origin_url", "source_type", "_sourceAvailable"];
-    const hasSourceGap = missing.some((requirement) => sourceFieldKeys.includes(requirement.field));
-    commands.setPage(hasSourceGap ? PAGE.SOURCE : PAGE.METADATA);
+    const firstMissingField = missing[0]?.field;
+    commands.setPage(
+      firstMissingField
+        ? explorerPageForField(String(firstMissingField))
+        : explorerPageForField("name"),
+    );
   }, [commands, missing]);
 
   if (!service || !params) {

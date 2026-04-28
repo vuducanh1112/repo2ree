@@ -18,6 +18,15 @@ export const FIELD_META: Record<string, FieldMeta> = {
       "Choose a name that reflects the project and version. This will appear in manifests and citations.",
     tools: [],
   },
+  hardware_description: {
+    label: "Hardware BOM",
+    desc: "Manual hardware bill of materials for the machine or target environment used by this REE.",
+    example: "cpu: AMD EPYC, memory: 64 GB, gpu: NVIDIA A100, os: Ubuntu 24.04",
+    format: "Key/value pairs such as cpu, memory, gpu, storage, network, os, or accelerator.",
+    howTo:
+      "Add the machine details that most affect reproducibility today. This is manual for now and can later be sourced from local or remote machines.",
+    tools: [],
+  },
   swhid: {
     label: "SWHID",
     desc: "Permanent Software Heritage identifier. Auto-assigned when you run Archive.",

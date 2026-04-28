@@ -22,7 +22,13 @@ export function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
     cond: () => boolean;
   }> = [
     { key: PAGE.SOURCE, nextKey: PAGE.METADATA, nextLabel: "Provide Metadata", cond: () => true },
-    { key: PAGE.METADATA, nextKey: PAGE.EVALUATE, nextLabel: "Evaluate", cond: () => true },
+    {
+      key: PAGE.METADATA,
+      nextKey: PAGE.HBOM,
+      nextLabel: "Create Hardware BOM",
+      cond: () => true,
+    },
+    { key: PAGE.HBOM, nextKey: PAGE.EVALUATE, nextLabel: "Evaluate", cond: () => true },
     { key: PAGE.EVALUATE, nextKey: PAGE.BUILD, nextLabel: "Build Runtime", cond: () => true },
     { key: PAGE.BUILD, nextKey: PAGE.SBOM, nextLabel: "Generate SBOM", cond: () => true },
     { key: PAGE.SBOM, nextKey: PAGE.ACTIVATION, nextLabel: "Test Activation", cond: () => true },

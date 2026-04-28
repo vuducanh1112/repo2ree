@@ -6,6 +6,7 @@ import { listTreeFiles } from "../../utils";
 import { fmtBytes } from "../../utils/formatting";
 import { AllFieldsPanel } from "./components/AllFieldsPanel";
 import { CenterSealStrip } from "./components/CenterSealStrip";
+import { HbomPanel } from "./components/HbomPanel";
 import { MetadataPanel } from "./components/MetadataPanel";
 import { RightRailPanels } from "./components/RightRailPanels";
 import { RuntimePanel } from "./components/RuntimePanel";
@@ -51,6 +52,7 @@ export function PageOverview({
   const sourceRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
+  const hbomRef = useRef<HTMLDivElement>(null);
   const podColumnRef = useRef<HTMLDivElement>(null);
   const podSvgRef = useRef<SVGSVGElement>(null);
 
@@ -178,6 +180,7 @@ export function PageOverview({
           sourceRef={sourceRef}
           runtimeRef={runtimeRef}
           metadataRef={leftPanelRef}
+          hbomRef={hbomRef}
           swhRef={swhRef}
           evaluateRef={evaluateRef}
           sbomRef={sbomRef}
@@ -218,6 +221,8 @@ export function PageOverview({
             onNavigate={onNavigate}
             metadataRef={leftPanelRef}
           />
+
+          <HbomPanel ree={ree} hbomRef={hbomRef} onGoField={onGoField} onNavigate={onNavigate} />
 
           <RuntimePanel
             ree={ree}

@@ -1,4 +1,5 @@
 import type { Ree } from "../types";
+import { emptyHBOM } from "../utils/hbom";
 
 export const DEMO_REE: Ree = {
   name: "genomics-pipeline-v2",
@@ -12,10 +13,30 @@ export const DEMO_REE: Ree = {
   sbom: "",
   activation_script: "activation_test.sh",
   hardware_description: {
-    arch: "x86_64",
-    memory: "16 GB",
-    os: "Debian Bookworm",
-    cpu: "Intel Xeon E5-2680",
+    ...emptyHBOM(),
+    cpus: {
+      "Intel Xeon E5-2680": {
+        vendor: "Intel",
+        quantity: 1,
+        cores_per_cpu: 8,
+        threads_per_core: 2,
+        architecture: "x86_64",
+        extra_info: {},
+      },
+    },
+    memory: {
+      "DDR4 ECC 16 GB": {
+        vendor: "Samsung",
+        quantity: 1,
+        capacity_gb: 16,
+        memory_type: "DDR4",
+        speed_mt_s: 2666,
+        extra_info: {},
+      },
+    },
+    extra_info: {
+      os: "Debian Bookworm",
+    },
   },
   _sourceAvailable: false,
   _sourceIncluded: true,

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Literal, Mapping
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from repo2ree_core.hbom import HBOM
 
 
 SourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]
@@ -24,7 +25,7 @@ class REE(BaseModel):
     dataverse_doi: str | None = None
     repro_level: str | None = None
     detected_dependencies: str | None = None
-    hardware_description: dict[str, str] = Field(default_factory=dict)
+    hardware_description: HBOM = Field(default_factory=HBOM)
     eval_level: int = Field(default=0, alias="_evalLevel")
     sealed_at: str | None = Field(default=None, alias="_sealedAt")
     seal_hash: str | None = Field(default=None, alias="_sealHash")
@@ -42,6 +43,20 @@ class REE(BaseModel):
     downloadable_files: list[str] = Field(
         default_factory=list, alias="_downloadableFiles"
     )
+
+    @field_validator("hardware_description", mode="before")
+    @classmethod
+    def normalize_hardware_description(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return HBOM()
+        if isinstance(value, HBOM):
+            return value
+        if isinstance(value, Mapping):
+            known_keys = {"cpus", "gpus", "memory", "storage", "network", "extra_info"}
+            if any(key in value for key in known_keys):
+                return value
+            return {"extra_info": {str(key): item for key, item in value.items()}}
+        return value
 
     @classmethod
     def from_metadata(cls, metadata: Mapping[str, Any]) -> "REE":
@@ -135,7 +150,7 @@ class REE(BaseModel):
             "swhid": self.swhid or None,
             "zenodo_doi": self.zenodo_doi or None,
             "dataverse_doi": self.dataverse_doi or None,
-            "hardware_description": self.hardware_description or {},
+            "hardware_description": self.hardware_description.model_dump(),
             "sealed_at": self.sealed_at or None,
             "seal_hash": self.seal_hash or None,
             "eval_level": self.eval_level or 0,

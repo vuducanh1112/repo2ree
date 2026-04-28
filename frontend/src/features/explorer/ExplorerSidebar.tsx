@@ -4,6 +4,7 @@ import { PAGE } from "../../constants/pages";
 import { SERVICES } from "../../constants/services";
 import { C, F, hoverBg, hoverColor, S_SECTION_LABEL } from "../../constants/theme";
 import type { Badges, ExplorerPage, Ree, Service, Timestamps } from "../../types";
+import { hbomHasAnyComponents } from "../../utils/hbom";
 import { PodWidget } from "../overview/PodWidget";
 import { getPodCableStates } from "../overview/podCableState";
 import { ActionBtn, NavEntryButton } from "./ExplorerNav";
@@ -36,10 +37,18 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     label: "Provide Metadata",
     IC: Ic.grid,
     svc: null,
-    desc: "Input metadata about the project",
+    desc: "Input project identity metadata",
   },
   {
     n: 3,
+    key: PAGE.HBOM,
+    label: "Create HBOM",
+    IC: Ic.chip,
+    svc: null,
+    desc: "Enter hardware bill of materials",
+  },
+  {
+    n: 4,
     key: PAGE.EVALUATE,
     label: "Evaluate",
     IC: Ic.star,
@@ -47,7 +56,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     desc: "Score reproducibility level",
   },
   {
-    n: 4,
+    n: 5,
     key: PAGE.BUILD,
     label: "Build Runtime",
     IC: Ic.cpu,
@@ -55,7 +64,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     desc: "Build the runtime tarball",
   },
   {
-    n: 5,
+    n: 6,
     key: PAGE.SBOM,
     label: "Generate SBOM",
     IC: Ic.package,
@@ -63,7 +72,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     desc: "Scan runtime with syft",
   },
   {
-    n: 6,
+    n: 7,
     key: PAGE.ACTIVATION,
     label: "Test Activation",
     IC: Ic.shield,
@@ -71,14 +80,14 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     desc: "Verify container activates",
   },
   {
-    n: 7,
+    n: 8,
     key: PAGE.ARCHIVE,
     label: "Deposit & Share",
     IC: Ic.globe,
     svc: null,
     desc: "Archive and publish",
   },
-  { n: 8, key: PAGE.SEAL, label: "Seal", IC: Ic.lock, svc: null, desc: "Seal the REE" },
+  { n: 9, key: PAGE.SEAL, label: "Seal", IC: Ic.lock, svc: null, desc: "Seal the REE" },
 ];
 
 function hasWorkflowStepRun(stepKey: ExplorerPage, ree: Ree, badges: Badges): boolean {
@@ -87,6 +96,9 @@ function hasWorkflowStepRun(stepKey: ExplorerPage, ree: Ree, badges: Badges): bo
   }
   if (stepKey === PAGE.METADATA) {
     return !!ree.name;
+  }
+  if (stepKey === PAGE.HBOM) {
+    return hbomHasAnyComponents(ree.hardware_description);
   }
   if (stepKey === PAGE.SEAL) {
     return !!ree._sealedAt;

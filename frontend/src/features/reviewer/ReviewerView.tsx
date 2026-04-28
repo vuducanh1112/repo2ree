@@ -7,6 +7,7 @@ import { C, F, hoverBg, hoverColor, S_SECTION_LABEL_SMALL } from "../../constant
 import type { LogLine, Ree, ReeFile } from "../../types/ree";
 import type { Level, ServiceParamValue, StepState } from "../../types/services";
 import type { FileTreeNode } from "../../types/workspace";
+import { hbomSummaryLines } from "../../utils/hbom";
 import { PageFiles } from "../files/PageFiles";
 import {
   MetaRow,
@@ -553,7 +554,7 @@ export function ReviewerView({
               color={C.textMid}
             />
             <MetaRow label="SBOM" value={ree.sbom} mono color={C.textMid} />
-            {ree.hardware_description && (
+            {hbomSummaryLines(ree.hardware_description).length > 0 && (
               <div style={{ paddingTop: 8 }}>
                 <div
                   style={{
@@ -561,24 +562,20 @@ export function ReviewerView({
                     marginBottom: 6,
                   }}
                 >
-                  Hardware
+                  Hardware BOM
                 </div>
-                {Object.entries(ree.hardware_description)
-                  .filter(([, v]) => v)
-                  .map(([k, v]) => (
-                    <div
-                      key={k}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        fontSize: 11,
-                        marginBottom: 3,
-                      }}
-                    >
-                      <span style={{ color: C.textMuted, fontFamily: F.sans }}>{k}</span>
-                      <span style={{ fontFamily: F.mono, color: C.textMid }}>{v}</span>
-                    </div>
-                  ))}
+                {hbomSummaryLines(ree.hardware_description).map((line) => (
+                  <div
+                    key={line}
+                    style={{
+                      display: "flex",
+                      fontSize: 11,
+                      marginBottom: 3,
+                    }}
+                  >
+                    <span style={{ fontFamily: F.mono, color: C.textMid }}>{line}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>

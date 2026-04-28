@@ -9,6 +9,7 @@ import {
 import {
   ArchivePageContainer,
   FilesPageContainer,
+  HardwareBomPageContainer,
   MetadataPageContainer,
   OverviewPageContainer,
   ServicePageContainer,
@@ -35,6 +36,7 @@ export function ExplorerMainContent({ state, commands }: ExplorerMainContentProp
         <OverviewPageContainer state={state} commands={commands} />
         <SourcePageContainer state={state} commands={commands} />
         <MetadataPageContainer state={state} commands={commands} />
+        <HardwareBomPageContainer state={state} commands={commands} />
         <ServicePageContainer state={state} commands={commands} />
         <ArchivePageContainer state={state} commands={commands} />
         <FilesPageContainer state={state} commands={commands} />

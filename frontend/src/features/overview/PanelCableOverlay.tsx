@@ -45,6 +45,7 @@ interface PanelCableOverlayProps {
   sourceRef: React.RefObject<HTMLDivElement>;
   runtimeRef: React.RefObject<HTMLDivElement>;
   metadataRef: React.RefObject<HTMLDivElement>;
+  hbomRef: React.RefObject<HTMLDivElement>;
   swhRef: React.RefObject<HTMLDivElement>;
   evaluateRef: React.RefObject<HTMLDivElement>;
   sbomRef: React.RefObject<HTMLDivElement>;
@@ -73,6 +74,7 @@ export function PanelCableOverlay({
   sourceRef,
   runtimeRef,
   metadataRef,
+  hbomRef,
   swhRef,
   evaluateRef,
   sbomRef,
@@ -187,6 +189,14 @@ export function PanelCableOverlay({
         connected: !!cableById.fields?.connected,
       },
       {
+        id: "hbom",
+        ref: hbomRef,
+        side: "right",
+        color: cableById.hbom?.color || "#0f766e",
+        shadow: cableById.hbom?.shadow || "#134e4a",
+        connected: !!cableById.hbom?.connected,
+      },
+      {
         id: "archive",
         ref: archiveRef,
         side: "left",
@@ -290,6 +300,7 @@ export function PanelCableOverlay({
     sourceRef,
     swhRef,
     svgPtToContainer,
+    hbomRef,
   ]);
 
   React.useEffect(() => {

@@ -226,12 +226,35 @@ test("upload source archive into workspace", async ({ page }) => {
 	await test.step("Provide metadata", async () => {
 		await clickDemo(
 			page,
-			page.getByRole("button", { name: /Provide Metadata.*Input metadata about the project/ }),
+			page.getByRole("button", { name: /Provide Metadata.*project identity metadata/i }),
 			"Provide project metadata",
 		);
 		await expect(main.getByText("Provide Metadata", { exact: true })).toBeVisible();
 		await fillDemo(page, page.getByPlaceholder("my-project-v1.0"), "ree-hello-world", "Change REE name");
 		await expect(page.getByPlaceholder("my-project-v1.0")).toHaveValue("ree-hello-world");
+	});
+
+	await test.step("Provide HBOM entry", async () => {
+		await clickDemo(
+			page,
+			page.getByRole("button", { name: /Create HBOM.*Enter hardware bill of materials/ }),
+			"Add a hardware bill of materials entry",
+		);
+		await expect(main.getByText("Create Hardware BOM", { exact: true })).toBeVisible();
+		await clickDemo(
+			page,
+			main.locator("button").filter({ hasText: "Add CPU" }).first(),
+			"Create a CPU component card",
+		);
+		await fillDemo(
+			page,
+			main.getByPlaceholder("Intel Core i9-14900K").first(),
+			"Intel Core i9-14900K",
+			"Enter the CPU device model",
+		);
+		await expect(main.getByPlaceholder("Intel Core i9-14900K").first()).toHaveValue(
+			"Intel Core i9-14900K",
+		);
 	});
 
 	await test.step("Evaluate REE", async () => {

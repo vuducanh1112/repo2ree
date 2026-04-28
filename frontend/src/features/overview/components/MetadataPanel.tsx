@@ -22,12 +22,8 @@ interface MetadataPanelProps {
 }
 
 export function MetadataPanel({ ree, onGoField, onNavigate, metadataRef }: MetadataPanelProps) {
-  const metadataFields = ["name", "hardware_description"] as (keyof Ree)[];
-  const filledCount = metadataFields.filter((field) =>
-    field === "hardware_description"
-      ? Object.values((ree[field] as Record<string, string>) || {}).some((value) => value)
-      : !!ree[field],
-  ).length;
+  const metadataFields = ["name"] as (keyof Ree)[];
+  const filledCount = metadataFields.filter((field) => !!ree[field]).length;
 
   return (
     <div
@@ -56,19 +52,10 @@ export function MetadataPanel({ ree, onGoField, onNavigate, metadataRef }: Metad
       </div>
       <div style={S_OVERVIEW_PANEL_FIELDS}>
         {metadataFields.map((field, index) => {
-          const isHardware = field === "hardware_description";
           const rawValue = ree[field];
-          const filled = isHardware
-            ? Object.values((rawValue as Record<string, string>) || {}).some((value) => value)
-            : !!rawValue;
-          const label =
-            FIELD_META[field as string]?.label || (isHardware ? "Hardware" : String(field));
-          const displayValue = isHardware
-            ? Object.entries((rawValue as Record<string, string>) || {})
-                .filter(([, value]) => value)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(", ")
-            : String(rawValue ?? "");
+          const filled = !!rawValue;
+          const label = FIELD_META[field as string]?.label || String(field);
+          const displayValue = String(rawValue ?? "");
 
           return (
             <PanelFieldRow

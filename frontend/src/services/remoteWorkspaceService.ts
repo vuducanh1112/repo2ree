@@ -2,6 +2,7 @@ import type { WorkflowRunDto, WorkflowRunStatusDto, WorkspaceDetailDto } from ".
 import { ApiClient, mapRunLogsToLegacy, WorkflowRunsApi, WorkspaceApi } from "../api";
 import type { FileTreeNode, Ree } from "../types";
 import type { ReeFile } from "../types/ree";
+import { normalizeHBOM } from "../utils/hbom";
 import type {
   IWorkspaceService,
   LogLine,
@@ -109,7 +110,7 @@ function mapWorkspace(workspace: WorkspaceDetailDto): ReeProject<FileTreeNode> {
     detected_dependencies: draft.detected_dependencies
       ? String(draft.detected_dependencies)
       : undefined,
-    hardware_description: (draft.hardware_description as Record<string, string>) || {},
+    hardware_description: normalizeHBOM(draft.hardware_description),
     _evalLevel: Number(draft._evalLevel ?? 0),
     _sealedAt: draft._sealedAt ? String(draft._sealedAt) : undefined,
     _sealHash: draft._sealHash ? String(draft._sealHash) : undefined,

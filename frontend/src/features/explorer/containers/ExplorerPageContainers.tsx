@@ -10,6 +10,7 @@ import {
   PageBuildRuntime,
   PageEvaluate,
   PageGenerateSBOM,
+  PageHardwareBom,
   PageMetadataEntry,
   PageSourceRepoEntry,
   PageTestActivation,
@@ -120,6 +121,27 @@ export function MetadataPageContainer({ state, commands }: ExplorerPageContainer
 
   return (
     <PageMetadataEntry
+      ree={ree}
+      locked={locked}
+      badges={badges}
+      focusedField={focusedField}
+      onReeChange={commands.setRee}
+      onLockedChange={commands.setLocked}
+      onGoService={commands.setPage}
+      onFocusedFieldChange={commands.setFocusedField}
+    />
+  );
+}
+
+export function HardwareBomPageContainer({ state, commands }: ExplorerPageContainerProps) {
+  const { page, ree, locked, badges, focusedField } = state;
+
+  if (page !== PAGE.HBOM) {
+    return null;
+  }
+
+  return (
+    <PageHardwareBom
       ree={ree}
       locked={locked}
       badges={badges}
