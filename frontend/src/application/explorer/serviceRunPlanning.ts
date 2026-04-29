@@ -1,7 +1,7 @@
 import { PAGE } from "../../constants/pages";
-import { SERVICES } from "../../constants/services";
 import type { Ree, WorkflowServiceKey } from "../../types";
 import type { GenericServiceParams } from "../../types/services";
+import { planNonWorkflowCompletion } from "./nonWorkflowCompletionPlanning";
 
 type ServiceRunStatus =
   | "created"
@@ -103,41 +103,9 @@ export function planTerminalServiceRunFailure(
 export function planNonWorkflowServiceRunSuccess(
   args: NonWorkflowCompletionArgs & { timestamp: string },
 ): ServiceRunSuccessPlan {
-  if (args.key === "create") {
-    return {
-      ...planServiceRunCompletion(args.key, args.timestamp),
-      lock: true,
-      successMessage: "REE created — fields locked",
-    };
-  }
-
-  if (args.key === "swh") {
-    return {
-      ...planServiceRunCompletion(args.key, args.timestamp),
-      reePatch: { swhid: args.generatedSwhid || "" },
-      successMessage: "Archived at Software Heritage — SWHID assigned",
-    };
-  }
-
-  if (args.key === "zenodo") {
-    return {
-      ...planServiceRunCompletion(args.key, args.timestamp),
-      reePatch: { zenodo_doi: args.generatedZenodoDoi || "" },
-      successMessage: "Published on Zenodo — DOI assigned",
-    };
-  }
-
-  if (args.key === "dataverse") {
-    return {
-      ...planServiceRunCompletion(args.key, args.timestamp),
-      reePatch: { dataverse_doi: args.generatedDataverseDoi || "" },
-      successMessage: "Dataset published on Dataverse — DOI assigned",
-    };
-  }
-
-  const service = SERVICES.find((candidate) => candidate.key === args.key);
+  const nonWorkflowCompletion = planNonWorkflowCompletion(args);
   return {
     ...planServiceRunCompletion(args.key, args.timestamp),
-    successMessage: `${service?.label ?? args.key} completed`,
+    ...nonWorkflowCompletion,
   };
 }

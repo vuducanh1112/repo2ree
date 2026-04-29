@@ -119,6 +119,32 @@ describe("createSourceUseCase", () => {
     });
   });
 
+  it("reports upload validation errors without resetting workflow state", async () => {
+    const executeCommands = vi.fn();
+    const sourceChanged = vi.fn();
+    const runSourceAction = vi.fn();
+
+    const useCase = createSourceUseCase({
+      ree: { ...buildRee(), _sourceAvailable: true, _sourceAcquiredBy: "download" },
+      executeCommands,
+      sourceChanged,
+      runSourceAction,
+      refreshWorkspaceFiles: vi.fn(),
+      clearWorkspace: vi.fn(),
+      nowIso: () => "2026-01-01T00:00:00Z",
+    });
+
+    await useCase.uploadSource({ archiveName: "source.tar.gz", archiveContentBase64: "abc" });
+
+    expect(sourceChanged).not.toHaveBeenCalled();
+    expect(runSourceAction).not.toHaveBeenCalled();
+    expect(executedCommands(executeCommands)).toContainEqual({
+      type: "toast",
+      message: "Source already provided via origin download. Change source to switch method.",
+      toastType: "error",
+    });
+  });
+
   it("clears workspace source and applies clear state", async () => {
     const executeCommands = vi.fn();
     const clearWorkspace = vi.fn(async () => {});

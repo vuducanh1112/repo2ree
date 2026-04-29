@@ -17,7 +17,7 @@ export const ACTION_TYPES = {
     hydrateWorkspace: "explorer/hydrateWorkspace",
     setImmutableSourceSnapshotFiles: "explorer/setImmutableSourceSnapshotFiles",
     setImmutableSourceSnapshotArchiveName: "explorer/setImmutableSourceSnapshotArchiveName",
-    applySourceOutcome: "explorer/applySourceOutcome",
+    applySourcePatchOutcome: "explorer/applySourcePatchOutcome",
     setShowReviewerPreview: "explorer/setShowReviewerPreview",
     completeServiceRun: "explorer/completeServiceRun",
     resetWorkflowOnSourceChange: "explorer/resetWorkflowOnSourceChange",

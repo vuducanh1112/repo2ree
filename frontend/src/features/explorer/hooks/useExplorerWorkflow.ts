@@ -4,7 +4,6 @@ import { useWorkspaceRuntime } from "../../../app/WorkspaceRuntime";
 import { planSealCommands } from "../../../application/explorer/sealCommands";
 import { createServiceRunHandlers } from "../../../application/explorer/serviceRunCommands";
 import { createExplorerWorkflowSession } from "../../../application/explorer/workflowSession";
-import { isWorkflowServiceKey } from "../../../constants/services";
 import type { AppAction } from "../../../context";
 import { explorerActions } from "../../../context";
 import type { WorkspaceServiceLogEntry } from "../../../services/workspaceService";
@@ -14,14 +13,13 @@ import type {
   Ree,
   ReeFile,
   ServiceParams,
-  WorkflowServiceKey,
   WorkflowServiceRunParams,
 } from "../../../types";
 import { executeServiceRunCommands } from "./workflow/commandExecutors";
 import { createDownloadActions } from "./workflow/downloadActions";
 import { createWorkspaceFilePersistence } from "./workflow/filePersistence";
-import { executeServiceRunAction } from "./workflow/serviceRuns";
-import { createSourceActions, resetWorkflowOnSourceChange } from "./workflow/sourceLifecycle";
+import { createServiceRunAdapter } from "./workflow/serviceRunAdapter";
+import { createSourceAdapter } from "./workflow/sourceAdapter";
 import { useWorkspaceDraftSync } from "./workflow/useWorkspaceDraftSync";
 
 interface UseExplorerWorkflowArgs {
@@ -50,10 +48,6 @@ export function useExplorerWorkflow({
   });
   const showToast = (msg: string, type: "info" | "success" | "error" = "info") =>
     dispatch(explorerActions.setToast({ message: msg, type }));
-
-  const handleSourceChange = (options: { silent?: boolean } = {}) => {
-    resetWorkflowOnSourceChange(dispatch, showToast, options);
-  };
 
   const executeServiceRunBridge = useCallback(
     (key: string, params?: GenericServiceParams) => executeServiceRunRef.current(key, params),
@@ -100,46 +94,53 @@ export function useExplorerWorkflow({
     clock: ports.clock,
   });
 
-  async function executeServiceRun(key: string, params: GenericServiceParams = {}) {
-    return executeServiceRunAction({
-      key,
-      params,
-      ree,
-      level,
-      virtualFiles,
-      dispatch,
-      persistWorkspaceFile: (path: string, content: string) => {
-        void persistWorkspaceFile(undefined, path, content);
-      },
-      showToast,
-      serviceRunHandlers,
-      workspaceService,
-      workspaceId,
-      ports,
-      refreshWorkspace,
-      onRunStarted: workflowSession.noteRunStarted,
-      onRunFinished: workflowSession.noteRunFinished,
-    });
-  }
+  const serviceRunAdapter = createServiceRunAdapter({
+    ree,
+    level,
+    virtualFiles,
+    dispatch,
+    persistWorkspaceFile: (path: string, content: string) => {
+      void persistWorkspaceFile(undefined, path, content);
+    },
+    persistWorkflowParams: (key, params) => {
+      dispatch(
+        explorerActions.setServiceParams((prev) =>
+          workflowSession.mergeWorkflowParams(
+            prev,
+            key,
+            params as WorkflowServiceRunParams<typeof key>,
+          ),
+        ),
+      );
+    },
+    showToast,
+    serviceRunHandlers,
+    workspaceService,
+    workspaceId,
+    ports,
+    refreshWorkspace,
+    workflowSession,
+  });
+
+  const sourceAdapter = createSourceAdapter({
+    ree,
+    workspaceService,
+    workspaceId,
+    dispatch,
+    refreshWorkspaceFiles,
+    showToast,
+    clock: ports.clock,
+    sleep: ports.sleep,
+    onRunStarted: workflowSession.noteRunStarted,
+    onRunFinished: workflowSession.noteRunFinished,
+  });
 
   useEffect(() => {
-    executeServiceRunRef.current = executeServiceRun;
+    executeServiceRunRef.current = serviceRunAdapter.executeServiceRun;
   });
 
   const { handleDownloadSourceFiles, handleWorkspaceUpload, handleRemoveWorkspaceSource } =
-    createSourceActions({
-      ree,
-      workspaceService,
-      workspaceId,
-      dispatch,
-      refreshWorkspaceFiles,
-      onSourceChange: handleSourceChange,
-      showToast,
-      clock: ports.clock,
-      sleep: ports.sleep,
-      onRunStarted: workflowSession.noteRunStarted,
-      onRunFinished: workflowSession.noteRunFinished,
-    });
+    sourceAdapter;
 
   const handleSeal = () => {
     executeServiceRunCommands(
@@ -164,42 +165,6 @@ export function useExplorerWorkflow({
     showToast,
   });
 
-  const runAction = async (key: string, params: GenericServiceParams = {}) => {
-    if (isWorkflowServiceKey(key)) {
-      dispatch(
-        explorerActions.setServiceParams((prev) =>
-          workflowSession.mergeWorkflowParams(
-            prev,
-            key,
-            params as WorkflowServiceRunParams<typeof key>,
-          ),
-        ),
-      );
-    }
-    await executeServiceRun(key, params);
-  };
-
-  async function runWorkflowAction<K extends WorkflowServiceKey>(
-    key: K,
-    params: WorkflowServiceRunParams<K>,
-  ): Promise<void> {
-    await runAction(key, params);
-  }
-
-  const cancelWorkflowAction = async (key: string) => {
-    const cancelWorkflowRun = workspaceService.cancelWorkflowRun;
-    const cancelRun = cancelWorkflowRun
-      ? (runId: string) => cancelWorkflowRun(workspaceId, runId)
-      : undefined;
-    const result = await workflowSession.cancelTrackedRun({
-      key,
-      cancelRun,
-    });
-    if (result.message) {
-      showToast(result.message, result.ok ? "info" : "error");
-    }
-  };
-
   return {
     handleSeal,
     handleDownloadRee,
@@ -208,8 +173,8 @@ export function useExplorerWorkflow({
     handleRemoveWorkspaceSource,
     downloadWorkspaceFile,
     persistWorkspaceFile,
-    runAction,
-    runWorkflowAction,
-    cancelWorkflowAction,
+    runAction: serviceRunAdapter.runAction,
+    runWorkflowAction: serviceRunAdapter.runWorkflowAction,
+    cancelWorkflowAction: serviceRunAdapter.cancelWorkflowAction,
   };
 }

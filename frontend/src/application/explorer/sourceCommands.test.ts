@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Ree } from "../../types";
 import { sourceChangeResetCommands, sourceFailureCommands } from "./sourceCommands";
-
-const ree = { name: "demo" } as Ree;
 
 describe("sourceCommands", () => {
   it("plans reset and toast commands when source changes visibly", () => {
@@ -25,9 +22,9 @@ describe("sourceCommands", () => {
   });
 
   it("plans source failure outcome before error toast", () => {
-    const commands = sourceFailureCommands({ ree, message: "Source failed" });
+    const commands = sourceFailureCommands({ message: "Source failed" });
 
-    expect(commands.map((command) => command.type)).toEqual(["applySourceOutcome", "toast"]);
+    expect(commands.map((command) => command.type)).toEqual(["applySourcePatchOutcome", "toast"]);
     expect(commands[1]).toEqual({
       type: "toast",
       message: "Source failed",

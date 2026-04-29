@@ -41,12 +41,12 @@ interface SourceStatePlan {
   timestamp: string;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
-  ree: Ree;
+  reePatch: Partial<Ree>;
   successMessage: string;
 }
 
 interface ClearedSourceStatePlan {
-  ree: Ree;
+  reePatch: Partial<Ree>;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
   infoMessage: string;
@@ -101,6 +101,15 @@ function validateSourceUpload(ree: Ree): SourceActionPlanResult<Record<string, n
   }
 
   return { ok: true, value: {} };
+}
+
+function buildSourceWorkflowRequestPlan(
+  request: Record<string, string | boolean | number | null | undefined>,
+): SourceWorkflowRequestPlan {
+  return {
+    resetRequest: request,
+    runParams: request,
+  };
 }
 
 function buildDownloadedSourceSuccess(args: {
@@ -178,16 +187,11 @@ export function planSourceDownloadAction(
     ok: true,
     value: {
       normalizedSourceUrl: plan.value.normalizedSourceUrl,
-      resetRequest: {
+      ...buildSourceWorkflowRequestPlan({
         mode: "download",
         source: plan.value.normalizedSourceUrl,
         sourceType: originType,
-      },
-      runParams: {
-        mode: "download",
-        source: plan.value.normalizedSourceUrl,
-        sourceType: originType,
-      },
+      }),
     },
   };
 }
@@ -210,16 +214,11 @@ export function planSourceUploadAction(
     ok: true,
     value: {
       archiveName,
-      resetRequest: {
+      ...buildSourceWorkflowRequestPlan({
         mode: "upload",
         archiveName,
         archiveContentBase64,
-      },
-      runParams: {
-        mode: "upload",
-        archiveName,
-        archiveContentBase64,
-      },
+      }),
     },
   };
 }
@@ -246,7 +245,15 @@ export function planDownloadedSourceState(args: {
     timestamp: args.timestamp,
     snapshotFiles: cloneTree(args.workspaceFiles),
     snapshotArchiveName: successPlan.snapshotArchiveName,
-    ree: successPlan.ree,
+    reePatch: {
+      origin_url: successPlan.ree.origin_url,
+      source_type: successPlan.ree.source_type,
+      _sourceAvailable: successPlan.ree._sourceAvailable,
+      _sourceAcquiredBy: successPlan.ree._sourceAcquiredBy,
+      _uploadedArchive: successPlan.ree._uploadedArchive,
+      _sourceSnapshotArchive: successPlan.ree._sourceSnapshotArchive,
+      _sourceSnapshotCapturedAt: successPlan.ree._sourceSnapshotCapturedAt,
+    },
     successMessage: successPlan.successMessage,
   };
 }
@@ -265,15 +272,23 @@ export function planUploadedSourceState(args: {
     timestamp: args.timestamp,
     snapshotFiles: cloneTree(args.workspaceFiles),
     snapshotArchiveName: successPlan.snapshotArchiveName,
-    ree: successPlan.ree,
+    reePatch: {
+      origin_url: successPlan.ree.origin_url,
+      _sourceIncluded: successPlan.ree._sourceIncluded,
+      _uploadedArchive: successPlan.ree._uploadedArchive,
+      source_type: successPlan.ree.source_type,
+      _sourceAvailable: successPlan.ree._sourceAvailable,
+      _sourceAcquiredBy: successPlan.ree._sourceAcquiredBy,
+      _sourceSnapshotArchive: successPlan.ree._sourceSnapshotArchive,
+      _sourceSnapshotCapturedAt: successPlan.ree._sourceSnapshotCapturedAt,
+    },
     successMessage: successPlan.successMessage,
   };
 }
 
-export function planClearedSourceStateResult(ree: Ree): ClearedSourceStatePlan {
+export function planClearedSourceStateResult(): ClearedSourceStatePlan {
   return {
-    ree: {
-      ...ree,
+    reePatch: {
       origin_url: "",
       _sourceAvailable: false,
       _sourceAcquiredBy: undefined,

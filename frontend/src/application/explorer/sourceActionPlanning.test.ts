@@ -86,7 +86,7 @@ describe("sourceActionPlanning", () => {
     expect(result.snapshotArchiveName).toBe("repo-original.tar.gz");
     expect(result.actionState).toBe("done");
     expect(result.badge).toBe(true);
-    expect(result.ree._sourceAcquiredBy).toBe("download");
+    expect(result.reePatch._sourceAcquiredBy).toBe("download");
     expect(result.snapshotFiles).not.toBe(workspaceFiles);
     expect(result.snapshotFiles[0]).not.toBe(workspaceFiles[0]);
   });
@@ -102,18 +102,13 @@ describe("sourceActionPlanning", () => {
     });
 
     expect(result.snapshotArchiveName).toBe("source.tar.gz");
-    expect(result.ree._sourceAcquiredBy).toBe("upload");
+    expect(result.reePatch._sourceAcquiredBy).toBe("upload");
   });
 
   it("builds normalized clear state", () => {
-    const result = planClearedSourceStateResult({
-      ...buildRee(),
-      origin_url: "https://example.org/repo.git",
-      _sourceAvailable: true,
-      _sourceAcquiredBy: "download",
-    });
+    const result = planClearedSourceStateResult();
 
-    expect(result.ree.origin_url).toBe("");
+    expect(result.reePatch.origin_url).toBe("");
     expect(result.snapshotFiles).toEqual([]);
     expect(result.snapshotArchiveName).toBe("");
   });

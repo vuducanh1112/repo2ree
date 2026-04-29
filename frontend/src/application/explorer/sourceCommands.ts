@@ -2,7 +2,7 @@ import { initialServiceParams } from "../../constants/services";
 import type { FileTreeNode, LogLine, Ree, ReeFile, ServiceParams } from "../../types";
 
 export interface SourceOutcomeCommandPayload {
-  ree: Ree;
+  reePatch: Partial<Ree>;
   immutableSourceSnapshotFiles: FileTreeNode[];
   immutableSourceSnapshotArchiveName: string;
   actionState?: "done";
@@ -19,7 +19,7 @@ export type SourceCommand =
       workspaceReeFiles?: ReeFile[];
       ree?: Ree;
     }
-  | { type: "applySourceOutcome"; outcome: SourceOutcomeCommandPayload }
+  | { type: "applySourcePatchOutcome"; outcome: SourceOutcomeCommandPayload }
   | { type: "setSourceLog"; lines: LogLine[]; ts: string }
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
@@ -37,12 +37,12 @@ export function sourceChangeResetCommands(options: { silent?: boolean } = {}): S
   return commands;
 }
 
-export function sourceFailureCommands(args: { ree: Ree; message: string }): SourceCommand[] {
+export function sourceFailureCommands(args: { message: string }): SourceCommand[] {
   return [
     {
-      type: "applySourceOutcome",
+      type: "applySourcePatchOutcome",
       outcome: {
-        ree: args.ree,
+        reePatch: {},
         immutableSourceSnapshotFiles: [],
         immutableSourceSnapshotArchiveName: "",
         actionState: "done",

@@ -104,7 +104,6 @@ export function createSourceActions({
       } catch (error) {
         runCommands(
           sourceFailureCommands({
-            ree,
             message:
               error instanceof Error
                 ? `Failed to extract archive: ${error.message}`

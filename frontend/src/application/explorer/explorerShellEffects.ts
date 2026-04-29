@@ -1,50 +1,52 @@
+import type { ActionStates, Ree, ServiceLogs } from "../../types";
 import type { ServiceRunCommand } from "./serviceRunCommands";
 import type { SourceCommand } from "./sourceCommands";
 
-type ServiceRunHydrationCommand = Extract<ServiceRunCommand, { type: "hydrateWorkspace" }>;
 type SourceHydrationCommand = Extract<SourceCommand, { type: "hydrateWorkspace" }>;
+type SourceResetCommand = Extract<SourceCommand, { type: "resetWorkflowOnSourceChange" }>;
+type SourceApplyOutcomeCommand = Extract<SourceCommand, { type: "applySourcePatchOutcome" }>;
+type ServiceRunCompletionCommand = Extract<ServiceRunCommand, { type: "completeServiceRun" }>;
+type ServiceRunHydrationCommand = Extract<ServiceRunCommand, { type: "hydrateWorkspace" }>;
 
-export type ExplorerShellEffect =
-  | { type: "setActionLoading"; key: string }
+export type ExplorerStateCommand =
   | {
-      type: "setServiceLog";
-      key: string;
-      lines: Extract<ServiceRunCommand, { type: "setServiceLog" }>["lines"];
-      ts: string;
+      type: "setActionStates";
+      actionStates: (prevStates: ActionStates) => ActionStates;
+    }
+  | {
+      type: "setServiceLogs";
+      serviceLogs: (prevLogs: ServiceLogs) => ServiceLogs;
     }
   | {
       type: "completeServiceRun";
-      completion: Extract<ServiceRunCommand, { type: "completeServiceRun" }>["completion"];
+      completion: ServiceRunCompletionCommand["completion"];
     }
   | {
       type: "hydrateWorkspace";
-      virtualFiles:
-        | ServiceRunHydrationCommand["virtualFiles"]
-        | SourceHydrationCommand["virtualFiles"];
-      workspaceReeFiles?:
-        | ServiceRunHydrationCommand["workspaceReeFiles"]
-        | SourceHydrationCommand["workspaceReeFiles"];
-      ree?: ServiceRunHydrationCommand["ree"] | SourceHydrationCommand["ree"];
+      workspace: {
+        virtualFiles:
+          | ServiceRunHydrationCommand["virtualFiles"]
+          | SourceHydrationCommand["virtualFiles"];
+        workspaceReeFiles:
+          | NonNullable<ServiceRunHydrationCommand["workspaceReeFiles"]>
+          | NonNullable<SourceHydrationCommand["workspaceReeFiles"]>;
+        ree?: ServiceRunHydrationCommand["ree"] | SourceHydrationCommand["ree"];
+      };
     }
-  | { type: "persistFile"; path: string; content: string }
-  | { type: "patchRee"; patch: Extract<ServiceRunCommand, { type: "patchRee" }>["patch"] }
+  | { type: "setRee"; ree: (prevRee: Ree) => Ree }
   | { type: "setLocked"; locked: boolean }
   | {
       type: "resetWorkflowOnSourceChange";
-      serviceParams: Extract<
-        SourceCommand,
-        { type: "resetWorkflowOnSourceChange" }
-      >["serviceParams"];
+      serviceParams: SourceResetCommand["serviceParams"];
     }
   | {
-      type: "applySourceOutcome";
-      outcome: Extract<SourceCommand, { type: "applySourceOutcome" }>["outcome"];
-    }
-  | {
-      type: "setSourceLog";
-      lines: Extract<SourceCommand, { type: "setSourceLog" }>["lines"];
-      ts: Extract<SourceCommand, { type: "setSourceLog" }>["ts"];
-    }
+      type: "applySourcePatchOutcome";
+      outcome: SourceApplyOutcomeCommand["outcome"];
+    };
+
+export type ExplorerShellEffect =
+  | { type: "dispatchStateCommand"; command: ExplorerStateCommand }
+  | { type: "persistFile"; path: string; content: string }
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
 export function mapServiceRunCommandsToEffects(
@@ -65,7 +67,68 @@ export function mapServiceRunCommandsToEffects(
         toastType: command.toastType,
       };
     }
-    return command;
+    if (command.type === "setActionLoading") {
+      return {
+        type: "dispatchStateCommand",
+        command: {
+          type: "setActionStates",
+          actionStates: (prevStates) => ({
+            ...prevStates,
+            [command.key]: "loading",
+          }),
+        },
+      };
+    }
+    if (command.type === "setServiceLog") {
+      return {
+        type: "dispatchStateCommand",
+        command: {
+          type: "setServiceLogs",
+          serviceLogs: (prevLogs) => ({
+            ...prevLogs,
+            [command.key]: { lines: command.lines, ts: command.ts },
+          }),
+        },
+      };
+    }
+    if (command.type === "completeServiceRun") {
+      return {
+        type: "dispatchStateCommand",
+        command: {
+          type: "completeServiceRun",
+          completion: command.completion,
+        },
+      };
+    }
+    if (command.type === "hydrateWorkspace") {
+      return {
+        type: "dispatchStateCommand",
+        command: {
+          type: "hydrateWorkspace",
+          workspace: {
+            virtualFiles: command.virtualFiles,
+            workspaceReeFiles: command.workspaceReeFiles || [],
+            ree: command.ree,
+          },
+        },
+      };
+    }
+    if (command.type === "patchRee") {
+      return {
+        type: "dispatchStateCommand",
+        command: {
+          type: "setRee",
+          ree: (prevRee) => ({ ...prevRee, ...command.patch }),
+        },
+      };
+    }
+    return {
+      type: "dispatchStateCommand",
+      command: {
+        type: "setLocked",
+        locked: command.locked,
+      },
+    };
   });
 }
 
@@ -80,10 +143,57 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): ExplorerS
     }
     if (command.type === "setSourceLoading") {
       return {
-        type: "setActionLoading",
-        key: "source",
+        type: "dispatchStateCommand",
+        command: {
+          type: "setActionStates",
+          actionStates: (prevStates) => ({
+            ...prevStates,
+            source: "loading",
+          }),
+        },
       };
     }
-    return command;
+    if (command.type === "setSourceLog") {
+      return {
+        type: "dispatchStateCommand",
+        command: {
+          type: "setServiceLogs",
+          serviceLogs: (prevLogs) => ({
+            ...prevLogs,
+            source: { lines: command.lines, ts: command.ts },
+          }),
+        },
+      };
+    }
+    if (command.type === "resetWorkflowOnSourceChange") {
+      return {
+        type: "dispatchStateCommand",
+        command: {
+          type: "resetWorkflowOnSourceChange",
+          serviceParams: command.serviceParams,
+        },
+      };
+    }
+    if (command.type === "applySourcePatchOutcome") {
+      return {
+        type: "dispatchStateCommand",
+        command: {
+          type: "applySourcePatchOutcome",
+          outcome: command.outcome,
+        },
+      };
+    }
+    const hydrationCommand = command as SourceHydrationCommand;
+    return {
+      type: "dispatchStateCommand",
+      command: {
+        type: "hydrateWorkspace",
+        workspace: {
+          virtualFiles: hydrationCommand.virtualFiles,
+          workspaceReeFiles: hydrationCommand.workspaceReeFiles || [],
+          ree: hydrationCommand.ree,
+        },
+      },
+    };
   });
 }

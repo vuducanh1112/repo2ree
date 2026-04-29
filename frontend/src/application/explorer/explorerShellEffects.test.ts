@@ -16,7 +16,7 @@ describe("mapServiceRunCommandsToEffects", () => {
     ).toEqual([{ type: "toast", message: "Build complete", toastType: "success" }]);
   });
 
-  it("preserves stateful service effects for the shell adapter", () => {
+  it("maps stateful service commands into dispatch actions", () => {
     const effects = mapServiceRunCommandsToEffects([
       {
         type: "hydrateWorkspace",
@@ -27,7 +27,7 @@ describe("mapServiceRunCommandsToEffects", () => {
     ]);
 
     expect(effects).toHaveLength(1);
-    expect(effects[0]?.type).toBe("hydrateWorkspace");
+    expect(effects[0]?.type).toBe("dispatchStateCommand");
   });
 });
 
@@ -38,7 +38,7 @@ describe("mapSourceCommandsToEffects", () => {
     ).toEqual([{ type: "toast", message: "Source changed", toastType: "info" }]);
   });
 
-  it("preserves source state effects for the shell adapter", () => {
+  it("maps source state commands into dispatch actions", () => {
     const effects = mapSourceCommandsToEffects([
       {
         type: "setSourceLog",
@@ -48,6 +48,6 @@ describe("mapSourceCommandsToEffects", () => {
     ]);
 
     expect(effects).toHaveLength(1);
-    expect(effects[0]?.type).toBe("setSourceLog");
+    expect(effects[0]?.type).toBe("dispatchStateCommand");
   });
 });

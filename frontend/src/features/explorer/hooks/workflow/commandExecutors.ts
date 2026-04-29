@@ -1,5 +1,6 @@
 import {
   type ExplorerShellEffect,
+  type ExplorerStateCommand,
   mapServiceRunCommandsToEffects,
   mapSourceCommandsToEffects,
 } from "../../../../application/explorer/explorerShellEffects";
@@ -17,52 +18,38 @@ interface ServiceRunCommandEffects {
   showToast: ShowToast;
 }
 
+function dispatchExplorerStateCommand(
+  command: ExplorerStateCommand,
+  dispatch: ExplorerWorkflowDispatch,
+): void {
+  if (command.type === "setActionStates") {
+    dispatch(explorerActions.setActionStates(command.actionStates));
+  } else if (command.type === "setServiceLogs") {
+    dispatch(explorerActions.setServiceLogs(command.serviceLogs));
+  } else if (command.type === "completeServiceRun") {
+    dispatch(explorerActions.completeServiceRun(command.completion));
+  } else if (command.type === "hydrateWorkspace") {
+    dispatch(explorerActions.hydrateWorkspace(command.workspace));
+  } else if (command.type === "setRee") {
+    dispatch(explorerActions.setRee(command.ree));
+  } else if (command.type === "setLocked") {
+    dispatch(explorerActions.setLocked(command.locked));
+  } else if (command.type === "resetWorkflowOnSourceChange") {
+    dispatch(explorerActions.resetWorkflowOnSourceChange(command.serviceParams));
+  } else {
+    dispatch(explorerActions.applySourcePatchOutcome(command.outcome));
+  }
+}
+
 function executeExplorerEffects(
   effects: ExplorerShellEffect[],
   handlers: ServiceRunCommandEffects,
 ): void {
   for (const effect of effects) {
-    if (effect.type === "setActionLoading") {
-      handlers.dispatch(
-        explorerActions.setActionStates((prevStates) => ({
-          ...prevStates,
-          [effect.key]: "loading",
-        })),
-      );
-    } else if (effect.type === "setServiceLog") {
-      handlers.dispatch(
-        explorerActions.setServiceLogs((prevLogs) => ({
-          ...prevLogs,
-          [effect.key]: { lines: effect.lines, ts: effect.ts },
-        })),
-      );
-    } else if (effect.type === "completeServiceRun") {
-      handlers.dispatch(explorerActions.completeServiceRun(effect.completion));
-    } else if (effect.type === "hydrateWorkspace") {
-      handlers.dispatch(
-        explorerActions.hydrateWorkspace({
-          virtualFiles: effect.virtualFiles,
-          workspaceReeFiles: effect.workspaceReeFiles || [],
-          ree: effect.ree,
-        }),
-      );
+    if (effect.type === "dispatchStateCommand") {
+      dispatchExplorerStateCommand(effect.command, handlers.dispatch);
     } else if (effect.type === "persistFile") {
       handlers.persistWorkspaceFile(effect.path, effect.content);
-    } else if (effect.type === "patchRee") {
-      handlers.dispatch(explorerActions.setRee((prevRee) => ({ ...prevRee, ...effect.patch })));
-    } else if (effect.type === "setLocked") {
-      handlers.dispatch(explorerActions.setLocked(effect.locked));
-    } else if (effect.type === "resetWorkflowOnSourceChange") {
-      handlers.dispatch(explorerActions.resetWorkflowOnSourceChange(effect.serviceParams));
-    } else if (effect.type === "applySourceOutcome") {
-      handlers.dispatch(explorerActions.applySourceOutcome(effect.outcome));
-    } else if (effect.type === "setSourceLog") {
-      handlers.dispatch(
-        explorerActions.setServiceLogs((prevLogs) => ({
-          ...prevLogs,
-          source: { lines: effect.lines, ts: effect.ts },
-        })),
-      );
     } else {
       handlers.showToast(effect.message, effect.toastType);
     }

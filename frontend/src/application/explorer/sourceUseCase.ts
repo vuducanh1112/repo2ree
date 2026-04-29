@@ -46,6 +46,12 @@ interface UploadSourceArgs {
   archiveContentBase64?: string;
 }
 
+function isTerminalSourceWorkflowFailure(
+  status: SourceWorkflowStatus,
+): status is Extract<SourceWorkflowStatus, "failed" | "canceled"> {
+  return status === "failed" || status === "canceled";
+}
+
 export function createSourceUseCase({
   ree,
   executeCommands,
@@ -56,7 +62,32 @@ export function createSourceUseCase({
   nowIso,
 }: SourceUseCaseArgs) {
   const failSourceAction = (message: string) => {
-    executeCommands(sourceFailureCommands({ ree, message }));
+    executeCommands(sourceFailureCommands({ message }));
+  };
+
+  const runSourceWorkflowAndHandleFailure = async (
+    resetRequest: SourceWorkflowRequest,
+    runParams: SourceWorkflowRequest,
+  ): Promise<boolean> => {
+    sourceChanged({ silent: true });
+    executeCommands([{ type: "setSourceLoading" }]);
+    const result = await runSourceAction(resetRequest, runParams);
+    if (isTerminalSourceWorkflowFailure(result.status)) {
+      failSourceAction(planSourceWorkflowFailure(result.status).error);
+      return false;
+    }
+    return true;
+  };
+
+  const runSourceMutationAction = async (args: {
+    resetRequest: SourceWorkflowRequest;
+    runParams: SourceWorkflowRequest;
+    onSuccess: () => Promise<void>;
+  }) => {
+    if (!(await runSourceWorkflowAndHandleFailure(args.resetRequest, args.runParams))) {
+      return;
+    }
+    await args.onSuccess();
   };
 
   const completeDownload = async (args: {
@@ -93,37 +124,30 @@ export function createSourceUseCase({
         return;
       }
 
-      sourceChanged({ silent: true });
-      executeCommands([{ type: "setSourceLoading" }]);
-      const result = await runSourceAction(plan.value.resetRequest, plan.value.runParams);
-      if (result.status === "failed" || result.status === "canceled") {
-        failSourceAction(planSourceWorkflowFailure(result.status).error);
-        return;
-      }
-
-      await completeDownload({
-        originType,
-        normalizedSourceUrl: plan.value.normalizedSourceUrl,
+      await runSourceMutationAction({
+        resetRequest: plan.value.resetRequest,
+        runParams: plan.value.runParams,
+        onSuccess: async () =>
+          completeDownload({
+            originType,
+            normalizedSourceUrl: plan.value.normalizedSourceUrl,
+          }),
       });
     },
 
     async uploadSource({ archiveName, archiveContentBase64 }: UploadSourceArgs): Promise<void> {
-      sourceChanged({ silent: true });
       try {
-        executeCommands([{ type: "setSourceLoading" }]);
         const plan = planSourceUploadAction(ree, archiveName, archiveContentBase64);
         if (!plan.ok) {
           failSourceAction(plan.error);
           return;
         }
 
-        const result = await runSourceAction(plan.value.resetRequest, plan.value.runParams);
-        if (result.status === "failed" || result.status === "canceled") {
-          failSourceAction(planSourceWorkflowFailure(result.status).error);
-          return;
-        }
-
-        await completeUpload(archiveName);
+        await runSourceMutationAction({
+          resetRequest: plan.value.resetRequest,
+          runParams: plan.value.runParams,
+          onSuccess: async () => completeUpload(archiveName),
+        });
       } catch (error) {
         failSourceAction(
           error instanceof Error
@@ -138,12 +162,12 @@ export function createSourceUseCase({
       try {
         await clearWorkspace();
         await refreshWorkspaceFiles();
-        const clearPlan = planClearedSourceStateResult(ree);
+        const clearPlan = planClearedSourceStateResult();
         executeCommands([
           {
-            type: "applySourceOutcome",
+            type: "applySourcePatchOutcome",
             outcome: {
-              ree: clearPlan.ree,
+              reePatch: clearPlan.reePatch,
               immutableSourceSnapshotFiles: clearPlan.snapshotFiles,
               immutableSourceSnapshotArchiveName: clearPlan.snapshotArchiveName,
             },
@@ -167,7 +191,7 @@ export function createSourceUseCase({
 }
 
 function sourceSuccessCommands(plan: {
-  ree: Ree;
+  reePatch: Partial<Ree>;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
   actionState: "done";
@@ -177,9 +201,9 @@ function sourceSuccessCommands(plan: {
 }): SourceCommand[] {
   return [
     {
-      type: "applySourceOutcome",
+      type: "applySourcePatchOutcome",
       outcome: {
-        ree: plan.ree,
+        reePatch: plan.reePatch,
         immutableSourceSnapshotFiles: plan.snapshotFiles,
         immutableSourceSnapshotArchiveName: plan.snapshotArchiveName,
         actionState: plan.actionState,

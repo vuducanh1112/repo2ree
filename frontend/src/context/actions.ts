@@ -89,8 +89,8 @@ export const explorerActions = {
     type: ACTION_TYPES.explorer.setImmutableSourceSnapshotArchiveName,
     immutableSourceSnapshotArchiveName,
   }),
-  applySourceOutcome: (outcome: SourceOutcomePayload): AppAction => ({
-    type: ACTION_TYPES.explorer.applySourceOutcome,
+  applySourcePatchOutcome: (outcome: SourceOutcomePayload): AppAction => ({
+    type: ACTION_TYPES.explorer.applySourcePatchOutcome,
     outcome,
   }),
   setShowReviewerPreview: (showReviewerPreview: StateUpdater<boolean>): AppAction => ({
