@@ -3,17 +3,18 @@ import { AppBootstrap } from "./app/AppBootstrap";
 import { createBrowserRuntimePorts } from "./app/browserRuntimePorts";
 import { DEMO_REE } from "./app/demoRee";
 import { createMockExplorerWorkspaceService } from "./app/mockExplorerWorkspaceService";
-import { WorkspaceRuntimeProvider } from "./app/WorkspaceRuntime";
+import { WorkspaceRuntimeProvider, type WorkspaceRuntimeValue } from "./app/WorkspaceRuntime";
 import { WORKSPACE_ID } from "./app/workspaceConstants";
 import { AppProvider } from "./context";
 import { createRemoteWorkspaceService } from "./services/remoteWorkspaceService";
 
 export default function App() {
-  const runtime = useMemo(() => {
+  const runtime = useMemo<WorkspaceRuntimeValue>(() => {
     const env =
       (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
     const explicitMode = String(env.VITE_WORKSPACE_SERVICE_MODE || "").toLowerCase();
-    const workspaceServiceMode = explicitMode || (env.VITE_API_BASE_URL ? "remote" : "mock");
+    const workspaceServiceMode: "remote" | "mock" =
+      explicitMode === "remote" || (!explicitMode && env.VITE_API_BASE_URL) ? "remote" : "mock";
     const reeIdFromQuery =
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("reeId") || undefined
@@ -25,11 +26,12 @@ export default function App() {
             initialWorkspaceId: reeIdFromQuery,
           })
         : null;
+    const ports = createBrowserRuntimePorts();
 
     return {
       workspaceId: WORKSPACE_ID,
-      workspaceServiceMode: workspaceServiceMode === "remote" ? "remote" : "mock",
-      ports: createBrowserRuntimePorts(),
+      workspaceServiceMode,
+      ports,
       createWorkspaceService: (args) =>
         remoteWorkspaceService || createMockExplorerWorkspaceService({ ...args, ports }),
     };

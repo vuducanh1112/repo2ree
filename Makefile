@@ -4,8 +4,10 @@
 fe-checks:
 	@echo "Running frontend checks..."
 	cd frontend && \
-		echo "Running TypeScript compiler..." && \
-		npx tsc && \
+		echo "Running TypeScript compiler (app)..." && \
+		npx tsc -p tsconfig.app.json && \
+		echo "Running TypeScript compiler (e2e)..." && \
+		npx tsc -p tsconfig.e2e.json && \
 		echo "Running Biome..." && \
 		npx biome check --write src tests playwright.config.ts && \
 		echo "Running knip..." && \

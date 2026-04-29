@@ -25,7 +25,7 @@ describe("createExplorerWorkflowSession", () => {
           activation: { timeout: "60", verbose: false },
         },
         "build",
-        { platform: "linux/arm64" },
+        { no_cache: true, platform: "linux/arm64" },
       ),
     ).toEqual({
       evaluate: { strict: false, swhid_check: true },

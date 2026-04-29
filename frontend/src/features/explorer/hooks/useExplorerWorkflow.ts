@@ -7,6 +7,7 @@ import { createExplorerWorkflowSession } from "../../../application/explorer/wor
 import { isWorkflowServiceKey } from "../../../constants/services";
 import type { AppAction } from "../../../context";
 import { explorerActions } from "../../../context";
+import type { WorkspaceServiceLogEntry } from "../../../services/workspaceService";
 import type {
   FileTreeNode,
   GenericServiceParams,
@@ -43,7 +44,7 @@ export function useExplorerWorkflow({
   const workflowSessionRef = useRef(createExplorerWorkflowSession());
   const workflowSession = workflowSessionRef.current;
   const executeServiceRunRef = useRef<
-    (key: string, params?: GenericServiceParams) => Promise<unknown>
+    (key: string, params?: GenericServiceParams) => Promise<WorkspaceServiceLogEntry>
   >(async () => {
     throw new Error("Service run executor is not ready");
   });
@@ -167,7 +168,11 @@ export function useExplorerWorkflow({
     if (isWorkflowServiceKey(key)) {
       dispatch(
         explorerActions.setServiceParams((prev) =>
-          workflowSession.mergeWorkflowParams(prev, key, params),
+          workflowSession.mergeWorkflowParams(
+            prev,
+            key,
+            params as WorkflowServiceRunParams<typeof key>,
+          ),
         ),
       );
     }
@@ -182,11 +187,13 @@ export function useExplorerWorkflow({
   }
 
   const cancelWorkflowAction = async (key: string) => {
+    const cancelWorkflowRun = workspaceService.cancelWorkflowRun;
+    const cancelRun = cancelWorkflowRun
+      ? (runId: string) => cancelWorkflowRun(workspaceId, runId)
+      : undefined;
     const result = await workflowSession.cancelTrackedRun({
       key,
-      cancelRun: workspaceService.cancelWorkflowRun
-        ? (runId) => workspaceService.cancelWorkflowRun?.(workspaceId, runId)
-        : undefined,
+      cancelRun,
     });
     if (result.message) {
       showToast(result.message, result.ok ? "info" : "error");

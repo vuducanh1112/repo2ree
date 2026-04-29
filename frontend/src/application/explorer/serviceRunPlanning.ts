@@ -28,7 +28,9 @@ export function buildRemoteServiceRunParams(
   };
 }
 
-export function isTerminalServiceRunFailure(status: ServiceRunStatus): boolean {
+export function isTerminalServiceRunFailure(
+  status: ServiceRunStatus,
+): status is Extract<ServiceRunStatus, "failed" | "canceled"> {
   return status === "failed" || status === "canceled";
 }
 

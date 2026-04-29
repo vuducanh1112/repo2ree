@@ -21,10 +21,10 @@ export type ExplorerShellEffect =
       virtualFiles:
         | ServiceRunHydrationCommand["virtualFiles"]
         | SourceHydrationCommand["virtualFiles"];
-      workspaceReeFiles:
-        | NonNullable<ServiceRunHydrationCommand["workspaceReeFiles"]>
-        | NonNullable<SourceHydrationCommand["workspaceReeFiles"]>;
-      ree: ServiceRunHydrationCommand["ree"] | SourceHydrationCommand["ree"];
+      workspaceReeFiles?:
+        | ServiceRunHydrationCommand["workspaceReeFiles"]
+        | SourceHydrationCommand["workspaceReeFiles"];
+      ree?: ServiceRunHydrationCommand["ree"] | SourceHydrationCommand["ree"];
     }
   | { type: "persistFile"; path: string; content: string }
   | { type: "patchRee"; patch: Extract<ServiceRunCommand, { type: "patchRee" }>["patch"] }

@@ -7,7 +7,7 @@ import type { FileTreeNode, GenericServiceParams, Ree, ServiceParams } from "../
 
 type WorkspaceServiceMode = "remote" | "mock";
 
-interface WorkspaceServiceFactoryArgs {
+export interface WorkspaceServiceFactoryArgs {
   ree: Ree;
   virtualFiles: FileTreeNode[];
   serviceParams: ServiceParams;
@@ -18,7 +18,7 @@ interface WorkspaceServiceFactoryArgs {
   ) => Promise<WorkspaceServiceLogEntry>;
 }
 
-interface WorkspaceRuntimeValue {
+export interface WorkspaceRuntimeValue {
   workspaceId: string;
   workspaceServiceMode: WorkspaceServiceMode;
   ports: ExplorerRuntimePorts;

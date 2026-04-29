@@ -12,7 +12,7 @@ describe("pollWorkflowRun", () => {
   it("uses injected sleep between non-terminal polls", async () => {
     const sleep = vi.fn(async () => {});
     const getWorkflowRun = vi
-      .fn<IWorkspaceService["getWorkflowRun"]>()
+      .fn<NonNullable<IWorkspaceService["getWorkflowRun"]>>()
       .mockResolvedValueOnce({
         runId: "run-1",
         status: "running",
@@ -24,8 +24,9 @@ describe("pollWorkflowRun", () => {
         createdAt: "2026-04-29T00:00:00.000Z",
         finishedAt: "2026-04-29T00:00:01.000Z",
       });
+    const workspaceService = { getWorkflowRun } as unknown as IWorkspaceService;
 
-    const result = await pollWorkflowRun({ getWorkflowRun } as IWorkspaceService, {
+    const result = await pollWorkflowRun(workspaceService, {
       workspaceId: "active",
       runId: "run-1",
       maxIterations: 3,
@@ -39,7 +40,8 @@ describe("pollWorkflowRun", () => {
   });
 
   it("uses injected clock when polling is unsupported", async () => {
-    const result = await pollWorkflowRun({} as IWorkspaceService, {
+    const workspaceService = {} as unknown as IWorkspaceService;
+    const result = await pollWorkflowRun(workspaceService, {
       workspaceId: "active",
       runId: "run-1",
       clock,
