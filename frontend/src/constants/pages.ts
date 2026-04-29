@@ -1,6 +1,6 @@
 import type { Ree } from "../types/reeModel";
 
-// Explorer-internal pages (Explorer component).
+// Workspace-editor pages.
 export const PAGE = {
   SOURCE: "source",
   METADATA: "metadata",
@@ -28,11 +28,12 @@ export type AppLoadRoutePath =
   | `${typeof APP_ROUTE.EXPLORER}?${string}`
   | `${typeof APP_ROUTE.REVIEWER}?${string}`;
 
-export type ExplorerPage = (typeof PAGE)[keyof typeof PAGE];
-const EXPLORER_PAGES = Object.values(PAGE) as ExplorerPage[];
+export type WorkspaceEditorPage = (typeof PAGE)[keyof typeof PAGE];
+const WORKSPACE_EDITOR_PAGES = Object.values(PAGE) as WorkspaceEditorPage[];
+export type ExplorerPage = WorkspaceEditorPage;
 
-// Maps a Ree field key to the Explorer page where it can be edited.
-export const FIELD_TO_PAGE: Partial<Record<keyof Ree, ExplorerPage>> = {
+// Maps a Ree field key to the workspace-editor page where it can be edited.
+export const FIELD_TO_PAGE: Partial<Record<keyof Ree, WorkspaceEditorPage>> = {
   origin_url: PAGE.SOURCE,
   source_type: PAGE.SOURCE,
   _sourceAvailable: PAGE.SOURCE,
@@ -47,6 +48,6 @@ export const FIELD_TO_PAGE: Partial<Record<keyof Ree, ExplorerPage>> = {
   dataverse_doi: PAGE.ARCHIVE,
 };
 
-export function isValidExplorerPage(value: string): value is ExplorerPage {
-  return EXPLORER_PAGES.includes(value as ExplorerPage);
+export function isValidWorkspaceEditorPage(value: string): value is WorkspaceEditorPage {
+  return WORKSPACE_EDITOR_PAGES.includes(value as WorkspaceEditorPage);
 }

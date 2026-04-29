@@ -17,7 +17,7 @@ import {
   S_WORKFLOW_SERVICE_MAIN_SCROLL,
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
-import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
+import { MOCK_FILES } from "../../../workspace/InMemoryWorkspaceGateway";
 import { FilePicker, ScriptPanel } from "../components/inputs/scriptAndFile";
 import {
   descToTwoTierTips,
@@ -26,7 +26,10 @@ import {
   FieldTipsSidebar,
 } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
-import { ServiceActionSection, WorkflowLogSection } from "../components/workflow/servicePanels";
+import {
+  WorkflowLogSection,
+  WorkflowRunActionSection,
+} from "../components/workflow/workflowRunPanels";
 import { SVC_SCRIPT_FIELDS } from "./sharedWorkflowConstants";
 import type { ServicePageProps } from "./sharedWorkflowUi";
 
@@ -107,7 +110,7 @@ export function PageTestActivation({
             </FieldRow>
           </FieldSection>
 
-          <ServiceActionSection
+          <WorkflowRunActionSection
             color={buildColor}
             running={running}
             runDone={runDone}

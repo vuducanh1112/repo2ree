@@ -5,7 +5,7 @@ import { LevelBadge } from "../../components/LevelBadge";
 import { LEVELS } from "../../constants/levels";
 import { C, F, hoverBg, hoverColor, S_SECTION_LABEL_SMALL } from "../../constants/theme";
 import type { LogLine, Ree, ReeFile } from "../../types/ree";
-import type { Level, ServiceParamValue, StepState } from "../../types/services";
+import type { Level, ServiceParamValue, StepState } from "../../types/workflowSteps";
 import type { FileTreeNode } from "../../types/workspace";
 import { hbomSummaryLines } from "../../utils/hbom";
 import { PageFiles } from "../files/PageFiles";

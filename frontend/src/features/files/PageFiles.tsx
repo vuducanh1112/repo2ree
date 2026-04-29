@@ -13,10 +13,10 @@ import {
   S_WORKFLOW_PAGE_BODY,
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../constants/theme";
-import { MOCK_FILES } from "../../services/dummyWorkspaceService";
 import type { ReeFile } from "../../types/ree";
 import type { FileTreeNode } from "../../types/workspace";
 import { fmtBytes } from "../../utils/formatting";
+import { MOCK_FILES } from "../../workspace/InMemoryWorkspaceGateway";
 import { WorkflowPageHeader } from "../explorer/components/workflow/pageChrome";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({

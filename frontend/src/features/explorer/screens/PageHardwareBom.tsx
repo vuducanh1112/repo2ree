@@ -29,8 +29,11 @@ import {
 import { useFocusScroll } from "../../../hooks/useFocusScroll";
 import { FieldRow, FieldSection, FieldTipsSidebar } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
-import { ServiceActionSection, WorkflowLogSection } from "../components/workflow/servicePanels";
 import { workflowToneSurfaceStyle } from "../components/workflow/statusUiStyles";
+import {
+  WorkflowLogSection,
+  WorkflowRunActionSection,
+} from "../components/workflow/workflowRunPanels";
 import { useHardwareBomDraft } from "../hooks/useHardwareBomDraft";
 import {
   createCpuColumns,
@@ -198,7 +201,7 @@ function HardwareCardSection<RowT extends { id: string }>({
 }
 
 export function PageHardwareBom({
-  ree,
+  ree: reeDraft,
   locked,
   badges,
   log,
@@ -214,7 +217,7 @@ export function PageHardwareBom({
   onCancel,
 }: PageHardwareBomProps) {
   const focus = (key: string) => onFocusedFieldChange(key);
-  const { draft, updateDraft } = useHardwareBomDraft({ ree, onReeChange });
+  const { draft, updateDraft } = useHardwareBomDraft({ ree: reeDraft, onReeChange });
 
   useFocusScroll(focusedField);
 
@@ -430,7 +433,7 @@ export function PageHardwareBom({
               onAdd: () => setRows("network", [...draft.network, newNetworkRow()]),
             })}
 
-            <ServiceActionSection
+            <WorkflowRunActionSection
               color="#0f766e"
               running={running}
               runDone={runDone}

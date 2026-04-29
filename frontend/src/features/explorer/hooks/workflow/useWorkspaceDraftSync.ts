@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef } from "react";
 import {
   shouldHydrateRemoteRee,
   shouldScheduleReeDraftSync,
-} from "../../../../application/explorer/draftSync";
+} from "../../../../application/workspace/syncWorkspaceDraft";
 import { toReePatch } from "../../../../domain/ree/reePatch";
-import type { IWorkspaceService } from "../../../../services/workspaceService";
 import type { FileTreeNode, Ree, ReeFile } from "../../../../types";
+import type { WorkspaceGateway } from "../../../../workspace/WorkspaceGateway";
 
 interface HydratedWorkspaceSnapshot {
   virtualFiles: FileTreeNode[];
@@ -15,7 +15,7 @@ interface HydratedWorkspaceSnapshot {
 
 interface UseWorkspaceDraftSyncArgs {
   ree: Ree;
-  workspaceService: IWorkspaceService<FileTreeNode>;
+  workspaceService: WorkspaceGateway<FileTreeNode>;
   workspaceId: string;
   workspaceServiceMode: "remote" | "mock";
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;

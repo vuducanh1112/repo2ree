@@ -3,10 +3,10 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-
 import { ApiClient, ReviewsApi } from "../api";
 import { SEALED_DEMO_REE } from "../app/demoRee";
 import { APP_ROUTE } from "../constants/pages";
-import { ExplorerView } from "../features/explorer/ExplorerView";
 import { LandingView } from "../features/landing/LandingView";
 import { PodOrbitControl } from "../features/reviewer/PodOrbitControl";
 import { ReviewerView } from "../features/reviewer/ReviewerView";
+import { WorkspaceEditorView } from "../features/workspace-editor/WorkspaceEditorView";
 import { mapReviewDraftToRee } from "../infra/api/reeMappers";
 import type { Ree } from "../types/ree";
 
@@ -100,7 +100,7 @@ export function AppRoutes() {
       <Route
         path={APP_ROUTE.EXPLORER}
         element={
-          <ExplorerView
+          <WorkspaceEditorView
             onBack={() => navigate(APP_ROUTE.ROOT)}
             sealedDemoRee={SEALED_DEMO_REE}
             PodOrbitControl={PodOrbitControl}

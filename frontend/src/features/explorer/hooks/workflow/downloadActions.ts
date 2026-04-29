@@ -1,16 +1,16 @@
-import type { ExplorerRuntimePorts } from "../../../../application/explorer/runtimePorts";
+import type { WorkspaceEditorRuntimePorts } from "../../../../application/workspace/workspaceEditorPorts";
 import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
-} from "../../../../application/explorer/workspaceFilePlanning";
-import type { IWorkspaceService } from "../../../../services/workspaceService";
+} from "../../../../application/workspace/workspaceFileMutationPlanning";
 import type { FileTreeNode } from "../../../../types";
+import type { WorkspaceGateway } from "../../../../workspace/WorkspaceGateway";
 import type { ShowToast } from "./types";
 
 interface CreateDownloadActionsArgs {
-  workspaceService: IWorkspaceService<FileTreeNode>;
+  workspaceService: WorkspaceGateway<FileTreeNode>;
   workspaceId: string;
-  ports: ExplorerRuntimePorts;
+  ports: WorkspaceEditorRuntimePorts;
   getReeName: () => string;
   buildReePatch: () => Record<string, unknown>;
   showToast: ShowToast;

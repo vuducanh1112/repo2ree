@@ -1,6 +1,6 @@
 import { LEVELS } from "../../../constants/levels";
 import type { LogLine, Ree } from "../../../types";
-import type { GenericServiceParams } from "../../../types/services";
+import type { GenericServiceParams } from "../../../types/workflowSteps";
 
 type LogLineType = LogLine["type"];
 

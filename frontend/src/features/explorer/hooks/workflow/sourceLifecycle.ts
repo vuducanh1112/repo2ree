@@ -1,14 +1,14 @@
-import type { ExplorerClock } from "../../../../application/explorer/runtimePorts";
+import { createSourceUseCase } from "../../../../application/workspace/acquireSource";
 import {
   type SourceCommand,
   sourceChangeResetCommands,
   sourceFailureCommands,
-} from "../../../../application/explorer/sourceCommands";
-import { createSourceUseCase } from "../../../../application/explorer/sourceUseCase";
-import { runSourceWorkspaceAction } from "../../../../application/explorer/sourceWorkflow";
-import type { IWorkspaceService } from "../../../../services/workspaceService";
-import { serializeWorkspaceResetPayload } from "../../../../services/workspaceService";
+} from "../../../../application/workspace/sourceAcquisitionCommands";
+import { runSourceWorkspaceAction } from "../../../../application/workspace/sourceAcquisitionLifecycle";
+import type { WorkspaceEditorClock } from "../../../../application/workspace/workspaceEditorPorts";
 import type { FileTreeNode, Ree, SourceUploadCommit } from "../../../../types";
+import type { WorkspaceGateway } from "../../../../workspace/WorkspaceGateway";
+import { serializeWorkspaceResetPayload } from "../../../../workspace/WorkspaceGateway";
 import { type ExplorerWorkflowDispatch, executeSourceCommands } from "./commandExecutors";
 import { pollWorkflowRun } from "./pollWorkflowRun";
 import type { ShowToast } from "./types";
@@ -23,13 +23,13 @@ export function resetWorkflowOnSourceChange(
 
 interface CreateSourceActionsArgs {
   ree: Ree;
-  workspaceService: IWorkspaceService<FileTreeNode>;
+  workspaceService: WorkspaceGateway<FileTreeNode>;
   workspaceId: string;
   dispatch: ExplorerWorkflowDispatch;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   onSourceChange: (options?: { silent?: boolean }) => void;
   showToast: ShowToast;
-  clock: ExplorerClock;
+  clock: WorkspaceEditorClock;
   sleep: (ms: number) => Promise<void>;
   onRunStarted?: (key: string, runId: string) => void;
   onRunFinished?: (key: string) => void;
@@ -75,7 +75,7 @@ export function createSourceActions({
       },
     });
 
-  const sourceUseCase = createSourceUseCase({
+  const sourceAcquisition = createSourceUseCase({
     ree,
     executeCommands: runCommands,
     sourceChanged: onSourceChange,
@@ -90,7 +90,7 @@ export function createSourceActions({
   });
 
   const handleDownloadSourceFiles = async (originType: Ree["source_type"], sourceUrl: string) =>
-    sourceUseCase.downloadSource(originType, sourceUrl);
+    sourceAcquisition.downloadSource(originType, sourceUrl);
 
   const handleWorkspaceUpload = (payload: SourceUploadCommit) => {
     const archiveName = payload.archiveName || "source.tar.gz";
@@ -100,7 +100,7 @@ export function createSourceActions({
         if (payload.archiveFile) {
           archiveContentBase64 = await fileToBase64(payload.archiveFile);
         }
-        await sourceUseCase.uploadSource({ archiveName, archiveContentBase64 });
+        await sourceAcquisition.uploadSource({ archiveName, archiveContentBase64 });
       } catch (error) {
         runCommands(
           sourceFailureCommands({
@@ -116,7 +116,7 @@ export function createSourceActions({
   };
 
   const handleRemoveWorkspaceSource = () => {
-    void sourceUseCase.removeSource();
+    void sourceAcquisition.removeSource();
   };
 
   return {

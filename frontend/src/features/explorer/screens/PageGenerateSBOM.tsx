@@ -16,8 +16,8 @@ import {
   S_WORKFLOW_SERVICE_MAIN_SCROLL,
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
-import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
 import type { AutomationStepRunParams } from "../../../types";
+import { MOCK_FILES } from "../../../workspace/InMemoryWorkspaceGateway";
 import { ScriptPanel } from "../components/inputs/scriptAndFile";
 import {
   descToTwoTierTips,
@@ -26,7 +26,6 @@ import {
   FieldTipsSidebar,
 } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
-import { ServiceActionSection, WorkflowLogSection } from "../components/workflow/servicePanels";
 import {
   RUNTIME_STATUS_BADGE_STYLE,
   workflowStatusBadgeStyle,
@@ -35,6 +34,10 @@ import {
   workflowStatusKeyStyle,
   workflowStatusValueStyle,
 } from "../components/workflow/statusUiStyles";
+import {
+  WorkflowLogSection,
+  WorkflowRunActionSection,
+} from "../components/workflow/workflowRunPanels";
 import { SVC_SCRIPT_FIELDS } from "./sharedWorkflowConstants";
 import { findFileByPath } from "./sharedWorkflowHelpers";
 import type { ServicePageProps } from "./sharedWorkflowUi";
@@ -49,7 +52,7 @@ const SBOM_PREVIEW_CHAR_LIMIT = 120_000;
 
 export function PageGenerateSBOM({
   svc,
-  ree,
+  ree: reeDraft,
   badges,
   virtualFiles,
   log,
@@ -69,16 +72,16 @@ export function PageGenerateSBOM({
 }: ServicePageProps) {
   const sbomParams: AutomationStepRunParams<"sbom"> = {
     ...(params as AutomationStepRunParams<"sbom">),
-    produced_runtime_path: ree.runtime,
+    produced_runtime_path: reeDraft.runtime,
   };
 
   const files = virtualFiles;
 
   const sbomColor = svc.color;
-  const rt = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : null;
+  const rt = reeDraft.runtime && reeDraft.runtime !== "__skipped__" ? reeDraft.runtime : null;
   const isTb = rt && /\.(tar\.gz|tgz)$/i.test(rt);
-  const hasSbom = !!(ree.sbom && ree.sbom !== "__skipped__");
-  const sbomNode = hasSbom ? findFileByPath(files || [], ree.sbom) : null;
+  const hasSbom = !!(reeDraft.sbom && reeDraft.sbom !== "__skipped__");
+  const sbomNode = hasSbom ? findFileByPath(files || [], reeDraft.sbom) : null;
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const sbomText = sbomNode?.content || "";
@@ -180,7 +183,7 @@ export function PageGenerateSBOM({
             </FieldRow>
           </FieldSection>
 
-          <ServiceActionSection
+          <WorkflowRunActionSection
             color={sbomColor}
             running={running}
             runDone={runDone}
@@ -214,7 +217,7 @@ export function PageGenerateSBOM({
                   <div style={workflowStatusKeyStyle(hasSbom, "#16a34a")}>ree.sbom</div>
                   <div style={workflowStatusValueStyle(hasSbom, "#15803d")}>
                     {hasSbom ? (
-                      ree.sbom
+                      reeDraft.sbom
                     ) : (
                       <span style={S_TEXT_ITALIC_11}>not set — click Generate SBOM</span>
                     )}
@@ -268,7 +271,7 @@ export function PageGenerateSBOM({
                               flex: 1,
                             }}
                           >
-                            {ree.sbom}
+                            {reeDraft.sbom}
                           </span>
                           {pkgCount !== null && (
                             <span
@@ -334,7 +337,7 @@ export function PageGenerateSBOM({
                   files={files || MOCK_FILES}
                   onFilesChange={onFilesChange}
                   onPersistWorkspaceFile={onPersistWorkspaceFile}
-                  ree={ree}
+                  ree={reeDraft}
                   onReeChange={onReeChange}
                 />
               ))}

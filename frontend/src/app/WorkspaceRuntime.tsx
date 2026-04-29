@@ -1,9 +1,9 @@
 import type { Dispatch, ReactNode } from "react";
 import { createContext, useContext } from "react";
-import type { ExplorerRuntimePorts } from "../application/explorer/runtimePorts";
-import type { AppAction } from "../context";
-import type { IWorkspaceService, WorkspaceServiceLogEntry } from "../services/workspaceService";
+import type { WorkspaceEditorRuntimePorts } from "../application/workspace/workspaceEditorPorts";
+import type { WorkspaceEditorAction } from "../context";
 import type { FileTreeNode, GenericServiceParams, Ree, ServiceParams } from "../types";
+import type { WorkflowRunLogEntry, WorkspaceGateway } from "../workspace/WorkspaceGateway";
 
 type WorkspaceServiceMode = "remote" | "mock";
 
@@ -11,18 +11,15 @@ export interface WorkspaceServiceFactoryArgs {
   ree: Ree;
   virtualFiles: FileTreeNode[];
   serviceParams: ServiceParams;
-  dispatch: Dispatch<AppAction>;
-  executeServiceRun: (
-    key: string,
-    params?: GenericServiceParams,
-  ) => Promise<WorkspaceServiceLogEntry>;
+  dispatch: Dispatch<WorkspaceEditorAction>;
+  executeServiceRun: (key: string, params?: GenericServiceParams) => Promise<WorkflowRunLogEntry>;
 }
 
 export interface WorkspaceRuntimeValue {
   workspaceId: string;
   workspaceServiceMode: WorkspaceServiceMode;
-  ports: ExplorerRuntimePorts;
-  createWorkspaceService: (args: WorkspaceServiceFactoryArgs) => IWorkspaceService<FileTreeNode>;
+  ports: WorkspaceEditorRuntimePorts;
+  createWorkspaceService: (args: WorkspaceServiceFactoryArgs) => WorkspaceGateway<FileTreeNode>;
 }
 
 const WorkspaceRuntimeContext = createContext<WorkspaceRuntimeValue | null>(null);

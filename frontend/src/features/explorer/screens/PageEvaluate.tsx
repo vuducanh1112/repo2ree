@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { scanDependencies } from "../../../application/explorer/dependencyParser";
+import { scanDependencies } from "../../../application/workflow/workflowDependencyAnalysis";
 import { Ic } from "../../../components/Icon";
 import { LevelBadge } from "../../../components/LevelBadge";
 import { LEVELS } from "../../../constants/levels";
@@ -13,7 +13,7 @@ import {
   S_WORKFLOW_SERVICE_MAIN_SCROLL,
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
-import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
+import { MOCK_FILES } from "../../../workspace/InMemoryWorkspaceGateway";
 import {
   descToTwoTierTips,
   FieldRow,
@@ -26,16 +26,16 @@ import {
   WorkflowPageHeader,
 } from "../components/workflow/pageChrome";
 import {
-  DependencyPanel,
-  ServiceActionSection,
-  WorkflowLogSection,
-} from "../components/workflow/servicePanels";
-import {
   workflowStatusBadgeStyle,
   workflowToneIconStyle,
   workflowTonePanelStyle,
   workflowToneTextStyle,
 } from "../components/workflow/statusUiStyles";
+import {
+  DependencyPanel,
+  WorkflowLogSection,
+  WorkflowRunActionSection,
+} from "../components/workflow/workflowRunPanels";
 import type { ServicePageProps } from "./sharedWorkflowUi";
 
 export function PageEvaluate({
@@ -98,7 +98,7 @@ export function PageEvaluate({
             <RequirementsBanner status="met" items={svc.requires} />
           )}
 
-          <ServiceActionSection
+          <WorkflowRunActionSection
             color={svc.color}
             running={running}
             runDone={runDone}

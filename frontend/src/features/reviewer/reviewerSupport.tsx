@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { Ic } from "../../components/Icon";
 import { C, F, hoverColor, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../../constants/theme";
 import type { LogLine, Ree } from "../../types/ree";
-import type { ServiceParam, ServiceParamValue, StepState } from "../../types/services";
-import { WorkflowLogSection } from "../explorer/components/workflow/servicePanels";
+import type { ServiceParam, ServiceParamValue, StepState } from "../../types/workflowSteps";
+import { WorkflowLogSection } from "../explorer/components/workflow/workflowRunPanels";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,

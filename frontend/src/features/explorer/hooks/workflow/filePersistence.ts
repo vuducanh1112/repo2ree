@@ -1,10 +1,10 @@
-import { planWorkspaceFilePersistence } from "../../../../application/explorer/workspaceFilePlanning";
-import type { IWorkspaceService } from "../../../../services/workspaceService";
+import { planWorkspaceFilePersistence } from "../../../../application/workspace/workspaceFileMutationPlanning";
 import type { FileTreeNode } from "../../../../types";
+import type { WorkspaceGateway } from "../../../../workspace/WorkspaceGateway";
 import type { ShowToast } from "./types";
 
 interface CreateWorkspaceFilePersistenceArgs {
-  workspaceService: IWorkspaceService<FileTreeNode>;
+  workspaceService: WorkspaceGateway<FileTreeNode>;
   workspaceId: string;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   showToast: ShowToast;

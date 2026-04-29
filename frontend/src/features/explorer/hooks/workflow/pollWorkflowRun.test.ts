@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ExplorerClock } from "../../../../application/explorer/runtimePorts";
-import type { IWorkspaceService } from "../../../../services/workspaceService";
+import type { WorkspaceEditorClock } from "../../../../application/workspace/workspaceEditorPorts";
+import type { WorkspaceGateway } from "../../../../workspace/WorkspaceGateway";
 import { pollWorkflowRun } from "./pollWorkflowRun";
 
-const clock: ExplorerClock = {
+const clock: WorkspaceEditorClock = {
   nowIso: () => "2026-04-29T00:00:00.000Z",
   nowMillis: () => 1777420800000,
 };
@@ -12,7 +12,7 @@ describe("pollWorkflowRun", () => {
   it("uses injected sleep between non-terminal polls", async () => {
     const sleep = vi.fn(async () => {});
     const getWorkflowRun = vi
-      .fn<NonNullable<IWorkspaceService["getWorkflowRun"]>>()
+      .fn<NonNullable<WorkspaceGateway["getWorkflowRun"]>>()
       .mockResolvedValueOnce({
         runId: "run-1",
         status: "running",
@@ -24,7 +24,7 @@ describe("pollWorkflowRun", () => {
         createdAt: "2026-04-29T00:00:00.000Z",
         finishedAt: "2026-04-29T00:00:01.000Z",
       });
-    const workspaceService = { getWorkflowRun } as unknown as IWorkspaceService;
+    const workspaceService = { getWorkflowRun } as unknown as WorkspaceGateway;
 
     const result = await pollWorkflowRun(workspaceService, {
       workspaceId: "active",
@@ -40,7 +40,7 @@ describe("pollWorkflowRun", () => {
   });
 
   it("uses injected clock when polling is unsupported", async () => {
-    const workspaceService = {} as unknown as IWorkspaceService;
+    const workspaceService = {} as unknown as WorkspaceGateway;
     const result = await pollWorkflowRun(workspaceService, {
       workspaceId: "active",
       runId: "run-1",

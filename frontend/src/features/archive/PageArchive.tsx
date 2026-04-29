@@ -13,7 +13,7 @@ import {
   S_SECTION_LABEL,
 } from "../../constants/theme";
 import type { ActionStates, Badges, Ree, ServiceLogs } from "../../types/ree";
-import type { GenericServiceParams } from "../../types/services";
+import type { GenericServiceParams } from "../../types/workflowSteps";
 import { LogPanel } from "../explorer/components/inputs/logPanel";
 import {
   NextStepNudge,

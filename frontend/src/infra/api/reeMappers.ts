@@ -3,42 +3,42 @@ import type { Ree } from "../../types";
 import { normalizeHBOM } from "../../utils/hbom";
 
 function mapDraftToRee(
-  draft: Partial<ReviewDetailDto["reeDraft"]>,
+  reeDraft: Partial<ReviewDetailDto["reeDraft"]>,
   fallbackName: string,
   fallbackOriginUrl = "",
 ): Ree {
   return {
-    name: String(draft.name ?? fallbackName ?? ""),
-    origin_url: String(draft.origin_url ?? fallbackOriginUrl ?? ""),
-    source_type: (draft.source_type as Ree["source_type"]) || "",
-    runtime: String(draft.runtime ?? ""),
-    build_runtime_script: String(draft.build_runtime_script ?? ""),
-    activation_script: String(draft.activation_script ?? ""),
-    sbom: String(draft.sbom ?? ""),
-    swhid: String(draft.swhid ?? ""),
-    zenodo_doi: draft.zenodo_doi ? String(draft.zenodo_doi) : undefined,
-    dataverse_doi: draft.dataverse_doi ? String(draft.dataverse_doi) : undefined,
-    repro_level: draft.repro_level ? String(draft.repro_level) : undefined,
-    detected_dependencies: draft.detected_dependencies
-      ? String(draft.detected_dependencies)
+    name: String(reeDraft.name ?? fallbackName ?? ""),
+    origin_url: String(reeDraft.origin_url ?? fallbackOriginUrl ?? ""),
+    source_type: (reeDraft.source_type as Ree["source_type"]) || "",
+    runtime: String(reeDraft.runtime ?? ""),
+    build_runtime_script: String(reeDraft.build_runtime_script ?? ""),
+    activation_script: String(reeDraft.activation_script ?? ""),
+    sbom: String(reeDraft.sbom ?? ""),
+    swhid: String(reeDraft.swhid ?? ""),
+    zenodo_doi: reeDraft.zenodo_doi ? String(reeDraft.zenodo_doi) : undefined,
+    dataverse_doi: reeDraft.dataverse_doi ? String(reeDraft.dataverse_doi) : undefined,
+    repro_level: reeDraft.repro_level ? String(reeDraft.repro_level) : undefined,
+    detected_dependencies: reeDraft.detected_dependencies
+      ? String(reeDraft.detected_dependencies)
       : undefined,
-    hardware_description: normalizeHBOM(draft.hardware_description),
-    _evalLevel: Number(draft._evalLevel ?? 0),
-    _sealedAt: draft._sealedAt ? String(draft._sealedAt) : undefined,
-    _sealHash: draft._sealHash ? String(draft._sealHash) : undefined,
-    _sourceAvailable: Boolean(draft._sourceAvailable),
-    _sourceIncluded: Boolean(draft._sourceIncluded),
-    _sourceAcquiredBy: (draft._sourceAcquiredBy as Ree["_sourceAcquiredBy"]) || undefined,
-    _uploadedArchive: draft._uploadedArchive ? String(draft._uploadedArchive) : undefined,
-    _sourceSnapshotArchive: draft._sourceSnapshotArchive
-      ? String(draft._sourceSnapshotArchive)
+    hardware_description: normalizeHBOM(reeDraft.hardware_description),
+    _evalLevel: Number(reeDraft._evalLevel ?? 0),
+    _sealedAt: reeDraft._sealedAt ? String(reeDraft._sealedAt) : undefined,
+    _sealHash: reeDraft._sealHash ? String(reeDraft._sealHash) : undefined,
+    _sourceAvailable: Boolean(reeDraft._sourceAvailable),
+    _sourceIncluded: Boolean(reeDraft._sourceIncluded),
+    _sourceAcquiredBy: (reeDraft._sourceAcquiredBy as Ree["_sourceAcquiredBy"]) || undefined,
+    _uploadedArchive: reeDraft._uploadedArchive ? String(reeDraft._uploadedArchive) : undefined,
+    _sourceSnapshotArchive: reeDraft._sourceSnapshotArchive
+      ? String(reeDraft._sourceSnapshotArchive)
       : undefined,
-    _sourceSnapshotCapturedAt: draft._sourceSnapshotCapturedAt
-      ? String(draft._sourceSnapshotCapturedAt)
+    _sourceSnapshotCapturedAt: reeDraft._sourceSnapshotCapturedAt
+      ? String(reeDraft._sourceSnapshotCapturedAt)
       : undefined,
-    _runtimeIncluded: Boolean(draft._runtimeIncluded),
-    _downloadableFiles: Array.isArray(draft._downloadableFiles)
-      ? draft._downloadableFiles.map((item) => String(item))
+    _runtimeIncluded: Boolean(reeDraft._runtimeIncluded),
+    _downloadableFiles: Array.isArray(reeDraft._downloadableFiles)
+      ? reeDraft._downloadableFiles.map((item) => String(item))
       : [],
   };
 }

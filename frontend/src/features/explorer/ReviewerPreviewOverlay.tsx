@@ -9,7 +9,7 @@ import {
   S_SECTION_LABEL,
 } from "../../constants/theme";
 import type { Ree } from "../../types/ree";
-import type { Level, StepState } from "../../types/services";
+import type { Level, StepState } from "../../types/workflowSteps";
 import { ReviewerView } from "../reviewer/ReviewerView";
 
 interface ReviewerPreviewOverlayProps {

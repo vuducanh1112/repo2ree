@@ -1,4 +1,4 @@
-import type { ExplorerRuntimePorts } from "../application/explorer/runtimePorts";
+import type { WorkspaceEditorRuntimePorts } from "../application/workspace/workspaceEditorPorts";
 
 const HEX_ALPHABET = "0123456789abcdef";
 
@@ -14,22 +14,22 @@ function downloadBlob(bytes: BlobPart, options: { fileName: string; mimeType: st
   URL.revokeObjectURL(url);
 }
 
-export function createBrowserRuntimePorts(): ExplorerRuntimePorts {
+export function createBrowserRuntimePorts(): WorkspaceEditorRuntimePorts {
   return {
     clock: {
       nowIso: () => new Date().toISOString(),
       nowMillis: () => Date.now(),
     },
     random: {
-      hex: (length) =>
+      hex: (length: number) =>
         Array.from(
           { length },
           () => HEX_ALPHABET[Math.floor(Math.random() * HEX_ALPHABET.length)],
         ).join(""),
-      int: (minInclusive, maxInclusive) =>
+      int: (minInclusive: number, maxInclusive: number) =>
         Math.floor(Math.random() * (maxInclusive - minInclusive + 1)) + minInclusive,
     },
-    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    sleep: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
     browserDownloads: { downloadBlob },
   };
 }

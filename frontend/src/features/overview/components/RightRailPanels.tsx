@@ -2,8 +2,11 @@ import type React from "react";
 import { Ic } from "../../../components/Icon";
 import { FIELD_META } from "../../../constants/fieldMeta";
 import { LEVELS } from "../../../constants/levels";
-import { type ExplorerPage, isValidExplorerPage, PAGE } from "../../../constants/pages";
-import { AUTOMATION_STEPS } from "../../../constants/services";
+import {
+  isValidWorkspaceEditorPage,
+  PAGE,
+  type WorkspaceEditorPage,
+} from "../../../constants/pages";
 import {
   C,
   F,
@@ -17,7 +20,13 @@ import {
   S_OVERVIEW_PANEL_HEADER_ROW,
   S_PANEL_HEADER_LABEL,
 } from "../../../constants/theme";
-import type { Badges, ExplorerPage as ExplorerPageType, Ree, Timestamps } from "../../../types";
+import { AUTOMATION_STEPS } from "../../../constants/workflowSteps";
+import type {
+  Badges,
+  Ree,
+  Timestamps,
+  WorkspaceEditorPage as WorkspaceEditorPageType,
+} from "../../../types";
 import { PanelFieldRow } from "./PanelFieldRow";
 
 interface RightRailPanelsProps {
@@ -25,7 +34,7 @@ interface RightRailPanelsProps {
   badges: Badges;
   timestamps: Timestamps;
   level: number;
-  onNavigate: (key: ExplorerPageType) => void;
+  onNavigate: (key: WorkspaceEditorPageType) => void;
   onGoField: (key: string) => void;
   swhRef: React.RefObject<HTMLDivElement>;
   evaluateRef: React.RefObject<HTMLDivElement>;
@@ -215,8 +224,8 @@ export function RightRailPanels({
                   type="button"
                   onClick={() =>
                     onNavigate?.(
-                      isValidExplorerPage(service.key)
-                        ? (service.key as ExplorerPage)
+                      isValidWorkspaceEditorPage(service.key)
+                        ? (service.key as WorkspaceEditorPage)
                         : PAGE.OVERVIEW,
                     )
                   }

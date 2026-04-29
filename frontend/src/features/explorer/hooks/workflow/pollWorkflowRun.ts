@@ -1,17 +1,17 @@
-import type { ExplorerClock } from "../../../../application/explorer/runtimePorts";
+import type { WorkspaceEditorClock } from "../../../../application/workspace/workspaceEditorPorts";
 import type {
-  IWorkspaceService,
   LogLine,
   WorkflowRunRecord,
   WorkflowRunStatus,
-} from "../../../../services/workspaceService";
+  WorkspaceGateway,
+} from "../../../../workspace/WorkspaceGateway";
 
 interface PollWorkflowRunOptions {
   workspaceId: string;
   runId: string;
   maxIterations?: number;
   onUpdate?: (update: PollWorkflowRunResult) => void;
-  clock: ExplorerClock;
+  clock: WorkspaceEditorClock;
   sleep: (ms: number) => Promise<void>;
 }
 
@@ -47,7 +47,7 @@ function mergeCappedLines(existing: LogLine[], incoming: LogLine[]): LogLine[] {
 }
 
 async function readAvailableLogs(
-  workspaceService: IWorkspaceService,
+  workspaceService: WorkspaceGateway,
   workspaceId: string,
   runId: string,
   cursor?: string,
@@ -72,12 +72,12 @@ async function readAvailableLogs(
   return lines;
 }
 
-function resolveRunTimestamp(run: WorkflowRunRecord, clock: ExplorerClock): string {
+function resolveRunTimestamp(run: WorkflowRunRecord, clock: WorkspaceEditorClock): string {
   return run.finishedAt || run.startedAt || run.createdAt || clock.nowIso();
 }
 
 export async function pollWorkflowRun(
-  workspaceService: IWorkspaceService,
+  workspaceService: WorkspaceGateway,
   options: PollWorkflowRunOptions,
 ): Promise<PollWorkflowRunResult> {
   if (!workspaceService.getWorkflowRun) {

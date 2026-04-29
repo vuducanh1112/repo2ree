@@ -2,11 +2,11 @@ import { useMemo } from "react";
 import { AppBootstrap } from "./app/AppBootstrap";
 import { createBrowserRuntimePorts } from "./app/browserRuntimePorts";
 import { DEMO_REE } from "./app/demoRee";
-import { createMockExplorerWorkspaceService } from "./app/mockExplorerWorkspaceService";
+import { createMockWorkspaceGateway } from "./app/mockWorkspaceGateway";
 import { WorkspaceRuntimeProvider, type WorkspaceRuntimeValue } from "./app/WorkspaceRuntime";
 import { WORKSPACE_ID } from "./app/workspaceConstants";
-import { AppProvider } from "./context";
-import { createRemoteWorkspaceService } from "./services/remoteWorkspaceService";
+import { WorkspaceEditorProvider } from "./context";
+import { createHttpWorkspaceGateway } from "./workspace/HttpWorkspaceGateway";
 
 export default function App() {
   const runtime = useMemo<WorkspaceRuntimeValue>(() => {
@@ -21,7 +21,7 @@ export default function App() {
         : undefined;
     const remoteWorkspaceService =
       workspaceServiceMode === "remote"
-        ? createRemoteWorkspaceService({
+        ? createHttpWorkspaceGateway({
             baseUrl: env.VITE_API_BASE_URL || "",
             initialWorkspaceId: reeIdFromQuery,
           })
@@ -33,15 +33,15 @@ export default function App() {
       workspaceServiceMode,
       ports,
       createWorkspaceService: (args) =>
-        remoteWorkspaceService || createMockExplorerWorkspaceService({ ...args, ports }),
+        remoteWorkspaceService || createMockWorkspaceGateway({ ...args, ports }),
     };
   }, []);
 
   return (
     <WorkspaceRuntimeProvider value={runtime}>
-      <AppProvider initialExplorerRee={DEMO_REE}>
+      <WorkspaceEditorProvider initialExplorerRee={DEMO_REE}>
         <AppBootstrap />
-      </AppProvider>
+      </WorkspaceEditorProvider>
     </WorkspaceRuntimeProvider>
   );
 }

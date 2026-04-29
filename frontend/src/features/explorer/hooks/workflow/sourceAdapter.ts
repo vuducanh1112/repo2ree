@@ -1,18 +1,18 @@
-import type { ExplorerClock } from "../../../../application/explorer/runtimePorts";
-import type { IWorkspaceService } from "../../../../services/workspaceService";
+import type { WorkspaceEditorClock } from "../../../../application/workspace/workspaceEditorPorts";
 import type { FileTreeNode, Ree } from "../../../../types";
+import type { WorkspaceGateway } from "../../../../workspace/WorkspaceGateway";
 import type { ExplorerWorkflowDispatch } from "./commandExecutors";
 import { createSourceActions, resetWorkflowOnSourceChange } from "./sourceLifecycle";
 import type { ShowToast } from "./types";
 
 interface CreateSourceAdapterArgs {
   ree: Ree;
-  workspaceService: IWorkspaceService<FileTreeNode>;
+  workspaceService: WorkspaceGateway<FileTreeNode>;
   workspaceId: string;
   dispatch: ExplorerWorkflowDispatch;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   showToast: ShowToast;
-  clock: ExplorerClock;
+  clock: WorkspaceEditorClock;
   sleep: (ms: number) => Promise<void>;
   onRunStarted?: (key: string, runId: string) => void;
   onRunFinished?: (key: string) => void;

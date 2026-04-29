@@ -1,18 +1,18 @@
+import type { WorkflowStepCommand } from "../../../../application/workflow/workflowStepCommands";
+import type { SourceCommand } from "../../../../application/workspace/sourceAcquisitionCommands";
 import {
   type ExplorerShellEffect,
   type ExplorerStateCommand,
-  mapServiceRunCommandsToEffects,
   mapSourceCommandsToEffects,
-} from "../../../../application/explorer/explorerShellEffects";
-import type { ServiceRunCommand } from "../../../../application/explorer/serviceRunCommands";
-import type { SourceCommand } from "../../../../application/explorer/sourceCommands";
-import type { AppAction } from "../../../../context";
-import { explorerActions } from "../../../../context";
+  mapWorkflowStepCommandsToEffects,
+} from "../../../../application/workspace/workspaceMutationEffects";
+import type { WorkspaceEditorAction } from "../../../../context";
+import { workspaceEditorActions } from "../../../../context";
 import type { ShowToast } from "./types";
 
-export type ExplorerWorkflowDispatch = (action: AppAction) => void;
+export type ExplorerWorkflowDispatch = (action: WorkspaceEditorAction) => void;
 
-interface ServiceRunCommandEffects {
+interface WorkflowStepCommandEffects {
   dispatch: ExplorerWorkflowDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
@@ -23,27 +23,27 @@ function dispatchExplorerStateCommand(
   dispatch: ExplorerWorkflowDispatch,
 ): void {
   if (command.type === "setActionStates") {
-    dispatch(explorerActions.setActionStates(command.actionStates));
+    dispatch(workspaceEditorActions.setActionStates(command.actionStates));
   } else if (command.type === "setServiceLogs") {
-    dispatch(explorerActions.setServiceLogs(command.serviceLogs));
+    dispatch(workspaceEditorActions.setServiceLogs(command.serviceLogs));
   } else if (command.type === "completeServiceRun") {
-    dispatch(explorerActions.completeServiceRun(command.completion));
+    dispatch(workspaceEditorActions.completeWorkflowRun(command.completion));
   } else if (command.type === "hydrateWorkspace") {
-    dispatch(explorerActions.hydrateWorkspace(command.workspace));
+    dispatch(workspaceEditorActions.hydrateWorkspace(command.workspace));
   } else if (command.type === "setRee") {
-    dispatch(explorerActions.setRee(command.ree));
+    dispatch(workspaceEditorActions.setRee(command.ree));
   } else if (command.type === "setLocked") {
-    dispatch(explorerActions.setLocked(command.locked));
+    dispatch(workspaceEditorActions.setLocked(command.locked));
   } else if (command.type === "resetWorkflowOnSourceChange") {
-    dispatch(explorerActions.resetWorkflowOnSourceChange(command.serviceParams));
+    dispatch(workspaceEditorActions.resetWorkflowOnSourceChange(command.serviceParams));
   } else {
-    dispatch(explorerActions.applySourcePatchOutcome(command.outcome));
+    dispatch(workspaceEditorActions.applySourcePatchOutcome(command.outcome));
   }
 }
 
 function executeExplorerEffects(
   effects: ExplorerShellEffect[],
-  handlers: ServiceRunCommandEffects,
+  handlers: WorkflowStepCommandEffects,
 ): void {
   for (const effect of effects) {
     if (effect.type === "dispatchStateCommand") {
@@ -56,11 +56,11 @@ function executeExplorerEffects(
   }
 }
 
-export function executeServiceRunCommands(
-  commands: ServiceRunCommand[],
-  effects: ServiceRunCommandEffects,
+export function executeWorkflowStepCommands(
+  commands: WorkflowStepCommand[],
+  effects: WorkflowStepCommandEffects,
 ): void {
-  executeExplorerEffects(mapServiceRunCommandsToEffects(commands), effects);
+  executeExplorerEffects(mapWorkflowStepCommandsToEffects(commands), effects);
 }
 
 interface SourceCommandEffects {

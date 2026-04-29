@@ -17,11 +17,11 @@ import { useFocusScroll } from "../../../hooks/useFocusScroll";
 import { SourceUploadField, SourceUrlField } from "../components/inputs/sourceRuntime";
 import { FieldRow, FieldSection, FieldTipsSidebar } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
-import { WorkflowLogSection } from "../components/workflow/servicePanels";
 import {
   sourceClearButtonTone,
   sourceIncludedLabelStyle,
 } from "../components/workflow/statusUiStyles";
+import { WorkflowLogSection } from "../components/workflow/workflowRunPanels";
 import type { PageSourceRepoEntryProps } from "./sharedWorkflowUi";
 
 const SOURCE_TYPE_OPTIONS = ["git", "hg", "svn", "cvs", "bzr", "tarball", "zip"] as const;

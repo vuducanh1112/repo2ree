@@ -23,8 +23,8 @@ import {
   S_WORKFLOW_SERVICE_MAIN_SCROLL,
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
-import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
 import type { AutomationStepRunParams } from "../../../types";
+import { MOCK_FILES } from "../../../workspace/InMemoryWorkspaceGateway";
 import { FilePicker, ScriptPanel } from "../components/inputs/scriptAndFile";
 import { RuntimeField } from "../components/inputs/sourceRuntime";
 import {
@@ -34,11 +34,6 @@ import {
   FieldTipsSidebar,
 } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
-import {
-  RuntimeOutputNode,
-  ServiceActionSection,
-  WorkflowLogSection,
-} from "../components/workflow/servicePanels";
 import {
   RUNTIME_STATUS_BADGE_STYLE,
   runtimeFieldCardStyle,
@@ -54,6 +49,11 @@ import {
   runtimeSizeBadgeStyle,
   workflowToneSurfaceStyle,
 } from "../components/workflow/statusUiStyles";
+import {
+  RuntimeOutputNode,
+  WorkflowLogSection,
+  WorkflowRunActionSection,
+} from "../components/workflow/workflowRunPanels";
 import { SVC_SCRIPT_FIELDS } from "./sharedWorkflowConstants";
 import { findFileByPath } from "./sharedWorkflowHelpers";
 import type { ServicePageProps } from "./sharedWorkflowUi";
@@ -360,7 +360,7 @@ export function PageBuildRuntime({
             </FieldRow>
           </FieldSection>
 
-          <ServiceActionSection
+          <WorkflowRunActionSection
             color={buildColor}
             running={running}
             runDone={runDone}
