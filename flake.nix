@@ -32,6 +32,12 @@
 
             renovate
 
+            # graphviz for generating graphs with dependency cruiser
+            graphviz
+
+            # playwright browser drivers, because using nix and using playwright via npm does not work, since playwright
+            # looks at default locations 
+            # fonts are important for the browsers to render properly
             playwright-driver.browsers
             fontconfig
             dejavu_fonts

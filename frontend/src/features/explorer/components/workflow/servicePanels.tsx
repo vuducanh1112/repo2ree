@@ -1,5 +1,10 @@
 import type React from "react";
 import { useState } from "react";
+import {
+  type DepGroup,
+  ECO_META,
+  PIN_META,
+} from "../../../../application/explorer/dependencyParser";
 import { Ic } from "../../../../components/Icon";
 import {
   C,
@@ -14,7 +19,6 @@ import {
   S_TEXT_MUTED_11,
 } from "../../../../constants/theme";
 import type { FileTreeNode, LogEntry, Ree } from "../../../../types";
-import { type DepGroup, ECO_META, PIN_META } from "../../../dependencies/dependencyParser";
 import { LogPanel } from "../inputs/logPanel";
 import { workflowSectionCardStyle } from "./statusUiStyles";
 

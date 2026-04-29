@@ -1,3 +1,4 @@
+import type { ExplorerClock } from "../../../../application/explorer/runtimePorts";
 import type {
   IWorkspaceService,
   LogLine,
@@ -10,6 +11,8 @@ interface PollWorkflowRunOptions {
   runId: string;
   maxIterations?: number;
   onUpdate?: (update: PollWorkflowRunResult) => void;
+  clock: ExplorerClock;
+  sleep: (ms: number) => Promise<void>;
 }
 
 interface PollWorkflowRunResult {
@@ -21,10 +24,6 @@ interface PollWorkflowRunResult {
 const TERMINAL_STATUSES = new Set<WorkflowRunStatus>(["succeeded", "failed", "canceled"]);
 const MAX_LOG_LINES = 2000;
 const MAX_LOG_MESSAGE_CHARS = 4000;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function resolvePollDelay(iteration: number): number {
   if (iteration < 10) return 1000;
@@ -73,8 +72,8 @@ async function readAvailableLogs(
   return lines;
 }
 
-function resolveRunTimestamp(run: WorkflowRunRecord): string {
-  return run.finishedAt || run.startedAt || run.createdAt || new Date().toISOString();
+function resolveRunTimestamp(run: WorkflowRunRecord, clock: ExplorerClock): string {
+  return run.finishedAt || run.startedAt || run.createdAt || clock.nowIso();
 }
 
 export async function pollWorkflowRun(
@@ -85,7 +84,7 @@ export async function pollWorkflowRun(
     return {
       status: "failed",
       lines: [{ type: "err", msg: "Workflow polling is not supported by this service" }],
-      ts: new Date().toISOString(),
+      ts: options.clock.nowIso(),
     };
   }
 
@@ -113,7 +112,7 @@ export async function pollWorkflowRun(
     const snapshot: PollWorkflowRunResult = {
       status: latestRun.status,
       lines: aggregatedLines,
-      ts: resolveRunTimestamp(latestRun),
+      ts: resolveRunTimestamp(latestRun, options.clock),
     };
     options.onUpdate?.(snapshot);
 
@@ -128,11 +127,11 @@ export async function pollWorkflowRun(
       return {
         status: latestRun.status,
         lines: aggregatedLines,
-        ts: resolveRunTimestamp(latestRun),
+        ts: resolveRunTimestamp(latestRun, options.clock),
       };
     }
 
-    await sleep(resolvePollDelay(iteration));
+    await options.sleep(resolvePollDelay(iteration));
     latestRun = await workspaceService.getWorkflowRun(options.workspaceId, options.runId);
   }
 
@@ -148,6 +147,6 @@ export async function pollWorkflowRun(
     lines: mergeCappedLines(aggregatedLines, [
       { type: "warn", msg: "Run still active after polling window ended" },
     ]),
-    ts: resolveRunTimestamp(latestRun),
+    ts: resolveRunTimestamp(latestRun, options.clock),
   };
 }

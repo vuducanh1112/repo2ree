@@ -1,7 +1,3 @@
-export function normalizeWorkspacePath(path: string): string {
-  return (path || "").replace(/^\/+/, "").trim();
-}
-
 export function normalizeSnapshotArchiveName(rawName: string): string {
   const trimmed = (rawName || "").trim();
   if (!trimmed) return "source.tar.gz";

@@ -1,0 +1,166 @@
+import { describe, expect, it, vi } from "vitest";
+import type { Ree } from "../../types";
+import type { ServiceRunHandlerMap } from "./serviceRunCommands";
+import { executeServiceRunUseCase } from "./serviceRunUseCase";
+
+function buildRee(): Ree {
+  return {
+    name: "demo",
+    origin_url: "",
+    source_type: "",
+    runtime: "",
+    build_runtime_script: "",
+    activation_script: "activate.sh",
+    sbom: "",
+    swhid: "",
+    hardware_description: {
+      cpus: {},
+      gpus: {},
+      memory: {},
+      storage: {},
+      network: {},
+      extra_info: {},
+    },
+  };
+}
+
+function buildHandlers(): ServiceRunHandlerMap {
+  return {
+    evaluate: (_params, newLevel) => [
+      { type: "patchRee", patch: { _evalLevel: newLevel } },
+      { type: "toast", message: `Evaluated at L${newLevel}`, toastType: "success" },
+    ],
+    build: () => [{ type: "toast", message: "Build complete", toastType: "success" }],
+    hbom: () => [{ type: "toast", message: "HBOM complete", toastType: "success" }],
+    sbom: () => [{ type: "toast", message: "SBOM complete", toastType: "success" }],
+    activation: () => [{ type: "toast", message: "Activation complete", toastType: "success" }],
+  };
+}
+
+const generatedIds = {
+  swhid: "swh:1:dir:abc",
+  zenodoDoi: "10.5281/zenodo.1234567",
+  dataverseDoi: "doi:10.5072/DVN/123456",
+};
+
+function executedCommands(executeCommands: ReturnType<typeof vi.fn>) {
+  return executeCommands.mock.calls.flatMap(([commands]) => commands);
+}
+
+describe("executeServiceRunUseCase", () => {
+  it("runs a workflow service, refreshes build outputs, and executes planned commands", async () => {
+    const executeCommands = vi.fn();
+    const refreshWorkspace = vi.fn(async () => ({
+      files: [{ id: "runtime", name: "runtime.tar.gz", type: "file" as const }],
+    }));
+
+    const result = await executeServiceRunUseCase({
+      key: "build",
+      params: { no_cache: true },
+      ree: buildRee(),
+      level: 2,
+      virtualFiles: [],
+      workflowRunner: {
+        pollRun: vi.fn(),
+        createMockResult: vi.fn(async () => ({
+          status: "succeeded" as const,
+          lines: [{ type: "ok" as const, msg: "built" }],
+          ts: "2026-01-01T00:00:00Z",
+        })),
+      },
+      serviceRunHandlers: buildHandlers(),
+      generatedIds,
+      executeCommands,
+      refreshWorkspace,
+    });
+
+    expect(result.ts).toBe("2026-01-01T00:00:00Z");
+    expect(refreshWorkspace).toHaveBeenCalled();
+    expect(executedCommands(executeCommands)).toEqual([
+      { type: "setActionLoading", key: "build" },
+      {
+        type: "completeServiceRun",
+        completion: {
+          key: "build",
+          serviceLog: { lines: [{ type: "ok", msg: "built" }], ts: "2026-01-01T00:00:00Z" },
+          actionState: "done",
+          badge: true,
+          timestamp: "2026-01-01T00:00:00Z",
+        },
+      },
+      {
+        type: "hydrateWorkspace",
+        virtualFiles: [{ id: "runtime", name: "runtime.tar.gz", type: "file" }],
+        workspaceReeFiles: [],
+        ree: undefined,
+      },
+      { type: "toast", message: "Build complete", toastType: "success" },
+    ]);
+  });
+
+  it("plans terminal failure feedback without refreshing or running success handlers", async () => {
+    const executeCommands = vi.fn();
+    const refreshWorkspace = vi.fn();
+
+    await executeServiceRunUseCase({
+      key: "build",
+      params: {},
+      ree: buildRee(),
+      level: 2,
+      virtualFiles: [],
+      workflowRunner: {
+        pollRun: vi.fn(),
+        createMockResult: vi.fn(async () => ({
+          status: "failed" as const,
+          lines: [{ type: "err" as const, msg: "nope" }],
+          ts: "2026-01-01T00:00:00Z",
+        })),
+      },
+      serviceRunHandlers: buildHandlers(),
+      generatedIds,
+      executeCommands,
+      refreshWorkspace,
+    });
+
+    expect(refreshWorkspace).not.toHaveBeenCalled();
+    expect(executedCommands(executeCommands)).toContainEqual({
+      type: "toast",
+      message: "build failed",
+      toastType: "error",
+    });
+    expect(executedCommands(executeCommands)).not.toContainEqual({
+      type: "toast",
+      message: "Build complete",
+      toastType: "success",
+    });
+  });
+
+  it("uses generated IDs for non-workflow completion patches", async () => {
+    const executeCommands = vi.fn();
+
+    await executeServiceRunUseCase({
+      key: "swh",
+      params: {},
+      ree: buildRee(),
+      level: 2,
+      virtualFiles: [],
+      workflowRunner: {
+        pollRun: vi.fn(),
+        createMockResult: vi.fn(async () => ({
+          status: "succeeded" as const,
+          lines: [],
+          ts: "2026-01-01T00:00:00Z",
+        })),
+      },
+      serviceRunHandlers: buildHandlers(),
+      generatedIds,
+      executeCommands,
+      refreshWorkspace: vi.fn(),
+    });
+
+    expect(executedCommands(executeCommands)).toContainEqual({
+      type: "patchRee",
+      patch: { swhid: "swh:1:dir:abc" },
+    });
+  });
+});

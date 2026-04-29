@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { scanDependencies } from "../../../application/explorer/dependencyParser";
 import { Ic } from "../../../components/Icon";
 import { LevelBadge } from "../../../components/LevelBadge";
 import { LEVELS } from "../../../constants/levels";
@@ -13,7 +14,6 @@ import {
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
 import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
-import { scanDependencies } from "../../dependencies/dependencyParser";
 import {
   descToTwoTierTips,
   FieldRow,

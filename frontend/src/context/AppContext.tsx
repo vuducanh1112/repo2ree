@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useReducer } from "react";
+import { normalizeExplorerPage } from "../application/explorer/navigation";
 import { PAGE } from "../constants/pages";
 import { initialServiceParams } from "../constants/services";
-import { normalizeExplorerPage } from "../features/explorer/utils/navigation";
+import { enforceSourceOriginContract } from "../domain/ree/sourceContract";
+import { computeExplorerSourceChangeReset } from "../domain/workflow/sourceChangeReset";
 import type { Ree } from "../types";
 import { ACTION_TYPES } from "./actionTypes";
 import type { AppAction, AppContextState, StateUpdater } from "./types";
@@ -24,20 +26,6 @@ function resolveUpdater<T>(previous: T, updater: StateUpdater<T>): T {
     return (updater as (value: T) => T)(previous);
   }
   return updater;
-}
-
-function enforceSourceOriginContract(ree: Ree): Ree {
-  const hasDownloadedSource = !!ree._sourceAvailable && ree._sourceAcquiredBy === "download";
-  const hasUploadedSource = !!ree._sourceAvailable && ree._sourceAcquiredBy === "upload";
-
-  let nextRee = ree;
-  if (!hasDownloadedSource && nextRee.origin_url) {
-    nextRee = { ...nextRee, origin_url: "" };
-  }
-  if (hasUploadedSource && !nextRee._sourceIncluded) {
-    nextRee = { ...nextRee, _sourceIncluded: true };
-  }
-  return nextRee;
 }
 
 function createInitialState(initialExplorerRee: Ree): AppContextState {
@@ -191,6 +179,19 @@ function appReducer(state: AppContextState, action: AppAction): AppContextState 
         },
       };
     }
+    case ACTION_TYPES.explorer.hydrateWorkspace: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          virtualFiles: action.workspace.virtualFiles,
+          workspaceReeFiles: action.workspace.workspaceReeFiles,
+          ree: action.workspace.ree
+            ? enforceSourceOriginContract(action.workspace.ree)
+            : state.explorer.ree,
+        },
+      };
+    }
     case ACTION_TYPES.explorer.setImmutableSourceSnapshotFiles: {
       return {
         ...state,
@@ -215,6 +216,27 @@ function appReducer(state: AppContextState, action: AppAction): AppContextState 
         },
       };
     }
+    case ACTION_TYPES.explorer.applySourceOutcome: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          ree: enforceSourceOriginContract(action.outcome.ree),
+          immutableSourceSnapshotFiles: action.outcome.immutableSourceSnapshotFiles,
+          immutableSourceSnapshotArchiveName: action.outcome.immutableSourceSnapshotArchiveName,
+          actionStates: action.outcome.actionState
+            ? { ...state.explorer.actionStates, source: action.outcome.actionState }
+            : state.explorer.actionStates,
+          badges:
+            typeof action.outcome.badge === "boolean"
+              ? { ...state.explorer.badges, source: action.outcome.badge }
+              : state.explorer.badges,
+          timestamps: action.outcome.timestamp
+            ? { ...state.explorer.timestamps, source: action.outcome.timestamp }
+            : state.explorer.timestamps,
+        },
+      };
+    }
     case ACTION_TYPES.explorer.setShowReviewerPreview: {
       return {
         ...state,
@@ -227,39 +249,36 @@ function appReducer(state: AppContextState, action: AppAction): AppContextState 
         },
       };
     }
+    case ACTION_TYPES.explorer.completeServiceRun: {
+      return {
+        ...state,
+        explorer: {
+          ...state.explorer,
+          serviceLogs: {
+            ...state.explorer.serviceLogs,
+            [action.completion.key]: action.completion.serviceLog,
+          },
+          actionStates: {
+            ...state.explorer.actionStates,
+            [action.completion.key]: action.completion.actionState,
+          },
+          badges: {
+            ...state.explorer.badges,
+            [action.completion.key]: action.completion.badge,
+          },
+          timestamps: {
+            ...state.explorer.timestamps,
+            [action.completion.key]: action.completion.timestamp,
+          },
+        },
+      };
+    }
     case ACTION_TYPES.explorer.resetWorkflowOnSourceChange: {
       return {
         ...state,
         explorer: {
           ...state.explorer,
-          badges: {},
-          timestamps: {},
-          serviceLogs: {},
-          actionStates: {},
-          serviceParams: action.serviceParams,
-          ree: {
-            ...state.explorer.ree,
-            origin_url: "",
-            runtime: "",
-            build_runtime_script: "",
-            activation_script: "",
-            sbom: "",
-            swhid: "",
-            detected_dependencies: "",
-            repro_level: "",
-            _evalLevel: 0,
-            _sourceAvailable: false,
-            _sourceAcquiredBy: undefined,
-            _runtimeIncluded: false,
-            zenodo_doi: "",
-            _uploadedArchive: "",
-            _sourceSnapshotArchive: "",
-            _sourceSnapshotCapturedAt: "",
-          },
-          virtualFiles: [],
-          workspaceReeFiles: [],
-          immutableSourceSnapshotFiles: [],
-          immutableSourceSnapshotArchiveName: "",
+          ...computeExplorerSourceChangeReset(state.explorer, action.serviceParams),
         },
       };
     }

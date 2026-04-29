@@ -1,52 +1,14 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { ApiClient, type ReviewDetailDto, ReviewsApi } from "../api";
+import { ApiClient, ReviewsApi } from "../api";
 import { SEALED_DEMO_REE } from "../app/demoRee";
 import { APP_ROUTE } from "../constants/pages";
 import { ExplorerView } from "../features/explorer/ExplorerView";
 import { LandingView } from "../features/landing/LandingView";
 import { PodOrbitControl } from "../features/reviewer/PodOrbitControl";
 import { ReviewerView } from "../features/reviewer/ReviewerView";
+import { mapReviewDraftToRee } from "../infra/api/reeMappers";
 import type { Ree } from "../types/ree";
-import { normalizeHBOM } from "../utils/hbom";
-
-function mapReviewDraftToRee(review: ReviewDetailDto): Ree {
-  const draft = review.reeDraft || {};
-  return {
-    name: String(draft.name ?? review.name ?? ""),
-    origin_url: String(draft.origin_url ?? ""),
-    source_type: (draft.source_type as Ree["source_type"]) || "",
-    runtime: String(draft.runtime ?? ""),
-    build_runtime_script: String(draft.build_runtime_script ?? ""),
-    activation_script: String(draft.activation_script ?? ""),
-    sbom: String(draft.sbom ?? ""),
-    swhid: String(draft.swhid ?? ""),
-    zenodo_doi: draft.zenodo_doi ? String(draft.zenodo_doi) : undefined,
-    dataverse_doi: draft.dataverse_doi ? String(draft.dataverse_doi) : undefined,
-    repro_level: draft.repro_level ? String(draft.repro_level) : undefined,
-    detected_dependencies: draft.detected_dependencies
-      ? String(draft.detected_dependencies)
-      : undefined,
-    hardware_description: normalizeHBOM(draft.hardware_description),
-    _evalLevel: Number(draft._evalLevel ?? 0),
-    _sealedAt: draft._sealedAt ? String(draft._sealedAt) : undefined,
-    _sealHash: draft._sealHash ? String(draft._sealHash) : undefined,
-    _sourceAvailable: Boolean(draft._sourceAvailable),
-    _sourceIncluded: Boolean(draft._sourceIncluded),
-    _sourceAcquiredBy: (draft._sourceAcquiredBy as Ree["_sourceAcquiredBy"]) || undefined,
-    _uploadedArchive: draft._uploadedArchive ? String(draft._uploadedArchive) : undefined,
-    _sourceSnapshotArchive: draft._sourceSnapshotArchive
-      ? String(draft._sourceSnapshotArchive)
-      : undefined,
-    _sourceSnapshotCapturedAt: draft._sourceSnapshotCapturedAt
-      ? String(draft._sourceSnapshotCapturedAt)
-      : undefined,
-    _runtimeIncluded: Boolean(draft._runtimeIncluded),
-    _downloadableFiles: Array.isArray(draft._downloadableFiles)
-      ? draft._downloadableFiles.map((item) => String(item))
-      : [],
-  };
-}
 
 function ReviewerRouteView({ onBack }: { onBack: () => void }) {
   const location = useLocation();

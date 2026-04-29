@@ -9,6 +9,10 @@ import {
   hoverIf,
   S_SCRIPT_VIEW_MESSAGE_BASE,
 } from "../../../../constants/theme";
+import {
+  removeWorkspaceFileByPath,
+  upsertWorkspaceFileByPath,
+} from "../../../../domain/workspace/fileTreeOps";
 import type { FileTreeNode, Ree } from "../../../../types";
 import { fileType } from "../../../../utils/formatting";
 import {
@@ -109,15 +113,13 @@ export function ScriptPanel({
 
   const commitFile = async (fname: string, content: string) => {
     const previousPath = scriptPath || undefined;
-    const previousName = previousPath?.split("/").pop() || previousPath;
-    const newFile: FileTreeNode = {
-      id: `vf-${fname}`,
-      name: fname,
-      type: "file",
+    const withoutPrevious =
+      previousPath && previousPath !== fname
+        ? removeWorkspaceFileByPath(files, previousPath)
+        : files;
+    const updated = upsertWorkspaceFileByPath(withoutPrevious, fname, content, {
       tag: PAGE.SOURCE,
-      content,
-    };
-    const updated = [...files.filter((f) => f.name !== fname && f.name !== previousName), newFile];
+    });
     onFilesChange?.(updated);
     onReeChange?.({ ...ree, [fieldKey]: fname });
     await onPersistWorkspaceFile?.(previousPath, fname, content);

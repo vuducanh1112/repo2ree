@@ -38,6 +38,29 @@ export interface AppContextState {
   explorer: ExplorerState;
 }
 
+export interface WorkspaceHydrationPayload {
+  virtualFiles: FileTreeNode[];
+  workspaceReeFiles: ReeFile[];
+  ree?: Ree;
+}
+
+export interface SourceOutcomePayload {
+  ree: Ree;
+  immutableSourceSnapshotFiles: FileTreeNode[];
+  immutableSourceSnapshotArchiveName: string;
+  actionState?: "done";
+  badge?: boolean;
+  timestamp?: string;
+}
+
+export interface ServiceRunCompletionPayload {
+  key: string;
+  serviceLog: ServiceLogs[string];
+  actionState: "done";
+  badge: boolean;
+  timestamp: string;
+}
+
 export type AppAction =
   | { type: typeof ACTION_TYPES.explorer.setRee; ree: StateUpdater<Ree> }
   | { type: typeof ACTION_TYPES.explorer.setLocked; locked: StateUpdater<boolean> }
@@ -66,6 +89,10 @@ export type AppAction =
       workspaceReeFiles: StateUpdater<ReeFile[]>;
     }
   | {
+      type: typeof ACTION_TYPES.explorer.hydrateWorkspace;
+      workspace: WorkspaceHydrationPayload;
+    }
+  | {
       type: typeof ACTION_TYPES.explorer.setImmutableSourceSnapshotFiles;
       immutableSourceSnapshotFiles: StateUpdater<FileTreeNode[]>;
     }
@@ -74,8 +101,16 @@ export type AppAction =
       immutableSourceSnapshotArchiveName: StateUpdater<string>;
     }
   | {
+      type: typeof ACTION_TYPES.explorer.applySourceOutcome;
+      outcome: SourceOutcomePayload;
+    }
+  | {
       type: typeof ACTION_TYPES.explorer.setShowReviewerPreview;
       showReviewerPreview: StateUpdater<boolean>;
+    }
+  | {
+      type: typeof ACTION_TYPES.explorer.completeServiceRun;
+      completion: ServiceRunCompletionPayload;
     }
   | {
       type: typeof ACTION_TYPES.explorer.resetWorkflowOnSourceChange;

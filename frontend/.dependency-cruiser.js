@@ -206,6 +206,122 @@ module.exports = {
           'npm-peer'
         ]
       }
+    },
+    {
+      name: "domain-no-ui-or-react",
+      severity: "error",
+      comment:
+        "Domain modules should stay framework-free and must not depend on React, routes, or legacy UI folders.",
+      from: {
+        path: "^src/domain",
+        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+      },
+      to: {
+        path: "^(src/(app|components|context|features|hooks|pages|ui)(/|$)|react$|react-dom$|react-router-dom$)"
+      }
+    },
+    {
+      name: "domain-no-infra",
+      severity: "error",
+      comment:
+        "Domain modules should not depend on API, service, or infrastructure adapters.",
+      from: {
+        path: "^src/domain",
+        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+      },
+      to: {
+        path: "^src/(api|infra|services)(/|$)"
+      }
+    },
+    {
+      name: "application-no-ui-or-react",
+      severity: "error",
+      comment:
+        "Application modules coordinate use-cases but should not depend on React or UI folders.",
+      from: {
+        path: "^src/application",
+        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+      },
+      to: {
+        path: "^(src/(app|components|context|features|hooks|pages|ui)(/|$)|react$|react-dom$|react-router-dom$)"
+      }
+    },
+    {
+      name: "application-no-infra",
+      severity: "warn",
+      comment:
+        "Application modules should prefer abstract inputs/outputs over direct infrastructure dependencies.",
+      from: {
+        path: "^src/application",
+        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+      },
+      to: {
+        path: "^src/(api|infra|services)(/|$)"
+      }
+    },
+    {
+      name: "infra-no-ui",
+      severity: "error",
+      comment:
+        "Infrastructure modules can depend on domain and lower-level adapters, but not on UI folders.",
+      from: {
+        path: "^src/infra"
+      },
+      to: {
+        path: "^src/(app|components|context|features|hooks|pages|ui)(/|$)"
+      }
+    },
+    {
+      name: "context-no-features",
+      severity: "error",
+      comment:
+        "Shared context must not depend on feature folders; move shared policy to domain or application.",
+      from: {
+        path: "^src/context",
+        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+      },
+      to: {
+        path: "^src/features"
+      }
+    },
+    {
+      name: "explorer-workflow-no-react",
+      severity: "error",
+      comment:
+        "Explorer workflow helpers should be framework-free shell helpers; React belongs in hooks/components.",
+      from: {
+        path: "^src/features/explorer/hooks/workflow",
+        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+      },
+      to: {
+        path: "^(react$|react-dom$|react-router-dom$)"
+      }
+    },
+    {
+      name: "explorer-workflow-no-feature-dependencies",
+      severity: "error",
+      comment:
+        "Explorer workflow helpers should depend on application/domain/shared services, not sibling feature modules.",
+      from: {
+        path: "^src/features/explorer/hooks/workflow",
+        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+      },
+      to: {
+        path: "^src/features/(?!explorer/(services|hooks/workflow))"
+      }
+    },
+    {
+      name: "explorer-workflow-context-only-in-command-executors",
+      severity: "error",
+      comment:
+        "Workflow orchestration should emit commands; only commandExecutors translates them to context actions.",
+      from: {
+        path: "^src/features/explorer/hooks/workflow/(?!commandExecutors[.]ts$)",
+        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+      },
+      to: {
+        path: "^src/context"
+      }
     }
   ],
   options: {

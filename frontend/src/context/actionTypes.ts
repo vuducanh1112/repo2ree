@@ -14,9 +14,12 @@ export const ACTION_TYPES = {
     setNavCollapsed: "explorer/setNavCollapsed",
     setVirtualFiles: "explorer/setVirtualFiles",
     setWorkspaceReeFiles: "explorer/setWorkspaceReeFiles",
+    hydrateWorkspace: "explorer/hydrateWorkspace",
     setImmutableSourceSnapshotFiles: "explorer/setImmutableSourceSnapshotFiles",
     setImmutableSourceSnapshotArchiveName: "explorer/setImmutableSourceSnapshotArchiveName",
+    applySourceOutcome: "explorer/applySourceOutcome",
     setShowReviewerPreview: "explorer/setShowReviewerPreview",
+    completeServiceRun: "explorer/completeServiceRun",
     resetWorkflowOnSourceChange: "explorer/resetWorkflowOnSourceChange",
   },
 } as const;

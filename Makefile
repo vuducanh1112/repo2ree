@@ -9,7 +9,9 @@ fe-checks:
 		echo "Running Biome..." && \
 		npx biome check --write src tests playwright.config.ts && \
 		echo "Running knip..." && \
-		npx knip
+		npx knip && \
+		echo "Running dependency-cruiser..." && \
+		npx depcruise src tests
 
 
 be-checks:

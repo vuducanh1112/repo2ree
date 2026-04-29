@@ -11,7 +11,13 @@ import type {
   ToastState,
 } from "../types";
 import { ACTION_TYPES } from "./actionTypes";
-import type { AppAction, StateUpdater } from "./types";
+import type {
+  AppAction,
+  ServiceRunCompletionPayload,
+  SourceOutcomePayload,
+  StateUpdater,
+  WorkspaceHydrationPayload,
+} from "./types";
 
 export const explorerActions = {
   setRee: (ree: StateUpdater<Ree>): AppAction => ({ type: ACTION_TYPES.explorer.setRee, ree }),
@@ -67,6 +73,10 @@ export const explorerActions = {
     type: ACTION_TYPES.explorer.setWorkspaceReeFiles,
     workspaceReeFiles,
   }),
+  hydrateWorkspace: (workspace: WorkspaceHydrationPayload): AppAction => ({
+    type: ACTION_TYPES.explorer.hydrateWorkspace,
+    workspace,
+  }),
   setImmutableSourceSnapshotFiles: (
     immutableSourceSnapshotFiles: StateUpdater<FileTreeNode[]>,
   ): AppAction => ({
@@ -79,9 +89,17 @@ export const explorerActions = {
     type: ACTION_TYPES.explorer.setImmutableSourceSnapshotArchiveName,
     immutableSourceSnapshotArchiveName,
   }),
+  applySourceOutcome: (outcome: SourceOutcomePayload): AppAction => ({
+    type: ACTION_TYPES.explorer.applySourceOutcome,
+    outcome,
+  }),
   setShowReviewerPreview: (showReviewerPreview: StateUpdater<boolean>): AppAction => ({
     type: ACTION_TYPES.explorer.setShowReviewerPreview,
     showReviewerPreview,
+  }),
+  completeServiceRun: (completion: ServiceRunCompletionPayload): AppAction => ({
+    type: ACTION_TYPES.explorer.completeServiceRun,
+    completion,
   }),
   resetWorkflowOnSourceChange: (serviceParams: ServiceParams): AppAction => ({
     type: ACTION_TYPES.explorer.resetWorkflowOnSourceChange,
