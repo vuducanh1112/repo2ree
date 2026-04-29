@@ -26,6 +26,7 @@ interface CreateSourceActionsArgs {
   workspaceService: IWorkspaceService<FileTreeNode>;
   workspaceId: string;
   dispatch: ExplorerWorkflowDispatch;
+  refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   onSourceChange: (options?: { silent?: boolean }) => void;
   showToast: ShowToast;
   clock: ExplorerClock;
@@ -39,6 +40,7 @@ export function createSourceActions({
   workspaceService,
   workspaceId,
   dispatch,
+  refreshWorkspaceFiles,
   onSourceChange,
   showToast,
   clock,
@@ -48,19 +50,6 @@ export function createSourceActions({
 }: CreateSourceActionsArgs) {
   const runCommands = (commands: SourceCommand[]) =>
     executeSourceCommands(commands, { dispatch, showToast });
-
-  const refreshWorkspaceFiles = async () => {
-    const workspace = await workspaceService.getWorkspace(workspaceId);
-    runCommands([
-      {
-        type: "hydrateWorkspace",
-        virtualFiles: workspace.files,
-        workspaceReeFiles: workspace.reeFiles || [],
-        ree: workspace.ree,
-      },
-    ]);
-    return workspace.files;
-  };
 
   const runRemoteOrLocalSourceAction = async (
     resetRequest: Record<string, string | boolean | number | null | undefined>,

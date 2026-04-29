@@ -7,16 +7,18 @@ import { toReePatch } from "../../../../domain/ree/reePatch";
 import type { IWorkspaceService } from "../../../../services/workspaceService";
 import type { FileTreeNode, Ree, ReeFile } from "../../../../types";
 
+interface HydratedWorkspaceSnapshot {
+  virtualFiles: FileTreeNode[];
+  workspaceReeFiles: ReeFile[];
+  ree?: Ree;
+}
+
 interface UseWorkspaceDraftSyncArgs {
   ree: Ree;
   workspaceService: IWorkspaceService<FileTreeNode>;
   workspaceId: string;
   workspaceServiceMode: "remote" | "mock";
-  hydrateWorkspace: (workspace: {
-    virtualFiles: FileTreeNode[];
-    workspaceReeFiles: ReeFile[];
-    ree?: Ree;
-  }) => void;
+  hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
 
 export function useWorkspaceDraftSync({
@@ -33,8 +35,8 @@ export function useWorkspaceDraftSync({
   const hasHydratedRemoteReeRef = useRef<boolean>(false);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const refreshWorkspaceFiles = useCallback(
-    async (options: { forceReeHydration?: boolean } = {}): Promise<FileTreeNode[]> => {
+  const refreshWorkspace = useCallback(
+    async (options: { forceReeHydration?: boolean } = {}): Promise<HydratedWorkspaceSnapshot> => {
       const { forceReeHydration = false } = options;
       const requestStartedPatchKey = latestLocalPatchKeyRef.current;
       const workspace = await workspaceService.getWorkspace(workspaceId);
@@ -58,14 +60,23 @@ export function useWorkspaceDraftSync({
           hasHydratedRemoteReeRef.current = true;
         }
       }
-      hydrateWorkspace({
+      const hydratedWorkspace = {
         virtualFiles: workspace.files,
         workspaceReeFiles: workspace.reeFiles || [],
         ree: reeToHydrate,
-      });
-      return workspace.files;
+      };
+      hydrateWorkspace(hydratedWorkspace);
+      return hydratedWorkspace;
     },
     [hydrateWorkspace, workspaceId, workspaceService],
+  );
+
+  const refreshWorkspaceFiles = useCallback(
+    async (options: { forceReeHydration?: boolean } = {}): Promise<FileTreeNode[]> => {
+      const workspace = await refreshWorkspace(options);
+      return workspace.virtualFiles;
+    },
+    [refreshWorkspace],
   );
 
   const buildReePatch = useCallback(() => toReePatch(ree), [ree]);
@@ -78,8 +89,8 @@ export function useWorkspaceDraftSync({
     if (workspaceServiceMode !== "remote") {
       return;
     }
-    void refreshWorkspaceFiles({ forceReeHydration: true });
-  }, [workspaceServiceMode, refreshWorkspaceFiles]);
+    void refreshWorkspace({ forceReeHydration: true });
+  }, [workspaceServiceMode, refreshWorkspace]);
 
   useEffect(() => {
     const patch = buildReePatch();
@@ -124,6 +135,7 @@ export function useWorkspaceDraftSync({
 
   return {
     buildReePatch,
+    refreshWorkspace,
     refreshWorkspaceFiles,
   };
 }

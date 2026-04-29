@@ -10,7 +10,7 @@ import type {
   IWorkspaceService,
   WorkspaceServiceLogEntry,
 } from "../../../../services/workspaceService";
-import type { FileTreeNode, Ree } from "../../../../types";
+import type { FileTreeNode, Ree, ReeFile } from "../../../../types";
 import type { GenericServiceParams } from "../../../../types/services";
 import { makeLogs } from "../../services/logGenerator";
 import { type ExplorerWorkflowDispatch, executeServiceRunCommands } from "./commandExecutors";
@@ -30,6 +30,11 @@ interface ExecuteServiceRunArgs {
   workspaceService: IWorkspaceService<FileTreeNode>;
   workspaceId: string;
   ports: ExplorerRuntimePorts;
+  refreshWorkspace: () => Promise<{
+    virtualFiles: FileTreeNode[];
+    workspaceReeFiles: ReeFile[];
+    ree?: Ree;
+  }>;
   onRunStarted?: (key: string, runId: string) => void;
   onRunFinished?: (key: string) => void;
 }
@@ -47,6 +52,7 @@ export async function executeServiceRunAction({
   workspaceService,
   workspaceId,
   ports,
+  refreshWorkspace,
   onRunStarted,
   onRunFinished,
 }: ExecuteServiceRunArgs): Promise<WorkspaceServiceLogEntry> {
@@ -94,7 +100,14 @@ export async function executeServiceRunAction({
       dataverseDoi: `doi:10.5072/DVN/${ports.random.int(100000, 999999)}`,
     },
     executeCommands: runCommands,
-    refreshWorkspace: () => workspaceService.getWorkspace(workspaceId),
+    refreshWorkspace: async () => {
+      const workspace = await refreshWorkspace();
+      return {
+        files: workspace.virtualFiles,
+        reeFiles: workspace.workspaceReeFiles,
+        ree: workspace.ree,
+      };
+    },
     onRunStarted,
     onRunFinished,
   });

@@ -55,7 +55,7 @@ export function useExplorerWorkflow({
     executeServiceRun,
   });
 
-  const { buildReePatch, refreshWorkspaceFiles } = useWorkspaceDraftSync({
+  const { buildReePatch, refreshWorkspace, refreshWorkspaceFiles } = useWorkspaceDraftSync({
     ree,
     workspaceService,
     workspaceId,
@@ -93,6 +93,7 @@ export function useExplorerWorkflow({
       workspaceService,
       workspaceId,
       ports,
+      refreshWorkspace,
       onRunStarted: (actionKey, runId) => {
         activeRunIdsRef.current[actionKey] = runId;
       },
@@ -108,6 +109,7 @@ export function useExplorerWorkflow({
       workspaceService,
       workspaceId,
       dispatch,
+      refreshWorkspaceFiles,
       onSourceChange: handleSourceChange,
       showToast,
       clock: ports.clock,
