@@ -1,8 +1,9 @@
 import type React from "react";
-import { useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useWorkspaceRuntime } from "../../../app/WorkspaceRuntime";
 import { planSealCommands } from "../../../application/explorer/sealCommands";
 import { createServiceRunHandlers } from "../../../application/explorer/serviceRunCommands";
+import { createExplorerWorkflowSession } from "../../../application/explorer/workflowSession";
 import { isWorkflowServiceKey } from "../../../constants/services";
 import type { AppAction } from "../../../context";
 import { explorerActions } from "../../../context";
@@ -10,8 +11,8 @@ import type {
   FileTreeNode,
   GenericServiceParams,
   Ree,
+  ReeFile,
   ServiceParams,
-  ToastState,
   WorkflowServiceKey,
   WorkflowServiceRunParams,
 } from "../../../types";
@@ -39,28 +40,49 @@ export function useExplorerWorkflow({
 }: UseExplorerWorkflowArgs) {
   const { createWorkspaceService, ports, workspaceId, workspaceServiceMode } =
     useWorkspaceRuntime();
-  const activeRunIdsRef = useRef<Record<string, string>>({});
-  const showToast = (msg: string, type: ToastState["type"] = "info") =>
+  const workflowSessionRef = useRef(createExplorerWorkflowSession());
+  const workflowSession = workflowSessionRef.current;
+  const executeServiceRunRef = useRef<
+    (key: string, params?: GenericServiceParams) => Promise<unknown>
+  >(async () => {
+    throw new Error("Service run executor is not ready");
+  });
+  const showToast = (msg: string, type: "info" | "success" | "error" = "info") =>
     dispatch(explorerActions.setToast({ message: msg, type }));
 
   const handleSourceChange = (options: { silent?: boolean } = {}) => {
     resetWorkflowOnSourceChange(dispatch, showToast, options);
   };
 
-  const workspaceService = createWorkspaceService({
-    ree,
-    virtualFiles,
-    serviceParams,
-    dispatch,
-    executeServiceRun,
-  });
+  const executeServiceRunBridge = useCallback(
+    (key: string, params?: GenericServiceParams) => executeServiceRunRef.current(key, params),
+    [],
+  );
+
+  const workspaceService = useMemo(
+    () =>
+      createWorkspaceService({
+        ree,
+        virtualFiles,
+        serviceParams,
+        dispatch,
+        executeServiceRun: executeServiceRunBridge,
+      }),
+    [createWorkspaceService, dispatch, executeServiceRunBridge, ree, serviceParams, virtualFiles],
+  );
+
+  const hydrateWorkspace = useCallback(
+    (workspace: { virtualFiles: FileTreeNode[]; workspaceReeFiles: ReeFile[]; ree?: Ree }) =>
+      dispatch(explorerActions.hydrateWorkspace(workspace)),
+    [dispatch],
+  );
 
   const { buildReePatch, refreshWorkspace, refreshWorkspaceFiles } = useWorkspaceDraftSync({
     ree,
     workspaceService,
     workspaceId,
     workspaceServiceMode,
-    hydrateWorkspace: (workspace) => dispatch(explorerActions.hydrateWorkspace(workspace)),
+    hydrateWorkspace,
   });
 
   const { persistWorkspaceFile } = createWorkspaceFilePersistence({
@@ -94,14 +116,14 @@ export function useExplorerWorkflow({
       workspaceId,
       ports,
       refreshWorkspace,
-      onRunStarted: (actionKey, runId) => {
-        activeRunIdsRef.current[actionKey] = runId;
-      },
-      onRunFinished: (actionKey) => {
-        delete activeRunIdsRef.current[actionKey];
-      },
+      onRunStarted: workflowSession.noteRunStarted,
+      onRunFinished: workflowSession.noteRunFinished,
     });
   }
+
+  useEffect(() => {
+    executeServiceRunRef.current = executeServiceRun;
+  });
 
   const { handleDownloadSourceFiles, handleWorkspaceUpload, handleRemoveWorkspaceSource } =
     createSourceActions({
@@ -114,12 +136,8 @@ export function useExplorerWorkflow({
       showToast,
       clock: ports.clock,
       sleep: ports.sleep,
-      onRunStarted: (actionKey, runId) => {
-        activeRunIdsRef.current[actionKey] = runId;
-      },
-      onRunFinished: (actionKey) => {
-        delete activeRunIdsRef.current[actionKey];
-      },
+      onRunStarted: workflowSession.noteRunStarted,
+      onRunFinished: workflowSession.noteRunFinished,
     });
 
   const handleSeal = () => {
@@ -148,10 +166,9 @@ export function useExplorerWorkflow({
   const runAction = async (key: string, params: GenericServiceParams = {}) => {
     if (isWorkflowServiceKey(key)) {
       dispatch(
-        explorerActions.setServiceParams((prev) => ({
-          ...prev,
-          [key]: { ...prev[key], ...params },
-        })),
+        explorerActions.setServiceParams((prev) =>
+          workflowSession.mergeWorkflowParams(prev, key, params),
+        ),
       );
     }
     await executeServiceRun(key, params);
@@ -165,20 +182,14 @@ export function useExplorerWorkflow({
   }
 
   const cancelWorkflowAction = async (key: string) => {
-    const runId = activeRunIdsRef.current[key];
-    if (!runId || !workspaceService.cancelWorkflowRun) {
-      return;
-    }
-    try {
-      await workspaceService.cancelWorkflowRun(workspaceId, runId);
-      showToast(`Cancel requested for ${key}`, "info");
-    } catch (error) {
-      showToast(
-        error instanceof Error
-          ? `Failed to cancel ${key}: ${error.message}`
-          : `Failed to cancel ${key}`,
-        "error",
-      );
+    const result = await workflowSession.cancelTrackedRun({
+      key,
+      cancelRun: workspaceService.cancelWorkflowRun
+        ? (runId) => workspaceService.cancelWorkflowRun?.(workspaceId, runId)
+        : undefined,
+    });
+    if (result.message) {
+      showToast(result.message, result.ok ? "info" : "error");
     }
   };
 
