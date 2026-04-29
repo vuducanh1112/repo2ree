@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { createExplorerWorkflowSession } from "./workflowSession";
+import { createExplorerRunSession } from "./workflowSession";
 
-describe("createExplorerWorkflowSession", () => {
+describe("createExplorerRunSession", () => {
   it("tracks active workflow runs by key", () => {
-    const session = createExplorerWorkflowSession();
+    const session = createExplorerRunSession();
 
     session.noteRunStarted("build", "run-1");
     expect(session.getActiveRunId("build")).toBe("run-1");
@@ -12,11 +12,11 @@ describe("createExplorerWorkflowSession", () => {
     expect(session.getActiveRunId("build")).toBeUndefined();
   });
 
-  it("merges workflow params into the existing service param map", () => {
-    const session = createExplorerWorkflowSession();
+  it("merges automation step params into the existing service param map", () => {
+    const session = createExplorerRunSession();
 
     expect(
-      session.mergeWorkflowParams(
+      session.mergeAutomationStepParams(
         {
           evaluate: { strict: false, swhid_check: true },
           build: { no_cache: true, platform: "linux/amd64" },
@@ -37,7 +37,7 @@ describe("createExplorerWorkflowSession", () => {
   });
 
   it("cancels tracked runs through the provided adapter", async () => {
-    const session = createExplorerWorkflowSession();
+    const session = createExplorerRunSession();
     const cancelRun = vi.fn(async () => undefined);
     session.noteRunStarted("source", "run-7");
 
@@ -49,7 +49,7 @@ describe("createExplorerWorkflowSession", () => {
   });
 
   it("surfaces cancellation failures with a user-facing message", async () => {
-    const session = createExplorerWorkflowSession();
+    const session = createExplorerRunSession();
     session.noteRunStarted("build", "run-2");
 
     await expect(

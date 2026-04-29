@@ -1,24 +1,24 @@
 import type React from "react";
 import type { ExplorerRuntimePorts } from "../../../../application/explorer/runtimePorts";
 import type { ServiceRunHandlerMap } from "../../../../application/explorer/serviceRunCommands";
-import { isWorkflowServiceKey } from "../../../../constants/services";
+import { isAutomationStepKey } from "../../../../constants/services";
 import type {
   IWorkspaceService,
   WorkspaceServiceLogEntry,
 } from "../../../../services/workspaceService";
 import type {
+  AutomationStepKey,
+  AutomationStepRunParams,
   FileTreeNode,
   GenericServiceParams,
   Ree,
   ReeFile,
-  WorkflowServiceKey,
-  WorkflowServiceRunParams,
 } from "../../../../types";
 import type { ExplorerWorkflowDispatch } from "./commandExecutors";
 import { executeServiceRunAction } from "./serviceRuns";
 import type { ShowToast } from "./types";
 
-interface WorkflowSessionPort {
+interface RunSessionPort {
   noteRunStarted: (key: string, runId: string) => void;
   noteRunFinished: (key: string) => void;
   cancelTrackedRun: (args: {
@@ -33,7 +33,7 @@ interface CreateServiceRunAdapterArgs {
   virtualFiles: FileTreeNode[];
   dispatch: React.Dispatch<unknown> | ExplorerWorkflowDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
-  persistWorkflowParams: (key: WorkflowServiceKey, params: GenericServiceParams) => void;
+  persistAutomationStepParams: (key: AutomationStepKey, params: GenericServiceParams) => void;
   showToast: ShowToast;
   serviceRunHandlers: ServiceRunHandlerMap;
   workspaceService: IWorkspaceService<FileTreeNode>;
@@ -44,7 +44,7 @@ interface CreateServiceRunAdapterArgs {
     workspaceReeFiles: ReeFile[];
     ree?: Ree;
   }>;
-  workflowSession: WorkflowSessionPort;
+  runSession: RunSessionPort;
 }
 
 export function createServiceRunAdapter({
@@ -53,14 +53,14 @@ export function createServiceRunAdapter({
   virtualFiles,
   dispatch,
   persistWorkspaceFile,
-  persistWorkflowParams,
+  persistAutomationStepParams,
   showToast,
   serviceRunHandlers,
   workspaceService,
   workspaceId,
   ports,
   refreshWorkspace,
-  workflowSession,
+  runSession,
 }: CreateServiceRunAdapterArgs) {
   const executeServiceRun = async (
     key: string,
@@ -80,30 +80,30 @@ export function createServiceRunAdapter({
       workspaceId,
       ports,
       refreshWorkspace,
-      onRunStarted: workflowSession.noteRunStarted,
-      onRunFinished: workflowSession.noteRunFinished,
+      onRunStarted: runSession.noteRunStarted,
+      onRunFinished: runSession.noteRunFinished,
     });
 
   const runAction = async (key: string, params: GenericServiceParams = {}) => {
-    if (isWorkflowServiceKey(key)) {
-      persistWorkflowParams(key, params);
+    if (isAutomationStepKey(key)) {
+      persistAutomationStepParams(key, params);
     }
     await executeServiceRun(key, params);
   };
 
-  const runWorkflowAction = async <K extends WorkflowServiceKey>(
+  const runAutomationStep = async <K extends AutomationStepKey>(
     key: K,
-    params: WorkflowServiceRunParams<K>,
+    params: AutomationStepRunParams<K>,
   ): Promise<void> => {
     await runAction(key, params);
   };
 
-  const cancelWorkflowAction = async (key: string) => {
+  const cancelAutomationStep = async (key: string) => {
     const cancelWorkflowRun = workspaceService.cancelWorkflowRun;
     const cancelRun = cancelWorkflowRun
       ? (runId: string) => cancelWorkflowRun(workspaceId, runId)
       : undefined;
-    const result = await workflowSession.cancelTrackedRun({
+    const result = await runSession.cancelTrackedRun({
       key,
       cancelRun,
     });
@@ -115,7 +115,7 @@ export function createServiceRunAdapter({
   return {
     executeServiceRun,
     runAction,
-    runWorkflowAction,
-    cancelWorkflowAction,
+    runAutomationStep,
+    cancelAutomationStep,
   };
 }

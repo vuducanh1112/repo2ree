@@ -1,9 +1,9 @@
 import type {
+  AutomationStepRunParamsByKey,
   FileTreeNode,
   LogLine,
   Ree,
   ReeFile,
-  WorkflowServiceRunParamsByKey,
 } from "../../types";
 import type { GenericServiceParams } from "../../types/services";
 import { computeEvaluateLevelFromFiles } from "./dependencyParser";
@@ -176,21 +176,21 @@ function getWorkflowServiceCommands(
 ): ServiceRunCommand[] {
   if (key === "evaluate") {
     return serviceRunHandlers.evaluate(
-      params as WorkflowServiceRunParamsByKey["evaluate"],
+      params as AutomationStepRunParamsByKey["evaluate"],
       newLevel,
     );
   }
   if (key === "hbom") {
-    return serviceRunHandlers.hbom(params as WorkflowServiceRunParamsByKey["hbom"], newLevel);
+    return serviceRunHandlers.hbom(params as AutomationStepRunParamsByKey["hbom"], newLevel);
   }
   if (key === "build") {
-    return serviceRunHandlers.build(params as WorkflowServiceRunParamsByKey["build"], newLevel);
+    return serviceRunHandlers.build(params as AutomationStepRunParamsByKey["build"], newLevel);
   }
   if (key === "sbom") {
-    return serviceRunHandlers.sbom(params as WorkflowServiceRunParamsByKey["sbom"], newLevel);
+    return serviceRunHandlers.sbom(params as AutomationStepRunParamsByKey["sbom"], newLevel);
   }
   return serviceRunHandlers.activation(
-    params as WorkflowServiceRunParamsByKey["activation"],
+    params as AutomationStepRunParamsByKey["activation"],
     newLevel,
   );
 }

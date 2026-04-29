@@ -9,7 +9,7 @@ describe("sourceCommands", () => {
     expect(commands[0].type).toBe("resetWorkflowOnSourceChange");
     expect(commands[1]).toEqual({
       type: "toast",
-      message: "Source changed — workflow status and scripts reset",
+      message: "Source changed — downstream status and scripts reset",
       toastType: "info",
     });
   });

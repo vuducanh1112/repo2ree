@@ -1,5 +1,5 @@
 import { PAGE } from "../../constants/pages";
-import { initialServiceParams } from "../../constants/services";
+import { initialAutomationStepParams } from "../../constants/services";
 import { enforceSourceOriginContract } from "../../domain/ree/sourceContract";
 import { computeExplorerSourceChangeReset } from "../../domain/workflow/sourceChangeReset";
 import type {
@@ -109,7 +109,7 @@ export function createInitialExplorerState(initialExplorerRee: Ree): ExplorerSta
     badges: {},
     timestamps: {},
     serviceLogs: {},
-    serviceParams: initialServiceParams(),
+    serviceParams: initialAutomationStepParams(),
     toast: null,
     page: PAGE.SOURCE,
     focusedField: null,

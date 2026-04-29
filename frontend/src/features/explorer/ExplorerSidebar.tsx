@@ -1,34 +1,34 @@
 import { Ic } from "../../components/Icon";
 import { LEVELS } from "../../constants/levels";
 import { PAGE } from "../../constants/pages";
-import { SERVICES } from "../../constants/services";
+import { AUTOMATION_STEPS } from "../../constants/services";
 import { C, F, hoverBg, hoverColor, S_SECTION_LABEL } from "../../constants/theme";
-import type { Badges, ExplorerPage, Ree, Service, Timestamps } from "../../types";
+import type { AutomationStepDefinition, Badges, ExplorerPage, Ree, Timestamps } from "../../types";
 import { hbomHasAnyComponents } from "../../utils/hbom";
 import { PodWidget } from "../overview/PodWidget";
 import { getPodCableStates } from "../overview/podCableState";
 import { ActionBtn, NavEntryButton } from "./ExplorerNav";
 
-interface WorkflowStep {
+interface ProcessStep {
   n: number;
   key: ExplorerPage;
   label: string;
   IC: (size?: number) => JSX.Element;
-  svc: Service | null;
+  automation: AutomationStepDefinition | null;
   desc: string;
 }
 
-const SERVICE_BY_KEY: Record<string, Service> = Object.fromEntries(
-  SERVICES.map((service) => [service.key, service]),
-) as Record<string, Service>;
+const AUTOMATION_BY_KEY: Record<string, AutomationStepDefinition> = Object.fromEntries(
+  AUTOMATION_STEPS.map((step) => [step.key, step]),
+) as Record<string, AutomationStepDefinition>;
 
-const WORKFLOW_STEPS: WorkflowStep[] = [
+const PROCESS_STEPS: ProcessStep[] = [
   {
     n: 1,
     key: PAGE.SOURCE,
     label: "Source Repo",
     IC: Ic.globe,
-    svc: null,
+    automation: null,
     desc: "Set origin, type, and download source files",
   },
   {
@@ -36,7 +36,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     key: PAGE.METADATA,
     label: "Provide Metadata",
     IC: Ic.grid,
-    svc: null,
+    automation: null,
     desc: "Input project identity metadata",
   },
   {
@@ -44,7 +44,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     key: PAGE.HBOM,
     label: "Create HBOM",
     IC: Ic.chip,
-    svc: null,
+    automation: null,
     desc: "Enter hardware bill of materials",
   },
   {
@@ -52,7 +52,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     key: PAGE.EVALUATE,
     label: "Evaluate",
     IC: Ic.star,
-    svc: SERVICE_BY_KEY[PAGE.EVALUATE],
+    automation: AUTOMATION_BY_KEY[PAGE.EVALUATE],
     desc: "Score reproducibility level",
   },
   {
@@ -60,7 +60,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     key: PAGE.BUILD,
     label: "Build Runtime",
     IC: Ic.cpu,
-    svc: SERVICE_BY_KEY[PAGE.BUILD],
+    automation: AUTOMATION_BY_KEY[PAGE.BUILD],
     desc: "Build the runtime tarball",
   },
   {
@@ -68,7 +68,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     key: PAGE.SBOM,
     label: "Generate SBOM",
     IC: Ic.package,
-    svc: SERVICE_BY_KEY[PAGE.SBOM],
+    automation: AUTOMATION_BY_KEY[PAGE.SBOM],
     desc: "Scan runtime with syft",
   },
   {
@@ -76,7 +76,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     key: PAGE.ACTIVATION,
     label: "Test Activation",
     IC: Ic.shield,
-    svc: SERVICE_BY_KEY[PAGE.ACTIVATION],
+    automation: AUTOMATION_BY_KEY[PAGE.ACTIVATION],
     desc: "Verify container activates",
   },
   {
@@ -84,13 +84,13 @@ const WORKFLOW_STEPS: WorkflowStep[] = [
     key: PAGE.ARCHIVE,
     label: "Deposit & Share",
     IC: Ic.globe,
-    svc: null,
+    automation: null,
     desc: "Archive and publish",
   },
-  { n: 9, key: PAGE.SEAL, label: "Seal", IC: Ic.lock, svc: null, desc: "Seal the REE" },
+  { n: 9, key: PAGE.SEAL, label: "Seal", IC: Ic.lock, automation: null, desc: "Seal the REE" },
 ];
 
-function hasWorkflowStepRun(stepKey: ExplorerPage, ree: Ree, badges: Badges): boolean {
+function hasProcessStepCompleted(stepKey: ExplorerPage, ree: Ree, badges: Badges): boolean {
   if (stepKey === PAGE.SOURCE) {
     return !!ree._sourceAvailable;
   }
@@ -474,7 +474,7 @@ export function ExplorerSidebar({
 
       {!navCollapsed && (
         <div style={{ padding: "10px 14px 4px", display: "flex", justifyContent: "space-between" }}>
-          <span style={{ ...S_SECTION_LABEL, fontSize: 10, letterSpacing: 1.3 }}>Workflow</span>
+          <span style={{ ...S_SECTION_LABEL, fontSize: 10, letterSpacing: 1.3 }}>Lifecycle</span>
           <span
             style={{
               fontSize: 10,
@@ -483,8 +483,8 @@ export function ExplorerSidebar({
               letterSpacing: 0.3,
             }}
           >
-            {WORKFLOW_STEPS.filter((step) => hasWorkflowStepRun(step.key, ree, badges)).length}/
-            {WORKFLOW_STEPS.length}
+            {PROCESS_STEPS.filter((step) => hasProcessStepCompleted(step.key, ree, badges)).length}/
+            {PROCESS_STEPS.length}
           </span>
         </div>
       )}
@@ -499,14 +499,14 @@ export function ExplorerSidebar({
           flex: 1,
         }}
       >
-        {WORKFLOW_STEPS.map((step, index) => {
+        {PROCESS_STEPS.map((step, index) => {
           const isActive = page === step.key;
-          const hasRun = hasWorkflowStepRun(step.key, ree, badges);
+          const hasRun = hasProcessStepCompleted(step.key, ree, badges);
           const timestamp = timestamps[step.key];
           const tsShort = timestamp
             ? new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
             : null;
-          const isLast = index === WORKFLOW_STEPS.length - 1;
+          const isLast = index === PROCESS_STEPS.length - 1;
 
           return (
             <div key={step.key} style={{ display: "flex", flexDirection: "column" }}>

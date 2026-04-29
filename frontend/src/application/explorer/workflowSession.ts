@@ -1,32 +1,28 @@
-import type {
-  WorkflowServiceKey,
-  WorkflowServiceParams,
-  WorkflowServiceRunParams,
-} from "../../types";
+import type { AutomationStepKey, AutomationStepParams, AutomationStepRunParams } from "../../types";
 
-interface CancelTrackedWorkflowRunArgs {
+interface CancelTrackedRunArgs {
   key: string;
   cancelRun?: (runId: string) => Promise<unknown>;
 }
 
-interface CancelTrackedWorkflowRunResult {
+interface CancelTrackedRunResult {
   ok: boolean;
   message?: string;
 }
 
-interface ExplorerWorkflowSession {
+interface ExplorerRunSession {
   noteRunStarted(key: string, runId: string): void;
   noteRunFinished(key: string): void;
   getActiveRunId(key: string): string | undefined;
-  mergeWorkflowParams<K extends WorkflowServiceKey>(
-    serviceParams: WorkflowServiceParams,
+  mergeAutomationStepParams<K extends AutomationStepKey>(
+    stepParams: AutomationStepParams,
     key: K,
-    params: WorkflowServiceRunParams<K>,
-  ): WorkflowServiceParams;
-  cancelTrackedRun(args: CancelTrackedWorkflowRunArgs): Promise<CancelTrackedWorkflowRunResult>;
+    params: AutomationStepRunParams<K>,
+  ): AutomationStepParams;
+  cancelTrackedRun(args: CancelTrackedRunArgs): Promise<CancelTrackedRunResult>;
 }
 
-export function createExplorerWorkflowSession(): ExplorerWorkflowSession {
+export function createExplorerRunSession(): ExplorerRunSession {
   const activeRunIds: Record<string, string> = {};
 
   return {
@@ -42,10 +38,10 @@ export function createExplorerWorkflowSession(): ExplorerWorkflowSession {
       return activeRunIds[key];
     },
 
-    mergeWorkflowParams(serviceParams, key, params) {
+    mergeAutomationStepParams(stepParams, key, params) {
       return {
-        ...serviceParams,
-        [key]: { ...serviceParams[key], ...params },
+        ...stepParams,
+        [key]: { ...stepParams[key], ...params },
       };
     },
 

@@ -1,6 +1,6 @@
-export type WorkflowServiceKey = "evaluate" | "build" | "hbom" | "sbom" | "activation";
+export type AutomationStepKey = "evaluate" | "build" | "hbom" | "sbom" | "activation";
 
-export interface WorkflowServiceParamsByKey {
+export interface AutomationStepParamsByKey {
   evaluate: {
     strict: boolean;
     swhid_check: boolean;
@@ -19,23 +19,23 @@ export interface WorkflowServiceParamsByKey {
   };
 }
 
-export type WorkflowServiceParams = {
-  [K in WorkflowServiceKey]: WorkflowServiceParamsByKey[K];
+export type AutomationStepParams = {
+  [K in AutomationStepKey]: AutomationStepParamsByKey[K];
 };
 
-export interface WorkflowServiceRunParamsByKey {
-  evaluate: WorkflowServiceParamsByKey["evaluate"];
-  build: WorkflowServiceParamsByKey["build"] & {
+export interface AutomationStepRunParamsByKey {
+  evaluate: AutomationStepParamsByKey["evaluate"];
+  build: AutomationStepParamsByKey["build"] & {
     build_runtime_script_path?: string;
     produced_runtime_path?: string;
     _expectedOutput?: string;
   };
-  hbom: WorkflowServiceParamsByKey["hbom"];
-  sbom: WorkflowServiceParamsByKey["sbom"] & {
+  hbom: AutomationStepParamsByKey["hbom"];
+  sbom: AutomationStepParamsByKey["sbom"] & {
     produced_runtime_path?: string;
   };
-  activation: WorkflowServiceParamsByKey["activation"];
+  activation: AutomationStepParamsByKey["activation"];
 }
 
-export type WorkflowServiceRunParams<K extends WorkflowServiceKey = WorkflowServiceKey> =
-  WorkflowServiceRunParamsByKey[K];
+export type AutomationStepRunParams<K extends AutomationStepKey = AutomationStepKey> =
+  AutomationStepRunParamsByKey[K];

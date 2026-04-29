@@ -1,18 +1,18 @@
 import type React from "react";
 import type {
   ActionStates,
+  AutomationStepDefinition,
+  AutomationStepKey,
+  AutomationStepRunParams,
   Badges,
   ExplorerPage,
   FileTreeNode,
   LogEntry,
   Ree,
-  Service,
   ServiceBadge,
   ServiceParamValue,
   ServiceRequire,
   SourceUploadCommit,
-  WorkflowServiceKey,
-  WorkflowServiceRunParams,
 } from "../../../types";
 
 export interface PageSourceRepoEntryProps {
@@ -58,12 +58,12 @@ export interface PageHardwareBomProps {
   onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
   onGoService: (key: ExplorerPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
-  onRun: (key: WorkflowServiceKey, params: WorkflowServiceRunParams) => void;
-  onCancel?: (key: WorkflowServiceKey) => void;
+  onRun: (key: AutomationStepKey, params: AutomationStepRunParams) => void;
+  onCancel?: (key: AutomationStepKey) => void;
 }
 
 export interface ServicePageProps {
-  svc: Service & { key: WorkflowServiceKey };
+  svc: AutomationStepDefinition & { key: AutomationStepKey };
   ree: Ree;
   badges: Badges;
   virtualFiles: FileTreeNode[];
@@ -72,8 +72,8 @@ export interface ServicePageProps {
   runDone: boolean;
   badge: ServiceBadge | null;
   ts: string | undefined;
-  onRun: <K extends WorkflowServiceKey>(key: K, params: WorkflowServiceRunParams<K>) => void;
-  onCancel?: (key: WorkflowServiceKey) => void;
+  onRun: <K extends AutomationStepKey>(key: K, params: AutomationStepRunParams<K>) => void;
+  onCancel?: (key: AutomationStepKey) => void;
   onGo: (key: ExplorerPage) => void;
   onGoFields: () => void;
   onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
@@ -84,6 +84,6 @@ export interface ServicePageProps {
     content: string,
   ) => Promise<void>;
   missing: ServiceRequire[];
-  params: WorkflowServiceRunParams;
+  params: AutomationStepRunParams;
   setParam: (key: string, value: ServiceParamValue) => void;
 }

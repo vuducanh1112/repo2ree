@@ -17,7 +17,7 @@ import {
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
 import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
-import type { WorkflowServiceRunParams } from "../../../types";
+import type { AutomationStepRunParams } from "../../../types";
 import { ScriptPanel } from "../components/inputs/scriptAndFile";
 import {
   descToTwoTierTips,
@@ -67,8 +67,8 @@ export function PageGenerateSBOM({
   onFilesChange,
   onPersistWorkspaceFile,
 }: ServicePageProps) {
-  const sbomParams: WorkflowServiceRunParams<"sbom"> = {
-    ...(params as WorkflowServiceRunParams<"sbom">),
+  const sbomParams: AutomationStepRunParams<"sbom"> = {
+    ...(params as AutomationStepRunParams<"sbom">),
     produced_runtime_path: ree.runtime,
   };
 

@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import { explorerActions, explorerSelectors, useAppContext } from "../../../context";
 import type {
+  AutomationStepKey,
+  AutomationStepRunParams,
   ExplorerPage,
   FileTreeNode,
   Ree,
   ReeFile,
   ServiceParams,
   SourceUploadCommit,
-  WorkflowServiceKey,
-  WorkflowServiceRunParams,
 } from "../../../types";
 import { useExplorerWorkflow } from "./useExplorerWorkflow";
 
@@ -47,8 +47,8 @@ export function useExplorerController() {
     downloadWorkspaceFile,
     persistWorkspaceFile,
     runAction,
-    runWorkflowAction,
-    cancelWorkflowAction,
+    runAutomationStep,
+    cancelAutomationStep,
   } = useExplorerWorkflow({
     dispatch,
     ree,
@@ -82,11 +82,11 @@ export function useExplorerController() {
     onRemoveWorkspaceSource: handleRemoveWorkspaceSource,
     onDownloadWorkspaceFile: downloadWorkspaceFile,
     onRunAction: runAction,
-    onCancelAction: cancelWorkflowAction,
-    onRunWorkflowAction: <K extends WorkflowServiceKey>(
+    onCancelAction: cancelAutomationStep,
+    onRunAutomationStep: <K extends AutomationStepKey>(
       key: K,
-      params: WorkflowServiceRunParams<K>,
-    ) => runWorkflowAction(key, params),
+      params: AutomationStepRunParams<K>,
+    ) => runAutomationStep(key, params),
     onPersistWorkspaceFile: persistWorkspaceFile,
   };
 

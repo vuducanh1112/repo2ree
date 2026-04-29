@@ -1,5 +1,5 @@
 import { LEVELS } from "../../constants/levels";
-import type { HBOM, Ree, WorkflowServiceKey } from "../../types";
+import type { AutomationStepKey, HBOM, Ree } from "../../types";
 import type { GenericServiceParams } from "../../types/services";
 import { emptyHBOM } from "../../utils/hbom";
 
@@ -234,7 +234,7 @@ export function planActivationEffect(): ActivationEffectPlan {
 }
 
 export function planWorkflowServiceEffect(args: {
-  key: WorkflowServiceKey;
+  key: AutomationStepKey;
   params: GenericServiceParams;
   ree: Ree;
   newLevel: number;

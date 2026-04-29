@@ -1,10 +1,10 @@
 import type {
+  AutomationStepKey,
+  AutomationStepRunParamsByKey,
   FileTreeNode,
   LogLine,
   Ree,
   ReeFile,
-  WorkflowServiceKey,
-  WorkflowServiceRunParamsByKey,
 } from "../../types";
 import type { GenericServiceParams } from "../../types/services";
 import { scanDependencies } from "./dependencyParser";
@@ -45,8 +45,8 @@ export type ServiceRunCommand =
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
 export type ServiceRunHandlerMap = {
-  [K in WorkflowServiceKey]: (
-    params: WorkflowServiceRunParamsByKey[K],
+  [K in AutomationStepKey]: (
+    params: AutomationStepRunParamsByKey[K],
     newLevel: number,
   ) => ServiceRunCommand[];
 };

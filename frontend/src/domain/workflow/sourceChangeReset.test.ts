@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialServiceParams } from "../../constants/services";
+import { initialAutomationStepParams } from "../../constants/services";
 import type { ExplorerSourceResetInput } from "./sourceChangeReset";
 import { computeExplorerSourceChangeReset } from "./sourceChangeReset";
 
@@ -38,7 +38,7 @@ function buildExplorerState(): ExplorerSourceResetInput {
 describe("computeExplorerSourceChangeReset", () => {
   it("clears workflow artifacts while preserving unrelated explorer state", () => {
     const explorer = buildExplorerState();
-    const nextServiceParams = initialServiceParams();
+    const nextServiceParams = initialAutomationStepParams();
 
     const reset = computeExplorerSourceChangeReset(explorer, nextServiceParams);
 

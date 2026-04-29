@@ -1,4 +1,4 @@
-import type { WorkflowServiceParams } from "./workflow";
+import type { AutomationStepParams } from "./workflow";
 
 export type {
   CPUDefinition,
@@ -14,7 +14,7 @@ export type Badges = Record<string, boolean>;
 export type Timestamps = Record<string, string>;
 export type ActionStates = Record<string, "loading" | "done">;
 export type ServiceLogs = Record<string, LogEntry>;
-export type ServiceParams = WorkflowServiceParams;
+export type ServiceParams = AutomationStepParams;
 
 export interface LogLine {
   type: "info" | "ok" | "warn" | "err" | "out";

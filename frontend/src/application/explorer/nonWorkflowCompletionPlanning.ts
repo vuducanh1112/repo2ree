@@ -1,4 +1,4 @@
-import { SERVICES } from "../../constants/services";
+import { AUTOMATION_STEPS } from "../../constants/services";
 import type { Ree } from "../../types";
 
 interface NonWorkflowCompletionPlan {
@@ -48,7 +48,7 @@ export function planNonWorkflowCompletion({
     };
   }
 
-  const svc = SERVICES.find((service) => service.key === key);
+  const svc = AUTOMATION_STEPS.find((service) => service.key === key);
   return {
     successMessage: `${svc?.label ?? key} completed`,
   };

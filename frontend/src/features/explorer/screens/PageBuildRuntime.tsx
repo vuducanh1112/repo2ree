@@ -24,7 +24,7 @@ import {
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../constants/theme";
 import { MOCK_FILES } from "../../../services/dummyWorkspaceService";
-import type { WorkflowServiceRunParams } from "../../../types";
+import type { AutomationStepRunParams } from "../../../types";
 import { FilePicker, ScriptPanel } from "../components/inputs/scriptAndFile";
 import { RuntimeField } from "../components/inputs/sourceRuntime";
 import {
@@ -105,8 +105,8 @@ export function PageBuildRuntime({
   const [expectedOutput, setExpectedOutput] = useState(() =>
     ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "",
   );
-  const buildParams: WorkflowServiceRunParams<"build"> = {
-    ...(params as WorkflowServiceRunParams<"build">),
+  const buildParams: AutomationStepRunParams<"build"> = {
+    ...(params as AutomationStepRunParams<"build">),
     build_runtime_script_path: ree.build_runtime_script,
     produced_runtime_path: expectedOutput,
     _expectedOutput: expectedOutput,

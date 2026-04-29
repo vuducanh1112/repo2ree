@@ -3,7 +3,7 @@ import { Ic } from "../../../components/Icon";
 import { FIELD_META } from "../../../constants/fieldMeta";
 import { LEVELS } from "../../../constants/levels";
 import { type ExplorerPage, isValidExplorerPage, PAGE } from "../../../constants/pages";
-import { SERVICES } from "../../../constants/services";
+import { AUTOMATION_STEPS } from "../../../constants/services";
 import {
   C,
   F,
@@ -54,7 +54,7 @@ export function RightRailPanels({
   archiveRef,
   activationRef,
 }: RightRailPanelsProps) {
-  const service = SERVICES.find((svc) => svc.key === PAGE.EVALUATE);
+  const service = AUTOMATION_STEPS.find((svc) => svc.key === PAGE.EVALUATE);
   const evaluateDate =
     service && timestamps[service.key]
       ? new Date(timestamps[service.key]).toLocaleString([], {

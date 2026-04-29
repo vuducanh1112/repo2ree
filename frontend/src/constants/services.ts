@@ -1,14 +1,14 @@
 import { Ic } from "../components/Icon";
 import type {
-  Service,
-  WorkflowServiceKey,
-  WorkflowServiceParams,
-  WorkflowServiceParamsByKey,
+  AutomationStepDefinition,
+  AutomationStepKey,
+  AutomationStepParams,
+  AutomationStepParamsByKey,
 } from "../types";
 
-type WorkflowService = Service & { key: WorkflowServiceKey };
+type AutomationStep = AutomationStepDefinition & { key: AutomationStepKey };
 
-export const SERVICES: WorkflowService[] = [
+export const AUTOMATION_STEPS: AutomationStep[] = [
   {
     key: "evaluate",
     label: "Evaluate",
@@ -119,20 +119,20 @@ export const SERVICES: WorkflowService[] = [
   },
 ];
 
-export function defaultParamsForService<K extends WorkflowServiceKey>(
-  svc: Extract<WorkflowService, { key: K }>,
-): WorkflowServiceParamsByKey[K] {
+export function defaultParamsForAutomationStep<K extends AutomationStepKey>(
+  step: Extract<AutomationStep, { key: K }>,
+): AutomationStepParamsByKey[K] {
   return Object.fromEntries(
-    (svc.params || []).map((p) => [p.key, p.default]),
-  ) as WorkflowServiceParamsByKey[K];
+    (step.params || []).map((p) => [p.key, p.default]),
+  ) as AutomationStepParamsByKey[K];
 }
 
-export function initialServiceParams(): WorkflowServiceParams {
+export function initialAutomationStepParams(): AutomationStepParams {
   return Object.fromEntries(
-    SERVICES.map((svc) => [svc.key, defaultParamsForService(svc)]),
-  ) as WorkflowServiceParams;
+    AUTOMATION_STEPS.map((step) => [step.key, defaultParamsForAutomationStep(step)]),
+  ) as AutomationStepParams;
 }
 
-export function isWorkflowServiceKey(key: string): key is WorkflowServiceKey {
-  return SERVICES.some((service) => service.key === key);
+export function isAutomationStepKey(key: string): key is AutomationStepKey {
+  return AUTOMATION_STEPS.some((step) => step.key === key);
 }

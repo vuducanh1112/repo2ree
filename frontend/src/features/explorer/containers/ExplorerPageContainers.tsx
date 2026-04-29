@@ -154,7 +154,7 @@ export function HardwareBomPageContainer({ state, commands }: ExplorerPageContai
       onLockedChange={commands.setLocked}
       onGoService={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
-      onRun={commands.onRunWorkflowAction}
+      onRun={commands.onRunAutomationStep}
       onCancel={commands.onCancelAction}
     />
   );
@@ -188,7 +188,7 @@ export function ServicePageContainer({ state, commands }: ExplorerPageContainerP
         runDone={runDone}
         badge={badge}
         ts={ts}
-        onRun={commands.onRunWorkflowAction}
+        onRun={commands.onRunAutomationStep}
         onCancel={commands.onCancelAction}
         onGo={commands.setPage}
         onGoFields={goToRequirements}

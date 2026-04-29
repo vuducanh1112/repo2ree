@@ -185,7 +185,7 @@ export function SourceUrlField({ locked, committedValue, onCommit, onFocus }: So
       </div>
       {isDirty && draft.trim() && (
         <div style={{ ...S_SOURCE_URL_STATUS_BASE, color: "#92400e" }}>
-          {Ic.info(10)} Setting a new source will reset all workflow results.
+          {Ic.info(10)} Setting a new source will reset all downstream results.
         </div>
       )}
       {committedValue && !isDirty && (
@@ -446,7 +446,7 @@ export function SourceUploadField({
               paddingLeft: 2,
             }}
           >
-            {Ic.info(10)} Setting a new source will reset all workflow results.
+            {Ic.info(10)} Setting a new source will reset all downstream results.
           </div>
         </div>
       )}

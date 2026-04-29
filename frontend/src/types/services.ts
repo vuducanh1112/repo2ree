@@ -1,20 +1,18 @@
 import type { ExplorerPage } from "../constants/pages";
 import type { Ree } from "./reeModel";
 import type {
-  WorkflowServiceKey,
-  WorkflowServiceParams,
-  WorkflowServiceParamsByKey,
-  WorkflowServiceRunParams,
-  WorkflowServiceRunParamsByKey,
+  AutomationStepKey,
+  AutomationStepParams,
+  AutomationStepParamsByKey,
+  AutomationStepRunParams,
 } from "./workflow";
 
 export type {
+  AutomationStepKey,
+  AutomationStepParams,
+  AutomationStepParamsByKey,
+  AutomationStepRunParams,
   ExplorerPage,
-  WorkflowServiceKey,
-  WorkflowServiceParams,
-  WorkflowServiceParamsByKey,
-  WorkflowServiceRunParams,
-  WorkflowServiceRunParamsByKey,
 };
 
 export interface Level {
@@ -29,18 +27,18 @@ export interface Level {
   fix: string | null;
 }
 
-export interface ServiceBadge {
+export interface AutomationStepBadge {
   label: string;
   color: string;
   bg: string;
 }
 
-export interface ServiceRequire {
+export interface AutomationStepRequirement {
   field: keyof Ree;
   label: string;
 }
 
-export interface ServiceParam {
+export interface AutomationStepParam {
   key: string;
   label: string;
   type: "bool" | "select" | "text";
@@ -49,23 +47,23 @@ export interface ServiceParam {
   options?: string[];
 }
 
-export type ServiceParamValue = string | boolean;
-export type GenericServiceParams = Record<string, ServiceParamValue>;
+export type AutomationStepParamValue = string | boolean;
+export type GenericAutomationStepParams = Record<string, AutomationStepParamValue>;
 
-export interface Service {
+export interface AutomationStepDefinition {
   key: string;
   label: string;
   IC: (size?: number) => JSX.Element;
   color: string;
-  badge: ServiceBadge;
+  badge: AutomationStepBadge;
   desc: string;
-  requires: ServiceRequire[];
-  params: ServiceParam[];
+  requires: AutomationStepRequirement[];
+  params: AutomationStepParam[];
 }
 
 export interface RequirementsBannerProps {
   status: "missing" | "met";
-  items?: ServiceRequire[];
+  items?: AutomationStepRequirement[];
   onAction?: () => void;
   actionLabel?: string;
 }
@@ -89,6 +87,13 @@ export interface ArchiveRepo {
   idLabel: string;
   idField: keyof Ree;
   idPlaceholder: string;
-  params: ServiceParam[];
-  requires: ServiceRequire[];
+  params: AutomationStepParam[];
+  requires: AutomationStepRequirement[];
 }
+
+export type ServiceBadge = AutomationStepBadge;
+export type ServiceRequire = AutomationStepRequirement;
+export type ServiceParam = AutomationStepParam;
+export type ServiceParamValue = AutomationStepParamValue;
+export type GenericServiceParams = GenericAutomationStepParams;
+export type Service = AutomationStepDefinition;

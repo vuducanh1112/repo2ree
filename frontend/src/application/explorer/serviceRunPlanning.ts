@@ -1,5 +1,5 @@
 import { PAGE } from "../../constants/pages";
-import type { Ree, WorkflowServiceKey } from "../../types";
+import type { AutomationStepKey, Ree } from "../../types";
 import type { GenericServiceParams } from "../../types/services";
 import { planNonWorkflowCompletion } from "./nonWorkflowCompletionPlanning";
 
@@ -46,7 +46,7 @@ export function deriveServiceRunLevel(
   return key === PAGE.EVALUATE ? evaluatedLevel : currentLevel;
 }
 
-export function isWorkflowServiceRunKey(key: string): key is WorkflowServiceKey {
+export function isWorkflowServiceRunKey(key: string): key is AutomationStepKey {
   return (
     key === "evaluate" ||
     key === "hbom" ||

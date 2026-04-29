@@ -687,7 +687,7 @@ export function FieldTipsSidebar({
                 color: C.accent,
               }}
             >
-              Workflow tips
+              Process tips
             </span>
           </div>
           <p
@@ -698,7 +698,7 @@ export function FieldTipsSidebar({
               margin: 0,
             }}
           >
-            No field selected. Here are the key tips for this page/workflow:
+            No field selected. Here are the key tips for this page and process step:
           </p>
           <div
             style={{

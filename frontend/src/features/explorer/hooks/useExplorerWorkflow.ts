@@ -3,17 +3,17 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useWorkspaceRuntime } from "../../../app/WorkspaceRuntime";
 import { planSealCommands } from "../../../application/explorer/sealCommands";
 import { createServiceRunHandlers } from "../../../application/explorer/serviceRunCommands";
-import { createExplorerWorkflowSession } from "../../../application/explorer/workflowSession";
+import { createExplorerRunSession } from "../../../application/explorer/workflowSession";
 import type { AppAction } from "../../../context";
 import { explorerActions } from "../../../context";
 import type { WorkspaceServiceLogEntry } from "../../../services/workspaceService";
 import type {
+  AutomationStepRunParams,
   FileTreeNode,
   GenericServiceParams,
   Ree,
   ReeFile,
   ServiceParams,
-  WorkflowServiceRunParams,
 } from "../../../types";
 import { executeServiceRunCommands } from "./workflow/commandExecutors";
 import { createDownloadActions } from "./workflow/downloadActions";
@@ -39,8 +39,8 @@ export function useExplorerWorkflow({
 }: UseExplorerWorkflowArgs) {
   const { createWorkspaceService, ports, workspaceId, workspaceServiceMode } =
     useWorkspaceRuntime();
-  const workflowSessionRef = useRef(createExplorerWorkflowSession());
-  const workflowSession = workflowSessionRef.current;
+  const automationSessionRef = useRef(createExplorerRunSession());
+  const automationSession = automationSessionRef.current;
   const executeServiceRunRef = useRef<
     (key: string, params?: GenericServiceParams) => Promise<WorkspaceServiceLogEntry>
   >(async () => {
@@ -102,13 +102,13 @@ export function useExplorerWorkflow({
     persistWorkspaceFile: (path: string, content: string) => {
       void persistWorkspaceFile(undefined, path, content);
     },
-    persistWorkflowParams: (key, params) => {
+    persistAutomationStepParams: (key, params) => {
       dispatch(
         explorerActions.setServiceParams((prev) =>
-          workflowSession.mergeWorkflowParams(
+          automationSession.mergeAutomationStepParams(
             prev,
             key,
-            params as WorkflowServiceRunParams<typeof key>,
+            params as AutomationStepRunParams<typeof key>,
           ),
         ),
       );
@@ -119,7 +119,7 @@ export function useExplorerWorkflow({
     workspaceId,
     ports,
     refreshWorkspace,
-    workflowSession,
+    runSession: automationSession,
   });
 
   const sourceAdapter = createSourceAdapter({
@@ -131,8 +131,8 @@ export function useExplorerWorkflow({
     showToast,
     clock: ports.clock,
     sleep: ports.sleep,
-    onRunStarted: workflowSession.noteRunStarted,
-    onRunFinished: workflowSession.noteRunFinished,
+    onRunStarted: automationSession.noteRunStarted,
+    onRunFinished: automationSession.noteRunFinished,
   });
 
   useEffect(() => {
@@ -174,7 +174,7 @@ export function useExplorerWorkflow({
     downloadWorkspaceFile,
     persistWorkspaceFile,
     runAction: serviceRunAdapter.runAction,
-    runWorkflowAction: serviceRunAdapter.runWorkflowAction,
-    cancelWorkflowAction: serviceRunAdapter.cancelWorkflowAction,
+    runAutomationStep: serviceRunAdapter.runAutomationStep,
+    cancelAutomationStep: serviceRunAdapter.cancelAutomationStep,
   };
 }

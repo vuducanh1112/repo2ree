@@ -460,7 +460,7 @@ export function PageFiles({ files, reeFiles, onDownloadWorkspaceFile }: PageFile
         subtitle="Inspect workspace inputs and generated REE files side by side"
         tips={[
           "Use this view to verify paths referenced by source, runtime, scripts, and SBOM fields.",
-          "Workspace is read-only here; run workflow actions to generate or update REE files.",
+          "Workspace is read-only here; run lifecycle steps to generate or update REE files.",
         ]}
       />
 

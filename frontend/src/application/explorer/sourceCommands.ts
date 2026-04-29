@@ -1,4 +1,4 @@
-import { initialServiceParams } from "../../constants/services";
+import { initialAutomationStepParams } from "../../constants/services";
 import type { FileTreeNode, LogLine, Ree, ReeFile, ServiceParams } from "../../types";
 
 export interface SourceOutcomeCommandPayload {
@@ -25,12 +25,12 @@ export type SourceCommand =
 
 export function sourceChangeResetCommands(options: { silent?: boolean } = {}): SourceCommand[] {
   const commands: SourceCommand[] = [
-    { type: "resetWorkflowOnSourceChange", serviceParams: initialServiceParams() },
+    { type: "resetWorkflowOnSourceChange", serviceParams: initialAutomationStepParams() },
   ];
   if (!options.silent) {
     commands.push({
       type: "toast",
-      message: "Source changed — workflow status and scripts reset",
+      message: "Source changed — downstream status and scripts reset",
       toastType: "info",
     });
   }
