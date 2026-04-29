@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { Ic } from "../../../components/Icon";
 import {
   C,
@@ -13,58 +13,47 @@ import {
   S_WORKFLOW_PAGE_NUDGE_WRAP,
   S_WORKFLOW_PAGE_ROOT,
 } from "../../../constants/theme";
+import {
+  type CPURow,
+  type GPURow,
+  type HardwareBomDraft,
+  type MemoryRow,
+  type NetworkRow,
+  newCpuRow,
+  newGpuRow,
+  newMemoryRow,
+  newNetworkRow,
+  newStorageRow,
+  type StorageRow,
+} from "../../../domain/hbom/hardwareBomDraft";
 import { useFocusScroll } from "../../../hooks/useFocusScroll";
-import type {
-  CPUDefinition,
-  GPUDefinition,
-  HBOM,
-  MemoryDefinition,
-  NetworkDefinition,
-  StorageDefinition,
-} from "../../../types";
-import { emptyHBOM } from "../../../utils/hbom";
 import { FieldRow, FieldSection, FieldTipsSidebar } from "../components/workflow/fieldTips";
 import { NextStepNudge, WorkflowPageHeader } from "../components/workflow/pageChrome";
 import { ServiceActionSection, WorkflowLogSection } from "../components/workflow/servicePanels";
 import { workflowToneSurfaceStyle } from "../components/workflow/statusUiStyles";
+import { useHardwareBomDraft } from "../hooks/useHardwareBomDraft";
+import {
+  createCpuColumns,
+  createGpuColumns,
+  createMemoryColumns,
+  createNetworkColumns,
+  createStorageColumns,
+  type HardwareColumn,
+} from "./hardwareBomColumns";
 import type { PageHardwareBomProps } from "./sharedWorkflowUi";
 
-type CPURow = CPUDefinition & { id: string; model: string; extra_info: Record<string, unknown> };
-type GPURow = GPUDefinition & { id: string; model: string; extra_info: Record<string, unknown> };
-type MemoryRow = MemoryDefinition & {
-  id: string;
-  model: string;
-  extra_info: Record<string, unknown>;
-};
-type StorageRow = StorageDefinition & {
-  id: string;
-  model: string;
-  extra_info: Record<string, unknown>;
-};
-type NetworkRow = NetworkDefinition & {
-  id: string;
-  model: string;
-  extra_info: Record<string, unknown>;
-};
-
-interface HardwareBomDraft {
-  cpus: CPURow[];
-  gpus: GPURow[];
-  memory: MemoryRow[];
-  storage: StorageRow[];
-  network: NetworkRow[];
+interface HardwareSectionConfig<RowT extends { id: string }> {
+  fieldTitle: string;
+  sectionTitle: string;
+  icon: React.ReactNode;
+  subtitle: string;
+  rows: RowT[];
+  columns: HardwareColumn<RowT>[];
+  addLabel: string;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
 }
-
-interface HardwareColumn<RowT> {
-  key: string;
-  label: string;
-  width: string;
-  render: (row: RowT, index: number) => React.ReactNode;
-}
-
-const MEMORY_TYPES = ["DDR3", "DDR4", "DDR5", "LPDDR4", "LPDDR5", "HBM2", "HBM2e", "HBM3"];
-const STORAGE_TYPES = ["HDD", "SSD", "NVMe", "eMMC", "SD"];
-const NETWORK_TYPES = ["ethernet", "infiniband", "wifi", "cellular"];
+type HardwareCategoryKey = keyof HardwareBomDraft;
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,
@@ -208,188 +197,6 @@ function HardwareCardSection<RowT extends { id: string }>({
   );
 }
 
-function newCpuRow(): CPURow {
-  return {
-    id: `cpu-${Date.now()}-${Math.random()}`,
-    model: "",
-    vendor: "",
-    quantity: 1,
-    cores_per_cpu: 1,
-    threads_per_core: 1,
-    architecture: "",
-    extra_info: {},
-  };
-}
-
-function newGpuRow(): GPURow {
-  return {
-    id: `gpu-${Date.now()}-${Math.random()}`,
-    model: "",
-    vendor: "",
-    quantity: 1,
-    memory_gb: 0,
-    interface: "",
-    extra_info: {},
-  };
-}
-
-function newMemoryRow(): MemoryRow {
-  return {
-    id: `memory-${Date.now()}-${Math.random()}`,
-    model: "",
-    vendor: "",
-    quantity: 1,
-    capacity_gb: 0,
-    memory_type: "DDR5",
-    speed_mt_s: 1,
-    extra_info: {},
-  };
-}
-
-function newStorageRow(): StorageRow {
-  return {
-    id: `storage-${Date.now()}-${Math.random()}`,
-    model: "",
-    vendor: "",
-    quantity: 1,
-    capacity_gb: 0,
-    storage_type: "NVMe",
-    interface: "",
-    extra_info: {},
-  };
-}
-
-function newNetworkRow(): NetworkRow {
-  return {
-    id: `network-${Date.now()}-${Math.random()}`,
-    model: "",
-    vendor: "",
-    quantity: 1,
-    bandwidth_gbps: 0,
-    network_type: "ethernet",
-    interface: "",
-    extra_info: {},
-  };
-}
-
-function draftFromHBOM(hbom: HBOM, previous?: HardwareBomDraft): HardwareBomDraft {
-  return {
-    cpus: Object.entries(hbom.cpus).map(([model, item], index) => ({
-      id: previous?.cpus[index]?.id || `cpu-${index}`,
-      model,
-      ...item,
-    })),
-    gpus: Object.entries(hbom.gpus).map(([model, item], index) => ({
-      id: previous?.gpus[index]?.id || `gpu-${index}`,
-      model,
-      ...item,
-    })),
-    memory: Object.entries(hbom.memory).map(([model, item], index) => ({
-      id: previous?.memory[index]?.id || `memory-${index}`,
-      model,
-      ...item,
-    })),
-    storage: Object.entries(hbom.storage).map(([model, item], index) => ({
-      id: previous?.storage[index]?.id || `storage-${index}`,
-      model,
-      ...item,
-    })),
-    network: Object.entries(hbom.network).map(([model, item], index) => ({
-      id: previous?.network[index]?.id || `network-${index}`,
-      model,
-      ...item,
-    })),
-  };
-}
-
-function parsePositiveInt(value: number): number | null {
-  return Number.isFinite(value) && value >= 1 ? Math.floor(value) : null;
-}
-
-function parsePositiveNumber(value: number): number | null {
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
-
-function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: HBOM): HBOM {
-  const nextHBOM = emptyHBOM();
-  nextHBOM.extra_info = previousHBOM.extra_info || {};
-
-  for (const row of draft.cpus) {
-    const model = row.model.trim();
-    if (model) {
-      nextHBOM.cpus[model] = {
-        vendor: row.vendor.trim(),
-        quantity: parsePositiveInt(row.quantity) ?? 1,
-        cores_per_cpu: parsePositiveInt(row.cores_per_cpu) ?? 1,
-        threads_per_core: parsePositiveInt(row.threads_per_core) ?? 1,
-        architecture: row.architecture.trim(),
-        extra_info: row.extra_info,
-      };
-    }
-  }
-
-  for (const row of draft.gpus) {
-    const model = row.model.trim();
-    if (model) {
-      nextHBOM.gpus[model] = {
-        vendor: row.vendor.trim(),
-        quantity: parsePositiveInt(row.quantity) ?? 1,
-        memory_gb: parsePositiveNumber(row.memory_gb) ?? 0,
-        interface: row.interface.trim(),
-        extra_info: row.extra_info,
-      };
-    }
-  }
-
-  for (const row of draft.memory) {
-    const model = row.model.trim();
-    if (model) {
-      nextHBOM.memory[model] = {
-        vendor: row.vendor.trim(),
-        quantity: parsePositiveInt(row.quantity) ?? 1,
-        capacity_gb: parsePositiveNumber(row.capacity_gb) ?? 0,
-        memory_type: row.memory_type,
-        speed_mt_s: parsePositiveInt(row.speed_mt_s) ?? 0,
-        extra_info: row.extra_info,
-      };
-    }
-  }
-
-  for (const row of draft.storage) {
-    const model = row.model.trim();
-    if (model) {
-      nextHBOM.storage[model] = {
-        vendor: row.vendor.trim(),
-        quantity: parsePositiveInt(row.quantity) ?? 1,
-        capacity_gb: parsePositiveNumber(row.capacity_gb) ?? 0,
-        storage_type: row.storage_type,
-        interface: row.interface.trim(),
-        extra_info: row.extra_info,
-      };
-    }
-  }
-
-  for (const row of draft.network) {
-    const model = row.model.trim();
-    if (model) {
-      nextHBOM.network[model] = {
-        vendor: row.vendor.trim(),
-        quantity: parsePositiveInt(row.quantity) ?? 1,
-        bandwidth_gbps: parsePositiveNumber(row.bandwidth_gbps) ?? 0,
-        network_type: row.network_type,
-        interface: row.interface.trim(),
-        extra_info: row.extra_info,
-      };
-    }
-  }
-
-  return nextHBOM;
-}
-
-function hbomSyncKey(hbom: HBOM): string {
-  return JSON.stringify(hbom);
-}
-
 export function PageHardwareBom({
   ree,
   locked,
@@ -407,699 +214,121 @@ export function PageHardwareBom({
   onCancel,
 }: PageHardwareBomProps) {
   const focus = (key: string) => onFocusedFieldChange(key);
-  const [draft, setDraft] = React.useState<HardwareBomDraft>(() =>
-    draftFromHBOM(ree.hardware_description),
-  );
-  const pendingLocalHbomKeyRef = React.useRef<string | null>(null);
+  const { draft, updateDraft } = useHardwareBomDraft({ ree, onReeChange });
 
   useFocusScroll(focusedField);
 
-  React.useEffect(() => {
-    const incomingKey = hbomSyncKey(ree.hardware_description);
-    if (pendingLocalHbomKeyRef.current === incomingKey) {
-      pendingLocalHbomKeyRef.current = null;
-      return;
-    }
-    setDraft((previous) => draftFromHBOM(ree.hardware_description, previous));
-  }, [ree.hardware_description]);
-
-  const updateDraft = (nextDraft: HardwareBomDraft) => {
-    const nextHBOM = hbomFromDraft(nextDraft, ree.hardware_description);
-    pendingLocalHbomKeyRef.current = hbomSyncKey(nextHBOM);
-    setDraft(nextDraft);
-    onReeChange({
-      ...ree,
-      hardware_description: nextHBOM,
-    });
+  const setRows = <K extends HardwareCategoryKey>(key: K, rows: HardwareBomDraft[K]) => {
+    updateDraft({ ...draft, [key]: rows } as HardwareBomDraft);
   };
 
-  const cpuColumns: HardwareColumn<CPURow>[] = [
-    {
-      key: "model",
-      label: "Device Model",
-      width: "1.7fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.model}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              cpus: draft.cpus.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, model: event.target.value } : item,
-              ),
-            })
-          }
-          onFocus={() => focus("hardware_description")}
-          placeholder="Intel Core i9-14900K"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "vendor",
-      label: "Vendor",
-      width: "1.2fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.vendor}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              cpus: draft.cpus.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, vendor: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="Intel"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "quantity",
-      label: "Qty",
-      width: "0.8fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={1}
-          value={row.quantity}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              cpus: draft.cpus.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, quantity: Number(event.target.value) } : item,
-              ),
-            })
-          }
-          placeholder="qty"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "cores",
-      label: "Cores",
-      width: "0.8fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={1}
-          value={row.cores_per_cpu}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              cpus: draft.cpus.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, cores_per_cpu: Number(event.target.value) } : item,
-              ),
-            })
-          }
-          placeholder="cores"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "threads",
-      label: "Threads/Core",
-      width: "1fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={1}
-          value={row.threads_per_core}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              cpus: draft.cpus.map((item, itemIndex) =>
-                itemIndex === index
-                  ? { ...item, threads_per_core: Number(event.target.value) }
-                  : item,
-              ),
-            })
-          }
-          placeholder="threads/core"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "architecture",
-      label: "Architecture",
-      width: "1fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.architecture}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              cpus: draft.cpus.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, architecture: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="x86_64"
-          style={inp(locked)}
-        />
-      ),
-    },
-  ];
+  const patchCpuRow = (index: number, patch: Partial<CPURow>) =>
+    setRows(
+      "cpus",
+      draft.cpus.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    );
 
-  const gpuColumns: HardwareColumn<GPURow>[] = [
-    {
-      key: "model",
-      label: "Device Model",
-      width: "1.8fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.model}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              gpus: draft.gpus.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, model: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="NVIDIA A100-SXM4-40GB"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "vendor",
-      label: "Vendor",
-      width: "1.2fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.vendor}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              gpus: draft.gpus.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, vendor: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="NVIDIA"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "quantity",
-      label: "Qty",
-      width: "0.8fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={1}
-          value={row.quantity}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              gpus: draft.gpus.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, quantity: Number(event.target.value) } : item,
-              ),
-            })
-          }
-          placeholder="qty"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "memory_gb",
-      label: "Memory GB",
-      width: "1fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={0}
-          value={row.memory_gb}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              gpus: draft.gpus.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, memory_gb: Number(event.target.value) } : item,
-              ),
-            })
-          }
-          placeholder="memory GB"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "interface",
-      label: "Interface",
-      width: "1.2fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.interface}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              gpus: draft.gpus.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, interface: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="PCIe 4.0 x16"
-          style={inp(locked)}
-        />
-      ),
-    },
-  ];
+  const patchGpuRow = (index: number, patch: Partial<GPURow>) =>
+    setRows(
+      "gpus",
+      draft.gpus.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    );
 
-  const memoryColumns: HardwareColumn<MemoryRow>[] = [
-    {
-      key: "model",
-      label: "Device Model",
-      width: "1.7fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.model}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              memory: draft.memory.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, model: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="DDR5 ECC 32GB DIMM"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "vendor",
-      label: "Vendor",
-      width: "1.1fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.vendor}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              memory: draft.memory.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, vendor: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="Samsung"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "quantity",
-      label: "Qty",
-      width: "0.8fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={1}
-          value={row.quantity}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              memory: draft.memory.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, quantity: Number(event.target.value) } : item,
-              ),
-            })
-          }
-          placeholder="qty"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "capacity_gb",
-      label: "Capacity GB",
-      width: "1fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={0}
-          value={row.capacity_gb}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              memory: draft.memory.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, capacity_gb: Number(event.target.value) } : item,
-              ),
-            })
-          }
-          placeholder="capacity GB"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "memory_type",
-      label: "Type",
-      width: "1fr",
-      render: (row, index) => (
-        <select
-          disabled={locked}
-          value={row.memory_type}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              memory: draft.memory.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, memory_type: event.target.value } : item,
-              ),
-            })
-          }
-          style={selectInp(locked)}
-        >
-          {MEMORY_TYPES.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      ),
-    },
-    {
-      key: "speed_mt_s",
-      label: "Speed MT/s",
-      width: "1fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={1}
-          value={row.speed_mt_s}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              memory: draft.memory.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, speed_mt_s: Number(event.target.value) } : item,
-              ),
-            })
-          }
-          placeholder="speed MT/s"
-          style={inp(locked)}
-        />
-      ),
-    },
-  ];
+  const patchMemoryRow = (index: number, patch: Partial<MemoryRow>) =>
+    setRows(
+      "memory",
+      draft.memory.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    );
 
-  const storageColumns: HardwareColumn<StorageRow>[] = [
-    {
-      key: "model",
-      label: "Device Model",
-      width: "1.7fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.model}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              storage: draft.storage.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, model: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="Samsung PM9A3"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "vendor",
-      label: "Vendor",
-      width: "1.1fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.vendor}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              storage: draft.storage.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, vendor: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="Samsung"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "quantity",
-      label: "Qty",
-      width: "0.8fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={1}
-          value={row.quantity}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              storage: draft.storage.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, quantity: Number(event.target.value) } : item,
-              ),
-            })
-          }
-          placeholder="qty"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "capacity_gb",
-      label: "Capacity GB",
-      width: "1fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={0}
-          value={row.capacity_gb}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              storage: draft.storage.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, capacity_gb: Number(event.target.value) } : item,
-              ),
-            })
-          }
-          placeholder="capacity GB"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "storage_type",
-      label: "Type",
-      width: "1fr",
-      render: (row, index) => (
-        <select
-          disabled={locked}
-          value={row.storage_type}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              storage: draft.storage.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, storage_type: event.target.value } : item,
-              ),
-            })
-          }
-          style={selectInp(locked)}
-        >
-          {STORAGE_TYPES.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      ),
-    },
-    {
-      key: "interface",
-      label: "Interface",
-      width: "1.2fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.interface}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              storage: draft.storage.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, interface: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="PCIe 4.0 x4"
-          style={inp(locked)}
-        />
-      ),
-    },
-  ];
+  const patchStorageRow = (index: number, patch: Partial<StorageRow>) =>
+    setRows(
+      "storage",
+      draft.storage.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    );
 
-  const networkColumns: HardwareColumn<NetworkRow>[] = [
-    {
-      key: "model",
-      label: "Device Model",
-      width: "1.6fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.model}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              network: draft.network.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, model: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="ConnectX-6"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "vendor",
-      label: "Vendor",
-      width: "1.1fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.vendor}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              network: draft.network.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, vendor: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="NVIDIA"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "quantity",
-      label: "Qty",
-      width: "0.8fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={1}
-          value={row.quantity}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              network: draft.network.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, quantity: Number(event.target.value) } : item,
-              ),
-            })
-          }
-          placeholder="qty"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "bandwidth_gbps",
-      label: "Bandwidth Gbps",
-      width: "1fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          type="number"
-          min={0}
-          value={row.bandwidth_gbps}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              network: draft.network.map((item, itemIndex) =>
-                itemIndex === index
-                  ? { ...item, bandwidth_gbps: Number(event.target.value) }
-                  : item,
-              ),
-            })
-          }
-          placeholder="bandwidth"
-          style={inp(locked)}
-        />
-      ),
-    },
-    {
-      key: "network_type",
-      label: "Type",
-      width: "1fr",
-      render: (row, index) => (
-        <select
-          disabled={locked}
-          value={row.network_type}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              network: draft.network.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, network_type: event.target.value } : item,
-              ),
-            })
-          }
-          style={selectInp(locked)}
-        >
-          {NETWORK_TYPES.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      ),
-    },
-    {
-      key: "interface",
-      label: "Interface",
-      width: "1.2fr",
-      render: (row, index) => (
-        <input
-          disabled={locked}
-          value={row.interface}
-          onChange={(event) =>
-            updateDraft({
-              ...draft,
-              network: draft.network.map((item, itemIndex) =>
-                itemIndex === index ? { ...item, interface: event.target.value } : item,
-              ),
-            })
-          }
-          placeholder="PCIe 4.0 x8"
-          style={inp(locked)}
-        />
-      ),
-    },
-  ];
+  const patchNetworkRow = (index: number, patch: Partial<NetworkRow>) =>
+    setRows(
+      "network",
+      draft.network.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    );
+
+  const removeRowAtIndex = (key: HardwareCategoryKey, index: number) => {
+    setRows(
+      key,
+      draft[key].filter((_, itemIndex) => itemIndex !== index) as HardwareBomDraft[typeof key],
+    );
+  };
+
+  const renderHardwareSection = <RowT extends { id: string }>({
+    fieldTitle,
+    sectionTitle,
+    icon,
+    subtitle,
+    rows,
+    columns,
+    addLabel,
+    onAdd,
+    onRemove,
+  }: HardwareSectionConfig<RowT>) => (
+    <FieldSection
+      title={fieldTitle}
+      icon={icon}
+      subtitle={subtitle}
+      filledCount={rows.length}
+      totalCount={rows.length}
+    >
+      <FieldRow
+        fieldKey="hardware_description"
+        locked={locked}
+        onFocus={() => focus("hardware_description")}
+        active={focusedField === "hardware_description"}
+      >
+        <div style={{ padding: "12px 0" }}>
+          <HardwareCardSection
+            title={sectionTitle}
+            rows={rows}
+            columns={columns}
+            locked={locked}
+            onRemove={onRemove}
+            onAdd={onAdd}
+            addLabel={addLabel}
+          />
+        </div>
+      </FieldRow>
+    </FieldSection>
+  );
+
+  const cpuColumns = createCpuColumns({
+    locked,
+    inp,
+    selectInp,
+    onFocusHardwareDescription: () => focus("hardware_description"),
+    patchCpuRow,
+  });
+  const gpuColumns = createGpuColumns({
+    locked,
+    inp,
+    selectInp,
+    patchGpuRow,
+  });
+  const memoryColumns = createMemoryColumns({
+    locked,
+    inp,
+    selectInp,
+    patchMemoryRow,
+  });
+  const storageColumns = createStorageColumns({
+    locked,
+    inp,
+    selectInp,
+    patchStorageRow,
+  });
+  const networkColumns = createNetworkColumns({
+    locked,
+    inp,
+    selectInp,
+    patchNetworkRow,
+  });
 
   return (
     <div style={S_WORKFLOW_PAGE_ROOT}>
@@ -1141,171 +370,65 @@ export function PageHardwareBom({
       <div style={S_WORKFLOW_PAGE_BODY}>
         <div style={S_WORKFLOW_PAGE_MAIN_SCROLL}>
           <div style={S_WORKFLOW_PAGE_MAIN_COL}>
-            <FieldSection
-              title="CPU"
-              icon={Ic.chip()}
-              subtitle="processor packages and topology"
-              filledCount={draft.cpus.length}
-              totalCount={draft.cpus.length}
-            >
-              <FieldRow
-                fieldKey="hardware_description"
-                locked={locked}
-                onFocus={() => focus("hardware_description")}
-                active={focusedField === "hardware_description"}
-              >
-                <div style={{ padding: "12px 0" }}>
-                  <HardwareCardSection
-                    title="CPUs"
-                    rows={draft.cpus}
-                    columns={cpuColumns}
-                    locked={locked}
-                    onRemove={(index) =>
-                      updateDraft({
-                        ...draft,
-                        cpus: draft.cpus.filter((_, itemIndex) => itemIndex !== index),
-                      })
-                    }
-                    onAdd={() => updateDraft({ ...draft, cpus: [...draft.cpus, newCpuRow()] })}
-                    addLabel="Add CPU"
-                  />
-                </div>
-              </FieldRow>
-            </FieldSection>
+            {renderHardwareSection({
+              fieldTitle: "CPU",
+              sectionTitle: "CPUs",
+              icon: Ic.chip(),
+              subtitle: "processor packages and topology",
+              rows: draft.cpus,
+              columns: cpuColumns,
+              addLabel: "Add CPU",
+              onRemove: (index) => removeRowAtIndex("cpus", index),
+              onAdd: () => setRows("cpus", [...draft.cpus, newCpuRow()]),
+            })}
 
-            <FieldSection
-              title="GPU"
-              icon={Ic.chip()}
-              subtitle="accelerators and graphics devices"
-              filledCount={draft.gpus.length}
-              totalCount={draft.gpus.length}
-            >
-              <FieldRow
-                fieldKey="hardware_description"
-                locked={locked}
-                onFocus={() => focus("hardware_description")}
-                active={focusedField === "hardware_description"}
-              >
-                <div style={{ padding: "12px 0" }}>
-                  <HardwareCardSection
-                    title="GPUs"
-                    rows={draft.gpus}
-                    columns={gpuColumns}
-                    locked={locked}
-                    onRemove={(index) =>
-                      updateDraft({
-                        ...draft,
-                        gpus: draft.gpus.filter((_, itemIndex) => itemIndex !== index),
-                      })
-                    }
-                    onAdd={() => updateDraft({ ...draft, gpus: [...draft.gpus, newGpuRow()] })}
-                    addLabel="Add GPU"
-                  />
-                </div>
-              </FieldRow>
-            </FieldSection>
+            {renderHardwareSection({
+              fieldTitle: "GPU",
+              sectionTitle: "GPUs",
+              icon: Ic.chip(),
+              subtitle: "accelerators and graphics devices",
+              rows: draft.gpus,
+              columns: gpuColumns,
+              addLabel: "Add GPU",
+              onRemove: (index) => removeRowAtIndex("gpus", index),
+              onAdd: () => setRows("gpus", [...draft.gpus, newGpuRow()]),
+            })}
 
-            <FieldSection
-              title="Memory"
-              icon={Ic.chip()}
-              subtitle="modules and aggregate RAM assumptions"
-              filledCount={draft.memory.length}
-              totalCount={draft.memory.length}
-            >
-              <FieldRow
-                fieldKey="hardware_description"
-                locked={locked}
-                onFocus={() => focus("hardware_description")}
-                active={focusedField === "hardware_description"}
-              >
-                <div style={{ padding: "12px 0" }}>
-                  <HardwareCardSection
-                    title="Memory"
-                    rows={draft.memory}
-                    columns={memoryColumns}
-                    locked={locked}
-                    onRemove={(index) =>
-                      updateDraft({
-                        ...draft,
-                        memory: draft.memory.filter((_, itemIndex) => itemIndex !== index),
-                      })
-                    }
-                    onAdd={() =>
-                      updateDraft({ ...draft, memory: [...draft.memory, newMemoryRow()] })
-                    }
-                    addLabel="Add memory"
-                  />
-                </div>
-              </FieldRow>
-            </FieldSection>
+            {renderHardwareSection({
+              fieldTitle: "Memory",
+              sectionTitle: "Memory",
+              icon: Ic.chip(),
+              subtitle: "modules and aggregate RAM assumptions",
+              rows: draft.memory,
+              columns: memoryColumns,
+              addLabel: "Add memory",
+              onRemove: (index) => removeRowAtIndex("memory", index),
+              onAdd: () => setRows("memory", [...draft.memory, newMemoryRow()]),
+            })}
 
-            <FieldSection
-              title="Storage"
-              icon={Ic.chip()}
-              subtitle="disks, SSDs, and runtime capacity"
-              filledCount={draft.storage.length}
-              totalCount={draft.storage.length}
-            >
-              <FieldRow
-                fieldKey="hardware_description"
-                locked={locked}
-                onFocus={() => focus("hardware_description")}
-                active={focusedField === "hardware_description"}
-              >
-                <div style={{ padding: "12px 0" }}>
-                  <HardwareCardSection
-                    title="Storage"
-                    rows={draft.storage}
-                    columns={storageColumns}
-                    locked={locked}
-                    onRemove={(index) =>
-                      updateDraft({
-                        ...draft,
-                        storage: draft.storage.filter((_, itemIndex) => itemIndex !== index),
-                      })
-                    }
-                    onAdd={() =>
-                      updateDraft({ ...draft, storage: [...draft.storage, newStorageRow()] })
-                    }
-                    addLabel="Add storage"
-                  />
-                </div>
-              </FieldRow>
-            </FieldSection>
+            {renderHardwareSection({
+              fieldTitle: "Storage",
+              sectionTitle: "Storage",
+              icon: Ic.chip(),
+              subtitle: "disks, SSDs, and runtime capacity",
+              rows: draft.storage,
+              columns: storageColumns,
+              addLabel: "Add storage",
+              onRemove: (index) => removeRowAtIndex("storage", index),
+              onAdd: () => setRows("storage", [...draft.storage, newStorageRow()]),
+            })}
 
-            <FieldSection
-              title="Network"
-              icon={Ic.chip()}
-              subtitle="host interfaces and bandwidth"
-              filledCount={draft.network.length}
-              totalCount={draft.network.length}
-            >
-              <FieldRow
-                fieldKey="hardware_description"
-                locked={locked}
-                onFocus={() => focus("hardware_description")}
-                active={focusedField === "hardware_description"}
-              >
-                <div style={{ padding: "12px 0" }}>
-                  <HardwareCardSection
-                    title="Network"
-                    rows={draft.network}
-                    columns={networkColumns}
-                    locked={locked}
-                    onRemove={(index) =>
-                      updateDraft({
-                        ...draft,
-                        network: draft.network.filter((_, itemIndex) => itemIndex !== index),
-                      })
-                    }
-                    onAdd={() =>
-                      updateDraft({ ...draft, network: [...draft.network, newNetworkRow()] })
-                    }
-                    addLabel="Add network"
-                  />
-                </div>
-              </FieldRow>
-            </FieldSection>
+            {renderHardwareSection({
+              fieldTitle: "Network",
+              sectionTitle: "Network",
+              icon: Ic.chip(),
+              subtitle: "host interfaces and bandwidth",
+              rows: draft.network,
+              columns: networkColumns,
+              addLabel: "Add network",
+              onRemove: (index) => removeRowAtIndex("network", index),
+              onAdd: () => setRows("network", [...draft.network, newNetworkRow()]),
+            })}
 
             <ServiceActionSection
               color="#0f766e"
