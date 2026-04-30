@@ -1,4 +1,7 @@
-import type { HBOM, ReeDraftViewModel } from "./ReeSpec";
+import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import type { EvaluationState } from "../review/EvaluationState";
+import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
+import type { HBOM, ReeDraftViewModel, ReeSpec } from "./ReeSpec";
 import { splitLegacyReeModel } from "./reeLegacyAdapters";
 
 interface ReePatch extends Record<string, unknown> {
@@ -28,33 +31,47 @@ interface ReePatch extends Record<string, unknown> {
   _downloadableFiles: string[];
 }
 
-export function toReePatch(ree: ReeDraftViewModel): ReePatch {
-  const split = splitLegacyReeModel(ree);
+interface ReePatchSlices {
+  reeSpec: ReeSpec;
+  workspaceSourceState: WorkspaceSourceState;
+  artifactStatus: ArtifactStatus;
+  evaluationState: EvaluationState;
+}
 
+export function toReePatchFromSlices({
+  reeSpec,
+  workspaceSourceState,
+  artifactStatus,
+  evaluationState,
+}: ReePatchSlices): ReePatch {
   return {
-    name: split.reeSpec.name || "",
-    origin_url: split.reeSpec.origin_url || "",
-    source_type: split.reeSpec.source_type || "",
-    runtime: split.reeSpec.runtime || "",
-    build_runtime_script: split.reeSpec.build_runtime_script || "",
-    activation_script: split.reeSpec.activation_script || "",
-    sbom: split.reeSpec.sbom || "",
-    swhid: split.reeSpec.swhid || "",
-    zenodo_doi: split.reeSpec.zenodo_doi || "",
-    dataverse_doi: split.reeSpec.dataverse_doi || "",
-    repro_level: split.reeSpec.repro_level || "",
-    detected_dependencies: split.reeSpec.detected_dependencies || "",
-    hardware_description: split.reeSpec.hardware_description || {},
-    _sealedAt: split.artifactStatus.sealedAt || "",
-    _sealHash: split.artifactStatus.sealHash || "",
-    _evalLevel: split.evaluationState.evalLevel ?? 0,
-    _sourceIncluded: !!split.workspaceSourceState.sourceIncluded,
-    _sourceAvailable: !!split.workspaceSourceState.sourceAvailable,
-    _sourceAcquiredBy: split.workspaceSourceState.sourceAcquiredBy || "",
-    _uploadedArchive: split.workspaceSourceState.uploadedArchive || "",
-    _sourceSnapshotArchive: split.workspaceSourceState.sourceSnapshotArchive || "",
-    _sourceSnapshotCapturedAt: split.workspaceSourceState.sourceSnapshotCapturedAt || "",
-    _runtimeIncluded: !!split.artifactStatus.runtimeIncluded,
-    _downloadableFiles: split.artifactStatus.downloadableFiles || [],
+    name: reeSpec.name || "",
+    origin_url: reeSpec.origin_url || "",
+    source_type: reeSpec.source_type || "",
+    runtime: reeSpec.runtime || "",
+    build_runtime_script: reeSpec.build_runtime_script || "",
+    activation_script: reeSpec.activation_script || "",
+    sbom: reeSpec.sbom || "",
+    swhid: reeSpec.swhid || "",
+    zenodo_doi: reeSpec.zenodo_doi || "",
+    dataverse_doi: reeSpec.dataverse_doi || "",
+    repro_level: reeSpec.repro_level || "",
+    detected_dependencies: reeSpec.detected_dependencies || "",
+    hardware_description: reeSpec.hardware_description || {},
+    _sealedAt: artifactStatus.sealedAt || "",
+    _sealHash: artifactStatus.sealHash || "",
+    _evalLevel: evaluationState.evalLevel ?? 0,
+    _sourceIncluded: !!workspaceSourceState.sourceIncluded,
+    _sourceAvailable: !!workspaceSourceState.sourceAvailable,
+    _sourceAcquiredBy: workspaceSourceState.sourceAcquiredBy || "",
+    _uploadedArchive: workspaceSourceState.uploadedArchive || "",
+    _sourceSnapshotArchive: workspaceSourceState.sourceSnapshotArchive || "",
+    _sourceSnapshotCapturedAt: workspaceSourceState.sourceSnapshotCapturedAt || "",
+    _runtimeIncluded: !!artifactStatus.runtimeIncluded,
+    _downloadableFiles: artifactStatus.downloadableFiles || [],
   };
+}
+
+export function toReePatch(ree: ReeDraftViewModel): ReePatch {
+  return toReePatchFromSlices(splitLegacyReeModel(ree));
 }

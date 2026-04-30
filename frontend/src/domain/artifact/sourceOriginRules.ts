@@ -1,31 +1,53 @@
-import type { ReeDraftViewModel } from "../ree/ReeSpec";
+import type { ReeDraftViewModel, ReeSpec } from "../ree/ReeSpec";
 import { splitLegacyReeModel, toLegacyReeViewModel } from "../ree/reeLegacyAdapters";
+import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
+
+interface SourceOriginRuleInput {
+  reeSpec: ReeSpec;
+  workspaceSourceState: WorkspaceSourceState;
+}
+
+interface SourceOriginRuleResult {
+  reeSpec: ReeSpec;
+  workspaceSourceState: WorkspaceSourceState;
+}
+
+export function enforceSourceOriginRulesForSlices({
+  reeSpec,
+  workspaceSourceState,
+}: SourceOriginRuleInput): SourceOriginRuleResult {
+  const hasDownloadedSource =
+    !!workspaceSourceState.sourceAvailable && workspaceSourceState.sourceAcquiredBy === "download";
+  const hasUploadedSource =
+    !!workspaceSourceState.sourceAvailable && workspaceSourceState.sourceAcquiredBy === "upload";
+
+  const nextSpec =
+    !hasDownloadedSource && reeSpec.origin_url ? { ...reeSpec, origin_url: "" } : reeSpec;
+  const nextWorkspaceSourceState =
+    hasUploadedSource && !workspaceSourceState.sourceIncluded
+      ? { ...workspaceSourceState, sourceIncluded: true }
+      : workspaceSourceState;
+
+  return {
+    reeSpec: nextSpec,
+    workspaceSourceState: nextWorkspaceSourceState,
+  };
+}
 
 export function enforceSourceOriginRules(ree: ReeDraftViewModel): ReeDraftViewModel {
   const split = splitLegacyReeModel(ree);
-  const hasDownloadedSource =
-    !!split.workspaceSourceState.sourceAvailable &&
-    split.workspaceSourceState.sourceAcquiredBy === "download";
-  const hasUploadedSource =
-    !!split.workspaceSourceState.sourceAvailable &&
-    split.workspaceSourceState.sourceAcquiredBy === "upload";
+  const next = enforceSourceOriginRulesForSlices({
+    reeSpec: split.reeSpec,
+    workspaceSourceState: split.workspaceSourceState,
+  });
 
-  const nextSpec =
-    !hasDownloadedSource && split.reeSpec.origin_url
-      ? { ...split.reeSpec, origin_url: "" }
-      : split.reeSpec;
-  const nextWorkspaceSourceState =
-    hasUploadedSource && !split.workspaceSourceState.sourceIncluded
-      ? { ...split.workspaceSourceState, sourceIncluded: true }
-      : split.workspaceSourceState;
-
-  if (nextSpec === split.reeSpec && nextWorkspaceSourceState === split.workspaceSourceState) {
+  if (next.reeSpec === split.reeSpec && next.workspaceSourceState === split.workspaceSourceState) {
     return ree;
   }
 
   return toLegacyReeViewModel({
-    reeSpec: nextSpec,
-    workspaceSourceState: nextWorkspaceSourceState,
+    reeSpec: next.reeSpec,
+    workspaceSourceState: next.workspaceSourceState,
     artifactStatus: split.artifactStatus,
     evaluationState: split.evaluationState,
   });
