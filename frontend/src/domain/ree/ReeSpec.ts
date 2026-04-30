@@ -85,6 +85,33 @@ export type ReeDraftViewModel = ReeSpec & WorkspaceSourceState & ArtifactStatus 
 // Temporary compatibility export for modules that still expect the pre-split model.
 export type Ree = ReeDraftViewModel;
 
+function createEmptyReeSpec(): ReeSpec {
+  return {
+    name: "",
+    origin_url: "",
+    source_type: "",
+    runtime: "",
+    build_runtime_script: "",
+    activation_script: "",
+    sbom: "",
+    swhid: "",
+    hardware_description: {
+      cpus: {},
+      gpus: {},
+      memory: {},
+      storage: {},
+      network: {},
+      extra_info: {},
+    },
+  };
+}
+
+export function createEmptyRee(): Ree {
+  return toLegacyReeViewModel({
+    reeSpec: createEmptyReeSpec(),
+  });
+}
+
 export function splitLegacyReeModel(ree: ReeDraftViewModel): ReeModelSplit {
   const {
     name,

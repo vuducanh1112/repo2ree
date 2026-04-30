@@ -12,7 +12,6 @@ import {
 } from "./runtime/browser/BrowserRuntime";
 import { createBrowserRuntimePorts } from "./runtime/browser/BrowserRuntimePorts";
 import { WORKSPACE_ID } from "./runtime/config/WorkspaceConstants";
-import { DEMO_REE } from "./runtime/demo/DemoRee";
 import { createAppQueryClient } from "./runtime/query/queryClient";
 import { WorkspaceShellProvider } from "./ui/workspace-shell/providers/WorkspaceShellProvider";
 
@@ -46,7 +45,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WorkspaceRuntimeProvider value={runtime}>
-        <WorkspaceShellProvider initialWorkspaceShellRee={DEMO_REE}>
+        <WorkspaceShellProvider>
           <AppBootstrap />
         </WorkspaceShellProvider>
       </WorkspaceRuntimeProvider>

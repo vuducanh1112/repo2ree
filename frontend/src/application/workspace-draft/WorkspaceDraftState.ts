@@ -1,5 +1,5 @@
 import { enforceSourceOriginRules } from "../../domain/artifact/sourceOriginRules";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import { createEmptyRee, type Ree } from "../../domain/ree/ReeSpec";
 
 export type WorkspaceDraftStateUpdater<T> = T | ((previous: T) => T);
 
@@ -20,7 +20,7 @@ export function resolveWorkspaceDraftUpdater<T>(
 }
 
 export function createInitialWorkspaceDraftState(
-  initialWorkspaceShellRee: Ree,
+  initialWorkspaceShellRee: Ree = createEmptyRee(),
 ): WorkspaceDraftState {
   return {
     ree: enforceSourceOriginRules(initialWorkspaceShellRee),

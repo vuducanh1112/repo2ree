@@ -17,7 +17,6 @@ interface ReviewerPreviewOverlayProps {
   open: boolean;
   ree: Ree;
   onClose: () => void;
-  defaultRee: Ree;
   PodOrbitControl: React.ComponentType<{
     level: number;
     levelMeta: Level;
@@ -37,7 +36,6 @@ export function ReviewerPreviewOverlay({
   open,
   ree,
   onClose,
-  defaultRee,
   PodOrbitControl,
 }: ReviewerPreviewOverlayProps) {
   const { reviewRepository } = useWorkspaceRuntime();
@@ -115,7 +113,6 @@ export function ReviewerPreviewOverlay({
         <ReviewerView
           ree={ree}
           onBack={onClose}
-          defaultRee={defaultRee}
           reviewRepository={reviewRepository}
           PodOrbitControl={PodOrbitControl}
         />

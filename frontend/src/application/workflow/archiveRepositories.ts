@@ -1,6 +1,6 @@
-import type { ArchiveRepo } from "../../application/workflow/WorkflowStepTypes";
+import type { ArchiveRepo } from "./WorkflowStepTypes";
 
-export const ARCHIVE_REPOS: ArchiveRepo[] = [
+export const ARCHIVE_REPOSITORIES: ArchiveRepo[] = [
   {
     key: "swh",
     label: "Software Heritage",

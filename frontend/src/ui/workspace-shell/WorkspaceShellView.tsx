@@ -1,6 +1,5 @@
 import type React from "react";
 import type { Level, StepState } from "../../application/workflow/WorkflowStepTypes";
-import type { Ree } from "../../domain/ree/ReeSpec";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { C, F, hoverBg, hoverColor } from "../theme/theme";
@@ -11,7 +10,6 @@ import { WorkspaceShellSidebar } from "./WorkspaceShellSidebar";
 
 interface WorkspaceShellViewProps {
   onBack: () => void;
-  defaultReviewedRee: Ree;
   PodOrbitControl: React.ComponentType<{
     level: number;
     levelMeta: Level;
@@ -22,11 +20,7 @@ interface WorkspaceShellViewProps {
   }>;
 }
 
-export function WorkspaceShellView({
-  onBack,
-  defaultReviewedRee,
-  PodOrbitControl,
-}: WorkspaceShellViewProps) {
+export function WorkspaceShellView({ onBack, PodOrbitControl }: WorkspaceShellViewProps) {
   const { state, commands } = useWorkspaceShell();
   const { ree, badges, timestamps, toast, page, navCollapsed, showReviewPreview } = state;
 
@@ -103,7 +97,6 @@ export function WorkspaceShellView({
         open={showReviewPreview}
         ree={ree}
         onClose={commands.closeReviewPreview}
-        defaultRee={defaultReviewedRee}
         PodOrbitControl={PodOrbitControl}
       />
     </div>

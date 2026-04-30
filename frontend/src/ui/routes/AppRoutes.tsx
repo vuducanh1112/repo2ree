@@ -4,7 +4,6 @@ import { APP_ROUTE } from "../../application/workspace-shell/WorkspaceShellPages
 import type { Ree } from "../../domain/ree/ReeSpec";
 import { mapReviewDraftToRee } from "../../infra/api/ReeDtoMappers";
 import { useWorkspaceRuntime } from "../../runtime/browser/BrowserRuntime";
-import { SEALED_DEMO_REE } from "../../runtime/demo/DemoRee";
 import { LandingView } from "../landing/LandingView";
 import { PodOrbitControl } from "../reviewer/PodOrbitControl";
 import { ReviewerView } from "../reviewer/ReviewerView";
@@ -79,7 +78,6 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
       reviewFiles={reviewFiles}
       reviewWorkspaceFiles={reviewWorkspaceFiles}
       onBack={onBack}
-      defaultRee={SEALED_DEMO_REE}
       reviewRepository={reviewRepository}
       PodOrbitControl={PodOrbitControl}
     />
@@ -98,7 +96,6 @@ export function AppRoutes() {
         element={
           <WorkspaceShellView
             onBack={() => navigate(APP_ROUTE.ROOT)}
-            defaultReviewedRee={SEALED_DEMO_REE}
             PodOrbitControl={PodOrbitControl}
           />
         }

@@ -5,7 +5,7 @@ import type {
   StepState,
   WorkflowParamValue,
 } from "../../application/workflow/WorkflowStepTypes";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import { createEmptyRee, type Ree } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import { LEVELS } from "../../domain/review/levels";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
@@ -26,7 +26,6 @@ interface ReviewerViewProps {
   reviewFiles?: Array<{ path: string; size?: number }>;
   reviewWorkspaceFiles?: Array<{ path: string; size?: number }>;
   onBack: () => void;
-  defaultRee: Ree;
   reviewRepository: ReviewRepository;
   PodOrbitControl: React.ComponentType<{
     level: number;
@@ -44,11 +43,10 @@ export function ReviewerView({
   reviewFiles = [],
   reviewWorkspaceFiles = [],
   onBack,
-  defaultRee,
   reviewRepository,
   PodOrbitControl,
 }: ReviewerViewProps) {
-  const ree = reeInput || defaultRee;
+  const ree = reeInput || createEmptyRee();
   const [reviewerPage, setReviewerPage] = useState<"review" | "files">("review");
   const [reviewRootFilesState, setReviewRootFilesState] = useState(reviewFiles);
   const [reviewWorkspaceFilesState, setReviewWorkspaceFilesState] = useState(reviewWorkspaceFiles);

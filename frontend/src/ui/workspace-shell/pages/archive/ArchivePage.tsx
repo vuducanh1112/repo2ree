@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ARCHIVE_REPOSITORIES } from "../../../../application/workflow/archiveRepositories";
 import type { GenericWorkflowParams } from "../../../../application/workflow/WorkflowStepTypes";
 import {
   PAGE,
@@ -6,7 +7,6 @@ import {
 } from "../../../../application/workspace-shell/WorkspaceShellPages";
 import type { Ree } from "../../../../domain/ree/ReeSpec";
 import type { ActionStates, Badges, WorkflowLogs } from "../../../../domain/ree/ReeTypes";
-import { ARCHIVE_REPOS } from "../../../../runtime/demo/archiveRepos";
 import { Ic } from "../../../shared/components/Icon";
 import {
   C,
@@ -33,13 +33,14 @@ interface PageArchiveProps {
 export function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchiveProps) {
   const [activeRepo, setActiveRepo] = useState("swh");
   const repo =
-    ARCHIVE_REPOS.find((archiveRepo) => archiveRepo.key === activeRepo) || ARCHIVE_REPOS[0];
+    ARCHIVE_REPOSITORIES.find((archiveRepo) => archiveRepo.key === activeRepo) ||
+    ARCHIVE_REPOSITORIES[0];
   const earned = !!badges[activeRepo];
   const running = actionStates[activeRepo] === "loading";
   const log = logs[activeRepo];
   const [params, setParams] = useState<Record<string, string | boolean>>(() =>
     Object.fromEntries(
-      ARCHIVE_REPOS.flatMap((archiveRepo) =>
+      ARCHIVE_REPOSITORIES.flatMap((archiveRepo) =>
         archiveRepo.params.map((param) => [`${archiveRepo.key}_${param.key}`, param.default]),
       ),
     ),
@@ -164,7 +165,7 @@ export function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: Pa
           )}
 
           <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-            {ARCHIVE_REPOS.map((archiveRepo) => {
+            {ARCHIVE_REPOSITORIES.map((archiveRepo) => {
               const isActive = activeRepo === archiveRepo.key;
               const isDone = !!badges[archiveRepo.key];
               return (
