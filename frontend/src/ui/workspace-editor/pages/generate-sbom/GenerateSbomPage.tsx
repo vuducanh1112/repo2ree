@@ -2,7 +2,6 @@ import type React from "react";
 import { useMemo, useState } from "react";
 import type { AutomationStepRunParams } from "../../../../application/workflow/WorkflowTypes";
 import { PAGE } from "../../../../application/workspace-editor/WorkspaceEditorPages";
-import { MOCK_FILES } from "../../../../infra/workspace/InMemoryWorkspaceGateway";
 import { Ic } from "../../../shared/components/Icon";
 import {
   C,
@@ -331,7 +330,7 @@ export function PageGenerateSBOM({
                   key={sf.fieldKey}
                   scriptKind={sf.scriptKind || null}
                   fieldKey={sf.fieldKey}
-                  files={files || MOCK_FILES}
+                  files={files || []}
                   onFilesChange={onFilesChange}
                   onPersistWorkspaceFile={onPersistWorkspaceFile}
                   ree={reeDraft}

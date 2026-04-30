@@ -43,7 +43,7 @@ interface WorkflowWorkspaceSnapshot {
 }
 
 interface WorkflowRunRunner {
-  startWorkflowRun?: (
+  startWorkflowRun: (
     key: string,
     params?: Record<string, string | boolean | number | null | undefined>,
   ) => Promise<{ runId: string }>;
@@ -51,7 +51,6 @@ interface WorkflowRunRunner {
     runId: string,
     onUpdate?: (update: WorkflowRunResult) => void,
   ) => Promise<WorkflowRunResult>;
-  createMockResult: () => Promise<WorkflowRunResult>;
 }
 
 interface ExecuteWorkflowStepArgs {
@@ -100,7 +99,6 @@ export async function executeWorkflowStep({
     key,
     runParams,
     pollRun: workflowRunner.pollRun,
-    createMockResult: workflowRunner.createMockResult,
     onRunStarted,
     onRunFinished,
     onUpdateLogs: (update) => {

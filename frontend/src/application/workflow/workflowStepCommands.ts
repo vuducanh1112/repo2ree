@@ -10,7 +10,6 @@ import { planWorkflowServiceEffect } from "./workflowOutcomePlanning";
 interface CreateWorkflowStepHandlersArgs {
   ree: Ree;
   virtualFiles: FileTreeNode[];
-  workspaceServiceMode: "remote" | "mock";
   clock: WorkspaceEditorClock;
 }
 
@@ -50,7 +49,6 @@ export type WorkflowStepHandlerMap = {
 export function createWorkflowStepHandlers({
   ree,
   virtualFiles,
-  workspaceServiceMode,
   clock,
 }: CreateWorkflowStepHandlersArgs): WorkflowStepHandlerMap {
   return {
@@ -61,7 +59,6 @@ export function createWorkflowStepHandlers({
           params: runParams as GenericServiceParams,
           ree,
           newLevel,
-          workspaceServiceMode,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
           dependencyCount: 0,
@@ -75,7 +72,6 @@ export function createWorkflowStepHandlers({
           params: runParams as GenericServiceParams,
           ree,
           newLevel,
-          workspaceServiceMode,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
           dependencyCount: 0,
@@ -89,7 +85,6 @@ export function createWorkflowStepHandlers({
           params: runParams as GenericServiceParams,
           ree,
           newLevel,
-          workspaceServiceMode,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
           dependencyCount: 0,
@@ -103,7 +98,6 @@ export function createWorkflowStepHandlers({
           params: runParams as GenericServiceParams,
           ree,
           newLevel,
-          workspaceServiceMode,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
           dependencyCount: 0,
@@ -119,7 +113,6 @@ export function createWorkflowStepHandlers({
           params: runParams as GenericServiceParams,
           ree,
           newLevel,
-          workspaceServiceMode,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
           dependencyCount,

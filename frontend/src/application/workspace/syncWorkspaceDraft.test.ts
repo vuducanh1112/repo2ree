@@ -70,7 +70,6 @@ describe("syncWorkspaceDraft planning", () => {
   it("only schedules remote draft sync when remote draft updates are available and dirty", () => {
     expect(
       shouldScheduleReeDraftSync({
-        workspaceServiceMode: "remote",
         canUpdateReeDraft: true,
         patchKey: "local",
         lastSyncedPatchKey: "remote",
@@ -79,8 +78,7 @@ describe("syncWorkspaceDraft planning", () => {
 
     expect(
       shouldScheduleReeDraftSync({
-        workspaceServiceMode: "mock",
-        canUpdateReeDraft: true,
+        canUpdateReeDraft: false,
         patchKey: "local",
         lastSyncedPatchKey: "remote",
       }),

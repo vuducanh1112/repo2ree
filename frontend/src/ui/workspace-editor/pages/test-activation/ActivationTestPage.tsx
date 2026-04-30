@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { FIELD_META } from "../../../../application/workspace-editor/fieldMeta";
 import { PAGE } from "../../../../application/workspace-editor/WorkspaceEditorPages";
-import { MOCK_FILES } from "../../../../infra/workspace/InMemoryWorkspaceGateway";
 import { Ic } from "../../../shared/components/Icon";
 import {
   S_FIELD_HELP_TEXT_SMALL,
@@ -98,7 +97,7 @@ export function PageTestActivation({
                     disabled={false}
                     value={ree.activation_script}
                     onChange={(v) => onReeChange?.({ ...ree, activation_script: v })}
-                    files={files || MOCK_FILES}
+                    files={files || []}
                     placeholder="activation_test.sh"
                     filterFn={(p) => /\.sh$/i.test(p)}
                   />
@@ -126,7 +125,7 @@ export function PageTestActivation({
                 key={sf.fieldKey}
                 scriptKind={sf.scriptKind || null}
                 fieldKey={sf.fieldKey}
-                files={files || MOCK_FILES}
+                files={files || []}
                 onFilesChange={onFilesChange}
                 onPersistWorkspaceFile={onPersistWorkspaceFile}
                 ree={ree}

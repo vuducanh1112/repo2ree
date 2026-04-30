@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { scanDependencies } from "../../../../application/workflow/workflowDependencyAnalysis";
 import { LEVELS } from "../../../../domain/review/levels";
-import { MOCK_FILES } from "../../../../infra/workspace/InMemoryWorkspaceGateway";
 import { Ic } from "../../../shared/components/Icon";
 import { LevelBadge } from "../../../shared/components/LevelBadge";
 import {
@@ -54,7 +53,7 @@ export function PageEvaluate({
 }: ServicePageProps) {
   const files = virtualFiles;
 
-  const depGroups = scanDependencies(files || MOCK_FILES);
+  const depGroups = scanDependencies(files || []);
   const hasRun = !!log;
   const hasScoreOutput = !!runDone;
   const sourceLoadedInWorkspace = !!ree._sourceAvailable;
@@ -317,7 +316,7 @@ export function PageEvaluate({
                         }
                       }
                     };
-                    scan(files || MOCK_FILES);
+                    scan(files || []);
                     return (
                       <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <span

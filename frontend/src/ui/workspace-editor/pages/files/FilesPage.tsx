@@ -2,7 +2,6 @@ import type React from "react";
 import { useMemo, useState } from "react";
 import type { ReeFile } from "../../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
-import { MOCK_FILES } from "../../../../infra/workspace/InMemoryWorkspaceGateway";
 import { FileNode } from "../../../shared/components/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { fmtBytes } from "../../../shared/formatting";
@@ -383,7 +382,7 @@ interface PageFilesProps {
 
 export function PageFiles({ files, reeFiles, onDownloadWorkspaceFile }: PageFilesProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const sourceFiles = files || MOCK_FILES;
+  const sourceFiles = files || [];
   const reeFileTree = useMemo(() => buildReeFileTree(reeFiles), [reeFiles]);
   const sourceFlatEntries = useMemo(() => flattenTreeWithPaths(sourceFiles), [sourceFiles]);
   const reeFlatEntries = useMemo(() => flattenTreeWithPaths(reeFileTree), [reeFileTree]);

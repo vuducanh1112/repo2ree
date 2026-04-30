@@ -2,24 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { runWorkflowLifecycle } from "./workflowRunLifecycle";
 
 describe("runWorkflowLifecycle", () => {
-  it("uses mock execution when workflow runs are unavailable", async () => {
-    const createMockResult = vi.fn(async () => ({
-      status: "succeeded" as const,
-      lines: [],
-      ts: "2026-01-01T00:00:00Z",
-    }));
-
-    const result = await runWorkflowLifecycle({
-      key: "build",
-      runParams: { no_cache: true },
-      pollRun: vi.fn(),
-      createMockResult,
-    });
-
-    expect(createMockResult).toHaveBeenCalled();
-    expect(result.status).toBe("succeeded");
-  });
-
   it("runs remote workflows and reports lifecycle callbacks", async () => {
     const onRunStarted = vi.fn();
     const onRunFinished = vi.fn();
@@ -38,7 +20,6 @@ describe("runWorkflowLifecycle", () => {
       key: "build",
       runParams: { no_cache: true },
       pollRun,
-      createMockResult: vi.fn(),
       onRunStarted,
       onRunFinished,
       onUpdateLogs,

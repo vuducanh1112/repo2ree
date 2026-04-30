@@ -9,7 +9,7 @@ import { createWorkflowStepHandlers } from "../../../application/workflow/workfl
 import type { WorkspaceEditorAction } from "../../../application/workspace-editor";
 import { workspaceEditorActions } from "../../../application/workspace-editor";
 import type { Ree } from "../../../domain/ree/ReeSpec";
-import type { ReeFile, ServiceParams } from "../../../domain/ree/ReeTypes";
+import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { useWorkspaceRuntime } from "../../../runtime/browser/BrowserRuntime";
 import { executeWorkflowStepCommands } from "./commandExecutors";
@@ -24,7 +24,6 @@ interface UseWorkspaceWorkflowArgs {
   ree: Ree;
   level: number;
   virtualFiles: FileTreeNode[];
-  serviceParams: ServiceParams;
 }
 
 export function useWorkspaceWorkflowRuns({
@@ -32,10 +31,8 @@ export function useWorkspaceWorkflowRuns({
   ree: reeDraft,
   level,
   virtualFiles,
-  serviceParams,
 }: UseWorkspaceWorkflowArgs) {
-  const { createWorkspaceService, ports, workspaceId, workspaceServiceMode } =
-    useWorkspaceRuntime();
+  const { workspaceGateway, ports, workspaceId } = useWorkspaceRuntime();
   const automationSessionRef = useRef(createWorkflowRunSession());
   const automationSession = automationSessionRef.current;
   const executeServiceRunRef = useRef<
@@ -46,29 +43,7 @@ export function useWorkspaceWorkflowRuns({
   const showToast = (msg: string, type: "info" | "success" | "error" = "info") =>
     dispatch(workspaceEditorActions.setToast({ message: msg, type }));
 
-  const executeServiceRunBridge = useCallback(
-    (key: string, params?: GenericServiceParams) => executeServiceRunRef.current(key, params),
-    [],
-  );
-
-  const workspaceService = useMemo(
-    () =>
-      createWorkspaceService({
-        ree: reeDraft,
-        virtualFiles,
-        serviceParams,
-        dispatch,
-        executeServiceRun: executeServiceRunBridge,
-      }),
-    [
-      createWorkspaceService,
-      dispatch,
-      executeServiceRunBridge,
-      reeDraft,
-      serviceParams,
-      virtualFiles,
-    ],
-  );
+  const workspaceService = useMemo(() => workspaceGateway, [workspaceGateway]);
 
   const hydrateWorkspace = useCallback(
     (workspace: { virtualFiles: FileTreeNode[]; workspaceReeFiles: ReeFile[]; ree?: Ree }) =>
@@ -80,7 +55,6 @@ export function useWorkspaceWorkflowRuns({
     ree: reeDraft,
     workspaceService,
     workspaceId,
-    workspaceServiceMode,
     hydrateWorkspace,
   });
 
@@ -94,7 +68,6 @@ export function useWorkspaceWorkflowRuns({
   const workflowStepHandlers = createWorkflowStepHandlers({
     ree: reeDraft,
     virtualFiles,
-    workspaceServiceMode,
     clock: ports.clock,
   });
 

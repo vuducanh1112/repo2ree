@@ -19,7 +19,6 @@ interface UseWorkspaceDraftSyncArgs {
   ree: Ree;
   workspaceService: WorkspaceGateway<FileTreeNode>;
   workspaceId: string;
-  workspaceServiceMode: "remote" | "mock";
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
 
@@ -27,7 +26,6 @@ export function useWorkspaceDraftSync({
   ree,
   workspaceService,
   workspaceId,
-  workspaceServiceMode,
   hydrateWorkspace,
 }: UseWorkspaceDraftSyncArgs) {
   const initialPatchKey = JSON.stringify(toReePatch(ree));
@@ -88,17 +86,13 @@ export function useWorkspaceDraftSync({
   }, [buildReePatch]);
 
   useEffect(() => {
-    if (workspaceServiceMode !== "remote") {
-      return;
-    }
     void refreshWorkspace({ forceReeHydration: true });
-  }, [workspaceServiceMode, refreshWorkspace]);
+  }, [refreshWorkspace]);
 
   useEffect(() => {
     const patch = buildReePatch();
     const patchKey = JSON.stringify(patch);
     const shouldScheduleSync = shouldScheduleReeDraftSync({
-      workspaceServiceMode,
       canUpdateReeDraft: !!workspaceService.updateReeDraft,
       patchKey,
       lastSyncedPatchKey: lastSyncedReeRef.current,
@@ -133,7 +127,7 @@ export function useWorkspaceDraftSync({
         syncTimerRef.current = null;
       }
     };
-  }, [workspaceId, workspaceServiceMode, workspaceService, buildReePatch, refreshWorkspaceFiles]);
+  }, [workspaceId, workspaceService, buildReePatch, refreshWorkspaceFiles]);
 
   return {
     buildReePatch,

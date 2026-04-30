@@ -8,7 +8,6 @@ interface WorkspaceHydrationPlanInput {
 }
 
 interface ReeDraftSyncPlanInput {
-  workspaceServiceMode: "remote" | "mock";
   canUpdateReeDraft: boolean;
   patchKey: string;
   lastSyncedPatchKey: string;
@@ -30,7 +29,7 @@ export function shouldHydrateRemoteRee(input: WorkspaceHydrationPlanInput): bool
 }
 
 export function shouldScheduleReeDraftSync(input: ReeDraftSyncPlanInput): boolean {
-  if (input.workspaceServiceMode !== "remote" || !input.canUpdateReeDraft) {
+  if (!input.canUpdateReeDraft) {
     return false;
   }
 

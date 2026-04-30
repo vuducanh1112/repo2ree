@@ -61,8 +61,8 @@ describe("executeWorkflowStep", () => {
       level: 2,
       virtualFiles: [],
       workflowRunner: {
-        pollRun: vi.fn(),
-        createMockResult: vi.fn(async () => ({
+        startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
+        pollRun: vi.fn(async () => ({
           status: "succeeded" as const,
           lines: [{ type: "ok" as const, msg: "built" }],
           ts: "2026-01-01T00:00:00Z",
@@ -109,8 +109,8 @@ describe("executeWorkflowStep", () => {
       level: 2,
       virtualFiles: [],
       workflowRunner: {
-        pollRun: vi.fn(),
-        createMockResult: vi.fn(async () => ({
+        startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
+        pollRun: vi.fn(async () => ({
           status: "failed" as const,
           lines: [{ type: "err" as const, msg: "nope" }],
           ts: "2026-01-01T00:00:00Z",
@@ -145,8 +145,8 @@ describe("executeWorkflowStep", () => {
       level: 2,
       virtualFiles: [],
       workflowRunner: {
-        pollRun: vi.fn(),
-        createMockResult: vi.fn(async () => ({
+        startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
+        pollRun: vi.fn(async () => ({
           status: "succeeded" as const,
           lines: [],
           ts: "2026-01-01T00:00:00Z",

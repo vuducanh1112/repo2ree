@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import type { AutomationStepRunParams } from "../../../../application/workflow/WorkflowTypes";
-import { MOCK_FILES } from "../../../../infra/workspace/InMemoryWorkspaceGateway";
 import { Ic } from "../../../shared/components/Icon";
 import {
   C,
@@ -173,7 +172,7 @@ export function PageBuildRuntime({
                   disabled={false}
                   value={ree.build_runtime_script}
                   onChange={(v) => onReeChange?.({ ...ree, build_runtime_script: v })}
-                  files={files || MOCK_FILES}
+                  files={files || []}
                   placeholder="build_runtime.sh"
                   filterFn={(p) => /\.sh$/i.test(p)}
                 />
@@ -202,7 +201,7 @@ export function PageBuildRuntime({
                     key={sf.fieldKey}
                     scriptKind={sf.scriptKind || null}
                     fieldKey={sf.fieldKey}
-                    files={files || MOCK_FILES}
+                    files={files || []}
                     onFilesChange={onFilesChange}
                     onPersistWorkspaceFile={onPersistWorkspaceFile}
                     ree={ree}
@@ -380,7 +379,7 @@ export function PageBuildRuntime({
               buildDone={runDone}
               ree={ree}
               imageColor={imageColor}
-              files={files || MOCK_FILES}
+              files={files || []}
             />
           </div>
 
@@ -458,7 +457,7 @@ export function PageBuildRuntime({
                   onChange={onReeChange}
                   onFocus={() => setFocusedField("runtime")}
                   active={false}
-                  files={files || MOCK_FILES}
+                  files={files || []}
                 />
                 <div style={S_FLEX_ROW_GAP_8}>
                   <button

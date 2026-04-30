@@ -31,34 +31,23 @@ function buildRee(): Ree {
 }
 
 describe("workflowOutcomePlanning", () => {
-  it("plans mock build artifact persistence", () => {
+  it("records the expected runtime path when build output is declared", () => {
     const result = planBuildEffect({
       ree: buildRee(),
       expectedOutput: "runtime.tar.gz",
-      workspaceServiceMode: "mock",
-      timestamp: "2026-01-01T00:00:00Z",
     });
 
-    expect(result.persistedFile?.path).toBe("runtime.tar.gz");
     expect(result.reePatch?.runtime).toBe("runtime.tar.gz");
   });
 
-  it("plans mock HBOM population", () => {
-    const result = planHbomEffect("mock");
-
-    expect(result.reePatch?.hardware_description?.cpus).toBeDefined();
-    expect(result.successMessage).toContain("mock machine");
+  it("plans HBOM success messaging", () => {
+    const result = planHbomEffect();
+    expect(result.successMessage).toContain("current machine");
   });
 
-  it("plans mock SBOM persistence", () => {
-    const result = planSbomEffect({
-      ree: buildRee(),
-      workspaceServiceMode: "mock",
-      timestamp: "2026-01-01T00:00:00Z",
-      namespaceSuffix: "123",
-    });
+  it("plans SBOM metadata", () => {
+    const result = planSbomEffect();
 
-    expect(result.persistedFile?.path).toBe("sbom.json");
     expect(result.reePatch.sbom).toBe("sbom.json");
   });
 
@@ -84,14 +73,12 @@ describe("workflowOutcomePlanning", () => {
       params: { _expectedOutput: "runtime.tar.gz" },
       ree: buildRee(),
       newLevel: 2,
-      workspaceServiceMode: "mock",
       timestamp: "2026-01-01T00:00:00Z",
       namespaceSuffix: "123",
       dependencyCount: 0,
       manifestCount: 0,
     });
 
-    expect(result.persistedFile?.path).toBe("runtime.tar.gz");
     expect(result.reePatch?.runtime).toBe("runtime.tar.gz");
   });
 
@@ -101,7 +88,6 @@ describe("workflowOutcomePlanning", () => {
       params: {},
       ree: buildRee(),
       newLevel: 4,
-      workspaceServiceMode: "mock",
       timestamp: "2026-01-01T00:00:00Z",
       namespaceSuffix: "123",
       dependencyCount: 7,

@@ -56,7 +56,6 @@ export function useWorkspaceEditor() {
     ree: reeDraft,
     level,
     virtualFiles,
-    serviceParams,
   });
 
   const commands = {

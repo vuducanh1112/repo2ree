@@ -27,7 +27,7 @@ interface WorkflowRunResult {
 }
 
 interface RunWorkflowLifecycleArgs {
-  startWorkflowRun?: (
+  startWorkflowRun: (
     key: string,
     params?: Record<string, string | boolean | number | null | undefined>,
   ) => Promise<WorkflowRunRecord>;
@@ -37,7 +37,6 @@ interface RunWorkflowLifecycleArgs {
     runId: string,
     onUpdate?: (update: WorkflowRunUpdate) => void,
   ) => Promise<WorkflowRunResult>;
-  createMockResult: () => Promise<WorkflowRunResult>;
   onRunStarted?: (key: string, runId: string) => void;
   onRunFinished?: (key: string) => void;
   onUpdateLogs?: (update: WorkflowRunUpdate) => void;
@@ -48,15 +47,10 @@ export async function runWorkflowLifecycle({
   key,
   runParams,
   pollRun,
-  createMockResult,
   onRunStarted,
   onRunFinished,
   onUpdateLogs,
 }: RunWorkflowLifecycleArgs): Promise<WorkflowRunResult> {
-  if (!startWorkflowRun) {
-    return createMockResult();
-  }
-
   let runId: string | null = null;
   try {
     const run = await startWorkflowRun(key, runParams);

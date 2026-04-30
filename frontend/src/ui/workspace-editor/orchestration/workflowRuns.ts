@@ -4,8 +4,6 @@ import type {
 } from "../../../application/ports/WorkspaceGateway";
 import { executeWorkflowStep } from "../../../application/workflow/executeWorkflowStep";
 import type { GenericServiceParams } from "../../../application/workflow/WorkflowStepTypes";
-import { computeEvaluateLevelFromFiles } from "../../../application/workflow/workflowDependencyAnalysis";
-import { deriveWorkflowStepLevel } from "../../../application/workflow/workflowRunPolicy";
 import type {
   WorkflowStepCommand,
   WorkflowStepHandlerMap,
@@ -15,7 +13,6 @@ import type { Ree } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { executeWorkflowStepCommands, type WorkspaceWorkflowDispatch } from "./commandExecutors";
-import { makeLogs } from "./logGenerator";
 import { pollWorkflowRun } from "./pollWorkflowRun";
 import type { ShowToast } from "./types";
 
@@ -60,10 +57,10 @@ export async function executeServiceRunAction({
 }: ExecuteServiceRunArgs): Promise<WorkflowRunLogEntry> {
   const runCommands = (commands: WorkflowStepCommand[]) =>
     executeWorkflowStepCommands(commands, { dispatch, persistWorkspaceFile, showToast });
-  const startWorkflowRun =
-    workspaceService.startWorkflowRun && workspaceService.getWorkflowRun
-      ? workspaceService.startWorkflowRun.bind(workspaceService)
-      : undefined;
+  if (!workspaceService.startWorkflowRun || !workspaceService.getWorkflowRun) {
+    throw new Error("Workspace gateway does not support workflow runs");
+  }
+  const startWorkflowRun = workspaceService.startWorkflowRun.bind(workspaceService);
 
   return executeWorkflowStep({
     key,
@@ -72,9 +69,8 @@ export async function executeServiceRunAction({
     level,
     virtualFiles,
     workflowRunner: {
-      startWorkflowRun: startWorkflowRun
-        ? (scriptKey, runParams) => startWorkflowRun(workspaceId, scriptKey, runParams)
-        : undefined,
+      startWorkflowRun: (scriptKey, runParams) =>
+        startWorkflowRun(workspaceId, scriptKey, runParams),
       pollRun: (runId, onUpdateLogs) =>
         pollWorkflowRun(workspaceService, {
           workspaceId,
@@ -83,17 +79,6 @@ export async function executeServiceRunAction({
           clock: ports.clock,
           sleep: ports.sleep,
         }),
-      createMockResult: async () => {
-        await ports.sleep(1600 + ports.random.int(0, 700));
-        const evaluatedLevel = computeEvaluateLevelFromFiles(virtualFiles || []);
-        const newLevel = deriveWorkflowStepLevel(key, level, evaluatedLevel);
-        const lines = makeLogs(key, ree, params, newLevel);
-        return {
-          status: "succeeded",
-          lines,
-          ts: ports.clock.nowIso(),
-        };
-      },
     },
     workflowStepHandlers,
     generatedIds: {
