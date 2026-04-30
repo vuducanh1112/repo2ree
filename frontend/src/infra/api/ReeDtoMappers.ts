@@ -1,5 +1,5 @@
 import { normalizeHBOM } from "../../domain/hbom/HbomSummary";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import { type Ree, type ReeSpec, toLegacyReeViewModel } from "../../domain/ree/ReeSpec";
 import type { ReviewDetailDto, WorkspaceDetailDto } from ".";
 
 function mapDraftToRee(
@@ -7,7 +7,7 @@ function mapDraftToRee(
   fallbackName: string,
   fallbackOriginUrl = "",
 ): Ree {
-  return {
+  const reeSpec: ReeSpec = {
     name: String(reeDraft.name ?? fallbackName ?? ""),
     origin_url: String(reeDraft.origin_url ?? fallbackOriginUrl ?? ""),
     source_type: (reeDraft.source_type as Ree["source_type"]) || "",
@@ -23,24 +23,34 @@ function mapDraftToRee(
       ? String(reeDraft.detected_dependencies)
       : undefined,
     hardware_description: normalizeHBOM(reeDraft.hardware_description),
-    _evalLevel: Number(reeDraft._evalLevel ?? 0),
-    _sealedAt: reeDraft._sealedAt ? String(reeDraft._sealedAt) : undefined,
-    _sealHash: reeDraft._sealHash ? String(reeDraft._sealHash) : undefined,
-    _sourceAvailable: Boolean(reeDraft._sourceAvailable),
-    _sourceIncluded: Boolean(reeDraft._sourceIncluded),
-    _sourceAcquiredBy: (reeDraft._sourceAcquiredBy as Ree["_sourceAcquiredBy"]) || undefined,
-    _uploadedArchive: reeDraft._uploadedArchive ? String(reeDraft._uploadedArchive) : undefined,
-    _sourceSnapshotArchive: reeDraft._sourceSnapshotArchive
-      ? String(reeDraft._sourceSnapshotArchive)
-      : undefined,
-    _sourceSnapshotCapturedAt: reeDraft._sourceSnapshotCapturedAt
-      ? String(reeDraft._sourceSnapshotCapturedAt)
-      : undefined,
-    _runtimeIncluded: Boolean(reeDraft._runtimeIncluded),
-    _downloadableFiles: Array.isArray(reeDraft._downloadableFiles)
-      ? reeDraft._downloadableFiles.map((item) => String(item))
-      : [],
   };
+
+  return toLegacyReeViewModel({
+    reeSpec,
+    workspaceSourceState: {
+      _sourceAvailable: Boolean(reeDraft._sourceAvailable),
+      _sourceIncluded: Boolean(reeDraft._sourceIncluded),
+      _sourceAcquiredBy: (reeDraft._sourceAcquiredBy as Ree["_sourceAcquiredBy"]) || undefined,
+      _uploadedArchive: reeDraft._uploadedArchive ? String(reeDraft._uploadedArchive) : undefined,
+      _sourceSnapshotArchive: reeDraft._sourceSnapshotArchive
+        ? String(reeDraft._sourceSnapshotArchive)
+        : undefined,
+      _sourceSnapshotCapturedAt: reeDraft._sourceSnapshotCapturedAt
+        ? String(reeDraft._sourceSnapshotCapturedAt)
+        : undefined,
+    },
+    artifactStatus: {
+      _runtimeIncluded: Boolean(reeDraft._runtimeIncluded),
+      _downloadableFiles: Array.isArray(reeDraft._downloadableFiles)
+        ? reeDraft._downloadableFiles.map((item) => String(item))
+        : [],
+      _sealedAt: reeDraft._sealedAt ? String(reeDraft._sealedAt) : undefined,
+      _sealHash: reeDraft._sealHash ? String(reeDraft._sealHash) : undefined,
+    },
+    evaluationState: {
+      _evalLevel: Number(reeDraft._evalLevel ?? 0),
+    },
+  });
 }
 
 export function mapReviewDraftToRee(review: ReviewDetailDto): Ree {

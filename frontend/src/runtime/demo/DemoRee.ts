@@ -1,7 +1,7 @@
 import { emptyHBOM } from "../../domain/hbom/HbomSummary";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import { type Ree, type ReeSpec, toLegacyReeViewModel } from "../../domain/ree/ReeSpec";
 
-export const DEMO_REE: Ree = {
+const DEMO_REE_SPEC: ReeSpec = {
   name: "genomics-pipeline-v2",
   swhid: "",
   origin_url: "https://github.com/lab/genomics-pipeline",
@@ -38,19 +38,33 @@ export const DEMO_REE: Ree = {
       os: "Debian Bookworm",
     },
   },
-  _sourceAvailable: false,
-  _sourceIncluded: true,
 };
 
-export const SEALED_DEMO_REE: Ree = {
-  ...DEMO_REE,
-  swhid: "swh:1:dir:4b825dc642cb6eb9a060e54bf8d69288fbee4904",
-  runtime: "runtime.tar.gz",
-  sbom: "sbom.spdx.json",
-  zenodo_doi: "10.5281/zenodo.1234567",
-  _evalLevel: 7,
-  _sealedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-  _sealHash: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  _sourceIncluded: true,
-  _runtimeIncluded: true,
-};
+export const DEMO_REE: Ree = toLegacyReeViewModel({
+  reeSpec: DEMO_REE_SPEC,
+  workspaceSourceState: {
+    _sourceAvailable: false,
+    _sourceIncluded: true,
+  },
+});
+
+export const SEALED_DEMO_REE: Ree = toLegacyReeViewModel({
+  reeSpec: {
+    ...DEMO_REE_SPEC,
+    swhid: "swh:1:dir:4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+    runtime: "runtime.tar.gz",
+    sbom: "sbom.spdx.json",
+    zenodo_doi: "10.5281/zenodo.1234567",
+  },
+  workspaceSourceState: {
+    _sourceIncluded: true,
+  },
+  artifactStatus: {
+    _runtimeIncluded: true,
+    _sealedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+    _sealHash: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  },
+  evaluationState: {
+    _evalLevel: 7,
+  },
+});

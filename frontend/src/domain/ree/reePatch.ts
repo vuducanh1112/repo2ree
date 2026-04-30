@@ -1,4 +1,4 @@
-import type { HBOM, Ree } from "./ReeSpec";
+import { type HBOM, type Ree, splitLegacyReeModel } from "./ReeSpec";
 
 interface ReePatch extends Record<string, unknown> {
   name: string;
@@ -28,30 +28,32 @@ interface ReePatch extends Record<string, unknown> {
 }
 
 export function toReePatch(ree: Ree): ReePatch {
+  const split = splitLegacyReeModel(ree);
+
   return {
-    name: ree.name || "",
-    origin_url: ree.origin_url || "",
-    source_type: ree.source_type || "",
-    runtime: ree.runtime || "",
-    build_runtime_script: ree.build_runtime_script || "",
-    activation_script: ree.activation_script || "",
-    sbom: ree.sbom || "",
-    swhid: ree.swhid || "",
-    zenodo_doi: ree.zenodo_doi || "",
-    dataverse_doi: ree.dataverse_doi || "",
-    repro_level: ree.repro_level || "",
-    detected_dependencies: ree.detected_dependencies || "",
-    hardware_description: ree.hardware_description || {},
-    _sealedAt: ree._sealedAt || "",
-    _sealHash: ree._sealHash || "",
-    _evalLevel: ree._evalLevel ?? 0,
-    _sourceIncluded: !!ree._sourceIncluded,
-    _sourceAvailable: !!ree._sourceAvailable,
-    _sourceAcquiredBy: ree._sourceAcquiredBy || "",
-    _uploadedArchive: ree._uploadedArchive || "",
-    _sourceSnapshotArchive: ree._sourceSnapshotArchive || "",
-    _sourceSnapshotCapturedAt: ree._sourceSnapshotCapturedAt || "",
-    _runtimeIncluded: !!ree._runtimeIncluded,
-    _downloadableFiles: ree._downloadableFiles || [],
+    name: split.reeSpec.name || "",
+    origin_url: split.reeSpec.origin_url || "",
+    source_type: split.reeSpec.source_type || "",
+    runtime: split.reeSpec.runtime || "",
+    build_runtime_script: split.reeSpec.build_runtime_script || "",
+    activation_script: split.reeSpec.activation_script || "",
+    sbom: split.reeSpec.sbom || "",
+    swhid: split.reeSpec.swhid || "",
+    zenodo_doi: split.reeSpec.zenodo_doi || "",
+    dataverse_doi: split.reeSpec.dataverse_doi || "",
+    repro_level: split.reeSpec.repro_level || "",
+    detected_dependencies: split.reeSpec.detected_dependencies || "",
+    hardware_description: split.reeSpec.hardware_description || {},
+    _sealedAt: split.artifactStatus._sealedAt || "",
+    _sealHash: split.artifactStatus._sealHash || "",
+    _evalLevel: split.evaluationState._evalLevel ?? 0,
+    _sourceIncluded: !!split.workspaceSourceState._sourceIncluded,
+    _sourceAvailable: !!split.workspaceSourceState._sourceAvailable,
+    _sourceAcquiredBy: split.workspaceSourceState._sourceAcquiredBy || "",
+    _uploadedArchive: split.workspaceSourceState._uploadedArchive || "",
+    _sourceSnapshotArchive: split.workspaceSourceState._sourceSnapshotArchive || "",
+    _sourceSnapshotCapturedAt: split.workspaceSourceState._sourceSnapshotCapturedAt || "",
+    _runtimeIncluded: !!split.artifactStatus._runtimeIncluded,
+    _downloadableFiles: split.artifactStatus._downloadableFiles || [],
   };
 }
