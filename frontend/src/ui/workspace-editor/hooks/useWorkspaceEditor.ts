@@ -16,26 +16,14 @@ import { useWorkspaceEditorContext } from "../providers/WorkspaceEditorProvider"
 
 export function useWorkspaceEditor() {
   const { state, dispatch } = useWorkspaceEditorContext();
+  const workspaceDraft = workspaceEditorSelectors.workspaceDraft(state);
+  const workspaceRemote = workspaceEditorSelectors.workspaceRemote(state);
+  const uiChrome = workspaceEditorSelectors.uiChrome(state);
   const workspaceEditor = workspaceEditorSelectors.state(state);
 
-  const {
-    ree: reeDraft,
-    locked,
-    actionStates,
-    badges,
-    timestamps,
-    workflowLogs,
-    workflowParams,
-    toast,
-    page,
-    repoMode,
-    focusedField,
-    navCollapsed,
-    workspaceFiles,
-    reeArtifactFiles,
-    sourceSnapshotFiles,
-    showReviewPreview,
-  } = workspaceEditor;
+  const { ree: reeDraft } = workspaceDraft;
+  const { showReviewPreview } = uiChrome;
+  const { workspaceFiles, reeArtifactFiles } = workspaceRemote;
 
   const currentReeFiles = useMemo<ReeFile[]>(() => reeArtifactFiles || [], [reeArtifactFiles]);
 
@@ -93,23 +81,9 @@ export function useWorkspaceEditor() {
   };
 
   return {
+    // Transitional facade while views move from the legacy workspaceEditor shape to slices.
     state: {
-      ree: reeDraft,
-      locked,
-      actionStates,
-      badges,
-      timestamps,
-      workflowLogs,
-      workflowParams,
-      toast,
-      page,
-      repoMode,
-      focusedField,
-      navCollapsed,
-      workspaceFiles,
-      reeArtifactFiles,
-      sourceSnapshotFiles,
-      showReviewPreview,
+      ...workspaceEditor,
       level,
       currentReeFiles,
     },

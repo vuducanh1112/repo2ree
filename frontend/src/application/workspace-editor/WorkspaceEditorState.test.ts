@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Ree } from "../../domain/ree/ReeSpec";
 import {
-  applyWorkspaceEditorAction,
-  createInitialWorkspaceEditorState,
-} from "./WorkspaceEditorState";
+  createInitialState,
+  workspaceEditorReducer,
+} from "../../ui/workspace-editor/providers/WorkspaceEditorProvider";
+import { workspaceEditorSelectors } from "./WorkspaceEditorSelectors";
 
 function buildRee(): Ree {
   return {
@@ -28,9 +29,9 @@ function buildRee(): Ree {
 
 describe("workspaceEditorState", () => {
   it("applies source patch outcomes to ree and source status metadata", () => {
-    const initial = createInitialWorkspaceEditorState(buildRee());
+    const initial = createInitialState(buildRee());
 
-    const next = applyWorkspaceEditorAction(initial, {
+    const next = workspaceEditorReducer(initial, {
       type: "workspaceEditor/applySourcePatchOutcome",
       outcome: {
         reePatch: {
@@ -45,19 +46,21 @@ describe("workspaceEditorState", () => {
         timestamp: "2026-01-01T00:00:00Z",
       },
     });
+    const view = workspaceEditorSelectors.state(next);
 
-    expect(next.ree.origin_url).toBe("https://example.org/repo.git");
-    expect(next.ree._sourceAvailable).toBe(true);
-    expect(next.actionStates.source).toBe("done");
-    expect(next.badges.source).toBe(true);
-    expect(next.timestamps.source).toBe("2026-01-01T00:00:00Z");
-    expect(next.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
+    expect(next.workspaceDraft.ree.origin_url).toBe("https://example.org/repo.git");
+    expect(next.workspaceDraft.ree._sourceAvailable).toBe(true);
+    expect(next.workflowRun.actionStates.source).toBe("done");
+    expect(next.workflowRun.badges.source).toBe(true);
+    expect(next.workflowRun.timestamps.source).toBe("2026-01-01T00:00:00Z");
+    expect(next.workspaceRemote.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
+    expect(view.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
   });
 
   it("records completion metadata for completed workflow runs", () => {
-    const initial = createInitialWorkspaceEditorState(buildRee());
+    const initial = createInitialState(buildRee());
 
-    const next = applyWorkspaceEditorAction(initial, {
+    const next = workspaceEditorReducer(initial, {
       type: "workspaceEditor/completeWorkflowRun",
       completion: {
         key: "build",
@@ -68,31 +71,48 @@ describe("workspaceEditorState", () => {
       },
     });
 
-    expect(next.workflowLogs.build?.lines[0]?.msg).toBe("done");
-    expect(next.actionStates.build).toBe("done");
-    expect(next.badges.build).toBe(true);
-    expect(next.timestamps.build).toBe("2026-01-01T00:00:00Z");
+    expect(next.workflowRun.workflowLogs.build?.lines[0]?.msg).toBe("done");
+    expect(next.workflowRun.actionStates.build).toBe("done");
+    expect(next.workflowRun.badges.build).toBe(true);
+    expect(next.workflowRun.timestamps.build).toBe("2026-01-01T00:00:00Z");
   });
 
   it("resets workflow-dependent workspace state on source change", () => {
     const initial = {
-      ...createInitialWorkspaceEditorState(buildRee()),
-      actionStates: { build: "done" as const },
-      badges: { build: true },
-      timestamps: { build: "2026-01-01T00:00:00Z" },
-      workspaceFiles: [{ id: "1", name: "README.md", type: "file" as const }],
+      ...createInitialState(buildRee()),
+      workflowRun: {
+        ...createInitialState(buildRee()).workflowRun,
+        actionStates: { build: "done" as const },
+        badges: { build: true },
+        timestamps: { build: "2026-01-01T00:00:00Z" },
+      },
+      workspaceRemote: {
+        ...createInitialState(buildRee()).workspaceRemote,
+        workspaceFiles: [{ id: "1", name: "README.md", type: "file" as const }],
+      },
     };
 
-    const next = applyWorkspaceEditorAction(initial, {
+    const next = workspaceEditorReducer(initial, {
       type: "workspaceEditor/resetWorkflowOnSourceChange",
-      workflowParams: initial.workflowParams,
+      workflowParams: initial.workflowRun.workflowParams,
     });
 
-    expect(next.actionStates).toEqual({});
-    expect(next.badges).toEqual({});
-    expect(next.timestamps).toEqual({});
-    expect(next.workspaceFiles).toEqual([]);
-    expect(next.ree.origin_url).toBe("");
-    expect(next.ree._sourceAvailable).toBe(false);
+    expect(next.workflowRun.actionStates).toEqual({});
+    expect(next.workflowRun.badges).toEqual({});
+    expect(next.workflowRun.timestamps).toEqual({});
+    expect(next.workspaceRemote.workspaceFiles).toEqual([]);
+    expect(next.workspaceDraft.ree.origin_url).toBe("");
+    expect(next.workspaceDraft.ree._sourceAvailable).toBe(false);
+  });
+
+  it("keeps the compatibility selector aligned with the new slice state", () => {
+    const state = createInitialState(buildRee());
+
+    const view = workspaceEditorSelectors.state(state);
+
+    expect(view.page).toBe(state.uiChrome.page);
+    expect(view.workflowParams).toBe(state.workflowRun.workflowParams);
+    expect(view.workspaceFiles).toBe(state.workspaceRemote.workspaceFiles);
+    expect(view.ree).toBe(state.workspaceDraft.ree);
   });
 });
