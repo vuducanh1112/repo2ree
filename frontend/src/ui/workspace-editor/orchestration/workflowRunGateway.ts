@@ -5,12 +5,12 @@ import type {
   WorkflowRunRecord,
 } from "../../../application/ports/repositoryTypes";
 import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
-import { isAutomationStepKey } from "../../../application/workflow/WorkflowStepDefinitions";
 import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type {
   AutomationStepKey,
   AutomationStepRunParams,
 } from "../../../application/workflow/WorkflowTypes";
+import { isAutomationStepKey } from "../../../application/workflow/workflowPolicies";
 import type { WorkflowStepHandlerMap } from "../../../application/workflow/workflowStepCommands";
 import type { WorkspaceEditorRuntimePorts } from "../../../application/workspace-editor/WorkspaceEditorPorts";
 import type { Ree } from "../../../domain/ree/ReeSpec";
@@ -98,8 +98,9 @@ export function createWorkflowRunGateway({
     });
 
   const runWorkflowStep = async (key: string, params: GenericWorkflowParams = {}) => {
-    if (isAutomationStepKey(key)) {
-      persistAutomationStepParams(key, params);
+    const automationKey = isAutomationStepKey(key) ? key : null;
+    if (automationKey) {
+      persistAutomationStepParams(automationKey, params);
     }
     await executeWorkflowRun(key, params);
   };

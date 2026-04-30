@@ -1,5 +1,5 @@
-import { AUTOMATION_STEPS } from "../../application/workflow/WorkflowStepDefinitions";
 import type { AutomationStepDefinition } from "../../application/workflow/WorkflowStepTypes";
+import { AUTOMATION_STEPS } from "../../application/workflow/workflowCatalog";
 import {
   PAGE,
   type WorkspaceEditorPage,

@@ -4,9 +4,10 @@ import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepRunParamsByKey } from "./WorkflowTypes";
 import { computeEvaluateLevelFromFiles } from "./workflowDependencyAnalysis";
+import { isAutomationStepKey } from "./workflowPolicies";
+import { buildWorkflowRunRequest } from "./workflowRequests";
 import { runWorkflowLifecycle } from "./workflowRunLifecycle";
 import {
-  buildWorkflowRunParams,
   deriveWorkflowStepLevel,
   isTerminalWorkflowRunFailure,
   isWorkflowStepKey,
@@ -93,11 +94,16 @@ export async function executeWorkflowStep({
 }: ExecuteWorkflowStepArgs): Promise<ExecuteWorkflowStepResult> {
   executeCommands([{ type: "setActionLoading", key }]);
 
-  const runParams = buildWorkflowRunParams(key, params, ree);
+  const runRequest = isAutomationStepKey(key)
+    ? buildWorkflowRunRequest(key, params as AutomationStepRunParamsByKey[typeof key], ree)
+    : { scriptKey: key, params };
   const result = await runWorkflowLifecycle({
     startWorkflowRun: workflowRunner.startWorkflowRun,
-    key,
-    runParams,
+    request: {
+      key,
+      scriptKey: runRequest.scriptKey,
+      params: runRequest.params,
+    },
     pollRun: workflowRunner.pollRun,
     onRunStarted,
     onRunFinished,

@@ -44,7 +44,6 @@ export interface AutomationStepDefinition {
   color: string;
   badge: AutomationStepBadge;
   desc: string;
-  requires: AutomationStepRequirement[];
   params: AutomationStepParam[];
 }
 
@@ -83,4 +82,3 @@ export type WorkflowRequirement = AutomationStepRequirement;
 export type WorkflowParam = AutomationStepParam;
 export type WorkflowParamValue = AutomationStepParamValue;
 export type GenericWorkflowParams = GenericAutomationStepParams;
-export type WorkflowDefinition = AutomationStepDefinition;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { scanDependencies } from "../../../../application/workflow/workflowDependencyAnalysis";
+import { getWorkflowRequirements } from "../../../../application/workflow/workflowPolicies";
 import { LEVELS } from "../../../../domain/review/levels";
 import { Ic } from "../../../shared/components/Icon";
 import { LevelBadge } from "../../../shared/components/LevelBadge";
@@ -63,6 +64,7 @@ export function PageEvaluate({
   const currentLevel = LEVELS[level];
   const standing = `${level + 1} / ${LEVELS.length}`;
   const completionPct = Math.round((level / (LEVELS.length - 1)) * 100);
+  const requirements = getWorkflowRequirements(workflow.key);
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
@@ -90,8 +92,8 @@ export function PageEvaluate({
             />
           )}
 
-          {workflow.requires && workflow.requires.length > 0 && missing.length === 0 && (
-            <RequirementsBanner status="met" items={workflow.requires} />
+          {requirements.length > 0 && missing.length === 0 && (
+            <RequirementsBanner status="met" items={requirements} />
           )}
 
           <WorkflowRunActionSection

@@ -36,11 +36,11 @@ describe("workflowRunPolicy", () => {
     const ree = buildRee();
 
     expect(buildWorkflowRunParams("activation", { timeout: "60" }, ree)).toEqual({
-      timeout: "60",
-      activation_script: "activate.sh",
+      activation_script_path: "activate.sh",
     });
     expect(buildWorkflowRunParams("build", { no_cache: true }, ree)).toEqual({
-      no_cache: true,
+      build_runtime_script_path: "",
+      produced_runtime_path: "",
     });
   });
 

@@ -32,15 +32,8 @@ export function createHttpWorkflowRunRepository(
       switch (scriptKey) {
         case "build":
           run = await repositoryClient.runsApi.createBuildRuntimeRun(workspaceId, {
-            build_runtime_script_path: String(
-              params.build_runtime_script_path ??
-                params.build_runtime_script ??
-                params.script ??
-                "",
-            ),
-            produced_runtime_path: String(
-              params.produced_runtime_path ?? params.runtime ?? params._expectedOutput ?? "",
-            ),
+            build_runtime_script_path: String(params.build_runtime_script_path ?? ""),
+            produced_runtime_path: String(params.produced_runtime_path ?? ""),
           });
           break;
         case "hbom":
@@ -51,16 +44,12 @@ export function createHttpWorkflowRunRepository(
           break;
         case "sbom":
           run = await repositoryClient.runsApi.createGenerateSbomRun(workspaceId, {
-            produced_runtime_path: String(
-              params.produced_runtime_path ?? params.runtime ?? params._expectedOutput ?? "",
-            ),
+            produced_runtime_path: String(params.produced_runtime_path ?? ""),
           });
           break;
         case "activation":
           run = await repositoryClient.runsApi.createActivationTestRun(workspaceId, {
-            activation_script_path: String(
-              params.activation_script_path ?? params.activation_script ?? "",
-            ),
+            activation_script_path: String(params.activation_script_path ?? ""),
           });
           break;
         case "evaluate":

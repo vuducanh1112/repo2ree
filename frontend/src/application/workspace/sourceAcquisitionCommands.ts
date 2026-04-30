@@ -1,7 +1,7 @@
 import type { Ree } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile, WorkflowParams } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
-import { initialAutomationStepParams } from "../workflow/WorkflowStepDefinitions";
+import { initialAutomationStepParams } from "../workflow/workflowCatalog";
 
 export interface SourceOutcomeCommandPayload {
   reePatch: Partial<Ree>;

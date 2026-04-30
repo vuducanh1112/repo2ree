@@ -1,5 +1,5 @@
 import type React from "react";
-import { AUTOMATION_STEPS } from "../../../../../application/workflow/WorkflowStepDefinitions";
+import { AUTOMATION_STEPS } from "../../../../../application/workflow/workflowCatalog";
 import { FIELD_META } from "../../../../../application/workspace-editor/fieldMeta";
 import type { WorkspaceEditorPage as WorkspaceEditorPageType } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialAutomationStepParams } from "../../application/workflow/WorkflowStepDefinitions";
+import { initialAutomationStepParams } from "../../application/workflow/workflowCatalog";
 import type { WorkspaceSourceResetInput } from "./sourceChangeConsequences";
 import { computeSourceChangeConsequences } from "./sourceChangeConsequences";
 

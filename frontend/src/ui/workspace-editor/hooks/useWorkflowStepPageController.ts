@@ -1,12 +1,12 @@
 import { useCallback, useMemo } from "react";
+import type { WorkflowParamValue } from "../../../application/workflow/WorkflowStepTypes";
+import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
 import {
   AUTOMATION_STEPS,
   defaultParamsForAutomationStep,
-} from "../../../application/workflow/WorkflowStepDefinitions";
-import type { WorkflowParamValue } from "../../../application/workflow/WorkflowStepTypes";
-import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
+} from "../../../application/workflow/workflowCatalog";
+import { missingWorkflowRequirements } from "../../../application/workflow/workflowPolicies";
 import { workspaceEditorPageForField } from "../../../application/workspace-editor/WorkspaceEditorNavigation";
-import { missingRequirements } from "../orchestration/requirements";
 import type { useWorkspaceEditor } from "./useWorkspaceEditor";
 
 type WorkspaceEditorController = ReturnType<typeof useWorkspaceEditor>;
@@ -28,7 +28,7 @@ export function useWorkflowStepPageController({
     if (!workflowStep) {
       return [];
     }
-    return missingRequirements(workflowStep, ree);
+    return missingWorkflowRequirements(workflowStep.key, ree);
   }, [workflowStep, ree]);
 
   const params = useMemo(() => {
@@ -37,7 +37,7 @@ export function useWorkflowStepPageController({
     }
     return (
       (workflowParams[workflowStep.key] as AutomationStepRunParams | undefined) ??
-      defaultParamsForAutomationStep(workflowStep)
+      defaultParamsForAutomationStep(workflowStep.key)
     );
   }, [workflowStep, workflowParams]);
 
@@ -50,7 +50,7 @@ export function useWorkflowStepPageController({
       commands.setWorkflowParams((previous) => ({
         ...previous,
         [workflowStep.key]: {
-          ...(previous[workflowStep.key] ?? defaultParamsForAutomationStep(workflowStep)),
+          ...(previous[workflowStep.key] ?? defaultParamsForAutomationStep(workflowStep.key)),
           [paramKey]: value,
         },
       }));

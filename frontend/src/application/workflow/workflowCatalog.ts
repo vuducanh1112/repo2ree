@@ -5,9 +5,9 @@ import type {
   AutomationStepParamsByKey,
 } from "./WorkflowTypes";
 
-type AutomationStep = AutomationStepDefinition & { key: AutomationStepKey };
+type WorkflowCatalogEntry = AutomationStepDefinition & { key: AutomationStepKey };
 
-export const AUTOMATION_STEPS: AutomationStep[] = [
+export const AUTOMATION_STEPS: WorkflowCatalogEntry[] = [
   {
     key: "evaluate",
     label: "Evaluate",
@@ -15,7 +15,6 @@ export const AUTOMATION_STEPS: AutomationStep[] = [
     color: "#7c3aed",
     badge: { label: "Evaluated", color: "#7c3aed", bg: "#f5f3ff" },
     desc: "Get a quick reproducibility score for this repository. This scans the repository contents to assign a level.",
-    requires: [{ field: "_sourceAvailable", label: "Source loaded in workspace" }],
     params: [
       {
         key: "strict",
@@ -40,10 +39,6 @@ export const AUTOMATION_STEPS: AutomationStep[] = [
     color: "#0891b2",
     badge: { label: "Built", color: "#0891b2", bg: "#ecfeff" },
     desc: "Create the runnable environment for this project. This executes build_runtime_script to build the runtime from scratch.",
-    requires: [
-      { field: "_sourceAvailable", label: "Source available" },
-      { field: "build_runtime_script", label: "Build script" },
-    ],
     params: [
       {
         key: "no_cache",
@@ -69,7 +64,6 @@ export const AUTOMATION_STEPS: AutomationStep[] = [
     color: "#0f766e",
     badge: { label: "HBOM profiled", color: "#0f766e", bg: "#ecfeff" },
     desc: "Inspect the current machine and prefill the HBOM with detected CPU, GPU, memory, storage, and network details.",
-    requires: [],
     params: [],
   },
   {
@@ -79,7 +73,6 @@ export const AUTOMATION_STEPS: AutomationStep[] = [
     color: "#16a34a",
     badge: { label: "SBOM ready", color: "#16a34a", bg: "#f0fdf4" },
     desc: "Generate a complete list of all software in your environment. This runs a dedicated sbom tool on the built runtime tarball and outputs an SPDX 2.3 SBOM.",
-    requires: [{ field: "runtime", label: "Runtime" }],
     params: [
       {
         key: "format",
@@ -98,7 +91,6 @@ export const AUTOMATION_STEPS: AutomationStep[] = [
     color: "#7c3aed",
     badge: { label: "Activation passed", color: "#7c3aed", bg: "#f5f3ff" },
     desc: "Check that the packaged environment actually starts and activates. This loads the runtime tarball and verifies activation succeeds by running the activation script.",
-    requires: [{ field: "activation_script", label: "Activation script" }],
     params: [
       {
         key: "timeout",
@@ -118,20 +110,26 @@ export const AUTOMATION_STEPS: AutomationStep[] = [
   },
 ];
 
+const DEFAULT_AUTOMATION_STEP_PARAMS: AutomationStepParams = {
+  evaluate: { strict: false, swhid_check: true },
+  build: { no_cache: true, platform: "linux/amd64" },
+  hbom: {},
+  sbom: { format: "spdx-json" },
+  activation: { timeout: "60", verbose: false },
+};
+
 export function defaultParamsForAutomationStep<K extends AutomationStepKey>(
-  step: Extract<AutomationStep, { key: K }>,
+  key: K,
 ): AutomationStepParamsByKey[K] {
-  return Object.fromEntries(
-    (step.params || []).map((p) => [p.key, p.default]),
-  ) as AutomationStepParamsByKey[K];
+  return DEFAULT_AUTOMATION_STEP_PARAMS[key];
 }
 
 export function initialAutomationStepParams(): AutomationStepParams {
-  return Object.fromEntries(
-    AUTOMATION_STEPS.map((step) => [step.key, defaultParamsForAutomationStep(step)]),
-  ) as AutomationStepParams;
-}
-
-export function isAutomationStepKey(key: string): key is AutomationStepKey {
-  return AUTOMATION_STEPS.some((step) => step.key === key);
+  return {
+    evaluate: { ...DEFAULT_AUTOMATION_STEP_PARAMS.evaluate },
+    build: { ...DEFAULT_AUTOMATION_STEP_PARAMS.build },
+    hbom: { ...DEFAULT_AUTOMATION_STEP_PARAMS.hbom },
+    sbom: { ...DEFAULT_AUTOMATION_STEP_PARAMS.sbom },
+    activation: { ...DEFAULT_AUTOMATION_STEP_PARAMS.activation },
+  };
 }

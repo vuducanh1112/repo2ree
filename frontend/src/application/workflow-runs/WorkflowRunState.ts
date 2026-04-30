@@ -5,7 +5,7 @@ import type {
   WorkflowLogs,
   WorkflowParams,
 } from "../../domain/ree/ReeTypes";
-import { initialAutomationStepParams } from "../workflow/WorkflowStepDefinitions";
+import { initialAutomationStepParams } from "../workflow/workflowCatalog";
 
 export type WorkflowRunStateUpdater<T> = T | ((previous: T) => T);
 

@@ -17,8 +17,11 @@ describe("runWorkflowLifecycle", () => {
 
     const result = await runWorkflowLifecycle({
       startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
-      key: "build",
-      runParams: { no_cache: true },
+      request: {
+        key: "build",
+        scriptKey: "build",
+        params: { build_runtime_script_path: "build.sh", produced_runtime_path: "runtime.tar.gz" },
+      },
       pollRun,
       onRunStarted,
       onRunFinished,
