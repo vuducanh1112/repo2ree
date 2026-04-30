@@ -13,7 +13,7 @@ import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { Ic } from "../shared/components/Icon";
 import { LevelBadge } from "../shared/components/LevelBadge";
 import { C, F, hoverBg, hoverColor, S_SECTION_LABEL_SMALL } from "../theme/theme";
-import { PageFiles } from "../workspace-editor/pages/files/FilesPage";
+import { PageFiles } from "../workspace-shell/pages/files/FilesPage";
 import {
   MetaRow,
   REACTIVATION_STEPS,

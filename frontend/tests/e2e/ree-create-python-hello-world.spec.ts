@@ -177,7 +177,9 @@ test("upload source archive into workspace", async ({ page }) => {
   await test.step("Open REE creation flow", async () => {
     await page.goto("/");
     await clickDemo(page, page.getByRole("button", { name: "Create REE" }), "Start REE creation");
-    await expect(page.getByRole("main").getByText("Source Repo", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("main").getByText("Source Acquisition", { exact: true }),
+    ).toBeVisible();
   });
 
   await test.step("Upload source archive", async () => {

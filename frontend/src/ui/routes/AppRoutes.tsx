@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { APP_ROUTE } from "../../application/workspace-editor/WorkspaceEditorPages";
+import { APP_ROUTE } from "../../application/workspace-shell/WorkspaceShellPages";
 import type { Ree } from "../../domain/ree/ReeSpec";
 import { mapReviewDraftToRee } from "../../infra/api/ReeDtoMappers";
 import { useWorkspaceRuntime } from "../../runtime/browser/BrowserRuntime";
@@ -8,7 +8,7 @@ import { SEALED_DEMO_REE } from "../../runtime/demo/DemoRee";
 import { LandingView } from "../landing/LandingView";
 import { PodOrbitControl } from "../reviewer/PodOrbitControl";
 import { ReviewerView } from "../reviewer/ReviewerView";
-import { WorkspaceEditorView } from "../workspace-editor/WorkspaceEditorView";
+import { WorkspaceShellView } from "../workspace-shell/WorkspaceShellView";
 
 function ReviewerRouteView({ onBack }: { onBack: () => void }) {
   const location = useLocation();
@@ -96,7 +96,7 @@ export function AppRoutes() {
       <Route
         path={APP_ROUTE.WORKSPACE}
         element={
-          <WorkspaceEditorView
+          <WorkspaceShellView
             onBack={() => navigate(APP_ROUTE.ROOT)}
             defaultReviewedRee={SEALED_DEMO_REE}
             PodOrbitControl={PodOrbitControl}

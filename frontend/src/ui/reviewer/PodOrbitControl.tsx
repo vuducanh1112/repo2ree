@@ -2,7 +2,7 @@ import type { Level, StepState } from "../../application/workflow/WorkflowStepTy
 import { Ic } from "../shared/components/Icon";
 import { LevelBadge } from "../shared/components/LevelBadge";
 import { C, F } from "../theme/theme";
-import { PodWidget } from "../workspace-editor/pages/overview/PodWidget";
+import { PodWidget } from "../workspace-shell/pages/overview/PodWidget";
 import { REACTIVATION_STEPS } from "./reviewerSupport";
 
 interface PodOrbitControlProps {

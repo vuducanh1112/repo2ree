@@ -4,12 +4,12 @@ import type { ArtifactRepository } from "../../application/ports/ArtifactReposit
 import type { ReviewRepository } from "../../application/ports/ReviewRepository";
 import type { WorkflowRunRepository } from "../../application/ports/WorkflowRunRepository";
 import type { WorkspaceRepository } from "../../application/ports/WorkspaceRepository";
-import type { WorkspaceEditorRuntimePorts } from "../../application/workspace-editor/WorkspaceEditorPorts";
+import type { WorkspaceShellRuntimePorts } from "../../application/workspace-shell/WorkspaceShellPorts";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 
 export interface WorkspaceRuntimeValue {
   workspaceId: string;
-  ports: WorkspaceEditorRuntimePorts;
+  ports: WorkspaceShellRuntimePorts;
   workspaceRepository: WorkspaceRepository<FileTreeNode>;
   workflowRunRepository: WorkflowRunRepository;
   artifactRepository: ArtifactRepository;

@@ -20,10 +20,10 @@ export function resolveWorkspaceDraftUpdater<T>(
 }
 
 export function createInitialWorkspaceDraftState(
-  initialWorkspaceEditorRee: Ree,
+  initialWorkspaceShellRee: Ree,
 ): WorkspaceDraftState {
   return {
-    ree: enforceSourceOriginRules(initialWorkspaceEditorRee),
+    ree: enforceSourceOriginRules(initialWorkspaceShellRee),
     locked: false,
     repoMode: "url",
   };

@@ -1,12 +1,12 @@
 import type { ToastState } from "../workflow/WorkflowStepTypes";
-import type { WorkspaceEditorPage } from "../workspace-editor/WorkspaceEditorPages";
-import { PAGE } from "../workspace-editor/WorkspaceEditorPages";
+import type { WorkspaceShellPage } from "../workspace-shell/WorkspaceShellPages";
+import { PAGE } from "../workspace-shell/WorkspaceShellPages";
 
 export type UiChromeStateUpdater<T> = T | ((previous: T) => T);
 
 export interface UiChromeState {
   toast: ToastState | null;
-  page: WorkspaceEditorPage;
+  page: WorkspaceShellPage;
   focusedField: string | null;
   navCollapsed: boolean;
   showReviewPreview: boolean;

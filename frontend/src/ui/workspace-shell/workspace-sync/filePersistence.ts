@@ -1,0 +1,43 @@
+import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
+import { planWorkspaceFilePersistence } from "../../../application/workspace/workspaceFileMutationPlanning";
+import type { FileTreeNode } from "../../../domain/workspace/FileTree";
+import type { ShowToast } from "../workflow-runs/types";
+
+interface CreateWorkspaceFilePersistenceArgs {
+  workspaceRepository: WorkspaceRepository<FileTreeNode>;
+  workspaceId: string;
+  refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
+  showToast: ShowToast;
+}
+
+export function createWorkspaceFilePersistence({
+  workspaceRepository,
+  workspaceId,
+  refreshWorkspaceFiles,
+  showToast,
+}: CreateWorkspaceFilePersistenceArgs) {
+  const persistWorkspaceFile = async (
+    previousPath: string | undefined,
+    path: string,
+    content: string,
+  ): Promise<void> => {
+    try {
+      const plan = planWorkspaceFilePersistence(previousPath, path);
+      if (plan.shouldDeletePrevious) {
+        await workspaceRepository.deleteFile(workspaceId, plan.normalizedPreviousPath || "");
+      }
+      await workspaceRepository.updateFile(workspaceId, plan.normalizedPath, content);
+      await refreshWorkspaceFiles();
+      showToast(plan.successMessage, "success");
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? `Failed to save ${path}: ${error.message}`
+          : `Failed to save ${path}`,
+        "error",
+      );
+    }
+  };
+
+  return { persistWorkspaceFile };
+}

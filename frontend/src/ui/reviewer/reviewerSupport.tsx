@@ -9,7 +9,7 @@ import type { Ree } from "../../domain/ree/ReeSpec";
 import type { LogLine } from "../../domain/ree/ReeTypes";
 import { Ic } from "../shared/components/Icon";
 import { C, F, hoverColor, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
-import { WorkflowLogSection } from "../workspace-editor/components/workflowRunPanels";
+import { WorkflowLogSection } from "../workspace-shell/components/workflowRunPanels";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,

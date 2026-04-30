@@ -1,5 +1,5 @@
 import type { Ree } from "../../domain/ree/ReeSpec";
-import { PAGE } from "../workspace-editor/WorkspaceEditorPages";
+import { PAGE } from "../workspace-shell/WorkspaceShellPages";
 import type { WorkflowRequirement } from "./WorkflowStepTypes";
 import type { AutomationStepKey } from "./WorkflowTypes";
 

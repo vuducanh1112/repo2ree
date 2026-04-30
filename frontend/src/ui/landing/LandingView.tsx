@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import {
   APP_ROUTE,
   type AppLoadRoutePath,
-} from "../../application/workspace-editor/WorkspaceEditorPages";
+} from "../../application/workspace-shell/WorkspaceShellPages";
 import { LEVELS } from "../../domain/review/levels";
 import { useWorkspaceRuntime } from "../../runtime/browser/BrowserRuntime";
 import { Ic } from "../shared/components/Icon";
