@@ -5,9 +5,7 @@ import {
   type AppLoadRoutePath,
 } from "../../application/workspace-editor/WorkspaceEditorPages";
 import { LEVELS } from "../../domain/review/levels";
-import { ApiClient } from "../../infra/api/ApiClient";
-import { ReviewsApi } from "../../infra/api/ReviewsApi";
-import { WorkspaceApi } from "../../infra/api/WorkspaceApi";
+import { useWorkspaceRuntime } from "../../runtime/browser/BrowserRuntime";
 import { Ic } from "../shared/components/Icon";
 import { C, F, hoverBg, hoverColor, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
 
@@ -21,6 +19,7 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 });
 
 export function LandingView({ onLoad }: LandingViewProps) {
+  const { reviewRepository, workspaceRepository, workspaceId } = useWorkspaceRuntime();
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingReviewUpload, setLoadingReviewUpload] = useState(false);
   const [reviewError, setReviewError] = useState<string>("");
@@ -29,17 +28,8 @@ export function LandingView({ onLoad }: LandingViewProps) {
   const createRee = async () => {
     setLoadingCreate(true);
     try {
-      const env =
-        (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
-      const client = new ApiClient({
-        baseUrl: env.VITE_API_BASE_URL || "",
-      });
-      const workspaceApi = new WorkspaceApi(client);
-      const workspace = await workspaceApi.createWorkspace({
-        sourceMode: "upload",
-        name: "REE Workspace",
-      });
-      onLoad(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(workspace.reeId)}`);
+      const workspace = await workspaceRepository.getWorkspace(workspaceId);
+      onLoad(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(workspace.id)}`);
     } catch {
       onLoad(APP_ROUTE.WORKSPACE);
     } finally {
@@ -51,21 +41,14 @@ export function LandingView({ onLoad }: LandingViewProps) {
     setLoadingReviewUpload(true);
     setReviewError("");
     try {
-      const env =
-        (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
-      const client = new ApiClient({
-        baseUrl: env.VITE_API_BASE_URL || "",
-      });
-      const reviewsApi = new ReviewsApi(client);
-
-      const init = await reviewsApi.initReviewUpload({
+      const init = await reviewRepository.initReviewUpload({
         fileName: file.name,
         size: file.size,
         contentType: file.type || "application/zip",
       });
 
-      await reviewsApi.uploadReviewBytes(init.uploadUrl, await file.arrayBuffer());
-      await reviewsApi.completeReviewUpload(init.reviewId, {
+      await reviewRepository.uploadReviewBytes(init.uploadUrl, await file.arrayBuffer());
+      await reviewRepository.completeReviewUpload(init.reviewId, {
         uploadToken: init.uploadToken,
         archiveName: file.name,
       });

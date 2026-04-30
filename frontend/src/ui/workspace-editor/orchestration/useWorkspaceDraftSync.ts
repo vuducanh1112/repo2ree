@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { WorkspaceBackendGateway } from "../../../application/ports/WorkspaceBackendGateway";
+import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
 import {
   shouldHydrateRemoteRee,
   shouldScheduleReeDraftSync,
@@ -18,14 +18,14 @@ interface HydratedWorkspaceSnapshot {
 
 interface UseWorkspaceDraftSyncArgs {
   ree: Ree;
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workspaceRepository: WorkspaceRepository<FileTreeNode>;
   workspaceId: string;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
 
 export function useWorkspaceDraftSync({
   ree,
-  workspaceService,
+  workspaceRepository,
   workspaceId,
   hydrateWorkspace,
 }: UseWorkspaceDraftSyncArgs) {
@@ -36,14 +36,13 @@ export function useWorkspaceDraftSync({
   const hasHydratedRemoteReeRef = useRef<boolean>(false);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const workspaceQuery = useWorkspaceQuery({
-    workspaceService,
+    workspaceRepository,
     workspaceId,
     enabled: false,
   });
-  const canUpdateReeDraft = !!workspaceService.updateReeDraft;
   const { refresh: fetchWorkspace } = workspaceQuery;
   const { mutateAsync: updateReeDraft } = useUpdateReeDraftMutation({
-    workspaceService,
+    workspaceRepository,
     workspaceId,
   });
 
@@ -105,7 +104,7 @@ export function useWorkspaceDraftSync({
     const patch = buildReePatch();
     const patchKey = JSON.stringify(patch);
     const shouldScheduleSync = shouldScheduleReeDraftSync({
-      canUpdateReeDraft,
+      canUpdateReeDraft: true,
       patchKey,
       lastSyncedPatchKey: lastSyncedReeRef.current,
     });
@@ -139,7 +138,7 @@ export function useWorkspaceDraftSync({
         syncTimerRef.current = null;
       }
     };
-  }, [buildReePatch, canUpdateReeDraft, refreshWorkspaceFiles, updateReeDraft]);
+  }, [buildReePatch, refreshWorkspaceFiles, updateReeDraft]);
 
   return {
     buildReePatch,

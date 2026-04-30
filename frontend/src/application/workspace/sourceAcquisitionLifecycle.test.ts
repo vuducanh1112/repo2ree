@@ -2,18 +2,21 @@ import { describe, expect, it, vi } from "vitest";
 import { runSourceWorkspaceAction } from "./sourceAcquisitionLifecycle";
 
 describe("runSourceWorkspaceAction", () => {
-  it("falls back to resetWorkspace when workflow runs are unavailable", async () => {
-    const resetWorkspace = vi.fn(async () => {});
+  it("falls back to workspace reset when no workflow mode is requested", async () => {
+    const resetWorkspaceRequest = vi.fn(async () => {});
 
     const result = await runSourceWorkspaceAction({
-      workspaceService: { resetWorkspace },
+      workspaceRepository: { resetWorkspaceRequest },
+      workflowRunRepository: {
+        startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
+      },
       workspaceId: "active",
       resetPayload: '{"mode":"clear"}',
-      runParams: { mode: "clear" },
+      runParams: {},
       pollRun: vi.fn(),
     });
 
-    expect(resetWorkspace).toHaveBeenCalledWith("active", '{"mode":"clear"}');
+    expect(resetWorkspaceRequest).toHaveBeenCalledWith("active", { mode: "clear" });
     expect(result.status).toBe("succeeded");
   });
 
@@ -27,10 +30,11 @@ describe("runSourceWorkspaceAction", () => {
     });
 
     const result = await runSourceWorkspaceAction({
-      workspaceService: {
-        resetWorkspace: vi.fn(async () => {}),
+      workspaceRepository: {
+        resetWorkspaceRequest: vi.fn(async () => {}),
+      },
+      workflowRunRepository: {
         startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
-        getWorkflowRun: vi.fn(async () => ({ status: "running" as const })),
       },
       workspaceId: "active",
       resetPayload: '{"mode":"download"}',

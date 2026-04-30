@@ -1,4 +1,5 @@
-import type { WorkspaceBackendGateway } from "../../../application/ports/WorkspaceBackendGateway";
+import type { ArtifactRepository } from "../../../application/ports/ArtifactRepository";
+import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
 import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
@@ -8,7 +9,8 @@ import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { ShowToast } from "./types";
 
 interface CreateDownloadActionsArgs {
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workspaceRepository: WorkspaceRepository<FileTreeNode>;
+  artifactRepository: ArtifactRepository;
   workspaceId: string;
   ports: WorkspaceEditorRuntimePorts;
   getReeName: () => string;
@@ -17,7 +19,8 @@ interface CreateDownloadActionsArgs {
 }
 
 export function createDownloadActions({
-  workspaceService,
+  workspaceRepository,
+  artifactRepository,
   workspaceId,
   ports,
   getReeName,
@@ -26,10 +29,7 @@ export function createDownloadActions({
 }: CreateDownloadActionsArgs) {
   const downloadWorkspaceFile = async (path: string, suggestedName?: string): Promise<void> => {
     try {
-      if (!workspaceService.getFileBytes) {
-        throw new Error("Workspace file download is not supported by this workflow backend");
-      }
-      const fileBytes = await workspaceService.getFileBytes(workspaceId, path);
+      const fileBytes = await workspaceRepository.getFileBytes(workspaceId, path);
       const plan = planWorkspaceFileDownload(path, suggestedName);
       ports.browserDownloads.downloadBlob(fileBytes, {
         fileName: plan.downloadName,
@@ -48,16 +48,9 @@ export function createDownloadActions({
 
   const handleDownloadRee = () => {
     const runDownload = async () => {
-      if (!workspaceService.getReeArchive) {
-        showToast("REE archive download requires backend workspace service", "error");
-        return;
-      }
-
       try {
-        if (workspaceService.updateReeDraft) {
-          await workspaceService.updateReeDraft(workspaceId, buildReePatch());
-        }
-        const archiveDownload = await workspaceService.getReeArchive(workspaceId);
+        await workspaceRepository.updateReeDraft(workspaceId, buildReePatch());
+        const archiveDownload = await artifactRepository.getReeArchive(workspaceId);
         const plan = planReeArchiveDownload(getReeName(), archiveDownload.fileName);
         ports.browserDownloads.downloadBlob(archiveDownload.bytes, {
           fileName: plan.archiveFileName,

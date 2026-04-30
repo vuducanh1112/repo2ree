@@ -60,26 +60,6 @@ export interface ReeProject<TFile = unknown> {
   ree?: Ree;
 }
 
-export interface WorkspaceBackendGateway<TFile = unknown> {
-  getWorkspace(id: string): Promise<ReeProject<TFile>>;
-  updateFile(id: string, path: string, content: string): Promise<void>;
-  updateReeDraft?(id: string, reePatch: Record<string, unknown>): Promise<void>;
-  deleteFile?(id: string, path: string): Promise<void>;
-  getFileBytes?(id: string, path: string): Promise<ArrayBuffer>;
-  getReeArchive?(id: string): Promise<WorkspaceBinaryDownload>;
-  runScript(id: string, scriptKey: string): Promise<WorkflowRunLogEntry>;
-  resetWorkspace(id: string, newSource: string): Promise<void>;
-  resetWorkspaceRequest?: (id: string, request: WorkspaceResetPayload) => Promise<void>;
-  startWorkflowRun?: (
-    id: string,
-    scriptKey: string,
-    params?: Record<string, string | boolean | number | null | undefined>,
-  ) => Promise<WorkflowRunRecord>;
-  getWorkflowRun?: (id: string, runId: string) => Promise<WorkflowRunRecord>;
-  getWorkflowRunLogs?: (id: string, runId: string, cursor?: string) => Promise<WorkflowRunLogChunk>;
-  cancelWorkflowRun?: (id: string, runId: string) => Promise<WorkflowRunStatus>;
-}
-
 export function serializeWorkspaceResetPayload(payload: WorkspaceResetPayload): string {
   return JSON.stringify(payload);
 }

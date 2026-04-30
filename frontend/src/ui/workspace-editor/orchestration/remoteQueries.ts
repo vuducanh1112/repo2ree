@@ -10,8 +10,9 @@ import type {
   ReeProject,
   WorkflowRunLogChunk,
   WorkflowRunRecord,
-  WorkspaceBackendGateway,
-} from "../../../application/ports/WorkspaceBackendGateway";
+} from "../../../application/ports/repositoryTypes";
+import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
+import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
 import { toRemoteResourceState } from "../../../application/remote-resource/RemoteResourceState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 
@@ -30,67 +31,57 @@ function workflowRunLogsQueryKey(workspaceId: string, runId: string, cursor?: st
 }
 
 function workspaceQueryOptions(
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>,
+  workspaceRepository: WorkspaceRepository<FileTreeNode>,
   workspaceId: string,
 ) {
   return queryOptions({
     queryKey: workspaceQueryKey(workspaceId),
-    queryFn: () => workspaceService.getWorkspace(workspaceId),
+    queryFn: () => workspaceRepository.getWorkspace(workspaceId),
   });
 }
 
 function workflowRunQueryOptions(
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>,
+  workflowRunRepository: WorkflowRunRepository,
   workspaceId: string,
   runId: string,
 ) {
   return queryOptions({
     queryKey: workflowRunQueryKey(workspaceId, runId),
-    queryFn: async () => {
-      if (!workspaceService.getWorkflowRun) {
-        throw new Error("Workflow polling is not supported by this workflow backend");
-      }
-      return workspaceService.getWorkflowRun(workspaceId, runId);
-    },
+    queryFn: () => workflowRunRepository.getWorkflowRun(workspaceId, runId),
   });
 }
 
 function workflowRunLogsQueryOptions(
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>,
+  workflowRunRepository: WorkflowRunRepository,
   workspaceId: string,
   runId: string,
   cursor?: string,
 ) {
   return queryOptions({
     queryKey: workflowRunLogsQueryKey(workspaceId, runId, cursor),
-    queryFn: async () => {
-      if (!workspaceService.getWorkflowRunLogs) {
-        return { lines: [], hasMore: false } satisfies WorkflowRunLogChunk;
-      }
-      return workspaceService.getWorkflowRunLogs(workspaceId, runId, cursor);
-    },
+    queryFn: () => workflowRunRepository.getWorkflowRunLogs(workspaceId, runId, cursor),
   });
 }
 
 interface UseWorkspaceQueryArgs {
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workspaceRepository: WorkspaceRepository<FileTreeNode>;
   workspaceId: string;
   enabled?: boolean;
 }
 
 export function useWorkspaceQuery({
-  workspaceService,
+  workspaceRepository,
   workspaceId,
   enabled = false,
 }: UseWorkspaceQueryArgs) {
   const queryClient = useQueryClient();
   const query = useQuery({
-    ...workspaceQueryOptions(workspaceService, workspaceId),
+    ...workspaceQueryOptions(workspaceRepository, workspaceId),
     enabled,
   });
   const refresh = useCallback(
-    () => queryClient.fetchQuery(workspaceQueryOptions(workspaceService, workspaceId)),
-    [queryClient, workspaceId, workspaceService],
+    () => queryClient.fetchQuery(workspaceQueryOptions(workspaceRepository, workspaceId)),
+    [queryClient, workspaceId, workspaceRepository],
   );
 
   return {
@@ -106,33 +97,29 @@ export function useWorkspaceQuery({
 }
 
 interface UpdateReeDraftMutationArgs {
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workspaceRepository: WorkspaceRepository<FileTreeNode>;
   workspaceId: string;
 }
 
 export function useUpdateReeDraftMutation({
-  workspaceService,
+  workspaceRepository,
   workspaceId,
 }: UpdateReeDraftMutationArgs) {
   return useMutation({
-    mutationFn: async (reePatch: Record<string, unknown>) => {
-      if (!workspaceService.updateReeDraft) {
-        throw new Error("Workspace backend does not support REE draft updates");
-      }
-      await workspaceService.updateReeDraft(workspaceId, reePatch);
-    },
+    mutationFn: (reePatch: Record<string, unknown>) =>
+      workspaceRepository.updateReeDraft(workspaceId, reePatch),
   });
 }
 
 interface UseWorkflowRunQueryArgs {
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workflowRunRepository: WorkflowRunRepository;
   workspaceId: string;
   runId: string | null;
   enabled?: boolean;
 }
 
 export function useWorkflowRunQuery({
-  workspaceService,
+  workflowRunRepository,
   workspaceId,
   runId,
   enabled = false,
@@ -143,10 +130,7 @@ export function useWorkflowRunQuery({
       if (!runId) {
         throw new Error("Workflow run query is disabled");
       }
-      if (!workspaceService.getWorkflowRun) {
-        throw new Error("Workflow polling is not supported by this workflow backend");
-      }
-      return workspaceService.getWorkflowRun(workspaceId, runId);
+      return workflowRunRepository.getWorkflowRun(workspaceId, runId);
     },
     enabled: enabled && !!runId,
   });
@@ -163,7 +147,7 @@ export function useWorkflowRunQuery({
 }
 
 interface UseWorkflowRunLogsQueryArgs {
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workflowRunRepository: WorkflowRunRepository;
   workspaceId: string;
   runId: string | null;
   cursor?: string;
@@ -171,7 +155,7 @@ interface UseWorkflowRunLogsQueryArgs {
 }
 
 export function useWorkflowRunLogsQuery({
-  workspaceService,
+  workflowRunRepository,
   workspaceId,
   runId,
   cursor,
@@ -183,10 +167,7 @@ export function useWorkflowRunLogsQuery({
       if (!runId) {
         throw new Error("Workflow run logs query is disabled");
       }
-      if (!workspaceService.getWorkflowRunLogs) {
-        return { lines: [], hasMore: false };
-      }
-      return workspaceService.getWorkflowRunLogs(workspaceId, runId, cursor);
+      return workflowRunRepository.getWorkflowRunLogs(workspaceId, runId, cursor);
     },
     enabled: enabled && !!runId,
   });
@@ -203,29 +184,19 @@ export function useWorkflowRunLogsQuery({
 }
 
 interface StartWorkflowRunMutationArgs {
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workflowRunRepository: WorkflowRunRepository;
   workspaceId: string;
 }
 
 export function useStartWorkflowRunMutation({
-  workspaceService,
+  workflowRunRepository,
   workspaceId,
 }: StartWorkflowRunMutationArgs) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      scriptKey,
-      params = {},
-    }: {
-      scriptKey: string;
-      params?: WorkflowRunParams;
-    }) => {
-      if (!workspaceService.startWorkflowRun) {
-        throw new Error("Workspace backend does not support workflow runs");
-      }
-      return workspaceService.startWorkflowRun(workspaceId, scriptKey, params);
-    },
+    mutationFn: ({ scriptKey, params = {} }: { scriptKey: string; params?: WorkflowRunParams }) =>
+      workflowRunRepository.startWorkflowRun(workspaceId, scriptKey, params),
     onSuccess: (run) => {
       queryClient.setQueryData(workflowRunQueryKey(workspaceId, run.runId), run);
     },
@@ -233,22 +204,19 @@ export function useStartWorkflowRunMutation({
 }
 
 interface CancelWorkflowRunMutationArgs {
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workflowRunRepository: WorkflowRunRepository;
   workspaceId: string;
 }
 
 export function useCancelWorkflowRunMutation({
-  workspaceService,
+  workflowRunRepository,
   workspaceId,
 }: CancelWorkflowRunMutationArgs) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ runId }: { runId: string }) => {
-      if (!workspaceService.cancelWorkflowRun) {
-        throw new Error("Workspace backend does not support workflow cancellation");
-      }
-      const status = await workspaceService.cancelWorkflowRun(workspaceId, runId);
+      const status = await workflowRunRepository.cancelWorkflowRun(workspaceId, runId);
       return { runId, status };
     },
     onSuccess: ({ runId, status }) => {
@@ -262,21 +230,21 @@ export function useCancelWorkflowRunMutation({
 
 export async function fetchWorkflowRun(
   queryClient: QueryClient,
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>,
+  workflowRunRepository: WorkflowRunRepository,
   workspaceId: string,
   runId: string,
 ): Promise<WorkflowRunRecord> {
-  return queryClient.fetchQuery(workflowRunQueryOptions(workspaceService, workspaceId, runId));
+  return queryClient.fetchQuery(workflowRunQueryOptions(workflowRunRepository, workspaceId, runId));
 }
 
 export async function fetchWorkflowRunLogs(
   queryClient: QueryClient,
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>,
+  workflowRunRepository: WorkflowRunRepository,
   workspaceId: string,
   runId: string,
   cursor?: string,
 ): Promise<WorkflowRunLogChunk> {
   return queryClient.fetchQuery(
-    workflowRunLogsQueryOptions(workspaceService, workspaceId, runId, cursor),
+    workflowRunLogsQueryOptions(workflowRunRepository, workspaceId, runId, cursor),
   );
 }

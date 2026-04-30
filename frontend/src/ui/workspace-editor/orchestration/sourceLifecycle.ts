@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { WorkspaceBackendGateway } from "../../../application/ports/WorkspaceBackendGateway";
-import { serializeWorkspaceResetPayload } from "../../../application/ports/WorkspaceBackendGateway";
+import { serializeWorkspaceResetPayload } from "../../../application/ports/repositoryTypes";
+import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
+import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
 import { createSourceUseCase } from "../../../application/workspace/acquireSource";
 import {
   type SourceCommand,
@@ -26,7 +27,8 @@ export function resetWorkflowOnSourceChange(
 
 interface CreateSourceActionsArgs {
   ree: Ree;
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workspaceRepository: WorkspaceRepository<FileTreeNode>;
+  workflowRunRepository: WorkflowRunRepository;
   workspaceId: string;
   queryClient: QueryClient;
   dispatch: WorkspaceWorkflowDispatch;
@@ -41,7 +43,8 @@ interface CreateSourceActionsArgs {
 
 export function createSourceActions({
   ree,
-  workspaceService,
+  workspaceRepository,
+  workflowRunRepository,
   workspaceId,
   queryClient,
   dispatch,
@@ -61,12 +64,13 @@ export function createSourceActions({
     runParams: Record<string, string | boolean | number | null | undefined>,
   ) =>
     runSourceWorkspaceAction({
-      workspaceService,
+      workspaceRepository,
+      workflowRunRepository,
       workspaceId,
       resetPayload: serializeWorkspaceResetPayload(resetRequest),
       runParams,
       pollRun: (workspaceId, runId, onUpdateLogs) =>
-        pollWorkflowRun(queryClient, workspaceService, {
+        pollWorkflowRun(queryClient, workflowRunRepository, {
           workspaceId,
           runId,
           onUpdate: onUpdateLogs,
@@ -86,11 +90,7 @@ export function createSourceActions({
     sourceChanged: onSourceChange,
     runSourceAction: runRemoteOrLocalSourceAction,
     refreshWorkspaceFiles,
-    clearWorkspace: () =>
-      workspaceService.resetWorkspace(
-        workspaceId,
-        serializeWorkspaceResetPayload({ mode: "clear" }),
-      ),
+    clearWorkspace: () => workspaceRepository.resetWorkspaceRequest(workspaceId, { mode: "clear" }),
     nowIso: clock.nowIso,
   });
 

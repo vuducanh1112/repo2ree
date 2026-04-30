@@ -1,6 +1,10 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { createHttpWorkspaceBackendGateway } from "./infra/workspace/HttpWorkspaceBackendGateway";
+import { createHttpArtifactRepository } from "./infra/repositories/HttpArtifactRepository";
+import { createHttpRepositoryClient } from "./infra/repositories/HttpRepositoryClient";
+import { createHttpReviewRepository } from "./infra/repositories/HttpReviewRepository";
+import { createHttpWorkflowRunRepository } from "./infra/repositories/HttpWorkflowRunRepository";
+import { createHttpWorkspaceRepository } from "./infra/repositories/HttpWorkspaceRepository";
 import { AppBootstrap } from "./runtime/bootstrap/AppBootstrap";
 import {
   WorkspaceRuntimeProvider,
@@ -21,7 +25,7 @@ export default function App() {
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("reeId") || undefined
         : undefined;
-    const workspaceBackend = createHttpWorkspaceBackendGateway({
+    const repositoryClient = createHttpRepositoryClient({
       baseUrl: env.VITE_API_BASE_URL || "",
       initialWorkspaceId: reeIdFromQuery,
     });
@@ -30,7 +34,12 @@ export default function App() {
     return {
       workspaceId: WORKSPACE_ID,
       ports,
-      workspaceBackend,
+      workspaceRepository: createHttpWorkspaceRepository(repositoryClient),
+      workflowRunRepository: createHttpWorkflowRunRepository(repositoryClient),
+      artifactRepository: createHttpArtifactRepository(repositoryClient),
+      reviewRepository: createHttpReviewRepository({
+        baseUrl: env.VITE_API_BASE_URL || "",
+      }),
     };
   }, []);
 

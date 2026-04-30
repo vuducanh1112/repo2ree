@@ -1,13 +1,19 @@
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
-import type { WorkspaceBackendGateway } from "../../application/ports/WorkspaceBackendGateway";
+import type { ArtifactRepository } from "../../application/ports/ArtifactRepository";
+import type { ReviewRepository } from "../../application/ports/ReviewRepository";
+import type { WorkflowRunRepository } from "../../application/ports/WorkflowRunRepository";
+import type { WorkspaceRepository } from "../../application/ports/WorkspaceRepository";
 import type { WorkspaceEditorRuntimePorts } from "../../application/workspace-editor/WorkspaceEditorPorts";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 
 export interface WorkspaceRuntimeValue {
   workspaceId: string;
   ports: WorkspaceEditorRuntimePorts;
-  workspaceBackend: WorkspaceBackendGateway<FileTreeNode>;
+  workspaceRepository: WorkspaceRepository<FileTreeNode>;
+  workflowRunRepository: WorkflowRunRepository;
+  artifactRepository: ArtifactRepository;
+  reviewRepository: ReviewRepository;
 }
 
 const WorkspaceRuntimeContext = createContext<WorkspaceRuntimeValue | null>(null);

@@ -2,8 +2,8 @@ import type { QueryClient } from "@tanstack/react-query";
 import type {
   WorkflowRunLogEntry,
   WorkflowRunRecord,
-  WorkspaceBackendGateway,
-} from "../../../application/ports/WorkspaceBackendGateway";
+} from "../../../application/ports/repositoryTypes";
+import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
 import { executeWorkflowStep } from "../../../application/workflow/executeWorkflowStep";
 import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type {
@@ -28,7 +28,7 @@ interface ExecuteServiceRunArgs {
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
   workflowStepHandlers: WorkflowStepHandlerMap;
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workflowRunRepository: WorkflowRunRepository;
   workspaceId: string;
   queryClient: QueryClient;
   startWorkflowRun: (
@@ -55,7 +55,7 @@ export async function executeWorkflowRunAction({
   persistWorkspaceFile,
   showToast,
   workflowStepHandlers,
-  workspaceService,
+  workflowRunRepository,
   workspaceId,
   queryClient,
   startWorkflowRun,
@@ -66,10 +66,6 @@ export async function executeWorkflowRunAction({
 }: ExecuteServiceRunArgs): Promise<WorkflowRunLogEntry> {
   const runCommands = (commands: WorkflowStepCommand[]) =>
     executeWorkflowStepCommands(commands, { dispatch, persistWorkspaceFile, showToast });
-  if (!workspaceService.getWorkflowRun) {
-    throw new Error("Workspace gateway does not support workflow runs");
-  }
-
   return executeWorkflowStep({
     key,
     params,
@@ -79,7 +75,7 @@ export async function executeWorkflowRunAction({
     workflowRunner: {
       startWorkflowRun: (scriptKey, runParams) => startWorkflowRun(scriptKey, runParams),
       pollRun: (runId, onUpdateLogs) =>
-        pollWorkflowRun(queryClient, workspaceService, {
+        pollWorkflowRun(queryClient, workflowRunRepository, {
           workspaceId,
           runId,
           onUpdate: onUpdateLogs,

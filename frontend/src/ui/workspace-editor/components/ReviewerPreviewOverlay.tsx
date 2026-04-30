@@ -1,6 +1,7 @@
 import type React from "react";
 import type { Level, StepState } from "../../../application/workflow/WorkflowStepTypes";
 import type { Ree } from "../../../domain/ree/ReeSpec";
+import { useWorkspaceRuntime } from "../../../runtime/browser/BrowserRuntime";
 import { ReviewerView } from "../../reviewer/ReviewerView";
 import { Ic } from "../../shared/components/Icon";
 import {
@@ -39,6 +40,7 @@ export function ReviewerPreviewOverlay({
   defaultRee,
   PodOrbitControl,
 }: ReviewerPreviewOverlayProps) {
+  const { reviewRepository } = useWorkspaceRuntime();
   if (!open) return null;
 
   return (
@@ -114,6 +116,7 @@ export function ReviewerPreviewOverlay({
           ree={ree}
           onBack={onClose}
           defaultRee={defaultRee}
+          reviewRepository={reviewRepository}
           PodOrbitControl={PodOrbitControl}
         />
       </div>

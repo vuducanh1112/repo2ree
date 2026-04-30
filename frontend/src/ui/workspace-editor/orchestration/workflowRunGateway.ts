@@ -3,8 +3,8 @@ import type React from "react";
 import type {
   WorkflowRunLogEntry,
   WorkflowRunRecord,
-  WorkspaceBackendGateway,
-} from "../../../application/ports/WorkspaceBackendGateway";
+} from "../../../application/ports/repositoryTypes";
+import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
 import { isAutomationStepKey } from "../../../application/workflow/WorkflowStepDefinitions";
 import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type {
@@ -38,7 +38,7 @@ interface CreateWorkflowRunGatewayArgs {
   persistAutomationStepParams: (key: AutomationStepKey, params: GenericWorkflowParams) => void;
   showToast: ShowToast;
   workflowStepHandlers: WorkflowStepHandlerMap;
-  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
+  workflowRunRepository: WorkflowRunRepository;
   workspaceId: string;
   queryClient: QueryClient;
   startWorkflowRun: (
@@ -64,7 +64,7 @@ export function createWorkflowRunGateway({
   persistAutomationStepParams,
   showToast,
   workflowStepHandlers,
-  workspaceService,
+  workflowRunRepository,
   workspaceId,
   queryClient,
   startWorkflowRun,
@@ -87,7 +87,7 @@ export function createWorkflowRunGateway({
       persistWorkspaceFile,
       showToast,
       workflowStepHandlers,
-      workspaceService,
+      workflowRunRepository,
       workspaceId,
       queryClient,
       startWorkflowRun,

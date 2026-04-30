@@ -1,8 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
-import type { WorkspaceBackendGateway } from "../../../application/ports/WorkspaceBackendGateway";
+import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
 import type { WorkspaceEditorClock } from "../../../application/workspace-editor/WorkspaceEditorPorts";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { pollWorkflowRun } from "./pollWorkflowRun";
 
 const clock: WorkspaceEditorClock = {
@@ -15,7 +14,7 @@ describe("pollWorkflowRun", () => {
     const queryClient = new QueryClient();
     const sleep = vi.fn(async () => {});
     const getWorkflowRun = vi
-      .fn<NonNullable<WorkspaceBackendGateway["getWorkflowRun"]>>()
+      .fn<WorkflowRunRepository["getWorkflowRun"]>()
       .mockResolvedValueOnce({
         runId: "run-1",
         status: "running",
@@ -27,9 +26,14 @@ describe("pollWorkflowRun", () => {
         createdAt: "2026-04-29T00:00:00.000Z",
         finishedAt: "2026-04-29T00:00:01.000Z",
       });
-    const workspaceService = { getWorkflowRun } as unknown as WorkspaceBackendGateway<FileTreeNode>;
+    const workflowRunRepository = {
+      getWorkflowRun,
+      getWorkflowRunLogs: vi.fn(async () => ({ lines: [], hasMore: false })),
+      startWorkflowRun: vi.fn(),
+      cancelWorkflowRun: vi.fn(),
+    } as unknown as WorkflowRunRepository;
 
-    const result = await pollWorkflowRun(queryClient, workspaceService, {
+    const result = await pollWorkflowRun(queryClient, workflowRunRepository, {
       workspaceId: "active",
       runId: "run-1",
       maxIterations: 3,
@@ -40,19 +44,5 @@ describe("pollWorkflowRun", () => {
     expect(sleep).toHaveBeenCalledWith(1000);
     expect(result.status).toBe("succeeded");
     expect(result.ts).toBe("2026-04-29T00:00:01.000Z");
-  });
-
-  it("uses injected clock when polling is unsupported", async () => {
-    const queryClient = new QueryClient();
-    const workspaceService = {} as unknown as WorkspaceBackendGateway<FileTreeNode>;
-    const result = await pollWorkflowRun(queryClient, workspaceService, {
-      workspaceId: "active",
-      runId: "run-1",
-      clock,
-      sleep: vi.fn(async () => {}),
-    });
-
-    expect(result.status).toBe("failed");
-    expect(result.ts).toBe("2026-04-29T00:00:00.000Z");
   });
 });

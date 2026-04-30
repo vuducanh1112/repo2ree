@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { APP_ROUTE } from "../../application/workspace-editor/WorkspaceEditorPages";
 import type { Ree } from "../../domain/ree/ReeSpec";
-import { ApiClient, ReviewsApi } from "../../infra/api";
 import { mapReviewDraftToRee } from "../../infra/api/ReeDtoMappers";
+import { useWorkspaceRuntime } from "../../runtime/browser/BrowserRuntime";
 import { SEALED_DEMO_REE } from "../../runtime/demo/DemoRee";
 import { LandingView } from "../landing/LandingView";
 import { PodOrbitControl } from "../reviewer/PodOrbitControl";
@@ -12,6 +12,7 @@ import { WorkspaceEditorView } from "../workspace-editor/WorkspaceEditorView";
 
 function ReviewerRouteView({ onBack }: { onBack: () => void }) {
   const location = useLocation();
+  const { reviewRepository } = useWorkspaceRuntime();
   const reviewId = new URLSearchParams(location.search).get("reviewId") || undefined;
   const [reviewRee, setReviewRee] = useState<Ree | undefined>(undefined);
   const [reviewFiles, setReviewFiles] = useState<Array<{ path: string; size?: number }>>([]);
@@ -36,14 +37,7 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
       setLoadingReview(true);
       setLoadError("");
       try {
-        const env =
-          (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
-        const api = new ReviewsApi(
-          new ApiClient({
-            baseUrl: env.VITE_API_BASE_URL || "",
-          }),
-        );
-        const detail = await api.getReview(reviewId);
+        const detail = await reviewRepository.getReview(reviewId);
         if (!canceled) {
           setReviewRee(mapReviewDraftToRee(detail));
           setReviewFiles(
@@ -68,7 +62,7 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
     return () => {
       canceled = true;
     };
-  }, [reviewId]);
+  }, [reviewId, reviewRepository]);
 
   if (loadingReview) {
     return <div style={{ padding: 24 }}>Loading review…</div>;
@@ -86,6 +80,7 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
       reviewWorkspaceFiles={reviewWorkspaceFiles}
       onBack={onBack}
       defaultRee={SEALED_DEMO_REE}
+      reviewRepository={reviewRepository}
       PodOrbitControl={PodOrbitControl}
     />
   );

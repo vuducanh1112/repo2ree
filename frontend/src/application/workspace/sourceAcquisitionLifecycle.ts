@@ -1,4 +1,6 @@
 import type { LogLine } from "../../domain/ree/ReeTypes";
+import type { WorkspaceResetPayload } from "../ports/repositoryTypes";
+import { parseWorkspaceResetPayload } from "../ports/repositoryTypes";
 
 type SourceWorkflowStatus =
   | "created"
@@ -24,17 +26,20 @@ interface SourceWorkflowResult {
 }
 
 interface SourceWorkflowRunner {
-  resetWorkspace(id: string, newSource: string): Promise<void>;
-  startWorkflowRun?: (
+  resetWorkspaceRequest: (id: string, payload: WorkspaceResetPayload) => Promise<void>;
+}
+
+interface SourceWorkflowPoller {
+  startWorkflowRun: (
     id: string,
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
   ) => Promise<SourceWorkflowRunRecord>;
-  getWorkflowRun?: (id: string, runId: string) => Promise<{ status: SourceWorkflowStatus }>;
 }
 
 interface RunSourceWorkspaceActionArgs {
-  workspaceService: SourceWorkflowRunner;
+  workspaceRepository: SourceWorkflowRunner;
+  workflowRunRepository: SourceWorkflowPoller;
   workspaceId: string;
   resetPayload: string;
   runParams: Record<string, string | boolean | number | null | undefined>;
@@ -49,7 +54,8 @@ interface RunSourceWorkspaceActionArgs {
 }
 
 export async function runSourceWorkspaceAction({
-  workspaceService,
+  workspaceRepository,
+  workflowRunRepository,
   workspaceId,
   resetPayload,
   runParams,
@@ -58,12 +64,15 @@ export async function runSourceWorkspaceAction({
   onRunFinished,
   onUpdateLogs,
 }: RunSourceWorkspaceActionArgs): Promise<SourceWorkflowResult> {
-  if (!workspaceService.startWorkflowRun || !workspaceService.getWorkflowRun) {
-    await workspaceService.resetWorkspace(workspaceId, resetPayload);
+  if (!runParams.mode) {
+    await workspaceRepository.resetWorkspaceRequest(
+      workspaceId,
+      parseWorkspaceResetPayload(resetPayload, "git"),
+    );
     return { status: "succeeded" };
   }
 
-  const run = await workspaceService.startWorkflowRun(workspaceId, "source", runParams);
+  const run = await workflowRunRepository.startWorkflowRun(workspaceId, "source", runParams);
   onRunStarted?.("source", run.runId);
   try {
     return await pollRun(workspaceId, run.runId, onUpdateLogs);

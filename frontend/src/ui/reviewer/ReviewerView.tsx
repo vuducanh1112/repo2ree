@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReviewRepository } from "../../application/ports/ReviewRepository";
 import type {
   Level,
   StepState,
@@ -9,7 +10,6 @@ import type { Ree } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import { LEVELS } from "../../domain/review/levels";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
-import { ApiClient, mapRunLogsToLegacy, ReviewsApi } from "../../infra/api";
 import { Ic } from "../shared/components/Icon";
 import { LevelBadge } from "../shared/components/LevelBadge";
 import { C, F, hoverBg, hoverColor, S_SECTION_LABEL_SMALL } from "../theme/theme";
@@ -31,6 +31,7 @@ interface ReviewerViewProps {
   reviewWorkspaceFiles?: Array<{ path: string; size?: number }>;
   onBack: () => void;
   defaultRee: Ree;
+  reviewRepository: ReviewRepository;
   PodOrbitControl: React.ComponentType<{
     level: number;
     levelMeta: Level;
@@ -93,6 +94,7 @@ export function ReviewerView({
   reviewWorkspaceFiles = [],
   onBack,
   defaultRee,
+  reviewRepository,
   PodOrbitControl,
 }: ReviewerViewProps) {
   const ree = reeInput || defaultRee;
@@ -114,16 +116,6 @@ export function ReviewerView({
   const [stepStates, setStepStates] = useState<Partial<Record<ReactivationStepKey, StepState>>>({});
   const [stepLogs, setStepLogs] = useState<Partial<Record<ReactivationStepKey, LogLine[]>>>({});
   const [stepRunIds, setStepRunIds] = useState<Partial<Record<ReactivationStepKey, string>>>({});
-  const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
-  const apiClient = useMemo(
-    () =>
-      new ApiClient({
-        baseUrl: env.VITE_API_BASE_URL || "",
-      }),
-    [env.VITE_API_BASE_URL],
-  );
-  const reviewsApi = useMemo(() => new ReviewsApi(apiClient), [apiClient]);
-
   useEffect(() => {
     setReviewRootFilesState(reviewFiles);
   }, [reviewFiles]);
@@ -134,7 +126,7 @@ export function ReviewerView({
 
   const refreshReviewFiles = async () => {
     if (!reviewId) return;
-    const detail = await reviewsApi.getReview(reviewId);
+    const detail = await reviewRepository.getReview(reviewId);
     setReviewRootFilesState(
       (detail.files || []).map((file) => ({ path: file.path, size: file.size })),
     );
@@ -177,16 +169,16 @@ export function ReviewerView({
       if (!ree.origin_url || !ree.source_type) {
         throw new Error("origin_url and source_type are required to acquire source");
       }
-      const sourceRun = await reviewsApi.acquireSource(reviewId);
+      const sourceRun = await reviewRepository.acquireSource(reviewId);
       runId = sourceRun.runId;
     } else if (key === "build_runtime") {
-      const buildRun = await reviewsApi.createBuildRuntimeRun(reviewId, {
+      const buildRun = await reviewRepository.createBuildRuntimeRun(reviewId, {
         build_runtime_script_path: ree.build_runtime_script,
         produced_runtime_path: ree.runtime,
       });
       runId = buildRun.runId;
     } else {
-      const activationRun = await reviewsApi.createActivationTestRun(reviewId, {
+      const activationRun = await reviewRepository.createActivationTestRun(reviewId, {
         activation_script_path: ree.activation_script,
       });
       runId = activationRun.runId;
@@ -198,9 +190,8 @@ export function ReviewerView({
     let cursor: string | undefined;
 
     for (let i = 0; i < 120; i += 1) {
-      const logs = await reviewsApi.listRunLogs(reviewId, runId, cursor);
-      const mapped = mapRunLogsToLegacy(logs.entries);
-      for (const line of mapped) {
+      const logs = await reviewRepository.listRunLogs(reviewId, runId, cursor);
+      for (const line of logs.lines) {
         const keyPart = `${line.ts || ""}::${line.type}::${line.msg}`;
         if (seen.has(keyPart)) continue;
         seen.add(keyPart);
@@ -209,10 +200,10 @@ export function ReviewerView({
       cursor = logs.nextCursor;
       setStepLogs((prevLogs) => ({ ...prevLogs, [key]: [...collected] }));
 
-      if (isTerminalStatus(logs.runStatus)) {
+      if (isTerminalStatus((await reviewRepository.getRun(reviewId, runId)).status)) {
         while (logs.hasMore && cursor) {
-          const nextLogs = await reviewsApi.listRunLogs(reviewId, runId, cursor);
-          for (const line of mapRunLogsToLegacy(nextLogs.entries)) {
+          const nextLogs = await reviewRepository.listRunLogs(reviewId, runId, cursor);
+          for (const line of nextLogs.lines) {
             const keyPart = `${line.ts || ""}::${line.type}::${line.msg}`;
             if (seen.has(keyPart)) continue;
             seen.add(keyPart);
@@ -220,7 +211,7 @@ export function ReviewerView({
           }
           cursor = nextLogs.nextCursor;
         }
-        const run = await reviewsApi.getRun(reviewId, runId);
+        const run = await reviewRepository.getRun(reviewId, runId);
         if (run.status === "canceled") {
           collected.push({ type: "warn", msg: "Run canceled" });
         } else if (run.status !== "succeeded") {
@@ -281,7 +272,7 @@ export function ReviewerView({
     const runId = stepRunIds[key];
     if (!reviewId || !runId) return;
     try {
-      await reviewsApi.cancelRun(reviewId, runId);
+      await reviewRepository.cancelRun(reviewId, runId);
       setStepLogs((prevLogs) => ({
         ...prevLogs,
         [key]: [...(prevLogs[key] || []), { type: "warn", msg: "Cancel requested by reviewer" }],
