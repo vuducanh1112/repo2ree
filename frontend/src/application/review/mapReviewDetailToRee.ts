@@ -1,5 +1,6 @@
 import { normalizeHBOM } from "../../domain/hbom/HbomSummary";
-import { type Ree, type ReeSpec, toLegacyReeViewModel } from "../../domain/ree/ReeSpec";
+import type { Ree, ReeSpec } from "../../domain/ree/ReeSpec";
+import { toLegacyReeViewModel } from "../../domain/ree/reeLegacyAdapters";
 import type { ReviewDetail } from "../ports/ReviewRepository";
 
 interface MapReeDraftToReeOptions {

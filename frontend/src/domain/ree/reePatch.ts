@@ -1,4 +1,5 @@
-import { type HBOM, type Ree, splitLegacyReeModel } from "./ReeSpec";
+import type { HBOM, Ree } from "./ReeSpec";
+import { splitLegacyReeModel } from "./reeLegacyAdapters";
 
 interface ReePatch extends Record<string, unknown> {
   name: string;

@@ -73,19 +73,12 @@ export interface ReeSpec {
   hardware_description: HBOM;
 }
 
-interface ReeModelSplit {
-  reeSpec: ReeSpec;
-  workspaceSourceState: WorkspaceSourceState;
-  artifactStatus: ArtifactStatus;
-  evaluationState: EvaluationState;
-}
-
 export type ReeDraftViewModel = ReeSpec & WorkspaceSourceState & ArtifactStatus & EvaluationState;
 
 // Temporary compatibility export for modules that still expect the pre-split model.
 export type Ree = ReeDraftViewModel;
 
-function createEmptyReeSpec(): ReeSpec {
+export function createEmptyReeSpec(): ReeSpec {
   return {
     name: "",
     origin_url: "",
@@ -103,92 +96,5 @@ function createEmptyReeSpec(): ReeSpec {
       network: {},
       extra_info: {},
     },
-  };
-}
-
-export function createEmptyRee(): Ree {
-  return toLegacyReeViewModel({
-    reeSpec: createEmptyReeSpec(),
-  });
-}
-
-export function splitLegacyReeModel(ree: ReeDraftViewModel): ReeModelSplit {
-  const {
-    name,
-    origin_url,
-    source_type,
-    runtime,
-    build_runtime_script,
-    activation_script,
-    sbom,
-    swhid,
-    zenodo_doi,
-    dataverse_doi,
-    repro_level,
-    detected_dependencies,
-    hardware_description,
-    _sourceAvailable,
-    _sourceIncluded,
-    _sourceAcquiredBy,
-    _uploadedArchive,
-    _sourceSnapshotArchive,
-    _sourceSnapshotCapturedAt,
-    _runtimeIncluded,
-    _downloadableFiles,
-    _sealedAt,
-    _sealHash,
-    _evalLevel,
-  } = ree;
-
-  return {
-    reeSpec: {
-      name,
-      origin_url,
-      source_type,
-      runtime,
-      build_runtime_script,
-      activation_script,
-      sbom,
-      swhid,
-      zenodo_doi,
-      dataverse_doi,
-      repro_level,
-      detected_dependencies,
-      hardware_description,
-    },
-    workspaceSourceState: {
-      _sourceAvailable,
-      _sourceIncluded,
-      _sourceAcquiredBy,
-      _uploadedArchive,
-      _sourceSnapshotArchive,
-      _sourceSnapshotCapturedAt,
-    },
-    artifactStatus: {
-      _runtimeIncluded,
-      _downloadableFiles,
-      _sealedAt,
-      _sealHash,
-    },
-    evaluationState: {
-      _evalLevel,
-    },
-  };
-}
-
-export function toLegacyReeViewModel(split: Partial<ReeModelSplit> & { reeSpec: ReeSpec }): Ree {
-  return {
-    ...split.reeSpec,
-    _sourceAvailable: split.workspaceSourceState?._sourceAvailable ?? false,
-    _sourceIncluded: split.workspaceSourceState?._sourceIncluded ?? false,
-    _sourceAcquiredBy: split.workspaceSourceState?._sourceAcquiredBy,
-    _uploadedArchive: split.workspaceSourceState?._uploadedArchive,
-    _sourceSnapshotArchive: split.workspaceSourceState?._sourceSnapshotArchive,
-    _sourceSnapshotCapturedAt: split.workspaceSourceState?._sourceSnapshotCapturedAt,
-    _runtimeIncluded: split.artifactStatus?._runtimeIncluded ?? false,
-    _downloadableFiles: split.artifactStatus?._downloadableFiles ?? [],
-    _sealedAt: split.artifactStatus?._sealedAt,
-    _sealHash: split.artifactStatus?._sealHash,
-    _evalLevel: split.evaluationState?._evalLevel ?? 0,
   };
 }

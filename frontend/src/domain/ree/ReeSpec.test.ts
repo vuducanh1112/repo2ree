@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type Ree, splitLegacyReeModel, toLegacyReeViewModel } from "./ReeSpec";
+import type { Ree } from "./ReeSpec";
+import { splitLegacyReeModel, toLegacyReeViewModel } from "./reeLegacyAdapters";
 
 function buildLegacyRee(): Ree {
   return {

@@ -1,4 +1,5 @@
-import { type Ree, splitLegacyReeModel, toLegacyReeViewModel } from "../ree/ReeSpec";
+import type { Ree } from "../ree/ReeSpec";
+import { splitLegacyReeModel, toLegacyReeViewModel } from "../ree/reeLegacyAdapters";
 
 export function enforceSourceOriginRules(ree: Ree): Ree {
   const split = splitLegacyReeModel(ree);

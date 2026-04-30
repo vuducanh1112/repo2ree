@@ -5,8 +5,9 @@ import type {
   StepState,
   WorkflowParamValue,
 } from "../../application/workflow/WorkflowStepTypes";
-import { createEmptyRee, type Ree } from "../../domain/ree/ReeSpec";
+import type { Ree } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
+import { createEmptyRee } from "../../domain/ree/reeLegacyAdapters";
 import { LEVELS } from "../../domain/review/levels";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { C } from "../theme/theme";
