@@ -1,5 +1,3 @@
-import type { ArtifactStatus } from "../artifact/ArtifactStatus";
-import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 
 export type DeviceModel = string;
@@ -73,7 +71,21 @@ export interface ReeSpec {
   hardware_description: HBOM;
 }
 
-export type ReeDraftViewModel = ReeSpec & WorkspaceSourceState & ArtifactStatus & EvaluationState;
+interface ReeLegacyTransientFields {
+  _sourceAvailable?: boolean;
+  _sourceIncluded?: boolean;
+  _sourceAcquiredBy?: WorkspaceSourceState["sourceAcquiredBy"];
+  _uploadedArchive?: string;
+  _sourceSnapshotArchive?: string;
+  _sourceSnapshotCapturedAt?: string;
+  _runtimeIncluded?: boolean;
+  _downloadableFiles?: string[];
+  _sealedAt?: string;
+  _sealHash?: string;
+  _evalLevel?: number;
+}
+
+export type ReeDraftViewModel = ReeSpec & ReeLegacyTransientFields;
 
 // Temporary compatibility export for modules that still expect the pre-split model.
 export type Ree = ReeDraftViewModel;

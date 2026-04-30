@@ -1,3 +1,3 @@
 export interface EvaluationState {
-  _evalLevel?: number;
+  evalLevel?: number;
 }

@@ -44,9 +44,11 @@ describe("ReeSpec adapters", () => {
 
     expect(split.reeSpec.name).toBe("demo");
     expect("_sourceAvailable" in split.reeSpec).toBe(false);
-    expect(split.workspaceSourceState._sourceAvailable).toBe(true);
-    expect(split.artifactStatus._runtimeIncluded).toBe(true);
-    expect(split.evaluationState._evalLevel).toBe(4);
+    expect(split.workspaceSourceState.sourceAvailable).toBe(true);
+    expect(split.workspaceSourceState.sourceSnapshotCapturedAt).toBe("2026-01-01T00:00:00Z");
+    expect(split.artifactStatus.runtimeIncluded).toBe(true);
+    expect(split.artifactStatus.downloadableFiles).toEqual(["runtime.tar.gz", "sbom.json"]);
+    expect(split.evaluationState.evalLevel).toBe(4);
   });
 
   it("round-trips split state back into the legacy view model", () => {

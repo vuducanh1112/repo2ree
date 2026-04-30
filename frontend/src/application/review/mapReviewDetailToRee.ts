@@ -36,27 +36,27 @@ export function mapReeDraftToRee({
   return toLegacyReeViewModel({
     reeSpec,
     workspaceSourceState: {
-      _sourceAvailable: Boolean(draft._sourceAvailable),
-      _sourceIncluded: Boolean(draft._sourceIncluded),
-      _sourceAcquiredBy: (draft._sourceAcquiredBy as Ree["_sourceAcquiredBy"]) || undefined,
-      _uploadedArchive: draft._uploadedArchive ? String(draft._uploadedArchive) : undefined,
-      _sourceSnapshotArchive: draft._sourceSnapshotArchive
+      sourceAvailable: Boolean(draft._sourceAvailable),
+      sourceIncluded: Boolean(draft._sourceIncluded),
+      sourceAcquiredBy: (draft._sourceAcquiredBy as Ree["_sourceAcquiredBy"]) || undefined,
+      uploadedArchive: draft._uploadedArchive ? String(draft._uploadedArchive) : undefined,
+      sourceSnapshotArchive: draft._sourceSnapshotArchive
         ? String(draft._sourceSnapshotArchive)
         : undefined,
-      _sourceSnapshotCapturedAt: draft._sourceSnapshotCapturedAt
+      sourceSnapshotCapturedAt: draft._sourceSnapshotCapturedAt
         ? String(draft._sourceSnapshotCapturedAt)
         : undefined,
     },
     artifactStatus: {
-      _runtimeIncluded: Boolean(draft._runtimeIncluded),
-      _downloadableFiles: Array.isArray(draft._downloadableFiles)
+      runtimeIncluded: Boolean(draft._runtimeIncluded),
+      downloadableFiles: Array.isArray(draft._downloadableFiles)
         ? draft._downloadableFiles.map((item) => String(item))
         : [],
-      _sealedAt: draft._sealedAt ? String(draft._sealedAt) : undefined,
-      _sealHash: draft._sealHash ? String(draft._sealHash) : undefined,
+      sealedAt: draft._sealedAt ? String(draft._sealedAt) : undefined,
+      sealHash: draft._sealHash ? String(draft._sealHash) : undefined,
     },
     evaluationState: {
-      _evalLevel: Number(draft._evalLevel ?? 0),
+      evalLevel: Number(draft._evalLevel ?? 0),
     },
   });
 }

@@ -4,19 +4,19 @@ import { splitLegacyReeModel, toLegacyReeViewModel } from "../ree/reeLegacyAdapt
 export function enforceSourceOriginRules(ree: Ree): Ree {
   const split = splitLegacyReeModel(ree);
   const hasDownloadedSource =
-    !!split.workspaceSourceState._sourceAvailable &&
-    split.workspaceSourceState._sourceAcquiredBy === "download";
+    !!split.workspaceSourceState.sourceAvailable &&
+    split.workspaceSourceState.sourceAcquiredBy === "download";
   const hasUploadedSource =
-    !!split.workspaceSourceState._sourceAvailable &&
-    split.workspaceSourceState._sourceAcquiredBy === "upload";
+    !!split.workspaceSourceState.sourceAvailable &&
+    split.workspaceSourceState.sourceAcquiredBy === "upload";
 
   const nextSpec =
     !hasDownloadedSource && split.reeSpec.origin_url
       ? { ...split.reeSpec, origin_url: "" }
       : split.reeSpec;
   const nextWorkspaceSourceState =
-    hasUploadedSource && !split.workspaceSourceState._sourceIncluded
-      ? { ...split.workspaceSourceState, _sourceIncluded: true }
+    hasUploadedSource && !split.workspaceSourceState.sourceIncluded
+      ? { ...split.workspaceSourceState, sourceIncluded: true }
       : split.workspaceSourceState;
 
   if (nextSpec === split.reeSpec && nextWorkspaceSourceState === split.workspaceSourceState) {

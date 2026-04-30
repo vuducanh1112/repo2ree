@@ -1,6 +1,6 @@
 export interface ArtifactStatus {
-  _runtimeIncluded?: boolean;
-  _downloadableFiles?: string[];
-  _sealedAt?: string;
-  _sealHash?: string;
+  runtimeIncluded?: boolean;
+  downloadableFiles?: string[];
+  sealedAt?: string;
+  sealHash?: string;
 }
