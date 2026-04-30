@@ -14,9 +14,9 @@ type WorkflowRunStatus =
   | "canceled";
 
 const WORKFLOW_REQUIREMENTS: Record<AutomationStepKey, WorkflowRequirement[]> = {
-  evaluate: [{ field: "_sourceAvailable", label: "Source loaded in workspace" }],
+  evaluate: [{ field: "sourceAvailable", label: "Source loaded in workspace" }],
   build: [
-    { field: "_sourceAvailable", label: "Source available" },
+    { field: "sourceAvailable", label: "Source available" },
     { field: "build_runtime_script", label: "Build script" },
   ],
   hbom: [],

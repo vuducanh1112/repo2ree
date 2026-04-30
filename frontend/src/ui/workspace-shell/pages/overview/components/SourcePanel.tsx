@@ -45,26 +45,26 @@ export function SourcePanel({
   onNavigate,
   onReeChange,
 }: SourcePanelProps) {
-  const sourceInWorkspace = !!ree._sourceAvailable;
-  const sourceFromUpload = ree._sourceAcquiredBy === "upload" && !!ree._sourceAvailable;
-  const sourceFromDownload = ree._sourceAcquiredBy === "download" && !!ree._sourceAvailable;
+  const sourceInWorkspace = !!ree.sourceAvailable;
+  const sourceFromUpload = ree.sourceAcquiredBy === "upload" && !!ree.sourceAvailable;
+  const sourceFromDownload = ree.sourceAcquiredBy === "download" && !!ree.sourceAvailable;
   const sourceProvisionStatus = sourceFromUpload
     ? "Uploaded archive"
     : sourceFromDownload
       ? "Downloaded from origin"
       : "Not provided yet";
 
-  const sourceIncluded = sourceInWorkspace && !!ree._sourceIncluded;
+  const sourceIncluded = sourceInWorkspace && !!ree.sourceIncluded;
   const canIncludeSource = sourceInWorkspace;
 
   const toggleSource = () => {
     if (!canIncludeSource) return;
-    onReeChange({ ...ree, _sourceIncluded: !sourceIncluded });
+    onReeChange({ ...ree, sourceIncluded: !sourceIncluded });
   };
 
   React.useEffect(() => {
-    if (!sourceInWorkspace && ree._sourceIncluded) {
-      onReeChange({ ...ree, _sourceIncluded: false });
+    if (!sourceInWorkspace && ree.sourceIncluded) {
+      onReeChange({ ...ree, sourceIncluded: false });
     }
   }, [sourceInWorkspace, ree, onReeChange]);
 
@@ -131,13 +131,13 @@ export function SourcePanel({
         <PanelFieldRow
           label="Origin Provisioning Status"
           value={sourceProvisionStatus}
-          filled={!!ree._sourceAcquiredBy}
+          filled={!!ree.sourceAcquiredBy}
           dotColor="#f59e0b"
           dotGlow="#f59e0b99"
           labelColor="#92400e"
           labelBg="#fffbeb"
           labelBorderColor="#f59e0b25"
-          onClick={() => onGoField("_sourceAcquiredBy")}
+          onClick={() => onGoField("sourceAcquiredBy")}
         />
         <PanelFieldRow
           label="Origin Type"
@@ -152,8 +152,8 @@ export function SourcePanel({
         />
         <PanelFieldRow
           label="Files"
-          value={ree._sourceAvailable ? (fileCount > 0 ? fileSummary : "downloaded") : null}
-          filled={!!ree._sourceAvailable}
+          value={ree.sourceAvailable ? (fileCount > 0 ? fileSummary : "downloaded") : null}
+          filled={!!ree.sourceAvailable}
           emptyText="not downloaded"
           dotColor="#f59e0b"
           dotGlow="#f59e0b99"

@@ -11,7 +11,7 @@ import type { WorkspaceShellAction } from "../../../application/workspace-shell"
 import { workspaceShellActions } from "../../../application/workspace-shell";
 import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
-import { splitLegacyReeModel } from "../../../domain/ree/reeLegacyAdapters";
+import { splitReeDraftViewModel } from "../../../domain/ree/reeDraftViewModel";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { useWorkspaceRuntime } from "../../../runtime/browser/BrowserRuntime";
 import { createDownloadActions } from "../artifact-actions/downloadActions";
@@ -92,7 +92,7 @@ export function useWorkspaceWorkflowRuns({
         return;
       }
 
-      const split = splitLegacyReeModel(workspace.ree);
+      const split = splitReeDraftViewModel(workspace.ree);
       dispatch(
         workspaceShellActions.hydrateWorkspace({
           workspaceFiles: workspace.workspaceFiles,

@@ -35,8 +35,8 @@ const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as WorkspaceShellPage[];
 export const FIELD_TO_PAGE: Partial<Record<keyof ReeDraftViewModel, WorkspaceShellPage>> = {
   origin_url: PAGE.SOURCE,
   source_type: PAGE.SOURCE,
-  _sourceAvailable: PAGE.SOURCE,
-  _sourceAcquiredBy: PAGE.SOURCE,
+  sourceAvailable: PAGE.SOURCE,
+  sourceAcquiredBy: PAGE.SOURCE,
   hardware_description: PAGE.HBOM,
   runtime: PAGE.BUILD,
   build_runtime_script: PAGE.BUILD,

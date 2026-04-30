@@ -78,14 +78,14 @@ export function SourceAcquisitionPage({
   const sourceInteractionLocked = locked || sourceConfigLocked;
 
   const toggleSourceIncluded = () => {
-    focus("_sourceAvailable");
+    focus("sourceAvailable");
     if (locked || !sourceInWorkspace || workspaceSourceState.sourceAcquiredBy === "upload") return;
-    onReeChange({ ...ree, _sourceIncluded: !sourceIncluded });
+    onReeChange({ ...ree, sourceIncluded: !sourceIncluded });
   };
 
   useEffect(() => {
     if (!sourceInWorkspace && workspaceSourceState.sourceIncluded) {
-      onReeChange({ ...ree, _sourceIncluded: false });
+      onReeChange({ ...ree, sourceIncluded: false });
     }
   }, [sourceInWorkspace, workspaceSourceState.sourceIncluded, ree, onReeChange]);
 
@@ -173,7 +173,7 @@ export function SourceAcquisitionPage({
                         type="button"
                         key={m}
                         onClick={() => {
-                          focus("_sourceAcquiredBy");
+                          focus("sourceAcquiredBy");
                           if (sourceInteractionLocked || m === repoMode) return;
                           onRepoModeChange(m);
                           if (m === "upload") {
@@ -388,7 +388,7 @@ export function SourceAcquisitionPage({
                       <button
                         type="button"
                         onClick={() => {
-                          focus("_sourceAvailable");
+                          focus("sourceAvailable");
                           onGoWorkflow(PAGE.FILES);
                         }}
                         style={{
@@ -412,7 +412,7 @@ export function SourceAcquisitionPage({
                           type="button"
                           disabled={locked}
                           onClick={() => {
-                            focus("_sourceAvailable");
+                            focus("sourceAvailable");
                             onRemoveWorkspaceSource();
                           }}
                           style={{
@@ -458,7 +458,7 @@ export function SourceAcquisitionPage({
 
         {focusedField && (
           <FieldTipsSidebar
-            tipFields={["origin_url", "source_type", "_sourceAcquiredBy", "_sourceAvailable"]}
+            tipFields={["origin_url", "source_type", "sourceAcquiredBy", "sourceAvailable"]}
             focusedField={focusedField}
             onClear={() => onFocusedFieldChange(null)}
           />

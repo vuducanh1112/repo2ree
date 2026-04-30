@@ -48,7 +48,7 @@ export const FIELD_META: Record<string, FieldMeta> = {
       { label: "GitLab", url: "https://gitlab.com" },
     ],
   },
-  _sourceAcquiredBy: {
+  sourceAcquiredBy: {
     label: "Origin Provisioning Status",
     desc: "How source files were provided to the workspace.",
     example: "Uploaded archive",
@@ -66,7 +66,7 @@ export const FIELD_META: Record<string, FieldMeta> = {
       "Use the clone/checkout URL from the provider UI, and verify it works (for example, `git clone <origin_url>` for git) before requesting download.",
     tools: [],
   },
-  _sourceAvailable: {
+  sourceAvailable: {
     label: "In Workspace",
     desc: "Whether the repository has been materialized into the local workspace.",
     example: "Yes — repository is available in workspace",

@@ -7,7 +7,7 @@ import type {
 } from "../../application/workflow/WorkflowStepTypes";
 import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import { createEmptyRee } from "../../domain/ree/reeLegacyAdapters";
+import { createEmptyReeDraftViewModel } from "../../domain/ree/reeDraftViewModel";
 import { LEVELS } from "../../domain/review/levels";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { C } from "../theme/theme";
@@ -47,14 +47,14 @@ export function ReviewerView({
   reviewRepository,
   PodOrbitControl,
 }: ReviewerViewProps) {
-  const ree = reeInput || createEmptyRee();
+  const ree = reeInput || createEmptyReeDraftViewModel();
   const [reviewerPage, setReviewerPage] = useState<"review" | "files">("review");
   const [reviewRootFilesState, setReviewRootFilesState] = useState(reviewFiles);
   const [reviewWorkspaceFilesState, setReviewWorkspaceFilesState] = useState(reviewWorkspaceFiles);
-  const level = ree._evalLevel ?? 5;
+  const level = ree.evalLevel ?? 5;
   const levelMeta = LEVELS[Math.min(level, 7)];
-  const sealDate = ree._sealedAt
-    ? new Date(ree._sealedAt).toLocaleString([], {
+  const sealDate = ree.sealedAt
+    ? new Date(ree.sealedAt).toLocaleString([], {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -113,7 +113,7 @@ export function ReviewerView({
       return localStep ? localStep.logLines(ree, stepParams[key]) : [];
     }
 
-    if (key === "acquire_source" && ree._sourceIncluded) {
+    if (key === "acquire_source" && ree.sourceIncluded) {
       return [
         { type: "info", msg: "Source already included in uploaded archive." },
         { type: "ok", msg: "Source acquisition skipped ✓" },

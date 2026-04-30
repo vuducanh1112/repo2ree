@@ -530,7 +530,7 @@ export function PageBuildRuntime({
                       </div>
                       <button
                         type="button"
-                        onClick={() => onReeChange?.({ ...ree, _runtimeIncluded: !includeRuntime })}
+                        onClick={() => onReeChange?.({ ...ree, runtimeIncluded: !includeRuntime })}
                         style={runtimeIncludedToggleTrackStyle(includeRuntime)}
                       >
                         <span style={runtimeIncludedToggleKnobStyle(includeRuntime)} />

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ReeDraftViewModel } from "./ReeSpec";
-import { splitLegacyReeModel, toLegacyReeViewModel } from "./reeLegacyAdapters";
+import { splitReeDraftViewModel, toReeDraftViewModel } from "./reeDraftViewModel";
 
-function buildLegacyRee(): ReeDraftViewModel {
+function buildReeDraft(): ReeDraftViewModel {
   return {
     name: "demo",
     origin_url: "https://example.org/repo.git",
@@ -24,26 +24,26 @@ function buildLegacyRee(): ReeDraftViewModel {
       network: {},
       extra_info: {},
     },
-    _sourceAvailable: true,
-    _sourceIncluded: true,
-    _sourceAcquiredBy: "download",
-    _uploadedArchive: "repo.tar.gz",
-    _sourceSnapshotArchive: "repo-original.tar.gz",
-    _sourceSnapshotCapturedAt: "2026-01-01T00:00:00Z",
-    _runtimeIncluded: true,
-    _downloadableFiles: ["runtime.tar.gz", "sbom.json"],
-    _sealedAt: "2026-01-02T00:00:00Z",
-    _sealHash: "sha256:test",
-    _evalLevel: 4,
+    sourceAvailable: true,
+    sourceIncluded: true,
+    sourceAcquiredBy: "download",
+    uploadedArchive: "repo.tar.gz",
+    sourceSnapshotArchive: "repo-original.tar.gz",
+    sourceSnapshotCapturedAt: "2026-01-01T00:00:00Z",
+    runtimeIncluded: true,
+    downloadableFiles: ["runtime.tar.gz", "sbom.json"],
+    sealedAt: "2026-01-02T00:00:00Z",
+    sealHash: "sha256:test",
+    evalLevel: 4,
   };
 }
 
-describe("ReeSpec adapters", () => {
+describe("Ree draft view model helpers", () => {
   it("separates persisted spec from transient frontend state", () => {
-    const split = splitLegacyReeModel(buildLegacyRee());
+    const split = splitReeDraftViewModel(buildReeDraft());
 
     expect(split.reeSpec.name).toBe("demo");
-    expect("_sourceAvailable" in split.reeSpec).toBe(false);
+    expect("sourceAvailable" in split.reeSpec).toBe(false);
     expect(split.workspaceSourceState.sourceAvailable).toBe(true);
     expect(split.workspaceSourceState.sourceSnapshotCapturedAt).toBe("2026-01-01T00:00:00Z");
     expect(split.artifactStatus.runtimeIncluded).toBe(true);
@@ -51,9 +51,9 @@ describe("ReeSpec adapters", () => {
     expect(split.evaluationState.evalLevel).toBe(4);
   });
 
-  it("round-trips split state back into the legacy view model", () => {
-    const legacy = buildLegacyRee();
+  it("round-trips split state back into the draft view model", () => {
+    const ree = buildReeDraft();
 
-    expect(toLegacyReeViewModel(splitLegacyReeModel(legacy))).toEqual(legacy);
+    expect(toReeDraftViewModel(splitReeDraftViewModel(ree))).toEqual(ree);
   });
 });

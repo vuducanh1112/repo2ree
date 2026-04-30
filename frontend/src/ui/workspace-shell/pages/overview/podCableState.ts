@@ -23,12 +23,12 @@ export function getPodCableStates(ree: ReeDraftViewModel, badges: Badges): PodCa
 
   const archiveConnected = !!(ree.zenodo_doi || ree.dataverse_doi);
   const activationConnected = !!badges?.activation;
-  const sourceConnected = !!ree._sourceAvailable;
-  const runtimeConnected = !!ree._runtimeIncluded;
+  const sourceConnected = !!ree.sourceAvailable;
+  const runtimeConnected = !!ree.runtimeIncluded;
   const sbomConnected = !!ree.sbom?.trim();
   const swhConnected = !!ree.swhid?.trim();
   const evaluateConnected = !!badges?.evaluate;
-  const sealConnected = !!ree._sealedAt;
+  const sealConnected = !!ree.sealedAt;
 
   return [
     {

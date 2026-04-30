@@ -27,7 +27,7 @@ function buildRee(): ReeDraftViewModel {
 function buildHandlers(): WorkflowStepHandlerMap {
   return {
     evaluate: (_params, newLevel) => [
-      { type: "patchRee", patch: { _evalLevel: newLevel } },
+      { type: "patchRee", patch: { evalLevel: newLevel } },
       { type: "toast", message: `Evaluated at L${newLevel}`, toastType: "success" },
     ],
     build: () => [{ type: "toast", message: "Build complete", toastType: "success" }],

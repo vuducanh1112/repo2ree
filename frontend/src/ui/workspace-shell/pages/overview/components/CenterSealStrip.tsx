@@ -40,7 +40,7 @@ export function CenterSealStrip({
   sealRef,
 }: CenterSealStripProps) {
   const [showSealConfirm, setShowSealConfirm] = React.useState(false);
-  const sealed = locked && ree._sealedAt;
+  const sealed = locked && ree.sealedAt;
   const cableItems = [
     {
       key: PAGE.METADATA,
@@ -52,8 +52,8 @@ export function CenterSealStrip({
       label: "HBOM",
       live: hbomHasAnyComponents(ree.hardware_description),
     },
-    { key: PAGE.SOURCE, label: "Source", live: !!ree._sourceAvailable },
-    { key: "runtime", label: "Runtime", live: !!ree._runtimeIncluded },
+    { key: PAGE.SOURCE, label: "Source", live: !!ree.sourceAvailable },
+    { key: "runtime", label: "Runtime", live: !!ree.runtimeIncluded },
     { key: "swh", label: "Software Heritage", live: !!ree.swhid },
     { key: "sbom", label: "SBOM", live: !!ree.sbom },
     { key: "evaluate", label: "Evaluate", live: !!badges?.evaluate },
@@ -75,7 +75,7 @@ export function CenterSealStrip({
   const currentLevelMeta = LEVELS[Math.min(level, 7)];
 
   if (sealed) {
-    const sealDate = new Date(ree._sealedAt ?? new Date().toISOString()).toLocaleString([], {
+    const sealDate = new Date(ree.sealedAt ?? new Date().toISOString()).toLocaleString([], {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -175,7 +175,7 @@ export function CenterSealStrip({
                 whiteSpace: "nowrap",
               }}
             >
-              {ree._sealHash || "—"}
+              {ree.sealHash || "—"}
             </span>
           </div>
           <div style={S_OVERVIEW_SEALED_META_ROW}>

@@ -25,7 +25,7 @@ describe("reeMappers", () => {
     expect(mapped.name).toBe("review-demo");
     expect(mapped.origin_url).toBe("https://example.org/repo.git");
     expect(mapped.hardware_description.cpus.Xeon.vendor).toBe("Intel");
-    expect(mapped._sourceAvailable).toBe(true);
+    expect(mapped.sourceAvailable).toBe(true);
   });
 
   it("falls back to workspace external ref when origin_url is absent", () => {

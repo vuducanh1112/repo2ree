@@ -1,3 +1,5 @@
+import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 
 export type DeviceModel = string;
@@ -71,21 +73,7 @@ export interface ReeSpec {
   hardware_description: HBOM;
 }
 
-interface ReeLegacyTransientFields {
-  _sourceAvailable?: boolean;
-  _sourceIncluded?: boolean;
-  _sourceAcquiredBy?: WorkspaceSourceState["sourceAcquiredBy"];
-  _uploadedArchive?: string;
-  _sourceSnapshotArchive?: string;
-  _sourceSnapshotCapturedAt?: string;
-  _runtimeIncluded?: boolean;
-  _downloadableFiles?: string[];
-  _sealedAt?: string;
-  _sealHash?: string;
-  _evalLevel?: number;
-}
-
-export type ReeDraftViewModel = ReeSpec & ReeLegacyTransientFields;
+export type ReeDraftViewModel = ReeSpec & WorkspaceSourceState & ArtifactStatus & EvaluationState;
 
 export function createEmptyReeSpec(): ReeSpec {
   return {

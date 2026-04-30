@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
 import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
 import type { ActionStates, WorkflowLogs } from "../../domain/ree/ReeTypes";
-import { splitLegacyReePatch } from "../../domain/ree/reeLegacyAdapters";
+import { splitReePatch } from "../../domain/ree/reeDraftViewModel";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 import type { WorkflowStepCommand } from "../workflow/workflowStepCommands";
@@ -155,7 +155,7 @@ export function mapWorkflowStepCommandsToEffects(
       continue;
     }
     if (command.type === "patchRee") {
-      const split = splitLegacyReePatch(command.patch);
+      const split = splitReePatch(command.patch);
       if (split.reeSpec) {
         effects.push({
           type: "dispatchStateCommand",

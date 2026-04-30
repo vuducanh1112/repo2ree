@@ -87,7 +87,7 @@ describe("sourceAcquisitionPlanning", () => {
     expect(result.snapshotArchiveName).toBe("repo-original.tar.gz");
     expect(result.actionState).toBe("done");
     expect(result.badge).toBe(true);
-    expect(result.reePatch._sourceAcquiredBy).toBe("download");
+    expect(result.reePatch.sourceAcquiredBy).toBe("download");
     expect(result.snapshotFiles).not.toBe(workspaceFiles);
     expect(result.snapshotFiles[0]).not.toBe(workspaceFiles[0]);
   });
@@ -103,7 +103,7 @@ describe("sourceAcquisitionPlanning", () => {
     });
 
     expect(result.snapshotArchiveName).toBe("source.tar.gz");
-    expect(result.reePatch._sourceAcquiredBy).toBe("upload");
+    expect(result.reePatch.sourceAcquiredBy).toBe("upload");
   });
 
   it("builds normalized clear state", () => {

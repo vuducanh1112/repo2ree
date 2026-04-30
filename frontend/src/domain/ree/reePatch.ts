@@ -2,7 +2,7 @@ import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { HBOM, ReeDraftViewModel, ReeSpec } from "./ReeSpec";
-import { splitLegacyReeModel } from "./reeLegacyAdapters";
+import { splitReeDraftViewModel } from "./reeDraftViewModel";
 
 interface ReePatch extends Record<string, unknown> {
   name: string;
@@ -73,5 +73,5 @@ export function toReePatchFromSlices({
 }
 
 export function toReePatch(ree: ReeDraftViewModel): ReePatch {
-  return toReePatchFromSlices(splitLegacyReeModel(ree));
+  return toReePatchFromSlices(splitReeDraftViewModel(ree));
 }

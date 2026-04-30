@@ -1,6 +1,9 @@
 import { enforceSourceOriginRules } from "../../domain/artifact/sourceOriginRules";
 import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
-import { createEmptyRee, splitLegacyReeModel } from "../../domain/ree/reeLegacyAdapters";
+import {
+  createEmptyReeDraftViewModel,
+  splitReeDraftViewModel,
+} from "../../domain/ree/reeDraftViewModel";
 
 export type WorkspaceDraftStateUpdater<T> = T | ((previous: T) => T);
 
@@ -21,9 +24,9 @@ export function resolveWorkspaceDraftUpdater<T>(
 }
 
 export function createInitialWorkspaceDraftState(
-  initialRee: ReeDraftViewModel = createEmptyRee(),
+  initialRee: ReeDraftViewModel = createEmptyReeDraftViewModel(),
 ): WorkspaceDraftState {
-  const { reeSpec } = splitLegacyReeModel(enforceSourceOriginRules(initialRee));
+  const { reeSpec } = splitReeDraftViewModel(enforceSourceOriginRules(initialRee));
   return {
     reeSpec,
     locked: false,

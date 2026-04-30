@@ -47,12 +47,12 @@ export function RuntimePanel({
   onReeChange,
 }: RuntimePanelProps) {
   const runtimeVal = ree?.runtime && ree.runtime !== "__skipped__" ? ree.runtime.trim() : "";
-  const runtimeIncluded = !!ree?._runtimeIncluded;
+  const runtimeIncluded = !!ree?.runtimeIncluded;
   const canIncludeRuntime = !!runtimeVal;
 
   const toggleRuntime = () => {
     if (!canIncludeRuntime) return;
-    onReeChange({ ...ree, _runtimeIncluded: !runtimeIncluded });
+    onReeChange({ ...ree, runtimeIncluded: !runtimeIncluded });
   };
 
   const runtimeFile = runtimeVal ? findVirtualFileByName(files, runtimeVal) : null;

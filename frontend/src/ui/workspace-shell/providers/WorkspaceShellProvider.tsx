@@ -24,10 +24,10 @@ import type {
 import { enforceSourceOriginRules } from "../../../domain/artifact/sourceOriginRules";
 import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import {
-  createEmptyRee,
-  splitLegacyReeModel,
-  toLegacyReeViewModel,
-} from "../../../domain/ree/reeLegacyAdapters";
+  createEmptyReeDraftViewModel,
+  splitReeDraftViewModel,
+  toReeDraftViewModel,
+} from "../../../domain/ree/reeDraftViewModel";
 import { computeSourceChangeConsequences } from "../../../domain/workspace/sourceChangeConsequences";
 
 interface WorkspaceShellContextValue {
@@ -43,10 +43,10 @@ interface WorkspaceShellProviderProps {
 }
 
 export function createInitialState(
-  initialRee: ReeDraftViewModel = createEmptyRee(),
+  initialRee: ReeDraftViewModel = createEmptyReeDraftViewModel(),
 ): WorkspaceShellContextState {
   const normalizedRee = enforceSourceOriginRules(initialRee);
-  const split = splitLegacyReeModel(normalizedRee);
+  const split = splitReeDraftViewModel(normalizedRee);
   return {
     workspaceDraft: createInitialWorkspaceDraftState(normalizedRee),
     workspaceRemote: {
@@ -62,8 +62,8 @@ export function createInitialState(
   };
 }
 
-function buildLegacyReeFromState(state: WorkspaceShellContextState): ReeDraftViewModel {
-  return toLegacyReeViewModel({
+function buildReeDraftFromState(state: WorkspaceShellContextState): ReeDraftViewModel {
+  return toReeDraftViewModel({
     reeSpec: state.workspaceDraft.reeSpec,
     workspaceSourceState: state.workspaceRemote.workspaceSourceState,
     artifactStatus: state.workspaceRemote.artifactStatus,
@@ -78,9 +78,9 @@ export function workspaceShellReducer(
   switch (action.type) {
     case "workspaceShell/setRee": {
       const nextRee = enforceSourceOriginRules(
-        resolveWorkspaceDraftUpdater(buildLegacyReeFromState(state), action.ree),
+        resolveWorkspaceDraftUpdater(buildReeDraftFromState(state), action.ree),
       );
-      const split = splitLegacyReeModel(nextRee);
+      const split = splitReeDraftViewModel(nextRee);
       return {
         ...state,
         workspaceDraft: {
@@ -375,10 +375,10 @@ export function workspaceShellReducer(
       };
     case "workspaceShell/resetWorkflowOnSourceChange": {
       const resetState = computeSourceChangeConsequences(
-        { ree: buildLegacyReeFromState(state) },
+        { ree: buildReeDraftFromState(state) },
         action.workflowParams,
       );
-      const split = splitLegacyReeModel(resetState.ree);
+      const split = splitReeDraftViewModel(resetState.ree);
       return {
         ...state,
         workspaceDraft: {
@@ -413,7 +413,7 @@ export function workspaceShellReducer(
 export function WorkspaceShellProvider({ children, initialRee }: WorkspaceShellProviderProps) {
   const [state, dispatch] = useReducer(
     workspaceShellReducer,
-    initialRee ?? createEmptyRee(),
+    initialRee ?? createEmptyReeDraftViewModel(),
     createInitialState,
   );
 

@@ -24,13 +24,13 @@ function buildWorkspaceState(): WorkspaceSourceResetInput {
         network: {},
         extra_info: {},
       },
-      _evalLevel: 3,
-      _sourceAvailable: true,
-      _sourceAcquiredBy: "download",
-      _uploadedArchive: "archive.tar.gz",
-      _sourceSnapshotArchive: "snapshot.tar.gz",
-      _sourceSnapshotCapturedAt: "2026-01-01T00:00:00Z",
-      _runtimeIncluded: true,
+      evalLevel: 3,
+      sourceAvailable: true,
+      sourceAcquiredBy: "download",
+      uploadedArchive: "archive.tar.gz",
+      sourceSnapshotArchive: "snapshot.tar.gz",
+      sourceSnapshotCapturedAt: "2026-01-01T00:00:00Z",
+      runtimeIncluded: true,
     },
   };
 }
@@ -47,6 +47,6 @@ describe("computeSourceChangeConsequences", () => {
     expect(reset.workspaceFiles).toEqual([]);
     expect(reset.ree.runtime).toBe("");
     expect(reset.ree.origin_url).toBe("");
-    expect(reset.ree._evalLevel).toBe(0);
+    expect(reset.ree.evalLevel).toBe(0);
   });
 });

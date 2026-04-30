@@ -12,8 +12,8 @@ describe("planSealArtifactCommands", () => {
       {
         type: "patchRee",
         patch: {
-          _sealedAt: "2026-04-29T09:00:00.000Z",
-          _sealHash: "sha256:abc123",
+          sealedAt: "2026-04-29T09:00:00.000Z",
+          sealHash: "sha256:abc123",
         },
       },
       { type: "setLocked", locked: true },

@@ -126,7 +126,7 @@ describe("createSourceUseCase", () => {
     const runSourceAction = vi.fn();
 
     const useCase = createSourceUseCase({
-      ree: { ...buildRee(), _sourceAvailable: true, _sourceAcquiredBy: "download" },
+      ree: { ...buildRee(), sourceAvailable: true, sourceAcquiredBy: "download" },
       executeCommands,
       sourceChanged,
       runSourceAction,

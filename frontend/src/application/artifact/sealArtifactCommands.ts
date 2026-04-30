@@ -8,8 +8,8 @@ export function planSealArtifactCommands(args: {
     {
       type: "patchRee",
       patch: {
-        _sealedAt: args.sealedAt,
-        _sealHash: args.sealHash,
+        sealedAt: args.sealedAt,
+        sealHash: args.sealHash,
       },
     },
     { type: "setLocked", locked: true },

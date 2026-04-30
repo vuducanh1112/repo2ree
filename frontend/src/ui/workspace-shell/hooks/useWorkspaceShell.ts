@@ -27,7 +27,7 @@ export function useWorkspaceShell() {
 
   const currentReeFiles = useMemo<ReeFile[]>(() => reeArtifactFiles || [], [reeArtifactFiles]);
 
-  const level = reeDraft._evalLevel ?? 0;
+  const level = reeDraft.evalLevel ?? 0;
   const {
     handleSeal,
     handleDownloadRee,

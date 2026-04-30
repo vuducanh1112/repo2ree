@@ -1,6 +1,6 @@
 import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import { splitLegacyReeModel } from "../../domain/ree/reeLegacyAdapters";
+import { splitReeDraftViewModel } from "../../domain/ree/reeDraftViewModel";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepRunParamsByKey } from "./WorkflowTypes";
@@ -137,7 +137,7 @@ export async function executeWorkflowStep({
   if (completionPlan.shouldRefreshWorkspace) {
     try {
       const workspace = await refreshWorkspace();
-      const split = workspace.ree ? splitLegacyReeModel(workspace.ree) : null;
+      const split = workspace.ree ? splitReeDraftViewModel(workspace.ree) : null;
       executeCommands([
         {
           type: "hydrateWorkspace",

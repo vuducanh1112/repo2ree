@@ -1,5 +1,5 @@
 import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
-import { splitLegacyReePatch } from "../../domain/ree/reeLegacyAdapters";
+import { splitReePatch } from "../../domain/ree/reeDraftViewModel";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { type SourceCommand, sourceFailureCommands } from "./sourceAcquisitionCommands";
 import {
@@ -172,7 +172,7 @@ export function createSourceUseCase({
           {
             type: "applySourceOutcome",
             outcome: {
-              ...splitLegacyReePatch(clearPlan.reePatch),
+              ...splitReePatch(clearPlan.reePatch),
               sourceSnapshotFiles: clearPlan.snapshotFiles,
               sourceSnapshotArchiveName: clearPlan.snapshotArchiveName,
             },
@@ -208,7 +208,7 @@ function sourceSuccessCommands(plan: {
     {
       type: "applySourceOutcome",
       outcome: {
-        ...splitLegacyReePatch(plan.reePatch),
+        ...splitReePatch(plan.reePatch),
         sourceSnapshotFiles: plan.snapshotFiles,
         sourceSnapshotArchiveName: plan.snapshotArchiveName,
         actionState: plan.actionState,

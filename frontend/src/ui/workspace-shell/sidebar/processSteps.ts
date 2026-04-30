@@ -95,10 +95,10 @@ export function hasProcessStepCompleted(
   ree: ReeDraftViewModel,
   badges: Badges,
 ) {
-  if (stepKey === PAGE.SOURCE) return !!ree._sourceAvailable;
+  if (stepKey === PAGE.SOURCE) return !!ree.sourceAvailable;
   if (stepKey === PAGE.METADATA) return !!ree.name;
   if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.hardware_description);
-  if (stepKey === PAGE.SEAL) return !!ree._sealedAt;
+  if (stepKey === PAGE.SEAL) return !!ree.sealedAt;
   if (stepKey === PAGE.ARCHIVE) return !!badges?.swh || !!badges?.zenodo || !!badges?.dataverse;
   return !!badges?.[stepKey];
 }

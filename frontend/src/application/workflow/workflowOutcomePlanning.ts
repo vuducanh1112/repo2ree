@@ -55,7 +55,7 @@ export function planBuildEffect(args: {
     return {
       reePatch: {
         runtime: expectedOutput,
-        _runtimeIncluded: true,
+        runtimeIncluded: true,
       },
       successMessage: `Build complete${producedName ? ` — ${producedName} produced` : ""}`,
     };
@@ -89,7 +89,7 @@ export function planEvaluateEffect(args: {
 
   return {
     reePatch: {
-      _evalLevel: args.newLevel,
+      evalLevel: args.newLevel,
       repro_level: `L${args.newLevel} · ${label}`,
       detected_dependencies: depSummary,
     },

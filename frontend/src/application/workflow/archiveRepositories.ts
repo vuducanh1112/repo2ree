@@ -30,7 +30,7 @@ export const ARCHIVE_REPOSITORIES: ArchiveRepo[] = [
         hint: "Only update metadata, skip re-archival if already present",
       },
     ],
-    requires: [{ field: "_sourceAvailable", label: "Source available" }],
+    requires: [{ field: "sourceAvailable", label: "Source available" }],
   },
   {
     key: "zenodo",

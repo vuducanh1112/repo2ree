@@ -3,8 +3,6 @@ import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import { createEmptyReeSpec, type ReeDraftViewModel, type ReeSpec } from "./ReeSpec";
 
-// Transitional compatibility layer for legacy merged REE shapes.
-// Do not add new responsibilities here; migrate callers away from it instead.
 interface ReeModelSplit {
   reeSpec: ReeSpec;
   workspaceSourceState: WorkspaceSourceState;
@@ -19,13 +17,13 @@ interface PartialReeModelSplit {
   evaluationState?: EvaluationState;
 }
 
-export function createEmptyRee(): ReeDraftViewModel {
-  return toLegacyReeViewModel({
+export function createEmptyReeDraftViewModel(): ReeDraftViewModel {
+  return toReeDraftViewModel({
     reeSpec: createEmptyReeSpec(),
   });
 }
 
-export function splitLegacyReeModel(ree: ReeDraftViewModel): ReeModelSplit {
+export function splitReeDraftViewModel(ree: ReeDraftViewModel): ReeModelSplit {
   const {
     name,
     origin_url,
@@ -40,17 +38,17 @@ export function splitLegacyReeModel(ree: ReeDraftViewModel): ReeModelSplit {
     repro_level,
     detected_dependencies,
     hardware_description,
-    _sourceAvailable,
-    _sourceIncluded,
-    _sourceAcquiredBy,
-    _uploadedArchive,
-    _sourceSnapshotArchive,
-    _sourceSnapshotCapturedAt,
-    _runtimeIncluded,
-    _downloadableFiles,
-    _sealedAt,
-    _sealHash,
-    _evalLevel,
+    sourceAvailable,
+    sourceIncluded,
+    sourceAcquiredBy,
+    uploadedArchive,
+    sourceSnapshotArchive,
+    sourceSnapshotCapturedAt,
+    runtimeIncluded,
+    downloadableFiles,
+    sealedAt,
+    sealHash,
+    evalLevel,
   } = ree;
 
   return {
@@ -70,26 +68,26 @@ export function splitLegacyReeModel(ree: ReeDraftViewModel): ReeModelSplit {
       hardware_description,
     },
     workspaceSourceState: {
-      sourceAvailable: _sourceAvailable,
-      sourceIncluded: _sourceIncluded,
-      sourceAcquiredBy: _sourceAcquiredBy,
-      uploadedArchive: _uploadedArchive,
-      sourceSnapshotArchive: _sourceSnapshotArchive,
-      sourceSnapshotCapturedAt: _sourceSnapshotCapturedAt,
+      sourceAvailable,
+      sourceIncluded,
+      sourceAcquiredBy,
+      uploadedArchive,
+      sourceSnapshotArchive,
+      sourceSnapshotCapturedAt,
     },
     artifactStatus: {
-      runtimeIncluded: _runtimeIncluded,
-      downloadableFiles: _downloadableFiles,
-      sealedAt: _sealedAt,
-      sealHash: _sealHash,
+      runtimeIncluded,
+      downloadableFiles,
+      sealedAt,
+      sealHash,
     },
     evaluationState: {
-      evalLevel: _evalLevel,
+      evalLevel,
     },
   };
 }
 
-export function splitLegacyReePatch(patch: Partial<ReeDraftViewModel>): PartialReeModelSplit {
+export function splitReePatch(patch: Partial<ReeDraftViewModel>): PartialReeModelSplit {
   const split: PartialReeModelSplit = {};
   const hasOwn = <K extends keyof ReeDraftViewModel>(key: K) => Object.hasOwn(patch, key);
 
@@ -135,66 +133,65 @@ export function splitLegacyReePatch(patch: Partial<ReeDraftViewModel>): PartialR
   }
 
   if (
-    hasOwn("_sourceAvailable") ||
-    hasOwn("_sourceIncluded") ||
-    hasOwn("_sourceAcquiredBy") ||
-    hasOwn("_uploadedArchive") ||
-    hasOwn("_sourceSnapshotArchive") ||
-    hasOwn("_sourceSnapshotCapturedAt")
+    hasOwn("sourceAvailable") ||
+    hasOwn("sourceIncluded") ||
+    hasOwn("sourceAcquiredBy") ||
+    hasOwn("uploadedArchive") ||
+    hasOwn("sourceSnapshotArchive") ||
+    hasOwn("sourceSnapshotCapturedAt")
   ) {
     split.workspaceSourceState = {};
-    if (hasOwn("_sourceAvailable"))
-      split.workspaceSourceState.sourceAvailable = patch._sourceAvailable;
-    if (hasOwn("_sourceIncluded"))
-      split.workspaceSourceState.sourceIncluded = patch._sourceIncluded;
-    if (hasOwn("_sourceAcquiredBy"))
-      split.workspaceSourceState.sourceAcquiredBy = patch._sourceAcquiredBy;
-    if (hasOwn("_uploadedArchive"))
-      split.workspaceSourceState.uploadedArchive = patch._uploadedArchive;
-    if (hasOwn("_sourceSnapshotArchive"))
-      split.workspaceSourceState.sourceSnapshotArchive = patch._sourceSnapshotArchive;
-    if (hasOwn("_sourceSnapshotCapturedAt"))
-      split.workspaceSourceState.sourceSnapshotCapturedAt = patch._sourceSnapshotCapturedAt;
+    if (hasOwn("sourceAvailable"))
+      split.workspaceSourceState.sourceAvailable = patch.sourceAvailable;
+    if (hasOwn("sourceIncluded")) split.workspaceSourceState.sourceIncluded = patch.sourceIncluded;
+    if (hasOwn("sourceAcquiredBy"))
+      split.workspaceSourceState.sourceAcquiredBy = patch.sourceAcquiredBy;
+    if (hasOwn("uploadedArchive"))
+      split.workspaceSourceState.uploadedArchive = patch.uploadedArchive;
+    if (hasOwn("sourceSnapshotArchive"))
+      split.workspaceSourceState.sourceSnapshotArchive = patch.sourceSnapshotArchive;
+    if (hasOwn("sourceSnapshotCapturedAt"))
+      split.workspaceSourceState.sourceSnapshotCapturedAt = patch.sourceSnapshotCapturedAt;
   }
 
   if (
-    hasOwn("_runtimeIncluded") ||
-    hasOwn("_downloadableFiles") ||
-    hasOwn("_sealedAt") ||
-    hasOwn("_sealHash")
+    hasOwn("runtimeIncluded") ||
+    hasOwn("downloadableFiles") ||
+    hasOwn("sealedAt") ||
+    hasOwn("sealHash")
   ) {
     split.artifactStatus = {};
-    if (hasOwn("_runtimeIncluded")) split.artifactStatus.runtimeIncluded = patch._runtimeIncluded;
-    if (hasOwn("_downloadableFiles"))
-      split.artifactStatus.downloadableFiles = patch._downloadableFiles;
-    if (hasOwn("_sealedAt")) split.artifactStatus.sealedAt = patch._sealedAt;
-    if (hasOwn("_sealHash")) split.artifactStatus.sealHash = patch._sealHash;
+    if (hasOwn("runtimeIncluded")) split.artifactStatus.runtimeIncluded = patch.runtimeIncluded;
+    if (hasOwn("downloadableFiles"))
+      split.artifactStatus.downloadableFiles = patch.downloadableFiles;
+    if (hasOwn("sealedAt")) split.artifactStatus.sealedAt = patch.sealedAt;
+    if (hasOwn("sealHash")) split.artifactStatus.sealHash = patch.sealHash;
   }
 
-  if (hasOwn("_evalLevel")) {
+  if (hasOwn("evalLevel")) {
     split.evaluationState = {
-      evalLevel: patch._evalLevel,
+      evalLevel: patch.evalLevel,
     };
   }
 
   return split;
 }
 
-export function toLegacyReeViewModel(
+export function toReeDraftViewModel(
   split: Partial<ReeModelSplit> & { reeSpec: ReeSpec },
 ): ReeDraftViewModel {
   return {
     ...split.reeSpec,
-    _sourceAvailable: split.workspaceSourceState?.sourceAvailable ?? false,
-    _sourceIncluded: split.workspaceSourceState?.sourceIncluded ?? false,
-    _sourceAcquiredBy: split.workspaceSourceState?.sourceAcquiredBy,
-    _uploadedArchive: split.workspaceSourceState?.uploadedArchive,
-    _sourceSnapshotArchive: split.workspaceSourceState?.sourceSnapshotArchive,
-    _sourceSnapshotCapturedAt: split.workspaceSourceState?.sourceSnapshotCapturedAt,
-    _runtimeIncluded: split.artifactStatus?.runtimeIncluded ?? false,
-    _downloadableFiles: split.artifactStatus?.downloadableFiles ?? [],
-    _sealedAt: split.artifactStatus?.sealedAt,
-    _sealHash: split.artifactStatus?.sealHash,
-    _evalLevel: split.evaluationState?.evalLevel ?? 0,
+    sourceAvailable: split.workspaceSourceState?.sourceAvailable ?? false,
+    sourceIncluded: split.workspaceSourceState?.sourceIncluded ?? false,
+    sourceAcquiredBy: split.workspaceSourceState?.sourceAcquiredBy,
+    uploadedArchive: split.workspaceSourceState?.uploadedArchive,
+    sourceSnapshotArchive: split.workspaceSourceState?.sourceSnapshotArchive,
+    sourceSnapshotCapturedAt: split.workspaceSourceState?.sourceSnapshotCapturedAt,
+    runtimeIncluded: split.artifactStatus?.runtimeIncluded ?? false,
+    downloadableFiles: split.artifactStatus?.downloadableFiles ?? [],
+    sealedAt: split.artifactStatus?.sealedAt,
+    sealHash: split.artifactStatus?.sealHash,
+    evalLevel: split.evaluationState?.evalLevel ?? 0,
   };
 }

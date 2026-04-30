@@ -107,7 +107,7 @@ describe("workspaceShellState", () => {
     expect(next.workspaceRemote.workspaceSourceState.sourceAvailable).toBe(false);
   });
 
-  it("keeps the compatibility selector aligned with the new slice state", () => {
+  it("keeps the aggregate selector aligned with the slice state", () => {
     const state = createInitialState(buildRee());
 
     const view = workspaceShellSelectors.state(state);
@@ -116,7 +116,7 @@ describe("workspaceShellState", () => {
     expect(view.workflowParams).toBe(state.workflowRun.workflowParams);
     expect(view.workspaceFiles).toBe(state.workspaceRemote.workspaceFiles);
     expect(view.ree.name).toBe(state.workspaceDraft.reeSpec.name);
-    expect(view.ree._sourceAvailable).toBe(
+    expect(view.ree.sourceAvailable).toBe(
       state.workspaceRemote.workspaceSourceState.sourceAvailable,
     );
   });

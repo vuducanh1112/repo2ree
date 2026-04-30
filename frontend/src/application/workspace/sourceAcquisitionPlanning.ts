@@ -75,7 +75,7 @@ function validateSourceDownload(
   originType: ReeDraftViewModel["source_type"],
   sourceUrl: string,
 ): SourceActionPlanResult<{ normalizedSourceUrl: string }> {
-  if (ree._sourceAvailable && ree._sourceAcquiredBy === "upload") {
+  if (ree.sourceAvailable && ree.sourceAcquiredBy === "upload") {
     return {
       ok: false,
       error: "Source already provided via tarball upload. Change source to switch method.",
@@ -96,7 +96,7 @@ function validateSourceDownload(
 function validateSourceUpload(
   ree: ReeDraftViewModel,
 ): SourceActionPlanResult<Record<string, never>> {
-  if (ree._sourceAvailable && ree._sourceAcquiredBy === "download") {
+  if (ree.sourceAvailable && ree.sourceAcquiredBy === "download") {
     return {
       ok: false,
       error: "Source already provided via origin download. Change source to switch method.",
@@ -132,11 +132,11 @@ function buildDownloadedSourceSuccess(args: {
       ...args.ree,
       origin_url: args.normalizedSourceUrl,
       source_type: args.originType,
-      _sourceAvailable: sourceAvailable,
-      _sourceAcquiredBy: "download",
-      _uploadedArchive: "",
-      _sourceSnapshotArchive: snapshotArchiveName,
-      _sourceSnapshotCapturedAt: args.timestamp,
+      sourceAvailable,
+      sourceAcquiredBy: "download",
+      uploadedArchive: "",
+      sourceSnapshotArchive: snapshotArchiveName,
+      sourceSnapshotCapturedAt: args.timestamp,
     },
     successMessage:
       args.originType === "tarball"
@@ -160,13 +160,13 @@ function buildUploadedSourceSuccess(args: {
     ree: {
       ...args.ree,
       origin_url: "",
-      _sourceIncluded: true,
-      _uploadedArchive: args.archiveName,
+      sourceIncluded: true,
+      uploadedArchive: args.archiveName,
       source_type: "",
-      _sourceAvailable: sourceAvailable,
-      _sourceAcquiredBy: "upload",
-      _sourceSnapshotArchive: snapshotArchiveName,
-      _sourceSnapshotCapturedAt: args.timestamp,
+      sourceAvailable,
+      sourceAcquiredBy: "upload",
+      sourceSnapshotArchive: snapshotArchiveName,
+      sourceSnapshotCapturedAt: args.timestamp,
     },
     successMessage: "Archive extracted into workspace",
   };
@@ -251,11 +251,11 @@ export function planDownloadedSourceState(args: {
     reePatch: {
       origin_url: successPlan.ree.origin_url,
       source_type: successPlan.ree.source_type,
-      _sourceAvailable: successPlan.ree._sourceAvailable,
-      _sourceAcquiredBy: successPlan.ree._sourceAcquiredBy,
-      _uploadedArchive: successPlan.ree._uploadedArchive,
-      _sourceSnapshotArchive: successPlan.ree._sourceSnapshotArchive,
-      _sourceSnapshotCapturedAt: successPlan.ree._sourceSnapshotCapturedAt,
+      sourceAvailable: successPlan.ree.sourceAvailable,
+      sourceAcquiredBy: successPlan.ree.sourceAcquiredBy,
+      uploadedArchive: successPlan.ree.uploadedArchive,
+      sourceSnapshotArchive: successPlan.ree.sourceSnapshotArchive,
+      sourceSnapshotCapturedAt: successPlan.ree.sourceSnapshotCapturedAt,
     },
     successMessage: successPlan.successMessage,
   };
@@ -277,13 +277,13 @@ export function planUploadedSourceState(args: {
     snapshotArchiveName: successPlan.snapshotArchiveName,
     reePatch: {
       origin_url: successPlan.ree.origin_url,
-      _sourceIncluded: successPlan.ree._sourceIncluded,
-      _uploadedArchive: successPlan.ree._uploadedArchive,
+      sourceIncluded: successPlan.ree.sourceIncluded,
+      uploadedArchive: successPlan.ree.uploadedArchive,
       source_type: successPlan.ree.source_type,
-      _sourceAvailable: successPlan.ree._sourceAvailable,
-      _sourceAcquiredBy: successPlan.ree._sourceAcquiredBy,
-      _sourceSnapshotArchive: successPlan.ree._sourceSnapshotArchive,
-      _sourceSnapshotCapturedAt: successPlan.ree._sourceSnapshotCapturedAt,
+      sourceAvailable: successPlan.ree.sourceAvailable,
+      sourceAcquiredBy: successPlan.ree.sourceAcquiredBy,
+      sourceSnapshotArchive: successPlan.ree.sourceSnapshotArchive,
+      sourceSnapshotCapturedAt: successPlan.ree.sourceSnapshotCapturedAt,
     },
     successMessage: successPlan.successMessage,
   };
@@ -293,11 +293,11 @@ export function planClearedSourceStateResult(): ClearedSourceStatePlan {
   return {
     reePatch: {
       origin_url: "",
-      _sourceAvailable: false,
-      _sourceAcquiredBy: undefined,
-      _uploadedArchive: "",
-      _sourceSnapshotArchive: "",
-      _sourceSnapshotCapturedAt: "",
+      sourceAvailable: false,
+      sourceAcquiredBy: undefined,
+      uploadedArchive: "",
+      sourceSnapshotArchive: "",
+      sourceSnapshotCapturedAt: "",
     },
     snapshotFiles: [],
     snapshotArchiveName: "",

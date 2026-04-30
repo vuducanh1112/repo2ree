@@ -36,7 +36,7 @@ export function WorkspaceShellSidebar({
   onDownloadRee,
   onPreviewReviewer,
 }: WorkspaceShellSidebarProps) {
-  const level = Math.min(ree._evalLevel ?? 0, LEVELS.length - 1);
+  const level = Math.min(ree.evalLevel ?? 0, LEVELS.length - 1);
   const levelMeta = LEVELS[level];
   const cableStates = getPodCableStates(ree, badges);
   const leftCables = cableStates

@@ -30,7 +30,7 @@ function buildRee(): ReeDraftViewModel {
 describe("workflowPolicies", () => {
   it("keeps workflow prerequisites separate from catalog metadata", () => {
     expect(getWorkflowRequirements("build")).toEqual([
-      { field: "_sourceAvailable", label: "Source available" },
+      { field: "sourceAvailable", label: "Source available" },
       { field: "build_runtime_script", label: "Build script" },
     ]);
   });
@@ -38,7 +38,7 @@ describe("workflowPolicies", () => {
   it("reports only unmet prerequisites for a workflow step", () => {
     const ree = {
       ...buildRee(),
-      _sourceAvailable: true,
+      sourceAvailable: true,
     };
 
     expect(missingWorkflowRequirements("build", ree)).toEqual([

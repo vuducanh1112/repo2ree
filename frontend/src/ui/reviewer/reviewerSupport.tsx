@@ -37,7 +37,7 @@ export const REACTIVATION_STEPS: ReactivationStep[] = [
     color: "#0891b2",
     desc: "Acquire source when it is not included in the uploaded review package.",
     logLines: (ree) =>
-      ree._sourceIncluded
+      ree.sourceIncluded
         ? [
             { type: "info", msg: "Source already included in uploaded archive." },
             { type: "ok", msg: "Source acquisition skipped ✓" },

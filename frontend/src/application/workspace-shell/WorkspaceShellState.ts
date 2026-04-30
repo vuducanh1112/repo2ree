@@ -8,7 +8,7 @@ import type {
   WorkflowLogs,
   WorkflowParams,
 } from "../../domain/ree/ReeTypes";
-import { toLegacyReeViewModel } from "../../domain/ree/reeLegacyAdapters";
+import { toReeDraftViewModel } from "../../domain/ree/reeDraftViewModel";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
@@ -20,7 +20,6 @@ import type { WorkspaceRemoteState } from "../workspace-remote/WorkspaceRemoteSt
 import { normalizeWorkspaceShellPage } from "./WorkspaceShellNavigation";
 import type { WorkspaceShellPage } from "./WorkspaceShellPages";
 
-// Transitional compatibility shape while consumers migrate to dedicated slices.
 export interface WorkspaceShellState {
   ree: ReeDraftViewModel;
   locked: boolean;
@@ -73,7 +72,7 @@ export function createWorkspaceShellState(params: {
   uiChrome: UiChromeState;
   workspaceRemote: WorkspaceRemoteState;
 }): WorkspaceShellState {
-  const ree = toLegacyReeViewModel({
+  const ree = toReeDraftViewModel({
     reeSpec: params.workspaceDraft.reeSpec,
     workspaceSourceState: params.workspaceRemote.workspaceSourceState,
     artifactStatus: params.workspaceRemote.artifactStatus,

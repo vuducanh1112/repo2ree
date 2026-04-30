@@ -1,6 +1,6 @@
 import { normalizeHBOM } from "../../domain/hbom/HbomSummary";
 import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
-import { toLegacyReeViewModel } from "../../domain/ree/reeLegacyAdapters";
+import { toReeDraftViewModel } from "../../domain/ree/reeDraftViewModel";
 import type { ReviewDetail } from "../ports/ReviewRepository";
 
 interface MapReeDraftToReeOptions {
@@ -33,13 +33,13 @@ export function mapReeDraftToRee({
     hardware_description: normalizeHBOM(draft.hardware_description),
   };
 
-  return toLegacyReeViewModel({
+  return toReeDraftViewModel({
     reeSpec,
     workspaceSourceState: {
       sourceAvailable: Boolean(draft._sourceAvailable),
       sourceIncluded: Boolean(draft._sourceIncluded),
       sourceAcquiredBy:
-        (draft._sourceAcquiredBy as ReeDraftViewModel["_sourceAcquiredBy"]) || undefined,
+        (draft._sourceAcquiredBy as ReeDraftViewModel["sourceAcquiredBy"]) || undefined,
       uploadedArchive: draft._uploadedArchive ? String(draft._uploadedArchive) : undefined,
       sourceSnapshotArchive: draft._sourceSnapshotArchive
         ? String(draft._sourceSnapshotArchive)

@@ -58,7 +58,7 @@ describe("workflowOutcomePlanning", () => {
       manifestCount: 2,
     });
 
-    expect(result.reePatch._evalLevel).toBe(3);
+    expect(result.reePatch.evalLevel).toBe(3);
     expect(result.reePatch.detected_dependencies).toContain("5 dependencies");
     expect(result.successMessage).toContain("L3");
   });
@@ -94,7 +94,7 @@ describe("workflowOutcomePlanning", () => {
       manifestCount: 3,
     });
 
-    expect(result.reePatch?._evalLevel).toBe(4);
+    expect(result.reePatch?.evalLevel).toBe(4);
     expect(result.successMessage).toContain("L4");
   });
 });
