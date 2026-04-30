@@ -1,5 +1,5 @@
 import type React from "react";
-import type { ExplorerPage } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
+import type { WorkspaceEditorPage } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import { PAGE } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import { hbomSummaryLines } from "../../../../../domain/hbom/HbomSummary";
 import type { Ree } from "../../../../../domain/ree/ReeSpec";
@@ -19,7 +19,7 @@ interface HbomPanelProps {
   ree: Ree;
   hbomRef: React.RefObject<HTMLDivElement>;
   onGoField: (key: string) => void;
-  onNavigate: (key: ExplorerPage) => void;
+  onNavigate: (key: WorkspaceEditorPage) => void;
 }
 
 const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({

@@ -9,7 +9,7 @@ type SourceApplyOutcomeCommand = Extract<SourceCommand, { type: "applySourcePatc
 type WorkflowRunCompletionCommand = Extract<WorkflowStepCommand, { type: "completeWorkflowRun" }>;
 type WorkflowRunHydrationCommand = Extract<WorkflowStepCommand, { type: "hydrateWorkspace" }>;
 
-export type ExplorerStateCommand =
+export type WorkspaceStateCommand =
   | {
       type: "setActionStates";
       actionStates: (prevStates: ActionStates) => ActionStates;
@@ -45,14 +45,14 @@ export type ExplorerStateCommand =
       outcome: SourceApplyOutcomeCommand["outcome"];
     };
 
-export type ExplorerShellEffect =
-  | { type: "dispatchStateCommand"; command: ExplorerStateCommand }
+export type WorkspaceShellEffect =
+  | { type: "dispatchStateCommand"; command: WorkspaceStateCommand }
   | { type: "persistFile"; path: string; content: string }
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
 export function mapWorkflowStepCommandsToEffects(
   commands: WorkflowStepCommand[],
-): ExplorerShellEffect[] {
+): WorkspaceShellEffect[] {
   return commands.map((command) => {
     if (command.type === "persistFile") {
       return {
@@ -133,7 +133,7 @@ export function mapWorkflowStepCommandsToEffects(
   });
 }
 
-export function mapSourceCommandsToEffects(commands: SourceCommand[]): ExplorerShellEffect[] {
+export function mapSourceCommandsToEffects(commands: SourceCommand[]): WorkspaceShellEffect[] {
   return commands.map((command) => {
     if (command.type === "toast") {
       return {

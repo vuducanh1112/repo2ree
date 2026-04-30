@@ -4,8 +4,8 @@ import type {
   ServiceBadge,
 } from "../../../application/workflow/WorkflowStepTypes";
 import {
-  type ExplorerPage,
   PAGE,
+  type WorkspaceEditorPage,
 } from "../../../application/workspace-editor/WorkspaceEditorPages";
 import type { Badges } from "../../../domain/ree/ReeTypes";
 import { Ic } from "../../shared/components/Icon";
@@ -19,12 +19,12 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 interface NextStepNudgeProps {
   stepKey: string;
   badges: Badges;
-  onGo: (key: ExplorerPage) => void;
+  onGo: (key: WorkspaceEditorPage) => void;
 }
 export function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
   const Steps: Array<{
-    key: ExplorerPage;
-    nextKey: ExplorerPage | null;
+    key: WorkspaceEditorPage;
+    nextKey: WorkspaceEditorPage | null;
     nextLabel: string | null;
     cond: () => boolean;
   }> = [

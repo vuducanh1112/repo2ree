@@ -14,7 +14,7 @@ import type { WorkspaceEditorRuntimePorts } from "../../../application/workspace
 import type { Ree } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import type { ExplorerWorkflowDispatch } from "./commandExecutors";
+import type { WorkspaceWorkflowDispatch } from "./commandExecutors";
 import type { ShowToast } from "./types";
 import { executeServiceRunAction } from "./workflowRuns";
 
@@ -31,7 +31,7 @@ interface CreateServiceRunAdapterArgs {
   ree: Ree;
   level: number;
   virtualFiles: FileTreeNode[];
-  dispatch: React.Dispatch<unknown> | ExplorerWorkflowDispatch;
+  dispatch: React.Dispatch<unknown> | WorkspaceWorkflowDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
   persistAutomationStepParams: (key: AutomationStepKey, params: GenericServiceParams) => void;
   showToast: ShowToast;

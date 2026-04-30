@@ -11,12 +11,12 @@ import type { WorkspaceEditorClock } from "../../../application/workspace-editor
 import type { Ree } from "../../../domain/ree/ReeSpec";
 import type { SourceUploadCommit } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import { type ExplorerWorkflowDispatch, executeSourceCommands } from "./commandExecutors";
+import { executeSourceCommands, type WorkspaceWorkflowDispatch } from "./commandExecutors";
 import { pollWorkflowRun } from "./pollWorkflowRun";
 import type { ShowToast } from "./types";
 
 export function resetWorkflowOnSourceChange(
-  dispatch: ExplorerWorkflowDispatch,
+  dispatch: WorkspaceWorkflowDispatch,
   showToast: ShowToast,
   options: { silent?: boolean } = {},
 ): void {
@@ -27,7 +27,7 @@ interface CreateSourceActionsArgs {
   ree: Ree;
   workspaceService: WorkspaceGateway<FileTreeNode>;
   workspaceId: string;
-  dispatch: ExplorerWorkflowDispatch;
+  dispatch: WorkspaceWorkflowDispatch;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   onSourceChange: (options?: { silent?: boolean }) => void;
   showToast: ShowToast;

@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import type { ExplorerPage } from "../../../../application/workspace-editor/WorkspaceEditorPages";
+import type { WorkspaceEditorPage } from "../../../../application/workspace-editor/WorkspaceEditorPages";
 import type { Ree } from "../../../../domain/ree/ReeSpec";
 import type { Badges, Timestamps } from "../../../../domain/ree/ReeTypes";
 import { LEVELS } from "../../../../domain/review/levels";
@@ -22,7 +22,7 @@ interface PageOverviewProps {
   ree: Ree;
   onReeChange: (ree: Ree) => void;
   level: number;
-  onNavigate: (key: ExplorerPage) => void;
+  onNavigate: (key: WorkspaceEditorPage) => void;
   badges?: Badges;
   timestamps?: Timestamps;
   onGoField: (key: string) => void;

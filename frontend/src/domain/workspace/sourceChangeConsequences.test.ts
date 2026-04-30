@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { initialAutomationStepParams } from "../../application/workflow/WorkflowStepDefinitions";
-import type { ExplorerSourceResetInput } from "./sourceChangeConsequences";
+import type { WorkspaceSourceResetInput } from "./sourceChangeConsequences";
 import { computeSourceChangeConsequences } from "./sourceChangeConsequences";
 
-function buildExplorerState(): ExplorerSourceResetInput {
+function buildWorkspaceState(): WorkspaceSourceResetInput {
   return {
     ree: {
       name: "demo",
@@ -36,11 +36,11 @@ function buildExplorerState(): ExplorerSourceResetInput {
 }
 
 describe("computeSourceChangeConsequences", () => {
-  it("clears workflow artifacts while preserving unrelated explorer state", () => {
-    const explorer = buildExplorerState();
+  it("clears workflow artifacts while preserving unrelated workspace state", () => {
+    const workspace = buildWorkspaceState();
     const nextServiceParams = initialAutomationStepParams();
 
-    const reset = computeSourceChangeConsequences(explorer, nextServiceParams);
+    const reset = computeSourceChangeConsequences(workspace, nextServiceParams);
 
     expect(reset.serviceParams).toEqual(nextServiceParams);
     expect(reset.badges).toEqual({});

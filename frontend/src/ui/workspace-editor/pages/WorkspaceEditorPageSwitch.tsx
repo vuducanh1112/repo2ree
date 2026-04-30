@@ -25,11 +25,11 @@ const SERVICE_PAGE_COMPONENTS: Record<string, (props: ServicePageProps) => JSX.E
   activation: (props) => <PageTestActivation {...props} />,
 };
 
-type ExplorerController = ReturnType<typeof useWorkspaceEditor>;
+type WorkspaceEditorController = ReturnType<typeof useWorkspaceEditor>;
 
-interface ExplorerPageContainerProps {
-  state: ExplorerController["state"];
-  commands: ExplorerController["commands"];
+interface WorkspaceEditorPageContainerProps {
+  state: WorkspaceEditorController["state"];
+  commands: WorkspaceEditorController["commands"];
 }
 
 const CONTENT_SECTION_STYLE: CSSProperties = {
@@ -43,7 +43,7 @@ function ContentSection({ children }: { children: ReactNode }) {
   return <div style={CONTENT_SECTION_STYLE}>{children}</div>;
 }
 
-export function OverviewPageContainer({ state, commands }: ExplorerPageContainerProps) {
+export function OverviewPageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
   const {
     page,
     ree,
@@ -83,7 +83,7 @@ export function OverviewPageContainer({ state, commands }: ExplorerPageContainer
   );
 }
 
-export function SourcePageContainer({ state, commands }: ExplorerPageContainerProps) {
+export function SourcePageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
   const { page, ree, locked, repoMode, badges, actionStates, focusedField, serviceLogs } = state;
 
   if (page !== PAGE.SOURCE) {
@@ -112,7 +112,7 @@ export function SourcePageContainer({ state, commands }: ExplorerPageContainerPr
   );
 }
 
-export function MetadataPageContainer({ state, commands }: ExplorerPageContainerProps) {
+export function MetadataPageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
   const { page, ree, locked, badges, focusedField } = state;
 
   if (page !== PAGE.METADATA) {
@@ -133,7 +133,7 @@ export function MetadataPageContainer({ state, commands }: ExplorerPageContainer
   );
 }
 
-export function HardwareBomPageContainer({ state, commands }: ExplorerPageContainerProps) {
+export function HardwareBomPageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
   const { page, ree, locked, badges, focusedField, serviceLogs, actionStates, timestamps } = state;
 
   if (page !== PAGE.HBOM) {
@@ -160,7 +160,7 @@ export function HardwareBomPageContainer({ state, commands }: ExplorerPageContai
   );
 }
 
-export function ServicePageContainer({ state, commands }: ExplorerPageContainerProps) {
+export function ServicePageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
   const { ree, badges, virtualFiles } = state;
 
   const serviceController = useWorkflowStepPageController({ state, commands });
@@ -203,7 +203,7 @@ export function ServicePageContainer({ state, commands }: ExplorerPageContainerP
   );
 }
 
-export function ArchivePageContainer({ state, commands }: ExplorerPageContainerProps) {
+export function ArchivePageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
   const { page, ree, badges, serviceLogs, actionStates } = state;
 
   if (page !== PAGE.ARCHIVE) {
@@ -224,7 +224,7 @@ export function ArchivePageContainer({ state, commands }: ExplorerPageContainerP
   );
 }
 
-export function FilesPageContainer({ state, commands }: ExplorerPageContainerProps) {
+export function FilesPageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
   const { page, virtualFiles, currentReeFiles } = state;
 
   if (page !== PAGE.FILES) {

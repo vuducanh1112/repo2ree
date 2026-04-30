@@ -1,5 +1,5 @@
 import React from "react";
-import type { ExplorerPage } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
+import type { WorkspaceEditorPage } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import { PAGE } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import type { Ree } from "../../../../../domain/ree/ReeSpec";
 import { Toggle } from "../../../../shared/components/Toggle";
@@ -23,7 +23,7 @@ interface SourcePanelProps {
   fileCount: number;
   fileSummary: string;
   onGoField: (key: string) => void;
-  onNavigate: (key: ExplorerPage) => void;
+  onNavigate: (key: WorkspaceEditorPage) => void;
   onReeChange: (ree: Ree) => void;
 }
 

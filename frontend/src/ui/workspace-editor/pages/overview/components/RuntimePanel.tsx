@@ -1,5 +1,5 @@
 import type React from "react";
-import type { ExplorerPage } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
+import type { WorkspaceEditorPage } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import { PAGE } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import type { Ree } from "../../../../../domain/ree/ReeSpec";
 import type { FileTreeNode } from "../../../../../domain/workspace/FileTree";
@@ -25,7 +25,7 @@ interface RuntimePanelProps {
   files: FileTreeNode[];
   runtimeRef: React.RefObject<HTMLDivElement>;
   onGoField: (key: string) => void;
-  onNavigate: (key: ExplorerPage) => void;
+  onNavigate: (key: WorkspaceEditorPage) => void;
   onReeChange: (ree: Ree) => void;
 }
 

@@ -37,11 +37,11 @@ export function LandingView({ onLoad }: LandingViewProps) {
       const workspaceApi = new WorkspaceApi(client);
       const workspace = await workspaceApi.createWorkspace({
         sourceMode: "upload",
-        name: "Explorer Workspace",
+        name: "REE Workspace",
       });
-      onLoad(`${APP_ROUTE.EXPLORER}?reeId=${encodeURIComponent(workspace.reeId)}`);
+      onLoad(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(workspace.reeId)}`);
     } catch {
-      onLoad(APP_ROUTE.EXPLORER);
+      onLoad(APP_ROUTE.WORKSPACE);
     } finally {
       setLoadingCreate(false);
     }
@@ -133,7 +133,7 @@ export function LandingView({ onLoad }: LandingViewProps) {
               marginBottom: 6,
             }}
           >
-            REE Explorer
+            REE Workspace
           </h1>
           <p style={{ fontSize: 14, color: C.textMid, lineHeight: 1.6 }}>
             Build, inspect, and certify

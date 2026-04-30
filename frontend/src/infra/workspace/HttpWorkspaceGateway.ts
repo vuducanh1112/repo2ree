@@ -138,7 +138,7 @@ export function createHttpWorkspaceGateway(
 
     const created = await workspaceApi.createWorkspace({
       sourceMode: "upload",
-      name: "Explorer Workspace",
+      name: "REE Workspace",
     });
     resolvedWorkspaceId = created.reeId;
     return created.reeId;

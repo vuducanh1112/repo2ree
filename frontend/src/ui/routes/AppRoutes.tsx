@@ -97,8 +97,9 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path={APP_ROUTE.ROOT} element={<LandingView onLoad={(path) => navigate(path)} />} />
+      <Route path="/explorer" element={<Navigate to={APP_ROUTE.WORKSPACE} replace />} />
       <Route
-        path={APP_ROUTE.EXPLORER}
+        path={APP_ROUTE.WORKSPACE}
         element={
           <WorkspaceEditorView
             onBack={() => navigate(APP_ROUTE.ROOT)}

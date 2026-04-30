@@ -14,7 +14,7 @@ import type { WorkspaceEditorRuntimePorts } from "../../../application/workspace
 import type { Ree } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import { type ExplorerWorkflowDispatch, executeWorkflowStepCommands } from "./commandExecutors";
+import { executeWorkflowStepCommands, type WorkspaceWorkflowDispatch } from "./commandExecutors";
 import { makeLogs } from "./logGenerator";
 import { pollWorkflowRun } from "./pollWorkflowRun";
 import type { ShowToast } from "./types";
@@ -25,7 +25,7 @@ interface ExecuteServiceRunArgs {
   ree: Ree;
   level: number;
   virtualFiles: FileTreeNode[];
-  dispatch: ExplorerWorkflowDispatch;
+  dispatch: WorkspaceWorkflowDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
   workflowStepHandlers: WorkflowStepHandlerMap;

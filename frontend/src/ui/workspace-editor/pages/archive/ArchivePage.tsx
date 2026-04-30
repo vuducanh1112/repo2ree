@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { GenericServiceParams } from "../../../../application/workflow/WorkflowStepTypes";
 import {
-  type ExplorerPage,
   PAGE,
+  type WorkspaceEditorPage,
 } from "../../../../application/workspace-editor/WorkspaceEditorPages";
 import type { Ree } from "../../../../domain/ree/ReeSpec";
 import type { ActionStates, Badges, ServiceLogs } from "../../../../domain/ree/ReeTypes";
@@ -27,7 +27,7 @@ interface PageArchiveProps {
   logs: ServiceLogs;
   actionStates: ActionStates;
   onRun: (key: string, params: GenericServiceParams) => void;
-  onGo: (key: ExplorerPage) => void;
+  onGo: (key: WorkspaceEditorPage) => void;
 }
 
 export function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchiveProps) {

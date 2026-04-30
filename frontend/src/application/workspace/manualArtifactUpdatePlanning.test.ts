@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { planNonWorkflowCompletion } from "./manualArtifactUpdatePlanning";
 
 describe("planNonWorkflowCompletion", () => {
-  it("locks the explorer for create", () => {
+  it("locks the workspace for create", () => {
     const result = planNonWorkflowCompletion({ key: "create" });
 
     expect(result.lock).toBe(true);

@@ -1,7 +1,9 @@
 import { AUTOMATION_STEPS } from "../../application/workflow/WorkflowStepDefinitions";
 import type { AutomationStepDefinition } from "../../application/workflow/WorkflowStepTypes";
-import type { ExplorerPage } from "../../application/workspace-editor/WorkspaceEditorPages";
-import { PAGE } from "../../application/workspace-editor/WorkspaceEditorPages";
+import {
+  PAGE,
+  type WorkspaceEditorPage,
+} from "../../application/workspace-editor/WorkspaceEditorPages";
 import { hbomHasAnyComponents } from "../../domain/hbom/HbomSummary";
 import type { Ree } from "../../domain/ree/ReeSpec";
 import type { Badges, Timestamps } from "../../domain/ree/ReeTypes";
@@ -14,7 +16,7 @@ import { ActionBtn, NavEntryButton } from "./WorkspaceEditorNav";
 
 interface ProcessStep {
   n: number;
-  key: ExplorerPage;
+  key: WorkspaceEditorPage;
   label: string;
   IC: (size?: number) => JSX.Element;
   automation: AutomationStepDefinition | null;
@@ -93,7 +95,7 @@ const PROCESS_STEPS: ProcessStep[] = [
   { n: 9, key: PAGE.SEAL, label: "Seal", IC: Ic.lock, automation: null, desc: "Seal the REE" },
 ];
 
-function hasProcessStepCompleted(stepKey: ExplorerPage, ree: Ree, badges: Badges): boolean {
+function hasProcessStepCompleted(stepKey: WorkspaceEditorPage, ree: Ree, badges: Badges): boolean {
   if (stepKey === PAGE.SOURCE) {
     return !!ree._sourceAvailable;
   }
@@ -113,12 +115,12 @@ function hasProcessStepCompleted(stepKey: ExplorerPage, ree: Ree, badges: Badges
 }
 
 interface WorkspaceEditorSidebarProps {
-  page: ExplorerPage;
+  page: WorkspaceEditorPage;
   ree: Ree;
   navCollapsed: boolean;
   badges: Badges;
   timestamps: Timestamps;
-  setPage: (page: ExplorerPage) => void;
+  setPage: (page: WorkspaceEditorPage) => void;
   setNavCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   onDownloadRee: () => void;
   onPreviewReviewer: () => void;
@@ -149,7 +151,7 @@ export function WorkspaceEditorSidebar({
   const topCable = cableStates.find((cable) => cable.podSide === "top") || null;
 
   const iconBtn = (
-    key: ExplorerPage,
+    key: WorkspaceEditorPage,
     icon: React.ReactNode,
     label: string,
     subtitle?: string | null,

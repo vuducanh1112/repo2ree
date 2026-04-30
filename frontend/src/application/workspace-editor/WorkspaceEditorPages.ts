@@ -18,19 +18,18 @@ export const PAGE = {
 
 export const APP_ROUTE = {
   ROOT: "/",
-  EXPLORER: "/explorer",
+  WORKSPACE: "/workspace",
   REVIEWER: "/reviewer",
 } as const;
 
 export type AppLoadRoutePath =
-  | typeof APP_ROUTE.EXPLORER
+  | typeof APP_ROUTE.WORKSPACE
   | typeof APP_ROUTE.REVIEWER
-  | `${typeof APP_ROUTE.EXPLORER}?${string}`
+  | `${typeof APP_ROUTE.WORKSPACE}?${string}`
   | `${typeof APP_ROUTE.REVIEWER}?${string}`;
 
 export type WorkspaceEditorPage = (typeof PAGE)[keyof typeof PAGE];
 const WORKSPACE_EDITOR_PAGES = Object.values(PAGE) as WorkspaceEditorPage[];
-export type ExplorerPage = WorkspaceEditorPage;
 
 // Maps a Ree field key to the workspace-editor page where it can be edited.
 export const FIELD_TO_PAGE: Partial<Record<keyof Ree, WorkspaceEditorPage>> = {

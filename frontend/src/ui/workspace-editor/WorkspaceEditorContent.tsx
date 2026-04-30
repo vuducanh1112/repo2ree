@@ -1,10 +1,10 @@
 import {
-  S_EXPLORER_MAIN_CONTENT_BG_BLOB_CENTER,
-  S_EXPLORER_MAIN_CONTENT_BG_BLOB_LEFT,
-  S_EXPLORER_MAIN_CONTENT_BG_BLOB_RIGHT,
-  S_EXPLORER_MAIN_CONTENT_BG_LAYER,
-  S_EXPLORER_MAIN_CONTENT_INNER,
-  S_EXPLORER_MAIN_CONTENT_ROOT,
+  S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_CENTER,
+  S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_LEFT,
+  S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_RIGHT,
+  S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_LAYER,
+  S_WORKSPACE_EDITOR_MAIN_CONTENT_INNER,
+  S_WORKSPACE_EDITOR_MAIN_CONTENT_ROOT,
 } from "../theme/theme";
 import type { useWorkspaceEditor } from "./hooks/useWorkspaceEditor";
 import {
@@ -26,13 +26,13 @@ interface WorkspaceEditorContentProps {
 
 export function WorkspaceEditorContent({ state, commands }: WorkspaceEditorContentProps) {
   return (
-    <main style={S_EXPLORER_MAIN_CONTENT_ROOT}>
-      <div style={S_EXPLORER_MAIN_CONTENT_BG_LAYER}>
-        <div style={S_EXPLORER_MAIN_CONTENT_BG_BLOB_LEFT} />
-        <div style={S_EXPLORER_MAIN_CONTENT_BG_BLOB_RIGHT} />
-        <div style={S_EXPLORER_MAIN_CONTENT_BG_BLOB_CENTER} />
+    <main style={S_WORKSPACE_EDITOR_MAIN_CONTENT_ROOT}>
+      <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_LAYER}>
+        <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_LEFT} />
+        <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_RIGHT} />
+        <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_CENTER} />
       </div>
-      <div style={S_EXPLORER_MAIN_CONTENT_INNER}>
+      <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_INNER}>
         <OverviewPageContainer state={state} commands={commands} />
         <SourcePageContainer state={state} commands={commands} />
         <MetadataPageContainer state={state} commands={commands} />

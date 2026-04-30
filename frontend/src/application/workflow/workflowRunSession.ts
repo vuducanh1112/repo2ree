@@ -14,7 +14,7 @@ interface CancelTrackedRunResult {
   message?: string;
 }
 
-interface ExplorerRunSession {
+interface WorkflowRunSession {
   noteRunStarted(key: string, runId: string): void;
   noteRunFinished(key: string): void;
   getActiveRunId(key: string): string | undefined;
@@ -26,7 +26,7 @@ interface ExplorerRunSession {
   cancelTrackedRun(args: CancelTrackedRunArgs): Promise<CancelTrackedRunResult>;
 }
 
-export function createWorkflowRunSession(): ExplorerRunSession {
+export function createWorkflowRunSession(): WorkflowRunSession {
   const activeRunIds: Record<string, string> = {};
 
   return {

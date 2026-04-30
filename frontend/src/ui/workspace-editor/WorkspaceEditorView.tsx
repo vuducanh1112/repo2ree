@@ -9,7 +9,7 @@ import { useWorkspaceEditor } from "./hooks/useWorkspaceEditor";
 import { WorkspaceEditorContent } from "./WorkspaceEditorContent";
 import { WorkspaceEditorSidebar } from "./WorkspaceEditorSidebar";
 
-interface ExplorerProps {
+interface WorkspaceEditorViewProps {
   onBack: () => void;
   sealedDemoRee: Ree;
   PodOrbitControl: React.ComponentType<{
@@ -22,7 +22,11 @@ interface ExplorerProps {
   }>;
 }
 
-export function WorkspaceEditorView({ onBack, sealedDemoRee, PodOrbitControl }: ExplorerProps) {
+export function WorkspaceEditorView({
+  onBack,
+  sealedDemoRee,
+  PodOrbitControl,
+}: WorkspaceEditorViewProps) {
   const { state, commands } = useWorkspaceEditor();
   const { ree, badges, timestamps, toast, page, navCollapsed, showReviewerPreview } = state;
 
@@ -68,7 +72,7 @@ export function WorkspaceEditorView({ onBack, sealedDemoRee, PodOrbitControl }: 
         <div style={{ width: 1, height: 18, background: C.border }} />
         <span style={{ color: C.accent, display: "flex" }}>{Ic.layers()}</span>
         <span style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: -0.3 }}>
-          REE Explorer
+          REE Editor
         </span>
         <span style={{ fontSize: 13, color: C.borderMid, fontFamily: F.mono }}>/</span>
         <span style={{ fontSize: 13, color: C.textMuted, fontFamily: F.mono }}>

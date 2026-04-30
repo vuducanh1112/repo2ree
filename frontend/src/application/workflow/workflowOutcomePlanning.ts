@@ -163,7 +163,7 @@ export function planSbomEffect(args: {
       documentNamespace: `https://example.org/sbom/${args.ree.name || "ree"}-${args.namespaceSuffix}`,
       creationInfo: {
         created: args.timestamp,
-        creators: ["Tool: syft via REE Explorer"],
+        creators: ["Tool: syft via REE Workspace"],
       },
       packages: [
         {

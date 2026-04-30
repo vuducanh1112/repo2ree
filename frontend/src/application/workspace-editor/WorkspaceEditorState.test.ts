@@ -74,7 +74,7 @@ describe("workspaceEditorState", () => {
     expect(next.timestamps.build).toBe("2026-01-01T00:00:00Z");
   });
 
-  it("resets workflow-dependent explorer state on source change", () => {
+  it("resets workflow-dependent workspace state on source change", () => {
     const initial = {
       ...createInitialWorkspaceEditorState(buildRee()),
       actionStates: { build: "done" as const },

@@ -1,6 +1,6 @@
 import type React from "react";
 import { FIELD_META } from "../../../../../application/workspace-editor/fieldMeta";
-import type { ExplorerPage } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
+import type { WorkspaceEditorPage } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import { PAGE } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import type { Ree } from "../../../../../domain/ree/ReeSpec";
 import {
@@ -18,7 +18,7 @@ import { PanelFieldRow } from "./PanelFieldRow";
 interface MetadataPanelProps {
   ree: Ree;
   onGoField: (key: string) => void;
-  onNavigate: (key: ExplorerPage) => void;
+  onNavigate: (key: WorkspaceEditorPage) => void;
   metadataRef: React.RefObject<HTMLDivElement>;
 }
 

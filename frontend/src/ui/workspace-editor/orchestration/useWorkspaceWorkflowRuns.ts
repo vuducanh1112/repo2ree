@@ -19,7 +19,7 @@ import { createSourceAdapter } from "./sourceAdapter";
 import { useWorkspaceDraftSync } from "./useWorkspaceDraftSync";
 import { createWorkflowRunGateway } from "./workflowRunGateway";
 
-interface UseExplorerWorkflowArgs {
+interface UseWorkspaceWorkflowArgs {
   dispatch: React.Dispatch<WorkspaceEditorAction>;
   ree: Ree;
   level: number;
@@ -33,7 +33,7 @@ export function useWorkspaceWorkflowRuns({
   level,
   virtualFiles,
   serviceParams,
-}: UseExplorerWorkflowArgs) {
+}: UseWorkspaceWorkflowArgs) {
   const { createWorkspaceService, ports, workspaceId, workspaceServiceMode } =
     useWorkspaceRuntime();
   const automationSessionRef = useRef(createWorkflowRunSession());

@@ -272,55 +272,55 @@ module.exports = {
       }
     },
     {
-      name: "context-no-features",
+      name: "runtime-no-ui-outside-bootstrap",
       severity: "error",
       comment:
-        "Shared context must not depend on feature folders; move shared policy to domain or application.",
+        "Runtime modules should wire the app together, but only bootstrap may import top-level UI routes/components.",
       from: {
-        path: "^src/context",
+        path: "^src/runtime/(?!bootstrap/)",
         pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
       },
       to: {
-        path: "^src/features"
+        path: "^src/ui"
       }
     },
     {
-      name: "explorer-workflow-no-react",
+      name: "ui-shared-no-feature-imports",
       severity: "error",
       comment:
-        "Explorer workflow helpers should be framework-free shell helpers; React belongs in hooks/components.",
+        "Shared UI modules should remain broadly reusable and must not depend on feature-specific screens.",
       from: {
-        path: "^src/features/explorer/hooks/workflow",
+        path: "^src/ui/shared",
         pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
       },
       to: {
-        path: "^(react$|react-dom$|react-router-dom$)"
+        path: "^src/ui/(landing|reviewer|routes|workspace-editor)"
       }
     },
     {
-      name: "explorer-workflow-no-feature-dependencies",
+      name: "ui-theme-no-feature-imports",
       severity: "error",
       comment:
-        "Explorer workflow helpers should depend on application/domain/shared services, not sibling feature modules.",
+        "Theme modules should be design primitives, not depend on route or feature implementations.",
       from: {
-        path: "^src/features/explorer/hooks/workflow",
+        path: "^src/ui/theme",
         pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
       },
       to: {
-        path: "^src/features/(?!explorer/(services|hooks/workflow))"
+        path: "^src/ui/(landing|reviewer|routes|workspace-editor)"
       }
     },
     {
-      name: "explorer-workflow-context-only-in-command-executors",
+      name: "ui-routes-no-feature-cross-coupling",
       severity: "error",
       comment:
-        "Workflow orchestration should emit commands; only commandExecutors translates them to context actions.",
+        "Route composition may assemble screens, but route modules should not depend on feature internals beyond top-level views.",
       from: {
-        path: "^src/features/explorer/hooks/workflow/(?!commandExecutors[.]ts$)",
+        path: "^src/ui/routes",
         pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
       },
       to: {
-        path: "^src/context"
+        path: "^src/ui/workspace-editor/(?!WorkspaceEditorView|pages/files/FilesPage)"
       }
     }
   ],

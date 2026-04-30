@@ -1,26 +1,26 @@
 import type { WorkflowStepCommand } from "../../../application/workflow/workflowStepCommands";
 import type { SourceCommand } from "../../../application/workspace/sourceAcquisitionCommands";
 import {
-  type ExplorerShellEffect,
-  type ExplorerStateCommand,
   mapSourceCommandsToEffects,
   mapWorkflowStepCommandsToEffects,
+  type WorkspaceShellEffect,
+  type WorkspaceStateCommand,
 } from "../../../application/workspace/workspaceMutationEffects";
 import type { WorkspaceEditorAction } from "../../../application/workspace-editor";
 import { workspaceEditorActions } from "../../../application/workspace-editor";
 import type { ShowToast } from "./types";
 
-export type ExplorerWorkflowDispatch = (action: WorkspaceEditorAction) => void;
+export type WorkspaceWorkflowDispatch = (action: WorkspaceEditorAction) => void;
 
 interface WorkflowStepCommandEffects {
-  dispatch: ExplorerWorkflowDispatch;
+  dispatch: WorkspaceWorkflowDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
 }
 
-function dispatchExplorerStateCommand(
-  command: ExplorerStateCommand,
-  dispatch: ExplorerWorkflowDispatch,
+function dispatchWorkspaceStateCommand(
+  command: WorkspaceStateCommand,
+  dispatch: WorkspaceWorkflowDispatch,
 ): void {
   if (command.type === "setActionStates") {
     dispatch(workspaceEditorActions.setActionStates(command.actionStates));
@@ -41,13 +41,13 @@ function dispatchExplorerStateCommand(
   }
 }
 
-function executeExplorerEffects(
-  effects: ExplorerShellEffect[],
+function executeWorkspaceEffects(
+  effects: WorkspaceShellEffect[],
   handlers: WorkflowStepCommandEffects,
 ): void {
   for (const effect of effects) {
     if (effect.type === "dispatchStateCommand") {
-      dispatchExplorerStateCommand(effect.command, handlers.dispatch);
+      dispatchWorkspaceStateCommand(effect.command, handlers.dispatch);
     } else if (effect.type === "persistFile") {
       handlers.persistWorkspaceFile(effect.path, effect.content);
     } else {
@@ -60,11 +60,11 @@ export function executeWorkflowStepCommands(
   commands: WorkflowStepCommand[],
   effects: WorkflowStepCommandEffects,
 ): void {
-  executeExplorerEffects(mapWorkflowStepCommandsToEffects(commands), effects);
+  executeWorkspaceEffects(mapWorkflowStepCommandsToEffects(commands), effects);
 }
 
 interface SourceCommandEffects {
-  dispatch: ExplorerWorkflowDispatch;
+  dispatch: WorkspaceWorkflowDispatch;
   showToast: ShowToast;
 }
 
@@ -72,7 +72,7 @@ export function executeSourceCommands(
   commands: SourceCommand[],
   effects: SourceCommandEffects,
 ): void {
-  executeExplorerEffects(mapSourceCommandsToEffects(commands), {
+  executeWorkspaceEffects(mapSourceCommandsToEffects(commands), {
     ...effects,
     persistWorkspaceFile: () => {},
   });

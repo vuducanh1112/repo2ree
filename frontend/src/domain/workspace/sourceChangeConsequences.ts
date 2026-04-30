@@ -9,11 +9,11 @@ import type {
 } from "../ree/ReeTypes";
 import type { FileTreeNode } from "./FileTree";
 
-export interface ExplorerSourceResetInput {
+export interface WorkspaceSourceResetInput {
   ree: Ree;
 }
 
-interface ExplorerSourceResetFields {
+interface WorkspaceSourceResetFields {
   badges: Badges;
   timestamps: Timestamps;
   serviceLogs: ServiceLogs;
@@ -27,9 +27,9 @@ interface ExplorerSourceResetFields {
 }
 
 export function computeSourceChangeConsequences(
-  explorer: ExplorerSourceResetInput,
+  workspace: WorkspaceSourceResetInput,
   serviceParams: ServiceParams,
-): ExplorerSourceResetFields {
+): WorkspaceSourceResetFields {
   return {
     badges: {},
     timestamps: {},
@@ -37,7 +37,7 @@ export function computeSourceChangeConsequences(
     actionStates: {},
     serviceParams,
     ree: {
-      ...explorer.ree,
+      ...workspace.ree,
       origin_url: "",
       runtime: "",
       build_runtime_script: "",

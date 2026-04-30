@@ -1,5 +1,5 @@
 import type React from "react";
-import type { ExplorerPage } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
+import type { WorkspaceEditorPage } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import { PAGE } from "../../../../../application/workspace-editor/WorkspaceEditorPages";
 import type { Ree } from "../../../../../domain/ree/ReeSpec";
 import type { Badges } from "../../../../../domain/ree/ReeTypes";
@@ -24,7 +24,7 @@ interface SbomPanelProps {
   files: FileTreeNode[];
   badges: Badges;
   sbomRef: React.RefObject<HTMLDivElement>;
-  onNavigate: (key: ExplorerPage) => void;
+  onNavigate: (key: WorkspaceEditorPage) => void;
 }
 
 const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({
