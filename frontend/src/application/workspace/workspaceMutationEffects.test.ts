@@ -19,12 +19,12 @@ describe("mapWorkflowStepCommandsToEffects", () => {
     ).toEqual([{ type: "toast", message: "Build complete", toastType: "success" }]);
   });
 
-  it("maps stateful service commands into dispatch actions", () => {
+  it("maps stateful workflow commands into dispatch actions", () => {
     const effects = mapWorkflowStepCommandsToEffects([
       {
         type: "hydrateWorkspace",
-        virtualFiles: [],
-        workspaceReeFiles: [],
+        workspaceFiles: [],
+        reeArtifactFiles: [],
         ree: undefined,
       },
     ]);

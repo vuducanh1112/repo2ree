@@ -55,7 +55,7 @@ import {
 } from "../../components/workflowRunPanels";
 import { SVC_SCRIPT_FIELDS } from "../sharedWorkflowConstants";
 import { findFileByPath } from "../sharedWorkflowHelpers";
-import type { ServicePageProps } from "../sharedWorkflowUi";
+import type { WorkflowPageProps } from "../sharedWorkflowUi";
 
 function formatByteSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -79,10 +79,10 @@ function deriveRuntimeFileSize(
 }
 
 export function PageBuildRuntime({
-  svc,
+  workflow,
   ree,
   badges,
-  virtualFiles,
+  workspaceFiles,
   log,
   running,
   runDone,
@@ -98,8 +98,8 @@ export function PageBuildRuntime({
   onReeChange,
   onFilesChange,
   onPersistWorkspaceFile,
-}: ServicePageProps) {
-  const files = virtualFiles;
+}: WorkflowPageProps) {
+  const files = workspaceFiles;
 
   const [expectedOutput, setExpectedOutput] = useState(() =>
     ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "",
@@ -113,7 +113,7 @@ export function PageBuildRuntime({
   const [showManualOverride, setShowManualOverride] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const buildColor = svc.color;
+  const buildColor = workflow.color;
   const imageColor = "#0891b2";
   const finalRuntime = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
   const metaRuntime = finalRuntime || null;
@@ -133,11 +133,11 @@ export function PageBuildRuntime({
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
       <WorkflowPageHeader
-        color={svc.color}
+        color={workflow.color}
         icon={Ic.cpu(18)}
-        title={svc.label}
-        subtitle={svc.desc}
-        tips={descToTwoTierTips(svc.desc)}
+        title={workflow.label}
+        subtitle={workflow.desc}
+        tips={descToTwoTierTips(workflow.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -196,7 +196,7 @@ export function PageBuildRuntime({
 
               <div style={{ marginTop: 14 }}>
                 <div style={{ ...S_SECTION_LABEL, marginBottom: 10 }}>Build Script Editor</div>
-                {SVC_SCRIPT_FIELDS[svc.key]?.map((sf) => (
+                {SVC_SCRIPT_FIELDS[workflow.key]?.map((sf) => (
                   <ScriptPanel
                     key={sf.fieldKey}
                     scriptKind={sf.scriptKind || null}
@@ -256,13 +256,13 @@ export function PageBuildRuntime({
                 />
               </div>
 
-              {svc.params && svc.params.length > 0 && (
+              {workflow.params && workflow.params.length > 0 && (
                 <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
                   <div style={S_SECTION_LABEL_MB12}>Additional Parameters</div>
                   <div
                     style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}
                   >
-                    {svc.params.map((p) => {
+                    {workflow.params.map((p) => {
                       const paramValue = params[p.key as keyof typeof params];
 
                       return (
@@ -368,8 +368,8 @@ export function PageBuildRuntime({
             runningLabel="Building…"
             doneLabel="Re-build"
             helperText="Execute the build script and record build logs."
-            onCancel={() => onCancel?.(svc.key)}
-            onRun={() => onRun(svc.key, buildParams)}
+            onCancel={() => onCancel?.(workflow.key)}
+            onRun={() => onRun(workflow.key, buildParams)}
           />
 
           <div style={S_WORKFLOW_BUILD_SECTION_WRAP}>
@@ -554,7 +554,7 @@ export function PageBuildRuntime({
           </div>
 
           <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-            <NextStepNudge stepKey={svc.key} badges={badges || {}} onGo={onGo || (() => {})} />
+            <NextStepNudge stepKey={workflow.key} badges={badges || {}} onGo={onGo || (() => {})} />
           </div>
         </div>
 

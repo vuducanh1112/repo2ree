@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type {
   Level,
-  ServiceParamValue,
   StepState,
+  WorkflowParamValue,
 } from "../../application/workflow/WorkflowStepTypes";
 import { hbomSummaryLines } from "../../domain/hbom/HbomSummary";
 import type { Ree } from "../../domain/ree/ReeSpec";
@@ -152,7 +152,7 @@ export function ReviewerView({
   const [stepParams, setStepParams] =
     useState<Record<ReactivationStepKey, ReactivationParams>>(initParams);
 
-  const setParam = (stepKey: ReactivationStepKey, paramKey: string, val: ServiceParamValue) =>
+  const setParam = (stepKey: ReactivationStepKey, paramKey: string, val: WorkflowParamValue) =>
     setStepParams((p) => ({ ...p, [stepKey]: { ...p[stepKey], [paramKey]: val } }));
 
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

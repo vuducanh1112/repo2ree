@@ -638,7 +638,7 @@ export function WorkspaceEditorSidebar({
           />
         </div>
         <ActionBtn
-          title="Preview as Reviewer"
+          title="Preview Review"
           label="Preview"
           subtitle="reviewer's view"
           icon={Ic.star(11)}

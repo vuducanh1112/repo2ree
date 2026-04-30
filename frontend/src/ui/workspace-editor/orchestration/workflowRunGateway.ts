@@ -1,10 +1,10 @@
 import type React from "react";
 import type {
   WorkflowRunLogEntry,
-  WorkspaceGateway,
-} from "../../../application/ports/WorkspaceGateway";
+  WorkspaceBackendGateway,
+} from "../../../application/ports/WorkspaceBackendGateway";
 import { isAutomationStepKey } from "../../../application/workflow/WorkflowStepDefinitions";
-import type { GenericServiceParams } from "../../../application/workflow/WorkflowStepTypes";
+import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type {
   AutomationStepKey,
   AutomationStepRunParams,
@@ -16,7 +16,7 @@ import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { WorkspaceWorkflowDispatch } from "./commandExecutors";
 import type { ShowToast } from "./types";
-import { executeServiceRunAction } from "./workflowRuns";
+import { executeWorkflowRunAction } from "./workflowRuns";
 
 interface RunSessionPort {
   noteRunStarted: (key: string, runId: string) => void;
@@ -27,21 +27,21 @@ interface RunSessionPort {
   }) => Promise<{ ok: boolean; message?: string }>;
 }
 
-interface CreateServiceRunAdapterArgs {
+interface CreateWorkflowRunGatewayArgs {
   ree: Ree;
   level: number;
-  virtualFiles: FileTreeNode[];
+  workspaceFiles: FileTreeNode[];
   dispatch: React.Dispatch<unknown> | WorkspaceWorkflowDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
-  persistAutomationStepParams: (key: AutomationStepKey, params: GenericServiceParams) => void;
+  persistAutomationStepParams: (key: AutomationStepKey, params: GenericWorkflowParams) => void;
   showToast: ShowToast;
   workflowStepHandlers: WorkflowStepHandlerMap;
-  workspaceService: WorkspaceGateway<FileTreeNode>;
+  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
   workspaceId: string;
   ports: WorkspaceEditorRuntimePorts;
   refreshWorkspace: () => Promise<{
-    virtualFiles: FileTreeNode[];
-    workspaceReeFiles: ReeFile[];
+    workspaceFiles: FileTreeNode[];
+    reeArtifactFiles: ReeFile[];
     ree?: Ree;
   }>;
   runSession: RunSessionPort;
@@ -50,7 +50,7 @@ interface CreateServiceRunAdapterArgs {
 export function createWorkflowRunGateway({
   ree,
   level,
-  virtualFiles,
+  workspaceFiles,
   dispatch,
   persistWorkspaceFile,
   persistAutomationStepParams,
@@ -61,17 +61,17 @@ export function createWorkflowRunGateway({
   ports,
   refreshWorkspace,
   runSession,
-}: CreateServiceRunAdapterArgs) {
-  const executeServiceRun = async (
+}: CreateWorkflowRunGatewayArgs) {
+  const executeWorkflowRun = async (
     key: string,
-    params: GenericServiceParams = {},
+    params: GenericWorkflowParams = {},
   ): Promise<WorkflowRunLogEntry> =>
-    executeServiceRunAction({
+    executeWorkflowRunAction({
       key,
       params,
       ree,
       level,
-      virtualFiles,
+      workspaceFiles,
       dispatch,
       persistWorkspaceFile,
       showToast,
@@ -84,11 +84,11 @@ export function createWorkflowRunGateway({
       onRunFinished: runSession.noteRunFinished,
     });
 
-  const runWorkflowStep = async (key: string, params: GenericServiceParams = {}) => {
+  const runWorkflowStep = async (key: string, params: GenericWorkflowParams = {}) => {
     if (isAutomationStepKey(key)) {
       persistAutomationStepParams(key, params);
     }
-    await executeServiceRun(key, params);
+    await executeWorkflowRun(key, params);
   };
 
   const runAutomationStep = async <K extends AutomationStepKey>(
@@ -113,7 +113,7 @@ export function createWorkflowRunGateway({
   };
 
   return {
-    executeServiceRun,
+    executeWorkflowRun,
     runWorkflowStep,
     runAutomationStep,
     cancelAutomationStep,

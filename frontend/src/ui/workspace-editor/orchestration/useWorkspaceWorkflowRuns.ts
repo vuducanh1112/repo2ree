@@ -1,8 +1,8 @@
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { planSealArtifactCommands } from "../../../application/artifact/sealArtifactCommands";
-import type { WorkflowRunLogEntry } from "../../../application/ports/WorkspaceGateway";
-import type { GenericServiceParams } from "../../../application/workflow/WorkflowStepTypes";
+import type { WorkflowRunLogEntry } from "../../../application/ports/WorkspaceBackendGateway";
+import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
 import { createWorkflowRunSession } from "../../../application/workflow/workflowRunSession";
 import { createWorkflowStepHandlers } from "../../../application/workflow/workflowStepCommands";
@@ -23,30 +23,30 @@ interface UseWorkspaceWorkflowArgs {
   dispatch: React.Dispatch<WorkspaceEditorAction>;
   ree: Ree;
   level: number;
-  virtualFiles: FileTreeNode[];
+  workspaceFiles: FileTreeNode[];
 }
 
 export function useWorkspaceWorkflowRuns({
   dispatch,
   ree: reeDraft,
   level,
-  virtualFiles,
+  workspaceFiles,
 }: UseWorkspaceWorkflowArgs) {
-  const { workspaceGateway, ports, workspaceId } = useWorkspaceRuntime();
+  const { workspaceBackend, ports, workspaceId } = useWorkspaceRuntime();
   const automationSessionRef = useRef(createWorkflowRunSession());
   const automationSession = automationSessionRef.current;
-  const executeServiceRunRef = useRef<
-    (key: string, params?: GenericServiceParams) => Promise<WorkflowRunLogEntry>
+  const executeWorkflowRunRef = useRef<
+    (key: string, params?: GenericWorkflowParams) => Promise<WorkflowRunLogEntry>
   >(async () => {
-    throw new Error("Service run executor is not ready");
+    throw new Error("Workflow run executor is not ready");
   });
   const showToast = (msg: string, type: "info" | "success" | "error" = "info") =>
     dispatch(workspaceEditorActions.setToast({ message: msg, type }));
 
-  const workspaceService = useMemo(() => workspaceGateway, [workspaceGateway]);
+  const workspaceService = useMemo(() => workspaceBackend, [workspaceBackend]);
 
   const hydrateWorkspace = useCallback(
-    (workspace: { virtualFiles: FileTreeNode[]; workspaceReeFiles: ReeFile[]; ree?: Ree }) =>
+    (workspace: { workspaceFiles: FileTreeNode[]; reeArtifactFiles: ReeFile[]; ree?: Ree }) =>
       dispatch(workspaceEditorActions.hydrateWorkspace(workspace)),
     [dispatch],
   );
@@ -67,21 +67,21 @@ export function useWorkspaceWorkflowRuns({
 
   const workflowStepHandlers = createWorkflowStepHandlers({
     ree: reeDraft,
-    virtualFiles,
+    workspaceFiles,
     clock: ports.clock,
   });
 
   const workflowRunGateway = createWorkflowRunGateway({
     ree: reeDraft,
     level,
-    virtualFiles,
+    workspaceFiles,
     dispatch,
     persistWorkspaceFile: (path: string, content: string) => {
       void persistWorkspaceFile(undefined, path, content);
     },
     persistAutomationStepParams: (key, params) => {
       dispatch(
-        workspaceEditorActions.setServiceParams((prev) =>
+        workspaceEditorActions.setWorkflowParams((prev) =>
           automationSession.mergeAutomationStepParams(
             prev,
             key,
@@ -113,7 +113,7 @@ export function useWorkspaceWorkflowRuns({
   });
 
   useEffect(() => {
-    executeServiceRunRef.current = workflowRunGateway.executeServiceRun;
+    executeWorkflowRunRef.current = workflowRunGateway.executeWorkflowRun;
   });
 
   const { handleDownloadSourceFiles, handleWorkspaceUpload, handleRemoveWorkspaceSource } =

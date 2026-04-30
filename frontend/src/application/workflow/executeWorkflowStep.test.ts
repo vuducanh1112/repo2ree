@@ -48,7 +48,7 @@ function executedCommands(executeCommands: ReturnType<typeof vi.fn>) {
 }
 
 describe("executeWorkflowStep", () => {
-  it("runs a workflow service, refreshes build outputs, and executes planned commands", async () => {
+  it("runs a workflow step, refreshes build outputs, and executes planned commands", async () => {
     const executeCommands = vi.fn();
     const refreshWorkspace = vi.fn(async () => ({
       files: [{ id: "runtime", name: "runtime.tar.gz", type: "file" as const }],
@@ -59,7 +59,7 @@ describe("executeWorkflowStep", () => {
       params: { no_cache: true },
       ree: buildRee(),
       level: 2,
-      virtualFiles: [],
+      workspaceFiles: [],
       workflowRunner: {
         startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
         pollRun: vi.fn(async () => ({
@@ -82,7 +82,7 @@ describe("executeWorkflowStep", () => {
         type: "completeWorkflowRun",
         completion: {
           key: "build",
-          serviceLog: { lines: [{ type: "ok", msg: "built" }], ts: "2026-01-01T00:00:00Z" },
+          workflowLog: { lines: [{ type: "ok", msg: "built" }], ts: "2026-01-01T00:00:00Z" },
           actionState: "done",
           badge: true,
           timestamp: "2026-01-01T00:00:00Z",
@@ -90,8 +90,8 @@ describe("executeWorkflowStep", () => {
       },
       {
         type: "hydrateWorkspace",
-        virtualFiles: [{ id: "runtime", name: "runtime.tar.gz", type: "file" }],
-        workspaceReeFiles: [],
+        workspaceFiles: [{ id: "runtime", name: "runtime.tar.gz", type: "file" }],
+        reeArtifactFiles: [],
         ree: undefined,
       },
       { type: "toast", message: "Build complete", toastType: "success" },
@@ -107,7 +107,7 @@ describe("executeWorkflowStep", () => {
       params: {},
       ree: buildRee(),
       level: 2,
-      virtualFiles: [],
+      workspaceFiles: [],
       workflowRunner: {
         startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
         pollRun: vi.fn(async () => ({
@@ -143,7 +143,7 @@ describe("executeWorkflowStep", () => {
       params: {},
       ree: buildRee(),
       level: 2,
-      virtualFiles: [],
+      workspaceFiles: [],
       workflowRunner: {
         startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
         pollRun: vi.fn(async () => ({

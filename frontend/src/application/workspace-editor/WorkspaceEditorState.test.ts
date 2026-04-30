@@ -38,8 +38,8 @@ describe("workspaceEditorState", () => {
           _sourceAvailable: true,
           _sourceAcquiredBy: "download",
         },
-        immutableSourceSnapshotFiles: [{ id: "1", name: "README.md", type: "file" }],
-        immutableSourceSnapshotArchiveName: "repo-original.tar.gz",
+        sourceSnapshotFiles: [{ id: "1", name: "README.md", type: "file" }],
+        sourceSnapshotArchiveName: "repo-original.tar.gz",
         actionState: "done",
         badge: true,
         timestamp: "2026-01-01T00:00:00Z",
@@ -51,24 +51,24 @@ describe("workspaceEditorState", () => {
     expect(next.actionStates.source).toBe("done");
     expect(next.badges.source).toBe(true);
     expect(next.timestamps.source).toBe("2026-01-01T00:00:00Z");
-    expect(next.immutableSourceSnapshotArchiveName).toBe("repo-original.tar.gz");
+    expect(next.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
   });
 
-  it("records completion metadata for completed service runs", () => {
+  it("records completion metadata for completed workflow runs", () => {
     const initial = createInitialWorkspaceEditorState(buildRee());
 
     const next = applyWorkspaceEditorAction(initial, {
       type: "workspaceEditor/completeWorkflowRun",
       completion: {
         key: "build",
-        serviceLog: { lines: [{ type: "ok", msg: "done" }], ts: "2026-01-01T00:00:00Z" },
+        workflowLog: { lines: [{ type: "ok", msg: "done" }], ts: "2026-01-01T00:00:00Z" },
         actionState: "done",
         badge: true,
         timestamp: "2026-01-01T00:00:00Z",
       },
     });
 
-    expect(next.serviceLogs.build?.lines[0]?.msg).toBe("done");
+    expect(next.workflowLogs.build?.lines[0]?.msg).toBe("done");
     expect(next.actionStates.build).toBe("done");
     expect(next.badges.build).toBe(true);
     expect(next.timestamps.build).toBe("2026-01-01T00:00:00Z");
@@ -80,18 +80,18 @@ describe("workspaceEditorState", () => {
       actionStates: { build: "done" as const },
       badges: { build: true },
       timestamps: { build: "2026-01-01T00:00:00Z" },
-      virtualFiles: [{ id: "1", name: "README.md", type: "file" as const }],
+      workspaceFiles: [{ id: "1", name: "README.md", type: "file" as const }],
     };
 
     const next = applyWorkspaceEditorAction(initial, {
       type: "workspaceEditor/resetWorkflowOnSourceChange",
-      serviceParams: initial.serviceParams,
+      workflowParams: initial.workflowParams,
     });
 
     expect(next.actionStates).toEqual({});
     expect(next.badges).toEqual({});
     expect(next.timestamps).toEqual({});
-    expect(next.virtualFiles).toEqual([]);
+    expect(next.workspaceFiles).toEqual([]);
     expect(next.ree.origin_url).toBe("");
     expect(next.ree._sourceAvailable).toBe(false);
   });

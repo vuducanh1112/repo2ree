@@ -60,10 +60,10 @@ export function RightRailPanels({
   archiveRef,
   activationRef,
 }: RightRailPanelsProps) {
-  const service = AUTOMATION_STEPS.find((svc) => svc.key === PAGE.EVALUATE);
+  const workflowStep = AUTOMATION_STEPS.find((workflow) => workflow.key === PAGE.EVALUATE);
   const evaluateDate =
-    service && timestamps[service.key]
-      ? new Date(timestamps[service.key]).toLocaleString([], {
+    workflowStep && timestamps[workflowStep.key]
+      ? new Date(timestamps[workflowStep.key]).toLocaleString([], {
           month: "short",
           day: "numeric",
           hour: "2-digit",
@@ -136,9 +136,9 @@ export function RightRailPanels({
         </div>
       </div>
 
-      {service &&
+      {workflowStep &&
         (() => {
-          const earned = !!badges[service.key];
+          const earned = !!badges[workflowStep.key];
           return (
             <div ref={evaluateRef} style={panel({ overflow: "hidden" })}>
               <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
@@ -147,8 +147,8 @@ export function RightRailPanels({
                     width: 5,
                     height: 5,
                     borderRadius: "50%",
-                    background: earned ? service.badge.color : "#d1d5db",
-                    boxShadow: earned ? `0 0 5px ${service.badge.color}99` : "none",
+                    background: earned ? workflowStep.badge.color : "#d1d5db",
+                    boxShadow: earned ? `0 0 5px ${workflowStep.badge.color}99` : "none",
                   }}
                 />
                 <span style={S_PANEL_HEADER_LABEL}>Evaluate</span>
@@ -156,9 +156,9 @@ export function RightRailPanels({
                   <span
                     style={{
                       ...S_OVERVIEW_PANEL_BADGE_BASE,
-                      color: service.badge.color,
-                      background: service.badge.bg,
-                      border: `1px solid ${service.badge.color}40`,
+                      color: workflowStep.badge.color,
+                      background: workflowStep.badge.bg,
+                      border: `1px solid ${workflowStep.badge.color}40`,
                     }}
                   >
                     OK
@@ -168,7 +168,10 @@ export function RightRailPanels({
               <div style={S_OVERVIEW_META_FOOTER}>
                 <div style={S_FLEX_ROW_CENTER_GAP_6}>
                   <span
-                    style={{ display: "flex", color: earned ? service.badge.color : C.textMuted }}
+                    style={{
+                      display: "flex",
+                      color: earned ? workflowStep.badge.color : C.textMuted,
+                    }}
                   >
                     {Ic.star(12)}
                   </span>
@@ -202,15 +205,15 @@ export function RightRailPanels({
                     gap: 5,
                     padding: "5px 8px",
                     borderRadius: 5,
-                    background: earned ? service.badge.bg : C.surfaceAlt,
-                    border: `1px solid ${earned ? `${service.badge.color}40` : C.border}`,
+                    background: earned ? workflowStep.badge.bg : C.surfaceAlt,
+                    border: `1px solid ${earned ? `${workflowStep.badge.color}40` : C.border}`,
                   }}
                 >
                   <span
                     style={{
                       fontSize: 10,
                       fontFamily: F.sans,
-                      color: earned ? service.badge.color : C.textMuted,
+                      color: earned ? workflowStep.badge.color : C.textMuted,
                       fontWeight: 600,
                     }}
                   >
@@ -221,16 +224,16 @@ export function RightRailPanels({
                   type="button"
                   onClick={() =>
                     onNavigate?.(
-                      isValidWorkspaceEditorPage(service.key)
-                        ? (service.key as WorkspaceEditorPage)
+                      isValidWorkspaceEditorPage(workflowStep.key)
+                        ? (workflowStep.key as WorkspaceEditorPage)
                         : PAGE.OVERVIEW,
                     )
                   }
                   style={{
                     ...S_OVERVIEW_PANEL_BUTTON_BASE,
-                    color: service.badge.color,
-                    background: service.badge.bg,
-                    border: `1px solid ${service.badge.color}40`,
+                    color: workflowStep.badge.color,
+                    background: workflowStep.badge.bg,
+                    border: `1px solid ${workflowStep.badge.color}40`,
                   }}
                   {...hoverBrightness(95)}
                 >

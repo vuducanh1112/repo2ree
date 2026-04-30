@@ -208,7 +208,7 @@ export function PageHardwareBom({
   focusedField,
   onReeChange,
   onLockedChange,
-  onGoService,
+  onGoWorkflow,
   onFocusedFieldChange,
   onRun,
   onCancel,
@@ -450,7 +450,7 @@ export function PageHardwareBom({
             />
 
             <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-              <NextStepNudge stepKey="hbom" badges={badges} onGo={onGoService} />
+              <NextStepNudge stepKey="hbom" badges={badges} onGo={onGoWorkflow} />
             </div>
           </div>
         </div>

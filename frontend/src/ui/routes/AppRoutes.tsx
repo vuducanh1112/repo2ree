@@ -103,7 +103,7 @@ export function AppRoutes() {
         element={
           <WorkspaceEditorView
             onBack={() => navigate(APP_ROUTE.ROOT)}
-            sealedDemoRee={SEALED_DEMO_REE}
+            defaultReviewedRee={SEALED_DEMO_REE}
             PodOrbitControl={PodOrbitControl}
           />
         }

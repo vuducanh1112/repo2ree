@@ -1,6 +1,6 @@
 import type { Ree } from "../../domain/ree/ReeSpec";
 import { LEVELS } from "../../domain/review/levels";
-import type { GenericServiceParams } from "./WorkflowStepTypes";
+import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepKey } from "./WorkflowTypes";
 
 interface PersistedFilePlan {
@@ -102,7 +102,7 @@ export function planActivationEffect(): ActivationEffectPlan {
 
 export function planWorkflowServiceEffect(args: {
   key: AutomationStepKey;
-  params: GenericServiceParams;
+  params: GenericWorkflowParams;
   ree: Ree;
   newLevel: number;
   timestamp: string;

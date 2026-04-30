@@ -3,7 +3,7 @@ import {
   AUTOMATION_STEPS,
   defaultParamsForAutomationStep,
 } from "../../../application/workflow/WorkflowStepDefinitions";
-import type { ServiceParamValue } from "../../../application/workflow/WorkflowStepTypes";
+import type { WorkflowParamValue } from "../../../application/workflow/WorkflowStepTypes";
 import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
 import { workspaceEditorPageForField } from "../../../application/workspace-editor/WorkspaceEditorNavigation";
 import { missingRequirements } from "../orchestration/requirements";
@@ -20,42 +20,42 @@ export function useWorkflowStepPageController({
   state,
   commands,
 }: UseWorkflowStepPageControllerArgs) {
-  const { page, ree, badges, serviceLogs, serviceParams, actionStates, timestamps } = state;
+  const { page, ree, badges, workflowLogs, workflowParams, actionStates, timestamps } = state;
 
-  const service = useMemo(() => AUTOMATION_STEPS.find((step) => step.key === page), [page]);
+  const workflowStep = useMemo(() => AUTOMATION_STEPS.find((step) => step.key === page), [page]);
 
   const missing = useMemo(() => {
-    if (!service) {
+    if (!workflowStep) {
       return [];
     }
-    return missingRequirements(service, ree);
-  }, [service, ree]);
+    return missingRequirements(workflowStep, ree);
+  }, [workflowStep, ree]);
 
   const params = useMemo(() => {
-    if (!service) {
+    if (!workflowStep) {
       return null;
     }
     return (
-      (serviceParams[service.key] as AutomationStepRunParams | undefined) ??
-      defaultParamsForAutomationStep(service)
+      (workflowParams[workflowStep.key] as AutomationStepRunParams | undefined) ??
+      defaultParamsForAutomationStep(workflowStep)
     );
-  }, [service, serviceParams]);
+  }, [workflowStep, workflowParams]);
 
   const setParam = useCallback(
-    (paramKey: string, value: ServiceParamValue) => {
-      if (!service) {
+    (paramKey: string, value: WorkflowParamValue) => {
+      if (!workflowStep) {
         return;
       }
 
-      commands.setServiceParams((previous) => ({
+      commands.setWorkflowParams((previous) => ({
         ...previous,
-        [service.key]: {
-          ...(previous[service.key] ?? defaultParamsForAutomationStep(service)),
+        [workflowStep.key]: {
+          ...(previous[workflowStep.key] ?? defaultParamsForAutomationStep(workflowStep)),
           [paramKey]: value,
         },
       }));
     },
-    [service, commands],
+    [workflowStep, commands],
   );
 
   const goToRequirements = useCallback(() => {
@@ -67,17 +67,17 @@ export function useWorkflowStepPageController({
     );
   }, [commands, missing]);
 
-  if (!service || !params) {
+  if (!workflowStep || !params) {
     return null;
   }
 
   return {
-    service,
-    log: serviceLogs[service.key],
-    running: actionStates[service.key] === "loading",
-    runDone: !!badges[service.key],
-    badge: badges[service.key] ? service.badge : null,
-    ts: timestamps[service.key],
+    workflowStep,
+    log: workflowLogs[workflowStep.key],
+    running: actionStates[workflowStep.key] === "loading",
+    runDone: !!badges[workflowStep.key],
+    badge: badges[workflowStep.key] ? workflowStep.badge : null,
+    ts: timestamps[workflowStep.key],
     missing,
     params,
     setParam,

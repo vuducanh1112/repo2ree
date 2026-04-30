@@ -29,7 +29,7 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...extra,
 });
 
-interface ServiceActionSectionProps {
+interface WorkflowActionSectionProps {
   color: string;
   running: boolean;
   runDone: boolean;
@@ -52,7 +52,7 @@ export function WorkflowRunActionSection({
   helperText,
   onRun,
   onCancel,
-}: ServiceActionSectionProps) {
+}: WorkflowActionSectionProps) {
   const buttonLabel = running ? runningLabel : runDone ? doneLabel : idleLabel;
   return (
     <div

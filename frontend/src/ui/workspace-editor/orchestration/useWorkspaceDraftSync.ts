@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { WorkspaceGateway } from "../../../application/ports/WorkspaceGateway";
+import type { WorkspaceBackendGateway } from "../../../application/ports/WorkspaceBackendGateway";
 import {
   shouldHydrateRemoteRee,
   shouldScheduleReeDraftSync,
@@ -10,14 +10,14 @@ import { toReePatch } from "../../../domain/ree/reePatch";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 
 interface HydratedWorkspaceSnapshot {
-  virtualFiles: FileTreeNode[];
-  workspaceReeFiles: ReeFile[];
+  workspaceFiles: FileTreeNode[];
+  reeArtifactFiles: ReeFile[];
   ree?: Ree;
 }
 
 interface UseWorkspaceDraftSyncArgs {
   ree: Ree;
-  workspaceService: WorkspaceGateway<FileTreeNode>;
+  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
   workspaceId: string;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
@@ -61,8 +61,8 @@ export function useWorkspaceDraftSync({
         }
       }
       const hydratedWorkspace = {
-        virtualFiles: workspace.files,
-        workspaceReeFiles: workspace.reeFiles || [],
+        workspaceFiles: workspace.files,
+        reeArtifactFiles: workspace.reeFiles || [],
         ree: reeToHydrate,
       };
       hydrateWorkspace(hydratedWorkspace);
@@ -74,7 +74,7 @@ export function useWorkspaceDraftSync({
   const refreshWorkspaceFiles = useCallback(
     async (options: { forceReeHydration?: boolean } = {}): Promise<FileTreeNode[]> => {
       const workspace = await refreshWorkspace(options);
-      return workspace.virtualFiles;
+      return workspace.workspaceFiles;
     },
     [refreshWorkspace],
   );

@@ -1,11 +1,11 @@
 import { useState } from "react";
-import type { GenericServiceParams } from "../../../../application/workflow/WorkflowStepTypes";
+import type { GenericWorkflowParams } from "../../../../application/workflow/WorkflowStepTypes";
 import {
   PAGE,
   type WorkspaceEditorPage,
 } from "../../../../application/workspace-editor/WorkspaceEditorPages";
 import type { Ree } from "../../../../domain/ree/ReeSpec";
-import type { ActionStates, Badges, ServiceLogs } from "../../../../domain/ree/ReeTypes";
+import type { ActionStates, Badges, WorkflowLogs } from "../../../../domain/ree/ReeTypes";
 import { ARCHIVE_REPOS } from "../../../../runtime/demo/archiveRepos";
 import { Ic } from "../../../shared/components/Icon";
 import {
@@ -24,9 +24,9 @@ import { NextStepNudge, RequirementsBanner, WorkflowPageHeader } from "../../com
 interface PageArchiveProps {
   ree: Ree;
   badges: Badges;
-  logs: ServiceLogs;
+  logs: WorkflowLogs;
   actionStates: ActionStates;
-  onRun: (key: string, params: GenericServiceParams) => void;
+  onRun: (key: string, params: GenericWorkflowParams) => void;
   onGo: (key: WorkspaceEditorPage) => void;
 }
 

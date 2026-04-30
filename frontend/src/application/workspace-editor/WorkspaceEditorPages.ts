@@ -9,7 +9,7 @@ export const PAGE = {
   SEAL: "seal",
   ARCHIVE: "archive",
   FILES: "files",
-  // Service pages — keys match Service.key values
+  // Workflow pages — keys match automation step keys.
   EVALUATE: "evaluate",
   BUILD: "build",
   SBOM: "sbom",

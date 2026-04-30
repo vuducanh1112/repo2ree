@@ -1,5 +1,5 @@
-import type { WorkspaceGateway } from "../../../application/ports/WorkspaceGateway";
-import { serializeWorkspaceResetPayload } from "../../../application/ports/WorkspaceGateway";
+import type { WorkspaceBackendGateway } from "../../../application/ports/WorkspaceBackendGateway";
+import { serializeWorkspaceResetPayload } from "../../../application/ports/WorkspaceBackendGateway";
 import { createSourceUseCase } from "../../../application/workspace/acquireSource";
 import {
   type SourceCommand,
@@ -25,7 +25,7 @@ export function resetWorkflowOnSourceChange(
 
 interface CreateSourceActionsArgs {
   ree: Ree;
-  workspaceService: WorkspaceGateway<FileTreeNode>;
+  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
   workspaceId: string;
   dispatch: WorkspaceWorkflowDispatch;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;

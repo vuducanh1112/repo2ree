@@ -32,13 +32,13 @@ import {
   WorkflowLogSection,
   WorkflowRunActionSection,
 } from "../../components/workflowRunPanels";
-import type { ServicePageProps } from "../sharedWorkflowUi";
+import type { WorkflowPageProps } from "../sharedWorkflowUi";
 
 export function PageEvaluate({
-  svc,
+  workflow,
   ree,
   badges,
-  virtualFiles,
+  workspaceFiles,
   log,
   running,
   runDone,
@@ -50,15 +50,15 @@ export function PageEvaluate({
   onGoFields,
   missing,
   params,
-}: ServicePageProps) {
-  const files = virtualFiles;
+}: WorkflowPageProps) {
+  const files = workspaceFiles;
 
   const depGroups = scanDependencies(files || []);
   const hasRun = !!log;
   const hasScoreOutput = !!runDone;
   const sourceLoadedInWorkspace = !!ree._sourceAvailable;
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const IC = automationStepIcon(svc.iconKey);
+  const IC = automationStepIcon(workflow.iconKey);
   const level = Math.min(ree._evalLevel ?? 0, LEVELS.length - 1);
   const currentLevel = LEVELS[level];
   const standing = `${level + 1} / ${LEVELS.length}`;
@@ -67,11 +67,11 @@ export function PageEvaluate({
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
       <WorkflowPageHeader
-        color={svc.color}
+        color={workflow.color}
         icon={IC(18)}
-        title={svc.label}
-        subtitle={svc.desc}
-        tips={descToTwoTierTips(svc.desc)}
+        title={workflow.label}
+        subtitle={workflow.desc}
+        tips={descToTwoTierTips(workflow.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -90,12 +90,12 @@ export function PageEvaluate({
             />
           )}
 
-          {svc.requires && svc.requires.length > 0 && missing.length === 0 && (
-            <RequirementsBanner status="met" items={svc.requires} />
+          {workflow.requires && workflow.requires.length > 0 && missing.length === 0 && (
+            <RequirementsBanner status="met" items={workflow.requires} />
           )}
 
           <WorkflowRunActionSection
-            color={svc.color}
+            color={workflow.color}
             running={running}
             runDone={runDone}
             disabled={running || !sourceLoadedInWorkspace}
@@ -106,8 +106,8 @@ export function PageEvaluate({
                 ? "Run evaluation with the selected parameters."
                 : "Load source into workspace first. Evaluate is enabled only after source download/upload succeeds."
             }
-            onCancel={() => onCancel?.(svc.key)}
-            onRun={() => onRun(svc.key, params)}
+            onCancel={() => onCancel?.(workflow.key)}
+            onRun={() => onRun(workflow.key, params)}
           />
 
           <FieldSection
@@ -401,7 +401,7 @@ export function PageEvaluate({
           </div>
 
           <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-            <NextStepNudge stepKey={svc.key} badges={badges || {}} onGo={onGo || (() => {})} />
+            <NextStepNudge stepKey={workflow.key} badges={badges || {}} onGo={onGo || (() => {})} />
           </div>
         </div>
 

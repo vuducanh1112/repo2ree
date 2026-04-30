@@ -53,7 +53,7 @@ export function PageSourceRepoEntry({
   focusedField,
   onReeChange,
   onRepoModeChange,
-  onGoService,
+  onGoWorkflow,
   onFocusedFieldChange,
   onDownloadSource,
   onCancelSource,
@@ -387,7 +387,7 @@ export function PageSourceRepoEntry({
                         type="button"
                         onClick={() => {
                           focus("_sourceAvailable");
-                          onGoService(PAGE.FILES);
+                          onGoWorkflow(PAGE.FILES);
                         }}
                         style={{
                           ...actionBtn({
@@ -449,7 +449,7 @@ export function PageSourceRepoEntry({
             </div>
 
             <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-              <NextStepNudge stepKey={PAGE.SOURCE} badges={badges} onGo={onGoService} />
+              <NextStepNudge stepKey={PAGE.SOURCE} badges={badges} onGo={onGoWorkflow} />
             </div>
           </div>
         </div>

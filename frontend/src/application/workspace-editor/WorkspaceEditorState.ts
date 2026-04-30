@@ -4,9 +4,9 @@ import type {
   ActionStates,
   Badges,
   ReeFile,
-  ServiceLogs,
-  ServiceParams,
   Timestamps,
+  WorkflowLogs,
+  WorkflowParams,
 } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { computeSourceChangeConsequences } from "../../domain/workspace/sourceChangeConsequences";
@@ -25,29 +25,29 @@ export interface WorkspaceEditorState {
   actionStates: ActionStates;
   badges: Badges;
   timestamps: Timestamps;
-  serviceLogs: ServiceLogs;
-  serviceParams: ServiceParams;
+  workflowLogs: WorkflowLogs;
+  workflowParams: WorkflowParams;
   toast: ToastState | null;
   page: WorkspaceEditorPage;
   focusedField: string | null;
   navCollapsed: boolean;
-  virtualFiles: FileTreeNode[];
-  workspaceReeFiles: ReeFile[];
-  immutableSourceSnapshotFiles: FileTreeNode[];
-  immutableSourceSnapshotArchiveName: string;
-  showReviewerPreview: boolean;
+  workspaceFiles: FileTreeNode[];
+  reeArtifactFiles: ReeFile[];
+  sourceSnapshotFiles: FileTreeNode[];
+  sourceSnapshotArchiveName: string;
+  showReviewPreview: boolean;
 }
 
 export interface WorkspaceHydrationPayload {
-  virtualFiles: FileTreeNode[];
-  workspaceReeFiles: ReeFile[];
+  workspaceFiles: FileTreeNode[];
+  reeArtifactFiles: ReeFile[];
   ree?: Ree;
 }
 
 export interface SourceOutcomePayload {
   reePatch: Partial<Ree>;
-  immutableSourceSnapshotFiles: FileTreeNode[];
-  immutableSourceSnapshotArchiveName: string;
+  sourceSnapshotFiles: FileTreeNode[];
+  sourceSnapshotArchiveName: string;
   actionState?: "done";
   badge?: boolean;
   timestamp?: string;
@@ -55,7 +55,7 @@ export interface SourceOutcomePayload {
 
 export interface WorkflowRunCompletionPayload {
   key: string;
-  serviceLog: ServiceLogs[string];
+  workflowLog: WorkflowLogs[string];
   actionState: "done";
   badge: boolean;
   timestamp: string;
@@ -75,12 +75,12 @@ export type WorkspaceEditorAction =
   | { type: "workspaceEditor/setBadges"; badges: WorkspaceEditorStateUpdater<Badges> }
   | { type: "workspaceEditor/setTimestamps"; timestamps: WorkspaceEditorStateUpdater<Timestamps> }
   | {
-      type: "workspaceEditor/setServiceLogs";
-      serviceLogs: WorkspaceEditorStateUpdater<ServiceLogs>;
+      type: "workspaceEditor/setWorkflowLogs";
+      workflowLogs: WorkspaceEditorStateUpdater<WorkflowLogs>;
     }
   | {
-      type: "workspaceEditor/setServiceParams";
-      serviceParams: WorkspaceEditorStateUpdater<ServiceParams>;
+      type: "workspaceEditor/setWorkflowParams";
+      workflowParams: WorkspaceEditorStateUpdater<WorkflowParams>;
     }
   | { type: "workspaceEditor/setToast"; toast: WorkspaceEditorStateUpdater<ToastState | null> }
   | {
@@ -96,29 +96,29 @@ export type WorkspaceEditorAction =
       navCollapsed: WorkspaceEditorStateUpdater<boolean>;
     }
   | {
-      type: "workspaceEditor/setVirtualFiles";
-      virtualFiles: WorkspaceEditorStateUpdater<FileTreeNode[]>;
+      type: "workspaceEditor/setWorkspaceFiles";
+      workspaceFiles: WorkspaceEditorStateUpdater<FileTreeNode[]>;
     }
   | {
-      type: "workspaceEditor/setWorkspaceReeFiles";
-      workspaceReeFiles: WorkspaceEditorStateUpdater<ReeFile[]>;
+      type: "workspaceEditor/setReeArtifactFiles";
+      reeArtifactFiles: WorkspaceEditorStateUpdater<ReeFile[]>;
     }
   | { type: "workspaceEditor/hydrateWorkspace"; workspace: WorkspaceHydrationPayload }
   | {
-      type: "workspaceEditor/setImmutableSourceSnapshotFiles";
-      immutableSourceSnapshotFiles: WorkspaceEditorStateUpdater<FileTreeNode[]>;
+      type: "workspaceEditor/setSourceSnapshotFiles";
+      sourceSnapshotFiles: WorkspaceEditorStateUpdater<FileTreeNode[]>;
     }
   | {
-      type: "workspaceEditor/setImmutableSourceSnapshotArchiveName";
-      immutableSourceSnapshotArchiveName: WorkspaceEditorStateUpdater<string>;
+      type: "workspaceEditor/setSourceSnapshotArchiveName";
+      sourceSnapshotArchiveName: WorkspaceEditorStateUpdater<string>;
     }
   | { type: "workspaceEditor/applySourcePatchOutcome"; outcome: SourceOutcomePayload }
   | {
-      type: "workspaceEditor/setShowReviewerPreview";
-      showReviewerPreview: WorkspaceEditorStateUpdater<boolean>;
+      type: "workspaceEditor/setShowReviewPreview";
+      showReviewPreview: WorkspaceEditorStateUpdater<boolean>;
     }
   | { type: "workspaceEditor/completeWorkflowRun"; completion: WorkflowRunCompletionPayload }
-  | { type: "workspaceEditor/resetWorkflowOnSourceChange"; serviceParams: ServiceParams };
+  | { type: "workspaceEditor/resetWorkflowOnSourceChange"; workflowParams: WorkflowParams };
 
 function resolveUpdater<T>(previous: T, updater: WorkspaceEditorStateUpdater<T>): T {
   if (typeof updater === "function") {
@@ -137,17 +137,17 @@ export function createInitialWorkspaceEditorState(
     actionStates: {},
     badges: {},
     timestamps: {},
-    serviceLogs: {},
-    serviceParams: initialAutomationStepParams(),
+    workflowLogs: {},
+    workflowParams: initialAutomationStepParams(),
     toast: null,
     page: PAGE.SOURCE,
     focusedField: null,
     navCollapsed: false,
-    virtualFiles: [],
-    workspaceReeFiles: [],
-    immutableSourceSnapshotFiles: [],
-    immutableSourceSnapshotArchiveName: "",
-    showReviewerPreview: false,
+    workspaceFiles: [],
+    reeArtifactFiles: [],
+    sourceSnapshotFiles: [],
+    sourceSnapshotArchiveName: "",
+    showReviewPreview: false,
   };
 }
 
@@ -175,11 +175,14 @@ export function applyWorkspaceEditorAction(
     case "workspaceEditor/setTimestamps": {
       return { ...state, timestamps: resolveUpdater(state.timestamps, action.timestamps) };
     }
-    case "workspaceEditor/setServiceLogs": {
-      return { ...state, serviceLogs: resolveUpdater(state.serviceLogs, action.serviceLogs) };
+    case "workspaceEditor/setWorkflowLogs": {
+      return { ...state, workflowLogs: resolveUpdater(state.workflowLogs, action.workflowLogs) };
     }
-    case "workspaceEditor/setServiceParams": {
-      return { ...state, serviceParams: resolveUpdater(state.serviceParams, action.serviceParams) };
+    case "workspaceEditor/setWorkflowParams": {
+      return {
+        ...state,
+        workflowParams: resolveUpdater(state.workflowParams, action.workflowParams),
+      };
     }
     case "workspaceEditor/setToast": {
       return { ...state, toast: resolveUpdater(state.toast, action.toast) };
@@ -194,38 +197,38 @@ export function applyWorkspaceEditorAction(
     case "workspaceEditor/setNavCollapsed": {
       return { ...state, navCollapsed: resolveUpdater(state.navCollapsed, action.navCollapsed) };
     }
-    case "workspaceEditor/setVirtualFiles": {
-      return { ...state, virtualFiles: resolveUpdater(state.virtualFiles, action.virtualFiles) };
-    }
-    case "workspaceEditor/setWorkspaceReeFiles": {
+    case "workspaceEditor/setWorkspaceFiles": {
       return {
         ...state,
-        workspaceReeFiles: resolveUpdater(state.workspaceReeFiles, action.workspaceReeFiles),
+        workspaceFiles: resolveUpdater(state.workspaceFiles, action.workspaceFiles),
+      };
+    }
+    case "workspaceEditor/setReeArtifactFiles": {
+      return {
+        ...state,
+        reeArtifactFiles: resolveUpdater(state.reeArtifactFiles, action.reeArtifactFiles),
       };
     }
     case "workspaceEditor/hydrateWorkspace": {
       return {
         ...state,
-        virtualFiles: action.workspace.virtualFiles,
-        workspaceReeFiles: action.workspace.workspaceReeFiles,
+        workspaceFiles: action.workspace.workspaceFiles,
+        reeArtifactFiles: action.workspace.reeArtifactFiles,
         ree: action.workspace.ree ? enforceSourceOriginRules(action.workspace.ree) : state.ree,
       };
     }
-    case "workspaceEditor/setImmutableSourceSnapshotFiles": {
+    case "workspaceEditor/setSourceSnapshotFiles": {
       return {
         ...state,
-        immutableSourceSnapshotFiles: resolveUpdater(
-          state.immutableSourceSnapshotFiles,
-          action.immutableSourceSnapshotFiles,
-        ),
+        sourceSnapshotFiles: resolveUpdater(state.sourceSnapshotFiles, action.sourceSnapshotFiles),
       };
     }
-    case "workspaceEditor/setImmutableSourceSnapshotArchiveName": {
+    case "workspaceEditor/setSourceSnapshotArchiveName": {
       return {
         ...state,
-        immutableSourceSnapshotArchiveName: resolveUpdater(
-          state.immutableSourceSnapshotArchiveName,
-          action.immutableSourceSnapshotArchiveName,
+        sourceSnapshotArchiveName: resolveUpdater(
+          state.sourceSnapshotArchiveName,
+          action.sourceSnapshotArchiveName,
         ),
       };
     }
@@ -237,8 +240,8 @@ export function applyWorkspaceEditorAction(
       return {
         ...state,
         ree: nextRee,
-        immutableSourceSnapshotFiles: action.outcome.immutableSourceSnapshotFiles,
-        immutableSourceSnapshotArchiveName: action.outcome.immutableSourceSnapshotArchiveName,
+        sourceSnapshotFiles: action.outcome.sourceSnapshotFiles,
+        sourceSnapshotArchiveName: action.outcome.sourceSnapshotArchiveName,
         actionStates: action.outcome.actionState
           ? { ...state.actionStates, source: action.outcome.actionState }
           : state.actionStates,
@@ -251,18 +254,18 @@ export function applyWorkspaceEditorAction(
           : state.timestamps,
       };
     }
-    case "workspaceEditor/setShowReviewerPreview": {
+    case "workspaceEditor/setShowReviewPreview": {
       return {
         ...state,
-        showReviewerPreview: resolveUpdater(state.showReviewerPreview, action.showReviewerPreview),
+        showReviewPreview: resolveUpdater(state.showReviewPreview, action.showReviewPreview),
       };
     }
     case "workspaceEditor/completeWorkflowRun": {
       return {
         ...state,
-        serviceLogs: {
-          ...state.serviceLogs,
-          [action.completion.key]: action.completion.serviceLog,
+        workflowLogs: {
+          ...state.workflowLogs,
+          [action.completion.key]: action.completion.workflowLog,
         },
         actionStates: {
           ...state.actionStates,
@@ -281,7 +284,7 @@ export function applyWorkspaceEditorAction(
     case "workspaceEditor/resetWorkflowOnSourceChange": {
       return {
         ...state,
-        ...computeSourceChangeConsequences(state, action.serviceParams),
+        ...computeSourceChangeConsequences(state, action.workflowParams),
       };
     }
     default:

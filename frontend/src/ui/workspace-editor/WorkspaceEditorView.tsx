@@ -11,7 +11,7 @@ import { WorkspaceEditorSidebar } from "./WorkspaceEditorSidebar";
 
 interface WorkspaceEditorViewProps {
   onBack: () => void;
-  sealedDemoRee: Ree;
+  defaultReviewedRee: Ree;
   PodOrbitControl: React.ComponentType<{
     level: number;
     levelMeta: Level;
@@ -24,11 +24,11 @@ interface WorkspaceEditorViewProps {
 
 export function WorkspaceEditorView({
   onBack,
-  sealedDemoRee,
+  defaultReviewedRee,
   PodOrbitControl,
 }: WorkspaceEditorViewProps) {
   const { state, commands } = useWorkspaceEditor();
-  const { ree, badges, timestamps, toast, page, navCollapsed, showReviewerPreview } = state;
+  const { ree, badges, timestamps, toast, page, navCollapsed, showReviewPreview } = state;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg }}>
@@ -91,7 +91,7 @@ export function WorkspaceEditorView({
           setPage={commands.setPage}
           setNavCollapsed={commands.setNavCollapsed}
           onDownloadRee={commands.onDownloadRee}
-          onPreviewReviewer={commands.openReviewerPreview}
+          onPreviewReviewer={commands.openReviewPreview}
         />
 
         <WorkspaceEditorContent state={state} commands={commands} />
@@ -100,10 +100,10 @@ export function WorkspaceEditorView({
       {toast && <Toast message={toast.message} type={toast.type} onClose={commands.clearToast} />}
 
       <ReviewerPreviewOverlay
-        open={showReviewerPreview}
+        open={showReviewPreview}
         ree={ree}
-        onClose={commands.closeReviewerPreview}
-        defaultRee={sealedDemoRee}
+        onClose={commands.closeReviewPreview}
+        defaultRee={defaultReviewedRee}
         PodOrbitControl={PodOrbitControl}
       />
     </div>

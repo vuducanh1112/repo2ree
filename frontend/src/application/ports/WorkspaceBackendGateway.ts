@@ -60,7 +60,7 @@ export interface ReeProject<TFile = unknown> {
   ree?: Ree;
 }
 
-export interface WorkspaceGateway<TFile = unknown> {
+export interface WorkspaceBackendGateway<TFile = unknown> {
   getWorkspace(id: string): Promise<ReeProject<TFile>>;
   updateFile(id: string, path: string, content: string): Promise<void>;
   updateReeDraft?(id: string, reePatch: Record<string, unknown>): Promise<void>;

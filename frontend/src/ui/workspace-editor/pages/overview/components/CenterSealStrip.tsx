@@ -229,7 +229,7 @@ export function CenterSealStrip({
               {...hoverBorderColor(`${currentLevelMeta.color}80`, `${currentLevelMeta.color}50`)}
             >
               {Ic.star(12)}
-              Preview as Reviewer
+              Preview Review
             </button>
           )}
           {onDownloadRee && (

@@ -1,7 +1,7 @@
 import type React from "react";
 import type {
   RequirementsBannerProps,
-  ServiceBadge,
+  WorkflowBadge,
 } from "../../../application/workflow/WorkflowStepTypes";
 import {
   PAGE,
@@ -104,7 +104,7 @@ interface WorkflowPageHeaderProps {
   subtitle: string;
   tips?: string[];
   runDone?: boolean;
-  badge?: ServiceBadge | null;
+  badge?: WorkflowBadge | null;
   ts?: string;
   timestampPrefix?: string;
   missingCount?: number;

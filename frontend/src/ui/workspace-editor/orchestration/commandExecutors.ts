@@ -24,9 +24,9 @@ function dispatchWorkspaceStateCommand(
 ): void {
   if (command.type === "setActionStates") {
     dispatch(workspaceEditorActions.setActionStates(command.actionStates));
-  } else if (command.type === "setServiceLogs") {
-    dispatch(workspaceEditorActions.setServiceLogs(command.serviceLogs));
-  } else if (command.type === "completeServiceRun") {
+  } else if (command.type === "setWorkflowLogs") {
+    dispatch(workspaceEditorActions.setWorkflowLogs(command.workflowLogs));
+  } else if (command.type === "completeWorkflowRun") {
     dispatch(workspaceEditorActions.completeWorkflowRun(command.completion));
   } else if (command.type === "hydrateWorkspace") {
     dispatch(workspaceEditorActions.hydrateWorkspace(command.workspace));
@@ -35,7 +35,7 @@ function dispatchWorkspaceStateCommand(
   } else if (command.type === "setLocked") {
     dispatch(workspaceEditorActions.setLocked(command.locked));
   } else if (command.type === "resetWorkflowOnSourceChange") {
-    dispatch(workspaceEditorActions.resetWorkflowOnSourceChange(command.serviceParams));
+    dispatch(workspaceEditorActions.resetWorkflowOnSourceChange(command.workflowParams));
   } else {
     dispatch(workspaceEditorActions.applySourcePatchOutcome(command.outcome));
   }

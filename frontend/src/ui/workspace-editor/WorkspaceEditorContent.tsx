@@ -13,8 +13,8 @@ import {
   HardwareBomPageContainer,
   MetadataPageContainer,
   OverviewPageContainer,
-  ServicePageContainer,
   SourcePageContainer,
+  WorkflowPageContainer,
 } from "./pages/WorkspaceEditorPageSwitch";
 
 type WorkspaceEditorController = ReturnType<typeof useWorkspaceEditor>;
@@ -37,7 +37,7 @@ export function WorkspaceEditorContent({ state, commands }: WorkspaceEditorConte
         <SourcePageContainer state={state} commands={commands} />
         <MetadataPageContainer state={state} commands={commands} />
         <HardwareBomPageContainer state={state} commands={commands} />
-        <ServicePageContainer state={state} commands={commands} />
+        <WorkflowPageContainer state={state} commands={commands} />
         <ArchivePageContainer state={state} commands={commands} />
         <FilesPageContainer state={state} commands={commands} />
       </div>

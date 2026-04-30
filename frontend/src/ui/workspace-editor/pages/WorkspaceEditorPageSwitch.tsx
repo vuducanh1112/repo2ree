@@ -14,11 +14,11 @@ import {
   PageMetadataEntry,
   PageSourceRepoEntry,
   PageTestActivation,
-  type ServicePageProps,
+  type WorkflowPageProps,
 } from "./index";
 import { PageOverview } from "./overview/OverviewPage";
 
-const SERVICE_PAGE_COMPONENTS: Record<string, (props: ServicePageProps) => JSX.Element> = {
+const WORKFLOW_PAGE_COMPONENTS: Record<string, (props: WorkflowPageProps) => JSX.Element> = {
   evaluate: (props) => <PageEvaluate {...props} />,
   build: (props) => <PageBuildRuntime {...props} />,
   sbom: (props) => <PageGenerateSBOM {...props} />,
@@ -44,16 +44,8 @@ function ContentSection({ children }: { children: ReactNode }) {
 }
 
 export function OverviewPageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
-  const {
-    page,
-    ree,
-    level,
-    badges,
-    timestamps,
-    virtualFiles,
-    immutableSourceSnapshotFiles,
-    locked,
-  } = state;
+  const { page, ree, level, badges, timestamps, workspaceFiles, sourceSnapshotFiles, locked } =
+    state;
 
   if (page !== PAGE.OVERVIEW && page !== PAGE.SEAL) {
     return null;
@@ -72,11 +64,11 @@ export function OverviewPageContainer({ state, commands }: WorkspaceEditorPageCo
           commands.setPage(workspaceEditorPageForField(String(key)));
           commands.setFocusedField(String(key));
         }}
-        files={virtualFiles}
-        snapshotFiles={immutableSourceSnapshotFiles}
+        files={workspaceFiles}
+        snapshotFiles={sourceSnapshotFiles}
         locked={locked}
         onSeal={commands.onSeal}
-        onPreviewReviewer={commands.openReviewerPreview}
+        onPreviewReviewer={commands.openReviewPreview}
         onDownloadRee={ree._sealedAt ? commands.onDownloadRee : undefined}
       />
     </ContentSection>
@@ -84,7 +76,7 @@ export function OverviewPageContainer({ state, commands }: WorkspaceEditorPageCo
 }
 
 export function SourcePageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
-  const { page, ree, locked, repoMode, badges, actionStates, focusedField, serviceLogs } = state;
+  const { page, ree, locked, repoMode, badges, actionStates, focusedField, workflowLogs } = state;
 
   if (page !== PAGE.SOURCE) {
     return null;
@@ -97,12 +89,12 @@ export function SourcePageContainer({ state, commands }: WorkspaceEditorPageCont
       repoMode={repoMode}
       badges={badges}
       actionStates={actionStates}
-      log={serviceLogs.source || null}
+      log={workflowLogs.source || null}
       running={actionStates.source === "loading"}
       focusedField={focusedField}
       onReeChange={commands.setRee}
       onRepoModeChange={commands.setRepoMode}
-      onGoService={commands.setPage}
+      onGoWorkflow={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
       onDownloadSource={commands.onDownloadSourceFiles}
       onCancelSource={() => commands.onCancelAction("source")}
@@ -127,14 +119,14 @@ export function MetadataPageContainer({ state, commands }: WorkspaceEditorPageCo
       focusedField={focusedField}
       onReeChange={commands.setRee}
       onLockedChange={commands.setLocked}
-      onGoService={commands.setPage}
+      onGoWorkflow={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
     />
   );
 }
 
 export function HardwareBomPageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
-  const { page, ree, locked, badges, focusedField, serviceLogs, actionStates, timestamps } = state;
+  const { page, ree, locked, badges, focusedField, workflowLogs, actionStates, timestamps } = state;
 
   if (page !== PAGE.HBOM) {
     return null;
@@ -145,14 +137,14 @@ export function HardwareBomPageContainer({ state, commands }: WorkspaceEditorPag
       ree={ree}
       locked={locked}
       badges={badges}
-      log={serviceLogs.hbom || null}
+      log={workflowLogs.hbom || null}
       running={actionStates.hbom === "loading"}
       runDone={!!badges.hbom}
       ts={timestamps.hbom}
       focusedField={focusedField}
       onReeChange={commands.setRee}
       onLockedChange={commands.setLocked}
-      onGoService={commands.setPage}
+      onGoWorkflow={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
       onRun={commands.onRunAutomationStep}
       onCancel={commands.onCancelAction}
@@ -160,29 +152,39 @@ export function HardwareBomPageContainer({ state, commands }: WorkspaceEditorPag
   );
 }
 
-export function ServicePageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
-  const { ree, badges, virtualFiles } = state;
+export function WorkflowPageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
+  const { ree, badges, workspaceFiles } = state;
 
-  const serviceController = useWorkflowStepPageController({ state, commands });
-  if (!serviceController) {
+  const workflowPageController = useWorkflowStepPageController({ state, commands });
+  if (!workflowPageController) {
     return null;
   }
 
-  const { service, log, running, runDone, badge, ts, missing, params, setParam, goToRequirements } =
-    serviceController;
+  const {
+    workflowStep,
+    log,
+    running,
+    runDone,
+    badge,
+    ts,
+    missing,
+    params,
+    setParam,
+    goToRequirements,
+  } = workflowPageController;
 
-  const ServicePageComponent = SERVICE_PAGE_COMPONENTS[service.key];
-  if (!ServicePageComponent) {
+  const WorkflowPageComponent = WORKFLOW_PAGE_COMPONENTS[workflowStep.key];
+  if (!WorkflowPageComponent) {
     return null;
   }
 
   return (
     <ContentSection>
-      <ServicePageComponent
-        svc={service}
+      <WorkflowPageComponent
+        workflow={workflowStep}
         ree={ree}
         badges={badges}
-        virtualFiles={virtualFiles}
+        workspaceFiles={workspaceFiles}
         log={log}
         running={running}
         runDone={runDone}
@@ -193,7 +195,7 @@ export function ServicePageContainer({ state, commands }: WorkspaceEditorPageCon
         onGo={commands.setPage}
         onGoFields={goToRequirements}
         onReeChange={commands.setRee}
-        onFilesChange={commands.setVirtualFiles}
+        onFilesChange={commands.setWorkspaceFiles}
         onPersistWorkspaceFile={commands.onPersistWorkspaceFile}
         missing={missing}
         params={params}
@@ -204,7 +206,7 @@ export function ServicePageContainer({ state, commands }: WorkspaceEditorPageCon
 }
 
 export function ArchivePageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
-  const { page, ree, badges, serviceLogs, actionStates } = state;
+  const { page, ree, badges, workflowLogs, actionStates } = state;
 
   if (page !== PAGE.ARCHIVE) {
     return null;
@@ -215,7 +217,7 @@ export function ArchivePageContainer({ state, commands }: WorkspaceEditorPageCon
       <ArchivePage
         ree={ree}
         badges={badges}
-        logs={serviceLogs}
+        logs={workflowLogs}
         actionStates={actionStates}
         onRun={commands.onRunWorkflowStep}
         onGo={commands.setPage}
@@ -225,7 +227,7 @@ export function ArchivePageContainer({ state, commands }: WorkspaceEditorPageCon
 }
 
 export function FilesPageContainer({ state, commands }: WorkspaceEditorPageContainerProps) {
-  const { page, virtualFiles, currentReeFiles } = state;
+  const { page, workspaceFiles, currentReeFiles } = state;
 
   if (page !== PAGE.FILES) {
     return null;
@@ -234,7 +236,7 @@ export function FilesPageContainer({ state, commands }: WorkspaceEditorPageConta
   return (
     <ContentSection>
       <FilesPage
-        files={virtualFiles}
+        files={workspaceFiles}
         reeFiles={currentReeFiles}
         onDownloadWorkspaceFile={commands.onDownloadWorkspaceFile}
       />

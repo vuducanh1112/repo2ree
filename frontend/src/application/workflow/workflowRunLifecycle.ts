@@ -1,5 +1,5 @@
 import type { LogLine } from "../../domain/ree/ReeTypes";
-import type { GenericServiceParams } from "./WorkflowStepTypes";
+import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 
 type WorkflowRunStatus =
   | "created"
@@ -32,7 +32,7 @@ interface RunWorkflowLifecycleArgs {
     params?: Record<string, string | boolean | number | null | undefined>,
   ) => Promise<WorkflowRunRecord>;
   key: string;
-  runParams: GenericServiceParams;
+  runParams: GenericWorkflowParams;
   pollRun: (
     runId: string,
     onUpdate?: (update: WorkflowRunUpdate) => void,

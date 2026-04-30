@@ -1,9 +1,9 @@
 import type React from "react";
 import type {
   AutomationStepDefinition,
-  ServiceBadge,
-  ServiceParamValue,
-  ServiceRequire,
+  WorkflowBadge,
+  WorkflowParamValue,
+  WorkflowRequirement,
 } from "../../../application/workflow/WorkflowStepTypes";
 import type {
   AutomationStepKey,
@@ -30,7 +30,7 @@ export interface PageSourceRepoEntryProps {
   focusedField: string | null;
   onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
   onRepoModeChange: React.Dispatch<React.SetStateAction<"url" | "upload">>;
-  onGoService: (key: WorkspaceEditorPage) => void;
+  onGoWorkflow: (key: WorkspaceEditorPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
   onDownloadSource: (originType: Ree["source_type"], sourceUrl: string) => void;
   onCancelSource: () => void;
@@ -45,7 +45,7 @@ export interface PageMetadataEntryProps {
   focusedField: string | null;
   onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
   onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
-  onGoService: (key: WorkspaceEditorPage) => void;
+  onGoWorkflow: (key: WorkspaceEditorPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
@@ -60,21 +60,21 @@ export interface PageHardwareBomProps {
   focusedField: string | null;
   onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
   onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
-  onGoService: (key: WorkspaceEditorPage) => void;
+  onGoWorkflow: (key: WorkspaceEditorPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
   onRun: (key: AutomationStepKey, params: AutomationStepRunParams) => void;
   onCancel?: (key: AutomationStepKey) => void;
 }
 
-export interface ServicePageProps {
-  svc: AutomationStepDefinition & { key: AutomationStepKey };
+export interface WorkflowPageProps {
+  workflow: AutomationStepDefinition & { key: AutomationStepKey };
   ree: Ree;
   badges: Badges;
-  virtualFiles: FileTreeNode[];
+  workspaceFiles: FileTreeNode[];
   log: LogEntry | null;
   running: boolean;
   runDone: boolean;
-  badge: ServiceBadge | null;
+  badge: WorkflowBadge | null;
   ts: string | undefined;
   onRun: <K extends AutomationStepKey>(key: K, params: AutomationStepRunParams<K>) => void;
   onCancel?: (key: AutomationStepKey) => void;
@@ -87,7 +87,7 @@ export interface ServicePageProps {
     path: string,
     content: string,
   ) => Promise<void>;
-  missing: ServiceRequire[];
+  missing: WorkflowRequirement[];
   params: AutomationStepRunParams;
-  setParam: (key: string, value: ServiceParamValue) => void;
+  setParam: (key: string, value: WorkflowParamValue) => void;
 }

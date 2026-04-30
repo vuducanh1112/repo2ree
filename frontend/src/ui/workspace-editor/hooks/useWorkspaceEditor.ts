@@ -9,7 +9,7 @@ import {
 } from "../../../application/workspace-editor";
 import type { WorkspaceEditorPage } from "../../../application/workspace-editor/WorkspaceEditorPages";
 import type { Ree } from "../../../domain/ree/ReeSpec";
-import type { ReeFile, ServiceParams, SourceUploadCommit } from "../../../domain/ree/ReeTypes";
+import type { ReeFile, SourceUploadCommit, WorkflowParams } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { useWorkspaceWorkflowRuns } from "../orchestration/useWorkspaceWorkflowRuns";
 import { useWorkspaceEditorContext } from "../providers/WorkspaceEditorProvider";
@@ -24,20 +24,20 @@ export function useWorkspaceEditor() {
     actionStates,
     badges,
     timestamps,
-    serviceLogs,
-    serviceParams,
+    workflowLogs,
+    workflowParams,
     toast,
     page,
     repoMode,
     focusedField,
     navCollapsed,
-    virtualFiles,
-    workspaceReeFiles,
-    immutableSourceSnapshotFiles,
-    showReviewerPreview,
+    workspaceFiles,
+    reeArtifactFiles,
+    sourceSnapshotFiles,
+    showReviewPreview,
   } = workspaceEditor;
 
-  const currentReeFiles = useMemo<ReeFile[]>(() => workspaceReeFiles || [], [workspaceReeFiles]);
+  const currentReeFiles = useMemo<ReeFile[]>(() => reeArtifactFiles || [], [reeArtifactFiles]);
 
   const level = reeDraft._evalLevel ?? 0;
   const {
@@ -55,7 +55,7 @@ export function useWorkspaceEditor() {
     dispatch,
     ree: reeDraft,
     level,
-    virtualFiles,
+    workspaceFiles,
   });
 
   const commands = {
@@ -70,12 +70,12 @@ export function useWorkspaceEditor() {
       dispatch(workspaceEditorActions.setRepoMode(value)),
     setFocusedField: (value: string | null | ((current: string | null) => string | null)) =>
       dispatch(workspaceEditorActions.setFocusedField(value)),
-    setVirtualFiles: (value: FileTreeNode[] | ((current: FileTreeNode[]) => FileTreeNode[])) =>
-      dispatch(workspaceEditorActions.setVirtualFiles(value)),
-    setServiceParams: (value: ServiceParams | ((current: ServiceParams) => ServiceParams)) =>
-      dispatch(workspaceEditorActions.setServiceParams(value)),
-    openReviewerPreview: () => dispatch(workspaceEditorActions.setShowReviewerPreview(true)),
-    closeReviewerPreview: () => dispatch(workspaceEditorActions.setShowReviewerPreview(false)),
+    setWorkspaceFiles: (value: FileTreeNode[] | ((current: FileTreeNode[]) => FileTreeNode[])) =>
+      dispatch(workspaceEditorActions.setWorkspaceFiles(value)),
+    setWorkflowParams: (value: WorkflowParams | ((current: WorkflowParams) => WorkflowParams)) =>
+      dispatch(workspaceEditorActions.setWorkflowParams(value)),
+    openReviewPreview: () => dispatch(workspaceEditorActions.setShowReviewPreview(true)),
+    closeReviewPreview: () => dispatch(workspaceEditorActions.setShowReviewPreview(false)),
     clearToast: () => dispatch(workspaceEditorActions.setToast(null)),
     onSeal: handleSeal,
     onDownloadRee: handleDownloadRee,
@@ -99,23 +99,23 @@ export function useWorkspaceEditor() {
       actionStates,
       badges,
       timestamps,
-      serviceLogs,
-      serviceParams,
+      workflowLogs,
+      workflowParams,
       toast,
       page,
       repoMode,
       focusedField,
       navCollapsed,
-      virtualFiles,
-      workspaceReeFiles,
-      immutableSourceSnapshotFiles,
-      showReviewerPreview,
+      workspaceFiles,
+      reeArtifactFiles,
+      sourceSnapshotFiles,
+      showReviewPreview,
       level,
       currentReeFiles,
     },
     commands,
     reviewer: {
-      showReviewerPreview,
+      showReviewPreview,
     },
   };
 }

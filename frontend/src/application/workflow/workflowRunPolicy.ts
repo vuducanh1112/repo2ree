@@ -1,7 +1,7 @@
 import type { Ree } from "../../domain/ree/ReeSpec";
 import { planNonWorkflowCompletion } from "../workspace/manualArtifactUpdatePlanning";
 import { PAGE } from "../workspace-editor/WorkspaceEditorPages";
-import type { GenericServiceParams } from "./WorkflowStepTypes";
+import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepKey } from "./WorkflowTypes";
 
 type WorkflowRunStatus =
@@ -16,9 +16,9 @@ type WorkflowRunStatus =
 
 export function buildWorkflowRunParams(
   key: string,
-  params: GenericServiceParams,
+  params: GenericWorkflowParams,
   ree: Ree,
-): GenericServiceParams {
+): GenericWorkflowParams {
   if (key !== "activation") {
     return params;
   }

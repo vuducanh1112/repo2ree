@@ -78,9 +78,9 @@ export interface ArchiveRepo {
   requires: AutomationStepRequirement[];
 }
 
-export type ServiceBadge = AutomationStepBadge;
-export type ServiceRequire = AutomationStepRequirement;
-export type ServiceParam = AutomationStepParam;
-export type ServiceParamValue = AutomationStepParamValue;
-export type GenericServiceParams = GenericAutomationStepParams;
-export type Service = AutomationStepDefinition;
+export type WorkflowBadge = AutomationStepBadge;
+export type WorkflowRequirement = AutomationStepRequirement;
+export type WorkflowParam = AutomationStepParam;
+export type WorkflowParamValue = AutomationStepParamValue;
+export type GenericWorkflowParams = GenericAutomationStepParams;
+export type WorkflowDefinition = AutomationStepDefinition;

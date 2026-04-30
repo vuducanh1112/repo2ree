@@ -1,4 +1,4 @@
-import type { WorkspaceGateway } from "../../../application/ports/WorkspaceGateway";
+import type { WorkspaceBackendGateway } from "../../../application/ports/WorkspaceBackendGateway";
 import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
@@ -8,7 +8,7 @@ import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { ShowToast } from "./types";
 
 interface CreateDownloadActionsArgs {
-  workspaceService: WorkspaceGateway<FileTreeNode>;
+  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
   workspaceId: string;
   ports: WorkspaceEditorRuntimePorts;
   getReeName: () => string;
@@ -27,7 +27,7 @@ export function createDownloadActions({
   const downloadWorkspaceFile = async (path: string, suggestedName?: string): Promise<void> => {
     try {
       if (!workspaceService.getFileBytes) {
-        throw new Error("Workspace file download is not supported by this service");
+        throw new Error("Workspace file download is not supported by this workflow backend");
       }
       const fileBytes = await workspaceService.getFileBytes(workspaceId, path);
       const plan = planWorkspaceFileDownload(path, suggestedName);

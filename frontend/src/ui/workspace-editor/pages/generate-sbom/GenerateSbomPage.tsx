@@ -36,7 +36,7 @@ import {
 import { WorkflowLogSection, WorkflowRunActionSection } from "../../components/workflowRunPanels";
 import { SVC_SCRIPT_FIELDS } from "../sharedWorkflowConstants";
 import { findFileByPath } from "../sharedWorkflowHelpers";
-import type { ServicePageProps } from "../sharedWorkflowUi";
+import type { WorkflowPageProps } from "../sharedWorkflowUi";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,
@@ -47,10 +47,10 @@ const SBOM_PARSE_CHAR_LIMIT = 300_000;
 const SBOM_PREVIEW_CHAR_LIMIT = 120_000;
 
 export function PageGenerateSBOM({
-  svc,
+  workflow,
   ree: reeDraft,
   badges,
-  virtualFiles,
+  workspaceFiles,
   log,
   running,
   runDone,
@@ -65,15 +65,15 @@ export function PageGenerateSBOM({
   onReeChange,
   onFilesChange,
   onPersistWorkspaceFile,
-}: ServicePageProps) {
+}: WorkflowPageProps) {
   const sbomParams: AutomationStepRunParams<"sbom"> = {
     ...(params as AutomationStepRunParams<"sbom">),
     produced_runtime_path: reeDraft.runtime,
   };
 
-  const files = virtualFiles;
+  const files = workspaceFiles;
 
-  const sbomColor = svc.color;
+  const sbomColor = workflow.color;
   const rt = reeDraft.runtime && reeDraft.runtime !== "__skipped__" ? reeDraft.runtime : null;
   const isTb = rt && /\.(tar\.gz|tgz)$/i.test(rt);
   const hasSbom = !!(reeDraft.sbom && reeDraft.sbom !== "__skipped__");
@@ -87,7 +87,7 @@ export function PageGenerateSBOM({
     ? `${sbomText.slice(0, SBOM_PREVIEW_CHAR_LIMIT)}\n\n... preview truncated ...`
     : sbomText;
 
-  const sbomScripts = SVC_SCRIPT_FIELDS[svc.key] || [];
+  const sbomScripts = SVC_SCRIPT_FIELDS[workflow.key] || [];
   const pkgCount = useMemo(() => {
     if (!hasSbom || !sbomNode?.content) return null;
     if (sbomNode.content.length > SBOM_PARSE_CHAR_LIMIT) return null;
@@ -101,11 +101,11 @@ export function PageGenerateSBOM({
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
       <WorkflowPageHeader
-        color={svc.color}
+        color={workflow.color}
         icon={Ic.package(18)}
         title="Generate SBOM"
         subtitle="Generate a machine-readable SBOM from the runtime image/tarball"
-        tips={descToTwoTierTips(svc.desc)}
+        tips={descToTwoTierTips(workflow.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -188,8 +188,8 @@ export function PageGenerateSBOM({
             runningLabel="Generating…"
             doneLabel="Regenerate SBOM"
             helperText="Generate an SPDX JSON SBOM from the selected runtime."
-            onCancel={() => onCancel?.(svc.key)}
-            onRun={() => onRun(svc.key, sbomParams)}
+            onCancel={() => onCancel?.(workflow.key)}
+            onRun={() => onRun(workflow.key, sbomParams)}
           />
 
           <FieldSection

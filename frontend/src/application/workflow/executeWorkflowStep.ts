@@ -1,7 +1,7 @@
 import type { Ree } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
-import type { GenericServiceParams } from "./WorkflowStepTypes";
+import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepRunParamsByKey } from "./WorkflowTypes";
 import { computeEvaluateLevelFromFiles } from "./workflowDependencyAnalysis";
 import { runWorkflowLifecycle } from "./workflowRunLifecycle";
@@ -55,10 +55,10 @@ interface WorkflowRunRunner {
 
 interface ExecuteWorkflowStepArgs {
   key: string;
-  params: GenericServiceParams;
+  params: GenericWorkflowParams;
   ree: Ree;
   level: number;
-  virtualFiles: FileTreeNode[];
+  workspaceFiles: FileTreeNode[];
   workflowRunner: WorkflowRunRunner;
   workflowStepHandlers: WorkflowStepHandlerMap;
   generatedIds: {
@@ -82,7 +82,7 @@ export async function executeWorkflowStep({
   params,
   ree,
   level,
-  virtualFiles,
+  workspaceFiles,
   workflowRunner,
   workflowStepHandlers,
   generatedIds,
@@ -113,7 +113,7 @@ export async function executeWorkflowStep({
       type: "completeWorkflowRun",
       completion: {
         key,
-        serviceLog: { lines, ts },
+        workflowLog: { lines, ts },
         actionState: completionPlan.actionState,
         badge: completionPlan.badge,
         timestamp: completionPlan.timestamp,
@@ -133,8 +133,8 @@ export async function executeWorkflowStep({
       executeCommands([
         {
           type: "hydrateWorkspace",
-          virtualFiles: workspace.files,
-          workspaceReeFiles: workspace.reeFiles || [],
+          workspaceFiles: workspace.files,
+          reeArtifactFiles: workspace.reeFiles || [],
           ree: workspace.ree,
         },
       ]);
@@ -143,7 +143,7 @@ export async function executeWorkflowStep({
     }
   }
 
-  const evaluatedLevel = computeEvaluateLevelFromFiles(virtualFiles || []);
+  const evaluatedLevel = computeEvaluateLevelFromFiles(workspaceFiles || []);
   const newLevel = deriveWorkflowStepLevel(key, level, evaluatedLevel);
 
   if (isWorkflowStepKey(key)) {
@@ -166,7 +166,7 @@ export async function executeWorkflowStep({
 function getWorkflowStepCommands(
   workflowStepHandlers: WorkflowStepHandlerMap,
   key: keyof WorkflowStepHandlerMap,
-  params: GenericServiceParams,
+  params: GenericWorkflowParams,
   newLevel: number,
 ): WorkflowStepCommand[] {
   if (key === "evaluate") {

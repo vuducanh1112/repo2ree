@@ -2,20 +2,20 @@ import type { Ree } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceEditorClock } from "../workspace-editor/WorkspaceEditorPorts";
-import type { GenericServiceParams } from "./WorkflowStepTypes";
+import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepKey, AutomationStepRunParamsByKey } from "./WorkflowTypes";
 import { scanDependencies } from "./workflowDependencyAnalysis";
 import { planWorkflowServiceEffect } from "./workflowOutcomePlanning";
 
 interface CreateWorkflowStepHandlersArgs {
   ree: Ree;
-  virtualFiles: FileTreeNode[];
+  workspaceFiles: FileTreeNode[];
   clock: WorkspaceEditorClock;
 }
 
 export interface WorkflowRunCompletionCommandPayload {
   key: string;
-  serviceLog: {
+  workflowLog: {
     lines: LogLine[];
     ts: string;
   };
@@ -30,8 +30,8 @@ export type WorkflowStepCommand =
   | { type: "completeWorkflowRun"; completion: WorkflowRunCompletionCommandPayload }
   | {
       type: "hydrateWorkspace";
-      virtualFiles: FileTreeNode[];
-      workspaceReeFiles?: ReeFile[];
+      workspaceFiles: FileTreeNode[];
+      reeArtifactFiles?: ReeFile[];
       ree?: Ree;
     }
   | { type: "persistFile"; path: string; content: string }
@@ -48,7 +48,7 @@ export type WorkflowStepHandlerMap = {
 
 export function createWorkflowStepHandlers({
   ree,
-  virtualFiles,
+  workspaceFiles,
   clock,
 }: CreateWorkflowStepHandlersArgs): WorkflowStepHandlerMap {
   return {
@@ -56,7 +56,7 @@ export function createWorkflowStepHandlers({
       workflowEffectPlanToCommands(
         planWorkflowServiceEffect({
           key: "build",
-          params: runParams as GenericServiceParams,
+          params: runParams as GenericWorkflowParams,
           ree,
           newLevel,
           timestamp: clock.nowIso(),
@@ -69,7 +69,7 @@ export function createWorkflowStepHandlers({
       workflowEffectPlanToCommands(
         planWorkflowServiceEffect({
           key: "hbom",
-          params: runParams as GenericServiceParams,
+          params: runParams as GenericWorkflowParams,
           ree,
           newLevel,
           timestamp: clock.nowIso(),
@@ -82,7 +82,7 @@ export function createWorkflowStepHandlers({
       workflowEffectPlanToCommands(
         planWorkflowServiceEffect({
           key: "sbom",
-          params: runParams as GenericServiceParams,
+          params: runParams as GenericWorkflowParams,
           ree,
           newLevel,
           timestamp: clock.nowIso(),
@@ -95,7 +95,7 @@ export function createWorkflowStepHandlers({
       workflowEffectPlanToCommands(
         planWorkflowServiceEffect({
           key: "activation",
-          params: runParams as GenericServiceParams,
+          params: runParams as GenericWorkflowParams,
           ree,
           newLevel,
           timestamp: clock.nowIso(),
@@ -105,12 +105,12 @@ export function createWorkflowStepHandlers({
         }),
       ),
     evaluate: (runParams, newLevel) => {
-      const groups = scanDependencies(virtualFiles || []);
+      const groups = scanDependencies(workspaceFiles || []);
       const dependencyCount = groups.reduce((sum, group) => sum + group.packages.length, 0);
       return workflowEffectPlanToCommands(
         planWorkflowServiceEffect({
           key: "evaluate",
-          params: runParams as GenericServiceParams,
+          params: runParams as GenericWorkflowParams,
           ree,
           newLevel,
           timestamp: clock.nowIso(),

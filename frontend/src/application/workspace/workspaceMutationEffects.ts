@@ -1,5 +1,5 @@
 import type { Ree } from "../../domain/ree/ReeSpec";
-import type { ActionStates, ServiceLogs } from "../../domain/ree/ReeTypes";
+import type { ActionStates, WorkflowLogs } from "../../domain/ree/ReeTypes";
 import type { WorkflowStepCommand } from "../workflow/workflowStepCommands";
 import type { SourceCommand } from "./sourceAcquisitionCommands";
 
@@ -15,22 +15,22 @@ export type WorkspaceStateCommand =
       actionStates: (prevStates: ActionStates) => ActionStates;
     }
   | {
-      type: "setServiceLogs";
-      serviceLogs: (prevLogs: ServiceLogs) => ServiceLogs;
+      type: "setWorkflowLogs";
+      workflowLogs: (prevLogs: WorkflowLogs) => WorkflowLogs;
     }
   | {
-      type: "completeServiceRun";
+      type: "completeWorkflowRun";
       completion: WorkflowRunCompletionCommand["completion"];
     }
   | {
       type: "hydrateWorkspace";
       workspace: {
-        virtualFiles:
-          | WorkflowRunHydrationCommand["virtualFiles"]
-          | SourceHydrationCommand["virtualFiles"];
-        workspaceReeFiles:
-          | NonNullable<WorkflowRunHydrationCommand["workspaceReeFiles"]>
-          | NonNullable<SourceHydrationCommand["workspaceReeFiles"]>;
+        workspaceFiles:
+          | WorkflowRunHydrationCommand["workspaceFiles"]
+          | SourceHydrationCommand["workspaceFiles"];
+        reeArtifactFiles:
+          | NonNullable<WorkflowRunHydrationCommand["reeArtifactFiles"]>
+          | NonNullable<SourceHydrationCommand["reeArtifactFiles"]>;
         ree?: WorkflowRunHydrationCommand["ree"] | SourceHydrationCommand["ree"];
       };
     }
@@ -38,7 +38,7 @@ export type WorkspaceStateCommand =
   | { type: "setLocked"; locked: boolean }
   | {
       type: "resetWorkflowOnSourceChange";
-      serviceParams: SourceResetCommand["serviceParams"];
+      workflowParams: SourceResetCommand["workflowParams"];
     }
   | {
       type: "applySourcePatchOutcome";
@@ -84,8 +84,8 @@ export function mapWorkflowStepCommandsToEffects(
       return {
         type: "dispatchStateCommand",
         command: {
-          type: "setServiceLogs",
-          serviceLogs: (prevLogs) => ({
+          type: "setWorkflowLogs",
+          workflowLogs: (prevLogs) => ({
             ...prevLogs,
             [command.key]: { lines: command.lines, ts: command.ts },
           }),
@@ -96,7 +96,7 @@ export function mapWorkflowStepCommandsToEffects(
       return {
         type: "dispatchStateCommand",
         command: {
-          type: "completeServiceRun",
+          type: "completeWorkflowRun",
           completion: command.completion,
         },
       };
@@ -107,8 +107,8 @@ export function mapWorkflowStepCommandsToEffects(
         command: {
           type: "hydrateWorkspace",
           workspace: {
-            virtualFiles: command.virtualFiles,
-            workspaceReeFiles: command.workspaceReeFiles || [],
+            workspaceFiles: command.workspaceFiles,
+            reeArtifactFiles: command.reeArtifactFiles || [],
             ree: command.ree,
           },
         },
@@ -158,8 +158,8 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): Workspace
       return {
         type: "dispatchStateCommand",
         command: {
-          type: "setServiceLogs",
-          serviceLogs: (prevLogs) => ({
+          type: "setWorkflowLogs",
+          workflowLogs: (prevLogs) => ({
             ...prevLogs,
             source: { lines: command.lines, ts: command.ts },
           }),
@@ -171,7 +171,7 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): Workspace
         type: "dispatchStateCommand",
         command: {
           type: "resetWorkflowOnSourceChange",
-          serviceParams: command.serviceParams,
+          workflowParams: command.workflowParams,
         },
       };
     }
@@ -190,8 +190,8 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): Workspace
       command: {
         type: "hydrateWorkspace",
         workspace: {
-          virtualFiles: hydrationCommand.virtualFiles,
-          workspaceReeFiles: hydrationCommand.workspaceReeFiles || [],
+          workspaceFiles: hydrationCommand.workspaceFiles,
+          reeArtifactFiles: hydrationCommand.reeArtifactFiles || [],
           ree: hydrationCommand.ree,
         },
       },

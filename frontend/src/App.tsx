@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { createHttpWorkspaceGateway } from "./infra/workspace/HttpWorkspaceGateway";
+import { createHttpWorkspaceBackendGateway } from "./infra/workspace/HttpWorkspaceBackendGateway";
 import { AppBootstrap } from "./runtime/bootstrap/AppBootstrap";
 import {
   WorkspaceRuntimeProvider,
@@ -18,7 +18,7 @@ export default function App() {
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("reeId") || undefined
         : undefined;
-    const workspaceGateway = createHttpWorkspaceGateway({
+    const workspaceBackend = createHttpWorkspaceBackendGateway({
       baseUrl: env.VITE_API_BASE_URL || "",
       initialWorkspaceId: reeIdFromQuery,
     });
@@ -27,7 +27,7 @@ export default function App() {
     return {
       workspaceId: WORKSPACE_ID,
       ports,
-      workspaceGateway,
+      workspaceBackend,
     };
   }, []);
 

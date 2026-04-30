@@ -3,8 +3,8 @@ import type { AutomationStepParams } from "../../application/workflow/WorkflowTy
 export type Badges = Record<string, boolean>;
 export type Timestamps = Record<string, string>;
 export type ActionStates = Record<string, "loading" | "done">;
-export type ServiceLogs = Record<string, LogEntry>;
-export type ServiceParams = AutomationStepParams;
+export type WorkflowLogs = Record<string, LogEntry>;
+export type WorkflowParams = AutomationStepParams;
 
 export interface LogLine {
   type: "info" | "ok" | "warn" | "err" | "out";

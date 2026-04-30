@@ -35,7 +35,7 @@ export function PageMetadataEntry({
   focusedField,
   onReeChange,
   onLockedChange,
-  onGoService,
+  onGoWorkflow,
   onFocusedFieldChange,
 }: PageMetadataEntryProps) {
   const onChange = onReeChange;
@@ -112,7 +112,7 @@ export function PageMetadataEntry({
             </FieldSection>
 
             <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-              <NextStepNudge stepKey="metadata" badges={badges} onGo={onGoService} />
+              <NextStepNudge stepKey="metadata" badges={badges} onGo={onGoWorkflow} />
             </div>
           </div>
         </div>

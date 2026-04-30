@@ -12,7 +12,7 @@ describe("createWorkflowRunSession", () => {
     expect(session.getActiveRunId("build")).toBeUndefined();
   });
 
-  it("merges automation step params into the existing service param map", () => {
+  it("merges automation step params into the existing workflow param map", () => {
     const session = createWorkflowRunSession();
 
     expect(

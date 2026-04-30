@@ -48,8 +48,8 @@ export function planNonWorkflowCompletion({
     };
   }
 
-  const svc = AUTOMATION_STEPS.find((service) => service.key === key);
+  const workflow = AUTOMATION_STEPS.find((workflowStep) => workflowStep.key === key);
   return {
-    successMessage: `${svc?.label ?? key} completed`,
+    successMessage: `${workflow?.label ?? key} completed`,
   };
 }

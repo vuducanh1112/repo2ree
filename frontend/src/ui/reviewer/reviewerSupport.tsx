@@ -1,9 +1,9 @@
 import type React from "react";
 import { useEffect, useState } from "react";
 import type {
-  ServiceParam,
-  ServiceParamValue,
   StepState,
+  WorkflowParam,
+  WorkflowParamValue,
 } from "../../application/workflow/WorkflowStepTypes";
 import type { Ree } from "../../domain/ree/ReeSpec";
 import type { LogLine } from "../../domain/ree/ReeTypes";
@@ -22,12 +22,12 @@ interface ReactivationStep {
   icon: (s?: number) => JSX.Element;
   color: string;
   desc: string;
-  params?: ServiceParam[];
+  params?: WorkflowParam[];
   logLines: (ree: Ree, params?: ReactivationParams) => LogLine[];
 }
 
 export type ReactivationStepKey = "acquire_source" | "build_runtime" | "test_activation";
-export type ReactivationParams = Record<string, ServiceParamValue>;
+export type ReactivationParams = Record<string, WorkflowParamValue>;
 
 export const REACTIVATION_STEPS: ReactivationStep[] = [
   {
@@ -236,7 +236,7 @@ interface RvStepCardProps {
   state: StepState;
   log: LogLine[] | null;
   params: ReactivationParams;
-  onSetParam: (stepKey: ReactivationStepKey, paramKey: string, value: ServiceParamValue) => void;
+  onSetParam: (stepKey: ReactivationStepKey, paramKey: string, value: WorkflowParamValue) => void;
   onRun: (key: ReactivationStepKey, params: ReactivationParams) => boolean | Promise<boolean>;
   onCancel?: (key: ReactivationStepKey) => void | Promise<void>;
   isLast: boolean;

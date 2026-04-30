@@ -1,24 +1,24 @@
 import type { Ree } from "../../domain/ree/ReeSpec";
-import type { LogLine, ReeFile, ServiceParams } from "../../domain/ree/ReeTypes";
+import type { LogLine, ReeFile, WorkflowParams } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { initialAutomationStepParams } from "../workflow/WorkflowStepDefinitions";
 
 export interface SourceOutcomeCommandPayload {
   reePatch: Partial<Ree>;
-  immutableSourceSnapshotFiles: FileTreeNode[];
-  immutableSourceSnapshotArchiveName: string;
+  sourceSnapshotFiles: FileTreeNode[];
+  sourceSnapshotArchiveName: string;
   actionState?: "done";
   badge?: boolean;
   timestamp?: string;
 }
 
 export type SourceCommand =
-  | { type: "resetWorkflowOnSourceChange"; serviceParams: ServiceParams }
+  | { type: "resetWorkflowOnSourceChange"; workflowParams: WorkflowParams }
   | { type: "setSourceLoading" }
   | {
       type: "hydrateWorkspace";
-      virtualFiles: FileTreeNode[];
-      workspaceReeFiles?: ReeFile[];
+      workspaceFiles: FileTreeNode[];
+      reeArtifactFiles?: ReeFile[];
       ree?: Ree;
     }
   | { type: "applySourcePatchOutcome"; outcome: SourceOutcomeCommandPayload }
@@ -27,7 +27,7 @@ export type SourceCommand =
 
 export function sourceChangeResetCommands(options: { silent?: boolean } = {}): SourceCommand[] {
   const commands: SourceCommand[] = [
-    { type: "resetWorkflowOnSourceChange", serviceParams: initialAutomationStepParams() },
+    { type: "resetWorkflowOnSourceChange", workflowParams: initialAutomationStepParams() },
   ];
   if (!options.silent) {
     commands.push({
@@ -45,8 +45,8 @@ export function sourceFailureCommands(args: { message: string }): SourceCommand[
       type: "applySourcePatchOutcome",
       outcome: {
         reePatch: {},
-        immutableSourceSnapshotFiles: [],
-        immutableSourceSnapshotArchiveName: "",
+        sourceSnapshotFiles: [],
+        sourceSnapshotArchiveName: "",
         actionState: "done",
       },
     },

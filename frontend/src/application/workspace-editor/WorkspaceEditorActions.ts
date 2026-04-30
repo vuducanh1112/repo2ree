@@ -3,9 +3,9 @@ import type {
   ActionStates,
   Badges,
   ReeFile,
-  ServiceLogs,
-  ServiceParams,
   Timestamps,
+  WorkflowLogs,
+  WorkflowParams,
 } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { ToastState } from "../workflow/WorkflowStepTypes";
@@ -44,13 +44,13 @@ export const workspaceEditorActions = {
     type: ACTION_TYPES.workspaceEditor.setTimestamps,
     timestamps,
   }),
-  setServiceLogs: (serviceLogs: StateUpdater<ServiceLogs>): WorkspaceEditorAction => ({
-    type: ACTION_TYPES.workspaceEditor.setServiceLogs,
-    serviceLogs,
+  setWorkflowLogs: (workflowLogs: StateUpdater<WorkflowLogs>): WorkspaceEditorAction => ({
+    type: ACTION_TYPES.workspaceEditor.setWorkflowLogs,
+    workflowLogs,
   }),
-  setServiceParams: (serviceParams: StateUpdater<ServiceParams>): WorkspaceEditorAction => ({
-    type: ACTION_TYPES.workspaceEditor.setServiceParams,
-    serviceParams,
+  setWorkflowParams: (workflowParams: StateUpdater<WorkflowParams>): WorkspaceEditorAction => ({
+    type: ACTION_TYPES.workspaceEditor.setWorkflowParams,
+    workflowParams,
   }),
   setToast: (toast: StateUpdater<ToastState | null>): WorkspaceEditorAction => ({
     type: ACTION_TYPES.workspaceEditor.setToast,
@@ -68,44 +68,44 @@ export const workspaceEditorActions = {
     type: ACTION_TYPES.workspaceEditor.setNavCollapsed,
     navCollapsed,
   }),
-  setVirtualFiles: (virtualFiles: StateUpdater<FileTreeNode[]>): WorkspaceEditorAction => ({
-    type: ACTION_TYPES.workspaceEditor.setVirtualFiles,
-    virtualFiles,
+  setWorkspaceFiles: (workspaceFiles: StateUpdater<FileTreeNode[]>): WorkspaceEditorAction => ({
+    type: ACTION_TYPES.workspaceEditor.setWorkspaceFiles,
+    workspaceFiles,
   }),
-  setWorkspaceReeFiles: (workspaceReeFiles: StateUpdater<ReeFile[]>): WorkspaceEditorAction => ({
-    type: ACTION_TYPES.workspaceEditor.setWorkspaceReeFiles,
-    workspaceReeFiles,
+  setReeArtifactFiles: (reeArtifactFiles: StateUpdater<ReeFile[]>): WorkspaceEditorAction => ({
+    type: ACTION_TYPES.workspaceEditor.setReeArtifactFiles,
+    reeArtifactFiles,
   }),
   hydrateWorkspace: (workspace: WorkspaceHydrationPayload): WorkspaceEditorAction => ({
     type: ACTION_TYPES.workspaceEditor.hydrateWorkspace,
     workspace,
   }),
-  setImmutableSourceSnapshotFiles: (
-    immutableSourceSnapshotFiles: StateUpdater<FileTreeNode[]>,
+  setSourceSnapshotFiles: (
+    sourceSnapshotFiles: StateUpdater<FileTreeNode[]>,
   ): WorkspaceEditorAction => ({
-    type: ACTION_TYPES.workspaceEditor.setImmutableSourceSnapshotFiles,
-    immutableSourceSnapshotFiles,
+    type: ACTION_TYPES.workspaceEditor.setSourceSnapshotFiles,
+    sourceSnapshotFiles,
   }),
-  setImmutableSourceSnapshotArchiveName: (
-    immutableSourceSnapshotArchiveName: StateUpdater<string>,
+  setSourceSnapshotArchiveName: (
+    sourceSnapshotArchiveName: StateUpdater<string>,
   ): WorkspaceEditorAction => ({
-    type: ACTION_TYPES.workspaceEditor.setImmutableSourceSnapshotArchiveName,
-    immutableSourceSnapshotArchiveName,
+    type: ACTION_TYPES.workspaceEditor.setSourceSnapshotArchiveName,
+    sourceSnapshotArchiveName,
   }),
   applySourcePatchOutcome: (outcome: SourceOutcomePayload): WorkspaceEditorAction => ({
     type: ACTION_TYPES.workspaceEditor.applySourcePatchOutcome,
     outcome,
   }),
-  setShowReviewerPreview: (showReviewerPreview: StateUpdater<boolean>): WorkspaceEditorAction => ({
-    type: ACTION_TYPES.workspaceEditor.setShowReviewerPreview,
-    showReviewerPreview,
+  setShowReviewPreview: (showReviewPreview: StateUpdater<boolean>): WorkspaceEditorAction => ({
+    type: ACTION_TYPES.workspaceEditor.setShowReviewPreview,
+    showReviewPreview,
   }),
   completeWorkflowRun: (completion: WorkflowRunCompletionPayload): WorkspaceEditorAction => ({
     type: ACTION_TYPES.workspaceEditor.completeWorkflowRun,
     completion,
   }),
-  resetWorkflowOnSourceChange: (serviceParams: ServiceParams): WorkspaceEditorAction => ({
+  resetWorkflowOnSourceChange: (workflowParams: WorkflowParams): WorkspaceEditorAction => ({
     type: ACTION_TYPES.workspaceEditor.resetWorkflowOnSourceChange,
-    serviceParams,
+    workflowParams,
   }),
 };

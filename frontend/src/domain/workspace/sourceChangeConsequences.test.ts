@@ -38,13 +38,13 @@ function buildWorkspaceState(): WorkspaceSourceResetInput {
 describe("computeSourceChangeConsequences", () => {
   it("clears workflow artifacts while preserving unrelated workspace state", () => {
     const workspace = buildWorkspaceState();
-    const nextServiceParams = initialAutomationStepParams();
+    const nextWorkflowParams = initialAutomationStepParams();
 
-    const reset = computeSourceChangeConsequences(workspace, nextServiceParams);
+    const reset = computeSourceChangeConsequences(workspace, nextWorkflowParams);
 
-    expect(reset.serviceParams).toEqual(nextServiceParams);
+    expect(reset.workflowParams).toEqual(nextWorkflowParams);
     expect(reset.badges).toEqual({});
-    expect(reset.virtualFiles).toEqual([]);
+    expect(reset.workspaceFiles).toEqual([]);
     expect(reset.ree.runtime).toBe("");
     expect(reset.ree.origin_url).toBe("");
     expect(reset.ree._evalLevel).toBe(0);

@@ -3,9 +3,9 @@ import type {
   ActionStates,
   Badges,
   ReeFile,
-  ServiceLogs,
-  ServiceParams,
   Timestamps,
+  WorkflowLogs,
+  WorkflowParams,
 } from "../ree/ReeTypes";
 import type { FileTreeNode } from "./FileTree";
 
@@ -16,26 +16,26 @@ export interface WorkspaceSourceResetInput {
 interface WorkspaceSourceResetFields {
   badges: Badges;
   timestamps: Timestamps;
-  serviceLogs: ServiceLogs;
+  workflowLogs: WorkflowLogs;
   actionStates: ActionStates;
-  serviceParams: ServiceParams;
+  workflowParams: WorkflowParams;
   ree: Ree;
-  virtualFiles: FileTreeNode[];
-  workspaceReeFiles: ReeFile[];
-  immutableSourceSnapshotFiles: FileTreeNode[];
-  immutableSourceSnapshotArchiveName: string;
+  workspaceFiles: FileTreeNode[];
+  reeArtifactFiles: ReeFile[];
+  sourceSnapshotFiles: FileTreeNode[];
+  sourceSnapshotArchiveName: string;
 }
 
 export function computeSourceChangeConsequences(
   workspace: WorkspaceSourceResetInput,
-  serviceParams: ServiceParams,
+  workflowParams: WorkflowParams,
 ): WorkspaceSourceResetFields {
   return {
     badges: {},
     timestamps: {},
-    serviceLogs: {},
+    workflowLogs: {},
     actionStates: {},
-    serviceParams,
+    workflowParams,
     ree: {
       ...workspace.ree,
       origin_url: "",
@@ -55,9 +55,9 @@ export function computeSourceChangeConsequences(
       _sourceSnapshotArchive: "",
       _sourceSnapshotCapturedAt: "",
     },
-    virtualFiles: [],
-    workspaceReeFiles: [],
-    immutableSourceSnapshotFiles: [],
-    immutableSourceSnapshotArchiveName: "",
+    workspaceFiles: [],
+    reeArtifactFiles: [],
+    sourceSnapshotFiles: [],
+    sourceSnapshotArchiveName: "",
   };
 }

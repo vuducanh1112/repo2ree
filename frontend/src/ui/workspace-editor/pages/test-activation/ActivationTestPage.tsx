@@ -27,13 +27,13 @@ import { NextStepNudge, WorkflowPageHeader } from "../../components/pageChrome";
 import { FilePicker, ScriptPanel } from "../../components/scriptAndFile";
 import { WorkflowLogSection, WorkflowRunActionSection } from "../../components/workflowRunPanels";
 import { SVC_SCRIPT_FIELDS } from "../sharedWorkflowConstants";
-import type { ServicePageProps } from "../sharedWorkflowUi";
+import type { WorkflowPageProps } from "../sharedWorkflowUi";
 
 export function PageTestActivation({
-  svc,
+  workflow,
   ree,
   badges,
-  virtualFiles,
+  workspaceFiles,
   log,
   running,
   runDone,
@@ -48,21 +48,21 @@ export function PageTestActivation({
   onReeChange,
   onFilesChange,
   onPersistWorkspaceFile,
-}: ServicePageProps) {
-  const files = virtualFiles;
+}: WorkflowPageProps) {
+  const files = workspaceFiles;
 
   const asLabel = FIELD_META.activation_script?.label || "Activation script";
-  const buildColor = svc?.color || "#ef4444";
+  const buildColor = workflow?.color || "#ef4444";
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
       <WorkflowPageHeader
-        color={svc.color}
+        color={workflow.color}
         icon={Ic.play(18)}
-        title={svc?.label || "Test activation"}
+        title={workflow?.label || "Test activation"}
         subtitle="Run the activation test script to verify the runtime loads and activates correctly"
-        tips={descToTwoTierTips(svc.desc)}
+        tips={descToTwoTierTips(workflow.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -114,8 +114,8 @@ export function PageTestActivation({
             idleLabel="Run activation"
             runningLabel="Running…"
             helperText="Runs the activation test script in the runtime environment."
-            onCancel={() => onCancel?.(svc.key)}
-            onRun={() => onRun(svc.key, params)}
+            onCancel={() => onCancel?.(workflow.key)}
+            onRun={() => onRun(workflow.key, params)}
           />
 
           <div style={S_WORKFLOW_PAGE_SCRIPTS_WRAP}>

@@ -2,8 +2,8 @@ import type {
   LogLine,
   WorkflowRunRecord,
   WorkflowRunStatus,
-  WorkspaceGateway,
-} from "../../../application/ports/WorkspaceGateway";
+  WorkspaceBackendGateway,
+} from "../../../application/ports/WorkspaceBackendGateway";
 import type { WorkspaceEditorClock } from "../../../application/workspace-editor/WorkspaceEditorPorts";
 
 interface PollWorkflowRunOptions {
@@ -47,7 +47,7 @@ function mergeCappedLines(existing: LogLine[], incoming: LogLine[]): LogLine[] {
 }
 
 async function readAvailableLogs(
-  workspaceService: WorkspaceGateway,
+  workspaceService: WorkspaceBackendGateway,
   workspaceId: string,
   runId: string,
   cursor?: string,
@@ -77,13 +77,13 @@ function resolveRunTimestamp(run: WorkflowRunRecord, clock: WorkspaceEditorClock
 }
 
 export async function pollWorkflowRun(
-  workspaceService: WorkspaceGateway,
+  workspaceService: WorkspaceBackendGateway,
   options: PollWorkflowRunOptions,
 ): Promise<PollWorkflowRunResult> {
   if (!workspaceService.getWorkflowRun) {
     return {
       status: "failed",
-      lines: [{ type: "err", msg: "Workflow polling is not supported by this service" }],
+      lines: [{ type: "err", msg: "Workflow polling is not supported by this workflow backend" }],
       ts: options.clock.nowIso(),
     };
   }

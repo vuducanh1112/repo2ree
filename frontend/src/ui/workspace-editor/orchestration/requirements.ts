@@ -1,9 +1,12 @@
-import type { Service, ServiceRequire } from "../../../application/workflow/WorkflowStepTypes";
+import type {
+  WorkflowDefinition,
+  WorkflowRequirement,
+} from "../../../application/workflow/WorkflowStepTypes";
 import type { Ree } from "../../../domain/ree/ReeSpec";
 
 /**
- * Return list of service requirements that are not met by the current REE.
+ * Return list of workflow requirements that are not met by the current REE.
  */
-export function missingRequirements(svc: Service, ree: Ree): ServiceRequire[] {
-  return (svc.requires || []).filter((requiredField) => !ree[requiredField.field]);
+export function missingRequirements(workflow: WorkflowDefinition, ree: Ree): WorkflowRequirement[] {
+  return (workflow.requires || []).filter((requiredField) => !ree[requiredField.field]);
 }

@@ -3,10 +3,10 @@ import type {
   ReeProject,
   WorkflowRunLogChunk,
   WorkflowRunRecord,
-  WorkspaceGateway,
+  WorkspaceBackendGateway,
   WorkspaceResetPayload,
-} from "../../application/ports/WorkspaceGateway";
-import { parseWorkspaceResetPayload } from "../../application/ports/WorkspaceGateway";
+} from "../../application/ports/WorkspaceBackendGateway";
+import { parseWorkspaceResetPayload } from "../../application/ports/WorkspaceBackendGateway";
 import type { Ree } from "../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
@@ -117,9 +117,9 @@ function decodeBase64ToArrayBuffer(base64: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-export function createHttpWorkspaceGateway(
+export function createHttpWorkspaceBackendGateway(
   options: CreateRemoteWorkspaceServiceOptions = {},
-): WorkspaceGateway<FileTreeNode> {
+): WorkspaceBackendGateway<FileTreeNode> {
   const client = new ApiClient({
     baseUrl: options.baseUrl,
     headers: options.headers,

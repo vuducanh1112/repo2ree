@@ -169,8 +169,8 @@ export function createSourceUseCase({
             type: "applySourcePatchOutcome",
             outcome: {
               reePatch: clearPlan.reePatch,
-              immutableSourceSnapshotFiles: clearPlan.snapshotFiles,
-              immutableSourceSnapshotArchiveName: clearPlan.snapshotArchiveName,
+              sourceSnapshotFiles: clearPlan.snapshotFiles,
+              sourceSnapshotArchiveName: clearPlan.snapshotArchiveName,
             },
           },
           { type: "toast", message: clearPlan.infoMessage, toastType: "info" },
@@ -205,8 +205,8 @@ function sourceSuccessCommands(plan: {
       type: "applySourcePatchOutcome",
       outcome: {
         reePatch: plan.reePatch,
-        immutableSourceSnapshotFiles: plan.snapshotFiles,
-        immutableSourceSnapshotArchiveName: plan.snapshotArchiveName,
+        sourceSnapshotFiles: plan.snapshotFiles,
+        sourceSnapshotArchiveName: plan.snapshotArchiveName,
         actionState: plan.actionState,
         badge: plan.badge,
         timestamp: plan.timestamp,

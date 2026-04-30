@@ -1,4 +1,4 @@
-import type { WorkspaceGateway } from "../../../application/ports/WorkspaceGateway";
+import type { WorkspaceBackendGateway } from "../../../application/ports/WorkspaceBackendGateway";
 import type { WorkspaceEditorClock } from "../../../application/workspace-editor/WorkspaceEditorPorts";
 import type { Ree } from "../../../domain/ree/ReeSpec";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
@@ -8,7 +8,7 @@ import type { ShowToast } from "./types";
 
 interface CreateSourceAdapterArgs {
   ree: Ree;
-  workspaceService: WorkspaceGateway<FileTreeNode>;
+  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
   workspaceId: string;
   dispatch: WorkspaceWorkflowDispatch;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;

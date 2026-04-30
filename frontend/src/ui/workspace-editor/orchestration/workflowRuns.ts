@@ -1,9 +1,9 @@
 import type {
   WorkflowRunLogEntry,
-  WorkspaceGateway,
-} from "../../../application/ports/WorkspaceGateway";
+  WorkspaceBackendGateway,
+} from "../../../application/ports/WorkspaceBackendGateway";
 import { executeWorkflowStep } from "../../../application/workflow/executeWorkflowStep";
-import type { GenericServiceParams } from "../../../application/workflow/WorkflowStepTypes";
+import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type {
   WorkflowStepCommand,
   WorkflowStepHandlerMap,
@@ -18,32 +18,32 @@ import type { ShowToast } from "./types";
 
 interface ExecuteServiceRunArgs {
   key: string;
-  params: GenericServiceParams;
+  params: GenericWorkflowParams;
   ree: Ree;
   level: number;
-  virtualFiles: FileTreeNode[];
+  workspaceFiles: FileTreeNode[];
   dispatch: WorkspaceWorkflowDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
   workflowStepHandlers: WorkflowStepHandlerMap;
-  workspaceService: WorkspaceGateway<FileTreeNode>;
+  workspaceService: WorkspaceBackendGateway<FileTreeNode>;
   workspaceId: string;
   ports: WorkspaceEditorRuntimePorts;
   refreshWorkspace: () => Promise<{
-    virtualFiles: FileTreeNode[];
-    workspaceReeFiles: ReeFile[];
+    workspaceFiles: FileTreeNode[];
+    reeArtifactFiles: ReeFile[];
     ree?: Ree;
   }>;
   onRunStarted?: (key: string, runId: string) => void;
   onRunFinished?: (key: string) => void;
 }
 
-export async function executeServiceRunAction({
+export async function executeWorkflowRunAction({
   key,
   params,
   ree,
   level,
-  virtualFiles,
+  workspaceFiles,
   dispatch,
   persistWorkspaceFile,
   showToast,
@@ -67,7 +67,7 @@ export async function executeServiceRunAction({
     params,
     ree,
     level,
-    virtualFiles,
+    workspaceFiles,
     workflowRunner: {
       startWorkflowRun: (scriptKey, runParams) =>
         startWorkflowRun(workspaceId, scriptKey, runParams),
@@ -90,8 +90,8 @@ export async function executeServiceRunAction({
     refreshWorkspace: async () => {
       const workspace = await refreshWorkspace();
       return {
-        files: workspace.virtualFiles,
-        reeFiles: workspace.workspaceReeFiles,
+        files: workspace.workspaceFiles,
+        reeFiles: workspace.reeArtifactFiles,
         ree: workspace.ree,
       };
     },
