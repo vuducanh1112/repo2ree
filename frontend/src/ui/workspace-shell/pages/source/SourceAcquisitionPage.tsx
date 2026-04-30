@@ -44,6 +44,7 @@ const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSPropert
 
 export function SourceAcquisitionPage({
   ree,
+  workspaceSourceState,
   locked,
   repoMode,
   badges,
@@ -67,25 +68,26 @@ export function SourceAcquisitionPage({
     ree.source_type || "",
   );
   const [originUrlDraft, setOriginUrlDraft] = useState(ree.origin_url || "");
-  const sourceInWorkspace = !!ree._sourceAvailable;
-  const sourceIncluded = sourceInWorkspace && !!ree._sourceIncluded;
-  const sourceFromUpload = ree._sourceAcquiredBy === "upload" && sourceInWorkspace;
-  const sourceFromDownload = ree._sourceAcquiredBy === "download" && sourceInWorkspace;
+  const sourceInWorkspace = !!workspaceSourceState.sourceAvailable;
+  const sourceIncluded = sourceInWorkspace && !!workspaceSourceState.sourceIncluded;
+  const sourceFromUpload = workspaceSourceState.sourceAcquiredBy === "upload" && sourceInWorkspace;
+  const sourceFromDownload =
+    workspaceSourceState.sourceAcquiredBy === "download" && sourceInWorkspace;
   const sourceConfigLocked = sourceInWorkspace;
   const downloadDone = sourceFromDownload;
   const sourceInteractionLocked = locked || sourceConfigLocked;
 
   const toggleSourceIncluded = () => {
     focus("_sourceAvailable");
-    if (locked || !sourceInWorkspace || ree._sourceAcquiredBy === "upload") return;
+    if (locked || !sourceInWorkspace || workspaceSourceState.sourceAcquiredBy === "upload") return;
     onReeChange({ ...ree, _sourceIncluded: !sourceIncluded });
   };
 
   useEffect(() => {
-    if (!sourceInWorkspace && ree._sourceIncluded) {
+    if (!sourceInWorkspace && workspaceSourceState.sourceIncluded) {
       onReeChange({ ...ree, _sourceIncluded: false });
     }
-  }, [sourceInWorkspace, ree, onReeChange]);
+  }, [sourceInWorkspace, workspaceSourceState.sourceIncluded, ree, onReeChange]);
 
   useEffect(() => {
     setOriginTypeDraft(ree.source_type || "");
@@ -318,7 +320,7 @@ export function SourceAcquisitionPage({
                         ? "Source is already loaded in workspace. Clear workspace source to switch method."
                         : undefined
                     }
-                    committedName={ree._uploadedArchive}
+                    committedName={workspaceSourceState.uploadedArchive}
                     onCommit={(payload) => {
                       onWorkspaceUpload(payload);
                     }}
@@ -405,7 +407,7 @@ export function SourceAcquisitionPage({
                         {Ic.files(12)} Browse workspace files
                       </button>
 
-                      {ree._sourceAvailable && (
+                      {workspaceSourceState.sourceAvailable && (
                         <button
                           type="button"
                           disabled={locked}

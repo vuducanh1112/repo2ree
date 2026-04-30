@@ -10,17 +10,21 @@ import type {
   AutomationStepRunParams,
 } from "../../../application/workflow/WorkflowTypes";
 import type { WorkspaceShellPage } from "../../../application/workspace-shell/WorkspaceShellPages";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
+import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
+import type { ReeDraftViewModel, ReeSpec } from "../../../domain/ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
   LogEntry,
   SourceUploadCommit,
 } from "../../../domain/ree/ReeTypes";
+import type { EvaluationState } from "../../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
+import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
 
 export interface SourceAcquisitionPageProps {
   ree: ReeDraftViewModel;
+  workspaceSourceState: WorkspaceSourceState;
   locked: boolean;
   repoMode: "url" | "upload";
   badges: Badges;
@@ -39,11 +43,11 @@ export interface SourceAcquisitionPageProps {
 }
 
 export interface PageMetadataEntryProps {
-  ree: ReeDraftViewModel;
+  reeSpec: ReeSpec;
   locked: boolean;
   badges: Badges;
   focusedField: string | null;
-  onReeChange: React.Dispatch<React.SetStateAction<ReeDraftViewModel>>;
+  onReeChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
   onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
   onGoWorkflow: (key: WorkspaceShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
@@ -69,6 +73,9 @@ export interface PageHardwareBomProps {
 export interface WorkflowPageProps {
   workflow: AutomationStepDefinition & { key: AutomationStepKey };
   ree: ReeDraftViewModel;
+  workspaceSourceState: WorkspaceSourceState;
+  artifactStatus: ArtifactStatus;
+  evaluationState: EvaluationState;
   badges: Badges;
   workspaceFiles: FileTreeNode[];
   log: LogEntry | null;

@@ -16,9 +16,10 @@ import { useWorkspaceWorkflowRuns } from "../workflow-runs/useWorkspaceWorkflowR
 
 export function useWorkspaceShell() {
   const { state, dispatch } = useWorkspaceShellContext();
+  const workspaceDraft = workspaceShellSelectors.workspaceDraft(state);
   const workspaceRemote = workspaceShellSelectors.workspaceRemote(state);
+  const workflowRun = workspaceShellSelectors.workflowRun(state);
   const uiChrome = workspaceShellSelectors.uiChrome(state);
-  const workspaceShell = workspaceShellSelectors.state(state);
   const reeDraft = workspaceShellSelectors.reeDraftViewModel(state);
 
   const { showReviewPreview } = uiChrome;
@@ -51,6 +52,11 @@ export function useWorkspaceShell() {
       dispatch(workspaceShellActions.setNavCollapsed(value)),
     setRee: (value: ReeDraftViewModel | ((current: ReeDraftViewModel) => ReeDraftViewModel)) =>
       dispatch(workspaceShellActions.setRee(value)),
+    setReeSpec: (
+      value:
+        | typeof workspaceDraft.reeSpec
+        | ((current: typeof workspaceDraft.reeSpec) => typeof workspaceDraft.reeSpec),
+    ) => dispatch(workspaceShellActions.setReeSpec(value)),
     setLocked: (value: boolean | ((current: boolean) => boolean)) =>
       dispatch(workspaceShellActions.setLocked(value)),
     setRepoMode: (value: "url" | "upload" | ((current: "url" | "upload") => "url" | "upload")) =>
@@ -80,12 +86,13 @@ export function useWorkspaceShell() {
   };
 
   return {
-    // Transitional facade while views move from the legacy workspaceShell shape to slices.
-    state: {
-      ...workspaceShell,
-      level,
-      currentReeFiles,
-    },
+    workspaceDraft,
+    workspaceRemote,
+    workflowRun,
+    uiChrome,
+    reeDraft,
+    level,
+    currentReeFiles,
     commands,
     reviewer: {
       showReviewPreview,

@@ -12,15 +12,21 @@ import type { useWorkspaceShell } from "./useWorkspaceShell";
 type WorkspaceShellController = ReturnType<typeof useWorkspaceShell>;
 
 interface UseWorkflowStepPageControllerArgs {
-  state: WorkspaceShellController["state"];
+  workspaceDraft: WorkspaceShellController["workspaceDraft"];
+  workflowRun: WorkspaceShellController["workflowRun"];
+  uiChrome: WorkspaceShellController["uiChrome"];
+  reeDraft: WorkspaceShellController["reeDraft"];
   commands: WorkspaceShellController["commands"];
 }
 
 export function useWorkflowStepPageController({
-  state,
+  workflowRun,
+  uiChrome,
+  reeDraft,
   commands,
 }: UseWorkflowStepPageControllerArgs) {
-  const { page, ree, badges, workflowLogs, workflowParams, actionStates, timestamps } = state;
+  const { page } = uiChrome;
+  const { badges, workflowLogs, workflowParams, actionStates, timestamps } = workflowRun;
 
   const workflowStep = useMemo(() => AUTOMATION_STEPS.find((step) => step.key === page), [page]);
 
@@ -28,8 +34,8 @@ export function useWorkflowStepPageController({
     if (!workflowStep) {
       return [];
     }
-    return missingWorkflowRequirements(workflowStep.key, ree);
-  }, [workflowStep, ree]);
+    return missingWorkflowRequirements(workflowStep.key, reeDraft);
+  }, [workflowStep, reeDraft]);
 
   const params = useMemo(() => {
     if (!workflowStep) {

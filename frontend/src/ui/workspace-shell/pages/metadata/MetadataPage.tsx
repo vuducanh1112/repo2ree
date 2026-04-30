@@ -29,7 +29,7 @@ const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSPropert
 });
 
 export function PageMetadataEntry({
-  ree,
+  reeSpec,
   locked,
   badges,
   focusedField,
@@ -40,13 +40,13 @@ export function PageMetadataEntry({
 }: PageMetadataEntryProps) {
   const onChange = onReeChange;
 
-  const set = <K extends keyof typeof ree>(k: K, v: (typeof ree)[K]) =>
-    onChange({ ...ree, [k]: v } as typeof ree);
+  const set = <K extends keyof typeof reeSpec>(k: K, v: (typeof reeSpec)[K]) =>
+    onChange({ ...reeSpec, [k]: v } as typeof reeSpec);
   const focus = (key: string) => onFocusedFieldChange(key);
 
   useFocusScroll(focusedField);
 
-  const identityFilled = [ree.name].filter(Boolean).length;
+  const identityFilled = [reeSpec.name].filter(Boolean).length;
 
   return (
     <div style={S_WORKFLOW_PAGE_ROOT}>
@@ -102,7 +102,7 @@ export function PageMetadataEntry({
               >
                 <input
                   disabled={locked}
-                  value={ree.name}
+                  value={reeSpec.name}
                   onChange={(event) => set("name", event.target.value)}
                   onFocus={() => focus("name")}
                   placeholder="my-project-v1.0"

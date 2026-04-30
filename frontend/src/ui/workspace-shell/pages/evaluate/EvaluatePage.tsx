@@ -37,7 +37,8 @@ import type { WorkflowPageProps } from "../sharedWorkflowUi";
 
 export function PageEvaluate({
   workflow,
-  ree,
+  workspaceSourceState,
+  evaluationState,
   badges,
   workspaceFiles,
   log,
@@ -57,10 +58,10 @@ export function PageEvaluate({
   const depGroups = scanDependencies(files || []);
   const hasRun = !!log;
   const hasScoreOutput = !!runDone;
-  const sourceLoadedInWorkspace = !!ree._sourceAvailable;
+  const sourceLoadedInWorkspace = !!workspaceSourceState.sourceAvailable;
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const IC = automationStepIcon(workflow.iconKey);
-  const level = Math.min(ree._evalLevel ?? 0, LEVELS.length - 1);
+  const level = Math.min(evaluationState.evalLevel ?? 0, LEVELS.length - 1);
   const currentLevel = LEVELS[level];
   const standing = `${level + 1} / ${LEVELS.length}`;
   const completionPct = Math.round((level / (LEVELS.length - 1)) * 100);

@@ -5,6 +5,7 @@ import {
   PAGE,
   type WorkspaceShellPage,
 } from "../../../../application/workspace-shell/WorkspaceShellPages";
+import type { ArtifactStatus } from "../../../../domain/artifact/ArtifactStatus";
 import type { ReeDraftViewModel } from "../../../../domain/ree/ReeSpec";
 import type { ActionStates, Badges, WorkflowLogs } from "../../../../domain/ree/ReeTypes";
 import { Ic } from "../../../shared/components/Icon";
@@ -23,6 +24,7 @@ import { NextStepNudge, RequirementsBanner, WorkflowPageHeader } from "../../com
 
 interface PageArchiveProps {
   ree: ReeDraftViewModel;
+  artifactStatus: ArtifactStatus;
   badges: Badges;
   logs: WorkflowLogs;
   actionStates: ActionStates;
@@ -30,7 +32,15 @@ interface PageArchiveProps {
   onGo: (key: WorkspaceShellPage) => void;
 }
 
-export function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: PageArchiveProps) {
+export function PageArchive({
+  ree,
+  artifactStatus,
+  badges,
+  logs,
+  actionStates,
+  onRun,
+  onGo,
+}: PageArchiveProps) {
   const [activeRepo, setActiveRepo] = useState("swh");
   const repo =
     ARCHIVE_REPOSITORIES.find((archiveRepo) => archiveRepo.key === activeRepo) ||
@@ -61,6 +71,7 @@ export function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: Pa
   const sbomDone = !!badges.sbom;
   const activationDone = !!badges.activation;
   const capstoneReady = buildDone && sbomDone && activationDone;
+  const isSealed = !!artifactStatus.sealedAt;
 
   return (
     <div
@@ -160,6 +171,29 @@ export function PageArchive({ ree, badges, logs, actionStates, onRun, onGo }: Pa
                     </span>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {!isSealed && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                padding: "12px 16px",
+                marginBottom: 20,
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                borderRadius: 10,
+              }}
+            >
+              <span style={{ color: "#1d4ed8", display: "flex", flexShrink: 0, marginTop: 1 }}>
+                {Ic.info()}
+              </span>
+              <div style={{ flex: 1, fontSize: 13, color: "#1e3a8a", lineHeight: 1.5 }}>
+                Deposit can proceed before sealing, but the final Seal step is still required before
+                your REE is considered complete.
               </div>
             </div>
           )}

@@ -21,8 +21,19 @@ interface WorkspaceShellViewProps {
 }
 
 export function WorkspaceShellView({ onBack, PodOrbitControl }: WorkspaceShellViewProps) {
-  const { state, commands } = useWorkspaceShell();
-  const { ree, badges, timestamps, toast, page, navCollapsed, showReviewPreview } = state;
+  const {
+    workspaceDraft,
+    workspaceRemote,
+    workflowRun,
+    uiChrome,
+    reeDraft,
+    level,
+    currentReeFiles,
+    commands,
+    reviewer,
+  } = useWorkspaceShell();
+  const { badges, timestamps } = workflowRun;
+  const { toast, page, navCollapsed } = uiChrome;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg }}>
@@ -70,7 +81,7 @@ export function WorkspaceShellView({ onBack, PodOrbitControl }: WorkspaceShellVi
         </span>
         <span style={{ fontSize: 13, color: C.borderMid, fontFamily: F.mono }}>/</span>
         <span style={{ fontSize: 13, color: C.textMuted, fontFamily: F.mono }}>
-          {ree.name || "untitled"}
+          {reeDraft.name || "untitled"}
         </span>
         <div style={{ flex: 1 }} />
       </header>
@@ -78,7 +89,7 @@ export function WorkspaceShellView({ onBack, PodOrbitControl }: WorkspaceShellVi
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
         <WorkspaceShellSidebar
           page={page}
-          ree={ree}
+          ree={reeDraft}
           navCollapsed={navCollapsed}
           badges={badges}
           timestamps={timestamps}
@@ -88,14 +99,23 @@ export function WorkspaceShellView({ onBack, PodOrbitControl }: WorkspaceShellVi
           onPreviewReviewer={commands.openReviewPreview}
         />
 
-        <WorkspaceShellContent state={state} commands={commands} />
+        <WorkspaceShellContent
+          workspaceDraft={workspaceDraft}
+          workspaceRemote={workspaceRemote}
+          workflowRun={workflowRun}
+          uiChrome={uiChrome}
+          reeDraft={reeDraft}
+          level={level}
+          currentReeFiles={currentReeFiles}
+          commands={commands}
+        />
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={commands.clearToast} />}
 
       <ReviewerPreviewOverlay
-        open={showReviewPreview}
-        ree={ree}
+        open={reviewer.showReviewPreview}
+        ree={reeDraft}
         onClose={commands.closeReviewPreview}
         PodOrbitControl={PodOrbitControl}
       />

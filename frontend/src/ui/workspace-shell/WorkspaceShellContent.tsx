@@ -20,11 +20,17 @@ import {
 type WorkspaceShellController = ReturnType<typeof useWorkspaceShell>;
 
 interface WorkspaceShellContentProps {
-  state: WorkspaceShellController["state"];
+  workspaceDraft: WorkspaceShellController["workspaceDraft"];
+  workspaceRemote: WorkspaceShellController["workspaceRemote"];
+  workflowRun: WorkspaceShellController["workflowRun"];
+  uiChrome: WorkspaceShellController["uiChrome"];
+  reeDraft: WorkspaceShellController["reeDraft"];
+  level: WorkspaceShellController["level"];
+  currentReeFiles: WorkspaceShellController["currentReeFiles"];
   commands: WorkspaceShellController["commands"];
 }
 
-export function WorkspaceShellContent({ state, commands }: WorkspaceShellContentProps) {
+export function WorkspaceShellContent(props: WorkspaceShellContentProps) {
   return (
     <main style={S_WORKSPACE_EDITOR_MAIN_CONTENT_ROOT}>
       <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_LAYER}>
@@ -33,13 +39,13 @@ export function WorkspaceShellContent({ state, commands }: WorkspaceShellContent
         <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_CENTER} />
       </div>
       <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_INNER}>
-        <OverviewPageContainer state={state} commands={commands} />
-        <SourcePageContainer state={state} commands={commands} />
-        <MetadataPageContainer state={state} commands={commands} />
-        <HardwareBomPageContainer state={state} commands={commands} />
-        <WorkflowPageContainer state={state} commands={commands} />
-        <ArchivePageContainer state={state} commands={commands} />
-        <FilesPageContainer state={state} commands={commands} />
+        <OverviewPageContainer {...props} />
+        <SourcePageContainer {...props} />
+        <MetadataPageContainer {...props} />
+        <HardwareBomPageContainer {...props} />
+        <WorkflowPageContainer {...props} />
+        <ArchivePageContainer {...props} />
+        <FilesPageContainer {...props} />
       </div>
     </main>
   );

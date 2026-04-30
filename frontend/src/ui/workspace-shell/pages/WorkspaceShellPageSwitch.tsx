@@ -28,7 +28,13 @@ const WORKFLOW_PAGE_COMPONENTS: Record<string, (props: WorkflowPageProps) => JSX
 type WorkspaceShellController = ReturnType<typeof useWorkspaceShell>;
 
 interface WorkspaceShellPageContainerProps {
-  state: WorkspaceShellController["state"];
+  workspaceDraft: WorkspaceShellController["workspaceDraft"];
+  workspaceRemote: WorkspaceShellController["workspaceRemote"];
+  workflowRun: WorkspaceShellController["workflowRun"];
+  uiChrome: WorkspaceShellController["uiChrome"];
+  reeDraft: WorkspaceShellController["reeDraft"];
+  level: WorkspaceShellController["level"];
+  currentReeFiles: WorkspaceShellController["currentReeFiles"];
   commands: WorkspaceShellController["commands"];
 }
 
@@ -43,9 +49,19 @@ function ContentSection({ children }: { children: ReactNode }) {
   return <div style={CONTENT_SECTION_STYLE}>{children}</div>;
 }
 
-export function OverviewPageContainer({ state, commands }: WorkspaceShellPageContainerProps) {
-  const { page, ree, level, badges, timestamps, workspaceFiles, sourceSnapshotFiles, locked } =
-    state;
+export function OverviewPageContainer({
+  workspaceDraft,
+  workspaceRemote,
+  workflowRun,
+  uiChrome,
+  reeDraft,
+  level,
+  commands,
+}: WorkspaceShellPageContainerProps) {
+  const { page } = uiChrome;
+  const { badges, timestamps } = workflowRun;
+  const { workspaceFiles, sourceSnapshotFiles, artifactStatus } = workspaceRemote;
+  const { locked } = workspaceDraft;
 
   if (page !== PAGE.OVERVIEW && page !== PAGE.SEAL) {
     return null;
@@ -54,7 +70,7 @@ export function OverviewPageContainer({ state, commands }: WorkspaceShellPageCon
   return (
     <ContentSection>
       <PageOverview
-        ree={ree}
+        ree={reeDraft}
         onReeChange={commands.setRee}
         level={level}
         onNavigate={commands.setPage}
@@ -69,14 +85,23 @@ export function OverviewPageContainer({ state, commands }: WorkspaceShellPageCon
         locked={locked}
         onSeal={commands.onSeal}
         onPreviewReviewer={commands.openReviewPreview}
-        onDownloadRee={ree._sealedAt ? commands.onDownloadRee : undefined}
+        onDownloadRee={artifactStatus.sealedAt ? commands.onDownloadRee : undefined}
       />
     </ContentSection>
   );
 }
 
-export function SourcePageContainer({ state, commands }: WorkspaceShellPageContainerProps) {
-  const { page, ree, locked, repoMode, badges, actionStates, focusedField, workflowLogs } = state;
+export function SourcePageContainer({
+  workspaceDraft,
+  workspaceRemote,
+  workflowRun,
+  uiChrome,
+  reeDraft,
+  commands,
+}: WorkspaceShellPageContainerProps) {
+  const { page, focusedField } = uiChrome;
+  const { locked, repoMode } = workspaceDraft;
+  const { badges, actionStates, workflowLogs } = workflowRun;
 
   if (page !== PAGE.SOURCE) {
     return null;
@@ -84,7 +109,8 @@ export function SourcePageContainer({ state, commands }: WorkspaceShellPageConta
 
   return (
     <SourceAcquisitionPage
-      ree={ree}
+      ree={reeDraft}
+      workspaceSourceState={workspaceRemote.workspaceSourceState}
       locked={locked}
       repoMode={repoMode}
       badges={badges}
@@ -104,8 +130,15 @@ export function SourcePageContainer({ state, commands }: WorkspaceShellPageConta
   );
 }
 
-export function MetadataPageContainer({ state, commands }: WorkspaceShellPageContainerProps) {
-  const { page, ree, locked, badges, focusedField } = state;
+export function MetadataPageContainer({
+  workspaceDraft,
+  workflowRun,
+  uiChrome,
+  commands,
+}: WorkspaceShellPageContainerProps) {
+  const { page, focusedField } = uiChrome;
+  const { locked, reeSpec } = workspaceDraft;
+  const { badges } = workflowRun;
 
   if (page !== PAGE.METADATA) {
     return null;
@@ -113,11 +146,11 @@ export function MetadataPageContainer({ state, commands }: WorkspaceShellPageCon
 
   return (
     <PageMetadataEntry
-      ree={ree}
+      reeSpec={reeSpec}
       locked={locked}
       badges={badges}
       focusedField={focusedField}
-      onReeChange={commands.setRee}
+      onReeChange={commands.setReeSpec}
       onLockedChange={commands.setLocked}
       onGoWorkflow={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
@@ -125,8 +158,16 @@ export function MetadataPageContainer({ state, commands }: WorkspaceShellPageCon
   );
 }
 
-export function HardwareBomPageContainer({ state, commands }: WorkspaceShellPageContainerProps) {
-  const { page, ree, locked, badges, focusedField, workflowLogs, actionStates, timestamps } = state;
+export function HardwareBomPageContainer({
+  workspaceDraft,
+  workflowRun,
+  uiChrome,
+  reeDraft,
+  commands,
+}: WorkspaceShellPageContainerProps) {
+  const { page, focusedField } = uiChrome;
+  const { locked } = workspaceDraft;
+  const { badges, workflowLogs, actionStates, timestamps } = workflowRun;
 
   if (page !== PAGE.HBOM) {
     return null;
@@ -134,7 +175,7 @@ export function HardwareBomPageContainer({ state, commands }: WorkspaceShellPage
 
   return (
     <PageHardwareBom
-      ree={ree}
+      ree={reeDraft}
       locked={locked}
       badges={badges}
       log={workflowLogs.hbom || null}
@@ -152,10 +193,12 @@ export function HardwareBomPageContainer({ state, commands }: WorkspaceShellPage
   );
 }
 
-export function WorkflowPageContainer({ state, commands }: WorkspaceShellPageContainerProps) {
-  const { ree, badges, workspaceFiles } = state;
+export function WorkflowPageContainer(props: WorkspaceShellPageContainerProps) {
+  const { reeDraft, workspaceRemote, workflowRun, commands } = props;
+  const { badges } = workflowRun;
+  const { workspaceFiles, workspaceSourceState, artifactStatus } = workspaceRemote;
 
-  const workflowPageController = useWorkflowStepPageController({ state, commands });
+  const workflowPageController = useWorkflowStepPageController(props);
   if (!workflowPageController) {
     return null;
   }
@@ -182,9 +225,12 @@ export function WorkflowPageContainer({ state, commands }: WorkspaceShellPageCon
     <ContentSection>
       <WorkflowPageComponent
         workflow={workflowStep}
-        ree={ree}
+        ree={reeDraft}
         badges={badges}
         workspaceFiles={workspaceFiles}
+        workspaceSourceState={workspaceSourceState}
+        artifactStatus={artifactStatus}
+        evaluationState={workflowRun.evaluationState}
         log={log}
         running={running}
         runDone={runDone}
@@ -205,8 +251,15 @@ export function WorkflowPageContainer({ state, commands }: WorkspaceShellPageCon
   );
 }
 
-export function ArchivePageContainer({ state, commands }: WorkspaceShellPageContainerProps) {
-  const { page, ree, badges, workflowLogs, actionStates } = state;
+export function ArchivePageContainer({
+  workspaceRemote,
+  workflowRun,
+  uiChrome,
+  reeDraft,
+  commands,
+}: WorkspaceShellPageContainerProps) {
+  const { page } = uiChrome;
+  const { badges, workflowLogs, actionStates } = workflowRun;
 
   if (page !== PAGE.ARCHIVE) {
     return null;
@@ -215,7 +268,8 @@ export function ArchivePageContainer({ state, commands }: WorkspaceShellPageCont
   return (
     <ContentSection>
       <ArchivePage
-        ree={ree}
+        ree={reeDraft}
+        artifactStatus={workspaceRemote.artifactStatus}
         badges={badges}
         logs={workflowLogs}
         actionStates={actionStates}
@@ -226,8 +280,14 @@ export function ArchivePageContainer({ state, commands }: WorkspaceShellPageCont
   );
 }
 
-export function FilesPageContainer({ state, commands }: WorkspaceShellPageContainerProps) {
-  const { page, workspaceFiles, currentReeFiles } = state;
+export function FilesPageContainer({
+  workspaceRemote,
+  uiChrome,
+  currentReeFiles,
+  commands,
+}: WorkspaceShellPageContainerProps) {
+  const { page } = uiChrome;
+  const { workspaceFiles } = workspaceRemote;
 
   if (page !== PAGE.FILES) {
     return null;
