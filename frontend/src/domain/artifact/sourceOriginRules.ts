@@ -1,4 +1,4 @@
-import type { Ree } from "../../types";
+import type { Ree } from "../ree/ReeSpec";
 
 export function enforceSourceOriginRules(ree: Ree): Ree {
   const hasDownloadedSource = !!ree._sourceAvailable && ree._sourceAcquiredBy === "download";

@@ -1,5 +1,5 @@
-import type { LogLine } from "../../types";
-import type { GenericServiceParams } from "../../types/workflowSteps";
+import type { LogLine } from "../../domain/ree/ReeTypes";
+import type { GenericServiceParams } from "./WorkflowStepTypes";
 
 type WorkflowRunStatus =
   | "created"

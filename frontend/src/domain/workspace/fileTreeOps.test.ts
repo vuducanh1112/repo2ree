@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { FileTreeNode } from "../../types";
+import type { FileTreeNode } from "./FileTree";
 import { removeWorkspaceFileByPath, upsertWorkspaceFileByPath } from "./fileTreeOps";
 
 describe("fileTreeOps", () => {

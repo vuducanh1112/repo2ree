@@ -1,5 +1,5 @@
-import { AUTOMATION_STEPS } from "../../constants/workflowSteps";
-import type { Ree } from "../../types";
+import type { Ree } from "../../domain/ree/ReeSpec";
+import { AUTOMATION_STEPS } from "../workflow/WorkflowStepDefinitions";
 
 interface NonWorkflowCompletionPlan {
   reePatch?: Partial<Ree>;

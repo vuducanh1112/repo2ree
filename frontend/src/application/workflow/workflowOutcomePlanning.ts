@@ -1,7 +1,8 @@
-import { LEVELS } from "../../constants/levels";
-import type { AutomationStepKey, HBOM, Ree } from "../../types";
-import type { GenericServiceParams } from "../../types/workflowSteps";
-import { emptyHBOM } from "../../utils/hbom";
+import { emptyHBOM } from "../../domain/hbom/HbomSummary";
+import type { HBOM, Ree } from "../../domain/ree/ReeSpec";
+import { LEVELS } from "../../domain/review/levels";
+import type { GenericServiceParams } from "./WorkflowStepTypes";
+import type { AutomationStepKey } from "./WorkflowTypes";
 
 interface PersistedFilePlan {
   path: string;

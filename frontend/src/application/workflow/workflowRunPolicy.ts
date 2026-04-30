@@ -1,7 +1,8 @@
-import { PAGE } from "../../constants/pages";
-import type { AutomationStepKey, Ree } from "../../types";
-import type { GenericServiceParams } from "../../types/workflowSteps";
+import type { Ree } from "../../domain/ree/ReeSpec";
 import { planNonWorkflowCompletion } from "../workspace/manualArtifactUpdatePlanning";
+import { PAGE } from "../workspace-editor/WorkspaceEditorPages";
+import type { GenericServiceParams } from "./WorkflowStepTypes";
+import type { AutomationStepKey } from "./WorkflowTypes";
 
 type WorkflowRunStatus =
   | "created"

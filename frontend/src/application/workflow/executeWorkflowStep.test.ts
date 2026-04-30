@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Ree } from "../../types";
+import type { Ree } from "../../domain/ree/ReeSpec";
 import { executeWorkflowStep } from "./executeWorkflowStep";
 import type { WorkflowStepHandlerMap } from "./workflowStepCommands";
 

@@ -1,5 +1,6 @@
-import type { FileTreeNode, Ree } from "../../types";
-import { normalizeSnapshotArchiveName } from "../../utils";
+import type { Ree } from "../../domain/ree/ReeSpec";
+import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import { normalizeSnapshotArchiveName } from "../../domain/workspace/PathUtils";
 
 type SourceWorkflowStatus = "failed" | "canceled";
 

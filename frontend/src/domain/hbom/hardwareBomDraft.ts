@@ -5,8 +5,8 @@ import type {
   MemoryDefinition,
   NetworkDefinition,
   StorageDefinition,
-} from "../../types";
-import { emptyHBOM } from "../../utils/hbom";
+} from "../ree/ReeSpec";
+import { emptyHBOM } from "./HbomSummary";
 
 export type CPURow = CPUDefinition & {
   id: string;

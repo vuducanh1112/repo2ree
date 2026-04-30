@@ -1,4 +1,5 @@
-import type { ActionStates, Ree, ServiceLogs } from "../../types";
+import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ActionStates, ServiceLogs } from "../../domain/ree/ReeTypes";
 import type { WorkflowStepCommand } from "../workflow/workflowStepCommands";
 import type { SourceCommand } from "./sourceAcquisitionCommands";
 

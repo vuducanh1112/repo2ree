@@ -1,4 +1,4 @@
-import type { FileTreeNode } from "../../types";
+import type { FileTreeNode } from "./FileTree";
 
 interface UpsertWorkspaceFileOptions {
   tag?: string;

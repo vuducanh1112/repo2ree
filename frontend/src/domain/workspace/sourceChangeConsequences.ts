@@ -1,5 +1,13 @@
-import type { FileTreeNode, Ree, ReeFile, ServiceParams } from "../../types";
-import type { ActionStates, Badges, ServiceLogs, Timestamps } from "../../types/ree";
+import type { Ree } from "../ree/ReeSpec";
+import type {
+  ActionStates,
+  Badges,
+  ReeFile,
+  ServiceLogs,
+  ServiceParams,
+  Timestamps,
+} from "../ree/ReeTypes";
+import type { FileTreeNode } from "./FileTree";
 
 export interface ExplorerSourceResetInput {
   ree: Ree;

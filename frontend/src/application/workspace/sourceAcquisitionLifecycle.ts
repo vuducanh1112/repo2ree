@@ -1,4 +1,4 @@
-import type { LogLine } from "../../types";
+import type { LogLine } from "../../domain/ree/ReeTypes";
 
 type SourceWorkflowStatus =
   | "created"

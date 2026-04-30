@@ -1,4 +1,8 @@
-import type { AutomationStepKey, AutomationStepParams, AutomationStepRunParams } from "../../types";
+import type {
+  AutomationStepKey,
+  AutomationStepParams,
+  AutomationStepRunParams,
+} from "./WorkflowTypes";
 
 interface CancelTrackedRunArgs {
   key: string;

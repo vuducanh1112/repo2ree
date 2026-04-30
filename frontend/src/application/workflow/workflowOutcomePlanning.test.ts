@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Ree } from "../../types";
+import type { Ree } from "../../domain/ree/ReeSpec";
 import {
   planActivationEffect,
   planBuildEffect,

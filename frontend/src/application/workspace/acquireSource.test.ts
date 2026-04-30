@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { FileTreeNode, Ree } from "../../types";
+import type { Ree } from "../../domain/ree/ReeSpec";
+import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { createSourceUseCase } from "./acquireSource";
 
 function buildRee(): Ree {

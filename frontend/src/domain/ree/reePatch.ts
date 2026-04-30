@@ -1,4 +1,4 @@
-import type { HBOM, Ree } from "../../types";
+import type { HBOM, Ree } from "./ReeSpec";
 
 interface ReePatch extends Record<string, unknown> {
   name: string;

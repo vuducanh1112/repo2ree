@@ -1,11 +1,8 @@
-import type {
-  AutomationStepRunParamsByKey,
-  FileTreeNode,
-  LogLine,
-  Ree,
-  ReeFile,
-} from "../../types";
-import type { GenericServiceParams } from "../../types/workflowSteps";
+import type { Ree } from "../../domain/ree/ReeSpec";
+import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
+import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { GenericServiceParams } from "./WorkflowStepTypes";
+import type { AutomationStepRunParamsByKey } from "./WorkflowTypes";
 import { computeEvaluateLevelFromFiles } from "./workflowDependencyAnalysis";
 import { runWorkflowLifecycle } from "./workflowRunLifecycle";
 import {

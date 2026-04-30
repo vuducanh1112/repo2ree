@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { FileTreeNode, Ree } from "../../types";
+import type { Ree } from "../../domain/ree/ReeSpec";
+import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import {
   planClearedSourceStateResult,
   planDownloadedSourceState,

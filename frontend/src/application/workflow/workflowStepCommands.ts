@@ -1,13 +1,9 @@
-import type {
-  AutomationStepKey,
-  AutomationStepRunParamsByKey,
-  FileTreeNode,
-  LogLine,
-  Ree,
-  ReeFile,
-} from "../../types";
-import type { GenericServiceParams } from "../../types/workflowSteps";
-import type { WorkspaceEditorClock } from "../workspace/workspaceEditorPorts";
+import type { Ree } from "../../domain/ree/ReeSpec";
+import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
+import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { WorkspaceEditorClock } from "../workspace-editor/WorkspaceEditorPorts";
+import type { GenericServiceParams } from "./WorkflowStepTypes";
+import type { AutomationStepKey, AutomationStepRunParamsByKey } from "./WorkflowTypes";
 import { scanDependencies } from "./workflowDependencyAnalysis";
 import { planWorkflowServiceEffect } from "./workflowOutcomePlanning";
 

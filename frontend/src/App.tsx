@@ -1,12 +1,15 @@
 import { useMemo } from "react";
-import { AppBootstrap } from "./app/AppBootstrap";
-import { createBrowserRuntimePorts } from "./app/browserRuntimePorts";
-import { DEMO_REE } from "./app/demoRee";
-import { createMockWorkspaceGateway } from "./app/mockWorkspaceGateway";
-import { WorkspaceRuntimeProvider, type WorkspaceRuntimeValue } from "./app/WorkspaceRuntime";
-import { WORKSPACE_ID } from "./app/workspaceConstants";
-import { WorkspaceEditorProvider } from "./context";
-import { createHttpWorkspaceGateway } from "./workspace/HttpWorkspaceGateway";
+import { createHttpWorkspaceGateway } from "./infra/workspace/HttpWorkspaceGateway";
+import { AppBootstrap } from "./runtime/bootstrap/AppBootstrap";
+import {
+  WorkspaceRuntimeProvider,
+  type WorkspaceRuntimeValue,
+} from "./runtime/browser/BrowserRuntime";
+import { createBrowserRuntimePorts } from "./runtime/browser/BrowserRuntimePorts";
+import { WORKSPACE_ID } from "./runtime/config/WorkspaceConstants";
+import { DEMO_REE } from "./runtime/demo/DemoRee";
+import { createMockWorkspaceGateway } from "./runtime/demo/MockWorkspaceGatewayFactory";
+import { WorkspaceEditorProvider } from "./ui/workspace-editor/providers/WorkspaceEditorProvider";
 
 export default function App() {
   const runtime = useMemo<WorkspaceRuntimeValue>(() => {
@@ -39,7 +42,7 @@ export default function App() {
 
   return (
     <WorkspaceRuntimeProvider value={runtime}>
-      <WorkspaceEditorProvider initialExplorerRee={DEMO_REE}>
+      <WorkspaceEditorProvider initialWorkspaceEditorRee={DEMO_REE}>
         <AppBootstrap />
       </WorkspaceEditorProvider>
     </WorkspaceRuntimeProvider>

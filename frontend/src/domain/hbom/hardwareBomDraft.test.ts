@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyHBOM } from "../../utils/hbom";
+import { emptyHBOM } from "./HbomSummary";
 import { draftFromHBOM, hbomFromDraft, newCpuRow } from "./hardwareBomDraft";
 
 describe("hardwareBomDraft", () => {

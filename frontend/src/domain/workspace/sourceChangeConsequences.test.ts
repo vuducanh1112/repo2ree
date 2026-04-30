@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialAutomationStepParams } from "../../constants/workflowSteps";
+import { initialAutomationStepParams } from "../../application/workflow/WorkflowStepDefinitions";
 import type { ExplorerSourceResetInput } from "./sourceChangeConsequences";
 import { computeSourceChangeConsequences } from "./sourceChangeConsequences";
 
