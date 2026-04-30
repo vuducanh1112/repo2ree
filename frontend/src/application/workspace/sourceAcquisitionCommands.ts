@@ -1,10 +1,14 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
+import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile, WorkflowParams } from "../../domain/ree/ReeTypes";
+import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 import { initialAutomationStepParams } from "../workflow/workflowCatalog";
 
 export interface SourceOutcomeCommandPayload {
-  reePatch: Partial<ReeDraftViewModel>;
+  reeSpecPatch?: Partial<ReeSpec>;
+  workspaceSourceState?: WorkspaceSourceState;
   sourceSnapshotFiles: FileTreeNode[];
   sourceSnapshotArchiveName: string;
   actionState?: "done";
@@ -19,9 +23,12 @@ export type SourceCommand =
       type: "hydrateWorkspace";
       workspaceFiles: FileTreeNode[];
       reeArtifactFiles?: ReeFile[];
-      ree?: ReeDraftViewModel;
+      reeSpec?: ReeSpec;
+      workspaceSourceState?: WorkspaceSourceState;
+      artifactStatus?: ArtifactStatus;
+      evaluationState?: EvaluationState;
     }
-  | { type: "applySourcePatchOutcome"; outcome: SourceOutcomeCommandPayload }
+  | { type: "applySourceOutcome"; outcome: SourceOutcomeCommandPayload }
   | { type: "setSourceLog"; lines: LogLine[]; ts: string }
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
@@ -42,9 +49,9 @@ export function sourceChangeResetCommands(options: { silent?: boolean } = {}): S
 export function sourceFailureCommands(args: { message: string }): SourceCommand[] {
   return [
     {
-      type: "applySourcePatchOutcome",
+      type: "applySourceOutcome",
       outcome: {
-        reePatch: {},
+        reeSpecPatch: {},
         sourceSnapshotFiles: [],
         sourceSnapshotArchiveName: "",
         actionState: "done",

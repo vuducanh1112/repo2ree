@@ -32,12 +32,14 @@ describe("workspaceShellState", () => {
     const initial = createInitialState(buildRee());
 
     const next = workspaceShellReducer(initial, {
-      type: "workspaceShell/applySourcePatchOutcome",
+      type: "workspaceShell/applySourceOutcome",
       outcome: {
-        reePatch: {
+        reeSpecPatch: {
           origin_url: "https://example.org/repo.git",
-          _sourceAvailable: true,
-          _sourceAcquiredBy: "download",
+        },
+        workspaceSourceState: {
+          sourceAvailable: true,
+          sourceAcquiredBy: "download",
         },
         sourceSnapshotFiles: [{ id: "1", name: "README.md", type: "file" }],
         sourceSnapshotArchiveName: "repo-original.tar.gz",
@@ -48,8 +50,8 @@ describe("workspaceShellState", () => {
     });
     const view = workspaceShellSelectors.state(next);
 
-    expect(next.workspaceDraft.ree.origin_url).toBe("https://example.org/repo.git");
-    expect(next.workspaceDraft.ree._sourceAvailable).toBe(true);
+    expect(next.workspaceDraft.reeSpec.origin_url).toBe("https://example.org/repo.git");
+    expect(next.workspaceRemote.workspaceSourceState.sourceAvailable).toBe(true);
     expect(next.workflowRun.actionStates.source).toBe("done");
     expect(next.workflowRun.badges.source).toBe(true);
     expect(next.workflowRun.timestamps.source).toBe("2026-01-01T00:00:00Z");
@@ -101,8 +103,8 @@ describe("workspaceShellState", () => {
     expect(next.workflowRun.badges).toEqual({});
     expect(next.workflowRun.timestamps).toEqual({});
     expect(next.workspaceRemote.workspaceFiles).toEqual([]);
-    expect(next.workspaceDraft.ree.origin_url).toBe("");
-    expect(next.workspaceDraft.ree._sourceAvailable).toBe(false);
+    expect(next.workspaceDraft.reeSpec.origin_url).toBe("");
+    expect(next.workspaceRemote.workspaceSourceState.sourceAvailable).toBe(false);
   });
 
   it("keeps the compatibility selector aligned with the new slice state", () => {
@@ -113,6 +115,9 @@ describe("workspaceShellState", () => {
     expect(view.page).toBe(state.uiChrome.page);
     expect(view.workflowParams).toBe(state.workflowRun.workflowParams);
     expect(view.workspaceFiles).toBe(state.workspaceRemote.workspaceFiles);
-    expect(view.ree).toBe(state.workspaceDraft.ree);
+    expect(view.ree.name).toBe(state.workspaceDraft.reeSpec.name);
+    expect(view.ree._sourceAvailable).toBe(
+      state.workspaceRemote.workspaceSourceState.sourceAvailable,
+    );
   });
 });

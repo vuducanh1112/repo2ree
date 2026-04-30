@@ -11,6 +11,7 @@ import type { WorkspaceShellAction } from "../../../application/workspace-shell"
 import { workspaceShellActions } from "../../../application/workspace-shell";
 import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
+import { splitLegacyReeModel } from "../../../domain/ree/reeLegacyAdapters";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { useWorkspaceRuntime } from "../../../runtime/browser/BrowserRuntime";
 import { createDownloadActions } from "../artifact-actions/downloadActions";
@@ -80,7 +81,29 @@ export function useWorkspaceWorkflowRuns({
       workspaceFiles: FileTreeNode[];
       reeArtifactFiles: ReeFile[];
       ree?: ReeDraftViewModel;
-    }) => dispatch(workspaceShellActions.hydrateWorkspace(workspace)),
+    }) => {
+      if (!workspace.ree) {
+        dispatch(
+          workspaceShellActions.hydrateWorkspace({
+            workspaceFiles: workspace.workspaceFiles,
+            reeArtifactFiles: workspace.reeArtifactFiles,
+          }),
+        );
+        return;
+      }
+
+      const split = splitLegacyReeModel(workspace.ree);
+      dispatch(
+        workspaceShellActions.hydrateWorkspace({
+          workspaceFiles: workspace.workspaceFiles,
+          reeArtifactFiles: workspace.reeArtifactFiles,
+          reeSpec: split.reeSpec,
+          workspaceSourceState: split.workspaceSourceState,
+          artifactStatus: split.artifactStatus,
+          evaluationState: split.evaluationState,
+        }),
+      );
+    },
     [dispatch],
   );
 

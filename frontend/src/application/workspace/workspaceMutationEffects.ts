@@ -1,11 +1,15 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
+import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
 import type { ActionStates, WorkflowLogs } from "../../domain/ree/ReeTypes";
+import { splitLegacyReePatch } from "../../domain/ree/reeLegacyAdapters";
+import type { EvaluationState } from "../../domain/review/EvaluationState";
+import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 import type { WorkflowStepCommand } from "../workflow/workflowStepCommands";
 import type { SourceCommand } from "./sourceAcquisitionCommands";
 
 type SourceHydrationCommand = Extract<SourceCommand, { type: "hydrateWorkspace" }>;
 type SourceResetCommand = Extract<SourceCommand, { type: "resetWorkflowOnSourceChange" }>;
-type SourceApplyOutcomeCommand = Extract<SourceCommand, { type: "applySourcePatchOutcome" }>;
+type SourceApplyOutcomeCommand = Extract<SourceCommand, { type: "applySourceOutcome" }>;
 type WorkflowRunCompletionCommand = Extract<WorkflowStepCommand, { type: "completeWorkflowRun" }>;
 type WorkflowRunHydrationCommand = Extract<WorkflowStepCommand, { type: "hydrateWorkspace" }>;
 
@@ -31,17 +35,42 @@ export type WorkspaceStateCommand =
         reeArtifactFiles:
           | NonNullable<WorkflowRunHydrationCommand["reeArtifactFiles"]>
           | NonNullable<SourceHydrationCommand["reeArtifactFiles"]>;
-        ree?: WorkflowRunHydrationCommand["ree"] | SourceHydrationCommand["ree"];
+        reeSpec?: WorkflowRunHydrationCommand["reeSpec"] | SourceHydrationCommand["reeSpec"];
+        workspaceSourceState?:
+          | WorkflowRunHydrationCommand["workspaceSourceState"]
+          | SourceHydrationCommand["workspaceSourceState"];
+        artifactStatus?:
+          | WorkflowRunHydrationCommand["artifactStatus"]
+          | SourceHydrationCommand["artifactStatus"];
+        evaluationState?:
+          | WorkflowRunHydrationCommand["evaluationState"]
+          | SourceHydrationCommand["evaluationState"];
       };
     }
   | { type: "setRee"; ree: (prevRee: ReeDraftViewModel) => ReeDraftViewModel }
+  | {
+      type: "setReeSpec";
+      reeSpec: (prevReeSpec: ReeSpec) => ReeSpec;
+    }
+  | {
+      type: "setWorkspaceSourceState";
+      workspaceSourceState: (prevState: WorkspaceSourceState) => WorkspaceSourceState;
+    }
+  | {
+      type: "setArtifactStatus";
+      artifactStatus: (prevStatus: ArtifactStatus) => ArtifactStatus;
+    }
+  | {
+      type: "setEvaluationState";
+      evaluationState: (prevState: EvaluationState) => EvaluationState;
+    }
   | { type: "setLocked"; locked: boolean }
   | {
       type: "resetWorkflowOnSourceChange";
       workflowParams: SourceResetCommand["workflowParams"];
     }
   | {
-      type: "applySourcePatchOutcome";
+      type: "applySourceOutcome";
       outcome: SourceApplyOutcomeCommand["outcome"];
     };
 
@@ -53,84 +82,129 @@ export type WorkspaceShellEffect =
 export function mapWorkflowStepCommandsToEffects(
   commands: WorkflowStepCommand[],
 ): WorkspaceShellEffect[] {
-  return commands.map((command) => {
+  const effects: WorkspaceShellEffect[] = [];
+
+  for (const command of commands) {
     if (command.type === "persistFile") {
-      return {
+      effects.push({
         type: "persistFile",
         path: command.path,
         content: command.content,
-      };
+      });
+      continue;
     }
     if (command.type === "toast") {
-      return {
+      effects.push({
         type: "toast",
         message: command.message,
         toastType: command.toastType,
-      };
+      });
+      continue;
     }
     if (command.type === "setActionLoading") {
-      return {
+      effects.push({
         type: "dispatchStateCommand",
         command: {
           type: "setActionStates",
-          actionStates: (prevStates) => ({
+          actionStates: (prevStates: ActionStates) => ({
             ...prevStates,
             [command.key]: "loading",
           }),
         },
-      };
+      });
+      continue;
     }
     if (command.type === "setWorkflowRunLog") {
-      return {
+      effects.push({
         type: "dispatchStateCommand",
         command: {
           type: "setWorkflowLogs",
-          workflowLogs: (prevLogs) => ({
+          workflowLogs: (prevLogs: WorkflowLogs) => ({
             ...prevLogs,
             [command.key]: { lines: command.lines, ts: command.ts },
           }),
         },
-      };
+      });
+      continue;
     }
     if (command.type === "completeWorkflowRun") {
-      return {
+      effects.push({
         type: "dispatchStateCommand",
         command: {
           type: "completeWorkflowRun",
           completion: command.completion,
         },
-      };
+      });
+      continue;
     }
     if (command.type === "hydrateWorkspace") {
-      return {
+      effects.push({
         type: "dispatchStateCommand",
         command: {
           type: "hydrateWorkspace",
           workspace: {
             workspaceFiles: command.workspaceFiles,
             reeArtifactFiles: command.reeArtifactFiles || [],
-            ree: command.ree,
+            reeSpec: command.reeSpec,
+            workspaceSourceState: command.workspaceSourceState,
+            artifactStatus: command.artifactStatus,
+            evaluationState: command.evaluationState,
           },
         },
-      };
+      });
+      continue;
     }
     if (command.type === "patchRee") {
-      return {
-        type: "dispatchStateCommand",
-        command: {
-          type: "setRee",
-          ree: (prevRee) => ({ ...prevRee, ...command.patch }),
-        },
-      };
+      const split = splitLegacyReePatch(command.patch);
+      if (split.reeSpec) {
+        effects.push({
+          type: "dispatchStateCommand",
+          command: {
+            type: "setReeSpec",
+            reeSpec: (prevReeSpec) => ({ ...prevReeSpec, ...split.reeSpec }),
+          },
+        });
+      }
+      if (split.workspaceSourceState) {
+        effects.push({
+          type: "dispatchStateCommand",
+          command: {
+            type: "setWorkspaceSourceState",
+            workspaceSourceState: (prevState) => ({ ...prevState, ...split.workspaceSourceState }),
+          },
+        });
+      }
+      if (split.artifactStatus) {
+        effects.push({
+          type: "dispatchStateCommand",
+          command: {
+            type: "setArtifactStatus",
+            artifactStatus: (prevStatus) => ({ ...prevStatus, ...split.artifactStatus }),
+          },
+        });
+      }
+      if (split.evaluationState) {
+        effects.push({
+          type: "dispatchStateCommand",
+          command: {
+            type: "setEvaluationState",
+            evaluationState: (prevState) => ({ ...prevState, ...split.evaluationState }),
+          },
+        });
+      }
+      continue;
     }
-    return {
+
+    effects.push({
       type: "dispatchStateCommand",
       command: {
         type: "setLocked",
         locked: command.locked,
       },
-    };
-  });
+    });
+  }
+
+  return effects;
 }
 
 export function mapSourceCommandsToEffects(commands: SourceCommand[]): WorkspaceShellEffect[] {
@@ -175,11 +249,11 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): Workspace
         },
       };
     }
-    if (command.type === "applySourcePatchOutcome") {
+    if (command.type === "applySourceOutcome") {
       return {
         type: "dispatchStateCommand",
         command: {
-          type: "applySourcePatchOutcome",
+          type: "applySourceOutcome",
           outcome: command.outcome,
         },
       };
@@ -192,7 +266,10 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): Workspace
         workspace: {
           workspaceFiles: hydrationCommand.workspaceFiles,
           reeArtifactFiles: hydrationCommand.reeArtifactFiles || [],
-          ree: hydrationCommand.ree,
+          reeSpec: hydrationCommand.reeSpec,
+          workspaceSourceState: hydrationCommand.workspaceSourceState,
+          artifactStatus: hydrationCommand.artifactStatus,
+          evaluationState: hydrationCommand.evaluationState,
         },
       },
     };

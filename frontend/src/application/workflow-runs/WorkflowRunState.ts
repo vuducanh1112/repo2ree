@@ -5,6 +5,7 @@ import type {
   WorkflowLogs,
   WorkflowParams,
 } from "../../domain/ree/ReeTypes";
+import type { EvaluationState } from "../../domain/review/EvaluationState";
 import { initialAutomationStepParams } from "../workflow/workflowCatalog";
 
 export type WorkflowRunStateUpdater<T> = T | ((previous: T) => T);
@@ -15,6 +16,7 @@ export interface WorkflowRunState {
   timestamps: Timestamps;
   workflowLogs: WorkflowLogs;
   workflowParams: WorkflowParams;
+  evaluationState: EvaluationState;
 }
 
 export function resolveWorkflowRunUpdater<T>(previous: T, updater: WorkflowRunStateUpdater<T>): T {
@@ -31,5 +33,8 @@ export function createInitialWorkflowRunState(): WorkflowRunState {
     timestamps: {},
     workflowLogs: {},
     workflowParams: initialAutomationStepParams(),
+    evaluationState: {
+      evalLevel: 0,
+    },
   };
 }

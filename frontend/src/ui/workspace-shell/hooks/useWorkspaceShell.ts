@@ -16,12 +16,11 @@ import { useWorkspaceWorkflowRuns } from "../workflow-runs/useWorkspaceWorkflowR
 
 export function useWorkspaceShell() {
   const { state, dispatch } = useWorkspaceShellContext();
-  const workspaceDraft = workspaceShellSelectors.workspaceDraft(state);
   const workspaceRemote = workspaceShellSelectors.workspaceRemote(state);
   const uiChrome = workspaceShellSelectors.uiChrome(state);
   const workspaceShell = workspaceShellSelectors.state(state);
+  const reeDraft = workspaceShellSelectors.reeDraftViewModel(state);
 
-  const { ree: reeDraft } = workspaceDraft;
   const { showReviewPreview } = uiChrome;
   const { workspaceFiles, reeArtifactFiles } = workspaceRemote;
 

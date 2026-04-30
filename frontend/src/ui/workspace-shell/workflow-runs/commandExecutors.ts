@@ -32,12 +32,20 @@ function dispatchWorkspaceStateCommand(
     dispatch(workspaceShellActions.hydrateWorkspace(command.workspace));
   } else if (command.type === "setRee") {
     dispatch(workspaceShellActions.setRee(command.ree));
+  } else if (command.type === "setReeSpec") {
+    dispatch(workspaceShellActions.setReeSpec(command.reeSpec));
+  } else if (command.type === "setWorkspaceSourceState") {
+    dispatch(workspaceShellActions.setWorkspaceSourceState(command.workspaceSourceState));
+  } else if (command.type === "setArtifactStatus") {
+    dispatch(workspaceShellActions.setArtifactStatus(command.artifactStatus));
+  } else if (command.type === "setEvaluationState") {
+    dispatch(workspaceShellActions.setEvaluationState(command.evaluationState));
   } else if (command.type === "setLocked") {
     dispatch(workspaceShellActions.setLocked(command.locked));
   } else if (command.type === "resetWorkflowOnSourceChange") {
     dispatch(workspaceShellActions.resetWorkflowOnSourceChange(command.workflowParams));
   } else {
-    dispatch(workspaceShellActions.applySourcePatchOutcome(command.outcome));
+    dispatch(workspaceShellActions.applySourceOutcome(command.outcome));
   }
 }
 

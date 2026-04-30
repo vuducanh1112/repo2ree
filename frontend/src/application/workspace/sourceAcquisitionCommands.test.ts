@@ -24,7 +24,7 @@ describe("sourceAcquisitionCommands", () => {
   it("plans source failure outcome before error toast", () => {
     const commands = sourceFailureCommands({ message: "Source failed" });
 
-    expect(commands.map((command) => command.type)).toEqual(["applySourcePatchOutcome", "toast"]);
+    expect(commands.map((command) => command.type)).toEqual(["applySourceOutcome", "toast"]);
     expect(commands[1]).toEqual({
       type: "toast",
       message: "Source failed",

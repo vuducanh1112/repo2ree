@@ -1,6 +1,9 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
+import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
+import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 import type { WorkspaceShellClock } from "../workspace-shell/WorkspaceShellPorts";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepKey, AutomationStepRunParamsByKey } from "./WorkflowTypes";
@@ -32,7 +35,10 @@ export type WorkflowStepCommand =
       type: "hydrateWorkspace";
       workspaceFiles: FileTreeNode[];
       reeArtifactFiles?: ReeFile[];
-      ree?: ReeDraftViewModel;
+      reeSpec?: ReeSpec;
+      workspaceSourceState?: WorkspaceSourceState;
+      artifactStatus?: ArtifactStatus;
+      evaluationState?: EvaluationState;
     }
   | { type: "persistFile"; path: string; content: string }
   | { type: "patchRee"; patch: Partial<ReeDraftViewModel> }

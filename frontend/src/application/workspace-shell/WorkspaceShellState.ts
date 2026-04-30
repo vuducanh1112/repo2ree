@@ -1,4 +1,5 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
+import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
@@ -7,7 +8,10 @@ import type {
   WorkflowLogs,
   WorkflowParams,
 } from "../../domain/ree/ReeTypes";
+import { toLegacyReeViewModel } from "../../domain/ree/reeLegacyAdapters";
+import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 import type { UiChromeState } from "../ui-chrome/UiChromeState";
 import type { ToastState } from "../workflow/WorkflowStepTypes";
 import type { WorkflowRunState } from "../workflow-runs/WorkflowRunState";
@@ -40,11 +44,15 @@ export interface WorkspaceShellState {
 export interface WorkspaceHydrationPayload {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
-  ree?: ReeDraftViewModel;
+  reeSpec?: ReeSpec;
+  workspaceSourceState?: WorkspaceSourceState;
+  artifactStatus?: ArtifactStatus;
+  evaluationState?: EvaluationState;
 }
 
 export interface SourceOutcomePayload {
-  reePatch: Partial<ReeDraftViewModel>;
+  reeSpecPatch?: Partial<ReeSpec>;
+  workspaceSourceState?: WorkspaceSourceState;
   sourceSnapshotFiles: FileTreeNode[];
   sourceSnapshotArchiveName: string;
   actionState?: "done";
@@ -65,11 +73,19 @@ export function createWorkspaceShellState(params: {
   uiChrome: UiChromeState;
   workspaceRemote: WorkspaceRemoteState;
 }): WorkspaceShellState {
+  const ree = toLegacyReeViewModel({
+    reeSpec: params.workspaceDraft.reeSpec,
+    workspaceSourceState: params.workspaceRemote.workspaceSourceState,
+    artifactStatus: params.workspaceRemote.artifactStatus,
+    evaluationState: params.workflowRun.evaluationState,
+  });
+
   return {
     ...params.workspaceDraft,
     ...params.workflowRun,
     ...params.uiChrome,
     ...params.workspaceRemote,
+    ree,
   };
 }
 export function normalizeUiChromePage(

@@ -1,4 +1,5 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
+import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
@@ -7,7 +8,9 @@ import type {
   WorkflowLogs,
   WorkflowParams,
 } from "../../domain/ree/ReeTypes";
+import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 import type { ToastState } from "../workflow/WorkflowStepTypes";
 import { ACTION_TYPES } from "./WorkspaceShellActionTypes";
 import type { WorkspaceShellPage } from "./WorkspaceShellPages";
@@ -24,6 +27,10 @@ export const workspaceShellActions = {
     type: ACTION_TYPES.workspaceShell.setRee,
     ree,
   }),
+  setReeSpec: (reeSpec: StateUpdater<ReeSpec>): WorkspaceShellAction => ({
+    type: ACTION_TYPES.workspaceShell.setReeSpec,
+    reeSpec,
+  }),
   setLocked: (locked: StateUpdater<boolean>): WorkspaceShellAction => ({
     type: ACTION_TYPES.workspaceShell.setLocked,
     locked,
@@ -31,6 +38,16 @@ export const workspaceShellActions = {
   setRepoMode: (repoMode: StateUpdater<"url" | "upload">): WorkspaceShellAction => ({
     type: ACTION_TYPES.workspaceShell.setRepoMode,
     repoMode,
+  }),
+  setWorkspaceSourceState: (
+    workspaceSourceState: StateUpdater<WorkspaceSourceState>,
+  ): WorkspaceShellAction => ({
+    type: ACTION_TYPES.workspaceShell.setWorkspaceSourceState,
+    workspaceSourceState,
+  }),
+  setArtifactStatus: (artifactStatus: StateUpdater<ArtifactStatus>): WorkspaceShellAction => ({
+    type: ACTION_TYPES.workspaceShell.setArtifactStatus,
+    artifactStatus,
   }),
   setActionStates: (actionStates: StateUpdater<ActionStates>): WorkspaceShellAction => ({
     type: ACTION_TYPES.workspaceShell.setActionStates,
@@ -51,6 +68,10 @@ export const workspaceShellActions = {
   setWorkflowParams: (workflowParams: StateUpdater<WorkflowParams>): WorkspaceShellAction => ({
     type: ACTION_TYPES.workspaceShell.setWorkflowParams,
     workflowParams,
+  }),
+  setEvaluationState: (evaluationState: StateUpdater<EvaluationState>): WorkspaceShellAction => ({
+    type: ACTION_TYPES.workspaceShell.setEvaluationState,
+    evaluationState,
   }),
   setToast: (toast: StateUpdater<ToastState | null>): WorkspaceShellAction => ({
     type: ACTION_TYPES.workspaceShell.setToast,
@@ -92,8 +113,8 @@ export const workspaceShellActions = {
     type: ACTION_TYPES.workspaceShell.setSourceSnapshotArchiveName,
     sourceSnapshotArchiveName,
   }),
-  applySourcePatchOutcome: (outcome: SourceOutcomePayload): WorkspaceShellAction => ({
-    type: ACTION_TYPES.workspaceShell.applySourcePatchOutcome,
+  applySourceOutcome: (outcome: SourceOutcomePayload): WorkspaceShellAction => ({
+    type: ACTION_TYPES.workspaceShell.applySourceOutcome,
     outcome,
   }),
   setShowReviewPreview: (showReviewPreview: StateUpdater<boolean>): WorkspaceShellAction => ({

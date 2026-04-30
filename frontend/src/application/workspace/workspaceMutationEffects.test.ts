@@ -25,7 +25,7 @@ describe("mapWorkflowStepCommandsToEffects", () => {
         type: "hydrateWorkspace",
         workspaceFiles: [],
         reeArtifactFiles: [],
-        ree: undefined,
+        reeSpec: undefined,
       },
     ]);
 

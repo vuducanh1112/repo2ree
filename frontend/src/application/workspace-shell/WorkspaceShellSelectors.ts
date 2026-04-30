@@ -6,6 +6,13 @@ export const workspaceShellSelectors = {
   workspaceRemote: (state: WorkspaceShellContextState) => state.workspaceRemote,
   workflowRun: (state: WorkspaceShellContextState) => state.workflowRun,
   uiChrome: (state: WorkspaceShellContextState) => state.uiChrome,
+  reeDraftViewModel: (state: WorkspaceShellContextState): WorkspaceShellState["ree"] =>
+    createWorkspaceShellState({
+      workspaceDraft: state.workspaceDraft,
+      workspaceRemote: state.workspaceRemote,
+      workflowRun: state.workflowRun,
+      uiChrome: state.uiChrome,
+    }).ree,
   state: (state: WorkspaceShellContextState): WorkspaceShellState =>
     createWorkspaceShellState({
       workspaceDraft: state.workspaceDraft,
