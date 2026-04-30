@@ -2,14 +2,14 @@ import type { QueryClient } from "@tanstack/react-query";
 import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
 import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
 import type { WorkspaceShellClock } from "../../../application/workspace-shell/WorkspaceShellPorts";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { WorkspaceWorkflowDispatch } from "../workflow-runs/commandExecutors";
 import type { ShowToast } from "../workflow-runs/types";
 import { createSourceActions, resetWorkflowOnSourceChange } from "./sourceLifecycle";
 
 interface CreateSourceAdapterArgs {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   workspaceRepository: WorkspaceRepository<FileTreeNode>;
   workflowRunRepository: WorkflowRunRepository;
   workspaceId: string;

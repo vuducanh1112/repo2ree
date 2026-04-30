@@ -1,4 +1,4 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepKey, AutomationStepRunParamsByKey } from "./WorkflowTypes";
 
@@ -60,7 +60,7 @@ export function buildEvaluateWorkflowRequest(
 
 export function buildBuildWorkflowRequest(
   params: AutomationStepRunParamsByKey["build"],
-  ree: Ree,
+  ree: ReeDraftViewModel,
 ): WorkflowRunRequestByKey["build"] {
   return {
     scriptKey: "build",
@@ -86,7 +86,7 @@ function buildHbomWorkflowRequest(
 
 export function buildSbomWorkflowRequest(
   params: AutomationStepRunParamsByKey["sbom"],
-  ree: Ree,
+  ree: ReeDraftViewModel,
 ): WorkflowRunRequestByKey["sbom"] {
   return {
     scriptKey: "sbom",
@@ -98,7 +98,7 @@ export function buildSbomWorkflowRequest(
 
 export function buildActivationWorkflowRequest(
   params: AutomationStepRunParamsByKey["activation"],
-  ree: Ree,
+  ree: ReeDraftViewModel,
 ): WorkflowRunRequestByKey["activation"] {
   void params;
   return {
@@ -112,7 +112,7 @@ export function buildActivationWorkflowRequest(
 export function buildWorkflowRunRequest<K extends AutomationStepKey>(
   key: K,
   params: AutomationStepRunParamsByKey[K],
-  ree: Ree,
+  ree: ReeDraftViewModel,
 ): WorkflowRunRequest<K> {
   switch (key) {
     case "evaluate":
@@ -144,7 +144,7 @@ export function buildWorkflowRunRequest<K extends AutomationStepKey>(
 export function buildWorkflowRunParams(
   key: string,
   params: GenericWorkflowParams,
-  ree: Ree,
+  ree: ReeDraftViewModel,
 ): Record<string, WorkflowRequestParamValue> {
   if (key === "evaluate") {
     return buildEvaluateWorkflowRequest(params as AutomationStepRunParamsByKey["evaluate"]).params;

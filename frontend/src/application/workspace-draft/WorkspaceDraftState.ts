@@ -1,11 +1,11 @@
 import { enforceSourceOriginRules } from "../../domain/artifact/sourceOriginRules";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import { createEmptyRee } from "../../domain/ree/reeLegacyAdapters";
 
 export type WorkspaceDraftStateUpdater<T> = T | ((previous: T) => T);
 
 export interface WorkspaceDraftState {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   locked: boolean;
   repoMode: "url" | "upload";
 }
@@ -21,7 +21,7 @@ export function resolveWorkspaceDraftUpdater<T>(
 }
 
 export function createInitialWorkspaceDraftState(
-  initialRee: Ree = createEmptyRee(),
+  initialRee: ReeDraftViewModel = createEmptyRee(),
 ): WorkspaceDraftState {
   return {
     ree: enforceSourceOriginRules(initialRee),

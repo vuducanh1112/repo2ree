@@ -1,4 +1,4 @@
-import type { HBOM, Ree } from "./ReeSpec";
+import type { HBOM, ReeDraftViewModel } from "./ReeSpec";
 import { splitLegacyReeModel } from "./reeLegacyAdapters";
 
 interface ReePatch extends Record<string, unknown> {
@@ -28,7 +28,7 @@ interface ReePatch extends Record<string, unknown> {
   _downloadableFiles: string[];
 }
 
-export function toReePatch(ree: Ree): ReePatch {
+export function toReePatch(ree: ReeDraftViewModel): ReePatch {
   const split = splitLegacyReeModel(ree);
 
   return {

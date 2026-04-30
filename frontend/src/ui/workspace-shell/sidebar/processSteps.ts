@@ -5,7 +5,7 @@ import {
   type WorkspaceShellPage,
 } from "../../../application/workspace-shell/WorkspaceShellPages";
 import { hbomHasAnyComponents } from "../../../domain/hbom/HbomSummary";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { Badges } from "../../../domain/ree/ReeTypes";
 import { Ic } from "../../shared/components/Icon";
 
@@ -90,7 +90,11 @@ export const PROCESS_STEPS: ProcessStep[] = [
   { n: 9, key: PAGE.SEAL, label: "Seal", IC: Ic.lock, automation: null, desc: "Seal the REE" },
 ];
 
-export function hasProcessStepCompleted(stepKey: WorkspaceShellPage, ree: Ree, badges: Badges) {
+export function hasProcessStepCompleted(
+  stepKey: WorkspaceShellPage,
+  ree: ReeDraftViewModel,
+  badges: Badges,
+) {
   if (stepKey === PAGE.SOURCE) return !!ree._sourceAvailable;
   if (stepKey === PAGE.METADATA) return !!ree.name;
   if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.hardware_description);

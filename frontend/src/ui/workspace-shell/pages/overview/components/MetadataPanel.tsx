@@ -2,7 +2,7 @@ import type React from "react";
 import { FIELD_META } from "../../../../../application/workspace-shell/fieldMeta";
 import type { WorkspaceShellPage } from "../../../../../application/workspace-shell/WorkspaceShellPages";
 import { PAGE } from "../../../../../application/workspace-shell/WorkspaceShellPages";
-import type { Ree } from "../../../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../../../domain/ree/ReeSpec";
 import {
   C,
   F,
@@ -16,14 +16,14 @@ import {
 import { PanelFieldRow } from "./PanelFieldRow";
 
 interface MetadataPanelProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   onGoField: (key: string) => void;
   onNavigate: (key: WorkspaceShellPage) => void;
   metadataRef: React.RefObject<HTMLDivElement>;
 }
 
 export function MetadataPanel({ ree, onGoField, onNavigate, metadataRef }: MetadataPanelProps) {
-  const metadataFields = ["name"] as (keyof Ree)[];
+  const metadataFields = ["name"] as (keyof ReeDraftViewModel)[];
   const filledCount = metadataFields.filter((field) => !!ree[field]).length;
 
   return (

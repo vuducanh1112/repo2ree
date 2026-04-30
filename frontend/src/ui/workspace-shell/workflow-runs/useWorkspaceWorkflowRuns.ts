@@ -9,7 +9,7 @@ import { createWorkflowRunSession } from "../../../application/workflow/workflow
 import { createWorkflowStepHandlers } from "../../../application/workflow/workflowStepCommands";
 import type { WorkspaceShellAction } from "../../../application/workspace-shell";
 import { workspaceShellActions } from "../../../application/workspace-shell";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { useWorkspaceRuntime } from "../../../runtime/browser/BrowserRuntime";
@@ -28,7 +28,7 @@ import { createWorkflowRunGateway } from "./workflowRunGateway";
 
 interface UseWorkspaceWorkflowArgs {
   dispatch: React.Dispatch<WorkspaceShellAction>;
-  ree: Ree;
+  ree: ReeDraftViewModel;
   level: number;
   workspaceFiles: FileTreeNode[];
 }
@@ -76,8 +76,11 @@ export function useWorkspaceWorkflowRuns({
   void workflowRunLogsServerState;
 
   const hydrateWorkspace = useCallback(
-    (workspace: { workspaceFiles: FileTreeNode[]; reeArtifactFiles: ReeFile[]; ree?: Ree }) =>
-      dispatch(workspaceShellActions.hydrateWorkspace(workspace)),
+    (workspace: {
+      workspaceFiles: FileTreeNode[];
+      reeArtifactFiles: ReeFile[];
+      ree?: ReeDraftViewModel;
+    }) => dispatch(workspaceShellActions.hydrateWorkspace(workspace)),
     [dispatch],
   );
 

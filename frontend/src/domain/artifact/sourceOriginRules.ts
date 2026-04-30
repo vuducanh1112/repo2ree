@@ -1,7 +1,7 @@
-import type { Ree } from "../ree/ReeSpec";
+import type { ReeDraftViewModel } from "../ree/ReeSpec";
 import { splitLegacyReeModel, toLegacyReeViewModel } from "../ree/reeLegacyAdapters";
 
-export function enforceSourceOriginRules(ree: Ree): Ree {
+export function enforceSourceOriginRules(ree: ReeDraftViewModel): ReeDraftViewModel {
   const split = splitLegacyReeModel(ree);
   const hasDownloadedSource =
     !!split.workspaceSourceState.sourceAvailable &&

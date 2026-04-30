@@ -7,7 +7,7 @@ import {
   PAGE,
   type WorkspaceShellPage,
 } from "../../../../../application/workspace-shell/WorkspaceShellPages";
-import type { Ree } from "../../../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../../../domain/ree/ReeSpec";
 import type { Badges, Timestamps } from "../../../../../domain/ree/ReeTypes";
 import { LEVELS } from "../../../../../domain/review/levels";
 import { Ic } from "../../../../shared/components/Icon";
@@ -27,7 +27,7 @@ import {
 import { PanelFieldRow } from "./PanelFieldRow";
 
 interface RightRailPanelsProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   badges: Badges;
   timestamps: Timestamps;
   level: number;

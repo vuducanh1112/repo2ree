@@ -1,4 +1,4 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
@@ -40,7 +40,7 @@ interface WorkflowRunResult {
 interface WorkflowWorkspaceSnapshot {
   files: FileTreeNode[];
   reeFiles?: ReeFile[];
-  ree?: Ree;
+  ree?: ReeDraftViewModel;
 }
 
 interface WorkflowRunRunner {
@@ -57,7 +57,7 @@ interface WorkflowRunRunner {
 interface ExecuteWorkflowStepArgs {
   key: string;
   params: GenericWorkflowParams;
-  ree: Ree;
+  ree: ReeDraftViewModel;
   level: number;
   workspaceFiles: FileTreeNode[];
   workflowRunner: WorkflowRunRunner;

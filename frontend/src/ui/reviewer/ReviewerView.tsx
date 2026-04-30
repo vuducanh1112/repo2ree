@@ -5,7 +5,7 @@ import type {
   StepState,
   WorkflowParamValue,
 } from "../../application/workflow/WorkflowStepTypes";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import { createEmptyRee } from "../../domain/ree/reeLegacyAdapters";
 import { LEVELS } from "../../domain/review/levels";
@@ -23,7 +23,7 @@ import {
 
 interface ReviewerViewProps {
   reviewId?: string;
-  ree?: Ree;
+  ree?: ReeDraftViewModel;
   reviewFiles?: Array<{ path: string; size?: number }>;
   reviewWorkspaceFiles?: Array<{ path: string; size?: number }>;
   onBack: () => void;

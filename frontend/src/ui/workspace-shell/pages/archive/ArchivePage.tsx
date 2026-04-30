@@ -5,7 +5,7 @@ import {
   PAGE,
   type WorkspaceShellPage,
 } from "../../../../application/workspace-shell/WorkspaceShellPages";
-import type { Ree } from "../../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../../domain/ree/ReeSpec";
 import type { ActionStates, Badges, WorkflowLogs } from "../../../../domain/ree/ReeTypes";
 import { Ic } from "../../../shared/components/Icon";
 import {
@@ -22,7 +22,7 @@ import { LogPanel } from "../../components/logPanel";
 import { NextStepNudge, RequirementsBanner, WorkflowPageHeader } from "../../components/pageChrome";
 
 interface PageArchiveProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   badges: Badges;
   logs: WorkflowLogs;
   actionStates: ActionStates;

@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import type { Ree } from "../../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../../domain/ree/ReeSpec";
 import type { Badges } from "../../../../domain/ree/ReeTypes";
 import { LEVELS } from "../../../../domain/review/levels";
 import { getPodCableStates } from "./podCableState";
@@ -56,7 +56,7 @@ interface PanelCableOverlayProps {
   podSvgRef: React.RefObject<SVGSVGElement>;
   level: number;
   badges: Badges;
-  ree: Ree;
+  ree: ReeDraftViewModel;
 }
 
 type PanelCableSide = "left" | "right" | "top";

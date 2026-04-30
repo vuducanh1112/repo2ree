@@ -1,4 +1,4 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { ActionStates, WorkflowLogs } from "../../domain/ree/ReeTypes";
 import type { WorkflowStepCommand } from "../workflow/workflowStepCommands";
 import type { SourceCommand } from "./sourceAcquisitionCommands";
@@ -34,7 +34,7 @@ export type WorkspaceStateCommand =
         ree?: WorkflowRunHydrationCommand["ree"] | SourceHydrationCommand["ree"];
       };
     }
-  | { type: "setRee"; ree: (prevRee: Ree) => Ree }
+  | { type: "setRee"; ree: (prevRee: ReeDraftViewModel) => ReeDraftViewModel }
   | { type: "setLocked"; locked: boolean }
   | {
       type: "resetWorkflowOnSourceChange";

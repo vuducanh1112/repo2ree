@@ -1,4 +1,4 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
@@ -18,7 +18,7 @@ import type { WorkspaceShellPage } from "./WorkspaceShellPages";
 
 // Transitional compatibility shape while consumers migrate to dedicated slices.
 export interface WorkspaceShellState {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   locked: boolean;
   repoMode: "url" | "upload";
   actionStates: ActionStates;
@@ -40,11 +40,11 @@ export interface WorkspaceShellState {
 export interface WorkspaceHydrationPayload {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
-  ree?: Ree;
+  ree?: ReeDraftViewModel;
 }
 
 export interface SourceOutcomePayload {
-  reePatch: Partial<Ree>;
+  reePatch: Partial<ReeDraftViewModel>;
   sourceSnapshotFiles: FileTreeNode[];
   sourceSnapshotArchiveName: string;
   actionState?: "done";

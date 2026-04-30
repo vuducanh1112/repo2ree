@@ -1,7 +1,7 @@
 import React from "react";
 import type { WorkspaceShellPage } from "../../../../../application/workspace-shell/WorkspaceShellPages";
 import { PAGE } from "../../../../../application/workspace-shell/WorkspaceShellPages";
-import type { Ree } from "../../../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../../../domain/ree/ReeSpec";
 import { Toggle } from "../../../../shared/components/Toggle";
 import {
   C,
@@ -18,13 +18,13 @@ import {
 import { PanelFieldRow } from "./PanelFieldRow";
 
 interface SourcePanelProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   sourceRef: React.RefObject<HTMLDivElement>;
   fileCount: number;
   fileSummary: string;
   onGoField: (key: string) => void;
   onNavigate: (key: WorkspaceShellPage) => void;
-  onReeChange: (ree: Ree) => void;
+  onReeChange: (ree: ReeDraftViewModel) => void;
 }
 
 const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({

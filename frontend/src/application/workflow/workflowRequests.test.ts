@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import {
   buildActivationWorkflowRequest,
   buildBuildWorkflowRequest,
@@ -7,7 +7,7 @@ import {
   buildSbomWorkflowRequest,
 } from "./workflowRequests";
 
-function buildRee(): Ree {
+function buildRee(): ReeDraftViewModel {
   return {
     name: "demo",
     origin_url: "",

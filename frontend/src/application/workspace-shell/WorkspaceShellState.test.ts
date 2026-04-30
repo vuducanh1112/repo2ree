@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import {
   createInitialState,
   workspaceShellReducer,
 } from "../../ui/workspace-shell/providers/WorkspaceShellProvider";
 import { workspaceShellSelectors } from "./WorkspaceShellSelectors";
 
-function buildRee(): Ree {
+function buildRee(): ReeDraftViewModel {
   return {
     name: "demo",
     origin_url: "",

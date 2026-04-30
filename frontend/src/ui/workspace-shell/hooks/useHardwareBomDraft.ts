@@ -6,11 +6,11 @@ import {
   hbomFromDraft,
   hbomSyncKey,
 } from "../../../domain/hbom/hardwareBomDraft";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 
 interface UseHardwareBomDraftArgs {
-  ree: Ree;
-  onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
+  ree: ReeDraftViewModel;
+  onReeChange: React.Dispatch<React.SetStateAction<ReeDraftViewModel>>;
 }
 
 export function useHardwareBomDraft({ ree, onReeChange }: UseHardwareBomDraftArgs) {

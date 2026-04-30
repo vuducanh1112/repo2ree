@@ -1,4 +1,4 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../domain/ree/ReeTypes";
 
 export interface LogLine {
@@ -57,7 +57,7 @@ export interface ReeProject<TFile = unknown> {
   id: string;
   files: TFile[];
   reeFiles?: ReeFile[];
-  ree?: Ree;
+  ree?: ReeDraftViewModel;
 }
 
 export function serializeWorkspaceResetPayload(payload: WorkspaceResetPayload): string {

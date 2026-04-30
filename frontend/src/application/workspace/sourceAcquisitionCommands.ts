@@ -1,10 +1,10 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile, WorkflowParams } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { initialAutomationStepParams } from "../workflow/workflowCatalog";
 
 export interface SourceOutcomeCommandPayload {
-  reePatch: Partial<Ree>;
+  reePatch: Partial<ReeDraftViewModel>;
   sourceSnapshotFiles: FileTreeNode[];
   sourceSnapshotArchiveName: string;
   actionState?: "done";
@@ -19,7 +19,7 @@ export type SourceCommand =
       type: "hydrateWorkspace";
       workspaceFiles: FileTreeNode[];
       reeArtifactFiles?: ReeFile[];
-      ree?: Ree;
+      ree?: ReeDraftViewModel;
     }
   | { type: "applySourcePatchOutcome"; outcome: SourceOutcomeCommandPayload }
   | { type: "setSourceLog"; lines: LogLine[]; ts: string }

@@ -1,7 +1,7 @@
 import React from "react";
 import { PAGE } from "../../../../../application/workspace-shell/WorkspaceShellPages";
 import { hbomHasAnyComponents } from "../../../../../domain/hbom/HbomSummary";
-import type { Ree } from "../../../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../../../domain/ree/ReeSpec";
 import type { Badges } from "../../../../../domain/ree/ReeTypes";
 import { LEVELS } from "../../../../../domain/review/levels";
 import { Ic } from "../../../../shared/components/Icon";
@@ -19,7 +19,7 @@ import {
 } from "../../../../theme/theme";
 
 interface CenterSealStripProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   locked: boolean;
   level: number;
   badges: Badges;

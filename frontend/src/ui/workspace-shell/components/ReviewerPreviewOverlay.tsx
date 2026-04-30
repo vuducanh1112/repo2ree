@@ -1,6 +1,6 @@
 import type React from "react";
 import type { Level, StepState } from "../../../application/workflow/WorkflowStepTypes";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import { useWorkspaceRuntime } from "../../../runtime/browser/BrowserRuntime";
 import { ReviewerView } from "../../reviewer/ReviewerView";
 import { Ic } from "../../shared/components/Icon";
@@ -15,7 +15,7 @@ import {
 
 interface ReviewerPreviewOverlayProps {
   open: boolean;
-  ree: Ree;
+  ree: ReeDraftViewModel;
   onClose: () => void;
   PodOrbitControl: React.ComponentType<{
     level: number;

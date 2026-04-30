@@ -10,7 +10,7 @@ import type {
   AutomationStepRunParams,
 } from "../../../application/workflow/WorkflowTypes";
 import type { WorkspaceShellPage } from "../../../application/workspace-shell/WorkspaceShellPages";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
@@ -20,7 +20,7 @@ import type {
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 
 export interface SourceAcquisitionPageProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   locked: boolean;
   repoMode: "url" | "upload";
   badges: Badges;
@@ -28,29 +28,29 @@ export interface SourceAcquisitionPageProps {
   log: LogEntry | null;
   running: boolean;
   focusedField: string | null;
-  onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
+  onReeChange: React.Dispatch<React.SetStateAction<ReeDraftViewModel>>;
   onRepoModeChange: React.Dispatch<React.SetStateAction<"url" | "upload">>;
   onGoWorkflow: (key: WorkspaceShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
-  onDownloadSource: (originType: Ree["source_type"], sourceUrl: string) => void;
+  onDownloadSource: (originType: ReeDraftViewModel["source_type"], sourceUrl: string) => void;
   onCancelSource: () => void;
   onWorkspaceUpload: (payload: SourceUploadCommit) => void;
   onRemoveWorkspaceSource: () => void;
 }
 
 export interface PageMetadataEntryProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   locked: boolean;
   badges: Badges;
   focusedField: string | null;
-  onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
+  onReeChange: React.Dispatch<React.SetStateAction<ReeDraftViewModel>>;
   onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
   onGoWorkflow: (key: WorkspaceShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 export interface PageHardwareBomProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   locked: boolean;
   badges: Badges;
   log: LogEntry | null;
@@ -58,7 +58,7 @@ export interface PageHardwareBomProps {
   runDone: boolean;
   ts?: string;
   focusedField: string | null;
-  onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
+  onReeChange: React.Dispatch<React.SetStateAction<ReeDraftViewModel>>;
   onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
   onGoWorkflow: (key: WorkspaceShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
@@ -68,7 +68,7 @@ export interface PageHardwareBomProps {
 
 export interface WorkflowPageProps {
   workflow: AutomationStepDefinition & { key: AutomationStepKey };
-  ree: Ree;
+  ree: ReeDraftViewModel;
   badges: Badges;
   workspaceFiles: FileTreeNode[];
   log: LogEntry | null;
@@ -80,7 +80,7 @@ export interface WorkflowPageProps {
   onCancel?: (key: AutomationStepKey) => void;
   onGo: (key: WorkspaceShellPage) => void;
   onGoFields: () => void;
-  onReeChange: React.Dispatch<React.SetStateAction<Ree>>;
+  onReeChange: React.Dispatch<React.SetStateAction<ReeDraftViewModel>>;
   onFilesChange: React.Dispatch<React.SetStateAction<FileTreeNode[]>>;
   onPersistWorkspaceFile: (
     previousPath: string | undefined,

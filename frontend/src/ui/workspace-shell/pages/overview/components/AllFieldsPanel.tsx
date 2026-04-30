@@ -1,9 +1,9 @@
 import { FIELD_META } from "../../../../../application/workspace-shell/fieldMeta";
-import type { Ree } from "../../../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../../../domain/ree/ReeSpec";
 import { C, F } from "../../../../theme/theme";
 
 interface AllFieldsPanelProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
 }
 
 export function AllFieldsPanel({ ree }: AllFieldsPanelProps) {

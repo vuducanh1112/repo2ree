@@ -1,4 +1,4 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
@@ -20,7 +20,7 @@ import type {
 } from "./WorkspaceShellTypes";
 
 export const workspaceShellActions = {
-  setRee: (ree: StateUpdater<Ree>): WorkspaceShellAction => ({
+  setRee: (ree: StateUpdater<ReeDraftViewModel>): WorkspaceShellAction => ({
     type: ACTION_TYPES.workspaceShell.setRee,
     ree,
   }),

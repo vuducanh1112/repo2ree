@@ -1,5 +1,5 @@
 import { normalizeHBOM } from "../../domain/hbom/HbomSummary";
-import type { Ree, ReeSpec } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
 import { toLegacyReeViewModel } from "../../domain/ree/reeLegacyAdapters";
 import type { ReviewDetail } from "../ports/ReviewRepository";
 
@@ -13,12 +13,12 @@ export function mapReeDraftToRee({
   reeDraft,
   fallbackName,
   fallbackOriginUrl = "",
-}: MapReeDraftToReeOptions): Ree {
+}: MapReeDraftToReeOptions): ReeDraftViewModel {
   const draft = reeDraft || {};
   const reeSpec: ReeSpec = {
     name: String(draft.name ?? fallbackName ?? ""),
     origin_url: String(draft.origin_url ?? fallbackOriginUrl ?? ""),
-    source_type: (draft.source_type as Ree["source_type"]) || "",
+    source_type: (draft.source_type as ReeDraftViewModel["source_type"]) || "",
     runtime: String(draft.runtime ?? ""),
     build_runtime_script: String(draft.build_runtime_script ?? ""),
     activation_script: String(draft.activation_script ?? ""),
@@ -38,7 +38,8 @@ export function mapReeDraftToRee({
     workspaceSourceState: {
       sourceAvailable: Boolean(draft._sourceAvailable),
       sourceIncluded: Boolean(draft._sourceIncluded),
-      sourceAcquiredBy: (draft._sourceAcquiredBy as Ree["_sourceAcquiredBy"]) || undefined,
+      sourceAcquiredBy:
+        (draft._sourceAcquiredBy as ReeDraftViewModel["_sourceAcquiredBy"]) || undefined,
       uploadedArchive: draft._uploadedArchive ? String(draft._uploadedArchive) : undefined,
       sourceSnapshotArchive: draft._sourceSnapshotArchive
         ? String(draft._sourceSnapshotArchive)
@@ -61,7 +62,7 @@ export function mapReeDraftToRee({
   });
 }
 
-export function mapReviewDetailToRee(review: ReviewDetail): Ree {
+export function mapReviewDetailToRee(review: ReviewDetail): ReeDraftViewModel {
   return mapReeDraftToRee({
     reeDraft: review.reeDraft,
     fallbackName: review.name,

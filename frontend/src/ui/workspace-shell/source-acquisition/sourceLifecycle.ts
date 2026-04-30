@@ -10,7 +10,7 @@ import {
 } from "../../../application/workspace/sourceAcquisitionCommands";
 import { runSourceWorkspaceAction } from "../../../application/workspace/sourceAcquisitionLifecycle";
 import type { WorkspaceShellClock } from "../../../application/workspace-shell/WorkspaceShellPorts";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { SourceUploadCommit } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import {
@@ -29,7 +29,7 @@ export function resetWorkflowOnSourceChange(
 }
 
 interface CreateSourceActionsArgs {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   workspaceRepository: WorkspaceRepository<FileTreeNode>;
   workflowRunRepository: WorkflowRunRepository;
   workspaceId: string;
@@ -97,8 +97,10 @@ export function createSourceActions({
     nowIso: clock.nowIso,
   });
 
-  const handleDownloadSourceFiles = async (originType: Ree["source_type"], sourceUrl: string) =>
-    sourceAcquisition.downloadSource(originType, sourceUrl);
+  const handleDownloadSourceFiles = async (
+    originType: ReeDraftViewModel["source_type"],
+    sourceUrl: string,
+  ) => sourceAcquisition.downloadSource(originType, sourceUrl);
 
   const handleWorkspaceUpload = (payload: SourceUploadCommit) => {
     const archiveName = payload.archiveName || "source.tar.gz";

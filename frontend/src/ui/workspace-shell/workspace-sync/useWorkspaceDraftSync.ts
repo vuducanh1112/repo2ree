@@ -4,7 +4,7 @@ import {
   shouldHydrateRemoteRee,
   shouldScheduleReeDraftSync,
 } from "../../../application/workspace/syncWorkspaceDraft";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import { toReePatch } from "../../../domain/ree/reePatch";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
@@ -13,11 +13,11 @@ import { useUpdateReeDraftMutation, useWorkspaceQuery } from "./remoteQueries";
 interface HydratedWorkspaceSnapshot {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
-  ree?: Ree;
+  ree?: ReeDraftViewModel;
 }
 
 interface UseWorkspaceDraftSyncArgs {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   workspaceRepository: WorkspaceRepository<FileTreeNode>;
   workspaceId: string;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
@@ -51,7 +51,7 @@ export function useWorkspaceDraftSync({
       const { forceReeHydration = false } = options;
       const requestStartedPatchKey = latestLocalPatchKeyRef.current;
       const workspace = await fetchWorkspace();
-      let reeToHydrate: Ree | undefined;
+      let reeToHydrate: ReeDraftViewModel | undefined;
       if (workspace.ree) {
         const localPatchChangedDuringRequest =
           latestLocalPatchKeyRef.current !== requestStartedPatchKey;

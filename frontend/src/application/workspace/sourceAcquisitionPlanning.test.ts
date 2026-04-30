@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import {
   planClearedSourceStateResult,
@@ -10,7 +10,7 @@ import {
   planUploadedSourceState,
 } from "./sourceAcquisitionPlanning";
 
-function buildRee(): Ree {
+function buildRee(): ReeDraftViewModel {
   return {
     name: "demo",
     origin_url: "",

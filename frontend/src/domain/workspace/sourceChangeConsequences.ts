@@ -1,4 +1,4 @@
-import type { Ree } from "../ree/ReeSpec";
+import type { ReeDraftViewModel } from "../ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
@@ -10,7 +10,7 @@ import type {
 import type { FileTreeNode } from "./FileTree";
 
 export interface WorkspaceSourceResetInput {
-  ree: Ree;
+  ree: ReeDraftViewModel;
 }
 
 interface WorkspaceSourceResetFields {
@@ -19,7 +19,7 @@ interface WorkspaceSourceResetFields {
   workflowLogs: WorkflowLogs;
   actionStates: ActionStates;
   workflowParams: WorkflowParams;
-  ree: Ree;
+  ree: ReeDraftViewModel;
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
   sourceSnapshotFiles: FileTreeNode[];

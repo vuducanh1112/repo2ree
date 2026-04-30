@@ -8,7 +8,7 @@ import {
   workspaceShellSelectors,
 } from "../../../application/workspace-shell";
 import type { WorkspaceShellPage } from "../../../application/workspace-shell/WorkspaceShellPages";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile, SourceUploadCommit, WorkflowParams } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { useWorkspaceShellContext } from "../providers/WorkspaceShellProvider";
@@ -50,7 +50,8 @@ export function useWorkspaceShell() {
     setPage: (nextPage: WorkspaceShellPage) => dispatch(workspaceShellActions.setPage(nextPage)),
     setNavCollapsed: (value: boolean | ((current: boolean) => boolean)) =>
       dispatch(workspaceShellActions.setNavCollapsed(value)),
-    setRee: (value: Ree | ((current: Ree) => Ree)) => dispatch(workspaceShellActions.setRee(value)),
+    setRee: (value: ReeDraftViewModel | ((current: ReeDraftViewModel) => ReeDraftViewModel)) =>
+      dispatch(workspaceShellActions.setRee(value)),
     setLocked: (value: boolean | ((current: boolean) => boolean)) =>
       dispatch(workspaceShellActions.setLocked(value)),
     setRepoMode: (value: "url" | "upload" | ((current: "url" | "upload") => "url" | "upload")) =>

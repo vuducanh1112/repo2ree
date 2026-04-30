@@ -1,4 +1,4 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import { LEVELS } from "../../domain/review/levels";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepKey } from "./WorkflowTypes";
@@ -10,24 +10,24 @@ interface PersistedFilePlan {
 
 interface BuildEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch?: Partial<Ree>;
+  reePatch?: Partial<ReeDraftViewModel>;
   errorMessage?: string;
   successMessage: string;
 }
 
 interface SbomEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch: Partial<Ree>;
+  reePatch: Partial<ReeDraftViewModel>;
   successMessage: string;
 }
 
 interface HbomEffectPlan {
-  reePatch?: Partial<Ree>;
+  reePatch?: Partial<ReeDraftViewModel>;
   successMessage: string;
 }
 
 interface EvaluateEffectPlan {
-  reePatch: Partial<Ree>;
+  reePatch: Partial<ReeDraftViewModel>;
   successMessage: string;
 }
 
@@ -37,12 +37,15 @@ interface ActivationEffectPlan {
 
 interface WorkflowServiceEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch?: Partial<Ree>;
+  reePatch?: Partial<ReeDraftViewModel>;
   errorMessage?: string;
   successMessage: string;
 }
 
-export function planBuildEffect(args: { ree: Ree; expectedOutput?: string }): BuildEffectPlan {
+export function planBuildEffect(args: {
+  ree: ReeDraftViewModel;
+  expectedOutput?: string;
+}): BuildEffectPlan {
   const runtimeTarget =
     args.ree.runtime && args.ree.runtime !== "__skipped__" ? args.ree.runtime : null;
   const expectedOutput = String(args.expectedOutput || "").trim();
@@ -103,7 +106,7 @@ export function planActivationEffect(): ActivationEffectPlan {
 export function planWorkflowServiceEffect(args: {
   key: AutomationStepKey;
   params: GenericWorkflowParams;
-  ree: Ree;
+  ree: ReeDraftViewModel;
   newLevel: number;
   timestamp: string;
   namespaceSuffix: string;

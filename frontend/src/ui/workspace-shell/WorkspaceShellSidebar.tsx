@@ -2,7 +2,7 @@ import {
   PAGE,
   type WorkspaceShellPage,
 } from "../../application/workspace-shell/WorkspaceShellPages";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { Badges, Timestamps } from "../../domain/ree/ReeTypes";
 import { LEVELS } from "../../domain/review/levels";
 import { Ic } from "../shared/components/Icon";
@@ -15,7 +15,7 @@ import { NavEntryButton } from "./WorkspaceShellNav";
 
 interface WorkspaceShellSidebarProps {
   page: WorkspaceShellPage;
-  ree: Ree;
+  ree: ReeDraftViewModel;
   navCollapsed: boolean;
   badges: Badges;
   timestamps: Timestamps;

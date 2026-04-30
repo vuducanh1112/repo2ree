@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import { createEmptyReeSpec, type Ree, type ReeDraftViewModel, type ReeSpec } from "./ReeSpec";
+import { createEmptyReeSpec, type ReeDraftViewModel, type ReeSpec } from "./ReeSpec";
 
 // Transitional compatibility layer for legacy merged REE shapes.
 // Do not add new responsibilities here; migrate callers away from it instead.
@@ -12,7 +12,7 @@ interface ReeModelSplit {
   evaluationState: EvaluationState;
 }
 
-export function createEmptyRee(): Ree {
+export function createEmptyRee(): ReeDraftViewModel {
   return toLegacyReeViewModel({
     reeSpec: createEmptyReeSpec(),
   });
@@ -82,7 +82,9 @@ export function splitLegacyReeModel(ree: ReeDraftViewModel): ReeModelSplit {
   };
 }
 
-export function toLegacyReeViewModel(split: Partial<ReeModelSplit> & { reeSpec: ReeSpec }): Ree {
+export function toLegacyReeViewModel(
+  split: Partial<ReeModelSplit> & { reeSpec: ReeSpec },
+): ReeDraftViewModel {
   return {
     ...split.reeSpec,
     _sourceAvailable: split.workspaceSourceState?.sourceAvailable ?? false,

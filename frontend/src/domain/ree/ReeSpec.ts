@@ -87,9 +87,6 @@ interface ReeLegacyTransientFields {
 
 export type ReeDraftViewModel = ReeSpec & ReeLegacyTransientFields;
 
-// Temporary compatibility export for modules that still expect the pre-split model.
-export type Ree = ReeDraftViewModel;
-
 export function createEmptyReeSpec(): ReeSpec {
   return {
     name: "",

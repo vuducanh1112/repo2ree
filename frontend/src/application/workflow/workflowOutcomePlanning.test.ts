@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import {
   planActivationEffect,
   planBuildEffect,
@@ -9,7 +9,7 @@ import {
   planWorkflowServiceEffect,
 } from "./workflowOutcomePlanning";
 
-function buildRee(): Ree {
+function buildRee(): ReeDraftViewModel {
   return {
     name: "demo",
     origin_url: "",

@@ -1,7 +1,7 @@
 import type React from "react";
 import type { WorkspaceShellPage } from "../../../../../application/workspace-shell/WorkspaceShellPages";
 import { PAGE } from "../../../../../application/workspace-shell/WorkspaceShellPages";
-import type { Ree } from "../../../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../../../domain/ree/ReeSpec";
 import type { FileTreeNode } from "../../../../../domain/workspace/FileTree";
 import { findVirtualFileByName } from "../../../../../domain/workspace/fileTreeTraversal";
 import { Toggle } from "../../../../shared/components/Toggle";
@@ -21,12 +21,12 @@ import {
 import { PanelFieldRow } from "./PanelFieldRow";
 
 interface RuntimePanelProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   files: FileTreeNode[];
   runtimeRef: React.RefObject<HTMLDivElement>;
   onGoField: (key: string) => void;
   onNavigate: (key: WorkspaceShellPage) => void;
-  onReeChange: (ree: Ree) => void;
+  onReeChange: (ree: ReeDraftViewModel) => void;
 }
 
 const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({

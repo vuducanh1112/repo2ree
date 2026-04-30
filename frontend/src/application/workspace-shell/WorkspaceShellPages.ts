@@ -1,6 +1,6 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 
-// Workspace-editor pages.
+// Workspace shell pages.
 export const PAGE = {
   SOURCE: "source",
   METADATA: "metadata",
@@ -31,8 +31,8 @@ export type AppLoadRoutePath =
 export type WorkspaceShellPage = (typeof PAGE)[keyof typeof PAGE];
 const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as WorkspaceShellPage[];
 
-// Maps a Ree field key to the workspace-shell page where it can be edited.
-export const FIELD_TO_PAGE: Partial<Record<keyof Ree, WorkspaceShellPage>> = {
+// Maps a draft view-model field key to the workspace-shell page where it can be edited.
+export const FIELD_TO_PAGE: Partial<Record<keyof ReeDraftViewModel, WorkspaceShellPage>> = {
   origin_url: PAGE.SOURCE,
   source_type: PAGE.SOURCE,
   _sourceAvailable: PAGE.SOURCE,

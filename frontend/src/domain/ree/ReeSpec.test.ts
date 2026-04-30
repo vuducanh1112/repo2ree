@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { Ree } from "./ReeSpec";
+import type { ReeDraftViewModel } from "./ReeSpec";
 import { splitLegacyReeModel, toLegacyReeViewModel } from "./reeLegacyAdapters";
 
-function buildLegacyRee(): Ree {
+function buildLegacyRee(): ReeDraftViewModel {
   return {
     name: "demo",
     origin_url: "https://example.org/repo.git",

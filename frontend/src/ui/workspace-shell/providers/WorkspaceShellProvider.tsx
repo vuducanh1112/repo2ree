@@ -22,7 +22,7 @@ import type {
   WorkspaceShellContextState,
 } from "../../../application/workspace-shell/WorkspaceShellTypes";
 import { enforceSourceOriginRules } from "../../../domain/artifact/sourceOriginRules";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import { createEmptyRee } from "../../../domain/ree/reeLegacyAdapters";
 import { computeSourceChangeConsequences } from "../../../domain/workspace/sourceChangeConsequences";
 
@@ -35,10 +35,12 @@ const WorkspaceShellContext = createContext<WorkspaceShellContextValue | null>(n
 
 interface WorkspaceShellProviderProps {
   children: ReactNode;
-  initialRee?: Ree;
+  initialRee?: ReeDraftViewModel;
 }
 
-export function createInitialState(initialRee: Ree = createEmptyRee()): WorkspaceShellContextState {
+export function createInitialState(
+  initialRee: ReeDraftViewModel = createEmptyRee(),
+): WorkspaceShellContextState {
   return {
     workspaceDraft: createInitialWorkspaceDraftState(initialRee),
     workspaceRemote: createInitialWorkspaceRemoteState(),

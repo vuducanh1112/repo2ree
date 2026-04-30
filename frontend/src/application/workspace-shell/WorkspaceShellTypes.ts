@@ -1,4 +1,4 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
@@ -37,7 +37,7 @@ export interface WorkspaceShellContextState {
 }
 
 export type WorkspaceShellAction =
-  | { type: "workspaceShell/setRee"; ree: WorkspaceDraftStateUpdater<Ree> }
+  | { type: "workspaceShell/setRee"; ree: WorkspaceDraftStateUpdater<ReeDraftViewModel> }
   | { type: "workspaceShell/setLocked"; locked: WorkspaceDraftStateUpdater<boolean> }
   | {
       type: "workspaceShell/setRepoMode";

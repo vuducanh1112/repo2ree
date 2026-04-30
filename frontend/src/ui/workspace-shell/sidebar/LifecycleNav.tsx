@@ -1,5 +1,5 @@
 import type { WorkspaceShellPage } from "../../../application/workspace-shell/WorkspaceShellPages";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { Badges, Timestamps } from "../../../domain/ree/ReeTypes";
 import { C, F, S_SECTION_LABEL } from "../../theme/theme";
 import { NavEntryButton } from "../WorkspaceShellNav";
@@ -7,7 +7,7 @@ import { hasProcessStepCompleted, PROCESS_STEPS } from "./processSteps";
 
 interface LifecycleNavProps {
   page: WorkspaceShellPage;
-  ree: Ree;
+  ree: ReeDraftViewModel;
   badges: Badges;
   timestamps: Timestamps;
   navCollapsed: boolean;

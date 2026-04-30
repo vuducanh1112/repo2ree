@@ -5,7 +5,7 @@ import {
   ECO_META,
   PIN_META,
 } from "../../../application/workflow/workflowDependencyAnalysis";
-import type { Ree } from "../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { LogEntry } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { Ic } from "../../shared/components/Icon";
@@ -445,7 +445,7 @@ export function DependencyPanel({ depGroups }: DependencyPanelProps) {
 interface RuntimeOutputNodeProps {
   expectedOutput: string;
   buildDone: boolean;
-  ree: Ree;
+  ree: ReeDraftViewModel;
   imageColor: string;
   files: FileTreeNode[];
 }

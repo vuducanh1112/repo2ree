@@ -2,7 +2,7 @@ import type React from "react";
 import type { WorkspaceShellPage } from "../../../../../application/workspace-shell/WorkspaceShellPages";
 import { PAGE } from "../../../../../application/workspace-shell/WorkspaceShellPages";
 import { hbomSummaryLines } from "../../../../../domain/hbom/HbomSummary";
-import type { Ree } from "../../../../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../../../../domain/ree/ReeSpec";
 import {
   C,
   hoverBrightness,
@@ -16,7 +16,7 @@ import {
 import { PanelFieldRow } from "./PanelFieldRow";
 
 interface HbomPanelProps {
-  ree: Ree;
+  ree: ReeDraftViewModel;
   hbomRef: React.RefObject<HTMLDivElement>;
   onGoField: (key: string) => void;
   onNavigate: (key: WorkspaceShellPage) => void;

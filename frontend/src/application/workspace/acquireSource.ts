@@ -1,4 +1,4 @@
-import type { Ree } from "../../domain/ree/ReeSpec";
+import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { type SourceCommand, sourceFailureCommands } from "./sourceAcquisitionCommands";
 import {
@@ -39,7 +39,7 @@ interface SourceUseCaseEffects {
 }
 
 interface SourceUseCaseArgs extends SourceUseCaseEffects {
-  ree: Ree;
+  ree: ReeDraftViewModel;
 }
 
 interface UploadSourceArgs {
@@ -92,7 +92,7 @@ export function createSourceUseCase({
   };
 
   const completeDownload = async (args: {
-    originType: Ree["source_type"];
+    originType: ReeDraftViewModel["source_type"];
     normalizedSourceUrl: string;
   }) => {
     const workspaceFiles = await refreshWorkspaceFiles();
@@ -118,7 +118,10 @@ export function createSourceUseCase({
   };
 
   return {
-    async downloadSource(originType: Ree["source_type"], sourceUrl: string): Promise<void> {
+    async downloadSource(
+      originType: ReeDraftViewModel["source_type"],
+      sourceUrl: string,
+    ): Promise<void> {
       const plan = planSourceDownloadAction(ree, originType, sourceUrl);
       if (!plan.ok) {
         executeCommands([{ type: "toast", message: plan.error, toastType: "error" }]);
@@ -192,7 +195,7 @@ export function createSourceUseCase({
 }
 
 function sourceSuccessCommands(plan: {
-  reePatch: Partial<Ree>;
+  reePatch: Partial<ReeDraftViewModel>;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
   actionState: "done";
