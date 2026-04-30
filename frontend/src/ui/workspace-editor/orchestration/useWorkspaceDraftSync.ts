@@ -8,6 +8,7 @@ import type { Ree } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import { toReePatch } from "../../../domain/ree/reePatch";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
+import { useUpdateReeDraftMutation, useWorkspaceQuery } from "./remoteQueries";
 
 interface HydratedWorkspaceSnapshot {
   workspaceFiles: FileTreeNode[];
@@ -34,12 +35,23 @@ export function useWorkspaceDraftSync({
   const isSyncingReeRef = useRef<boolean>(false);
   const hasHydratedRemoteReeRef = useRef<boolean>(false);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const workspaceQuery = useWorkspaceQuery({
+    workspaceService,
+    workspaceId,
+    enabled: false,
+  });
+  const canUpdateReeDraft = !!workspaceService.updateReeDraft;
+  const { refresh: fetchWorkspace } = workspaceQuery;
+  const { mutateAsync: updateReeDraft } = useUpdateReeDraftMutation({
+    workspaceService,
+    workspaceId,
+  });
 
   const refreshWorkspace = useCallback(
     async (options: { forceReeHydration?: boolean } = {}): Promise<HydratedWorkspaceSnapshot> => {
       const { forceReeHydration = false } = options;
       const requestStartedPatchKey = latestLocalPatchKeyRef.current;
-      const workspace = await workspaceService.getWorkspace(workspaceId);
+      const workspace = await fetchWorkspace();
       let reeToHydrate: Ree | undefined;
       if (workspace.ree) {
         const localPatchChangedDuringRequest =
@@ -68,7 +80,7 @@ export function useWorkspaceDraftSync({
       hydrateWorkspace(hydratedWorkspace);
       return hydratedWorkspace;
     },
-    [hydrateWorkspace, workspaceId, workspaceService],
+    [fetchWorkspace, hydrateWorkspace],
   );
 
   const refreshWorkspaceFiles = useCallback(
@@ -93,7 +105,7 @@ export function useWorkspaceDraftSync({
     const patch = buildReePatch();
     const patchKey = JSON.stringify(patch);
     const shouldScheduleSync = shouldScheduleReeDraftSync({
-      canUpdateReeDraft: !!workspaceService.updateReeDraft,
+      canUpdateReeDraft,
       patchKey,
       lastSyncedPatchKey: lastSyncedReeRef.current,
     });
@@ -110,7 +122,7 @@ export function useWorkspaceDraftSync({
         syncTimerRef.current = null;
         isSyncingReeRef.current = true;
         try {
-          await workspaceService.updateReeDraft?.(workspaceId, patch);
+          await updateReeDraft(patch);
           lastSyncedReeRef.current = patchKey;
           await refreshWorkspaceFiles();
         } catch {
@@ -127,7 +139,7 @@ export function useWorkspaceDraftSync({
         syncTimerRef.current = null;
       }
     };
-  }, [workspaceId, workspaceService, buildReePatch, refreshWorkspaceFiles]);
+  }, [buildReePatch, canUpdateReeDraft, refreshWorkspaceFiles, updateReeDraft]);
 
   return {
     buildReePatch,

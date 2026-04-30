@@ -1,3 +1,4 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { createHttpWorkspaceBackendGateway } from "./infra/workspace/HttpWorkspaceBackendGateway";
 import { AppBootstrap } from "./runtime/bootstrap/AppBootstrap";
@@ -8,9 +9,11 @@ import {
 import { createBrowserRuntimePorts } from "./runtime/browser/BrowserRuntimePorts";
 import { WORKSPACE_ID } from "./runtime/config/WorkspaceConstants";
 import { DEMO_REE } from "./runtime/demo/DemoRee";
+import { createAppQueryClient } from "./runtime/query/queryClient";
 import { WorkspaceEditorProvider } from "./ui/workspace-editor/providers/WorkspaceEditorProvider";
 
 export default function App() {
+  const queryClient = useMemo(() => createAppQueryClient(), []);
   const runtime = useMemo<WorkspaceRuntimeValue>(() => {
     const env =
       (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
@@ -32,10 +35,12 @@ export default function App() {
   }, []);
 
   return (
-    <WorkspaceRuntimeProvider value={runtime}>
-      <WorkspaceEditorProvider initialWorkspaceEditorRee={DEMO_REE}>
-        <AppBootstrap />
-      </WorkspaceEditorProvider>
-    </WorkspaceRuntimeProvider>
+    <QueryClientProvider client={queryClient}>
+      <WorkspaceRuntimeProvider value={runtime}>
+        <WorkspaceEditorProvider initialWorkspaceEditorRee={DEMO_REE}>
+          <AppBootstrap />
+        </WorkspaceEditorProvider>
+      </WorkspaceRuntimeProvider>
+    </QueryClientProvider>
   );
 }

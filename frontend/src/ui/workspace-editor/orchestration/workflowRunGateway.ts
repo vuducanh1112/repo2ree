@@ -1,6 +1,8 @@
+import type { QueryClient } from "@tanstack/react-query";
 import type React from "react";
 import type {
   WorkflowRunLogEntry,
+  WorkflowRunRecord,
   WorkspaceBackendGateway,
 } from "../../../application/ports/WorkspaceBackendGateway";
 import { isAutomationStepKey } from "../../../application/workflow/WorkflowStepDefinitions";
@@ -38,6 +40,12 @@ interface CreateWorkflowRunGatewayArgs {
   workflowStepHandlers: WorkflowStepHandlerMap;
   workspaceService: WorkspaceBackendGateway<FileTreeNode>;
   workspaceId: string;
+  queryClient: QueryClient;
+  startWorkflowRun: (
+    scriptKey: string,
+    params?: Record<string, string | boolean | number | null | undefined>,
+  ) => Promise<WorkflowRunRecord>;
+  cancelWorkflowRun?: (runId: string) => Promise<unknown>;
   ports: WorkspaceEditorRuntimePorts;
   refreshWorkspace: () => Promise<{
     workspaceFiles: FileTreeNode[];
@@ -58,6 +66,9 @@ export function createWorkflowRunGateway({
   workflowStepHandlers,
   workspaceService,
   workspaceId,
+  queryClient,
+  startWorkflowRun,
+  cancelWorkflowRun,
   ports,
   refreshWorkspace,
   runSession,
@@ -78,6 +89,8 @@ export function createWorkflowRunGateway({
       workflowStepHandlers,
       workspaceService,
       workspaceId,
+      queryClient,
+      startWorkflowRun,
       ports,
       refreshWorkspace,
       onRunStarted: runSession.noteRunStarted,
@@ -99,13 +112,9 @@ export function createWorkflowRunGateway({
   };
 
   const cancelAutomationStep = async (key: string) => {
-    const cancelWorkflowRun = workspaceService.cancelWorkflowRun;
-    const cancelRun = cancelWorkflowRun
-      ? (runId: string) => cancelWorkflowRun(workspaceId, runId)
-      : undefined;
     const result = await runSession.cancelTrackedRun({
       key,
-      cancelRun,
+      cancelRun: cancelWorkflowRun,
     });
     if (result.message) {
       showToast(result.message, result.ok ? "info" : "error");

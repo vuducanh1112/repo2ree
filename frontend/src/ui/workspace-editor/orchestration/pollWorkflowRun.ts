@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import type {
   LogLine,
   WorkflowRunRecord,
@@ -5,6 +6,8 @@ import type {
   WorkspaceBackendGateway,
 } from "../../../application/ports/WorkspaceBackendGateway";
 import type { WorkspaceEditorClock } from "../../../application/workspace-editor/WorkspaceEditorPorts";
+import type { FileTreeNode } from "../../../domain/workspace/FileTree";
+import { fetchWorkflowRun, fetchWorkflowRunLogs } from "./remoteQueries";
 
 interface PollWorkflowRunOptions {
   workspaceId: string;
@@ -47,7 +50,8 @@ function mergeCappedLines(existing: LogLine[], incoming: LogLine[]): LogLine[] {
 }
 
 async function readAvailableLogs(
-  workspaceService: WorkspaceBackendGateway,
+  queryClient: QueryClient,
+  workspaceService: WorkspaceBackendGateway<FileTreeNode>,
   workspaceId: string,
   runId: string,
   cursor?: string,
@@ -59,7 +63,13 @@ async function readAvailableLogs(
   const lines: LogLine[] = [];
   let nextCursor = cursor;
   for (let i = 0; i < 20; i += 1) {
-    const chunk = await workspaceService.getWorkflowRunLogs(workspaceId, runId, nextCursor);
+    const chunk = await fetchWorkflowRunLogs(
+      queryClient,
+      workspaceService,
+      workspaceId,
+      runId,
+      nextCursor,
+    );
     lines.push(...chunk.lines.map(sanitizeLine));
     if (!chunk.hasMore && !chunk.lines.length) {
       break;
@@ -77,7 +87,8 @@ function resolveRunTimestamp(run: WorkflowRunRecord, clock: WorkspaceEditorClock
 }
 
 export async function pollWorkflowRun(
-  workspaceService: WorkspaceBackendGateway,
+  queryClient: QueryClient,
+  workspaceService: WorkspaceBackendGateway<FileTreeNode>,
   options: PollWorkflowRunOptions,
 ): Promise<PollWorkflowRunResult> {
   if (!workspaceService.getWorkflowRun) {
@@ -89,7 +100,12 @@ export async function pollWorkflowRun(
   }
 
   const maxIterations = options.maxIterations || 90;
-  let latestRun = await workspaceService.getWorkflowRun(options.workspaceId, options.runId);
+  let latestRun = await fetchWorkflowRun(
+    queryClient,
+    workspaceService,
+    options.workspaceId,
+    options.runId,
+  );
   let logCursor: string | undefined;
   let fetchedLogCount = 0;
   let aggregatedLines: LogLine[] = [];
@@ -97,7 +113,9 @@ export async function pollWorkflowRun(
   const pullLogs = async (): Promise<void> => {
     if (!workspaceService.getWorkflowRunLogs) return;
     const requestCursor = logCursor || String(fetchedLogCount);
-    const chunk = await workspaceService.getWorkflowRunLogs(
+    const chunk = await fetchWorkflowRunLogs(
+      queryClient,
+      workspaceService,
       options.workspaceId,
       options.runId,
       requestCursor,
@@ -118,6 +136,7 @@ export async function pollWorkflowRun(
 
     if (TERMINAL_STATUSES.has(latestRun.status)) {
       const lines = await readAvailableLogs(
+        queryClient,
         workspaceService,
         options.workspaceId,
         options.runId,
@@ -132,10 +151,16 @@ export async function pollWorkflowRun(
     }
 
     await options.sleep(resolvePollDelay(iteration));
-    latestRun = await workspaceService.getWorkflowRun(options.workspaceId, options.runId);
+    latestRun = await fetchWorkflowRun(
+      queryClient,
+      workspaceService,
+      options.workspaceId,
+      options.runId,
+    );
   }
 
   const lines = await readAvailableLogs(
+    queryClient,
     workspaceService,
     options.workspaceId,
     options.runId,

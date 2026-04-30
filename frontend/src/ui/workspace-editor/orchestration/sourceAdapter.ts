@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import type { WorkspaceBackendGateway } from "../../../application/ports/WorkspaceBackendGateway";
 import type { WorkspaceEditorClock } from "../../../application/workspace-editor/WorkspaceEditorPorts";
 import type { Ree } from "../../../domain/ree/ReeSpec";
@@ -10,6 +11,7 @@ interface CreateSourceAdapterArgs {
   ree: Ree;
   workspaceService: WorkspaceBackendGateway<FileTreeNode>;
   workspaceId: string;
+  queryClient: QueryClient;
   dispatch: WorkspaceWorkflowDispatch;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   showToast: ShowToast;
@@ -23,6 +25,7 @@ export function createSourceAdapter({
   ree,
   workspaceService,
   workspaceId,
+  queryClient,
   dispatch,
   refreshWorkspaceFiles,
   showToast,
@@ -39,6 +42,7 @@ export function createSourceAdapter({
     ree,
     workspaceService,
     workspaceId,
+    queryClient,
     dispatch,
     refreshWorkspaceFiles,
     onSourceChange: resetSourceWorkflow,

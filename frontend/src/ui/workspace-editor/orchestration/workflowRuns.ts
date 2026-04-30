@@ -1,5 +1,7 @@
+import type { QueryClient } from "@tanstack/react-query";
 import type {
   WorkflowRunLogEntry,
+  WorkflowRunRecord,
   WorkspaceBackendGateway,
 } from "../../../application/ports/WorkspaceBackendGateway";
 import { executeWorkflowStep } from "../../../application/workflow/executeWorkflowStep";
@@ -28,6 +30,11 @@ interface ExecuteServiceRunArgs {
   workflowStepHandlers: WorkflowStepHandlerMap;
   workspaceService: WorkspaceBackendGateway<FileTreeNode>;
   workspaceId: string;
+  queryClient: QueryClient;
+  startWorkflowRun: (
+    scriptKey: string,
+    params?: Record<string, string | boolean | number | null | undefined>,
+  ) => Promise<WorkflowRunRecord>;
   ports: WorkspaceEditorRuntimePorts;
   refreshWorkspace: () => Promise<{
     workspaceFiles: FileTreeNode[];
@@ -50,6 +57,8 @@ export async function executeWorkflowRunAction({
   workflowStepHandlers,
   workspaceService,
   workspaceId,
+  queryClient,
+  startWorkflowRun,
   ports,
   refreshWorkspace,
   onRunStarted,
@@ -57,10 +66,9 @@ export async function executeWorkflowRunAction({
 }: ExecuteServiceRunArgs): Promise<WorkflowRunLogEntry> {
   const runCommands = (commands: WorkflowStepCommand[]) =>
     executeWorkflowStepCommands(commands, { dispatch, persistWorkspaceFile, showToast });
-  if (!workspaceService.startWorkflowRun || !workspaceService.getWorkflowRun) {
+  if (!workspaceService.getWorkflowRun) {
     throw new Error("Workspace gateway does not support workflow runs");
   }
-  const startWorkflowRun = workspaceService.startWorkflowRun.bind(workspaceService);
 
   return executeWorkflowStep({
     key,
@@ -69,10 +77,9 @@ export async function executeWorkflowRunAction({
     level,
     workspaceFiles,
     workflowRunner: {
-      startWorkflowRun: (scriptKey, runParams) =>
-        startWorkflowRun(workspaceId, scriptKey, runParams),
+      startWorkflowRun: (scriptKey, runParams) => startWorkflowRun(scriptKey, runParams),
       pollRun: (runId, onUpdateLogs) =>
-        pollWorkflowRun(workspaceService, {
+        pollWorkflowRun(queryClient, workspaceService, {
           workspaceId,
           runId,
           onUpdate: onUpdateLogs,

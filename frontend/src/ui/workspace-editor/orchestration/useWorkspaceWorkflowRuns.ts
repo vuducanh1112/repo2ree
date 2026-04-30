@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { planSealArtifactCommands } from "../../../application/artifact/sealArtifactCommands";
@@ -15,6 +16,12 @@ import { useWorkspaceRuntime } from "../../../runtime/browser/BrowserRuntime";
 import { executeWorkflowStepCommands } from "./commandExecutors";
 import { createDownloadActions } from "./downloadActions";
 import { createWorkspaceFilePersistence } from "./filePersistence";
+import {
+  useCancelWorkflowRunMutation,
+  useStartWorkflowRunMutation,
+  useWorkflowRunLogsQuery,
+  useWorkflowRunQuery,
+} from "./remoteQueries";
 import { createSourceAdapter } from "./sourceAdapter";
 import { useWorkspaceDraftSync } from "./useWorkspaceDraftSync";
 import { createWorkflowRunGateway } from "./workflowRunGateway";
@@ -33,6 +40,7 @@ export function useWorkspaceWorkflowRuns({
   workspaceFiles,
 }: UseWorkspaceWorkflowArgs) {
   const { workspaceBackend, ports, workspaceId } = useWorkspaceRuntime();
+  const queryClient = useQueryClient();
   const automationSessionRef = useRef(createWorkflowRunSession());
   const automationSession = automationSessionRef.current;
   const executeWorkflowRunRef = useRef<
@@ -44,6 +52,28 @@ export function useWorkspaceWorkflowRuns({
     dispatch(workspaceEditorActions.setToast({ message: msg, type }));
 
   const workspaceService = useMemo(() => workspaceBackend, [workspaceBackend]);
+  const startWorkflowRunMutation = useStartWorkflowRunMutation({
+    workspaceService,
+    workspaceId,
+  });
+  const cancelWorkflowRunMutation = useCancelWorkflowRunMutation({
+    workspaceService,
+    workspaceId,
+  });
+  const workflowRunServerState = useWorkflowRunQuery({
+    workspaceService,
+    workspaceId,
+    runId: null,
+    enabled: false,
+  });
+  const workflowRunLogsServerState = useWorkflowRunLogsQuery({
+    workspaceService,
+    workspaceId,
+    runId: null,
+    enabled: false,
+  });
+  void workflowRunServerState;
+  void workflowRunLogsServerState;
 
   const hydrateWorkspace = useCallback(
     (workspace: { workspaceFiles: FileTreeNode[]; reeArtifactFiles: ReeFile[]; ree?: Ree }) =>
@@ -94,6 +124,10 @@ export function useWorkspaceWorkflowRuns({
     workflowStepHandlers,
     workspaceService,
     workspaceId,
+    queryClient,
+    startWorkflowRun: (scriptKey, params) =>
+      startWorkflowRunMutation.mutateAsync({ scriptKey, params }),
+    cancelWorkflowRun: (runId) => cancelWorkflowRunMutation.mutateAsync({ runId }),
     ports,
     refreshWorkspace,
     runSession: automationSession,
@@ -103,6 +137,7 @@ export function useWorkspaceWorkflowRuns({
     ree: reeDraft,
     workspaceService,
     workspaceId,
+    queryClient,
     dispatch,
     refreshWorkspaceFiles,
     showToast,

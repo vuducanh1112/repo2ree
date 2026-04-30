@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import type { WorkspaceBackendGateway } from "../../../application/ports/WorkspaceBackendGateway";
 import { serializeWorkspaceResetPayload } from "../../../application/ports/WorkspaceBackendGateway";
 import { createSourceUseCase } from "../../../application/workspace/acquireSource";
@@ -27,6 +28,7 @@ interface CreateSourceActionsArgs {
   ree: Ree;
   workspaceService: WorkspaceBackendGateway<FileTreeNode>;
   workspaceId: string;
+  queryClient: QueryClient;
   dispatch: WorkspaceWorkflowDispatch;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   onSourceChange: (options?: { silent?: boolean }) => void;
@@ -41,6 +43,7 @@ export function createSourceActions({
   ree,
   workspaceService,
   workspaceId,
+  queryClient,
   dispatch,
   refreshWorkspaceFiles,
   onSourceChange,
@@ -63,7 +66,7 @@ export function createSourceActions({
       resetPayload: serializeWorkspaceResetPayload(resetRequest),
       runParams,
       pollRun: (workspaceId, runId, onUpdateLogs) =>
-        pollWorkflowRun(workspaceService, {
+        pollWorkflowRun(queryClient, workspaceService, {
           workspaceId,
           runId,
           onUpdate: onUpdateLogs,
