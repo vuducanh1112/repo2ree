@@ -1,62 +1,18 @@
-import { normalizeHBOM } from "../../domain/hbom/HbomSummary";
-import { type Ree, type ReeSpec, toLegacyReeViewModel } from "../../domain/ree/ReeSpec";
+import { mapReeDraftToRee } from "../../application/review/mapReviewDetailToRee";
+import type { Ree } from "../../domain/ree/ReeSpec";
 import type { ReviewDetailDto, WorkspaceDetailDto } from ".";
 
-function mapDraftToRee(
-  reeDraft: Partial<ReviewDetailDto["reeDraft"]>,
-  fallbackName: string,
-  fallbackOriginUrl = "",
-): Ree {
-  const reeSpec: ReeSpec = {
-    name: String(reeDraft.name ?? fallbackName ?? ""),
-    origin_url: String(reeDraft.origin_url ?? fallbackOriginUrl ?? ""),
-    source_type: (reeDraft.source_type as Ree["source_type"]) || "",
-    runtime: String(reeDraft.runtime ?? ""),
-    build_runtime_script: String(reeDraft.build_runtime_script ?? ""),
-    activation_script: String(reeDraft.activation_script ?? ""),
-    sbom: String(reeDraft.sbom ?? ""),
-    swhid: String(reeDraft.swhid ?? ""),
-    zenodo_doi: reeDraft.zenodo_doi ? String(reeDraft.zenodo_doi) : undefined,
-    dataverse_doi: reeDraft.dataverse_doi ? String(reeDraft.dataverse_doi) : undefined,
-    repro_level: reeDraft.repro_level ? String(reeDraft.repro_level) : undefined,
-    detected_dependencies: reeDraft.detected_dependencies
-      ? String(reeDraft.detected_dependencies)
-      : undefined,
-    hardware_description: normalizeHBOM(reeDraft.hardware_description),
-  };
-
-  return toLegacyReeViewModel({
-    reeSpec,
-    workspaceSourceState: {
-      _sourceAvailable: Boolean(reeDraft._sourceAvailable),
-      _sourceIncluded: Boolean(reeDraft._sourceIncluded),
-      _sourceAcquiredBy: (reeDraft._sourceAcquiredBy as Ree["_sourceAcquiredBy"]) || undefined,
-      _uploadedArchive: reeDraft._uploadedArchive ? String(reeDraft._uploadedArchive) : undefined,
-      _sourceSnapshotArchive: reeDraft._sourceSnapshotArchive
-        ? String(reeDraft._sourceSnapshotArchive)
-        : undefined,
-      _sourceSnapshotCapturedAt: reeDraft._sourceSnapshotCapturedAt
-        ? String(reeDraft._sourceSnapshotCapturedAt)
-        : undefined,
-    },
-    artifactStatus: {
-      _runtimeIncluded: Boolean(reeDraft._runtimeIncluded),
-      _downloadableFiles: Array.isArray(reeDraft._downloadableFiles)
-        ? reeDraft._downloadableFiles.map((item) => String(item))
-        : [],
-      _sealedAt: reeDraft._sealedAt ? String(reeDraft._sealedAt) : undefined,
-      _sealHash: reeDraft._sealHash ? String(reeDraft._sealHash) : undefined,
-    },
-    evaluationState: {
-      _evalLevel: Number(reeDraft._evalLevel ?? 0),
-    },
+export function mapReviewDraftToRee(review: ReviewDetailDto): Ree {
+  return mapReeDraftToRee({
+    reeDraft: review.reeDraft,
+    fallbackName: review.name,
   });
 }
 
-export function mapReviewDraftToRee(review: ReviewDetailDto): Ree {
-  return mapDraftToRee(review.reeDraft || {}, review.name);
-}
-
 export function mapWorkspaceDraftToRee(workspace: WorkspaceDetailDto): Ree {
-  return mapDraftToRee(workspace.reeDraft || {}, workspace.name, workspace.externalRef ?? "");
+  return mapReeDraftToRee({
+    reeDraft: workspace.reeDraft,
+    fallbackName: workspace.name,
+    fallbackOriginUrl: workspace.externalRef ?? "",
+  });
 }

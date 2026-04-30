@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { mapReviewDetailToRee } from "../../application/review/mapReviewDetailToRee";
 import { APP_ROUTE } from "../../application/workspace-shell/WorkspaceShellPages";
 import type { Ree } from "../../domain/ree/ReeSpec";
-import { mapReviewDraftToRee } from "../../infra/api/ReeDtoMappers";
 import { useWorkspaceRuntime } from "../../runtime/browser/BrowserRuntime";
 import { LandingView } from "../landing/LandingView";
 import { PodOrbitControl } from "../reviewer/PodOrbitControl";
@@ -38,7 +38,7 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
       try {
         const detail = await reviewRepository.getReview(reviewId);
         if (!canceled) {
-          setReviewRee(mapReviewDraftToRee(detail));
+          setReviewRee(mapReviewDetailToRee(detail));
           setReviewFiles(
             (detail.files || []).map((file) => ({ path: file.path, size: file.size })),
           );

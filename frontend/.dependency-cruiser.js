@@ -1,3 +1,6 @@
+const TEST_FILE_PATTERN = "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$";
+const UI_APPROVED_RAW_API_IMPORTERS = [];
+
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
@@ -214,7 +217,7 @@ module.exports = {
         "Domain modules should stay framework-free and must not depend on React, routes, or legacy UI folders.",
       from: {
         path: "^src/domain",
-        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+        pathNot: TEST_FILE_PATTERN
       },
       to: {
         path: "^(src/(app|components|context|features|hooks|pages|ui)(/|$)|react$|react-dom$|react-router-dom$)"
@@ -227,7 +230,7 @@ module.exports = {
         "Domain modules should not depend on API, service, or infrastructure adapters.",
       from: {
         path: "^src/domain",
-        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+        pathNot: TEST_FILE_PATTERN
       },
       to: {
         path: "^src/(api|infra|services)(/|$)"
@@ -240,7 +243,7 @@ module.exports = {
         "Application modules coordinate use-cases but should not depend on React or UI folders.",
       from: {
         path: "^src/application",
-        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+        pathNot: TEST_FILE_PATTERN
       },
       to: {
         path: "^(src/(app|components|context|features|hooks|pages|ui)(/|$)|react$|react-dom$|react-router-dom$)"
@@ -253,10 +256,23 @@ module.exports = {
         "Application modules should prefer abstract inputs/outputs over direct infrastructure dependencies.",
       from: {
         path: "^src/application",
-        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+        pathNot: TEST_FILE_PATTERN
       },
       to: {
         path: "^src/(api|infra|services)(/|$)"
+      }
+    },
+    {
+      name: "ui-no-raw-api-clients",
+      severity: "error",
+      comment:
+        "UI modules must go through runtime/application boundaries instead of importing raw HTTP API clients or DTO mappers directly.",
+      from: {
+        path: "^src/ui",
+        pathNot: [TEST_FILE_PATTERN, ...UI_APPROVED_RAW_API_IMPORTERS]
+      },
+      to: {
+        path: "^src/infra/api(/|$)"
       }
     },
     {
@@ -278,7 +294,7 @@ module.exports = {
         "Runtime modules should wire the app together, but only bootstrap may import top-level UI routes/components.",
       from: {
         path: "^src/runtime/(?!bootstrap/)",
-        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+        pathNot: TEST_FILE_PATTERN
       },
       to: {
         path: "^src/ui"
@@ -291,10 +307,10 @@ module.exports = {
         "Shared UI modules should remain broadly reusable and must not depend on feature-specific screens.",
       from: {
         path: "^src/ui/shared",
-        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+        pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/ui/(landing|reviewer|routes|workspace-editor)"
+        path: "^src/ui/(landing|reviewer|routes|workspace-shell)"
       }
     },
     {
@@ -304,10 +320,10 @@ module.exports = {
         "Theme modules should be design primitives, not depend on route or feature implementations.",
       from: {
         path: "^src/ui/theme",
-        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+        pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/ui/(landing|reviewer|routes|workspace-editor)"
+        path: "^src/ui/(landing|reviewer|routes|workspace-shell)"
       }
     },
     {
@@ -317,10 +333,10 @@ module.exports = {
         "Route composition may assemble screens, but route modules should not depend on feature internals beyond top-level views.",
       from: {
         path: "^src/ui/routes",
-        pathNot: "[.](?:spec|test)[.](?:js|mjs|cjs|jsx|ts|mts|cts|tsx)$"
+        pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/ui/workspace-editor/(?!WorkspaceEditorView|pages/files/FilesPage)"
+        path: "^src/ui/workspace-shell/(?!WorkspaceShellView(?:[.]tsx)?$)"
       }
     }
   ],
