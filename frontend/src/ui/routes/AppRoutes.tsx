@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { useWorkspaceRuntime } from "../../app/browser/BrowserRuntime";
 import { APP_ROUTE } from "../../application/app-shell/AppShellPages";
 import { mapReviewDetailToRee } from "../../application/review/mapReviewDetailToRee";
 import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
-import { useWorkspaceRuntime } from "../../runtime/browser/BrowserRuntime";
 import { AppShellView } from "../app-shell/AppShellView";
 import { LandingView } from "../landing/LandingView";
 import { PodOrbitControl } from "../reviewer/PodOrbitControl";

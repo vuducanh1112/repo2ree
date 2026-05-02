@@ -1,18 +1,15 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { AppBootstrap } from "./app/bootstrap/AppBootstrap";
+import { WorkspaceRuntimeProvider, type WorkspaceRuntimeValue } from "./app/browser/BrowserRuntime";
+import { createBrowserRuntimePorts } from "./app/browser/BrowserRuntimePorts";
+import { WORKSPACE_ID } from "./app/config/WorkspaceConstants";
+import { createAppQueryClient } from "./app/query/queryClient";
 import { createHttpArtifactRepository } from "./infra/repositories/HttpArtifactRepository";
 import { createHttpRepositoryClient } from "./infra/repositories/HttpRepositoryClient";
 import { createHttpReviewRepository } from "./infra/repositories/HttpReviewRepository";
 import { createHttpWorkflowRunRepository } from "./infra/repositories/HttpWorkflowRunRepository";
 import { createHttpWorkspaceRepository } from "./infra/repositories/HttpWorkspaceRepository";
-import { AppBootstrap } from "./runtime/bootstrap/AppBootstrap";
-import {
-  WorkspaceRuntimeProvider,
-  type WorkspaceRuntimeValue,
-} from "./runtime/browser/BrowserRuntime";
-import { createBrowserRuntimePorts } from "./runtime/browser/BrowserRuntimePorts";
-import { WORKSPACE_ID } from "./runtime/config/WorkspaceConstants";
-import { createAppQueryClient } from "./runtime/query/queryClient";
 import { AppShellProvider } from "./ui/app-shell/providers/AppShellProvider";
 
 export default function App() {

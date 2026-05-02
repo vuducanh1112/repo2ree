@@ -1,8 +1,8 @@
 import type React from "react";
 import { useRef, useState } from "react";
+import { useWorkspaceRuntime } from "../../app/browser/BrowserRuntime";
 import { APP_ROUTE, type AppLoadRoutePath } from "../../application/app-shell/AppShellPages";
 import { LEVELS } from "../../domain/review/levels";
-import { useWorkspaceRuntime } from "../../runtime/browser/BrowserRuntime";
 import { Ic } from "../shared/components/Icon";
 import { C, F, hoverBg, hoverColor, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
 

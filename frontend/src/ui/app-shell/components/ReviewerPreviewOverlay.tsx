@@ -1,7 +1,7 @@
 import type React from "react";
+import { useWorkspaceRuntime } from "../../../app/browser/BrowserRuntime";
 import type { Level, StepState } from "../../../application/workflow/WorkflowStepTypes";
 import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
-import { useWorkspaceRuntime } from "../../../runtime/browser/BrowserRuntime";
 import { ReviewerView } from "../../reviewer/ReviewerView";
 import { Ic } from "../../shared/components/Icon";
 import {

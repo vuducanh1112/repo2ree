@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
+import { useWorkspaceRuntime } from "../../../app/browser/BrowserRuntime";
 import type { AppShellAction } from "../../../application/app-shell";
 import { appShellActions } from "../../../application/app-shell";
 import { planSealArtifactCommands } from "../../../application/artifact/sealArtifactCommands";
@@ -13,7 +14,6 @@ import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import { splitReeDraftViewModel } from "../../../domain/ree/reeDraftViewModel";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import { useWorkspaceRuntime } from "../../../runtime/browser/BrowserRuntime";
 import { createDownloadActions } from "../artifact-actions/downloadActions";
 import { createSourceAdapter } from "../source-acquisition/sourceAdapter";
 import { createWorkspaceFilePersistence } from "../workspace-sync/filePersistence";
