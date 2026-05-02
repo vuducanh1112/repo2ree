@@ -1,4 +1,4 @@
-import type { WorkspaceShellRuntimePorts } from "../../application/workspace-shell/WorkspaceShellPorts";
+import type { AppShellRuntimePorts } from "../../application/app-shell/AppShellPorts";
 
 const HEX_ALPHABET = "0123456789abcdef";
 
@@ -14,7 +14,7 @@ function downloadBlob(bytes: BlobPart, options: { fileName: string; mimeType: st
   URL.revokeObjectURL(url);
 }
 
-export function createBrowserRuntimePorts(): WorkspaceShellRuntimePorts {
+export function createBrowserRuntimePorts(): AppShellRuntimePorts {
   return {
     clock: {
       nowIso: () => new Date().toISOString(),

@@ -5,8 +5,8 @@ import type {
 } from "../../../application/workflow/WorkflowStepTypes";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
+import { PageFiles } from "../../app-shell/pages/files/FilesPage";
 import { C } from "../../theme/theme";
-import { PageFiles } from "../../workspace-shell/pages/files/FilesPage";
 import {
   REACTIVATION_STEPS,
   type ReactivationParams,

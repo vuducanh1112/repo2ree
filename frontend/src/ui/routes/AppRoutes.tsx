@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { APP_ROUTE } from "../../application/app-shell/AppShellPages";
 import { mapReviewDetailToRee } from "../../application/review/mapReviewDetailToRee";
-import { APP_ROUTE } from "../../application/workspace-shell/WorkspaceShellPages";
 import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import { useWorkspaceRuntime } from "../../runtime/browser/BrowserRuntime";
+import { AppShellView } from "../app-shell/AppShellView";
 import { LandingView } from "../landing/LandingView";
 import { PodOrbitControl } from "../reviewer/PodOrbitControl";
 import { ReviewerView } from "../reviewer/ReviewerView";
-import { WorkspaceShellView } from "../workspace-shell/WorkspaceShellView";
 
 function ReviewerRouteView({ onBack }: { onBack: () => void }) {
   const location = useLocation();
@@ -94,10 +94,7 @@ export function AppRoutes() {
       <Route
         path={APP_ROUTE.WORKSPACE}
         element={
-          <WorkspaceShellView
-            onBack={() => navigate(APP_ROUTE.ROOT)}
-            PodOrbitControl={PodOrbitControl}
-          />
+          <AppShellView onBack={() => navigate(APP_ROUTE.ROOT)} PodOrbitControl={PodOrbitControl} />
         }
       />
       <Route

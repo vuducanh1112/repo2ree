@@ -1,16 +1,16 @@
-import { mapReeDraftToRee } from "../../application/review/mapReviewDetailToRee";
+import { mapRawReeDraftToRee } from "../../application/review/mapReviewDetailToRee";
 import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { ReviewDetailDto, WorkspaceDetailDto } from ".";
 
 export function mapReviewDraftToRee(review: ReviewDetailDto): ReeDraftViewModel {
-  return mapReeDraftToRee({
+  return mapRawReeDraftToRee({
     reeDraft: review.reeDraft,
     fallbackName: review.name,
   });
 }
 
-export function mapWorkspaceDraftToRee(workspace: WorkspaceDetailDto): ReeDraftViewModel {
-  return mapReeDraftToRee({
+export function mapWorkspaceDetailToRee(workspace: WorkspaceDetailDto): ReeDraftViewModel {
+  return mapRawReeDraftToRee({
     reeDraft: workspace.reeDraft,
     fallbackName: workspace.name,
     fallbackOriginUrl: workspace.externalRef ?? "",

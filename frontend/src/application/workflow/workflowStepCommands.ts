@@ -4,7 +4,7 @@ import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
-import type { WorkspaceShellClock } from "../workspace-shell/WorkspaceShellPorts";
+import type { AppShellClock } from "../app-shell/AppShellPorts";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepKey, AutomationStepRunParamsByKey } from "./WorkflowTypes";
 import { scanDependencies } from "./workflowDependencyAnalysis";
@@ -13,7 +13,7 @@ import { planWorkflowServiceEffect } from "./workflowOutcomePlanning";
 interface CreateWorkflowStepHandlersArgs {
   ree: ReeDraftViewModel;
   workspaceFiles: FileTreeNode[];
-  clock: WorkspaceShellClock;
+  clock: AppShellClock;
 }
 
 export interface WorkflowRunCompletionCommandPayload {

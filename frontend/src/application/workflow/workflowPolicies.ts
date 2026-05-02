@@ -1,5 +1,5 @@
 import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
-import { PAGE } from "../workspace-shell/WorkspaceShellPages";
+import { PAGE } from "../app-shell/AppShellPages";
 import type { WorkflowRequirement } from "./WorkflowStepTypes";
 import type { AutomationStepKey } from "./WorkflowTypes";
 

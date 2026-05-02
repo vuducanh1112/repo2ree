@@ -1,15 +1,15 @@
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
+import type { AppShellRuntimePorts } from "../../application/app-shell/AppShellPorts";
 import type { ArtifactRepository } from "../../application/ports/ArtifactRepository";
 import type { ReviewRepository } from "../../application/ports/ReviewRepository";
 import type { WorkflowRunRepository } from "../../application/ports/WorkflowRunRepository";
 import type { WorkspaceRepository } from "../../application/ports/WorkspaceRepository";
-import type { WorkspaceShellRuntimePorts } from "../../application/workspace-shell/WorkspaceShellPorts";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 
 export interface WorkspaceRuntimeValue {
   workspaceId: string;
-  ports: WorkspaceShellRuntimePorts;
+  ports: AppShellRuntimePorts;
   workspaceRepository: WorkspaceRepository<FileTreeNode>;
   workflowRunRepository: WorkflowRunRepository;
   artifactRepository: ArtifactRepository;

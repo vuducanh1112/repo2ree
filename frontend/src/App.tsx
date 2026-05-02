@@ -13,7 +13,7 @@ import {
 import { createBrowserRuntimePorts } from "./runtime/browser/BrowserRuntimePorts";
 import { WORKSPACE_ID } from "./runtime/config/WorkspaceConstants";
 import { createAppQueryClient } from "./runtime/query/queryClient";
-import { WorkspaceShellProvider } from "./ui/workspace-shell/providers/WorkspaceShellProvider";
+import { AppShellProvider } from "./ui/app-shell/providers/AppShellProvider";
 
 export default function App() {
   const queryClient = useMemo(() => createAppQueryClient(), []);
@@ -45,9 +45,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WorkspaceRuntimeProvider value={runtime}>
-        <WorkspaceShellProvider>
+        <AppShellProvider>
           <AppBootstrap />
-        </WorkspaceShellProvider>
+        </AppShellProvider>
       </WorkspaceRuntimeProvider>
     </QueryClientProvider>
   );

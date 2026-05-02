@@ -1,9 +1,6 @@
 import type React from "react";
 import { useRef, useState } from "react";
-import {
-  APP_ROUTE,
-  type AppLoadRoutePath,
-} from "../../application/workspace-shell/WorkspaceShellPages";
+import { APP_ROUTE, type AppLoadRoutePath } from "../../application/app-shell/AppShellPages";
 import { LEVELS } from "../../domain/review/levels";
 import { useWorkspaceRuntime } from "../../runtime/browser/BrowserRuntime";
 import { Ic } from "../shared/components/Icon";

@@ -3,17 +3,17 @@ import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
 import { toReeDraftViewModel } from "../../domain/ree/reeDraftViewModel";
 import type { ReviewDetail } from "../ports/ReviewRepository";
 
-interface MapReeDraftToReeOptions {
+interface MapRawReeDraftToReeOptions {
   reeDraft: Record<string, unknown> | null | undefined;
   fallbackName: string;
   fallbackOriginUrl?: string;
 }
 
-export function mapReeDraftToRee({
+export function mapRawReeDraftToRee({
   reeDraft,
   fallbackName,
   fallbackOriginUrl = "",
-}: MapReeDraftToReeOptions): ReeDraftViewModel {
+}: MapRawReeDraftToReeOptions): ReeDraftViewModel {
   const draft = reeDraft || {};
   const reeSpec: ReeSpec = {
     name: String(draft.name ?? fallbackName ?? ""),
@@ -63,7 +63,7 @@ export function mapReeDraftToRee({
 }
 
 export function mapReviewDetailToRee(review: ReviewDetail): ReeDraftViewModel {
-  return mapReeDraftToRee({
+  return mapRawReeDraftToRee({
     reeDraft: review.reeDraft,
     fallbackName: review.name,
   });

@@ -2,6 +2,10 @@ import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 
+// ReeSpec is the persisted specification of a REE (Reusable Execution Environment),
+// the product object. Keep this type narrow - only persisted REE fields. Anything
+// UI-, runtime-, or session-flavored belongs in the corresponding slice under
+// application/.
 export type DeviceModel = string;
 
 export interface CPUDefinition {
@@ -73,6 +77,10 @@ export interface ReeSpec {
   hardware_description: HBOM;
 }
 
+/**
+ * @deprecated To be deleted in Phase 4 once consumers read from slices and
+ * React Query directly instead of the aggregate REE draft view model.
+ */
 export type ReeDraftViewModel = ReeSpec & WorkspaceSourceState & ArtifactStatus & EvaluationState;
 
 export function createEmptyReeSpec(): ReeSpec {

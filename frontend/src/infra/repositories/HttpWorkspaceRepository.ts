@@ -4,7 +4,7 @@ import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceDetailDto } from "../api";
-import { mapWorkspaceDraftToRee } from "../api/ReeDtoMappers";
+import { mapWorkspaceDetailToRee } from "../api/ReeDtoMappers";
 import type { HttpRepositoryClient } from "./HttpRepositoryClient";
 
 function upsertTreeFile(
@@ -75,7 +75,7 @@ function mapWorkspace(workspace: WorkspaceDetailDto): ReeProject<FileTreeNode> {
     content: file.content,
     size: file.size,
   }));
-  const ree: ReeDraftViewModel = mapWorkspaceDraftToRee(workspace);
+  const ree: ReeDraftViewModel = mapWorkspaceDetailToRee(workspace);
 
   return {
     id: workspace.reeId,

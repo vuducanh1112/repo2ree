@@ -74,15 +74,15 @@ export type WorkspaceStateCommand =
       outcome: SourceApplyOutcomeCommand["outcome"];
     };
 
-export type WorkspaceShellEffect =
+export type AppShellEffect =
   | { type: "dispatchStateCommand"; command: WorkspaceStateCommand }
   | { type: "persistFile"; path: string; content: string }
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
 export function mapWorkflowStepCommandsToEffects(
   commands: WorkflowStepCommand[],
-): WorkspaceShellEffect[] {
-  const effects: WorkspaceShellEffect[] = [];
+): AppShellEffect[] {
+  const effects: AppShellEffect[] = [];
 
   for (const command of commands) {
     if (command.type === "persistFile") {
@@ -207,7 +207,7 @@ export function mapWorkflowStepCommandsToEffects(
   return effects;
 }
 
-export function mapSourceCommandsToEffects(commands: SourceCommand[]): WorkspaceShellEffect[] {
+export function mapSourceCommandsToEffects(commands: SourceCommand[]): AppShellEffect[] {
   return commands.map((command) => {
     if (command.type === "toast") {
       return {

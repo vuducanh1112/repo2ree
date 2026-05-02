@@ -1,12 +1,12 @@
+import type { AppShellPage } from "../app-shell/AppShellPages";
+import { PAGE } from "../app-shell/AppShellPages";
 import type { ToastState } from "../workflow/WorkflowStepTypes";
-import type { WorkspaceShellPage } from "../workspace-shell/WorkspaceShellPages";
-import { PAGE } from "../workspace-shell/WorkspaceShellPages";
 
 export type UiChromeStateUpdater<T> = T | ((previous: T) => T);
 
 export interface UiChromeState {
   toast: ToastState | null;
-  page: WorkspaceShellPage;
+  page: AppShellPage;
   focusedField: string | null;
   navCollapsed: boolean;
   showReviewPreview: boolean;

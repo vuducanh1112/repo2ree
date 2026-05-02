@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReviewDetailDto, WorkspaceDetailDto } from ".";
-import { mapReviewDraftToRee, mapWorkspaceDraftToRee } from "./ReeDtoMappers";
+import { mapReviewDraftToRee, mapWorkspaceDetailToRee } from "./ReeDtoMappers";
 
 describe("reeMappers", () => {
   it("maps review drafts into ReeDraftViewModel consistently", () => {
@@ -41,7 +41,7 @@ describe("reeMappers", () => {
       reeFiles: [],
     };
 
-    const mapped = mapWorkspaceDraftToRee(workspace);
+    const mapped = mapWorkspaceDetailToRee(workspace);
 
     expect(mapped.name).toBe("workspace-demo");
     expect(mapped.origin_url).toBe("https://example.org/archive.tar.gz");
