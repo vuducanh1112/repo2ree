@@ -108,12 +108,13 @@ describe("appShellState", () => {
     const state = createInitialState(buildRee());
 
     const view = appShellSelectors.state(state);
+    const ree = appShellSelectors.reeDraftViewModel(state);
 
     expect(view.page).toBe(state.uiChrome.page);
     expect(view.workflowParams).toBe(state.workflowRun.workflowParams);
     expect(view.workspaceFiles).toBe(state.workspaceRemote.workspaceFiles);
-    expect(view.ree.name).toBe(state.reeDraft.reeSpec.name);
-    expect(view.ree.sourceAvailable).toBe(
+    expect(ree.name).toBe(state.reeDraft.reeSpec.name);
+    expect(ree.sourceAvailable).toBe(
       state.workspaceRemote.workspaceSourceState.sourceAvailable ?? false,
     );
   });

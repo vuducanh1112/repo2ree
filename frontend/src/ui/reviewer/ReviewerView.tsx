@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ReviewRepository } from "../../application/ports/ReviewRepository";
+import { useWorkspaceRuntime } from "../../app/browser/BrowserRuntime";
 import type {
   Level,
   StepState,
@@ -27,7 +27,6 @@ interface ReviewerViewProps {
   reviewFiles?: Array<{ path: string; size?: number }>;
   reviewWorkspaceFiles?: Array<{ path: string; size?: number }>;
   onBack: () => void;
-  reviewRepository: ReviewRepository;
   PodOrbitControl: React.ComponentType<{
     level: number;
     levelMeta: Level;
@@ -44,9 +43,9 @@ export function ReviewerView({
   reviewFiles = [],
   reviewWorkspaceFiles = [],
   onBack,
-  reviewRepository,
   PodOrbitControl,
 }: ReviewerViewProps) {
+  const { reviewRepository } = useWorkspaceRuntime();
   const ree = reeInput || createEmptyReeDraftViewModel();
   const [reviewerPage, setReviewerPage] = useState<"review" | "files">("review");
   const [reviewRootFilesState, setReviewRootFilesState] = useState(reviewFiles);

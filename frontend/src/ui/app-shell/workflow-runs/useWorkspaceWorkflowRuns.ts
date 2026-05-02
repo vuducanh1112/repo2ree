@@ -10,6 +10,10 @@ import type { GenericWorkflowParams } from "../../../application/workflow/Workfl
 import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
 import { createWorkflowRunSession } from "../../../application/workflow/workflowRunSession";
 import { createWorkflowStepHandlers } from "../../../application/workflow/workflowStepCommands";
+import {
+  useCancelWorkflowRunMutation,
+  useStartWorkflowRunMutation,
+} from "../../../data/workflow-runs/mutations";
 import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import { splitReeDraftViewModel } from "../../../domain/ree/reeDraftViewModel";
@@ -17,12 +21,6 @@ import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { createDownloadActions } from "../artifact-actions/downloadActions";
 import { createSourceAdapter } from "../source-acquisition/sourceAdapter";
 import { createWorkspaceFilePersistence } from "../workspace-sync/filePersistence";
-import {
-  useCancelWorkflowRunMutation,
-  useStartWorkflowRunMutation,
-  useWorkflowRunLogsQuery,
-  useWorkflowRunQuery,
-} from "../workspace-sync/remoteQueries";
 import { useReeDraftSync } from "../workspace-sync/useReeDraftSync";
 import { executeWorkflowStepCommands } from "./commandExecutors";
 import { createWorkflowRunGateway } from "./workflowRunGateway";
@@ -53,28 +51,8 @@ export function useWorkspaceWorkflowRuns({
   const showToast = (msg: string, type: "info" | "success" | "error" = "info") =>
     dispatch(appShellActions.setToast({ message: msg, type }));
 
-  const startWorkflowRunMutation = useStartWorkflowRunMutation({
-    workflowRunRepository,
-    workspaceId,
-  });
-  const cancelWorkflowRunMutation = useCancelWorkflowRunMutation({
-    workflowRunRepository,
-    workspaceId,
-  });
-  const workflowRunServerState = useWorkflowRunQuery({
-    workflowRunRepository,
-    workspaceId,
-    runId: null,
-    enabled: false,
-  });
-  const workflowRunLogsServerState = useWorkflowRunLogsQuery({
-    workflowRunRepository,
-    workspaceId,
-    runId: null,
-    enabled: false,
-  });
-  void workflowRunServerState;
-  void workflowRunLogsServerState;
+  const startWorkflowRunMutation = useStartWorkflowRunMutation(workspaceId);
+  const cancelWorkflowRunMutation = useCancelWorkflowRunMutation(workspaceId);
 
   const hydrateWorkspace = useCallback(
     (workspace: {
@@ -109,7 +87,6 @@ export function useWorkspaceWorkflowRuns({
 
   const { buildReePatch, refreshWorkspace, refreshWorkspaceFiles } = useReeDraftSync({
     ree: reeDraft,
-    workspaceRepository,
     workspaceId,
     hydrateWorkspace,
   });

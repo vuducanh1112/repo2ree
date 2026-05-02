@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { useWorkspaceRuntime } from "../../app/browser/BrowserRuntime";
 import { APP_ROUTE } from "../../application/app-shell/AppShellPages";
 import { mapReviewDetailToRee } from "../../application/review/mapReviewDetailToRee";
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import { useReviewQuery } from "../../data/reviews/queries";
 import { AppShellView } from "../app-shell/AppShellView";
 import { LandingView } from "../landing/LandingView";
 import { PodOrbitControl } from "../reviewer/PodOrbitControl";
@@ -11,74 +9,35 @@ import { ReviewerView } from "../reviewer/ReviewerView";
 
 function ReviewerRouteView({ onBack }: { onBack: () => void }) {
   const location = useLocation();
-  const { reviewRepository } = useWorkspaceRuntime();
   const reviewId = new URLSearchParams(location.search).get("reviewId") || undefined;
-  const [reviewRee, setReviewRee] = useState<ReeDraftViewModel | undefined>(undefined);
-  const [reviewFiles, setReviewFiles] = useState<Array<{ path: string; size?: number }>>([]);
-  const [reviewWorkspaceFiles, setReviewWorkspaceFiles] = useState<
-    Array<{ path: string; size?: number }>
-  >([]);
-  const [loadingReview, setLoadingReview] = useState(false);
-  const [loadError, setLoadError] = useState("");
+  const reviewQuery = useReviewQuery(reviewId);
+  const reviewDetail = reviewQuery.data;
 
-  useEffect(() => {
-    if (!reviewId) {
-      setReviewRee(undefined);
-      setReviewFiles([]);
-      setReviewWorkspaceFiles([]);
-      setLoadError("");
-      setLoadingReview(false);
-      return;
-    }
-
-    let canceled = false;
-    const fetchReview = async () => {
-      setLoadingReview(true);
-      setLoadError("");
-      try {
-        const detail = await reviewRepository.getReview(reviewId);
-        if (!canceled) {
-          setReviewRee(mapReviewDetailToRee(detail));
-          setReviewFiles(
-            (detail.files || []).map((file) => ({ path: file.path, size: file.size })),
-          );
-          setReviewWorkspaceFiles(
-            (detail.workspaceFiles || []).map((file) => ({ path: file.path, size: file.size })),
-          );
-        }
-      } catch (error) {
-        if (!canceled) {
-          setLoadError(error instanceof Error ? error.message : "Failed to load review");
-        }
-      } finally {
-        if (!canceled) {
-          setLoadingReview(false);
-        }
-      }
-    };
-
-    void fetchReview();
-    return () => {
-      canceled = true;
-    };
-  }, [reviewId, reviewRepository]);
-
-  if (loadingReview) {
+  if (reviewQuery.isPending) {
     return <div style={{ padding: 24 }}>Loading review…</div>;
   }
 
-  if (loadError) {
-    return <div style={{ padding: 24, color: "#b91c1c" }}>{loadError}</div>;
+  if (reviewQuery.error) {
+    return (
+      <div style={{ padding: 24, color: "#b91c1c" }}>
+        {reviewQuery.error.message || "Failed to load review"}
+      </div>
+    );
   }
 
   return (
     <ReviewerView
       reviewId={reviewId}
-      ree={reviewRee}
-      reviewFiles={reviewFiles}
-      reviewWorkspaceFiles={reviewWorkspaceFiles}
+      ree={reviewDetail ? mapReviewDetailToRee(reviewDetail) : undefined}
+      reviewFiles={(reviewDetail?.files || []).map((file) => ({
+        path: file.path,
+        size: file.size,
+      }))}
+      reviewWorkspaceFiles={(reviewDetail?.workspaceFiles || []).map((file) => ({
+        path: file.path,
+        size: file.size,
+      }))}
       onBack={onBack}
-      reviewRepository={reviewRepository}
       PodOrbitControl={PodOrbitControl}
     />
   );

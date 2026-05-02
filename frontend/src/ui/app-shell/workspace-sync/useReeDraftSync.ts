@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
 import {
   shouldHydrateRemoteRee,
   shouldScheduleReeDraftSync,
 } from "../../../application/workspace/syncReeDraft";
+import { useUpdateReeDraftMutation } from "../../../data/ree/mutations";
+import { useRefreshReeQuery } from "../../../data/ree/queries";
 import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import { toReePatch } from "../../../domain/ree/reePatch";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import { useUpdateReeDraftMutation, useWorkspaceQuery } from "./remoteQueries";
 
 interface HydratedWorkspaceSnapshot {
   workspaceFiles: FileTreeNode[];
@@ -18,33 +18,20 @@ interface HydratedWorkspaceSnapshot {
 
 interface UseReeDraftSyncArgs {
   ree: ReeDraftViewModel;
-  workspaceRepository: WorkspaceRepository<FileTreeNode>;
   workspaceId: string;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
 
-export function useReeDraftSync({
-  ree,
-  workspaceRepository,
-  workspaceId,
-  hydrateWorkspace,
-}: UseReeDraftSyncArgs) {
+export function useReeDraftSync({ ree, workspaceId, hydrateWorkspace }: UseReeDraftSyncArgs) {
   const initialPatchKey = JSON.stringify(toReePatch(ree));
   const lastSyncedReeRef = useRef<string>(initialPatchKey);
   const latestLocalPatchKeyRef = useRef<string>(initialPatchKey);
   const isSyncingReeRef = useRef<boolean>(false);
   const hasHydratedRemoteReeRef = useRef<boolean>(false);
+  // Debounce REE draft persistence so typing does not round-trip on every keystroke.
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const workspaceQuery = useWorkspaceQuery({
-    workspaceRepository,
-    workspaceId,
-    enabled: false,
-  });
-  const { refresh: fetchWorkspace } = workspaceQuery;
-  const { mutateAsync: updateReeDraft } = useUpdateReeDraftMutation({
-    workspaceRepository,
-    workspaceId,
-  });
+  const fetchWorkspace = useRefreshReeQuery(workspaceId);
+  const { mutateAsync: updateReeDraft } = useUpdateReeDraftMutation(workspaceId);
 
   const refreshWorkspace = useCallback(
     async (options: { forceReeHydration?: boolean } = {}): Promise<HydratedWorkspaceSnapshot> => {

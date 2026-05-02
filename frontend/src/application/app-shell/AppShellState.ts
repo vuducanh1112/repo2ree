@@ -1,5 +1,5 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
-import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
+import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
@@ -8,7 +8,6 @@ import type {
   WorkflowLogs,
   WorkflowParams,
 } from "../../domain/ree/ReeTypes";
-import { toReeDraftViewModel } from "../../domain/ree/reeDraftViewModel";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
@@ -21,11 +20,6 @@ import { normalizeAppShellPage } from "./AppShellNavigation";
 import type { AppShellPage } from "./AppShellPages";
 
 export interface AppShellState {
-  /**
-   * @deprecated To be deleted in Phase 4 once consumers read from slices and
-   * React Query directly instead of the aggregate REE draft view model.
-   */
-  ree: ReeDraftViewModel;
   locked: boolean;
   repoMode: "url" | "upload";
   actionStates: ActionStates;
@@ -76,19 +70,11 @@ export function createAppShellState(params: {
   uiChrome: UiChromeState;
   workspaceRemote: WorkspaceRemoteState;
 }): AppShellState {
-  const ree = toReeDraftViewModel({
-    reeSpec: params.reeDraft.reeSpec,
-    workspaceSourceState: params.workspaceRemote.workspaceSourceState,
-    artifactStatus: params.workspaceRemote.artifactStatus,
-    evaluationState: params.workflowRun.evaluationState,
-  });
-
   return {
     ...params.reeDraft,
     ...params.workflowRun,
     ...params.uiChrome,
     ...params.workspaceRemote,
-    ree,
   };
 }
 export function normalizeUiChromePage(

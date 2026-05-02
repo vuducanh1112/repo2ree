@@ -5,6 +5,7 @@ import type {
   AutomationStepKey,
   AutomationStepRunParams,
 } from "../../../application/workflow/WorkflowTypes";
+import { useReeQuery } from "../../../data/ree/queries";
 import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile, SourceUploadCommit, WorkflowParams } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
@@ -18,9 +19,19 @@ export function useAppShell() {
   const workflowRun = appShellSelectors.workflowRun(state);
   const uiChrome = appShellSelectors.uiChrome(state);
   const ree = appShellSelectors.reeDraftViewModel(state);
+  const reeQuery = useReeQuery();
 
   const { showReviewPreview } = uiChrome;
-  const { workspaceFiles, reeArtifactFiles } = workspaceRemote;
+  const workspaceFiles = reeQuery.data?.files ?? workspaceRemote.workspaceFiles;
+  const reeArtifactFiles = reeQuery.data?.reeFiles ?? workspaceRemote.reeArtifactFiles;
+  const resolvedWorkspaceRemote = useMemo(
+    () => ({
+      ...workspaceRemote,
+      workspaceFiles,
+      reeArtifactFiles,
+    }),
+    [reeArtifactFiles, workspaceFiles, workspaceRemote],
+  );
 
   const currentReeFiles = useMemo<ReeFile[]>(() => reeArtifactFiles || [], [reeArtifactFiles]);
 
@@ -85,7 +96,7 @@ export function useAppShell() {
   return {
     reeDraft,
     ree,
-    workspaceRemote,
+    workspaceRemote: resolvedWorkspaceRemote,
     workflowRun,
     uiChrome,
     level,
