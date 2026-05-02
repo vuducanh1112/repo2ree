@@ -114,7 +114,7 @@ describe("appShellState", () => {
     expect(view.workspaceFiles).toBe(state.workspaceRemote.workspaceFiles);
     expect(view.ree.name).toBe(state.reeDraft.reeSpec.name);
     expect(view.ree.sourceAvailable).toBe(
-      state.workspaceRemote.workspaceSourceState.sourceAvailable,
+      state.workspaceRemote.workspaceSourceState.sourceAvailable ?? false,
     );
   });
 });
