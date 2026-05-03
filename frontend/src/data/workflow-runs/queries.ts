@@ -1,13 +1,15 @@
 import { type QueryClient, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useWorkspaceRuntime, type WorkspaceRuntimeValue } from "../../app/browser/BrowserRuntime";
+import type { LogLine } from "../../domain/ree/ReeTypes";
 import type {
-  LogLine,
   WorkflowRunLogChunk,
   WorkflowRunRecord,
   WorkflowRunStatus,
-} from "../../application/ports/repositoryTypes";
+} from "../../domain/workflow/WorkflowRun";
+import { useApiRuntime } from "../apiRuntime";
 import { resolveWorkspaceId } from "../client";
 import { queryKeys } from "../queryKeys";
+import type { WorkflowRunsClient } from "./client";
+import { useWorkflowRunsClient } from "./client";
 
 const TERMINAL_STATUSES = new Set<WorkflowRunStatus>(["succeeded", "failed", "canceled"]);
 const MAX_LOG_LINES = 2000;
@@ -44,18 +46,18 @@ function resolveRunTimestamp(run: WorkflowRunRecord | undefined, fallback: strin
 }
 
 function createWorkflowRunQueryOptions(
-  runtime: WorkspaceRuntimeValue,
+  workflowRunsClient: WorkflowRunsClient,
   workspaceId: string,
   runId: string,
 ) {
   return queryOptions({
     queryKey: queryKeys.workflowRun(workspaceId, runId),
-    queryFn: () => runtime.workflowRunRepository.getWorkflowRun(workspaceId, runId),
+    queryFn: () => workflowRunsClient.getWorkflowRun(workspaceId, runId),
   });
 }
 
 function createWorkflowRunLogsQueryOptions(
-  runtime: WorkspaceRuntimeValue,
+  workflowRunsClient: WorkflowRunsClient,
   workspaceId: string,
   runId: string,
 ) {
@@ -67,7 +69,7 @@ function createWorkflowRunLogsQueryOptions(
       let lines: LogLine[] = [];
 
       for (let page = 0; page < MAX_LOG_PAGES; page += 1) {
-        chunk = await runtime.workflowRunRepository.getWorkflowRunLogs(workspaceId, runId, cursor);
+        chunk = await workflowRunsClient.getWorkflowRunLogs(workspaceId, runId, cursor);
         lines = mergeCappedLines(lines, chunk.lines);
         if (!chunk.hasMore) {
           break;
@@ -88,29 +90,34 @@ function createWorkflowRunLogsQueryOptions(
 
 async function fetchWorkflowRun(
   queryClient: QueryClient,
-  runtime: WorkspaceRuntimeValue,
+  workflowRunsClient: WorkflowRunsClient,
   workspaceId: string,
   runId: string,
 ) {
-  return queryClient.fetchQuery(createWorkflowRunQueryOptions(runtime, workspaceId, runId));
+  return queryClient.fetchQuery(
+    createWorkflowRunQueryOptions(workflowRunsClient, workspaceId, runId),
+  );
 }
 
 async function fetchWorkflowRunLogs(
   queryClient: QueryClient,
-  runtime: WorkspaceRuntimeValue,
+  workflowRunsClient: WorkflowRunsClient,
   workspaceId: string,
   runId: string,
 ) {
-  return queryClient.fetchQuery(createWorkflowRunLogsQueryOptions(runtime, workspaceId, runId));
+  return queryClient.fetchQuery(
+    createWorkflowRunLogsQueryOptions(workflowRunsClient, workspaceId, runId),
+  );
 }
 
 export function useWorkflowRunQuery(workspaceId: string | undefined, runId: string | undefined) {
-  const runtime = useWorkspaceRuntime();
+  const runtime = useApiRuntime();
+  const workflowRunsClient = useWorkflowRunsClient();
   const resolvedWorkspaceId = resolveWorkspaceId(runtime, workspaceId);
 
   return useQuery({
     ...(runId
-      ? createWorkflowRunQueryOptions(runtime, resolvedWorkspaceId, runId)
+      ? createWorkflowRunQueryOptions(workflowRunsClient, resolvedWorkspaceId, runId)
       : {
           queryKey: queryKeys.workflowRun(resolvedWorkspaceId, "idle"),
           queryFn: async () => {
@@ -127,11 +134,12 @@ export function useWorkflowRunLogsQuery(
   workspaceId: string | undefined,
   runId: string | undefined,
 ) {
-  const runtime = useWorkspaceRuntime();
+  const runtime = useApiRuntime();
+  const workflowRunsClient = useWorkflowRunsClient();
   const queryClient = useQueryClient();
   const resolvedWorkspaceId = resolveWorkspaceId(runtime, workspaceId);
   const baseOptions = runId
-    ? createWorkflowRunLogsQueryOptions(runtime, resolvedWorkspaceId, runId)
+    ? createWorkflowRunLogsQueryOptions(workflowRunsClient, resolvedWorkspaceId, runId)
     : {
         queryKey: queryKeys.workflowRunLogs(resolvedWorkspaceId, "idle"),
         queryFn: async () => {
@@ -156,24 +164,29 @@ export function useWorkflowRunLogsQuery(
 
 export async function observeWorkflowRun(
   queryClient: QueryClient,
-  runtime: WorkspaceRuntimeValue,
+  workflowRunsClient: WorkflowRunsClient,
   args: {
-    workspaceId?: string;
+    workspaceId: string;
     runId: string;
     onUpdate?: (update: { status: WorkflowRunStatus; lines: LogLine[]; ts: string }) => void;
     timeoutMs?: number;
     sleep?: (ms: number) => Promise<void>;
   },
 ) {
-  const workspaceId = resolveWorkspaceId(runtime, args.workspaceId);
+  const workspaceId = args.workspaceId;
   const startedAt = Date.now();
   const sleep =
     args.sleep ??
     ((ms: number) => new Promise<void>((resolve) => globalThis.setTimeout(resolve, ms)));
 
   while (true) {
-    const run = await fetchWorkflowRun(queryClient, runtime, workspaceId, args.runId);
-    const logs = await fetchWorkflowRunLogs(queryClient, runtime, workspaceId, args.runId);
+    const run = await fetchWorkflowRun(queryClient, workflowRunsClient, workspaceId, args.runId);
+    const logs = await fetchWorkflowRunLogs(
+      queryClient,
+      workflowRunsClient,
+      workspaceId,
+      args.runId,
+    );
     const snapshot = {
       status: run.status,
       lines: logs.lines,

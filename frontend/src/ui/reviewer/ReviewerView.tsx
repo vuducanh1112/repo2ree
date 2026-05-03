@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useWorkspaceRuntime } from "../../app/browser/BrowserRuntime";
 import type {
   Level,
   StepState,
   WorkflowParamValue,
 } from "../../application/workflow/WorkflowStepTypes";
+import { useReviewClient } from "../../data/reviews/client";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { createEmptyReeViewState } from "../../domain/ree/ReeViewState";
@@ -45,7 +45,7 @@ export function ReviewerView({
   onBack,
   PodOrbitControl,
 }: ReviewerViewProps) {
-  const { reviewRepository } = useWorkspaceRuntime();
+  const reviewClient = useReviewClient();
   const ree = reeInput || createEmptyReeViewState();
   const [reviewerPage, setReviewerPage] = useState<"review" | "files">("review");
   const [reviewRootFilesState, setReviewRootFilesState] = useState(reviewFiles);
@@ -76,7 +76,7 @@ export function ReviewerView({
 
   const refreshReviewFiles = async () => {
     if (!reviewId) return;
-    const detail = await reviewRepository.getReview(reviewId);
+    const detail = await reviewClient.getReview(reviewId);
     setReviewRootFilesState(
       (detail.files || []).map((file) => ({ path: file.path, size: file.size })),
     );
@@ -124,17 +124,17 @@ export function ReviewerView({
       if (!ree.origin_url || !ree.source_type) {
         throw new Error("origin_url and source_type are required to acquire source");
       }
-      runId = (await reviewRepository.acquireSource(reviewId)).runId;
+      runId = (await reviewClient.acquireSource(reviewId)).runId;
     } else if (key === "build_runtime") {
       runId = (
-        await reviewRepository.createBuildRuntimeRun(reviewId, {
+        await reviewClient.createBuildRuntimeRun(reviewId, {
           build_runtime_script_path: ree.build_runtime_script,
           produced_runtime_path: ree.runtime,
         })
       ).runId;
     } else {
       runId = (
-        await reviewRepository.createActivationTestRun(reviewId, {
+        await reviewClient.createActivationTestRun(reviewId, {
           activation_script_path: ree.activation_script,
         })
       ).runId;
@@ -146,7 +146,7 @@ export function ReviewerView({
     let cursor: string | undefined;
 
     for (let index = 0; index < 120; index += 1) {
-      const logs = await reviewRepository.listRunLogs(reviewId, runId, cursor);
+      const logs = await reviewClient.listRunLogs(reviewId, runId, cursor);
       for (const line of logs.lines) {
         const dedupeKey = `${line.ts || ""}::${line.type}::${line.msg}`;
         if (seen.has(dedupeKey)) continue;
@@ -156,9 +156,9 @@ export function ReviewerView({
       cursor = logs.nextCursor;
       setStepLogs((current) => ({ ...current, [key]: [...collected] }));
 
-      if (isTerminalStatus((await reviewRepository.getRun(reviewId, runId)).status)) {
+      if (isTerminalStatus((await reviewClient.getRun(reviewId, runId)).status)) {
         while (logs.hasMore && cursor) {
-          const nextLogs = await reviewRepository.listRunLogs(reviewId, runId, cursor);
+          const nextLogs = await reviewClient.listRunLogs(reviewId, runId, cursor);
           for (const line of nextLogs.lines) {
             const dedupeKey = `${line.ts || ""}::${line.type}::${line.msg}`;
             if (seen.has(dedupeKey)) continue;
@@ -167,7 +167,7 @@ export function ReviewerView({
           }
           cursor = nextLogs.nextCursor;
         }
-        const run = await reviewRepository.getRun(reviewId, runId);
+        const run = await reviewClient.getRun(reviewId, runId);
         if (run.status === "canceled") {
           collected.push({ type: "warn", msg: "Run canceled" });
         } else if (run.status !== "succeeded") {
@@ -225,7 +225,7 @@ export function ReviewerView({
     const runId = stepRunIds[key];
     if (!reviewId || !runId) return;
     try {
-      await reviewRepository.cancelRun(reviewId, runId);
+      await reviewClient.cancelRun(reviewId, runId);
       setStepLogs((current) => ({
         ...current,
         [key]: [...(current[key] || []), { type: "warn", msg: "Cancel requested by reviewer" }],

@@ -1,8 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppShellClock } from "../../../application/app-shell/AppShellPorts";
-import { serializeWorkspaceResetPayload } from "../../../application/ports/repositoryTypes";
-import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
-import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
 import { createSourceUseCase } from "../../../application/workspace/acquireSource";
 import {
   type SourceCommand,
@@ -10,9 +7,12 @@ import {
   sourceFailureCommands,
 } from "../../../application/workspace/sourceAcquisitionCommands";
 import { runSourceWorkspaceAction } from "../../../application/workspace/sourceAcquisitionLifecycle";
+import type { WorkspaceClient } from "../../../data/ree/client";
+import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
 import type { SourceUploadCommit } from "../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
+import { serializeWorkspaceResetPayload } from "../../../domain/workspace/WorkspaceReset";
 import {
   executeSourceCommands,
   type WorkspaceWorkflowDispatch,
@@ -30,8 +30,8 @@ export function resetWorkflowOnSourceChange(
 
 interface CreateSourceActionsArgs {
   ree: ReeViewState;
-  workspaceRepository: WorkspaceRepository<FileTreeNode>;
-  workflowRunRepository: WorkflowRunRepository;
+  workspaceClient: WorkspaceClient<FileTreeNode>;
+  workflowRunsClient: WorkflowRunsClient;
   workspaceId: string;
   queryClient: QueryClient;
   dispatch: WorkspaceWorkflowDispatch;
@@ -46,8 +46,8 @@ interface CreateSourceActionsArgs {
 
 export function createSourceActions({
   ree,
-  workspaceRepository,
-  workflowRunRepository,
+  workspaceClient,
+  workflowRunsClient,
   workspaceId,
   queryClient,
   dispatch,
@@ -67,13 +67,13 @@ export function createSourceActions({
     runParams: Record<string, string | boolean | number | null | undefined>,
   ) =>
     runSourceWorkspaceAction({
-      workspaceRepository,
-      workflowRunRepository,
+      workspaceClient,
+      workflowRunClient: workflowRunsClient,
       workspaceId,
       resetPayload: serializeWorkspaceResetPayload(resetRequest),
       runParams,
       pollRun: (workspaceId, runId, onUpdateLogs) =>
-        pollWorkflowRun(queryClient, workflowRunRepository, {
+        pollWorkflowRun(queryClient, workflowRunsClient, {
           workspaceId,
           runId,
           onUpdate: onUpdateLogs,
@@ -96,7 +96,7 @@ export function createSourceActions({
     sourceChanged: onSourceChange,
     runSourceAction: runRemoteOrLocalSourceAction,
     refreshWorkspaceFiles,
-    clearWorkspace: () => workspaceRepository.resetWorkspaceRequest(workspaceId, { mode: "clear" }),
+    clearWorkspace: () => workspaceClient.resetWorkspaceRequest(workspaceId, { mode: "clear" }),
     nowIso: clock.nowIso,
   });
 

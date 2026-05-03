@@ -6,8 +6,8 @@ describe("runSourceWorkspaceAction", () => {
     const resetWorkspaceRequest = vi.fn(async () => {});
 
     const result = await runSourceWorkspaceAction({
-      workspaceRepository: { resetWorkspaceRequest },
-      workflowRunRepository: {
+      workspaceClient: { resetWorkspaceRequest },
+      workflowRunClient: {
         startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
       },
       workspaceId: "active",
@@ -30,10 +30,10 @@ describe("runSourceWorkspaceAction", () => {
     });
 
     const result = await runSourceWorkspaceAction({
-      workspaceRepository: {
+      workspaceClient: {
         resetWorkspaceRequest: vi.fn(async () => {}),
       },
-      workflowRunRepository: {
+      workflowRunClient: {
         startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
       },
       workspaceId: "active",

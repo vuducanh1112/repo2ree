@@ -1,16 +1,14 @@
 import type { AppShellRuntimePorts } from "../../../application/app-shell/AppShellPorts";
-import type { ArtifactRepository } from "../../../application/ports/ArtifactRepository";
-import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
 import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
 } from "../../../application/workspace/workspaceFileMutationPlanning";
+import type { WorkspaceClient } from "../../../data/ree/client";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { ShowToast } from "../workflow-runs/types";
 
 interface CreateDownloadActionsArgs {
-  workspaceRepository: WorkspaceRepository<FileTreeNode>;
-  artifactRepository: ArtifactRepository;
+  workspaceClient: WorkspaceClient<FileTreeNode>;
   workspaceId: string;
   ports: AppShellRuntimePorts;
   getReeName: () => string;
@@ -19,8 +17,7 @@ interface CreateDownloadActionsArgs {
 }
 
 export function createDownloadActions({
-  workspaceRepository,
-  artifactRepository,
+  workspaceClient,
   workspaceId,
   ports,
   getReeName,
@@ -29,7 +26,7 @@ export function createDownloadActions({
 }: CreateDownloadActionsArgs) {
   const downloadWorkspaceFile = async (path: string, suggestedName?: string): Promise<void> => {
     try {
-      const fileBytes = await workspaceRepository.getFileBytes(workspaceId, path);
+      const fileBytes = await workspaceClient.getFileBytes(workspaceId, path);
       const plan = planWorkspaceFileDownload(path, suggestedName);
       ports.browserDownloads.downloadBlob(fileBytes, {
         fileName: plan.downloadName,
@@ -49,8 +46,8 @@ export function createDownloadActions({
   const handleDownloadRee = () => {
     const runDownload = async () => {
       try {
-        await workspaceRepository.updateReeDraft(workspaceId, buildReePatch());
-        const archiveDownload = await artifactRepository.getReeArchive(workspaceId);
+        await workspaceClient.updateReeDraft(workspaceId, buildReePatch());
+        const archiveDownload = await workspaceClient.getReeArchive(workspaceId);
         const plan = planReeArchiveDownload(getReeName(), archiveDownload.fileName);
         ports.browserDownloads.downloadBlob(archiveDownload.bytes, {
           fileName: plan.archiveFileName,

@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppShellClock } from "../../../application/app-shell/AppShellPorts";
-import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
-import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
+import type { WorkspaceClient } from "../../../data/ree/client";
+import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { WorkspaceWorkflowDispatch } from "../workflow-runs/commandExecutors";
@@ -10,8 +10,8 @@ import { createSourceActions, resetWorkflowOnSourceChange } from "./sourceLifecy
 
 interface CreateSourceAdapterArgs {
   ree: ReeViewState;
-  workspaceRepository: WorkspaceRepository<FileTreeNode>;
-  workflowRunRepository: WorkflowRunRepository;
+  workspaceClient: WorkspaceClient<FileTreeNode>;
+  workflowRunsClient: WorkflowRunsClient;
   workspaceId: string;
   queryClient: QueryClient;
   dispatch: WorkspaceWorkflowDispatch;
@@ -25,8 +25,8 @@ interface CreateSourceAdapterArgs {
 
 export function createSourceAdapter({
   ree,
-  workspaceRepository,
-  workflowRunRepository,
+  workspaceClient,
+  workflowRunsClient,
   workspaceId,
   queryClient,
   dispatch,
@@ -43,8 +43,8 @@ export function createSourceAdapter({
 
   const sourceActions = createSourceActions({
     ree,
-    workspaceRepository,
-    workflowRunRepository,
+    workspaceClient,
+    workflowRunsClient,
     workspaceId,
     queryClient,
     dispatch,

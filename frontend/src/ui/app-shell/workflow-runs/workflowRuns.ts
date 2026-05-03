@@ -1,18 +1,15 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppShellRuntimePorts } from "../../../application/app-shell/AppShellPorts";
-import type {
-  WorkflowRunLogEntry,
-  WorkflowRunRecord,
-} from "../../../application/ports/repositoryTypes";
-import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
 import { executeWorkflowStep } from "../../../application/workflow/executeWorkflowStep";
 import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type {
   WorkflowStepCommand,
   WorkflowStepHandlerMap,
 } from "../../../application/workflow/workflowStepCommands";
-import type { ReeFile } from "../../../domain/ree/ReeTypes";
+import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
+import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";
+import type { WorkflowRunRecord } from "../../../domain/workflow/WorkflowRun";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { executeWorkflowStepCommands, type WorkspaceWorkflowDispatch } from "./commandExecutors";
 import { pollWorkflowRun } from "./pollWorkflowRun";
@@ -28,7 +25,7 @@ interface ExecuteServiceRunArgs {
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
   workflowStepHandlers: WorkflowStepHandlerMap;
-  workflowRunRepository: WorkflowRunRepository;
+  workflowRunsClient: WorkflowRunsClient;
   workspaceId: string;
   queryClient: QueryClient;
   startWorkflowRun: (
@@ -55,7 +52,7 @@ export async function executeWorkflowRunAction({
   persistWorkspaceFile,
   showToast,
   workflowStepHandlers,
-  workflowRunRepository,
+  workflowRunsClient,
   workspaceId,
   queryClient,
   startWorkflowRun,
@@ -63,7 +60,7 @@ export async function executeWorkflowRunAction({
   refreshWorkspace,
   onRunStarted,
   onRunFinished,
-}: ExecuteServiceRunArgs): Promise<WorkflowRunLogEntry> {
+}: ExecuteServiceRunArgs): Promise<LogEntry> {
   const runCommands = (commands: WorkflowStepCommand[]) =>
     executeWorkflowStepCommands(commands, { dispatch, persistWorkspaceFile, showToast });
   return executeWorkflowStep({
@@ -75,7 +72,7 @@ export async function executeWorkflowRunAction({
     workflowRunner: {
       startWorkflowRun: (scriptKey, runParams) => startWorkflowRun(scriptKey, runParams),
       pollRun: (runId, onUpdateLogs) =>
-        pollWorkflowRun(queryClient, workflowRunRepository, {
+        pollWorkflowRun(queryClient, workflowRunsClient, {
           workspaceId,
           runId,
           onUpdate: onUpdateLogs,

@@ -14,7 +14,7 @@ function downloadBlob(bytes: BlobPart, options: { fileName: string; mimeType: st
   URL.revokeObjectURL(url);
 }
 
-export function createBrowserRuntimePorts(): AppShellRuntimePorts {
+function createAppShellPorts(): AppShellRuntimePorts {
   return {
     clock: {
       nowIso: () => new Date().toISOString(),
@@ -33,3 +33,5 @@ export function createBrowserRuntimePorts(): AppShellRuntimePorts {
     browserDownloads: { downloadBlob },
   };
 }
+
+export const appShellPorts = createAppShellPorts();

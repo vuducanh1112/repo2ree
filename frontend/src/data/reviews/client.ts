@@ -1,47 +1,36 @@
+import { useMemo } from "react";
 import type {
-  ReviewRepository,
+  ReviewClient,
+  ReviewDetail,
   ReviewUploadCompleteRequest,
   ReviewUploadCompleteResponse,
   ReviewUploadInitRequest,
   ReviewUploadInitResponse,
-} from "../../application/ports/ReviewRepository";
+} from "../../domain/review/ReviewTypes";
 import type {
   WorkflowRunLogChunk,
   WorkflowRunRecord,
   WorkflowRunStatus,
-} from "../../application/ports/repositoryTypes";
-import { ApiClient, mapRunLogsToLegacy, ReviewsApi } from "../api";
+} from "../../domain/workflow/WorkflowRun";
+import { mapRunLogsToLegacy } from "../../infra/api/WorkflowRunsApi";
+import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 
-interface CreateHttpReviewRepositoryOptions {
-  baseUrl?: string;
-  headers?: Record<string, string>;
-}
+function createReviewClient(runtime: ApiRuntimeValue): ReviewClient {
+  const api = runtime.reviewsApi;
 
-function mapReviewRun(run: {
-  runId: string;
-  status: WorkflowRunStatus;
-  createdAt: string;
-  startedAt?: string;
-  finishedAt?: string;
-}): WorkflowRunRecord {
-  return {
+  const mapReviewRun = (run: {
+    runId: string;
+    status: WorkflowRunStatus;
+    createdAt: string;
+    startedAt?: string;
+    finishedAt?: string;
+  }): WorkflowRunRecord => ({
     runId: run.runId,
     status: run.status,
     createdAt: run.createdAt,
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
-  };
-}
-
-export function createHttpReviewRepository(
-  options: CreateHttpReviewRepositoryOptions = {},
-): ReviewRepository {
-  const api = new ReviewsApi(
-    new ApiClient({
-      baseUrl: options.baseUrl,
-      headers: options.headers,
-    }),
-  );
+  });
 
   return {
     initReviewUpload: (payload: ReviewUploadInitRequest): Promise<ReviewUploadInitResponse> =>
@@ -51,7 +40,7 @@ export function createHttpReviewRepository(
       reviewId,
       payload: ReviewUploadCompleteRequest,
     ): Promise<ReviewUploadCompleteResponse> => api.completeReviewUpload(reviewId, payload),
-    getReview: (reviewId) => api.getReview(reviewId),
+    getReview: (reviewId): Promise<ReviewDetail> => api.getReview(reviewId),
     acquireSource: async (reviewId) => mapReviewRun(await api.acquireSource(reviewId)),
     createBuildRuntimeRun: async (reviewId, payload) =>
       mapReviewRun(await api.createBuildRuntimeRun(reviewId, payload)),
@@ -71,4 +60,9 @@ export function createHttpReviewRepository(
       };
     },
   };
+}
+
+export function useReviewClient(): ReviewClient {
+  const runtime = useApiRuntime();
+  return useMemo(() => createReviewClient(runtime), [runtime]);
 }

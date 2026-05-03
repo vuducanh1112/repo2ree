@@ -2,7 +2,7 @@ import { normalizeHBOM } from "../../domain/hbom/HbomSummary";
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { toReeViewState } from "../../domain/ree/ReeViewState";
-import type { ReviewDetail } from "../ports/ReviewRepository";
+import type { ReviewDetail } from "../../domain/review/ReviewTypes";
 
 interface MapRawReeDraftToReeOptions {
   reeDraft: Record<string, unknown> | null | undefined;

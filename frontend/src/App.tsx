@@ -1,51 +1,37 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { AppBootstrap } from "./app/bootstrap/AppBootstrap";
-import { WorkspaceRuntimeProvider, type WorkspaceRuntimeValue } from "./app/browser/BrowserRuntime";
-import { createBrowserRuntimePorts } from "./app/browser/BrowserRuntimePorts";
 import { WORKSPACE_ID } from "./app/config/WorkspaceConstants";
 import { createAppQueryClient } from "./app/query/queryClient";
-import { createHttpArtifactRepository } from "./infra/repositories/HttpArtifactRepository";
-import { createHttpRepositoryClient } from "./infra/repositories/HttpRepositoryClient";
-import { createHttpReviewRepository } from "./infra/repositories/HttpReviewRepository";
-import { createHttpWorkflowRunRepository } from "./infra/repositories/HttpWorkflowRunRepository";
-import { createHttpWorkspaceRepository } from "./infra/repositories/HttpWorkspaceRepository";
+import { ApiClientProvider } from "./data/apiRuntime";
 import { AppShellProvider } from "./ui/app-shell/providers/AppShellProvider";
 
 export default function App() {
   const queryClient = useMemo(() => createAppQueryClient(), []);
-  const runtime = useMemo<WorkspaceRuntimeValue>(() => {
+  const runtimeConfig = useMemo(() => {
     const env =
       (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {};
     const reeIdFromQuery =
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("reeId") || undefined
         : undefined;
-    const repositoryClient = createHttpRepositoryClient({
+    return {
       baseUrl: env.VITE_API_BASE_URL || "",
       initialWorkspaceId: reeIdFromQuery,
-    });
-    const ports = createBrowserRuntimePorts();
-
-    return {
-      workspaceId: WORKSPACE_ID,
-      ports,
-      workspaceRepository: createHttpWorkspaceRepository(repositoryClient),
-      workflowRunRepository: createHttpWorkflowRunRepository(repositoryClient),
-      artifactRepository: createHttpArtifactRepository(repositoryClient),
-      reviewRepository: createHttpReviewRepository({
-        baseUrl: env.VITE_API_BASE_URL || "",
-      }),
     };
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <WorkspaceRuntimeProvider value={runtime}>
+      <ApiClientProvider
+        baseUrl={runtimeConfig.baseUrl}
+        initialWorkspaceId={runtimeConfig.initialWorkspaceId}
+        workspaceId={WORKSPACE_ID}
+      >
         <AppShellProvider>
           <AppBootstrap />
         </AppShellProvider>
-      </WorkspaceRuntimeProvider>
+      </ApiClientProvider>
     </QueryClientProvider>
   );
 }

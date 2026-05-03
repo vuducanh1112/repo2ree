@@ -1,20 +1,22 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
-import { useWorkspaceRuntime } from "../../../app/browser/BrowserRuntime";
+import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
 import type { AppShellAction } from "../../../application/app-shell";
 import { appShellActions } from "../../../application/app-shell";
 import { planSealArtifactCommands } from "../../../application/artifact/sealArtifactCommands";
-import type { WorkflowRunLogEntry } from "../../../application/ports/repositoryTypes";
 import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
 import { createWorkflowRunSession } from "../../../application/workflow/workflowRunSession";
 import { createWorkflowStepHandlers } from "../../../application/workflow/workflowStepCommands";
+import { useApiRuntime } from "../../../data/apiRuntime";
+import { useWorkspaceClient } from "../../../data/ree/client";
+import { useWorkflowRunsClient } from "../../../data/workflow-runs/client";
 import {
   useCancelWorkflowRunMutation,
   useStartWorkflowRunMutation,
 } from "../../../data/workflow-runs/mutations";
-import type { ReeFile } from "../../../domain/ree/ReeTypes";
+import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
 import { type ReeViewState, splitReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { createDownloadActions } from "../artifact-actions/downloadActions";
@@ -37,13 +39,15 @@ export function useWorkspaceWorkflowRuns({
   level,
   workspaceFiles,
 }: UseWorkspaceWorkflowArgs) {
-  const { artifactRepository, ports, workflowRunRepository, workspaceId, workspaceRepository } =
-    useWorkspaceRuntime();
+  const { workspaceId } = useApiRuntime();
+  const workspaceClient = useWorkspaceClient();
+  const workflowRunsClient = useWorkflowRunsClient();
+  const ports = appShellPorts;
   const queryClient = useQueryClient();
   const automationSessionRef = useRef(createWorkflowRunSession());
   const automationSession = automationSessionRef.current;
   const executeWorkflowRunRef = useRef<
-    (key: string, params?: GenericWorkflowParams) => Promise<WorkflowRunLogEntry>
+    (key: string, params?: GenericWorkflowParams) => Promise<LogEntry>
   >(async () => {
     throw new Error("Workflow run executor is not ready");
   });
@@ -80,7 +84,7 @@ export function useWorkspaceWorkflowRuns({
   });
 
   const { persistWorkspaceFile } = createWorkspaceFilePersistence({
-    workspaceRepository,
+    workspaceClient,
     workspaceId,
     refreshWorkspaceFiles,
     showToast,
@@ -113,7 +117,7 @@ export function useWorkspaceWorkflowRuns({
     },
     showToast,
     workflowStepHandlers,
-    workflowRunRepository,
+    workflowRunsClient,
     workspaceId,
     queryClient,
     startWorkflowRun: (scriptKey, params) =>
@@ -126,8 +130,8 @@ export function useWorkspaceWorkflowRuns({
 
   const sourceAdapter = createSourceAdapter({
     ree: reeDraft,
-    workspaceRepository,
-    workflowRunRepository,
+    workspaceClient,
+    workflowRunsClient,
     workspaceId,
     queryClient,
     dispatch,
@@ -161,8 +165,7 @@ export function useWorkspaceWorkflowRuns({
   };
 
   const { downloadWorkspaceFile, handleDownloadRee } = createDownloadActions({
-    workspaceRepository,
-    artifactRepository,
+    workspaceClient,
     workspaceId,
     ports,
     getReeName: () => reeDraft.name || "",

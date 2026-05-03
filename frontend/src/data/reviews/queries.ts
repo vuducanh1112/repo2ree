@@ -1,20 +1,23 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useWorkspaceRuntime, type WorkspaceRuntimeValue } from "../../app/browser/BrowserRuntime";
 import { queryKeys } from "../queryKeys";
+import { useReviewClient } from "./client";
 
-function createReviewQueryOptions(runtime: WorkspaceRuntimeValue, reviewId: string) {
+function createReviewQueryOptions(
+  reviewClient: ReturnType<typeof useReviewClient>,
+  reviewId: string,
+) {
   return queryOptions({
     queryKey: queryKeys.review(reviewId),
-    queryFn: () => runtime.reviewRepository.getReview(reviewId),
+    queryFn: () => reviewClient.getReview(reviewId),
   });
 }
 
 export function useReviewQuery(reviewId?: string) {
-  const runtime = useWorkspaceRuntime();
+  const reviewClient = useReviewClient();
 
   return useQuery({
     ...(reviewId
-      ? createReviewQueryOptions(runtime, reviewId)
+      ? createReviewQueryOptions(reviewClient, reviewId)
       : {
           queryKey: queryKeys.review("idle"),
           queryFn: async () => {

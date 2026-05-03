@@ -1,10 +1,10 @@
 import { type CSSProperties, type ReactNode, useMemo } from "react";
-import { useWorkspaceRuntime } from "../../../app/browser/BrowserRuntime";
 import { appShellPageForField } from "../../../application/app-shell/AppShellNavigation";
 import { PAGE } from "../../../application/app-shell/AppShellPages";
-import type { WorkflowRunRecord } from "../../../application/ports/repositoryTypes";
+import { useApiRuntime } from "../../../data/apiRuntime";
 import { useWorkflowRunLogsQuery, useWorkflowRunQuery } from "../../../data/workflow-runs/queries";
 import type { LogEntry, SourceUploadCommit, WorkflowLogs } from "../../../domain/ree/ReeTypes";
+import type { WorkflowRunRecord } from "../../../domain/workflow/WorkflowRun";
 import type { useAppShell } from "../hooks/useAppShell";
 import { useWorkflowStepPageController } from "../hooks/useWorkflowStepPageController";
 import { PageArchive as ArchivePage } from "./archive/ArchivePage";
@@ -131,7 +131,7 @@ export function SourcePageContainer({
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
-  const { workspaceId } = useWorkspaceRuntime();
+  const { workspaceId } = useApiRuntime();
   const { page, focusedField } = uiChrome;
   const { locked, repoMode } = reeDraft;
   const { badges, actionStates } = workflowRun;
@@ -203,7 +203,7 @@ export function HardwareBomPageContainer({
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
-  const { workspaceId } = useWorkspaceRuntime();
+  const { workspaceId } = useApiRuntime();
   const { page, focusedField } = uiChrome;
   const { locked } = reeDraft;
   const { badges, actionStates, timestamps } = workflowRun;
@@ -302,7 +302,7 @@ export function ArchivePageContainer({
   ree,
   commands,
 }: AppShellPageContainerProps) {
-  const { workspaceId } = useWorkspaceRuntime();
+  const { workspaceId } = useApiRuntime();
   const { page } = uiChrome;
   const { badges, actionStates } = workflowRun;
   const swhLog = useWorkflowLogEntry({

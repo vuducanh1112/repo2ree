@@ -1,17 +1,17 @@
-import type { WorkspaceRepository } from "../../../application/ports/WorkspaceRepository";
 import { planWorkspaceFilePersistence } from "../../../application/workspace/workspaceFileMutationPlanning";
+import type { WorkspaceClient } from "../../../data/ree/client";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { ShowToast } from "../workflow-runs/types";
 
 interface CreateWorkspaceFilePersistenceArgs {
-  workspaceRepository: WorkspaceRepository<FileTreeNode>;
+  workspaceClient: WorkspaceClient<FileTreeNode>;
   workspaceId: string;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   showToast: ShowToast;
 }
 
 export function createWorkspaceFilePersistence({
-  workspaceRepository,
+  workspaceClient,
   workspaceId,
   refreshWorkspaceFiles,
   showToast,
@@ -24,9 +24,9 @@ export function createWorkspaceFilePersistence({
     try {
       const plan = planWorkspaceFilePersistence(previousPath, path);
       if (plan.shouldDeletePrevious) {
-        await workspaceRepository.deleteFile(workspaceId, plan.normalizedPreviousPath || "");
+        await workspaceClient.deleteFile(workspaceId, plan.normalizedPreviousPath || "");
       }
-      await workspaceRepository.updateFile(workspaceId, plan.normalizedPath, content);
+      await workspaceClient.updateFile(workspaceId, plan.normalizedPath, content);
       await refreshWorkspaceFiles();
       showToast(plan.successMessage, "success");
     } catch (error) {

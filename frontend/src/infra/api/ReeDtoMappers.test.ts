@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReviewDetailDto, WorkspaceDetailDto } from ".";
+import type { ReviewDetailDto, WorkspaceDetailDto } from "./apiTypes";
 import { mapReviewDraftToRee, mapWorkspaceDetailToRee } from "./ReeDtoMappers";
 
 describe("reeMappers", () => {

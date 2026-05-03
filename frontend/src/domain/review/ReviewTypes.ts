@@ -1,4 +1,8 @@
-import type { WorkflowRunLogChunk, WorkflowRunRecord, WorkflowRunStatus } from "./repositoryTypes";
+import type {
+  WorkflowRunLogChunk,
+  WorkflowRunRecord,
+  WorkflowRunStatus,
+} from "../workflow/WorkflowRun";
 
 export interface ReviewUploadInitRequest {
   fileName: string;
@@ -34,7 +38,7 @@ export interface ReviewDetail {
   workspaceFiles?: Array<{ path: string; size?: number }>;
 }
 
-export interface ReviewRepository {
+export interface ReviewClient {
   initReviewUpload(payload: ReviewUploadInitRequest): Promise<ReviewUploadInitResponse>;
   uploadReviewBytes(uploadUrl: string, data: ArrayBuffer): Promise<void>;
   completeReviewUpload(

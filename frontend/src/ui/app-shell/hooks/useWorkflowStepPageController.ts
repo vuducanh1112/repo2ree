@@ -1,7 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { useWorkspaceRuntime } from "../../../app/browser/BrowserRuntime";
 import { appShellPageForField } from "../../../application/app-shell/AppShellNavigation";
-import type { WorkflowRunRecord } from "../../../application/ports/repositoryTypes";
 import type { WorkflowParamValue } from "../../../application/workflow/WorkflowStepTypes";
 import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
 import {
@@ -9,7 +7,9 @@ import {
   defaultParamsForAutomationStep,
 } from "../../../application/workflow/workflowCatalog";
 import { missingWorkflowRequirements } from "../../../application/workflow/workflowPolicies";
+import { useApiRuntime } from "../../../data/apiRuntime";
 import { useWorkflowRunLogsQuery, useWorkflowRunQuery } from "../../../data/workflow-runs/queries";
+import type { WorkflowRunRecord } from "../../../domain/workflow/WorkflowRun";
 import type { useAppShell } from "./useAppShell";
 
 type AppShellController = ReturnType<typeof useAppShell>;
@@ -27,7 +27,7 @@ export function useWorkflowStepPageController({
   uiChrome,
   commands,
 }: UseWorkflowStepPageControllerArgs) {
-  const { workspaceId } = useWorkspaceRuntime();
+  const { workspaceId } = useApiRuntime();
   const { page } = uiChrome;
   const { badges, workflowParams, actionStates, timestamps, activeRunIds } = workflowRun;
 

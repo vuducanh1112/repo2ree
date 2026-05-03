@@ -1,7 +1,9 @@
 import type React from "react";
 import { useRef, useState } from "react";
-import { useWorkspaceRuntime } from "../../app/browser/BrowserRuntime";
 import { APP_ROUTE, type AppLoadRoutePath } from "../../application/app-shell/AppShellPages";
+import { useApiRuntime } from "../../data/apiRuntime";
+import { useWorkspaceClient } from "../../data/ree/client";
+import { useReviewClient } from "../../data/reviews/client";
 import { LEVELS } from "../../domain/review/levels";
 import { Ic } from "../shared/components/Icon";
 import { C, F, hoverBg, hoverColor, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
@@ -16,7 +18,9 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 });
 
 export function LandingView({ onLoad }: LandingViewProps) {
-  const { reviewRepository, workspaceRepository, workspaceId } = useWorkspaceRuntime();
+  const { workspaceId } = useApiRuntime();
+  const reviewClient = useReviewClient();
+  const workspaceClient = useWorkspaceClient();
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingReviewUpload, setLoadingReviewUpload] = useState(false);
   const [reviewError, setReviewError] = useState<string>("");
@@ -25,7 +29,7 @@ export function LandingView({ onLoad }: LandingViewProps) {
   const createRee = async () => {
     setLoadingCreate(true);
     try {
-      const workspace = await workspaceRepository.getWorkspace(workspaceId);
+      const workspace = await workspaceClient.getWorkspace(workspaceId);
       onLoad(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(workspace.id)}`);
     } catch {
       onLoad(APP_ROUTE.WORKSPACE);
@@ -38,14 +42,14 @@ export function LandingView({ onLoad }: LandingViewProps) {
     setLoadingReviewUpload(true);
     setReviewError("");
     try {
-      const init = await reviewRepository.initReviewUpload({
+      const init = await reviewClient.initReviewUpload({
         fileName: file.name,
         size: file.size,
         contentType: file.type || "application/zip",
       });
 
-      await reviewRepository.uploadReviewBytes(init.uploadUrl, await file.arrayBuffer());
-      await reviewRepository.completeReviewUpload(init.reviewId, {
+      await reviewClient.uploadReviewBytes(init.uploadUrl, await file.arrayBuffer());
+      await reviewClient.completeReviewUpload(init.reviewId, {
         uploadToken: init.uploadToken,
         archiveName: file.name,
       });

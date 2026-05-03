@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import type { AppShellClock } from "../../../application/app-shell/AppShellPorts";
-import type { WorkflowRunRepository } from "../../../application/ports/WorkflowRunRepository";
+import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
 import { pollWorkflowRun } from "./pollWorkflowRun";
 
 const clock: AppShellClock = {
@@ -9,16 +9,14 @@ const clock: AppShellClock = {
   nowMillis: () => 1777420800000,
 };
 
-function createWorkflowRunRepository(
-  overrides: Partial<WorkflowRunRepository>,
-): WorkflowRunRepository {
+function createWorkflowRunsClient(overrides: Partial<WorkflowRunsClient>): WorkflowRunsClient {
   return {
     getWorkflowRun: vi.fn(),
     getWorkflowRunLogs: vi.fn(async () => ({ lines: [], hasMore: false })),
     startWorkflowRun: vi.fn(),
     cancelWorkflowRun: vi.fn(),
     ...overrides,
-  } as WorkflowRunRepository;
+  } as WorkflowRunsClient;
 }
 
 describe("pollWorkflowRun", () => {
@@ -26,7 +24,7 @@ describe("pollWorkflowRun", () => {
     const queryClient = new QueryClient();
     const sleep = vi.fn(async () => {});
     const getWorkflowRun = vi
-      .fn<WorkflowRunRepository["getWorkflowRun"]>()
+      .fn<WorkflowRunsClient["getWorkflowRun"]>()
       .mockResolvedValueOnce({
         runId: "run-1",
         status: "running",
@@ -38,14 +36,14 @@ describe("pollWorkflowRun", () => {
         createdAt: "2026-04-29T00:00:00.000Z",
         finishedAt: "2026-04-29T00:00:01.000Z",
       });
-    const workflowRunRepository = createWorkflowRunRepository({
+    const workflowRunsClient = createWorkflowRunsClient({
       getWorkflowRun,
       getWorkflowRunLogs: vi
-        .fn<WorkflowRunRepository["getWorkflowRunLogs"]>()
+        .fn<WorkflowRunsClient["getWorkflowRunLogs"]>()
         .mockResolvedValue({ lines: [{ type: "ok", msg: "done" }], hasMore: false }),
     });
 
-    const result = await pollWorkflowRun(queryClient, workflowRunRepository, {
+    const result = await pollWorkflowRun(queryClient, workflowRunsClient, {
       workspaceId: "active",
       runId: "run-1",
       maxIterations: 3,
@@ -62,9 +60,9 @@ describe("pollWorkflowRun", () => {
   it("stops polling after a run is canceled", async () => {
     const queryClient = new QueryClient();
     const sleep = vi.fn(async () => {});
-    const workflowRunRepository = createWorkflowRunRepository({
+    const workflowRunsClient = createWorkflowRunsClient({
       getWorkflowRun: vi
-        .fn<WorkflowRunRepository["getWorkflowRun"]>()
+        .fn<WorkflowRunsClient["getWorkflowRun"]>()
         .mockResolvedValueOnce({
           runId: "run-2",
           status: "running",
@@ -78,7 +76,7 @@ describe("pollWorkflowRun", () => {
         }),
     });
 
-    const result = await pollWorkflowRun(queryClient, workflowRunRepository, {
+    const result = await pollWorkflowRun(queryClient, workflowRunsClient, {
       workspaceId: "active",
       runId: "run-2",
       maxIterations: 3,
@@ -92,14 +90,14 @@ describe("pollWorkflowRun", () => {
 
   it("surfaces workflow run fetch errors", async () => {
     const queryClient = new QueryClient();
-    const workflowRunRepository = createWorkflowRunRepository({
+    const workflowRunsClient = createWorkflowRunsClient({
       getWorkflowRun: vi.fn(async () => {
         throw new Error("backend unavailable");
       }),
     });
 
     await expect(
-      pollWorkflowRun(queryClient, workflowRunRepository, {
+      pollWorkflowRun(queryClient, workflowRunsClient, {
         workspaceId: "active",
         runId: "run-3",
         maxIterations: 1,
@@ -113,24 +111,24 @@ describe("pollWorkflowRun", () => {
     const queryClient = new QueryClient();
     const sleep = vi.fn(async () => {});
     const getWorkflowRun = vi
-      .fn<WorkflowRunRepository["getWorkflowRun"]>()
+      .fn<WorkflowRunsClient["getWorkflowRun"]>()
       .mockImplementation(async (workspaceId, runId) => ({
         runId,
         status: workspaceId === "workspace-a" ? "succeeded" : "canceled",
         createdAt: "2026-04-29T00:00:00.000Z",
         finishedAt: "2026-04-29T00:00:01.000Z",
       }));
-    const workflowRunRepository = createWorkflowRunRepository({ getWorkflowRun });
+    const workflowRunsClient = createWorkflowRunsClient({ getWorkflowRun });
 
     const [workspaceA, workspaceB] = await Promise.all([
-      pollWorkflowRun(queryClient, workflowRunRepository, {
+      pollWorkflowRun(queryClient, workflowRunsClient, {
         workspaceId: "workspace-a",
         runId: "shared-run",
         maxIterations: 1,
         clock,
         sleep,
       }),
-      pollWorkflowRun(queryClient, workflowRunRepository, {
+      pollWorkflowRun(queryClient, workflowRunsClient, {
         workspaceId: "workspace-b",
         runId: "shared-run",
         maxIterations: 1,

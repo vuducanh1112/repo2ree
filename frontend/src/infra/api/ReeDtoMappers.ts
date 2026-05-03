@@ -1,6 +1,6 @@
 import { mapRawReeDraftToRee } from "../../application/review/mapReviewDetailToRee";
 import type { ReeViewState } from "../../domain/ree/ReeViewState";
-import type { ReviewDetailDto, WorkspaceDetailDto } from ".";
+import type { ReviewDetailDto, WorkspaceDetailDto } from "./apiTypes";
 
 export function mapReviewDraftToRee(review: ReviewDetailDto): ReeViewState {
   return mapRawReeDraftToRee({
