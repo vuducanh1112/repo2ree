@@ -13,8 +13,8 @@ import type {
 } from "../../../application/workflow/WorkflowTypes";
 import { isAutomationStepKey } from "../../../application/workflow/workflowPolicies";
 import type { WorkflowStepHandlerMap } from "../../../application/workflow/workflowStepCommands";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { WorkspaceWorkflowDispatch } from "./commandExecutors";
 import type { ShowToast } from "./types";
@@ -30,7 +30,7 @@ interface RunSessionPort {
 }
 
 interface CreateWorkflowRunGatewayArgs {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   level: number;
   workspaceFiles: FileTreeNode[];
   dispatch: React.Dispatch<unknown> | WorkspaceWorkflowDispatch;
@@ -50,7 +50,7 @@ interface CreateWorkflowRunGatewayArgs {
   refreshWorkspace: () => Promise<{
     workspaceFiles: FileTreeNode[];
     reeArtifactFiles: ReeFile[];
-    ree?: ReeDraftViewModel;
+    ree?: ReeViewState;
   }>;
   runSession: RunSessionPort;
 }

@@ -1,4 +1,4 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
 
 export interface Level {
   n: number;
@@ -19,7 +19,7 @@ export interface AutomationStepBadge {
 }
 
 export interface AutomationStepRequirement {
-  field: keyof ReeDraftViewModel;
+  field: keyof ReeViewState;
   label: string;
 }
 
@@ -71,7 +71,7 @@ export interface ArchiveRepo {
   url: string;
   desc: string;
   idLabel: string;
-  idField: keyof ReeDraftViewModel;
+  idField: keyof ReeViewState;
   idPlaceholder: string;
   params: AutomationStepParam[];
   requires: AutomationStepRequirement[];

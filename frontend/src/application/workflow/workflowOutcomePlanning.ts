@@ -1,4 +1,4 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { LEVELS } from "../../domain/review/levels";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepKey } from "./WorkflowTypes";
@@ -10,24 +10,24 @@ interface PersistedFilePlan {
 
 interface BuildEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch?: Partial<ReeDraftViewModel>;
+  reePatch?: Partial<ReeViewState>;
   errorMessage?: string;
   successMessage: string;
 }
 
 interface SbomEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch: Partial<ReeDraftViewModel>;
+  reePatch: Partial<ReeViewState>;
   successMessage: string;
 }
 
 interface HbomEffectPlan {
-  reePatch?: Partial<ReeDraftViewModel>;
+  reePatch?: Partial<ReeViewState>;
   successMessage: string;
 }
 
 interface EvaluateEffectPlan {
-  reePatch: Partial<ReeDraftViewModel>;
+  reePatch: Partial<ReeViewState>;
   successMessage: string;
 }
 
@@ -37,13 +37,13 @@ interface ActivationEffectPlan {
 
 interface WorkflowServiceEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch?: Partial<ReeDraftViewModel>;
+  reePatch?: Partial<ReeViewState>;
   errorMessage?: string;
   successMessage: string;
 }
 
 export function planBuildEffect(args: {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   expectedOutput?: string;
 }): BuildEffectPlan {
   const runtimeTarget =
@@ -106,7 +106,7 @@ export function planActivationEffect(): ActivationEffectPlan {
 export function planWorkflowServiceEffect(args: {
   key: AutomationStepKey;
   params: GenericWorkflowParams;
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   newLevel: number;
   timestamp: string;
   namespaceSuffix: string;

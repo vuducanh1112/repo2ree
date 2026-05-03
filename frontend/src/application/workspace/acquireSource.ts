@@ -1,5 +1,5 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
-import { splitReePatch } from "../../domain/ree/reeDraftViewModel";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import { splitReeViewPatch } from "../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { type SourceCommand, sourceFailureCommands } from "./sourceAcquisitionCommands";
 import {
@@ -40,7 +40,7 @@ interface SourceUseCaseEffects {
 }
 
 interface SourceUseCaseArgs extends SourceUseCaseEffects {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
 }
 
 interface UploadSourceArgs {
@@ -93,7 +93,7 @@ export function createSourceUseCase({
   };
 
   const completeDownload = async (args: {
-    originType: ReeDraftViewModel["source_type"];
+    originType: ReeViewState["source_type"];
     normalizedSourceUrl: string;
   }) => {
     const workspaceFiles = await refreshWorkspaceFiles();
@@ -120,7 +120,7 @@ export function createSourceUseCase({
 
   return {
     async downloadSource(
-      originType: ReeDraftViewModel["source_type"],
+      originType: ReeViewState["source_type"],
       sourceUrl: string,
     ): Promise<void> {
       const plan = planSourceDownloadAction(ree, originType, sourceUrl);
@@ -172,8 +172,7 @@ export function createSourceUseCase({
           {
             type: "applySourceOutcome",
             outcome: {
-              ...splitReePatch(clearPlan.reePatch),
-              sourceSnapshotFiles: clearPlan.snapshotFiles,
+              ...splitReeViewPatch(clearPlan.reePatch),
               sourceSnapshotArchiveName: clearPlan.snapshotArchiveName,
             },
           },
@@ -196,7 +195,7 @@ export function createSourceUseCase({
 }
 
 function sourceSuccessCommands(plan: {
-  reePatch: Partial<ReeDraftViewModel>;
+  reePatch: Partial<ReeViewState>;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
   actionState: "done";
@@ -208,8 +207,7 @@ function sourceSuccessCommands(plan: {
     {
       type: "applySourceOutcome",
       outcome: {
-        ...splitReePatch(plan.reePatch),
-        sourceSnapshotFiles: plan.snapshotFiles,
+        ...splitReeViewPatch(plan.reePatch),
         sourceSnapshotArchiveName: plan.snapshotArchiveName,
         actionState: plan.actionState,
         badge: plan.badge,

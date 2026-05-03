@@ -10,8 +10,8 @@ import {
   sourceFailureCommands,
 } from "../../../application/workspace/sourceAcquisitionCommands";
 import { runSourceWorkspaceAction } from "../../../application/workspace/sourceAcquisitionLifecycle";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { SourceUploadCommit } from "../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import {
   executeSourceCommands,
@@ -29,7 +29,7 @@ export function resetWorkflowOnSourceChange(
 }
 
 interface CreateSourceActionsArgs {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   workspaceRepository: WorkspaceRepository<FileTreeNode>;
   workflowRunRepository: WorkflowRunRepository;
   workspaceId: string;
@@ -80,7 +80,10 @@ export function createSourceActions({
           clock,
           sleep,
         }),
-      onRunStarted,
+      onRunStarted: (key, runId) => {
+        runCommands([{ type: "setActiveRunId", key, runId }]);
+        onRunStarted?.(key, runId);
+      },
       onRunFinished,
       onUpdateLogs: (update) => {
         runCommands([{ type: "setSourceLog", lines: update.lines, ts: update.ts }]);
@@ -98,7 +101,7 @@ export function createSourceActions({
   });
 
   const handleDownloadSourceFiles = async (
-    originType: ReeDraftViewModel["source_type"],
+    originType: ReeViewState["source_type"],
     sourceUrl: string,
   ) => sourceAcquisition.downloadSource(originType, sourceUrl);
 

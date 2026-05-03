@@ -1,12 +1,12 @@
 import { hbomSummaryLines } from "../../../domain/hbom/HbomSummary";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import { Ic } from "../../shared/components/Icon";
 import { LevelBadge } from "../../shared/components/LevelBadge";
 import { C, F, hoverBg, S_SECTION_LABEL_SMALL } from "../../theme/theme";
 import { MetaRow, RvProvenanceChain } from "../reviewerSupport";
 
 interface ReviewerSidebarProps {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   level: number;
   levelMeta: {
     bg: string;

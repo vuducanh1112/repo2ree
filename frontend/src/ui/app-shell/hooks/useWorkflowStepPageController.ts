@@ -1,5 +1,7 @@
 import { useCallback, useMemo } from "react";
+import { useWorkspaceRuntime } from "../../../app/browser/BrowserRuntime";
 import { appShellPageForField } from "../../../application/app-shell/AppShellNavigation";
+import type { WorkflowRunRecord } from "../../../application/ports/repositoryTypes";
 import type { WorkflowParamValue } from "../../../application/workflow/WorkflowStepTypes";
 import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
 import {
@@ -7,6 +9,7 @@ import {
   defaultParamsForAutomationStep,
 } from "../../../application/workflow/workflowCatalog";
 import { missingWorkflowRequirements } from "../../../application/workflow/workflowPolicies";
+import { useWorkflowRunLogsQuery, useWorkflowRunQuery } from "../../../data/workflow-runs/queries";
 import type { useAppShell } from "./useAppShell";
 
 type AppShellController = ReturnType<typeof useAppShell>;
@@ -24,8 +27,9 @@ export function useWorkflowStepPageController({
   uiChrome,
   commands,
 }: UseWorkflowStepPageControllerArgs) {
+  const { workspaceId } = useWorkspaceRuntime();
   const { page } = uiChrome;
-  const { badges, workflowLogs, workflowParams, actionStates, timestamps } = workflowRun;
+  const { badges, workflowParams, actionStates, timestamps, activeRunIds } = workflowRun;
 
   const workflowStep = useMemo(() => AUTOMATION_STEPS.find((step) => step.key === page), [page]);
 
@@ -72,13 +76,27 @@ export function useWorkflowStepPageController({
     );
   }, [commands, missing]);
 
+  const runId = workflowStep ? activeRunIds[workflowStep.key] : undefined;
+  const runQuery = useWorkflowRunQuery(workspaceId, runId);
+  const logsQuery = useWorkflowRunLogsQuery(workspaceId, runId);
+  const log = useMemo(() => {
+    if (!workflowStep || !runId) {
+      return null;
+    }
+    const runTimestamp = resolveWorkflowRunTimestamp(runQuery.data, timestamps[workflowStep.key]);
+    return {
+      lines: logsQuery.data?.lines ?? [],
+      ts: runTimestamp,
+    };
+  }, [logsQuery.data?.lines, runId, runQuery.data, timestamps, workflowStep]);
+
   if (!workflowStep || !params) {
     return null;
   }
 
   return {
     workflowStep,
-    log: workflowLogs[workflowStep.key],
+    log,
     running: actionStates[workflowStep.key] === "loading",
     runDone: !!badges[workflowStep.key],
     badge: badges[workflowStep.key] ? workflowStep.badge : null,
@@ -88,4 +106,13 @@ export function useWorkflowStepPageController({
     setParam,
     goToRequirements,
   };
+}
+
+function resolveWorkflowRunTimestamp(
+  run: WorkflowRunRecord | undefined,
+  fallback?: string,
+): string {
+  return (
+    run?.finishedAt || run?.startedAt || run?.createdAt || fallback || new Date().toISOString()
+  );
 }

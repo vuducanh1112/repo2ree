@@ -1,6 +1,6 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import { splitReeDraftViewModel } from "../../domain/ree/reeDraftViewModel";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import { splitReeViewState } from "../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepRunParamsByKey } from "./WorkflowTypes";
@@ -41,7 +41,7 @@ interface WorkflowRunResult {
 interface WorkflowWorkspaceSnapshot {
   files: FileTreeNode[];
   reeFiles?: ReeFile[];
-  ree?: ReeDraftViewModel;
+  ree?: ReeViewState;
 }
 
 interface WorkflowRunRunner {
@@ -58,7 +58,7 @@ interface WorkflowRunRunner {
 interface ExecuteWorkflowStepArgs {
   key: string;
   params: GenericWorkflowParams;
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   level: number;
   workspaceFiles: FileTreeNode[];
   workflowRunner: WorkflowRunRunner;
@@ -106,7 +106,10 @@ export async function executeWorkflowStep({
       params: runRequest.params,
     },
     pollRun: workflowRunner.pollRun,
-    onRunStarted,
+    onRunStarted: (runKey, runId) => {
+      executeCommands([{ type: "setActiveRunId", key: runKey, runId }]);
+      onRunStarted?.(runKey, runId);
+    },
     onRunFinished,
     onUpdateLogs: (update) => {
       executeCommands([{ type: "setWorkflowRunLog", key, lines: update.lines, ts: update.ts }]);
@@ -137,7 +140,7 @@ export async function executeWorkflowStep({
   if (completionPlan.shouldRefreshWorkspace) {
     try {
       const workspace = await refreshWorkspace();
-      const split = workspace.ree ? splitReeDraftViewModel(workspace.ree) : null;
+      const split = workspace.ree ? splitReeViewState(workspace.ree) : null;
       executeCommands([
         {
           type: "hydrateWorkspace",

@@ -3,8 +3,8 @@ import { type AppShellPage, PAGE } from "../../../../application/app-shell/AppSh
 import { ARCHIVE_REPOSITORIES } from "../../../../application/workflow/archiveRepositories";
 import type { GenericWorkflowParams } from "../../../../application/workflow/WorkflowStepTypes";
 import type { ArtifactStatus } from "../../../../domain/artifact/ArtifactStatus";
-import type { ReeDraftViewModel } from "../../../../domain/ree/ReeSpec";
 import type { ActionStates, Badges, WorkflowLogs } from "../../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import { Ic } from "../../../shared/components/Icon";
 import {
   C,
@@ -20,7 +20,7 @@ import { LogPanel } from "../../components/logPanel";
 import { NextStepNudge, RequirementsBanner, WorkflowPageHeader } from "../../components/pageChrome";
 
 interface PageArchiveProps {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   artifactStatus: ArtifactStatus;
   badges: Badges;
   logs: WorkflowLogs;

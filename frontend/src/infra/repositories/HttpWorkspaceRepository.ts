@@ -1,7 +1,7 @@
 import type { ReeProject, WorkspaceResetPayload } from "../../application/ports/repositoryTypes";
 import type { WorkspaceRepository } from "../../application/ports/WorkspaceRepository";
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceDetailDto } from "../api";
 import { mapWorkspaceDetailToRee } from "../api/ReeDtoMappers";
@@ -75,7 +75,7 @@ function mapWorkspace(workspace: WorkspaceDetailDto): ReeProject<FileTreeNode> {
     content: file.content,
     size: file.size,
   }));
-  const ree: ReeDraftViewModel = mapWorkspaceDetailToRee(workspace);
+  const ree: ReeViewState = mapWorkspaceDetailToRee(workspace);
 
   return {
     id: workspace.reeId,

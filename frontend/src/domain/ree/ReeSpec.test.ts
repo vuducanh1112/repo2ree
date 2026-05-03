@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { ReeDraftViewModel } from "./ReeSpec";
-import { splitReeDraftViewModel, toReeDraftViewModel } from "./reeDraftViewModel";
+import type { ReeViewState } from "./ReeViewState";
+import { splitReeViewState, toReeViewState } from "./ReeViewState";
 
-function buildReeDraft(): ReeDraftViewModel {
+function buildReeDraft(): ReeViewState {
   return {
     name: "demo",
     origin_url: "https://example.org/repo.git",
@@ -40,7 +40,7 @@ function buildReeDraft(): ReeDraftViewModel {
 
 describe("Ree draft view model helpers", () => {
   it("separates persisted spec from transient frontend state", () => {
-    const split = splitReeDraftViewModel(buildReeDraft());
+    const split = splitReeViewState(buildReeDraft());
 
     expect(split.reeSpec.name).toBe("demo");
     expect("sourceAvailable" in split.reeSpec).toBe(false);
@@ -54,6 +54,6 @@ describe("Ree draft view model helpers", () => {
   it("round-trips split state back into the draft view model", () => {
     const ree = buildReeDraft();
 
-    expect(toReeDraftViewModel(splitReeDraftViewModel(ree))).toEqual(ree);
+    expect(toReeViewState(splitReeViewState(ree))).toEqual(ree);
   });
 });

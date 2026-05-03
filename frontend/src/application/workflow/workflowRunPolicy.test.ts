@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import {
   buildWorkflowRunParams,
   deriveWorkflowStepLevel,
@@ -10,7 +10,7 @@ import {
   shouldRefreshWorkspaceAfterWorkflowStep,
 } from "./workflowRunPolicy";
 
-function buildRee(): ReeDraftViewModel {
+function buildRee(): ReeViewState {
   return {
     name: "demo",
     origin_url: "",

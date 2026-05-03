@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { executeWorkflowStep } from "./executeWorkflowStep";
 import type { WorkflowStepHandlerMap } from "./workflowStepCommands";
 
-function buildRee(): ReeDraftViewModel {
+function buildRee(): ReeViewState {
   return {
     name: "demo",
     origin_url: "",
@@ -78,6 +78,7 @@ describe("executeWorkflowStep", () => {
     expect(refreshWorkspace).toHaveBeenCalled();
     expect(executedCommands(executeCommands)).toEqual([
       { type: "setActionLoading", key: "build" },
+      { type: "setActiveRunId", key: "build", runId: "run-1" },
       {
         type: "completeWorkflowRun",
         completion: {
@@ -92,7 +93,10 @@ describe("executeWorkflowStep", () => {
         type: "hydrateWorkspace",
         workspaceFiles: [{ id: "runtime", name: "runtime.tar.gz", type: "file" }],
         reeArtifactFiles: [],
-        ree: undefined,
+        reeSpec: undefined,
+        workspaceSourceState: undefined,
+        artifactStatus: undefined,
+        evaluationState: undefined,
       },
       { type: "toast", message: "Build complete", toastType: "success" },
     ]);

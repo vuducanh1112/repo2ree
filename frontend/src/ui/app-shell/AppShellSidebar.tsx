@@ -1,6 +1,6 @@
 import { type AppShellPage, PAGE } from "../../application/app-shell/AppShellPages";
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { Badges, Timestamps } from "../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { LEVELS } from "../../domain/review/levels";
 import { Ic } from "../shared/components/Icon";
 import { C, hoverBg, hoverColor } from "../theme/theme";
@@ -12,7 +12,7 @@ import { SidebarFooter } from "./sidebar/SidebarFooter";
 
 interface AppShellSidebarProps {
   page: AppShellPage;
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   navCollapsed: boolean;
   badges: Badges;
   timestamps: Timestamps;

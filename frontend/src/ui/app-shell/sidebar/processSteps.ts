@@ -2,8 +2,8 @@ import { type AppShellPage, PAGE } from "../../../application/app-shell/AppShell
 import type { AutomationStepDefinition } from "../../../application/workflow/WorkflowStepTypes";
 import { AUTOMATION_STEPS } from "../../../application/workflow/workflowCatalog";
 import { hbomHasAnyComponents } from "../../../domain/hbom/HbomSummary";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { Badges } from "../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import { Ic } from "../../shared/components/Icon";
 
 interface ProcessStep {
@@ -87,11 +87,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
   { n: 9, key: PAGE.SEAL, label: "Seal", IC: Ic.lock, automation: null, desc: "Seal the REE" },
 ];
 
-export function hasProcessStepCompleted(
-  stepKey: AppShellPage,
-  ree: ReeDraftViewModel,
-  badges: Badges,
-) {
+export function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeViewState, badges: Badges) {
   if (stepKey === PAGE.SOURCE) return !!ree.sourceAvailable;
   if (stepKey === PAGE.METADATA) return !!ree.name;
   if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.hardware_description);

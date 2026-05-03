@@ -1,6 +1,7 @@
 import { normalizeHBOM } from "../../domain/hbom/HbomSummary";
-import type { ReeDraftViewModel, ReeSpec } from "../../domain/ree/ReeSpec";
-import { toReeDraftViewModel } from "../../domain/ree/reeDraftViewModel";
+import type { ReeSpec } from "../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import { toReeViewState } from "../../domain/ree/ReeViewState";
 import type { ReviewDetail } from "../ports/ReviewRepository";
 
 interface MapRawReeDraftToReeOptions {
@@ -13,12 +14,12 @@ export function mapRawReeDraftToRee({
   reeDraft,
   fallbackName,
   fallbackOriginUrl = "",
-}: MapRawReeDraftToReeOptions): ReeDraftViewModel {
+}: MapRawReeDraftToReeOptions): ReeViewState {
   const draft = reeDraft || {};
   const reeSpec: ReeSpec = {
     name: String(draft.name ?? fallbackName ?? ""),
     origin_url: String(draft.origin_url ?? fallbackOriginUrl ?? ""),
-    source_type: (draft.source_type as ReeDraftViewModel["source_type"]) || "",
+    source_type: (draft.source_type as ReeViewState["source_type"]) || "",
     runtime: String(draft.runtime ?? ""),
     build_runtime_script: String(draft.build_runtime_script ?? ""),
     activation_script: String(draft.activation_script ?? ""),
@@ -33,13 +34,12 @@ export function mapRawReeDraftToRee({
     hardware_description: normalizeHBOM(draft.hardware_description),
   };
 
-  return toReeDraftViewModel({
+  return toReeViewState({
     reeSpec,
     workspaceSourceState: {
       sourceAvailable: Boolean(draft._sourceAvailable),
       sourceIncluded: Boolean(draft._sourceIncluded),
-      sourceAcquiredBy:
-        (draft._sourceAcquiredBy as ReeDraftViewModel["sourceAcquiredBy"]) || undefined,
+      sourceAcquiredBy: (draft._sourceAcquiredBy as ReeViewState["sourceAcquiredBy"]) || undefined,
       uploadedArchive: draft._uploadedArchive ? String(draft._uploadedArchive) : undefined,
       sourceSnapshotArchive: draft._sourceSnapshotArchive
         ? String(draft._sourceSnapshotArchive)
@@ -62,7 +62,7 @@ export function mapRawReeDraftToRee({
   });
 }
 
-export function mapReviewDetailToRee(review: ReviewDetail): ReeDraftViewModel {
+export function mapReviewDetailToRee(review: ReviewDetail): ReeViewState {
   return mapRawReeDraftToRee({
     reeDraft: review.reeDraft,
     fallbackName: review.name,

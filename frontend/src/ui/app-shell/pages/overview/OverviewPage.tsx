@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import type { AppShellPage } from "../../../../application/app-shell/AppShellPages";
-import type { ReeDraftViewModel } from "../../../../domain/ree/ReeSpec";
 import type { Badges, Timestamps } from "../../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import { LEVELS } from "../../../../domain/review/levels";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import { listTreeFiles } from "../../../../domain/workspace/fileTreeTraversal";
@@ -19,8 +19,8 @@ import { PanelCableOverlay } from "./PanelCableOverlay";
 import { PodWidget } from "./PodWidget";
 
 interface PageOverviewProps {
-  ree: ReeDraftViewModel;
-  onReeChange: (ree: ReeDraftViewModel) => void;
+  ree: ReeViewState;
+  onReeChange: (ree: ReeViewState) => void;
   level: number;
   onNavigate: (key: AppShellPage) => void;
   badges?: Badges;

@@ -3,7 +3,7 @@ import type { ReviewDetailDto, WorkspaceDetailDto } from ".";
 import { mapReviewDraftToRee, mapWorkspaceDetailToRee } from "./ReeDtoMappers";
 
 describe("reeMappers", () => {
-  it("maps review drafts into ReeDraftViewModel consistently", () => {
+  it("maps review drafts into ReeViewState consistently", () => {
     const review: ReviewDetailDto = {
       reviewId: "rev-1",
       name: "review-demo",

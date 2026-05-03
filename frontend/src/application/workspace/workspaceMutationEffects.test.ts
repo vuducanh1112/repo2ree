@@ -19,13 +19,45 @@ describe("mapWorkflowStepCommandsToEffects", () => {
     ).toEqual([{ type: "toast", message: "Build complete", toastType: "success" }]);
   });
 
-  it("maps stateful workflow commands into dispatch actions", () => {
+  it("drops hydrateWorkspace commands with no state updates (files come from React Query)", () => {
     const effects = mapWorkflowStepCommandsToEffects([
       {
         type: "hydrateWorkspace",
         workspaceFiles: [],
         reeArtifactFiles: [],
         reeSpec: undefined,
+      },
+    ]);
+
+    // hydrateWorkspace with no reeSpec/workspaceSourceState/artifactStatus/evaluationState
+    // produces no dispatch commands since workspace files now come from React Query
+    expect(effects).toHaveLength(0);
+  });
+
+  it("maps hydrateWorkspace with reeSpec into dispatchStateCommand", () => {
+    const effects = mapWorkflowStepCommandsToEffects([
+      {
+        type: "hydrateWorkspace",
+        workspaceFiles: [],
+        reeArtifactFiles: [],
+        reeSpec: {
+          name: "test",
+          origin_url: "",
+          source_type: "",
+          runtime: "",
+          build_runtime_script: "",
+          activation_script: "",
+          sbom: "",
+          swhid: "",
+          hardware_description: {
+            cpus: {},
+            gpus: {},
+            memory: {},
+            storage: {},
+            network: {},
+            extra_info: {},
+          },
+        },
       },
     ]);
 
@@ -41,7 +73,7 @@ describe("mapSourceCommandsToEffects", () => {
     ).toEqual([{ type: "toast", message: "Source changed", toastType: "info" }]);
   });
 
-  it("maps source state commands into dispatch actions", () => {
+  it("drops setSourceLog commands (logs now come from React Query)", () => {
     const effects = mapSourceCommandsToEffects([
       {
         type: "setSourceLog",
@@ -50,7 +82,7 @@ describe("mapSourceCommandsToEffects", () => {
       },
     ]);
 
-    expect(effects).toHaveLength(1);
-    expect(effects[0]?.type).toBe("dispatchStateCommand");
+    // setSourceLog is dropped since workflow logs now come from React Query
+    expect(effects).toHaveLength(0);
   });
 });

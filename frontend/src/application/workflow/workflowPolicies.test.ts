@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import {
   getWorkflowRequirements,
   missingWorkflowRequirements,
   shouldRefreshWorkspaceAfterWorkflowStep,
 } from "./workflowPolicies";
 
-function buildRee(): ReeDraftViewModel {
+function buildRee(): ReeViewState {
   return {
     name: "demo",
     origin_url: "",

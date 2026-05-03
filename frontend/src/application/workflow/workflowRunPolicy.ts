@@ -1,4 +1,4 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { planNonWorkflowCompletion } from "../workspace/manualArtifactUpdatePlanning";
 import { planWorkflowRunCompletion } from "./workflowPolicies";
 
@@ -21,7 +21,7 @@ interface WorkflowRunCompletionPlan {
 
 interface WorkflowRunSuccessPlan extends WorkflowRunCompletionPlan {
   successMessage?: string;
-  reePatch?: Partial<ReeDraftViewModel>;
+  reePatch?: Partial<ReeViewState>;
   lock?: boolean;
 }
 

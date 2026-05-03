@@ -1,5 +1,6 @@
-import type { ReeDraftViewModel, ReeSpec } from "../ree/ReeSpec";
-import { splitReeDraftViewModel, toReeDraftViewModel } from "../ree/reeDraftViewModel";
+import type { ReeSpec } from "../ree/ReeSpec";
+import type { ReeViewState } from "../ree/ReeViewState";
+import { splitReeViewState, toReeViewState } from "../ree/ReeViewState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 
 interface SourceOriginRuleInput {
@@ -34,8 +35,8 @@ export function enforceSourceOriginRulesForSlices({
   };
 }
 
-export function enforceSourceOriginRules(ree: ReeDraftViewModel): ReeDraftViewModel {
-  const split = splitReeDraftViewModel(ree);
+export function enforceSourceOriginRules(ree: ReeViewState): ReeViewState {
+  const split = splitReeViewState(ree);
   const next = enforceSourceOriginRulesForSlices({
     reeSpec: split.reeSpec,
     workspaceSourceState: split.workspaceSourceState,
@@ -45,7 +46,7 @@ export function enforceSourceOriginRules(ree: ReeDraftViewModel): ReeDraftViewMo
     return ree;
   }
 
-  return toReeDraftViewModel({
+  return toReeViewState({
     reeSpec: next.reeSpec,
     workspaceSourceState: next.workspaceSourceState,
     artifactStatus: split.artifactStatus,

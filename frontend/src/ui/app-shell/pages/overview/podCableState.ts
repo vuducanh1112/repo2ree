@@ -1,7 +1,7 @@
 import { PAGE } from "../../../../application/app-shell/AppShellPages";
 import { hbomHasAnyComponents } from "../../../../domain/hbom/HbomSummary";
-import type { ReeDraftViewModel } from "../../../../domain/ree/ReeSpec";
 import type { Badges } from "../../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 
 type PodCableSide = "left" | "right" | "top";
 
@@ -16,7 +16,7 @@ interface PodCableState {
   connected: boolean;
 }
 
-export function getPodCableStates(ree: ReeDraftViewModel, badges: Badges): PodCableState[] {
+export function getPodCableStates(ree: ReeViewState, badges: Badges): PodCableState[] {
   const hasName = !!ree.name?.trim();
   const fieldsConnected = hasName;
   const hbomConnected = hbomHasAnyComponents(ree.hardware_description);

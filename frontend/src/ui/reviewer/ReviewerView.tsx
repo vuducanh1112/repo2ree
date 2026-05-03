@@ -5,9 +5,9 @@ import type {
   StepState,
   WorkflowParamValue,
 } from "../../application/workflow/WorkflowStepTypes";
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import { createEmptyReeDraftViewModel } from "../../domain/ree/reeDraftViewModel";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import { createEmptyReeViewState } from "../../domain/ree/ReeViewState";
 import { LEVELS } from "../../domain/review/levels";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { C } from "../theme/theme";
@@ -23,7 +23,7 @@ import {
 
 interface ReviewerViewProps {
   reviewId?: string;
-  ree?: ReeDraftViewModel;
+  ree?: ReeViewState;
   reviewFiles?: Array<{ path: string; size?: number }>;
   reviewWorkspaceFiles?: Array<{ path: string; size?: number }>;
   onBack: () => void;
@@ -46,7 +46,7 @@ export function ReviewerView({
   PodOrbitControl,
 }: ReviewerViewProps) {
   const { reviewRepository } = useWorkspaceRuntime();
-  const ree = reeInput || createEmptyReeDraftViewModel();
+  const ree = reeInput || createEmptyReeViewState();
   const [reviewerPage, setReviewerPage] = useState<"review" | "files">("review");
   const [reviewRootFilesState, setReviewRootFilesState] = useState(reviewFiles);
   const [reviewWorkspaceFilesState, setReviewWorkspaceFilesState] = useState(reviewWorkspaceFiles);

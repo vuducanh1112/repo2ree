@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import { createEmptyReeViewState, type ReeViewState } from "../../domain/ree/ReeViewState";
 import { appShellReducer, createInitialState } from "../../ui/app-shell/providers/AppShellProvider";
 import { appShellSelectors } from "./AppShellSelectors";
 
-function buildRee(): ReeDraftViewModel {
+function buildRee(): ReeViewState {
   return {
     name: "demo",
     origin_url: "",
@@ -21,6 +21,11 @@ function buildRee(): ReeDraftViewModel {
       network: {},
       extra_info: {},
     },
+    sourceAvailable: false,
+    sourceIncluded: false,
+    runtimeIncluded: false,
+    downloadableFiles: [],
+    evalLevel: 0,
   };
 }
 
@@ -38,7 +43,6 @@ describe("appShellState", () => {
           sourceAvailable: true,
           sourceAcquiredBy: "download",
         },
-        sourceSnapshotFiles: [{ id: "1", name: "README.md", type: "file" }],
         sourceSnapshotArchiveName: "repo-original.tar.gz",
         actionState: "done",
         badge: true,
@@ -48,11 +52,11 @@ describe("appShellState", () => {
     const view = appShellSelectors.state(next);
 
     expect(next.reeDraft.reeSpec.origin_url).toBe("https://example.org/repo.git");
-    expect(next.workspaceRemote.workspaceSourceState.sourceAvailable).toBe(true);
+    expect(next.reeDraft.workspaceSourceState.sourceAvailable).toBe(true);
     expect(next.workflowRun.actionStates.source).toBe("done");
     expect(next.workflowRun.badges.source).toBe(true);
     expect(next.workflowRun.timestamps.source).toBe("2026-01-01T00:00:00Z");
-    expect(next.workspaceRemote.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
+    expect(next.reeDraft.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
     expect(view.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
   });
 
@@ -63,14 +67,12 @@ describe("appShellState", () => {
       type: "appShell/completeWorkflowRun",
       completion: {
         key: "build",
-        workflowLog: { lines: [{ type: "ok", msg: "done" }], ts: "2026-01-01T00:00:00Z" },
         actionState: "done",
         badge: true,
         timestamp: "2026-01-01T00:00:00Z",
       },
     });
 
-    expect(next.workflowRun.workflowLogs.build?.lines[0]?.msg).toBe("done");
     expect(next.workflowRun.actionStates.build).toBe("done");
     expect(next.workflowRun.badges.build).toBe(true);
     expect(next.workflowRun.timestamps.build).toBe("2026-01-01T00:00:00Z");
@@ -85,10 +87,6 @@ describe("appShellState", () => {
         badges: { build: true },
         timestamps: { build: "2026-01-01T00:00:00Z" },
       },
-      workspaceRemote: {
-        ...createInitialState(buildRee()).workspaceRemote,
-        workspaceFiles: [{ id: "1", name: "README.md", type: "file" as const }],
-      },
     };
 
     const next = appShellReducer(initial, {
@@ -99,23 +97,18 @@ describe("appShellState", () => {
     expect(next.workflowRun.actionStates).toEqual({});
     expect(next.workflowRun.badges).toEqual({});
     expect(next.workflowRun.timestamps).toEqual({});
-    expect(next.workspaceRemote.workspaceFiles).toEqual([]);
     expect(next.reeDraft.reeSpec.origin_url).toBe("");
-    expect(next.workspaceRemote.workspaceSourceState.sourceAvailable).toBe(false);
+    expect(next.reeDraft.workspaceSourceState.sourceAvailable).toBe(false);
   });
 
   it("keeps the aggregate selector aligned with the slice state", () => {
     const state = createInitialState(buildRee());
 
     const view = appShellSelectors.state(state);
-    const ree = appShellSelectors.reeDraftViewModel(state);
 
     expect(view.page).toBe(state.uiChrome.page);
     expect(view.workflowParams).toBe(state.workflowRun.workflowParams);
-    expect(view.workspaceFiles).toBe(state.workspaceRemote.workspaceFiles);
-    expect(ree.name).toBe(state.reeDraft.reeSpec.name);
-    expect(ree.sourceAvailable).toBe(
-      state.workspaceRemote.workspaceSourceState.sourceAvailable ?? false,
-    );
+    expect(view.locked).toBe(state.reeDraft.locked);
+    expect(createEmptyReeViewState().name).toBe("");
   });
 });

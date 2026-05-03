@@ -11,8 +11,8 @@ import type {
   WorkflowStepCommand,
   WorkflowStepHandlerMap,
 } from "../../../application/workflow/workflowStepCommands";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { executeWorkflowStepCommands, type WorkspaceWorkflowDispatch } from "./commandExecutors";
 import { pollWorkflowRun } from "./pollWorkflowRun";
@@ -21,7 +21,7 @@ import type { ShowToast } from "./types";
 interface ExecuteServiceRunArgs {
   key: string;
   params: GenericWorkflowParams;
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   level: number;
   workspaceFiles: FileTreeNode[];
   dispatch: WorkspaceWorkflowDispatch;
@@ -39,7 +39,7 @@ interface ExecuteServiceRunArgs {
   refreshWorkspace: () => Promise<{
     workspaceFiles: FileTreeNode[];
     reeArtifactFiles: ReeFile[];
-    ree?: ReeDraftViewModel;
+    ree?: ReeViewState;
   }>;
   onRunStarted?: (key: string, runId: string) => void;
   onRunFinished?: (key: string) => void;

@@ -1,4 +1,4 @@
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { PAGE } from "../app-shell/AppShellPages";
 import type { WorkflowRequirement } from "./WorkflowStepTypes";
 import type { AutomationStepKey } from "./WorkflowTypes";
@@ -43,7 +43,7 @@ export function getWorkflowRequirements(key: AutomationStepKey): WorkflowRequire
 
 export function missingWorkflowRequirements(
   key: AutomationStepKey,
-  ree: ReeDraftViewModel,
+  ree: ReeViewState,
 ): WorkflowRequirement[] {
   return getWorkflowRequirements(key).filter((requirement) => !ree[requirement.field]);
 }

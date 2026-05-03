@@ -14,9 +14,8 @@ import {
   useCancelWorkflowRunMutation,
   useStartWorkflowRunMutation,
 } from "../../../data/workflow-runs/mutations";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
-import { splitReeDraftViewModel } from "../../../domain/ree/reeDraftViewModel";
+import { type ReeViewState, splitReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { createDownloadActions } from "../artifact-actions/downloadActions";
 import { createSourceAdapter } from "../source-acquisition/sourceAdapter";
@@ -27,7 +26,7 @@ import { createWorkflowRunGateway } from "./workflowRunGateway";
 
 interface UseWorkspaceWorkflowArgs {
   dispatch: React.Dispatch<AppShellAction>;
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   level: number;
   workspaceFiles: FileTreeNode[];
 }
@@ -58,29 +57,18 @@ export function useWorkspaceWorkflowRuns({
     (workspace: {
       workspaceFiles: FileTreeNode[];
       reeArtifactFiles: ReeFile[];
-      ree?: ReeDraftViewModel;
+      ree?: ReeViewState;
     }) => {
       if (!workspace.ree) {
-        dispatch(
-          appShellActions.hydrateWorkspace({
-            workspaceFiles: workspace.workspaceFiles,
-            reeArtifactFiles: workspace.reeArtifactFiles,
-          }),
-        );
+        // No state to hydrate - workspace files come from React Query
         return;
       }
 
-      const split = splitReeDraftViewModel(workspace.ree);
-      dispatch(
-        appShellActions.hydrateWorkspace({
-          workspaceFiles: workspace.workspaceFiles,
-          reeArtifactFiles: workspace.reeArtifactFiles,
-          reeSpec: split.reeSpec,
-          workspaceSourceState: split.workspaceSourceState,
-          artifactStatus: split.artifactStatus,
-          evaluationState: split.evaluationState,
-        }),
-      );
+      const split = splitReeViewState(workspace.ree);
+      dispatch(appShellActions.setReeSpec(split.reeSpec));
+      dispatch(appShellActions.setWorkspaceSourceState(split.workspaceSourceState));
+      dispatch(appShellActions.setArtifactStatus(split.artifactStatus));
+      dispatch(appShellActions.setEvaluationState(split.evaluationState));
     },
     [dispatch],
   );

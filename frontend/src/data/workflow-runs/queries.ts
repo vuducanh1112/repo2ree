@@ -1,5 +1,5 @@
-import { type QueryClient, queryOptions } from "@tanstack/react-query";
-import type { WorkspaceRuntimeValue } from "../../app/browser/BrowserRuntime";
+import { type QueryClient, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWorkspaceRuntime, type WorkspaceRuntimeValue } from "../../app/browser/BrowserRuntime";
 import type {
   LogLine,
   WorkflowRunLogChunk,
@@ -102,6 +102,56 @@ async function fetchWorkflowRunLogs(
   runId: string,
 ) {
   return queryClient.fetchQuery(createWorkflowRunLogsQueryOptions(runtime, workspaceId, runId));
+}
+
+export function useWorkflowRunQuery(workspaceId: string | undefined, runId: string | undefined) {
+  const runtime = useWorkspaceRuntime();
+  const resolvedWorkspaceId = resolveWorkspaceId(runtime, workspaceId);
+
+  return useQuery({
+    ...(runId
+      ? createWorkflowRunQueryOptions(runtime, resolvedWorkspaceId, runId)
+      : {
+          queryKey: queryKeys.workflowRun(resolvedWorkspaceId, "idle"),
+          queryFn: async () => {
+            throw new Error("Workflow run query is disabled");
+          },
+        }),
+    enabled: !!runId,
+    refetchInterval: (query) =>
+      isTerminalWorkflowRunStatus(query.state.data?.status) ? false : 1500,
+  });
+}
+
+export function useWorkflowRunLogsQuery(
+  workspaceId: string | undefined,
+  runId: string | undefined,
+) {
+  const runtime = useWorkspaceRuntime();
+  const queryClient = useQueryClient();
+  const resolvedWorkspaceId = resolveWorkspaceId(runtime, workspaceId);
+  const baseOptions = runId
+    ? createWorkflowRunLogsQueryOptions(runtime, resolvedWorkspaceId, runId)
+    : {
+        queryKey: queryKeys.workflowRunLogs(resolvedWorkspaceId, "idle"),
+        queryFn: async () => {
+          throw new Error("Workflow run logs query is disabled");
+        },
+      };
+
+  return useQuery({
+    ...baseOptions,
+    enabled: !!runId,
+    refetchInterval: () => {
+      if (!runId) {
+        return false;
+      }
+      const run = queryClient.getQueryData<WorkflowRunRecord>(
+        queryKeys.workflowRun(resolvedWorkspaceId, runId),
+      );
+      return isTerminalWorkflowRunStatus(run?.status) ? false : 1500;
+    },
+  });
 }
 
 export async function observeWorkflowRun(

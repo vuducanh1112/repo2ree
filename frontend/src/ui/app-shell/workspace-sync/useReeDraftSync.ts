@@ -5,19 +5,19 @@ import {
 } from "../../../application/workspace/syncReeDraft";
 import { useUpdateReeDraftMutation } from "../../../data/ree/mutations";
 import { useRefreshReeQuery } from "../../../data/ree/queries";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import { toReePatch } from "../../../domain/ree/reePatch";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 
 interface HydratedWorkspaceSnapshot {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
-  ree?: ReeDraftViewModel;
+  ree?: ReeViewState;
 }
 
 interface UseReeDraftSyncArgs {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   workspaceId: string;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
@@ -38,7 +38,7 @@ export function useReeDraftSync({ ree, workspaceId, hydrateWorkspace }: UseReeDr
       const { forceReeHydration = false } = options;
       const requestStartedPatchKey = latestLocalPatchKeyRef.current;
       const workspace = await fetchWorkspace();
-      let reeToHydrate: ReeDraftViewModel | undefined;
+      let reeToHydrate: ReeViewState | undefined;
       if (workspace.ree) {
         const localPatchChangedDuringRequest =
           latestLocalPatchKeyRef.current !== requestStartedPatchKey;

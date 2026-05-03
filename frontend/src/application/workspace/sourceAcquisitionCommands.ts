@@ -9,7 +9,6 @@ import { initialAutomationStepParams } from "../workflow/workflowCatalog";
 export interface SourceOutcomeCommandPayload {
   reeSpecPatch?: Partial<ReeSpec>;
   workspaceSourceState?: WorkspaceSourceState;
-  sourceSnapshotFiles: FileTreeNode[];
   sourceSnapshotArchiveName: string;
   actionState?: "done";
   badge?: boolean;
@@ -19,6 +18,7 @@ export interface SourceOutcomeCommandPayload {
 export type SourceCommand =
   | { type: "resetWorkflowOnSourceChange"; workflowParams: WorkflowParams }
   | { type: "setSourceLoading" }
+  | { type: "setActiveRunId"; key: string; runId: string }
   | {
       type: "hydrateWorkspace";
       workspaceFiles: FileTreeNode[];
@@ -52,7 +52,6 @@ export function sourceFailureCommands(args: { message: string }): SourceCommand[
       type: "applySourceOutcome",
       outcome: {
         reeSpecPatch: {},
-        sourceSnapshotFiles: [],
         sourceSnapshotArchiveName: "",
         actionState: "done",
       },

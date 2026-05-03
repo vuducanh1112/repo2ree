@@ -1,7 +1,10 @@
-import type { CSSProperties, ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useMemo } from "react";
+import { useWorkspaceRuntime } from "../../../app/browser/BrowserRuntime";
 import { appShellPageForField } from "../../../application/app-shell/AppShellNavigation";
 import { PAGE } from "../../../application/app-shell/AppShellPages";
-import type { SourceUploadCommit } from "../../../domain/ree/ReeTypes";
+import type { WorkflowRunRecord } from "../../../application/ports/repositoryTypes";
+import { useWorkflowRunLogsQuery, useWorkflowRunQuery } from "../../../data/workflow-runs/queries";
+import type { LogEntry, SourceUploadCommit, WorkflowLogs } from "../../../domain/ree/ReeTypes";
 import type { useAppShell } from "../hooks/useAppShell";
 import { useWorkflowStepPageController } from "../hooks/useWorkflowStepPageController";
 import { PageArchive as ArchivePage } from "./archive/ArchivePage";
@@ -47,6 +50,35 @@ const CONTENT_SECTION_STYLE: CSSProperties = {
 
 function ContentSection({ children }: { children: ReactNode }) {
   return <div style={CONTENT_SECTION_STYLE}>{children}</div>;
+}
+
+function useWorkflowLogEntry(args: {
+  workspaceId: string;
+  runId: string | undefined;
+  fallbackTimestamp?: string;
+}): LogEntry | null {
+  const runQuery = useWorkflowRunQuery(args.workspaceId, args.runId);
+  const logsQuery = useWorkflowRunLogsQuery(args.workspaceId, args.runId);
+
+  return useMemo(() => {
+    if (!args.runId) {
+      return null;
+    }
+    const runTimestamp = resolveWorkflowRunTimestamp(runQuery.data, args.fallbackTimestamp);
+    return {
+      lines: logsQuery.data?.lines ?? [],
+      ts: runTimestamp,
+    };
+  }, [args.fallbackTimestamp, args.runId, logsQuery.data?.lines, runQuery.data]);
+}
+
+function resolveWorkflowRunTimestamp(
+  run: WorkflowRunRecord | undefined,
+  fallback?: string,
+): string {
+  return (
+    run?.finishedAt || run?.startedAt || run?.createdAt || fallback || new Date().toISOString()
+  );
 }
 
 export function OverviewPageContainer({
@@ -99,9 +131,15 @@ export function SourcePageContainer({
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
+  const { workspaceId } = useWorkspaceRuntime();
   const { page, focusedField } = uiChrome;
   const { locked, repoMode } = reeDraft;
-  const { badges, actionStates, workflowLogs } = workflowRun;
+  const { badges, actionStates } = workflowRun;
+  const sourceLog = useWorkflowLogEntry({
+    workspaceId,
+    runId: workflowRun.activeRunIds.source,
+    fallbackTimestamp: workflowRun.timestamps.source,
+  });
 
   if (page !== PAGE.SOURCE) {
     return null;
@@ -115,7 +153,7 @@ export function SourcePageContainer({
       repoMode={repoMode}
       badges={badges}
       actionStates={actionStates}
-      log={workflowLogs.source || null}
+      log={sourceLog}
       running={actionStates.source === "loading"}
       focusedField={focusedField}
       onReeChange={commands.setRee}
@@ -165,9 +203,15 @@ export function HardwareBomPageContainer({
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
+  const { workspaceId } = useWorkspaceRuntime();
   const { page, focusedField } = uiChrome;
   const { locked } = reeDraft;
-  const { badges, workflowLogs, actionStates, timestamps } = workflowRun;
+  const { badges, actionStates, timestamps } = workflowRun;
+  const hbomLog = useWorkflowLogEntry({
+    workspaceId,
+    runId: workflowRun.activeRunIds.hbom,
+    fallbackTimestamp: timestamps.hbom,
+  });
 
   if (page !== PAGE.HBOM) {
     return null;
@@ -178,7 +222,7 @@ export function HardwareBomPageContainer({
       ree={ree}
       locked={locked}
       badges={badges}
-      log={workflowLogs.hbom || null}
+      log={hbomLog}
       running={actionStates.hbom === "loading"}
       runDone={!!badges.hbom}
       ts={timestamps.hbom}
@@ -258,8 +302,34 @@ export function ArchivePageContainer({
   ree,
   commands,
 }: AppShellPageContainerProps) {
+  const { workspaceId } = useWorkspaceRuntime();
   const { page } = uiChrome;
-  const { badges, workflowLogs, actionStates } = workflowRun;
+  const { badges, actionStates } = workflowRun;
+  const swhLog = useWorkflowLogEntry({
+    workspaceId,
+    runId: workflowRun.activeRunIds.swh,
+    fallbackTimestamp: workflowRun.timestamps.swh,
+  });
+  const zenodoLog = useWorkflowLogEntry({
+    workspaceId,
+    runId: workflowRun.activeRunIds.zenodo,
+    fallbackTimestamp: workflowRun.timestamps.zenodo,
+  });
+  const dataverseLog = useWorkflowLogEntry({
+    workspaceId,
+    runId: workflowRun.activeRunIds.dataverse,
+    fallbackTimestamp: workflowRun.timestamps.dataverse,
+  });
+  const logs: WorkflowLogs = {};
+  if (swhLog) {
+    logs.swh = swhLog;
+  }
+  if (zenodoLog) {
+    logs.zenodo = zenodoLog;
+  }
+  if (dataverseLog) {
+    logs.dataverse = dataverseLog;
+  }
 
   if (page !== PAGE.ARCHIVE) {
     return null;
@@ -271,7 +341,7 @@ export function ArchivePageContainer({
         ree={ree}
         artifactStatus={workspaceRemote.artifactStatus}
         badges={badges}
-        logs={workflowLogs}
+        logs={logs}
         actionStates={actionStates}
         onRun={commands.onRunWorkflowStep}
         onGo={commands.setPage}

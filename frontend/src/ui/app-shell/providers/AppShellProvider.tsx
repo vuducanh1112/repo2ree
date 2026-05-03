@@ -17,17 +17,13 @@ import {
   createInitialWorkflowRunState,
   resolveWorkflowRunUpdater,
 } from "../../../application/workflow-runs/WorkflowRunState";
-import {
-  createInitialWorkspaceRemoteState,
-  resolveWorkspaceRemoteUpdater,
-} from "../../../application/workspace-remote/WorkspaceRemoteState";
 import { enforceSourceOriginRules } from "../../../domain/artifact/sourceOriginRules";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import {
-  createEmptyReeDraftViewModel,
-  splitReeDraftViewModel,
-  toReeDraftViewModel,
-} from "../../../domain/ree/reeDraftViewModel";
+  createEmptyReeViewState,
+  type ReeViewState,
+  splitReeViewState,
+  toReeViewState,
+} from "../../../domain/ree/ReeViewState";
 import { computeSourceChangeConsequences } from "../../../domain/workspace/sourceChangeConsequences";
 
 interface AppShellContextValue {
@@ -39,18 +35,17 @@ const AppShellContext = createContext<AppShellContextValue | null>(null);
 
 interface AppShellProviderProps {
   children: ReactNode;
-  initialRee?: ReeDraftViewModel;
+  initialRee?: ReeViewState;
 }
 
 export function createInitialState(
-  initialRee: ReeDraftViewModel = createEmptyReeDraftViewModel(),
+  initialRee: ReeViewState = createEmptyReeViewState(),
 ): AppShellContextState {
   const normalizedRee = enforceSourceOriginRules(initialRee);
-  const split = splitReeDraftViewModel(normalizedRee);
+  const split = splitReeViewState(normalizedRee);
   return {
-    reeDraft: createInitialReeDraftState(normalizedRee),
-    workspaceRemote: {
-      ...createInitialWorkspaceRemoteState(),
+    reeDraft: {
+      ...createInitialReeDraftState(normalizedRee),
       workspaceSourceState: split.workspaceSourceState,
       artifactStatus: split.artifactStatus,
     },
@@ -62,11 +57,11 @@ export function createInitialState(
   };
 }
 
-function buildReeDraftFromState(state: AppShellContextState): ReeDraftViewModel {
-  return toReeDraftViewModel({
+function buildReeViewFromState(state: AppShellContextState): ReeViewState {
+  return toReeViewState({
     reeSpec: state.reeDraft.reeSpec,
-    workspaceSourceState: state.workspaceRemote.workspaceSourceState,
-    artifactStatus: state.workspaceRemote.artifactStatus,
+    workspaceSourceState: state.reeDraft.workspaceSourceState,
+    artifactStatus: state.reeDraft.artifactStatus,
     evaluationState: state.workflowRun.evaluationState,
   });
 }
@@ -76,28 +71,6 @@ export function appShellReducer(
   action: AppShellAction,
 ): AppShellContextState {
   switch (action.type) {
-    case "appShell/setRee": {
-      const nextRee = enforceSourceOriginRules(
-        resolveReeDraftUpdater(buildReeDraftFromState(state), action.ree),
-      );
-      const split = splitReeDraftViewModel(nextRee);
-      return {
-        ...state,
-        reeDraft: {
-          ...state.reeDraft,
-          reeSpec: split.reeSpec,
-        },
-        workspaceRemote: {
-          ...state.workspaceRemote,
-          workspaceSourceState: split.workspaceSourceState,
-          artifactStatus: split.artifactStatus,
-        },
-        workflowRun: {
-          ...state.workflowRun,
-          evaluationState: split.evaluationState,
-        },
-      };
-    }
     case "appShell/setReeSpec":
       return {
         ...state,
@@ -125,10 +98,10 @@ export function appShellReducer(
     case "appShell/setWorkspaceSourceState":
       return {
         ...state,
-        workspaceRemote: {
-          ...state.workspaceRemote,
-          workspaceSourceState: resolveWorkspaceRemoteUpdater(
-            state.workspaceRemote.workspaceSourceState,
+        reeDraft: {
+          ...state.reeDraft,
+          workspaceSourceState: resolveReeDraftUpdater(
+            state.reeDraft.workspaceSourceState,
             action.workspaceSourceState,
           ),
         },
@@ -136,10 +109,10 @@ export function appShellReducer(
     case "appShell/setArtifactStatus":
       return {
         ...state,
-        workspaceRemote: {
-          ...state.workspaceRemote,
-          artifactStatus: resolveWorkspaceRemoteUpdater(
-            state.workspaceRemote.artifactStatus,
+        reeDraft: {
+          ...state.reeDraft,
+          artifactStatus: resolveReeDraftUpdater(
+            state.reeDraft.artifactStatus,
             action.artifactStatus,
           ),
         },
@@ -171,17 +144,6 @@ export function appShellReducer(
           timestamps: resolveWorkflowRunUpdater(state.workflowRun.timestamps, action.timestamps),
         },
       };
-    case "appShell/setWorkflowLogs":
-      return {
-        ...state,
-        workflowRun: {
-          ...state.workflowRun,
-          workflowLogs: resolveWorkflowRunUpdater(
-            state.workflowRun.workflowLogs,
-            action.workflowLogs,
-          ),
-        },
-      };
     case "appShell/setWorkflowParams":
       return {
         ...state,
@@ -202,6 +164,17 @@ export function appShellReducer(
             state.workflowRun.evaluationState,
             action.evaluationState,
           ),
+        },
+      };
+    case "appShell/setActiveRunId":
+      return {
+        ...state,
+        workflowRun: {
+          ...state.workflowRun,
+          activeRunIds: {
+            ...state.workflowRun.activeRunIds,
+            [action.payload.key]: action.payload.runId,
+          },
         },
       };
     case "appShell/setToast":
@@ -238,66 +211,13 @@ export function appShellReducer(
           navCollapsed: resolveUiChromeUpdater(state.uiChrome.navCollapsed, action.navCollapsed),
         },
       };
-    case "appShell/setWorkspaceFiles":
-      return {
-        ...state,
-        workspaceRemote: {
-          ...state.workspaceRemote,
-          workspaceFiles: resolveWorkspaceRemoteUpdater(
-            state.workspaceRemote.workspaceFiles,
-            action.workspaceFiles,
-          ),
-        },
-      };
-    case "appShell/setReeArtifactFiles":
-      return {
-        ...state,
-        workspaceRemote: {
-          ...state.workspaceRemote,
-          reeArtifactFiles: resolveWorkspaceRemoteUpdater(
-            state.workspaceRemote.reeArtifactFiles,
-            action.reeArtifactFiles,
-          ),
-        },
-      };
-    case "appShell/hydrateWorkspace":
+    case "appShell/setSourceSnapshotArchiveName":
       return {
         ...state,
         reeDraft: {
           ...state.reeDraft,
-          reeSpec: action.workspace.reeSpec ?? state.reeDraft.reeSpec,
-        },
-        workspaceRemote: {
-          ...state.workspaceRemote,
-          workspaceFiles: action.workspace.workspaceFiles,
-          reeArtifactFiles: action.workspace.reeArtifactFiles,
-          workspaceSourceState:
-            action.workspace.workspaceSourceState ?? state.workspaceRemote.workspaceSourceState,
-          artifactStatus: action.workspace.artifactStatus ?? state.workspaceRemote.artifactStatus,
-        },
-        workflowRun: {
-          ...state.workflowRun,
-          evaluationState: action.workspace.evaluationState ?? state.workflowRun.evaluationState,
-        },
-      };
-    case "appShell/setSourceSnapshotFiles":
-      return {
-        ...state,
-        workspaceRemote: {
-          ...state.workspaceRemote,
-          sourceSnapshotFiles: resolveWorkspaceRemoteUpdater(
-            state.workspaceRemote.sourceSnapshotFiles,
-            action.sourceSnapshotFiles,
-          ),
-        },
-      };
-    case "appShell/setSourceSnapshotArchiveName":
-      return {
-        ...state,
-        workspaceRemote: {
-          ...state.workspaceRemote,
-          sourceSnapshotArchiveName: resolveWorkspaceRemoteUpdater(
-            state.workspaceRemote.sourceSnapshotArchiveName,
+          sourceSnapshotArchiveName: resolveReeDraftUpdater(
+            state.reeDraft.sourceSnapshotArchiveName,
             action.sourceSnapshotArchiveName,
           ),
         },
@@ -313,16 +233,12 @@ export function appShellReducer(
                 ...action.outcome.reeSpecPatch,
               }
             : state.reeDraft.reeSpec,
-        },
-        workspaceRemote: {
-          ...state.workspaceRemote,
           workspaceSourceState: action.outcome.workspaceSourceState
             ? {
-                ...state.workspaceRemote.workspaceSourceState,
+                ...state.reeDraft.workspaceSourceState,
                 ...action.outcome.workspaceSourceState,
               }
-            : state.workspaceRemote.workspaceSourceState,
-          sourceSnapshotFiles: action.outcome.sourceSnapshotFiles,
+            : state.reeDraft.workspaceSourceState,
           sourceSnapshotArchiveName: action.outcome.sourceSnapshotArchiveName,
         },
         workflowRun: {
@@ -355,10 +271,6 @@ export function appShellReducer(
         ...state,
         workflowRun: {
           ...state.workflowRun,
-          workflowLogs: {
-            ...state.workflowRun.workflowLogs,
-            [action.completion.key]: action.completion.workflowLog,
-          },
           actionStates: {
             ...state.workflowRun.actionStates,
             [action.completion.key]: action.completion.actionState,
@@ -375,23 +287,17 @@ export function appShellReducer(
       };
     case "appShell/resetWorkflowOnSourceChange": {
       const resetState = computeSourceChangeConsequences(
-        { ree: buildReeDraftFromState(state) },
+        { ree: buildReeViewFromState(state) },
         action.workflowParams,
       );
-      const split = splitReeDraftViewModel(resetState.ree);
+      const split = splitReeViewState(resetState.ree);
       return {
         ...state,
         reeDraft: {
           ...state.reeDraft,
           reeSpec: split.reeSpec,
-        },
-        workspaceRemote: {
-          ...state.workspaceRemote,
           workspaceSourceState: split.workspaceSourceState,
           artifactStatus: split.artifactStatus,
-          workspaceFiles: resetState.workspaceFiles,
-          reeArtifactFiles: resetState.reeArtifactFiles,
-          sourceSnapshotFiles: resetState.sourceSnapshotFiles,
           sourceSnapshotArchiveName: resetState.sourceSnapshotArchiveName,
         },
         workflowRun: {
@@ -400,7 +306,6 @@ export function appShellReducer(
           actionStates: resetState.actionStates,
           badges: resetState.badges,
           timestamps: resetState.timestamps,
-          workflowLogs: resetState.workflowLogs,
           workflowParams: resetState.workflowParams,
         },
       };
@@ -413,7 +318,7 @@ export function appShellReducer(
 export function AppShellProvider({ children, initialRee }: AppShellProviderProps) {
   const [state, dispatch] = useReducer(
     appShellReducer,
-    initialRee ?? createEmptyReeDraftViewModel(),
+    initialRee ?? createEmptyReeViewState(),
     createInitialState,
   );
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { PAGE } from "../../../../application/app-shell/AppShellPages";
-import type { ReeDraftViewModel } from "../../../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import {
   removeWorkspaceFileByPath,
@@ -13,7 +13,7 @@ import { CodeLineList, getFileTypeStyle, ScriptViewMessage } from "./shared";
 
 interface ScriptPanelProps {
   scriptKind: "build" | "validate" | null;
-  fieldKey: keyof ReeDraftViewModel;
+  fieldKey: keyof ReeViewState;
   files: FileTreeNode[];
   onFilesChange?: (files: FileTreeNode[]) => void;
   onPersistWorkspaceFile?: (
@@ -21,8 +21,8 @@ interface ScriptPanelProps {
     path: string,
     content: string,
   ) => Promise<void>;
-  ree: ReeDraftViewModel;
-  onReeChange?: (ree: ReeDraftViewModel) => void;
+  ree: ReeViewState;
+  onReeChange?: (ree: ReeViewState) => void;
   onTemplateSuggestedOutput?: (output: string) => void;
   reviewerMode?: boolean;
   saveToWorkspaceOnly?: boolean;

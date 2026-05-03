@@ -2,7 +2,7 @@ import type React from "react";
 import type { AppShellPage } from "../../../../../application/app-shell/AppShellPages";
 import { PAGE } from "../../../../../application/app-shell/AppShellPages";
 import { FIELD_META } from "../../../../../application/app-shell/fieldMeta";
-import type { ReeDraftViewModel } from "../../../../../domain/ree/ReeSpec";
+import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import {
   C,
   F,
@@ -16,14 +16,14 @@ import {
 import { PanelFieldRow } from "./PanelFieldRow";
 
 interface MetadataPanelProps {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   onGoField: (key: string) => void;
   onNavigate: (key: AppShellPage) => void;
   metadataRef: React.RefObject<HTMLDivElement>;
 }
 
 export function MetadataPanel({ ree, onGoField, onNavigate, metadataRef }: MetadataPanelProps) {
-  const metadataFields = ["name"] as (keyof ReeDraftViewModel)[];
+  const metadataFields = ["name"] as (keyof ReeViewState)[];
   const filledCount = metadataFields.filter((field) => !!ree[field]).length;
 
   return (

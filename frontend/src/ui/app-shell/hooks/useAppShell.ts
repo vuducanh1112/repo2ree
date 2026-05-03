@@ -6,8 +6,9 @@ import type {
   AutomationStepRunParams,
 } from "../../../application/workflow/WorkflowTypes";
 import { useReeQuery } from "../../../data/ree/queries";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { ReeFile, SourceUploadCommit, WorkflowParams } from "../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../domain/ree/ReeViewState";
+import { toReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { useAppShellContext } from "../providers/AppShellProvider";
 import { useWorkspaceWorkflowRuns } from "../workflow-runs/useWorkspaceWorkflowRuns";
@@ -15,22 +16,46 @@ import { useWorkspaceWorkflowRuns } from "../workflow-runs/useWorkspaceWorkflowR
 export function useAppShell() {
   const { state, dispatch } = useAppShellContext();
   const reeDraft = appShellSelectors.reeDraft(state);
-  const workspaceRemote = appShellSelectors.workspaceRemote(state);
   const workflowRun = appShellSelectors.workflowRun(state);
   const uiChrome = appShellSelectors.uiChrome(state);
-  const ree = appShellSelectors.reeDraftViewModel(state);
   const reeQuery = useReeQuery();
 
   const { showReviewPreview } = uiChrome;
-  const workspaceFiles = reeQuery.data?.files ?? workspaceRemote.workspaceFiles;
-  const reeArtifactFiles = reeQuery.data?.reeFiles ?? workspaceRemote.reeArtifactFiles;
-  const resolvedWorkspaceRemote = useMemo(
+  const workspaceFiles = reeQuery.data?.files ?? [];
+  const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
+
+  const ree: ReeViewState = useMemo(
+    () =>
+      toReeViewState({
+        reeSpec: reeDraft.reeSpec,
+        workspaceSourceState: reeDraft.workspaceSourceState,
+        artifactStatus: reeDraft.artifactStatus,
+        evaluationState: workflowRun.evaluationState,
+      }),
+    [
+      reeDraft.reeSpec,
+      reeDraft.workspaceSourceState,
+      reeDraft.artifactStatus,
+      workflowRun.evaluationState,
+    ],
+  );
+
+  const workspaceRemote = useMemo(
     () => ({
-      ...workspaceRemote,
       workspaceFiles,
       reeArtifactFiles,
+      workspaceSourceState: reeDraft.workspaceSourceState,
+      artifactStatus: reeDraft.artifactStatus,
+      sourceSnapshotArchiveName: reeDraft.sourceSnapshotArchiveName,
+      sourceSnapshotFiles: [] as FileTreeNode[],
     }),
-    [reeArtifactFiles, workspaceFiles, workspaceRemote],
+    [
+      reeArtifactFiles,
+      workspaceFiles,
+      reeDraft.workspaceSourceState,
+      reeDraft.artifactStatus,
+      reeDraft.sourceSnapshotArchiveName,
+    ],
   );
 
   const currentReeFiles = useMemo<ReeFile[]>(() => reeArtifactFiles || [], [reeArtifactFiles]);
@@ -58,8 +83,11 @@ export function useAppShell() {
     setPage: (nextPage: AppShellPage) => dispatch(appShellActions.setPage(nextPage)),
     setNavCollapsed: (value: boolean | ((current: boolean) => boolean)) =>
       dispatch(appShellActions.setNavCollapsed(value)),
-    setRee: (value: ReeDraftViewModel | ((current: ReeDraftViewModel) => ReeDraftViewModel)) =>
-      dispatch(appShellActions.setRee(value)),
+    setRee: (value: ReeViewState | ((current: ReeViewState) => ReeViewState)) => {
+      // setRee action is removed; dispatch component updates via setReeSpec
+      const next = typeof value === "function" ? value(ree) : value;
+      dispatch(appShellActions.setReeSpec(next));
+    },
     setReeSpec: (
       value:
         | typeof reeDraft.reeSpec
@@ -71,8 +99,9 @@ export function useAppShell() {
       dispatch(appShellActions.setRepoMode(value)),
     setFocusedField: (value: string | null | ((current: string | null) => string | null)) =>
       dispatch(appShellActions.setFocusedField(value)),
-    setWorkspaceFiles: (value: FileTreeNode[] | ((current: FileTreeNode[]) => FileTreeNode[])) =>
-      dispatch(appShellActions.setWorkspaceFiles(value)),
+    setWorkspaceFiles: (_value: FileTreeNode[] | ((current: FileTreeNode[]) => FileTreeNode[])) => {
+      // workspaceFiles now come from React Query; this is a no-op
+    },
     setWorkflowParams: (value: WorkflowParams | ((current: WorkflowParams) => WorkflowParams)) =>
       dispatch(appShellActions.setWorkflowParams(value)),
     openReviewPreview: () => dispatch(appShellActions.setShowReviewPreview(true)),
@@ -96,7 +125,7 @@ export function useAppShell() {
   return {
     reeDraft,
     ree,
-    workspaceRemote: resolvedWorkspaceRemote,
+    workspaceRemote,
     workflowRun,
     uiChrome,
     level,

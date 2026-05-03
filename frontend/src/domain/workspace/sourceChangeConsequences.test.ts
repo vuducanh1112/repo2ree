@@ -44,7 +44,7 @@ describe("computeSourceChangeConsequences", () => {
 
     expect(reset.workflowParams).toEqual(nextWorkflowParams);
     expect(reset.badges).toEqual({});
-    expect(reset.workspaceFiles).toEqual([]);
+    expect(reset.sourceSnapshotArchiveName).toBe("");
     expect(reset.ree.runtime).toBe("");
     expect(reset.ree.origin_url).toBe("");
     expect(reset.ree.evalLevel).toBe(0);

@@ -5,8 +5,8 @@ import type {
   WorkflowParam,
   WorkflowParamValue,
 } from "../../application/workflow/WorkflowStepTypes";
-import type { ReeDraftViewModel } from "../../domain/ree/ReeSpec";
 import type { LogLine } from "../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { WorkflowLogSection } from "../app-shell/components/workflowRunPanels";
 import { Ic } from "../shared/components/Icon";
 import { C, F, hoverColor, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
@@ -23,7 +23,7 @@ interface ReactivationStep {
   color: string;
   desc: string;
   params?: WorkflowParam[];
-  logLines: (ree: ReeDraftViewModel, params?: ReactivationParams) => LogLine[];
+  logLines: (ree: ReeViewState, params?: ReactivationParams) => LogLine[];
 }
 
 export type ReactivationStepKey = "acquire_source" | "build_runtime" | "test_activation";
@@ -658,7 +658,7 @@ export function RvVerdictBanner({ allDone }: RvVerdictBannerProps) {
 }
 
 interface RvProvenanceChainProps {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
 }
 
 export function RvProvenanceChain({ ree }: RvProvenanceChainProps) {

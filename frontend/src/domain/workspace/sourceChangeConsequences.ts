@@ -1,28 +1,16 @@
-import type { ReeDraftViewModel } from "../ree/ReeSpec";
-import type {
-  ActionStates,
-  Badges,
-  ReeFile,
-  Timestamps,
-  WorkflowLogs,
-  WorkflowParams,
-} from "../ree/ReeTypes";
-import type { FileTreeNode } from "./FileTree";
+import type { ActionStates, Badges, Timestamps, WorkflowParams } from "../ree/ReeTypes";
+import type { ReeViewState } from "../ree/ReeViewState";
 
 export interface WorkspaceSourceResetInput {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
 }
 
 interface WorkspaceSourceResetFields {
   badges: Badges;
   timestamps: Timestamps;
-  workflowLogs: WorkflowLogs;
   actionStates: ActionStates;
   workflowParams: WorkflowParams;
-  ree: ReeDraftViewModel;
-  workspaceFiles: FileTreeNode[];
-  reeArtifactFiles: ReeFile[];
-  sourceSnapshotFiles: FileTreeNode[];
+  ree: ReeViewState;
   sourceSnapshotArchiveName: string;
 }
 
@@ -33,7 +21,6 @@ export function computeSourceChangeConsequences(
   return {
     badges: {},
     timestamps: {},
-    workflowLogs: {},
     actionStates: {},
     workflowParams,
     ree: {
@@ -55,9 +42,6 @@ export function computeSourceChangeConsequences(
       sourceSnapshotArchive: "",
       sourceSnapshotCapturedAt: "",
     },
-    workspaceFiles: [],
-    reeArtifactFiles: [],
-    sourceSnapshotFiles: [],
     sourceSnapshotArchiveName: "",
   };
 }

@@ -24,14 +24,8 @@ function dispatchWorkspaceStateCommand(
 ): void {
   if (command.type === "setActionStates") {
     dispatch(appShellActions.setActionStates(command.actionStates));
-  } else if (command.type === "setWorkflowLogs") {
-    dispatch(appShellActions.setWorkflowLogs(command.workflowLogs));
   } else if (command.type === "completeWorkflowRun") {
     dispatch(appShellActions.completeWorkflowRun(command.completion));
-  } else if (command.type === "hydrateWorkspace") {
-    dispatch(appShellActions.hydrateWorkspace(command.workspace));
-  } else if (command.type === "setRee") {
-    dispatch(appShellActions.setRee(command.ree));
   } else if (command.type === "setReeSpec") {
     dispatch(appShellActions.setReeSpec(command.reeSpec));
   } else if (command.type === "setWorkspaceSourceState") {
@@ -40,6 +34,8 @@ function dispatchWorkspaceStateCommand(
     dispatch(appShellActions.setArtifactStatus(command.artifactStatus));
   } else if (command.type === "setEvaluationState") {
     dispatch(appShellActions.setEvaluationState(command.evaluationState));
+  } else if (command.type === "setActiveRunId") {
+    dispatch(appShellActions.setActiveRunId({ key: command.key, runId: command.runId }));
   } else if (command.type === "setLocked") {
     dispatch(appShellActions.setLocked(command.locked));
   } else if (command.type === "resetWorkflowOnSourceChange") {

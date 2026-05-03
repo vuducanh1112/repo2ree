@@ -1,8 +1,8 @@
 import type React from "react";
 import { useRef, useState } from "react";
 import { FIELD_META } from "../../../application/app-shell/fieldMeta";
-import type { ReeDraftViewModel } from "../../../domain/ree/ReeSpec";
 import type { SourceUploadCommit } from "../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { Ic } from "../../shared/components/Icon";
 import { triggerOnEnterOrSpace } from "../../shared/keyboard";
@@ -554,8 +554,8 @@ export function SourceUploadField({
 
 interface RuntimeFieldProps {
   locked: boolean;
-  ree: ReeDraftViewModel;
-  onChange: (ree: ReeDraftViewModel) => void;
+  ree: ReeViewState;
+  onChange: (ree: ReeViewState) => void;
   onFocus?: () => void;
   active?: boolean;
   files: FileTreeNode[];
@@ -567,8 +567,8 @@ export function RuntimeField({ locked, ree, onChange, onFocus, active, files }: 
   const isImageRef = !isSkipped && !!val && !isTarball;
   const mode = isSkipped ? "skip" : isImageRef ? "image" : "tarball";
 
-  const set = <K extends keyof ReeDraftViewModel>(k: K, v: ReeDraftViewModel[K]) =>
-    onChange({ ...ree, [k]: v } as ReeDraftViewModel);
+  const set = <K extends keyof ReeViewState>(k: K, v: ReeViewState[K]) =>
+    onChange({ ...ree, [k]: v } as ReeViewState);
 
   const handleModeChange = (m: "tarball" | "image" | "skip") => {
     if (locked) return;

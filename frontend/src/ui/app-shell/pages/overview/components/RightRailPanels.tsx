@@ -7,8 +7,8 @@ import {
 } from "../../../../../application/app-shell/AppShellPages";
 import { FIELD_META } from "../../../../../application/app-shell/fieldMeta";
 import { AUTOMATION_STEPS } from "../../../../../application/workflow/workflowCatalog";
-import type { ReeDraftViewModel } from "../../../../../domain/ree/ReeSpec";
 import type { Badges, Timestamps } from "../../../../../domain/ree/ReeTypes";
+import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import { LEVELS } from "../../../../../domain/review/levels";
 import { Ic } from "../../../../shared/components/Icon";
 import {
@@ -27,7 +27,7 @@ import {
 import { PanelFieldRow } from "./PanelFieldRow";
 
 interface RightRailPanelsProps {
-  ree: ReeDraftViewModel;
+  ree: ReeViewState;
   badges: Badges;
   timestamps: Timestamps;
   level: number;
