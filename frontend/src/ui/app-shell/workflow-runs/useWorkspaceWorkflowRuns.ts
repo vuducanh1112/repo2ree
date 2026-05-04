@@ -2,11 +2,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
-import type { AppShellAction } from "../../../application/app-shell";
-import { appShellActions } from "../../../application/app-shell";
+import type { AppShellAction } from "../../../application/app-shell/AppShellTypes";
 import { planSealArtifactCommands } from "../../../application/artifact/sealArtifactCommands";
+import { patch } from "../../../application/state/actions";
 import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
+import { initialAutomationStepParams } from "../../../application/workflow/workflowCatalog";
 import { createWorkflowRunSession } from "../../../application/workflow/workflowRunSession";
 import { createWorkflowStepHandlers } from "../../../application/workflow/workflowStepCommands";
 import { useApiRuntime } from "../../../data/apiRuntime";
@@ -52,7 +53,7 @@ export function useWorkspaceWorkflowRuns({
     throw new Error("Workflow run executor is not ready");
   });
   const showToast = (msg: string, type: "info" | "success" | "error" = "info") =>
-    dispatch(appShellActions.setToast({ message: msg, type }));
+    dispatch(patch("uiChrome", { toast: { message: msg, type } }));
 
   const startWorkflowRunMutation = useStartWorkflowRunMutation(reeId);
   const cancelWorkflowRunMutation = useCancelWorkflowRunMutation(reeId);
@@ -69,10 +70,10 @@ export function useWorkspaceWorkflowRuns({
       }
 
       const split = splitReeViewState(workspace.ree);
-      dispatch(appShellActions.setReeSpec(split.reeSpec));
-      dispatch(appShellActions.setWorkspaceSourceState(split.workspaceSourceState));
-      dispatch(appShellActions.setArtifactStatus(split.artifactStatus));
-      dispatch(appShellActions.setEvaluationState(split.evaluationState));
+      dispatch(patch("reeDraft", { reeSpec: split.reeSpec }));
+      dispatch(patch("reeDraft", { workspaceSourceState: split.workspaceSourceState }));
+      dispatch(patch("reeDraft", { artifactStatus: split.artifactStatus }));
+      dispatch(patch("workflowRun", { evaluationState: split.evaluationState }));
     },
     [dispatch],
   );
@@ -106,13 +107,13 @@ export function useWorkspaceWorkflowRuns({
     },
     persistAutomationStepParams: (key, params) => {
       dispatch(
-        appShellActions.setWorkflowParams((prev) =>
-          automationSession.mergeAutomationStepParams(
-            prev,
+        patch("workflowRun", (prev) => ({
+          workflowParams: automationSession.mergeAutomationStepParams(
+            prev.workflowParams ?? initialAutomationStepParams(),
             key,
             params as AutomationStepRunParams<typeof key>,
           ),
-        ),
+        })),
       );
     },
     showToast,

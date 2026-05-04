@@ -1,5 +1,11 @@
-import type { AppShellAction } from "../../../application/app-shell";
-import { appShellActions } from "../../../application/app-shell";
+import type { AppShellAction } from "../../../application/app-shell/AppShellTypes";
+import {
+  applySourceOutcome,
+  completeWorkflowRun,
+  patch,
+  resetWorkflowOnSourceChange,
+} from "../../../application/state/actions";
+import { resolveUpdater } from "../../../application/state/types";
 import type { WorkflowStepCommand } from "../../../application/workflow/workflowStepCommands";
 import type { SourceCommand } from "../../../application/workspace/sourceAcquisitionCommands";
 import {
@@ -8,6 +14,11 @@ import {
   mapWorkflowStepCommandsToEffects,
   type WorkspaceStateCommand,
 } from "../../../application/workspace/workspaceMutationEffects";
+import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
+import type { ReeSpec } from "../../../domain/ree/ReeSpec";
+import type { ActionStates } from "../../../domain/ree/ReeTypes";
+import type { EvaluationState } from "../../../domain/review/EvaluationState";
+import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
 import type { ShowToast } from "./types";
 
 export type WorkspaceWorkflowDispatch = (action: AppShellAction) => void;
@@ -23,25 +34,61 @@ function dispatchReeStateCommand(
   dispatch: WorkspaceWorkflowDispatch,
 ): void {
   if (command.type === "setActionStates") {
-    dispatch(appShellActions.setActionStates(command.actionStates));
+    dispatch(
+      patch("workflowRun", (prev) => ({
+        actionStates: resolveUpdater(prev.actionStates as ActionStates, command.actionStates),
+      })),
+    );
   } else if (command.type === "completeWorkflowRun") {
-    dispatch(appShellActions.completeWorkflowRun(command.completion));
+    dispatch(completeWorkflowRun(command.completion));
   } else if (command.type === "setReeSpec") {
-    dispatch(appShellActions.setReeSpec(command.reeSpec));
+    dispatch(
+      patch("reeDraft", (prev) => ({
+        reeSpec: resolveUpdater(prev.reeSpec as ReeSpec, command.reeSpec),
+      })),
+    );
   } else if (command.type === "setWorkspaceSourceState") {
-    dispatch(appShellActions.setWorkspaceSourceState(command.workspaceSourceState));
+    dispatch(
+      patch("reeDraft", (prev) => ({
+        workspaceSourceState: resolveUpdater(
+          prev.workspaceSourceState as WorkspaceSourceState,
+          command.workspaceSourceState,
+        ),
+      })),
+    );
   } else if (command.type === "setArtifactStatus") {
-    dispatch(appShellActions.setArtifactStatus(command.artifactStatus));
+    dispatch(
+      patch("reeDraft", (prev) => ({
+        artifactStatus: resolveUpdater(
+          prev.artifactStatus as ArtifactStatus,
+          command.artifactStatus,
+        ),
+      })),
+    );
   } else if (command.type === "setEvaluationState") {
-    dispatch(appShellActions.setEvaluationState(command.evaluationState));
+    dispatch(
+      patch("workflowRun", (prev) => ({
+        evaluationState: resolveUpdater(
+          prev.evaluationState as EvaluationState,
+          command.evaluationState,
+        ),
+      })),
+    );
   } else if (command.type === "setActiveRunId") {
-    dispatch(appShellActions.setActiveRunId({ key: command.key, runId: command.runId }));
+    dispatch(
+      patch("workflowRun", (prev) => ({
+        activeRunIds: {
+          ...prev.activeRunIds,
+          [command.key]: command.runId,
+        },
+      })),
+    );
   } else if (command.type === "setLocked") {
-    dispatch(appShellActions.setLocked(command.locked));
+    dispatch(patch("reeDraft", { locked: command.locked }));
   } else if (command.type === "resetWorkflowOnSourceChange") {
-    dispatch(appShellActions.resetWorkflowOnSourceChange(command.workflowParams));
+    dispatch(resetWorkflowOnSourceChange(command.workflowParams));
   } else {
-    dispatch(appShellActions.applySourceOutcome(command.outcome));
+    dispatch(applySourceOutcome(command.outcome));
   }
 }
 

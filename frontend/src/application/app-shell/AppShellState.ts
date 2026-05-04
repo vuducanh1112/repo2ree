@@ -8,7 +8,7 @@ import type { WorkflowRunState } from "../workflow-runs/WorkflowRunState";
 import { normalizeAppShellPage } from "./AppShellNavigation";
 import type { AppShellPage } from "./AppShellPages";
 
-export interface AppShellState {
+interface AppShellState {
   locked: boolean;
   repoMode: "url" | "upload";
   actionStates: ActionStates;

@@ -8,8 +8,6 @@ import {
 } from "../../domain/ree/ReeViewState";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 
-export type ReeDraftStateUpdater<T> = T | ((previous: T) => T);
-
 export interface ReeDraftState {
   reeSpec: ReeSpec;
   locked: boolean;
@@ -17,13 +15,6 @@ export interface ReeDraftState {
   workspaceSourceState: WorkspaceSourceState;
   artifactStatus: ArtifactStatus;
   sourceSnapshotArchiveName: string;
-}
-
-export function resolveReeDraftUpdater<T>(previous: T, updater: ReeDraftStateUpdater<T>): T {
-  if (typeof updater === "function") {
-    return (updater as (value: T) => T)(previous);
-  }
-  return updater;
 }
 
 export function createInitialReeDraftState(

@@ -4,6 +4,7 @@ import type { ActionStates } from "../../domain/ree/ReeTypes";
 import { splitReeViewPatch } from "../../domain/ree/ReeViewState";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
+import type { Updater } from "../state/types";
 import type { WorkflowStepCommand } from "../workflow/workflowStepCommands";
 import type { SourceCommand } from "./sourceAcquisitionCommands";
 
@@ -13,7 +14,7 @@ type SourceApplyOutcomeCommand = Extract<SourceCommand, { type: "applySourceOutc
 export type WorkspaceStateCommand =
   | {
       type: "setActionStates";
-      actionStates: (prevStates: ActionStates) => ActionStates;
+      actionStates: Updater<ActionStates>;
     }
   | {
       type: "completeWorkflowRun";
@@ -26,19 +27,19 @@ export type WorkspaceStateCommand =
     }
   | {
       type: "setReeSpec";
-      reeSpec: (prevReeSpec: ReeSpec) => ReeSpec;
+      reeSpec: Updater<ReeSpec>;
     }
   | {
       type: "setWorkspaceSourceState";
-      workspaceSourceState: (prevState: WorkspaceSourceState) => WorkspaceSourceState;
+      workspaceSourceState: Updater<WorkspaceSourceState>;
     }
   | {
       type: "setArtifactStatus";
-      artifactStatus: (prevStatus: ArtifactStatus) => ArtifactStatus;
+      artifactStatus: Updater<ArtifactStatus>;
     }
   | {
       type: "setEvaluationState";
-      evaluationState: (prevState: EvaluationState) => EvaluationState;
+      evaluationState: Updater<EvaluationState>;
     }
   | { type: "setActiveRunId"; key: string; runId: string }
   | { type: "setLocked"; locked: boolean }

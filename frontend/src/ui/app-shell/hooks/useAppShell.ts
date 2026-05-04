@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { appShellActions, appShellSelectors } from "../../../application/app-shell";
 import type { AppShellPage } from "../../../application/app-shell/AppShellPages";
+import { patch } from "../../../application/state/actions";
 import type {
   AutomationStepKey,
   AutomationStepRunParams,
@@ -15,9 +15,9 @@ import { useWorkspaceWorkflowRuns } from "../workflow-runs/useWorkspaceWorkflowR
 
 export function useAppShell() {
   const { state, dispatch } = useAppShellContext();
-  const reeDraft = appShellSelectors.reeDraft(state);
-  const workflowRun = appShellSelectors.workflowRun(state);
-  const uiChrome = appShellSelectors.uiChrome(state);
+  const reeDraft = state.reeDraft;
+  const workflowRun = state.workflowRun;
+  const uiChrome = state.uiChrome;
   const reeQuery = useReeQuery();
 
   const { showReviewPreview } = uiChrome;
@@ -80,33 +80,58 @@ export function useAppShell() {
   });
 
   const commands = {
-    setPage: (nextPage: AppShellPage) => dispatch(appShellActions.setPage(nextPage)),
+    setPage: (nextPage: AppShellPage) => dispatch(patch("uiChrome", { page: nextPage })),
     setNavCollapsed: (value: boolean | ((current: boolean) => boolean)) =>
-      dispatch(appShellActions.setNavCollapsed(value)),
+      dispatch(
+        patch("uiChrome", {
+          navCollapsed: typeof value === "function" ? value(uiChrome.navCollapsed) : value,
+        }),
+      ),
     setRee: (value: ReeViewState | ((current: ReeViewState) => ReeViewState)) => {
       // setRee action is removed; dispatch component updates via setReeSpec
       const next = typeof value === "function" ? value(ree) : value;
-      dispatch(appShellActions.setReeSpec(next));
+      dispatch(patch("reeDraft", { reeSpec: next }));
     },
     setReeSpec: (
       value:
         | typeof reeDraft.reeSpec
         | ((current: typeof reeDraft.reeSpec) => typeof reeDraft.reeSpec),
-    ) => dispatch(appShellActions.setReeSpec(value)),
+    ) =>
+      dispatch(
+        patch("reeDraft", {
+          reeSpec: typeof value === "function" ? value(reeDraft.reeSpec) : value,
+        }),
+      ),
     setLocked: (value: boolean | ((current: boolean) => boolean)) =>
-      dispatch(appShellActions.setLocked(value)),
+      dispatch(
+        patch("reeDraft", {
+          locked: typeof value === "function" ? value(reeDraft.locked) : value,
+        }),
+      ),
     setRepoMode: (value: "url" | "upload" | ((current: "url" | "upload") => "url" | "upload")) =>
-      dispatch(appShellActions.setRepoMode(value)),
+      dispatch(
+        patch("reeDraft", {
+          repoMode: typeof value === "function" ? value(reeDraft.repoMode) : value,
+        }),
+      ),
     setFocusedField: (value: string | null | ((current: string | null) => string | null)) =>
-      dispatch(appShellActions.setFocusedField(value)),
+      dispatch(
+        patch("uiChrome", {
+          focusedField: typeof value === "function" ? value(uiChrome.focusedField) : value,
+        }),
+      ),
     setWorkspaceFiles: (_value: FileTreeNode[] | ((current: FileTreeNode[]) => FileTreeNode[])) => {
       // workspaceFiles now come from React Query; this is a no-op
     },
     setWorkflowParams: (value: WorkflowParams | ((current: WorkflowParams) => WorkflowParams)) =>
-      dispatch(appShellActions.setWorkflowParams(value)),
-    openReviewPreview: () => dispatch(appShellActions.setShowReviewPreview(true)),
-    closeReviewPreview: () => dispatch(appShellActions.setShowReviewPreview(false)),
-    clearToast: () => dispatch(appShellActions.setToast(null)),
+      dispatch(
+        patch("workflowRun", {
+          workflowParams: typeof value === "function" ? value(workflowRun.workflowParams) : value,
+        }),
+      ),
+    openReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: true })),
+    closeReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: false })),
+    clearToast: () => dispatch(patch("uiChrome", { toast: null })),
     onSeal: handleSeal,
     onDownloadRee: handleDownloadRee,
     onDownloadSourceFiles: handleDownloadSourceFiles,

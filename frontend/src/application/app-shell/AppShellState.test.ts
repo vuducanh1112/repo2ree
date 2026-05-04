@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyReeViewState, type ReeViewState } from "../../domain/ree/ReeViewState";
 import { appShellReducer, createInitialState } from "../../ui/app-shell/providers/AppShellProvider";
-import { appShellSelectors } from "./AppShellSelectors";
+import { createAppShellState } from "./AppShellState";
 
 function buildRee(): ReeViewState {
   return {
@@ -34,7 +34,7 @@ describe("appShellState", () => {
     const initial = createInitialState(buildRee());
 
     const next = appShellReducer(initial, {
-      type: "appShell/applySourceOutcome",
+      type: "applySourceOutcome",
       outcome: {
         reeSpecPatch: {
           origin_url: "https://example.org/repo.git",
@@ -49,7 +49,7 @@ describe("appShellState", () => {
         timestamp: "2026-01-01T00:00:00Z",
       },
     });
-    const view = appShellSelectors.state(next);
+    const view = createAppShellState(next);
 
     expect(next.reeDraft.reeSpec.origin_url).toBe("https://example.org/repo.git");
     expect(next.reeDraft.workspaceSourceState.sourceAvailable).toBe(true);
@@ -64,7 +64,7 @@ describe("appShellState", () => {
     const initial = createInitialState(buildRee());
 
     const next = appShellReducer(initial, {
-      type: "appShell/completeWorkflowRun",
+      type: "completeWorkflowRun",
       completion: {
         key: "build",
         actionState: "done",
@@ -90,7 +90,7 @@ describe("appShellState", () => {
     };
 
     const next = appShellReducer(initial, {
-      type: "appShell/resetWorkflowOnSourceChange",
+      type: "resetWorkflowOnSourceChange",
       workflowParams: initial.workflowRun.workflowParams,
     });
 
@@ -104,7 +104,7 @@ describe("appShellState", () => {
   it("keeps the aggregate selector aligned with the slice state", () => {
     const state = createInitialState(buildRee());
 
-    const view = appShellSelectors.state(state);
+    const view = createAppShellState(state);
 
     expect(view.page).toBe(state.uiChrome.page);
     expect(view.workflowParams).toBe(state.workflowRun.workflowParams);
