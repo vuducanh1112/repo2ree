@@ -288,12 +288,12 @@ module.exports = {
       }
     },
     {
-      name: "runtime-no-ui-outside-bootstrap",
+      name: "app-no-ui-outside-bootstrap",
       severity: "error",
       comment:
-        "Runtime modules should wire the app together, but only bootstrap may import top-level UI routes/components.",
+        "App-startup modules wire the app together, but only bootstrap may import top-level UI routes/components.",
       from: {
-        path: "^src/runtime/(?!bootstrap/)",
+        path: "^src/app/(?!bootstrap/)",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
@@ -310,7 +310,7 @@ module.exports = {
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/ui/(landing|reviewer|routes|workspace-shell)"
+        path: "^src/ui/(landing|reviewer|routes|app-shell)"
       }
     },
     {
@@ -323,7 +323,7 @@ module.exports = {
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/ui/(landing|reviewer|routes|workspace-shell)"
+        path: "^src/ui/(landing|reviewer|routes|app-shell)"
       }
     },
     {
@@ -336,7 +336,33 @@ module.exports = {
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/ui/workspace-shell/(?!WorkspaceShellView(?:[.]tsx)?$)"
+        path: "^src/ui/app-shell/(?!AppShellView(?:[.]tsx)?$)"
+      }
+    },
+    {
+      name: "data-no-ui-or-application",
+      severity: "error",
+      comment:
+        "The data layer (TanStack Query hooks) must not depend on UI components or application reducers; it sits below them.",
+      from: {
+        path: "^src/data",
+        pathNot: TEST_FILE_PATTERN
+      },
+      to: {
+        path: "^src/(application|ui)(/|$)"
+      }
+    },
+    {
+      name: "ui-no-application-infra-bypass",
+      severity: "error",
+      comment:
+        "UI modules must reach server state through src/data (TanStack Query hooks), not by importing infra adapters directly.",
+      from: {
+        path: "^src/ui",
+        pathNot: TEST_FILE_PATTERN
+      },
+      to: {
+        path: "^src/infra(/|$)"
       }
     }
   ],
