@@ -26,7 +26,7 @@ interface ExecuteServiceRunArgs {
   showToast: ShowToast;
   workflowStepHandlers: WorkflowStepHandlerMap;
   workflowRunsClient: WorkflowRunsClient;
-  workspaceId: string;
+  reeId: string;
   queryClient: QueryClient;
   startWorkflowRun: (
     scriptKey: string,
@@ -53,7 +53,7 @@ export async function executeWorkflowRunAction({
   showToast,
   workflowStepHandlers,
   workflowRunsClient,
-  workspaceId,
+  reeId,
   queryClient,
   startWorkflowRun,
   ports,
@@ -73,7 +73,7 @@ export async function executeWorkflowRunAction({
       startWorkflowRun: (scriptKey, runParams) => startWorkflowRun(scriptKey, runParams),
       pollRun: (runId, onUpdateLogs) =>
         pollWorkflowRun(queryClient, workflowRunsClient, {
-          workspaceId,
+          reeId,
           runId,
           onUpdate: onUpdateLogs,
           clock: ports.clock,

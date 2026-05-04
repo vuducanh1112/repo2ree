@@ -18,7 +18,7 @@ interface WorkflowStepCommandEffects {
   showToast: ShowToast;
 }
 
-function dispatchWorkspaceStateCommand(
+function dispatchReeStateCommand(
   command: WorkspaceStateCommand,
   dispatch: WorkspaceWorkflowDispatch,
 ): void {
@@ -51,7 +51,7 @@ function executeWorkspaceEffects(
 ): void {
   for (const effect of effects) {
     if (effect.type === "dispatchStateCommand") {
-      dispatchWorkspaceStateCommand(effect.command, handlers.dispatch);
+      dispatchReeStateCommand(effect.command, handlers.dispatch);
     } else if (effect.type === "persistFile") {
       handlers.persistWorkspaceFile(effect.path, effect.content);
     } else {

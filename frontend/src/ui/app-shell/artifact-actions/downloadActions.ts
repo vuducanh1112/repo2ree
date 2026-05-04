@@ -3,13 +3,13 @@ import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
 } from "../../../application/workspace/workspaceFileMutationPlanning";
-import type { WorkspaceClient } from "../../../data/ree/client";
+import type { ReeClient } from "../../../data/ree/client";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { ShowToast } from "../workflow-runs/types";
 
 interface CreateDownloadActionsArgs {
-  workspaceClient: WorkspaceClient<FileTreeNode>;
-  workspaceId: string;
+  reeClient: ReeClient<FileTreeNode>;
+  reeId: string;
   ports: AppShellRuntimePorts;
   getReeName: () => string;
   buildReePatch: () => Record<string, unknown>;
@@ -17,8 +17,8 @@ interface CreateDownloadActionsArgs {
 }
 
 export function createDownloadActions({
-  workspaceClient,
-  workspaceId,
+  reeClient,
+  reeId,
   ports,
   getReeName,
   buildReePatch,
@@ -26,7 +26,7 @@ export function createDownloadActions({
 }: CreateDownloadActionsArgs) {
   const downloadWorkspaceFile = async (path: string, suggestedName?: string): Promise<void> => {
     try {
-      const fileBytes = await workspaceClient.getFileBytes(workspaceId, path);
+      const fileBytes = await reeClient.getFileBytes(reeId, path);
       const plan = planWorkspaceFileDownload(path, suggestedName);
       ports.browserDownloads.downloadBlob(fileBytes, {
         fileName: plan.downloadName,
@@ -46,8 +46,8 @@ export function createDownloadActions({
   const handleDownloadRee = () => {
     const runDownload = async () => {
       try {
-        await workspaceClient.updateReeDraft(workspaceId, buildReePatch());
-        const archiveDownload = await workspaceClient.getReeArchive(workspaceId);
+        await reeClient.updateReeDraft(reeId, buildReePatch());
+        const archiveDownload = await reeClient.getReeArchive(reeId);
         const plan = planReeArchiveDownload(getReeName(), archiveDownload.fileName);
         ports.browserDownloads.downloadBlob(archiveDownload.bytes, {
           fileName: plan.archiveFileName,

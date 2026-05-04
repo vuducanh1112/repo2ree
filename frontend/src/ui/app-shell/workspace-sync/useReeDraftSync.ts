@@ -18,11 +18,11 @@ interface HydratedWorkspaceSnapshot {
 
 interface UseReeDraftSyncArgs {
   ree: ReeViewState;
-  workspaceId: string;
+  reeId: string;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
 
-export function useReeDraftSync({ ree, workspaceId, hydrateWorkspace }: UseReeDraftSyncArgs) {
+export function useReeDraftSync({ ree, reeId, hydrateWorkspace }: UseReeDraftSyncArgs) {
   const initialPatchKey = JSON.stringify(toReePatch(ree));
   const lastSyncedReeRef = useRef<string>(initialPatchKey);
   const latestLocalPatchKeyRef = useRef<string>(initialPatchKey);
@@ -30,8 +30,8 @@ export function useReeDraftSync({ ree, workspaceId, hydrateWorkspace }: UseReeDr
   const hasHydratedRemoteReeRef = useRef<boolean>(false);
   // Debounce REE draft persistence so typing does not round-trip on every keystroke.
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fetchWorkspace = useRefreshReeQuery(workspaceId);
-  const { mutateAsync: updateReeDraft } = useUpdateReeDraftMutation(workspaceId);
+  const fetchWorkspace = useRefreshReeQuery(reeId);
+  const { mutateAsync: updateReeDraft } = useUpdateReeDraftMutation(reeId);
 
   const refreshWorkspace = useCallback(
     async (options: { forceReeHydration?: boolean } = {}): Promise<HydratedWorkspaceSnapshot> => {

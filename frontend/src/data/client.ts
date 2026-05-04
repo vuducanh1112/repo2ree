@@ -1,12 +1,13 @@
+import { asReeId, type ReeId } from "../domain/ree/ReeId";
 import type { ApiRuntimeValue } from "./apiRuntime";
 
-export function resolveWorkspaceId(runtime: ApiRuntimeValue, workspaceId?: string): string {
-  return workspaceId || runtime.workspaceId;
+export function resolveReeId(runtime: ApiRuntimeValue, reeId?: ReeId | string): ReeId {
+  return asReeId(reeId || runtime.reeId);
 }
 
-export async function ensureWorkspaceId(
+export async function ensureReeId(
   runtime: ApiRuntimeValue,
-  workspaceId?: string,
-): Promise<string> {
-  return runtime.ensureWorkspaceId(resolveWorkspaceId(runtime, workspaceId));
+  reeId?: ReeId | string,
+): Promise<ReeId> {
+  return runtime.ensureReeId(resolveReeId(runtime, reeId));
 }

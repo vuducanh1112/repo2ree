@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { ReeId } from "../../domain/ree/ReeId";
 import type {
   WorkflowRunLogChunk,
   WorkflowRunRecord,
@@ -7,49 +8,53 @@ import type {
 import type { WorkflowRunDto, WorkflowRunStatusDto } from "../../infra/api/apiTypes";
 import { mapRunLogsToLegacy } from "../../infra/api/WorkflowRunsApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
-import { ensureWorkspaceId } from "../client";
+import { ensureReeId } from "../client";
 
 export interface WorkflowRunsClient {
   startWorkflowRun(
-    id: string,
+    id: ReeId | string,
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
   ): Promise<WorkflowRunRecord>;
-  getWorkflowRun(id: string, runId: string): Promise<WorkflowRunRecord>;
-  getWorkflowRunLogs(id: string, runId: string, cursor?: string): Promise<WorkflowRunLogChunk>;
-  cancelWorkflowRun(id: string, runId: string): Promise<WorkflowRunStatus>;
+  getWorkflowRun(id: ReeId | string, runId: string): Promise<WorkflowRunRecord>;
+  getWorkflowRunLogs(
+    id: ReeId | string,
+    runId: string,
+    cursor?: string,
+  ): Promise<WorkflowRunLogChunk>;
+  cancelWorkflowRun(id: ReeId | string, runId: string): Promise<WorkflowRunStatus>;
 }
 
 function createWorkflowRunsClient(runtime: ApiRuntimeValue): WorkflowRunsClient {
   return {
     async startWorkflowRun(id, scriptKey, params = {}) {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
+      const reeId = await ensureReeId(runtime, id);
       let run: WorkflowRunDto;
       switch (scriptKey) {
         case "build":
-          run = await runtime.runsApi.createBuildRuntimeRun(workspaceId, {
+          run = await runtime.runsApi.createBuildRuntimeRun(reeId, {
             build_runtime_script_path: String(params.build_runtime_script_path ?? ""),
             produced_runtime_path: String(params.produced_runtime_path ?? ""),
           });
           break;
         case "hbom":
-          run = await runtime.runsApi.createGenerateHbomRun(workspaceId, {
+          run = await runtime.runsApi.createGenerateHbomRun(reeId, {
             idempotencyKey:
               params.idempotencyKey == null ? undefined : String(params.idempotencyKey),
           });
           break;
         case "sbom":
-          run = await runtime.runsApi.createGenerateSbomRun(workspaceId, {
+          run = await runtime.runsApi.createGenerateSbomRun(reeId, {
             produced_runtime_path: String(params.produced_runtime_path ?? ""),
           });
           break;
         case "activation":
-          run = await runtime.runsApi.createActivationTestRun(workspaceId, {
+          run = await runtime.runsApi.createActivationTestRun(reeId, {
             activation_script_path: String(params.activation_script_path ?? ""),
           });
           break;
         case "evaluate":
-          run = await runtime.runsApi.createEvaluateRun(workspaceId, {
+          run = await runtime.runsApi.createEvaluateRun(reeId, {
             strict: Boolean(params.strict),
             swhid_check: Boolean(params.swhid_check),
           });
@@ -57,7 +62,7 @@ function createWorkflowRunsClient(runtime: ApiRuntimeValue): WorkflowRunsClient 
         case "source": {
           const mode = String(params.mode || "");
           if (mode === "download") {
-            run = await runtime.workspaceApi.acquireSource(workspaceId, {
+            run = await runtime.reeApi.acquireSource(reeId, {
               originUrl: String(params.source ?? ""),
               sourceType: String(params.sourceType ?? "git") as "git" | "tarball" | "zip",
             });
@@ -65,20 +70,16 @@ function createWorkflowRunsClient(runtime: ApiRuntimeValue): WorkflowRunsClient 
           }
           if (mode === "upload") {
             const archiveName = String(params.archiveName || "source.tar.gz");
-            const init = await runtime.workspaceApi.initUpload(workspaceId, {
+            const init = await runtime.reeApi.initUpload(reeId, {
               fileName: archiveName,
               size: 0,
               contentType: "application/gzip",
             });
             if (params.archiveContentBase64) {
               const archiveData = decodeBase64ToArrayBuffer(String(params.archiveContentBase64));
-              await runtime.workspaceApi.uploadSourceBytes(init.uploadUrl, archiveData);
+              await runtime.reeApi.uploadSourceBytes(init.uploadUrl, archiveData);
             }
-            run = await runtime.workspaceApi.completeUpload(
-              workspaceId,
-              init.uploadToken,
-              archiveName,
-            );
+            run = await runtime.reeApi.completeUpload(reeId, init.uploadToken, archiveName);
             break;
           }
           throw new Error("Unsupported source workflow mode");
@@ -89,12 +90,12 @@ function createWorkflowRunsClient(runtime: ApiRuntimeValue): WorkflowRunsClient 
       return mapRun(run);
     },
     async getWorkflowRun(id, runId) {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
-      return mapRun(await runtime.runsApi.getRun(workspaceId, runId));
+      const reeId = await ensureReeId(runtime, id);
+      return mapRun(await runtime.runsApi.getRun(reeId, runId));
     },
     async getWorkflowRunLogs(id, runId, cursor): Promise<WorkflowRunLogChunk> {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
-      const logs = await runtime.runsApi.listRunLogs(workspaceId, runId, {
+      const reeId = await ensureReeId(runtime, id);
+      const logs = await runtime.runsApi.listRunLogs(reeId, runId, {
         cursor,
         limit: 200,
       });
@@ -105,8 +106,8 @@ function createWorkflowRunsClient(runtime: ApiRuntimeValue): WorkflowRunsClient 
       };
     },
     async cancelWorkflowRun(id, runId) {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
-      const response = await runtime.runsApi.cancelRun(workspaceId, runId);
+      const reeId = await ensureReeId(runtime, id);
+      const response = await runtime.runsApi.cancelRun(reeId, runId);
       return mapStatus(response.status);
     },
   };

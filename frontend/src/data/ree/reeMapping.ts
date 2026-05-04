@@ -2,8 +2,8 @@ import type { ReeFile } from "../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { ReeProject } from "../../domain/workspace/WorkspaceTypes";
-import type { WorkspaceDetailDto } from "../../infra/api/apiTypes";
-import { mapWorkspaceDetailToRee } from "../../infra/api/ReeDtoMappers";
+import type { ReeDetailDto } from "../../infra/api/apiTypes";
+import { mapReeDetailToRee } from "../../infra/api/ReeDtoMappers";
 
 function upsertTreeFile(
   roots: FileTreeNode[],
@@ -56,18 +56,16 @@ function upsertTreeFile(
   }
 }
 
-export function mapWorkspaceDetailToReeProject(
-  workspace: WorkspaceDetailDto,
-): ReeProject<FileTreeNode> {
+export function mapReeDetailToReeProject(ree: ReeDetailDto): ReeProject<FileTreeNode> {
   const files: FileTreeNode[] = [];
-  for (const file of workspace.files || []) {
+  for (const file of ree.files || []) {
     if (!file.path) {
       continue;
     }
     upsertTreeFile(files, file.path, file.content, file.size, file.kind);
   }
 
-  const reeFiles: ReeFile[] = (workspace.reeFiles || []).map((file, index) => ({
+  const reeFiles: ReeFile[] = (ree.reeFiles || []).map((file, index) => ({
     id: `remote-ree-${index}-${file.path}`,
     name: file.path,
     type: "file",
@@ -75,12 +73,12 @@ export function mapWorkspaceDetailToReeProject(
     content: file.content,
     size: file.size,
   }));
-  const ree: ReeViewState = mapWorkspaceDetailToRee(workspace);
+  const reeState: ReeViewState = mapReeDetailToRee(ree);
 
   return {
-    id: workspace.reeId,
+    id: ree.reeId,
     files,
     reeFiles,
-    ree,
+    ree: reeState,
   };
 }

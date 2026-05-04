@@ -44,7 +44,7 @@ describe("pollWorkflowRun", () => {
     });
 
     const result = await pollWorkflowRun(queryClient, workflowRunsClient, {
-      workspaceId: "active",
+      reeId: "active",
       runId: "run-1",
       maxIterations: 3,
       clock,
@@ -77,7 +77,7 @@ describe("pollWorkflowRun", () => {
     });
 
     const result = await pollWorkflowRun(queryClient, workflowRunsClient, {
-      workspaceId: "active",
+      reeId: "active",
       runId: "run-2",
       maxIterations: 3,
       clock,
@@ -98,7 +98,7 @@ describe("pollWorkflowRun", () => {
 
     await expect(
       pollWorkflowRun(queryClient, workflowRunsClient, {
-        workspaceId: "active",
+        reeId: "active",
         runId: "run-3",
         maxIterations: 1,
         clock,
@@ -112,9 +112,9 @@ describe("pollWorkflowRun", () => {
     const sleep = vi.fn(async () => {});
     const getWorkflowRun = vi
       .fn<WorkflowRunsClient["getWorkflowRun"]>()
-      .mockImplementation(async (workspaceId, runId) => ({
+      .mockImplementation(async (reeId, runId) => ({
         runId,
-        status: workspaceId === "workspace-a" ? "succeeded" : "canceled",
+        status: reeId === "workspace-a" ? "succeeded" : "canceled",
         createdAt: "2026-04-29T00:00:00.000Z",
         finishedAt: "2026-04-29T00:00:01.000Z",
       }));
@@ -122,14 +122,14 @@ describe("pollWorkflowRun", () => {
 
     const [workspaceA, workspaceB] = await Promise.all([
       pollWorkflowRun(queryClient, workflowRunsClient, {
-        workspaceId: "workspace-a",
+        reeId: "workspace-a",
         runId: "shared-run",
         maxIterations: 1,
         clock,
         sleep,
       }),
       pollWorkflowRun(queryClient, workflowRunsClient, {
-        workspaceId: "workspace-b",
+        reeId: "workspace-b",
         runId: "shared-run",
         maxIterations: 1,
         clock,

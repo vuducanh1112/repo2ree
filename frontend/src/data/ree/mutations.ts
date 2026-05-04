@@ -1,21 +1,21 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApiRuntime } from "../apiRuntime";
-import { resolveWorkspaceId } from "../client";
+import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
-import { useWorkspaceClient } from "./client";
+import { useReeClient } from "./client";
 
-export function useUpdateReeDraftMutation(workspaceId?: string) {
+export function useUpdateReeDraftMutation(reeId?: string) {
   const runtime = useApiRuntime();
-  const workspaceClient = useWorkspaceClient();
+  const reeClient = useReeClient();
   const queryClient = useQueryClient();
-  const resolvedWorkspaceId = resolveWorkspaceId(runtime, workspaceId);
+  const resolvedReeId = resolveReeId(runtime, reeId);
 
   return useMutation({
     mutationFn: (reePatch: Record<string, unknown>) =>
-      workspaceClient.updateReeDraft(resolvedWorkspaceId, reePatch),
+      reeClient.updateReeDraft(resolvedReeId, reePatch),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: queryKeys.ree(resolvedWorkspaceId),
+        queryKey: queryKeys.ree(resolvedReeId),
       });
     },
   });

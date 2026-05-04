@@ -11,7 +11,7 @@ export interface ApiListResponse<TItem> {
   nextCursor?: string;
 }
 
-export interface WorkspaceSummaryDto {
+export interface ReeSummaryDto {
   reeId: string;
   externalRef?: string;
   name: string;
@@ -20,7 +20,7 @@ export interface WorkspaceSummaryDto {
   updatedAt: string;
 }
 
-export interface WorkspaceFileDto {
+export interface ReeFileDto {
   path: string;
   content?: string;
   size?: number;
@@ -28,7 +28,7 @@ export interface WorkspaceFileDto {
   etag?: string;
 }
 
-export interface WorkspaceReeFileDto {
+export interface ReeArtifactFileDto {
   path: string;
   content?: string;
   size?: number;
@@ -63,20 +63,20 @@ export interface ReeDraftDto {
   _downloadableFiles: string[];
 }
 
-export interface WorkspaceDetailDto extends WorkspaceSummaryDto {
+export interface ReeDetailDto extends ReeSummaryDto {
   reeDraft: Partial<ReeDraftDto>;
-  files?: WorkspaceFileDto[];
-  reeFiles?: WorkspaceReeFileDto[];
+  files?: ReeFileDto[];
+  reeFiles?: ReeArtifactFileDto[];
 }
 
-export interface CreateWorkspaceRequestDto {
+export interface CreateReeRequestDto {
   sourceMode: "url" | "upload" | "demo";
   originUrl?: string;
   sourceType?: "git" | "tarball" | "zip";
   name?: string;
 }
 
-export interface PatchWorkspaceRequestDto {
+export interface PatchReeRequestDto {
   reePatch: Partial<ReeDraftDto>;
   expectedVersion?: string;
 }
@@ -125,6 +125,7 @@ export interface ReviewDetailDto {
   archiveName?: string;
   reeDraft: Partial<ReeDraftDto>;
   files?: Array<{ path: string; size?: number }>;
+  // wire-format field name: backend uses workspaceFiles for the file listing of an REE.
   workspaceFiles?: Array<{ path: string; size?: number }>;
 }
 

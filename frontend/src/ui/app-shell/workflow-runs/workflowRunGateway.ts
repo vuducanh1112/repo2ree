@@ -36,7 +36,7 @@ interface CreateWorkflowRunGatewayArgs {
   showToast: ShowToast;
   workflowStepHandlers: WorkflowStepHandlerMap;
   workflowRunsClient: WorkflowRunsClient;
-  workspaceId: string;
+  reeId: string;
   queryClient: QueryClient;
   startWorkflowRun: (
     scriptKey: string,
@@ -62,7 +62,7 @@ export function createWorkflowRunGateway({
   showToast,
   workflowStepHandlers,
   workflowRunsClient,
-  workspaceId,
+  reeId,
   queryClient,
   startWorkflowRun,
   cancelWorkflowRun,
@@ -85,7 +85,7 @@ export function createWorkflowRunGateway({
       showToast,
       workflowStepHandlers,
       workflowRunsClient,
-      workspaceId,
+      reeId,
       queryClient,
       startWorkflowRun,
       ports,

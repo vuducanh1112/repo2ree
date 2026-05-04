@@ -1,6 +1,6 @@
 import { mapRawReeDraftToRee } from "../../application/review/mapReviewDetailToRee";
 import type { ReeViewState } from "../../domain/ree/ReeViewState";
-import type { ReviewDetailDto, WorkspaceDetailDto } from "./apiTypes";
+import type { ReeDetailDto, ReviewDetailDto } from "./apiTypes";
 
 export function mapReviewDraftToRee(review: ReviewDetailDto): ReeViewState {
   return mapRawReeDraftToRee({
@@ -9,10 +9,10 @@ export function mapReviewDraftToRee(review: ReviewDetailDto): ReeViewState {
   });
 }
 
-export function mapWorkspaceDetailToRee(workspace: WorkspaceDetailDto): ReeViewState {
+export function mapReeDetailToRee(ree: ReeDetailDto): ReeViewState {
   return mapRawReeDraftToRee({
-    reeDraft: workspace.reeDraft,
-    fallbackName: workspace.name,
-    fallbackOriginUrl: workspace.externalRef ?? "",
+    reeDraft: ree.reeDraft,
+    fallbackName: ree.name,
+    fallbackOriginUrl: ree.externalRef ?? "",
   });
 }

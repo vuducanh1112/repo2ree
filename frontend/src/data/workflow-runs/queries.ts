@@ -6,7 +6,7 @@ import type {
   WorkflowRunStatus,
 } from "../../domain/workflow/WorkflowRun";
 import { useApiRuntime } from "../apiRuntime";
-import { resolveWorkspaceId } from "../client";
+import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 import type { WorkflowRunsClient } from "./client";
 import { useWorkflowRunsClient } from "./client";
@@ -47,29 +47,29 @@ function resolveRunTimestamp(run: WorkflowRunRecord | undefined, fallback: strin
 
 function createWorkflowRunQueryOptions(
   workflowRunsClient: WorkflowRunsClient,
-  workspaceId: string,
+  reeId: string,
   runId: string,
 ) {
   return queryOptions({
-    queryKey: queryKeys.workflowRun(workspaceId, runId),
-    queryFn: () => workflowRunsClient.getWorkflowRun(workspaceId, runId),
+    queryKey: queryKeys.workflowRun(reeId, runId),
+    queryFn: () => workflowRunsClient.getWorkflowRun(reeId, runId),
   });
 }
 
 function createWorkflowRunLogsQueryOptions(
   workflowRunsClient: WorkflowRunsClient,
-  workspaceId: string,
+  reeId: string,
   runId: string,
 ) {
   return queryOptions({
-    queryKey: queryKeys.workflowRunLogs(workspaceId, runId),
+    queryKey: queryKeys.workflowRunLogs(reeId, runId),
     queryFn: async (): Promise<WorkflowRunLogChunk> => {
       let cursor: string | undefined;
       let chunk: WorkflowRunLogChunk | undefined;
       let lines: LogLine[] = [];
 
       for (let page = 0; page < MAX_LOG_PAGES; page += 1) {
-        chunk = await workflowRunsClient.getWorkflowRunLogs(workspaceId, runId, cursor);
+        chunk = await workflowRunsClient.getWorkflowRunLogs(reeId, runId, cursor);
         lines = mergeCappedLines(lines, chunk.lines);
         if (!chunk.hasMore) {
           break;
@@ -91,35 +91,33 @@ function createWorkflowRunLogsQueryOptions(
 async function fetchWorkflowRun(
   queryClient: QueryClient,
   workflowRunsClient: WorkflowRunsClient,
-  workspaceId: string,
+  reeId: string,
   runId: string,
 ) {
-  return queryClient.fetchQuery(
-    createWorkflowRunQueryOptions(workflowRunsClient, workspaceId, runId),
-  );
+  return queryClient.fetchQuery(createWorkflowRunQueryOptions(workflowRunsClient, reeId, runId));
 }
 
 async function fetchWorkflowRunLogs(
   queryClient: QueryClient,
   workflowRunsClient: WorkflowRunsClient,
-  workspaceId: string,
+  reeId: string,
   runId: string,
 ) {
   return queryClient.fetchQuery(
-    createWorkflowRunLogsQueryOptions(workflowRunsClient, workspaceId, runId),
+    createWorkflowRunLogsQueryOptions(workflowRunsClient, reeId, runId),
   );
 }
 
-export function useWorkflowRunQuery(workspaceId: string | undefined, runId: string | undefined) {
+export function useWorkflowRunQuery(reeId: string | undefined, runId: string | undefined) {
   const runtime = useApiRuntime();
   const workflowRunsClient = useWorkflowRunsClient();
-  const resolvedWorkspaceId = resolveWorkspaceId(runtime, workspaceId);
+  const resolvedReeId = resolveReeId(runtime, reeId);
 
   return useQuery({
     ...(runId
-      ? createWorkflowRunQueryOptions(workflowRunsClient, resolvedWorkspaceId, runId)
+      ? createWorkflowRunQueryOptions(workflowRunsClient, resolvedReeId, runId)
       : {
-          queryKey: queryKeys.workflowRun(resolvedWorkspaceId, "idle"),
+          queryKey: queryKeys.workflowRun(resolvedReeId, "idle"),
           queryFn: async () => {
             throw new Error("Workflow run query is disabled");
           },
@@ -130,18 +128,15 @@ export function useWorkflowRunQuery(workspaceId: string | undefined, runId: stri
   });
 }
 
-export function useWorkflowRunLogsQuery(
-  workspaceId: string | undefined,
-  runId: string | undefined,
-) {
+export function useWorkflowRunLogsQuery(reeId: string | undefined, runId: string | undefined) {
   const runtime = useApiRuntime();
   const workflowRunsClient = useWorkflowRunsClient();
   const queryClient = useQueryClient();
-  const resolvedWorkspaceId = resolveWorkspaceId(runtime, workspaceId);
+  const resolvedReeId = resolveReeId(runtime, reeId);
   const baseOptions = runId
-    ? createWorkflowRunLogsQueryOptions(workflowRunsClient, resolvedWorkspaceId, runId)
+    ? createWorkflowRunLogsQueryOptions(workflowRunsClient, resolvedReeId, runId)
     : {
-        queryKey: queryKeys.workflowRunLogs(resolvedWorkspaceId, "idle"),
+        queryKey: queryKeys.workflowRunLogs(resolvedReeId, "idle"),
         queryFn: async () => {
           throw new Error("Workflow run logs query is disabled");
         },
@@ -155,7 +150,7 @@ export function useWorkflowRunLogsQuery(
         return false;
       }
       const run = queryClient.getQueryData<WorkflowRunRecord>(
-        queryKeys.workflowRun(resolvedWorkspaceId, runId),
+        queryKeys.workflowRun(resolvedReeId, runId),
       );
       return isTerminalWorkflowRunStatus(run?.status) ? false : 1500;
     },
@@ -166,27 +161,22 @@ export async function observeWorkflowRun(
   queryClient: QueryClient,
   workflowRunsClient: WorkflowRunsClient,
   args: {
-    workspaceId: string;
+    reeId: string;
     runId: string;
     onUpdate?: (update: { status: WorkflowRunStatus; lines: LogLine[]; ts: string }) => void;
     timeoutMs?: number;
     sleep?: (ms: number) => Promise<void>;
   },
 ) {
-  const workspaceId = args.workspaceId;
+  const reeId = args.reeId;
   const startedAt = Date.now();
   const sleep =
     args.sleep ??
     ((ms: number) => new Promise<void>((resolve) => globalThis.setTimeout(resolve, ms)));
 
   while (true) {
-    const run = await fetchWorkflowRun(queryClient, workflowRunsClient, workspaceId, args.runId);
-    const logs = await fetchWorkflowRunLogs(
-      queryClient,
-      workflowRunsClient,
-      workspaceId,
-      args.runId,
-    );
+    const run = await fetchWorkflowRun(queryClient, workflowRunsClient, reeId, args.runId);
+    const logs = await fetchWorkflowRunLogs(queryClient, workflowRunsClient, reeId, args.runId);
     const snapshot = {
       status: run.status,
       lines: logs.lines,

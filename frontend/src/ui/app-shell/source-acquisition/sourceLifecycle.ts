@@ -7,7 +7,7 @@ import {
   sourceFailureCommands,
 } from "../../../application/workspace/sourceAcquisitionCommands";
 import { runSourceWorkspaceAction } from "../../../application/workspace/sourceAcquisitionLifecycle";
-import type { WorkspaceClient } from "../../../data/ree/client";
+import type { ReeClient } from "../../../data/ree/client";
 import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
 import type { SourceUploadCommit } from "../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";
@@ -30,9 +30,9 @@ export function resetWorkflowOnSourceChange(
 
 interface CreateSourceActionsArgs {
   ree: ReeViewState;
-  workspaceClient: WorkspaceClient<FileTreeNode>;
+  reeClient: ReeClient<FileTreeNode>;
   workflowRunsClient: WorkflowRunsClient;
-  workspaceId: string;
+  reeId: string;
   queryClient: QueryClient;
   dispatch: WorkspaceWorkflowDispatch;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
@@ -46,9 +46,9 @@ interface CreateSourceActionsArgs {
 
 export function createSourceActions({
   ree,
-  workspaceClient,
+  reeClient,
   workflowRunsClient,
-  workspaceId,
+  reeId,
   queryClient,
   dispatch,
   refreshWorkspaceFiles,
@@ -67,14 +67,14 @@ export function createSourceActions({
     runParams: Record<string, string | boolean | number | null | undefined>,
   ) =>
     runSourceWorkspaceAction({
-      workspaceClient,
+      reeClient,
       workflowRunClient: workflowRunsClient,
-      workspaceId,
+      reeId,
       resetPayload: serializeWorkspaceResetPayload(resetRequest),
       runParams,
-      pollRun: (workspaceId, runId, onUpdateLogs) =>
+      pollRun: (reeId, runId, onUpdateLogs) =>
         pollWorkflowRun(queryClient, workflowRunsClient, {
-          workspaceId,
+          reeId,
           runId,
           onUpdate: onUpdateLogs,
           clock,
@@ -96,7 +96,7 @@ export function createSourceActions({
     sourceChanged: onSourceChange,
     runSourceAction: runRemoteOrLocalSourceAction,
     refreshWorkspaceFiles,
-    clearWorkspace: () => workspaceClient.resetWorkspaceRequest(workspaceId, { mode: "clear" }),
+    clearWorkspace: () => reeClient.resetWorkspaceRequest(reeId, { mode: "clear" }),
     nowIso: clock.nowIso,
   });
 

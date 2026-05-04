@@ -1,36 +1,37 @@
+import type { ReeId } from "../../domain/ree/ReeId";
 import type { ApiClient } from "./ApiClient";
 import type {
   ApiListResponse,
-  CreateWorkspaceRequestDto,
-  PatchWorkspaceRequestDto,
+  CreateReeRequestDto,
+  PatchReeRequestDto,
+  ReeDetailDto,
+  ReeSummaryDto,
   SourceAcquireRequestDto,
   UploadInitRequestDto,
   UploadInitResponseDto,
   WorkflowRunDto,
-  WorkspaceDetailDto,
-  WorkspaceSummaryDto,
 } from "./apiTypes";
 import { endpoints } from "./endpoints";
 
-interface ListWorkspacesQuery {
+interface ListReesQuery {
   cursor?: string;
   limit?: number;
   status?: string;
 }
 
-interface WorkspaceFilesQuery {
+interface ReeFilesQuery {
   path?: string;
   recursive?: boolean;
   scope?: "source" | "generated" | "all";
 }
 
-interface WorkspaceFileContentResponse {
+interface ReeFileContentResponse {
   content: string;
   etag?: string;
   updatedAt?: string;
 }
 
-interface PutWorkspaceFileContentRequest {
+interface PutReeFileContentRequest {
   path: string;
   content: string;
   ifMatch?: string;
@@ -52,7 +53,7 @@ function parseContentDispositionFilename(contentDisposition: string | null): str
   return plain?.[1]?.trim();
 }
 
-export class WorkspaceApi {
+export class ReeApi {
   constructor(private readonly client: ApiClient) {}
 
   async uploadSourceBytes(uploadUrl: string, data: ArrayBuffer): Promise<void> {
@@ -65,101 +66,78 @@ export class WorkspaceApi {
     });
   }
 
-  async createWorkspace(payload: CreateWorkspaceRequestDto): Promise<WorkspaceDetailDto> {
-    return this.client.request<WorkspaceDetailDto>(endpoints.workspaces(), {
+  async createRee(payload: CreateReeRequestDto): Promise<ReeDetailDto> {
+    return this.client.request<ReeDetailDto>(endpoints.rees(), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
-  async listWorkspaces(
-    query: ListWorkspacesQuery = {},
-  ): Promise<ApiListResponse<WorkspaceSummaryDto>> {
+  async listRees(query: ListReesQuery = {}): Promise<ApiListResponse<ReeSummaryDto>> {
     const searchParams = new URLSearchParams();
     if (query.cursor) searchParams.set("cursor", query.cursor);
     if (typeof query.limit === "number") searchParams.set("limit", String(query.limit));
     if (query.status) searchParams.set("status", query.status);
-    return this.client.request<ApiListResponse<WorkspaceSummaryDto>>(
-      endpoints.workspaces(),
+    return this.client.request<ApiListResponse<ReeSummaryDto>>(
+      endpoints.rees(),
       { method: "GET" },
       searchParams,
     );
   }
 
-  async getWorkspace(workspaceId: string): Promise<WorkspaceDetailDto> {
-    return this.client.request<WorkspaceDetailDto>(endpoints.workspace(workspaceId), {
+  async getRee(reeId: ReeId): Promise<ReeDetailDto> {
+    return this.client.request<ReeDetailDto>(endpoints.ree(reeId), {
       method: "GET",
     });
   }
 
-  async patchWorkspace(
-    workspaceId: string,
-    payload: PatchWorkspaceRequestDto,
-  ): Promise<WorkspaceDetailDto> {
-    return this.client.request<WorkspaceDetailDto>(endpoints.workspace(workspaceId), {
+  async patchRee(reeId: ReeId, payload: PatchReeRequestDto): Promise<ReeDetailDto> {
+    return this.client.request<ReeDetailDto>(endpoints.ree(reeId), {
       method: "PATCH",
       body: JSON.stringify(payload),
     });
   }
 
-  async deleteWorkspace(workspaceId: string): Promise<{ deletedAt: string; state: string }> {
-    return this.client.request<{ deletedAt: string; state: string }>(
-      endpoints.workspace(workspaceId),
-      {
-        method: "DELETE",
-      },
-    );
+  async deleteRee(reeId: ReeId): Promise<{ deletedAt: string; state: string }> {
+    return this.client.request<{ deletedAt: string; state: string }>(endpoints.ree(reeId), {
+      method: "DELETE",
+    });
   }
 
-  async acquireSource(
-    workspaceId: string,
-    payload: SourceAcquireRequestDto,
-  ): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.workspaceSourceAcquire(workspaceId), {
+  async acquireSource(reeId: ReeId, payload: SourceAcquireRequestDto): Promise<WorkflowRunDto> {
+    return this.client.request<WorkflowRunDto>(endpoints.reeSourceAcquire(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
-  async initUpload(
-    workspaceId: string,
-    payload: UploadInitRequestDto,
-  ): Promise<UploadInitResponseDto> {
-    return this.client.request<UploadInitResponseDto>(
-      endpoints.workspaceSourceUploadInit(workspaceId),
-      {
-        method: "POST",
-        body: JSON.stringify(payload),
-      },
-    );
+  async initUpload(reeId: ReeId, payload: UploadInitRequestDto): Promise<UploadInitResponseDto> {
+    return this.client.request<UploadInitResponseDto>(endpoints.reeSourceUploadInit(reeId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   }
 
   async completeUpload(
-    workspaceId: string,
+    reeId: ReeId,
     uploadToken: string,
     archiveName: string,
   ): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(
-      endpoints.workspaceSourceUploadComplete(workspaceId),
-      {
-        method: "POST",
-        body: JSON.stringify({ uploadToken, archiveName }),
-      },
-    );
+    return this.client.request<WorkflowRunDto>(endpoints.reeSourceUploadComplete(reeId), {
+      method: "POST",
+      body: JSON.stringify({ uploadToken, archiveName }),
+    });
   }
 
-  async removeSource(workspaceId: string): Promise<{ invalidatedSteps: string[] }> {
-    return this.client.request<{ invalidatedSteps: string[] }>(
-      endpoints.workspaceSource(workspaceId),
-      {
-        method: "DELETE",
-      },
-    );
+  async removeSource(reeId: ReeId): Promise<{ invalidatedSteps: string[] }> {
+    return this.client.request<{ invalidatedSteps: string[] }>(endpoints.reeSource(reeId), {
+      method: "DELETE",
+    });
   }
 
   async getFiles(
-    workspaceId: string,
-    query: WorkspaceFilesQuery = {},
+    reeId: ReeId,
+    query: ReeFilesQuery = {},
   ): Promise<{ nodes: Array<{ path: string; kind: string; size?: number }> }> {
     const searchParams = new URLSearchParams();
     if (query.path) searchParams.set("path", query.path);
@@ -167,49 +145,46 @@ export class WorkspaceApi {
       searchParams.set("recursive", String(query.recursive));
     if (query.scope) searchParams.set("scope", query.scope);
     return this.client.request<{ nodes: Array<{ path: string; kind: string; size?: number }> }>(
-      endpoints.workspaceFiles(workspaceId),
+      endpoints.reeFiles(reeId),
       { method: "GET" },
       searchParams,
     );
   }
 
-  async getFileBytes(workspaceId: string, path: string): Promise<ArrayBuffer> {
+  async getFileBytes(reeId: ReeId, path: string): Promise<ArrayBuffer> {
     const searchParams = new URLSearchParams({ path });
     return this.client.requestArrayBuffer(
-      endpoints.workspaceFileRaw(workspaceId),
+      endpoints.reeFileRaw(reeId),
       { method: "GET" },
       searchParams,
     );
   }
 
-  async getReeArchive(workspaceId: string): Promise<{ bytes: ArrayBuffer; fileName?: string }> {
-    const response = await this.client.requestArrayBufferWithMeta(
-      endpoints.workspaceReeArchive(workspaceId),
-      {
-        method: "GET",
-      },
-    );
+  async getReeArchive(reeId: ReeId): Promise<{ bytes: ArrayBuffer; fileName?: string }> {
+    const response = await this.client.requestArrayBufferWithMeta(endpoints.reeArchive(reeId), {
+      method: "GET",
+    });
     return {
       bytes: response.bytes,
       fileName: parseContentDispositionFilename(response.headers.get("content-disposition")),
     };
   }
 
-  async getFileContent(workspaceId: string, path: string): Promise<WorkspaceFileContentResponse> {
+  async getFileContent(reeId: ReeId, path: string): Promise<ReeFileContentResponse> {
     const searchParams = new URLSearchParams({ path });
-    return this.client.request<WorkspaceFileContentResponse>(
-      endpoints.workspaceFileContent(workspaceId),
+    return this.client.request<ReeFileContentResponse>(
+      endpoints.reeFileContent(reeId),
       { method: "GET" },
       searchParams,
     );
   }
 
   async putFileContent(
-    workspaceId: string,
-    payload: PutWorkspaceFileContentRequest,
+    reeId: ReeId,
+    payload: PutReeFileContentRequest,
   ): Promise<{ etag?: string; updatedAt?: string }> {
     return this.client.request<{ etag?: string; updatedAt?: string }>(
-      endpoints.workspaceFileContent(workspaceId),
+      endpoints.reeFileContent(reeId),
       {
         method: "PUT",
         body: JSON.stringify(payload),
@@ -217,10 +192,10 @@ export class WorkspaceApi {
     );
   }
 
-  async deleteFileContent(workspaceId: string, path: string): Promise<{ deletedAt?: string }> {
+  async deleteFileContent(reeId: ReeId, path: string): Promise<{ deletedAt?: string }> {
     const searchParams = new URLSearchParams({ path });
     return this.client.request<{ deletedAt?: string }>(
-      endpoints.workspaceFileContent(workspaceId),
+      endpoints.reeFileContent(reeId),
       {
         method: "DELETE",
       },

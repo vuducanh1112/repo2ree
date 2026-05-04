@@ -3,54 +3,48 @@ import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
-import { resolveWorkspaceId } from "../client";
+import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
-import type { WorkspaceClient } from "./client";
-import { useWorkspaceClient } from "./client";
+import type { ReeClient } from "./client";
+import { useReeClient } from "./client";
 
 function createReeQueryOptions(
   runtime: ApiRuntimeValue,
-  workspaceClient: WorkspaceClient<FileTreeNode>,
-  workspaceId?: string,
+  reeClient: ReeClient<FileTreeNode>,
+  reeId?: string,
 ) {
-  const resolvedWorkspaceId = resolveWorkspaceId(runtime, workspaceId);
+  const resolvedReeId = resolveReeId(runtime, reeId);
   return queryOptions({
-    queryKey: queryKeys.ree(resolvedWorkspaceId),
-    queryFn: () => workspaceClient.getWorkspace(resolvedWorkspaceId),
+    queryKey: queryKeys.ree(resolvedReeId),
+    queryFn: () => reeClient.getRee(resolvedReeId),
   });
 }
 
 async function fetchReeQuery(
   queryClient: QueryClient,
   runtime: ApiRuntimeValue,
-  workspaceClient: WorkspaceClient<FileTreeNode>,
-  workspaceId?: string,
+  reeClient: ReeClient<FileTreeNode>,
+  reeId?: string,
 ) {
-  return queryClient.fetchQuery(createReeQueryOptions(runtime, workspaceClient, workspaceId));
+  return queryClient.fetchQuery(createReeQueryOptions(runtime, reeClient, reeId));
 }
 
-export function useReeQuery({
-  workspaceId,
-  enabled = true,
-}: {
-  workspaceId?: string;
-  enabled?: boolean;
-} = {}) {
+export function useReeQuery({ reeId, enabled = true }: { reeId?: string; enabled?: boolean } = {}) {
   const runtime = useApiRuntime();
-  const workspaceClient = useWorkspaceClient();
+  const reeClient = useReeClient();
   return useQuery({
-    ...createReeQueryOptions(runtime, workspaceClient, workspaceId),
+    ...createReeQueryOptions(runtime, reeClient, reeId),
     enabled,
   });
 }
 
-export function useRefreshReeQuery(workspaceId?: string) {
+export function useRefreshReeQuery(reeId?: string) {
   const runtime = useApiRuntime();
-  const workspaceClient = useWorkspaceClient();
+  const reeClient = useReeClient();
   const queryClient = useQueryClient();
 
   return useCallback(
-    () => fetchReeQuery(queryClient, runtime, workspaceClient, workspaceId),
-    [queryClient, runtime, workspaceClient, workspaceId],
+    () => fetchReeQuery(queryClient, runtime, reeClient, reeId),
+    [queryClient, runtime, reeClient, reeId],
   );
 }

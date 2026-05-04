@@ -1,57 +1,61 @@
 import { useMemo } from "react";
+import type { ReeId } from "../../domain/ree/ReeId";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceResetPayload } from "../../domain/workspace/WorkspaceReset";
 import type { ReeProject, WorkspaceBinaryDownload } from "../../domain/workspace/WorkspaceTypes";
+import type { ReeApi } from "../../infra/api/ReeApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
-import { ensureWorkspaceId } from "../client";
-import { mapWorkspaceDetailToReeProject } from "./workspaceMapping";
+import { ensureReeId } from "../client";
+import { mapReeDetailToReeProject } from "./reeMapping";
 
-export interface WorkspaceClient<TFile = unknown> {
-  getWorkspace(id: string): Promise<ReeProject<TFile>>;
-  updateFile(id: string, path: string, content: string): Promise<void>;
-  updateReeDraft(id: string, reePatch: Record<string, unknown>): Promise<void>;
-  deleteFile(id: string, path: string): Promise<void>;
-  getFileBytes(id: string, path: string): Promise<ArrayBuffer>;
-  getReeArchive(id: string): Promise<WorkspaceBinaryDownload>;
-  resetWorkspaceRequest(id: string, request: WorkspaceResetPayload): Promise<void>;
+type ReeApiRuntime = ApiRuntimeValue & { reeApi: ReeApi };
+
+export interface ReeClient<TFile = unknown> {
+  getRee(id: ReeId | string): Promise<ReeProject<TFile>>;
+  updateFile(id: ReeId | string, path: string, content: string): Promise<void>;
+  updateReeDraft(id: ReeId | string, reePatch: Record<string, unknown>): Promise<void>;
+  deleteFile(id: ReeId | string, path: string): Promise<void>;
+  getFileBytes(id: ReeId | string, path: string): Promise<ArrayBuffer>;
+  getReeArchive(id: ReeId | string): Promise<WorkspaceBinaryDownload>;
+  resetWorkspaceRequest(id: ReeId | string, request: WorkspaceResetPayload): Promise<void>;
 }
 
-function createWorkspaceClient(runtime: ApiRuntimeValue): WorkspaceClient<FileTreeNode> {
+function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode> {
   return {
-    async getWorkspace(id) {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
-      const workspace = await runtime.workspaceApi.getWorkspace(workspaceId);
-      return mapWorkspaceDetailToReeProject(workspace);
+    async getRee(id) {
+      const reeId = await ensureReeId(runtime, id);
+      const ree = await runtime.reeApi.getRee(reeId);
+      return mapReeDetailToReeProject(ree);
     },
     async updateFile(id, path, content) {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
-      await runtime.workspaceApi.putFileContent(workspaceId, { path, content });
+      const reeId = await ensureReeId(runtime, id);
+      await runtime.reeApi.putFileContent(reeId, { path, content });
     },
     async updateReeDraft(id, reePatch) {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
-      await runtime.workspaceApi.patchWorkspace(workspaceId, { reePatch });
+      const reeId = await ensureReeId(runtime, id);
+      await runtime.reeApi.patchRee(reeId, { reePatch });
     },
     async deleteFile(id, path) {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
-      await runtime.workspaceApi.deleteFileContent(workspaceId, path);
+      const reeId = await ensureReeId(runtime, id);
+      await runtime.reeApi.deleteFileContent(reeId, path);
     },
     async getFileBytes(id, path) {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
-      return runtime.workspaceApi.getFileBytes(workspaceId, path);
+      const reeId = await ensureReeId(runtime, id);
+      return runtime.reeApi.getFileBytes(reeId, path);
     },
     async getReeArchive(id) {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
-      return runtime.workspaceApi.getReeArchive(workspaceId);
+      const reeId = await ensureReeId(runtime, id);
+      return runtime.reeApi.getReeArchive(reeId);
     },
     async resetWorkspaceRequest(id, request) {
-      const workspaceId = await ensureWorkspaceId(runtime, id);
+      const reeId = await ensureReeId(runtime, id);
       const mode = request.mode || "clear";
       if (mode === "clear") {
-        await runtime.workspaceApi.removeSource(workspaceId);
+        await runtime.reeApi.removeSource(reeId);
         return;
       }
       if (mode === "download") {
-        await runtime.workspaceApi.acquireSource(workspaceId, {
+        await runtime.reeApi.acquireSource(reeId, {
           originUrl: String(request.source ?? ""),
           sourceType: String(request.sourceType ?? "git") as "git" | "tarball" | "zip",
         });
@@ -59,16 +63,16 @@ function createWorkspaceClient(runtime: ApiRuntimeValue): WorkspaceClient<FileTr
       }
       if (mode === "upload") {
         const archiveName = String(request.archiveName || "source.tar.gz");
-        const init = await runtime.workspaceApi.initUpload(workspaceId, {
+        const init = await runtime.reeApi.initUpload(reeId, {
           fileName: archiveName,
           size: 0,
           contentType: "application/gzip",
         });
         if (request.archiveContentBase64) {
           const archiveData = decodeBase64ToArrayBuffer(String(request.archiveContentBase64));
-          await runtime.workspaceApi.uploadSourceBytes(init.uploadUrl, archiveData);
+          await runtime.reeApi.uploadSourceBytes(init.uploadUrl, archiveData);
         }
-        await runtime.workspaceApi.completeUpload(workspaceId, init.uploadToken, archiveName);
+        await runtime.reeApi.completeUpload(reeId, init.uploadToken, archiveName);
         return;
       }
       throw new Error(`Unsupported workspace reset mode: ${mode}`);
@@ -76,9 +80,9 @@ function createWorkspaceClient(runtime: ApiRuntimeValue): WorkspaceClient<FileTr
   };
 }
 
-export function useWorkspaceClient(): WorkspaceClient<FileTreeNode> {
+export function useReeClient(): ReeClient<FileTreeNode> {
   const runtime = useApiRuntime();
-  return useMemo(() => createWorkspaceClient(runtime), [runtime]);
+  return useMemo(() => createReeClient(runtime), [runtime]);
 }
 
 function decodeBase64ToArrayBuffer(base64: string): ArrayBuffer {

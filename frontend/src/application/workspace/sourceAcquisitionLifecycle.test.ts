@@ -6,11 +6,11 @@ describe("runSourceWorkspaceAction", () => {
     const resetWorkspaceRequest = vi.fn(async () => {});
 
     const result = await runSourceWorkspaceAction({
-      workspaceClient: { resetWorkspaceRequest },
+      reeClient: { resetWorkspaceRequest },
       workflowRunClient: {
         startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
       },
-      workspaceId: "active",
+      reeId: "active",
       resetPayload: '{"mode":"clear"}',
       runParams: {},
       pollRun: vi.fn(),
@@ -24,19 +24,19 @@ describe("runSourceWorkspaceAction", () => {
     const onRunStarted = vi.fn();
     const onRunFinished = vi.fn();
     const onUpdateLogs = vi.fn();
-    const pollRun = vi.fn(async (_workspaceId, _runId, onUpdate) => {
+    const pollRun = vi.fn(async (_reeId, _runId, onUpdate) => {
       onUpdate?.({ lines: [{ type: "info", msg: "working" }], ts: "2026-01-01T00:00:00Z" });
       return { status: "succeeded" as const };
     });
 
     const result = await runSourceWorkspaceAction({
-      workspaceClient: {
+      reeClient: {
         resetWorkspaceRequest: vi.fn(async () => {}),
       },
       workflowRunClient: {
         startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
       },
-      workspaceId: "active",
+      reeId: "active",
       resetPayload: '{"mode":"download"}',
       runParams: { mode: "download", source: "https://example.org/repo.git" },
       pollRun,

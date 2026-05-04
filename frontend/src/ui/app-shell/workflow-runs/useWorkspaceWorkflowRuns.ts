@@ -10,7 +10,7 @@ import type { AutomationStepRunParams } from "../../../application/workflow/Work
 import { createWorkflowRunSession } from "../../../application/workflow/workflowRunSession";
 import { createWorkflowStepHandlers } from "../../../application/workflow/workflowStepCommands";
 import { useApiRuntime } from "../../../data/apiRuntime";
-import { useWorkspaceClient } from "../../../data/ree/client";
+import { useReeClient } from "../../../data/ree/client";
 import { useWorkflowRunsClient } from "../../../data/workflow-runs/client";
 import {
   useCancelWorkflowRunMutation,
@@ -21,7 +21,7 @@ import { type ReeViewState, splitReeViewState } from "../../../domain/ree/ReeVie
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { createDownloadActions } from "../artifact-actions/downloadActions";
 import { createSourceAdapter } from "../source-acquisition/sourceAdapter";
-import { createWorkspaceFilePersistence } from "../workspace-sync/filePersistence";
+import { createReeFilePersistence } from "../workspace-sync/filePersistence";
 import { useReeDraftSync } from "../workspace-sync/useReeDraftSync";
 import { executeWorkflowStepCommands } from "./commandExecutors";
 import { createWorkflowRunGateway } from "./workflowRunGateway";
@@ -39,8 +39,8 @@ export function useWorkspaceWorkflowRuns({
   level,
   workspaceFiles,
 }: UseWorkspaceWorkflowArgs) {
-  const { workspaceId } = useApiRuntime();
-  const workspaceClient = useWorkspaceClient();
+  const { reeId } = useApiRuntime();
+  const reeClient = useReeClient();
   const workflowRunsClient = useWorkflowRunsClient();
   const ports = appShellPorts;
   const queryClient = useQueryClient();
@@ -54,8 +54,8 @@ export function useWorkspaceWorkflowRuns({
   const showToast = (msg: string, type: "info" | "success" | "error" = "info") =>
     dispatch(appShellActions.setToast({ message: msg, type }));
 
-  const startWorkflowRunMutation = useStartWorkflowRunMutation(workspaceId);
-  const cancelWorkflowRunMutation = useCancelWorkflowRunMutation(workspaceId);
+  const startWorkflowRunMutation = useStartWorkflowRunMutation(reeId);
+  const cancelWorkflowRunMutation = useCancelWorkflowRunMutation(reeId);
 
   const hydrateWorkspace = useCallback(
     (workspace: {
@@ -79,13 +79,13 @@ export function useWorkspaceWorkflowRuns({
 
   const { buildReePatch, refreshWorkspace, refreshWorkspaceFiles } = useReeDraftSync({
     ree: reeDraft,
-    workspaceId,
+    reeId,
     hydrateWorkspace,
   });
 
-  const { persistWorkspaceFile } = createWorkspaceFilePersistence({
-    workspaceClient,
-    workspaceId,
+  const { persistWorkspaceFile } = createReeFilePersistence({
+    reeClient,
+    reeId,
     refreshWorkspaceFiles,
     showToast,
   });
@@ -118,7 +118,7 @@ export function useWorkspaceWorkflowRuns({
     showToast,
     workflowStepHandlers,
     workflowRunsClient,
-    workspaceId,
+    reeId,
     queryClient,
     startWorkflowRun: (scriptKey, params) =>
       startWorkflowRunMutation.mutateAsync({ scriptKey, params }),
@@ -130,9 +130,9 @@ export function useWorkspaceWorkflowRuns({
 
   const sourceAdapter = createSourceAdapter({
     ree: reeDraft,
-    workspaceClient,
+    reeClient,
     workflowRunsClient,
-    workspaceId,
+    reeId,
     queryClient,
     dispatch,
     refreshWorkspaceFiles,
@@ -165,8 +165,8 @@ export function useWorkspaceWorkflowRuns({
   };
 
   const { downloadWorkspaceFile, handleDownloadRee } = createDownloadActions({
-    workspaceClient,
-    workspaceId,
+    reeClient,
+    reeId,
     ports,
     getReeName: () => reeDraft.name || "",
     buildReePatch,

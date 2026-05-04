@@ -1,15 +1,16 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
-import { WORKSPACE_ID } from "../app/config/WorkspaceConstants";
+import { DEFAULT_REE_ID } from "../app/config/ReeConstants";
+import { asReeId, type ReeId } from "../domain/ree/ReeId";
 import { ApiClient } from "../infra/api/ApiClient";
+import { ReeApi } from "../infra/api/ReeApi";
 import { ReviewsApi } from "../infra/api/ReviewsApi";
 import { WorkflowRunsApi } from "../infra/api/WorkflowRunsApi";
-import { WorkspaceApi } from "../infra/api/WorkspaceApi";
 
 export interface ApiRuntimeValue {
-  workspaceId: string;
-  ensureWorkspaceId: (requestedId: string) => Promise<string>;
-  workspaceApi: WorkspaceApi;
+  reeId: ReeId;
+  ensureReeId: (requestedId: ReeId | string) => Promise<ReeId>;
+  reeApi: ReeApi;
   runsApi: WorkflowRunsApi;
   reviewsApi: ReviewsApi;
 }
@@ -17,46 +18,46 @@ export interface ApiRuntimeValue {
 interface ApiClientProviderProps {
   children: ReactNode;
   baseUrl?: string;
-  initialWorkspaceId?: string;
-  workspaceId?: string;
+  initialReeId?: string;
+  reeId?: string;
 }
 
 const ApiRuntimeContext = createContext<ApiRuntimeValue | null>(null);
 
 function createApiRuntime({
   baseUrl,
-  initialWorkspaceId,
-  workspaceId,
+  initialReeId,
+  reeId,
 }: {
   baseUrl?: string;
-  initialWorkspaceId?: string;
-  workspaceId?: string;
+  initialReeId?: string;
+  reeId?: string;
 }): ApiRuntimeValue {
   const client = new ApiClient({ baseUrl });
-  const workspaceApi = new WorkspaceApi(client);
+  const reeApi = new ReeApi(client);
   const runsApi = new WorkflowRunsApi(client);
   const reviewsApi = new ReviewsApi(client);
-  let resolvedWorkspaceId: string | null = initialWorkspaceId || null;
+  let resolvedReeId: ReeId | null = initialReeId ? asReeId(initialReeId) : null;
 
-  const ensureWorkspaceId = async (requestedId: string): Promise<string> => {
-    if (requestedId && requestedId !== "active") {
-      return requestedId;
+  const ensureReeId = async (requestedId: ReeId | string): Promise<ReeId> => {
+    if (requestedId && requestedId !== DEFAULT_REE_ID) {
+      return asReeId(String(requestedId));
     }
-    if (resolvedWorkspaceId) {
-      return resolvedWorkspaceId;
+    if (resolvedReeId) {
+      return resolvedReeId;
     }
-    const created = await workspaceApi.createWorkspace({
+    const created = await reeApi.createRee({
       sourceMode: "upload",
       name: "REE Workspace",
     });
-    resolvedWorkspaceId = created.reeId;
-    return created.reeId;
+    resolvedReeId = asReeId(created.reeId);
+    return resolvedReeId;
   };
 
   return {
-    workspaceId: workspaceId || WORKSPACE_ID,
-    ensureWorkspaceId,
-    workspaceApi,
+    reeId: reeId ? asReeId(reeId) : DEFAULT_REE_ID,
+    ensureReeId,
+    reeApi,
     runsApi,
     reviewsApi,
   };
@@ -65,17 +66,17 @@ function createApiRuntime({
 export function ApiClientProvider({
   children,
   baseUrl,
-  initialWorkspaceId,
-  workspaceId,
+  initialReeId,
+  reeId,
 }: ApiClientProviderProps) {
   const value = useMemo(
     () =>
       createApiRuntime({
         baseUrl,
-        initialWorkspaceId,
-        workspaceId,
+        initialReeId,
+        reeId,
       }),
-    [baseUrl, initialWorkspaceId, workspaceId],
+    [baseUrl, initialReeId, reeId],
   );
 
   return <ApiRuntimeContext.Provider value={value}>{children}</ApiRuntimeContext.Provider>;

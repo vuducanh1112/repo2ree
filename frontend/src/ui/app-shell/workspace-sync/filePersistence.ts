@@ -1,21 +1,21 @@
 import { planWorkspaceFilePersistence } from "../../../application/workspace/workspaceFileMutationPlanning";
-import type { WorkspaceClient } from "../../../data/ree/client";
+import type { ReeClient } from "../../../data/ree/client";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { ShowToast } from "../workflow-runs/types";
 
-interface CreateWorkspaceFilePersistenceArgs {
-  workspaceClient: WorkspaceClient<FileTreeNode>;
-  workspaceId: string;
+interface CreateReeFilePersistenceArgs {
+  reeClient: ReeClient<FileTreeNode>;
+  reeId: string;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   showToast: ShowToast;
 }
 
-export function createWorkspaceFilePersistence({
-  workspaceClient,
-  workspaceId,
+export function createReeFilePersistence({
+  reeClient,
+  reeId,
   refreshWorkspaceFiles,
   showToast,
-}: CreateWorkspaceFilePersistenceArgs) {
+}: CreateReeFilePersistenceArgs) {
   const persistWorkspaceFile = async (
     previousPath: string | undefined,
     path: string,
@@ -24,9 +24,9 @@ export function createWorkspaceFilePersistence({
     try {
       const plan = planWorkspaceFilePersistence(previousPath, path);
       if (plan.shouldDeletePrevious) {
-        await workspaceClient.deleteFile(workspaceId, plan.normalizedPreviousPath || "");
+        await reeClient.deleteFile(reeId, plan.normalizedPreviousPath || "");
       }
-      await workspaceClient.updateFile(workspaceId, plan.normalizedPath, content);
+      await reeClient.updateFile(reeId, plan.normalizedPath, content);
       await refreshWorkspaceFiles();
       showToast(plan.successMessage, "success");
     } catch (error) {

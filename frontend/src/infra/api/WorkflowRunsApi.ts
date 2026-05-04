@@ -30,57 +30,57 @@ export class WorkflowRunsApi {
   constructor(private readonly client: ApiClient) {}
 
   async createBuildRuntimeRun(
-    workspaceId: string,
+    reeId: string,
     payload: CreateBuildRuntimeRunRequestDto,
   ): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.workspaceBuildRuntime(workspaceId), {
+    return this.client.request<WorkflowRunDto>(endpoints.reeBuildRuntime(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
   async createGenerateSbomRun(
-    workspaceId: string,
+    reeId: string,
     payload: CreateGenerateSbomRunRequestDto,
   ): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.workspaceGenerateSbom(workspaceId), {
+    return this.client.request<WorkflowRunDto>(endpoints.reeGenerateSbom(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
   async createGenerateHbomRun(
-    workspaceId: string,
+    reeId: string,
     payload: CreateGenerateHbomRunRequestDto = {},
   ): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.workspaceGenerateHbom(workspaceId), {
+    return this.client.request<WorkflowRunDto>(endpoints.reeGenerateHbom(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
   async createActivationTestRun(
-    workspaceId: string,
+    reeId: string,
     payload: CreateActivationTestRunRequestDto,
   ): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.workspaceActivationTest(workspaceId), {
+    return this.client.request<WorkflowRunDto>(endpoints.reeActivationTest(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
   async createEvaluateRun(
-    workspaceId: string,
+    reeId: string,
     payload: CreateEvaluateRunRequestDto,
   ): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.workspaceEvaluate(workspaceId), {
+    return this.client.request<WorkflowRunDto>(endpoints.reeEvaluate(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
   async listRuns(
-    workspaceId: string,
+    reeId: string,
     query: ListRunsQuery = {},
   ): Promise<ApiListResponse<WorkflowRunDto>> {
     const searchParams = new URLSearchParams();
@@ -89,33 +89,33 @@ export class WorkflowRunsApi {
     if (query.cursor) searchParams.set("cursor", query.cursor);
     if (typeof query.limit === "number") searchParams.set("limit", String(query.limit));
     return this.client.request<ApiListResponse<WorkflowRunDto>>(
-      endpoints.workspaceRuns(workspaceId),
+      endpoints.reeRuns(reeId),
       { method: "GET" },
       searchParams,
     );
   }
 
-  async getRun(workspaceId: string, runId: string): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.workspaceRun(workspaceId, runId), {
+  async getRun(reeId: string, runId: string): Promise<WorkflowRunDto> {
+    return this.client.request<WorkflowRunDto>(endpoints.reeRun(reeId, runId), {
       method: "GET",
     });
   }
 
-  async cancelRun(workspaceId: string, runId: string): Promise<{ status: WorkflowRunStatusDto }> {
+  async cancelRun(reeId: string, runId: string): Promise<{ status: WorkflowRunStatusDto }> {
     return this.client.request<{ status: WorkflowRunStatusDto }>(
-      endpoints.workspaceRunCancel(workspaceId, runId),
+      endpoints.reeRunCancel(reeId, runId),
       { method: "POST" },
     );
   }
 
-  async retryRun(workspaceId: string, runId: string): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.workspaceRunRetry(workspaceId, runId), {
+  async retryRun(reeId: string, runId: string): Promise<WorkflowRunDto> {
+    return this.client.request<WorkflowRunDto>(endpoints.reeRunRetry(reeId, runId), {
       method: "POST",
     });
   }
 
   async listRunLogs(
-    workspaceId: string,
+    reeId: string,
     runId: string,
     query: ListRunLogsQuery = {},
   ): Promise<WorkflowLogsDto> {
@@ -124,7 +124,7 @@ export class WorkflowRunsApi {
     if (typeof query.limit === "number") searchParams.set("limit", String(query.limit));
     if (query.sinceTs) searchParams.set("sinceTs", query.sinceTs);
     return this.client.request<WorkflowLogsDto>(
-      endpoints.workspaceRunLogs(workspaceId, runId),
+      endpoints.reeRunLogs(reeId, runId),
       { method: "GET" },
       searchParams,
     );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ReviewDetailDto, WorkspaceDetailDto } from "./apiTypes";
-import { mapReviewDraftToRee, mapWorkspaceDetailToRee } from "./ReeDtoMappers";
+import type { ReeDetailDto, ReviewDetailDto } from "./apiTypes";
+import { mapReeDetailToRee, mapReviewDraftToRee } from "./ReeDtoMappers";
 
 describe("reeMappers", () => {
   it("maps review drafts into ReeViewState consistently", () => {
@@ -29,7 +29,7 @@ describe("reeMappers", () => {
   });
 
   it("falls back to workspace external ref when origin_url is absent", () => {
-    const workspace: WorkspaceDetailDto = {
+    const ree: ReeDetailDto = {
       reeId: "ree-1",
       name: "workspace-demo",
       status: "draft",
@@ -41,7 +41,7 @@ describe("reeMappers", () => {
       reeFiles: [],
     };
 
-    const mapped = mapWorkspaceDetailToRee(workspace);
+    const mapped = mapReeDetailToRee(ree);
 
     expect(mapped.name).toBe("workspace-demo");
     expect(mapped.origin_url).toBe("https://example.org/archive.tar.gz");

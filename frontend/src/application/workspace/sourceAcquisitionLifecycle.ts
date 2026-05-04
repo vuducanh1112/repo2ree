@@ -38,13 +38,13 @@ interface SourceWorkflowPoller {
 }
 
 interface RunSourceWorkspaceActionArgs {
-  workspaceClient: SourceWorkflowRunner;
+  reeClient: SourceWorkflowRunner;
   workflowRunClient: SourceWorkflowPoller;
-  workspaceId: string;
+  reeId: string;
   resetPayload: string;
   runParams: Record<string, string | boolean | number | null | undefined>;
   pollRun: (
-    workspaceId: string,
+    reeId: string,
     runId: string,
     onUpdate?: (update: SourceWorkflowUpdate) => void,
   ) => Promise<SourceWorkflowResult>;
@@ -54,9 +54,9 @@ interface RunSourceWorkspaceActionArgs {
 }
 
 export async function runSourceWorkspaceAction({
-  workspaceClient,
+  reeClient,
   workflowRunClient,
-  workspaceId,
+  reeId,
   resetPayload,
   runParams,
   pollRun,
@@ -65,17 +65,14 @@ export async function runSourceWorkspaceAction({
   onUpdateLogs,
 }: RunSourceWorkspaceActionArgs): Promise<SourceWorkflowResult> {
   if (!runParams.mode) {
-    await workspaceClient.resetWorkspaceRequest(
-      workspaceId,
-      parseWorkspaceResetPayload(resetPayload, "git"),
-    );
+    await reeClient.resetWorkspaceRequest(reeId, parseWorkspaceResetPayload(resetPayload, "git"));
     return { status: "succeeded" };
   }
 
-  const run = await workflowRunClient.startWorkflowRun(workspaceId, "source", runParams);
+  const run = await workflowRunClient.startWorkflowRun(reeId, "source", runParams);
   onRunStarted?.("source", run.runId);
   try {
-    return await pollRun(workspaceId, run.runId, onUpdateLogs);
+    return await pollRun(reeId, run.runId, onUpdateLogs);
   } finally {
     onRunFinished?.("source");
   }

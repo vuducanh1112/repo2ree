@@ -2,7 +2,7 @@ import type React from "react";
 import { useRef, useState } from "react";
 import { APP_ROUTE, type AppLoadRoutePath } from "../../application/app-shell/AppShellPages";
 import { useApiRuntime } from "../../data/apiRuntime";
-import { useWorkspaceClient } from "../../data/ree/client";
+import { useReeClient } from "../../data/ree/client";
 import { useReviewClient } from "../../data/reviews/client";
 import { LEVELS } from "../../domain/review/levels";
 import { Ic } from "../shared/components/Icon";
@@ -18,9 +18,9 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 });
 
 export function LandingView({ onLoad }: LandingViewProps) {
-  const { workspaceId } = useApiRuntime();
+  const { reeId } = useApiRuntime();
   const reviewClient = useReviewClient();
-  const workspaceClient = useWorkspaceClient();
+  const reeClient = useReeClient();
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingReviewUpload, setLoadingReviewUpload] = useState(false);
   const [reviewError, setReviewError] = useState<string>("");
@@ -29,8 +29,8 @@ export function LandingView({ onLoad }: LandingViewProps) {
   const createRee = async () => {
     setLoadingCreate(true);
     try {
-      const workspace = await workspaceClient.getWorkspace(workspaceId);
-      onLoad(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(workspace.id)}`);
+      const ree = await reeClient.getRee(reeId);
+      onLoad(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(ree.id)}`);
     } catch {
       onLoad(APP_ROUTE.WORKSPACE);
     } finally {

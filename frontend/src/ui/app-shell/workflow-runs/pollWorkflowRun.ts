@@ -4,7 +4,7 @@ import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
 import { observeWorkflowRun } from "../../../data/workflow-runs/queries";
 
 interface PollWorkflowRunOptions {
-  workspaceId: string;
+  reeId: string;
   runId: string;
   maxIterations?: number;
   onUpdate?: (update: PollWorkflowRunResult) => void;
@@ -34,7 +34,7 @@ export async function pollWorkflowRun(
   void options.clock;
   void options.sleep;
   return observeWorkflowRun(queryClient, workflowRunsClient, {
-    workspaceId: options.workspaceId,
+    reeId: options.reeId,
     runId: options.runId,
     onUpdate: options.onUpdate,
     timeoutMs: (options.maxIterations || 90) * 1500,

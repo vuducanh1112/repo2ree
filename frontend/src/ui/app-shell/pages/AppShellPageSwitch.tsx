@@ -53,12 +53,12 @@ function ContentSection({ children }: { children: ReactNode }) {
 }
 
 function useWorkflowLogEntry(args: {
-  workspaceId: string;
+  reeId: string;
   runId: string | undefined;
   fallbackTimestamp?: string;
 }): LogEntry | null {
-  const runQuery = useWorkflowRunQuery(args.workspaceId, args.runId);
-  const logsQuery = useWorkflowRunLogsQuery(args.workspaceId, args.runId);
+  const runQuery = useWorkflowRunQuery(args.reeId, args.runId);
+  const logsQuery = useWorkflowRunLogsQuery(args.reeId, args.runId);
 
   return useMemo(() => {
     if (!args.runId) {
@@ -131,12 +131,12 @@ export function SourcePageContainer({
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
-  const { workspaceId } = useApiRuntime();
+  const { reeId } = useApiRuntime();
   const { page, focusedField } = uiChrome;
   const { locked, repoMode } = reeDraft;
   const { badges, actionStates } = workflowRun;
   const sourceLog = useWorkflowLogEntry({
-    workspaceId,
+    reeId,
     runId: workflowRun.activeRunIds.source,
     fallbackTimestamp: workflowRun.timestamps.source,
   });
@@ -203,12 +203,12 @@ export function HardwareBomPageContainer({
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
-  const { workspaceId } = useApiRuntime();
+  const { reeId } = useApiRuntime();
   const { page, focusedField } = uiChrome;
   const { locked } = reeDraft;
   const { badges, actionStates, timestamps } = workflowRun;
   const hbomLog = useWorkflowLogEntry({
-    workspaceId,
+    reeId,
     runId: workflowRun.activeRunIds.hbom,
     fallbackTimestamp: timestamps.hbom,
   });
@@ -302,21 +302,21 @@ export function ArchivePageContainer({
   ree,
   commands,
 }: AppShellPageContainerProps) {
-  const { workspaceId } = useApiRuntime();
+  const { reeId } = useApiRuntime();
   const { page } = uiChrome;
   const { badges, actionStates } = workflowRun;
   const swhLog = useWorkflowLogEntry({
-    workspaceId,
+    reeId,
     runId: workflowRun.activeRunIds.swh,
     fallbackTimestamp: workflowRun.timestamps.swh,
   });
   const zenodoLog = useWorkflowLogEntry({
-    workspaceId,
+    reeId,
     runId: workflowRun.activeRunIds.zenodo,
     fallbackTimestamp: workflowRun.timestamps.zenodo,
   });
   const dataverseLog = useWorkflowLogEntry({
-    workspaceId,
+    reeId,
     runId: workflowRun.activeRunIds.dataverse,
     fallbackTimestamp: workflowRun.timestamps.dataverse,
   });

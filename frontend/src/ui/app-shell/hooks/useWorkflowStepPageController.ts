@@ -27,7 +27,7 @@ export function useWorkflowStepPageController({
   uiChrome,
   commands,
 }: UseWorkflowStepPageControllerArgs) {
-  const { workspaceId } = useApiRuntime();
+  const { reeId } = useApiRuntime();
   const { page } = uiChrome;
   const { badges, workflowParams, actionStates, timestamps, activeRunIds } = workflowRun;
 
@@ -77,8 +77,8 @@ export function useWorkflowStepPageController({
   }, [commands, missing]);
 
   const runId = workflowStep ? activeRunIds[workflowStep.key] : undefined;
-  const runQuery = useWorkflowRunQuery(workspaceId, runId);
-  const logsQuery = useWorkflowRunLogsQuery(workspaceId, runId);
+  const runQuery = useWorkflowRunQuery(reeId, runId);
+  const logsQuery = useWorkflowRunLogsQuery(reeId, runId);
   const log = useMemo(() => {
     if (!workflowStep || !runId) {
       return null;
