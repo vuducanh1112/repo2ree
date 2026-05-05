@@ -275,6 +275,19 @@ module.exports = {
       }
     },
     {
+      name: "infra-no-application",
+      severity: "error",
+      comment:
+        "Infrastructure modules must not depend on application use cases or mappers.",
+      from: {
+        path: "^src/infra",
+        pathNot: TEST_FILE_PATTERN
+      },
+      to: {
+        path: "^src/application(/|$)"
+      }
+    },
+    {
       name: "app-no-ui-outside-bootstrap",
       severity: "error",
       comment:

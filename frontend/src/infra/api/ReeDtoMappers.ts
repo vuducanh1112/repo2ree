@@ -1,4 +1,4 @@
-import { mapRawReeDraftToRee } from "../../application/review/mapReviewDetailToRee";
+import { mapRawReeDraftToRee } from "../../domain/ree/mapRawReeDraft";
 import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import type { ReeDetailDto, ReviewDetailDto } from "./apiTypes";
 
