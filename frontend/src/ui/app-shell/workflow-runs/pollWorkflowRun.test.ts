@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import type { AppShellClock } from "../../../app/bootstrap/ports";
-import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
+import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import { pollWorkflowRun } from "./pollWorkflowRun";
 
 const clock: AppShellClock = {
@@ -9,22 +9,22 @@ const clock: AppShellClock = {
   nowMillis: () => 1777420800000,
 };
 
-function createWorkflowRunsClient(overrides: Partial<WorkflowRunsClient>): WorkflowRunsClient {
+function createExecutionRunsClient(overrides: Partial<ExecutionRunsClient>): ExecutionRunsClient {
   return {
-    getWorkflowRun: vi.fn(),
-    getWorkflowRunLogs: vi.fn(async () => ({ lines: [], hasMore: false })),
-    startWorkflowRun: vi.fn(),
-    cancelWorkflowRun: vi.fn(),
+    getExecutionRun: vi.fn(),
+    getExecutionRunLogs: vi.fn(async () => ({ lines: [], hasMore: false })),
+    startExecutionRun: vi.fn(),
+    cancelExecutionRun: vi.fn(),
     ...overrides,
-  } as WorkflowRunsClient;
+  } as ExecutionRunsClient;
 }
 
 describe("pollWorkflowRun", () => {
   it("stops polling after a run succeeds", async () => {
     const queryClient = new QueryClient();
     const sleep = vi.fn(async () => {});
-    const getWorkflowRun = vi
-      .fn<WorkflowRunsClient["getWorkflowRun"]>()
+    const getExecutionRun = vi
+      .fn<ExecutionRunsClient["getExecutionRun"]>()
       .mockResolvedValueOnce({
         runId: "run-1",
         status: "running",
@@ -36,10 +36,10 @@ describe("pollWorkflowRun", () => {
         createdAt: "2026-04-29T00:00:00.000Z",
         finishedAt: "2026-04-29T00:00:01.000Z",
       });
-    const workflowRunsClient = createWorkflowRunsClient({
-      getWorkflowRun,
-      getWorkflowRunLogs: vi
-        .fn<WorkflowRunsClient["getWorkflowRunLogs"]>()
+    const workflowRunsClient = createExecutionRunsClient({
+      getExecutionRun,
+      getExecutionRunLogs: vi
+        .fn<ExecutionRunsClient["getExecutionRunLogs"]>()
         .mockResolvedValue({ lines: [{ type: "ok", msg: "done" }], hasMore: false }),
     });
 
@@ -60,9 +60,9 @@ describe("pollWorkflowRun", () => {
   it("stops polling after a run is canceled", async () => {
     const queryClient = new QueryClient();
     const sleep = vi.fn(async () => {});
-    const workflowRunsClient = createWorkflowRunsClient({
-      getWorkflowRun: vi
-        .fn<WorkflowRunsClient["getWorkflowRun"]>()
+    const workflowRunsClient = createExecutionRunsClient({
+      getExecutionRun: vi
+        .fn<ExecutionRunsClient["getExecutionRun"]>()
         .mockResolvedValueOnce({
           runId: "run-2",
           status: "running",
@@ -90,8 +90,8 @@ describe("pollWorkflowRun", () => {
 
   it("surfaces workflow run fetch errors", async () => {
     const queryClient = new QueryClient();
-    const workflowRunsClient = createWorkflowRunsClient({
-      getWorkflowRun: vi.fn(async () => {
+    const workflowRunsClient = createExecutionRunsClient({
+      getExecutionRun: vi.fn(async () => {
         throw new Error("backend unavailable");
       }),
     });
@@ -110,15 +110,15 @@ describe("pollWorkflowRun", () => {
   it("keeps workspace-specific run snapshots isolated by query key", async () => {
     const queryClient = new QueryClient();
     const sleep = vi.fn(async () => {});
-    const getWorkflowRun = vi
-      .fn<WorkflowRunsClient["getWorkflowRun"]>()
+    const getExecutionRun = vi
+      .fn<ExecutionRunsClient["getExecutionRun"]>()
       .mockImplementation(async (reeId, runId) => ({
         runId,
         status: reeId === "workspace-a" ? "succeeded" : "canceled",
         createdAt: "2026-04-29T00:00:00.000Z",
         finishedAt: "2026-04-29T00:00:01.000Z",
       }));
-    const workflowRunsClient = createWorkflowRunsClient({ getWorkflowRun });
+    const workflowRunsClient = createExecutionRunsClient({ getExecutionRun });
 
     const [workspaceA, workspaceB] = await Promise.all([
       pollWorkflowRun(queryClient, workflowRunsClient, {

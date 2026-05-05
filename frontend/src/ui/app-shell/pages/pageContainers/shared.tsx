@@ -1,10 +1,10 @@
 import { type CSSProperties, type ReactNode, useMemo } from "react";
 import {
-  useWorkflowRunLogsQuery,
-  useWorkflowRunQuery,
-} from "../../../../data/workflow-runs/queries";
+  useExecutionRunLogsQuery,
+  useExecutionRunQuery,
+} from "../../../../data/execution-runs/queries";
+import type { ExecutionRun } from "../../../../domain/execution/ExecutionRun";
 import type { LogEntry } from "../../../../domain/ree/ReeTypes";
-import type { WorkflowRunRecord } from "../../../../domain/workflow/WorkflowRun";
 import type { useAppShell } from "../../hooks/useAppShell";
 
 export type AppShellController = ReturnType<typeof useAppShell>;
@@ -36,8 +36,8 @@ export function useWorkflowLogEntry(args: {
   runId: string | undefined;
   fallbackTimestamp?: string;
 }): LogEntry | null {
-  const runQuery = useWorkflowRunQuery(args.reeId, args.runId);
-  const logsQuery = useWorkflowRunLogsQuery(args.reeId, args.runId);
+  const runQuery = useExecutionRunQuery(args.reeId, args.runId);
+  const logsQuery = useExecutionRunLogsQuery(args.reeId, args.runId);
 
   return useMemo(() => {
     if (!args.runId) {
@@ -51,10 +51,7 @@ export function useWorkflowLogEntry(args: {
   }, [args.fallbackTimestamp, args.runId, logsQuery.data?.lines, runQuery.data]);
 }
 
-function resolveWorkflowRunTimestamp(
-  run: WorkflowRunRecord | undefined,
-  fallback?: string,
-): string {
+function resolveWorkflowRunTimestamp(run: ExecutionRun | undefined, fallback?: string): string {
   return (
     run?.finishedAt || run?.startedAt || run?.createdAt || fallback || new Date().toISOString()
   );

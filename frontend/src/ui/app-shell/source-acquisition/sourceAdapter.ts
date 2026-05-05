@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppShellClock } from "../../../app/bootstrap/ports";
+import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ReeClient } from "../../../data/ree/client";
-import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { WorkspaceWorkflowDispatch } from "../workflow-runs/commandExecutors";
@@ -11,7 +11,7 @@ import { createSourceActions, resetWorkflowOnSourceChange } from "./sourceLifecy
 interface CreateSourceAdapterArgs {
   ree: ReeViewState;
   reeClient: ReeClient<FileTreeNode>;
-  workflowRunsClient: WorkflowRunsClient;
+  workflowRunsClient: ExecutionRunsClient;
   reeId: string;
   queryClient: QueryClient;
   dispatch: WorkspaceWorkflowDispatch;

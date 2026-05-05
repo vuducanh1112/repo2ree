@@ -7,8 +7,8 @@ import {
   sourceFailureCommands,
 } from "../../../application/workspace/sourceAcquisitionCommands";
 import { runSourceWorkspaceAction } from "../../../application/workspace/sourceAcquisitionLifecycle";
+import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ReeClient } from "../../../data/ree/client";
-import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
 import type { SourceUploadCommit } from "../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
@@ -31,7 +31,7 @@ export function resetWorkflowOnSourceChange(
 interface CreateSourceActionsArgs {
   ree: ReeViewState;
   reeClient: ReeClient<FileTreeNode>;
-  workflowRunsClient: WorkflowRunsClient;
+  workflowRunsClient: ExecutionRunsClient;
   reeId: string;
   queryClient: QueryClient;
   dispatch: WorkspaceWorkflowDispatch;

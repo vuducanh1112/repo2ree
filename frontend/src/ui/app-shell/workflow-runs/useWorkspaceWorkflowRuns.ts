@@ -11,12 +11,12 @@ import { initialAutomationStepParams } from "../../../application/workflow/workf
 import { createWorkflowRunSession } from "../../../application/workflow/workflowRunSession";
 import { createWorkflowStepHandlers } from "../../../application/workflow/workflowStepCommands";
 import { useApiRuntime } from "../../../data/apiRuntime";
-import { useReeClient } from "../../../data/ree/client";
-import { useWorkflowRunsClient } from "../../../data/workflow-runs/client";
+import { useExecutionRunsClient } from "../../../data/execution-runs/client";
 import {
-  useCancelWorkflowRunMutation,
-  useStartWorkflowRunMutation,
-} from "../../../data/workflow-runs/mutations";
+  useCancelExecutionRunMutation,
+  useStartExecutionRunMutation,
+} from "../../../data/execution-runs/mutations";
+import { useReeClient } from "../../../data/ree/client";
 import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
@@ -42,7 +42,7 @@ export function useWorkspaceWorkflowRuns({
 }: UseWorkspaceWorkflowArgs) {
   const { reeId } = useApiRuntime();
   const reeClient = useReeClient();
-  const workflowRunsClient = useWorkflowRunsClient();
+  const workflowRunsClient = useExecutionRunsClient();
   const ports = appShellPorts;
   const queryClient = useQueryClient();
   const automationSessionRef = useRef(createWorkflowRunSession());
@@ -55,8 +55,8 @@ export function useWorkspaceWorkflowRuns({
   const showToast = (msg: string, type: "info" | "success" | "error" = "info") =>
     dispatch(patch("uiChrome", { toast: { message: msg, type } }));
 
-  const startWorkflowRunMutation = useStartWorkflowRunMutation(reeId);
-  const cancelWorkflowRunMutation = useCancelWorkflowRunMutation(reeId);
+  const startWorkflowRunMutation = useStartExecutionRunMutation(reeId);
+  const cancelWorkflowRunMutation = useCancelExecutionRunMutation(reeId);
 
   const hydrateWorkspace = useCallback(
     (workspace: {

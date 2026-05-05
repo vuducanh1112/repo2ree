@@ -3,15 +3,15 @@ import { createContext, useContext, useMemo } from "react";
 import { DEFAULT_REE_ID } from "../app/config/ReeConstants";
 import { asReeId, type ReeId } from "../domain/ree/ReeId";
 import { ApiClient } from "../infra/api/ApiClient";
+import { ExecutionRunsApi } from "../infra/api/ExecutionRunsApi";
 import { ReeApi } from "../infra/api/ReeApi";
 import { ReviewsApi } from "../infra/api/ReviewsApi";
-import { WorkflowRunsApi } from "../infra/api/WorkflowRunsApi";
 
 export interface ApiRuntimeValue {
   reeId: ReeId;
   ensureReeId: (requestedId: ReeId | string) => Promise<ReeId>;
   reeApi: ReeApi;
-  runsApi: WorkflowRunsApi;
+  runsApi: ExecutionRunsApi;
   reviewsApi: ReviewsApi;
 }
 
@@ -35,7 +35,7 @@ function createApiRuntime({
 }): ApiRuntimeValue {
   const client = new ApiClient({ baseUrl });
   const reeApi = new ReeApi(client);
-  const runsApi = new WorkflowRunsApi(client);
+  const runsApi = new ExecutionRunsApi(client);
   const reviewsApi = new ReviewsApi(client);
   let resolvedReeId: ReeId | null = initialReeId ? asReeId(initialReeId) : null;
 

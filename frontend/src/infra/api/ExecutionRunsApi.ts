@@ -26,7 +26,7 @@ interface ListRunLogsQuery {
   sinceTs?: string;
 }
 
-export class WorkflowRunsApi {
+export class ExecutionRunsApi {
   constructor(private readonly client: ApiClient) {}
 
   async createBuildRuntimeRun(

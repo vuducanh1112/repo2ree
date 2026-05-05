@@ -1,33 +1,43 @@
 import { useMemo } from "react";
+import type { ExecutionRun, ExecutionRunLogChunk } from "../../domain/execution/ExecutionRun";
+import type { ExecutionRunStatus } from "../../domain/execution/ExecutionRunStatus";
 import type { ReeId } from "../../domain/ree/ReeId";
-import type {
-  WorkflowRunLogChunk,
-  WorkflowRunRecord,
-  WorkflowRunStatus,
-} from "../../domain/workflow/WorkflowRun";
 import type { WorkflowRunDto, WorkflowRunStatusDto } from "../../infra/api/apiTypes";
-import { mapRunLogsToLegacy } from "../../infra/api/WorkflowRunsApi";
+import { mapRunLogsToLegacy } from "../../infra/api/ExecutionRunsApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { ensureReeId } from "../client";
 
-export interface WorkflowRunsClient {
+export interface ExecutionRunsClient {
+  startExecutionRun(
+    id: ReeId | string,
+    scriptKey: string,
+    params?: Record<string, string | boolean | number | null | undefined>,
+  ): Promise<ExecutionRun>;
+  getExecutionRun(id: ReeId | string, runId: string): Promise<ExecutionRun>;
+  getExecutionRunLogs(
+    id: ReeId | string,
+    runId: string,
+    cursor?: string,
+  ): Promise<ExecutionRunLogChunk>;
+  cancelExecutionRun(id: ReeId | string, runId: string): Promise<ExecutionRunStatus>;
+  // Temporary compatibility methods for workflow-oriented callers.
   startWorkflowRun(
     id: ReeId | string,
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
-  ): Promise<WorkflowRunRecord>;
-  getWorkflowRun(id: ReeId | string, runId: string): Promise<WorkflowRunRecord>;
+  ): Promise<ExecutionRun>;
+  getWorkflowRun(id: ReeId | string, runId: string): Promise<ExecutionRun>;
   getWorkflowRunLogs(
     id: ReeId | string,
     runId: string,
     cursor?: string,
-  ): Promise<WorkflowRunLogChunk>;
-  cancelWorkflowRun(id: ReeId | string, runId: string): Promise<WorkflowRunStatus>;
+  ): Promise<ExecutionRunLogChunk>;
+  cancelWorkflowRun(id: ReeId | string, runId: string): Promise<ExecutionRunStatus>;
 }
 
-function createWorkflowRunsClient(runtime: ApiRuntimeValue): WorkflowRunsClient {
+function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClient {
   return {
-    async startWorkflowRun(id, scriptKey, params = {}) {
+    async startExecutionRun(id, scriptKey, params = {}) {
       const reeId = await ensureReeId(runtime, id);
       let run: WorkflowRunDto;
       switch (scriptKey) {
@@ -89,11 +99,11 @@ function createWorkflowRunsClient(runtime: ApiRuntimeValue): WorkflowRunsClient 
       }
       return mapRun(run);
     },
-    async getWorkflowRun(id, runId) {
+    async getExecutionRun(id, runId) {
       const reeId = await ensureReeId(runtime, id);
       return mapRun(await runtime.runsApi.getRun(reeId, runId));
     },
-    async getWorkflowRunLogs(id, runId, cursor): Promise<WorkflowRunLogChunk> {
+    async getExecutionRunLogs(id, runId, cursor): Promise<ExecutionRunLogChunk> {
       const reeId = await ensureReeId(runtime, id);
       const logs = await runtime.runsApi.listRunLogs(reeId, runId, {
         cursor,
@@ -105,24 +115,36 @@ function createWorkflowRunsClient(runtime: ApiRuntimeValue): WorkflowRunsClient 
         hasMore: logs.hasMore,
       };
     },
-    async cancelWorkflowRun(id, runId) {
+    async cancelExecutionRun(id, runId) {
       const reeId = await ensureReeId(runtime, id);
       const response = await runtime.runsApi.cancelRun(reeId, runId);
       return mapStatus(response.status);
     },
+    async startWorkflowRun(id, scriptKey, params = {}) {
+      return this.startExecutionRun(id, scriptKey, params);
+    },
+    async getWorkflowRun(id, runId) {
+      return this.getExecutionRun(id, runId);
+    },
+    async getWorkflowRunLogs(id, runId, cursor) {
+      return this.getExecutionRunLogs(id, runId, cursor);
+    },
+    async cancelWorkflowRun(id, runId) {
+      return this.cancelExecutionRun(id, runId);
+    },
   };
 }
 
-export function useWorkflowRunsClient(): WorkflowRunsClient {
+export function useExecutionRunsClient(): ExecutionRunsClient {
   const runtime = useApiRuntime();
-  return useMemo(() => createWorkflowRunsClient(runtime), [runtime]);
+  return useMemo(() => createExecutionRunsClient(runtime), [runtime]);
 }
 
-function mapStatus(status: WorkflowRunStatusDto): WorkflowRunStatus {
+function mapStatus(status: WorkflowRunStatusDto): ExecutionRunStatus {
   return status;
 }
 
-function mapRun(run: WorkflowRunDto): WorkflowRunRecord {
+function mapRun(run: WorkflowRunDto): ExecutionRun {
   return {
     runId: run.runId,
     status: mapStatus(run.status),

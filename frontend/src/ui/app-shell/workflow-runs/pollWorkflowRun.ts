@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppShellClock } from "../../../app/bootstrap/ports";
-import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
-import { observeWorkflowRun } from "../../../data/workflow-runs/queries";
+import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
+import { observeExecutionRun } from "../../../data/execution-runs/queries";
 
 interface PollWorkflowRunOptions {
   reeId: string;
@@ -28,12 +28,12 @@ interface PollWorkflowRunResult {
 
 export async function pollWorkflowRun(
   queryClient: QueryClient,
-  workflowRunsClient: WorkflowRunsClient,
+  workflowRunsClient: ExecutionRunsClient,
   options: PollWorkflowRunOptions,
 ): Promise<PollWorkflowRunResult> {
   void options.clock;
   void options.sleep;
-  return observeWorkflowRun(queryClient, workflowRunsClient, {
+  return observeExecutionRun(queryClient, workflowRunsClient, {
     reeId: options.reeId,
     runId: options.runId,
     onUpdate: options.onUpdate,

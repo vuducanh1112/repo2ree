@@ -8,8 +8,11 @@ import {
 } from "../../../application/workflow/workflowCatalog";
 import { missingWorkflowRequirements } from "../../../application/workflow/workflowPolicies";
 import { useApiRuntime } from "../../../data/apiRuntime";
-import { useWorkflowRunLogsQuery, useWorkflowRunQuery } from "../../../data/workflow-runs/queries";
-import type { WorkflowRunRecord } from "../../../domain/workflow/WorkflowRun";
+import {
+  useExecutionRunLogsQuery,
+  useExecutionRunQuery,
+} from "../../../data/execution-runs/queries";
+import type { ExecutionRun } from "../../../domain/execution/ExecutionRun";
 import type { useAppShell } from "./useAppShell";
 
 type AppShellController = ReturnType<typeof useAppShell>;
@@ -77,8 +80,8 @@ export function useWorkflowStepPageController({
   }, [commands, missing]);
 
   const runId = workflowStep ? activeRunIds[workflowStep.key] : undefined;
-  const runQuery = useWorkflowRunQuery(reeId, runId);
-  const logsQuery = useWorkflowRunLogsQuery(reeId, runId);
+  const runQuery = useExecutionRunQuery(reeId, runId);
+  const logsQuery = useExecutionRunLogsQuery(reeId, runId);
   const log = useMemo(() => {
     if (!workflowStep || !runId) {
       return null;
@@ -108,10 +111,7 @@ export function useWorkflowStepPageController({
   };
 }
 
-function resolveWorkflowRunTimestamp(
-  run: WorkflowRunRecord | undefined,
-  fallback?: string,
-): string {
+function resolveWorkflowRunTimestamp(run: ExecutionRun | undefined, fallback?: string): string {
   return (
     run?.finishedAt || run?.startedAt || run?.createdAt || fallback || new Date().toISOString()
   );

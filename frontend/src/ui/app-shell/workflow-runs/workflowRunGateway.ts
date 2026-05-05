@@ -8,10 +8,10 @@ import type {
 } from "../../../application/workflow/WorkflowTypes";
 import { isAutomationStepKey } from "../../../application/workflow/workflowPolicies";
 import type { WorkflowStepHandlerMap } from "../../../application/workflow/workflowStepCommands";
-import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
+import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
+import type { ExecutionRun } from "../../../domain/execution/ExecutionRun";
 import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";
-import type { WorkflowRunRecord } from "../../../domain/workflow/WorkflowRun";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { WorkspaceWorkflowDispatch } from "./commandExecutors";
 import type { ShowToast } from "./types";
@@ -35,13 +35,13 @@ interface CreateWorkflowRunGatewayArgs {
   persistAutomationStepParams: (key: AutomationStepKey, params: GenericWorkflowParams) => void;
   showToast: ShowToast;
   workflowStepHandlers: WorkflowStepHandlerMap;
-  workflowRunsClient: WorkflowRunsClient;
+  workflowRunsClient: ExecutionRunsClient;
   reeId: string;
   queryClient: QueryClient;
   startWorkflowRun: (
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
-  ) => Promise<WorkflowRunRecord>;
+  ) => Promise<ExecutionRun>;
   cancelWorkflowRun?: (runId: string) => Promise<unknown>;
   ports: AppShellRuntimePorts;
   refreshWorkspace: () => Promise<{

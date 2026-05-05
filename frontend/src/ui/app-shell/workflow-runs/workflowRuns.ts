@@ -6,10 +6,10 @@ import type {
   WorkflowStepCommand,
   WorkflowStepHandlerMap,
 } from "../../../application/workflow/workflowStepCommands";
-import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
+import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
+import type { ExecutionRun } from "../../../domain/execution/ExecutionRun";
 import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";
-import type { WorkflowRunRecord } from "../../../domain/workflow/WorkflowRun";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { executeWorkflowStepCommands, type WorkspaceWorkflowDispatch } from "./commandExecutors";
 import { pollWorkflowRun } from "./pollWorkflowRun";
@@ -25,13 +25,13 @@ interface ExecuteServiceRunArgs {
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
   workflowStepHandlers: WorkflowStepHandlerMap;
-  workflowRunsClient: WorkflowRunsClient;
+  workflowRunsClient: ExecutionRunsClient;
   reeId: string;
   queryClient: QueryClient;
   startWorkflowRun: (
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
-  ) => Promise<WorkflowRunRecord>;
+  ) => Promise<ExecutionRun>;
   ports: AppShellRuntimePorts;
   refreshWorkspace: () => Promise<{
     workspaceFiles: FileTreeNode[];

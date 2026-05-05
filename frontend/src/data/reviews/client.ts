@@ -12,7 +12,7 @@ import type {
   WorkflowRunRecord,
   WorkflowRunStatus,
 } from "../../domain/workflow/WorkflowRun";
-import { mapRunLogsToLegacy } from "../../infra/api/WorkflowRunsApi";
+import { mapRunLogsToLegacy } from "../../infra/api/ExecutionRunsApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 
 function createReviewClient(runtime: ApiRuntimeValue): ReviewClient {
