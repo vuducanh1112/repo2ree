@@ -1,11 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
-import { executeWorkflowStep } from "../../../application/workflow/executeWorkflowStep";
-import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type {
-  WorkflowStepCommand,
-  WorkflowStepHandlerMap,
-} from "../../../application/workflow/workflowStepCommands";
+  AssemblyCommand,
+  AssemblyCommandPlannerMap,
+} from "../../../application/ree-assembly/assemblyCommands";
+import type { GenericReeAssemblyParams } from "../../../application/ree-assembly/assemblyStepTypes";
+import { executeAssemblyRun } from "../../../application/ree-assembly/executeAssemblyRun";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ExecutionRun } from "../../../domain/execution/ExecutionRun";
 import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
@@ -17,14 +17,14 @@ import type { ShowToast } from "./types";
 
 interface ExecuteServiceRunArgs {
   key: string;
-  params: GenericWorkflowParams;
+  params: GenericReeAssemblyParams;
   ree: ReeViewState;
   level: number;
   workspaceFiles: FileTreeNode[];
   dispatch: WorkspaceWorkflowDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
-  workflowStepHandlers: WorkflowStepHandlerMap;
+  workflowStepHandlers: AssemblyCommandPlannerMap;
   workflowRunsClient: ExecutionRunsClient;
   reeId: string;
   queryClient: QueryClient;
@@ -61,16 +61,16 @@ export async function executeWorkflowRunAction({
   onRunStarted,
   onRunFinished,
 }: ExecuteServiceRunArgs): Promise<LogEntry> {
-  const runCommands = (commands: WorkflowStepCommand[]) =>
+  const runCommands = (commands: AssemblyCommand[]) =>
     executeWorkflowStepCommands(commands, { dispatch, persistWorkspaceFile, showToast });
-  return executeWorkflowStep({
+  return executeAssemblyRun({
     key,
     params,
     ree,
     level,
     workspaceFiles,
-    workflowRunner: {
-      startWorkflowRun: (scriptKey, runParams) => startWorkflowRun(scriptKey, runParams),
+    executionRunner: {
+      startExecutionRun: (scriptKey, runParams) => startWorkflowRun(scriptKey, runParams),
       pollRun: (runId, onUpdateLogs) =>
         pollWorkflowRun(queryClient, workflowRunsClient, {
           reeId,
@@ -80,7 +80,7 @@ export async function executeWorkflowRunAction({
           sleep: ports.sleep,
         }),
     },
-    workflowStepHandlers,
+    assemblyCommandPlanners: workflowStepHandlers,
     generatedIds: {
       swhid: `swh:1:dir:${ports.random.hex(12)}`,
       zenodoDoi: `10.5281/zenodo.${ports.random.int(1000000, 9999999)}`,

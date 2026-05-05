@@ -3,13 +3,13 @@ import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
 import { planSealArtifactCommands } from "../../../application/artifact/sealArtifactCommands";
+import { initialReeAssemblyOperationParams } from "../../../application/ree-assembly/assemblyCatalog";
+import { createAssemblyCommandPlanners } from "../../../application/ree-assembly/assemblyCommands";
+import { createAssemblyRunSession } from "../../../application/ree-assembly/assemblyRunSession";
 import { patch } from "../../../application/state/actions";
 import type { AppShellAction } from "../../../application/state/types";
 import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
-import { initialAutomationStepParams } from "../../../application/workflow/workflowCatalog";
-import { createWorkflowRunSession } from "../../../application/workflow/workflowRunSession";
-import { createWorkflowStepHandlers } from "../../../application/workflow/workflowStepCommands";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useExecutionRunsClient } from "../../../data/execution-runs/client";
 import {
@@ -45,7 +45,7 @@ export function useWorkspaceWorkflowRuns({
   const workflowRunsClient = useExecutionRunsClient();
   const ports = appShellPorts;
   const queryClient = useQueryClient();
-  const automationSessionRef = useRef(createWorkflowRunSession());
+  const automationSessionRef = useRef(createAssemblyRunSession());
   const automationSession = automationSessionRef.current;
   const executeWorkflowRunRef = useRef<
     (key: string, params?: GenericWorkflowParams) => Promise<LogEntry>
@@ -128,7 +128,7 @@ export function useWorkspaceWorkflowRuns({
     showToast,
   });
 
-  const workflowStepHandlers = createWorkflowStepHandlers({
+  const workflowStepHandlers = createAssemblyCommandPlanners({
     ree: reeDraft,
     workspaceFiles,
     clock: ports.clock,
@@ -145,8 +145,8 @@ export function useWorkspaceWorkflowRuns({
     persistAutomationStepParams: (key, params) => {
       dispatch(
         patch("workflowRun", (prev) => ({
-          workflowParams: automationSession.mergeAutomationStepParams(
-            prev.workflowParams ?? initialAutomationStepParams(),
+          workflowParams: automationSession.mergeAssemblyOperationParams(
+            prev.workflowParams ?? initialReeAssemblyOperationParams(),
             key,
             params as AutomationStepRunParams<typeof key>,
           ),
