@@ -1,6 +1,6 @@
 import type React from "react";
 import { useRef, useState } from "react";
-import { APP_ROUTE, type AppLoadRoutePath } from "../../application/app-shell/AppShellPages";
+import { APP_ROUTE, type AppLoadRoutePath } from "../../application/state/pages";
 import { useApiRuntime } from "../../data/apiRuntime";
 import { useReeClient } from "../../data/ree/client";
 import { useReviewClient } from "../../data/reviews/client";

@@ -1,10 +1,10 @@
-import type { AppShellAction } from "../../../application/app-shell/AppShellTypes";
 import {
   applySourceOutcome,
   completeWorkflowRun,
   patch,
   resetWorkflowOnSourceChange,
 } from "../../../application/state/actions";
+import type { AppShellAction } from "../../../application/state/types";
 import { resolveUpdater } from "../../../application/state/types";
 import type { WorkflowStepCommand } from "../../../application/workflow/workflowStepCommands";
 import type { SourceCommand } from "../../../application/workspace/sourceAcquisitionCommands";

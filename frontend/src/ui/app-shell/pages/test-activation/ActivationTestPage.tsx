@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { PAGE } from "../../../../application/app-shell/AppShellPages";
-import { FIELD_META } from "../../../../application/app-shell/fieldMeta";
+import { FIELD_META } from "../../../../application/state/fieldMeta";
+import { PAGE } from "../../../../application/state/pages";
 import { Ic } from "../../../shared/components/Icon";
 import {
   S_FIELD_HELP_TEXT_SMALL,

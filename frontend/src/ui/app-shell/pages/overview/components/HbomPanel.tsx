@@ -1,6 +1,6 @@
 import type React from "react";
-import type { AppShellPage } from "../../../../../application/app-shell/AppShellPages";
-import { PAGE } from "../../../../../application/app-shell/AppShellPages";
+import type { AppShellPage } from "../../../../../application/state/pages";
+import { PAGE } from "../../../../../application/state/pages";
 import { hbomSummaryLines } from "../../../../../domain/hbom/HbomSummary";
 import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import {

@@ -1,12 +1,12 @@
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import type { ActionStates, Badges, Timestamps, WorkflowParams } from "../../domain/ree/ReeTypes";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
-import type { ReeDraftState } from "../ree-draft/ReeDraftState";
-import type { UiChromeState } from "../ui-chrome/UiChromeState";
 import type { ToastState } from "../workflow/WorkflowStepTypes";
-import type { WorkflowRunState } from "../workflow-runs/WorkflowRunState";
-import { normalizeAppShellPage } from "./AppShellNavigation";
-import type { AppShellPage } from "./AppShellPages";
+import type { AppShellPage } from "./pages";
+import { normalizeAppShellPage } from "./pages";
+import type { ReeDraftState } from "./reeDraft";
+import type { UiChromeState } from "./uiChrome";
+import type { WorkflowRunState } from "./workflowRun";
 
 interface AppShellState {
   locked: boolean;

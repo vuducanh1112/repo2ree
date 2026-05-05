@@ -1,4 +1,4 @@
-import { FIELD_META } from "../../../../application/app-shell/fieldMeta";
+import { FIELD_META } from "../../../../application/state/fieldMeta";
 import { Ic } from "../../../shared/components/Icon";
 import {
   C,

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { appShellPageForField } from "../../../application/app-shell/AppShellNavigation";
+import { appShellPageForField } from "../../../application/state/pages";
 import type { WorkflowParamValue } from "../../../application/workflow/WorkflowStepTypes";
 import type { AutomationStepRunParams } from "../../../application/workflow/WorkflowTypes";
 import {

@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect, useState } from "react";
-import { PAGE } from "../../../../application/app-shell/AppShellPages";
+import { PAGE } from "../../../../application/state/pages";
 import { Ic } from "../../../shared/components/Icon";
 import { Toggle } from "../../../shared/components/Toggle";
 import { useFocusScroll } from "../../../shared/hooks/useFocusScroll";

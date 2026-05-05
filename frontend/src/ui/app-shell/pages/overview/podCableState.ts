@@ -1,4 +1,4 @@
-import { PAGE } from "../../../../application/app-shell/AppShellPages";
+import { PAGE } from "../../../../application/state/pages";
 import { hbomHasAnyComponents } from "../../../../domain/hbom/HbomSummary";
 import type { Badges } from "../../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../../domain/ree/ReeViewState";

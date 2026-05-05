@@ -1,5 +1,5 @@
 import type React from "react";
-import type { AppShellPage } from "../../../application/app-shell/AppShellPages";
+import type { AppShellPage } from "../../../application/state/pages";
 import type {
   AutomationStepDefinition,
   WorkflowBadge,

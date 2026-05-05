@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { type AppShellPage, PAGE } from "../../../../application/app-shell/AppShellPages";
+import { type AppShellPage, PAGE } from "../../../../application/state/pages";
 import { ARCHIVE_REPOSITORIES } from "../../../../application/workflow/archiveRepositories";
 import type { GenericWorkflowParams } from "../../../../application/workflow/WorkflowStepTypes";
 import type { ArtifactStatus } from "../../../../domain/artifact/ArtifactStatus";

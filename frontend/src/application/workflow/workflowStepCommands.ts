@@ -5,11 +5,15 @@ import type { ReeView } from "../../domain/ree/ReeView";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
-import type { AppShellClock } from "../app-shell/AppShellPorts";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepKey, AutomationStepRunParamsByKey } from "./WorkflowTypes";
 import { scanDependencies } from "./workflowDependencyAnalysis";
 import { planWorkflowServiceEffect } from "./workflowOutcomePlanning";
+
+interface AppShellClock {
+  nowIso(): string;
+  nowMillis(): number;
+}
 
 interface CreateWorkflowStepHandlersArgs {
   ree: ReeView;

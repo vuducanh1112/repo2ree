@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { PAGE } from "../../../../application/app-shell/AppShellPages";
+import { PAGE } from "../../../../application/state/pages";
 import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import {

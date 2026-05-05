@@ -5,9 +5,9 @@ import type {
   SliceName,
   SliceShape,
   SourceOutcomePayload,
+  Updater,
   WorkflowRunCompletionPayload,
-} from "../app-shell/AppShellTypes";
-import type { Updater } from "./types";
+} from "./types";
 
 export const patch = <S extends SliceName>(
   slice: S,

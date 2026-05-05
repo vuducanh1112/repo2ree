@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type React from "react";
-import type { AppShellRuntimePorts } from "../../../application/app-shell/AppShellPorts";
+import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
 import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type {
   AutomationStepKey,

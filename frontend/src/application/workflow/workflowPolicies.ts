@@ -1,5 +1,5 @@
 import type { ReeView } from "../../domain/ree/ReeView";
-import { PAGE } from "../app-shell/AppShellPages";
+import { PAGE } from "../state/pages";
 import type { WorkflowRequirement } from "./WorkflowStepTypes";
 import type { AutomationStepKey } from "./WorkflowTypes";
 

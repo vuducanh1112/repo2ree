@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultReeView, type ReeView } from "../../domain/ree/ReeView";
 import { appShellReducer, createInitialState } from "../../ui/app-shell/providers/AppShellProvider";
-import { createAppShellState } from "./AppShellState";
+import { createAppShellState } from "./appShellState";
 
 function buildRee(): ReeView {
   return {

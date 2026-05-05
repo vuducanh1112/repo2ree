@@ -1,11 +1,11 @@
 import type React from "react";
-import type { AppShellPage as AppShellPageType } from "../../../../../application/app-shell/AppShellPages";
+import { FIELD_META } from "../../../../../application/state/fieldMeta";
+import type { AppShellPage as AppShellPageType } from "../../../../../application/state/pages";
 import {
   type AppShellPage,
   isValidAppShellPage,
   PAGE,
-} from "../../../../../application/app-shell/AppShellPages";
-import { FIELD_META } from "../../../../../application/app-shell/fieldMeta";
+} from "../../../../../application/state/pages";
 import { AUTOMATION_STEPS } from "../../../../../application/workflow/workflowCatalog";
 import type { Badges, Timestamps } from "../../../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";

@@ -1,6 +1,6 @@
-import type { AppShellPage } from "../app-shell/AppShellPages";
-import { PAGE } from "../app-shell/AppShellPages";
 import type { ToastState } from "../workflow/WorkflowStepTypes";
+import type { AppShellPage } from "./pages";
+import { PAGE } from "./pages";
 
 export interface UiChromeState {
   toast: ToastState | null;

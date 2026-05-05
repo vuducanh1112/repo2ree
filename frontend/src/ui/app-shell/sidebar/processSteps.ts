@@ -1,4 +1,4 @@
-import { type AppShellPage, PAGE } from "../../../application/app-shell/AppShellPages";
+import { type AppShellPage, PAGE } from "../../../application/state/pages";
 import type { AutomationStepDefinition } from "../../../application/workflow/WorkflowStepTypes";
 import { AUTOMATION_STEPS } from "../../../application/workflow/workflowCatalog";
 import { hbomHasAnyComponents } from "../../../domain/hbom/HbomSummary";

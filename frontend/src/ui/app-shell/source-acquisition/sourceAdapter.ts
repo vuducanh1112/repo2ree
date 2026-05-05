@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { AppShellClock } from "../../../application/app-shell/AppShellPorts";
+import type { AppShellClock } from "../../../app/bootstrap/ports";
 import type { ReeClient } from "../../../data/ree/client";
 import type { WorkflowRunsClient } from "../../../data/workflow-runs/client";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";

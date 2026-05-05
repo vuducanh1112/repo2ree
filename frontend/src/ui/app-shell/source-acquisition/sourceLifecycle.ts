@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { AppShellClock } from "../../../application/app-shell/AppShellPorts";
+import type { AppShellClock } from "../../../app/bootstrap/ports";
 import { createSourceUseCase } from "../../../application/workspace/acquireSource";
 import {
   type SourceCommand,

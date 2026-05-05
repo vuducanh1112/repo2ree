@@ -1,4 +1,4 @@
-import { type AppShellPage, PAGE } from "../../application/app-shell/AppShellPages";
+import { type AppShellPage, PAGE } from "../../application/state/pages";
 import type { Badges, Timestamps } from "../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { LEVELS } from "../../domain/review/levels";

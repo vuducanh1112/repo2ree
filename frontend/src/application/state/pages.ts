@@ -32,7 +32,7 @@ export type AppShellPage = (typeof PAGE)[keyof typeof PAGE];
 const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as AppShellPage[];
 
 // Maps a draft view-model field key to the app-shell page where it can be edited.
-export const FIELD_TO_PAGE: Partial<Record<keyof ReeView, AppShellPage>> = {
+const FIELD_TO_PAGE: Partial<Record<keyof ReeView, AppShellPage>> = {
   origin_url: PAGE.SOURCE,
   source_type: PAGE.SOURCE,
   sourceAvailable: PAGE.SOURCE,
@@ -49,4 +49,21 @@ export const FIELD_TO_PAGE: Partial<Record<keyof ReeView, AppShellPage>> = {
 
 export function isValidAppShellPage(value: string): value is AppShellPage {
   return WORKSPACE_SHELL_PAGES.includes(value as AppShellPage);
+}
+
+export function normalizeAppShellPage(
+  candidate: string | null | undefined,
+  fallback: AppShellPage = PAGE.OVERVIEW,
+): AppShellPage {
+  if (candidate && isValidAppShellPage(candidate)) {
+    return candidate;
+  }
+  return fallback;
+}
+
+export function appShellPageForField(
+  fieldKey: string,
+  fallback: AppShellPage = PAGE.METADATA,
+): AppShellPage {
+  return FIELD_TO_PAGE[fieldKey as keyof typeof FIELD_TO_PAGE] ?? fallback;
 }

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { AppShellPage } from "../../../application/app-shell/AppShellPages";
 import { patch } from "../../../application/state/actions";
+import type { AppShellPage } from "../../../application/state/pages";
 import type {
   AutomationStepKey,
   AutomationStepRunParams,

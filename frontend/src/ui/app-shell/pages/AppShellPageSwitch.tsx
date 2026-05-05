@@ -1,6 +1,5 @@
 import { type CSSProperties, type ReactNode, useMemo } from "react";
-import { appShellPageForField } from "../../../application/app-shell/AppShellNavigation";
-import { PAGE } from "../../../application/app-shell/AppShellPages";
+import { appShellPageForField, PAGE } from "../../../application/state/pages";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useWorkflowRunLogsQuery, useWorkflowRunQuery } from "../../../data/workflow-runs/queries";
 import type { LogEntry, SourceUploadCommit, WorkflowLogs } from "../../../domain/ree/ReeTypes";

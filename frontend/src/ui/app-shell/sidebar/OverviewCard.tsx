@@ -1,5 +1,5 @@
-import type { AppShellPage } from "../../../application/app-shell/AppShellPages";
-import { PAGE } from "../../../application/app-shell/AppShellPages";
+import type { AppShellPage } from "../../../application/state/pages";
+import { PAGE } from "../../../application/state/pages";
 import { C, F, hoverBg } from "../../theme/theme";
 import { PodWidget } from "../pages/overview/PodWidget";
 import type { getPodCableStates } from "../pages/overview/podCableState";

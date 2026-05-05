@@ -1,7 +1,7 @@
 import type React from "react";
-import type { AppShellPage } from "../../../../../application/app-shell/AppShellPages";
-import { PAGE } from "../../../../../application/app-shell/AppShellPages";
-import { FIELD_META } from "../../../../../application/app-shell/fieldMeta";
+import { FIELD_META } from "../../../../../application/state/fieldMeta";
+import type { AppShellPage } from "../../../../../application/state/pages";
+import { PAGE } from "../../../../../application/state/pages";
 import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import {
   C,

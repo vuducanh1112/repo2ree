@@ -2,17 +2,17 @@ import {
   normalizeUiChromePage,
   type SourceOutcomePayload,
   type WorkflowRunCompletionPayload,
-} from "../../../application/app-shell/AppShellState";
+} from "../../../application/state/appShellState";
+import { createInitialReeDraftState } from "../../../application/state/reeDraft";
 import type {
   AppShellAction,
   AppShellContextState,
   SliceName,
   SliceShape,
-} from "../../../application/app-shell/AppShellTypes";
-import { createInitialReeDraftState } from "../../../application/ree-draft/ReeDraftState";
+} from "../../../application/state/types";
 import { resolveUpdater } from "../../../application/state/types";
-import { createInitialUiChromeState } from "../../../application/ui-chrome/UiChromeState";
-import { createInitialWorkflowRunState } from "../../../application/workflow-runs/WorkflowRunState";
+import { createInitialUiChromeState } from "../../../application/state/uiChrome";
+import { createInitialWorkflowRunState } from "../../../application/state/workflowRun";
 import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
 import { enforceSourceOriginRules } from "../../../domain/artifact/sourceOriginRules";
 import { createEmptyReeSpec } from "../../../domain/ree/ReeSpec";

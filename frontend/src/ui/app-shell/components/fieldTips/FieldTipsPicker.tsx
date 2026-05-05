@@ -1,4 +1,4 @@
-import { FIELD_META } from "../../../../application/app-shell/fieldMeta";
+import { FIELD_META } from "../../../../application/state/fieldMeta";
 import { C, F, S_SECTION_LABEL } from "../../../theme/theme";
 
 interface FieldTipsPickerProps {

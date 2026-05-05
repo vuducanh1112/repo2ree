@@ -1,6 +1,6 @@
 import React from "react";
-import type { AppShellPage } from "../../../../../application/app-shell/AppShellPages";
-import { PAGE } from "../../../../../application/app-shell/AppShellPages";
+import type { AppShellPage } from "../../../../../application/state/pages";
+import { PAGE } from "../../../../../application/state/pages";
 import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import { Toggle } from "../../../../shared/components/Toggle";
 import {

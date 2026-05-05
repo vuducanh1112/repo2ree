@@ -1,4 +1,4 @@
-import { FIELD_META } from "../../../../application/app-shell/fieldMeta";
+import { FIELD_META } from "../../../../application/state/fieldMeta";
 import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";

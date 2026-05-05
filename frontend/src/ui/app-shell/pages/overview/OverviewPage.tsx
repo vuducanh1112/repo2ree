@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import type { AppShellPage } from "../../../../application/app-shell/AppShellPages";
+import type { AppShellPage } from "../../../../application/state/pages";
 import type { Badges, Timestamps } from "../../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import { LEVELS } from "../../../../domain/review/levels";

@@ -1,4 +1,4 @@
-import type { AppShellRuntimePorts } from "../../../application/app-shell/AppShellPorts";
+import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
 import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,

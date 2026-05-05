@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useReducer } from "react";
-import type {
-  AppShellAction,
-  AppShellContextState,
-} from "../../../application/app-shell/AppShellTypes";
+import type { AppShellAction, AppShellContextState } from "../../../application/state/types";
 import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../../domain/ree/ReeSpec";
 import type { EvaluationState } from "../../../domain/review/EvaluationState";

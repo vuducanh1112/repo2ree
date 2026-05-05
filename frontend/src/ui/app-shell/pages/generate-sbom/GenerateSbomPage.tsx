@@ -1,6 +1,6 @@
 import type React from "react";
 import { useMemo, useState } from "react";
-import { PAGE } from "../../../../application/app-shell/AppShellPages";
+import { PAGE } from "../../../../application/state/pages";
 import type { AutomationStepRunParams } from "../../../../application/workflow/WorkflowTypes";
 import { Ic } from "../../../shared/components/Icon";
 import {
