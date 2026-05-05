@@ -1,4 +1,4 @@
-import type { AutomationStepParams } from "../../application/workflow/WorkflowTypes";
+import type { AutomationStepParams } from "../workflow/AutomationStepTypes";
 
 export type Badges = Record<string, boolean>;
 export type Timestamps = Record<string, string>;

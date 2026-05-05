@@ -1,16 +1,6 @@
 import type { ReeView } from "../../domain/ree/ReeView";
 
-export interface Level {
-  n: number;
-  label: string;
-  color: string;
-  bg: string;
-  ink: string;
-  short: string;
-  desc: string;
-  problem: string | null;
-  fix: string | null;
-}
+export type { Level } from "../../domain/review/Level";
 
 export interface AutomationStepBadge {
   label: string;

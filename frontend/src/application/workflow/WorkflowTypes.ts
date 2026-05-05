@@ -1,27 +1,13 @@
-export type AutomationStepKey = "evaluate" | "build" | "hbom" | "sbom" | "activation";
+export type {
+  AutomationStepKey,
+  AutomationStepParams,
+  AutomationStepParamsByKey,
+} from "../../domain/workflow/AutomationStepTypes";
 
-export interface AutomationStepParamsByKey {
-  evaluate: {
-    strict: boolean;
-    swhid_check: boolean;
-  };
-  build: {
-    no_cache: boolean;
-    platform: string;
-  };
-  hbom: Record<string, never>;
-  sbom: {
-    format: string;
-  };
-  activation: {
-    timeout: string;
-    verbose: boolean;
-  };
-}
-
-export type AutomationStepParams = {
-  [K in AutomationStepKey]: AutomationStepParamsByKey[K];
-};
+import type {
+  AutomationStepKey,
+  AutomationStepParamsByKey,
+} from "../../domain/workflow/AutomationStepTypes";
 
 export interface AutomationStepRunParamsByKey {
   evaluate: AutomationStepParamsByKey["evaluate"];

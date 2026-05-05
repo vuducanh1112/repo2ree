@@ -1,4 +1,4 @@
-import type { Level } from "../../application/workflow/WorkflowStepTypes";
+import type { Level } from "./Level";
 
 export const LEVELS: Level[] = [
   {

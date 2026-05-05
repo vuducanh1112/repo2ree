@@ -211,29 +211,16 @@ module.exports = {
       }
     },
     {
-      name: "domain-no-ui-or-react",
+      name: "domain-no-upward-imports",
       severity: "error",
       comment:
-        "Domain modules should stay framework-free and must not depend on React, routes, or legacy UI folders.",
+        "Domain modules are pure and must not depend on application, UI, infra, app wiring, or data layers.",
       from: {
         path: "^src/domain",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^(src/(app|components|context|features|hooks|pages|ui)(/|$)|react$|react-dom$|react-router-dom$)"
-      }
-    },
-    {
-      name: "domain-no-infra",
-      severity: "error",
-      comment:
-        "Domain modules should not depend on API, service, or infrastructure adapters.",
-      from: {
-        path: "^src/domain",
-        pathNot: TEST_FILE_PATTERN
-      },
-      to: {
-        path: "^src/(api|infra|services)(/|$)"
+        path: "^src/(application|app|data|infra|ui)(/|$)"
       }
     },
     {
@@ -251,15 +238,15 @@ module.exports = {
     },
     {
       name: "application-no-infra",
-      severity: "warn",
+      severity: "error",
       comment:
-        "Application modules should prefer abstract inputs/outputs over direct infrastructure dependencies.",
+        "Application modules may depend on domain, but must not depend on infrastructure adapters.",
       from: {
         path: "^src/application",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/(api|infra|services)(/|$)"
+        path: "^src/infra(/|$)"
       }
     },
     {
@@ -363,6 +350,16 @@ module.exports = {
       },
       to: {
         path: "^src/infra(/|$)"
+      }
+    },
+    {
+      name: "no-demo-imports",
+      severity: "error",
+      comment:
+        "No source module may import from paths containing 'demo'.",
+      from: {},
+      to: {
+        path: "(^|/)[^/]*demo[^/]*(/|$)"
       }
     }
   ],
