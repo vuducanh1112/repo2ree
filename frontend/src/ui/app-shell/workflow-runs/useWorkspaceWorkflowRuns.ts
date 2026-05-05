@@ -6,6 +6,7 @@ import { planSealArtifactCommands } from "../../../application/artifact/sealArti
 import { initialReeAssemblyOperationParams } from "../../../application/ree-assembly/assemblyCatalog";
 import { createAssemblyCommandPlanners } from "../../../application/ree-assembly/assemblyCommands";
 import { createAssemblyRunSession } from "../../../application/ree-assembly/assemblyRunSession";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import { patch } from "../../../application/state/actions";
 import type { AppShellAction } from "../../../application/state/types";
 import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
@@ -17,8 +18,8 @@ import {
   useStartExecutionRunMutation,
 } from "../../../data/execution-runs/mutations";
 import { useReeClient } from "../../../data/ree/client";
+import type { RawReeDraftSlices } from "../../../domain/ree/mapRawReeDraft";
 import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { createDownloadActions } from "../artifact-actions/downloadActions";
 import { createSourceAdapter } from "../source-acquisition/sourceAdapter";
@@ -29,7 +30,7 @@ import { createWorkflowRunGateway } from "./workflowRunGateway";
 
 interface UseWorkspaceWorkflowArgs {
   dispatch: React.Dispatch<AppShellAction>;
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   level: number;
   workspaceFiles: FileTreeNode[];
 }
@@ -62,7 +63,7 @@ export function useWorkspaceWorkflowRuns({
     (workspace: {
       workspaceFiles: FileTreeNode[];
       reeArtifactFiles: ReeFile[];
-      ree?: ReeViewState;
+      ree?: RawReeDraftSlices;
     }) => {
       if (!workspace.ree) {
         // No state to hydrate - workspace files come from React Query
@@ -71,46 +72,20 @@ export function useWorkspaceWorkflowRuns({
 
       dispatch(
         patch("reeDraft", {
-          reeSpec: {
-            name: workspace.ree.name,
-            origin_url: workspace.ree.origin_url,
-            source_type: workspace.ree.source_type,
-            runtime: workspace.ree.runtime,
-            build_runtime_script: workspace.ree.build_runtime_script,
-            activation_script: workspace.ree.activation_script,
-            sbom: workspace.ree.sbom,
-            swhid: workspace.ree.swhid,
-            zenodo_doi: workspace.ree.zenodo_doi,
-            dataverse_doi: workspace.ree.dataverse_doi,
-            repro_level: workspace.ree.repro_level,
-            detected_dependencies: workspace.ree.detected_dependencies,
-            hardware_description: workspace.ree.hardware_description,
-          },
+          reeSpec: workspace.ree.reeSpec,
         }),
       );
       dispatch(
         patch("reeDraft", {
-          workspaceSourceState: {
-            sourceAvailable: workspace.ree.sourceAvailable,
-            sourceIncluded: workspace.ree.sourceIncluded,
-            sourceAcquiredBy: workspace.ree.sourceAcquiredBy,
-            uploadedArchive: workspace.ree.uploadedArchive,
-            sourceSnapshotArchive: workspace.ree.sourceSnapshotArchive,
-            sourceSnapshotCapturedAt: workspace.ree.sourceSnapshotCapturedAt,
-          },
+          workspaceSourceState: workspace.ree.workspaceSourceState,
         }),
       );
       dispatch(
         patch("reeDraft", {
-          artifactStatus: {
-            runtimeIncluded: workspace.ree.runtimeIncluded,
-            downloadableFiles: workspace.ree.downloadableFiles,
-            sealedAt: workspace.ree.sealedAt,
-            sealHash: workspace.ree.sealHash,
-          },
+          artifactStatus: workspace.ree.artifactStatus,
         }),
       );
-      dispatch(patch("workflowRun", { evaluationState: { evalLevel: workspace.ree.evalLevel } }));
+      dispatch(patch("workflowRun", { evaluationState: workspace.ree.evaluationState }));
     },
     [dispatch],
   );

@@ -1,4 +1,4 @@
-import type { ReeView } from "../../domain/ree/ReeView";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 
 export type { Level } from "../../domain/review/Level";
 
@@ -9,7 +9,7 @@ export interface ReeAssemblyBadge {
 }
 
 export interface ReeAssemblyRequirement {
-  field: keyof ReeView;
+  field: keyof ReeEditorViewModel;
   label: string;
 }
 
@@ -61,7 +61,7 @@ export interface ArchiveRepo {
   url: string;
   desc: string;
   idLabel: string;
-  idField: keyof ReeView;
+  idField: keyof ReeEditorViewModel;
   idPlaceholder: string;
   params: ReeAssemblyParam[];
   requires: ReeAssemblyRequirement[];

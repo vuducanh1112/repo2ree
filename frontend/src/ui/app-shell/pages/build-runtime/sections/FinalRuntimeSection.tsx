@@ -18,21 +18,19 @@ import {
 import type { WorkflowPageProps } from "../../sharedWorkflowUi";
 
 interface FinalRuntimeSectionProps {
-  ree: WorkflowPageProps["ree"];
   includeRuntime: boolean;
   finalRuntime: string;
   finalRuntimeSize: string | null;
-  onReeChange: WorkflowPageProps["onReeChange"];
+  onArtifactStatusChange: WorkflowPageProps["onArtifactStatusChange"];
   focusedField: string | null;
   setFocusedField: (field: string | null) => void;
 }
 
 export function FinalRuntimeSection({
-  ree,
   includeRuntime,
   finalRuntime,
   finalRuntimeSize,
-  onReeChange,
+  onArtifactStatusChange,
   focusedField,
   setFocusedField,
 }: FinalRuntimeSectionProps) {
@@ -76,7 +74,12 @@ export function FinalRuntimeSection({
                 </div>
                 <button
                   type="button"
-                  onClick={() => onReeChange?.({ ...ree, runtimeIncluded: !includeRuntime })}
+                  onClick={() =>
+                    onArtifactStatusChange?.((current) => ({
+                      ...current,
+                      runtimeIncluded: !includeRuntime,
+                    }))
+                  }
                   style={runtimeIncludedToggleTrackStyle(includeRuntime)}
                 >
                   <span style={runtimeIncludedToggleKnobStyle(includeRuntime)} />

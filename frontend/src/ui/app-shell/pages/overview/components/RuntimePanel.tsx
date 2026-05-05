@@ -1,7 +1,8 @@
 import type React from "react";
+import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../../../application/state/pages";
 import { PAGE } from "../../../../../application/state/pages";
-import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
+import type { ArtifactStatus } from "../../../../../domain/artifact/ArtifactStatus";
 import type { FileTreeNode } from "../../../../../domain/workspace/FileTree";
 import { findVirtualFileByName } from "../../../../../domain/workspace/fileTreeTraversal";
 import { Toggle } from "../../../../shared/components/Toggle";
@@ -21,12 +22,12 @@ import {
 import { PanelFieldRow } from "./PanelFieldRow";
 
 interface RuntimePanelProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   files: FileTreeNode[];
   runtimeRef: React.RefObject<HTMLDivElement>;
   onGoField: (key: string) => void;
   onNavigate: (key: AppShellPage) => void;
-  onReeChange: (ree: ReeViewState) => void;
+  onArtifactStatusChange: React.Dispatch<React.SetStateAction<ArtifactStatus>>;
 }
 
 const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({
@@ -44,7 +45,7 @@ export function RuntimePanel({
   runtimeRef,
   onGoField,
   onNavigate,
-  onReeChange,
+  onArtifactStatusChange,
 }: RuntimePanelProps) {
   const runtimeVal = ree?.runtime && ree.runtime !== "__skipped__" ? ree.runtime.trim() : "";
   const runtimeIncluded = !!ree?.runtimeIncluded;
@@ -52,7 +53,10 @@ export function RuntimePanel({
 
   const toggleRuntime = () => {
     if (!canIncludeRuntime) return;
-    onReeChange({ ...ree, runtimeIncluded: !runtimeIncluded });
+    onArtifactStatusChange((current) => ({
+      ...current,
+      runtimeIncluded: !runtimeIncluded,
+    }));
   };
 
   const runtimeFile = runtimeVal ? findVirtualFileByName(files, runtimeVal) : null;

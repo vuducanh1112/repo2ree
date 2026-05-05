@@ -1,6 +1,6 @@
 import React from "react";
+import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import type { Badges } from "../../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import { LEVELS } from "../../../../../domain/review/levels";
 import { buildSealCableItems } from "./CenterSealStrip/helpers";
 import { SealConfirmModal } from "./CenterSealStrip/SealConfirmModal";
@@ -8,7 +8,7 @@ import { SealedSealCard } from "./CenterSealStrip/SealedSealCard";
 import { SealStatusCard } from "./CenterSealStrip/SealStatusCard";
 
 interface CenterSealStripProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   locked: boolean;
   level: number;
   badges: Badges;

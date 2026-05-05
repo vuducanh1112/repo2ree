@@ -1,12 +1,12 @@
 import type React from "react";
+import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage as AppShellPageType } from "../../../../../application/state/pages";
 import type { Badges, Timestamps } from "../../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import { ActivationCard, ArchiveCard } from "./RightRailPanelArchiveActivation";
 import { EvaluateCard, SwhCard } from "./RightRailPanelSections";
 
 interface RightRailPanelsProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   badges: Badges;
   timestamps: Timestamps;
   level: number;

@@ -1,9 +1,11 @@
 import React from "react";
+import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../../application/state/pages";
+import type { ArtifactStatus } from "../../../../domain/artifact/ArtifactStatus";
 import type { Badges, Timestamps } from "../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import { LEVELS } from "../../../../domain/review/levels";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
+import type { WorkspaceSourceState } from "../../../../domain/workspace/WorkspaceSourceState";
 import { fmtBytes } from "../../../shared/formatting";
 import { C, F, S_SECTION_LABEL } from "../../../theme/theme";
 import { AllFieldsPanel } from "./components/AllFieldsPanel";
@@ -17,7 +19,7 @@ import { SourcePanel } from "./components/SourcePanel";
 import { PanelCableOverlay } from "./PanelCableOverlay";
 import { PodWidget } from "./PodWidget";
 
-export function OverviewHeader({ ree, level }: { ree: ReeViewState; level: number }) {
+export function OverviewHeader({ ree, level }: { ree: ReeEditorViewModel; level: number }) {
   const levelMeta = LEVELS[Math.min(level, 7)];
   return (
     <div style={{ marginBottom: 20, display: "flex", alignItems: "baseline", gap: 14 }}>
@@ -64,7 +66,7 @@ export function OverviewHeader({ ree, level }: { ree: ReeViewState; level: numbe
 }
 
 interface OverviewColumnsProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   level: number;
   badges: Badges;
   timestamps: Timestamps;
@@ -75,7 +77,8 @@ interface OverviewColumnsProps {
   podSize: number;
   onGoField: (key: string) => void;
   onNavigate: (key: AppShellPage) => void;
-  onReeChange: (ree: ReeViewState) => void;
+  onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
+  onArtifactStatusChange: React.Dispatch<React.SetStateAction<ArtifactStatus>>;
   onSeal: () => void;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
@@ -139,7 +142,7 @@ export function OverviewColumns(props: OverviewColumnsProps) {
           fileSummary={`${props.fileCount} file${props.fileCount !== 1 ? "s" : ""} · ${fmtBytes(props.totalBytes)}`}
           onGoField={props.onGoField}
           onNavigate={props.onNavigate}
-          onReeChange={props.onReeChange}
+          onWorkspaceSourceStateChange={props.onWorkspaceSourceStateChange}
         />
 
         <MetadataPanel
@@ -162,7 +165,7 @@ export function OverviewColumns(props: OverviewColumnsProps) {
           runtimeRef={refs.runtimeRef}
           onGoField={props.onGoField}
           onNavigate={props.onNavigate}
-          onReeChange={props.onReeChange}
+          onArtifactStatusChange={props.onArtifactStatusChange}
         />
 
         <SbomPanel
@@ -295,6 +298,6 @@ export function OverviewLevelStrip({ level }: { level: number }) {
   );
 }
 
-export function OverviewFieldsPanel({ ree }: { ree: ReeViewState }) {
+export function OverviewFieldsPanel({ ree }: { ree: ReeEditorViewModel }) {
   return <AllFieldsPanel ree={ree} />;
 }

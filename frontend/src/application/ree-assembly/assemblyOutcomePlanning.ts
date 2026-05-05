@@ -1,5 +1,5 @@
-import type { ReeView } from "../../domain/ree/ReeView";
 import { LEVELS } from "../../domain/review/levels";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey } from "./assemblyTypes";
 
@@ -10,24 +10,24 @@ interface PersistedFilePlan {
 
 interface BuildEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch?: Partial<ReeView>;
+  reePatch?: Partial<ReeEditorViewModel>;
   errorMessage?: string;
   successMessage: string;
 }
 
 interface SbomEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch: Partial<ReeView>;
+  reePatch: Partial<ReeEditorViewModel>;
   successMessage: string;
 }
 
 interface HbomEffectPlan {
-  reePatch?: Partial<ReeView>;
+  reePatch?: Partial<ReeEditorViewModel>;
   successMessage: string;
 }
 
 interface EvaluateEffectPlan {
-  reePatch: Partial<ReeView>;
+  reePatch: Partial<ReeEditorViewModel>;
   successMessage: string;
 }
 
@@ -37,12 +37,15 @@ interface ActivationEffectPlan {
 
 interface AssemblyServiceEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch?: Partial<ReeView>;
+  reePatch?: Partial<ReeEditorViewModel>;
   errorMessage?: string;
   successMessage: string;
 }
 
-export function planBuildEffect(args: { ree: ReeView; expectedOutput?: string }): BuildEffectPlan {
+export function planBuildEffect(args: {
+  ree: ReeEditorViewModel;
+  expectedOutput?: string;
+}): BuildEffectPlan {
   const runtimeTarget =
     args.ree.runtime && args.ree.runtime !== "__skipped__" ? args.ree.runtime : null;
   const expectedOutput = String(args.expectedOutput || "").trim();
@@ -103,7 +106,7 @@ export function planActivationEffect(): ActivationEffectPlan {
 export function planAssemblyServiceEffect(args: {
   key: ReeAssemblyOperationKey;
   params: GenericReeAssemblyParams;
-  ree: ReeView;
+  ree: ReeEditorViewModel;
   newLevel: number;
   timestamp: string;
   namespaceSuffix: string;

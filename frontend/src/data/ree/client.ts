@@ -9,9 +9,10 @@ import { ensureReeId } from "../client";
 import { mapReeDetailToReeProject } from "./reeMapping";
 
 type ReeApiRuntime = ApiRuntimeValue & { reeApi: ReeApi };
+type ReeProjectState = NonNullable<ReturnType<typeof mapReeDetailToReeProject>["ree"]>;
 
-export interface ReeClient<TFile = unknown> {
-  getRee(id: ReeId | string): Promise<ReeProject<TFile>>;
+export interface ReeClient<TFile = unknown, TRee = unknown> {
+  getRee(id: ReeId | string): Promise<ReeProject<TFile, TRee>>;
   updateFile(id: ReeId | string, path: string, content: string): Promise<void>;
   updateReeDraft(id: ReeId | string, reePatch: Record<string, unknown>): Promise<void>;
   deleteFile(id: ReeId | string, path: string): Promise<void>;
@@ -20,7 +21,7 @@ export interface ReeClient<TFile = unknown> {
   resetWorkspaceRequest(id: ReeId | string, request: WorkspaceResetPayload): Promise<void>;
 }
 
-function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode> {
+function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReeProjectState> {
   return {
     async getRee(id) {
       const reeId = await ensureReeId(runtime, id);
@@ -80,7 +81,7 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode> {
   };
 }
 
-export function useReeClient(): ReeClient<FileTreeNode> {
+export function useReeClient(): ReeClient<FileTreeNode, ReeProjectState> {
   const runtime = useApiRuntime();
   return useMemo(() => createReeClient(runtime), [runtime]);
 }

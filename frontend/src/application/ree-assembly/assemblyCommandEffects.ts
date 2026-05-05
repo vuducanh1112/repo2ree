@@ -1,9 +1,9 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import type { ActionStates } from "../../domain/ree/ReeTypes";
-import type { ReeView } from "../../domain/ree/ReeView";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import type { Updater } from "../state/types";
 import type { SourceCommand } from "../workspace/sourceAcquisitionCommands";
 import type { AssemblyCommand } from "./assemblyCommands";
@@ -165,7 +165,7 @@ export function mapAssemblyCommandsToEffects(commands: AssemblyCommand[]): AppSh
       continue;
     }
     if (command.type === "patchRee") {
-      const patch = command.patch as Partial<ReeView>;
+      const patch = command.patch as Partial<ReeEditorViewModel>;
       const reeSpec: Partial<ReeSpec> = {};
       const workspaceSourceState: Partial<WorkspaceSourceState> = {};
       const artifactStatus: Partial<ArtifactStatus> = {};

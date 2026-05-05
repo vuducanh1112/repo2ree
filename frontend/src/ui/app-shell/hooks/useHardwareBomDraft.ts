@@ -1,19 +1,20 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import {
   draftFromHBOM,
   type HardwareBomDraft,
   hbomFromDraft,
   hbomSyncKey,
 } from "../../../domain/hbom/hardwareBomDraft";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
+import type { ReeSpec } from "../../../domain/ree/ReeSpec";
 
 interface UseHardwareBomDraftArgs {
-  ree: ReeViewState;
-  onReeChange: React.Dispatch<React.SetStateAction<ReeViewState>>;
+  ree: ReeEditorViewModel;
+  onReeSpecChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
 }
 
-export function useHardwareBomDraft({ ree, onReeChange }: UseHardwareBomDraftArgs) {
+export function useHardwareBomDraft({ ree, onReeSpecChange }: UseHardwareBomDraftArgs) {
   const [draft, setDraft] = useState<HardwareBomDraft>(() =>
     draftFromHBOM(ree.hardware_description),
   );
@@ -32,10 +33,10 @@ export function useHardwareBomDraft({ ree, onReeChange }: UseHardwareBomDraftArg
     const nextHBOM = hbomFromDraft(nextDraft, ree.hardware_description);
     pendingLocalHbomKeyRef.current = hbomSyncKey(nextHBOM);
     setDraft(nextDraft);
-    onReeChange({
-      ...ree,
+    onReeSpecChange((current) => ({
+      ...current,
       hardware_description: nextHBOM,
-    });
+    }));
   };
 
   return {

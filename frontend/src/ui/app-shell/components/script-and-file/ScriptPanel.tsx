@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import { PAGE } from "../../../../application/state/pages";
-import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
+import type { ReeSpec } from "../../../../domain/ree/ReeSpec";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import {
   removeWorkspaceFileByPath,
@@ -14,16 +15,15 @@ import { ScriptPanelWrite } from "./ScriptPanelWriteSection";
 
 interface ScriptPanelProps {
   scriptKind: "build" | "validate" | null;
-  fieldKey: keyof ReeViewState;
+  fieldKey: keyof ReeSpec;
   files: FileTreeNode[];
-  onFilesChange?: (files: FileTreeNode[]) => void;
   onPersistWorkspaceFile?: (
     previousPath: string | undefined,
     path: string,
     content: string,
   ) => Promise<void>;
-  ree: ReeViewState;
-  onReeChange?: (ree: ReeViewState) => void;
+  ree: ReeEditorViewModel;
+  onReeSpecChange?: React.Dispatch<React.SetStateAction<ReeSpec>>;
   onTemplateSuggestedOutput?: (output: string) => void;
   reviewerMode?: boolean;
   saveToWorkspaceOnly?: boolean;
@@ -33,10 +33,9 @@ export function ScriptPanel({
   scriptKind,
   fieldKey,
   files,
-  onFilesChange,
   onPersistWorkspaceFile,
   ree,
-  onReeChange,
+  onReeSpecChange,
   onTemplateSuggestedOutput,
   reviewerMode,
   saveToWorkspaceOnly = false,
@@ -90,11 +89,10 @@ export function ScriptPanel({
       previousPath && previousPath !== filename
         ? removeWorkspaceFileByPath(files, previousPath)
         : files;
-    const updated = upsertWorkspaceFileByPath(withoutPrevious, filename, content, {
+    upsertWorkspaceFileByPath(withoutPrevious, filename, content, {
       tag: PAGE.SOURCE,
     });
-    onFilesChange?.(updated);
-    onReeChange?.({ ...ree, [fieldKey]: filename });
+    onReeSpecChange?.((current) => ({ ...current, [fieldKey]: filename }));
     await onPersistWorkspaceFile?.(previousPath, filename, content);
   };
 

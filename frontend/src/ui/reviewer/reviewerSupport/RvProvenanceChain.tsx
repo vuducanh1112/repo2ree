@@ -1,9 +1,9 @@
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 
 interface RvProvenanceChainProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
 }
 
 export function RvProvenanceChain({ ree }: RvProvenanceChainProps) {

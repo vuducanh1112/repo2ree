@@ -1,7 +1,8 @@
 import React from "react";
+import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../../../application/state/pages";
 import { PAGE } from "../../../../../application/state/pages";
-import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
+import type { WorkspaceSourceState } from "../../../../../domain/workspace/WorkspaceSourceState";
 import { Toggle } from "../../../../shared/components/Toggle";
 import {
   C,
@@ -18,13 +19,13 @@ import {
 import { PanelFieldRow } from "./PanelFieldRow";
 
 interface SourcePanelProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   sourceRef: React.RefObject<HTMLDivElement>;
   fileCount: number;
   fileSummary: string;
   onGoField: (key: string) => void;
   onNavigate: (key: AppShellPage) => void;
-  onReeChange: (ree: ReeViewState) => void;
+  onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
 }
 
 const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({
@@ -43,7 +44,7 @@ export function SourcePanel({
   fileSummary,
   onGoField,
   onNavigate,
-  onReeChange,
+  onWorkspaceSourceStateChange,
 }: SourcePanelProps) {
   const sourceInWorkspace = !!ree.sourceAvailable;
   const sourceFromUpload = ree.sourceAcquiredBy === "upload" && !!ree.sourceAvailable;
@@ -59,14 +60,20 @@ export function SourcePanel({
 
   const toggleSource = () => {
     if (!canIncludeSource) return;
-    onReeChange({ ...ree, sourceIncluded: !sourceIncluded });
+    onWorkspaceSourceStateChange((current) => ({
+      ...current,
+      sourceIncluded: !sourceIncluded,
+    }));
   };
 
   React.useEffect(() => {
     if (!sourceInWorkspace && ree.sourceIncluded) {
-      onReeChange({ ...ree, sourceIncluded: false });
+      onWorkspaceSourceStateChange((current) => ({
+        ...current,
+        sourceIncluded: false,
+      }));
     }
-  }, [sourceInWorkspace, ree, onReeChange]);
+  }, [sourceInWorkspace, ree.sourceIncluded, onWorkspaceSourceStateChange]);
 
   return (
     <div ref={sourceRef} style={panel({ overflow: "hidden" })}>

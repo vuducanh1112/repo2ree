@@ -1,14 +1,27 @@
 import { useMemo } from "react";
+import {
+  createReeEditorStateFromAppShell,
+  type ReeEditorState,
+} from "../../../application/ree-editor/reeEditorState";
+import {
+  createReeEditorViewModel,
+  type ReeEditorViewModel,
+} from "../../../application/ree-editor/reeEditorViewModel";
 import { patch } from "../../../application/state/actions";
 import type { AppShellPage } from "../../../application/state/pages";
+import { resolveUpdater, type Updater } from "../../../application/state/types";
 import type {
   AutomationStepKey,
   AutomationStepRunParams,
 } from "../../../application/workflow/WorkflowTypes";
 import { useReeQuery } from "../../../data/ree/queries";
+import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
+import type { ReeInclusionState } from "../../../domain/ree/ReeInclusionState";
+import type { ReeSpec } from "../../../domain/ree/ReeSpec";
 import type { ReeFile, SourceUploadCommit, WorkflowParams } from "../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
+import type { EvaluationState } from "../../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
+import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
 import { useAppShellContext } from "../providers/AppShellProvider";
 import { useWorkspaceWorkflowRuns } from "../workflow-runs/useWorkspaceWorkflowRuns";
 
@@ -22,28 +35,14 @@ export function useAppShell() {
   const { showReviewPreview } = uiChrome;
   const workspaceFiles = reeQuery.data?.files ?? [];
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
+  const reeEditorState: ReeEditorState = useMemo(
+    () => createReeEditorStateFromAppShell({ reeDraft, workflowRun }),
+    [reeDraft, workflowRun],
+  );
 
-  const ree: ReeViewState = useMemo(
-    () => ({
-      ...reeDraft.reeSpec,
-      sourceAvailable: reeDraft.workspaceSourceState.sourceAvailable ?? false,
-      sourceIncluded: reeDraft.workspaceSourceState.sourceIncluded ?? false,
-      sourceAcquiredBy: reeDraft.workspaceSourceState.sourceAcquiredBy,
-      uploadedArchive: reeDraft.workspaceSourceState.uploadedArchive,
-      sourceSnapshotArchive: reeDraft.workspaceSourceState.sourceSnapshotArchive,
-      sourceSnapshotCapturedAt: reeDraft.workspaceSourceState.sourceSnapshotCapturedAt,
-      runtimeIncluded: reeDraft.artifactStatus.runtimeIncluded ?? false,
-      downloadableFiles: reeDraft.artifactStatus.downloadableFiles ?? [],
-      sealedAt: reeDraft.artifactStatus.sealedAt,
-      sealHash: reeDraft.artifactStatus.sealHash,
-      evalLevel: workflowRun.evaluationState.evalLevel ?? 0,
-    }),
-    [
-      reeDraft.reeSpec,
-      reeDraft.workspaceSourceState,
-      reeDraft.artifactStatus,
-      workflowRun.evaluationState,
-    ],
+  const ree: ReeEditorViewModel = useMemo(
+    () => createReeEditorViewModel(reeEditorState),
+    [reeEditorState],
   );
 
   const workspaceRemote = useMemo(
@@ -85,6 +84,8 @@ export function useAppShell() {
     workspaceFiles,
   });
 
+  const resolveNext = <T>(previous: T, value: Updater<T>): T => resolveUpdater(previous, value);
+
   const commands = {
     setPage: (nextPage: AppShellPage) => dispatch(patch("uiChrome", { page: nextPage })),
     setNavCollapsed: (value: boolean | ((current: boolean) => boolean)) =>
@@ -93,21 +94,46 @@ export function useAppShell() {
           navCollapsed: typeof value === "function" ? value(uiChrome.navCollapsed) : value,
         }),
       ),
-    setRee: (value: ReeViewState | ((current: ReeViewState) => ReeViewState)) => {
-      // setRee action is removed; dispatch component updates via setReeSpec
-      const next = typeof value === "function" ? value(ree) : value;
-      dispatch(patch("reeDraft", { reeSpec: next }));
-    },
-    setReeSpec: (
-      value:
-        | typeof reeDraft.reeSpec
-        | ((current: typeof reeDraft.reeSpec) => typeof reeDraft.reeSpec),
-    ) =>
+    setReeSpec: (value: Updater<ReeSpec>) =>
       dispatch(
         patch("reeDraft", {
-          reeSpec: typeof value === "function" ? value(reeDraft.reeSpec) : value,
+          reeSpec: resolveNext(reeDraft.reeSpec, value),
         }),
       ),
+    setWorkspaceSourceState: (value: Updater<WorkspaceSourceState>) =>
+      dispatch(
+        patch("reeDraft", {
+          workspaceSourceState: resolveNext(reeDraft.workspaceSourceState, value),
+        }),
+      ),
+    setArtifactStatus: (value: Updater<ArtifactStatus>) =>
+      dispatch(
+        patch("reeDraft", {
+          artifactStatus: resolveNext(reeDraft.artifactStatus, value),
+        }),
+      ),
+    setEvaluationState: (value: Updater<EvaluationState>) =>
+      dispatch(
+        patch("workflowRun", {
+          evaluationState: resolveNext(workflowRun.evaluationState, value),
+        }),
+      ),
+    setInclusionState: (value: Updater<ReeInclusionState>) => {
+      const next = resolveNext(reeEditorState.inclusionState, value);
+      dispatch(
+        patch("reeDraft", {
+          workspaceSourceState: {
+            ...reeDraft.workspaceSourceState,
+            sourceAvailable: next.source !== "unavailable",
+            sourceIncluded: next.source === "included",
+          },
+          artifactStatus: {
+            ...reeDraft.artifactStatus,
+            runtimeIncluded: next.runtime === "included",
+          },
+        }),
+      );
+    },
     setLocked: (value: boolean | ((current: boolean) => boolean)) =>
       dispatch(
         patch("reeDraft", {
@@ -126,9 +152,6 @@ export function useAppShell() {
           focusedField: typeof value === "function" ? value(uiChrome.focusedField) : value,
         }),
       ),
-    setWorkspaceFiles: (_value: FileTreeNode[] | ((current: FileTreeNode[]) => FileTreeNode[])) => {
-      // workspaceFiles now come from React Query; this is a no-op
-    },
     setWorkflowParams: (value: WorkflowParams | ((current: WorkflowParams) => WorkflowParams)) =>
       dispatch(
         patch("workflowRun", {

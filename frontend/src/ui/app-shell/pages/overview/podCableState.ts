@@ -1,7 +1,7 @@
+import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import { PAGE } from "../../../../application/state/pages";
 import { hbomHasAnyComponents } from "../../../../domain/hbom/HbomSummary";
 import type { Badges } from "../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 
 type PodCableSide = "left" | "right" | "top";
 
@@ -16,7 +16,7 @@ interface PodCableState {
   connected: boolean;
 }
 
-export function getPodCableStates(ree: ReeViewState, badges: Badges): PodCableState[] {
+export function getPodCableStates(ree: ReeEditorViewModel, badges: Badges): PodCableState[] {
   const hasName = !!ree.name?.trim();
   const fieldsConnected = hasName;
   const hbomConnected = hbomHasAnyComponents(ree.hardware_description);

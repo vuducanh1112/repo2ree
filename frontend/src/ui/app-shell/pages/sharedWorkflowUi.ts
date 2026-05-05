@@ -1,4 +1,5 @@
 import type React from "react";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../application/state/pages";
 import type {
   AutomationStepDefinition,
@@ -18,13 +19,12 @@ import type {
   LogEntry,
   SourceUploadCommit,
 } from "../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { EvaluationState } from "../../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
 
 export interface SourceAcquisitionPageProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   workspaceSourceState: WorkspaceSourceState;
   locked: boolean;
   repoMode: "url" | "upload";
@@ -33,11 +33,11 @@ export interface SourceAcquisitionPageProps {
   log: LogEntry | null;
   running: boolean;
   focusedField: string | null;
-  onReeChange: React.Dispatch<React.SetStateAction<ReeViewState>>;
+  onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
   onRepoModeChange: React.Dispatch<React.SetStateAction<"url" | "upload">>;
   onGoWorkflow: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
-  onDownloadSource: (originType: ReeViewState["source_type"], sourceUrl: string) => void;
+  onDownloadSource: (originType: ReeEditorViewModel["source_type"], sourceUrl: string) => void;
   onCancelSource: () => void;
   onWorkspaceUpload: (payload: SourceUploadCommit) => void;
   onRemoveWorkspaceSource: () => void;
@@ -55,7 +55,7 @@ export interface PageMetadataEntryProps {
 }
 
 export interface PageHardwareBomProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   locked: boolean;
   badges: Badges;
   log: LogEntry | null;
@@ -63,7 +63,7 @@ export interface PageHardwareBomProps {
   runDone: boolean;
   ts?: string;
   focusedField: string | null;
-  onReeChange: React.Dispatch<React.SetStateAction<ReeViewState>>;
+  onReeSpecChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
   onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
   onGoWorkflow: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
@@ -73,7 +73,7 @@ export interface PageHardwareBomProps {
 
 export interface WorkflowPageProps {
   workflow: AutomationStepDefinition & { key: AutomationStepKey };
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   workspaceSourceState: WorkspaceSourceState;
   artifactStatus: ArtifactStatus;
   evaluationState: EvaluationState;
@@ -88,8 +88,10 @@ export interface WorkflowPageProps {
   onCancel?: (key: AutomationStepKey) => void;
   onGo: (key: AppShellPage) => void;
   onGoFields: () => void;
-  onReeChange: React.Dispatch<React.SetStateAction<ReeViewState>>;
-  onFilesChange: React.Dispatch<React.SetStateAction<FileTreeNode[]>>;
+  onReeSpecChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
+  onArtifactStatusChange: React.Dispatch<React.SetStateAction<ArtifactStatus>>;
+  onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
+  onEvaluationStateChange: React.Dispatch<React.SetStateAction<EvaluationState>>;
   onPersistWorkspaceFile: (
     previousPath: string | undefined,
     path: string,

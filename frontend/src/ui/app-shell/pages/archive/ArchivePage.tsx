@@ -1,10 +1,10 @@
 import { useState } from "react";
+import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import { type AppShellPage, PAGE } from "../../../../application/state/pages";
 import { ARCHIVE_REPOSITORIES } from "../../../../application/workflow/archiveRepositories";
 import type { GenericWorkflowParams } from "../../../../application/workflow/WorkflowStepTypes";
 import type { ArtifactStatus } from "../../../../domain/artifact/ArtifactStatus";
 import type { ActionStates, Badges, WorkflowLogs } from "../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import { Ic } from "../../../shared/components/Icon";
 import { S_FIELD_STACK_GAP_14 } from "../../../theme/theme";
 import { NextStepNudge, RequirementsBanner, WorkflowPageHeader } from "../../components/pageChrome";
@@ -15,7 +15,7 @@ import { ArchiveRepoSummaryCard } from "./sections/ArchiveRepoSummaryCard";
 import { ArchiveRepoTabs } from "./sections/ArchiveRepoTabs";
 
 interface PageArchiveProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   artifactStatus: ArtifactStatus;
   badges: Badges;
   logs: WorkflowLogs;

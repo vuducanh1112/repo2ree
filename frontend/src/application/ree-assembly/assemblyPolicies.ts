@@ -1,4 +1,4 @@
-import type { ReeView } from "../../domain/ree/ReeView";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import { PAGE } from "../state/pages";
 import type { ReeAssemblyRequirement } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey } from "./assemblyTypes";
@@ -47,7 +47,7 @@ export function getReeAssemblyRequirements(key: ReeAssemblyOperationKey): ReeAss
 
 export function missingReeAssemblyRequirements(
   key: ReeAssemblyOperationKey,
-  ree: ReeView,
+  ree: ReeEditorViewModel,
 ): ReeAssemblyRequirement[] {
   return getReeAssemblyRequirements(key).filter((requirement) => !ree[requirement.field]);
 }

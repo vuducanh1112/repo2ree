@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReeEditorViewModel } from "../../application/ree-editor/reeEditorViewModel";
 import type {
   Level,
   StepState,
@@ -6,7 +7,6 @@ import type {
 } from "../../application/workflow/WorkflowStepTypes";
 import { useReviewClient } from "../../data/reviews/client";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { LEVELS } from "../../domain/review/levels";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { C } from "../theme/theme";
@@ -30,7 +30,7 @@ import {
 
 interface ReviewerViewProps {
   reviewId?: string;
-  ree?: ReeViewState;
+  ree?: ReeEditorViewModel;
   reviewFiles?: Array<{ path: string; size?: number }>;
   reviewWorkspaceFiles?: Array<{ path: string; size?: number }>;
   onBack: () => void;

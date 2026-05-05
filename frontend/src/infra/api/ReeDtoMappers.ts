@@ -1,16 +1,15 @@
-import { mapRawReeDraftToRee } from "../../domain/ree/mapRawReeDraft";
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import { mapRawReeDraftToSlices } from "../../domain/ree/mapRawReeDraft";
 import type { ReeDetailDto, ReviewDetailDto } from "./apiTypes";
 
-export function mapReviewDraftToRee(review: ReviewDetailDto): ReeViewState {
-  return mapRawReeDraftToRee({
+export function mapReviewDraftToReeSlices(review: ReviewDetailDto) {
+  return mapRawReeDraftToSlices({
     reeDraft: review.reeDraft,
     fallbackName: review.name,
   });
 }
 
-export function mapReeDetailToRee(ree: ReeDetailDto): ReeViewState {
-  return mapRawReeDraftToRee({
+export function mapReeDetailToReeSlices(ree: ReeDetailDto) {
+  return mapRawReeDraftToSlices({
     reeDraft: ree.reeDraft,
     fallbackName: ree.name,
     fallbackOriginUrl: ree.externalRef ?? "",

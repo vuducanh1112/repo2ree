@@ -1,23 +1,24 @@
 import { useCallback, useEffect, useRef } from "react";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import {
   shouldHydrateRemoteRee,
   shouldScheduleReeDraftSync,
 } from "../../../application/workspace/syncReeDraft";
 import { useUpdateReeDraftMutation } from "../../../data/ree/mutations";
 import { useRefreshReeQuery } from "../../../data/ree/queries";
+import type { RawReeDraftSlices } from "../../../domain/ree/mapRawReeDraft";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
-import { toReePatch } from "../../../domain/ree/reePatch";
+import { toReePatch, toReePatchFromSlices } from "../../../domain/ree/reePatch";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 
 interface HydratedWorkspaceSnapshot {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
-  ree?: ReeViewState;
+  ree?: RawReeDraftSlices;
 }
 
 interface UseReeDraftSyncArgs {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   reeId: string;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
@@ -38,7 +39,7 @@ export function useReeDraftSync({ ree, reeId, hydrateWorkspace }: UseReeDraftSyn
       const { forceReeHydration = false } = options;
       const requestStartedPatchKey = latestLocalPatchKeyRef.current;
       const workspace = await fetchWorkspace();
-      let reeToHydrate: ReeViewState | undefined;
+      let reeToHydrate: RawReeDraftSlices | undefined;
       if (workspace.ree) {
         const localPatchChangedDuringRequest =
           latestLocalPatchKeyRef.current !== requestStartedPatchKey;
@@ -52,7 +53,7 @@ export function useReeDraftSync({ ree, reeId, hydrateWorkspace }: UseReeDraftSyn
         });
         if (shouldHydrateRee) {
           reeToHydrate = workspace.ree;
-          const hydratedPatchKey = JSON.stringify(toReePatch(workspace.ree));
+          const hydratedPatchKey = JSON.stringify(toReePatchFromSlices(workspace.ree));
           lastSyncedReeRef.current = hydratedPatchKey;
           latestLocalPatchKeyRef.current = hydratedPatchKey;
           hasHydratedRemoteReeRef.current = true;

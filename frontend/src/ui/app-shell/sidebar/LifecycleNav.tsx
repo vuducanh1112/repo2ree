@@ -1,13 +1,13 @@
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../application/state/pages";
 import type { Badges, Timestamps } from "../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import { C, F, S_SECTION_LABEL } from "../../theme/theme";
 import { NavEntryButton } from "../AppShellNav";
 import { hasProcessStepCompleted, PROCESS_STEPS } from "./processSteps";
 
 interface LifecycleNavProps {
   page: AppShellPage;
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   badges: Badges;
   timestamps: Timestamps;
   navCollapsed: boolean;

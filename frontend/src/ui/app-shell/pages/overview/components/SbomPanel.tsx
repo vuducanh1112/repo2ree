@@ -1,8 +1,8 @@
 import type React from "react";
+import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../../../application/state/pages";
 import { PAGE } from "../../../../../application/state/pages";
 import type { Badges } from "../../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../../../domain/workspace/FileTree";
 import { findVirtualFileByName } from "../../../../../domain/workspace/fileTreeTraversal";
 import {
@@ -20,7 +20,7 @@ import { PanelFieldRow } from "./PanelFieldRow";
 const SBOM_PANEL_PARSE_CHAR_LIMIT = 200_000;
 
 interface SbomPanelProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   files: FileTreeNode[];
   badges: Badges;
   sbomRef: React.RefObject<HTMLDivElement>;

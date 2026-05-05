@@ -17,8 +17,7 @@ interface BuildScriptSectionProps {
   files: WorkflowPageProps["workspaceFiles"];
   focusedField: string | null;
   setFocusedField: (field: string | null) => void;
-  onReeChange: WorkflowPageProps["onReeChange"];
-  onFilesChange: WorkflowPageProps["onFilesChange"];
+  onReeSpecChange: WorkflowPageProps["onReeSpecChange"];
   onPersistWorkspaceFile: WorkflowPageProps["onPersistWorkspaceFile"];
   onTemplateSuggestedOutput: (out: string) => void;
 }
@@ -29,8 +28,7 @@ export function BuildScriptSection({
   files,
   focusedField,
   setFocusedField,
-  onReeChange,
-  onFilesChange,
+  onReeSpecChange,
   onPersistWorkspaceFile,
   onTemplateSuggestedOutput,
 }: BuildScriptSectionProps) {
@@ -58,7 +56,9 @@ export function BuildScriptSection({
           <FilePicker
             disabled={false}
             value={ree.build_runtime_script}
-            onChange={(v) => onReeChange?.({ ...ree, build_runtime_script: v })}
+            onChange={(v) =>
+              onReeSpecChange?.((current) => ({ ...current, build_runtime_script: v }))
+            }
             files={files || []}
             placeholder="build_runtime.sh"
             filterFn={(p) => /\.sh$/i.test(p)}
@@ -90,10 +90,9 @@ export function BuildScriptSection({
               scriptKind={sf.scriptKind || null}
               fieldKey={sf.fieldKey}
               files={files || []}
-              onFilesChange={onFilesChange}
               onPersistWorkspaceFile={onPersistWorkspaceFile}
               ree={ree}
-              onReeChange={onReeChange}
+              onReeSpecChange={onReeSpecChange}
               onTemplateSuggestedOutput={onTemplateSuggestedOutput}
               saveToWorkspaceOnly
             />

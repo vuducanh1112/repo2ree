@@ -2,7 +2,6 @@ import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { HBOM, ReeSpec } from "./ReeSpec";
-import type { ReeViewState } from "./ReeViewState";
 
 interface ReePatch extends Record<string, unknown> {
   name: string;
@@ -72,7 +71,9 @@ export function toReePatchFromSlices({
   };
 }
 
-export function toReePatch(ree: ReeViewState): ReePatch {
+export function toReePatch(
+  ree: ReeSpec & WorkspaceSourceState & ArtifactStatus & EvaluationState,
+): ReePatch {
   return toReePatchFromSlices({
     reeSpec: {
       name: ree.name,

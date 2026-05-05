@@ -1,4 +1,4 @@
-import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
+import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { C, F, S_SECTION_LABEL_SMALL, S_STATUS_BADGE_SM_BASE } from "../../../theme/theme";
@@ -6,7 +6,7 @@ import { C, F, S_SECTION_LABEL_SMALL, S_STATUS_BADGE_SM_BASE } from "../../../th
 interface RuntimeOutputNodeProps {
   expectedOutput: string;
   buildDone: boolean;
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   imageColor: string;
   files: FileTreeNode[];
 }

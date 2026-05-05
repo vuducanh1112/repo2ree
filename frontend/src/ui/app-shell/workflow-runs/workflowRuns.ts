@@ -6,10 +6,11 @@ import type {
 } from "../../../application/ree-assembly/assemblyCommands";
 import type { GenericReeAssemblyParams } from "../../../application/ree-assembly/assemblyStepTypes";
 import { executeAssemblyRun } from "../../../application/ree-assembly/executeAssemblyRun";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ExecutionRun } from "../../../domain/execution/ExecutionRun";
+import type { RawReeDraftSlices } from "../../../domain/ree/mapRawReeDraft";
 import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { executeWorkflowStepCommands, type WorkspaceWorkflowDispatch } from "./commandExecutors";
 import { pollWorkflowRun } from "./pollWorkflowRun";
@@ -18,7 +19,7 @@ import type { ShowToast } from "./types";
 interface ExecuteServiceRunArgs {
   key: string;
   params: GenericReeAssemblyParams;
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   level: number;
   workspaceFiles: FileTreeNode[];
   dispatch: WorkspaceWorkflowDispatch;
@@ -36,7 +37,7 @@ interface ExecuteServiceRunArgs {
   refreshWorkspace: () => Promise<{
     workspaceFiles: FileTreeNode[];
     reeArtifactFiles: ReeFile[];
-    ree?: ReeViewState;
+    ree?: RawReeDraftSlices;
   }>;
   onRunStarted?: (key: string, runId: string) => void;
   onRunFinished?: (key: string) => void;

@@ -1,5 +1,5 @@
+import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import { PAGE } from "../../../../application/state/pages";
-import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import {
@@ -108,7 +108,7 @@ export function SbomProducedSection(props: {
   sbomTooLargeForPreview: boolean;
   sbomPreviewText: string;
   pkgCount: number | null;
-  reeDraft: ReeViewState;
+  reeDraft: ReeEditorViewModel;
   focusedField: string | null;
   onFocusField: (value: string) => void;
 }) {

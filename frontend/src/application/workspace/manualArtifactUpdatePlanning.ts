@@ -1,8 +1,8 @@
-import type { ReeView } from "../../domain/ree/ReeView";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import { AUTOMATION_STEPS } from "../workflow/workflowCatalog";
 
 interface NonWorkflowCompletionPlan {
-  reePatch?: Partial<ReeView>;
+  reePatch?: Partial<ReeEditorViewModel>;
   lock?: boolean;
   successMessage: string;
 }

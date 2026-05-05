@@ -1,4 +1,4 @@
-import type { ReeView } from "../../domain/ree/ReeView";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey, ReeAssemblyRunParamsByKey } from "./assemblyTypes";
 
@@ -60,7 +60,7 @@ export function buildEvaluateAssemblyRunRequest(
 
 export function buildBuildAssemblyRunRequest(
   params: ReeAssemblyRunParamsByKey["build"],
-  ree: ReeView,
+  ree: ReeEditorViewModel,
 ): ReeAssemblyRunRequestByKey["build"] {
   return {
     scriptKey: "build",
@@ -86,7 +86,7 @@ function buildHbomAssemblyRunRequest(
 
 export function buildSbomAssemblyRunRequest(
   params: ReeAssemblyRunParamsByKey["sbom"],
-  ree: ReeView,
+  ree: ReeEditorViewModel,
 ): ReeAssemblyRunRequestByKey["sbom"] {
   return {
     scriptKey: "sbom",
@@ -98,7 +98,7 @@ export function buildSbomAssemblyRunRequest(
 
 export function buildActivationAssemblyRunRequest(
   params: ReeAssemblyRunParamsByKey["activation"],
-  ree: ReeView,
+  ree: ReeEditorViewModel,
 ): ReeAssemblyRunRequestByKey["activation"] {
   void params;
   return {
@@ -112,7 +112,7 @@ export function buildActivationAssemblyRunRequest(
 export function buildAssemblyRunRequest<K extends ReeAssemblyOperationKey>(
   key: K,
   params: ReeAssemblyRunParamsByKey[K],
-  ree: ReeView,
+  ree: ReeEditorViewModel,
 ): ReeAssemblyRunRequest<K> {
   switch (key) {
     case "evaluate":
@@ -144,7 +144,7 @@ export function buildAssemblyRunRequest<K extends ReeAssemblyOperationKey>(
 export function buildAssemblyRunParams(
   key: string,
   params: GenericReeAssemblyParams,
-  ree: ReeView,
+  ree: ReeEditorViewModel,
 ): Record<string, AssemblyRequestParamValue> {
   if (key === "evaluate") {
     return buildEvaluateAssemblyRunRequest(params as ReeAssemblyRunParamsByKey["evaluate"]).params;

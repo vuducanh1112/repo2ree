@@ -21,7 +21,7 @@ export function PageHardwareBom({
   runDone,
   ts,
   focusedField,
-  onReeChange,
+  onReeSpecChange,
   onLockedChange,
   onGoWorkflow,
   onFocusedFieldChange,
@@ -29,7 +29,7 @@ export function PageHardwareBom({
   onCancel,
 }: PageHardwareBomProps) {
   const focus = (key: string) => onFocusedFieldChange(key);
-  const { draft, updateDraft } = useHardwareBomDraft({ ree: reeDraft, onReeChange });
+  const { draft, updateDraft } = useHardwareBomDraft({ ree: reeDraft, onReeSpecChange });
 
   useFocusScroll(focusedField);
 

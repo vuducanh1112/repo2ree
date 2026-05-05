@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createDefaultReeView, type ReeView } from "../../domain/ree/ReeView";
 import { appShellReducer, createInitialState } from "../../ui/app-shell/providers/AppShellProvider";
+import {
+  createEmptyReeEditorViewModel,
+  type ReeEditorViewModel,
+} from "../ree-editor/reeEditorViewModel";
+import { patch } from "./actions";
 import { createAppShellState } from "./appShellState";
 
-function buildRee(): ReeView {
+function buildRee(): ReeEditorViewModel {
   return {
     name: "demo",
     origin_url: "",
@@ -29,7 +33,7 @@ function buildRee(): ReeView {
   };
 }
 
-function toInitialSlices(ree: ReeView) {
+function toInitialSlices(ree: ReeEditorViewModel) {
   return {
     reeSpec: {
       name: ree.name,
@@ -146,6 +150,32 @@ describe("appShellState", () => {
     expect(view.page).toBe(state.uiChrome.page);
     expect(view.workflowParams).toBe(state.workflowRun.workflowParams);
     expect(view.locked).toBe(state.reeDraft.locked);
-    expect(createDefaultReeView().name).toBe("");
+    expect(createEmptyReeEditorViewModel().name).toBe("");
+  });
+
+  it("updates ree metadata without mutating source or artifact slices", () => {
+    const initial = createInitialState(
+      toInitialSlices({
+        ...buildRee(),
+        sourceAvailable: true,
+        sourceIncluded: true,
+        runtimeIncluded: true,
+        downloadableFiles: ["runtime.tar.gz"],
+      }),
+    );
+
+    const next = appShellReducer(
+      initial,
+      patch("reeDraft", {
+        reeSpec: {
+          ...initial.reeDraft.reeSpec,
+          name: "renamed",
+        },
+      }),
+    );
+
+    expect(next.reeDraft.reeSpec.name).toBe("renamed");
+    expect(next.reeDraft.workspaceSourceState).toEqual(initial.reeDraft.workspaceSourceState);
+    expect(next.reeDraft.artifactStatus).toEqual(initial.reeDraft.artifactStatus);
   });
 });

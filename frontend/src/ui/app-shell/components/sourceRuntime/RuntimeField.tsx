@@ -1,5 +1,6 @@
+import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import { FIELD_META } from "../../../../application/state/fieldMeta";
-import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
+import type { ReeSpec } from "../../../../domain/ree/ReeSpec";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { triggerOnEnterOrSpace } from "../../../shared/keyboard";
@@ -21,21 +22,28 @@ import { inp, tipTargetChip } from "./shared";
 
 interface RuntimeFieldProps {
   locked: boolean;
-  ree: ReeViewState;
-  onChange: (ree: ReeViewState) => void;
+  ree: ReeEditorViewModel;
+  onReeSpecChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
   onFocus?: () => void;
   active?: boolean;
   files: FileTreeNode[];
 }
-export function RuntimeField({ locked, ree, onChange, onFocus, active, files }: RuntimeFieldProps) {
+export function RuntimeField({
+  locked,
+  ree,
+  onReeSpecChange,
+  onFocus,
+  active,
+  files,
+}: RuntimeFieldProps) {
   const val = ree.runtime || "";
   const isSkipped = val === "__skipped__";
   const isTarball = !isSkipped && /\.(tar\.gz|tgz)$/i.test(val);
   const isImageRef = !isSkipped && !!val && !isTarball;
   const mode = isSkipped ? "skip" : isImageRef ? "image" : "tarball";
 
-  const set = <K extends keyof ReeViewState>(k: K, v: ReeViewState[K]) =>
-    onChange({ ...ree, [k]: v } as ReeViewState);
+  const set = <K extends keyof ReeSpec>(key: K, value: ReeSpec[K]) =>
+    onReeSpecChange((current) => ({ ...current, [key]: value }));
 
   const handleModeChange = (m: "tarball" | "image" | "skip") => {
     if (locked) return;

@@ -1,8 +1,8 @@
 import type React from "react";
+import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import { FIELD_META } from "../../../../../application/state/fieldMeta";
 import { type AppShellPage, PAGE } from "../../../../../application/state/pages";
 import type { Badges } from "../../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import {
   C,
   hoverBrightness,
@@ -23,7 +23,7 @@ const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 });
 
 export function ArchiveCard(props: {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   onNavigate: (key: AppShellPage) => void;
   archiveRef: React.RefObject<HTMLDivElement>;
 }) {
@@ -91,7 +91,7 @@ export function ArchiveCard(props: {
 }
 
 export function ActivationCard(props: {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   badges: Badges;
   onNavigate: (key: AppShellPage) => void;
   onGoField: (key: string) => void;

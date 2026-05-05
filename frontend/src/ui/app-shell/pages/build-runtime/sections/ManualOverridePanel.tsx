@@ -27,7 +27,7 @@ interface ManualOverridePanelProps {
   showManualOverride: boolean;
   onToggleManualOverride: (next: boolean) => void;
   ree: WorkflowPageProps["ree"];
-  onReeChange: WorkflowPageProps["onReeChange"];
+  onReeSpecChange: WorkflowPageProps["onReeSpecChange"];
   files: WorkflowPageProps["workspaceFiles"];
   focusedField: string | null;
   setFocusedField: (field: string | null) => void;
@@ -37,7 +37,7 @@ export function ManualOverridePanel({
   showManualOverride,
   onToggleManualOverride,
   ree,
-  onReeChange,
+  onReeSpecChange,
   files,
   focusedField,
   setFocusedField,
@@ -120,7 +120,7 @@ export function ManualOverridePanel({
         <RuntimeField
           locked={false}
           ree={ree}
-          onChange={onReeChange}
+          onReeSpecChange={onReeSpecChange}
           onFocus={() => setFocusedField("runtime")}
           active={focusedField === "runtime"}
           files={files || []}

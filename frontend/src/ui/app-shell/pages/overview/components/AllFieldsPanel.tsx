@@ -1,9 +1,9 @@
+import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import { FIELD_META } from "../../../../../application/state/fieldMeta";
-import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import { C, F } from "../../../../theme/theme";
 
 interface AllFieldsPanelProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
 }
 
 export function AllFieldsPanel({ ree }: AllFieldsPanelProps) {

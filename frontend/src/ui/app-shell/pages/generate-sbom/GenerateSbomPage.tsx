@@ -39,8 +39,7 @@ export function PageGenerateSBOM({
   onGoFields,
   missing,
   params,
-  onReeChange,
-  onFilesChange,
+  onReeSpecChange,
   onPersistWorkspaceFile,
 }: WorkflowPageProps) {
   const sbomParams: AutomationStepRunParams<"sbom"> = {
@@ -135,10 +134,9 @@ export function PageGenerateSBOM({
                   scriptKind={sf.scriptKind || null}
                   fieldKey={sf.fieldKey}
                   files={files || []}
-                  onFilesChange={onFilesChange}
                   onPersistWorkspaceFile={onPersistWorkspaceFile}
                   ree={reeDraft}
-                  onReeChange={onReeChange}
+                  onReeSpecChange={onReeSpecChange}
                 />
               ))}
             </div>

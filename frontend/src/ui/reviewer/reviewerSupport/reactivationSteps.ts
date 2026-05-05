@@ -1,9 +1,9 @@
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type {
   WorkflowParam,
   WorkflowParamValue,
 } from "../../../application/workflow/WorkflowStepTypes";
 import type { LogLine } from "../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import { Ic } from "../../shared/components/Icon";
 
 interface ReactivationStep {
@@ -13,7 +13,7 @@ interface ReactivationStep {
   color: string;
   desc: string;
   params?: WorkflowParam[];
-  logLines: (ree: ReeViewState, params?: ReactivationParams) => LogLine[];
+  logLines: (ree: ReeEditorViewModel, params?: ReactivationParams) => LogLine[];
 }
 
 export type ReactivationStepKey = "acquire_source" | "build_runtime" | "test_activation";

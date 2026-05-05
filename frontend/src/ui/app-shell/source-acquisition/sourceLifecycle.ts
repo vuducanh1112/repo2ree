@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppShellClock } from "../../../app/bootstrap/ports";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import { createSourceUseCase } from "../../../application/workspace/acquireSource";
 import {
   type SourceCommand,
@@ -10,7 +11,6 @@ import { runSourceWorkspaceAction } from "../../../application/workspace/sourceA
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ReeClient } from "../../../data/ree/client";
 import type { SourceUploadCommit } from "../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { serializeWorkspaceResetPayload } from "../../../domain/workspace/WorkspaceReset";
 import {
@@ -29,7 +29,7 @@ export function resetWorkflowOnSourceChange(
 }
 
 interface CreateSourceActionsArgs {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   reeClient: ReeClient<FileTreeNode>;
   workflowRunsClient: ExecutionRunsClient;
   reeId: string;
@@ -101,7 +101,7 @@ export function createSourceActions({
   });
 
   const handleDownloadSourceFiles = async (
-    originType: ReeViewState["source_type"],
+    originType: ReeEditorViewModel["source_type"],
     sourceUrl: string,
   ) => sourceAcquisition.downloadSource(originType, sourceUrl);
 

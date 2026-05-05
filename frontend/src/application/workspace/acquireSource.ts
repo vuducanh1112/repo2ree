@@ -1,9 +1,9 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
-import type { ReeView } from "../../domain/ree/ReeView";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import { type SourceCommand, sourceFailureCommands } from "./sourceAcquisitionCommands";
 import {
   planClearedSourceStateResult,
@@ -14,7 +14,7 @@ import {
   planUploadedSourceState,
 } from "./sourceAcquisitionPlanning";
 
-function mapReePatchToSourceOutcome(patch: Partial<ReeView>): {
+function mapReePatchToSourceOutcome(patch: Partial<ReeEditorViewModel>): {
   reeSpec?: Partial<ReeSpec>;
   workspaceSourceState?: Partial<WorkspaceSourceState>;
   artifactStatus?: Partial<ArtifactStatus>;
@@ -99,7 +99,7 @@ interface SourceUseCaseEffects {
 }
 
 interface SourceUseCaseArgs extends SourceUseCaseEffects {
-  ree: ReeView;
+  ree: ReeEditorViewModel;
 }
 
 interface UploadSourceArgs {
@@ -152,7 +152,7 @@ export function createSourceUseCase({
   };
 
   const completeDownload = async (args: {
-    originType: ReeView["source_type"];
+    originType: ReeEditorViewModel["source_type"];
     normalizedSourceUrl: string;
   }) => {
     const workspaceFiles = await refreshWorkspaceFiles();
@@ -178,7 +178,10 @@ export function createSourceUseCase({
   };
 
   return {
-    async downloadSource(originType: ReeView["source_type"], sourceUrl: string): Promise<void> {
+    async downloadSource(
+      originType: ReeEditorViewModel["source_type"],
+      sourceUrl: string,
+    ): Promise<void> {
       const plan = planSourceDownloadAction(ree, originType, sourceUrl);
       if (!plan.ok) {
         executeCommands([{ type: "toast", message: plan.error, toastType: "error" }]);
@@ -251,7 +254,7 @@ export function createSourceUseCase({
 }
 
 function sourceSuccessCommands(plan: {
-  reePatch: Partial<ReeView>;
+  reePatch: Partial<ReeEditorViewModel>;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
   actionState: "done";

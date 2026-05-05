@@ -1,4 +1,5 @@
 import type React from "react";
+import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import {
   type AppShellPage,
   isValidAppShellPage,
@@ -6,7 +7,6 @@ import {
 } from "../../../../../application/state/pages";
 import { AUTOMATION_STEPS } from "../../../../../application/workflow/workflowCatalog";
 import type { Badges, Timestamps } from "../../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../../domain/ree/ReeViewState";
 import { LEVELS } from "../../../../../domain/review/levels";
 import { Ic } from "../../../../shared/components/Icon";
 import {
@@ -31,7 +31,7 @@ const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 });
 
 export function SwhCard(props: {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   onNavigate: (key: AppShellPage) => void;
   swhRef: React.RefObject<HTMLDivElement>;
 }) {

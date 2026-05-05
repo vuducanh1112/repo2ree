@@ -1,6 +1,6 @@
 import type React from "react";
+import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import type { Badges } from "../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import { getPodCableStates } from "./podCableState";
 
 export interface Cable {
@@ -99,7 +99,11 @@ export function cableHl(x1: number, y1: number, x2: number, y2: number): string 
   return `M ${x1} ${y1 - 1.4} C ${x1 + dx * 0.42} ${cy1}, ${x2 - dx * 0.42} ${cy2}, ${x2} ${y2 - 1.4}`;
 }
 
-function buildPanelSpecs(refs: PanelRefs, ree: ReeViewState, badges: Badges): PanelCableSpec[] {
+function buildPanelSpecs(
+  refs: PanelRefs,
+  ree: ReeEditorViewModel,
+  badges: Badges,
+): PanelCableSpec[] {
   const cableStates = getPodCableStates(ree, badges);
   const cableById = Object.fromEntries(cableStates.map((cable) => [cable.id, cable]));
 
@@ -191,7 +195,7 @@ export function measureCableGeo(args: {
   container: HTMLElement;
   podSvg: SVGSVGElement;
   refs: PanelRefs;
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   badges: Badges;
 }): CableGeo | null {
   const { container, podSvg, refs, ree, badges } = args;

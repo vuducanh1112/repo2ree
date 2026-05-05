@@ -54,7 +54,7 @@ export function SourcePageContainer({
       log={sourceLog}
       running={actionStates.source === "loading"}
       focusedField={focusedField}
-      onReeChange={commands.setRee}
+      onWorkspaceSourceStateChange={commands.setWorkspaceSourceState}
       onRepoModeChange={commands.setRepoMode}
       onGoWorkflow={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
@@ -125,7 +125,7 @@ export function HardwareBomPageContainer({
       runDone={!!badges.hbom}
       ts={timestamps.hbom}
       focusedField={focusedField}
-      onReeChange={commands.setRee}
+      onReeSpecChange={commands.setReeSpec}
       onLockedChange={commands.setLocked}
       onGoWorkflow={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
@@ -182,8 +182,10 @@ export function WorkflowPageContainer(props: AppShellPageContainerProps) {
         onCancel={commands.onCancelAction}
         onGo={commands.setPage}
         onGoFields={goToRequirements}
-        onReeChange={commands.setRee}
-        onFilesChange={commands.setWorkspaceFiles}
+        onReeSpecChange={commands.setReeSpec}
+        onArtifactStatusChange={commands.setArtifactStatus}
+        onWorkspaceSourceStateChange={commands.setWorkspaceSourceState}
+        onEvaluationStateChange={commands.setEvaluationState}
         onPersistWorkspaceFile={commands.onPersistWorkspaceFile}
         missing={missing}
         params={params}

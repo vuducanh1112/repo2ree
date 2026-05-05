@@ -1,5 +1,5 @@
 import type React from "react";
-import type { ReeViewState } from "../../../../../../domain/ree/ReeViewState";
+import type { ReeEditorViewModel } from "../../../../../../application/ree-editor/reeEditorViewModel";
 import { Ic } from "../../../../../shared/components/Icon";
 import {
   C,
@@ -18,7 +18,7 @@ interface LevelMeta {
 }
 
 interface SealedSealCardProps {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   level: number;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;

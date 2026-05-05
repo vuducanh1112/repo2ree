@@ -27,7 +27,7 @@ export function SourceAcquisitionPage({
   log,
   running,
   focusedField,
-  onReeChange,
+  onWorkspaceSourceStateChange,
   onRepoModeChange,
   onGoWorkflow,
   onFocusedFieldChange,
@@ -55,14 +55,20 @@ export function SourceAcquisitionPage({
   const toggleSourceIncluded = () => {
     focus("sourceAvailable");
     if (locked || !sourceInWorkspace || workspaceSourceState.sourceAcquiredBy === "upload") return;
-    onReeChange({ ...ree, sourceIncluded: !sourceIncluded });
+    onWorkspaceSourceStateChange((current) => ({
+      ...current,
+      sourceIncluded: !sourceIncluded,
+    }));
   };
 
   useEffect(() => {
     if (!sourceInWorkspace && workspaceSourceState.sourceIncluded) {
-      onReeChange({ ...ree, sourceIncluded: false });
+      onWorkspaceSourceStateChange((current) => ({
+        ...current,
+        sourceIncluded: false,
+      }));
     }
-  }, [sourceInWorkspace, workspaceSourceState.sourceIncluded, ree, onReeChange]);
+  }, [sourceInWorkspace, workspaceSourceState.sourceIncluded, onWorkspaceSourceStateChange]);
 
   useEffect(() => {
     setOriginTypeDraft(ree.source_type || "");

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ReeDetailDto, ReviewDetailDto } from "./apiTypes";
-import { mapReeDetailToRee, mapReviewDraftToRee } from "./ReeDtoMappers";
+import { mapReeDetailToReeSlices, mapReviewDraftToReeSlices } from "./ReeDtoMappers";
 
 describe("reeMappers", () => {
-  it("maps review drafts into ReeViewState consistently", () => {
+  it("maps review drafts into explicit slices consistently", () => {
     const review: ReviewDetailDto = {
       reviewId: "rev-1",
       name: "review-demo",
@@ -20,12 +20,12 @@ describe("reeMappers", () => {
       workspaceFiles: [],
     };
 
-    const mapped = mapReviewDraftToRee(review);
+    const mapped = mapReviewDraftToReeSlices(review);
 
-    expect(mapped.name).toBe("review-demo");
-    expect(mapped.origin_url).toBe("https://example.org/repo.git");
-    expect(mapped.hardware_description.cpus.Xeon.vendor).toBe("Intel");
-    expect(mapped.sourceAvailable).toBe(true);
+    expect(mapped.reeSpec.name).toBe("review-demo");
+    expect(mapped.reeSpec.origin_url).toBe("https://example.org/repo.git");
+    expect(mapped.reeSpec.hardware_description.cpus.Xeon.vendor).toBe("Intel");
+    expect(mapped.workspaceSourceState.sourceAvailable).toBe(true);
   });
 
   it("falls back to workspace external ref when origin_url is absent", () => {
@@ -41,9 +41,9 @@ describe("reeMappers", () => {
       reeFiles: [],
     };
 
-    const mapped = mapReeDetailToRee(ree);
+    const mapped = mapReeDetailToReeSlices(ree);
 
-    expect(mapped.name).toBe("workspace-demo");
-    expect(mapped.origin_url).toBe("https://example.org/archive.tar.gz");
+    expect(mapped.reeSpec.name).toBe("workspace-demo");
+    expect(mapped.reeSpec.origin_url).toBe("https://example.org/archive.tar.gz");
   });
 });

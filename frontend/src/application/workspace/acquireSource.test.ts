@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ReeView } from "../../domain/ree/ReeView";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import { createSourceUseCase } from "./acquireSource";
 
-function buildRee(): ReeView {
+function buildRee(): ReeEditorViewModel {
   return {
     name: "demo",
     origin_url: "",

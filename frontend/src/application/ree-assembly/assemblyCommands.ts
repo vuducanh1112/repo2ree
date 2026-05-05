@@ -1,10 +1,10 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import type { ReeView } from "../../domain/ree/ReeView";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import { scanDependencies } from "./assemblyDependencyAnalysis";
 import { planAssemblyServiceEffect } from "./assemblyOutcomePlanning";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
@@ -16,7 +16,7 @@ interface AppShellClock {
 }
 
 interface CreateAssemblyCommandPlannersArgs {
-  ree: ReeView;
+  ree: ReeEditorViewModel;
   workspaceFiles: FileTreeNode[];
   clock: AppShellClock;
 }
@@ -47,7 +47,7 @@ export type AssemblyCommand =
       evaluationState?: EvaluationState;
     }
   | { type: "persistFile"; path: string; content: string }
-  | { type: "patchRee"; patch: Partial<ReeView> }
+  | { type: "patchRee"; patch: Partial<ReeEditorViewModel> }
   | { type: "setLocked"; locked: boolean }
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
@@ -137,7 +137,7 @@ export function createAssemblyCommandPlanners({
 
 function assemblyEffectPlanToCommands(plan: {
   persistedFile?: { path: string; content: string };
-  reePatch?: Partial<ReeView>;
+  reePatch?: Partial<ReeEditorViewModel>;
   errorMessage?: string;
   successMessage: string;
 }): AssemblyCommand[] {
@@ -160,7 +160,7 @@ function assemblyEffectPlanToCommands(plan: {
 }
 
 export function nonAssemblyPlanToCommands(plan: {
-  reePatch?: Partial<ReeView>;
+  reePatch?: Partial<ReeEditorViewModel>;
   lock?: boolean;
   successMessage?: string;
 }): AssemblyCommand[] {

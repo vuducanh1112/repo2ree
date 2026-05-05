@@ -1,9 +1,11 @@
 import React, { useRef } from "react";
+import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../../application/state/pages";
+import type { ArtifactStatus } from "../../../../domain/artifact/ArtifactStatus";
 import type { Badges, Timestamps } from "../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import { listTreeFiles } from "../../../../domain/workspace/fileTreeTraversal";
+import type { WorkspaceSourceState } from "../../../../domain/workspace/WorkspaceSourceState";
 import {
   OverviewColumns,
   OverviewFieldsPanel,
@@ -12,8 +14,9 @@ import {
 } from "./OverviewPageSections";
 
 interface PageOverviewProps {
-  ree: ReeViewState;
-  onReeChange: (ree: ReeViewState) => void;
+  ree: ReeEditorViewModel;
+  onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
+  onArtifactStatusChange: React.Dispatch<React.SetStateAction<ArtifactStatus>>;
   level: number;
   onNavigate: (key: AppShellPage) => void;
   badges?: Badges;
@@ -29,7 +32,8 @@ interface PageOverviewProps {
 
 export function PageOverview({
   ree,
-  onReeChange,
+  onWorkspaceSourceStateChange,
+  onArtifactStatusChange,
   level,
   onNavigate,
   badges = {},
@@ -91,7 +95,8 @@ export function PageOverview({
         podSize={podSize}
         onGoField={onGoField}
         onNavigate={onNavigate}
-        onReeChange={onReeChange}
+        onWorkspaceSourceStateChange={onWorkspaceSourceStateChange}
+        onArtifactStatusChange={onArtifactStatusChange}
         onSeal={onSeal}
         onPreviewReviewer={onPreviewReviewer}
         onDownloadRee={onDownloadRee}

@@ -38,8 +38,8 @@ export function PageBuildRuntime({
   missing,
   params,
   setParam,
-  onReeChange,
-  onFilesChange,
+  onReeSpecChange,
+  onArtifactStatusChange,
   onPersistWorkspaceFile,
 }: WorkflowPageProps) {
   const files = workspaceFiles;
@@ -96,8 +96,7 @@ export function PageBuildRuntime({
             files={files}
             focusedField={focusedField}
             setFocusedField={setFocusedField}
-            onReeChange={onReeChange}
-            onFilesChange={onFilesChange}
+            onReeSpecChange={onReeSpecChange}
             onPersistWorkspaceFile={onPersistWorkspaceFile}
             onTemplateSuggestedOutput={setExpectedOutput}
           />
@@ -131,18 +130,17 @@ export function PageBuildRuntime({
             showManualOverride={showManualOverride}
             onToggleManualOverride={setShowManualOverride}
             ree={ree}
-            onReeChange={onReeChange}
+            onReeSpecChange={onReeSpecChange}
             files={files}
             focusedField={focusedField}
             setFocusedField={setFocusedField}
           />
 
           <FinalRuntimeSection
-            ree={ree}
             includeRuntime={includeRuntime}
             finalRuntime={finalRuntime}
             finalRuntimeSize={finalRuntimeSize}
-            onReeChange={onReeChange}
+            onArtifactStatusChange={onArtifactStatusChange}
             focusedField={focusedField}
             setFocusedField={setFocusedField}
           />

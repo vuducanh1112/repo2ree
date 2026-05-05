@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type React from "react";
 import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
 import type {
   AutomationStepKey,
@@ -10,8 +11,8 @@ import { isAutomationStepKey } from "../../../application/workflow/workflowPolic
 import type { WorkflowStepHandlerMap } from "../../../application/workflow/workflowStepCommands";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ExecutionRun } from "../../../domain/execution/ExecutionRun";
+import type { RawReeDraftSlices } from "../../../domain/ree/mapRawReeDraft";
 import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { WorkspaceWorkflowDispatch } from "./commandExecutors";
 import type { ShowToast } from "./types";
@@ -27,7 +28,7 @@ interface RunSessionPort {
 }
 
 interface CreateWorkflowRunGatewayArgs {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   level: number;
   workspaceFiles: FileTreeNode[];
   dispatch: React.Dispatch<unknown> | WorkspaceWorkflowDispatch;
@@ -47,7 +48,7 @@ interface CreateWorkflowRunGatewayArgs {
   refreshWorkspace: () => Promise<{
     workspaceFiles: FileTreeNode[];
     reeArtifactFiles: ReeFile[];
-    ree?: ReeViewState;
+    ree?: RawReeDraftSlices;
   }>;
   runSession: RunSessionPort;
 }

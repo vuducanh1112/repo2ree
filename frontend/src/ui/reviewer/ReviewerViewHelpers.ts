@@ -1,6 +1,6 @@
+import type { ReeEditorViewModel } from "../../application/ree-editor/reeEditorViewModel";
 import { createEmptyReeSpec } from "../../domain/ree/ReeSpec";
 import type { ReeFile } from "../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { buildTreeFromPaths } from "./components/reviewerFileTree";
 import {
@@ -9,7 +9,7 @@ import {
   type ReactivationStepKey,
 } from "./reviewerSupport";
 
-export function resolveReviewerRee(reeInput?: ReeViewState): ReeViewState {
+export function resolveReviewerRee(reeInput?: ReeEditorViewModel): ReeEditorViewModel {
   return reeInput || { ...createEmptyReeSpec(), evalLevel: 0, runtimeIncluded: false };
 }
 

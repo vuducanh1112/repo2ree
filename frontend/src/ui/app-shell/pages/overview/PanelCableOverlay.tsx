@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
+import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import type { Badges } from "../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../domain/ree/ReeViewState";
 import { LEVELS } from "../../../../domain/review/levels";
 import { type CableGeo, measureCableGeo, type PanelRefs } from "./PanelCableOverlayHelpers";
 import { CableOverlaySvg } from "./PanelCableOverlaySections";
@@ -10,7 +10,7 @@ interface PanelCableOverlayProps extends PanelRefs {
   podSvgRef: React.RefObject<SVGSVGElement>;
   level: number;
   badges: Badges;
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
 }
 
 export function PanelCableOverlay(props: PanelCableOverlayProps) {

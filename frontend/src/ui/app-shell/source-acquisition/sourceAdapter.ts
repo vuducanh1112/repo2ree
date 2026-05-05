@@ -1,15 +1,15 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppShellClock } from "../../../app/bootstrap/ports";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ReeClient } from "../../../data/ree/client";
-import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { WorkspaceWorkflowDispatch } from "../workflow-runs/commandExecutors";
 import type { ShowToast } from "../workflow-runs/types";
 import { createSourceActions, resetWorkflowOnSourceChange } from "./sourceLifecycle";
 
 interface CreateSourceAdapterArgs {
-  ree: ReeViewState;
+  ree: ReeEditorViewModel;
   reeClient: ReeClient<FileTreeNode>;
   workflowRunsClient: ExecutionRunsClient;
   reeId: string;

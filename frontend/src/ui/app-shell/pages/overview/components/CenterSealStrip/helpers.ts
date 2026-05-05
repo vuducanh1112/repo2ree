@@ -1,7 +1,7 @@
+import type { ReeEditorViewModel } from "../../../../../../application/ree-editor/reeEditorViewModel";
 import { PAGE } from "../../../../../../application/state/pages";
 import { hbomHasAnyComponents } from "../../../../../../domain/hbom/HbomSummary";
 import type { Badges } from "../../../../../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../../../../../domain/ree/ReeViewState";
 
 interface SealCableItem {
   key: string;
@@ -9,7 +9,7 @@ interface SealCableItem {
   live: boolean;
 }
 
-export function buildSealCableItems(ree: ReeViewState, badges: Badges): SealCableItem[] {
+export function buildSealCableItems(ree: ReeEditorViewModel, badges: Badges): SealCableItem[] {
   return [
     {
       key: PAGE.METADATA,

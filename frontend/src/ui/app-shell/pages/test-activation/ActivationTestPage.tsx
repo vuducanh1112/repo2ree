@@ -45,8 +45,7 @@ export function PageTestActivation({
   onGoFields,
   missing,
   params,
-  onReeChange,
-  onFilesChange,
+  onReeSpecChange,
   onPersistWorkspaceFile,
 }: WorkflowPageProps) {
   const files = workspaceFiles;
@@ -96,7 +95,9 @@ export function PageTestActivation({
                   <FilePicker
                     disabled={false}
                     value={ree.activation_script}
-                    onChange={(v) => onReeChange?.({ ...ree, activation_script: v })}
+                    onChange={(v) =>
+                      onReeSpecChange?.((current) => ({ ...current, activation_script: v }))
+                    }
                     files={files || []}
                     placeholder="activation_test.sh"
                     filterFn={(p) => /\.sh$/i.test(p)}
@@ -126,10 +127,9 @@ export function PageTestActivation({
                 scriptKind={sf.scriptKind || null}
                 fieldKey={sf.fieldKey}
                 files={files || []}
-                onFilesChange={onFilesChange}
                 onPersistWorkspaceFile={onPersistWorkspaceFile}
                 ree={ree}
-                onReeChange={onReeChange}
+                onReeSpecChange={onReeSpecChange}
                 saveToWorkspaceOnly
               />
             ))}

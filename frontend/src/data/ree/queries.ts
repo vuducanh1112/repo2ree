@@ -8,9 +8,9 @@ import { queryKeys } from "../queryKeys";
 import type { ReeClient } from "./client";
 import { useReeClient } from "./client";
 
-function createReeQueryOptions(
+function createReeQueryOptions<TRee>(
   runtime: ApiRuntimeValue,
-  reeClient: ReeClient<FileTreeNode>,
+  reeClient: ReeClient<FileTreeNode, TRee>,
   reeId?: string,
 ) {
   const resolvedReeId = resolveReeId(runtime, reeId);
@@ -20,10 +20,10 @@ function createReeQueryOptions(
   });
 }
 
-async function fetchReeQuery(
+async function fetchReeQuery<TRee>(
   queryClient: QueryClient,
   runtime: ApiRuntimeValue,
-  reeClient: ReeClient<FileTreeNode>,
+  reeClient: ReeClient<FileTreeNode, TRee>,
   reeId?: string,
 ) {
   return queryClient.fetchQuery(createReeQueryOptions(runtime, reeClient, reeId));

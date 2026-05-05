@@ -1,6 +1,7 @@
+import type { RawReeDraftSlices } from "../../domain/ree/mapRawReeDraft";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import type { ReeView } from "../../domain/ree/ReeView";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import {
   type AssemblyCommand,
   type AssemblyCommandPlannerMap,
@@ -39,7 +40,7 @@ interface ExecutionRunResult {
 interface WorkspaceSnapshot {
   files: FileTreeNode[];
   reeFiles?: ReeFile[];
-  ree?: ReeView;
+  ree?: RawReeDraftSlices;
 }
 
 interface ExecutionRunRunner {
@@ -56,7 +57,7 @@ interface ExecutionRunRunner {
 interface ExecuteAssemblyRunArgs {
   key: string;
   params: GenericReeAssemblyParams;
-  ree: ReeView;
+  ree: ReeEditorViewModel;
   level: number;
   workspaceFiles: FileTreeNode[];
   executionRunner: ExecutionRunRunner;
@@ -143,42 +144,10 @@ export async function executeAssemblyRun({
           type: "hydrateWorkspace",
           workspaceFiles: workspace.files,
           reeArtifactFiles: workspace.reeFiles || [],
-          reeSpec: workspace.ree
-            ? {
-                name: workspace.ree.name,
-                origin_url: workspace.ree.origin_url,
-                source_type: workspace.ree.source_type,
-                runtime: workspace.ree.runtime,
-                build_runtime_script: workspace.ree.build_runtime_script,
-                activation_script: workspace.ree.activation_script,
-                sbom: workspace.ree.sbom,
-                swhid: workspace.ree.swhid,
-                zenodo_doi: workspace.ree.zenodo_doi,
-                dataverse_doi: workspace.ree.dataverse_doi,
-                repro_level: workspace.ree.repro_level,
-                detected_dependencies: workspace.ree.detected_dependencies,
-                hardware_description: workspace.ree.hardware_description,
-              }
-            : undefined,
-          workspaceSourceState: workspace.ree
-            ? {
-                sourceAvailable: workspace.ree.sourceAvailable,
-                sourceIncluded: workspace.ree.sourceIncluded,
-                sourceAcquiredBy: workspace.ree.sourceAcquiredBy,
-                uploadedArchive: workspace.ree.uploadedArchive,
-                sourceSnapshotArchive: workspace.ree.sourceSnapshotArchive,
-                sourceSnapshotCapturedAt: workspace.ree.sourceSnapshotCapturedAt,
-              }
-            : undefined,
-          artifactStatus: workspace.ree
-            ? {
-                runtimeIncluded: workspace.ree.runtimeIncluded,
-                downloadableFiles: workspace.ree.downloadableFiles,
-                sealedAt: workspace.ree.sealedAt,
-                sealHash: workspace.ree.sealHash,
-              }
-            : undefined,
-          evaluationState: workspace.ree ? { evalLevel: workspace.ree.evalLevel } : undefined,
+          reeSpec: workspace.ree?.reeSpec,
+          workspaceSourceState: workspace.ree?.workspaceSourceState,
+          artifactStatus: workspace.ree?.artifactStatus,
+          evaluationState: workspace.ree?.evaluationState,
         },
       ]);
     } catch {

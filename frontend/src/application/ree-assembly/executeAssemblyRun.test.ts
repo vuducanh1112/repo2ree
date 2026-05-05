@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ReeView } from "../../domain/ree/ReeView";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import type { AssemblyCommandPlannerMap } from "./assemblyCommands";
 import { executeAssemblyRun } from "./executeAssemblyRun";
 
-function buildRee(): ReeView {
+function buildRee(): ReeEditorViewModel {
   return {
     name: "demo",
     origin_url: "",

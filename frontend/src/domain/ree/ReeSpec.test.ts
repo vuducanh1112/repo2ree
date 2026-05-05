@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ReeViewState } from "./ReeViewState";
 
-function buildReeDraft(): ReeViewState {
+function buildReeDraft() {
   return {
     name: "demo",
     origin_url: "https://example.org/repo.git",

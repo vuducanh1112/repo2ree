@@ -24,7 +24,8 @@ export function OverviewPageContainer({
     <ContentSection>
       <PageOverview
         ree={ree}
-        onReeChange={commands.setRee}
+        onWorkspaceSourceStateChange={commands.setWorkspaceSourceState}
+        onArtifactStatusChange={commands.setArtifactStatus}
         level={level}
         onNavigate={commands.setPage}
         badges={badges}
