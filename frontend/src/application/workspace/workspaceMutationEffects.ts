@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import type { ActionStates } from "../../domain/ree/ReeTypes";
-import { splitReeViewPatch } from "../../domain/ree/ReeViewState";
+import type { ReeView } from "../../domain/ree/ReeView";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 import type { Updater } from "../state/types";
@@ -167,40 +167,81 @@ export function mapWorkflowStepCommandsToEffects(
       continue;
     }
     if (command.type === "patchRee") {
-      const split = splitReeViewPatch(command.patch);
-      if (split.reeSpec) {
+      const patch = command.patch as Partial<ReeView>;
+      const reeSpec: Partial<ReeSpec> = {};
+      const workspaceSourceState: Partial<WorkspaceSourceState> = {};
+      const artifactStatus: Partial<ArtifactStatus> = {};
+      let evaluationState: EvaluationState | undefined;
+      if (Object.hasOwn(patch, "name")) reeSpec.name = patch.name;
+      if (Object.hasOwn(patch, "origin_url")) reeSpec.origin_url = patch.origin_url;
+      if (Object.hasOwn(patch, "source_type")) reeSpec.source_type = patch.source_type;
+      if (Object.hasOwn(patch, "runtime")) reeSpec.runtime = patch.runtime;
+      if (Object.hasOwn(patch, "build_runtime_script"))
+        reeSpec.build_runtime_script = patch.build_runtime_script;
+      if (Object.hasOwn(patch, "activation_script"))
+        reeSpec.activation_script = patch.activation_script;
+      if (Object.hasOwn(patch, "sbom")) reeSpec.sbom = patch.sbom;
+      if (Object.hasOwn(patch, "swhid")) reeSpec.swhid = patch.swhid;
+      if (Object.hasOwn(patch, "zenodo_doi")) reeSpec.zenodo_doi = patch.zenodo_doi;
+      if (Object.hasOwn(patch, "dataverse_doi")) reeSpec.dataverse_doi = patch.dataverse_doi;
+      if (Object.hasOwn(patch, "repro_level")) reeSpec.repro_level = patch.repro_level;
+      if (Object.hasOwn(patch, "detected_dependencies"))
+        reeSpec.detected_dependencies = patch.detected_dependencies;
+      if (Object.hasOwn(patch, "hardware_description"))
+        reeSpec.hardware_description = patch.hardware_description;
+      if (Object.hasOwn(patch, "sourceAvailable"))
+        workspaceSourceState.sourceAvailable = patch.sourceAvailable;
+      if (Object.hasOwn(patch, "sourceIncluded"))
+        workspaceSourceState.sourceIncluded = patch.sourceIncluded;
+      if (Object.hasOwn(patch, "sourceAcquiredBy"))
+        workspaceSourceState.sourceAcquiredBy = patch.sourceAcquiredBy;
+      if (Object.hasOwn(patch, "uploadedArchive"))
+        workspaceSourceState.uploadedArchive = patch.uploadedArchive;
+      if (Object.hasOwn(patch, "sourceSnapshotArchive"))
+        workspaceSourceState.sourceSnapshotArchive = patch.sourceSnapshotArchive;
+      if (Object.hasOwn(patch, "sourceSnapshotCapturedAt"))
+        workspaceSourceState.sourceSnapshotCapturedAt = patch.sourceSnapshotCapturedAt;
+      if (Object.hasOwn(patch, "runtimeIncluded"))
+        artifactStatus.runtimeIncluded = patch.runtimeIncluded;
+      if (Object.hasOwn(patch, "downloadableFiles"))
+        artifactStatus.downloadableFiles = patch.downloadableFiles;
+      if (Object.hasOwn(patch, "sealedAt")) artifactStatus.sealedAt = patch.sealedAt;
+      if (Object.hasOwn(patch, "sealHash")) artifactStatus.sealHash = patch.sealHash;
+      if (Object.hasOwn(patch, "evalLevel")) evaluationState = { evalLevel: patch.evalLevel ?? 0 };
+
+      if (Object.keys(reeSpec).length > 0) {
         effects.push({
           type: "dispatchStateCommand",
           command: {
             type: "setReeSpec",
-            reeSpec: (prevReeSpec) => ({ ...prevReeSpec, ...split.reeSpec }),
+            reeSpec: (prevReeSpec) => ({ ...prevReeSpec, ...reeSpec }),
           },
         });
       }
-      if (split.workspaceSourceState) {
+      if (Object.keys(workspaceSourceState).length > 0) {
         effects.push({
           type: "dispatchStateCommand",
           command: {
             type: "setWorkspaceSourceState",
-            workspaceSourceState: (prevState) => ({ ...prevState, ...split.workspaceSourceState }),
+            workspaceSourceState: (prevState) => ({ ...prevState, ...workspaceSourceState }),
           },
         });
       }
-      if (split.artifactStatus) {
+      if (Object.keys(artifactStatus).length > 0) {
         effects.push({
           type: "dispatchStateCommand",
           command: {
             type: "setArtifactStatus",
-            artifactStatus: (prevStatus) => ({ ...prevStatus, ...split.artifactStatus }),
+            artifactStatus: (prevStatus) => ({ ...prevStatus, ...artifactStatus }),
           },
         });
       }
-      if (split.evaluationState) {
+      if (evaluationState) {
         effects.push({
           type: "dispatchStateCommand",
           command: {
             type: "setEvaluationState",
-            evaluationState: (prevState) => ({ ...prevState, ...split.evaluationState }),
+            evaluationState: (prevState) => ({ ...prevState, ...evaluationState }),
           },
         });
       }

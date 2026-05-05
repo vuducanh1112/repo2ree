@@ -1,6 +1,9 @@
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
-import { splitReeViewPatch } from "../../domain/ree/ReeViewState";
+import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
+import type { ReeSpec } from "../../domain/ree/ReeSpec";
+import type { ReeView } from "../../domain/ree/ReeView";
+import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 import { type SourceCommand, sourceFailureCommands } from "./sourceAcquisitionCommands";
 import {
   planClearedSourceStateResult,
@@ -10,6 +13,62 @@ import {
   planSourceWorkflowFailure,
   planUploadedSourceState,
 } from "./sourceAcquisitionPlanning";
+
+function mapReePatchToSourceOutcome(patch: Partial<ReeView>): {
+  reeSpec?: Partial<ReeSpec>;
+  workspaceSourceState?: Partial<WorkspaceSourceState>;
+  artifactStatus?: Partial<ArtifactStatus>;
+  evaluationState?: EvaluationState;
+} {
+  const reeSpec: Partial<ReeSpec> = {};
+  const workspaceSourceState: Partial<WorkspaceSourceState> = {};
+  const artifactStatus: Partial<ArtifactStatus> = {};
+  let evaluationState: EvaluationState | undefined;
+  if (Object.hasOwn(patch, "name")) reeSpec.name = patch.name;
+  if (Object.hasOwn(patch, "origin_url")) reeSpec.origin_url = patch.origin_url;
+  if (Object.hasOwn(patch, "source_type")) reeSpec.source_type = patch.source_type;
+  if (Object.hasOwn(patch, "runtime")) reeSpec.runtime = patch.runtime;
+  if (Object.hasOwn(patch, "build_runtime_script"))
+    reeSpec.build_runtime_script = patch.build_runtime_script;
+  if (Object.hasOwn(patch, "activation_script"))
+    reeSpec.activation_script = patch.activation_script;
+  if (Object.hasOwn(patch, "sbom")) reeSpec.sbom = patch.sbom;
+  if (Object.hasOwn(patch, "swhid")) reeSpec.swhid = patch.swhid;
+  if (Object.hasOwn(patch, "zenodo_doi")) reeSpec.zenodo_doi = patch.zenodo_doi;
+  if (Object.hasOwn(patch, "dataverse_doi")) reeSpec.dataverse_doi = patch.dataverse_doi;
+  if (Object.hasOwn(patch, "repro_level")) reeSpec.repro_level = patch.repro_level;
+  if (Object.hasOwn(patch, "detected_dependencies"))
+    reeSpec.detected_dependencies = patch.detected_dependencies;
+  if (Object.hasOwn(patch, "hardware_description"))
+    reeSpec.hardware_description = patch.hardware_description;
+  if (Object.hasOwn(patch, "sourceAvailable"))
+    workspaceSourceState.sourceAvailable = patch.sourceAvailable;
+  if (Object.hasOwn(patch, "sourceIncluded"))
+    workspaceSourceState.sourceIncluded = patch.sourceIncluded;
+  if (Object.hasOwn(patch, "sourceAcquiredBy"))
+    workspaceSourceState.sourceAcquiredBy = patch.sourceAcquiredBy;
+  if (Object.hasOwn(patch, "uploadedArchive"))
+    workspaceSourceState.uploadedArchive = patch.uploadedArchive;
+  if (Object.hasOwn(patch, "sourceSnapshotArchive"))
+    workspaceSourceState.sourceSnapshotArchive = patch.sourceSnapshotArchive;
+  if (Object.hasOwn(patch, "sourceSnapshotCapturedAt"))
+    workspaceSourceState.sourceSnapshotCapturedAt = patch.sourceSnapshotCapturedAt;
+  if (Object.hasOwn(patch, "runtimeIncluded"))
+    artifactStatus.runtimeIncluded = patch.runtimeIncluded;
+  if (Object.hasOwn(patch, "downloadableFiles"))
+    artifactStatus.downloadableFiles = patch.downloadableFiles;
+  if (Object.hasOwn(patch, "sealedAt")) artifactStatus.sealedAt = patch.sealedAt;
+  if (Object.hasOwn(patch, "sealHash")) artifactStatus.sealHash = patch.sealHash;
+  if (Object.hasOwn(patch, "evalLevel")) evaluationState = { evalLevel: patch.evalLevel ?? 0 };
+
+  return {
+    reeSpec: Object.keys(reeSpec).length > 0 ? reeSpec : undefined,
+    workspaceSourceState:
+      Object.keys(workspaceSourceState).length > 0 ? workspaceSourceState : undefined,
+    artifactStatus: Object.keys(artifactStatus).length > 0 ? artifactStatus : undefined,
+    evaluationState,
+  };
+}
 
 type SourceWorkflowStatus =
   | "created"
@@ -40,7 +99,7 @@ interface SourceUseCaseEffects {
 }
 
 interface SourceUseCaseArgs extends SourceUseCaseEffects {
-  ree: ReeViewState;
+  ree: ReeView;
 }
 
 interface UploadSourceArgs {
@@ -93,7 +152,7 @@ export function createSourceUseCase({
   };
 
   const completeDownload = async (args: {
-    originType: ReeViewState["source_type"];
+    originType: ReeView["source_type"];
     normalizedSourceUrl: string;
   }) => {
     const workspaceFiles = await refreshWorkspaceFiles();
@@ -119,10 +178,7 @@ export function createSourceUseCase({
   };
 
   return {
-    async downloadSource(
-      originType: ReeViewState["source_type"],
-      sourceUrl: string,
-    ): Promise<void> {
+    async downloadSource(originType: ReeView["source_type"], sourceUrl: string): Promise<void> {
       const plan = planSourceDownloadAction(ree, originType, sourceUrl);
       if (!plan.ok) {
         executeCommands([{ type: "toast", message: plan.error, toastType: "error" }]);
@@ -172,7 +228,7 @@ export function createSourceUseCase({
           {
             type: "applySourceOutcome",
             outcome: {
-              ...splitReeViewPatch(clearPlan.reePatch),
+              ...mapReePatchToSourceOutcome(clearPlan.reePatch),
               sourceSnapshotArchiveName: clearPlan.snapshotArchiveName,
             },
           },
@@ -195,7 +251,7 @@ export function createSourceUseCase({
 }
 
 function sourceSuccessCommands(plan: {
-  reePatch: Partial<ReeViewState>;
+  reePatch: Partial<ReeView>;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
   actionState: "done";
@@ -207,7 +263,7 @@ function sourceSuccessCommands(plan: {
     {
       type: "applySourceOutcome",
       outcome: {
-        ...splitReeViewPatch(plan.reePatch),
+        ...mapReePatchToSourceOutcome(plan.reePatch),
         sourceSnapshotArchiveName: plan.snapshotArchiveName,
         actionState: plan.actionState,
         badge: plan.badge,

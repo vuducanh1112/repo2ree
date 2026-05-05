@@ -1,55 +1,49 @@
+import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { ReeSpec } from "../ree/ReeSpec";
-import type { ReeViewState } from "../ree/ReeViewState";
-import { splitReeViewState, toReeViewState } from "../ree/ReeViewState";
+import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 
-interface SourceOriginRuleInput {
+interface SourceOriginRulesStateInput {
   reeSpec: ReeSpec;
   workspaceSourceState: WorkspaceSourceState;
+  artifactStatus: ArtifactStatus;
+  evaluationState: EvaluationState;
 }
 
-interface SourceOriginRuleResult {
+interface SourceOriginRulesStateResult {
   reeSpec: ReeSpec;
   workspaceSourceState: WorkspaceSourceState;
+  artifactStatus: ArtifactStatus;
+  evaluationState: EvaluationState;
 }
 
-export function enforceSourceOriginRulesForSlices({
-  reeSpec,
-  workspaceSourceState,
-}: SourceOriginRuleInput): SourceOriginRuleResult {
+export function enforceSourceOriginRules(
+  state: SourceOriginRulesStateInput,
+): SourceOriginRulesStateResult {
   const hasDownloadedSource =
-    !!workspaceSourceState.sourceAvailable && workspaceSourceState.sourceAcquiredBy === "download";
+    !!state.workspaceSourceState.sourceAvailable &&
+    state.workspaceSourceState.sourceAcquiredBy === "download";
   const hasUploadedSource =
-    !!workspaceSourceState.sourceAvailable && workspaceSourceState.sourceAcquiredBy === "upload";
+    !!state.workspaceSourceState.sourceAvailable &&
+    state.workspaceSourceState.sourceAcquiredBy === "upload";
 
-  const nextSpec =
-    !hasDownloadedSource && reeSpec.origin_url ? { ...reeSpec, origin_url: "" } : reeSpec;
+  const nextReeSpec =
+    !hasDownloadedSource && state.reeSpec.origin_url
+      ? { ...state.reeSpec, origin_url: "" }
+      : state.reeSpec;
   const nextWorkspaceSourceState =
-    hasUploadedSource && !workspaceSourceState.sourceIncluded
-      ? { ...workspaceSourceState, sourceIncluded: true }
-      : workspaceSourceState;
+    hasUploadedSource && !state.workspaceSourceState.sourceIncluded
+      ? { ...state.workspaceSourceState, sourceIncluded: true }
+      : state.workspaceSourceState;
 
-  return {
-    reeSpec: nextSpec,
-    workspaceSourceState: nextWorkspaceSourceState,
-  };
-}
-
-export function enforceSourceOriginRules(ree: ReeViewState): ReeViewState {
-  const split = splitReeViewState(ree);
-  const next = enforceSourceOriginRulesForSlices({
-    reeSpec: split.reeSpec,
-    workspaceSourceState: split.workspaceSourceState,
-  });
-
-  if (next.reeSpec === split.reeSpec && next.workspaceSourceState === split.workspaceSourceState) {
-    return ree;
+  if (nextReeSpec === state.reeSpec && nextWorkspaceSourceState === state.workspaceSourceState) {
+    return state;
   }
 
-  return toReeViewState({
-    reeSpec: next.reeSpec,
-    workspaceSourceState: next.workspaceSourceState,
-    artifactStatus: split.artifactStatus,
-    evaluationState: split.evaluationState,
-  });
+  return {
+    reeSpec: nextReeSpec,
+    workspaceSourceState: nextWorkspaceSourceState,
+    artifactStatus: state.artifactStatus,
+    evaluationState: state.evaluationState,
+  };
 }

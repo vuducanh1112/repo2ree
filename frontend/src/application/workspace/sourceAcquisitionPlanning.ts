@@ -1,4 +1,4 @@
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import type { ReeView } from "../../domain/ree/ReeView";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { normalizeSnapshotArchiveName } from "../../domain/workspace/PathUtils";
 
@@ -27,12 +27,12 @@ interface SourceSnapshotPlan {
 }
 
 interface DownloadSourceSuccessPlan extends SourceSnapshotPlan {
-  ree: ReeViewState;
+  ree: ReeView;
   successMessage: string;
 }
 
 interface UploadSourceSuccessPlan extends SourceSnapshotPlan {
-  ree: ReeViewState;
+  ree: ReeView;
   successMessage: string;
 }
 
@@ -42,12 +42,12 @@ interface SourceStatePlan {
   timestamp: string;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
-  reePatch: Partial<ReeViewState>;
+  reePatch: Partial<ReeView>;
   successMessage: string;
 }
 
 interface ClearedSourceStatePlan {
-  reePatch: Partial<ReeViewState>;
+  reePatch: Partial<ReeView>;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
   infoMessage: string;
@@ -71,8 +71,8 @@ function snapshotArchiveNameFromSourceUrl(sourceUrl: string): string {
 }
 
 function validateSourceDownload(
-  ree: ReeViewState,
-  originType: ReeViewState["source_type"],
+  ree: ReeView,
+  originType: ReeView["source_type"],
   sourceUrl: string,
 ): SourceActionPlanResult<{ normalizedSourceUrl: string }> {
   if (ree.sourceAvailable && ree.sourceAcquiredBy === "upload") {
@@ -93,7 +93,7 @@ function validateSourceDownload(
   };
 }
 
-function validateSourceUpload(ree: ReeViewState): SourceActionPlanResult<Record<string, never>> {
+function validateSourceUpload(ree: ReeView): SourceActionPlanResult<Record<string, never>> {
   if (ree.sourceAvailable && ree.sourceAcquiredBy === "download") {
     return {
       ok: false,
@@ -114,8 +114,8 @@ function buildSourceWorkflowRequestPlan(
 }
 
 function buildDownloadedSourceSuccess(args: {
-  ree: ReeViewState;
-  originType: ReeViewState["source_type"];
+  ree: ReeView;
+  originType: ReeView["source_type"];
   normalizedSourceUrl: string;
   workspaceFiles: FileTreeNode[];
   timestamp: string;
@@ -144,7 +144,7 @@ function buildDownloadedSourceSuccess(args: {
 }
 
 function buildUploadedSourceSuccess(args: {
-  ree: ReeViewState;
+  ree: ReeView;
   archiveName: string;
   workspaceFiles: FileTreeNode[];
   timestamp: string;
@@ -171,8 +171,8 @@ function buildUploadedSourceSuccess(args: {
 }
 
 export function planSourceDownloadAction(
-  ree: ReeViewState,
-  originType: ReeViewState["source_type"],
+  ree: ReeView,
+  originType: ReeView["source_type"],
   sourceUrl: string,
 ): SourceActionPlanResult<
   SourceWorkflowRequestPlan & {
@@ -198,7 +198,7 @@ export function planSourceDownloadAction(
 }
 
 export function planSourceUploadAction(
-  ree: ReeViewState,
+  ree: ReeView,
   archiveName: string,
   archiveContentBase64?: string,
 ): SourceActionPlanResult<
@@ -232,8 +232,8 @@ export function planSourceWorkflowFailure(status: SourceWorkflowStatus): SourceA
 }
 
 export function planDownloadedSourceState(args: {
-  ree: ReeViewState;
-  originType: ReeViewState["source_type"];
+  ree: ReeView;
+  originType: ReeView["source_type"];
   normalizedSourceUrl: string;
   workspaceFiles: FileTreeNode[];
   timestamp: string;
@@ -260,7 +260,7 @@ export function planDownloadedSourceState(args: {
 }
 
 export function planUploadedSourceState(args: {
-  ree: ReeViewState;
+  ree: ReeView;
   archiveName: string;
   workspaceFiles: FileTreeNode[];
   timestamp: string;

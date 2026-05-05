@@ -1,4 +1,4 @@
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import type { ReeView } from "../../domain/ree/ReeView";
 import { planNonWorkflowCompletion } from "../workspace/manualArtifactUpdatePlanning";
 import { planWorkflowRunCompletion } from "./workflowPolicies";
 
@@ -21,7 +21,7 @@ interface WorkflowRunCompletionPlan {
 
 interface WorkflowRunSuccessPlan extends WorkflowRunCompletionPlan {
   successMessage?: string;
-  reePatch?: Partial<ReeViewState>;
+  reePatch?: Partial<ReeView>;
   lock?: boolean;
 }
 

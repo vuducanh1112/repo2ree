@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { ReeViewState } from "./ReeViewState";
-import { splitReeViewState, toReeViewState } from "./ReeViewState";
 
 function buildReeDraft(): ReeViewState {
   return {
@@ -38,22 +37,12 @@ function buildReeDraft(): ReeViewState {
   };
 }
 
-describe("Ree draft view model helpers", () => {
-  it("separates persisted spec from transient frontend state", () => {
-    const split = splitReeViewState(buildReeDraft());
-
-    expect(split.reeSpec.name).toBe("demo");
-    expect("sourceAvailable" in split.reeSpec).toBe(false);
-    expect(split.workspaceSourceState.sourceAvailable).toBe(true);
-    expect(split.workspaceSourceState.sourceSnapshotCapturedAt).toBe("2026-01-01T00:00:00Z");
-    expect(split.artifactStatus.runtimeIncluded).toBe(true);
-    expect(split.artifactStatus.downloadableFiles).toEqual(["runtime.tar.gz", "sbom.json"]);
-    expect(split.evaluationState.evalLevel).toBe(4);
-  });
-
-  it("round-trips split state back into the draft view model", () => {
+describe("Ree view state shape", () => {
+  it("contains both spec and workflow-derived fields", () => {
     const ree = buildReeDraft();
-
-    expect(toReeViewState(splitReeViewState(ree))).toEqual(ree);
+    expect(ree.name).toBe("demo");
+    expect(ree.sourceAvailable).toBe(true);
+    expect(ree.runtimeIncluded).toBe(true);
+    expect(ree.evalLevel).toBe(4);
   });
 });

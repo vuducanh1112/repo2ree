@@ -8,7 +8,6 @@ import type {
 import { useReeQuery } from "../../../data/ree/queries";
 import type { ReeFile, SourceUploadCommit, WorkflowParams } from "../../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../../domain/ree/ReeViewState";
-import { toReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { useAppShellContext } from "../providers/AppShellProvider";
 import { useWorkspaceWorkflowRuns } from "../workflow-runs/useWorkspaceWorkflowRuns";
@@ -25,13 +24,20 @@ export function useAppShell() {
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
 
   const ree: ReeViewState = useMemo(
-    () =>
-      toReeViewState({
-        reeSpec: reeDraft.reeSpec,
-        workspaceSourceState: reeDraft.workspaceSourceState,
-        artifactStatus: reeDraft.artifactStatus,
-        evaluationState: workflowRun.evaluationState,
-      }),
+    () => ({
+      ...reeDraft.reeSpec,
+      sourceAvailable: reeDraft.workspaceSourceState.sourceAvailable ?? false,
+      sourceIncluded: reeDraft.workspaceSourceState.sourceIncluded ?? false,
+      sourceAcquiredBy: reeDraft.workspaceSourceState.sourceAcquiredBy,
+      uploadedArchive: reeDraft.workspaceSourceState.uploadedArchive,
+      sourceSnapshotArchive: reeDraft.workspaceSourceState.sourceSnapshotArchive,
+      sourceSnapshotCapturedAt: reeDraft.workspaceSourceState.sourceSnapshotCapturedAt,
+      runtimeIncluded: reeDraft.artifactStatus.runtimeIncluded ?? false,
+      downloadableFiles: reeDraft.artifactStatus.downloadableFiles ?? [],
+      sealedAt: reeDraft.artifactStatus.sealedAt,
+      sealHash: reeDraft.artifactStatus.sealHash,
+      evalLevel: workflowRun.evaluationState.evalLevel ?? 0,
+    }),
     [
       reeDraft.reeSpec,
       reeDraft.workspaceSourceState,

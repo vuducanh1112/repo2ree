@@ -1,5 +1,5 @@
 import type { ReeFile } from "../ree/ReeTypes";
-import type { ReeViewState } from "../ree/ReeViewState";
+import type { ReeView } from "../ree/ReeView";
 
 export interface WorkspaceBinaryDownload {
   bytes: ArrayBuffer;
@@ -10,5 +10,5 @@ export interface ReeProject<TFile = unknown> {
   id: string;
   files: TFile[];
   reeFiles?: ReeFile[];
-  ree?: ReeViewState;
+  ree?: ReeView;
 }

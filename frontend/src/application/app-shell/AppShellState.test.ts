@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createEmptyReeViewState, type ReeViewState } from "../../domain/ree/ReeViewState";
+import { createDefaultReeView, type ReeView } from "../../domain/ree/ReeView";
 import { appShellReducer, createInitialState } from "../../ui/app-shell/providers/AppShellProvider";
 import { createAppShellState } from "./AppShellState";
 
-function buildRee(): ReeViewState {
+function buildRee(): ReeView {
   return {
     name: "demo",
     origin_url: "",
@@ -29,9 +29,46 @@ function buildRee(): ReeViewState {
   };
 }
 
+function toInitialSlices(ree: ReeView) {
+  return {
+    reeSpec: {
+      name: ree.name,
+      origin_url: ree.origin_url,
+      source_type: ree.source_type,
+      runtime: ree.runtime,
+      build_runtime_script: ree.build_runtime_script,
+      activation_script: ree.activation_script,
+      sbom: ree.sbom,
+      swhid: ree.swhid,
+      zenodo_doi: ree.zenodo_doi,
+      dataverse_doi: ree.dataverse_doi,
+      repro_level: ree.repro_level,
+      detected_dependencies: ree.detected_dependencies,
+      hardware_description: ree.hardware_description,
+    },
+    workspaceSourceState: {
+      sourceAvailable: ree.sourceAvailable,
+      sourceIncluded: ree.sourceIncluded,
+      sourceAcquiredBy: ree.sourceAcquiredBy,
+      uploadedArchive: ree.uploadedArchive,
+      sourceSnapshotArchive: ree.sourceSnapshotArchive,
+      sourceSnapshotCapturedAt: ree.sourceSnapshotCapturedAt,
+    },
+    artifactStatus: {
+      runtimeIncluded: ree.runtimeIncluded,
+      downloadableFiles: ree.downloadableFiles,
+      sealedAt: ree.sealedAt,
+      sealHash: ree.sealHash,
+    },
+    evaluationState: {
+      evalLevel: ree.evalLevel,
+    },
+  };
+}
+
 describe("appShellState", () => {
   it("applies source patch outcomes to ree and source status metadata", () => {
-    const initial = createInitialState(buildRee());
+    const initial = createInitialState(toInitialSlices(buildRee()));
 
     const next = appShellReducer(initial, {
       type: "applySourceOutcome",
@@ -61,7 +98,7 @@ describe("appShellState", () => {
   });
 
   it("records completion metadata for completed workflow runs", () => {
-    const initial = createInitialState(buildRee());
+    const initial = createInitialState(toInitialSlices(buildRee()));
 
     const next = appShellReducer(initial, {
       type: "completeWorkflowRun",
@@ -80,9 +117,9 @@ describe("appShellState", () => {
 
   it("resets workflow-dependent workspace state on source change", () => {
     const initial = {
-      ...createInitialState(buildRee()),
+      ...createInitialState(toInitialSlices(buildRee())),
       workflowRun: {
-        ...createInitialState(buildRee()).workflowRun,
+        ...createInitialState(toInitialSlices(buildRee())).workflowRun,
         actionStates: { build: "done" as const },
         badges: { build: true },
         timestamps: { build: "2026-01-01T00:00:00Z" },
@@ -102,13 +139,13 @@ describe("appShellState", () => {
   });
 
   it("keeps the aggregate selector aligned with the slice state", () => {
-    const state = createInitialState(buildRee());
+    const state = createInitialState(toInitialSlices(buildRee()));
 
     const view = createAppShellState(state);
 
     expect(view.page).toBe(state.uiChrome.page);
     expect(view.workflowParams).toBe(state.workflowRun.workflowParams);
     expect(view.locked).toBe(state.reeDraft.locked);
-    expect(createEmptyReeViewState().name).toBe("");
+    expect(createDefaultReeView().name).toBe("");
   });
 });

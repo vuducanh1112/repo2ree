@@ -18,7 +18,7 @@ import {
   useStartWorkflowRunMutation,
 } from "../../../data/workflow-runs/mutations";
 import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
-import { type ReeViewState, splitReeViewState } from "../../../domain/ree/ReeViewState";
+import type { ReeViewState } from "../../../domain/ree/ReeViewState";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { createDownloadActions } from "../artifact-actions/downloadActions";
 import { createSourceAdapter } from "../source-acquisition/sourceAdapter";
@@ -69,11 +69,48 @@ export function useWorkspaceWorkflowRuns({
         return;
       }
 
-      const split = splitReeViewState(workspace.ree);
-      dispatch(patch("reeDraft", { reeSpec: split.reeSpec }));
-      dispatch(patch("reeDraft", { workspaceSourceState: split.workspaceSourceState }));
-      dispatch(patch("reeDraft", { artifactStatus: split.artifactStatus }));
-      dispatch(patch("workflowRun", { evaluationState: split.evaluationState }));
+      dispatch(
+        patch("reeDraft", {
+          reeSpec: {
+            name: workspace.ree.name,
+            origin_url: workspace.ree.origin_url,
+            source_type: workspace.ree.source_type,
+            runtime: workspace.ree.runtime,
+            build_runtime_script: workspace.ree.build_runtime_script,
+            activation_script: workspace.ree.activation_script,
+            sbom: workspace.ree.sbom,
+            swhid: workspace.ree.swhid,
+            zenodo_doi: workspace.ree.zenodo_doi,
+            dataverse_doi: workspace.ree.dataverse_doi,
+            repro_level: workspace.ree.repro_level,
+            detected_dependencies: workspace.ree.detected_dependencies,
+            hardware_description: workspace.ree.hardware_description,
+          },
+        }),
+      );
+      dispatch(
+        patch("reeDraft", {
+          workspaceSourceState: {
+            sourceAvailable: workspace.ree.sourceAvailable,
+            sourceIncluded: workspace.ree.sourceIncluded,
+            sourceAcquiredBy: workspace.ree.sourceAcquiredBy,
+            uploadedArchive: workspace.ree.uploadedArchive,
+            sourceSnapshotArchive: workspace.ree.sourceSnapshotArchive,
+            sourceSnapshotCapturedAt: workspace.ree.sourceSnapshotCapturedAt,
+          },
+        }),
+      );
+      dispatch(
+        patch("reeDraft", {
+          artifactStatus: {
+            runtimeIncluded: workspace.ree.runtimeIncluded,
+            downloadableFiles: workspace.ree.downloadableFiles,
+            sealedAt: workspace.ree.sealedAt,
+            sealHash: workspace.ree.sealHash,
+          },
+        }),
+      );
+      dispatch(patch("workflowRun", { evaluationState: { evalLevel: workspace.ree.evalLevel } }));
     },
     [dispatch],
   );

@@ -13,15 +13,20 @@ import { createInitialReeDraftState } from "../../../application/ree-draft/ReeDr
 import { resolveUpdater } from "../../../application/state/types";
 import { createInitialUiChromeState } from "../../../application/ui-chrome/UiChromeState";
 import { createInitialWorkflowRunState } from "../../../application/workflow-runs/WorkflowRunState";
+import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
 import { enforceSourceOriginRules } from "../../../domain/artifact/sourceOriginRules";
+import { createEmptyReeSpec } from "../../../domain/ree/ReeSpec";
 import type { WorkflowParams } from "../../../domain/ree/ReeTypes";
-import {
-  createEmptyReeViewState,
-  type ReeViewState,
-  splitReeViewState,
-  toReeViewState,
-} from "../../../domain/ree/ReeViewState";
+import type { EvaluationState } from "../../../domain/review/EvaluationState";
 import { computeSourceChangeConsequences } from "../../../domain/workspace/sourceChangeConsequences";
+import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
+
+interface InitialAppShellStateInput {
+  reeSpec?: ReturnType<typeof createEmptyReeSpec>;
+  workspaceSourceState?: WorkspaceSourceState;
+  artifactStatus?: ArtifactStatus;
+  evaluationState?: EvaluationState;
+}
 
 const sliceNormalizers: {
   [K in SliceName]?: (patch: Partial<SliceShape[K]>, prev: SliceShape[K]) => Partial<SliceShape[K]>;
@@ -33,31 +38,29 @@ const sliceNormalizers: {
 };
 
 export function createInitialState(
-  initialRee: ReeViewState = createEmptyReeViewState(),
+  initialState: InitialAppShellStateInput = {},
 ): AppShellContextState {
-  const normalizedRee = enforceSourceOriginRules(initialRee);
-  const split = splitReeViewState(normalizedRee);
+  const normalized = enforceSourceOriginRules({
+    reeSpec: initialState.reeSpec ?? createEmptyReeSpec(),
+    workspaceSourceState: initialState.workspaceSourceState ?? { sourceAvailable: false },
+    artifactStatus: initialState.artifactStatus ?? {
+      runtimeIncluded: false,
+      downloadableFiles: [],
+    },
+    evaluationState: initialState.evaluationState ?? { evalLevel: 0 },
+  });
   return {
     reeDraft: {
-      ...createInitialReeDraftState(normalizedRee),
-      workspaceSourceState: split.workspaceSourceState,
-      artifactStatus: split.artifactStatus,
+      ...createInitialReeDraftState(normalized),
+      workspaceSourceState: normalized.workspaceSourceState,
+      artifactStatus: normalized.artifactStatus,
     },
     workflowRun: {
       ...createInitialWorkflowRunState(),
-      evaluationState: split.evaluationState,
+      evaluationState: normalized.evaluationState,
     },
     uiChrome: createInitialUiChromeState(),
   };
-}
-
-function buildReeViewFromState(state: AppShellContextState): ReeViewState {
-  return toReeViewState({
-    reeSpec: state.reeDraft.reeSpec,
-    workspaceSourceState: state.reeDraft.workspaceSourceState,
-    artifactStatus: state.reeDraft.artifactStatus,
-    evaluationState: state.workflowRun.evaluationState,
-  });
 }
 
 function applyPatch(
@@ -132,23 +135,28 @@ function resetWorkflowOnSourceChange(
   state: AppShellContextState,
   workflowParams: WorkflowParams,
 ): AppShellContextState {
-  const reset = computeSourceChangeConsequences(
-    { ree: buildReeViewFromState(state) },
+  const reset = computeSourceChangeConsequences({
+    reeSpec: state.reeDraft.reeSpec,
+    workspaceSourceState: state.reeDraft.workspaceSourceState,
+    artifactStatus: state.reeDraft.artifactStatus,
+    evaluationState: state.workflowRun.evaluationState,
+    actionStates: state.workflowRun.actionStates,
+    badges: state.workflowRun.badges,
+    timestamps: state.workflowRun.timestamps,
     workflowParams,
-  );
-  const split = splitReeViewState(reset.ree);
+  });
   return {
     ...state,
     reeDraft: {
       ...state.reeDraft,
-      reeSpec: split.reeSpec,
-      workspaceSourceState: split.workspaceSourceState,
-      artifactStatus: split.artifactStatus,
+      reeSpec: reset.reeSpec,
+      workspaceSourceState: reset.workspaceSourceState,
+      artifactStatus: reset.artifactStatus,
       sourceSnapshotArchiveName: reset.sourceSnapshotArchiveName,
     },
     workflowRun: {
       ...state.workflowRun,
-      evaluationState: split.evaluationState,
+      evaluationState: reset.evaluationState,
       actionStates: reset.actionStates,
       badges: reset.badges,
       timestamps: reset.timestamps,

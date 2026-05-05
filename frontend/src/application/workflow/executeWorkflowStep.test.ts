@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import type { ReeView } from "../../domain/ree/ReeView";
 import { executeWorkflowStep } from "./executeWorkflowStep";
 import type { WorkflowStepHandlerMap } from "./workflowStepCommands";
 
-function buildRee(): ReeViewState {
+function buildRee(): ReeView {
   return {
     name: "demo",
     origin_url: "",

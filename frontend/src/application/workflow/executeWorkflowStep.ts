@@ -1,6 +1,5 @@
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
-import { splitReeViewState } from "../../domain/ree/ReeViewState";
+import type { ReeView } from "../../domain/ree/ReeView";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { GenericWorkflowParams } from "./WorkflowStepTypes";
 import type { AutomationStepRunParamsByKey } from "./WorkflowTypes";
@@ -41,7 +40,7 @@ interface WorkflowRunResult {
 interface WorkflowWorkspaceSnapshot {
   files: FileTreeNode[];
   reeFiles?: ReeFile[];
-  ree?: ReeViewState;
+  ree?: ReeView;
 }
 
 interface WorkflowRunRunner {
@@ -58,7 +57,7 @@ interface WorkflowRunRunner {
 interface ExecuteWorkflowStepArgs {
   key: string;
   params: GenericWorkflowParams;
-  ree: ReeViewState;
+  ree: ReeView;
   level: number;
   workspaceFiles: FileTreeNode[];
   workflowRunner: WorkflowRunRunner;
@@ -140,16 +139,47 @@ export async function executeWorkflowStep({
   if (completionPlan.shouldRefreshWorkspace) {
     try {
       const workspace = await refreshWorkspace();
-      const split = workspace.ree ? splitReeViewState(workspace.ree) : null;
       executeCommands([
         {
           type: "hydrateWorkspace",
           workspaceFiles: workspace.files,
           reeArtifactFiles: workspace.reeFiles || [],
-          reeSpec: split?.reeSpec,
-          workspaceSourceState: split?.workspaceSourceState,
-          artifactStatus: split?.artifactStatus,
-          evaluationState: split?.evaluationState,
+          reeSpec: workspace.ree
+            ? {
+                name: workspace.ree.name,
+                origin_url: workspace.ree.origin_url,
+                source_type: workspace.ree.source_type,
+                runtime: workspace.ree.runtime,
+                build_runtime_script: workspace.ree.build_runtime_script,
+                activation_script: workspace.ree.activation_script,
+                sbom: workspace.ree.sbom,
+                swhid: workspace.ree.swhid,
+                zenodo_doi: workspace.ree.zenodo_doi,
+                dataverse_doi: workspace.ree.dataverse_doi,
+                repro_level: workspace.ree.repro_level,
+                detected_dependencies: workspace.ree.detected_dependencies,
+                hardware_description: workspace.ree.hardware_description,
+              }
+            : undefined,
+          workspaceSourceState: workspace.ree
+            ? {
+                sourceAvailable: workspace.ree.sourceAvailable,
+                sourceIncluded: workspace.ree.sourceIncluded,
+                sourceAcquiredBy: workspace.ree.sourceAcquiredBy,
+                uploadedArchive: workspace.ree.uploadedArchive,
+                sourceSnapshotArchive: workspace.ree.sourceSnapshotArchive,
+                sourceSnapshotCapturedAt: workspace.ree.sourceSnapshotCapturedAt,
+              }
+            : undefined,
+          artifactStatus: workspace.ree
+            ? {
+                runtimeIncluded: workspace.ree.runtimeIncluded,
+                downloadableFiles: workspace.ree.downloadableFiles,
+                sealedAt: workspace.ree.sealedAt,
+                sealHash: workspace.ree.sealHash,
+              }
+            : undefined,
+          evaluationState: workspace.ree ? { evalLevel: workspace.ree.evalLevel } : undefined,
         },
       ]);
     } catch {

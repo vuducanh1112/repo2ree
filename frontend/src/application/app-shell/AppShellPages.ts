@@ -1,4 +1,4 @@
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import type { ReeView } from "../../domain/ree/ReeView";
 
 // Workspace shell pages.
 export const PAGE = {
@@ -32,7 +32,7 @@ export type AppShellPage = (typeof PAGE)[keyof typeof PAGE];
 const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as AppShellPage[];
 
 // Maps a draft view-model field key to the app-shell page where it can be edited.
-export const FIELD_TO_PAGE: Partial<Record<keyof ReeViewState, AppShellPage>> = {
+export const FIELD_TO_PAGE: Partial<Record<keyof ReeView, AppShellPage>> = {
   origin_url: PAGE.SOURCE,
   source_type: PAGE.SOURCE,
   sourceAvailable: PAGE.SOURCE,

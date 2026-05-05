@@ -1,4 +1,4 @@
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import type { ReeView } from "../../domain/ree/ReeView";
 
 export interface Level {
   n: number;
@@ -19,7 +19,7 @@ export interface AutomationStepBadge {
 }
 
 export interface AutomationStepRequirement {
-  field: keyof ReeViewState;
+  field: keyof ReeView;
   label: string;
 }
 
@@ -71,7 +71,7 @@ export interface ArchiveRepo {
   url: string;
   desc: string;
   idLabel: string;
-  idField: keyof ReeViewState;
+  idField: keyof ReeView;
   idPlaceholder: string;
   params: AutomationStepParam[];
   requires: AutomationStepRequirement[];

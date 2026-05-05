@@ -3,7 +3,6 @@ import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { HBOM, ReeSpec } from "./ReeSpec";
 import type { ReeViewState } from "./ReeViewState";
-import { splitReeViewState } from "./ReeViewState";
 
 interface ReePatch extends Record<string, unknown> {
   name: string;
@@ -74,5 +73,38 @@ export function toReePatchFromSlices({
 }
 
 export function toReePatch(ree: ReeViewState): ReePatch {
-  return toReePatchFromSlices(splitReeViewState(ree));
+  return toReePatchFromSlices({
+    reeSpec: {
+      name: ree.name,
+      origin_url: ree.origin_url,
+      source_type: ree.source_type,
+      runtime: ree.runtime,
+      build_runtime_script: ree.build_runtime_script,
+      activation_script: ree.activation_script,
+      sbom: ree.sbom,
+      swhid: ree.swhid,
+      zenodo_doi: ree.zenodo_doi,
+      dataverse_doi: ree.dataverse_doi,
+      repro_level: ree.repro_level,
+      detected_dependencies: ree.detected_dependencies,
+      hardware_description: ree.hardware_description,
+    },
+    workspaceSourceState: {
+      sourceAvailable: ree.sourceAvailable,
+      sourceIncluded: ree.sourceIncluded,
+      sourceAcquiredBy: ree.sourceAcquiredBy,
+      uploadedArchive: ree.uploadedArchive,
+      sourceSnapshotArchive: ree.sourceSnapshotArchive,
+      sourceSnapshotCapturedAt: ree.sourceSnapshotCapturedAt,
+    },
+    artifactStatus: {
+      runtimeIncluded: ree.runtimeIncluded,
+      downloadableFiles: ree.downloadableFiles,
+      sealedAt: ree.sealedAt,
+      sealHash: ree.sealHash,
+    },
+    evaluationState: {
+      evalLevel: ree.evalLevel,
+    },
+  });
 }

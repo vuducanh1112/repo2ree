@@ -5,9 +5,9 @@ import type {
   WorkflowParamValue,
 } from "../../application/workflow/WorkflowStepTypes";
 import { useReviewClient } from "../../data/reviews/client";
+import { createEmptyReeSpec } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../domain/ree/ReeViewState";
-import { createEmptyReeViewState } from "../../domain/ree/ReeViewState";
 import { LEVELS } from "../../domain/review/levels";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { C } from "../theme/theme";
@@ -46,7 +46,7 @@ export function ReviewerView({
   PodOrbitControl,
 }: ReviewerViewProps) {
   const reviewClient = useReviewClient();
-  const ree = reeInput || createEmptyReeViewState();
+  const ree = reeInput || { ...createEmptyReeSpec(), evalLevel: 0, runtimeIncluded: false };
   const [reviewerPage, setReviewerPage] = useState<"review" | "files">("review");
   const [reviewRootFilesState, setReviewRootFilesState] = useState(reviewFiles);
   const [reviewWorkspaceFilesState, setReviewWorkspaceFilesState] = useState(reviewWorkspaceFiles);

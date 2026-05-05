@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import type { ReeViewState } from "../../domain/ree/ReeViewState";
+import type { ReeView } from "../../domain/ree/ReeView";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
@@ -12,7 +12,7 @@ import { scanDependencies } from "./workflowDependencyAnalysis";
 import { planWorkflowServiceEffect } from "./workflowOutcomePlanning";
 
 interface CreateWorkflowStepHandlersArgs {
-  ree: ReeViewState;
+  ree: ReeView;
   workspaceFiles: FileTreeNode[];
   clock: AppShellClock;
 }
@@ -43,7 +43,7 @@ export type WorkflowStepCommand =
       evaluationState?: EvaluationState;
     }
   | { type: "persistFile"; path: string; content: string }
-  | { type: "patchRee"; patch: Partial<ReeViewState> }
+  | { type: "patchRee"; patch: Partial<ReeView> }
   | { type: "setLocked"; locked: boolean }
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
@@ -133,7 +133,7 @@ export function createWorkflowStepHandlers({
 
 function workflowEffectPlanToCommands(plan: {
   persistedFile?: { path: string; content: string };
-  reePatch?: Partial<ReeViewState>;
+  reePatch?: Partial<ReeView>;
   errorMessage?: string;
   successMessage: string;
 }): WorkflowStepCommand[] {
@@ -156,7 +156,7 @@ function workflowEffectPlanToCommands(plan: {
 }
 
 export function nonWorkflowPlanToCommands(plan: {
-  reePatch?: Partial<ReeViewState>;
+  reePatch?: Partial<ReeView>;
   lock?: boolean;
   successMessage?: string;
 }): WorkflowStepCommand[] {

@@ -1,30 +1,36 @@
+import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import type { ReeSpec } from "../ree/ReeSpec";
 import type { ActionStates, Badges, Timestamps, WorkflowParams } from "../ree/ReeTypes";
-import type { ReeViewState } from "../ree/ReeViewState";
+import type { EvaluationState } from "../review/EvaluationState";
+import type { WorkspaceSourceState } from "./WorkspaceSourceState";
 
-export interface WorkspaceSourceResetInput {
-  ree: ReeViewState;
+export interface SourceChangeInput {
+  reeSpec: ReeSpec;
+  workspaceSourceState: WorkspaceSourceState;
+  artifactStatus: ArtifactStatus;
+  evaluationState: EvaluationState;
+  actionStates: ActionStates;
+  badges: Badges;
+  timestamps: Timestamps;
+  workflowParams: WorkflowParams;
 }
 
-interface WorkspaceSourceResetFields {
+interface SourceChangeOutput {
+  reeSpec: ReeSpec;
+  workspaceSourceState: WorkspaceSourceState;
+  artifactStatus: ArtifactStatus;
+  evaluationState: EvaluationState;
   badges: Badges;
   timestamps: Timestamps;
   actionStates: ActionStates;
   workflowParams: WorkflowParams;
-  ree: ReeViewState;
   sourceSnapshotArchiveName: string;
 }
 
-export function computeSourceChangeConsequences(
-  workspace: WorkspaceSourceResetInput,
-  workflowParams: WorkflowParams,
-): WorkspaceSourceResetFields {
+export function computeSourceChangeConsequences(input: SourceChangeInput): SourceChangeOutput {
   return {
-    badges: {},
-    timestamps: {},
-    actionStates: {},
-    workflowParams,
-    ree: {
-      ...workspace.ree,
+    reeSpec: {
+      ...input.reeSpec,
       origin_url: "",
       runtime: "",
       build_runtime_script: "",
@@ -33,15 +39,28 @@ export function computeSourceChangeConsequences(
       swhid: "",
       detected_dependencies: "",
       repro_level: "",
-      evalLevel: 0,
+      zenodo_doi: "",
+    },
+    workspaceSourceState: {
+      ...input.workspaceSourceState,
       sourceAvailable: false,
       sourceAcquiredBy: undefined,
-      runtimeIncluded: false,
-      zenodo_doi: "",
       uploadedArchive: "",
       sourceSnapshotArchive: "",
       sourceSnapshotCapturedAt: "",
     },
+    artifactStatus: {
+      ...input.artifactStatus,
+      runtimeIncluded: false,
+    },
+    evaluationState: {
+      ...input.evaluationState,
+      evalLevel: 0,
+    },
+    badges: {},
+    timestamps: {},
+    actionStates: {},
+    workflowParams: input.workflowParams,
     sourceSnapshotArchiveName: "",
   };
 }
