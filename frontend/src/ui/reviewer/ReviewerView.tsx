@@ -5,7 +5,6 @@ import type {
   WorkflowParamValue,
 } from "../../application/workflow/WorkflowStepTypes";
 import { useReviewClient } from "../../data/reviews/client";
-import { createEmptyReeSpec } from "../../domain/ree/ReeSpec";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import type { ReeViewState } from "../../domain/ree/ReeViewState";
 import { LEVELS } from "../../domain/review/levels";
@@ -14,7 +13,15 @@ import { C } from "../theme/theme";
 import { ReviewerContent } from "./components/ReviewerContent";
 import { ReviewerHeader } from "./components/ReviewerHeader";
 import { ReviewerSidebar } from "./components/ReviewerSidebar";
-import { buildTreeFromPaths } from "./components/reviewerFileTree";
+import {
+  formatSealDate,
+  initReactivationParams,
+  isTerminalStatus,
+  mapReviewReeFiles,
+  mapReviewWorkspaceTree,
+  resolveReviewerRee,
+  sleep,
+} from "./ReviewerViewHelpers";
 import {
   REACTIVATION_STEPS,
   type ReactivationParams,
@@ -46,21 +53,13 @@ export function ReviewerView({
   PodOrbitControl,
 }: ReviewerViewProps) {
   const reviewClient = useReviewClient();
-  const ree = reeInput || { ...createEmptyReeSpec(), evalLevel: 0, runtimeIncluded: false };
+  const ree = resolveReviewerRee(reeInput);
   const [reviewerPage, setReviewerPage] = useState<"review" | "files">("review");
   const [reviewRootFilesState, setReviewRootFilesState] = useState(reviewFiles);
   const [reviewWorkspaceFilesState, setReviewWorkspaceFilesState] = useState(reviewWorkspaceFiles);
   const level = ree.evalLevel ?? 5;
   const levelMeta = LEVELS[Math.min(level, 7)];
-  const sealDate = ree.sealedAt
-    ? new Date(ree.sealedAt).toLocaleString([], {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "unknown";
+  const sealDate = formatSealDate(ree.sealedAt);
 
   const [stepStates, setStepStates] = useState<Partial<Record<ReactivationStepKey, StepState>>>({});
   const [stepLogs, setStepLogs] = useState<Partial<Record<ReactivationStepKey, LogLine[]>>>({});
@@ -85,26 +84,14 @@ export function ReviewerView({
     );
   };
 
-  const initParams = (): Record<ReactivationStepKey, ReactivationParams> =>
-    Object.fromEntries(
-      REACTIVATION_STEPS.map((step) => [
-        step.key,
-        Object.fromEntries((step.params || []).map((param) => [param.key, param.default])),
-      ]),
-    ) as Record<ReactivationStepKey, ReactivationParams>;
-
   const [stepParams, setStepParams] =
-    useState<Record<ReactivationStepKey, ReactivationParams>>(initParams);
+    useState<Record<ReactivationStepKey, ReactivationParams>>(initReactivationParams);
 
   const setParam = (stepKey: ReactivationStepKey, paramKey: string, value: WorkflowParamValue) =>
     setStepParams((current) => ({
       ...current,
       [stepKey]: { ...current[stepKey], [paramKey]: value },
     }));
-
-  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-  const isTerminalStatus = (status: string) =>
-    status === "succeeded" || status === "failed" || status === "canceled";
 
   const runBackendStep = async (key: ReactivationStepKey): Promise<LogLine[]> => {
     if (!reviewId) {
@@ -253,19 +240,12 @@ export function ReviewerView({
   };
 
   const reviewReeFiles = useMemo<ReeFile[]>(
-    () =>
-      (reviewRootFilesState || []).map((file, index) => ({
-        id: `review-file-${index}-${file.path}`,
-        name: file.path,
-        type: "file",
-        tag: "REE",
-        size: file.size,
-      })),
+    () => mapReviewReeFiles(reviewRootFilesState),
     [reviewRootFilesState],
   );
 
   const reviewWorkspaceTree = useMemo<FileTreeNode[]>(
-    () => buildTreeFromPaths(reviewWorkspaceFilesState || [], "review-workspace"),
+    () => mapReviewWorkspaceTree(reviewWorkspaceFilesState),
     [reviewWorkspaceFilesState],
   );
 

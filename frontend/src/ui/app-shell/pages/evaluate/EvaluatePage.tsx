@@ -2,12 +2,7 @@ import { useState } from "react";
 import { scanDependencies } from "../../../../application/workflow/workflowDependencyAnalysis";
 import { getWorkflowRequirements } from "../../../../application/workflow/workflowPolicies";
 import { LEVELS } from "../../../../domain/review/levels";
-import { Ic } from "../../../shared/components/Icon";
-import { LevelBadge } from "../../../shared/components/LevelBadge";
 import {
-  C,
-  F,
-  S_FIELD_HELP_TEXT_SMALL,
   S_WORKFLOW_PAGE_BODY,
   S_WORKFLOW_PAGE_LOG_WRAP,
   S_WORKFLOW_PAGE_NUDGE_WRAP,
@@ -15,25 +10,11 @@ import {
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../theme/theme";
 import { automationStepIcon } from "../../automationStepIcons";
-import {
-  descToTwoTierTips,
-  FieldRow,
-  FieldSection,
-  FieldTipsSidebar,
-} from "../../components/fieldTips";
+import { descToTwoTierTips, FieldTipsSidebar } from "../../components/fieldTips";
 import { NextStepNudge, RequirementsBanner, WorkflowPageHeader } from "../../components/pageChrome";
-import {
-  workflowStatusBadgeStyle,
-  workflowToneIconStyle,
-  workflowTonePanelStyle,
-  workflowToneTextStyle,
-} from "../../components/statusUiStyles";
-import {
-  DependencyPanel,
-  WorkflowLogSection,
-  WorkflowRunActionSection,
-} from "../../components/workflowRunPanels";
+import { WorkflowLogSection, WorkflowRunActionSection } from "../../components/workflowRunPanels";
 import type { WorkflowPageProps } from "../sharedWorkflowUi";
+import { EvaluateDependenciesSection, EvaluateScoreSection } from "./EvaluatePageSections";
 
 export function PageEvaluate({
   workflow,
@@ -54,7 +35,6 @@ export function PageEvaluate({
   params,
 }: WorkflowPageProps) {
   const files = workspaceFiles;
-
   const depGroups = scanDependencies(files || []);
   const hasRun = !!log;
   const hasScoreOutput = !!runDone;
@@ -62,8 +42,6 @@ export function PageEvaluate({
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const IC = automationStepIcon(workflow.iconKey);
   const level = Math.min(evaluationState.evalLevel ?? 0, LEVELS.length - 1);
-  const currentLevel = LEVELS[level];
-  const standing = `${level + 1} / ${LEVELS.length}`;
   const completionPct = Math.round((level / (LEVELS.length - 1)) * 100);
   const requirements = getWorkflowRequirements(workflow.key);
 
@@ -113,287 +91,22 @@ export function PageEvaluate({
             onRun={() => onRun(workflow.key, params)}
           />
 
-          <FieldSection
-            title="Evaluate Output · Reproducibility Score"
+          <EvaluateScoreSection
+            hasScoreOutput={hasScoreOutput}
+            level={level}
+            completionPct={completionPct}
+            focusedField={focusedField}
+            onFocusField={setFocusedField}
             icon={IC(14)}
-            filledCount={hasScoreOutput ? 1 : 0}
-            totalCount={1}
-          >
-            <FieldRow
-              fieldKey="repro_level"
-              onFocus={() => setFocusedField("repro_level")}
-              active={focusedField === "repro_level"}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  marginBottom: 10,
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: hasScoreOutput ? currentLevel.ink : C.textMuted,
-                      marginTop: 2,
-                      fontWeight: hasScoreOutput ? 600 : 500,
-                    }}
-                  >
-                    {hasScoreOutput
-                      ? `Computed from latest completed Evaluate run · Standing level ${standing}`
-                      : "No Evaluate output yet. Complete a run to generate the level."}
-                  </div>
-                </div>
-                <LevelBadge level={level} />
-              </div>
+          />
 
-              <div
-                style={{
-                  height: 7,
-                  borderRadius: 99,
-                  background: C.surfaceAlt,
-                  border: `1px solid ${C.border}`,
-                  overflow: "hidden",
-                  marginBottom: 12,
-                }}
-              >
-                <div
-                  style={{
-                    width: `${hasScoreOutput ? completionPct : 0}%`,
-                    height: "100%",
-                    background: currentLevel.color,
-                    transition: "width 0.24s ease",
-                  }}
-                />
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {LEVELS.map((levelConfig, idx) => {
-                  const reached = hasScoreOutput && idx <= level;
-                  const active = hasScoreOutput && idx === level;
-                  return (
-                    <div
-                      key={levelConfig.n}
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: 8,
-                        padding: "7px 8px",
-                        borderRadius: 8,
-                        border: `1px solid ${active ? `${levelConfig.color}55` : C.border}`,
-                        background: active ? levelConfig.bg : "transparent",
-                        opacity: hasScoreOutput ? 1 : 0.9,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          fontFamily: F.mono,
-                          color: reached ? levelConfig.ink : C.textMuted,
-                          background: reached ? levelConfig.bg : C.surfaceAlt,
-                          border: `1px solid ${reached ? `${levelConfig.color}55` : C.border}`,
-                          borderRadius: 99,
-                          padding: "1px 7px",
-                          flexShrink: 0,
-                          marginTop: 1,
-                        }}
-                      >
-                        L{levelConfig.n}
-                      </span>
-                      <div style={{ minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            fontWeight: active ? 700 : 600,
-                            color: reached ? C.text : C.textMid,
-                          }}
-                        >
-                          {levelConfig.label}
-                        </div>
-                        <div style={S_FIELD_HELP_TEXT_SMALL}>{levelConfig.desc}</div>
-                        <div
-                          style={{
-                            marginTop: 5,
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 4,
-                          }}
-                        >
-                          <div style={workflowTonePanelStyle("warn")}>
-                            <span style={workflowToneIconStyle("warn")}>{Ic.info(11)}</span>
-                            <span style={workflowToneTextStyle("warn")}>
-                              {levelConfig.problem ||
-                                "No major bottleneck called out at this level."}
-                            </span>
-                          </div>
-                          <div style={workflowTonePanelStyle("good")}>
-                            <span style={workflowToneIconStyle("good")}>{Ic.check(11)}</span>
-                            <span style={workflowToneTextStyle("good")}>
-                              {levelConfig.fix || "No additional fix suggested at this level."}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </FieldRow>
-          </FieldSection>
-
-          <FieldSection
-            title="Detected Dependencies"
-            icon={Ic.package()}
-            subtitle={!hasRun ? "run to scan" : undefined}
-            filledCount={depGroups.length > 0 ? 1 : 0}
-            totalCount={1}
-          >
-            <FieldRow
-              fieldKey="detected_dependencies"
-              onFocus={() => setFocusedField("detected_dependencies")}
-              active={focusedField === "detected_dependencies"}
-            >
-              {hasRun ? (
-                <>
-                  {depGroups.length > 0 ? (
-                    <DependencyPanel depGroups={depGroups} />
-                  ) : (
-                    <div
-                      style={{
-                        border: `1.5px dashed ${C.borderMid}`,
-                        borderRadius: 10,
-                        padding: "16px",
-                        textAlign: "center",
-                        color: C.textMuted,
-                        marginBottom: 12,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "center",
-                          marginBottom: 6,
-                          opacity: 0.4,
-                        }}
-                      >
-                        {Ic.package(20)}
-                      </div>
-                      <div style={{ fontSize: 12, fontFamily: F.sans }}>
-                        No manifest files found
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: C.textMuted,
-                          fontFamily: F.sans,
-                          marginTop: 3,
-                        }}
-                      >
-                        Add requirements.txt, pyproject.toml, environment.yml, or package.json.
-                      </div>
-                    </div>
-                  )}
-
-                  {(() => {
-                    let containerCount = 0;
-                    let nixCount = 0;
-                    const scan = (nodes: typeof files) => {
-                      for (const node of nodes || []) {
-                        if (node.type === "folder") scan(node.children ?? []);
-                        else {
-                          const lo = node.name.toLowerCase();
-                          if (
-                            lo === "dockerfile" ||
-                            lo === "containerfile" ||
-                            lo.startsWith("dockerfile.") ||
-                            lo.startsWith("containerfile.") ||
-                            lo === "docker-compose.yml" ||
-                            lo === "docker-compose.yaml"
-                          )
-                            containerCount += 1;
-                          if (lo.endsWith(".nix")) nixCount += 1;
-                        }
-                      }
-                    };
-                    scan(files || []);
-                    return (
-                      <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <span
-                          style={{
-                            ...workflowStatusBadgeStyle("#0e7490"),
-                            fontSize: 11,
-                            padding: "3px 10px",
-                          }}
-                        >
-                          Container files: {containerCount}
-                        </span>
-                        <span
-                          style={{
-                            ...workflowStatusBadgeStyle("#6d28d9"),
-                            fontSize: 11,
-                            padding: "3px 10px",
-                          }}
-                        >
-                          Nix files: {nixCount}
-                        </span>
-                      </div>
-                    );
-                  })()}
-                </>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[
-                    {
-                      label: "requirements.txt",
-                      hint: "pip — per-package pins",
-                      color: "#3b82f6",
-                    },
-                    { label: "pyproject.toml", hint: "pip / hatch / poetry", color: "#8b5cf6" },
-                    { label: "environment.yml", hint: "conda + bioconda", color: "#22c55e" },
-                    { label: "package.json", hint: "npm / yarn dependencies", color: "#dc2626" },
-                    { label: "Dockerfile", hint: "container environment", color: "#0891b2" },
-                    { label: "*.nix", hint: "declarative system env", color: "#7c3aed" },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "7px 10px",
-                        border: `1.5px dashed ${item.color}30`,
-                        borderRadius: 8,
-                        background: `${item.color}05`,
-                        opacity: 0.7,
-                      }}
-                    >
-                      <span style={{ display: "flex", color: item.color, opacity: 0.6 }}>
-                        {Ic.file(12)}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontFamily: F.mono,
-                          color: item.color,
-                          fontWeight: 600,
-                          flex: 1,
-                        }}
-                      >
-                        {item.label}
-                      </span>
-                      <span style={{ fontSize: 10, color: C.textMuted, fontFamily: F.sans }}>
-                        {item.hint}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </FieldRow>
-          </FieldSection>
+          <EvaluateDependenciesSection
+            hasRun={hasRun}
+            depGroups={depGroups}
+            files={files}
+            focusedField={focusedField}
+            onFocusField={setFocusedField}
+          />
 
           <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
             <WorkflowLogSection
