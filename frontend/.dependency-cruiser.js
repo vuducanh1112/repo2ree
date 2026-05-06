@@ -211,158 +211,156 @@ module.exports = {
       }
     },
     {
-      name: "domain-no-upward-imports",
+      name: "core-no-shell",
       severity: "error",
       comment:
-        "Domain modules are pure and must not depend on application, UI, infra, app wiring, or data layers.",
+        "Functional core modules must not depend on imperative shell modules.",
       from: {
-        path: "^src/domain",
+        path: "^src/core",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/(application|app|data|infra|ui)(/|$)"
+        path: "^src/shell(/|$)"
       }
     },
     {
-      name: "application-no-ui-or-react",
+      name: "core-no-react",
       severity: "error",
       comment:
-        "Application modules coordinate use-cases but should not depend on React or UI folders.",
+        "Functional core modules must stay framework-free.",
       from: {
-        path: "^src/application",
+        path: "^src/core",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^(src/(app|components|context|features|hooks|pages|ui)(/|$)|react$|react-dom$|react-router-dom$)"
+        path: "^(react$|react-dom$|react-router-dom$|@tanstack/react-query$)"
       }
     },
     {
-      name: "application-no-infra",
+      name: "core-no-browser-or-node-builtins",
       severity: "error",
       comment:
-        "Application modules may depend on domain, but must not depend on infrastructure adapters.",
+        "Functional core must not depend on Node runtime IO modules. Pass ports or plain data instead.",
       from: {
-        path: "^src/application",
+        path: "^src/core",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/infra(/|$)"
+        path: "^(fs|node:fs|path|node:path|http|node:http|https|node:https|crypto|node:crypto|process|node:process)$"
       }
     },
     {
-      name: "ui-no-raw-api-clients",
+      name: "shell-infra-no-ui-data-or-app",
       severity: "error",
       comment:
-        "UI modules must go through runtime/application boundaries instead of importing raw HTTP API clients or DTO mappers directly.",
+        "Infrastructure adapters must not depend on UI, data hooks, or app bootstrap.",
       from: {
-        path: "^src/ui",
+        path: "^src/shell/infra",
+        pathNot: TEST_FILE_PATTERN
+      },
+      to: {
+        path: "^src/shell/(ui|data|app)(/|$)"
+      }
+    },
+    {
+      name: "shell-infra-no-core-use-cases",
+      severity: "error",
+      comment:
+        "Infrastructure adapters may depend on core domain types, but not core planning/use-case modules.",
+      from: {
+        path: "^src/shell/infra",
+        pathNot: TEST_FILE_PATTERN
+      },
+      to: {
+        path: "^src/core/(ree-assembly/(assembly|execute|archive|.*Planning|.*Policy|.*Policies|.*Lifecycle|.*Session|.*Request|.*Command)|ree-editor/|workspace/(acquire|source|sync|.*Planning|.*Lifecycle|.*Commands|.*Effects|.*Mutation)|artifact/sealArtifactCommands)"
+      }
+    },
+    {
+      name: "shell-data-no-ui-or-app",
+      severity: "error",
+      comment:
+        "Data/query modules must not depend on UI components or app bootstrap.",
+      from: {
+        path: "^src/shell/data",
+        pathNot: TEST_FILE_PATTERN
+      },
+      to: {
+        path: "^src/shell/(ui|app)(/|$)"
+      }
+    },
+    {
+      name: "shell-ui-no-raw-infra",
+      severity: "error",
+      comment:
+        "UI modules must reach server state through shell/data, not raw infrastructure clients.",
+      from: {
+        path: "^src/shell/ui",
         pathNot: [TEST_FILE_PATTERN, ...UI_APPROVED_RAW_API_IMPORTERS]
       },
       to: {
-        path: "^src/infra/api(/|$)"
+        path: "^src/shell/infra(/|$)"
       }
     },
     {
-      name: "infra-no-ui",
+      name: "shell-app-imports-ui-only-from-bootstrap",
       severity: "error",
       comment:
-        "Infrastructure modules can depend on domain and lower-level adapters, but not on UI folders.",
+        "App startup modules wire UI only from bootstrap; config/query modules should stay UI-free.",
       from: {
-        path: "^src/infra"
-      },
-      to: {
-        path: "^src/(app|components|context|features|hooks|pages|ui)(/|$)"
-      }
-    },
-    {
-      name: "infra-no-application",
-      severity: "error",
-      comment:
-        "Infrastructure modules must not depend on application use cases or mappers.",
-      from: {
-        path: "^src/infra",
+        path: "^src/shell/app/(config|query)(/|$)",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/application(/|$)"
+        path: "^src/shell/ui(/|$)"
       }
     },
     {
-      name: "app-no-ui-outside-bootstrap",
+      name: "shell-ui-shared-no-feature-imports",
       severity: "error",
       comment:
-        "App-startup modules wire the app together, but only bootstrap may import top-level UI routes/components.",
+        "Shared UI modules should remain reusable and must not depend on feature-specific screens.",
       from: {
-        path: "^src/app/(?!bootstrap/)",
+        path: "^src/shell/ui/shared",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/ui"
+        path: "^src/shell/ui/(landing|reviewer|routes|app-shell|ree-editor)(/|$)"
       }
     },
     {
-      name: "ui-shared-no-feature-imports",
+      name: "shell-ui-theme-no-feature-imports",
       severity: "error",
       comment:
-        "Shared UI modules should remain broadly reusable and must not depend on feature-specific screens.",
+        "Theme modules should be design primitives, not depend on feature implementations.",
       from: {
-        path: "^src/ui/shared",
+        path: "^src/shell/ui/theme",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/ui/(landing|reviewer|routes|app-shell)"
+        path: "^src/shell/ui/(landing|reviewer|routes|app-shell|ree-editor)(/|$)"
       }
     },
     {
-      name: "ui-theme-no-feature-imports",
+      name: "shell-ui-routes-no-feature-internals",
       severity: "error",
       comment:
-        "Theme modules should be design primitives, not depend on route or feature implementations.",
+        "Route composition may assemble top-level views and route constants but should not depend on feature internals.",
       from: {
-        path: "^src/ui/theme",
+        path: "^src/shell/ui/routes",
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/ui/(landing|reviewer|routes|app-shell)"
+        path: "^src/shell/ui/app-shell/(?!(AppShellView(?:[.]tsx)?|state/pages[.]ts)$)"
       }
     },
     {
-      name: "ui-routes-no-feature-cross-coupling",
+      name: "no-old-architecture-roots",
       severity: "error",
       comment:
-        "Route composition may assemble screens, but route modules should not depend on feature internals beyond top-level views.",
-      from: {
-        path: "^src/ui/routes",
-        pathNot: TEST_FILE_PATTERN
-      },
+        "Frontend source must use definitive core/shell roots.",
+      from: {},
       to: {
-        path: "^src/ui/app-shell/(?!AppShellView(?:[.]tsx)?$)"
-      }
-    },
-    {
-      name: "data-no-ui-or-application",
-      severity: "error",
-      comment:
-        "The data layer (TanStack Query hooks) must not depend on UI components or application reducers; it sits below them.",
-      from: {
-        path: "^src/data",
-        pathNot: TEST_FILE_PATTERN
-      },
-      to: {
-        path: "^src/(application|ui)(/|$)"
-      }
-    },
-    {
-      name: "ui-no-application-infra-bypass",
-      severity: "error",
-      comment:
-        "UI modules must reach server state through src/data (TanStack Query hooks), not by importing infra adapters directly.",
-      from: {
-        path: "^src/ui",
-        pathNot: TEST_FILE_PATTERN
-      },
-      to: {
-        path: "^src/infra(/|$)"
+        path: "^src/(domain|application|app|data|infra|ui)(/|$)"
       }
     },
     {
