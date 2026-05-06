@@ -14,6 +14,11 @@ import type {
 } from "../../domain/workflow/WorkflowRun";
 import { mapRunLogsToLegacy } from "../../infra/api/ExecutionRunsApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
+import {
+  mapReviewDtoToDetail,
+  mapReviewUploadCompleteResponse,
+  mapReviewUploadInitResponse,
+} from "./mapping";
 
 function createReviewClient(runtime: ApiRuntimeValue): ReviewClient {
   const api = runtime.reviewsApi;
@@ -33,14 +38,16 @@ function createReviewClient(runtime: ApiRuntimeValue): ReviewClient {
   });
 
   return {
-    initReviewUpload: (payload: ReviewUploadInitRequest): Promise<ReviewUploadInitResponse> =>
-      api.initReviewUpload(payload),
+    initReviewUpload: async (payload: ReviewUploadInitRequest): Promise<ReviewUploadInitResponse> =>
+      mapReviewUploadInitResponse(await api.initReviewUpload(payload)),
     uploadReviewBytes: (uploadUrl, data) => api.uploadReviewBytes(uploadUrl, data),
-    completeReviewUpload: (
+    completeReviewUpload: async (
       reviewId,
       payload: ReviewUploadCompleteRequest,
-    ): Promise<ReviewUploadCompleteResponse> => api.completeReviewUpload(reviewId, payload),
-    getReview: (reviewId): Promise<ReviewDetail> => api.getReview(reviewId),
+    ): Promise<ReviewUploadCompleteResponse> =>
+      mapReviewUploadCompleteResponse(await api.completeReviewUpload(reviewId, payload)),
+    getReview: async (reviewId): Promise<ReviewDetail> =>
+      mapReviewDtoToDetail(await api.getReview(reviewId)),
     acquireSource: async (reviewId) => mapReviewRun(await api.acquireSource(reviewId)),
     createBuildRuntimeRun: async (reviewId, payload) =>
       mapReviewRun(await api.createBuildRuntimeRun(reviewId, payload)),

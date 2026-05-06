@@ -1,5 +1,5 @@
 import { mapRawReeDraftToSlices } from "../../domain/ree/mapRawReeDraft";
-import type { ReeDetailDto, ReviewDetailDto } from "./apiTypes";
+import type { ReeDetailDto, ReviewDetailDto } from "../../infra/api/apiTypes";
 
 export function mapReviewDraftToReeSlices(review: ReviewDetailDto) {
   return mapRawReeDraftToSlices({

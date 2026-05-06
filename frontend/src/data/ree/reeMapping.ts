@@ -2,7 +2,7 @@ import type { ReeFile } from "../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { ReeProject } from "../../domain/workspace/WorkspaceTypes";
 import type { ReeDetailDto } from "../../infra/api/apiTypes";
-import { mapReeDetailToReeSlices } from "../../infra/api/ReeDtoMappers";
+import { mapReeDetailToReeSlices } from "./mapping";
 
 function upsertTreeFile(
   roots: FileTreeNode[],

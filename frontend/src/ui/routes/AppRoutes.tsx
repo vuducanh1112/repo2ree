@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { mapReviewDetailToRee } from "../../application/review/mapReviewDetailToRee";
 import { APP_ROUTE } from "../../application/state/pages";
+import { mapReviewDetailToReeEditorViewModel } from "../../data/reviews/mapping";
 import { useReviewQuery } from "../../data/reviews/queries";
 import { AppShellView } from "../app-shell/AppShellView";
 import { LandingView } from "../landing/LandingView";
@@ -28,7 +28,7 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
   return (
     <ReviewerView
       reviewId={reviewId}
-      ree={reviewDetail ? mapReviewDetailToRee(reviewDetail) : undefined}
+      ree={reviewDetail ? mapReviewDetailToReeEditorViewModel(reviewDetail) : undefined}
       reviewFiles={(reviewDetail?.files || []).map((file) => ({
         path: file.path,
         size: file.size,
