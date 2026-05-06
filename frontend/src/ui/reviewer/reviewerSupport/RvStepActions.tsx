@@ -1,5 +1,5 @@
 import type { LogLine } from "../../../domain/ree/ReeTypes";
-import { WorkflowLogSection } from "../../app-shell/components/workflowRunPanels";
+import { AssemblyRunLogSection } from "../../app-shell/components/assemblyRunPanels";
 import { Ic } from "../../shared/components/Icon";
 import { actionBtn } from "./RvStepShared";
 import type { ReactivationStep } from "./reactivationSteps";
@@ -74,7 +74,7 @@ export function RvStepActions({ step, running, done, log, onRun, onCancel }: RvS
         </button>
       )}
       {log && (
-        <WorkflowLogSection
+        <AssemblyRunLogSection
           log={{ lines: log, ts: log[log.length - 1]?.ts || new Date().toISOString() }}
           running={running}
           title="Output"

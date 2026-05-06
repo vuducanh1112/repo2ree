@@ -15,13 +15,13 @@ import {
   runtimeIncludedWrapStyle,
   runtimeSizeBadgeStyle,
 } from "../../../components/statusUiStyles";
-import type { WorkflowPageProps } from "../../sharedWorkflowUi";
+import type { AssemblyPageProps } from "../../sharedAssemblyUi";
 
 interface FinalRuntimeSectionProps {
   includeRuntime: boolean;
   finalRuntime: string;
   finalRuntimeSize: string | null;
-  onArtifactStatusChange: WorkflowPageProps["onArtifactStatusChange"];
+  onArtifactStatusChange: AssemblyPageProps["onArtifactStatusChange"];
   focusedField: string | null;
   setFocusedField: (field: string | null) => void;
 }

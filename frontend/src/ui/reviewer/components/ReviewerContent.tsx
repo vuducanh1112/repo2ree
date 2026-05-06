@@ -1,8 +1,8 @@
 import type {
   Level,
+  ReeAssemblyParamValue,
   StepState,
-  WorkflowParamValue,
-} from "../../../application/workflow/WorkflowStepTypes";
+} from "../../../application/ree-assembly/assemblyStepTypes";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { PageFiles } from "../../app-shell/pages/files/FilesPage";
@@ -25,7 +25,7 @@ interface ReviewerContentProps {
   allDone: boolean;
   isRunningAll: boolean;
   runAll: () => void;
-  setParam: (stepKey: ReactivationStepKey, paramKey: string, value: WorkflowParamValue) => void;
+  setParam: (stepKey: ReactivationStepKey, paramKey: string, value: ReeAssemblyParamValue) => void;
   runStep: (key: ReactivationStepKey, params: ReactivationParams) => boolean | Promise<boolean>;
   cancelStep: (key: ReactivationStepKey) => void | Promise<void>;
   reviewWorkspaceTree: FileTreeNode[];

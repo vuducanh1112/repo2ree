@@ -1,11 +1,11 @@
 import type React from "react";
+import { REE_ASSEMBLY_STEPS } from "../../../../../application/ree-assembly/assemblyCatalog";
 import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import {
   type AppShellPage,
   isValidAppShellPage,
   PAGE,
 } from "../../../../../application/state/pages";
-import { AUTOMATION_STEPS } from "../../../../../application/workflow/workflowCatalog";
 import type { Badges, Timestamps } from "../../../../../domain/ree/ReeTypes";
 import { LEVELS } from "../../../../../domain/review/levels";
 import { Ic } from "../../../../shared/components/Icon";
@@ -98,18 +98,20 @@ export function EvaluateCard(props: {
   onNavigate: (key: AppShellPage) => void;
   evaluateRef: React.RefObject<HTMLDivElement>;
 }) {
-  const workflowStep = AUTOMATION_STEPS.find((workflow) => workflow.key === PAGE.EVALUATE);
-  if (!workflowStep) return null;
+  const assemblyStep = REE_ASSEMBLY_STEPS.find(
+    (assemblyStep) => assemblyStep.key === PAGE.EVALUATE,
+  );
+  if (!assemblyStep) return null;
 
-  const evaluateDate = props.timestamps[workflowStep.key]
-    ? new Date(props.timestamps[workflowStep.key]).toLocaleString([], {
+  const evaluateDate = props.timestamps[assemblyStep.key]
+    ? new Date(props.timestamps[assemblyStep.key]).toLocaleString([], {
         month: "short",
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
       })
     : null;
-  const earned = !!props.badges[workflowStep.key];
+  const earned = !!props.badges[assemblyStep.key];
 
   return (
     <div ref={props.evaluateRef} style={panel({ overflow: "hidden" })}>
@@ -119,8 +121,8 @@ export function EvaluateCard(props: {
             width: 5,
             height: 5,
             borderRadius: "50%",
-            background: earned ? workflowStep.badge.color : "#d1d5db",
-            boxShadow: earned ? `0 0 5px ${workflowStep.badge.color}99` : "none",
+            background: earned ? assemblyStep.badge.color : "#d1d5db",
+            boxShadow: earned ? `0 0 5px ${assemblyStep.badge.color}99` : "none",
           }}
         />
         <span style={S_PANEL_HEADER_LABEL}>Evaluate</span>
@@ -128,9 +130,9 @@ export function EvaluateCard(props: {
           <span
             style={{
               ...S_OVERVIEW_PANEL_BADGE_BASE,
-              color: workflowStep.badge.color,
-              background: workflowStep.badge.bg,
-              border: `1px solid ${workflowStep.badge.color}40`,
+              color: assemblyStep.badge.color,
+              background: assemblyStep.badge.bg,
+              border: `1px solid ${assemblyStep.badge.color}40`,
             }}
           >
             OK
@@ -139,7 +141,7 @@ export function EvaluateCard(props: {
       </div>
       <div style={S_OVERVIEW_META_FOOTER}>
         <div style={S_FLEX_ROW_CENTER_GAP_6}>
-          <span style={{ display: "flex", color: earned ? workflowStep.badge.color : C.textMuted }}>
+          <span style={{ display: "flex", color: earned ? assemblyStep.badge.color : C.textMuted }}>
             {Ic.star(12)}
           </span>
           <span
@@ -167,15 +169,15 @@ export function EvaluateCard(props: {
             gap: 5,
             padding: "5px 8px",
             borderRadius: 5,
-            background: earned ? workflowStep.badge.bg : C.surfaceAlt,
-            border: `1px solid ${earned ? `${workflowStep.badge.color}40` : C.border}`,
+            background: earned ? assemblyStep.badge.bg : C.surfaceAlt,
+            border: `1px solid ${earned ? `${assemblyStep.badge.color}40` : C.border}`,
           }}
         >
           <span
             style={{
               fontSize: 10,
               fontFamily: F.sans,
-              color: earned ? workflowStep.badge.color : C.textMuted,
+              color: earned ? assemblyStep.badge.color : C.textMuted,
               fontWeight: 600,
             }}
           >
@@ -186,16 +188,16 @@ export function EvaluateCard(props: {
           type="button"
           onClick={() =>
             props.onNavigate?.(
-              isValidAppShellPage(workflowStep.key)
-                ? (workflowStep.key as AppShellPage)
+              isValidAppShellPage(assemblyStep.key)
+                ? (assemblyStep.key as AppShellPage)
                 : PAGE.OVERVIEW,
             )
           }
           style={{
             ...S_OVERVIEW_PANEL_BUTTON_BASE,
-            color: workflowStep.badge.color,
-            background: workflowStep.badge.bg,
-            border: `1px solid ${workflowStep.badge.color}40`,
+            color: assemblyStep.badge.color,
+            background: assemblyStep.badge.bg,
+            border: `1px solid ${assemblyStep.badge.color}40`,
           }}
           {...hoverBrightness(95)}
         >

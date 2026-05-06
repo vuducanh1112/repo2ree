@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import type { AppShellClock } from "../../../app/bootstrap/ports";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
-import { pollWorkflowRun } from "./pollWorkflowRun";
+import { pollExecutionRun } from "./pollExecutionRun";
 
 const clock: AppShellClock = {
   nowIso: () => "2026-04-29T00:00:00.000Z",
@@ -19,7 +19,7 @@ function createExecutionRunsClient(overrides: Partial<ExecutionRunsClient>): Exe
   } as ExecutionRunsClient;
 }
 
-describe("pollWorkflowRun", () => {
+describe("pollExecutionRun", () => {
   it("stops polling after a run succeeds", async () => {
     const queryClient = new QueryClient();
     const sleep = vi.fn(async () => {});
@@ -36,14 +36,14 @@ describe("pollWorkflowRun", () => {
         createdAt: "2026-04-29T00:00:00.000Z",
         finishedAt: "2026-04-29T00:00:01.000Z",
       });
-    const workflowRunsClient = createExecutionRunsClient({
+    const executionRunsClient = createExecutionRunsClient({
       getExecutionRun,
       getExecutionRunLogs: vi
         .fn<ExecutionRunsClient["getExecutionRunLogs"]>()
         .mockResolvedValue({ lines: [{ type: "ok", msg: "done" }], hasMore: false }),
     });
 
-    const result = await pollWorkflowRun(queryClient, workflowRunsClient, {
+    const result = await pollExecutionRun(queryClient, executionRunsClient, {
       reeId: "active",
       runId: "run-1",
       maxIterations: 3,
@@ -60,7 +60,7 @@ describe("pollWorkflowRun", () => {
   it("stops polling after a run is canceled", async () => {
     const queryClient = new QueryClient();
     const sleep = vi.fn(async () => {});
-    const workflowRunsClient = createExecutionRunsClient({
+    const executionRunsClient = createExecutionRunsClient({
       getExecutionRun: vi
         .fn<ExecutionRunsClient["getExecutionRun"]>()
         .mockResolvedValueOnce({
@@ -76,7 +76,7 @@ describe("pollWorkflowRun", () => {
         }),
     });
 
-    const result = await pollWorkflowRun(queryClient, workflowRunsClient, {
+    const result = await pollExecutionRun(queryClient, executionRunsClient, {
       reeId: "active",
       runId: "run-2",
       maxIterations: 3,
@@ -88,16 +88,16 @@ describe("pollWorkflowRun", () => {
     expect(result.status).toBe("canceled");
   });
 
-  it("surfaces workflow run fetch errors", async () => {
+  it("surfaces execution run fetch errors", async () => {
     const queryClient = new QueryClient();
-    const workflowRunsClient = createExecutionRunsClient({
+    const executionRunsClient = createExecutionRunsClient({
       getExecutionRun: vi.fn(async () => {
         throw new Error("backend unavailable");
       }),
     });
 
     await expect(
-      pollWorkflowRun(queryClient, workflowRunsClient, {
+      pollExecutionRun(queryClient, executionRunsClient, {
         reeId: "active",
         runId: "run-3",
         maxIterations: 1,
@@ -118,17 +118,17 @@ describe("pollWorkflowRun", () => {
         createdAt: "2026-04-29T00:00:00.000Z",
         finishedAt: "2026-04-29T00:00:01.000Z",
       }));
-    const workflowRunsClient = createExecutionRunsClient({ getExecutionRun });
+    const executionRunsClient = createExecutionRunsClient({ getExecutionRun });
 
     const [workspaceA, workspaceB] = await Promise.all([
-      pollWorkflowRun(queryClient, workflowRunsClient, {
+      pollExecutionRun(queryClient, executionRunsClient, {
         reeId: "workspace-a",
         runId: "shared-run",
         maxIterations: 1,
         clock,
         sleep,
       }),
-      pollWorkflowRun(queryClient, workflowRunsClient, {
+      pollExecutionRun(queryClient, executionRunsClient, {
         reeId: "workspace-b",
         runId: "shared-run",
         maxIterations: 1,

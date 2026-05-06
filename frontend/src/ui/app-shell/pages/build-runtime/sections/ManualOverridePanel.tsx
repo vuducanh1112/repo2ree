@@ -13,22 +13,22 @@ import {
 } from "../../../../theme/theme";
 import { RuntimeField } from "../../../components/sourceRuntime";
 import {
+  assemblyToneSurfaceStyle,
   RUNTIME_STATUS_BADGE_STYLE,
   runtimeFieldCardStyle,
   runtimeFieldIconColor,
   runtimeFieldIconWrapStyle,
   runtimeFieldKeyStyle,
   runtimeFieldValueStyle,
-  workflowToneSurfaceStyle,
 } from "../../../components/statusUiStyles";
-import type { WorkflowPageProps } from "../../sharedWorkflowUi";
+import type { AssemblyPageProps } from "../../sharedAssemblyUi";
 
 interface ManualOverridePanelProps {
   showManualOverride: boolean;
   onToggleManualOverride: (next: boolean) => void;
-  ree: WorkflowPageProps["ree"];
-  onReeSpecChange: WorkflowPageProps["onReeSpecChange"];
-  files: WorkflowPageProps["workspaceFiles"];
+  ree: AssemblyPageProps["ree"];
+  onReeSpecChange: AssemblyPageProps["onReeSpecChange"];
+  files: AssemblyPageProps["workspaceFiles"];
   focusedField: string | null;
   setFocusedField: (field: string | null) => void;
 }
@@ -58,7 +58,7 @@ export function ManualOverridePanel({
               gap: 8,
               padding: "9px 14px",
               borderRadius: 9,
-              ...workflowToneSurfaceStyle("warn"),
+              ...assemblyToneSurfaceStyle("warn"),
               borderWidth: "1.5px",
               borderStyle: "solid",
               cursor: "pointer",

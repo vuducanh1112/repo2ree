@@ -1,5 +1,5 @@
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
-import { planNonWorkflowCompletion } from "../workspace/manualArtifactUpdatePlanning";
+import { planManualArtifactCompletion } from "../workspace/manualArtifactUpdatePlanning";
 import {
   deriveReeAssemblyStepLevel,
   isTerminalExecutionRunFailure,
@@ -32,10 +32,10 @@ interface NonAssemblyCompletionArgs {
 export function planManualArtifactUpdateSuccess(
   args: NonAssemblyCompletionArgs & { timestamp: string },
 ): AssemblyRunSuccessPlan {
-  const nonWorkflowCompletion = planNonWorkflowCompletion(args);
+  const manualArtifactCompletion = planManualArtifactCompletion(args);
   return {
     ...planAssemblyRunCompletion(args.key, args.timestamp),
-    ...nonWorkflowCompletion,
+    ...manualArtifactCompletion,
   };
 }
 

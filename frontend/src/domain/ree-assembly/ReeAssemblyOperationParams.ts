@@ -1,6 +1,6 @@
-export type AutomationStepKey = "evaluate" | "build" | "hbom" | "sbom" | "activation";
+export type ReeAssemblyOperationKey = "evaluate" | "build" | "hbom" | "sbom" | "activation";
 
-export interface AutomationStepParamsByKey {
+export interface ReeAssemblyOperationParamsByKey {
   evaluate: {
     strict: boolean;
     swhid_check: boolean;
@@ -19,6 +19,6 @@ export interface AutomationStepParamsByKey {
   };
 }
 
-export type AutomationStepParams = {
-  [K in AutomationStepKey]: AutomationStepParamsByKey[K];
+export type ReeAssemblyOperationParams = {
+  [K in ReeAssemblyOperationKey]: ReeAssemblyOperationParamsByKey[K];
 };

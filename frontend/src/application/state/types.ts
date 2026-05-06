@@ -1,13 +1,13 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
-import type { WorkflowParams } from "../../domain/ree/ReeTypes";
+import type { ReeAssemblyOperationParams } from "../../domain/ree/ReeTypes";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
-import type { ToastState } from "../workflow/WorkflowStepTypes";
-import type { SourceOutcomePayload, WorkflowRunCompletionPayload } from "./appShellState";
+import type { ToastState } from "../ree-assembly/assemblyStepTypes";
+import type { AssemblyRunCompletionPayload, SourceOutcomePayload } from "./appShellState";
+import type { AssemblyRunState } from "./assemblyRunState";
 import type { ReeDraftState } from "./reeDraft";
 import type { UiChromeState } from "./uiChrome";
-import type { WorkflowRunState } from "./workflowRun";
 
 export type Updater<T> = T | ((previous: T) => T);
 
@@ -17,7 +17,7 @@ export function resolveUpdater<T>(previous: T, updater: Updater<T>): T {
 
 export interface SliceShape {
   reeDraft: ReeDraftState;
-  workflowRun: WorkflowRunState;
+  assemblyRun: AssemblyRunState;
   uiChrome: UiChromeState;
 }
 
@@ -39,16 +39,15 @@ export type AppShellAction =
   | { type: "setWorkspaceSourceState"; value: Updater<WorkspaceSourceState> }
   | { type: "setArtifactStatus"; value: Updater<ArtifactStatus> }
   | { type: "setEvaluationState"; value: Updater<EvaluationState> }
-  | { type: "setWorkflowParams"; value: Updater<WorkflowParams> }
+  | { type: "setAssemblyOperationParams"; value: Updater<ReeAssemblyOperationParams> }
   | { type: "setActiveRunId"; key: string; runId: string }
   | { type: "setLocked"; locked: boolean }
+  | { type: "setRepoMode"; repoMode: "url" | "upload" }
   | { type: "setAssemblyRunLoading"; key: string }
-  | { type: "completeAssemblyRun"; completion: WorkflowRunCompletionPayload }
-  | { type: "resetAssemblyAfterSourceChange"; workflowParams: WorkflowParams }
+  | { type: "completeAssemblyRun"; completion: AssemblyRunCompletionPayload }
+  | { type: "resetAssemblyAfterSourceChange"; assemblyOperationParams: ReeAssemblyOperationParams }
   | { type: "showToast"; toast: ToastState }
   | { type: "clearToast" }
-  | { type: "applySourceOutcome"; outcome: SourceOutcomePayload }
-  | { type: "completeWorkflowRun"; completion: WorkflowRunCompletionPayload }
-  | { type: "resetWorkflowOnSourceChange"; workflowParams: WorkflowParams };
+  | { type: "applySourceOutcome"; outcome: SourceOutcomePayload };
 
-export type { SourceOutcomePayload, WorkflowRunCompletionPayload };
+export type { AssemblyRunCompletionPayload, SourceOutcomePayload };

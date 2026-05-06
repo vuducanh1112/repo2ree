@@ -9,7 +9,7 @@ import {
 } from "../../../../domain/workspace/fileTreeOps";
 import { Ic } from "../../../shared/components/Icon";
 import { C } from "../../../theme/theme";
-import { defaultScriptTemplates, findFileByPath } from "../../pages/sharedWorkflowHelpers";
+import { defaultScriptTemplates, findFileByPath } from "../../pages/sharedAssemblyHelpers";
 import { type ScriptPanelMode, ScriptPanelTabs, ScriptPanelView } from "./ScriptPanelSections";
 import { ScriptPanelWrite } from "./ScriptPanelWriteSection";
 

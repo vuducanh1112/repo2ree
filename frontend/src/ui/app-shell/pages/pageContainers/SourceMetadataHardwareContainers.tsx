@@ -1,8 +1,9 @@
 import { PAGE } from "../../../../application/state/pages";
 import { useApiRuntime } from "../../../../data/apiRuntime";
 import type { SourceUploadCommit } from "../../../../domain/ree/ReeTypes";
-import { useWorkflowStepPageController } from "../../hooks/useWorkflowStepPageController";
+import { useAssemblyStepPageController } from "../../hooks/useAssemblyStepPageController";
 import {
+  type AssemblyPageProps,
   PageBuildRuntime,
   PageEvaluate,
   PageGenerateSBOM,
@@ -10,11 +11,10 @@ import {
   PageMetadataEntry,
   PageTestActivation,
   SourceAcquisitionPage,
-  type WorkflowPageProps,
 } from "../index";
-import { type AppShellPageContainerProps, ContentSection, useWorkflowLogEntry } from "./shared";
+import { type AppShellPageContainerProps, ContentSection, useAssemblyRunLogEntry } from "./shared";
 
-const WORKFLOW_PAGE_COMPONENTS: Record<string, (props: WorkflowPageProps) => JSX.Element> = {
+const ASSEMBLY_PAGE_COMPONENTS: Record<string, (props: AssemblyPageProps) => JSX.Element> = {
   evaluate: (props) => <PageEvaluate {...props} />,
   build: (props) => <PageBuildRuntime {...props} />,
   sbom: (props) => <PageGenerateSBOM {...props} />,
@@ -26,18 +26,18 @@ export function SourcePageContainer({
   inclusionState,
   reeDraft,
   workspaceRemote,
-  workflowRun,
+  assemblyRun,
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
   const { reeId } = useApiRuntime();
   const { page, focusedField } = uiChrome;
   const { locked, repoMode } = reeDraft;
-  const { badges, actionStates } = workflowRun;
-  const sourceLog = useWorkflowLogEntry({
+  const { badges, actionStates } = assemblyRun;
+  const sourceLog = useAssemblyRunLogEntry({
     reeId,
-    runId: workflowRun.activeRunIds.source,
-    fallbackTimestamp: workflowRun.timestamps.source,
+    runId: assemblyRun.activeRunIds.source,
+    fallbackTimestamp: assemblyRun.timestamps.source,
   });
 
   if (page !== PAGE.SOURCE) {
@@ -58,7 +58,7 @@ export function SourcePageContainer({
       focusedField={focusedField}
       onWorkspaceSourceStateChange={commands.setWorkspaceSourceState}
       onRepoModeChange={commands.setRepoMode}
-      onGoWorkflow={commands.setPage}
+      onGoAssemblyPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
       onDownloadSource={commands.onDownloadSourceFiles}
       onCancelSource={() => commands.onCancelAction("source")}
@@ -70,13 +70,13 @@ export function SourcePageContainer({
 
 export function MetadataPageContainer({
   reeDraft,
-  workflowRun,
+  assemblyRun,
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
   const { page, focusedField } = uiChrome;
   const { locked, reeSpec } = reeDraft;
-  const { badges } = workflowRun;
+  const { badges } = assemblyRun;
 
   if (page !== PAGE.METADATA) {
     return null;
@@ -90,7 +90,7 @@ export function MetadataPageContainer({
       focusedField={focusedField}
       onReeChange={commands.setReeSpec}
       onLockedChange={commands.setLocked}
-      onGoWorkflow={commands.setPage}
+      onGoAssemblyPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
     />
   );
@@ -99,17 +99,17 @@ export function MetadataPageContainer({
 export function HardwareBomPageContainer({
   ree,
   reeDraft,
-  workflowRun,
+  assemblyRun,
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
   const { reeId } = useApiRuntime();
   const { page, focusedField } = uiChrome;
   const { locked } = reeDraft;
-  const { badges, actionStates, timestamps } = workflowRun;
-  const hbomLog = useWorkflowLogEntry({
+  const { badges, actionStates, timestamps } = assemblyRun;
+  const hbomLog = useAssemblyRunLogEntry({
     reeId,
-    runId: workflowRun.activeRunIds.hbom,
+    runId: assemblyRun.activeRunIds.hbom,
     fallbackTimestamp: timestamps.hbom,
   });
 
@@ -129,26 +129,26 @@ export function HardwareBomPageContainer({
       focusedField={focusedField}
       onReeSpecChange={commands.setReeSpec}
       onLockedChange={commands.setLocked}
-      onGoWorkflow={commands.setPage}
+      onGoAssemblyPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
-      onRun={commands.onRunAutomationStep}
+      onRun={commands.onRunAssemblyStep}
       onCancel={commands.onCancelAction}
     />
   );
 }
 
-export function WorkflowPageContainer(props: AppShellPageContainerProps) {
-  const { ree, inclusionState, workspaceRemote, workflowRun, commands } = props;
-  const { badges } = workflowRun;
+export function AssemblyPageContainer(props: AppShellPageContainerProps) {
+  const { ree, inclusionState, workspaceRemote, assemblyRun, commands } = props;
+  const { badges } = assemblyRun;
   const { workspaceFiles, workspaceSourceState, artifactStatus } = workspaceRemote;
 
-  const workflowPageController = useWorkflowStepPageController(props);
-  if (!workflowPageController) {
+  const assemblyPageController = useAssemblyStepPageController(props);
+  if (!assemblyPageController) {
     return null;
   }
 
   const {
-    workflowStep,
+    assemblyStep,
     log,
     running,
     runDone,
@@ -158,30 +158,30 @@ export function WorkflowPageContainer(props: AppShellPageContainerProps) {
     params,
     setParam,
     goToRequirements,
-  } = workflowPageController;
+  } = assemblyPageController;
 
-  const WorkflowPageComponent = WORKFLOW_PAGE_COMPONENTS[workflowStep.key];
-  if (!WorkflowPageComponent) {
+  const AssemblyPageComponent = ASSEMBLY_PAGE_COMPONENTS[assemblyStep.key];
+  if (!AssemblyPageComponent) {
     return null;
   }
 
   return (
     <ContentSection>
-      <WorkflowPageComponent
-        workflow={workflowStep}
+      <AssemblyPageComponent
+        assemblyStep={assemblyStep}
         ree={ree}
         inclusionState={inclusionState}
         badges={badges}
         workspaceFiles={workspaceFiles}
         workspaceSourceState={workspaceSourceState}
         artifactStatus={artifactStatus}
-        evaluationState={workflowRun.evaluationState}
+        evaluationState={assemblyRun.evaluationState}
         log={log}
         running={running}
         runDone={runDone}
         badge={badge}
         ts={ts}
-        onRun={commands.onRunAutomationStep}
+        onRun={commands.onRunAssemblyStep}
         onCancel={commands.onCancelAction}
         onGo={commands.setPage}
         onGoFields={goToRequirements}

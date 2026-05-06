@@ -7,7 +7,7 @@ import type { createAssemblyRunSession } from "../../../application/ree-assembly
 import type { GenericReeAssemblyParams } from "../../../application/ree-assembly/assemblyStepTypes";
 import type { ReeAssemblyRunParams } from "../../../application/ree-assembly/assemblyTypes";
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
-import { setWorkflowParams } from "../../../application/state/actions";
+import { setAssemblyOperationParams } from "../../../application/state/actions";
 import type { AppShellAction } from "../../../application/state/types";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useExecutionRunsClient } from "../../../data/execution-runs/client";
@@ -67,7 +67,7 @@ export function useReeAssemblyRuns({
     },
     persistAssemblyParams: (key, params) => {
       dispatch(
-        setWorkflowParams((prev) =>
+        setAssemblyOperationParams((prev) =>
           runSession.mergeAssemblyOperationParams(
             prev ?? initialReeAssemblyOperationParams(),
             key,

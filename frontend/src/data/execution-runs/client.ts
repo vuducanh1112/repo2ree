@@ -20,19 +20,6 @@ export interface ExecutionRunsClient {
     cursor?: string,
   ): Promise<ExecutionRunLogChunk>;
   cancelExecutionRun(id: ReeId | string, runId: string): Promise<ExecutionRunStatus>;
-  // Temporary compatibility methods for workflow-oriented callers.
-  startWorkflowRun(
-    id: ReeId | string,
-    scriptKey: string,
-    params?: Record<string, string | boolean | number | null | undefined>,
-  ): Promise<ExecutionRun>;
-  getWorkflowRun(id: ReeId | string, runId: string): Promise<ExecutionRun>;
-  getWorkflowRunLogs(
-    id: ReeId | string,
-    runId: string,
-    cursor?: string,
-  ): Promise<ExecutionRunLogChunk>;
-  cancelWorkflowRun(id: ReeId | string, runId: string): Promise<ExecutionRunStatus>;
 }
 
 function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClient {
@@ -92,10 +79,10 @@ function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClien
             run = await runtime.reeApi.completeUpload(reeId, init.uploadToken, archiveName);
             break;
           }
-          throw new Error("Unsupported source workflow mode");
+          throw new Error("Unsupported source acquisition mode");
         }
         default:
-          throw new Error(`Unsupported remote workflow operation: ${scriptKey}`);
+          throw new Error(`Unsupported execution run operation: ${scriptKey}`);
       }
       return mapRun(run);
     },
@@ -119,18 +106,6 @@ function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClien
       const reeId = await ensureReeId(runtime, id);
       const response = await runtime.runsApi.cancelRun(reeId, runId);
       return mapStatus(response.status);
-    },
-    async startWorkflowRun(id, scriptKey, params = {}) {
-      return this.startExecutionRun(id, scriptKey, params);
-    },
-    async getWorkflowRun(id, runId) {
-      return this.getExecutionRun(id, runId);
-    },
-    async getWorkflowRunLogs(id, runId, cursor) {
-      return this.getExecutionRunLogs(id, runId, cursor);
-    },
-    async cancelWorkflowRun(id, runId) {
-      return this.cancelExecutionRun(id, runId);
     },
   };
 }

@@ -2,22 +2,22 @@ import type React from "react";
 import type { LogEntry } from "../../../../domain/ree/ReeTypes";
 import { C, S_SECTION_LABEL } from "../../../theme/theme";
 import { LogPanel } from "../logPanel";
-import { workflowSectionCardStyle } from "../statusUiStyles";
+import { assemblySectionCardStyle } from "../statusUiStyles";
 
-interface WorkflowLogSectionProps {
+interface AssemblyRunLogSectionProps {
   log: LogEntry | null;
   running: boolean;
   title?: string;
   titleStyle?: React.CSSProperties;
 }
-export function WorkflowLogSection({
+export function AssemblyRunLogSection({
   log,
   running,
   title = "Output",
   titleStyle,
-}: WorkflowLogSectionProps) {
+}: AssemblyRunLogSectionProps) {
   return (
-    <div style={workflowSectionCardStyle(false)}>
+    <div style={assemblySectionCardStyle(false)}>
       <div
         style={{
           display: "flex",

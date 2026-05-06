@@ -1,5 +1,5 @@
-import type { DepGroup } from "../../../../application/workflow/workflowDependencyAnalysis";
-import { PIN_META } from "../../../../application/workflow/workflowDependencyAnalysis";
+import type { DepGroup } from "../../../../application/ree-assembly/assemblyDependencyAnalysis";
+import { PIN_META } from "../../../../application/ree-assembly/assemblyDependencyAnalysis";
 import { C, hoverBg, hoverBorderColor, hoverIf } from "../../../theme/theme";
 import { actionBtn } from "./shared";
 

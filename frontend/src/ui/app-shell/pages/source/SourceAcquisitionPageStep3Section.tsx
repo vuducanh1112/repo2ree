@@ -5,7 +5,7 @@ import { Toggle } from "../../../shared/components/Toggle";
 import { C, F } from "../../../theme/theme";
 import { FieldSection } from "../../components/fieldTips";
 import { sourceClearButtonTone, sourceIncludedLabelStyle } from "../../components/statusUiStyles";
-import type { SourceAcquisitionPageProps } from "../sharedWorkflowUi";
+import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 import { actionBtn } from "./SourceAcquisitionPageStyles";
 
 interface Step3Props {
@@ -19,7 +19,7 @@ interface Step3Props {
   locked: boolean;
   focus: (key: string) => void;
   onToggleSourceIncluded: () => void;
-  onGoWorkflow: (page: AppShellPage) => void;
+  onGoAssemblyPage: (page: AppShellPage) => void;
   onRemoveWorkspaceSource: () => void;
 }
 
@@ -78,7 +78,7 @@ export function SourceStep3Section(props: Step3Props) {
               type="button"
               onClick={() => {
                 props.focus("sourceAvailable");
-                props.onGoWorkflow(PAGE.FILES);
+                props.onGoAssemblyPage(PAGE.FILES);
               }}
               style={{
                 ...actionBtn({

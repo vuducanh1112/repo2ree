@@ -48,7 +48,7 @@ function createExecutionRunQueryOptions(
   runId: string,
 ) {
   return queryOptions({
-    queryKey: queryKeys.workflowRun(reeId, runId),
+    queryKey: queryKeys.assemblyRun(reeId, runId),
     queryFn: () => executionRunsClient.getExecutionRun(reeId, runId),
   });
 }
@@ -59,7 +59,7 @@ function createExecutionRunLogsQueryOptions(
   runId: string,
 ) {
   return queryOptions({
-    queryKey: queryKeys.workflowRunLogs(reeId, runId),
+    queryKey: queryKeys.assemblyRunLogs(reeId, runId),
     queryFn: async (): Promise<ExecutionRunLogChunk> => {
       let cursor: string | undefined;
       let chunk: ExecutionRunLogChunk | undefined;
@@ -114,7 +114,7 @@ export function useExecutionRunQuery(reeId: string | undefined, runId: string | 
     ...(runId
       ? createExecutionRunQueryOptions(executionRunsClient, resolvedReeId, runId)
       : {
-          queryKey: queryKeys.workflowRun(resolvedReeId, "idle"),
+          queryKey: queryKeys.assemblyRun(resolvedReeId, "idle"),
           queryFn: async () => {
             throw new Error("Execution run query is disabled");
           },
@@ -133,7 +133,7 @@ export function useExecutionRunLogsQuery(reeId: string | undefined, runId: strin
   const baseOptions = runId
     ? createExecutionRunLogsQueryOptions(executionRunsClient, resolvedReeId, runId)
     : {
-        queryKey: queryKeys.workflowRunLogs(resolvedReeId, "idle"),
+        queryKey: queryKeys.assemblyRunLogs(resolvedReeId, "idle"),
         queryFn: async () => {
           throw new Error("Execution run logs query is disabled");
         },
@@ -147,7 +147,7 @@ export function useExecutionRunLogsQuery(reeId: string | undefined, runId: strin
         return false;
       }
       const run = queryClient.getQueryData<ExecutionRun>(
-        queryKeys.workflowRun(resolvedReeId, runId),
+        queryKeys.assemblyRun(resolvedReeId, runId),
       );
       return isTerminalExecutionRunStatus(run?.status) ? false : 1500;
     },

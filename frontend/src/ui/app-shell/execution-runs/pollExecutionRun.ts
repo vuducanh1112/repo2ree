@@ -3,16 +3,16 @@ import type { AppShellClock } from "../../../app/bootstrap/ports";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import { observeExecutionRun } from "../../../data/execution-runs/queries";
 
-interface PollWorkflowRunOptions {
+interface PollExecutionRunOptions {
   reeId: string;
   runId: string;
   maxIterations?: number;
-  onUpdate?: (update: PollWorkflowRunResult) => void;
+  onUpdate?: (update: PollExecutionRunResult) => void;
   clock: AppShellClock;
   sleep: (ms: number) => Promise<void>;
 }
 
-interface PollWorkflowRunResult {
+interface PollExecutionRunResult {
   status:
     | "created"
     | "queued"
@@ -26,14 +26,14 @@ interface PollWorkflowRunResult {
   ts: string;
 }
 
-export async function pollWorkflowRun(
+export async function pollExecutionRun(
   queryClient: QueryClient,
-  workflowRunsClient: ExecutionRunsClient,
-  options: PollWorkflowRunOptions,
-): Promise<PollWorkflowRunResult> {
+  executionRunsClient: ExecutionRunsClient,
+  options: PollExecutionRunOptions,
+): Promise<PollExecutionRunResult> {
   void options.clock;
   void options.sleep;
-  return observeExecutionRun(queryClient, workflowRunsClient, {
+  return observeExecutionRun(queryClient, executionRunsClient, {
     reeId: options.reeId,
     runId: options.runId,
     onUpdate: options.onUpdate,

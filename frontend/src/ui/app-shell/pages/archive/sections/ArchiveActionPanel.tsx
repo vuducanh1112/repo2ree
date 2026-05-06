@@ -1,8 +1,8 @@
 import type {
   ArchiveRepo,
-  GenericWorkflowParams,
-} from "../../../../../application/workflow/WorkflowStepTypes";
-import type { WorkflowLogs } from "../../../../../domain/ree/ReeTypes";
+  GenericReeAssemblyParams,
+} from "../../../../../application/ree-assembly/assemblyStepTypes";
+import type { ExecutionRunLogs } from "../../../../../domain/ree/ReeTypes";
 import { Ic } from "../../../../shared/components/Icon";
 import { C, F, S_SECTION_LABEL } from "../../../../theme/theme";
 import { LogPanel } from "../../../components/logPanel";
@@ -12,8 +12,8 @@ interface ArchiveActionPanelProps {
   canRun: boolean;
   earned: boolean;
   running: boolean;
-  logs: WorkflowLogs;
-  onRun: (key: string, params: GenericWorkflowParams) => void;
+  logs: ExecutionRunLogs;
+  onRun: (key: string, params: GenericReeAssemblyParams) => void;
   getParam: (repoKey: string, paramKey: string) => string | boolean;
 }
 

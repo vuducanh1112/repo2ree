@@ -1,24 +1,24 @@
 import type {
-  AutomationStepKey,
-  AutomationStepRunParams,
-} from "../../../../../application/workflow/WorkflowTypes";
+  ReeAssemblyOperationKey,
+  ReeAssemblyRunParams,
+} from "../../../../../application/ree-assembly/assemblyTypes";
 import { S_SECTION_LABEL_MB12, S_WORKFLOW_BUILD_SECTION_WRAP } from "../../../../theme/theme";
-import { RuntimeOutputNode, WorkflowRunActionSection } from "../../../components/workflowRunPanels";
-import type { WorkflowPageProps } from "../../sharedWorkflowUi";
+import { AssemblyRunActionSection, RuntimeOutputNode } from "../../../components/assemblyRunPanels";
+import type { AssemblyPageProps } from "../../sharedAssemblyUi";
 
 interface BuildActionPanelProps {
   buildColor: string;
   running: boolean;
   runDone: boolean;
-  missing: WorkflowPageProps["missing"];
-  onRun: WorkflowPageProps["onRun"];
-  onCancel: WorkflowPageProps["onCancel"];
-  workflowKey: AutomationStepKey;
-  buildParams: AutomationStepRunParams<"build">;
+  missing: AssemblyPageProps["missing"];
+  onRun: AssemblyPageProps["onRun"];
+  onCancel: AssemblyPageProps["onCancel"];
+  assemblyKey: ReeAssemblyOperationKey;
+  buildParams: ReeAssemblyRunParams<"build">;
   expectedOutput: string;
-  ree: WorkflowPageProps["ree"];
+  ree: AssemblyPageProps["ree"];
   imageColor: string;
-  files: WorkflowPageProps["workspaceFiles"];
+  files: AssemblyPageProps["workspaceFiles"];
 }
 
 export function BuildActionPanel({
@@ -28,7 +28,7 @@ export function BuildActionPanel({
   missing,
   onRun,
   onCancel,
-  workflowKey,
+  assemblyKey,
   buildParams,
   expectedOutput,
   ree,
@@ -37,7 +37,7 @@ export function BuildActionPanel({
 }: BuildActionPanelProps) {
   return (
     <>
-      <WorkflowRunActionSection
+      <AssemblyRunActionSection
         color={buildColor}
         running={running}
         runDone={runDone}
@@ -46,8 +46,8 @@ export function BuildActionPanel({
         runningLabel="Building…"
         doneLabel="Re-build"
         helperText="Execute the build script and record build logs."
-        onCancel={() => onCancel?.(workflowKey)}
-        onRun={() => onRun(workflowKey, buildParams)}
+        onCancel={() => onCancel?.(assemblyKey)}
+        onRun={() => onRun(assemblyKey, buildParams)}
       />
 
       <div style={S_WORKFLOW_BUILD_SECTION_WRAP}>

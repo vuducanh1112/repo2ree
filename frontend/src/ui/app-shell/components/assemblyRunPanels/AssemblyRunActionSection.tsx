@@ -2,7 +2,7 @@ import { Ic } from "../../../shared/components/Icon";
 import { C, S_SECTION_LABEL, S_TEXT_MUTED_11 } from "../../../theme/theme";
 import { actionBtn } from "./shared";
 
-interface WorkflowActionSectionProps {
+interface AssemblyActionSectionProps {
   color: string;
   running: boolean;
   runDone: boolean;
@@ -14,7 +14,7 @@ interface WorkflowActionSectionProps {
   onRun: () => void;
   onCancel?: () => void;
 }
-export function WorkflowRunActionSection({
+export function AssemblyRunActionSection({
   color,
   running,
   runDone,
@@ -25,7 +25,7 @@ export function WorkflowRunActionSection({
   helperText,
   onRun,
   onCancel,
-}: WorkflowActionSectionProps) {
+}: AssemblyActionSectionProps) {
   const buttonLabel = running ? runningLabel : runDone ? doneLabel : idleLabel;
   return (
     <div

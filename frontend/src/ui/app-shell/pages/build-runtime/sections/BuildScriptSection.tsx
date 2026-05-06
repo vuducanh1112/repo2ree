@@ -8,22 +8,22 @@ import {
 } from "../../../../theme/theme";
 import { FieldRow, FieldSection } from "../../../components/fieldTips";
 import { FilePicker, ScriptPanel } from "../../../components/scriptAndFile";
-import { SVC_SCRIPT_FIELDS } from "../../sharedWorkflowConstants";
-import type { WorkflowPageProps } from "../../sharedWorkflowUi";
+import { SVC_SCRIPT_FIELDS } from "../../sharedAssemblyConstants";
+import type { AssemblyPageProps } from "../../sharedAssemblyUi";
 
 interface BuildScriptSectionProps {
-  workflow: WorkflowPageProps["workflow"];
-  ree: WorkflowPageProps["ree"];
-  files: WorkflowPageProps["workspaceFiles"];
+  assemblyStep: AssemblyPageProps["assemblyStep"];
+  ree: AssemblyPageProps["ree"];
+  files: AssemblyPageProps["workspaceFiles"];
   focusedField: string | null;
   setFocusedField: (field: string | null) => void;
-  onReeSpecChange: WorkflowPageProps["onReeSpecChange"];
-  onPersistWorkspaceFile: WorkflowPageProps["onPersistWorkspaceFile"];
+  onReeSpecChange: AssemblyPageProps["onReeSpecChange"];
+  onPersistWorkspaceFile: AssemblyPageProps["onPersistWorkspaceFile"];
   onTemplateSuggestedOutput: (out: string) => void;
 }
 
 export function BuildScriptSection({
-  workflow,
+  assemblyStep,
   ree,
   files,
   focusedField,
@@ -84,7 +84,7 @@ export function BuildScriptSection({
 
         <div style={{ marginTop: 14 }}>
           <div style={{ ...S_SECTION_LABEL, marginBottom: 10 }}>Build Script Editor</div>
-          {SVC_SCRIPT_FIELDS[workflow.key]?.map((sf) => (
+          {SVC_SCRIPT_FIELDS[assemblyStep.key]?.map((sf) => (
             <ScriptPanel
               key={sf.fieldKey}
               scriptKind={sf.scriptKind || null}

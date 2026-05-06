@@ -1,16 +1,16 @@
 import type React from "react";
+import type {
+  ReeAssemblyBadge,
+  ReeAssemblyDefinition,
+  ReeAssemblyParamValue,
+  ReeAssemblyRequirement,
+} from "../../../application/ree-assembly/assemblyStepTypes";
+import type {
+  ReeAssemblyOperationKey,
+  ReeAssemblyRunParams,
+} from "../../../application/ree-assembly/assemblyTypes";
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../application/state/pages";
-import type {
-  AutomationStepDefinition,
-  WorkflowBadge,
-  WorkflowParamValue,
-  WorkflowRequirement,
-} from "../../../application/workflow/WorkflowStepTypes";
-import type {
-  AutomationStepKey,
-  AutomationStepRunParams,
-} from "../../../application/workflow/WorkflowTypes";
 import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
 import type { ReeInclusionState } from "../../../domain/ree/ReeInclusionState";
 import type { ReeSpec } from "../../../domain/ree/ReeSpec";
@@ -37,7 +37,7 @@ export interface SourceAcquisitionPageProps {
   focusedField: string | null;
   onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
   onRepoModeChange: React.Dispatch<React.SetStateAction<"url" | "upload">>;
-  onGoWorkflow: (key: AppShellPage) => void;
+  onGoAssemblyPage: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
   onDownloadSource: (originType: ReeEditorViewModel["source_type"], sourceUrl: string) => void;
   onCancelSource: () => void;
@@ -52,7 +52,7 @@ export interface PageMetadataEntryProps {
   focusedField: string | null;
   onReeChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
   onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
-  onGoWorkflow: (key: AppShellPage) => void;
+  onGoAssemblyPage: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
@@ -67,14 +67,14 @@ export interface PageHardwareBomProps {
   focusedField: string | null;
   onReeSpecChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
   onLockedChange: React.Dispatch<React.SetStateAction<boolean>>;
-  onGoWorkflow: (key: AppShellPage) => void;
+  onGoAssemblyPage: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
-  onRun: (key: AutomationStepKey, params: AutomationStepRunParams) => void;
-  onCancel?: (key: AutomationStepKey) => void;
+  onRun: (key: ReeAssemblyOperationKey, params: ReeAssemblyRunParams) => void;
+  onCancel?: (key: ReeAssemblyOperationKey) => void;
 }
 
-export interface WorkflowPageProps {
-  workflow: AutomationStepDefinition & { key: AutomationStepKey };
+export interface AssemblyPageProps {
+  assemblyStep: ReeAssemblyDefinition & { key: ReeAssemblyOperationKey };
   ree: ReeEditorViewModel;
   inclusionState: ReeInclusionState;
   workspaceSourceState: WorkspaceSourceState;
@@ -85,10 +85,10 @@ export interface WorkflowPageProps {
   log: LogEntry | null;
   running: boolean;
   runDone: boolean;
-  badge: WorkflowBadge | null;
+  badge: ReeAssemblyBadge | null;
   ts: string | undefined;
-  onRun: <K extends AutomationStepKey>(key: K, params: AutomationStepRunParams<K>) => void;
-  onCancel?: (key: AutomationStepKey) => void;
+  onRun: <K extends ReeAssemblyOperationKey>(key: K, params: ReeAssemblyRunParams<K>) => void;
+  onCancel?: (key: ReeAssemblyOperationKey) => void;
   onGo: (key: AppShellPage) => void;
   onGoFields: () => void;
   onReeSpecChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
@@ -100,7 +100,7 @@ export interface WorkflowPageProps {
     path: string,
     content: string,
   ) => Promise<void>;
-  missing: WorkflowRequirement[];
-  params: AutomationStepRunParams;
-  setParam: (key: string, value: WorkflowParamValue) => void;
+  missing: ReeAssemblyRequirement[];
+  params: ReeAssemblyRunParams;
+  setParam: (key: string, value: ReeAssemblyParamValue) => void;
 }

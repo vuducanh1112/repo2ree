@@ -2,7 +2,7 @@ import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { normalizeSnapshotArchiveName } from "../../domain/workspace/PathUtils";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 
-type SourceWorkflowStatus = "failed" | "canceled";
+type SourceExecutionStatus = "failed" | "canceled";
 
 interface SourceActionPlanSuccess<T> {
   ok: true;
@@ -16,7 +16,7 @@ interface SourceActionPlanFailure {
 
 type SourceActionPlanResult<T> = SourceActionPlanSuccess<T> | SourceActionPlanFailure;
 
-interface SourceWorkflowRequestPlan {
+interface SourceExecutionRequestPlan {
   resetRequest: Record<string, string | boolean | number | null | undefined>;
   runParams: Record<string, string | boolean | number | null | undefined>;
 }
@@ -106,9 +106,9 @@ function validateSourceUpload(
   return { ok: true, value: {} };
 }
 
-function buildSourceWorkflowRequestPlan(
+function buildSourceExecutionRequestPlan(
   request: Record<string, string | boolean | number | null | undefined>,
-): SourceWorkflowRequestPlan {
+): SourceExecutionRequestPlan {
   return {
     resetRequest: request,
     runParams: request,
@@ -177,7 +177,7 @@ export function planSourceDownloadAction(
   originType: ReeEditorViewModel["source_type"],
   sourceUrl: string,
 ): SourceActionPlanResult<
-  SourceWorkflowRequestPlan & {
+  SourceExecutionRequestPlan & {
     normalizedSourceUrl: string;
   }
 > {
@@ -190,7 +190,7 @@ export function planSourceDownloadAction(
     ok: true,
     value: {
       normalizedSourceUrl: plan.value.normalizedSourceUrl,
-      ...buildSourceWorkflowRequestPlan({
+      ...buildSourceExecutionRequestPlan({
         mode: "download",
         source: plan.value.normalizedSourceUrl,
         sourceType: originType,
@@ -204,7 +204,7 @@ export function planSourceUploadAction(
   archiveName: string,
   archiveContentBase64?: string,
 ): SourceActionPlanResult<
-  SourceWorkflowRequestPlan & {
+  SourceExecutionRequestPlan & {
     archiveName: string;
   }
 > {
@@ -217,7 +217,7 @@ export function planSourceUploadAction(
     ok: true,
     value: {
       archiveName,
-      ...buildSourceWorkflowRequestPlan({
+      ...buildSourceExecutionRequestPlan({
         mode: "upload",
         archiveName,
         archiveContentBase64,
@@ -226,7 +226,7 @@ export function planSourceUploadAction(
   };
 }
 
-export function planSourceWorkflowFailure(status: SourceWorkflowStatus): SourceActionPlanFailure {
+export function planSourceExecutionFailure(status: SourceExecutionStatus): SourceActionPlanFailure {
   return {
     ok: false,
     error: `Source ${status}`,

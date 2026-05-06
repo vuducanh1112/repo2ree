@@ -1,4 +1,4 @@
-import type { RequirementsBannerProps } from "../../../application/workflow/WorkflowStepTypes";
+import type { RequirementsBannerProps } from "../../../application/ree-assembly/assemblyStepTypes";
 import { Ic } from "../../shared/components/Icon";
 import { C, F, S_ACTION_BUTTON_BASE } from "../../theme/theme";
 

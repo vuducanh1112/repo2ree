@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import type {
+  ReeAssemblyParamValue,
   StepState,
-  WorkflowParamValue,
-} from "../../../application/workflow/WorkflowStepTypes";
+} from "../../../application/ree-assembly/assemblyStepTypes";
 import type { LogLine } from "../../../domain/ree/ReeTypes";
 import { C } from "../../theme/theme";
 import { RvStepActions } from "./RvStepActions";
@@ -21,7 +21,11 @@ interface RvStepCardProps {
   state: StepState;
   log: LogLine[] | null;
   params: ReactivationParams;
-  onSetParam: (stepKey: ReactivationStepKey, paramKey: string, value: WorkflowParamValue) => void;
+  onSetParam: (
+    stepKey: ReactivationStepKey,
+    paramKey: string,
+    value: ReeAssemblyParamValue,
+  ) => void;
   onRun: (key: ReactivationStepKey, params: ReactivationParams) => boolean | Promise<boolean>;
   onCancel?: (key: ReactivationStepKey) => void | Promise<void>;
   isLast: boolean;

@@ -1,7 +1,7 @@
+import { REE_ASSEMBLY_STEPS } from "../../../application/ree-assembly/assemblyCatalog";
+import type { ReeAssemblyDefinition } from "../../../application/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import { type AppShellPage, PAGE } from "../../../application/state/pages";
-import type { AutomationStepDefinition } from "../../../application/workflow/WorkflowStepTypes";
-import { AUTOMATION_STEPS } from "../../../application/workflow/workflowCatalog";
 import { hbomHasAnyComponents } from "../../../domain/hbom/HbomSummary";
 import type { Badges } from "../../../domain/ree/ReeTypes";
 import { Ic } from "../../shared/components/Icon";
@@ -11,13 +11,13 @@ interface ProcessStep {
   key: AppShellPage;
   label: string;
   IC: (size?: number) => JSX.Element;
-  automation: AutomationStepDefinition | null;
+  automation: ReeAssemblyDefinition | null;
   desc: string;
 }
 
-const AUTOMATION_BY_KEY: Record<string, AutomationStepDefinition> = Object.fromEntries(
-  AUTOMATION_STEPS.map((step) => [step.key, step]),
-) as Record<string, AutomationStepDefinition>;
+const AUTOMATION_BY_KEY: Record<string, ReeAssemblyDefinition> = Object.fromEntries(
+  REE_ASSEMBLY_STEPS.map((step) => [step.key, step]),
+) as Record<string, ReeAssemblyDefinition>;
 
 export const PROCESS_STEPS: ProcessStep[] = [
   {

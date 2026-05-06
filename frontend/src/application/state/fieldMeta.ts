@@ -32,8 +32,7 @@ export const FIELD_META: Record<string, FieldMeta> = {
     desc: "Permanent Software Heritage identifier. Auto-assigned when you run Archive.",
     example: "swh:1:dir:4b825dc642cb6eb9a060e54bf8d69288fbee4904",
     format: "swh:1:<type>:<sha1hex> — assigned by Software Heritage on deposit.",
-    howTo:
-      "You don't fill this manually. Run the Archive workflow and it will be assigned automatically.",
+    howTo: "You don't fill this manually. Run Archive and it will be assigned automatically.",
     tools: [],
   },
   origin_url: {

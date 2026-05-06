@@ -16,9 +16,9 @@ export function useStartExecutionRunMutation(reeId?: string) {
     mutationFn: ({ scriptKey, params = {} }: { scriptKey: string; params?: ExecutionRunParams }) =>
       executionRunsClient.startExecutionRun(resolvedReeId, scriptKey, params),
     onSuccess: async (run) => {
-      queryClient.setQueryData(queryKeys.workflowRun(resolvedReeId, run.runId), run);
+      queryClient.setQueryData(queryKeys.assemblyRun(resolvedReeId, run.runId), run);
       await queryClient.invalidateQueries({
-        queryKey: queryKeys.workflowRun(resolvedReeId, run.runId),
+        queryKey: queryKeys.assemblyRun(resolvedReeId, run.runId),
       });
     },
   });
@@ -37,7 +37,7 @@ export function useCancelExecutionRunMutation(reeId?: string) {
     },
     onSuccess: async ({ runId }) => {
       await queryClient.invalidateQueries({
-        queryKey: queryKeys.workflowRun(resolvedReeId, runId),
+        queryKey: queryKeys.assemblyRun(resolvedReeId, runId),
       });
     },
   });

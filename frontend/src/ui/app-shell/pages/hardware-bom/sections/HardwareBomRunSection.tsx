@@ -1,11 +1,11 @@
 import type { AppShellPage } from "../../../../../application/state/pages";
 import type { Badges, LogEntry } from "../../../../../domain/ree/ReeTypes";
 import { S_WORKFLOW_PAGE_NUDGE_WRAP } from "../../../../theme/theme";
-import { NextStepNudge } from "../../../components/pageChrome";
 import {
-  WorkflowLogSection,
-  WorkflowRunActionSection,
-} from "../../../components/workflowRunPanels";
+  AssemblyRunActionSection,
+  AssemblyRunLogSection,
+} from "../../../components/assemblyRunPanels";
+import { NextStepNudge } from "../../../components/pageChrome";
 
 interface HardwareBomRunSectionProps {
   running: boolean;
@@ -15,7 +15,7 @@ interface HardwareBomRunSectionProps {
   badges: Badges;
   onRun: () => void;
   onCancel?: () => void;
-  onGoWorkflow: (stepKey: AppShellPage) => void;
+  onGoAssemblyPage: (stepKey: AppShellPage) => void;
 }
 
 export function HardwareBomRunSection({
@@ -26,11 +26,11 @@ export function HardwareBomRunSection({
   badges,
   onRun,
   onCancel,
-  onGoWorkflow,
+  onGoAssemblyPage,
 }: HardwareBomRunSectionProps) {
   return (
     <>
-      <WorkflowRunActionSection
+      <AssemblyRunActionSection
         color="#0f766e"
         running={running}
         runDone={runDone}
@@ -43,14 +43,14 @@ export function HardwareBomRunSection({
         onRun={onRun}
       />
 
-      <WorkflowLogSection
+      <AssemblyRunLogSection
         log={log}
         running={running}
         title={ts ? "Machine profiling logs" : "Profiling logs"}
       />
 
       <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-        <NextStepNudge stepKey="hbom" badges={badges} onGo={onGoWorkflow} />
+        <NextStepNudge stepKey="hbom" badges={badges} onGo={onGoAssemblyPage} />
       </div>
     </>
   );

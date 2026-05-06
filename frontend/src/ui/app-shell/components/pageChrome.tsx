@@ -1,6 +1,6 @@
 import type React from "react";
+import type { ReeAssemblyBadge } from "../../../application/ree-assembly/assemblyStepTypes";
 import { type AppShellPage, PAGE } from "../../../application/state/pages";
-import type { WorkflowBadge } from "../../../application/workflow/WorkflowStepTypes";
 import type { Badges } from "../../../domain/ree/ReeTypes";
 import { Ic } from "../../shared/components/Icon";
 import { C, F, hoverBg, S_ACTION_BUTTON_BASE } from "../../theme/theme";
@@ -42,7 +42,7 @@ export function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
     { key: PAGE.ARCHIVE, nextKey: PAGE.SEAL, nextLabel: "Seal", cond: () => true },
     { key: PAGE.SEAL, nextKey: null, nextLabel: null, cond: () => false },
   ];
-  const step = Steps.find((workflowStep) => workflowStep.key === stepKey);
+  const step = Steps.find((assemblyStep) => assemblyStep.key === stepKey);
   const nextKey = step?.nextKey;
   const nextLabel = step?.nextLabel;
   if (!step || !nextKey || !nextLabel) return null;
@@ -91,21 +91,21 @@ export function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
   );
 }
 
-interface WorkflowPageHeaderProps {
+interface AssemblyPageHeaderProps {
   color: string;
   icon: React.ReactNode;
   title: string;
   subtitle: string;
   tips?: string[];
   runDone?: boolean;
-  badge?: WorkflowBadge | null;
+  badge?: ReeAssemblyBadge | null;
   ts?: string;
   timestampPrefix?: string;
   missingCount?: number;
   onGoFields?: () => void;
   rightAction?: React.ReactNode;
 }
-export function WorkflowPageHeader({
+export function AssemblyPageHeader({
   color,
   icon,
   title,
@@ -118,7 +118,7 @@ export function WorkflowPageHeader({
   missingCount = 0,
   onGoFields,
   rightAction,
-}: WorkflowPageHeaderProps) {
+}: AssemblyPageHeaderProps) {
   return (
     <div
       style={{

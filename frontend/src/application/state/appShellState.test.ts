@@ -104,9 +104,9 @@ describe("appShellState", () => {
 
     expect(next.reeDraft.reeSpec.origin_url).toBe("https://example.org/repo.git");
     expect(next.reeDraft.workspaceSourceState.sourceAvailable).toBe(true);
-    expect(next.workflowRun.actionStates.source).toBe("done");
-    expect(next.workflowRun.badges.source).toBe(true);
-    expect(next.workflowRun.timestamps.source).toBe("2026-01-01T00:00:00Z");
+    expect(next.assemblyRun.actionStates.source).toBe("done");
+    expect(next.assemblyRun.badges.source).toBe(true);
+    expect(next.assemblyRun.timestamps.source).toBe("2026-01-01T00:00:00Z");
     expect(next.reeDraft.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
     expect(view.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
   });
@@ -124,16 +124,16 @@ describe("appShellState", () => {
       }),
     );
 
-    expect(next.workflowRun.actionStates.build).toBe("done");
-    expect(next.workflowRun.badges.build).toBe(true);
-    expect(next.workflowRun.timestamps.build).toBe("2026-01-01T00:00:00Z");
+    expect(next.assemblyRun.actionStates.build).toBe("done");
+    expect(next.assemblyRun.badges.build).toBe(true);
+    expect(next.assemblyRun.timestamps.build).toBe("2026-01-01T00:00:00Z");
   });
 
   it("resets assembly-dependent workspace state on source change", () => {
     const initial = {
       ...createInitialState(toInitialSlices(buildRee())),
-      workflowRun: {
-        ...createInitialState(toInitialSlices(buildRee())).workflowRun,
+      assemblyRun: {
+        ...createInitialState(toInitialSlices(buildRee())).assemblyRun,
         actionStates: { build: "done" as const },
         badges: { build: true },
         timestamps: { build: "2026-01-01T00:00:00Z" },
@@ -142,12 +142,12 @@ describe("appShellState", () => {
 
     const next = appShellReducer(
       initial,
-      resetAssemblyAfterSourceChange(initial.workflowRun.workflowParams),
+      resetAssemblyAfterSourceChange(initial.assemblyRun.assemblyOperationParams),
     );
 
-    expect(next.workflowRun.actionStates).toEqual({});
-    expect(next.workflowRun.badges).toEqual({});
-    expect(next.workflowRun.timestamps).toEqual({});
+    expect(next.assemblyRun.actionStates).toEqual({});
+    expect(next.assemblyRun.badges).toEqual({});
+    expect(next.assemblyRun.timestamps).toEqual({});
     expect(next.reeDraft.reeSpec.origin_url).toBe("");
     expect(next.reeDraft.workspaceSourceState.sourceAvailable).toBe(false);
   });
@@ -158,7 +158,7 @@ describe("appShellState", () => {
     const view = createAppShellState(state);
 
     expect(view.page).toBe(state.uiChrome.page);
-    expect(view.workflowParams).toBe(state.workflowRun.workflowParams);
+    expect(view.assemblyOperationParams).toBe(state.assemblyRun.assemblyOperationParams);
     expect(view.locked).toBe(state.reeDraft.locked);
     expect(createEmptyReeEditorViewModel().name).toBe("");
   });
@@ -208,13 +208,13 @@ describe("appShellState", () => {
   it("updates evaluation state via named transition", () => {
     const initial = createInitialState(toInitialSlices(buildRee()));
     const next = appShellReducer(initial, setEvaluationState({ evalLevel: 3 }));
-    expect(next.workflowRun.evaluationState.evalLevel).toBe(3);
+    expect(next.assemblyRun.evaluationState.evalLevel).toBe(3);
   });
 
   it("marks a run key as loading via named transition", () => {
     const initial = createInitialState(toInitialSlices(buildRee()));
     const next = appShellReducer(initial, setAssemblyRunLoading("build"));
-    expect(next.workflowRun.actionStates.build).toBe("loading");
+    expect(next.assemblyRun.actionStates.build).toBe("loading");
   });
 
   it("shows and clears toast via named transitions", () => {

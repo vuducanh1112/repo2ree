@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import type { ExecutionRun, ExecutionRunLogChunk } from "../../domain/execution/ExecutionRun";
+import type { ExecutionRunStatus } from "../../domain/execution/ExecutionRunStatus";
 import type {
   ReviewClient,
   ReviewDetail,
@@ -7,11 +9,6 @@ import type {
   ReviewUploadInitRequest,
   ReviewUploadInitResponse,
 } from "../../domain/review/ReviewTypes";
-import type {
-  WorkflowRunLogChunk,
-  WorkflowRunRecord,
-  WorkflowRunStatus,
-} from "../../domain/workflow/WorkflowRun";
 import { mapRunLogsToLegacy } from "../../infra/api/ExecutionRunsApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import {
@@ -25,11 +22,11 @@ function createReviewClient(runtime: ApiRuntimeValue): ReviewClient {
 
   const mapReviewRun = (run: {
     runId: string;
-    status: WorkflowRunStatus;
+    status: ExecutionRunStatus;
     createdAt: string;
     startedAt?: string;
     finishedAt?: string;
-  }): WorkflowRunRecord => ({
+  }): ExecutionRun => ({
     runId: run.runId,
     status: run.status,
     createdAt: run.createdAt,
@@ -58,7 +55,7 @@ function createReviewClient(runtime: ApiRuntimeValue): ReviewClient {
       const response = await api.cancelRun(reviewId, runId);
       return response.status;
     },
-    listRunLogs: async (reviewId, runId, cursor): Promise<WorkflowRunLogChunk> => {
+    listRunLogs: async (reviewId, runId, cursor): Promise<ExecutionRunLogChunk> => {
       const logs = await api.listRunLogs(reviewId, runId, cursor);
       return {
         lines: mapRunLogsToLegacy(logs.entries),

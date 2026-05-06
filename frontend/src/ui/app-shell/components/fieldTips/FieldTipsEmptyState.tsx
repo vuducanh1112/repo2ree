@@ -3,17 +3,17 @@ import { Ic } from "../../../shared/components/Icon";
 import { C, F, S_SECTION_LABEL } from "../../../theme/theme";
 
 interface FieldTipsEmptyStateProps {
-  workflowTipFields: string[];
+  assemblyTipFields: string[];
   onFocusField?: (field: string) => void;
   emptyText: string;
 }
 
 export function FieldTipsEmptyState({
-  workflowTipFields,
+  assemblyTipFields,
   onFocusField,
   emptyText,
 }: FieldTipsEmptyStateProps) {
-  if (workflowTipFields.length > 0) {
+  if (assemblyTipFields.length > 0) {
     return (
       <div
         style={{
@@ -68,7 +68,7 @@ export function FieldTipsEmptyState({
             gap: 8,
           }}
         >
-          {workflowTipFields.map((fieldKey) => {
+          {assemblyTipFields.map((fieldKey) => {
             const meta = FIELD_META[fieldKey];
             return (
               <button

@@ -18,19 +18,22 @@ import {
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../theme/theme";
 import {
+  AssemblyRunActionSection,
+  AssemblyRunLogSection,
+} from "../../components/assemblyRunPanels";
+import {
   descToTwoTierTips,
   FieldRow,
   FieldSection,
   FieldTipsSidebar,
 } from "../../components/fieldTips";
-import { NextStepNudge, WorkflowPageHeader } from "../../components/pageChrome";
+import { AssemblyPageHeader, NextStepNudge } from "../../components/pageChrome";
 import { FilePicker, ScriptPanel } from "../../components/scriptAndFile";
-import { WorkflowLogSection, WorkflowRunActionSection } from "../../components/workflowRunPanels";
-import { SVC_SCRIPT_FIELDS } from "../sharedWorkflowConstants";
-import type { WorkflowPageProps } from "../sharedWorkflowUi";
+import { SVC_SCRIPT_FIELDS } from "../sharedAssemblyConstants";
+import type { AssemblyPageProps } from "../sharedAssemblyUi";
 
 export function PageTestActivation({
-  workflow,
+  assemblyStep,
   ree,
   badges,
   workspaceFiles,
@@ -47,21 +50,21 @@ export function PageTestActivation({
   params,
   onReeSpecChange,
   onPersistWorkspaceFile,
-}: WorkflowPageProps) {
+}: AssemblyPageProps) {
   const files = workspaceFiles;
 
   const asLabel = FIELD_META.activation_script?.label || "Activation script";
-  const buildColor = workflow?.color || "#ef4444";
+  const buildColor = assemblyStep?.color || "#ef4444";
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
-      <WorkflowPageHeader
-        color={workflow.color}
+      <AssemblyPageHeader
+        color={assemblyStep.color}
         icon={Ic.play(18)}
-        title={workflow?.label || "Test activation"}
+        title={assemblyStep?.label || "Test activation"}
         subtitle="Run the activation test script to verify the runtime loads and activates correctly"
-        tips={descToTwoTierTips(workflow.desc)}
+        tips={descToTwoTierTips(assemblyStep.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -107,7 +110,7 @@ export function PageTestActivation({
             </FieldRow>
           </FieldSection>
 
-          <WorkflowRunActionSection
+          <AssemblyRunActionSection
             color={buildColor}
             running={running}
             runDone={runDone}
@@ -115,8 +118,8 @@ export function PageTestActivation({
             idleLabel="Run activation"
             runningLabel="Running…"
             helperText="Runs the activation test script in the runtime environment."
-            onCancel={() => onCancel?.(workflow.key)}
-            onRun={() => onRun(workflow.key, params)}
+            onCancel={() => onCancel?.(assemblyStep.key)}
+            onRun={() => onRun(assemblyStep.key, params)}
           />
 
           <div style={S_WORKFLOW_PAGE_SCRIPTS_WRAP}>
@@ -136,7 +139,7 @@ export function PageTestActivation({
           </div>
 
           <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
-            <WorkflowLogSection log={log} running={running} />
+            <AssemblyRunLogSection log={log} running={running} />
           </div>
 
           <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>

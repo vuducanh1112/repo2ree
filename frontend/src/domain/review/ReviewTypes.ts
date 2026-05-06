@@ -1,8 +1,5 @@
-import type {
-  WorkflowRunLogChunk,
-  WorkflowRunRecord,
-  WorkflowRunStatus,
-} from "../workflow/WorkflowRun";
+import type { ExecutionRun, ExecutionRunLogChunk } from "../execution/ExecutionRun";
+import type { ExecutionRunStatus } from "../execution/ExecutionRunStatus";
 
 export interface ReviewUploadInitRequest {
   fileName: string;
@@ -46,21 +43,21 @@ export interface ReviewClient {
     payload: ReviewUploadCompleteRequest,
   ): Promise<ReviewUploadCompleteResponse>;
   getReview(reviewId: string): Promise<ReviewDetail>;
-  acquireSource(reviewId: string): Promise<WorkflowRunRecord>;
+  acquireSource(reviewId: string): Promise<ExecutionRun>;
   createBuildRuntimeRun(
     reviewId: string,
     payload: {
       build_runtime_script_path: string;
       produced_runtime_path: string;
     },
-  ): Promise<WorkflowRunRecord>;
+  ): Promise<ExecutionRun>;
   createActivationTestRun(
     reviewId: string,
     payload: {
       activation_script_path: string;
     },
-  ): Promise<WorkflowRunRecord>;
-  getRun(reviewId: string, runId: string): Promise<WorkflowRunRecord>;
-  cancelRun(reviewId: string, runId: string): Promise<WorkflowRunStatus>;
-  listRunLogs(reviewId: string, runId: string, cursor?: string): Promise<WorkflowRunLogChunk>;
+  ): Promise<ExecutionRun>;
+  getRun(reviewId: string, runId: string): Promise<ExecutionRun>;
+  cancelRun(reviewId: string, runId: string): Promise<ExecutionRunStatus>;
+  listRunLogs(reviewId: string, runId: string, cursor?: string): Promise<ExecutionRunLogChunk>;
 }

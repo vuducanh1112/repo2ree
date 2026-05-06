@@ -1,8 +1,9 @@
 import {
+  type AssemblyRunCompletionPayload,
   normalizeUiChromePage,
   type SourceOutcomePayload,
-  type WorkflowRunCompletionPayload,
 } from "../../../application/state/appShellState";
+import { createInitialAssemblyRunState } from "../../../application/state/assemblyRunState";
 import { createInitialReeDraftState } from "../../../application/state/reeDraft";
 import type {
   AppShellAction,
@@ -12,11 +13,10 @@ import type {
 } from "../../../application/state/types";
 import { resolveUpdater } from "../../../application/state/types";
 import { createInitialUiChromeState } from "../../../application/state/uiChrome";
-import { createInitialWorkflowRunState } from "../../../application/state/workflowRun";
 import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
 import { enforceSourceOriginRules } from "../../../domain/artifact/sourceOriginRules";
 import { createEmptyReeSpec } from "../../../domain/ree/ReeSpec";
-import type { WorkflowParams } from "../../../domain/ree/ReeTypes";
+import type { ReeAssemblyOperationParams } from "../../../domain/ree/ReeTypes";
 import type { EvaluationState } from "../../../domain/review/EvaluationState";
 import { computeSourceChangeConsequences } from "../../../domain/workspace/sourceChangeConsequences";
 import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
@@ -55,8 +55,8 @@ export function createInitialState(
       workspaceSourceState: normalized.workspaceSourceState,
       artifactStatus: normalized.artifactStatus,
     },
-    workflowRun: {
-      ...createInitialWorkflowRunState(),
+    assemblyRun: {
+      ...createInitialAssemblyRunState(),
       evaluationState: normalized.evaluationState,
     },
     uiChrome: createInitialUiChromeState(),
@@ -86,7 +86,7 @@ function applySourceOutcome(
   state: AppShellContextState,
   outcome: SourceOutcomePayload,
 ): AppShellContextState {
-  const { reeDraft, workflowRun } = state;
+  const { reeDraft, assemblyRun } = state;
   return {
     ...state,
     reeDraft: {
@@ -99,18 +99,18 @@ function applySourceOutcome(
         : reeDraft.workspaceSourceState,
       sourceSnapshotArchiveName: outcome.sourceSnapshotArchiveName,
     },
-    workflowRun: {
-      ...workflowRun,
+    assemblyRun: {
+      ...assemblyRun,
       actionStates: outcome.actionState
-        ? { ...workflowRun.actionStates, source: outcome.actionState }
-        : workflowRun.actionStates,
+        ? { ...assemblyRun.actionStates, source: outcome.actionState }
+        : assemblyRun.actionStates,
       badges:
         typeof outcome.badge === "boolean"
-          ? { ...workflowRun.badges, source: outcome.badge }
-          : workflowRun.badges,
+          ? { ...assemblyRun.badges, source: outcome.badge }
+          : assemblyRun.badges,
       timestamps: outcome.timestamp
-        ? { ...workflowRun.timestamps, source: outcome.timestamp }
-        : workflowRun.timestamps,
+        ? { ...assemblyRun.timestamps, source: outcome.timestamp }
+        : assemblyRun.timestamps,
     },
   };
 }
@@ -160,22 +160,22 @@ function setEvaluationState(
 ): AppShellContextState {
   return {
     ...state,
-    workflowRun: {
-      ...state.workflowRun,
-      evaluationState: resolveUpdater(state.workflowRun.evaluationState, updater),
+    assemblyRun: {
+      ...state.assemblyRun,
+      evaluationState: resolveUpdater(state.assemblyRun.evaluationState, updater),
     },
   };
 }
 
-function setWorkflowParams(
+function setAssemblyOperationParams(
   state: AppShellContextState,
-  updater: Extract<AppShellAction, { type: "setWorkflowParams" }>["value"],
+  updater: Extract<AppShellAction, { type: "setAssemblyOperationParams" }>["value"],
 ): AppShellContextState {
   return {
     ...state,
-    workflowRun: {
-      ...state.workflowRun,
-      workflowParams: resolveUpdater(state.workflowRun.workflowParams, updater),
+    assemblyRun: {
+      ...state.assemblyRun,
+      assemblyOperationParams: resolveUpdater(state.assemblyRun.assemblyOperationParams, updater),
     },
   };
 }
@@ -186,10 +186,10 @@ function setActiveRunId(
 ): AppShellContextState {
   return {
     ...state,
-    workflowRun: {
-      ...state.workflowRun,
+    assemblyRun: {
+      ...state.assemblyRun,
       activeRunIds: {
-        ...state.workflowRun.activeRunIds,
+        ...state.assemblyRun.activeRunIds,
         [action.key]: action.runId,
       },
     },
@@ -206,45 +206,58 @@ function setLocked(state: AppShellContextState, locked: boolean): AppShellContex
   };
 }
 
+function setRepoMode(
+  state: AppShellContextState,
+  repoMode: "url" | "upload",
+): AppShellContextState {
+  return {
+    ...state,
+    reeDraft: {
+      ...state.reeDraft,
+      repoMode,
+    },
+  };
+}
+
 function setAssemblyRunLoading(state: AppShellContextState, key: string): AppShellContextState {
   return {
     ...state,
-    workflowRun: {
-      ...state.workflowRun,
-      actionStates: { ...state.workflowRun.actionStates, [key]: "loading" },
+    assemblyRun: {
+      ...state.assemblyRun,
+      actionStates: { ...state.assemblyRun.actionStates, [key]: "loading" },
     },
   };
 }
 
-function completeWorkflowRun(
+function completeAssemblyRun(
   state: AppShellContextState,
-  completion: WorkflowRunCompletionPayload,
+  completion: AssemblyRunCompletionPayload,
 ): AppShellContextState {
-  const { workflowRun } = state;
+  const { assemblyRun } = state;
   return {
     ...state,
-    workflowRun: {
-      ...workflowRun,
-      actionStates: { ...workflowRun.actionStates, [completion.key]: completion.actionState },
-      badges: { ...workflowRun.badges, [completion.key]: completion.badge },
-      timestamps: { ...workflowRun.timestamps, [completion.key]: completion.timestamp },
+    assemblyRun: {
+      ...assemblyRun,
+      actionStates: { ...assemblyRun.actionStates, [completion.key]: completion.actionState },
+      badges: { ...assemblyRun.badges, [completion.key]: completion.badge },
+      timestamps: { ...assemblyRun.timestamps, [completion.key]: completion.timestamp },
     },
   };
 }
 
-function resetWorkflowOnSourceChange(
+function resetAssemblyAfterSourceChange(
   state: AppShellContextState,
-  workflowParams: WorkflowParams,
+  assemblyOperationParams: ReeAssemblyOperationParams,
 ): AppShellContextState {
   const reset = computeSourceChangeConsequences({
     reeSpec: state.reeDraft.reeSpec,
     workspaceSourceState: state.reeDraft.workspaceSourceState,
     artifactStatus: state.reeDraft.artifactStatus,
-    evaluationState: state.workflowRun.evaluationState,
-    actionStates: state.workflowRun.actionStates,
-    badges: state.workflowRun.badges,
-    timestamps: state.workflowRun.timestamps,
-    workflowParams,
+    evaluationState: state.assemblyRun.evaluationState,
+    actionStates: state.assemblyRun.actionStates,
+    badges: state.assemblyRun.badges,
+    timestamps: state.assemblyRun.timestamps,
+    assemblyOperationParams,
   });
   return {
     ...state,
@@ -255,13 +268,13 @@ function resetWorkflowOnSourceChange(
       artifactStatus: reset.artifactStatus,
       sourceSnapshotArchiveName: reset.sourceSnapshotArchiveName,
     },
-    workflowRun: {
-      ...state.workflowRun,
+    assemblyRun: {
+      ...state.assemblyRun,
       evaluationState: reset.evaluationState,
       actionStates: reset.actionStates,
       badges: reset.badges,
       timestamps: reset.timestamps,
-      workflowParams: reset.workflowParams,
+      assemblyOperationParams: reset.assemblyOperationParams,
     },
   };
 }
@@ -279,18 +292,20 @@ export function appShellReducer(
       return setArtifactStatus(state, action.value);
     case "setEvaluationState":
       return setEvaluationState(state, action.value);
-    case "setWorkflowParams":
-      return setWorkflowParams(state, action.value);
+    case "setAssemblyOperationParams":
+      return setAssemblyOperationParams(state, action.value);
     case "setActiveRunId":
       return setActiveRunId(state, action);
     case "setLocked":
       return setLocked(state, action.locked);
+    case "setRepoMode":
+      return setRepoMode(state, action.repoMode);
     case "setAssemblyRunLoading":
       return setAssemblyRunLoading(state, action.key);
     case "completeAssemblyRun":
-      return completeWorkflowRun(state, action.completion);
+      return completeAssemblyRun(state, action.completion);
     case "resetAssemblyAfterSourceChange":
-      return resetWorkflowOnSourceChange(state, action.workflowParams);
+      return resetAssemblyAfterSourceChange(state, action.assemblyOperationParams);
     case "showToast":
       return { ...state, uiChrome: { ...state.uiChrome, toast: action.toast } };
     case "clearToast":
@@ -299,10 +314,6 @@ export function appShellReducer(
       return applyPatch(state, action);
     case "applySourceOutcome":
       return applySourceOutcome(state, action.outcome);
-    case "completeWorkflowRun":
-      return completeWorkflowRun(state, action.completion);
-    case "resetWorkflowOnSourceChange":
-      return resetWorkflowOnSourceChange(state, action.workflowParams);
     default:
       return state;
   }

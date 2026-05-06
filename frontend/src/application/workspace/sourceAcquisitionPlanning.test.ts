@@ -5,8 +5,8 @@ import {
   planClearedSourceStateResult,
   planDownloadedSourceState,
   planSourceDownloadAction,
+  planSourceExecutionFailure,
   planSourceUploadAction,
-  planSourceWorkflowFailure,
   planUploadedSourceState,
 } from "./sourceAcquisitionPlanning";
 
@@ -32,7 +32,7 @@ function buildRee(): ReeEditorViewModel {
 }
 
 describe("sourceAcquisitionPlanning", () => {
-  it("builds a normalized download workflow request", () => {
+  it("builds a normalized download execution request", () => {
     const result = planSourceDownloadAction(buildRee(), "git", " https://example.org/repo.git ");
 
     expect(result.ok).toBe(true);
@@ -46,7 +46,7 @@ describe("sourceAcquisitionPlanning", () => {
     }
   });
 
-  it("builds an upload workflow request", () => {
+  it("builds an upload execution request", () => {
     const result = planSourceUploadAction(buildRee(), "source.tar.gz", "abc123");
 
     expect(result.ok).toBe(true);
@@ -59,8 +59,8 @@ describe("sourceAcquisitionPlanning", () => {
     }
   });
 
-  it("formats workflow failures for the shell", () => {
-    expect(planSourceWorkflowFailure("failed")).toEqual({
+  it("formats execution run failures for the shell", () => {
+    expect(planSourceExecutionFailure("failed")).toEqual({
       ok: false,
       error: "Source failed",
     });

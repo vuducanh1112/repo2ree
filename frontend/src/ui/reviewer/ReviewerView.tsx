@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ReeEditorViewModel } from "../../application/ree-editor/reeEditorViewModel";
 import type {
   Level,
+  ReeAssemblyParamValue,
   StepState,
-  WorkflowParamValue,
-} from "../../application/workflow/WorkflowStepTypes";
+} from "../../application/ree-assembly/assemblyStepTypes";
+import type { ReeEditorViewModel } from "../../application/ree-editor/reeEditorViewModel";
 import { useReviewClient } from "../../data/reviews/client";
 import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
 import { LEVELS } from "../../domain/review/levels";
@@ -87,7 +87,7 @@ export function ReviewerView({
   const [stepParams, setStepParams] =
     useState<Record<ReactivationStepKey, ReactivationParams>>(initReactivationParams);
 
-  const setParam = (stepKey: ReactivationStepKey, paramKey: string, value: WorkflowParamValue) =>
+  const setParam = (stepKey: ReactivationStepKey, paramKey: string, value: ReeAssemblyParamValue) =>
     setStepParams((current) => ({
       ...current,
       [stepKey]: { ...current[stepKey], [paramKey]: value },

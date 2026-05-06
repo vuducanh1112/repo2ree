@@ -9,20 +9,20 @@ import {
   S_SECTION_LABEL_MB12,
 } from "../../../../theme/theme";
 import { FieldRow, FieldSection } from "../../../components/fieldTips";
-import type { WorkflowPageProps } from "../../sharedWorkflowUi";
+import type { AssemblyPageProps } from "../../sharedAssemblyUi";
 
 interface ExpectedOutputSectionProps {
-  workflow: WorkflowPageProps["workflow"];
+  assemblyStep: AssemblyPageProps["assemblyStep"];
   expectedOutput: string;
   setExpectedOutput: (next: string) => void;
-  params: WorkflowPageProps["params"];
-  setParam: WorkflowPageProps["setParam"];
+  params: AssemblyPageProps["params"];
+  setParam: AssemblyPageProps["setParam"];
   focusedField: string | null;
   setFocusedField: (field: string | null) => void;
 }
 
 export function ExpectedOutputSection({
-  workflow,
+  assemblyStep,
   expectedOutput,
   setExpectedOutput,
   params,
@@ -71,11 +71,11 @@ export function ExpectedOutputSection({
           />
         </div>
 
-        {workflow.params && workflow.params.length > 0 && (
+        {assemblyStep.params && assemblyStep.params.length > 0 && (
           <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
             <div style={S_SECTION_LABEL_MB12}>Additional Parameters</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end" }}>
-              {workflow.params.map((p) => {
+              {assemblyStep.params.map((p) => {
                 const paramValue = params[p.key as keyof typeof params];
 
                 return (
@@ -108,7 +108,7 @@ export function ExpectedOutputSection({
                           borderRadius: 99,
                           border: "none",
                           cursor: "pointer",
-                          background: paramValue ? workflow.color : C.borderMid,
+                          background: paramValue ? assemblyStep.color : C.borderMid,
                           transition: "background 0.2s",
                           position: "relative",
                         }}

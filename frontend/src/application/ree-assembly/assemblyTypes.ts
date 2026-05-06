@@ -1,27 +1,27 @@
 export type {
-  AutomationStepKey as ReeAssemblyOperationKey,
-  AutomationStepParams as ReeAssemblyOperationParams,
-  AutomationStepParamsByKey as ReeAssemblyOperationParamsByKey,
-} from "../../domain/workflow/AutomationStepTypes";
+  ReeAssemblyOperationKey,
+  ReeAssemblyOperationParams,
+  ReeAssemblyOperationParamsByKey,
+} from "../../domain/ree-assembly/ReeAssemblyOperationParams";
 
 import type {
-  AutomationStepKey,
-  AutomationStepParamsByKey,
-} from "../../domain/workflow/AutomationStepTypes";
+  ReeAssemblyOperationKey,
+  ReeAssemblyOperationParamsByKey,
+} from "../../domain/ree-assembly/ReeAssemblyOperationParams";
 
 export interface ReeAssemblyRunParamsByKey {
-  evaluate: AutomationStepParamsByKey["evaluate"];
-  build: AutomationStepParamsByKey["build"] & {
+  evaluate: ReeAssemblyOperationParamsByKey["evaluate"];
+  build: ReeAssemblyOperationParamsByKey["build"] & {
     build_runtime_script_path?: string;
     produced_runtime_path?: string;
     _expectedOutput?: string;
   };
-  hbom: AutomationStepParamsByKey["hbom"];
-  sbom: AutomationStepParamsByKey["sbom"] & {
+  hbom: ReeAssemblyOperationParamsByKey["hbom"];
+  sbom: ReeAssemblyOperationParamsByKey["sbom"] & {
     produced_runtime_path?: string;
   };
-  activation: AutomationStepParamsByKey["activation"];
+  activation: ReeAssemblyOperationParamsByKey["activation"];
 }
 
-export type ReeAssemblyRunParams<K extends AutomationStepKey = AutomationStepKey> =
+export type ReeAssemblyRunParams<K extends ReeAssemblyOperationKey = ReeAssemblyOperationKey> =
   ReeAssemblyRunParamsByKey[K];

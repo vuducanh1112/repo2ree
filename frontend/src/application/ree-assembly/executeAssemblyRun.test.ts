@@ -48,7 +48,7 @@ function executedCommands(executeCommands: ReturnType<typeof vi.fn>) {
 }
 
 describe("executeAssemblyRun", () => {
-  it("runs a workflow step, refreshes build outputs, and executes planned commands", async () => {
+  it("runs a assembly step, refreshes build outputs, and executes planned commands", async () => {
     const executeCommands = vi.fn();
     const refreshWorkspace = vi.fn(async () => ({
       files: [{ id: "runtime", name: "runtime.tar.gz", type: "file" as const }],
@@ -139,7 +139,7 @@ describe("executeAssemblyRun", () => {
     });
   });
 
-  it("uses generated IDs for non-workflow completion patches", async () => {
+  it("uses generated IDs for manual artifact completion patches", async () => {
     const executeCommands = vi.fn();
 
     await executeAssemblyRun({

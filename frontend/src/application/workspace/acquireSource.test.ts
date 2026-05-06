@@ -69,7 +69,7 @@ describe("createSourceUseCase", () => {
     });
   });
 
-  it("reports download validation errors without starting the source workflow", async () => {
+  it("reports download validation errors without starting the source execution run", async () => {
     const executeCommands = vi.fn();
     const sourceChanged = vi.fn();
     const runSourceAction = vi.fn();
@@ -93,7 +93,7 @@ describe("createSourceUseCase", () => {
     ]);
   });
 
-  it("plans upload failure commands for terminal workflow failures", async () => {
+  it("plans upload failure commands for terminal execution run failures", async () => {
     const executeCommands = vi.fn();
 
     const useCase = createSourceUseCase({
@@ -120,7 +120,7 @@ describe("createSourceUseCase", () => {
     });
   });
 
-  it("reports upload validation errors without resetting workflow state", async () => {
+  it("reports upload validation errors without resetting assembly state", async () => {
     const executeCommands = vi.fn();
     const sourceChanged = vi.fn();
     const runSourceAction = vi.fn();

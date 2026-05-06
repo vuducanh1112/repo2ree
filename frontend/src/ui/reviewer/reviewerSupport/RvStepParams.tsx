@@ -1,4 +1,4 @@
-import type { WorkflowParamValue } from "../../../application/workflow/WorkflowStepTypes";
+import type { ReeAssemblyParamValue } from "../../../application/ree-assembly/assemblyStepTypes";
 import { C, F, S_SECTION_LABEL } from "../../theme/theme";
 import type {
   ReactivationParams,
@@ -9,7 +9,11 @@ import type {
 interface RvStepParamsProps {
   step: ReactivationStep;
   params: ReactivationParams;
-  onSetParam: (stepKey: ReactivationStepKey, paramKey: string, value: WorkflowParamValue) => void;
+  onSetParam: (
+    stepKey: ReactivationStepKey,
+    paramKey: string,
+    value: ReeAssemblyParamValue,
+  ) => void;
 }
 
 export function RvStepParams({ step, params, onSetParam }: RvStepParamsProps) {

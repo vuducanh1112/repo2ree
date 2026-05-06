@@ -1,26 +1,26 @@
 import { describe, expect, it } from "vitest";
 import {
+  mapAssemblyCommandsToEffects,
   mapSourceCommandsToEffects,
-  mapWorkflowStepCommandsToEffects,
 } from "./workspaceMutationEffects";
 
-describe("mapWorkflowStepCommandsToEffects", () => {
+describe("mapAssemblyCommandsToEffects", () => {
   it("maps persist commands into shell persistence effects", () => {
     expect(
-      mapWorkflowStepCommandsToEffects([{ type: "persistFile", path: "sbom.json", content: "{}" }]),
+      mapAssemblyCommandsToEffects([{ type: "persistFile", path: "sbom.json", content: "{}" }]),
     ).toEqual([{ type: "persistFile", path: "sbom.json", content: "{}" }]);
   });
 
   it("maps toast commands into shell toast effects", () => {
     expect(
-      mapWorkflowStepCommandsToEffects([
+      mapAssemblyCommandsToEffects([
         { type: "toast", message: "Build complete", toastType: "success" },
       ]),
     ).toEqual([{ type: "toast", message: "Build complete", toastType: "success" }]);
   });
 
   it("drops hydrateWorkspace commands with no state updates (files come from React Query)", () => {
-    const effects = mapWorkflowStepCommandsToEffects([
+    const effects = mapAssemblyCommandsToEffects([
       {
         type: "hydrateWorkspace",
         workspaceFiles: [],
@@ -29,13 +29,11 @@ describe("mapWorkflowStepCommandsToEffects", () => {
       },
     ]);
 
-    // hydrateWorkspace with no reeSpec/workspaceSourceState/artifactStatus/evaluationState
-    // produces no dispatch commands since workspace files now come from React Query
     expect(effects).toHaveLength(0);
   });
 
   it("maps hydrateWorkspace with reeSpec into dispatchStateCommand", () => {
-    const effects = mapWorkflowStepCommandsToEffects([
+    const effects = mapAssemblyCommandsToEffects([
       {
         type: "hydrateWorkspace",
         workspaceFiles: [],
@@ -82,7 +80,6 @@ describe("mapSourceCommandsToEffects", () => {
       },
     ]);
 
-    // setSourceLog is dropped since workflow logs now come from React Query
     expect(effects).toHaveLength(0);
   });
 });

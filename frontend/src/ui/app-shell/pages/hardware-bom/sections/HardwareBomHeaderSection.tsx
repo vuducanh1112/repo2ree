@@ -1,7 +1,7 @@
 import { Ic } from "../../../../shared/components/Icon";
 import { F } from "../../../../theme/theme";
-import { WorkflowPageHeader } from "../../../components/pageChrome";
-import { workflowToneSurfaceStyle } from "../../../components/statusUiStyles";
+import { AssemblyPageHeader } from "../../../components/pageChrome";
+import { assemblyToneSurfaceStyle } from "../../../components/statusUiStyles";
 
 interface HardwareBomHeaderSectionProps {
   locked: boolean;
@@ -10,7 +10,7 @@ interface HardwareBomHeaderSectionProps {
 
 export function HardwareBomHeaderSection({ locked, onUnlock }: HardwareBomHeaderSectionProps) {
   return (
-    <WorkflowPageHeader
+    <AssemblyPageHeader
       color="#0f766e"
       icon={Ic.chip(18)}
       title="Create Hardware BOM"
@@ -30,7 +30,7 @@ export function HardwareBomHeaderSection({ locked, onUnlock }: HardwareBomHeader
               alignItems: "center",
               gap: 6,
               padding: "6px 12px",
-              ...workflowToneSurfaceStyle("warn"),
+              ...assemblyToneSurfaceStyle("warn"),
               borderRadius: 6,
               cursor: "pointer",
               fontSize: 13,

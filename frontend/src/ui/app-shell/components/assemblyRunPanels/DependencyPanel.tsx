@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { DepGroup } from "../../../../application/workflow/workflowDependencyAnalysis";
+import type { DepGroup } from "../../../../application/ree-assembly/assemblyDependencyAnalysis";
 import { DependencyGroupCard } from "./DependencyGroupCard";
 import { DependencySummaryFilters } from "./DependencySummaryFilters";
 

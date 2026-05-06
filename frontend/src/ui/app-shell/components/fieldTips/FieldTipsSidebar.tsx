@@ -29,7 +29,7 @@ export function FieldTipsSidebar({
   const emptyText =
     emptyMessage ||
     "Click any field — here or in the status bar above — to see examples, format rules, and commands.";
-  const workflowTipFields = (tipFields || []).filter((fieldKey) => !!FIELD_META[fieldKey]);
+  const assemblyTipFields = (tipFields || []).filter((fieldKey) => !!FIELD_META[fieldKey]);
 
   return (
     <div
@@ -61,7 +61,7 @@ export function FieldTipsSidebar({
         <FieldTipCard fieldKey={activeField} onDismiss={onClear} />
       ) : (
         <FieldTipsEmptyState
-          workflowTipFields={workflowTipFields}
+          assemblyTipFields={assemblyTipFields}
           onFocusField={onFocusField}
           emptyText={emptyText}
         />

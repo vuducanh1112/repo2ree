@@ -1,7 +1,7 @@
 import type React from "react";
 import { C, F, S_SECTION_LABEL_SMALL, S_STATUS_BADGE_SM_BASE } from "../../theme/theme";
 
-export const workflowSectionCardStyle = (active = false): React.CSSProperties => ({
+export const assemblySectionCardStyle = (active = false): React.CSSProperties => ({
   border: `1.5px solid ${active ? C.accentBorder : C.border}`,
   background: C.surface,
   borderRadius: 10,
@@ -52,7 +52,7 @@ export const WORKFLOW_LOG_EMPTY_STYLE: React.CSSProperties = {
   color: C.textMuted,
 };
 
-export const workflowStatusCardStyle = (
+export const assemblyStatusCardStyle = (
   isSet: boolean,
   accentColor: string,
 ): React.CSSProperties => ({
@@ -65,7 +65,7 @@ export const workflowStatusCardStyle = (
   borderRadius: 9,
 });
 
-export const workflowStatusIconWrapStyle = (
+export const assemblyStatusIconWrapStyle = (
   isSet: boolean,
   accentColor: string,
 ): React.CSSProperties => ({
@@ -79,7 +79,7 @@ export const workflowStatusIconWrapStyle = (
   background: isSet ? `${accentColor}18` : `${C.border}40`,
 });
 
-export const workflowStatusKeyStyle = (
+export const assemblyStatusKeyStyle = (
   isSet: boolean,
   accentColor: string,
 ): React.CSSProperties => ({
@@ -90,7 +90,7 @@ export const workflowStatusKeyStyle = (
   marginBottom: 1,
 });
 
-export const workflowStatusValueStyle = (
+export const assemblyStatusValueStyle = (
   isSet: boolean,
   accentColor: string,
 ): React.CSSProperties => ({
@@ -103,14 +103,14 @@ export const workflowStatusValueStyle = (
   color: isSet ? accentColor : C.textMuted,
 });
 
-export const workflowStatusBadgeStyle = (accentColor: string): React.CSSProperties => ({
+export const assemblyStatusBadgeStyle = (accentColor: string): React.CSSProperties => ({
   ...S_STATUS_BADGE_SM_BASE,
   color: accentColor,
   background: `${accentColor}12`,
   border: `1px solid ${accentColor}40`,
 });
 
-type WorkflowTone = "warn" | "good" | "info";
+type AssemblyTone = "warn" | "good" | "info";
 
 const WORKFLOW_TONE = {
   warn: { bg: "#fffbeb", border: "#fde68a", icon: "#b45309", text: "#92400e" },
@@ -118,7 +118,7 @@ const WORKFLOW_TONE = {
   info: { bg: "#ecfeff", border: "#a5f3fc", icon: "#0e7490", text: "#155e75" },
 } as const;
 
-export const workflowTonePanelStyle = (tone: WorkflowTone): React.CSSProperties => {
+export const assemblyTonePanelStyle = (tone: AssemblyTone): React.CSSProperties => {
   const toneStyle = WORKFLOW_TONE[tone];
   return {
     display: "flex",
@@ -131,20 +131,20 @@ export const workflowTonePanelStyle = (tone: WorkflowTone): React.CSSProperties 
   };
 };
 
-export const workflowToneIconStyle = (tone: WorkflowTone): React.CSSProperties => ({
+export const assemblyToneIconStyle = (tone: AssemblyTone): React.CSSProperties => ({
   display: "flex",
   color: WORKFLOW_TONE[tone].icon,
   flexShrink: 0,
   marginTop: 1,
 });
 
-export const workflowToneTextStyle = (tone: WorkflowTone): React.CSSProperties => ({
+export const assemblyToneTextStyle = (tone: AssemblyTone): React.CSSProperties => ({
   fontSize: 11,
   color: WORKFLOW_TONE[tone].text,
   lineHeight: 1.35,
 });
 
-export const workflowToneSurfaceStyle = (tone: WorkflowTone): React.CSSProperties => ({
+export const assemblyToneSurfaceStyle = (tone: AssemblyTone): React.CSSProperties => ({
   background: WORKFLOW_TONE[tone].bg,
   border: `1px solid ${WORKFLOW_TONE[tone].border}`,
   color: WORKFLOW_TONE[tone].text,

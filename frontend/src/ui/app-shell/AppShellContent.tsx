@@ -9,12 +9,12 @@ import {
 import type { useAppShell } from "./hooks/useAppShell";
 import {
   ArchivePageContainer,
+  AssemblyPageContainer,
   FilesPageContainer,
   HardwareBomPageContainer,
   MetadataPageContainer,
   OverviewPageContainer,
   SourcePageContainer,
-  WorkflowPageContainer,
 } from "./pages/AppShellPageSwitch";
 
 type AppShellController = ReturnType<typeof useAppShell>;
@@ -24,7 +24,7 @@ interface AppShellContentProps {
   inclusionState: AppShellController["inclusionState"];
   reeDraft: AppShellController["reeDraft"];
   workspaceRemote: AppShellController["workspaceRemote"];
-  workflowRun: AppShellController["workflowRun"];
+  assemblyRun: AppShellController["assemblyRun"];
   uiChrome: AppShellController["uiChrome"];
   level: AppShellController["level"];
   currentReeFiles: AppShellController["currentReeFiles"];
@@ -44,7 +44,7 @@ export function AppShellContent(props: AppShellContentProps) {
         <SourcePageContainer {...props} />
         <MetadataPageContainer {...props} />
         <HardwareBomPageContainer {...props} />
-        <WorkflowPageContainer {...props} />
+        <AssemblyPageContainer {...props} />
         <ArchivePageContainer {...props} />
         <FilesPageContainer {...props} />
       </div>

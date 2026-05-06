@@ -3,6 +3,6 @@ export { PageEvaluate } from "./evaluate/EvaluatePage";
 export { PageGenerateSBOM } from "./generate-sbom/GenerateSbomPage";
 export { PageHardwareBom } from "./hardware-bom/HardwareBomPage";
 export { PageMetadataEntry } from "./metadata/MetadataPage";
-export type { WorkflowPageProps } from "./sharedWorkflowUi";
+export type { AssemblyPageProps } from "./sharedAssemblyUi";
 export { SourceAcquisitionPage } from "./source/SourceAcquisitionPage";
 export { PageTestActivation } from "./test-activation/ActivationTestPage";

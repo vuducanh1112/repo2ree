@@ -1,25 +1,25 @@
+import { REE_ASSEMBLY_STEPS } from "../ree-assembly/assemblyCatalog";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
-import { AUTOMATION_STEPS } from "../workflow/workflowCatalog";
 
-interface NonWorkflowCompletionPlan {
+interface ManualArtifactCompletionPlan {
   reePatch?: Partial<ReeEditorViewModel>;
   lock?: boolean;
   successMessage: string;
 }
 
-interface NonWorkflowCompletionArgs {
+interface ManualArtifactCompletionArgs {
   key: string;
   generatedSwhid?: string;
   generatedZenodoDoi?: string;
   generatedDataverseDoi?: string;
 }
 
-export function planNonWorkflowCompletion({
+export function planManualArtifactCompletion({
   key,
   generatedSwhid,
   generatedZenodoDoi,
   generatedDataverseDoi,
-}: NonWorkflowCompletionArgs): NonWorkflowCompletionPlan {
+}: ManualArtifactCompletionArgs): ManualArtifactCompletionPlan {
   if (key === "create") {
     return {
       lock: true,
@@ -48,8 +48,8 @@ export function planNonWorkflowCompletion({
     };
   }
 
-  const workflow = AUTOMATION_STEPS.find((workflowStep) => workflowStep.key === key);
+  const assemblyStep = REE_ASSEMBLY_STEPS.find((assemblyStep) => assemblyStep.key === key);
   return {
-    successMessage: `${workflow?.label ?? key} completed`,
+    successMessage: `${assemblyStep?.label ?? key} completed`,
   };
 }

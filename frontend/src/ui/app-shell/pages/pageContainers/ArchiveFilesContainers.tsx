@@ -1,36 +1,36 @@
 import { PAGE } from "../../../../application/state/pages";
 import { useApiRuntime } from "../../../../data/apiRuntime";
-import type { WorkflowLogs } from "../../../../domain/ree/ReeTypes";
+import type { ExecutionRunLogs } from "../../../../domain/ree/ReeTypes";
 import { PageArchive as ArchivePage } from "../archive/ArchivePage";
 import { PageFiles as FilesPage } from "../files/FilesPage";
-import { type AppShellPageContainerProps, ContentSection, useWorkflowLogEntry } from "./shared";
+import { type AppShellPageContainerProps, ContentSection, useAssemblyRunLogEntry } from "./shared";
 
 export function ArchivePageContainer({
   workspaceRemote,
-  workflowRun,
+  assemblyRun,
   uiChrome,
   ree,
   commands,
 }: AppShellPageContainerProps) {
   const { reeId } = useApiRuntime();
   const { page } = uiChrome;
-  const { badges, actionStates } = workflowRun;
-  const swhLog = useWorkflowLogEntry({
+  const { badges, actionStates } = assemblyRun;
+  const swhLog = useAssemblyRunLogEntry({
     reeId,
-    runId: workflowRun.activeRunIds.swh,
-    fallbackTimestamp: workflowRun.timestamps.swh,
+    runId: assemblyRun.activeRunIds.swh,
+    fallbackTimestamp: assemblyRun.timestamps.swh,
   });
-  const zenodoLog = useWorkflowLogEntry({
+  const zenodoLog = useAssemblyRunLogEntry({
     reeId,
-    runId: workflowRun.activeRunIds.zenodo,
-    fallbackTimestamp: workflowRun.timestamps.zenodo,
+    runId: assemblyRun.activeRunIds.zenodo,
+    fallbackTimestamp: assemblyRun.timestamps.zenodo,
   });
-  const dataverseLog = useWorkflowLogEntry({
+  const dataverseLog = useAssemblyRunLogEntry({
     reeId,
-    runId: workflowRun.activeRunIds.dataverse,
-    fallbackTimestamp: workflowRun.timestamps.dataverse,
+    runId: assemblyRun.activeRunIds.dataverse,
+    fallbackTimestamp: assemblyRun.timestamps.dataverse,
   });
-  const logs: WorkflowLogs = {};
+  const logs: ExecutionRunLogs = {};
   if (swhLog) logs.swh = swhLog;
   if (zenodoLog) logs.zenodo = zenodoLog;
   if (dataverseLog) logs.dataverse = dataverseLog;

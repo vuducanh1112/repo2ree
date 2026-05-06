@@ -1,4 +1,4 @@
-import type { ArchiveRepo } from "./WorkflowStepTypes";
+import type { ArchiveRepo } from "./assemblyStepTypes";
 
 export const ARCHIVE_REPOSITORIES: ArchiveRepo[] = [
   {

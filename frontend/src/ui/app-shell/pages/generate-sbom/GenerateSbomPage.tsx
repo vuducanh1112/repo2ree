@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
+import type { ReeAssemblyRunParams } from "../../../../application/ree-assembly/assemblyTypes";
 import { PAGE } from "../../../../application/state/pages";
-import type { AutomationStepRunParams } from "../../../../application/workflow/WorkflowTypes";
 import { Ic } from "../../../shared/components/Icon";
 import {
   S_SECTION_LABEL,
@@ -11,20 +11,23 @@ import {
   S_WORKFLOW_SERVICE_MAIN_SCROLL,
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../theme/theme";
+import {
+  AssemblyRunActionSection,
+  AssemblyRunLogSection,
+} from "../../components/assemblyRunPanels";
 import { descToTwoTierTips, FieldTipsSidebar } from "../../components/fieldTips";
-import { NextStepNudge, WorkflowPageHeader } from "../../components/pageChrome";
+import { AssemblyPageHeader, NextStepNudge } from "../../components/pageChrome";
 import { ScriptPanel } from "../../components/scriptAndFile";
-import { WorkflowLogSection, WorkflowRunActionSection } from "../../components/workflowRunPanels";
-import { SVC_SCRIPT_FIELDS } from "../sharedWorkflowConstants";
-import { findFileByPath } from "../sharedWorkflowHelpers";
-import type { WorkflowPageProps } from "../sharedWorkflowUi";
+import { SVC_SCRIPT_FIELDS } from "../sharedAssemblyConstants";
+import { findFileByPath } from "../sharedAssemblyHelpers";
+import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { goToBuild, SbomProducedSection, SbomRuntimeInputSection } from "./GenerateSbomSections";
 
 const SBOM_PARSE_CHAR_LIMIT = 300_000;
 const SBOM_PREVIEW_CHAR_LIMIT = 120_000;
 
 export function PageGenerateSBOM({
-  workflow,
+  assemblyStep,
   ree: reeDraft,
   badges,
   workspaceFiles,
@@ -41,14 +44,14 @@ export function PageGenerateSBOM({
   params,
   onReeSpecChange,
   onPersistWorkspaceFile,
-}: WorkflowPageProps) {
-  const sbomParams: AutomationStepRunParams<"sbom"> = {
-    ...(params as AutomationStepRunParams<"sbom">),
+}: AssemblyPageProps) {
+  const sbomParams: ReeAssemblyRunParams<"sbom"> = {
+    ...(params as ReeAssemblyRunParams<"sbom">),
     produced_runtime_path: reeDraft.runtime,
   };
 
   const files = workspaceFiles;
-  const sbomColor = workflow.color;
+  const sbomColor = assemblyStep.color;
   const rt = reeDraft.runtime && reeDraft.runtime !== "__skipped__" ? reeDraft.runtime : null;
   const isTb = !!(rt && /\.(tar\.gz|tgz)$/i.test(rt));
   const hasSbom = !!(reeDraft.sbom && reeDraft.sbom !== "__skipped__");
@@ -62,7 +65,7 @@ export function PageGenerateSBOM({
     ? `${sbomText.slice(0, SBOM_PREVIEW_CHAR_LIMIT)}\n\n... preview truncated ...`
     : sbomText;
 
-  const sbomScripts = SVC_SCRIPT_FIELDS[workflow.key] || [];
+  const sbomScripts = SVC_SCRIPT_FIELDS[assemblyStep.key] || [];
   const pkgCount = useMemo(() => {
     if (!hasSbom || !sbomNode?.content) return null;
     if (sbomNode.content.length > SBOM_PARSE_CHAR_LIMIT) return null;
@@ -75,12 +78,12 @@ export function PageGenerateSBOM({
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
-      <WorkflowPageHeader
-        color={workflow.color}
+      <AssemblyPageHeader
+        color={assemblyStep.color}
         icon={Ic.package(18)}
         title="Generate SBOM"
         subtitle="Generate a machine-readable SBOM from the runtime image/tarball"
-        tips={descToTwoTierTips(workflow.desc)}
+        tips={descToTwoTierTips(assemblyStep.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -99,7 +102,7 @@ export function PageGenerateSBOM({
             onGoBuild={() => goToBuild(onGo as (key: typeof PAGE.BUILD) => void)}
           />
 
-          <WorkflowRunActionSection
+          <AssemblyRunActionSection
             color={sbomColor}
             running={running}
             runDone={runDone}
@@ -108,8 +111,8 @@ export function PageGenerateSBOM({
             runningLabel="Generating…"
             doneLabel="Regenerate SBOM"
             helperText="Generate an SPDX JSON SBOM from the selected runtime."
-            onCancel={() => onCancel?.(workflow.key)}
-            onRun={() => onRun(workflow.key, sbomParams)}
+            onCancel={() => onCancel?.(assemblyStep.key)}
+            onRun={() => onRun(assemblyStep.key, sbomParams)}
           />
 
           <SbomProducedSection
@@ -143,7 +146,7 @@ export function PageGenerateSBOM({
           )}
 
           <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
-            <WorkflowLogSection log={log} running={running} />
+            <AssemblyRunLogSection log={log} running={running} />
           </div>
 
           <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>

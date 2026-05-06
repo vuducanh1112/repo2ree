@@ -3,14 +3,14 @@ import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { LevelBadge } from "../../../shared/components/LevelBadge";
 import { C, F, S_FIELD_HELP_TEXT_SMALL } from "../../../theme/theme";
+import { DependencyPanel } from "../../components/assemblyRunPanels";
 import { FieldRow, FieldSection } from "../../components/fieldTips";
 import {
-  workflowStatusBadgeStyle,
-  workflowToneIconStyle,
-  workflowTonePanelStyle,
-  workflowToneTextStyle,
+  assemblyStatusBadgeStyle,
+  assemblyToneIconStyle,
+  assemblyTonePanelStyle,
+  assemblyToneTextStyle,
 } from "../../components/statusUiStyles";
-import { DependencyPanel } from "../../components/workflowRunPanels";
 import { countContainerAndNixFiles, EXPECTED_DEP_FILES } from "./EvaluatePageHelpers";
 
 export function EvaluateScoreSection(props: {
@@ -128,15 +128,15 @@ export function EvaluateScoreSection(props: {
                   </div>
                   <div style={S_FIELD_HELP_TEXT_SMALL}>{levelConfig.desc}</div>
                   <div style={{ marginTop: 5, display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div style={workflowTonePanelStyle("warn")}>
-                      <span style={workflowToneIconStyle("warn")}>{Ic.info(11)}</span>
-                      <span style={workflowToneTextStyle("warn")}>
+                    <div style={assemblyTonePanelStyle("warn")}>
+                      <span style={assemblyToneIconStyle("warn")}>{Ic.info(11)}</span>
+                      <span style={assemblyToneTextStyle("warn")}>
                         {levelConfig.problem || "No major bottleneck called out at this level."}
                       </span>
                     </div>
-                    <div style={workflowTonePanelStyle("good")}>
-                      <span style={workflowToneIconStyle("good")}>{Ic.check(11)}</span>
-                      <span style={workflowToneTextStyle("good")}>
+                    <div style={assemblyTonePanelStyle("good")}>
+                      <span style={assemblyToneIconStyle("good")}>{Ic.check(11)}</span>
+                      <span style={assemblyToneTextStyle("good")}>
                         {levelConfig.fix || "No additional fix suggested at this level."}
                       </span>
                     </div>
@@ -154,7 +154,7 @@ export function EvaluateScoreSection(props: {
 export function EvaluateDependenciesSection(props: {
   hasRun: boolean;
   depGroups: ReturnType<
-    typeof import("../../../../application/workflow/workflowDependencyAnalysis").scanDependencies
+    typeof import("../../../../application/ree-assembly/assemblyDependencyAnalysis").scanDependencies
   >;
   files: FileTreeNode[];
   focusedField: string | null;
@@ -209,7 +209,7 @@ export function EvaluateDependenciesSection(props: {
             <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
               <span
                 style={{
-                  ...workflowStatusBadgeStyle("#0e7490"),
+                  ...assemblyStatusBadgeStyle("#0e7490"),
                   fontSize: 11,
                   padding: "3px 10px",
                 }}
@@ -218,7 +218,7 @@ export function EvaluateDependenciesSection(props: {
               </span>
               <span
                 style={{
-                  ...workflowStatusBadgeStyle("#6d28d9"),
+                  ...assemblyStatusBadgeStyle("#6d28d9"),
                   fontSize: 11,
                   padding: "3px 10px",
                 }}

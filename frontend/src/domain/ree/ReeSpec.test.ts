@@ -36,8 +36,8 @@ function buildReeDraft() {
   };
 }
 
-describe("Ree view state shape", () => {
-  it("contains both spec and workflow-derived fields", () => {
+describe("Ree draft shape", () => {
+  it("contains both spec and assembly-derived fields", () => {
     const ree = buildReeDraft();
     expect(ree.name).toBe("demo");
     expect(ree.sourceAvailable).toBe(true);

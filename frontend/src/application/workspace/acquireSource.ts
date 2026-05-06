@@ -9,8 +9,8 @@ import {
   planClearedSourceStateResult,
   planDownloadedSourceState,
   planSourceDownloadAction,
+  planSourceExecutionFailure,
   planSourceUploadAction,
-  planSourceWorkflowFailure,
   planUploadedSourceState,
 } from "./sourceAcquisitionPlanning";
 
@@ -70,7 +70,7 @@ function mapReePatchToSourceOutcome(patch: Partial<ReeEditorViewModel>): {
   };
 }
 
-type SourceWorkflowStatus =
+type SourceExecutionStatus =
   | "created"
   | "queued"
   | "provisioning"
@@ -80,19 +80,19 @@ type SourceWorkflowStatus =
   | "canceling"
   | "canceled";
 
-type SourceWorkflowRequest = Record<string, string | boolean | number | null | undefined>;
+type SourceExecutionRequest = Record<string, string | boolean | number | null | undefined>;
 
-interface SourceWorkflowResult {
-  status: SourceWorkflowStatus;
+interface SourceExecutionResult {
+  status: SourceExecutionStatus;
 }
 
 interface SourceUseCaseEffects {
   executeCommands: (commands: SourceCommand[]) => void;
   sourceChanged: (options?: { silent?: boolean }) => void;
   runSourceAction: (
-    resetRequest: SourceWorkflowRequest,
-    runParams: SourceWorkflowRequest,
-  ) => Promise<SourceWorkflowResult>;
+    resetRequest: SourceExecutionRequest,
+    runParams: SourceExecutionRequest,
+  ) => Promise<SourceExecutionResult>;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   clearWorkspace: () => Promise<void>;
   nowIso: () => string;
@@ -107,9 +107,9 @@ interface UploadSourceArgs {
   archiveContentBase64?: string;
 }
 
-function isTerminalSourceWorkflowFailure(
-  status: SourceWorkflowStatus,
-): status is Extract<SourceWorkflowStatus, "failed" | "canceled"> {
+function isTerminalSourceExecutionFailure(
+  status: SourceExecutionStatus,
+): status is Extract<SourceExecutionStatus, "failed" | "canceled"> {
   return status === "failed" || status === "canceled";
 }
 
@@ -126,26 +126,26 @@ export function createSourceUseCase({
     executeCommands(sourceFailureCommands({ message }));
   };
 
-  const runSourceWorkflowAndHandleFailure = async (
-    resetRequest: SourceWorkflowRequest,
-    runParams: SourceWorkflowRequest,
+  const runSourceExecutionAndHandleFailure = async (
+    resetRequest: SourceExecutionRequest,
+    runParams: SourceExecutionRequest,
   ): Promise<boolean> => {
     sourceChanged({ silent: true });
     executeCommands([{ type: "setSourceLoading" }]);
     const result = await runSourceAction(resetRequest, runParams);
-    if (isTerminalSourceWorkflowFailure(result.status)) {
-      failSourceAction(planSourceWorkflowFailure(result.status).error);
+    if (isTerminalSourceExecutionFailure(result.status)) {
+      failSourceAction(planSourceExecutionFailure(result.status).error);
       return false;
     }
     return true;
   };
 
   const runSourceMutationAction = async (args: {
-    resetRequest: SourceWorkflowRequest;
-    runParams: SourceWorkflowRequest;
+    resetRequest: SourceExecutionRequest;
+    runParams: SourceExecutionRequest;
     onSuccess: () => Promise<void>;
   }) => {
-    if (!(await runSourceWorkflowAndHandleFailure(args.resetRequest, args.runParams))) {
+    if (!(await runSourceExecutionAndHandleFailure(args.resetRequest, args.runParams))) {
       return;
     }
     await args.onSuccess();

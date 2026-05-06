@@ -31,7 +31,7 @@ function buildRee(): ReeEditorViewModel {
   };
 }
 
-describe("workflowRunPolicy", () => {
+describe("assemblyRunPlanning", () => {
   it("adds activation script only for activation runs", () => {
     const ree = buildRee();
 
@@ -61,7 +61,7 @@ describe("workflowRunPolicy", () => {
     expect(deriveReeAssemblyStepLevel("build", 2, 4)).toBe(2);
   });
 
-  it("plans generic workflow completion state", () => {
+  it("plans generic assembly run completion state", () => {
     expect(planAssemblyRunCompletion("build", "2026-01-01T00:00:00Z")).toEqual({
       actionState: "done",
       badge: true,
@@ -80,7 +80,7 @@ describe("workflowRunPolicy", () => {
     });
   });
 
-  it("plans non-workflow completion patches", () => {
+  it("plans manual artifact completion patches", () => {
     expect(
       planManualArtifactUpdateSuccess({
         key: "swh",

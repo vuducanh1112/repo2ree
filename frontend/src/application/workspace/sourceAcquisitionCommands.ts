@@ -1,10 +1,10 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
-import type { LogLine, ReeFile, WorkflowParams } from "../../domain/ree/ReeTypes";
+import type { LogLine, ReeAssemblyOperationParams, ReeFile } from "../../domain/ree/ReeTypes";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
-import { initialAutomationStepParams } from "../workflow/workflowCatalog";
+import { initialReeAssemblyOperationParams } from "../ree-assembly/assemblyCatalog";
 
 export interface SourceOutcomeCommandPayload {
   reeSpecPatch?: Partial<ReeSpec>;
@@ -16,7 +16,7 @@ export interface SourceOutcomeCommandPayload {
 }
 
 export type SourceCommand =
-  | { type: "resetWorkflowOnSourceChange"; workflowParams: WorkflowParams }
+  | { type: "resetAssemblyAfterSourceChange"; assemblyOperationParams: ReeAssemblyOperationParams }
   | { type: "setSourceLoading" }
   | { type: "setActiveRunId"; key: string; runId: string }
   | {
@@ -34,7 +34,10 @@ export type SourceCommand =
 
 export function sourceChangeResetCommands(options: { silent?: boolean } = {}): SourceCommand[] {
   const commands: SourceCommand[] = [
-    { type: "resetWorkflowOnSourceChange", workflowParams: initialAutomationStepParams() },
+    {
+      type: "resetAssemblyAfterSourceChange",
+      assemblyOperationParams: initialReeAssemblyOperationParams(),
+    },
   ];
   if (!options.silent) {
     commands.push({

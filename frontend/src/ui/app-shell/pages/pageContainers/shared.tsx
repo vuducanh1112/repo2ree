@@ -14,7 +14,7 @@ export interface AppShellPageContainerProps {
   inclusionState: AppShellController["inclusionState"];
   reeDraft: AppShellController["reeDraft"];
   workspaceRemote: AppShellController["workspaceRemote"];
-  workflowRun: AppShellController["workflowRun"];
+  assemblyRun: AppShellController["assemblyRun"];
   uiChrome: AppShellController["uiChrome"];
   level: AppShellController["level"];
   currentReeFiles: AppShellController["currentReeFiles"];
@@ -32,7 +32,7 @@ export function ContentSection({ children }: { children: ReactNode }) {
   return <div style={CONTENT_SECTION_STYLE}>{children}</div>;
 }
 
-export function useWorkflowLogEntry(args: {
+export function useAssemblyRunLogEntry(args: {
   reeId: string;
   runId: string | undefined;
   fallbackTimestamp?: string;
@@ -44,7 +44,7 @@ export function useWorkflowLogEntry(args: {
     if (!args.runId) {
       return null;
     }
-    const runTimestamp = resolveWorkflowRunTimestamp(runQuery.data, args.fallbackTimestamp);
+    const runTimestamp = resolveAssemblyRunTimestamp(runQuery.data, args.fallbackTimestamp);
     return {
       lines: logsQuery.data?.lines ?? [],
       ts: runTimestamp,
@@ -52,7 +52,7 @@ export function useWorkflowLogEntry(args: {
   }, [args.fallbackTimestamp, args.runId, logsQuery.data?.lines, runQuery.data]);
 }
 
-function resolveWorkflowRunTimestamp(run: ExecutionRun | undefined, fallback?: string): string {
+function resolveAssemblyRunTimestamp(run: ExecutionRun | undefined, fallback?: string): string {
   return (
     run?.finishedAt || run?.startedAt || run?.createdAt || fallback || new Date().toISOString()
   );

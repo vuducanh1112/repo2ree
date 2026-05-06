@@ -6,13 +6,13 @@ export function OverviewPageContainer({
   ree,
   reeDraft,
   workspaceRemote,
-  workflowRun,
+  assemblyRun,
   uiChrome,
   level,
   commands,
 }: AppShellPageContainerProps) {
   const { page } = uiChrome;
-  const { badges, timestamps } = workflowRun;
+  const { badges, timestamps } = assemblyRun;
   const { workspaceFiles, sourceSnapshotFiles, artifactStatus } = workspaceRemote;
   const { locked } = reeDraft;
 

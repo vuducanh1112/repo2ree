@@ -1,6 +1,6 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { ReeSpec } from "../ree/ReeSpec";
-import type { ActionStates, Badges, Timestamps, WorkflowParams } from "../ree/ReeTypes";
+import type { ActionStates, Badges, ReeAssemblyOperationParams, Timestamps } from "../ree/ReeTypes";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "./WorkspaceSourceState";
 
@@ -12,7 +12,7 @@ export interface SourceChangeInput {
   actionStates: ActionStates;
   badges: Badges;
   timestamps: Timestamps;
-  workflowParams: WorkflowParams;
+  assemblyOperationParams: ReeAssemblyOperationParams;
 }
 
 interface SourceChangeOutput {
@@ -23,7 +23,7 @@ interface SourceChangeOutput {
   badges: Badges;
   timestamps: Timestamps;
   actionStates: ActionStates;
-  workflowParams: WorkflowParams;
+  assemblyOperationParams: ReeAssemblyOperationParams;
   sourceSnapshotArchiveName: string;
 }
 
@@ -60,7 +60,7 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
     badges: {},
     timestamps: {},
     actionStates: {},
-    workflowParams: input.workflowParams,
+    assemblyOperationParams: input.assemblyOperationParams,
     sourceSnapshotArchiveName: "",
   };
 }

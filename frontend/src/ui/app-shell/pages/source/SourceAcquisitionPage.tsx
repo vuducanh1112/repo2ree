@@ -9,10 +9,10 @@ import {
   S_WORKFLOW_PAGE_NUDGE_WRAP,
   S_WORKFLOW_PAGE_ROOT,
 } from "../../../theme/theme";
+import { AssemblyRunLogSection } from "../../components/assemblyRunPanels";
 import { FieldTipsSidebar } from "../../components/fieldTips";
-import { NextStepNudge, WorkflowPageHeader } from "../../components/pageChrome";
-import { WorkflowLogSection } from "../../components/workflowRunPanels";
-import type { SourceAcquisitionPageProps } from "../sharedWorkflowUi";
+import { AssemblyPageHeader, NextStepNudge } from "../../components/pageChrome";
+import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 import type { SourceTypeOption } from "./SourceAcquisitionPageHelpers";
 import { SourceStep1Section, SourceStep2Section } from "./SourceAcquisitionPageSections";
 import { SourceStep3Section } from "./SourceAcquisitionPageStep3Section";
@@ -30,7 +30,7 @@ export function SourceAcquisitionPage({
   focusedField,
   onWorkspaceSourceStateChange,
   onRepoModeChange,
-  onGoWorkflow,
+  onGoAssemblyPage,
   onFocusedFieldChange,
   onDownloadSource,
   onCancelSource,
@@ -105,7 +105,7 @@ export function SourceAcquisitionPage({
 
   return (
     <div style={S_WORKFLOW_PAGE_ROOT}>
-      <WorkflowPageHeader
+      <AssemblyPageHeader
         color="#f59e0b"
         icon={Ic.globe(18)}
         title="Source Acquisition"
@@ -164,17 +164,17 @@ export function SourceAcquisitionPage({
                 locked={locked}
                 focus={focus}
                 onToggleSourceIncluded={toggleSourceIncluded}
-                onGoWorkflow={onGoWorkflow}
+                onGoAssemblyPage={onGoAssemblyPage}
                 onRemoveWorkspaceSource={onRemoveWorkspaceSource}
               />
             </div>
 
             <div style={{ marginTop: 12 }}>
-              <WorkflowLogSection log={log} running={running} title="Source acquisition logs" />
+              <AssemblyRunLogSection log={log} running={running} title="Source acquisition logs" />
             </div>
 
             <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-              <NextStepNudge stepKey={PAGE.SOURCE} badges={badges} onGo={onGoWorkflow} />
+              <NextStepNudge stepKey={PAGE.SOURCE} badges={badges} onGo={onGoAssemblyPage} />
             </div>
           </div>
         </div>

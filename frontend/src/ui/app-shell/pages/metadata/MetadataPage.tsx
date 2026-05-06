@@ -11,9 +11,9 @@ import {
   S_WORKFLOW_PAGE_ROOT,
 } from "../../../theme/theme";
 import { FieldRow, FieldSection, FieldTipsSidebar } from "../../components/fieldTips";
-import { NextStepNudge, WorkflowPageHeader } from "../../components/pageChrome";
-import { workflowToneSurfaceStyle } from "../../components/statusUiStyles";
-import type { PageMetadataEntryProps } from "../sharedWorkflowUi";
+import { AssemblyPageHeader, NextStepNudge } from "../../components/pageChrome";
+import { assemblyToneSurfaceStyle } from "../../components/statusUiStyles";
+import type { PageMetadataEntryProps } from "../sharedAssemblyUi";
 
 const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
   width: "100%",
@@ -35,7 +35,7 @@ export function PageMetadataEntry({
   focusedField,
   onReeChange,
   onLockedChange,
-  onGoWorkflow,
+  onGoAssemblyPage,
   onFocusedFieldChange,
 }: PageMetadataEntryProps) {
   const onChange = onReeChange;
@@ -50,11 +50,11 @@ export function PageMetadataEntry({
 
   return (
     <div style={S_WORKFLOW_PAGE_ROOT}>
-      <WorkflowPageHeader
+      <AssemblyPageHeader
         color="#22c55e"
         icon={Ic.grid(18)}
         title="Provide Metadata"
-        subtitle="Capture the project identity that will follow this REE through the workflow"
+        subtitle="Capture the project identity that will follow this REE through the assemblyStep"
         tips={[
           "Use a stable, descriptive project name so downstream artifacts stay easy to identify.",
           "Hardware details now live in the dedicated HBOM step right after this one.",
@@ -69,7 +69,7 @@ export function PageMetadataEntry({
                 alignItems: "center",
                 gap: 6,
                 padding: "6px 12px",
-                ...workflowToneSurfaceStyle("warn"),
+                ...assemblyToneSurfaceStyle("warn"),
                 borderRadius: 6,
                 cursor: "pointer",
                 fontSize: 13,
@@ -112,7 +112,7 @@ export function PageMetadataEntry({
             </FieldSection>
 
             <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-              <NextStepNudge stepKey="metadata" badges={badges} onGo={onGoWorkflow} />
+              <NextStepNudge stepKey="metadata" badges={badges} onGo={onGoAssemblyPage} />
             </div>
           </div>
         </div>

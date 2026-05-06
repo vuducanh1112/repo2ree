@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { AutomationStepRunParams } from "../../../../application/workflow/WorkflowTypes";
+import type { ReeAssemblyRunParams } from "../../../../application/ree-assembly/assemblyTypes";
 import { Ic } from "../../../shared/components/Icon";
 import {
   S_WORKFLOW_PAGE_BODY,
@@ -8,11 +8,11 @@ import {
   S_WORKFLOW_SERVICE_MAIN_SCROLL,
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../theme/theme";
+import { AssemblyRunLogSection } from "../../components/assemblyRunPanels";
 import { descToTwoTierTips, FieldTipsSidebar } from "../../components/fieldTips";
-import { NextStepNudge, WorkflowPageHeader } from "../../components/pageChrome";
-import { WorkflowLogSection } from "../../components/workflowRunPanels";
-import { findFileByPath } from "../sharedWorkflowHelpers";
-import type { WorkflowPageProps } from "../sharedWorkflowUi";
+import { AssemblyPageHeader, NextStepNudge } from "../../components/pageChrome";
+import { findFileByPath } from "../sharedAssemblyHelpers";
+import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { deriveRuntimeFileSize } from "./buildRuntimeHelpers";
 import { BuildActionPanel } from "./sections/BuildActionPanel";
 import { BuildScriptSection } from "./sections/BuildScriptSection";
@@ -21,7 +21,7 @@ import { FinalRuntimeSection } from "./sections/FinalRuntimeSection";
 import { ManualOverridePanel } from "./sections/ManualOverridePanel";
 
 export function PageBuildRuntime({
-  workflow,
+  assemblyStep,
   ree,
   inclusionState,
   badges,
@@ -41,14 +41,14 @@ export function PageBuildRuntime({
   onReeSpecChange,
   onArtifactStatusChange,
   onPersistWorkspaceFile,
-}: WorkflowPageProps) {
+}: AssemblyPageProps) {
   const files = workspaceFiles;
 
   const [expectedOutput, setExpectedOutput] = useState(() =>
     ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "",
   );
-  const buildParams: AutomationStepRunParams<"build"> = {
-    ...(params as AutomationStepRunParams<"build">),
+  const buildParams: ReeAssemblyRunParams<"build"> = {
+    ...(params as ReeAssemblyRunParams<"build">),
     build_runtime_script_path: ree.build_runtime_script,
     produced_runtime_path: expectedOutput,
     _expectedOutput: expectedOutput,
@@ -56,7 +56,7 @@ export function PageBuildRuntime({
   const [showManualOverride, setShowManualOverride] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const buildColor = workflow.color;
+  const buildColor = assemblyStep.color;
   const imageColor = "#0891b2";
   const finalRuntime = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
   const includeRuntime = inclusionState.runtime === "included";
@@ -74,12 +74,12 @@ export function PageBuildRuntime({
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
-      <WorkflowPageHeader
-        color={workflow.color}
+      <AssemblyPageHeader
+        color={assemblyStep.color}
         icon={Ic.cpu(18)}
-        title={workflow.label}
-        subtitle={workflow.desc}
-        tips={descToTwoTierTips(workflow.desc)}
+        title={assemblyStep.label}
+        subtitle={assemblyStep.desc}
+        tips={descToTwoTierTips(assemblyStep.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -91,7 +91,7 @@ export function PageBuildRuntime({
       <div style={S_WORKFLOW_PAGE_BODY}>
         <div style={S_WORKFLOW_SERVICE_MAIN_SCROLL}>
           <BuildScriptSection
-            workflow={workflow}
+            assemblyStep={assemblyStep}
             ree={ree}
             files={files}
             focusedField={focusedField}
@@ -102,7 +102,7 @@ export function PageBuildRuntime({
           />
 
           <ExpectedOutputSection
-            workflow={workflow}
+            assemblyStep={assemblyStep}
             expectedOutput={expectedOutput}
             setExpectedOutput={setExpectedOutput}
             params={params}
@@ -118,7 +118,7 @@ export function PageBuildRuntime({
             missing={missing}
             onRun={onRun}
             onCancel={onCancel}
-            workflowKey={workflow.key}
+            assemblyKey={assemblyStep.key}
             buildParams={buildParams}
             expectedOutput={expectedOutput}
             ree={ree}
@@ -146,11 +146,15 @@ export function PageBuildRuntime({
           />
 
           <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
-            <WorkflowLogSection log={log} running={running} />
+            <AssemblyRunLogSection log={log} running={running} />
           </div>
 
           <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-            <NextStepNudge stepKey={workflow.key} badges={badges || {}} onGo={onGo || (() => {})} />
+            <NextStepNudge
+              stepKey={assemblyStep.key}
+              badges={badges || {}}
+              onGo={onGo || (() => {})}
+            />
           </div>
         </div>
 

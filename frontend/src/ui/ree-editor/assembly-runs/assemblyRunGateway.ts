@@ -101,7 +101,7 @@ export function createAssemblyRunGateway({
     await executeAction(key, params);
   };
 
-  const runAutomationStep = async <K extends ReeAssemblyOperationKey>(
+  const runAssemblyStep = async <K extends ReeAssemblyOperationKey>(
     key: K,
     params: ReeAssemblyRunParams<K>,
   ): Promise<void> => {
@@ -121,7 +121,7 @@ export function createAssemblyRunGateway({
   return {
     executeAction,
     runAction,
-    runAutomationStep,
+    runAssemblyStep,
     cancelAction,
   };
 }

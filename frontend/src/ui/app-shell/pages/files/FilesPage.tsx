@@ -3,7 +3,7 @@ import type { ReeFile } from "../../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { S_WORKFLOW_PAGE_BODY, S_WORKFLOW_SERVICE_ROOT } from "../../../theme/theme";
-import { WorkflowPageHeader } from "../../components/pageChrome";
+import { AssemblyPageHeader } from "../../components/pageChrome";
 import { FilesEmptyState } from "./FilesEmptyState";
 import { FilesTreePane } from "./FilesTreePane";
 import { FileViewer } from "./FileViewer";
@@ -33,7 +33,7 @@ export function PageFiles({ files, reeFiles, onDownloadWorkspaceFile }: PageFile
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
-      <WorkflowPageHeader
+      <AssemblyPageHeader
         color="#6366f1"
         icon={Ic.files(18)}
         title="Files"

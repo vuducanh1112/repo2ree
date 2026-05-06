@@ -1,13 +1,13 @@
 import { useState } from "react";
+import { ARCHIVE_REPOSITORIES } from "../../../../application/ree-assembly/archiveRepositories";
+import type { GenericReeAssemblyParams } from "../../../../application/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import { type AppShellPage, PAGE } from "../../../../application/state/pages";
-import { ARCHIVE_REPOSITORIES } from "../../../../application/workflow/archiveRepositories";
-import type { GenericWorkflowParams } from "../../../../application/workflow/WorkflowStepTypes";
 import type { ArtifactStatus } from "../../../../domain/artifact/ArtifactStatus";
-import type { ActionStates, Badges, WorkflowLogs } from "../../../../domain/ree/ReeTypes";
+import type { ActionStates, Badges, ExecutionRunLogs } from "../../../../domain/ree/ReeTypes";
 import { Ic } from "../../../shared/components/Icon";
 import { S_FIELD_STACK_GAP_14 } from "../../../theme/theme";
-import { NextStepNudge, RequirementsBanner, WorkflowPageHeader } from "../../components/pageChrome";
+import { AssemblyPageHeader, NextStepNudge, RequirementsBanner } from "../../components/pageChrome";
 import { ArchiveActionPanel } from "./sections/ArchiveActionPanel";
 import { ArchiveParamsCard } from "./sections/ArchiveParamsCard";
 import { ArchivePrereqBanners } from "./sections/ArchivePrereqBanners";
@@ -18,9 +18,9 @@ interface PageArchiveProps {
   ree: ReeEditorViewModel;
   artifactStatus: ArtifactStatus;
   badges: Badges;
-  logs: WorkflowLogs;
+  logs: ExecutionRunLogs;
   actionStates: ActionStates;
-  onRun: (key: string, params: GenericWorkflowParams) => void;
+  onRun: (key: string, params: GenericReeAssemblyParams) => void;
   onGo: (key: AppShellPage) => void;
 }
 
@@ -75,7 +75,7 @@ export function PageArchive({
         animation: "fadeUp 0.2s ease",
       }}
     >
-      <WorkflowPageHeader
+      <AssemblyPageHeader
         color={repo.color}
         icon={Ic.globe(18)}
         title="Deposit & Share"

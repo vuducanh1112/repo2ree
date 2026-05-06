@@ -2,7 +2,7 @@ import { Ic } from "../../../shared/components/Icon";
 import { C, F } from "../../../theme/theme";
 import { FieldRow, FieldSection } from "../../components/fieldTips";
 import { SourceUploadField, SourceUrlField } from "../../components/sourceRuntime";
-import type { SourceAcquisitionPageProps } from "../sharedWorkflowUi";
+import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 import { SOURCE_TYPE_OPTIONS, type SourceTypeOption } from "./SourceAcquisitionPageHelpers";
 import { actionBtn, inputStyle } from "./SourceAcquisitionPageStyles";
 

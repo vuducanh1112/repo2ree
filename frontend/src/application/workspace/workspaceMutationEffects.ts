@@ -1,4 +1,4 @@
 export {
-  mapAssemblyCommandsToEffects as mapWorkflowStepCommandsToEffects,
+  mapAssemblyCommandsToEffects,
   mapSourceCommandsToEffects,
 } from "../ree-assembly/assemblyCommandEffects";

@@ -1,5 +1,5 @@
 import type React from "react";
-import type { Level, StepState } from "../../application/workflow/WorkflowStepTypes";
+import type { Level, StepState } from "../../application/ree-assembly/assemblyStepTypes";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { C, F, hoverBg, hoverColor } from "../theme/theme";
@@ -26,14 +26,14 @@ export function AppShellView({ onBack, PodOrbitControl }: AppShellViewProps) {
     ree,
     inclusionState,
     workspaceRemote,
-    workflowRun,
+    assemblyRun,
     uiChrome,
     level,
     currentReeFiles,
     commands,
     reviewer,
   } = useAppShell();
-  const { badges, timestamps } = workflowRun;
+  const { badges, timestamps } = assemblyRun;
   const { toast, page, navCollapsed } = uiChrome;
 
   return (
@@ -105,7 +105,7 @@ export function AppShellView({ onBack, PodOrbitControl }: AppShellViewProps) {
           inclusionState={inclusionState}
           reeDraft={reeDraft}
           workspaceRemote={workspaceRemote}
-          workflowRun={workflowRun}
+          assemblyRun={assemblyRun}
           uiChrome={uiChrome}
           level={level}
           currentReeFiles={currentReeFiles}

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { scanDependencies } from "../../../../application/workflow/workflowDependencyAnalysis";
-import { getWorkflowRequirements } from "../../../../application/workflow/workflowPolicies";
+import { scanDependencies } from "../../../../application/ree-assembly/assemblyDependencyAnalysis";
+import { getReeAssemblyRequirements } from "../../../../application/ree-assembly/assemblyPolicies";
 import { LEVELS } from "../../../../domain/review/levels";
 import {
   S_WORKFLOW_PAGE_BODY,
@@ -9,15 +9,18 @@ import {
   S_WORKFLOW_SERVICE_MAIN_SCROLL,
   S_WORKFLOW_SERVICE_ROOT,
 } from "../../../theme/theme";
-import { automationStepIcon } from "../../automationStepIcons";
+import { assemblyStepIcon } from "../../assemblyStepIcons";
+import {
+  AssemblyRunActionSection,
+  AssemblyRunLogSection,
+} from "../../components/assemblyRunPanels";
 import { descToTwoTierTips, FieldTipsSidebar } from "../../components/fieldTips";
-import { NextStepNudge, RequirementsBanner, WorkflowPageHeader } from "../../components/pageChrome";
-import { WorkflowLogSection, WorkflowRunActionSection } from "../../components/workflowRunPanels";
-import type { WorkflowPageProps } from "../sharedWorkflowUi";
+import { AssemblyPageHeader, NextStepNudge, RequirementsBanner } from "../../components/pageChrome";
+import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { EvaluateDependenciesSection, EvaluateScoreSection } from "./EvaluatePageSections";
 
 export function PageEvaluate({
-  workflow,
+  assemblyStep,
   workspaceSourceState,
   evaluationState,
   badges,
@@ -33,26 +36,26 @@ export function PageEvaluate({
   onGoFields,
   missing,
   params,
-}: WorkflowPageProps) {
+}: AssemblyPageProps) {
   const files = workspaceFiles;
   const depGroups = scanDependencies(files || []);
   const hasRun = !!log;
   const hasScoreOutput = !!runDone;
   const sourceLoadedInWorkspace = !!workspaceSourceState.sourceAvailable;
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const IC = automationStepIcon(workflow.iconKey);
+  const IC = assemblyStepIcon(assemblyStep.iconKey);
   const level = Math.min(evaluationState.evalLevel ?? 0, LEVELS.length - 1);
   const completionPct = Math.round((level / (LEVELS.length - 1)) * 100);
-  const requirements = getWorkflowRequirements(workflow.key);
+  const requirements = getReeAssemblyRequirements(assemblyStep.key);
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
-      <WorkflowPageHeader
-        color={workflow.color}
+      <AssemblyPageHeader
+        color={assemblyStep.color}
         icon={IC(18)}
-        title={workflow.label}
-        subtitle={workflow.desc}
-        tips={descToTwoTierTips(workflow.desc)}
+        title={assemblyStep.label}
+        subtitle={assemblyStep.desc}
+        tips={descToTwoTierTips(assemblyStep.desc)}
         runDone={runDone}
         badge={badge}
         ts={ts}
@@ -75,8 +78,8 @@ export function PageEvaluate({
             <RequirementsBanner status="met" items={requirements} />
           )}
 
-          <WorkflowRunActionSection
-            color={workflow.color}
+          <AssemblyRunActionSection
+            color={assemblyStep.color}
             running={running}
             runDone={runDone}
             disabled={running || !sourceLoadedInWorkspace}
@@ -87,8 +90,8 @@ export function PageEvaluate({
                 ? "Run evaluation with the selected parameters."
                 : "Load source into workspace first. Evaluate is enabled only after source download/upload succeeds."
             }
-            onCancel={() => onCancel?.(workflow.key)}
-            onRun={() => onRun(workflow.key, params)}
+            onCancel={() => onCancel?.(assemblyStep.key)}
+            onRun={() => onRun(assemblyStep.key, params)}
           />
 
           <EvaluateScoreSection
@@ -109,7 +112,7 @@ export function PageEvaluate({
           />
 
           <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
-            <WorkflowLogSection
+            <AssemblyRunLogSection
               log={log}
               running={running}
               titleStyle={{ letterSpacing: 1.3, fontWeight: 600 }}
@@ -117,7 +120,11 @@ export function PageEvaluate({
           </div>
 
           <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-            <NextStepNudge stepKey={workflow.key} badges={badges || {}} onGo={onGo || (() => {})} />
+            <NextStepNudge
+              stepKey={assemblyStep.key}
+              badges={badges || {}}
+              onGo={onGo || (() => {})}
+            />
           </div>
         </div>
 

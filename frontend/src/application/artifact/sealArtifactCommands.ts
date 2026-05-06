@@ -1,9 +1,9 @@
-import type { WorkflowStepCommand } from "../workflow/workflowStepCommands";
+import type { AssemblyCommand } from "../ree-assembly/assemblyCommands";
 
 export function planSealArtifactCommands(args: {
   sealedAt: string;
   sealHash: string;
-}): WorkflowStepCommand[] {
+}): AssemblyCommand[] {
   return [
     {
       type: "patchRee",

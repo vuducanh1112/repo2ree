@@ -70,8 +70,8 @@ function dispatchStateCommand(command: WorkspaceStateCommand, dispatch: ReeEdito
     return;
   }
 
-  if (command.type === "resetWorkflowOnSourceChange") {
-    dispatch(resetAssemblyAfterSourceChange(command.workflowParams));
+  if (command.type === "resetAssemblyAfterSourceChange") {
+    dispatch(resetAssemblyAfterSourceChange(command.assemblyOperationParams));
     return;
   }
 

@@ -1,10 +1,10 @@
-import type { AutomationStepParams } from "../workflow/AutomationStepTypes";
+import type { ReeAssemblyOperationParams as ReeAssemblyOperationParamsShape } from "../ree-assembly/ReeAssemblyOperationParams";
 
 export type Badges = Record<string, boolean>;
 export type Timestamps = Record<string, string>;
 export type ActionStates = Record<string, "loading" | "done">;
-export type WorkflowLogs = Record<string, LogEntry>;
-export type WorkflowParams = AutomationStepParams;
+export type ExecutionRunLogs = Record<string, LogEntry>;
+export type ReeAssemblyOperationParams = ReeAssemblyOperationParamsShape;
 
 export interface LogLine {
   type: "info" | "ok" | "warn" | "err" | "out";

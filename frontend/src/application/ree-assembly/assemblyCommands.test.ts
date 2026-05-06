@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { nonAssemblyPlanToCommands } from "./assemblyCommands";
 
 describe("serviceRunCommands", () => {
-  it("plans non-workflow effects in state-before-toast order", () => {
+  it("plans manual artifact effects in state-before-toast order", () => {
     const commands = nonAssemblyPlanToCommands({
       reePatch: { swhid: "swh:1:dir:abc" },
       lock: true,

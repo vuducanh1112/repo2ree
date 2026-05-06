@@ -60,7 +60,7 @@ export function createSourceActions({
   const runCommands = (commands: SourceCommand[]) =>
     executeSourceCommands(commands, { dispatch, showToast });
 
-  const resetSourceWorkflow = (options: { silent?: boolean } = {}) => {
+  const resetSourceAssemblyState = (options: { silent?: boolean } = {}) => {
     resetAssemblyStateOnSourceChange(dispatch, showToast, options);
   };
 
@@ -70,7 +70,7 @@ export function createSourceActions({
   ) =>
     runSourceWorkspaceAction({
       reeClient,
-      workflowRunClient: executionRunsClient,
+      executionRunClient: executionRunsClient,
       reeId,
       resetPayload: serializeWorkspaceResetPayload(resetRequest),
       runParams,
@@ -95,7 +95,7 @@ export function createSourceActions({
   const sourceAcquisition = createSourceUseCase({
     ree,
     executeCommands: runCommands,
-    sourceChanged: resetSourceWorkflow,
+    sourceChanged: resetSourceAssemblyState,
     runSourceAction: runRemoteOrLocalSourceAction,
     refreshWorkspaceFiles,
     clearWorkspace: () => reeClient.resetWorkspaceRequest(reeId, { mode: "clear" }),
@@ -138,7 +138,7 @@ export function createSourceActions({
     handleDownloadSourceFiles,
     handleWorkspaceUpload,
     handleRemoveWorkspaceSource,
-    resetSourceWorkflow,
+    resetSourceAssemblyState,
   };
 }
 

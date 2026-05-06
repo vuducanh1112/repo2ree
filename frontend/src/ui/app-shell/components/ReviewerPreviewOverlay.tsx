@@ -1,6 +1,6 @@
 import type React from "react";
+import type { Level, StepState } from "../../../application/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
-import type { Level, StepState } from "../../../application/workflow/WorkflowStepTypes";
 import { ReviewerView } from "../../reviewer/ReviewerView";
 import { Ic } from "../../shared/components/Icon";
 import {

@@ -12,12 +12,12 @@ import {
 } from "../../../theme/theme";
 import { FieldRow, FieldSection } from "../../components/fieldTips";
 import {
+  assemblyStatusBadgeStyle,
+  assemblyStatusCardStyle,
+  assemblyStatusIconWrapStyle,
+  assemblyStatusKeyStyle,
+  assemblyStatusValueStyle,
   RUNTIME_STATUS_BADGE_STYLE,
-  workflowStatusBadgeStyle,
-  workflowStatusCardStyle,
-  workflowStatusIconWrapStyle,
-  workflowStatusKeyStyle,
-  workflowStatusValueStyle,
 } from "../../components/statusUiStyles";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
@@ -46,17 +46,17 @@ export function SbomRuntimeInputSection(props: {
         active={props.focusedField === "runtime"}
       >
         <div style={S_FIELD_STACK_GAP_14}>
-          <div style={workflowStatusCardStyle(!!props.rt, props.sbomColor)}>
-            <div style={workflowStatusIconWrapStyle(!!props.rt, props.sbomColor)}>
+          <div style={assemblyStatusCardStyle(!!props.rt, props.sbomColor)}>
+            <div style={assemblyStatusIconWrapStyle(!!props.rt, props.sbomColor)}>
               <span style={{ color: props.rt ? props.sbomColor : C.textMuted, display: "flex" }}>
                 {props.isTb ? Ic.archive(14) : Ic.cpu(14)}
               </span>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={workflowStatusKeyStyle(!!props.rt, props.sbomColor)}>
+              <div style={assemblyStatusKeyStyle(!!props.rt, props.sbomColor)}>
                 Scan target · ree.runtime
               </div>
-              <div style={workflowStatusValueStyle(!!props.rt, props.sbomColor)}>
+              <div style={assemblyStatusValueStyle(!!props.rt, props.sbomColor)}>
                 {props.rt || (
                   <span style={S_TEXT_ITALIC_11}>
                     not set — set a runtime in the Build Runtime step first
@@ -65,7 +65,7 @@ export function SbomRuntimeInputSection(props: {
               </div>
             </div>
             {props.rt && (
-              <span style={workflowStatusBadgeStyle(props.sbomColor)}>
+              <span style={assemblyStatusBadgeStyle(props.sbomColor)}>
                 {props.isTb ? "TARBALL" : "IMAGE"}
               </span>
             )}
@@ -124,15 +124,15 @@ export function SbomProducedSection(props: {
         onFocus={() => props.onFocusField("sbom")}
         active={props.focusedField === "sbom"}
       >
-        <div style={{ ...workflowStatusCardStyle(props.hasSbom, "#16a34a"), marginBottom: 12 }}>
-          <div style={workflowStatusIconWrapStyle(props.hasSbom, "#16a34a")}>
+        <div style={{ ...assemblyStatusCardStyle(props.hasSbom, "#16a34a"), marginBottom: 12 }}>
+          <div style={assemblyStatusIconWrapStyle(props.hasSbom, "#16a34a")}>
             <span style={{ color: props.hasSbom ? "#16a34a" : C.textMuted, display: "flex" }}>
               {Ic.package(14)}
             </span>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={workflowStatusKeyStyle(props.hasSbom, "#16a34a")}>ree.sbom</div>
-            <div style={workflowStatusValueStyle(props.hasSbom, "#15803d")}>
+            <div style={assemblyStatusKeyStyle(props.hasSbom, "#16a34a")}>ree.sbom</div>
+            <div style={assemblyStatusValueStyle(props.hasSbom, "#15803d")}>
               {props.hasSbom ? (
                 props.reeDraft.sbom
               ) : (

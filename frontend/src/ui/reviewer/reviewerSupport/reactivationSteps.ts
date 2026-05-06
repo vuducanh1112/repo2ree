@@ -1,8 +1,8 @@
-import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type {
-  WorkflowParam,
-  WorkflowParamValue,
-} from "../../../application/workflow/WorkflowStepTypes";
+  ReeAssemblyParam,
+  ReeAssemblyParamValue,
+} from "../../../application/ree-assembly/assemblyStepTypes";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { LogLine } from "../../../domain/ree/ReeTypes";
 import { Ic } from "../../shared/components/Icon";
 
@@ -12,12 +12,12 @@ interface ReactivationStep {
   icon: (s?: number) => JSX.Element;
   color: string;
   desc: string;
-  params?: WorkflowParam[];
+  params?: ReeAssemblyParam[];
   logLines: (ree: ReeEditorViewModel, params?: ReactivationParams) => LogLine[];
 }
 
 export type ReactivationStepKey = "acquire_source" | "build_runtime" | "test_activation";
-export type ReactivationParams = Record<string, WorkflowParamValue>;
+export type ReactivationParams = Record<string, ReeAssemblyParamValue>;
 
 export const REACTIVATION_STEPS: ReactivationStep[] = [
   {

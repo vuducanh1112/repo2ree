@@ -2,13 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { runSourceWorkspaceAction } from "./sourceAcquisitionLifecycle";
 
 describe("runSourceWorkspaceAction", () => {
-  it("falls back to workspace reset when no workflow mode is requested", async () => {
+  it("falls back to workspace reset when no remote execution mode is requested", async () => {
     const resetWorkspaceRequest = vi.fn(async () => {});
 
     const result = await runSourceWorkspaceAction({
       reeClient: { resetWorkspaceRequest },
-      workflowRunClient: {
-        startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
+      executionRunClient: {
+        startExecutionRun: vi.fn(async () => ({ runId: "run-1" })),
       },
       reeId: "active",
       resetPayload: '{"mode":"clear"}',
@@ -20,7 +20,7 @@ describe("runSourceWorkspaceAction", () => {
     expect(result.status).toBe("succeeded");
   });
 
-  it("runs remote workflow, streams updates, and finishes the run callback", async () => {
+  it("runs remote execution run, streams updates, and finishes the run callback", async () => {
     const onRunStarted = vi.fn();
     const onRunFinished = vi.fn();
     const onUpdateLogs = vi.fn();
@@ -33,8 +33,8 @@ describe("runSourceWorkspaceAction", () => {
       reeClient: {
         resetWorkspaceRequest: vi.fn(async () => {}),
       },
-      workflowRunClient: {
-        startWorkflowRun: vi.fn(async () => ({ runId: "run-1" })),
+      executionRunClient: {
+        startExecutionRun: vi.fn(async () => ({ runId: "run-1" })),
       },
       reeId: "active",
       resetPayload: '{"mode":"download"}',

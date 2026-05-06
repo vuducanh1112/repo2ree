@@ -7,7 +7,7 @@ import type { Updater } from "../state/types";
 import type { SourceCommand } from "../workspace/sourceAcquisitionCommands";
 import type { AssemblyCommand } from "./assemblyCommands";
 
-type SourceResetCommand = Extract<SourceCommand, { type: "resetWorkflowOnSourceChange" }>;
+type SourceResetCommand = Extract<SourceCommand, { type: "resetAssemblyAfterSourceChange" }>;
 type SourceApplyOutcomeCommand = Extract<SourceCommand, { type: "applySourceOutcome" }>;
 
 export type WorkspaceStateCommand =
@@ -43,8 +43,8 @@ export type WorkspaceStateCommand =
   | { type: "setActiveRunId"; key: string; runId: string }
   | { type: "setLocked"; locked: boolean }
   | {
-      type: "resetWorkflowOnSourceChange";
-      workflowParams: SourceResetCommand["workflowParams"];
+      type: "resetAssemblyAfterSourceChange";
+      assemblyOperationParams: SourceResetCommand["assemblyOperationParams"];
     }
   | {
       type: "applySourceOutcome";
@@ -87,7 +87,6 @@ export function mapAssemblyCommandsToEffects(commands: AssemblyCommand[]): AppSh
       continue;
     }
     if (command.type === "setAssemblyRunLog") {
-      // Logs are now served from React Query; drop this command.
       continue;
     }
     if (command.type === "completeAssemblyRun") {
@@ -117,7 +116,6 @@ export function mapAssemblyCommandsToEffects(commands: AssemblyCommand[]): AppSh
       continue;
     }
     if (command.type === "hydrateWorkspace") {
-      // Workspace files now come from React Query; only persist reeSpec/source state updates.
       if (command.reeSpec) {
         const reeSpec = command.reeSpec;
         effects.push({
@@ -277,7 +275,6 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): AppShellE
       ];
     }
     if (command.type === "setSourceLog") {
-      // Logs are now served from React Query; drop this command.
       return [];
     }
     if (command.type === "setActiveRunId") {
@@ -292,13 +289,13 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): AppShellE
         },
       ];
     }
-    if (command.type === "resetWorkflowOnSourceChange") {
+    if (command.type === "resetAssemblyAfterSourceChange") {
       return [
         {
           type: "dispatchStateCommand" as const,
           command: {
-            type: "resetWorkflowOnSourceChange" as const,
-            workflowParams: command.workflowParams,
+            type: "resetAssemblyAfterSourceChange" as const,
+            assemblyOperationParams: command.assemblyOperationParams,
           },
         },
       ];
@@ -315,7 +312,6 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): AppShellE
       ];
     }
     if (command.type === "hydrateWorkspace") {
-      // Workspace files now come from React Query; only persist state changes.
       const hydrateEffects: AppShellEffect[] = [];
       if (command.reeSpec) {
         const reeSpec = command.reeSpec;

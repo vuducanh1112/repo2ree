@@ -1,12 +1,17 @@
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
-import type { ActionStates, Badges, Timestamps, WorkflowParams } from "../../domain/ree/ReeTypes";
+import type {
+  ActionStates,
+  Badges,
+  ReeAssemblyOperationParams,
+  Timestamps,
+} from "../../domain/ree/ReeTypes";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
-import type { ToastState } from "../workflow/WorkflowStepTypes";
+import type { ToastState } from "../ree-assembly/assemblyStepTypes";
+import type { AssemblyRunState } from "./assemblyRunState";
 import type { AppShellPage } from "./pages";
 import { normalizeAppShellPage } from "./pages";
 import type { ReeDraftState } from "./reeDraft";
 import type { UiChromeState } from "./uiChrome";
-import type { WorkflowRunState } from "./workflowRun";
 
 interface AppShellState {
   locked: boolean;
@@ -14,7 +19,7 @@ interface AppShellState {
   actionStates: ActionStates;
   badges: Badges;
   timestamps: Timestamps;
-  workflowParams: WorkflowParams;
+  assemblyOperationParams: ReeAssemblyOperationParams;
   activeRunIds: Record<string, string>;
   toast: ToastState | null;
   page: AppShellPage;
@@ -33,7 +38,7 @@ export interface SourceOutcomePayload {
   timestamp?: string;
 }
 
-export interface WorkflowRunCompletionPayload {
+export interface AssemblyRunCompletionPayload {
   key: string;
   actionState: "done";
   badge: boolean;
@@ -41,12 +46,12 @@ export interface WorkflowRunCompletionPayload {
 }
 export function createAppShellState(params: {
   reeDraft: ReeDraftState;
-  workflowRun: WorkflowRunState;
+  assemblyRun: AssemblyRunState;
   uiChrome: UiChromeState;
 }): AppShellState {
   return {
     ...params.reeDraft,
-    ...params.workflowRun,
+    ...params.assemblyRun,
     ...params.uiChrome,
   };
 }

@@ -10,10 +10,10 @@ import {
   type ReeEditorViewModel,
 } from "../../../application/ree-editor/reeEditorViewModel";
 import { showToast as enqueueToast } from "../../../application/state/actions";
+import type { AssemblyRunState } from "../../../application/state/assemblyRunState";
 import type { ReeDraftState } from "../../../application/state/reeDraft";
 import type { AppShellAction } from "../../../application/state/types";
 import type { UiChromeState } from "../../../application/state/uiChrome";
-import type { WorkflowRunState } from "../../../application/state/workflowRun";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useReeQuery } from "../../../data/ree/queries";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
@@ -29,20 +29,20 @@ import { createReeEditorCommands } from "./createReeEditorCommands";
 
 interface UseReeEditorArgs {
   reeDraft: ReeDraftState;
-  workflowRun: WorkflowRunState;
+  assemblyRun: AssemblyRunState;
   uiChrome: UiChromeState;
   dispatch: React.Dispatch<AppShellAction>;
 }
 
-export function useReeEditor({ reeDraft, workflowRun, uiChrome, dispatch }: UseReeEditorArgs) {
+export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseReeEditorArgs) {
   const { reeId } = useApiRuntime();
   const reeQuery = useReeQuery();
   const workspaceFiles = reeQuery.data?.files ?? [];
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
 
   const reeEditorState: ReeEditorState = useMemo(
-    () => createReeEditorStateFromAppShell({ reeDraft, workflowRun }),
-    [reeDraft, workflowRun],
+    () => createReeEditorStateFromAppShell({ reeDraft, assemblyRun }),
+    [reeDraft, assemblyRun],
   );
   const ree: ReeEditorViewModel = useMemo(
     () => createReeEditorViewModel(reeEditorState),
@@ -67,7 +67,7 @@ export function useReeEditor({ reeDraft, workflowRun, uiChrome, dispatch }: UseR
 
   const runSessionRef = useRef(createAssemblyRunSession());
   const runSession = runSessionRef.current;
-  const { runAction, runAutomationStep, cancelAction } = useReeAssemblyRuns({
+  const { runAction, runAssemblyStep, cancelAction } = useReeAssemblyRuns({
     dispatch,
     ree,
     level: ree.evalLevel ?? 0,
@@ -101,12 +101,12 @@ export function useReeEditor({ reeDraft, workflowRun, uiChrome, dispatch }: UseR
       createReeEditorCommands({
         reeDraft,
         reeEditorState,
-        workflowRun,
+        assemblyRun,
         uiChrome,
         dispatch,
         showToast,
         runAction,
-        runAutomationStep,
+        runAssemblyStep,
         cancelAction,
         persistWorkspaceFile,
         handleDownloadRee,
@@ -127,10 +127,10 @@ export function useReeEditor({ reeDraft, workflowRun, uiChrome, dispatch }: UseR
       reeDraft,
       reeEditorState,
       runAction,
-      runAutomationStep,
+      runAssemblyStep,
       showToast,
       uiChrome,
-      workflowRun,
+      assemblyRun,
     ],
   );
 
@@ -139,7 +139,7 @@ export function useReeEditor({ reeDraft, workflowRun, uiChrome, dispatch }: UseR
     ree,
     inclusionState: reeEditorState.inclusionState,
     workspaceRemote,
-    workflowRun,
+    assemblyRun,
     level: ree.evalLevel ?? 0,
     currentReeFiles: reeArtifactFiles,
     commands,

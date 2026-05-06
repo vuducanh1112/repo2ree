@@ -86,7 +86,7 @@ export function createReeEditorStateFromAppShell(args: {
     repoMode: "url" | "upload";
     sourceSnapshotArchiveName: string;
   };
-  workflowRun: {
+  assemblyRun: {
     evaluationState: EvaluationState;
     actionStates: ActionStates;
     badges: Badges;
@@ -94,22 +94,22 @@ export function createReeEditorStateFromAppShell(args: {
     activeRunIds: Record<string, string>;
   };
 }): ReeEditorState {
-  const { reeDraft, workflowRun } = args;
+  const { reeDraft, assemblyRun } = args;
   return createReeEditorState({
     reeSpec: reeDraft.reeSpec,
     workspaceSourceState: reeDraft.workspaceSourceState,
     artifactStatus: reeDraft.artifactStatus,
-    evaluationState: workflowRun.evaluationState,
+    evaluationState: assemblyRun.evaluationState,
     editorUi: {
       locked: reeDraft.locked,
       repoMode: reeDraft.repoMode,
       sourceSnapshotArchiveName: reeDraft.sourceSnapshotArchiveName,
     },
     assemblyRuns: {
-      actionStates: workflowRun.actionStates,
-      badges: workflowRun.badges,
-      timestamps: workflowRun.timestamps,
-      activeRunIds: workflowRun.activeRunIds,
+      actionStates: assemblyRun.actionStates,
+      badges: assemblyRun.badges,
+      timestamps: assemblyRun.timestamps,
+      activeRunIds: assemblyRun.activeRunIds,
     },
   });
 }

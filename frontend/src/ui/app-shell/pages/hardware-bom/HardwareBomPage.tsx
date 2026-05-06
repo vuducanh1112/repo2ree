@@ -7,7 +7,7 @@ import {
 } from "../../../theme/theme";
 import { FieldTipsSidebar } from "../../components/fieldTips";
 import { useHardwareBomDraft } from "../../hooks/useHardwareBomDraft";
-import type { PageHardwareBomProps } from "../sharedWorkflowUi";
+import type { PageHardwareBomProps } from "../sharedAssemblyUi";
 import { HardwareBomHeaderSection } from "./sections/HardwareBomHeaderSection";
 import { HardwareBomRunSection } from "./sections/HardwareBomRunSection";
 import { HardwareBomTablesSection } from "./sections/HardwareBomTablesSection";
@@ -23,7 +23,7 @@ export function PageHardwareBom({
   focusedField,
   onReeSpecChange,
   onLockedChange,
-  onGoWorkflow,
+  onGoAssemblyPage,
   onFocusedFieldChange,
   onRun,
   onCancel,
@@ -56,7 +56,7 @@ export function PageHardwareBom({
               badges={badges}
               onCancel={onCancel ? () => onCancel("hbom") : undefined}
               onRun={() => onRun("hbom", {})}
-              onGoWorkflow={onGoWorkflow}
+              onGoAssemblyPage={onGoAssemblyPage}
             />
           </div>
         </div>

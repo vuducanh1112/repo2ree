@@ -11,12 +11,14 @@ import {
   clearToast,
   patch,
   setArtifactStatus,
+  setAssemblyOperationParams,
   setEvaluationState,
   setLocked,
-  setWorkflowParams,
+  setRepoMode,
   setWorkspaceSourceState,
   updateReeSpec,
 } from "../../../application/state/actions";
+import type { AssemblyRunState } from "../../../application/state/assemblyRunState";
 import type { AppShellPage } from "../../../application/state/pages";
 import type { ReeDraftState } from "../../../application/state/reeDraft";
 import {
@@ -25,11 +27,10 @@ import {
   type Updater,
 } from "../../../application/state/types";
 import type { UiChromeState } from "../../../application/state/uiChrome";
-import type { WorkflowRunState } from "../../../application/state/workflowRun";
 import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
 import type { ReeInclusionState } from "../../../domain/ree/ReeInclusionState";
 import type { ReeSpec } from "../../../domain/ree/ReeSpec";
-import type { SourceUploadCommit, WorkflowParams } from "../../../domain/ree/ReeTypes";
+import type { ReeAssemblyOperationParams, SourceUploadCommit } from "../../../domain/ree/ReeTypes";
 import type { EvaluationState } from "../../../domain/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
 import { executeAssemblyCommands } from "../assembly-runs/assemblyActionEffects";
@@ -38,12 +39,12 @@ import type { ShowToast } from "../types";
 interface CreateReeEditorCommandsArgs {
   reeDraft: ReeDraftState;
   reeEditorState: ReeEditorState;
-  workflowRun: WorkflowRunState;
+  assemblyRun: AssemblyRunState;
   uiChrome: UiChromeState;
   dispatch: React.Dispatch<AppShellAction>;
   showToast: ShowToast;
   runAction: (key: string, params?: GenericReeAssemblyParams) => Promise<void>;
-  runAutomationStep: <K extends ReeAssemblyOperationKey>(
+  runAssemblyStep: <K extends ReeAssemblyOperationKey>(
     key: K,
     params: ReeAssemblyRunParams<K>,
   ) => Promise<void>;
@@ -66,12 +67,12 @@ interface CreateReeEditorCommandsArgs {
 export function createReeEditorCommands({
   reeDraft,
   reeEditorState,
-  workflowRun,
+  assemblyRun,
   uiChrome,
   dispatch,
   showToast,
   runAction,
-  runAutomationStep,
+  runAssemblyStep,
   cancelAction,
   persistWorkspaceFile,
   handleDownloadRee,
@@ -113,40 +114,42 @@ export function createReeEditorCommands({
     setArtifactStatus: (value: Updater<ArtifactStatus>) =>
       dispatch(setArtifactStatus(() => resolveNext(reeDraft.artifactStatus, value))),
     setEvaluationState: (value: Updater<EvaluationState>) =>
-      dispatch(setEvaluationState(() => resolveNext(workflowRun.evaluationState, value))),
+      dispatch(setEvaluationState(() => resolveNext(assemblyRun.evaluationState, value))),
     setInclusionState: (value: Updater<ReeInclusionState>) => {
       const next = resolveNext(reeEditorState.inclusionState, value);
       dispatch(
-        patch("reeDraft", {
-          workspaceSourceState: {
-            ...reeDraft.workspaceSourceState,
-            sourceAvailable: next.source !== "unavailable",
-            sourceIncluded: next.source === "included",
-          },
-          artifactStatus: {
-            ...reeDraft.artifactStatus,
-            runtimeIncluded: next.runtime === "included",
-          },
-        }),
+        setWorkspaceSourceState((prev) => ({
+          ...prev,
+          sourceAvailable: next.source !== "unavailable",
+          sourceIncluded: next.source === "included",
+        })),
+      );
+      dispatch(
+        setArtifactStatus((prev) => ({
+          ...prev,
+          runtimeIncluded: next.runtime === "included",
+        })),
       );
     },
     setLocked: (value: boolean | ((current: boolean) => boolean)) =>
       dispatch(setLocked(typeof value === "function" ? value(reeDraft.locked) : value)),
     setRepoMode: (value: "url" | "upload" | ((current: "url" | "upload") => "url" | "upload")) =>
-      dispatch(
-        patch("reeDraft", {
-          repoMode: typeof value === "function" ? value(reeDraft.repoMode) : value,
-        }),
-      ),
+      dispatch(setRepoMode(typeof value === "function" ? value(reeDraft.repoMode) : value)),
     setFocusedField: (value: string | null | ((current: string | null) => string | null)) =>
       dispatch(
         patch("uiChrome", {
           focusedField: typeof value === "function" ? value(uiChrome.focusedField) : value,
         }),
       ),
-    setWorkflowParams: (value: WorkflowParams | ((current: WorkflowParams) => WorkflowParams)) =>
+    setAssemblyOperationParams: (
+      value:
+        | ReeAssemblyOperationParams
+        | ((current: ReeAssemblyOperationParams) => ReeAssemblyOperationParams),
+    ) =>
       dispatch(
-        setWorkflowParams((current) => (typeof value === "function" ? value(current) : value)),
+        setAssemblyOperationParams((current) =>
+          typeof value === "function" ? value(current) : value,
+        ),
       ),
     openReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: true })),
     closeReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: false })),
@@ -159,10 +162,10 @@ export function createReeEditorCommands({
     onDownloadWorkspaceFile: downloadWorkspaceFile,
     onRunAction: runAction,
     onCancelAction: cancelAction,
-    onRunAutomationStep: <K extends ReeAssemblyOperationKey>(
+    onRunAssemblyStep: <K extends ReeAssemblyOperationKey>(
       key: K,
       params: ReeAssemblyRunParams<K>,
-    ) => runAutomationStep(key, params),
+    ) => runAssemblyStep(key, params),
     onPersistWorkspaceFile: persistWorkspaceFile,
   };
 }
