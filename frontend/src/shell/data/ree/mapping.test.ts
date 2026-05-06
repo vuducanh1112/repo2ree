@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ReeDetailDto, ReviewDetailDto } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices, mapReviewDraftToReeSlices } from "./mapping";
 
-describe("data/ree/mapping", () => {
+describe("shell/data/ree/mapping", () => {
   it("maps review drafts into explicit slices consistently", () => {
     const review: ReviewDetailDto = {
       reviewId: "rev-1",

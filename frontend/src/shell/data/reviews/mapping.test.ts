@@ -8,8 +8,8 @@ import {
   mapReviewUploadInitResponse,
 } from "./mapping";
 
-describe("data/reviews/mapping", () => {
-  it("maps upload init response to domain shape", () => {
+describe("shell/data/reviews/mapping", () => {
+  it("maps upload init response to review shape", () => {
     expect(
       mapReviewUploadInitResponse({
         reviewId: "r1",
