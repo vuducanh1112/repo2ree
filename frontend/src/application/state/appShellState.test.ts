@@ -4,7 +4,17 @@ import {
   createEmptyReeEditorViewModel,
   type ReeEditorViewModel,
 } from "../ree-editor/reeEditorViewModel";
-import { patch } from "./actions";
+import {
+  clearToast,
+  completeAssemblyRun,
+  resetAssemblyAfterSourceChange,
+  setArtifactStatus,
+  setAssemblyRunLoading,
+  setEvaluationState,
+  setWorkspaceSourceState,
+  showToast,
+  updateReeSpec,
+} from "./actions";
 import { createAppShellState } from "./appShellState";
 
 function buildRee(): ReeEditorViewModel {
@@ -101,25 +111,25 @@ describe("appShellState", () => {
     expect(view.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
   });
 
-  it("records completion metadata for completed workflow runs", () => {
+  it("records completion metadata for completed assembly runs", () => {
     const initial = createInitialState(toInitialSlices(buildRee()));
 
-    const next = appShellReducer(initial, {
-      type: "completeWorkflowRun",
-      completion: {
+    const next = appShellReducer(
+      initial,
+      completeAssemblyRun({
         key: "build",
         actionState: "done",
         badge: true,
         timestamp: "2026-01-01T00:00:00Z",
-      },
-    });
+      }),
+    );
 
     expect(next.workflowRun.actionStates.build).toBe("done");
     expect(next.workflowRun.badges.build).toBe(true);
     expect(next.workflowRun.timestamps.build).toBe("2026-01-01T00:00:00Z");
   });
 
-  it("resets workflow-dependent workspace state on source change", () => {
+  it("resets assembly-dependent workspace state on source change", () => {
     const initial = {
       ...createInitialState(toInitialSlices(buildRee())),
       workflowRun: {
@@ -130,10 +140,10 @@ describe("appShellState", () => {
       },
     };
 
-    const next = appShellReducer(initial, {
-      type: "resetWorkflowOnSourceChange",
-      workflowParams: initial.workflowRun.workflowParams,
-    });
+    const next = appShellReducer(
+      initial,
+      resetAssemblyAfterSourceChange(initial.workflowRun.workflowParams),
+    );
 
     expect(next.workflowRun.actionStates).toEqual({});
     expect(next.workflowRun.badges).toEqual({});
@@ -166,16 +176,52 @@ describe("appShellState", () => {
 
     const next = appShellReducer(
       initial,
-      patch("reeDraft", {
-        reeSpec: {
-          ...initial.reeDraft.reeSpec,
-          name: "renamed",
-        },
-      }),
+      updateReeSpec((prev) => ({
+        ...prev,
+        name: "renamed",
+      })),
     );
 
     expect(next.reeDraft.reeSpec.name).toBe("renamed");
     expect(next.reeDraft.workspaceSourceState).toEqual(initial.reeDraft.workspaceSourceState);
     expect(next.reeDraft.artifactStatus).toEqual(initial.reeDraft.artifactStatus);
+  });
+
+  it("updates workspace source state via named transition", () => {
+    const initial = createInitialState(toInitialSlices(buildRee()));
+    const next = appShellReducer(
+      initial,
+      setWorkspaceSourceState((prev) => ({ ...prev, sourceAvailable: true })),
+    );
+    expect(next.reeDraft.workspaceSourceState.sourceAvailable).toBe(true);
+  });
+
+  it("updates artifact status via named transition", () => {
+    const initial = createInitialState(toInitialSlices(buildRee()));
+    const next = appShellReducer(
+      initial,
+      setArtifactStatus((prev) => ({ ...prev, runtimeIncluded: true })),
+    );
+    expect(next.reeDraft.artifactStatus.runtimeIncluded).toBe(true);
+  });
+
+  it("updates evaluation state via named transition", () => {
+    const initial = createInitialState(toInitialSlices(buildRee()));
+    const next = appShellReducer(initial, setEvaluationState({ evalLevel: 3 }));
+    expect(next.workflowRun.evaluationState.evalLevel).toBe(3);
+  });
+
+  it("marks a run key as loading via named transition", () => {
+    const initial = createInitialState(toInitialSlices(buildRee()));
+    const next = appShellReducer(initial, setAssemblyRunLoading("build"));
+    expect(next.workflowRun.actionStates.build).toBe("loading");
+  });
+
+  it("shows and clears toast via named transitions", () => {
+    const initial = createInitialState(toInitialSlices(buildRee()));
+    const shown = appShellReducer(initial, showToast({ message: "Saved", type: "success" }));
+    expect(shown.uiChrome.toast).toEqual({ message: "Saved", type: "success" });
+    const cleared = appShellReducer(shown, clearToast());
+    expect(cleared.uiChrome.toast).toBeNull();
   });
 });

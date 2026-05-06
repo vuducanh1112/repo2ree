@@ -7,7 +7,16 @@ import type {
   ReeAssemblyRunParams,
 } from "../../../application/ree-assembly/assemblyTypes";
 import type { ReeEditorState } from "../../../application/ree-editor/reeEditorState";
-import { patch } from "../../../application/state/actions";
+import {
+  clearToast,
+  patch,
+  setArtifactStatus,
+  setEvaluationState,
+  setLocked,
+  setWorkflowParams,
+  setWorkspaceSourceState,
+  updateReeSpec,
+} from "../../../application/state/actions";
 import type { AppShellPage } from "../../../application/state/pages";
 import type { ReeDraftState } from "../../../application/state/reeDraft";
 import {
@@ -87,6 +96,8 @@ export function createReeEditorCommands({
     );
   };
 
+  // Phase 8: keep generic patch only for UI-chrome and low-risk editor toggles
+  // (page/nav/focus/review-preview/repo-mode and composite inclusion mapping).
   return {
     setPage: (nextPage: AppShellPage) => dispatch(patch("uiChrome", { page: nextPage })),
     setNavCollapsed: (value: boolean | ((current: boolean) => boolean)) =>
@@ -96,29 +107,13 @@ export function createReeEditorCommands({
         }),
       ),
     setReeSpec: (value: Updater<ReeSpec>) =>
-      dispatch(
-        patch("reeDraft", {
-          reeSpec: resolveNext(reeDraft.reeSpec, value),
-        }),
-      ),
+      dispatch(updateReeSpec(() => resolveNext(reeDraft.reeSpec, value))),
     setWorkspaceSourceState: (value: Updater<WorkspaceSourceState>) =>
-      dispatch(
-        patch("reeDraft", {
-          workspaceSourceState: resolveNext(reeDraft.workspaceSourceState, value),
-        }),
-      ),
+      dispatch(setWorkspaceSourceState(() => resolveNext(reeDraft.workspaceSourceState, value))),
     setArtifactStatus: (value: Updater<ArtifactStatus>) =>
-      dispatch(
-        patch("reeDraft", {
-          artifactStatus: resolveNext(reeDraft.artifactStatus, value),
-        }),
-      ),
+      dispatch(setArtifactStatus(() => resolveNext(reeDraft.artifactStatus, value))),
     setEvaluationState: (value: Updater<EvaluationState>) =>
-      dispatch(
-        patch("workflowRun", {
-          evaluationState: resolveNext(workflowRun.evaluationState, value),
-        }),
-      ),
+      dispatch(setEvaluationState(() => resolveNext(workflowRun.evaluationState, value))),
     setInclusionState: (value: Updater<ReeInclusionState>) => {
       const next = resolveNext(reeEditorState.inclusionState, value);
       dispatch(
@@ -136,11 +131,7 @@ export function createReeEditorCommands({
       );
     },
     setLocked: (value: boolean | ((current: boolean) => boolean)) =>
-      dispatch(
-        patch("reeDraft", {
-          locked: typeof value === "function" ? value(reeDraft.locked) : value,
-        }),
-      ),
+      dispatch(setLocked(typeof value === "function" ? value(reeDraft.locked) : value)),
     setRepoMode: (value: "url" | "upload" | ((current: "url" | "upload") => "url" | "upload")) =>
       dispatch(
         patch("reeDraft", {
@@ -155,13 +146,11 @@ export function createReeEditorCommands({
       ),
     setWorkflowParams: (value: WorkflowParams | ((current: WorkflowParams) => WorkflowParams)) =>
       dispatch(
-        patch("workflowRun", {
-          workflowParams: typeof value === "function" ? value(workflowRun.workflowParams) : value,
-        }),
+        setWorkflowParams((current) => (typeof value === "function" ? value(current) : value)),
       ),
     openReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: true })),
     closeReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: false })),
-    clearToast: () => dispatch(patch("uiChrome", { toast: null })),
+    clearToast: () => dispatch(clearToast()),
     onSeal: handleSeal,
     onDownloadRee: handleDownloadRee,
     onDownloadSourceFiles: handleDownloadSourceFiles,

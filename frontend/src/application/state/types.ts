@@ -1,4 +1,9 @@
+import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
+import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import type { WorkflowParams } from "../../domain/ree/ReeTypes";
+import type { EvaluationState } from "../../domain/review/EvaluationState";
+import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
+import type { ToastState } from "../workflow/WorkflowStepTypes";
 import type { SourceOutcomePayload, WorkflowRunCompletionPayload } from "./appShellState";
 import type { ReeDraftState } from "./reeDraft";
 import type { UiChromeState } from "./uiChrome";
@@ -30,6 +35,18 @@ export type PatchAction = {
 
 export type AppShellAction =
   | PatchAction
+  | { type: "updateReeSpec"; value: Updater<ReeSpec> }
+  | { type: "setWorkspaceSourceState"; value: Updater<WorkspaceSourceState> }
+  | { type: "setArtifactStatus"; value: Updater<ArtifactStatus> }
+  | { type: "setEvaluationState"; value: Updater<EvaluationState> }
+  | { type: "setWorkflowParams"; value: Updater<WorkflowParams> }
+  | { type: "setActiveRunId"; key: string; runId: string }
+  | { type: "setLocked"; locked: boolean }
+  | { type: "setAssemblyRunLoading"; key: string }
+  | { type: "completeAssemblyRun"; completion: WorkflowRunCompletionPayload }
+  | { type: "resetAssemblyAfterSourceChange"; workflowParams: WorkflowParams }
+  | { type: "showToast"; toast: ToastState }
+  | { type: "clearToast" }
   | { type: "applySourceOutcome"; outcome: SourceOutcomePayload }
   | { type: "completeWorkflowRun"; completion: WorkflowRunCompletionPayload }
   | { type: "resetWorkflowOnSourceChange"; workflowParams: WorkflowParams };

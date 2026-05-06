@@ -115,6 +115,107 @@ function applySourceOutcome(
   };
 }
 
+function updateReeSpec(
+  state: AppShellContextState,
+  updater: Extract<AppShellAction, { type: "updateReeSpec" }>["value"],
+): AppShellContextState {
+  return {
+    ...state,
+    reeDraft: {
+      ...state.reeDraft,
+      reeSpec: resolveUpdater(state.reeDraft.reeSpec, updater),
+    },
+  };
+}
+
+function setWorkspaceSourceState(
+  state: AppShellContextState,
+  updater: Extract<AppShellAction, { type: "setWorkspaceSourceState" }>["value"],
+): AppShellContextState {
+  return {
+    ...state,
+    reeDraft: {
+      ...state.reeDraft,
+      workspaceSourceState: resolveUpdater(state.reeDraft.workspaceSourceState, updater),
+    },
+  };
+}
+
+function setArtifactStatus(
+  state: AppShellContextState,
+  updater: Extract<AppShellAction, { type: "setArtifactStatus" }>["value"],
+): AppShellContextState {
+  return {
+    ...state,
+    reeDraft: {
+      ...state.reeDraft,
+      artifactStatus: resolveUpdater(state.reeDraft.artifactStatus, updater),
+    },
+  };
+}
+
+function setEvaluationState(
+  state: AppShellContextState,
+  updater: Extract<AppShellAction, { type: "setEvaluationState" }>["value"],
+): AppShellContextState {
+  return {
+    ...state,
+    workflowRun: {
+      ...state.workflowRun,
+      evaluationState: resolveUpdater(state.workflowRun.evaluationState, updater),
+    },
+  };
+}
+
+function setWorkflowParams(
+  state: AppShellContextState,
+  updater: Extract<AppShellAction, { type: "setWorkflowParams" }>["value"],
+): AppShellContextState {
+  return {
+    ...state,
+    workflowRun: {
+      ...state.workflowRun,
+      workflowParams: resolveUpdater(state.workflowRun.workflowParams, updater),
+    },
+  };
+}
+
+function setActiveRunId(
+  state: AppShellContextState,
+  action: Extract<AppShellAction, { type: "setActiveRunId" }>,
+): AppShellContextState {
+  return {
+    ...state,
+    workflowRun: {
+      ...state.workflowRun,
+      activeRunIds: {
+        ...state.workflowRun.activeRunIds,
+        [action.key]: action.runId,
+      },
+    },
+  };
+}
+
+function setLocked(state: AppShellContextState, locked: boolean): AppShellContextState {
+  return {
+    ...state,
+    reeDraft: {
+      ...state.reeDraft,
+      locked,
+    },
+  };
+}
+
+function setAssemblyRunLoading(state: AppShellContextState, key: string): AppShellContextState {
+  return {
+    ...state,
+    workflowRun: {
+      ...state.workflowRun,
+      actionStates: { ...state.workflowRun.actionStates, [key]: "loading" },
+    },
+  };
+}
+
 function completeWorkflowRun(
   state: AppShellContextState,
   completion: WorkflowRunCompletionPayload,
@@ -170,6 +271,30 @@ export function appShellReducer(
   action: AppShellAction,
 ): AppShellContextState {
   switch (action.type) {
+    case "updateReeSpec":
+      return updateReeSpec(state, action.value);
+    case "setWorkspaceSourceState":
+      return setWorkspaceSourceState(state, action.value);
+    case "setArtifactStatus":
+      return setArtifactStatus(state, action.value);
+    case "setEvaluationState":
+      return setEvaluationState(state, action.value);
+    case "setWorkflowParams":
+      return setWorkflowParams(state, action.value);
+    case "setActiveRunId":
+      return setActiveRunId(state, action);
+    case "setLocked":
+      return setLocked(state, action.locked);
+    case "setAssemblyRunLoading":
+      return setAssemblyRunLoading(state, action.key);
+    case "completeAssemblyRun":
+      return completeWorkflowRun(state, action.completion);
+    case "resetAssemblyAfterSourceChange":
+      return resetWorkflowOnSourceChange(state, action.workflowParams);
+    case "showToast":
+      return { ...state, uiChrome: { ...state.uiChrome, toast: action.toast } };
+    case "clearToast":
+      return { ...state, uiChrome: { ...state.uiChrome, toast: null } };
     case "patch":
       return applyPatch(state, action);
     case "applySourceOutcome":

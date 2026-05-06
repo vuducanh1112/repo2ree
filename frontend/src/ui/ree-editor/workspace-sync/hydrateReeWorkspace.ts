@@ -1,5 +1,10 @@
 import type React from "react";
-import { patch } from "../../../application/state/actions";
+import {
+  setArtifactStatus,
+  setEvaluationState,
+  setWorkspaceSourceState,
+  updateReeSpec,
+} from "../../../application/state/actions";
 import type { AppShellAction } from "../../../application/state/types";
 import type { RawReeDraftSlices } from "../../../domain/ree/mapRawReeDraft";
 import type { ReeFile } from "../../../domain/ree/ReeTypes";
@@ -16,26 +21,11 @@ export function createHydrateReeWorkspace(dispatch: React.Dispatch<AppShellActio
     if (!workspace.ree) {
       return;
     }
+    const ree = workspace.ree;
 
-    dispatch(
-      patch("reeDraft", {
-        reeSpec: workspace.ree.reeSpec,
-      }),
-    );
-    dispatch(
-      patch("reeDraft", {
-        workspaceSourceState: workspace.ree.workspaceSourceState,
-      }),
-    );
-    dispatch(
-      patch("reeDraft", {
-        artifactStatus: workspace.ree.artifactStatus,
-      }),
-    );
-    dispatch(
-      patch("workflowRun", {
-        evaluationState: workspace.ree.evaluationState,
-      }),
-    );
+    dispatch(updateReeSpec(() => ree.reeSpec));
+    dispatch(setWorkspaceSourceState(() => ree.workspaceSourceState));
+    dispatch(setArtifactStatus(() => ree.artifactStatus));
+    dispatch(setEvaluationState(() => ree.evaluationState));
   };
 }

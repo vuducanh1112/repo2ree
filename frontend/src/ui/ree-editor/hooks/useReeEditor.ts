@@ -9,7 +9,7 @@ import {
   createReeEditorViewModel,
   type ReeEditorViewModel,
 } from "../../../application/ree-editor/reeEditorViewModel";
-import { patch } from "../../../application/state/actions";
+import { showToast as enqueueToast } from "../../../application/state/actions";
 import type { ReeDraftState } from "../../../application/state/reeDraft";
 import type { AppShellAction } from "../../../application/state/types";
 import type { UiChromeState } from "../../../application/state/uiChrome";
@@ -50,12 +50,7 @@ export function useReeEditor({ reeDraft, workflowRun, uiChrome, dispatch }: UseR
   );
 
   const showToast = useCallback<ShowToast>(
-    (message, type = "info") =>
-      dispatch(
-        patch("uiChrome", {
-          toast: { message, type },
-        }),
-      ),
+    (message, type = "info") => dispatch(enqueueToast({ message, type })),
     [dispatch],
   );
 

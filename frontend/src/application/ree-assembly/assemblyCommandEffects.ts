@@ -1,6 +1,5 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../domain/ree/ReeSpec";
-import type { ActionStates } from "../../domain/ree/ReeTypes";
 import type { EvaluationState } from "../../domain/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
@@ -13,11 +12,11 @@ type SourceApplyOutcomeCommand = Extract<SourceCommand, { type: "applySourceOutc
 
 export type WorkspaceStateCommand =
   | {
-      type: "setActionStates";
-      actionStates: Updater<ActionStates>;
+      type: "setAssemblyRunLoading";
+      key: string;
     }
   | {
-      type: "completeWorkflowRun";
+      type: "completeAssemblyRun";
       completion: {
         key: string;
         actionState: "done";
@@ -81,11 +80,8 @@ export function mapAssemblyCommandsToEffects(commands: AssemblyCommand[]): AppSh
       effects.push({
         type: "dispatchStateCommand",
         command: {
-          type: "setActionStates",
-          actionStates: (prevStates: ActionStates) => ({
-            ...prevStates,
-            [command.key]: "loading",
-          }),
+          type: "setAssemblyRunLoading",
+          key: command.key,
         },
       });
       continue;
@@ -98,7 +94,7 @@ export function mapAssemblyCommandsToEffects(commands: AssemblyCommand[]): AppSh
       effects.push({
         type: "dispatchStateCommand",
         command: {
-          type: "completeWorkflowRun",
+          type: "completeAssemblyRun",
           completion: {
             key: command.completion.key,
             actionState: command.completion.actionState,
@@ -274,11 +270,8 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): AppShellE
         {
           type: "dispatchStateCommand" as const,
           command: {
-            type: "setActionStates" as const,
-            actionStates: (prevStates: ActionStates) => ({
-              ...prevStates,
-              source: "loading" as const,
-            }),
+            type: "setAssemblyRunLoading" as const,
+            key: "source",
           },
         },
       ];
