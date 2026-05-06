@@ -1,6 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { DEFAULT_REE_ID } from "../../core/ree/ReeId";
 import { ApiClientProvider } from "../data/apiRuntime";
 import { AppShellProvider } from "../ui/app-shell/providers/AppShellProvider";
 import { AppBootstrap } from "./bootstrap/AppBootstrap";
@@ -23,11 +22,7 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ApiClientProvider
-        baseUrl={runtimeConfig.baseUrl}
-        initialReeId={runtimeConfig.initialReeId}
-        reeId={DEFAULT_REE_ID}
-      >
+      <ApiClientProvider baseUrl={runtimeConfig.baseUrl} initialReeId={runtimeConfig.initialReeId}>
         <AppShellProvider>
           <AppBootstrap />
         </AppShellProvider>

@@ -23,7 +23,7 @@ interface ApiClientProviderProps {
 
 const ApiRuntimeContext = createContext<ApiRuntimeValue | null>(null);
 
-function createApiRuntime({
+export function createApiRuntime({
   baseUrl,
   initialReeId,
   reeId,
@@ -36,7 +36,12 @@ function createApiRuntime({
   const reeApi = new ReeApi(client);
   const runsApi = new ExecutionRunsApi(client);
   const reviewsApi = new ReviewsApi(client);
-  let resolvedReeId: ReeId | null = initialReeId ? asReeId(initialReeId) : null;
+  const contextReeId = initialReeId
+    ? asReeId(initialReeId)
+    : reeId
+      ? asReeId(reeId)
+      : DEFAULT_REE_ID;
+  let resolvedReeId: ReeId | null = contextReeId !== DEFAULT_REE_ID ? contextReeId : null;
 
   const ensureReeId = async (requestedId: ReeId | string): Promise<ReeId> => {
     if (requestedId && requestedId !== DEFAULT_REE_ID) {
@@ -54,7 +59,7 @@ function createApiRuntime({
   };
 
   return {
-    reeId: reeId ? asReeId(reeId) : DEFAULT_REE_ID,
+    reeId: contextReeId,
     ensureReeId,
     reeApi,
     runsApi,
