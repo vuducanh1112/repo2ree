@@ -31,7 +31,7 @@ interface AppShellState {
 
 export interface SourceOutcomePayload {
   reeSpecPatch?: Partial<ReeSpec>;
-  workspaceSourceState?: WorkspaceSourceState;
+  workspaceSourceStatePatch?: Partial<WorkspaceSourceState>;
   sourceSnapshotArchiveName: string;
   actionState?: "done";
   badge?: boolean;

@@ -86,7 +86,7 @@ describe("assemblyRunPlanning", () => {
         key: "swh",
         generatedSwhid: "swh:1:dir:abc",
         timestamp: "2026-01-01T00:00:00Z",
-      }).reePatch?.swhid,
+      }).reeSpecPatch?.swhid,
     ).toBe("swh:1:dir:abc");
 
     expect(

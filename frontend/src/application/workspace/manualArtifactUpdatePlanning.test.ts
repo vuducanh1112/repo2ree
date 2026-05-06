@@ -9,19 +9,20 @@ describe("planManualArtifactCompletion", () => {
     expect(result.successMessage).toContain("fields locked");
   });
 
-  it("returns ree patches for archive completion actions", () => {
+  it("returns ree spec patches for archive completion actions", () => {
     expect(
-      planManualArtifactCompletion({ key: "swh", generatedSwhid: "swh:1:dir:abc" }).reePatch?.swhid,
+      planManualArtifactCompletion({ key: "swh", generatedSwhid: "swh:1:dir:abc" }).reeSpecPatch
+        ?.swhid,
     ).toBe("swh:1:dir:abc");
     expect(
       planManualArtifactCompletion({ key: "zenodo", generatedZenodoDoi: "10.5281/zenodo.123" })
-        .reePatch?.zenodo_doi,
+        .reeSpecPatch?.zenodo_doi,
     ).toBe("10.5281/zenodo.123");
     expect(
       planManualArtifactCompletion({
         key: "dataverse",
         generatedDataverseDoi: "doi:10.5072/DVN/123456",
-      }).reePatch?.dataverse_doi,
+      }).reeSpecPatch?.dataverse_doi,
     ).toBe("doi:10.5072/DVN/123456");
   });
 

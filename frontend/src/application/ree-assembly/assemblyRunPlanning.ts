@@ -1,4 +1,4 @@
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
+import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import { planManualArtifactCompletion } from "../workspace/manualArtifactUpdatePlanning";
 import {
   deriveReeAssemblyStepLevel,
@@ -18,7 +18,7 @@ interface AssemblyRunCompletionPlan {
 
 interface AssemblyRunSuccessPlan extends AssemblyRunCompletionPlan {
   successMessage?: string;
-  reePatch?: Partial<ReeEditorViewModel>;
+  reeSpecPatch?: Partial<ReeSpec>;
   lock?: boolean;
 }
 

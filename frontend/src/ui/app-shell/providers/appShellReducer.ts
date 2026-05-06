@@ -94,8 +94,8 @@ function applySourceOutcome(
       reeSpec: outcome.reeSpecPatch
         ? { ...reeDraft.reeSpec, ...outcome.reeSpecPatch }
         : reeDraft.reeSpec,
-      workspaceSourceState: outcome.workspaceSourceState
-        ? { ...reeDraft.workspaceSourceState, ...outcome.workspaceSourceState }
+      workspaceSourceState: outcome.workspaceSourceStatePatch
+        ? { ...reeDraft.workspaceSourceState, ...outcome.workspaceSourceStatePatch }
         : reeDraft.workspaceSourceState,
       sourceSnapshotArchiveName: outcome.sourceSnapshotArchiveName,
     },

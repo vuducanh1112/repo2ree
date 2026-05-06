@@ -27,7 +27,7 @@ function buildRee(): ReeEditorViewModel {
 function buildHandlers(): AssemblyCommandPlannerMap {
   return {
     evaluate: (_params, newLevel) => [
-      { type: "patchRee", patch: { evalLevel: newLevel } },
+      { type: "setEvaluationState", evaluationState: { evalLevel: newLevel } },
       { type: "toast", message: `Evaluated at L${newLevel}`, toastType: "success" },
     ],
     build: () => [{ type: "toast", message: "Build complete", toastType: "success" }],
@@ -163,8 +163,8 @@ describe("executeAssemblyRun", () => {
     });
 
     expect(executedCommands(executeCommands)).toContainEqual({
-      type: "patchRee",
-      patch: { swhid: "swh:1:dir:abc" },
+      type: "setReeSpec",
+      reeSpec: { swhid: "swh:1:dir:abc" },
     });
   });
 });

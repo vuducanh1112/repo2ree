@@ -90,7 +90,7 @@ describe("appShellState", () => {
         reeSpecPatch: {
           origin_url: "https://example.org/repo.git",
         },
-        workspaceSourceState: {
+        workspaceSourceStatePatch: {
           sourceAvailable: true,
           sourceAcquiredBy: "download",
         },

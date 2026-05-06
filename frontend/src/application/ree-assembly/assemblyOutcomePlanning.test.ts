@@ -37,7 +37,7 @@ describe("assemblyOutcomePlanning", () => {
       expectedOutput: "runtime.tar.gz",
     });
 
-    expect(result.reePatch?.runtime).toBe("runtime.tar.gz");
+    expect(result.reeSpecPatch?.runtime).toBe("runtime.tar.gz");
   });
 
   it("plans HBOM success messaging", () => {
@@ -48,7 +48,7 @@ describe("assemblyOutcomePlanning", () => {
   it("plans SBOM metadata", () => {
     const result = planSbomEffect();
 
-    expect(result.reePatch.sbom).toBe("sbom.json");
+    expect(result.reeSpecPatch.sbom).toBe("sbom.json");
   });
 
   it("plans evaluate metadata", () => {
@@ -58,8 +58,8 @@ describe("assemblyOutcomePlanning", () => {
       manifestCount: 2,
     });
 
-    expect(result.reePatch.evalLevel).toBe(3);
-    expect(result.reePatch.detected_dependencies).toContain("5 dependencies");
+    expect(result.evaluationStatePatch.evalLevel).toBe(3);
+    expect(result.reeSpecPatch.detected_dependencies).toContain("5 dependencies");
     expect(result.successMessage).toContain("L3");
   });
 
@@ -79,7 +79,7 @@ describe("assemblyOutcomePlanning", () => {
       manifestCount: 0,
     });
 
-    expect(result.reePatch?.runtime).toBe("runtime.tar.gz");
+    expect(result.reeSpecPatch?.runtime).toBe("runtime.tar.gz");
   });
 
   it("builds evaluate assembly effect plans through a single entry point", () => {
@@ -94,7 +94,7 @@ describe("assemblyOutcomePlanning", () => {
       manifestCount: 3,
     });
 
-    expect(result.reePatch?.evalLevel).toBe(4);
+    expect(result.evaluationStatePatch?.evalLevel).toBe(4);
     expect(result.successMessage).toContain("L4");
   });
 });

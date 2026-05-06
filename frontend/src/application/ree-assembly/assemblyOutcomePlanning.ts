@@ -1,3 +1,6 @@
+import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
+import type { ReeSpec } from "../../domain/ree/ReeSpec";
+import type { EvaluationState } from "../../domain/review/EvaluationState";
 import { LEVELS } from "../../domain/review/levels";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
@@ -10,24 +13,25 @@ interface PersistedFilePlan {
 
 interface BuildEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch?: Partial<ReeEditorViewModel>;
+  reeSpecPatch?: Partial<ReeSpec>;
+  artifactStatusPatch?: Partial<ArtifactStatus>;
   errorMessage?: string;
   successMessage: string;
 }
 
 interface SbomEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch: Partial<ReeEditorViewModel>;
+  reeSpecPatch: Partial<ReeSpec>;
   successMessage: string;
 }
 
 interface HbomEffectPlan {
-  reePatch?: Partial<ReeEditorViewModel>;
   successMessage: string;
 }
 
 interface EvaluateEffectPlan {
-  reePatch: Partial<ReeEditorViewModel>;
+  reeSpecPatch: Partial<ReeSpec>;
+  evaluationStatePatch: Partial<EvaluationState>;
   successMessage: string;
 }
 
@@ -37,7 +41,9 @@ interface ActivationEffectPlan {
 
 interface AssemblyServiceEffectPlan {
   persistedFile?: PersistedFilePlan;
-  reePatch?: Partial<ReeEditorViewModel>;
+  reeSpecPatch?: Partial<ReeSpec>;
+  artifactStatusPatch?: Partial<ArtifactStatus>;
+  evaluationStatePatch?: Partial<EvaluationState>;
   errorMessage?: string;
   successMessage: string;
 }
@@ -53,10 +59,8 @@ export function planBuildEffect(args: {
 
   if (expectedOutput) {
     return {
-      reePatch: {
-        runtime: expectedOutput,
-        runtimeIncluded: true,
-      },
+      reeSpecPatch: { runtime: expectedOutput },
+      artifactStatusPatch: { runtimeIncluded: true },
       successMessage: `Build complete${producedName ? ` — ${producedName} produced` : ""}`,
     };
   }
@@ -74,7 +78,7 @@ export function planHbomEffect(): HbomEffectPlan {
 
 export function planSbomEffect(): SbomEffectPlan {
   return {
-    reePatch: { sbom: "sbom.json" },
+    reeSpecPatch: { sbom: "sbom.json" },
     successMessage: "SBOM generated — sbom.json",
   };
 }
@@ -88,11 +92,11 @@ export function planEvaluateEffect(args: {
   const depSummary = `${args.dependencyCount} dependenc${args.dependencyCount === 1 ? "y" : "ies"} across ${args.manifestCount} manifest file${args.manifestCount === 1 ? "" : "s"}`;
 
   return {
-    reePatch: {
-      evalLevel: args.newLevel,
+    reeSpecPatch: {
       repro_level: `L${args.newLevel} · ${label}`,
       detected_dependencies: depSummary,
     },
+    evaluationStatePatch: { evalLevel: args.newLevel },
     successMessage: `L${args.newLevel} · ${label}`,
   };
 }

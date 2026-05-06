@@ -1,8 +1,8 @@
+import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import { REE_ASSEMBLY_STEPS } from "../ree-assembly/assemblyCatalog";
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 
 interface ManualArtifactCompletionPlan {
-  reePatch?: Partial<ReeEditorViewModel>;
+  reeSpecPatch?: Partial<ReeSpec>;
   lock?: boolean;
   successMessage: string;
 }
@@ -29,21 +29,21 @@ export function planManualArtifactCompletion({
 
   if (key === "swh") {
     return {
-      reePatch: { swhid: generatedSwhid || "" },
+      reeSpecPatch: { swhid: generatedSwhid || "" },
       successMessage: "Archived at Software Heritage — SWHID assigned",
     };
   }
 
   if (key === "zenodo") {
     return {
-      reePatch: { zenodo_doi: generatedZenodoDoi || "" },
+      reeSpecPatch: { zenodo_doi: generatedZenodoDoi || "" },
       successMessage: "Published on Zenodo — DOI assigned",
     };
   }
 
   if (key === "dataverse") {
     return {
-      reePatch: { dataverse_doi: generatedDataverseDoi || "" },
+      reeSpecPatch: { dataverse_doi: generatedDataverseDoi || "" },
       successMessage: "Dataset published on Dataverse — DOI assigned",
     };
   }

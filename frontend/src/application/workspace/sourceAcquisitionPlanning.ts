@@ -1,5 +1,7 @@
+import type { ReeSpec } from "../../domain/ree/ReeSpec";
 import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { normalizeSnapshotArchiveName } from "../../domain/workspace/PathUtils";
+import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 
 type SourceExecutionStatus = "failed" | "canceled";
@@ -27,12 +29,14 @@ interface SourceSnapshotPlan {
 }
 
 interface DownloadSourceSuccessPlan extends SourceSnapshotPlan {
-  ree: ReeEditorViewModel;
+  reeSpecPatch: Partial<ReeSpec>;
+  workspaceSourceStatePatch: Partial<WorkspaceSourceState>;
   successMessage: string;
 }
 
 interface UploadSourceSuccessPlan extends SourceSnapshotPlan {
-  ree: ReeEditorViewModel;
+  reeSpecPatch: Partial<ReeSpec>;
+  workspaceSourceStatePatch: Partial<WorkspaceSourceState>;
   successMessage: string;
 }
 
@@ -42,12 +46,14 @@ interface SourceStatePlan {
   timestamp: string;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
-  reePatch: Partial<ReeEditorViewModel>;
+  reeSpecPatch: Partial<ReeSpec>;
+  workspaceSourceStatePatch: Partial<WorkspaceSourceState>;
   successMessage: string;
 }
 
 interface ClearedSourceStatePlan {
-  reePatch: Partial<ReeEditorViewModel>;
+  reeSpecPatch: Partial<ReeSpec>;
+  workspaceSourceStatePatch: Partial<WorkspaceSourceState>;
   snapshotFiles: FileTreeNode[];
   snapshotArchiveName: string;
   infoMessage: string;
@@ -116,7 +122,6 @@ function buildSourceExecutionRequestPlan(
 }
 
 function buildDownloadedSourceSuccess(args: {
-  ree: ReeEditorViewModel;
   originType: ReeEditorViewModel["source_type"];
   normalizedSourceUrl: string;
   workspaceFiles: FileTreeNode[];
@@ -128,10 +133,11 @@ function buildDownloadedSourceSuccess(args: {
   return {
     snapshotArchiveName,
     sourceAvailable,
-    ree: {
-      ...args.ree,
+    reeSpecPatch: {
       origin_url: args.normalizedSourceUrl,
       source_type: args.originType,
+    },
+    workspaceSourceStatePatch: {
       sourceAvailable,
       sourceAcquiredBy: "download",
       uploadedArchive: "",
@@ -146,7 +152,6 @@ function buildDownloadedSourceSuccess(args: {
 }
 
 function buildUploadedSourceSuccess(args: {
-  ree: ReeEditorViewModel;
   archiveName: string;
   workspaceFiles: FileTreeNode[];
   timestamp: string;
@@ -157,12 +162,13 @@ function buildUploadedSourceSuccess(args: {
   return {
     snapshotArchiveName,
     sourceAvailable,
-    ree: {
-      ...args.ree,
+    reeSpecPatch: {
       origin_url: "",
+      source_type: "",
+    },
+    workspaceSourceStatePatch: {
       sourceIncluded: true,
       uploadedArchive: args.archiveName,
-      source_type: "",
       sourceAvailable,
       sourceAcquiredBy: "upload",
       sourceSnapshotArchive: snapshotArchiveName,
@@ -234,7 +240,6 @@ export function planSourceExecutionFailure(status: SourceExecutionStatus): Sourc
 }
 
 export function planDownloadedSourceState(args: {
-  ree: ReeEditorViewModel;
   originType: ReeEditorViewModel["source_type"];
   normalizedSourceUrl: string;
   workspaceFiles: FileTreeNode[];
@@ -248,21 +253,13 @@ export function planDownloadedSourceState(args: {
     timestamp: args.timestamp,
     snapshotFiles: cloneTree(args.workspaceFiles),
     snapshotArchiveName: successPlan.snapshotArchiveName,
-    reePatch: {
-      origin_url: successPlan.ree.origin_url,
-      source_type: successPlan.ree.source_type,
-      sourceAvailable: successPlan.ree.sourceAvailable,
-      sourceAcquiredBy: successPlan.ree.sourceAcquiredBy,
-      uploadedArchive: successPlan.ree.uploadedArchive,
-      sourceSnapshotArchive: successPlan.ree.sourceSnapshotArchive,
-      sourceSnapshotCapturedAt: successPlan.ree.sourceSnapshotCapturedAt,
-    },
+    reeSpecPatch: successPlan.reeSpecPatch,
+    workspaceSourceStatePatch: successPlan.workspaceSourceStatePatch,
     successMessage: successPlan.successMessage,
   };
 }
 
 export function planUploadedSourceState(args: {
-  ree: ReeEditorViewModel;
   archiveName: string;
   workspaceFiles: FileTreeNode[];
   timestamp: string;
@@ -275,24 +272,18 @@ export function planUploadedSourceState(args: {
     timestamp: args.timestamp,
     snapshotFiles: cloneTree(args.workspaceFiles),
     snapshotArchiveName: successPlan.snapshotArchiveName,
-    reePatch: {
-      origin_url: successPlan.ree.origin_url,
-      sourceIncluded: successPlan.ree.sourceIncluded,
-      uploadedArchive: successPlan.ree.uploadedArchive,
-      source_type: successPlan.ree.source_type,
-      sourceAvailable: successPlan.ree.sourceAvailable,
-      sourceAcquiredBy: successPlan.ree.sourceAcquiredBy,
-      sourceSnapshotArchive: successPlan.ree.sourceSnapshotArchive,
-      sourceSnapshotCapturedAt: successPlan.ree.sourceSnapshotCapturedAt,
-    },
+    reeSpecPatch: successPlan.reeSpecPatch,
+    workspaceSourceStatePatch: successPlan.workspaceSourceStatePatch,
     successMessage: successPlan.successMessage,
   };
 }
 
 export function planClearedSourceStateResult(): ClearedSourceStatePlan {
   return {
-    reePatch: {
+    reeSpecPatch: {
       origin_url: "",
+    },
+    workspaceSourceStatePatch: {
       sourceAvailable: false,
       sourceAcquiredBy: undefined,
       uploadedArchive: "",

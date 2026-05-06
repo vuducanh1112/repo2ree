@@ -47,7 +47,9 @@ export type AssemblyCommand =
       evaluationState?: EvaluationState;
     }
   | { type: "persistFile"; path: string; content: string }
-  | { type: "patchRee"; patch: Partial<ReeEditorViewModel> }
+  | { type: "setReeSpec"; reeSpec: Partial<ReeSpec> }
+  | { type: "setArtifactStatus"; artifactStatus: Partial<ArtifactStatus> }
+  | { type: "setEvaluationState"; evaluationState: Partial<EvaluationState> }
   | { type: "setLocked"; locked: boolean }
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
@@ -137,7 +139,9 @@ export function createAssemblyCommandPlanners({
 
 function assemblyEffectPlanToCommands(plan: {
   persistedFile?: { path: string; content: string };
-  reePatch?: Partial<ReeEditorViewModel>;
+  reeSpecPatch?: Partial<ReeSpec>;
+  artifactStatusPatch?: Partial<ArtifactStatus>;
+  evaluationStatePatch?: Partial<EvaluationState>;
   errorMessage?: string;
   successMessage: string;
 }): AssemblyCommand[] {
@@ -149,8 +153,14 @@ function assemblyEffectPlanToCommands(plan: {
       content: plan.persistedFile.content,
     });
   }
-  if (plan.reePatch) {
-    commands.push({ type: "patchRee", patch: plan.reePatch });
+  if (plan.reeSpecPatch) {
+    commands.push({ type: "setReeSpec", reeSpec: plan.reeSpecPatch });
+  }
+  if (plan.artifactStatusPatch) {
+    commands.push({ type: "setArtifactStatus", artifactStatus: plan.artifactStatusPatch });
+  }
+  if (plan.evaluationStatePatch) {
+    commands.push({ type: "setEvaluationState", evaluationState: plan.evaluationStatePatch });
   }
   if (plan.errorMessage) {
     commands.push({ type: "toast", message: plan.errorMessage, toastType: "error" });
@@ -160,13 +170,13 @@ function assemblyEffectPlanToCommands(plan: {
 }
 
 export function nonAssemblyPlanToCommands(plan: {
-  reePatch?: Partial<ReeEditorViewModel>;
+  reeSpecPatch?: Partial<ReeSpec>;
   lock?: boolean;
   successMessage?: string;
 }): AssemblyCommand[] {
   const commands: AssemblyCommand[] = [];
-  if (plan.reePatch) {
-    commands.push({ type: "patchRee", patch: plan.reePatch });
+  if (plan.reeSpecPatch) {
+    commands.push({ type: "setReeSpec", reeSpec: plan.reeSpecPatch });
   }
   if (plan.lock) {
     commands.push({ type: "setLocked", locked: true });

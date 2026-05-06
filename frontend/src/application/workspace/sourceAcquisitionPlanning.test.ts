@@ -77,7 +77,6 @@ describe("sourceAcquisitionPlanning", () => {
     ];
 
     const result = planDownloadedSourceState({
-      ree: buildRee(),
       originType: "git",
       normalizedSourceUrl: "https://example.org/org/repo.git",
       workspaceFiles,
@@ -87,7 +86,8 @@ describe("sourceAcquisitionPlanning", () => {
     expect(result.snapshotArchiveName).toBe("repo-original.tar.gz");
     expect(result.actionState).toBe("done");
     expect(result.badge).toBe(true);
-    expect(result.reePatch.sourceAcquiredBy).toBe("download");
+    expect(result.reeSpecPatch.origin_url).toBe("https://example.org/org/repo.git");
+    expect(result.workspaceSourceStatePatch.sourceAcquiredBy).toBe("download");
     expect(result.snapshotFiles).not.toBe(workspaceFiles);
     expect(result.snapshotFiles[0]).not.toBe(workspaceFiles[0]);
   });
@@ -96,20 +96,21 @@ describe("sourceAcquisitionPlanning", () => {
     const workspaceFiles: FileTreeNode[] = [{ id: "1", name: "README.md", type: "file" }];
 
     const result = planUploadedSourceState({
-      ree: buildRee(),
       archiveName: "source.tgz",
       workspaceFiles,
       timestamp: "2026-01-01T00:00:00Z",
     });
 
     expect(result.snapshotArchiveName).toBe("source.tar.gz");
-    expect(result.reePatch.sourceAcquiredBy).toBe("upload");
+    expect(result.reeSpecPatch.source_type).toBe("");
+    expect(result.workspaceSourceStatePatch.sourceAcquiredBy).toBe("upload");
   });
 
   it("builds normalized clear state", () => {
     const result = planClearedSourceStateResult();
 
-    expect(result.reePatch.origin_url).toBe("");
+    expect(result.reeSpecPatch.origin_url).toBe("");
+    expect(result.workspaceSourceStatePatch.sourceAvailable).toBe(false);
     expect(result.snapshotFiles).toEqual([]);
     expect(result.snapshotArchiveName).toBe("");
   });

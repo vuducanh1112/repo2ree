@@ -6,8 +6,8 @@ export function planSealArtifactCommands(args: {
 }): AssemblyCommand[] {
   return [
     {
-      type: "patchRee",
-      patch: {
+      type: "setArtifactStatus",
+      artifactStatus: {
         sealedAt: args.sealedAt,
         sealHash: args.sealHash,
       },
