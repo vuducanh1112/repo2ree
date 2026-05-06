@@ -1,12 +1,18 @@
 import type React from "react";
 import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
-import { planSealArtifactCommands } from "../../../application/artifact/sealArtifactCommands";
-import type { GenericReeAssemblyParams } from "../../../application/ree-assembly/assemblyStepTypes";
+import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
+import { planSealArtifactCommands } from "../../../core/artifact/sealArtifactCommands";
+import type { ReeInclusionState } from "../../../core/ree/ReeInclusionState";
+import type { ReeSpec } from "../../../core/ree/ReeSpec";
+import type { ReeAssemblyOperationParams, SourceUploadCommit } from "../../../core/ree/ReeTypes";
+import type { GenericReeAssemblyParams } from "../../../core/ree-assembly/assemblyStepTypes";
 import type {
   ReeAssemblyOperationKey,
   ReeAssemblyRunParams,
-} from "../../../application/ree-assembly/assemblyTypes";
-import type { ReeEditorState } from "../../../application/ree-editor/reeEditorState";
+} from "../../../core/ree-assembly/assemblyTypes";
+import type { ReeEditorState } from "../../../core/ree-editor/reeEditorState";
+import type { EvaluationState } from "../../../core/review/EvaluationState";
+import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
 import {
   clearToast,
   patch,
@@ -17,22 +23,16 @@ import {
   setRepoMode,
   setWorkspaceSourceState,
   updateReeSpec,
-} from "../../../application/state/actions";
-import type { AssemblyRunState } from "../../../application/state/assemblyRunState";
-import type { AppShellPage } from "../../../application/state/pages";
-import type { ReeDraftState } from "../../../application/state/reeDraft";
+} from "../../../shell/ui/app-shell/state/actions";
+import type { AssemblyRunState } from "../../../shell/ui/app-shell/state/assemblyRunState";
+import type { AppShellPage } from "../../../shell/ui/app-shell/state/pages";
+import type { ReeDraftState } from "../../../shell/ui/app-shell/state/reeDraft";
 import {
   type AppShellAction,
   resolveUpdater,
   type Updater,
-} from "../../../application/state/types";
-import type { UiChromeState } from "../../../application/state/uiChrome";
-import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
-import type { ReeInclusionState } from "../../../core/ree/ReeInclusionState";
-import type { ReeSpec } from "../../../core/ree/ReeSpec";
-import type { ReeAssemblyOperationParams, SourceUploadCommit } from "../../../core/ree/ReeTypes";
-import type { EvaluationState } from "../../../core/review/EvaluationState";
-import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
+} from "../../../shell/ui/app-shell/state/types";
+import type { UiChromeState } from "../../../shell/ui/app-shell/state/uiChrome";
 import { executeAssemblyCommands } from "../assembly-runs/assemblyActionEffects";
 import type { ShowToast } from "../types";
 

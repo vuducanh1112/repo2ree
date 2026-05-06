@@ -1,7 +1,7 @@
-import type { ReeEditorViewModel } from "../../application/ree-editor/reeEditorViewModel";
-import { type AppShellPage, PAGE } from "../../application/state/pages";
 import type { Badges, Timestamps } from "../../core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "../../core/ree-editor/reeEditorViewModel";
 import { LEVELS } from "../../core/review/levels";
+import { type AppShellPage, PAGE } from "../../shell/ui/app-shell/state/pages";
 import { Ic } from "../shared/components/Icon";
 import { C, hoverBg, hoverColor } from "../theme/theme";
 import { NavEntryButton } from "./AppShellNav";

@@ -1,16 +1,4 @@
 import type React from "react";
-import type {
-  ReeAssemblyBadge,
-  ReeAssemblyDefinition,
-  ReeAssemblyParamValue,
-  ReeAssemblyRequirement,
-} from "../../../application/ree-assembly/assemblyStepTypes";
-import type {
-  ReeAssemblyOperationKey,
-  ReeAssemblyRunParams,
-} from "../../../application/ree-assembly/assemblyTypes";
-import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
-import type { AppShellPage } from "../../../application/state/pages";
 import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
 import type { ReeInclusionState } from "../../../core/ree/ReeInclusionState";
 import type { ReeSpec } from "../../../core/ree/ReeSpec";
@@ -20,9 +8,21 @@ import type {
   LogEntry,
   SourceUploadCommit,
 } from "../../../core/ree/ReeTypes";
+import type {
+  ReeAssemblyBadge,
+  ReeAssemblyDefinition,
+  ReeAssemblyParamValue,
+  ReeAssemblyRequirement,
+} from "../../../core/ree-assembly/assemblyStepTypes";
+import type {
+  ReeAssemblyOperationKey,
+  ReeAssemblyRunParams,
+} from "../../../core/ree-assembly/assemblyTypes";
+import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import type { EvaluationState } from "../../../core/review/EvaluationState";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
+import type { AppShellPage } from "../../../shell/ui/app-shell/state/pages";
 
 export interface SourceAcquisitionPageProps {
   ree: ReeEditorViewModel;

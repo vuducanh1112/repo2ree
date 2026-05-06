@@ -1,5 +1,5 @@
-import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
-import { FIELD_META } from "../../../../../application/state/fieldMeta";
+import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
+import { FIELD_META } from "../../../../../shell/ui/app-shell/fieldTips/fieldMeta";
 import { C, F } from "../../../../theme/theme";
 
 interface AllFieldsPanelProps {

@@ -1,4 +1,4 @@
-import type { ReeAssemblyParamValue } from "../../../application/ree-assembly/assemblyStepTypes";
+import type { ReeAssemblyParamValue } from "../../../core/ree-assembly/assemblyStepTypes";
 import { C, F, S_SECTION_LABEL } from "../../theme/theme";
 import type {
   ReactivationParams,

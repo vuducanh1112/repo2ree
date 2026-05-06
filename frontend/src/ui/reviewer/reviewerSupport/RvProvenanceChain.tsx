@@ -1,4 +1,4 @@
-import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
+import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 

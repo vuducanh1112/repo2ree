@@ -1,5 +1,5 @@
-import type { AppShellPage } from "../../../../application/state/pages";
-import { PAGE } from "../../../../application/state/pages";
+import type { AppShellPage } from "../../../../shell/ui/app-shell/state/pages";
+import { PAGE } from "../../../../shell/ui/app-shell/state/pages";
 import { Ic } from "../../../shared/components/Icon";
 import { Toggle } from "../../../shared/components/Toggle";
 import { C, F } from "../../../theme/theme";

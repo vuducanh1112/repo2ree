@@ -1,5 +1,5 @@
 import type React from "react";
-import { FIELD_META } from "../../../../application/state/fieldMeta";
+import { FIELD_META } from "../../../../shell/ui/app-shell/fieldTips/fieldMeta";
 import { triggerOnEnterOrSpace } from "../../../shared/keyboard";
 import {
   C,

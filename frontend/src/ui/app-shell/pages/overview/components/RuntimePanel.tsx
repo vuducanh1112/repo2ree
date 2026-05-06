@@ -1,10 +1,10 @@
 import type React from "react";
-import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
-import type { AppShellPage } from "../../../../../application/state/pages";
-import { PAGE } from "../../../../../application/state/pages";
 import type { ArtifactStatus } from "../../../../../core/artifact/ArtifactStatus";
+import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
 import { findVirtualFileByName } from "../../../../../core/workspace/fileTreeTraversal";
+import type { AppShellPage } from "../../../../../shell/ui/app-shell/state/pages";
+import { PAGE } from "../../../../../shell/ui/app-shell/state/pages";
 import { Toggle } from "../../../../shared/components/Toggle";
 import { fmtBytes } from "../../../../shared/formatting";
 import {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PAGE } from "../../../../application/state/pages";
+import { PAGE } from "../../../../shell/ui/app-shell/state/pages";
 import { Ic } from "../../../shared/components/Icon";
 import { useFocusScroll } from "../../../shared/hooks/useFocusScroll";
 import {

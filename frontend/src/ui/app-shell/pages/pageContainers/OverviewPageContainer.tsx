@@ -1,4 +1,4 @@
-import { appShellPageForField, PAGE } from "../../../../application/state/pages";
+import { appShellPageForField, PAGE } from "../../../../shell/ui/app-shell/state/pages";
 import { PageOverview } from "../overview/OverviewPage";
 import { type AppShellPageContainerProps, ContentSection } from "./shared";
 

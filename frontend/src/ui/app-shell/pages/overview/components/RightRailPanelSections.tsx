@@ -1,13 +1,13 @@
 import type React from "react";
-import { REE_ASSEMBLY_STEPS } from "../../../../../application/ree-assembly/assemblyCatalog";
-import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
+import type { Badges, Timestamps } from "../../../../../core/ree/ReeTypes";
+import { REE_ASSEMBLY_STEPS } from "../../../../../core/ree-assembly/assemblyCatalog";
+import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
+import { LEVELS } from "../../../../../core/review/levels";
 import {
   type AppShellPage,
   isValidAppShellPage,
   PAGE,
-} from "../../../../../application/state/pages";
-import type { Badges, Timestamps } from "../../../../../core/ree/ReeTypes";
-import { LEVELS } from "../../../../../core/review/levels";
+} from "../../../../../shell/ui/app-shell/state/pages";
 import { Ic } from "../../../../shared/components/Icon";
 import {
   C,

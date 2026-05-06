@@ -1,7 +1,7 @@
 import type {
   ReeAssemblyOperationKey,
   ReeAssemblyRunParams,
-} from "../../../../../application/ree-assembly/assemblyTypes";
+} from "../../../../../core/ree-assembly/assemblyTypes";
 import { S_SECTION_LABEL_MB12, S_WORKFLOW_BUILD_SECTION_WRAP } from "../../../../theme/theme";
 import { AssemblyRunActionSection, RuntimeOutputNode } from "../../../components/assemblyRunPanels";
 import type { AssemblyPageProps } from "../../sharedAssemblyUi";

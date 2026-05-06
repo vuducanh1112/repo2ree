@@ -2,7 +2,7 @@ import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
 import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
-} from "../../../application/workspace/workspaceFileMutationPlanning";
+} from "../../../core/workspace/workspaceFileMutationPlanning";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useReeClient } from "../../../data/ree/client";
 import type { ShowToast } from "../types";

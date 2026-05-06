@@ -1,12 +1,12 @@
-import type { ReeSpec } from "../../core/ree/ReeSpec";
+import type { ReeSpec } from "../../../../core/ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
   ReeAssemblyOperationParams,
   Timestamps,
-} from "../../core/ree/ReeTypes";
-import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
-import type { ToastState } from "../ree-assembly/assemblyStepTypes";
+} from "../../../../core/ree/ReeTypes";
+import type { ToastState } from "../../../../core/ree-assembly/assemblyStepTypes";
+import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
 import type { AssemblyRunState } from "./assemblyRunState";
 import type { AppShellPage } from "./pages";
 import { normalizeAppShellPage } from "./pages";

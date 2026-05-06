@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
-import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import type { Badges } from "../../../../core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { LEVELS } from "../../../../core/review/levels";
 import { type CableGeo, measureCableGeo, type PanelRefs } from "./PanelCableOverlayHelpers";
 import { CableOverlaySvg } from "./PanelCableOverlaySections";

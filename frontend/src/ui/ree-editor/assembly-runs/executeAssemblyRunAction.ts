@@ -1,15 +1,15 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
-import type {
-  AssemblyCommand,
-  AssemblyCommandPlannerMap,
-} from "../../../application/ree-assembly/assemblyCommands";
-import type { GenericReeAssemblyParams } from "../../../application/ree-assembly/assemblyStepTypes";
-import { executeAssemblyRun } from "../../../application/ree-assembly/executeAssemblyRun";
-import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { ExecutionRun } from "../../../core/execution/ExecutionRun";
 import type { RawReeDraftSlices } from "../../../core/ree/mapRawReeDraft";
 import type { LogEntry, ReeFile } from "../../../core/ree/ReeTypes";
+import type {
+  AssemblyCommand,
+  AssemblyCommandPlannerMap,
+} from "../../../core/ree-assembly/assemblyCommands";
+import type { GenericReeAssemblyParams } from "../../../core/ree-assembly/assemblyStepTypes";
+import { executeAssemblyRun } from "../../../core/ree-assembly/executeAssemblyRun";
+import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ShowToast } from "../types";

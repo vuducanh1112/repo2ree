@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
+import { toReePatch, toReePatchFromSlices } from "../../../core/ree/reePatch";
+import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import {
   shouldHydrateRemoteRee,
   shouldScheduleReeDraftSync,
-} from "../../../application/workspace/syncReeDraft";
-import { toReePatch, toReePatchFromSlices } from "../../../core/ree/reePatch";
-import type { FileTreeNode } from "../../../core/workspace/FileTree";
+} from "../../../core/workspace/syncReeDraft";
 import { useUpdateReeDraftMutation } from "../../../data/ree/mutations";
 import { useRefreshReeQuery } from "../../../data/ree/queries";
 import type { HydratedWorkspaceSnapshot } from "./hydrateReeWorkspace";

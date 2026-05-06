@@ -1,8 +1,8 @@
-import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
-import { enforceSourceOriginRules } from "../../core/artifact/sourceOriginRules";
-import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
-import type { EvaluationState } from "../../core/review/EvaluationState";
-import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
+import { enforceSourceOriginRules } from "../../../../core/artifact/sourceOriginRules";
+import { createEmptyReeSpec, type ReeSpec } from "../../../../core/ree/ReeSpec";
+import type { EvaluationState } from "../../../../core/review/EvaluationState";
+import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
 
 export interface ReeDraftState {
   reeSpec: ReeSpec;

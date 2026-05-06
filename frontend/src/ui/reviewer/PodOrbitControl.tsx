@@ -1,4 +1,4 @@
-import type { Level, StepState } from "../../application/ree-assembly/assemblyStepTypes";
+import type { Level, StepState } from "../../core/ree-assembly/assemblyStepTypes";
 import { PodWidget } from "../app-shell/pages/overview/PodWidget";
 import { Ic } from "../shared/components/Icon";
 import { LevelBadge } from "../shared/components/LevelBadge";

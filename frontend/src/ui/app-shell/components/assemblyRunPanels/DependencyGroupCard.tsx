@@ -1,8 +1,5 @@
-import type { DepGroup } from "../../../../application/ree-assembly/assemblyDependencyAnalysis";
-import {
-  ECO_META,
-  PIN_META,
-} from "../../../../application/ree-assembly/assemblyDependencyAnalysis";
+import type { DepGroup } from "../../../../core/ree-assembly/assemblyDependencyAnalysis";
+import { ECO_META, PIN_META } from "../../../../core/ree-assembly/assemblyDependencyAnalysis";
 import { Ic } from "../../../shared/components/Icon";
 import { C, F, hoverBg, S_SECTION_LABEL } from "../../../theme/theme";
 

@@ -1,10 +1,11 @@
-import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
-import type { ReeSpec } from "../../core/ree/ReeSpec";
-import type { EvaluationState } from "../../core/review/EvaluationState";
-import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
-import type { Updater } from "../state/types";
+import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import type { ReeSpec } from "../ree/ReeSpec";
+import type { EvaluationState } from "../review/EvaluationState";
 import type { SourceCommand } from "../workspace/sourceAcquisitionCommands";
+import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { AssemblyCommand } from "./assemblyCommands";
+
+type Updater<T> = T | ((previous: T) => T);
 
 type SourceResetCommand = Extract<SourceCommand, { type: "resetAssemblyAfterSourceChange" }>;
 type SourceApplyOutcomeCommand = Extract<SourceCommand, { type: "applySourceOutcome" }>;
@@ -50,13 +51,13 @@ export type WorkspaceStateCommand =
       outcome: SourceApplyOutcomeCommand["outcome"];
     };
 
-export type AppShellEffect =
+export type AssemblyEffect =
   | { type: "dispatchStateCommand"; command: WorkspaceStateCommand }
   | { type: "persistFile"; path: string; content: string }
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
-export function mapAssemblyCommandsToEffects(commands: AssemblyCommand[]): AppShellEffect[] {
-  const effects: AppShellEffect[] = [];
+export function mapAssemblyCommandsToEffects(commands: AssemblyCommand[]): AssemblyEffect[] {
+  const effects: AssemblyEffect[] = [];
 
   for (const command of commands) {
     if (command.type === "persistFile") {
@@ -203,7 +204,7 @@ export function mapAssemblyCommandsToEffects(commands: AssemblyCommand[]): AppSh
   return effects;
 }
 
-export function mapSourceCommandsToEffects(commands: SourceCommand[]): AppShellEffect[] {
+export function mapSourceCommandsToEffects(commands: SourceCommand[]): AssemblyEffect[] {
   return commands.flatMap((command) => {
     if (command.type === "toast") {
       return [
@@ -263,7 +264,7 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): AppShellE
       ];
     }
     if (command.type === "hydrateWorkspace") {
-      const hydrateEffects: AppShellEffect[] = [];
+      const hydrateEffects: AssemblyEffect[] = [];
       if (command.reeSpec) {
         const reeSpec = command.reeSpec;
         hydrateEffects.push({

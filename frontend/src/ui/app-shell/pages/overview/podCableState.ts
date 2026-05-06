@@ -1,7 +1,7 @@
-import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
-import { PAGE } from "../../../../application/state/pages";
 import { hbomHasAnyComponents } from "../../../../core/hbom/HbomSummary";
 import type { Badges } from "../../../../core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
+import { PAGE } from "../../../../shell/ui/app-shell/state/pages";
 
 type PodCableSide = "left" | "right" | "top";
 

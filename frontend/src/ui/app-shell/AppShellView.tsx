@@ -1,5 +1,5 @@
 import type React from "react";
-import type { Level, StepState } from "../../application/ree-assembly/assemblyStepTypes";
+import type { Level, StepState } from "../../core/ree-assembly/assemblyStepTypes";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { C, F, hoverBg, hoverColor } from "../theme/theme";

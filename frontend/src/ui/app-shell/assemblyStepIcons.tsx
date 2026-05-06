@@ -1,4 +1,4 @@
-import type { ReeAssemblyIconKey } from "../../application/ree-assembly/assemblyStepTypes";
+import type { ReeAssemblyIconKey } from "../../core/ree-assembly/assemblyStepTypes";
 import { Ic } from "../shared/components/Icon";
 
 const ASSEMBLY_STEP_ICONS = {

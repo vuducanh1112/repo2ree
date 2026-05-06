@@ -1,8 +1,8 @@
-import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
-import type { ReeSpec } from "../../core/ree/ReeSpec";
-import type { EvaluationState } from "../../core/review/EvaluationState";
-import { LEVELS } from "../../core/review/levels";
+import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import type { ReeSpec } from "../ree/ReeSpec";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
+import type { EvaluationState } from "../review/EvaluationState";
+import { LEVELS } from "../review/levels";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey } from "./assemblyTypes";
 

@@ -1,5 +1,4 @@
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
-import { PAGE } from "../state/pages";
 import type { ReeAssemblyRequirement } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey } from "./assemblyTypes";
 
@@ -67,7 +66,7 @@ export function deriveReeAssemblyStepLevel(
   currentLevel: number,
   evaluatedLevel: number,
 ): number {
-  return key === PAGE.EVALUATE ? evaluatedLevel : currentLevel;
+  return key === "evaluate" ? evaluatedLevel : currentLevel;
 }
 
 interface AssemblyRunCompletionPlan {

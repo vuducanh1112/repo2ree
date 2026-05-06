@@ -1,8 +1,8 @@
 import React from "react";
-import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
-import type { AppShellPage } from "../../../../../application/state/pages";
-import { PAGE } from "../../../../../application/state/pages";
+import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
 import type { WorkspaceSourceState } from "../../../../../core/workspace/WorkspaceSourceState";
+import type { AppShellPage } from "../../../../../shell/ui/app-shell/state/pages";
+import { PAGE } from "../../../../../shell/ui/app-shell/state/pages";
 import { Toggle } from "../../../../shared/components/Toggle";
 import {
   C,

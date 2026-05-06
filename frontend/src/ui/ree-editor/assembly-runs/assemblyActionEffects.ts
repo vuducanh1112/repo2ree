@@ -1,10 +1,11 @@
 import {
-  type AppShellEffect,
+  type AssemblyEffect,
   mapAssemblyCommandsToEffects,
   mapSourceCommandsToEffects,
   type WorkspaceStateCommand,
-} from "../../../application/ree-assembly/assemblyCommandEffects";
-import type { AssemblyCommand } from "../../../application/ree-assembly/assemblyCommands";
+} from "../../../core/ree-assembly/assemblyCommandEffects";
+import type { AssemblyCommand } from "../../../core/ree-assembly/assemblyCommands";
+import type { SourceCommand } from "../../../core/workspace/sourceAcquisitionCommands";
 import {
   applySourceOutcome,
   completeAssemblyRun,
@@ -16,9 +17,8 @@ import {
   setLocked,
   setWorkspaceSourceState,
   updateReeSpec,
-} from "../../../application/state/actions";
-import type { AppShellAction } from "../../../application/state/types";
-import type { SourceCommand } from "../../../application/workspace/sourceAcquisitionCommands";
+} from "../../../shell/ui/app-shell/state/actions";
+import type { AppShellAction } from "../../../shell/ui/app-shell/state/types";
 import type { ShowToast } from "../types";
 
 export type ReeEditorDispatch = (action: AppShellAction) => void;
@@ -78,7 +78,7 @@ function dispatchStateCommand(command: WorkspaceStateCommand, dispatch: ReeEdito
   dispatch(applySourceOutcome(command.outcome));
 }
 
-function executeEffects(effects: AppShellEffect[], handlers: EffectHandlers): void {
+function executeEffects(effects: AssemblyEffect[], handlers: EffectHandlers): void {
   for (const effect of effects) {
     if (effect.type === "dispatchStateCommand") {
       dispatchStateCommand(effect.command, handlers.dispatch);

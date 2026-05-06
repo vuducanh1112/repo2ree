@@ -1,9 +1,9 @@
+import type { LogLine } from "../../../core/ree/ReeTypes";
 import type {
   ReeAssemblyParam,
   ReeAssemblyParamValue,
-} from "../../../application/ree-assembly/assemblyStepTypes";
-import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
-import type { LogLine } from "../../../core/ree/ReeTypes";
+} from "../../../core/ree-assembly/assemblyStepTypes";
+import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import { Ic } from "../../shared/components/Icon";
 
 interface ReactivationStep {

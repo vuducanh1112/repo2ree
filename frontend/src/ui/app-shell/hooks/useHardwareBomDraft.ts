@@ -1,6 +1,5 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import {
   draftFromHBOM,
   type HardwareBomDraft,
@@ -8,6 +7,7 @@ import {
   hbomSyncKey,
 } from "../../../core/hbom/hardwareBomDraft";
 import type { ReeSpec } from "../../../core/ree/ReeSpec";
+import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 
 interface UseHardwareBomDraftArgs {
   ree: ReeEditorViewModel;

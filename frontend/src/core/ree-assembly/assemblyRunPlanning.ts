@@ -1,4 +1,4 @@
-import type { ReeSpec } from "../../core/ree/ReeSpec";
+import type { ReeSpec } from "../ree/ReeSpec";
 import { planManualArtifactCompletion } from "../workspace/manualArtifactUpdatePlanning";
 import {
   deriveReeAssemblyStepLevel,

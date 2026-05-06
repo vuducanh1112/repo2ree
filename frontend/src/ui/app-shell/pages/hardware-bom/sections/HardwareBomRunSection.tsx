@@ -1,5 +1,5 @@
-import type { AppShellPage } from "../../../../../application/state/pages";
 import type { Badges, LogEntry } from "../../../../../core/ree/ReeTypes";
+import type { AppShellPage } from "../../../../../shell/ui/app-shell/state/pages";
 import { S_WORKFLOW_PAGE_NUDGE_WRAP } from "../../../../theme/theme";
 import {
   AssemblyRunActionSection,

@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useReducer } from "react";
-import type { AppShellAction, AppShellContextState } from "../../../application/state/types";
 import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../../core/ree/ReeSpec";
 import type { EvaluationState } from "../../../core/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
-import { appShellReducer, createInitialState } from "./appShellReducer";
+import {
+  appShellReducer,
+  createInitialState,
+} from "../../../shell/ui/app-shell/state/appShellReducer";
+import type { AppShellAction, AppShellContextState } from "../../../shell/ui/app-shell/state/types";
 
 interface AppShellContextValue {
   state: AppShellContextState;
@@ -23,8 +26,6 @@ interface AppShellProviderProps {
     evaluationState?: EvaluationState;
   };
 }
-
-export { appShellReducer, createInitialState };
 
 export function AppShellProvider({ children, initialState }: AppShellProviderProps) {
   const [state, dispatch] = useReducer(appShellReducer, initialState ?? {}, createInitialState);

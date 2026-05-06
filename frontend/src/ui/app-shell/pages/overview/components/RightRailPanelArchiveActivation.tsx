@@ -1,8 +1,8 @@
 import type React from "react";
-import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
-import { FIELD_META } from "../../../../../application/state/fieldMeta";
-import { type AppShellPage, PAGE } from "../../../../../application/state/pages";
 import type { Badges } from "../../../../../core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
+import { FIELD_META } from "../../../../../shell/ui/app-shell/fieldTips/fieldMeta";
+import { type AppShellPage, PAGE } from "../../../../../shell/ui/app-shell/state/pages";
 import {
   C,
   hoverBrightness,

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { scanDependencies } from "../../../../application/ree-assembly/assemblyDependencyAnalysis";
-import { getReeAssemblyRequirements } from "../../../../application/ree-assembly/assemblyPolicies";
+import { scanDependencies } from "../../../../core/ree-assembly/assemblyDependencyAnalysis";
+import { getReeAssemblyRequirements } from "../../../../core/ree-assembly/assemblyPolicies";
 import { LEVELS } from "../../../../core/review/levels";
 import {
   S_WORKFLOW_PAGE_BODY,

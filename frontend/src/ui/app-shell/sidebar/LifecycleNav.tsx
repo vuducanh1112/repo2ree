@@ -1,6 +1,6 @@
-import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
-import type { AppShellPage } from "../../../application/state/pages";
 import type { Badges, Timestamps } from "../../../core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
+import type { AppShellPage } from "../../../shell/ui/app-shell/state/pages";
 import { C, F, S_SECTION_LABEL } from "../../theme/theme";
 import { NavEntryButton } from "../AppShellNav";
 import { hasProcessStepCompleted, PROCESS_STEPS } from "./processSteps";

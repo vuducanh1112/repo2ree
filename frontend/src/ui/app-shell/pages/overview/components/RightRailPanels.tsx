@@ -1,7 +1,7 @@
 import type React from "react";
-import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
-import type { AppShellPage as AppShellPageType } from "../../../../../application/state/pages";
 import type { Badges, Timestamps } from "../../../../../core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
+import type { AppShellPage as AppShellPageType } from "../../../../../shell/ui/app-shell/state/pages";
 import { ActivationCard, ArchiveCard } from "./RightRailPanelArchiveActivation";
 import { EvaluateCard, SwhCard } from "./RightRailPanelSections";
 

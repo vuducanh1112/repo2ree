@@ -1,6 +1,6 @@
-import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
-import { PAGE } from "../../../../application/state/pages";
+import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
+import { PAGE } from "../../../../shell/ui/app-shell/state/pages";
 import { Ic } from "../../../shared/components/Icon";
 import {
   C,

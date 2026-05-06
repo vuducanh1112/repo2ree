@@ -1,16 +1,16 @@
-import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
-import type { ReeSpec } from "../../core/ree/ReeSpec";
-import type { LogLine, ReeFile } from "../../core/ree/ReeTypes";
-import type { EvaluationState } from "../../core/review/EvaluationState";
-import type { FileTreeNode } from "../../core/workspace/FileTree";
-import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import type { ReeSpec } from "../ree/ReeSpec";
+import type { LogLine, ReeFile } from "../ree/ReeTypes";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
+import type { EvaluationState } from "../review/EvaluationState";
+import type { FileTreeNode } from "../workspace/FileTree";
+import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import { scanDependencies } from "./assemblyDependencyAnalysis";
 import { planAssemblyServiceEffect } from "./assemblyOutcomePlanning";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey, ReeAssemblyRunParamsByKey } from "./assemblyTypes";
 
-interface AppShellClock {
+interface Clock {
   nowIso(): string;
   nowMillis(): number;
 }
@@ -18,7 +18,7 @@ interface AppShellClock {
 interface CreateAssemblyCommandPlannersArgs {
   ree: ReeEditorViewModel;
   workspaceFiles: FileTreeNode[];
-  clock: AppShellClock;
+  clock: Clock;
 }
 
 export interface AssemblyRunCompletionCommandPayload {

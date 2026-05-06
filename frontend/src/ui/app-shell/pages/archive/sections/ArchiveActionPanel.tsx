@@ -1,8 +1,8 @@
+import type { ExecutionRunLogs } from "../../../../../core/ree/ReeTypes";
 import type {
   ArchiveRepo,
   GenericReeAssemblyParams,
-} from "../../../../../application/ree-assembly/assemblyStepTypes";
-import type { ExecutionRunLogs } from "../../../../../core/ree/ReeTypes";
+} from "../../../../../core/ree-assembly/assemblyStepTypes";
 import { Ic } from "../../../../shared/components/Icon";
 import { C, F, S_SECTION_LABEL } from "../../../../theme/theme";
 import { LogPanel } from "../../../components/logPanel";

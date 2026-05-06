@@ -1,4 +1,4 @@
-import { FIELD_META } from "../../../../application/state/fieldMeta";
+import { FIELD_META } from "../../../../shell/ui/app-shell/fieldTips/fieldMeta";
 import { C } from "../../../theme/theme";
 import { FieldTipCard } from "./FieldTipCard";
 import { FieldTipsEmptyState } from "./FieldTipsEmptyState";

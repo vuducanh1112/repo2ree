@@ -74,7 +74,7 @@ export function createReeEditorState(input: CreateReeEditorStateInput = {}): Ree
   };
 }
 
-export function createReeEditorStateFromAppShell(args: {
+export function createReeEditorStateFromModel(args: {
   reeDraft: {
     reeSpec: ReeSpec;
     workspaceSourceState: WorkspaceSourceState;

@@ -1,23 +1,23 @@
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
-import { createAssemblyRunSession } from "../../../application/ree-assembly/assemblyRunSession";
+import type { ReeFile } from "../../../core/ree/ReeTypes";
+import { createAssemblyRunSession } from "../../../core/ree-assembly/assemblyRunSession";
 import {
-  createReeEditorStateFromAppShell,
+  createReeEditorStateFromModel,
   type ReeEditorState,
-} from "../../../application/ree-editor/reeEditorState";
+} from "../../../core/ree-editor/reeEditorState";
 import {
   createReeEditorViewModel,
   type ReeEditorViewModel,
-} from "../../../application/ree-editor/reeEditorViewModel";
-import { showToast as enqueueToast } from "../../../application/state/actions";
-import type { AssemblyRunState } from "../../../application/state/assemblyRunState";
-import type { ReeDraftState } from "../../../application/state/reeDraft";
-import type { AppShellAction } from "../../../application/state/types";
-import type { UiChromeState } from "../../../application/state/uiChrome";
-import type { ReeFile } from "../../../core/ree/ReeTypes";
+} from "../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useReeQuery } from "../../../data/ree/queries";
+import { showToast as enqueueToast } from "../../../shell/ui/app-shell/state/actions";
+import type { AssemblyRunState } from "../../../shell/ui/app-shell/state/assemblyRunState";
+import type { ReeDraftState } from "../../../shell/ui/app-shell/state/reeDraft";
+import type { AppShellAction } from "../../../shell/ui/app-shell/state/types";
+import type { UiChromeState } from "../../../shell/ui/app-shell/state/uiChrome";
 import { useReeAssemblyRuns } from "../assembly-runs/useReeAssemblyRuns";
 import { useReeDownloads } from "../downloads/useReeDownloads";
 import { useSourceAcquisition } from "../source-acquisition/useSourceAcquisition";
@@ -41,7 +41,7 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
 
   const reeEditorState: ReeEditorState = useMemo(
-    () => createReeEditorStateFromAppShell({ reeDraft, assemblyRun }),
+    () => createReeEditorStateFromModel({ reeDraft, assemblyRun }),
     [reeDraft, assemblyRun],
   );
   const ree: ReeEditorViewModel = useMemo(

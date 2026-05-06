@@ -1,14 +1,14 @@
 import type React from "react";
+import type { RawReeDraftSlices } from "../../../core/ree/mapRawReeDraft";
+import type { ReeFile } from "../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import {
   setArtifactStatus,
   setEvaluationState,
   setWorkspaceSourceState,
   updateReeSpec,
-} from "../../../application/state/actions";
-import type { AppShellAction } from "../../../application/state/types";
-import type { RawReeDraftSlices } from "../../../core/ree/mapRawReeDraft";
-import type { ReeFile } from "../../../core/ree/ReeTypes";
-import type { FileTreeNode } from "../../../core/workspace/FileTree";
+} from "../../../shell/ui/app-shell/state/actions";
+import type { AppShellAction } from "../../../shell/ui/app-shell/state/types";
 
 export interface HydratedWorkspaceSnapshot {
   workspaceFiles: FileTreeNode[];

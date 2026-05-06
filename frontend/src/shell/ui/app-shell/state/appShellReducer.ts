@@ -1,25 +1,20 @@
+import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
+import { enforceSourceOriginRules } from "../../../../core/artifact/sourceOriginRules";
+import { createEmptyReeSpec } from "../../../../core/ree/ReeSpec";
+import type { ReeAssemblyOperationParams } from "../../../../core/ree/ReeTypes";
+import type { EvaluationState } from "../../../../core/review/EvaluationState";
+import { computeSourceChangeConsequences } from "../../../../core/workspace/sourceChangeConsequences";
+import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
 import {
   type AssemblyRunCompletionPayload,
   normalizeUiChromePage,
   type SourceOutcomePayload,
-} from "../../../application/state/appShellState";
-import { createInitialAssemblyRunState } from "../../../application/state/assemblyRunState";
-import { createInitialReeDraftState } from "../../../application/state/reeDraft";
-import type {
-  AppShellAction,
-  AppShellContextState,
-  SliceName,
-  SliceShape,
-} from "../../../application/state/types";
-import { resolveUpdater } from "../../../application/state/types";
-import { createInitialUiChromeState } from "../../../application/state/uiChrome";
-import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
-import { enforceSourceOriginRules } from "../../../core/artifact/sourceOriginRules";
-import { createEmptyReeSpec } from "../../../core/ree/ReeSpec";
-import type { ReeAssemblyOperationParams } from "../../../core/ree/ReeTypes";
-import type { EvaluationState } from "../../../core/review/EvaluationState";
-import { computeSourceChangeConsequences } from "../../../core/workspace/sourceChangeConsequences";
-import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
+} from "./appShellState";
+import { createInitialAssemblyRunState } from "./assemblyRunState";
+import { createInitialReeDraftState } from "./reeDraft";
+import type { AppShellAction, AppShellContextState, SliceName, SliceShape } from "./types";
+import { resolveUpdater } from "./types";
+import { createInitialUiChromeState } from "./uiChrome";
 
 interface InitialAppShellStateInput {
   reeSpec?: ReturnType<typeof createEmptyReeSpec>;

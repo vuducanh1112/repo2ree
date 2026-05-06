@@ -154,7 +154,7 @@ export function EvaluateScoreSection(props: {
 export function EvaluateDependenciesSection(props: {
   hasRun: boolean;
   depGroups: ReturnType<
-    typeof import("../../../../application/ree-assembly/assemblyDependencyAnalysis").scanDependencies
+    typeof import("../../../../core/ree-assembly/assemblyDependencyAnalysis").scanDependencies
   >;
   files: FileTreeNode[];
   focusedField: string | null;

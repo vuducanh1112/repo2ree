@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import type { LogLine } from "../../../core/ree/ReeTypes";
 import type {
   ReeAssemblyParamValue,
   StepState,
-} from "../../../application/ree-assembly/assemblyStepTypes";
-import type { LogLine } from "../../../core/ree/ReeTypes";
+} from "../../../core/ree-assembly/assemblyStepTypes";
 import { C } from "../../theme/theme";
 import { RvStepActions } from "./RvStepActions";
 import { RvStepHeader } from "./RvStepHeader";

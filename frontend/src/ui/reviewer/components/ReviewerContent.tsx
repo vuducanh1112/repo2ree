@@ -1,9 +1,9 @@
+import type { ReeFile } from "../../../core/ree/ReeTypes";
 import type {
   Level,
   ReeAssemblyParamValue,
   StepState,
-} from "../../../application/ree-assembly/assemblyStepTypes";
-import type { ReeFile } from "../../../core/ree/ReeTypes";
+} from "../../../core/ree-assembly/assemblyStepTypes";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { PageFiles } from "../../app-shell/pages/files/FilesPage";
 import { C } from "../../theme/theme";

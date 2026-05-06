@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ARCHIVE_REPOSITORIES } from "../../../../application/ree-assembly/archiveRepositories";
-import type { GenericReeAssemblyParams } from "../../../../application/ree-assembly/assemblyStepTypes";
-import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
-import { type AppShellPage, PAGE } from "../../../../application/state/pages";
 import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
 import type { ActionStates, Badges, ExecutionRunLogs } from "../../../../core/ree/ReeTypes";
+import { ARCHIVE_REPOSITORIES } from "../../../../core/ree-assembly/archiveRepositories";
+import type { GenericReeAssemblyParams } from "../../../../core/ree-assembly/assemblyStepTypes";
+import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
+import { type AppShellPage, PAGE } from "../../../../shell/ui/app-shell/state/pages";
 import { Ic } from "../../../shared/components/Icon";
 import { S_FIELD_STACK_GAP_14 } from "../../../theme/theme";
 import { AssemblyPageHeader, NextStepNudge, RequirementsBanner } from "../../components/pageChrome";

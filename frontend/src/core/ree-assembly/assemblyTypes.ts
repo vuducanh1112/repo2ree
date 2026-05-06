@@ -2,12 +2,12 @@ export type {
   ReeAssemblyOperationKey,
   ReeAssemblyOperationParams,
   ReeAssemblyOperationParamsByKey,
-} from "../../core/ree-assembly/ReeAssemblyOperationParams";
+} from "./ReeAssemblyOperationParams";
 
 import type {
   ReeAssemblyOperationKey,
   ReeAssemblyOperationParamsByKey,
-} from "../../core/ree-assembly/ReeAssemblyOperationParams";
+} from "./ReeAssemblyOperationParams";
 
 export interface ReeAssemblyRunParamsByKey {
   evaluate: ReeAssemblyOperationParamsByKey["evaluate"];

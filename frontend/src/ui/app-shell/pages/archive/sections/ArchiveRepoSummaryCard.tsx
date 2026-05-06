@@ -1,4 +1,4 @@
-import type { ArchiveRepo } from "../../../../../application/ree-assembly/assemblyStepTypes";
+import type { ArchiveRepo } from "../../../../../core/ree-assembly/assemblyStepTypes";
 import { Ic } from "../../../../shared/components/Icon";
 import { C, F } from "../../../../theme/theme";
 

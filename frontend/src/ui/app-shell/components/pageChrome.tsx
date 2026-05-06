@@ -1,7 +1,7 @@
 import type React from "react";
-import type { ReeAssemblyBadge } from "../../../application/ree-assembly/assemblyStepTypes";
-import { type AppShellPage, PAGE } from "../../../application/state/pages";
 import type { Badges } from "../../../core/ree/ReeTypes";
+import type { ReeAssemblyBadge } from "../../../core/ree-assembly/assemblyStepTypes";
+import { type AppShellPage, PAGE } from "../../../shell/ui/app-shell/state/pages";
 import { Ic } from "../../shared/components/Icon";
 import { C, F, hoverBg, S_ACTION_BUTTON_BASE } from "../../theme/theme";
 

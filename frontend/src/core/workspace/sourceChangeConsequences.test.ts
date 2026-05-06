@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { initialReeAssemblyOperationParams } from "../../application/ree-assembly/assemblyCatalog";
 import { createEmptyReeSpec } from "../ree/ReeSpec";
+import { initialReeAssemblyOperationParams } from "../ree-assembly/assemblyCatalog";
 import type { SourceChangeInput } from "./sourceChangeConsequences";
 import { computeSourceChangeConsequences } from "./sourceChangeConsequences";
 

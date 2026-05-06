@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { appShellReducer, createInitialState } from "../../ui/app-shell/providers/AppShellProvider";
 import {
   createEmptyReeEditorViewModel,
   type ReeEditorViewModel,
-} from "../ree-editor/reeEditorViewModel";
+} from "../../../../core/ree-editor/reeEditorViewModel";
 import {
   clearToast,
   completeAssemblyRun,
@@ -15,6 +14,7 @@ import {
   showToast,
   updateReeSpec,
 } from "./actions";
+import { appShellReducer, createInitialState } from "./appShellReducer";
 import { createAppShellState } from "./appShellState";
 
 function buildRee(): ReeEditorViewModel {

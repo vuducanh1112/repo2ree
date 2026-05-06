@@ -1,7 +1,7 @@
-import type { RawReeDraftSlices } from "../../core/ree/mapRawReeDraft";
-import type { LogLine, ReeFile } from "../../core/ree/ReeTypes";
-import type { FileTreeNode } from "../../core/workspace/FileTree";
+import type { RawReeDraftSlices } from "../ree/mapRawReeDraft";
+import type { LogLine, ReeFile } from "../ree/ReeTypes";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
+import type { FileTreeNode } from "../workspace/FileTree";
 import {
   type AssemblyCommand,
   type AssemblyCommandPlannerMap,

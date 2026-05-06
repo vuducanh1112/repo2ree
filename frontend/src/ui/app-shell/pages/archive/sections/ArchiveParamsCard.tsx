@@ -1,4 +1,4 @@
-import type { ArchiveRepo } from "../../../../../application/ree-assembly/assemblyStepTypes";
+import type { ArchiveRepo } from "../../../../../core/ree-assembly/assemblyStepTypes";
 import { C, F, S_SECTION_LABEL } from "../../../../theme/theme";
 
 interface ArchiveParamsCardProps {

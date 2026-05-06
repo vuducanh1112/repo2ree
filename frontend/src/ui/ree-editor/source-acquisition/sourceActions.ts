@@ -1,15 +1,15 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { AppShellClock } from "../../../app/bootstrap/ports";
-import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
-import { createSourceUseCase } from "../../../application/workspace/acquireSource";
+import type { SourceUploadCommit } from "../../../core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
+import { createSourceUseCase } from "../../../core/workspace/acquireSource";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import {
   type SourceCommand,
   sourceChangeResetCommands,
   sourceFailureCommands,
-} from "../../../application/workspace/sourceAcquisitionCommands";
-import { runSourceWorkspaceAction } from "../../../application/workspace/sourceAcquisitionLifecycle";
-import type { SourceUploadCommit } from "../../../core/ree/ReeTypes";
-import type { FileTreeNode } from "../../../core/workspace/FileTree";
+} from "../../../core/workspace/sourceAcquisitionCommands";
+import { runSourceWorkspaceAction } from "../../../core/workspace/sourceAcquisitionLifecycle";
 import { serializeWorkspaceResetPayload } from "../../../core/workspace/WorkspaceReset";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ReeClient } from "../../../data/ree/client";

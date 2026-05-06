@@ -1,11 +1,11 @@
 import React from "react";
-import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
-import type { AppShellPage } from "../../../../application/state/pages";
 import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
 import type { Badges, Timestamps } from "../../../../core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { LEVELS } from "../../../../core/review/levels";
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
+import type { AppShellPage } from "../../../../shell/ui/app-shell/state/pages";
 import { fmtBytes } from "../../../shared/formatting";
 import { C, F, S_SECTION_LABEL } from "../../../theme/theme";
 import { AllFieldsPanel } from "./components/AllFieldsPanel";

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import type { ReeAssemblyRunParams } from "../../../../application/ree-assembly/assemblyTypes";
-import { PAGE } from "../../../../application/state/pages";
+import type { ReeAssemblyRunParams } from "../../../../core/ree-assembly/assemblyTypes";
+import { PAGE } from "../../../../shell/ui/app-shell/state/pages";
 import { Ic } from "../../../shared/components/Icon";
 import {
   S_SECTION_LABEL,

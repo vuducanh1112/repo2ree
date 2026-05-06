@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import type { LogLine, ReeFile } from "../../core/ree/ReeTypes";
 import type {
   Level,
   ReeAssemblyParamValue,
   StepState,
-} from "../../application/ree-assembly/assemblyStepTypes";
-import type { ReeEditorViewModel } from "../../application/ree-editor/reeEditorViewModel";
-import type { LogLine, ReeFile } from "../../core/ree/ReeTypes";
+} from "../../core/ree-assembly/assemblyStepTypes";
+import type { ReeEditorViewModel } from "../../core/ree-editor/reeEditorViewModel";
 import { LEVELS } from "../../core/review/levels";
 import type { FileTreeNode } from "../../core/workspace/FileTree";
 import { useReviewClient } from "../../data/reviews/client";

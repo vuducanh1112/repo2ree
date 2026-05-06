@@ -1,4 +1,4 @@
-import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
+import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { C, F, S_SECTION_LABEL_SMALL, S_STATUS_BADGE_SM_BASE } from "../../../theme/theme";

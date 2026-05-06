@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { ReeAssemblyRunParams } from "../../../../application/ree-assembly/assemblyTypes";
+import type { ReeAssemblyRunParams } from "../../../../core/ree-assembly/assemblyTypes";
 import { Ic } from "../../../shared/components/Icon";
 import {
   S_WORKFLOW_PAGE_BODY,

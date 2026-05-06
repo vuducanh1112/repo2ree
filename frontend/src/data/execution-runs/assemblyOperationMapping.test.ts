@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReeAssemblyOperation } from "../../application/ree-assembly/assemblyOperation";
+import type { ReeAssemblyOperation } from "../../core/ree-assembly/ReeAssemblyOperation";
 import {
   fromBackendWorkflowOperation,
   toBackendWorkflowOperation,

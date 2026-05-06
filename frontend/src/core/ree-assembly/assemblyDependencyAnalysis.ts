@@ -1,6 +1,6 @@
-import { LEVELS } from "../../core/review/levels";
-import type { FileTreeNode } from "../../core/workspace/FileTree";
-import { listTreeFiles } from "../../core/workspace/fileTreeTraversal";
+import { LEVELS } from "../review/levels";
+import type { FileTreeNode } from "../workspace/FileTree";
+import { listTreeFiles } from "../workspace/fileTreeTraversal";
 
 export type PinStatus = "exact" | "range" | "none";
 

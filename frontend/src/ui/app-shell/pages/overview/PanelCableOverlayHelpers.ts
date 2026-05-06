@@ -1,6 +1,6 @@
 import type React from "react";
-import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import type { Badges } from "../../../../core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { getPodCableStates } from "./podCableState";
 
 export interface Cable {

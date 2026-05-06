@@ -1,4 +1,4 @@
-import type { ToastState } from "../ree-assembly/assemblyStepTypes";
+import type { ToastState } from "../../../../core/ree-assembly/assemblyStepTypes";
 import type { AppShellPage } from "./pages";
 import { PAGE } from "./pages";
 
