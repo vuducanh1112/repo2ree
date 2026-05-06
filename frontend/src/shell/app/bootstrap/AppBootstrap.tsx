@@ -1,5 +1,5 @@
-import { AppRoutes } from "../../../ui/routes";
-import { GLOBAL_CSS } from "../../../ui/theme/globalCss";
+import { AppRoutes } from "../../ui/routes";
+import { GLOBAL_CSS } from "../../ui/theme/globalCss";
 
 export function AppBootstrap() {
   return (
