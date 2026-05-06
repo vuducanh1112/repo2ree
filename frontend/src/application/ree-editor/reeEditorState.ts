@@ -1,6 +1,6 @@
 import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
 import {
-  mapLegacyInclusionState,
+  deriveReeInclusionState,
   type ReeInclusionState,
 } from "../../domain/ree/ReeInclusionState";
 import { createEmptyReeSpec, type ReeSpec } from "../../domain/ree/ReeSpec";
@@ -42,6 +42,7 @@ interface CreateReeEditorStateInput {
 }
 
 export function createReeEditorState(input: CreateReeEditorStateInput = {}): ReeEditorState {
+  const reeSpec = input.reeSpec ?? createEmptyReeSpec();
   const workspaceSourceState = input.workspaceSourceState ?? { sourceAvailable: false };
   const artifactStatus = input.artifactStatus ?? {
     runtimeIncluded: false,
@@ -49,16 +50,16 @@ export function createReeEditorState(input: CreateReeEditorStateInput = {}): Ree
   };
 
   return {
-    reeSpec: input.reeSpec ?? createEmptyReeSpec(),
+    reeSpec,
     workspaceSourceState,
     artifactStatus,
     evaluationState: input.evaluationState ?? { evalLevel: 0 },
     inclusionState:
       input.inclusionState ??
-      mapLegacyInclusionState({
-        sourceAvailable: !!workspaceSourceState.sourceAvailable,
-        sourceIncluded: !!workspaceSourceState.sourceIncluded,
-        runtimeIncluded: !!artifactStatus.runtimeIncluded,
+      deriveReeInclusionState({
+        workspaceSourceState,
+        artifactStatus,
+        reeSpec,
       }),
     editorUi: {
       locked: false,

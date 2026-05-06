@@ -51,6 +51,10 @@ describe("reeEditorViewModel", () => {
 
   it("derives compatibility inclusion state from legacy source and artifact booleans", () => {
     const editorState = createReeEditorState({
+      reeSpec: {
+        ...createEmptyReeSpec(),
+        runtime: "runtime.tar.gz",
+      },
       workspaceSourceState: {
         sourceAvailable: true,
         sourceIncluded: false,
@@ -64,9 +68,6 @@ describe("reeEditorViewModel", () => {
     expect(editorState.inclusionState).toEqual({
       source: "excluded",
       runtime: "included",
-      sbom: "unavailable",
-      hbom: "unavailable",
-      activationEvidence: "unavailable",
     });
   });
 });

@@ -1,11 +1,12 @@
+import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
+import type { ReeSpec } from "./ReeSpec";
+
 export type InclusionStatus = "unavailable" | "excluded" | "included";
 
 export interface ReeInclusionState {
   source: InclusionStatus;
   runtime: InclusionStatus;
-  sbom: InclusionStatus;
-  hbom: InclusionStatus;
-  activationEvidence: InclusionStatus;
 }
 
 interface LegacyInclusionInputs {
@@ -25,8 +26,23 @@ export function mapLegacyInclusionState(inputs: LegacyInclusionInputs): ReeInclu
   return {
     source: toInclusionStatus(inputs.sourceAvailable, inputs.sourceIncluded),
     runtime: toInclusionStatus(inputs.sourceAvailable, inputs.runtimeIncluded),
-    sbom: "unavailable",
-    hbom: "unavailable",
-    activationEvidence: "unavailable",
+  };
+}
+
+function hasText(value: string | undefined): boolean {
+  return Boolean(value?.trim());
+}
+
+export function deriveReeInclusionState(input: {
+  workspaceSourceState: WorkspaceSourceState;
+  artifactStatus: ArtifactStatus;
+  reeSpec: ReeSpec;
+}): ReeInclusionState {
+  const sourceAvailable = !!input.workspaceSourceState.sourceAvailable;
+  const runtimeAvailable = hasText(input.reeSpec.runtime);
+
+  return {
+    source: toInclusionStatus(sourceAvailable, !!input.workspaceSourceState.sourceIncluded),
+    runtime: toInclusionStatus(runtimeAvailable, !!input.artifactStatus.runtimeIncluded),
   };
 }

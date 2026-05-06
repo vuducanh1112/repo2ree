@@ -23,7 +23,7 @@ import { ManualOverridePanel } from "./sections/ManualOverridePanel";
 export function PageBuildRuntime({
   workflow,
   ree,
-  artifactStatus,
+  inclusionState,
   badges,
   workspaceFiles,
   log,
@@ -59,7 +59,7 @@ export function PageBuildRuntime({
   const buildColor = workflow.color;
   const imageColor = "#0891b2";
   const finalRuntime = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
-  const includeRuntime = !!artifactStatus.runtimeIncluded && !!finalRuntime;
+  const includeRuntime = inclusionState.runtime === "included";
   const finalRuntimeFile = useMemo(() => {
     if (!finalRuntime) return null;
     return (

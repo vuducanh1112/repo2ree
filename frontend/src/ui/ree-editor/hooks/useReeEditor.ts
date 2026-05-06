@@ -142,6 +142,7 @@ export function useReeEditor({ reeDraft, workflowRun, uiChrome, dispatch }: UseR
   return {
     reeDraft,
     ree,
+    inclusionState: reeEditorState.inclusionState,
     workspaceRemote,
     workflowRun,
     level: ree.evalLevel ?? 0,

@@ -11,6 +11,7 @@ export type AppShellController = ReturnType<typeof useAppShell>;
 
 export interface AppShellPageContainerProps {
   ree: AppShellController["ree"];
+  inclusionState: AppShellController["inclusionState"];
   reeDraft: AppShellController["reeDraft"];
   workspaceRemote: AppShellController["workspaceRemote"];
   workflowRun: AppShellController["workflowRun"];

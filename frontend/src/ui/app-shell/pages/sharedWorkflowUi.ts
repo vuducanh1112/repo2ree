@@ -12,6 +12,7 @@ import type {
   AutomationStepRunParams,
 } from "../../../application/workflow/WorkflowTypes";
 import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
+import type { ReeInclusionState } from "../../../domain/ree/ReeInclusionState";
 import type { ReeSpec } from "../../../domain/ree/ReeSpec";
 import type {
   ActionStates,
@@ -25,6 +26,7 @@ import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSo
 
 export interface SourceAcquisitionPageProps {
   ree: ReeEditorViewModel;
+  inclusionState: ReeInclusionState;
   workspaceSourceState: WorkspaceSourceState;
   locked: boolean;
   repoMode: "url" | "upload";
@@ -74,6 +76,7 @@ export interface PageHardwareBomProps {
 export interface WorkflowPageProps {
   workflow: AutomationStepDefinition & { key: AutomationStepKey };
   ree: ReeEditorViewModel;
+  inclusionState: ReeInclusionState;
   workspaceSourceState: WorkspaceSourceState;
   artifactStatus: ArtifactStatus;
   evaluationState: EvaluationState;

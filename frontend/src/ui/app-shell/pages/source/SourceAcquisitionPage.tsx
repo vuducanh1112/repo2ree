@@ -19,6 +19,7 @@ import { SourceStep3Section } from "./SourceAcquisitionPageStep3Section";
 
 export function SourceAcquisitionPage({
   ree,
+  inclusionState,
   workspaceSourceState,
   locked,
   repoMode,
@@ -44,7 +45,7 @@ export function SourceAcquisitionPage({
   const [originUrlDraft, setOriginUrlDraft] = useState(ree.origin_url || "");
 
   const sourceInWorkspace = !!workspaceSourceState.sourceAvailable;
-  const sourceIncluded = sourceInWorkspace && !!workspaceSourceState.sourceIncluded;
+  const sourceIncluded = inclusionState.source === "included";
   const sourceFromUpload = workspaceSourceState.sourceAcquiredBy === "upload" && sourceInWorkspace;
   const sourceFromDownload =
     workspaceSourceState.sourceAcquiredBy === "download" && sourceInWorkspace;

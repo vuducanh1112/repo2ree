@@ -23,6 +23,7 @@ const WORKFLOW_PAGE_COMPONENTS: Record<string, (props: WorkflowPageProps) => JSX
 
 export function SourcePageContainer({
   ree,
+  inclusionState,
   reeDraft,
   workspaceRemote,
   workflowRun,
@@ -46,6 +47,7 @@ export function SourcePageContainer({
   return (
     <SourceAcquisitionPage
       ree={ree}
+      inclusionState={inclusionState}
       workspaceSourceState={workspaceRemote.workspaceSourceState}
       locked={locked}
       repoMode={repoMode}
@@ -136,7 +138,7 @@ export function HardwareBomPageContainer({
 }
 
 export function WorkflowPageContainer(props: AppShellPageContainerProps) {
-  const { ree, workspaceRemote, workflowRun, commands } = props;
+  const { ree, inclusionState, workspaceRemote, workflowRun, commands } = props;
   const { badges } = workflowRun;
   const { workspaceFiles, workspaceSourceState, artifactStatus } = workspaceRemote;
 
@@ -168,6 +170,7 @@ export function WorkflowPageContainer(props: AppShellPageContainerProps) {
       <WorkflowPageComponent
         workflow={workflowStep}
         ree={ree}
+        inclusionState={inclusionState}
         badges={badges}
         workspaceFiles={workspaceFiles}
         workspaceSourceState={workspaceSourceState}
