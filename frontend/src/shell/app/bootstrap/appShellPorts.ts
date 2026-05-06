@@ -1,4 +1,4 @@
-import type { AppShellRuntimePorts } from "../../app/bootstrap/ports";
+import type { AppShellRuntimePorts } from "./ports";
 
 const HEX_ALPHABET = "0123456789abcdef";
 

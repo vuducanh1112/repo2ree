@@ -1,10 +1,10 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { AppBootstrap } from "./app/bootstrap/AppBootstrap";
-import { DEFAULT_REE_ID } from "./app/config/ReeConstants";
-import { createAppQueryClient } from "./app/query/queryClient";
-import { ApiClientProvider } from "./data/apiRuntime";
-import { AppShellProvider } from "./ui/app-shell/providers/AppShellProvider";
+import { ApiClientProvider } from "../../data/apiRuntime";
+import { AppShellProvider } from "../../ui/app-shell/providers/AppShellProvider";
+import { AppBootstrap } from "./bootstrap/AppBootstrap";
+import { DEFAULT_REE_ID } from "./config/ReeConstants";
+import { createAppQueryClient } from "./query/queryClient";
 
 export default function App() {
   const queryClient = useMemo(() => createAppQueryClient(), []);

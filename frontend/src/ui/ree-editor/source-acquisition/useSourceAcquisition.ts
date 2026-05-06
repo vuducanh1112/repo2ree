@@ -1,11 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
-import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
 import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useExecutionRunsClient } from "../../../data/execution-runs/client";
 import { useReeClient } from "../../../data/ree/client";
+import { appShellPorts } from "../../../shell/app/bootstrap/appShellPorts";
 import type { AppShellAction } from "../../../shell/ui/app-shell/state/types";
 import type { ShowToast } from "../types";
 import { createSourceActions } from "./sourceActions";

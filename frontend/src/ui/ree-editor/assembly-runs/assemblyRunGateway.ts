@@ -1,5 +1,4 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
 import type { ExecutionRun } from "../../../core/execution/ExecutionRun";
 import type { RawReeDraftSlices } from "../../../core/ree/mapRawReeDraft";
 import type { LogEntry, ReeFile } from "../../../core/ree/ReeTypes";
@@ -13,6 +12,7 @@ import type {
 import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
+import type { AppShellRuntimePorts } from "../../../shell/app/bootstrap/ports";
 import type { ShowToast } from "../types";
 import type { ReeEditorDispatch } from "./assemblyActionEffects";
 import { executeAssemblyRunAction } from "./executeAssemblyRunAction";

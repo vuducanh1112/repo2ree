@@ -1,6 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
-import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
 import { initialReeAssemblyOperationParams } from "../../../core/ree-assembly/assemblyCatalog";
 import { createAssemblyCommandPlanners } from "../../../core/ree-assembly/assemblyCommands";
 import type { createAssemblyRunSession } from "../../../core/ree-assembly/assemblyRunSession";
@@ -14,6 +13,7 @@ import {
   useCancelExecutionRunMutation,
   useStartExecutionRunMutation,
 } from "../../../data/execution-runs/mutations";
+import { appShellPorts } from "../../../shell/app/bootstrap/appShellPorts";
 import { setAssemblyOperationParams } from "../../../shell/ui/app-shell/state/actions";
 import type { AppShellAction } from "../../../shell/ui/app-shell/state/types";
 import type { ShowToast } from "../types";

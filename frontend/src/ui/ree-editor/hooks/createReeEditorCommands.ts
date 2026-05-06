@@ -1,5 +1,4 @@
 import type React from "react";
-import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
 import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
 import { planSealArtifactCommands } from "../../../core/artifact/sealArtifactCommands";
 import type { ReeInclusionState } from "../../../core/ree/ReeInclusionState";
@@ -13,6 +12,7 @@ import type {
 import type { ReeEditorState } from "../../../core/ree-editor/reeEditorState";
 import type { EvaluationState } from "../../../core/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
+import { appShellPorts } from "../../../shell/app/bootstrap/appShellPorts";
 import {
   clearToast,
   patch,

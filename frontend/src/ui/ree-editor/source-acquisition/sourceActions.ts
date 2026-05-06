@@ -1,5 +1,4 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { AppShellClock } from "../../../app/bootstrap/ports";
 import type { SourceUploadCommit } from "../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import { createSourceUseCase } from "../../../core/workspace/acquireSource";
@@ -13,6 +12,7 @@ import { runSourceWorkspaceAction } from "../../../core/workspace/sourceAcquisit
 import { serializeWorkspaceResetPayload } from "../../../core/workspace/WorkspaceReset";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ReeClient } from "../../../data/ree/client";
+import type { AppShellClock } from "../../../shell/app/bootstrap/ports";
 import {
   executeSourceCommands,
   type ReeEditorDispatch,
