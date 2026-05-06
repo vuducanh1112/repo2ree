@@ -5,7 +5,7 @@ import type {
   MemoryRow,
   NetworkRow,
   StorageRow,
-} from "../../../../domain/hbom/hardwareBomDraft";
+} from "../../../../core/hbom/hardwareBomDraft";
 
 export interface HardwareColumn<RowT> {
   key: string;

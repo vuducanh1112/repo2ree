@@ -2,8 +2,8 @@ import { REE_ASSEMBLY_STEPS } from "../../../application/ree-assembly/assemblyCa
 import type { ReeAssemblyDefinition } from "../../../application/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import { type AppShellPage, PAGE } from "../../../application/state/pages";
-import { hbomHasAnyComponents } from "../../../domain/hbom/HbomSummary";
-import type { Badges } from "../../../domain/ree/ReeTypes";
+import { hbomHasAnyComponents } from "../../../core/hbom/HbomSummary";
+import type { Badges } from "../../../core/ree/ReeTypes";
 import { Ic } from "../../shared/components/Icon";
 
 interface ProcessStep {

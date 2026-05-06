@@ -11,7 +11,7 @@ import {
   newNetworkRow,
   newStorageRow,
   type StorageRow,
-} from "../../../../../domain/hbom/hardwareBomDraft";
+} from "../../../../../core/hbom/hardwareBomDraft";
 
 function generateRowId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random()}`;

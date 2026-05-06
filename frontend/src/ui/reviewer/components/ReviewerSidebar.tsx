@@ -1,5 +1,5 @@
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
-import { hbomSummaryLines } from "../../../domain/hbom/HbomSummary";
+import { hbomSummaryLines } from "../../../core/hbom/HbomSummary";
 import { Ic } from "../../shared/components/Icon";
 import { LevelBadge } from "../../shared/components/LevelBadge";
 import { C, F, hoverBg, S_SECTION_LABEL_SMALL } from "../../theme/theme";

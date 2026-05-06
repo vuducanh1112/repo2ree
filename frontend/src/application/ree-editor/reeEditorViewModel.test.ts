@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createEmptyReeSpec } from "../../domain/ree/ReeSpec";
+import { createEmptyReeSpec } from "../../core/ree/ReeSpec";
 import { createReeEditorState } from "./reeEditorState";
 import { createEmptyReeEditorViewModel, createReeEditorViewModel } from "./reeEditorViewModel";
 

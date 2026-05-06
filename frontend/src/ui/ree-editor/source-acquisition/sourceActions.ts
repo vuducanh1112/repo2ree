@@ -8,11 +8,11 @@ import {
   sourceFailureCommands,
 } from "../../../application/workspace/sourceAcquisitionCommands";
 import { runSourceWorkspaceAction } from "../../../application/workspace/sourceAcquisitionLifecycle";
+import type { SourceUploadCommit } from "../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
+import { serializeWorkspaceResetPayload } from "../../../core/workspace/WorkspaceReset";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ReeClient } from "../../../data/ree/client";
-import type { SourceUploadCommit } from "../../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import { serializeWorkspaceResetPayload } from "../../../domain/workspace/WorkspaceReset";
 import {
   executeSourceCommands,
   type ReeEditorDispatch,

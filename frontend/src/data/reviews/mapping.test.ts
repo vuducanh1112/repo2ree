@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ReviewDetail } from "../../domain/review/ReviewTypes";
+import type { ReviewDetail } from "../../core/review/ReviewTypes";
 import type { ReviewDetailDto, ReviewUploadCompleteResponseDto } from "../../infra/api/apiTypes";
 import {
   mapReviewDetailToReeEditorViewModel,

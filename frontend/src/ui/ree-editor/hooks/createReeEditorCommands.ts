@@ -27,12 +27,12 @@ import {
   type Updater,
 } from "../../../application/state/types";
 import type { UiChromeState } from "../../../application/state/uiChrome";
-import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
-import type { ReeInclusionState } from "../../../domain/ree/ReeInclusionState";
-import type { ReeSpec } from "../../../domain/ree/ReeSpec";
-import type { ReeAssemblyOperationParams, SourceUploadCommit } from "../../../domain/ree/ReeTypes";
-import type { EvaluationState } from "../../../domain/review/EvaluationState";
-import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
+import type { ReeInclusionState } from "../../../core/ree/ReeInclusionState";
+import type { ReeSpec } from "../../../core/ree/ReeSpec";
+import type { ReeAssemblyOperationParams, SourceUploadCommit } from "../../../core/ree/ReeTypes";
+import type { EvaluationState } from "../../../core/review/EvaluationState";
+import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
 import { executeAssemblyCommands } from "../assembly-runs/assemblyActionEffects";
 import type { ShowToast } from "../types";
 

@@ -1,4 +1,4 @@
-import type { StorageRow } from "../../../../domain/hbom/hardwareBomDraft";
+import type { StorageRow } from "../../../../core/hbom/hardwareBomDraft";
 import { STORAGE_TYPES } from "./hardwareBomColumns.constants";
 import type { HardwareColumn, StorageColumnsArgs } from "./hardwareBomColumns.types";
 

@@ -1,7 +1,7 @@
 import { type QueryClient, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ExecutionRun, ExecutionRunLogChunk } from "../../domain/execution/ExecutionRun";
-import type { ExecutionRunStatus } from "../../domain/execution/ExecutionRunStatus";
-import type { LogLine } from "../../domain/ree/ReeTypes";
+import type { ExecutionRun, ExecutionRunLogChunk } from "../../core/execution/ExecutionRun";
+import type { ExecutionRunStatus } from "../../core/execution/ExecutionRunStatus";
+import type { LogLine } from "../../core/ree/ReeTypes";
 import { useApiRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";

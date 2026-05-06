@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import type { ReeId } from "../../domain/ree/ReeId";
-import type { FileTreeNode } from "../../domain/workspace/FileTree";
-import type { WorkspaceResetPayload } from "../../domain/workspace/WorkspaceReset";
-import type { ReeProject, WorkspaceBinaryDownload } from "../../domain/workspace/WorkspaceTypes";
+import type { ReeId } from "../../core/ree/ReeId";
+import type { FileTreeNode } from "../../core/workspace/FileTree";
+import type { WorkspaceResetPayload } from "../../core/workspace/WorkspaceReset";
+import type { ReeProject, WorkspaceBinaryDownload } from "../../core/workspace/WorkspaceTypes";
 import type { ReeApi } from "../../infra/api/ReeApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { ensureReeId } from "../client";

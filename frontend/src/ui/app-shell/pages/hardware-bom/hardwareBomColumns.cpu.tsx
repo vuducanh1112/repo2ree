@@ -1,4 +1,4 @@
-import type { CPURow } from "../../../../domain/hbom/hardwareBomDraft";
+import type { CPURow } from "../../../../core/hbom/hardwareBomDraft";
 import type { CpuColumnsArgs, HardwareColumn } from "./hardwareBomColumns.types";
 
 export function createCpuColumns({

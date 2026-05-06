@@ -5,10 +5,10 @@ import type {
   StepState,
 } from "../../application/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "../../application/ree-editor/reeEditorViewModel";
+import type { LogLine, ReeFile } from "../../core/ree/ReeTypes";
+import { LEVELS } from "../../core/review/levels";
+import type { FileTreeNode } from "../../core/workspace/FileTree";
 import { useReviewClient } from "../../data/reviews/client";
-import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import { LEVELS } from "../../domain/review/levels";
-import type { FileTreeNode } from "../../domain/workspace/FileTree";
 import { C } from "../theme/theme";
 import { ReviewerContent } from "./components/ReviewerContent";
 import { ReviewerHeader } from "./components/ReviewerHeader";

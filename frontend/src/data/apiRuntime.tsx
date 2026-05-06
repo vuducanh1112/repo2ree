@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
 import { DEFAULT_REE_ID } from "../app/config/ReeConstants";
-import { asReeId, type ReeId } from "../domain/ree/ReeId";
+import { asReeId, type ReeId } from "../core/ree/ReeId";
 import { ApiClient } from "../infra/api/ApiClient";
 import { ExecutionRunsApi } from "../infra/api/ExecutionRunsApi";
 import { ReeApi } from "../infra/api/ReeApi";

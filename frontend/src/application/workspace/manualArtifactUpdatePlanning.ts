@@ -1,4 +1,4 @@
-import type { ReeSpec } from "../../domain/ree/ReeSpec";
+import type { ReeSpec } from "../../core/ree/ReeSpec";
 import { REE_ASSEMBLY_STEPS } from "../ree-assembly/assemblyCatalog";
 
 interface ManualArtifactCompletionPlan {

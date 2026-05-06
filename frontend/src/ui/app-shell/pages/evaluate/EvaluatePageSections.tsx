@@ -1,5 +1,5 @@
-import { LEVELS } from "../../../../domain/review/levels";
-import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
+import { LEVELS } from "../../../../core/review/levels";
+import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { LevelBadge } from "../../../shared/components/LevelBadge";
 import { C, F, S_FIELD_HELP_TEXT_SMALL } from "../../../theme/theme";

@@ -7,12 +7,12 @@ import { missingReeAssemblyRequirements } from "../../../application/ree-assembl
 import type { ReeAssemblyParamValue } from "../../../application/ree-assembly/assemblyStepTypes";
 import type { ReeAssemblyRunParams } from "../../../application/ree-assembly/assemblyTypes";
 import { appShellPageForField } from "../../../application/state/pages";
+import type { ExecutionRun } from "../../../core/execution/ExecutionRun";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import {
   useExecutionRunLogsQuery,
   useExecutionRunQuery,
 } from "../../../data/execution-runs/queries";
-import type { ExecutionRun } from "../../../domain/execution/ExecutionRun";
 import type { useAppShell } from "./useAppShell";
 
 type AppShellController = ReturnType<typeof useAppShell>;

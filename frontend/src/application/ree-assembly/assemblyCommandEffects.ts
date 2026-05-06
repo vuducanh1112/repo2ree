@@ -1,7 +1,7 @@
-import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
-import type { ReeSpec } from "../../domain/ree/ReeSpec";
-import type { EvaluationState } from "../../domain/review/EvaluationState";
-import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
+import type { ReeSpec } from "../../core/ree/ReeSpec";
+import type { EvaluationState } from "../../core/review/EvaluationState";
+import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 import type { Updater } from "../state/types";
 import type { SourceCommand } from "../workspace/sourceAcquisitionCommands";
 import type { AssemblyCommand } from "./assemblyCommands";

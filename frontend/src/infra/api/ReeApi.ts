@@ -1,4 +1,4 @@
-import type { ReeId } from "../../domain/ree/ReeId";
+import type { ReeId } from "../../core/ree/ReeId";
 import type { ApiClient } from "./ApiClient";
 import type {
   ApiListResponse,

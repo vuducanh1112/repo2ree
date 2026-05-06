@@ -1,4 +1,4 @@
-import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
+import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 
 export function countContainerAndNixFiles(files: FileTreeNode[]) {
   let containerCount = 0;

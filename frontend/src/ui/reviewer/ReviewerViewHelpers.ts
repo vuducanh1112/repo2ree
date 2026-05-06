@@ -1,7 +1,7 @@
 import type { ReeEditorViewModel } from "../../application/ree-editor/reeEditorViewModel";
-import { createEmptyReeSpec } from "../../domain/ree/ReeSpec";
-import type { ReeFile } from "../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import { createEmptyReeSpec } from "../../core/ree/ReeSpec";
+import type { ReeFile } from "../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../core/workspace/FileTree";
 import { buildTreeFromPaths } from "./components/reviewerFileTree";
 import {
   REACTIVATION_STEPS,

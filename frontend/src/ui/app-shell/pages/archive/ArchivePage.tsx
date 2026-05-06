@@ -3,8 +3,8 @@ import { ARCHIVE_REPOSITORIES } from "../../../../application/ree-assembly/archi
 import type { GenericReeAssemblyParams } from "../../../../application/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import { type AppShellPage, PAGE } from "../../../../application/state/pages";
-import type { ArtifactStatus } from "../../../../domain/artifact/ArtifactStatus";
-import type { ActionStates, Badges, ExecutionRunLogs } from "../../../../domain/ree/ReeTypes";
+import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
+import type { ActionStates, Badges, ExecutionRunLogs } from "../../../../core/ree/ReeTypes";
 import { Ic } from "../../../shared/components/Icon";
 import { S_FIELD_STACK_GAP_14 } from "../../../theme/theme";
 import { AssemblyPageHeader, NextStepNudge, RequirementsBanner } from "../../components/pageChrome";

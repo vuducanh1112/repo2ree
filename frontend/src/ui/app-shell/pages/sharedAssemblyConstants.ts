@@ -1,4 +1,4 @@
-import type { ReeSpec } from "../../../domain/ree/ReeSpec";
+import type { ReeSpec } from "../../../core/ree/ReeSpec";
 
 export const SVC_SCRIPT_FIELDS: Record<
   string,

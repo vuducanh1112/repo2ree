@@ -1,4 +1,4 @@
-import { LEVELS } from "../../../../../domain/review/levels";
+import { LEVELS } from "../../../../../core/review/levels";
 import { F } from "../../../../theme/theme";
 import { PodBolt } from "./PodBolt";
 import { PodBoltRing } from "./PodBoltRing";

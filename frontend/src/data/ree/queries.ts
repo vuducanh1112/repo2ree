@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { FileTreeNode } from "../../core/workspace/FileTree";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";

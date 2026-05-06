@@ -1,7 +1,7 @@
-import type { ReeSpec } from "../../domain/ree/ReeSpec";
-import type { FileTreeNode } from "../../domain/workspace/FileTree";
-import { normalizeSnapshotArchiveName } from "../../domain/workspace/PathUtils";
-import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
+import type { ReeSpec } from "../../core/ree/ReeSpec";
+import type { FileTreeNode } from "../../core/workspace/FileTree";
+import { normalizeSnapshotArchiveName } from "../../core/workspace/PathUtils";
+import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 
 type SourceExecutionStatus = "failed" | "canceled";

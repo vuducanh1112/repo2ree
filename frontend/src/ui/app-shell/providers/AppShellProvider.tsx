@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useReducer } from "react";
 import type { AppShellAction, AppShellContextState } from "../../../application/state/types";
-import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
-import type { ReeSpec } from "../../../domain/ree/ReeSpec";
-import type { EvaluationState } from "../../../domain/review/EvaluationState";
-import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
+import type { ReeSpec } from "../../../core/ree/ReeSpec";
+import type { EvaluationState } from "../../../core/review/EvaluationState";
+import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
 import { appShellReducer, createInitialState } from "./appShellReducer";
 
 interface AppShellContextValue {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import type { ReeFile } from "../../../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
+import type { ReeFile } from "../../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { S_WORKFLOW_PAGE_BODY, S_WORKFLOW_SERVICE_ROOT } from "../../../theme/theme";
 import { AssemblyPageHeader } from "../../components/pageChrome";

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { FileTreeNode } from "../../domain/workspace/FileTree";
+import type { FileTreeNode } from "../../core/workspace/FileTree";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import { createSourceUseCase } from "./acquireSource";
 

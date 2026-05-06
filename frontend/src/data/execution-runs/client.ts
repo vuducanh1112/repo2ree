@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import type { ExecutionRun, ExecutionRunLogChunk } from "../../domain/execution/ExecutionRun";
-import type { ExecutionRunStatus } from "../../domain/execution/ExecutionRunStatus";
-import type { ReeId } from "../../domain/ree/ReeId";
+import type { ExecutionRun, ExecutionRunLogChunk } from "../../core/execution/ExecutionRun";
+import type { ExecutionRunStatus } from "../../core/execution/ExecutionRunStatus";
+import type { ReeId } from "../../core/ree/ReeId";
 import type { WorkflowRunDto, WorkflowRunStatusDto } from "../../infra/api/apiTypes";
 import { mapRunLogsToLegacy } from "../../infra/api/ExecutionRunsApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";

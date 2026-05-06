@@ -13,13 +13,13 @@ import type {
 } from "../../../application/state/types";
 import { resolveUpdater } from "../../../application/state/types";
 import { createInitialUiChromeState } from "../../../application/state/uiChrome";
-import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
-import { enforceSourceOriginRules } from "../../../domain/artifact/sourceOriginRules";
-import { createEmptyReeSpec } from "../../../domain/ree/ReeSpec";
-import type { ReeAssemblyOperationParams } from "../../../domain/ree/ReeTypes";
-import type { EvaluationState } from "../../../domain/review/EvaluationState";
-import { computeSourceChangeConsequences } from "../../../domain/workspace/sourceChangeConsequences";
-import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
+import { enforceSourceOriginRules } from "../../../core/artifact/sourceOriginRules";
+import { createEmptyReeSpec } from "../../../core/ree/ReeSpec";
+import type { ReeAssemblyOperationParams } from "../../../core/ree/ReeTypes";
+import type { EvaluationState } from "../../../core/review/EvaluationState";
+import { computeSourceChangeConsequences } from "../../../core/workspace/sourceChangeConsequences";
+import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
 
 interface InitialAppShellStateInput {
   reeSpec?: ReturnType<typeof createEmptyReeSpec>;

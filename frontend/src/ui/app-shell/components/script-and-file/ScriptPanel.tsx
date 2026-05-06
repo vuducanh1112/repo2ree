@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import { PAGE } from "../../../../application/state/pages";
-import type { ReeSpec } from "../../../../domain/ree/ReeSpec";
-import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
+import type { ReeSpec } from "../../../../core/ree/ReeSpec";
+import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import {
   removeWorkspaceFileByPath,
   upsertWorkspaceFileByPath,
-} from "../../../../domain/workspace/fileTreeOps";
+} from "../../../../core/workspace/fileTreeOps";
 import { Ic } from "../../../shared/components/Icon";
 import { C } from "../../../theme/theme";
 import { defaultScriptTemplates, findFileByPath } from "../../pages/sharedAssemblyHelpers";

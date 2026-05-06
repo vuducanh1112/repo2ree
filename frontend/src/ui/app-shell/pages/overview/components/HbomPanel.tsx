@@ -2,7 +2,7 @@ import type React from "react";
 import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../../../application/state/pages";
 import { PAGE } from "../../../../../application/state/pages";
-import { hbomSummaryLines } from "../../../../../domain/hbom/HbomSummary";
+import { hbomSummaryLines } from "../../../../../core/hbom/HbomSummary";
 import {
   C,
   hoverBrightness,

@@ -1,7 +1,7 @@
 import type { ReeEditorViewModel } from "../../../../../../application/ree-editor/reeEditorViewModel";
 import { PAGE } from "../../../../../../application/state/pages";
-import { hbomHasAnyComponents } from "../../../../../../domain/hbom/HbomSummary";
-import type { Badges } from "../../../../../../domain/ree/ReeTypes";
+import { hbomHasAnyComponents } from "../../../../../../core/hbom/HbomSummary";
+import type { Badges } from "../../../../../../core/ree/ReeTypes";
 
 interface SealCableItem {
   key: string;

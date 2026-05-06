@@ -1,8 +1,8 @@
-import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
-import type { ReeSpec } from "../../domain/ree/ReeSpec";
-import type { ReeAssemblyOperationParams } from "../../domain/ree/ReeTypes";
-import type { EvaluationState } from "../../domain/review/EvaluationState";
-import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
+import type { ReeSpec } from "../../core/ree/ReeSpec";
+import type { ReeAssemblyOperationParams } from "../../core/ree/ReeTypes";
+import type { EvaluationState } from "../../core/review/EvaluationState";
+import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 import type { ToastState } from "../ree-assembly/assemblyStepTypes";
 import type { AssemblyRunCompletionPayload, SourceOutcomePayload } from "./appShellState";
 import type { AssemblyRunState } from "./assemblyRunState";

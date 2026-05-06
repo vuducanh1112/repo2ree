@@ -2,7 +2,7 @@ import type {
   ArchiveRepo,
   GenericReeAssemblyParams,
 } from "../../../../../application/ree-assembly/assemblyStepTypes";
-import type { ExecutionRunLogs } from "../../../../../domain/ree/ReeTypes";
+import type { ExecutionRunLogs } from "../../../../../core/ree/ReeTypes";
 import { Ic } from "../../../../shared/components/Icon";
 import { C, F, S_SECTION_LABEL } from "../../../../theme/theme";
 import { LogPanel } from "../../../components/logPanel";

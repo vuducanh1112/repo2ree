@@ -2,7 +2,7 @@ import React from "react";
 import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../../../application/state/pages";
 import { PAGE } from "../../../../../application/state/pages";
-import type { WorkspaceSourceState } from "../../../../../domain/workspace/WorkspaceSourceState";
+import type { WorkspaceSourceState } from "../../../../../core/workspace/WorkspaceSourceState";
 import { Toggle } from "../../../../shared/components/Toggle";
 import {
   C,

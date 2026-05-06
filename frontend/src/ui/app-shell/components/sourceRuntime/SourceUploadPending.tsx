@@ -1,4 +1,4 @@
-import type { SourceUploadCommit } from "../../../../domain/ree/ReeTypes";
+import type { SourceUploadCommit } from "../../../../core/ree/ReeTypes";
 import { Ic } from "../../../shared/components/Icon";
 import { C, F, hoverBrightness, hoverColor } from "../../../theme/theme";
 

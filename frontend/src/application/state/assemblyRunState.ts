@@ -3,8 +3,8 @@ import type {
   Badges,
   ReeAssemblyOperationParams,
   Timestamps,
-} from "../../domain/ree/ReeTypes";
-import type { EvaluationState } from "../../domain/review/EvaluationState";
+} from "../../core/ree/ReeTypes";
+import type { EvaluationState } from "../../core/review/EvaluationState";
 import { initialReeAssemblyOperationParams } from "../ree-assembly/assemblyCatalog";
 
 export interface AssemblyRunState {

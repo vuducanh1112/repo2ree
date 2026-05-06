@@ -3,7 +3,7 @@ import type {
   ReeAssemblyParamValue,
 } from "../../../application/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
-import type { LogLine } from "../../../domain/ree/ReeTypes";
+import type { LogLine } from "../../../core/ree/ReeTypes";
 import { Ic } from "../../shared/components/Icon";
 
 interface ReactivationStep {

@@ -1,5 +1,5 @@
 import type React from "react";
-import type { LogEntry } from "../../../../domain/ree/ReeTypes";
+import type { LogEntry } from "../../../../core/ree/ReeTypes";
 import { C, S_SECTION_LABEL } from "../../../theme/theme";
 import { LogPanel } from "../logPanel";
 import { assemblySectionCardStyle } from "../statusUiStyles";

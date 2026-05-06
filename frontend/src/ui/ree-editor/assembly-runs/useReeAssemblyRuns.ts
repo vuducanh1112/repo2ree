@@ -9,13 +9,13 @@ import type { ReeAssemblyRunParams } from "../../../application/ree-assembly/ass
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import { setAssemblyOperationParams } from "../../../application/state/actions";
 import type { AppShellAction } from "../../../application/state/types";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useExecutionRunsClient } from "../../../data/execution-runs/client";
 import {
   useCancelExecutionRunMutation,
   useStartExecutionRunMutation,
 } from "../../../data/execution-runs/mutations";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { ShowToast } from "../types";
 import type { HydratedWorkspaceSnapshot } from "../workspace-sync/hydrateReeWorkspace";
 import { createAssemblyRunGateway } from "./assemblyRunGateway";

@@ -1,7 +1,7 @@
 import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import { FIELD_META } from "../../../../application/state/fieldMeta";
-import type { ReeSpec } from "../../../../domain/ree/ReeSpec";
-import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
+import type { ReeSpec } from "../../../../core/ree/ReeSpec";
+import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { triggerOnEnterOrSpace } from "../../../shared/keyboard";
 import {

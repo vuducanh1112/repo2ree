@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
+import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import { fileType } from "../../../shared/formatting";
 import { C } from "../../../theme/theme";
 import { allFilePaths, findFileByPath } from "../../pages/sharedAssemblyHelpers";

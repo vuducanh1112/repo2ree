@@ -1,5 +1,5 @@
-import type { ReeFile } from "../../../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
+import type { ReeFile } from "../../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 
 export const FILE_VIEWER_MAX_CHARS = 120_000;
 export const FILE_VIEWER_MAX_LINES = 2_000;

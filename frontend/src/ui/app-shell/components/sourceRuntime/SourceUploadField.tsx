@@ -1,6 +1,6 @@
 import type React from "react";
 import { useRef, useState } from "react";
-import type { SourceUploadCommit } from "../../../../domain/ree/ReeTypes";
+import type { SourceUploadCommit } from "../../../../core/ree/ReeTypes";
 import { Ic } from "../../../shared/components/Icon";
 import { C, S_SOURCE_UPLOAD_STATUS_LINE_BASE } from "../../../theme/theme";
 import { SourceUploadCommitted } from "./SourceUploadCommitted";

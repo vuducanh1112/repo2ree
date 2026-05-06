@@ -1,4 +1,4 @@
-import type { LogLine } from "../../domain/ree/ReeTypes";
+import type { LogLine } from "../../core/ree/ReeTypes";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 
 type ExecutionRunStatus =

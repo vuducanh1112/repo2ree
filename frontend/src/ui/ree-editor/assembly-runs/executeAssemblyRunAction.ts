@@ -7,11 +7,11 @@ import type {
 import type { GenericReeAssemblyParams } from "../../../application/ree-assembly/assemblyStepTypes";
 import { executeAssemblyRun } from "../../../application/ree-assembly/executeAssemblyRun";
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
+import type { ExecutionRun } from "../../../core/execution/ExecutionRun";
+import type { RawReeDraftSlices } from "../../../core/ree/mapRawReeDraft";
+import type { LogEntry, ReeFile } from "../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
-import type { ExecutionRun } from "../../../domain/execution/ExecutionRun";
-import type { RawReeDraftSlices } from "../../../domain/ree/mapRawReeDraft";
-import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { ShowToast } from "../types";
 import { executeAssemblyCommands, type ReeEditorDispatch } from "./assemblyActionEffects";
 import { pollExecutionRun } from "./pollExecutionRun";

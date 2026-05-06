@@ -4,10 +4,10 @@ import {
   shouldHydrateRemoteRee,
   shouldScheduleReeDraftSync,
 } from "../../../application/workspace/syncReeDraft";
+import { toReePatch, toReePatchFromSlices } from "../../../core/ree/reePatch";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { useUpdateReeDraftMutation } from "../../../data/ree/mutations";
 import { useRefreshReeQuery } from "../../../data/ree/queries";
-import { toReePatch, toReePatchFromSlices } from "../../../domain/ree/reePatch";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { HydratedWorkspaceSnapshot } from "./hydrateReeWorkspace";
 
 interface UseReeDraftSyncArgs {

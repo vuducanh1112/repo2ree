@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { C, F, hoverBg, hoverIf } from "../../theme/theme";
 import { Ic } from "./Icon";
 

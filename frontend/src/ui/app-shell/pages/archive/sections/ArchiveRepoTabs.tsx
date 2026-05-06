@@ -1,5 +1,5 @@
 import type { ArchiveRepo } from "../../../../../application/ree-assembly/assemblyStepTypes";
-import type { Badges } from "../../../../../domain/ree/ReeTypes";
+import type { Badges } from "../../../../../core/ree/ReeTypes";
 import { Ic } from "../../../../shared/components/Icon";
 import { C, F, hoverBg, hoverBorderColor, hoverIf } from "../../../../theme/theme";
 

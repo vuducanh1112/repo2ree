@@ -1,11 +1,11 @@
 import React, { useRef } from "react";
 import type { ReeEditorViewModel } from "../../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../../application/state/pages";
-import type { ArtifactStatus } from "../../../../domain/artifact/ArtifactStatus";
-import type { Badges, Timestamps } from "../../../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
-import { listTreeFiles } from "../../../../domain/workspace/fileTreeTraversal";
-import type { WorkspaceSourceState } from "../../../../domain/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
+import type { Badges, Timestamps } from "../../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../../core/workspace/FileTree";
+import { listTreeFiles } from "../../../../core/workspace/fileTreeTraversal";
+import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
 import {
   OverviewColumns,
   OverviewFieldsPanel,

@@ -1,6 +1,6 @@
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 
-export type { Level } from "../../domain/review/Level";
+export type { Level } from "../../core/review/Level";
 
 export interface ReeAssemblyBadge {
   label: string;

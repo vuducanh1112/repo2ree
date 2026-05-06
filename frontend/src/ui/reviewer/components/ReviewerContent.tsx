@@ -3,8 +3,8 @@ import type {
   ReeAssemblyParamValue,
   StepState,
 } from "../../../application/ree-assembly/assemblyStepTypes";
-import type { ReeFile } from "../../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
+import type { ReeFile } from "../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { PageFiles } from "../../app-shell/pages/files/FilesPage";
 import { C } from "../../theme/theme";
 import {
@@ -20,7 +20,7 @@ interface ReviewerContentProps {
   level: number;
   levelMeta: Level;
   stepStates: Partial<Record<ReactivationStepKey, StepState>>;
-  stepLogs: Partial<Record<ReactivationStepKey, import("../../../domain/ree/ReeTypes").LogLine[]>>;
+  stepLogs: Partial<Record<ReactivationStepKey, import("../../../core/ree/ReeTypes").LogLine[]>>;
   stepParams: Record<ReactivationStepKey, ReactivationParams>;
   allDone: boolean;
   isRunningAll: boolean;

@@ -6,8 +6,8 @@ import {
   type HardwareBomDraft,
   hbomFromDraft,
   hbomSyncKey,
-} from "../../../domain/hbom/hardwareBomDraft";
-import type { ReeSpec } from "../../../domain/ree/ReeSpec";
+} from "../../../core/hbom/hardwareBomDraft";
+import type { ReeSpec } from "../../../core/ree/ReeSpec";
 
 interface UseHardwareBomDraftArgs {
   ree: ReeEditorViewModel;

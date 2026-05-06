@@ -3,10 +3,10 @@ import type React from "react";
 import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellAction } from "../../../application/state/types";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useExecutionRunsClient } from "../../../data/execution-runs/client";
 import { useReeClient } from "../../../data/ree/client";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { ShowToast } from "../types";
 import { createSourceActions } from "./sourceActions";
 

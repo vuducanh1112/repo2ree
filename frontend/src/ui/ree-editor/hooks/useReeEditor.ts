@@ -14,10 +14,10 @@ import type { AssemblyRunState } from "../../../application/state/assemblyRunSta
 import type { ReeDraftState } from "../../../application/state/reeDraft";
 import type { AppShellAction } from "../../../application/state/types";
 import type { UiChromeState } from "../../../application/state/uiChrome";
+import type { ReeFile } from "../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useReeQuery } from "../../../data/ree/queries";
-import type { ReeFile } from "../../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { useReeAssemblyRuns } from "../assembly-runs/useReeAssemblyRuns";
 import { useReeDownloads } from "../downloads/useReeDownloads";
 import { useSourceAcquisition } from "../source-acquisition/useSourceAcquisition";

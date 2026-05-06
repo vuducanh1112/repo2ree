@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState } from "react";
-import type { ReeFile } from "../../../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
+import type { ReeFile } from "../../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { fmtBytes } from "../../../shared/formatting";
 import {

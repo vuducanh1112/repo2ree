@@ -1,4 +1,4 @@
-import { asReeId, type ReeId } from "../domain/ree/ReeId";
+import { asReeId, type ReeId } from "../core/ree/ReeId";
 import type { ApiRuntimeValue } from "./apiRuntime";
 
 export function resolveReeId(runtime: ApiRuntimeValue, reeId?: ReeId | string): ReeId {

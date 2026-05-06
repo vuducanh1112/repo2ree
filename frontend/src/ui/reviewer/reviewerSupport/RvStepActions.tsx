@@ -1,4 +1,4 @@
-import type { LogLine } from "../../../domain/ree/ReeTypes";
+import type { LogLine } from "../../../core/ree/ReeTypes";
 import { AssemblyRunLogSection } from "../../app-shell/components/assemblyRunPanels";
 import { Ic } from "../../shared/components/Icon";
 import { actionBtn } from "./RvStepShared";

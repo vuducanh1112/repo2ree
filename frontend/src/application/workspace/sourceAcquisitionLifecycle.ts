@@ -1,6 +1,6 @@
-import type { LogLine } from "../../domain/ree/ReeTypes";
-import type { WorkspaceResetPayload } from "../../domain/workspace/WorkspaceReset";
-import { parseWorkspaceResetPayload } from "../../domain/workspace/WorkspaceReset";
+import type { LogLine } from "../../core/ree/ReeTypes";
+import type { WorkspaceResetPayload } from "../../core/workspace/WorkspaceReset";
+import { parseWorkspaceResetPayload } from "../../core/workspace/WorkspaceReset";
 
 type SourceExecutionStatus =
   | "created"

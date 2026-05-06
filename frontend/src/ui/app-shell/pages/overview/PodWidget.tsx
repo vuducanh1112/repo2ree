@@ -1,5 +1,5 @@
 import type React from "react";
-import { LEVELS } from "../../../../domain/review/levels";
+import { LEVELS } from "../../../../core/review/levels";
 import { PodSphere } from "./podWidget/PodSphere";
 import { POD_M } from "./podWidget/podWidgetData";
 

@@ -1,6 +1,6 @@
 import { PAGE } from "../../../../application/state/pages";
+import type { SourceUploadCommit } from "../../../../core/ree/ReeTypes";
 import { useApiRuntime } from "../../../../data/apiRuntime";
-import type { SourceUploadCommit } from "../../../../domain/ree/ReeTypes";
 import { useAssemblyStepPageController } from "../../hooks/useAssemblyStepPageController";
 import {
   type AssemblyPageProps,

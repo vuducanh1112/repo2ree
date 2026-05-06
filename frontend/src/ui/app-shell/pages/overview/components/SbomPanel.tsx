@@ -2,9 +2,9 @@ import type React from "react";
 import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../../../application/state/pages";
 import { PAGE } from "../../../../../application/state/pages";
-import type { Badges } from "../../../../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../../../../domain/workspace/FileTree";
-import { findVirtualFileByName } from "../../../../../domain/workspace/fileTreeTraversal";
+import type { Badges } from "../../../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
+import { findVirtualFileByName } from "../../../../../core/workspace/fileTreeTraversal";
 import {
   C,
   hoverBrightness,

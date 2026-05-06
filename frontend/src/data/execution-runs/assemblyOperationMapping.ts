@@ -1,4 +1,4 @@
-import type { ReeAssemblyOperation } from "../../domain/execution/ReeAssemblyOperation";
+import type { ReeAssemblyOperation } from "../../core/execution/ReeAssemblyOperation";
 import type { WorkflowOperationDto } from "../../infra/api/apiTypes";
 
 export function toBackendWorkflowOperation(operation: ReeAssemblyOperation): WorkflowOperationDto {

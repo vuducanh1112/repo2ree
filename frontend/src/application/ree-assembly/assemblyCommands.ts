@@ -1,9 +1,9 @@
-import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
-import type { ReeSpec } from "../../domain/ree/ReeSpec";
-import type { LogLine, ReeFile } from "../../domain/ree/ReeTypes";
-import type { EvaluationState } from "../../domain/review/EvaluationState";
-import type { FileTreeNode } from "../../domain/workspace/FileTree";
-import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
+import type { ReeSpec } from "../../core/ree/ReeSpec";
+import type { LogLine, ReeFile } from "../../core/ree/ReeTypes";
+import type { EvaluationState } from "../../core/review/EvaluationState";
+import type { FileTreeNode } from "../../core/workspace/FileTree";
+import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import { scanDependencies } from "./assemblyDependencyAnalysis";
 import { planAssemblyServiceEffect } from "./assemblyOutcomePlanning";

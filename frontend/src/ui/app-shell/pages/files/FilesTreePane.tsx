@@ -1,5 +1,5 @@
-import type { ReeFile } from "../../../../domain/ree/ReeTypes";
-import type { FileTreeNode } from "../../../../domain/workspace/FileTree";
+import type { ReeFile } from "../../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import { FileNode } from "../../../shared/components/FileTree";
 import { C, F, S_SECTION_LABEL } from "../../../theme/theme";
 

@@ -2,7 +2,7 @@ import type React from "react";
 import type { ReeEditorViewModel } from "../../../../../application/ree-editor/reeEditorViewModel";
 import { FIELD_META } from "../../../../../application/state/fieldMeta";
 import { type AppShellPage, PAGE } from "../../../../../application/state/pages";
-import type { Badges } from "../../../../../domain/ree/ReeTypes";
+import type { Badges } from "../../../../../core/ree/ReeTypes";
 import {
   C,
   hoverBrightness,

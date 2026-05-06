@@ -1,12 +1,9 @@
-import type { ArtifactStatus } from "../../domain/artifact/ArtifactStatus";
-import {
-  deriveReeInclusionState,
-  type ReeInclusionState,
-} from "../../domain/ree/ReeInclusionState";
-import { createEmptyReeSpec, type ReeSpec } from "../../domain/ree/ReeSpec";
-import type { ActionStates, Badges, Timestamps } from "../../domain/ree/ReeTypes";
-import type { EvaluationState } from "../../domain/review/EvaluationState";
-import type { WorkspaceSourceState } from "../../domain/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
+import { deriveReeInclusionState, type ReeInclusionState } from "../../core/ree/ReeInclusionState";
+import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
+import type { ActionStates, Badges, Timestamps } from "../../core/ree/ReeTypes";
+import type { EvaluationState } from "../../core/review/EvaluationState";
+import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 
 export interface ReeEditorUiState {
   locked: boolean;

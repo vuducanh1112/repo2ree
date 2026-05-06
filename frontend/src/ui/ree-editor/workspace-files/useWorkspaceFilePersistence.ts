@@ -1,7 +1,7 @@
 import { planWorkspaceFilePersistence } from "../../../application/workspace/workspaceFileMutationPlanning";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useReeClient } from "../../../data/ree/client";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import type { ShowToast } from "../types";
 
 interface UseWorkspaceFilePersistenceArgs {

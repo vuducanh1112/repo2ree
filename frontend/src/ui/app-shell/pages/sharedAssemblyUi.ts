@@ -11,18 +11,18 @@ import type {
 } from "../../../application/ree-assembly/assemblyTypes";
 import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { AppShellPage } from "../../../application/state/pages";
-import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
-import type { ReeInclusionState } from "../../../domain/ree/ReeInclusionState";
-import type { ReeSpec } from "../../../domain/ree/ReeSpec";
+import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
+import type { ReeInclusionState } from "../../../core/ree/ReeInclusionState";
+import type { ReeSpec } from "../../../core/ree/ReeSpec";
 import type {
   ActionStates,
   Badges,
   LogEntry,
   SourceUploadCommit,
-} from "../../../domain/ree/ReeTypes";
-import type { EvaluationState } from "../../../domain/review/EvaluationState";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
+} from "../../../core/ree/ReeTypes";
+import type { EvaluationState } from "../../../core/review/EvaluationState";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
+import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
 
 export interface SourceAcquisitionPageProps {
   ree: ReeEditorViewModel;
