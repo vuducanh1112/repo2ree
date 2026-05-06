@@ -12,24 +12,24 @@ import type { ExecutionRun } from "../../../domain/execution/ExecutionRun";
 import type { RawReeDraftSlices } from "../../../domain/ree/mapRawReeDraft";
 import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import { executeWorkflowStepCommands, type WorkspaceWorkflowDispatch } from "./commandExecutors";
-import { pollWorkflowRun } from "./pollWorkflowRun";
-import type { ShowToast } from "./types";
+import type { ShowToast } from "../types";
+import { executeAssemblyCommands, type ReeEditorDispatch } from "./assemblyActionEffects";
+import { pollExecutionRun } from "./pollExecutionRun";
 
-interface ExecuteServiceRunArgs {
+interface ExecuteAssemblyRunActionArgs {
   key: string;
   params: GenericReeAssemblyParams;
   ree: ReeEditorViewModel;
   level: number;
   workspaceFiles: FileTreeNode[];
-  dispatch: WorkspaceWorkflowDispatch;
+  dispatch: ReeEditorDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
-  workflowStepHandlers: AssemblyCommandPlannerMap;
-  workflowRunsClient: ExecutionRunsClient;
+  assemblyCommandPlanners: AssemblyCommandPlannerMap;
+  executionRunsClient: ExecutionRunsClient;
   reeId: string;
   queryClient: QueryClient;
-  startWorkflowRun: (
+  startExecutionRun: (
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
   ) => Promise<ExecutionRun>;
@@ -43,7 +43,7 @@ interface ExecuteServiceRunArgs {
   onRunFinished?: (key: string) => void;
 }
 
-export async function executeWorkflowRunAction({
+export async function executeAssemblyRunAction({
   key,
   params,
   ree,
@@ -52,18 +52,19 @@ export async function executeWorkflowRunAction({
   dispatch,
   persistWorkspaceFile,
   showToast,
-  workflowStepHandlers,
-  workflowRunsClient,
+  assemblyCommandPlanners,
+  executionRunsClient,
   reeId,
   queryClient,
-  startWorkflowRun,
+  startExecutionRun,
   ports,
   refreshWorkspace,
   onRunStarted,
   onRunFinished,
-}: ExecuteServiceRunArgs): Promise<LogEntry> {
+}: ExecuteAssemblyRunActionArgs): Promise<LogEntry> {
   const runCommands = (commands: AssemblyCommand[]) =>
-    executeWorkflowStepCommands(commands, { dispatch, persistWorkspaceFile, showToast });
+    executeAssemblyCommands(commands, { dispatch, persistWorkspaceFile, showToast });
+
   return executeAssemblyRun({
     key,
     params,
@@ -71,9 +72,9 @@ export async function executeWorkflowRunAction({
     level,
     workspaceFiles,
     executionRunner: {
-      startExecutionRun: (scriptKey, runParams) => startWorkflowRun(scriptKey, runParams),
+      startExecutionRun: (scriptKey, runParams) => startExecutionRun(scriptKey, runParams),
       pollRun: (runId, onUpdateLogs) =>
-        pollWorkflowRun(queryClient, workflowRunsClient, {
+        pollExecutionRun(queryClient, executionRunsClient, {
           reeId,
           runId,
           onUpdate: onUpdateLogs,
@@ -81,7 +82,7 @@ export async function executeWorkflowRunAction({
           sleep: ports.sleep,
         }),
     },
-    assemblyCommandPlanners: workflowStepHandlers,
+    assemblyCommandPlanners,
     generatedIds: {
       swhid: `swh:1:dir:${ports.random.hex(12)}`,
       zenodoDoi: `10.5281/zenodo.${ports.random.int(1000000, 9999999)}`,

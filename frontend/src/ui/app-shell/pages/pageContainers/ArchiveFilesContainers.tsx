@@ -47,7 +47,7 @@ export function ArchivePageContainer({
         badges={badges}
         logs={logs}
         actionStates={actionStates}
-        onRun={commands.onRunWorkflowStep}
+        onRun={commands.onRunAction}
         onGo={commands.setPage}
       />
     </ContentSection>

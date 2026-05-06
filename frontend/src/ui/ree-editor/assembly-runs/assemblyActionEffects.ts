@@ -1,4 +1,11 @@
 import {
+  type AppShellEffect,
+  mapAssemblyCommandsToEffects,
+  mapSourceCommandsToEffects,
+  type WorkspaceStateCommand,
+} from "../../../application/ree-assembly/assemblyCommandEffects";
+import type { AssemblyCommand } from "../../../application/ree-assembly/assemblyCommands";
+import {
   applySourceOutcome,
   completeWorkflowRun,
   patch,
@@ -6,48 +13,47 @@ import {
 } from "../../../application/state/actions";
 import type { AppShellAction } from "../../../application/state/types";
 import { resolveUpdater } from "../../../application/state/types";
-import type { WorkflowStepCommand } from "../../../application/workflow/workflowStepCommands";
 import type { SourceCommand } from "../../../application/workspace/sourceAcquisitionCommands";
-import {
-  type AppShellEffect,
-  mapSourceCommandsToEffects,
-  mapWorkflowStepCommandsToEffects,
-  type WorkspaceStateCommand,
-} from "../../../application/workspace/workspaceMutationEffects";
 import type { ArtifactStatus } from "../../../domain/artifact/ArtifactStatus";
 import type { ReeSpec } from "../../../domain/ree/ReeSpec";
 import type { ActionStates } from "../../../domain/ree/ReeTypes";
 import type { EvaluationState } from "../../../domain/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../../domain/workspace/WorkspaceSourceState";
-import type { ShowToast } from "./types";
+import type { ShowToast } from "../types";
 
-export type WorkspaceWorkflowDispatch = (action: AppShellAction) => void;
+export type ReeEditorDispatch = (action: AppShellAction) => void;
 
-interface WorkflowStepCommandEffects {
-  dispatch: WorkspaceWorkflowDispatch;
+interface EffectHandlers {
+  dispatch: ReeEditorDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
   showToast: ShowToast;
 }
 
-function dispatchReeStateCommand(
-  command: WorkspaceStateCommand,
-  dispatch: WorkspaceWorkflowDispatch,
-): void {
+function dispatchStateCommand(command: WorkspaceStateCommand, dispatch: ReeEditorDispatch): void {
   if (command.type === "setActionStates") {
     dispatch(
       patch("workflowRun", (prev) => ({
         actionStates: resolveUpdater(prev.actionStates as ActionStates, command.actionStates),
       })),
     );
-  } else if (command.type === "completeWorkflowRun") {
+    return;
+  }
+
+  if (command.type === "completeWorkflowRun") {
     dispatch(completeWorkflowRun(command.completion));
-  } else if (command.type === "setReeSpec") {
+    return;
+  }
+
+  if (command.type === "setReeSpec") {
     dispatch(
       patch("reeDraft", (prev) => ({
         reeSpec: resolveUpdater(prev.reeSpec as ReeSpec, command.reeSpec),
       })),
     );
-  } else if (command.type === "setWorkspaceSourceState") {
+    return;
+  }
+
+  if (command.type === "setWorkspaceSourceState") {
     dispatch(
       patch("reeDraft", (prev) => ({
         workspaceSourceState: resolveUpdater(
@@ -56,7 +62,10 @@ function dispatchReeStateCommand(
         ),
       })),
     );
-  } else if (command.type === "setArtifactStatus") {
+    return;
+  }
+
+  if (command.type === "setArtifactStatus") {
     dispatch(
       patch("reeDraft", (prev) => ({
         artifactStatus: resolveUpdater(
@@ -65,7 +74,10 @@ function dispatchReeStateCommand(
         ),
       })),
     );
-  } else if (command.type === "setEvaluationState") {
+    return;
+  }
+
+  if (command.type === "setEvaluationState") {
     dispatch(
       patch("workflowRun", (prev) => ({
         evaluationState: resolveUpdater(
@@ -74,7 +86,10 @@ function dispatchReeStateCommand(
         ),
       })),
     );
-  } else if (command.type === "setActiveRunId") {
+    return;
+  }
+
+  if (command.type === "setActiveRunId") {
     dispatch(
       patch("workflowRun", (prev) => ({
         activeRunIds: {
@@ -83,47 +98,48 @@ function dispatchReeStateCommand(
         },
       })),
     );
-  } else if (command.type === "setLocked") {
-    dispatch(patch("reeDraft", { locked: command.locked }));
-  } else if (command.type === "resetWorkflowOnSourceChange") {
-    dispatch(resetWorkflowOnSourceChange(command.workflowParams));
-  } else {
-    dispatch(applySourceOutcome(command.outcome));
+    return;
   }
+
+  if (command.type === "setLocked") {
+    dispatch(patch("reeDraft", { locked: command.locked }));
+    return;
+  }
+
+  if (command.type === "resetWorkflowOnSourceChange") {
+    dispatch(resetWorkflowOnSourceChange(command.workflowParams));
+    return;
+  }
+
+  dispatch(applySourceOutcome(command.outcome));
 }
 
-function executeWorkspaceEffects(
-  effects: AppShellEffect[],
-  handlers: WorkflowStepCommandEffects,
-): void {
+function executeEffects(effects: AppShellEffect[], handlers: EffectHandlers): void {
   for (const effect of effects) {
     if (effect.type === "dispatchStateCommand") {
-      dispatchReeStateCommand(effect.command, handlers.dispatch);
-    } else if (effect.type === "persistFile") {
-      handlers.persistWorkspaceFile(effect.path, effect.content);
-    } else {
-      handlers.showToast(effect.message, effect.toastType);
+      dispatchStateCommand(effect.command, handlers.dispatch);
+      continue;
     }
+    if (effect.type === "persistFile") {
+      handlers.persistWorkspaceFile(effect.path, effect.content);
+      continue;
+    }
+    handlers.showToast(effect.message, effect.toastType);
   }
 }
 
-export function executeWorkflowStepCommands(
-  commands: WorkflowStepCommand[],
-  effects: WorkflowStepCommandEffects,
+export function executeAssemblyCommands(
+  commands: AssemblyCommand[],
+  handlers: EffectHandlers,
 ): void {
-  executeWorkspaceEffects(mapWorkflowStepCommandsToEffects(commands), effects);
-}
-
-interface SourceCommandEffects {
-  dispatch: WorkspaceWorkflowDispatch;
-  showToast: ShowToast;
+  executeEffects(mapAssemblyCommandsToEffects(commands), handlers);
 }
 
 export function executeSourceCommands(
   commands: SourceCommand[],
-  effects: SourceCommandEffects,
+  effects: Pick<EffectHandlers, "dispatch" | "showToast">,
 ): void {
-  executeWorkspaceEffects(mapSourceCommandsToEffects(commands), {
+  executeEffects(mapSourceCommandsToEffects(commands), {
     ...effects,
     persistWorkspaceFile: () => {},
   });

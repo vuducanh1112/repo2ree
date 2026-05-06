@@ -6,16 +6,9 @@ import {
 } from "../../../application/workspace/syncReeDraft";
 import { useUpdateReeDraftMutation } from "../../../data/ree/mutations";
 import { useRefreshReeQuery } from "../../../data/ree/queries";
-import type { RawReeDraftSlices } from "../../../domain/ree/mapRawReeDraft";
-import type { ReeFile } from "../../../domain/ree/ReeTypes";
 import { toReePatch, toReePatchFromSlices } from "../../../domain/ree/reePatch";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-
-interface HydratedWorkspaceSnapshot {
-  workspaceFiles: FileTreeNode[];
-  reeArtifactFiles: ReeFile[];
-  ree?: RawReeDraftSlices;
-}
+import type { HydratedWorkspaceSnapshot } from "./hydrateReeWorkspace";
 
 interface UseReeDraftSyncArgs {
   ree: ReeEditorViewModel;
@@ -29,7 +22,6 @@ export function useReeDraftSync({ ree, reeId, hydrateWorkspace }: UseReeDraftSyn
   const latestLocalPatchKeyRef = useRef<string>(initialPatchKey);
   const isSyncingReeRef = useRef<boolean>(false);
   const hasHydratedRemoteReeRef = useRef<boolean>(false);
-  // Debounce REE draft persistence so typing does not round-trip on every keystroke.
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchWorkspace = useRefreshReeQuery(reeId);
   const { mutateAsync: updateReeDraft } = useUpdateReeDraftMutation(reeId);
@@ -39,7 +31,8 @@ export function useReeDraftSync({ ree, reeId, hydrateWorkspace }: UseReeDraftSyn
       const { forceReeHydration = false } = options;
       const requestStartedPatchKey = latestLocalPatchKeyRef.current;
       const workspace = await fetchWorkspace();
-      let reeToHydrate: RawReeDraftSlices | undefined;
+      let reeToHydrate = workspace.ree;
+
       if (workspace.ree) {
         const localPatchChangedDuringRequest =
           latestLocalPatchKeyRef.current !== requestStartedPatchKey;
@@ -51,14 +44,17 @@ export function useReeDraftSync({ ree, reeId, hydrateWorkspace }: UseReeDraftSyn
           hasSyncTimer: !!syncTimerRef.current,
           isSyncingRee: isSyncingReeRef.current,
         });
+
         if (shouldHydrateRee) {
-          reeToHydrate = workspace.ree;
           const hydratedPatchKey = JSON.stringify(toReePatchFromSlices(workspace.ree));
           lastSyncedReeRef.current = hydratedPatchKey;
           latestLocalPatchKeyRef.current = hydratedPatchKey;
           hasHydratedRemoteReeRef.current = true;
+        } else {
+          reeToHydrate = undefined;
         }
       }
+
       const hydratedWorkspace = {
         workspaceFiles: workspace.files,
         reeArtifactFiles: workspace.reeFiles || [],
@@ -100,10 +96,12 @@ export function useReeDraftSync({ ree, reeId, hydrateWorkspace }: UseReeDraftSyn
     if (!shouldScheduleSync) {
       return;
     }
+
     if (syncTimerRef.current) {
       clearTimeout(syncTimerRef.current);
       syncTimerRef.current = null;
     }
+
     syncTimerRef.current = setTimeout(() => {
       void (async () => {
         syncTimerRef.current = null;

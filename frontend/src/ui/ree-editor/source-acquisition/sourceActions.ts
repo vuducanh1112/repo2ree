@@ -15,13 +15,13 @@ import type { FileTreeNode } from "../../../domain/workspace/FileTree";
 import { serializeWorkspaceResetPayload } from "../../../domain/workspace/WorkspaceReset";
 import {
   executeSourceCommands,
-  type WorkspaceWorkflowDispatch,
-} from "../workflow-runs/commandExecutors";
-import { pollWorkflowRun } from "../workflow-runs/pollWorkflowRun";
-import type { ShowToast } from "../workflow-runs/types";
+  type ReeEditorDispatch,
+} from "../assembly-runs/assemblyActionEffects";
+import { pollExecutionRun } from "../assembly-runs/pollExecutionRun";
+import type { ShowToast } from "../types";
 
-export function resetWorkflowOnSourceChange(
-  dispatch: WorkspaceWorkflowDispatch,
+function resetAssemblyStateOnSourceChange(
+  dispatch: ReeEditorDispatch,
   showToast: ShowToast,
   options: { silent?: boolean } = {},
 ): void {
@@ -31,12 +31,11 @@ export function resetWorkflowOnSourceChange(
 interface CreateSourceActionsArgs {
   ree: ReeEditorViewModel;
   reeClient: ReeClient<FileTreeNode>;
-  workflowRunsClient: ExecutionRunsClient;
+  executionRunsClient: ExecutionRunsClient;
   reeId: string;
   queryClient: QueryClient;
-  dispatch: WorkspaceWorkflowDispatch;
+  dispatch: ReeEditorDispatch;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
-  onSourceChange: (options?: { silent?: boolean }) => void;
   showToast: ShowToast;
   clock: AppShellClock;
   sleep: (ms: number) => Promise<void>;
@@ -47,12 +46,11 @@ interface CreateSourceActionsArgs {
 export function createSourceActions({
   ree,
   reeClient,
-  workflowRunsClient,
+  executionRunsClient,
   reeId,
   queryClient,
   dispatch,
   refreshWorkspaceFiles,
-  onSourceChange,
   showToast,
   clock,
   sleep,
@@ -62,19 +60,23 @@ export function createSourceActions({
   const runCommands = (commands: SourceCommand[]) =>
     executeSourceCommands(commands, { dispatch, showToast });
 
+  const resetSourceWorkflow = (options: { silent?: boolean } = {}) => {
+    resetAssemblyStateOnSourceChange(dispatch, showToast, options);
+  };
+
   const runRemoteOrLocalSourceAction = async (
     resetRequest: Record<string, string | boolean | number | null | undefined>,
     runParams: Record<string, string | boolean | number | null | undefined>,
   ) =>
     runSourceWorkspaceAction({
       reeClient,
-      workflowRunClient: workflowRunsClient,
+      workflowRunClient: executionRunsClient,
       reeId,
       resetPayload: serializeWorkspaceResetPayload(resetRequest),
       runParams,
-      pollRun: (reeId, runId, onUpdateLogs) =>
-        pollWorkflowRun(queryClient, workflowRunsClient, {
-          reeId,
+      pollRun: (nextReeId, runId, onUpdateLogs) =>
+        pollExecutionRun(queryClient, executionRunsClient, {
+          reeId: nextReeId,
           runId,
           onUpdate: onUpdateLogs,
           clock,
@@ -93,7 +95,7 @@ export function createSourceActions({
   const sourceAcquisition = createSourceUseCase({
     ree,
     executeCommands: runCommands,
-    sourceChanged: onSourceChange,
+    sourceChanged: resetSourceWorkflow,
     runSourceAction: runRemoteOrLocalSourceAction,
     refreshWorkspaceFiles,
     clearWorkspace: () => reeClient.resetWorkspaceRequest(reeId, { mode: "clear" }),
@@ -136,6 +138,7 @@ export function createSourceActions({
     handleDownloadSourceFiles,
     handleWorkspaceUpload,
     handleRemoveWorkspaceSource,
+    resetSourceWorkflow,
   };
 }
 

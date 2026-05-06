@@ -1,22 +1,21 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type React from "react";
 import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
-import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
-import type { GenericWorkflowParams } from "../../../application/workflow/WorkflowStepTypes";
+import type { AssemblyCommandPlannerMap } from "../../../application/ree-assembly/assemblyCommands";
+import { isReeAssemblyOperationKey } from "../../../application/ree-assembly/assemblyPolicies";
+import type { GenericReeAssemblyParams } from "../../../application/ree-assembly/assemblyStepTypes";
 import type {
-  AutomationStepKey,
-  AutomationStepRunParams,
-} from "../../../application/workflow/WorkflowTypes";
-import { isAutomationStepKey } from "../../../application/workflow/workflowPolicies";
-import type { WorkflowStepHandlerMap } from "../../../application/workflow/workflowStepCommands";
+  ReeAssemblyOperationKey,
+  ReeAssemblyRunParams,
+} from "../../../application/ree-assembly/assemblyTypes";
+import type { ReeEditorViewModel } from "../../../application/ree-editor/reeEditorViewModel";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { ExecutionRun } from "../../../domain/execution/ExecutionRun";
 import type { RawReeDraftSlices } from "../../../domain/ree/mapRawReeDraft";
 import type { LogEntry, ReeFile } from "../../../domain/ree/ReeTypes";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import type { WorkspaceWorkflowDispatch } from "./commandExecutors";
-import type { ShowToast } from "./types";
-import { executeWorkflowRunAction } from "./workflowRuns";
+import type { ShowToast } from "../types";
+import type { ReeEditorDispatch } from "./assemblyActionEffects";
+import { executeAssemblyRunAction } from "./executeAssemblyRunAction";
 
 interface RunSessionPort {
   noteRunStarted: (key: string, runId: string) => void;
@@ -27,23 +26,23 @@ interface RunSessionPort {
   }) => Promise<{ ok: boolean; message?: string }>;
 }
 
-interface CreateWorkflowRunGatewayArgs {
+interface CreateAssemblyRunGatewayArgs {
   ree: ReeEditorViewModel;
   level: number;
   workspaceFiles: FileTreeNode[];
-  dispatch: React.Dispatch<unknown> | WorkspaceWorkflowDispatch;
+  dispatch: ReeEditorDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
-  persistAutomationStepParams: (key: AutomationStepKey, params: GenericWorkflowParams) => void;
+  persistAssemblyParams: (key: ReeAssemblyOperationKey, params: GenericReeAssemblyParams) => void;
   showToast: ShowToast;
-  workflowStepHandlers: WorkflowStepHandlerMap;
-  workflowRunsClient: ExecutionRunsClient;
+  assemblyCommandPlanners: AssemblyCommandPlannerMap;
+  executionRunsClient: ExecutionRunsClient;
   reeId: string;
   queryClient: QueryClient;
-  startWorkflowRun: (
+  startExecutionRun: (
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
   ) => Promise<ExecutionRun>;
-  cancelWorkflowRun?: (runId: string) => Promise<unknown>;
+  cancelExecutionRun?: (runId: string) => Promise<unknown>;
   ports: AppShellRuntimePorts;
   refreshWorkspace: () => Promise<{
     workspaceFiles: FileTreeNode[];
@@ -53,29 +52,29 @@ interface CreateWorkflowRunGatewayArgs {
   runSession: RunSessionPort;
 }
 
-export function createWorkflowRunGateway({
+export function createAssemblyRunGateway({
   ree,
   level,
   workspaceFiles,
   dispatch,
   persistWorkspaceFile,
-  persistAutomationStepParams,
+  persistAssemblyParams,
   showToast,
-  workflowStepHandlers,
-  workflowRunsClient,
+  assemblyCommandPlanners,
+  executionRunsClient,
   reeId,
   queryClient,
-  startWorkflowRun,
-  cancelWorkflowRun,
+  startExecutionRun,
+  cancelExecutionRun,
   ports,
   refreshWorkspace,
   runSession,
-}: CreateWorkflowRunGatewayArgs) {
-  const executeWorkflowRun = async (
+}: CreateAssemblyRunGatewayArgs) {
+  const executeAction = async (
     key: string,
-    params: GenericWorkflowParams = {},
+    params: GenericReeAssemblyParams = {},
   ): Promise<LogEntry> =>
-    executeWorkflowRunAction({
+    executeAssemblyRunAction({
       key,
       params,
       ree,
@@ -84,36 +83,35 @@ export function createWorkflowRunGateway({
       dispatch,
       persistWorkspaceFile,
       showToast,
-      workflowStepHandlers,
-      workflowRunsClient,
+      assemblyCommandPlanners,
+      executionRunsClient,
       reeId,
       queryClient,
-      startWorkflowRun,
+      startExecutionRun,
       ports,
       refreshWorkspace,
       onRunStarted: runSession.noteRunStarted,
       onRunFinished: runSession.noteRunFinished,
     });
 
-  const runWorkflowStep = async (key: string, params: GenericWorkflowParams = {}) => {
-    const automationKey = isAutomationStepKey(key) ? key : null;
-    if (automationKey) {
-      persistAutomationStepParams(automationKey, params);
+  const runAction = async (key: string, params: GenericReeAssemblyParams = {}) => {
+    if (isReeAssemblyOperationKey(key)) {
+      persistAssemblyParams(key, params);
     }
-    await executeWorkflowRun(key, params);
+    await executeAction(key, params);
   };
 
-  const runAutomationStep = async <K extends AutomationStepKey>(
+  const runAutomationStep = async <K extends ReeAssemblyOperationKey>(
     key: K,
-    params: AutomationStepRunParams<K>,
+    params: ReeAssemblyRunParams<K>,
   ): Promise<void> => {
-    await runWorkflowStep(key, params);
+    await runAction(key, params);
   };
 
-  const cancelAutomationStep = async (key: string) => {
+  const cancelAction = async (key: string) => {
     const result = await runSession.cancelTrackedRun({
       key,
-      cancelRun: cancelWorkflowRun,
+      cancelRun: cancelExecutionRun,
     });
     if (result.message) {
       showToast(result.message, result.ok ? "info" : "error");
@@ -121,9 +119,9 @@ export function createWorkflowRunGateway({
   };
 
   return {
-    executeWorkflowRun,
-    runWorkflowStep,
+    executeAction,
+    runAction,
     runAutomationStep,
-    cancelAutomationStep,
+    cancelAction,
   };
 }

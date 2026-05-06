@@ -1,34 +1,27 @@
-import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
+import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
 import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
 } from "../../../application/workspace/workspaceFileMutationPlanning";
-import type { ReeClient } from "../../../data/ree/client";
-import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import type { ShowToast } from "../workflow-runs/types";
+import { useApiRuntime } from "../../../data/apiRuntime";
+import { useReeClient } from "../../../data/ree/client";
+import type { ShowToast } from "../types";
 
-interface CreateDownloadActionsArgs {
-  reeClient: ReeClient<FileTreeNode>;
-  reeId: string;
-  ports: AppShellRuntimePorts;
-  getReeName: () => string;
+interface UseReeDownloadsArgs {
   buildReePatch: () => Record<string, unknown>;
+  getReeName: () => string;
   showToast: ShowToast;
 }
 
-export function createDownloadActions({
-  reeClient,
-  reeId,
-  ports,
-  getReeName,
-  buildReePatch,
-  showToast,
-}: CreateDownloadActionsArgs) {
+export function useReeDownloads({ buildReePatch, getReeName, showToast }: UseReeDownloadsArgs) {
+  const { reeId } = useApiRuntime();
+  const reeClient = useReeClient();
+
   const downloadWorkspaceFile = async (path: string, suggestedName?: string): Promise<void> => {
     try {
       const fileBytes = await reeClient.getFileBytes(reeId, path);
       const plan = planWorkspaceFileDownload(path, suggestedName);
-      ports.browserDownloads.downloadBlob(fileBytes, {
+      appShellPorts.browserDownloads.downloadBlob(fileBytes, {
         fileName: plan.downloadName,
         mimeType: "application/octet-stream",
       });
@@ -49,7 +42,7 @@ export function createDownloadActions({
         await reeClient.updateReeDraft(reeId, buildReePatch());
         const archiveDownload = await reeClient.getReeArchive(reeId);
         const plan = planReeArchiveDownload(getReeName(), archiveDownload.fileName);
-        ports.browserDownloads.downloadBlob(archiveDownload.bytes, {
+        appShellPorts.browserDownloads.downloadBlob(archiveDownload.bytes, {
           fileName: plan.archiveFileName,
           mimeType: "application/zip",
         });

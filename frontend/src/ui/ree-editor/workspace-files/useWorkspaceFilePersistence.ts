@@ -1,21 +1,21 @@
 import { planWorkspaceFilePersistence } from "../../../application/workspace/workspaceFileMutationPlanning";
-import type { ReeClient } from "../../../data/ree/client";
+import { useApiRuntime } from "../../../data/apiRuntime";
+import { useReeClient } from "../../../data/ree/client";
 import type { FileTreeNode } from "../../../domain/workspace/FileTree";
-import type { ShowToast } from "../workflow-runs/types";
+import type { ShowToast } from "../types";
 
-interface CreateReeFilePersistenceArgs {
-  reeClient: ReeClient<FileTreeNode>;
-  reeId: string;
+interface UseWorkspaceFilePersistenceArgs {
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   showToast: ShowToast;
 }
 
-export function createReeFilePersistence({
-  reeClient,
-  reeId,
+export function useWorkspaceFilePersistence({
   refreshWorkspaceFiles,
   showToast,
-}: CreateReeFilePersistenceArgs) {
+}: UseWorkspaceFilePersistenceArgs) {
+  const { reeId } = useApiRuntime();
+  const reeClient = useReeClient();
+
   const persistWorkspaceFile = async (
     previousPath: string | undefined,
     path: string,
