@@ -8,7 +8,7 @@ import type {
 import type { ReeEditorViewModel } from "../../core/ree-editor/reeEditorViewModel";
 import { LEVELS } from "../../core/review/levels";
 import type { FileTreeNode } from "../../core/workspace/FileTree";
-import { useReviewClient } from "../../data/reviews/client";
+import { useReviewClient } from "../../shell/data/reviews/client";
 import { C } from "../theme/theme";
 import { ReviewerContent } from "./components/ReviewerContent";
 import { ReviewerHeader } from "./components/ReviewerHeader";

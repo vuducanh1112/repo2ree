@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { mapReviewDetailToReeEditorViewModel } from "../../data/reviews/mapping";
-import { useReviewQuery } from "../../data/reviews/queries";
+import { mapReviewDetailToReeEditorViewModel } from "../../shell/data/reviews/mapping";
+import { useReviewQuery } from "../../shell/data/reviews/queries";
 import { APP_ROUTE } from "../../shell/ui/app-shell/state/pages";
 import { AppShellView } from "../app-shell/AppShellView";
 import { LandingView } from "../landing/LandingView";

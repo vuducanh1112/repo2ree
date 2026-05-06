@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
-import { observeExecutionRun } from "../../../data/execution-runs/queries";
 import type { AppShellClock } from "../../../shell/app/bootstrap/ports";
+import type { ExecutionRunsClient } from "../../../shell/data/execution-runs/client";
+import { observeExecutionRun } from "../../../shell/data/execution-runs/queries";
 
 interface PollExecutionRunOptions {
   reeId: string;

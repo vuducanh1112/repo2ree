@@ -4,7 +4,7 @@ import type { LogEntry } from "../../../../core/ree/ReeTypes";
 import {
   useExecutionRunLogsQuery,
   useExecutionRunQuery,
-} from "../../../../data/execution-runs/queries";
+} from "../../../../shell/data/execution-runs/queries";
 import type { useAppShell } from "../../hooks/useAppShell";
 
 export type AppShellController = ReturnType<typeof useAppShell>;

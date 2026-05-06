@@ -11,8 +11,8 @@ import type {
 } from "../../../core/ree-assembly/assemblyTypes";
 import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
-import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
 import type { AppShellRuntimePorts } from "../../../shell/app/bootstrap/ports";
+import type { ExecutionRunsClient } from "../../../shell/data/execution-runs/client";
 import type { ShowToast } from "../types";
 import type { ReeEditorDispatch } from "./assemblyActionEffects";
 import { executeAssemblyRunAction } from "./executeAssemblyRunAction";

@@ -7,11 +7,11 @@ import {
 import { missingReeAssemblyRequirements } from "../../../core/ree-assembly/assemblyPolicies";
 import type { ReeAssemblyParamValue } from "../../../core/ree-assembly/assemblyStepTypes";
 import type { ReeAssemblyRunParams } from "../../../core/ree-assembly/assemblyTypes";
-import { useApiRuntime } from "../../../data/apiRuntime";
+import { useApiRuntime } from "../../../shell/data/apiRuntime";
 import {
   useExecutionRunLogsQuery,
   useExecutionRunQuery,
-} from "../../../data/execution-runs/queries";
+} from "../../../shell/data/execution-runs/queries";
 import { appShellPageForField } from "../../../shell/ui/app-shell/state/pages";
 import type { useAppShell } from "./useAppShell";
 

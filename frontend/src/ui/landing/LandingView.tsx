@@ -1,9 +1,9 @@
 import type React from "react";
 import { useRef, useState } from "react";
 import { LEVELS } from "../../core/review/levels";
-import { useApiRuntime } from "../../data/apiRuntime";
-import { useReeClient } from "../../data/ree/client";
-import { useReviewClient } from "../../data/reviews/client";
+import { useApiRuntime } from "../../shell/data/apiRuntime";
+import { useReeClient } from "../../shell/data/ree/client";
+import { useReviewClient } from "../../shell/data/reviews/client";
 import { APP_ROUTE, type AppLoadRoutePath } from "../../shell/ui/app-shell/state/pages";
 import { Ic } from "../shared/components/Icon";
 import { C, F, hoverBg, hoverColor, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";

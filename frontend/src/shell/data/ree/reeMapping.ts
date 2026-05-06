@@ -1,6 +1,6 @@
-import type { ReeFile } from "../../core/ree/ReeTypes";
-import type { FileTreeNode } from "../../core/workspace/FileTree";
-import type { ReeProject } from "../../core/workspace/WorkspaceTypes";
+import type { ReeFile } from "../../../core/ree/ReeTypes";
+import type { FileTreeNode } from "../../../core/workspace/FileTree";
+import type { ReeProject } from "../../../core/workspace/WorkspaceTypes";
 import type { ReeDetailDto } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices } from "./mapping";
 

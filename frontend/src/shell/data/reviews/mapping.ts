@@ -1,12 +1,12 @@
-import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
-import type { ReeSpec } from "../../core/ree/ReeSpec";
-import type { EvaluationState } from "../../core/review/EvaluationState";
+import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
+import type { ReeSpec } from "../../../core/ree/ReeSpec";
+import type { EvaluationState } from "../../../core/review/EvaluationState";
 import type {
   ReviewDetail,
   ReviewUploadCompleteResponse,
   ReviewUploadInitResponse,
-} from "../../core/review/ReviewTypes";
-import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
+} from "../../../core/review/ReviewTypes";
+import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
 import type {
   ReviewDetailDto,
   ReviewUploadCompleteResponseDto,

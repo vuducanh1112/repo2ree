@@ -10,9 +10,9 @@ import {
 } from "../../../core/workspace/sourceAcquisitionCommands";
 import { runSourceWorkspaceAction } from "../../../core/workspace/sourceAcquisitionLifecycle";
 import { serializeWorkspaceResetPayload } from "../../../core/workspace/WorkspaceReset";
-import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
-import type { ReeClient } from "../../../data/ree/client";
 import type { AppShellClock } from "../../../shell/app/bootstrap/ports";
+import type { ExecutionRunsClient } from "../../../shell/data/execution-runs/client";
+import type { ReeClient } from "../../../shell/data/ree/client";
 import {
   executeSourceCommands,
   type ReeEditorDispatch,

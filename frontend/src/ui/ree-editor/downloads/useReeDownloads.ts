@@ -2,9 +2,9 @@ import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
 } from "../../../core/workspace/workspaceFileMutationPlanning";
-import { useApiRuntime } from "../../../data/apiRuntime";
-import { useReeClient } from "../../../data/ree/client";
 import { appShellPorts } from "../../../shell/app/bootstrap/appShellPorts";
+import { useApiRuntime } from "../../../shell/data/apiRuntime";
+import { useReeClient } from "../../../shell/data/ree/client";
 import type { ShowToast } from "../types";
 
 interface UseReeDownloadsArgs {

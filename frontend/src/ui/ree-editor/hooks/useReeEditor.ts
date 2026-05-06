@@ -11,8 +11,8 @@ import {
   type ReeEditorViewModel,
 } from "../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
-import { useApiRuntime } from "../../../data/apiRuntime";
-import { useReeQuery } from "../../../data/ree/queries";
+import { useApiRuntime } from "../../../shell/data/apiRuntime";
+import { useReeQuery } from "../../../shell/data/ree/queries";
 import { showToast as enqueueToast } from "../../../shell/ui/app-shell/state/actions";
 import type { AssemblyRunState } from "../../../shell/ui/app-shell/state/assemblyRunState";
 import type { ReeDraftState } from "../../../shell/ui/app-shell/state/reeDraft";

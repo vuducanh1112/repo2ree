@@ -6,8 +6,8 @@ import {
   shouldHydrateRemoteRee,
   shouldScheduleReeDraftSync,
 } from "../../../core/workspace/syncReeDraft";
-import { useUpdateReeDraftMutation } from "../../../data/ree/mutations";
-import { useRefreshReeQuery } from "../../../data/ree/queries";
+import { useUpdateReeDraftMutation } from "../../../shell/data/ree/mutations";
+import { useRefreshReeQuery } from "../../../shell/data/ree/queries";
 import type { HydratedWorkspaceSnapshot } from "./hydrateReeWorkspace";
 
 interface UseReeDraftSyncArgs {

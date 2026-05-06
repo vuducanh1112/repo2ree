@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
-import { asReeId, type ReeId } from "../core/ree/ReeId";
+import { asReeId, type ReeId } from "../../core/ree/ReeId";
+import { DEFAULT_REE_ID } from "../app/config/ReeConstants";
 import { ApiClient } from "../infra/api/ApiClient";
 import { ExecutionRunsApi } from "../infra/api/ExecutionRunsApi";
 import { ReeApi } from "../infra/api/ReeApi";
 import { ReviewsApi } from "../infra/api/ReviewsApi";
-import { DEFAULT_REE_ID } from "../shell/app/config/ReeConstants";
 
 export interface ApiRuntimeValue {
   reeId: ReeId;

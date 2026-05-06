@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { ExecutionRun, ExecutionRunLogChunk } from "../../core/execution/ExecutionRun";
-import type { ExecutionRunStatus } from "../../core/execution/ExecutionRunStatus";
+import type { ExecutionRun, ExecutionRunLogChunk } from "../../../core/execution/ExecutionRun";
+import type { ExecutionRunStatus } from "../../../core/execution/ExecutionRunStatus";
 import type {
   ReviewClient,
   ReviewDetail,
@@ -8,7 +8,7 @@ import type {
   ReviewUploadCompleteResponse,
   ReviewUploadInitRequest,
   ReviewUploadInitResponse,
-} from "../../core/review/ReviewTypes";
+} from "../../../core/review/ReviewTypes";
 import { mapRunLogsToLegacy } from "../../infra/api/ExecutionRunsApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import {

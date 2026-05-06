@@ -7,13 +7,13 @@ import type { GenericReeAssemblyParams } from "../../../core/ree-assembly/assemb
 import type { ReeAssemblyRunParams } from "../../../core/ree-assembly/assemblyTypes";
 import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
-import { useApiRuntime } from "../../../data/apiRuntime";
-import { useExecutionRunsClient } from "../../../data/execution-runs/client";
+import { appShellPorts } from "../../../shell/app/bootstrap/appShellPorts";
+import { useApiRuntime } from "../../../shell/data/apiRuntime";
+import { useExecutionRunsClient } from "../../../shell/data/execution-runs/client";
 import {
   useCancelExecutionRunMutation,
   useStartExecutionRunMutation,
-} from "../../../data/execution-runs/mutations";
-import { appShellPorts } from "../../../shell/app/bootstrap/appShellPorts";
+} from "../../../shell/data/execution-runs/mutations";
 import { setAssemblyOperationParams } from "../../../shell/ui/app-shell/state/actions";
 import type { AppShellAction } from "../../../shell/ui/app-shell/state/types";
 import type { ShowToast } from "../types";
