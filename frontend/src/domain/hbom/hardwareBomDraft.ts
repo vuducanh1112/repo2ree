@@ -42,13 +42,11 @@ export interface HardwareBomDraft {
   network: NetworkRow[];
 }
 
-function rowId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.random()}`;
-}
+type GenerateRowId = (prefix: string) => string;
 
-export function newCpuRow(): CPURow {
+export function newCpuRow(generateId: GenerateRowId): CPURow {
   return {
-    id: rowId("cpu"),
+    id: generateId("cpu"),
     model: "",
     vendor: "",
     quantity: 1,
@@ -59,9 +57,9 @@ export function newCpuRow(): CPURow {
   };
 }
 
-export function newGpuRow(): GPURow {
+export function newGpuRow(generateId: GenerateRowId): GPURow {
   return {
-    id: rowId("gpu"),
+    id: generateId("gpu"),
     model: "",
     vendor: "",
     quantity: 1,
@@ -71,9 +69,9 @@ export function newGpuRow(): GPURow {
   };
 }
 
-export function newMemoryRow(): MemoryRow {
+export function newMemoryRow(generateId: GenerateRowId): MemoryRow {
   return {
-    id: rowId("memory"),
+    id: generateId("memory"),
     model: "",
     vendor: "",
     quantity: 1,
@@ -84,9 +82,9 @@ export function newMemoryRow(): MemoryRow {
   };
 }
 
-export function newStorageRow(): StorageRow {
+export function newStorageRow(generateId: GenerateRowId): StorageRow {
   return {
-    id: rowId("storage"),
+    id: generateId("storage"),
     model: "",
     vendor: "",
     quantity: 1,
@@ -97,9 +95,9 @@ export function newStorageRow(): StorageRow {
   };
 }
 
-export function newNetworkRow(): NetworkRow {
+export function newNetworkRow(generateId: GenerateRowId): NetworkRow {
   return {
-    id: rowId("network"),
+    id: generateId("network"),
     model: "",
     vendor: "",
     quantity: 1,

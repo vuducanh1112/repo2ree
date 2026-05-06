@@ -12,6 +12,11 @@ import {
   newStorageRow,
   type StorageRow,
 } from "../../../../../domain/hbom/hardwareBomDraft";
+
+function generateRowId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random()}`;
+}
+
 import { Ic } from "../../../../shared/components/Icon";
 import { FieldRow, FieldSection } from "../../../components/fieldTips";
 import {
@@ -177,7 +182,7 @@ export function HardwareBomTablesSection({
         columns: cpuColumns,
         addLabel: "Add CPU",
         onRemove: (index) => removeRowAtIndex("cpus", index),
-        onAdd: () => setRows("cpus", [...draft.cpus, newCpuRow()]),
+        onAdd: () => setRows("cpus", [...draft.cpus, newCpuRow(generateRowId)]),
       })}
 
       {renderHardwareSection({
@@ -189,7 +194,7 @@ export function HardwareBomTablesSection({
         columns: gpuColumns,
         addLabel: "Add GPU",
         onRemove: (index) => removeRowAtIndex("gpus", index),
-        onAdd: () => setRows("gpus", [...draft.gpus, newGpuRow()]),
+        onAdd: () => setRows("gpus", [...draft.gpus, newGpuRow(generateRowId)]),
       })}
 
       {renderHardwareSection({
@@ -201,7 +206,7 @@ export function HardwareBomTablesSection({
         columns: memoryColumns,
         addLabel: "Add memory",
         onRemove: (index) => removeRowAtIndex("memory", index),
-        onAdd: () => setRows("memory", [...draft.memory, newMemoryRow()]),
+        onAdd: () => setRows("memory", [...draft.memory, newMemoryRow(generateRowId)]),
       })}
 
       {renderHardwareSection({
@@ -213,7 +218,7 @@ export function HardwareBomTablesSection({
         columns: storageColumns,
         addLabel: "Add storage",
         onRemove: (index) => removeRowAtIndex("storage", index),
-        onAdd: () => setRows("storage", [...draft.storage, newStorageRow()]),
+        onAdd: () => setRows("storage", [...draft.storage, newStorageRow(generateRowId)]),
       })}
 
       {renderHardwareSection({
@@ -225,7 +230,7 @@ export function HardwareBomTablesSection({
         columns: networkColumns,
         addLabel: "Add network",
         onRemove: (index) => removeRowAtIndex("network", index),
-        onAdd: () => setRows("network", [...draft.network, newNetworkRow()]),
+        onAdd: () => setRows("network", [...draft.network, newNetworkRow(generateRowId)]),
       })}
     </>
   );

@@ -23,7 +23,7 @@ describe("hardwareBomDraft", () => {
 
   it("drops rows with empty model and normalizes invalid numeric values", () => {
     const hbom = emptyHBOM();
-    const cpu = newCpuRow();
+    const cpu = newCpuRow((prefix) => `${prefix}-test`);
     const draft = {
       cpus: [{ ...cpu, model: "  ", quantity: 0, cores_per_cpu: Number.NaN, threads_per_core: -1 }],
       gpus: [],
