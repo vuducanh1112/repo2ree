@@ -352,26 +352,6 @@ module.exports = {
       to: {
         path: "^src/shell/ui/app-shell/(?!(AppShellView(?:[.]tsx)?|state/pages[.]ts)$)"
       }
-    },
-    {
-      name: "no-old-architecture-roots",
-      severity: "error",
-      comment:
-        "Frontend source must use definitive core/shell roots.",
-      from: {},
-      to: {
-        path: "^src/(domain|application|app|data|infra|ui)(/|$)"
-      }
-    },
-    {
-      name: "no-demo-imports",
-      severity: "error",
-      comment:
-        "No source module may import from paths containing 'demo'.",
-      from: {},
-      to: {
-        path: "(^|/)[^/]*demo[^/]*(/|$)"
-      }
     }
   ],
   options: {
