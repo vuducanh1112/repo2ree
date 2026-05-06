@@ -272,7 +272,7 @@ module.exports = {
         pathNot: TEST_FILE_PATTERN
       },
       to: {
-        path: "^src/core/(ree-assembly/(assembly|execute|archive|.*Planning|.*Policy|.*Policies|.*Lifecycle|.*Session|.*Request|.*Command)|ree-editor/|workspace/(acquire|source|sync|.*Planning|.*Lifecycle|.*Commands|.*Effects|.*Mutation)|artifact/sealArtifactCommands)"
+        path: "^src/core/ree/ReeId$"
       }
     },
     {
