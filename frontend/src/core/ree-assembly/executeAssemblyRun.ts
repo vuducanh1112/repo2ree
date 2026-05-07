@@ -133,6 +133,24 @@ export async function executeAssemblyRun({
   if (isTerminalExecutionRunFailure(result.status)) {
     const failurePlan = planTerminalExecutionRunFailure(key, result.status, ts);
     executeCommands([{ type: "toast", message: failurePlan.errorMessage, toastType: "error" }]);
+    if (failurePlan.shouldRefreshWorkspace) {
+      try {
+        const workspace = await refreshWorkspace();
+        executeCommands([
+          {
+            type: "hydrateWorkspace",
+            workspaceFiles: workspace.files,
+            reeArtifactFiles: workspace.reeFiles || [],
+            reeSpec: workspace.ree?.reeSpec,
+            workspaceSourceState: workspace.ree?.workspaceSourceState,
+            artifactStatus: workspace.ree?.artifactStatus,
+            evaluationState: workspace.ree?.evaluationState,
+          },
+        ]);
+      } catch {
+        // Best-effort; UI can still show logs even if refresh fails.
+      }
+    }
     return { lines, ts };
   }
 
