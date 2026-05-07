@@ -50,6 +50,157 @@ def _require_non_empty_path(path_value: str, field_name: str) -> str:
     return path
 
 
+def _docker_copy_workspace_into_container(
+    docker_bin: str,
+    container_name: str,
+    workspace_path: Path,
+    ree_id: str,
+    run_id: str,
+) -> bool:
+    cmd = [docker_bin, "cp", f"{workspace_path}/.", f"{container_name}:/workspace"]
+    _append_run_log(
+        ree_id,
+        run_id,
+        "system",
+        "info",
+        "$ " + " ".join(shlex.quote(t) for t in cmd),
+    )
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        for line in result.stderr.splitlines():
+            if line.strip():
+                _append_run_log(ree_id, run_id, "stderr", "warn", line)
+        _append_run_log(
+            ree_id,
+            run_id,
+            "system",
+            "error",
+            f"Failed to copy workspace into container (exit code {result.returncode})",
+        )
+        return False
+    return True
+
+
+def _docker_sync_workspace_from_container(
+    docker_bin: str,
+    container_name: str,
+    workspace_path: Path,
+    ree_id: str,
+    run_id: str,
+) -> bool:
+    _append_run_log(
+        ree_id, run_id, "system", "info", "Syncing container workspace changes to host"
+    )
+
+    diff_cmd = [docker_bin, "diff", container_name]
+    _append_run_log(
+        ree_id,
+        run_id,
+        "system",
+        "info",
+        "$ " + " ".join(shlex.quote(t) for t in diff_cmd),
+    )
+    diff_result = subprocess.run(diff_cmd, capture_output=True, text=True)
+    if diff_result.returncode != 0:
+        _append_run_log(
+            ree_id, run_id, "system", "error", "Failed to get container diff"
+        )
+        for line in diff_result.stderr.splitlines():
+            if line.strip():
+                _append_run_log(ree_id, run_id, "stderr", "warn", line)
+        return False
+
+    workspace_prefix = "/workspace"
+    changed_in_container: list[str] = []  # absolute container paths (A or C)
+
+    for line in diff_result.stdout.splitlines():
+        if len(line) < 3:
+            continue
+        kind, container_path = line[0], line[2:]
+        if not (
+            container_path == workspace_prefix
+            or container_path.startswith(workspace_prefix + "/")
+        ):
+            continue
+        rel = container_path[len(workspace_prefix) :].lstrip("/")
+        if not rel:
+            continue
+        if kind in ("A", "C"):
+            changed_in_container.append(container_path)
+
+    if not changed_in_container:
+        _append_run_log(ree_id, run_id, "system", "info", "Sync complete: 0 changed")
+        return True
+
+    # Classify each changed path as file or directory in one exec call.
+    # Output format: <type>\t<path> — tab-separated to handle spaces in paths.
+    stat_cmd = [
+        docker_bin,
+        "exec",
+        "-i",
+        container_name,
+        "sh",
+        "-c",
+        "while IFS= read -r p; do"
+        '  t=$(stat -c \'%F\' "$p" 2>/dev/null) && printf \'%s\\t%s\\n\' "$t" "$p" || true;'
+        " done",
+    ]
+    stat_result = subprocess.run(
+        stat_cmd,
+        input="\n".join(changed_in_container),
+        capture_output=True,
+        text=True,
+    )
+
+    file_paths: list[str] = []
+    dir_paths: list[str] = []
+    for line in stat_result.stdout.splitlines():
+        if "\t" not in line:
+            continue
+        kind, container_path = line.split("\t", 1)
+        if kind in ("regular file", "regular empty file", "symbolic link"):
+            file_paths.append(container_path)
+        elif kind == "directory":
+            dir_paths.append(container_path)
+
+    for container_path in dir_paths:
+        rel = container_path[len(workspace_prefix) :].lstrip("/")
+        (workspace_path / rel).mkdir(parents=True, exist_ok=True)
+
+    for container_path in file_paths:
+        rel = container_path[len(workspace_prefix) :].lstrip("/")
+        host_path = workspace_path / rel
+        host_path.parent.mkdir(parents=True, exist_ok=True)
+        cp_cmd = [
+            docker_bin,
+            "cp",
+            f"{container_name}:{container_path}",
+            str(host_path),
+        ]
+        cp_result = subprocess.run(cp_cmd, capture_output=True, text=True)
+        if cp_result.returncode != 0:
+            _append_run_log(
+                ree_id,
+                run_id,
+                "system",
+                "error",
+                f"Failed to copy {rel} from container",
+            )
+            for line in cp_result.stderr.splitlines():
+                if line.strip():
+                    _append_run_log(ree_id, run_id, "stderr", "warn", line)
+            return False
+
+    _append_run_log(
+        ree_id,
+        run_id,
+        "system",
+        "info",
+        f"Sync complete: {len(file_paths)} file(s), {len(dir_paths)} dir(s) changed",
+    )
+    return True
+
+
 def _docker_build_run(
     ree_id: str,
     run_id: str,
@@ -67,10 +218,6 @@ def _docker_build_run(
         workspace_path
     )
     script_dir_in_container = script_in_container.parent
-    runtime_abs_path = _resolve_workspace_relative_path(ree_id, runtime_relative_path)
-    runtime_in_container = Path("/workspace") / runtime_abs_path.relative_to(
-        workspace_path
-    )
 
     _append_run_log(ree_id, run_id, "system", "info", f"Starting build run {run_id}")
     _append_run_log(
@@ -87,13 +234,6 @@ def _docker_build_run(
         "info",
         f"Build script: {script_relative_path}",
     )
-    _append_run_log(
-        ree_id,
-        run_id,
-        "system",
-        "info",
-        f"Expected runtime output: {runtime_relative_path}",
-    )
 
     docker_bin = shutil.which("docker") or "docker"
     container_name = f"repo2ree-build-{run_id}"
@@ -107,12 +247,6 @@ def _docker_build_run(
         "docker:latest",
         "sleep",
         "infinity",
-    ]
-    docker_cp_cmd = [
-        docker_bin,
-        "cp",
-        f"{workspace_path}/.",
-        f"{container_name}:/workspace",
     ]
     docker_start_cmd = [docker_bin, "start", container_name]
     docker_exec_script_cmd = [
@@ -130,38 +264,32 @@ def _docker_build_run(
             f"sh {shlex.quote(str(script_in_container))}"
         ),
     ]
-    docker_exec_check_cmd = [
-        docker_bin,
-        "exec",
-        container_name,
-        "sh",
-        "-lc",
-        f"test -f {shlex.quote(str(runtime_in_container))}",
-    ]
     docker_rm_cmd = [docker_bin, "rm", "-f", container_name]
+
+    canceled_outputs: dict[str, Any] = {
+        "buildRuntimeScriptPath": script_relative_path,
+        "producedRuntimePath": runtime_relative_path,
+        "dockerImage": "docker:latest",
+    }
+
+    def cancel_and_cleanup(msg: str) -> tuple[str, dict[str, Any]]:
+        try:
+            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
+        except Exception:
+            pass
+        _append_run_log(ree_id, run_id, "system", "warn", msg)
+        return "canceled", canceled_outputs
 
     _append_run_log(
         ree_id,
         run_id,
         "system",
         "info",
-        "$ " + " ".join(shlex.quote(token) for token in docker_create_cmd),
+        "$ " + " ".join(shlex.quote(t) for t in docker_create_cmd),
     )
     create_result = subprocess.run(docker_create_cmd, capture_output=True, text=True)
     if _is_cancel_requested(ree_id, run_id):
-        try:
-            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
-        except Exception:
-            pass
-        _append_run_log(ree_id, run_id, "system", "warn", "Build run canceled")
-        return (
-            "canceled",
-            {
-                "buildRuntimeScriptPath": script_relative_path,
-                "producedRuntimePath": runtime_relative_path,
-                "dockerImage": "docker:latest",
-            },
-        )
+        return cancel_and_cleanup("Build run canceled")
     if create_result.returncode != 0:
         for line in create_result.stderr.splitlines():
             if line.strip():
@@ -173,81 +301,34 @@ def _docker_build_run(
             "error",
             f"Build run failed (exit code {create_result.returncode})",
         )
-        outputs = {
-            "buildRuntimeScriptPath": script_relative_path,
-            "producedRuntimePath": runtime_relative_path,
-            "dockerImage": "docker:latest",
+        return "failed", {
+            **canceled_outputs,
             "containerExitCode": create_result.returncode,
         }
-        return "failed", outputs
 
-    _append_run_log(
-        ree_id,
-        run_id,
-        "system",
-        "info",
-        "$ " + " ".join(shlex.quote(token) for token in docker_cp_cmd),
-    )
-    cp_result = subprocess.run(docker_cp_cmd, capture_output=True, text=True)
+    if not _docker_copy_workspace_into_container(
+        docker_bin, container_name, workspace_path, ree_id, run_id
+    ):
+        if _is_cancel_requested(ree_id, run_id):
+            return cancel_and_cleanup("Build run canceled")
+        try:
+            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
+        except Exception:
+            pass
+        return "failed", canceled_outputs
     if _is_cancel_requested(ree_id, run_id):
-        try:
-            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
-        except Exception:
-            pass
-        _append_run_log(ree_id, run_id, "system", "warn", "Build run canceled")
-        return (
-            "canceled",
-            {
-                "buildRuntimeScriptPath": script_relative_path,
-                "producedRuntimePath": runtime_relative_path,
-                "dockerImage": "docker:latest",
-            },
-        )
-    if cp_result.returncode != 0:
-        for line in cp_result.stderr.splitlines():
-            if line.strip():
-                _append_run_log(ree_id, run_id, "stderr", "warn", line)
-        _append_run_log(
-            ree_id,
-            run_id,
-            "system",
-            "error",
-            f"Build run failed (exit code {cp_result.returncode})",
-        )
-        try:
-            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
-        except Exception:
-            pass
-        outputs = {
-            "buildRuntimeScriptPath": script_relative_path,
-            "producedRuntimePath": runtime_relative_path,
-            "dockerImage": "docker:latest",
-            "containerExitCode": cp_result.returncode,
-        }
-        return "failed", outputs
+        return cancel_and_cleanup("Build run canceled")
 
     _append_run_log(
         ree_id,
         run_id,
         "system",
         "info",
-        "$ " + " ".join(shlex.quote(token) for token in docker_start_cmd),
+        "$ " + " ".join(shlex.quote(t) for t in docker_start_cmd),
     )
     start_result = subprocess.run(docker_start_cmd, capture_output=True, text=True)
     if _is_cancel_requested(ree_id, run_id):
-        try:
-            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
-        except Exception:
-            pass
-        _append_run_log(ree_id, run_id, "system", "warn", "Build run canceled")
-        return (
-            "canceled",
-            {
-                "buildRuntimeScriptPath": script_relative_path,
-                "producedRuntimePath": runtime_relative_path,
-                "dockerImage": "docker:latest",
-            },
-        )
+        return cancel_and_cleanup("Build run canceled")
     if start_result.returncode != 0:
         for line in start_result.stdout.splitlines():
             if line.strip():
@@ -266,36 +347,21 @@ def _docker_build_run(
             subprocess.run(docker_rm_cmd, capture_output=True, text=True)
         except Exception:
             pass
-        outputs = {
-            "buildRuntimeScriptPath": script_relative_path,
-            "producedRuntimePath": runtime_relative_path,
-            "dockerImage": "docker:latest",
+        return "failed", {
+            **canceled_outputs,
             "containerExitCode": start_result.returncode,
         }
-        return "failed", outputs
 
     _append_run_log(
         ree_id,
         run_id,
         "system",
         "info",
-        "$ " + " ".join(shlex.quote(token) for token in docker_exec_script_cmd),
+        "$ " + " ".join(shlex.quote(t) for t in docker_exec_script_cmd),
     )
     exec_result = subprocess.run(docker_exec_script_cmd, capture_output=True, text=True)
     if _is_cancel_requested(ree_id, run_id):
-        try:
-            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
-        except Exception:
-            pass
-        _append_run_log(ree_id, run_id, "system", "warn", "Build run canceled")
-        return (
-            "canceled",
-            {
-                "buildRuntimeScriptPath": script_relative_path,
-                "producedRuntimePath": runtime_relative_path,
-                "dockerImage": "docker:latest",
-            },
-        )
+        return cancel_and_cleanup("Build run canceled")
 
     for line in exec_result.stdout.splitlines():
         if line.strip():
@@ -304,51 +370,25 @@ def _docker_build_run(
         if line.strip():
             _append_run_log(ree_id, run_id, "stderr", "warn", line)
 
+    sync_succeeded = False
     runtime_available = False
     if exec_result.returncode == 0:
         _append_run_log(
-            ree_id,
-            run_id,
-            "system",
-            "info",
-            "Build script executed (exit code 0)",
+            ree_id, run_id, "system", "info", "Build script executed (exit code 0)"
         )
-        _append_run_log(
-            ree_id,
-            run_id,
-            "system",
-            "info",
-            f"Checking for produced runtime at {runtime_relative_path}",
+        sync_succeeded = _docker_sync_workspace_from_container(
+            docker_bin, container_name, workspace_path, ree_id, run_id
         )
-        check_result = subprocess.run(
-            docker_exec_check_cmd, capture_output=True, text=True
-        )
-
-        if check_result.returncode == 0:
-            docker_cp_back_cmd = [
-                docker_bin,
-                "cp",
-                f"{container_name}:{runtime_in_container}",
-                str(runtime_abs_path),
-            ]
-            _append_run_log(
-                ree_id,
-                run_id,
-                "system",
-                "info",
-                "$ " + " ".join(shlex.quote(token) for token in docker_cp_back_cmd),
-            )
-            cp_back_result = subprocess.run(
-                docker_cp_back_cmd, capture_output=True, text=True
-            )
-            if cp_back_result.returncode == 0:
-                runtime_available = True
+        if sync_succeeded:
+            runtime_abs_path = workspace_path / runtime_relative_path
+            runtime_available = runtime_abs_path.is_file()
+            if runtime_available:
                 _append_run_log(
                     ree_id,
                     run_id,
                     "system",
                     "info",
-                    f"Successfully copied produced runtime to {runtime_relative_path}",
+                    f"Produced runtime found in workspace: {runtime_relative_path}",
                 )
             else:
                 _append_run_log(
@@ -356,20 +396,8 @@ def _docker_build_run(
                     run_id,
                     "system",
                     "error",
-                    f"Produced runtime could not be copied from container at {runtime_relative_path}",
+                    f"Produced runtime not found in workspace after sync: {runtime_relative_path}",
                 )
-                if cp_back_result.stderr.strip():
-                    for line in cp_back_result.stderr.splitlines():
-                        if line.strip():
-                            _append_run_log(ree_id, run_id, "stderr", "warn", line)
-        else:
-            _append_run_log(
-                ree_id,
-                run_id,
-                "system",
-                "error",
-                f"Produced runtime not found in container at {runtime_relative_path}",
-            )
     else:
         _append_run_log(
             ree_id,
@@ -385,24 +413,19 @@ def _docker_build_run(
         pass
 
     status = (
-        "succeeded" if exec_result.returncode == 0 and runtime_available else "failed"
+        "succeeded"
+        if exec_result.returncode == 0 and sync_succeeded and runtime_available
+        else "failed"
     )
-    final_level = "info" if status == "succeeded" else "error"
     _append_run_log(
         ree_id,
         run_id,
         "system",
-        final_level,
+        "info" if status == "succeeded" else "error",
         f"Build run {status} (exit code {exec_result.returncode})",
     )
 
-    outputs = {
-        "buildRuntimeScriptPath": script_relative_path,
-        "producedRuntimePath": runtime_relative_path,
-        "dockerImage": "docker:latest",
-        "containerExitCode": exec_result.returncode,
-    }
-    return status, outputs
+    return status, {**canceled_outputs, "containerExitCode": exec_result.returncode}
 
 
 def create_build_run_state(
@@ -417,14 +440,13 @@ def create_build_run_state(
         payload.produced_runtime_path,
         "produced_runtime_path",
     )
-    request_payload = {
-        "build_runtime_script_path": script_path,
-        "produced_runtime_path": runtime_path,
-    }
     return _start_background_run(
         ree_id=ree_id,
         operation="build",
-        request_payload=request_payload,
+        request_payload={
+            "build_runtime_script_path": script_path,
+            "produced_runtime_path": runtime_path,
+        },
         run_id_prefix="build",
         runner=lambda ws_id, run_id: _docker_build_run(
             ree_id=ws_id,
