@@ -6,6 +6,7 @@ import {
   type AssemblyPageProps,
   PageBuildRuntime,
   PageEvaluate,
+  PageExperiments,
   PageGenerateSBOM,
   PageHardwareBom,
   PageMetadataEntry,
@@ -90,6 +91,33 @@ export function MetadataPageContainer({
       focusedField={focusedField}
       onReeChange={commands.setReeSpec}
       onLockedChange={commands.setLocked}
+      onGoAssemblyPage={commands.setPage}
+      onFocusedFieldChange={commands.setFocusedField}
+    />
+  );
+}
+
+export function ExperimentsPageContainer({
+  reeDraft,
+  assemblyRun,
+  uiChrome,
+  commands,
+}: AppShellPageContainerProps) {
+  const { page, focusedField } = uiChrome;
+  const { locked, reeSpec } = reeDraft;
+  const { badges } = assemblyRun;
+
+  if (page !== PAGE.EXPERIMENTS) {
+    return null;
+  }
+
+  return (
+    <PageExperiments
+      reeSpec={reeSpec}
+      locked={locked}
+      badges={badges}
+      focusedField={focusedField}
+      onReeChange={commands.setReeSpec}
       onGoAssemblyPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
     />

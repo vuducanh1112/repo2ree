@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Literal, Mapping
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from repo2ree_core.experiment import Experiment
 from repo2ree_core.hbom import HBOM
 
 
@@ -94,6 +95,7 @@ class REE(BaseModel):
     downloadable_files: list[str] = Field(
         default_factory=list, alias="_downloadableFiles"
     )
+    experiments: list[Experiment] = Field(default_factory=list)
 
     @field_validator("hardware_description", mode="before")
     @classmethod
@@ -209,4 +211,8 @@ class REE(BaseModel):
             "source_snapshot_captured_at": self.source_snapshot_captured_at or None,
             "runtime_included": bool(self.runtime_included),
             "downloadable_files": list(self.downloadable_files or []),
+            "experiments": [
+                experiment.model_dump(exclude_none=True)
+                for experiment in self.experiments
+            ],
         }

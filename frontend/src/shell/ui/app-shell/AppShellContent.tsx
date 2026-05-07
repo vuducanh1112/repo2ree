@@ -10,6 +10,7 @@ import type { useAppShell } from "./hooks/useAppShell";
 import {
   ArchivePageContainer,
   AssemblyPageContainer,
+  ExperimentsPageContainer,
   FilesPageContainer,
   HardwareBomPageContainer,
   MetadataPageContainer,
@@ -43,6 +44,7 @@ export function AppShellContent(props: AppShellContentProps) {
         <OverviewPageContainer {...props} />
         <SourcePageContainer {...props} />
         <MetadataPageContainer {...props} />
+        <ExperimentsPageContainer {...props} />
         <HardwareBomPageContainer {...props} />
         <AssemblyPageContainer {...props} />
         <ArchivePageContainer {...props} />

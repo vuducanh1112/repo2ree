@@ -63,6 +63,16 @@ export function RuntimeField({
       tabIndex={onFocus ? 0 : undefined}
       onKeyDown={(event) => {
         if (!onFocus) return;
+        const target = event.target as HTMLElement | null;
+        if (
+          target &&
+          (target.tagName === "INPUT" ||
+            target.tagName === "TEXTAREA" ||
+            target.tagName === "SELECT" ||
+            target.isContentEditable)
+        ) {
+          return;
+        }
         triggerOnEnterOrSpace(event, () => onFocus?.());
       }}
       style={{

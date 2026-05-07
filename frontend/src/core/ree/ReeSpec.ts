@@ -48,6 +48,12 @@ export interface NetworkDefinition {
   extra_info: Record<string, unknown>;
 }
 
+export interface ReeExperiment {
+  name: string;
+  description: string;
+  command: string;
+}
+
 export interface HBOM {
   cpus: Record<DeviceModel, CPUDefinition>;
   gpus: Record<DeviceModel, GPUDefinition>;
@@ -70,6 +76,7 @@ export interface ReeSpec {
   dataverse_doi?: string;
   repro_level?: string;
   detected_dependencies?: string;
+  experiments?: ReeExperiment[];
   hardware_description: HBOM;
 }
 
@@ -83,6 +90,7 @@ export function createEmptyReeSpec(): ReeSpec {
     activation_script: "",
     sbom: "",
     swhid: "",
+    experiments: [],
     hardware_description: {
       cpus: {},
       gpus: {},

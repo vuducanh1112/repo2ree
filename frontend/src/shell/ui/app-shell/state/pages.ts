@@ -4,6 +4,7 @@ import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorVi
 export const PAGE = {
   SOURCE: "source",
   METADATA: "metadata",
+  EXPERIMENTS: "experiments",
   HBOM: "hbom",
   OVERVIEW: "overview",
   SEAL: "seal",
@@ -35,6 +36,7 @@ const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as AppShellPage[];
 const FIELD_TO_PAGE: Partial<Record<keyof ReeEditorViewModel, AppShellPage>> = {
   origin_url: PAGE.SOURCE,
   source_type: PAGE.SOURCE,
+  experiments: PAGE.EXPERIMENTS,
   sourceAvailable: PAGE.SOURCE,
   sourceAcquiredBy: PAGE.SOURCE,
   hardware_description: PAGE.HBOM,

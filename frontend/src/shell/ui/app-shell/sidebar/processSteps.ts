@@ -78,13 +78,28 @@ export const PROCESS_STEPS: ProcessStep[] = [
   },
   {
     n: 8,
+    key: PAGE.EXPERIMENTS,
+    label: "Experiments",
+    IC: Ic.terminal,
+    automation: null,
+    desc: "Define reproducibility experiment commands",
+  },
+  {
+    n: 9,
     key: PAGE.ARCHIVE,
     label: "Deposit & Share",
     IC: Ic.globe,
     automation: null,
     desc: "Archive and publish",
   },
-  { n: 9, key: PAGE.SEAL, label: "Seal", IC: Ic.lock, automation: null, desc: "Seal the REE" },
+  {
+    n: 10,
+    key: PAGE.SEAL,
+    label: "Seal",
+    IC: Ic.lock,
+    automation: null,
+    desc: "Seal the REE",
+  },
 ];
 
 export function hasProcessStepCompleted(
@@ -94,6 +109,8 @@ export function hasProcessStepCompleted(
 ) {
   if (stepKey === PAGE.SOURCE) return !!ree.sourceAvailable;
   if (stepKey === PAGE.METADATA) return !!ree.name;
+  if (stepKey === PAGE.EXPERIMENTS)
+    return (ree.experiments || []).some((entry) => !!entry.name.trim());
   if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.hardware_description);
   if (stepKey === PAGE.SEAL) return !!ree.sealedAt;
   if (stepKey === PAGE.ARCHIVE) return !!badges?.swh || !!badges?.zenodo || !!badges?.dataverse;

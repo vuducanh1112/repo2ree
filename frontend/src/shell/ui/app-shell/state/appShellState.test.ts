@@ -27,6 +27,7 @@ function buildRee(): ReeEditorViewModel {
     activation_script: "",
     sbom: "",
     swhid: "",
+    experiments: [],
     hardware_description: {
       cpus: {},
       gpus: {},
@@ -58,6 +59,7 @@ function toInitialSlices(ree: ReeEditorViewModel) {
       dataverse_doi: ree.dataverse_doi,
       repro_level: ree.repro_level,
       detected_dependencies: ree.detected_dependencies,
+      experiments: ree.experiments,
       hardware_description: ree.hardware_description,
     },
     workspaceSourceState: {

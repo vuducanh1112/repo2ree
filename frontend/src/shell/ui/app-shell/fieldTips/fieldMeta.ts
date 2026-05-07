@@ -124,6 +124,15 @@ DOCKER_BUILDKIT=1 docker build --no-cache -t ree:latest .
 docker save ree:latest | gzip > runtime.tar.gz`,
     tools: [],
   },
+  experiments: {
+    label: "Experiments",
+    desc: "A list of runnable experiment definitions. Each entry has a name and the command to execute.",
+    example: "name: smoke-test, command: pytest tests/smoke -q",
+    format: "Array of objects with { name: string, command: string }.",
+    howTo:
+      "Add one experiment per reproducibility check, keeping commands deterministic and executable from workspace root.",
+    tools: [],
+  },
   activation_script: {
     label: "Activation script",
     desc: "Define a quick check that proves the runtime can actually start. Technically, this script loads the runtime and exits successfully only if activation passes.",

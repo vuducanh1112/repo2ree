@@ -1,5 +1,6 @@
 export { PageBuildRuntime } from "./build-runtime/BuildRuntimePage";
 export { PageEvaluate } from "./evaluate/EvaluatePage";
+export { PageExperiments } from "./experiments/ExperimentsPage";
 export { PageGenerateSBOM } from "./generate-sbom/GenerateSbomPage";
 export { PageHardwareBom } from "./hardware-bom/HardwareBomPage";
 export { PageMetadataEntry } from "./metadata/MetadataPage";

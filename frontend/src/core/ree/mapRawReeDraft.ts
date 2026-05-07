@@ -2,7 +2,7 @@ import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import { normalizeHBOM } from "../hbom/HbomSummary";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import type { ReeSpec } from "./ReeSpec";
+import type { ReeExperiment, ReeSpec } from "./ReeSpec";
 
 interface MapRawReeDraftToReeOptions {
   reeDraft: Record<string, unknown> | null | undefined;
@@ -23,6 +23,16 @@ export function mapRawReeDraftToSlices({
   fallbackOriginUrl = "",
 }: MapRawReeDraftToReeOptions): RawReeDraftSlices {
   const draft = reeDraft || {};
+  const experiments: ReeExperiment[] = Array.isArray(draft.experiments)
+    ? draft.experiments.map((entry) => {
+        const item = (entry as Record<string, unknown>) || {};
+        return {
+          name: String(item.name ?? ""),
+          description: String(item.description ?? ""),
+          command: String(item.command ?? ""),
+        };
+      })
+    : [];
 
   return {
     reeSpec: {
@@ -40,6 +50,7 @@ export function mapRawReeDraftToSlices({
       detected_dependencies: draft.detected_dependencies
         ? String(draft.detected_dependencies)
         : undefined,
+      experiments,
       hardware_description: normalizeHBOM(draft.hardware_description),
     },
     workspaceSourceState: {

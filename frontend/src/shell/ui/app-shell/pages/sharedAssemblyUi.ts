@@ -56,6 +56,16 @@ export interface PageMetadataEntryProps {
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
+export interface PageExperimentsProps {
+  reeSpec: ReeSpec;
+  locked: boolean;
+  badges: Badges;
+  focusedField: string | null;
+  onReeChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
+  onGoAssemblyPage: (key: AppShellPage) => void;
+  onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
 export interface PageHardwareBomProps {
   ree: ReeEditorViewModel;
   locked: boolean;

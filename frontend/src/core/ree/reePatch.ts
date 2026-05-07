@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import type { HBOM, ReeSpec } from "./ReeSpec";
+import type { HBOM, ReeExperiment, ReeSpec } from "./ReeSpec";
 
 interface ReePatch extends Record<string, unknown> {
   name: string;
@@ -16,6 +16,7 @@ interface ReePatch extends Record<string, unknown> {
   dataverse_doi: string;
   repro_level: string;
   detected_dependencies: string;
+  experiments: ReeExperiment[];
   hardware_description: HBOM;
   _sealedAt: string;
   _sealHash: string;
@@ -56,6 +57,7 @@ export function toReePatchFromSlices({
     dataverse_doi: reeSpec.dataverse_doi || "",
     repro_level: reeSpec.repro_level || "",
     detected_dependencies: reeSpec.detected_dependencies || "",
+    experiments: reeSpec.experiments || [],
     hardware_description: reeSpec.hardware_description || {},
     _sealedAt: artifactStatus.sealedAt || "",
     _sealHash: artifactStatus.sealHash || "",
@@ -88,6 +90,7 @@ export function toReePatch(
       dataverse_doi: ree.dataverse_doi,
       repro_level: ree.repro_level,
       detected_dependencies: ree.detected_dependencies,
+      experiments: ree.experiments || [],
       hardware_description: ree.hardware_description,
     },
     workspaceSourceState: {
