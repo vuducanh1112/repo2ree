@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { ReeExperiment } from "../../../../../core/ree/ReeSpec";
 import { Ic, Svg } from "../../../shared/components/Icon";
 import {
@@ -13,80 +13,19 @@ import { expId, ICON_ARROW_LEFT, ICON_CHEV_RIGHT } from "./experimentsPageHelper
 
 const COL_TEMPLATE = "72px 1fr 1fr 28px";
 
-// ── Inline editable field ────────────────────────────────────────────────────
-
-function EditableText({
-  value,
-  readOnly,
-  onChange,
-  placeholder,
-  style,
-  inputStyle,
-}: {
-  value: string;
-  readOnly?: boolean;
-  onChange: (v: string) => void;
-  placeholder: string;
-  style?: React.CSSProperties;
-  inputStyle?: React.CSSProperties;
-}) {
-  const [editing, setEditing] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const commit = () => setEditing(false);
-
-  useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
-
-  if (editing && !readOnly) {
-    return (
-      <input
-        ref={inputRef}
-        value={value}
-        autoCorrect="off"
-        autoCapitalize="none"
-        spellCheck={false}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === "Escape") && commit()}
-        style={{
-          background: "transparent",
-          border: "none",
-          borderBottom: `1.5px solid ${C.accent}`,
-          outline: "none",
-          padding: "0 0 2px",
-          margin: 0,
-          width: "100%",
-          fontFamily: F.sans,
-          ...style,
-          ...inputStyle,
-        }}
-      />
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => !readOnly && setEditing(true)}
-      title={readOnly ? undefined : "Click to edit"}
-      style={{
-        background: "none",
-        border: "none",
-        padding: 0,
-        margin: 0,
-        cursor: readOnly ? "default" : "text",
-        textAlign: "left",
-        width: "100%",
-        fontFamily: F.sans,
-        ...style,
-      }}
-    >
-      {value || <span style={{ opacity: 0.35 }}>{placeholder}</span>}
-    </button>
-  );
-}
+const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
+  width: "100%",
+  border: `1.5px solid ${C.border}`,
+  borderRadius: 7,
+  padding: "9px 12px",
+  fontSize: 14,
+  fontFamily: F.sans,
+  color: C.text,
+  background: locked ? C.surfaceAlt : C.surface,
+  outline: "none",
+  transition: "border-color 0.15s",
+  ...extra,
+});
 
 // ── Catalog table ────────────────────────────────────────────────────────────
 
@@ -403,65 +342,35 @@ export function ExperimentDetail({
         }}
       >
         <DetailCard label="Name">
-          <EditableText
+          <input
+            disabled={locked}
             value={experiment.name}
-            readOnly={locked}
-            onChange={(v) => onUpdate({ name: v })}
+            onChange={(e) => onUpdate({ name: e.target.value })}
             placeholder="smoke-test"
-            style={{
-              fontSize: 20,
-              fontFamily: F.sans,
-              fontWeight: 600,
-              color: C.text,
-              letterSpacing: "-0.02em",
-            }}
+            style={inp(locked, { fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em" })}
           />
         </DetailCard>
 
         <DetailCard label="Description">
-          <EditableText
+          <textarea
+            disabled={locked}
             value={experiment.description}
-            readOnly={locked}
-            onChange={(v) => onUpdate({ description: v })}
+            onChange={(e) => onUpdate({ description: e.target.value })}
             placeholder="What this experiment verifies"
-            style={{ fontSize: 13, fontFamily: F.sans, color: C.text }}
+            rows={4}
+            style={inp(locked, { resize: "vertical", lineHeight: 1.5, minHeight: 100 })}
           />
         </DetailCard>
 
-        <div>
-          <div style={{ ...S_SECTION_LABEL_SMALL, marginBottom: 8 }}>Command</div>
-          <div
-            style={{
-              background: C.surface,
-              borderRadius: 9,
-              padding: "12px 16px",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              border: `1px solid ${C.border}`,
-            }}
-          >
-            <span
-              style={{
-                fontFamily: F.mono,
-                fontSize: 13,
-                color: C.textMuted,
-                flexShrink: 0,
-                userSelect: "none",
-              }}
-            >
-              $
-            </span>
-            <EditableText
-              value={experiment.command}
-              readOnly={locked}
-              onChange={(v) => onUpdate({ command: v })}
-              placeholder="pytest tests/smoke -q"
-              style={{ fontSize: 13, fontFamily: F.mono, color: C.text, flex: 1 }}
-              inputStyle={{ color: C.text, borderBottomColor: C.accent }}
-            />
-          </div>
-        </div>
+        <DetailCard label="Command">
+          <input
+            disabled={locked}
+            value={experiment.command}
+            onChange={(e) => onUpdate({ command: e.target.value })}
+            placeholder="pytest tests/smoke -q"
+            style={inp(locked, { fontFamily: F.mono, fontSize: 13 })}
+          />
+        </DetailCard>
 
         <PlaceholderSection label="Results" placeholder="no runs yet" />
         <PlaceholderSection label="Traces" placeholder="none attached" />
