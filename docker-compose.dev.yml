@@ -1,0 +1,20 @@
+services:
+  dev:
+    build: 
+      context: .
+      dockerfile: docker/dev/Dockerfile
+    volumes:
+      # Mount the current directory to /repo2ree in the devcontainer, using cached mode for better performance
+      - .:/repo2ree:cached
+
+      # Mount the Docker socket to allow the devcontainer to access the host's Docker daemon
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Mount the kubeconfig file from the host to the devcontainer, using a default path if KUBECONFIG_PATH is not set
+      #- ${KUBECONFIG_PATH:-~/.lima/k3s/copied-from-guest/kubeconfig.yaml}:/kubeconfig.yaml:ro
+    #environment:
+      #- KUBECONFIG=/kubeconfig.yaml
+    
+    working_dir: /repo2ree
+    tty: true
+    stdin_open: true

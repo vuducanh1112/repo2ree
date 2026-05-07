@@ -1,6 +1,6 @@
 {
   "name": "repo2ree devcontainer",
-  "dockerComposeFile": "../docker-compose.yml",
+  "dockerComposeFile": "../docker-compose.dev.yml",
   "service": "dev",
   "workspaceFolder": "/repo2ree",
   "remoteUser": "nixuser",

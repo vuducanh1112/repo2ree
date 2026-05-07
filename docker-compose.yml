@@ -1,20 +1,27 @@
 services:
-  dev:
-    build: 
+  backend:
+    build:
       context: .
-      dockerfile: docker/dev/Dockerfile
+      dockerfile: docker/demo/backend.Dockerfile
+    environment:
+      WORKSPACE_STORAGE_DIR: ${DEMO_WORKSPACE_STORAGE_DIR:-/app/.repo2ree/workspaces}
+      REVIEWS_STORAGE_DIR: ${DEMO_REVIEWS_STORAGE_DIR:-/app/.repo2ree/reviews}
+    ports:
+      - "8000:8000"
     volumes:
-      # Mount the current directory to /repo2ree in the devcontainer, using cached mode for better performance
-      - .:/repo2ree:cached
-
-      # Mount the Docker socket to allow the devcontainer to access the host's Docker daemon
+      - repo2ree-demo-data:/app/.repo2ree
       - /var/run/docker.sock:/var/run/docker.sock
 
-      # Mount the kubeconfig file from the host to the devcontainer, using a default path if KUBECONFIG_PATH is not set
-      #- ${KUBECONFIG_PATH:-~/.lima/k3s/copied-from-guest/kubeconfig.yaml}:/kubeconfig.yaml:ro
-    #environment:
-      #- KUBECONFIG=/kubeconfig.yaml
-    
-    working_dir: /repo2ree
-    tty: true
-    stdin_open: true
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/demo/frontend.Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  repo2ree-demo-data:

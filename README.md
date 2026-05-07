@@ -5,7 +5,7 @@
 To try the app locally with Docker:
 
 ```bash
-docker compose -f docker-compose.demo.yml up --build
+docker compose up
 ```
 
 Then open `http://localhost:3000`.
