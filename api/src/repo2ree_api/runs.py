@@ -100,7 +100,6 @@ def retry_workspace_run(ree_id: str, run_id: str):
             build_runtime_script_path=request_payload.get(
                 "build_runtime_script_path", ""
             ),
-            produced_runtime_path=request_payload.get("produced_runtime_path", ""),
         )
         return _run_summary(create_build_run_state(ree_id, build_payload))
     if operation == "sbom":

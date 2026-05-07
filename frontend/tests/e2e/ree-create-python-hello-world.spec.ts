@@ -306,12 +306,6 @@ test("upload source archive into workspace", async ({ page }) => {
       "python_hello_world/build_runtime.sh",
       "Provide build script path",
     );
-    await fillDemo(
-      page,
-      page.getByPlaceholder("runtime.tar.gz"),
-      "python_hello_world/runtime.tar",
-      "Provide runtime output path",
-    );
     await clickDemo(page, main.getByRole("button", { name: /Run build/ }), "Run runtime build");
     await expect(main.getByRole("button", { name: /Re-build/ })).toBeVisible({ timeout: 20000 });
     await showcasePanel(
@@ -319,14 +313,25 @@ test("upload source archive into workspace", async ({ page }) => {
       main.getByText("Output", { exact: true }).first(),
       "Review build logs",
     );
+    await clickDemo(
+      page,
+      page.getByPlaceholder("runtime.tar.gz").locator("..").getByTitle("Browse repository files"),
+      "Open runtime file picker",
+    );
+    await expect(page.getByRole("button", { name: "python_hello_world/runtime.tar" })).toBeVisible({
+      timeout: 20000,
+    });
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: "python_hello_world/runtime.tar" }),
+      "Select produced runtime file",
+    );
+    await clickDemo(
+      page,
+      main.locator('button[aria-label="Toggle runtime included"]'),
+      "Mark runtime as included",
+    );
     await expectOverviewCableActive("Runtime");
-    const buildOutputVerification = main
-      .locator("div")
-      .filter({ hasText: "Step 3: Verify Build Output" })
-      .filter({ hasText: "python_hello_world/runtime.tar" })
-      .filter({ hasText: "✓ produced by build" })
-      .first();
-    await expect(buildOutputVerification).toBeVisible({ timeout: 20000 });
   });
 
   await test.step("Generate SBOM", async () => {
@@ -402,6 +407,6 @@ test("upload source archive into workspace", async ({ page }) => {
       page.waitForEvent("download"),
       clickDemo(page, sealedDownloadButton, "Download sealed REE package"),
     ]);
-    await expect(download.suggestedFilename()).toMatch(/\.zip$/i);
+    expect(download.suggestedFilename()).toMatch(/\.zip$/i);
   });
 });

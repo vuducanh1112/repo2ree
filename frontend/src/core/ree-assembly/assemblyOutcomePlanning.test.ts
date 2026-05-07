@@ -31,13 +31,9 @@ function buildRee(): ReeEditorViewModel {
 }
 
 describe("assemblyOutcomePlanning", () => {
-  it("records the expected runtime path when build output is declared", () => {
-    const result = planBuildEffect({
-      ree: buildRee(),
-      expectedOutput: "runtime.tar.gz",
-    });
-
-    expect(result.reeSpecPatch?.runtime).toBe("runtime.tar.gz");
+  it("produces a success message naming the runtime when one is set", () => {
+    const result = planBuildEffect({ ree: buildRee() });
+    expect(result.successMessage).toContain("runtime.tar.gz");
   });
 
   it("plans HBOM success messaging", () => {
@@ -70,7 +66,7 @@ describe("assemblyOutcomePlanning", () => {
   it("builds assembly effect plans through a single entry point", () => {
     const result = planAssemblyServiceEffect({
       key: "build",
-      params: { _expectedOutput: "runtime.tar.gz" },
+      params: {},
       ree: buildRee(),
       newLevel: 2,
       timestamp: "2026-01-01T00:00:00Z",
@@ -79,7 +75,7 @@ describe("assemblyOutcomePlanning", () => {
       manifestCount: 0,
     });
 
-    expect(result.reeSpecPatch?.runtime).toBe("runtime.tar.gz");
+    expect(result.successMessage).toContain("Build complete");
   });
 
   it("builds evaluate assembly effect plans through a single entry point", () => {

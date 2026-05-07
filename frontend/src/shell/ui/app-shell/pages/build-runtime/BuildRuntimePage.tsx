@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ReeAssemblyRunParams } from "../../../../../core/ree-assembly/assemblyTypes";
 import { Ic } from "../../../shared/components/Icon";
 import {
@@ -16,9 +16,7 @@ import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { deriveRuntimeFileSize } from "./buildRuntimeHelpers";
 import { BuildActionPanel } from "./sections/BuildActionPanel";
 import { BuildScriptSection } from "./sections/BuildScriptSection";
-import { ExpectedOutputSection } from "./sections/ExpectedOutputSection";
-import { FinalRuntimeSection } from "./sections/FinalRuntimeSection";
-import { ManualOverridePanel } from "./sections/ManualOverridePanel";
+import { RuntimeCollectSection } from "./sections/RuntimeCollectSection";
 
 export function PageBuildRuntime({
   assemblyStep,
@@ -37,27 +35,23 @@ export function PageBuildRuntime({
   onGoFields,
   missing,
   params,
-  setParam,
   onReeSpecChange,
   onArtifactStatusChange,
   onPersistWorkspaceFile,
 }: AssemblyPageProps) {
   const files = workspaceFiles;
 
-  const [expectedOutput, setExpectedOutput] = useState(() =>
-    ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "",
-  );
   const buildParams: ReeAssemblyRunParams<"build"> = {
     ...(params as ReeAssemblyRunParams<"build">),
     build_runtime_script_path: ree.build_runtime_script,
-    produced_runtime_path: expectedOutput,
-    _expectedOutput: expectedOutput,
   };
-  const [showManualOverride, setShowManualOverride] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const handleRuntimeChange = useCallback(
+    (path: string) => onReeSpecChange?.((s) => ({ ...s, runtime: path })),
+    [onReeSpecChange],
+  );
 
   const buildColor = assemblyStep.color;
-  const imageColor = "#0891b2";
   const finalRuntime = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
   const includeRuntime = inclusionState.runtime === "included";
   const finalRuntimeFile = useMemo(() => {
@@ -98,17 +92,6 @@ export function PageBuildRuntime({
             setFocusedField={setFocusedField}
             onReeSpecChange={onReeSpecChange}
             onPersistWorkspaceFile={onPersistWorkspaceFile}
-            onTemplateSuggestedOutput={setExpectedOutput}
-          />
-
-          <ExpectedOutputSection
-            assemblyStep={assemblyStep}
-            expectedOutput={expectedOutput}
-            setExpectedOutput={setExpectedOutput}
-            params={params}
-            setParam={setParam}
-            focusedField={focusedField}
-            setFocusedField={setFocusedField}
           />
 
           <BuildActionPanel
@@ -120,26 +103,14 @@ export function PageBuildRuntime({
             onCancel={onCancel}
             assemblyKey={assemblyStep.key}
             buildParams={buildParams}
-            expectedOutput={expectedOutput}
-            ree={ree}
-            imageColor={imageColor}
-            files={files}
           />
 
-          <ManualOverridePanel
-            showManualOverride={showManualOverride}
-            onToggleManualOverride={setShowManualOverride}
-            ree={ree}
-            onReeSpecChange={onReeSpecChange}
-            files={files}
-            focusedField={focusedField}
-            setFocusedField={setFocusedField}
-          />
-
-          <FinalRuntimeSection
-            includeRuntime={includeRuntime}
+          <RuntimeCollectSection
             finalRuntime={finalRuntime}
             finalRuntimeSize={finalRuntimeSize}
+            includeRuntime={includeRuntime}
+            files={files}
+            onRuntimeChange={handleRuntimeChange}
             onArtifactStatusChange={onArtifactStatusChange}
             focusedField={focusedField}
             setFocusedField={setFocusedField}

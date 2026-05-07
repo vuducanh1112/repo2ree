@@ -31,7 +31,6 @@ function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClien
         case "build":
           run = await runtime.runsApi.createBuildRuntimeRun(reeId, {
             build_runtime_script_path: String(params.build_runtime_script_path ?? ""),
-            produced_runtime_path: String(params.produced_runtime_path ?? ""),
           });
           break;
         case "hbom":

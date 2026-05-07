@@ -171,6 +171,7 @@ export function AssemblyPageContainer(props: AppShellPageContainerProps) {
   const { workspaceFiles, workspaceSourceState, artifactStatus } = workspaceRemote;
 
   const assemblyPageController = useAssemblyStepPageController(props);
+
   if (!assemblyPageController) {
     return null;
   }

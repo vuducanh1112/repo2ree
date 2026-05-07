@@ -19,7 +19,6 @@ interface BuildScriptSectionProps {
   setFocusedField: (field: string | null) => void;
   onReeSpecChange: AssemblyPageProps["onReeSpecChange"];
   onPersistWorkspaceFile: AssemblyPageProps["onPersistWorkspaceFile"];
-  onTemplateSuggestedOutput: (out: string) => void;
 }
 
 export function BuildScriptSection({
@@ -30,7 +29,6 @@ export function BuildScriptSection({
   setFocusedField,
   onReeSpecChange,
   onPersistWorkspaceFile,
-  onTemplateSuggestedOutput,
 }: BuildScriptSectionProps) {
   return (
     <FieldSection
@@ -93,7 +91,6 @@ export function BuildScriptSection({
               onPersistWorkspaceFile={onPersistWorkspaceFile}
               ree={ree}
               onReeSpecChange={onReeSpecChange}
-              onTemplateSuggestedOutput={onTemplateSuggestedOutput}
               saveToWorkspaceOnly
             />
           ))}

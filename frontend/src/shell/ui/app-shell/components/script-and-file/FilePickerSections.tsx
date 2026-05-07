@@ -1,3 +1,4 @@
+import type React from "react";
 import { Ic, Svg } from "../../../shared/components/Icon";
 import { C, F, hoverBg, hoverColor, hoverIf } from "../../../theme/theme";
 
@@ -165,21 +166,19 @@ export function FilePickerDropdown(props: {
   filterFn?: (path: string) => boolean;
   draft: string;
   onSelect: (path: string) => void;
+  style?: React.CSSProperties;
 }) {
   if (!props.open) return null;
   return (
     <div
       style={{
-        position: "absolute",
-        top: "calc(100% + 4px)",
-        left: 0,
-        right: 0,
-        zIndex: 50,
+        ...(props.style ?? { position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0 }),
+        zIndex: 9999,
         background: C.surface,
         border: `1px solid ${C.border}`,
         borderRadius: 8,
         boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
-        maxHeight: 180,
+        maxHeight: 240,
         overflowY: "auto",
       }}
     >

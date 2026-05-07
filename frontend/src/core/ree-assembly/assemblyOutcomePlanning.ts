@@ -48,25 +48,13 @@ interface AssemblyServiceEffectPlan {
   successMessage: string;
 }
 
-export function planBuildEffect(args: {
-  ree: ReeEditorViewModel;
-  expectedOutput?: string;
-}): BuildEffectPlan {
+export function planBuildEffect(args: { ree: ReeEditorViewModel }): BuildEffectPlan {
   const runtimeTarget =
     args.ree.runtime && args.ree.runtime !== "__skipped__" ? args.ree.runtime : null;
-  const expectedOutput = String(args.expectedOutput || "").trim();
-  const producedName = expectedOutput || runtimeTarget || "runtime.tar.gz";
-
-  if (expectedOutput) {
-    return {
-      reeSpecPatch: { runtime: expectedOutput },
-      artifactStatusPatch: { runtimeIncluded: true },
-      successMessage: `Build complete${producedName ? ` — ${producedName} produced` : ""}`,
-    };
-  }
+  const producedName = runtimeTarget || "runtime.tar.gz";
 
   return {
-    successMessage: `Build complete${producedName ? ` — ${producedName} produced` : ""}`,
+    successMessage: `Build complete — ${producedName} produced`,
   };
 }
 
@@ -118,10 +106,7 @@ export function planAssemblyServiceEffect(args: {
   manifestCount: number;
 }): AssemblyServiceEffectPlan {
   if (args.key === "build") {
-    return planBuildEffect({
-      ree: args.ree,
-      expectedOutput: args.params._expectedOutput ? String(args.params._expectedOutput) : "",
-    });
+    return planBuildEffect({ ree: args.ree });
   }
 
   if (args.key === "hbom") {

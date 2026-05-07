@@ -102,7 +102,7 @@ describe("executeAssemblyRun", () => {
     ]);
   });
 
-  it("plans terminal failure feedback without refreshing or running success handlers", async () => {
+  it("plans terminal failure feedback and refreshes workspace without running success handlers", async () => {
     const executeCommands = vi.fn();
     const refreshWorkspace = vi.fn();
 
@@ -126,7 +126,7 @@ describe("executeAssemblyRun", () => {
       refreshWorkspace,
     });
 
-    expect(refreshWorkspace).not.toHaveBeenCalled();
+    expect(refreshWorkspace).toHaveBeenCalled();
     expect(executedCommands(executeCommands)).toContainEqual({
       type: "toast",
       message: "build failed",

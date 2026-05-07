@@ -24,7 +24,6 @@ interface ScriptPanelProps {
   ) => Promise<void>;
   ree: ReeEditorViewModel;
   onReeSpecChange?: React.Dispatch<React.SetStateAction<ReeSpec>>;
-  onTemplateSuggestedOutput?: (output: string) => void;
   reviewerMode?: boolean;
   saveToWorkspaceOnly?: boolean;
 }
@@ -36,7 +35,6 @@ export function ScriptPanel({
   onPersistWorkspaceFile,
   ree,
   onReeSpecChange,
-  onTemplateSuggestedOutput,
   reviewerMode,
   saveToWorkspaceOnly = false,
 }: ScriptPanelProps) {
@@ -109,9 +107,6 @@ export function ScriptPanel({
     if (!selected) return;
     setEditorFilename(scriptPath || selected.filename);
     setEditorContent(selected.content);
-    if (scriptKind === "build" && selected.suggestedOutput) {
-      onTemplateSuggestedOutput?.(selected.suggestedOutput);
-    }
   };
 
   const viewLines = existingFile ? (existingFile.content || "").split("\n") : null;

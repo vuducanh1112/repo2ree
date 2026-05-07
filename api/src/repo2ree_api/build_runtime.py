@@ -27,7 +27,6 @@ class _StrictRequestModel(BaseModel):
 
 class CreateBuildRuntimeRunPayload(_StrictRequestModel):
     build_runtime_script_path: str
-    produced_runtime_path: str
     idempotencyKey: str | None = None
 
 
@@ -205,7 +204,6 @@ def _docker_build_run(
     ree_id: str,
     run_id: str,
     script_relative_path: str,
-    runtime_relative_path: str,
 ) -> tuple[str, dict[str, Any]]:
     workspace_path = workspace_dir(ree_id).resolve()
     script_abs_path = _resolve_workspace_relative_path(ree_id, script_relative_path)
@@ -268,7 +266,6 @@ def _docker_build_run(
 
     canceled_outputs: dict[str, Any] = {
         "buildRuntimeScriptPath": script_relative_path,
-        "producedRuntimePath": runtime_relative_path,
         "dockerImage": "docker:latest",
     }
 
@@ -371,7 +368,6 @@ def _docker_build_run(
             _append_run_log(ree_id, run_id, "stderr", "warn", line)
 
     sync_succeeded = False
-    runtime_available = False
     if exec_result.returncode == 0:
         _append_run_log(
             ree_id, run_id, "system", "info", "Build script executed (exit code 0)"
@@ -379,25 +375,6 @@ def _docker_build_run(
         sync_succeeded = _docker_sync_workspace_from_container(
             docker_bin, container_name, workspace_path, ree_id, run_id
         )
-        if sync_succeeded:
-            runtime_abs_path = workspace_path / runtime_relative_path
-            runtime_available = runtime_abs_path.is_file()
-            if runtime_available:
-                _append_run_log(
-                    ree_id,
-                    run_id,
-                    "system",
-                    "info",
-                    f"Produced runtime found in workspace: {runtime_relative_path}",
-                )
-            else:
-                _append_run_log(
-                    ree_id,
-                    run_id,
-                    "system",
-                    "error",
-                    f"Produced runtime not found in workspace after sync: {runtime_relative_path}",
-                )
     else:
         _append_run_log(
             ree_id,
@@ -412,11 +389,7 @@ def _docker_build_run(
     except Exception:
         pass
 
-    status = (
-        "succeeded"
-        if exec_result.returncode == 0 and sync_succeeded and runtime_available
-        else "failed"
-    )
+    status = "succeeded" if exec_result.returncode == 0 and sync_succeeded else "failed"
     _append_run_log(
         ree_id,
         run_id,
@@ -436,23 +409,15 @@ def create_build_run_state(
         payload.build_runtime_script_path,
         "build_runtime_script_path",
     )
-    runtime_path = _require_non_empty_path(
-        payload.produced_runtime_path,
-        "produced_runtime_path",
-    )
     return _start_background_run(
         ree_id=ree_id,
         operation="build",
-        request_payload={
-            "build_runtime_script_path": script_path,
-            "produced_runtime_path": runtime_path,
-        },
+        request_payload={"build_runtime_script_path": script_path},
         run_id_prefix="build",
         runner=lambda ws_id, run_id: _docker_build_run(
             ree_id=ws_id,
             run_id=run_id,
             script_relative_path=script_path,
-            runtime_relative_path=runtime_path,
         ),
     )
 

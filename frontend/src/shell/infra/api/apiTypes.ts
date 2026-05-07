@@ -157,7 +157,6 @@ export type WorkflowRunStatusDto =
 
 export interface CreateBuildRuntimeRunRequestDto {
   build_runtime_script_path: string;
-  produced_runtime_path: string;
   idempotencyKey?: string;
 }
 

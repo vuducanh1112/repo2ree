@@ -31,12 +31,6 @@ export const S_FLEX_ROW_CENTER_GAP_6: React.CSSProperties = {
   gap: 6,
 };
 
-export const S_FLEX_COL_GAP_8: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
-};
-
 export const S_FIELD_LABEL_TEXT_SM: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
@@ -64,18 +58,6 @@ export const S_FIELD_TIP_CARD_COMMANDS_LABEL: React.CSSProperties = {
   ...S_SECTION_LABEL,
   letterSpacing: 0.8,
   marginBottom: 8,
-};
-
-export const S_RUNTIME_PICKER_WRAP: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-};
-
-export const S_RUNTIME_HELP_TEXT: React.CSSProperties = {
-  fontSize: 11,
-  color: C.textMuted,
-  lineHeight: 1.5,
 };
 
 export const S_WORKFLOW_PAGE_ROOT: React.CSSProperties = {
@@ -201,12 +183,6 @@ export const S_WORKFLOW_PAGE_LOG_WRAP: React.CSSProperties = {
   minHeight: 0,
 };
 
-export const S_WORKFLOW_BUILD_SECTION_WRAP: React.CSSProperties = {
-  padding: "16px 24px",
-  borderBottom: `1px solid ${C.border}`,
-  flexShrink: 0,
-};
-
 export const S_STATUS_BADGE_SM_BASE: React.CSSProperties = {
   fontSize: 10,
   fontFamily: F.sans,
@@ -219,11 +195,6 @@ export const S_STATUS_BADGE_SM_BASE: React.CSSProperties = {
 export const S_TEXT_MUTED_11: React.CSSProperties = {
   fontSize: 11,
   color: C.textMuted,
-};
-
-export const S_SECTION_LABEL_MB12: React.CSSProperties = {
-  ...S_SECTION_LABEL,
-  marginBottom: 12,
 };
 
 export const S_SCRIPT_VIEW_MESSAGE_BASE: React.CSSProperties = {

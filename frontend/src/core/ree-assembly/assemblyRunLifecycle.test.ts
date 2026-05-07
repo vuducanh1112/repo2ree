@@ -20,7 +20,7 @@ describe("runExecutionLifecycle", () => {
       request: {
         key: "build",
         scriptKey: "build",
-        params: { build_runtime_script_path: "build.sh", produced_runtime_path: "runtime.tar.gz" },
+        params: { build_runtime_script_path: "build.sh" },
       },
       pollRun,
       onRunStarted,

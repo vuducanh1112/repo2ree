@@ -15,6 +15,7 @@ const TOKENS = {
     navBg: "#0f172a",
     navText: "#94a3b8",
     navActive: "#e2e8f0",
+    error: "#dc2626",
   },
   font: {
     mono: "'JetBrains Mono', monospace",

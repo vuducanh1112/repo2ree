@@ -13,8 +13,6 @@ export interface ReeAssemblyRunParamsByKey {
   evaluate: ReeAssemblyOperationParamsByKey["evaluate"];
   build: ReeAssemblyOperationParamsByKey["build"] & {
     build_runtime_script_path?: string;
-    produced_runtime_path?: string;
-    _expectedOutput?: string;
   };
   hbom: ReeAssemblyOperationParamsByKey["hbom"];
   sbom: ReeAssemblyOperationParamsByKey["sbom"] & {

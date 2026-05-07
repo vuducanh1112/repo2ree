@@ -40,7 +40,6 @@ describe("assemblyRunPlanning", () => {
     });
     expect(buildAssemblyRunParams("build", { no_cache: true }, ree)).toEqual({
       build_runtime_script_path: "",
-      produced_runtime_path: "",
     });
   });
 

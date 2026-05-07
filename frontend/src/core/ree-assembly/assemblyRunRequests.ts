@@ -17,7 +17,6 @@ interface ReeAssemblyRunRequestByKey {
     scriptKey: "build";
     params: {
       build_runtime_script_path: string;
-      produced_runtime_path: string;
       idempotencyKey?: string;
     };
   };
@@ -67,9 +66,6 @@ export function buildBuildAssemblyRunRequest(
     params: {
       build_runtime_script_path: String(
         params.build_runtime_script_path ?? ree.build_runtime_script ?? "",
-      ),
-      produced_runtime_path: String(
-        params.produced_runtime_path ?? ree.runtime ?? params._expectedOutput ?? "",
       ),
     },
   };

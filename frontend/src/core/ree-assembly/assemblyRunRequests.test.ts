@@ -46,7 +46,6 @@ describe("assemblyRunRequests", () => {
       scriptKey: "build",
       params: {
         build_runtime_script_path: "scripts/build.sh",
-        produced_runtime_path: "runtime.tar.gz",
       },
     });
   });

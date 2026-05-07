@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
 import { fileType } from "../../../shared/formatting";
 import { C } from "../../../theme/theme";
@@ -29,6 +30,19 @@ export function FilePicker({
   const [open, setOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [draft, setDraft] = useState(value || "");
+  const [dropdownPos, setDropdownPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (open && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    }
+  }, [open]);
 
   const prevValue = useRef(value);
   if (prevValue.current !== value) {
@@ -76,7 +90,7 @@ export function FilePicker({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      <div style={{ position: "relative" }}>
+      <div ref={containerRef} style={{ position: "relative" }}>
         <FilePickerInputRow
           draft={draft}
           disabled={disabled}
@@ -93,15 +107,27 @@ export function FilePicker({
           onToggleOpen={() => setOpen((current) => !current)}
           onTogglePreview={() => setPreviewOpen((current) => !current)}
         />
-
-        <FilePickerDropdown
-          open={open}
-          paths={paths}
-          filterFn={filterFn}
-          draft={draft}
-          onSelect={handleSelect}
-        />
       </div>
+
+      {open &&
+        dropdownPos &&
+        createPortal(
+          <FilePickerDropdown
+            open={open}
+            paths={paths}
+            filterFn={filterFn}
+            draft={draft}
+            onSelect={handleSelect}
+            style={{
+              position: "fixed",
+              top: dropdownPos.top,
+              left: dropdownPos.left,
+              right: "auto",
+              width: dropdownPos.width,
+            }}
+          />,
+          document.body,
+        )}
 
       <FilePickerWarning
         notFound={notFound}
