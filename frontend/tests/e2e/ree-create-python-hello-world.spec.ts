@@ -239,14 +239,27 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("button", { name: /Provide Metadata.*project identity metadata/i }),
       "Provide project metadata",
     );
-    await expect(main.getByText("Provide Metadata", { exact: true })).toBeVisible();
+    await expect(main.getByRole("heading", { name: "Metadata", exact: true })).toBeVisible();
     await fillDemo(
       page,
-      page.getByPlaceholder("my-project-v1.0"),
+      page.getByPlaceholder("deepfold-protein-structure-prediction"),
       "ree-hello-world",
       "Change REE name",
     );
-    await expect(page.getByPlaceholder("my-project-v1.0")).toHaveValue("ree-hello-world");
+    await expect(page.getByPlaceholder("deepfold-protein-structure-prediction")).toHaveValue(
+      "ree-hello-world",
+    );
+    await fillDemo(page, page.getByPlaceholder("1.0.0"), "1.0.0", "Set REE version");
+    await expect(page.getByPlaceholder("1.0.0")).toHaveValue("1.0.0");
+    await fillDemo(
+      page,
+      page.getByPlaceholder("REE for reproducible execution of..."),
+      "A reusable execution environment for the Python hello world archive.",
+      "Describe the REE",
+    );
+    await expect(page.getByPlaceholder("REE for reproducible execution of...")).toHaveValue(
+      "A reusable execution environment for the Python hello world archive.",
+    );
   });
 
   await test.step("Provide HBOM entry", async () => {

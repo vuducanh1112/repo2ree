@@ -38,6 +38,19 @@ export interface ReeArtifactFileDto {
 
 export interface ReeDraftDto {
   name: string;
+  catalog_metadata: {
+    description?: string;
+    version?: string;
+    website?: string;
+    keywords?: string[];
+    contributors?: Array<{
+      identifier?: string;
+      name?: string;
+      affiliation_name?: string;
+      affiliation_identifier?: string;
+    }>;
+    corresponding_author_identifier?: string | null;
+  };
   origin_url: string;
   source_type: string;
   runtime: string;

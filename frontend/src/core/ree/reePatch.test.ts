@@ -10,6 +10,11 @@ describe("toReePatchFromSlices", () => {
     const reeSpec = {
       ...createEmptyReeSpec(),
       name: "demo",
+      catalog_metadata: {
+        ...createEmptyReeSpec().catalog_metadata,
+        description: "Demo REE",
+        keywords: ["reproducibility"],
+      },
       origin_url: "https://example.org/repo.git",
       source_type: "git" as const,
       runtime: "runtime.tar.gz",

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createEmptyReeSpec } from "../../../../core/ree/ReeSpec";
 import {
   createEmptyReeEditorViewModel,
   type ReeEditorViewModel,
@@ -19,23 +20,8 @@ import { createAppShellState } from "./appShellState";
 
 function buildRee(): ReeEditorViewModel {
   return {
+    ...createEmptyReeSpec(),
     name: "demo",
-    origin_url: "",
-    source_type: "",
-    runtime: "",
-    build_runtime_script: "",
-    activation_script: "",
-    sbom: "",
-    swhid: "",
-    experiments: [],
-    hardware_description: {
-      cpus: {},
-      gpus: {},
-      memory: {},
-      storage: {},
-      network: {},
-      extra_info: {},
-    },
     sourceAvailable: false,
     sourceIncluded: false,
     runtimeIncluded: false,
@@ -48,6 +34,7 @@ function toInitialSlices(ree: ReeEditorViewModel) {
   return {
     reeSpec: {
       name: ree.name,
+      catalog_metadata: ree.catalog_metadata,
       origin_url: ree.origin_url,
       source_type: ree.source_type,
       runtime: ree.runtime,

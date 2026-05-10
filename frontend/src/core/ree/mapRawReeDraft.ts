@@ -2,7 +2,13 @@ import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import { normalizeHBOM } from "../hbom/HbomSummary";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import type { ReeExperiment, ReeSpec } from "./ReeSpec";
+import {
+  createEmptyReeCatalogMetadata,
+  type ReeCatalogMetadata,
+  type ReeContributor,
+  type ReeExperiment,
+  type ReeSpec,
+} from "./ReeSpec";
 
 interface MapRawReeDraftToReeOptions {
   reeDraft: Record<string, unknown> | null | undefined;
@@ -15,6 +21,36 @@ export interface RawReeDraftSlices {
   workspaceSourceState: WorkspaceSourceState;
   artifactStatus: ArtifactStatus;
   evaluationState: EvaluationState;
+}
+
+function mapRawCatalogMetadata(value: unknown): ReeCatalogMetadata {
+  const metadata = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+
+  const contributors: ReeContributor[] = Array.isArray(metadata.contributors)
+    ? metadata.contributors.map((entry) => {
+        const item = (entry as Record<string, unknown>) || {};
+        return {
+          identifier: String(item.identifier ?? ""),
+          name: String(item.name ?? ""),
+          affiliation_name: String(item.affiliation_name ?? ""),
+          affiliation_identifier: String(item.affiliation_identifier ?? ""),
+        };
+      })
+    : [];
+
+  return {
+    ...createEmptyReeCatalogMetadata(),
+    description: String(metadata.description ?? ""),
+    version: String(metadata.version ?? ""),
+    website: String(metadata.website ?? ""),
+    keywords: Array.isArray(metadata.keywords)
+      ? metadata.keywords.map((keyword) => String(keyword))
+      : [],
+    contributors,
+    corresponding_author_identifier: metadata.corresponding_author_identifier
+      ? String(metadata.corresponding_author_identifier)
+      : null,
+  };
 }
 
 export function mapRawReeDraftToSlices({
@@ -37,6 +73,7 @@ export function mapRawReeDraftToSlices({
   return {
     reeSpec: {
       name: String(draft.name ?? fallbackName ?? ""),
+      catalog_metadata: mapRawCatalogMetadata(draft.catalog_metadata),
       origin_url: String(draft.origin_url ?? fallbackOriginUrl ?? ""),
       source_type: (draft.source_type as ReeSpec["source_type"]) || "",
       runtime: String(draft.runtime ?? ""),

@@ -1,10 +1,11 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import type { HBOM, ReeExperiment, ReeSpec } from "./ReeSpec";
+import type { HBOM, ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec";
 
 interface ReePatch extends Record<string, unknown> {
   name: string;
+  catalog_metadata: ReeCatalogMetadata;
   origin_url: string;
   source_type: string;
   runtime: string;
@@ -46,6 +47,7 @@ export function toReePatchFromSlices({
 }: ReePatchSlices): ReePatch {
   return {
     name: reeSpec.name || "",
+    catalog_metadata: reeSpec.catalog_metadata,
     origin_url: reeSpec.origin_url || "",
     source_type: reeSpec.source_type || "",
     runtime: reeSpec.runtime || "",
@@ -79,6 +81,7 @@ export function toReePatch(
   return toReePatchFromSlices({
     reeSpec: {
       name: ree.name,
+      catalog_metadata: ree.catalog_metadata,
       origin_url: ree.origin_url,
       source_type: ree.source_type,
       runtime: ree.runtime,

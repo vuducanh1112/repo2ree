@@ -13,6 +13,12 @@ describe("shell/data/ree/mapping", () => {
       reeDraft: {
         origin_url: "https://example.org/repo.git",
         source_type: "git",
+        catalog_metadata: {
+          description: "Review metadata",
+          keywords: ["reproducibility"],
+          contributors: [{ identifier: "ada", name: "Ada" }],
+          corresponding_author_identifier: "ada",
+        },
         _sourceAvailable: true,
         hardware_description: { cpus: { Xeon: { vendor: "Intel", quantity: 2 } } },
       },
@@ -23,6 +29,8 @@ describe("shell/data/ree/mapping", () => {
     const mapped = mapReviewDraftToReeSlices(review);
 
     expect(mapped.reeSpec.name).toBe("review-demo");
+    expect(mapped.reeSpec.catalog_metadata.description).toBe("Review metadata");
+    expect(mapped.reeSpec.catalog_metadata.contributors[0].identifier).toBe("ada");
     expect(mapped.reeSpec.origin_url).toBe("https://example.org/repo.git");
     expect(mapped.reeSpec.hardware_description.cpus.Xeon.vendor).toBe("Intel");
     expect(mapped.workspaceSourceState.sourceAvailable).toBe(true);

@@ -62,10 +62,31 @@ def _normalize_hbom_payload(value: Mapping[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+class Contributor(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    identifier: str = ""
+    name: str = ""
+    affiliation_name: str = ""
+    affiliation_identifier: str = ""
+
+
+class ReeCatalogMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    description: str = ""
+    version: str = ""
+    website: str = ""
+    keywords: list[str] = Field(default_factory=list)
+    contributors: list[Contributor] = Field(default_factory=list)
+    corresponding_author_identifier: str | None = None
+
+
 class REE(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str = ""
+    catalog_metadata: ReeCatalogMetadata = Field(default_factory=ReeCatalogMetadata)
     origin_url: str = ""
     source_type: SourceType = ""
     runtime: str = ""
@@ -106,6 +127,13 @@ class REE(BaseModel):
             return value
         if isinstance(value, Mapping):
             return _normalize_hbom_payload(value)
+        return value
+
+    @field_validator("catalog_metadata", mode="before")
+    @classmethod
+    def normalize_catalog_metadata(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return ReeCatalogMetadata()
         return value
 
     @classmethod
@@ -191,6 +219,7 @@ class REE(BaseModel):
         return {
             "ree_version": "1.0",
             "name": self.name or None,
+            "catalog_metadata": self.catalog_metadata.model_dump(),
             "origin_url": self.origin_url or None,
             "source_type": self.source_type or None,
             "runtime": self.runtime or None,

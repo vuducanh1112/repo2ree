@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createEmptyReeSpec } from "../ree/ReeSpec";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import {
   buildAssemblyRunParams,
@@ -12,22 +13,9 @@ import {
 
 function buildRee(): ReeEditorViewModel {
   return {
+    ...createEmptyReeSpec(),
     name: "demo",
-    origin_url: "",
-    source_type: "",
-    runtime: "",
-    build_runtime_script: "",
     activation_script: "activate.sh",
-    sbom: "",
-    swhid: "",
-    hardware_description: {
-      cpus: {},
-      gpus: {},
-      memory: {},
-      storage: {},
-      network: {},
-      extra_info: {},
-    },
   };
 }
 

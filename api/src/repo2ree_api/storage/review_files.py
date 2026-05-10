@@ -253,6 +253,7 @@ def _manifest_to_ree_draft(
 ) -> dict[str, Any]:
     payload = {
         "name": manifest.get("name") or "",
+        "catalog_metadata": manifest.get("catalog_metadata") or {},
         "origin_url": manifest.get("origin_url") or "",
         "source_type": manifest.get("source_type") or "",
         "runtime": manifest.get("runtime") or "",

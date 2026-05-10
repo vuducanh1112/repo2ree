@@ -54,6 +54,22 @@ export interface ReeExperiment {
   command: string;
 }
 
+export interface ReeContributor {
+  identifier: string;
+  name: string;
+  affiliation_name: string;
+  affiliation_identifier: string;
+}
+
+export interface ReeCatalogMetadata {
+  description: string;
+  version: string;
+  website: string;
+  keywords: string[];
+  contributors: ReeContributor[];
+  corresponding_author_identifier: string | null;
+}
+
 export interface HBOM {
   cpus: Record<DeviceModel, CPUDefinition>;
   gpus: Record<DeviceModel, GPUDefinition>;
@@ -65,6 +81,7 @@ export interface HBOM {
 
 export interface ReeSpec {
   name: string;
+  catalog_metadata: ReeCatalogMetadata;
   origin_url: string;
   source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
   runtime: string;
@@ -80,9 +97,21 @@ export interface ReeSpec {
   hardware_description: HBOM;
 }
 
+export function createEmptyReeCatalogMetadata(): ReeCatalogMetadata {
+  return {
+    description: "",
+    version: "",
+    website: "",
+    keywords: [],
+    contributors: [],
+    corresponding_author_identifier: null,
+  };
+}
+
 export function createEmptyReeSpec(): ReeSpec {
   return {
     name: "",
+    catalog_metadata: createEmptyReeCatalogMetadata(),
     origin_url: "",
     source_type: "",
     runtime: "",
