@@ -26,7 +26,7 @@ describe("assemblyRunPlanning", () => {
     expect(buildAssemblyRunParams("activation", { timeout: "60" }, ree)).toEqual({
       activation_script_path: "activate.sh",
     });
-    expect(buildAssemblyRunParams("build", { no_cache: true }, ree)).toEqual({
+    expect(buildAssemblyRunParams("build", {}, ree)).toEqual({
       build_runtime_script_path: "",
     });
   });

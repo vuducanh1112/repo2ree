@@ -19,7 +19,7 @@ function buildRee(): ReeEditorViewModel {
 
 describe("assemblyOutcomePlanning", () => {
   it("produces a success message naming the runtime when one is set", () => {
-    const result = planBuildEffect({ ree: buildRee() });
+    const result = planBuildEffect({ ree: { ...buildRee(), runtime: "runtime.tar.gz" } });
     expect(result.successMessage).toContain("runtime.tar.gz");
   });
 

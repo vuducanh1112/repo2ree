@@ -11,7 +11,7 @@ import type {
 
 export interface ReeAssemblyRunParamsByKey {
   evaluate: ReeAssemblyOperationParamsByKey["evaluate"];
-  build: ReeAssemblyOperationParamsByKey["build"] & {
+  build: {
     build_runtime_script_path?: string;
   };
   hbom: ReeAssemblyOperationParamsByKey["hbom"];

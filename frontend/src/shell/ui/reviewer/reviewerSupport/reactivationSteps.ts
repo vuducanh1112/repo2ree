@@ -45,27 +45,8 @@ export const REACTIVATION_STEPS: ReactivationStep[] = [
     label: "Build Runtime",
     icon: Ic.cpu,
     color: "#7c3aed",
-    desc: "Execute the build script from scratch with --no-cache to reconstruct the container image.",
-    params: [
-      {
-        key: "no_cache",
-        label: "No cache",
-        type: "bool",
-        default: true,
-        hint: "Pass --no-cache to docker build",
-      },
-      {
-        key: "platform",
-        label: "Platform",
-        type: "select",
-        default: "linux/amd64",
-        options: ["linux/amd64", "linux/arm64"],
-        hint: "Target platform",
-      },
-    ],
-    logLines: (ree, params) => [
-      { type: "info", msg: `Platform: ${params?.platform || "linux/amd64"}` },
-      { type: "info", msg: `No-cache: ${params?.no_cache !== false ? "yes" : "no"}` },
+    desc: "Execute the build script from scratch to reconstruct the runtime.",
+    logLines: (ree) => [
       { type: "info", msg: `Running: bash ${ree.build_runtime_script}` },
       { type: "info", msg: "DOCKER_BUILDKIT=1 docker build --no-cache -t ree:latest ." },
       { type: "info", msg: "[1/6] FROM python:3.11.7-slim-bookworm" },

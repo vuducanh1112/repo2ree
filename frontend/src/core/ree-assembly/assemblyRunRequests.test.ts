@@ -30,9 +30,7 @@ describe("assemblyRunRequests", () => {
   });
 
   it("maps build inputs into backend request fields", () => {
-    expect(
-      buildBuildAssemblyRunRequest({ no_cache: true, platform: "linux/amd64" }, buildRee()),
-    ).toEqual({
+    expect(buildBuildAssemblyRunRequest({}, buildRee())).toEqual({
       scriptKey: "build",
       params: {
         build_runtime_script_path: "scripts/build.sh",

@@ -44,7 +44,7 @@ describe("executeAssemblyRun", () => {
 
     const result = await executeAssemblyRun({
       key: "build",
-      params: { no_cache: true },
+      params: {},
       ree: buildRee(),
       level: 2,
       workspaceFiles: [],

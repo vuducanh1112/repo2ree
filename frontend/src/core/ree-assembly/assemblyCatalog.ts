@@ -38,24 +38,8 @@ export const REE_ASSEMBLY_STEPS: ReeAssemblyCatalogEntry[] = [
     iconKey: "cpu",
     color: "#0891b2",
     badge: { label: "Built", color: "#0891b2", bg: "#ecfeff" },
-    desc: "Create the runnable environment for this project. This executes build_runtime_script to build the runtime from scratch.",
-    params: [
-      {
-        key: "no_cache",
-        label: "No cache",
-        type: "bool",
-        default: true,
-        hint: "Pass --no-cache to docker build",
-      },
-      {
-        key: "platform",
-        label: "Platform",
-        type: "select",
-        default: "linux/amd64",
-        options: ["linux/amd64", "linux/arm64", "linux/arm/v7"],
-        hint: "Target build platform",
-      },
-    ],
+    desc: "Run build_runtime_script and refresh the workspace after a successful build.",
+    params: [],
   },
   {
     key: "hbom",
@@ -112,7 +96,7 @@ export const REE_ASSEMBLY_STEPS: ReeAssemblyCatalogEntry[] = [
 
 const DEFAULT_REE_ASSEMBLY_OPERATION_PARAMS: ReeAssemblyOperationParams = {
   evaluate: { strict: false, swhid_check: true },
-  build: { no_cache: true, platform: "linux/amd64" },
+  build: {},
   hbom: {},
   sbom: { format: "spdx-json" },
   activation: { timeout: "60", verbose: false },

@@ -25,9 +25,10 @@ import {
 } from "../../../components/statusUiStyles";
 import type { AssemblyPageProps } from "../../sharedAssemblyUi";
 
-interface RuntimeCollectSectionProps {
+interface RuntimeArtifactSectionProps {
   finalRuntime: string;
   finalRuntimeSize: string | null;
+  runtimePathExists: boolean;
   includeRuntime: boolean;
   files: AssemblyPageProps["workspaceFiles"];
   onRuntimeChange: (path: string) => void;
@@ -36,21 +37,22 @@ interface RuntimeCollectSectionProps {
   setFocusedField: (field: string | null) => void;
 }
 
-export function RuntimeCollectSection({
+export function RuntimeArtifactSection({
   finalRuntime,
   finalRuntimeSize,
+  runtimePathExists,
   includeRuntime,
   files,
   onRuntimeChange,
   onArtifactStatusChange,
   focusedField,
   setFocusedField,
-}: RuntimeCollectSectionProps) {
+}: RuntimeArtifactSectionProps) {
   const filledCount = finalRuntime ? 1 : 0;
 
   return (
     <FieldSection
-      title="Step 2: Collect Runtime"
+      title="Step 2: Runtime Artifact"
       icon={Ic.archive()}
       filledCount={filledCount}
       totalCount={1}
@@ -62,10 +64,12 @@ export function RuntimeCollectSection({
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={S_FLEX_ROW_CENTER_GAP_6}>
-            <span style={S_FIELD_LABEL_TEXT_SM}>Runtime tarball</span>
+            <span style={S_FIELD_LABEL_TEXT_SM}>Runtime artifact</span>
             <span style={S_FIELD_ROW_REQUIRED_BADGE}>required</span>
           </div>
-          <div style={S_FIELD_HELP_TEXT_SMALL}>Pick the tarball produced by the build script.</div>
+          <div style={S_FIELD_HELP_TEXT_SMALL}>
+            Pick the workspace file that downstream SBOM and activation runs should use.
+          </div>
           <FilePicker
             value={finalRuntime}
             onChange={onRuntimeChange}
@@ -92,7 +96,7 @@ export function RuntimeCollectSection({
                 <div style={runtimeFieldValueStyle(!!finalRuntime)}>
                   {finalRuntime || (
                     <span style={S_TEXT_ITALIC_11}>
-                      not set yet — run build then collect runtime
+                      not set yet — choose a runtime artifact from the workspace
                     </span>
                   )}
                 </div>
@@ -100,7 +104,7 @@ export function RuntimeCollectSection({
               {finalRuntimeSize && (
                 <span style={runtimeSizeBadgeStyle(!!finalRuntime)}>{finalRuntimeSize}</span>
               )}
-              {finalRuntime && (
+              {finalRuntime && runtimePathExists && (
                 <div style={runtimeIncludedWrapStyle(true)}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                     <div style={runtimeIncludedLabelStyle(includeRuntime)}>Included</div>
@@ -123,13 +127,30 @@ export function RuntimeCollectSection({
                   </button>
                 </div>
               )}
-              {finalRuntime && <span style={RUNTIME_STATUS_BADGE_STYLE}>FINAL</span>}
+              {finalRuntime && (
+                <span
+                  style={{
+                    ...RUNTIME_STATUS_BADGE_STYLE,
+                    ...(runtimePathExists
+                      ? {}
+                      : {
+                          color: C.error,
+                          background: "#fff1f2",
+                          border: "1px solid #fecdd3",
+                        }),
+                  }}
+                >
+                  {runtimePathExists ? "SELECTED" : "MISSING"}
+                </span>
+              )}
             </div>
             <div style={{ ...S_FIELD_HELP_TEXT_SMALL, marginTop: 6 }}>
               {finalRuntime
-                ? includeRuntime
-                  ? "Runtime will be bundled in the REE archive."
-                  : "Runtime will not be bundled in the REE archive."
+                ? runtimePathExists
+                  ? includeRuntime
+                    ? "Runtime will be bundled in the REE archive."
+                    : "Runtime will not be bundled in the REE archive."
+                  : "Selected runtime is not present in the current workspace file tree."
                 : "Set a runtime value first."}
             </div>
           </div>

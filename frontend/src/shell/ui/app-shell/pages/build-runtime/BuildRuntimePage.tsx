@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import type { ReeAssemblyRunParams } from "../../../../../core/ree-assembly/assemblyTypes";
+import { workspaceFileExists } from "../../../../../core/workspace/fileTreeTraversal";
 import { Ic } from "../../../shared/components/Icon";
 import {
   S_WORKFLOW_PAGE_BODY,
@@ -16,7 +17,7 @@ import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { deriveRuntimeFileSize } from "./buildRuntimeHelpers";
 import { BuildActionPanel } from "./sections/BuildActionPanel";
 import { BuildScriptSection } from "./sections/BuildScriptSection";
-import { RuntimeCollectSection } from "./sections/RuntimeCollectSection";
+import { RuntimeArtifactSection } from "./sections/RuntimeArtifactSection";
 
 export function PageBuildRuntime({
   assemblyStep,
@@ -53,13 +54,11 @@ export function PageBuildRuntime({
 
   const buildColor = assemblyStep.color;
   const finalRuntime = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
+  const runtimePathExists = finalRuntime ? workspaceFileExists(files || [], finalRuntime) : false;
   const includeRuntime = inclusionState.runtime === "included";
   const finalRuntimeFile = useMemo(() => {
     if (!finalRuntime) return null;
-    return (
-      findFileByPath(files || [], finalRuntime) ||
-      findFileByPath(files || [], finalRuntime.split("/").pop() || "")
-    );
+    return findFileByPath(files || [], finalRuntime);
   }, [files, finalRuntime]);
   const finalRuntimeSize = useMemo(
     () => deriveRuntimeFileSize(finalRuntimeFile),
@@ -105,9 +104,10 @@ export function PageBuildRuntime({
             buildParams={buildParams}
           />
 
-          <RuntimeCollectSection
+          <RuntimeArtifactSection
             finalRuntime={finalRuntime}
             finalRuntimeSize={finalRuntimeSize}
+            runtimePathExists={runtimePathExists}
             includeRuntime={includeRuntime}
             files={files}
             onRuntimeChange={handleRuntimeChange}

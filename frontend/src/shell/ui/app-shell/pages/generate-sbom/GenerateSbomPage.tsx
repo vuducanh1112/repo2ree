@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ReeAssemblyRunParams } from "../../../../../core/ree-assembly/assemblyTypes";
+import { workspaceFileExists } from "../../../../../core/workspace/fileTreeTraversal";
 import { Ic } from "../../../shared/components/Icon";
 import {
   S_SECTION_LABEL,
@@ -53,6 +54,7 @@ export function PageGenerateSBOM({
   const files = workspaceFiles;
   const sbomColor = assemblyStep.color;
   const rt = reeDraft.runtime && reeDraft.runtime !== "__skipped__" ? reeDraft.runtime : null;
+  const runtimePathExists = rt ? workspaceFileExists(files || [], rt) : false;
   const isTb = !!(rt && /\.(tar\.gz|tgz)$/i.test(rt));
   const hasSbom = !!(reeDraft.sbom && reeDraft.sbom !== "__skipped__");
   const sbomNode = hasSbom ? findFileByPath(files || [], reeDraft.sbom) : null;
@@ -96,6 +98,7 @@ export function PageGenerateSBOM({
           <SbomRuntimeInputSection
             rt={rt}
             isTb={isTb}
+            runtimePathExists={runtimePathExists}
             sbomColor={sbomColor}
             focusedField={focusedField}
             onFocusField={setFocusedField}
@@ -106,11 +109,15 @@ export function PageGenerateSBOM({
             color={sbomColor}
             running={running}
             runDone={runDone}
-            disabled={running || missing?.length > 0}
+            disabled={running || missing?.length > 0 || !runtimePathExists}
             idleLabel="Generate SBOM"
             runningLabel="Generating…"
             doneLabel="Regenerate SBOM"
-            helperText="Generate an SPDX JSON SBOM from the selected runtime."
+            helperText={
+              rt && !runtimePathExists
+                ? "Selected runtime is not present in the current workspace files."
+                : "Generate an SPDX JSON SBOM from the selected runtime."
+            }
             onCancel={() => onCancel?.(assemblyStep.key)}
             onRun={() => onRun(assemblyStep.key, sbomParams)}
           />

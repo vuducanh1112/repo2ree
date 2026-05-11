@@ -33,6 +33,17 @@ describe("assemblyPolicies", () => {
     ]);
   });
 
+  it("requires both selected runtime and activation script for activation", () => {
+    const ree = {
+      ...buildRee(),
+      runtime: "runtime.tar.gz",
+    };
+
+    expect(missingReeAssemblyRequirements("activation", ree)).toEqual([
+      { field: "activation_script", label: "Activation script" },
+    ]);
+  });
+
   it("marks only file-producing assembly steps for workspace refresh", () => {
     expect(shouldRefreshWorkspaceAfterAssemblyStep("build")).toBe(true);
     expect(shouldRefreshWorkspaceAfterAssemblyStep("activation")).toBe(false);

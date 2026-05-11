@@ -48,8 +48,8 @@ export function BuildScriptSection({
             <span style={S_FIELD_ROW_REQUIRED_BADGE}>required</span>
           </div>
           <div style={S_FIELD_HELP_TEXT_SMALL}>
-            Script that builds your runtime environment. The script is responsible for exporting the
-            runtime to the file specified in "Expected output" below.
+            Script that builds your runtime environment. After it succeeds, choose the runtime
+            artifact from the refreshed workspace files.
           </div>
           <FilePicker
             disabled={false}

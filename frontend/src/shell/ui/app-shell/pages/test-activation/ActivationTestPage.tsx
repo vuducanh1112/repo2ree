@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { workspaceFileExists } from "../../../../../core/workspace/fileTreeTraversal";
 import { Ic } from "../../../shared/components/Icon";
 import {
+  C,
   S_FIELD_HELP_TEXT_SMALL,
   S_FIELD_LABEL_TEXT_SM,
   S_FIELD_ROW_REQUIRED_BADGE,
@@ -56,6 +58,8 @@ export function PageTestActivation({
   const asLabel = FIELD_META.activation_script?.label || "Activation script";
   const buildColor = assemblyStep?.color || "#ef4444";
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const runtimePath = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
+  const runtimePathExists = runtimePath ? workspaceFileExists(files || [], runtimePath) : false;
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
@@ -110,14 +114,24 @@ export function PageTestActivation({
             </FieldRow>
           </FieldSection>
 
+          {runtimePath && !runtimePathExists && (
+            <div style={{ color: C.error, fontSize: 12 }}>
+              Selected runtime is not present in the current workspace files.
+            </div>
+          )}
+
           <AssemblyRunActionSection
             color={buildColor}
             running={running}
             runDone={runDone}
-            disabled={running || missing?.length > 0}
+            disabled={running || missing?.length > 0 || !runtimePathExists}
             idleLabel="Run activation"
             runningLabel="Running…"
-            helperText="Runs the activation test script in the runtime environment."
+            helperText={
+              runtimePath && !runtimePathExists
+                ? "Selected runtime is not present in the current workspace files."
+                : "Runs the activation test script in the runtime environment."
+            }
             onCancel={() => onCancel?.(assemblyStep.key)}
             onRun={() => onRun(assemblyStep.key, params)}
           />

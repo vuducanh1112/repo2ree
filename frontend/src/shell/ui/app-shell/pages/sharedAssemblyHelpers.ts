@@ -1,17 +1,15 @@
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
-import { listTreeFiles, walkFileTree } from "../../../../core/workspace/fileTreeTraversal";
+import {
+  findFileByWorkspacePath,
+  listTreeFiles,
+} from "../../../../core/workspace/fileTreeTraversal";
 
 export function allFilePaths(nodes: FileTreeNode[]): string[] {
   return listTreeFiles(nodes).map((file) => file.path);
 }
 
 export function findFileByPath(nodes: FileTreeNode[], pathStr: string): FileTreeNode | null {
-  const normalized = pathStr.replace(/^\//, "").split("/").filter(Boolean).join("/");
-  if (!normalized) return null;
-  return walkFileTree(nodes, (node, path) => {
-    if (node.type === "file" && path === normalized) return node;
-    return null;
-  });
+  return findFileByWorkspacePath(nodes, pathStr);
 }
 
 interface ScriptTemplate {
@@ -64,7 +62,7 @@ echo "[3/3] Runtime activation test passed"
 set -euo pipefail
 
 IMAGE_TAG="ree:latest"
-OUTPUT_FILE="runtime.tar.gz"  # Keep this aligned with "Expected output" in the UI
+OUTPUT_FILE="runtime.tar.gz"  # Select this file as the runtime artifact in the UI
 
 echo "[1/3] Building image $IMAGE_TAG"
 DOCKER_BUILDKIT=1 docker build --no-cache -t "$IMAGE_TAG" .
@@ -83,7 +81,7 @@ echo "[3/3] Done"
       content: `#!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE_TAG="ree:latest"  # Keep this aligned with "Expected output" in the UI
+IMAGE_TAG="ree:latest"  # Select this file as the runtime artifact in the UI
 
 echo "[1/2] Building image $IMAGE_TAG"
 DOCKER_BUILDKIT=1 docker build --no-cache -t "$IMAGE_TAG" .
@@ -101,7 +99,7 @@ echo "Built image: $IMAGE_TAG"
 set -euo pipefail
 
 IMAGE_TAG="ree:latest"
-OUTPUT_FILE="runtime.tar.gz"  # Keep this aligned with "Expected output" in the UI
+OUTPUT_FILE="runtime.tar.gz"  # Select this file as the runtime artifact in the UI
 
 echo "[1/4] Building image artifact with Nix"
 DRV_PATH="$(nix build .#dockerImage --print-out-paths --no-link)"
@@ -124,7 +122,7 @@ docker save "$IMAGE_TAG" | gzip > "$OUTPUT_FILE"
       content: `#!/usr/bin/env bash
 set -euo pipefail
 
-OUTPUT_FILE="runtime.tar.gz"  # Keep this aligned with "Expected output" in the UI
+OUTPUT_FILE="runtime.tar.gz"  # Select this file as the runtime artifact in the UI
 ENV_NAME="ree"
 
 echo "[1/3] Creating conda env from environment.yml"
@@ -145,7 +143,7 @@ echo "[3/3] Done"
       content: `#!/usr/bin/env bash
 set -euo pipefail
 
-OUTPUT_FILE="runtime.tar.gz"  # Keep this aligned with "Expected output" in the UI
+OUTPUT_FILE="runtime.tar.gz"  # Select this file as the runtime artifact in the UI
 
 echo "[1/4] Creating virtual environment"
 python -m venv .ree-venv

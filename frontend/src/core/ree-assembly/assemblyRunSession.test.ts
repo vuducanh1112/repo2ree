@@ -19,20 +19,20 @@ describe("createAssemblyRunSession", () => {
       session.mergeAssemblyOperationParams(
         {
           evaluate: { strict: false, swhid_check: true },
-          build: { no_cache: true, platform: "linux/amd64" },
+          build: {},
           hbom: {},
           sbom: { format: "spdx-json" },
           activation: { timeout: "60", verbose: false },
         },
-        "build",
-        { no_cache: true, platform: "linux/arm64" },
+        "activation",
+        { timeout: "120", verbose: true },
       ),
     ).toEqual({
       evaluate: { strict: false, swhid_check: true },
-      build: { no_cache: true, platform: "linux/arm64" },
+      build: {},
       hbom: {},
       sbom: { format: "spdx-json" },
-      activation: { timeout: "60", verbose: false },
+      activation: { timeout: "120", verbose: true },
     });
   });
 

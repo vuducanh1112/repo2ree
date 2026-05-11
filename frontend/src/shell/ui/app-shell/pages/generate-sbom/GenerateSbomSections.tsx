@@ -28,6 +28,7 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 export function SbomRuntimeInputSection(props: {
   rt: string | null;
   isTb: boolean | null;
+  runtimePathExists: boolean;
   sbomColor: string;
   focusedField: string | null;
   onFocusField: (value: string) => void;
@@ -70,6 +71,12 @@ export function SbomRuntimeInputSection(props: {
               </span>
             )}
           </div>
+
+          {props.rt && !props.runtimePathExists && (
+            <div style={{ color: C.error, fontSize: 12 }}>
+              Selected runtime is not present in the current workspace files.
+            </div>
+          )}
 
           {!props.rt && (
             <button

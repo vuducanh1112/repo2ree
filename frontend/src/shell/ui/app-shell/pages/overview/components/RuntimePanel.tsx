@@ -2,7 +2,7 @@ import type React from "react";
 import type { ArtifactStatus } from "../../../../../../core/artifact/ArtifactStatus";
 import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../../../../core/workspace/FileTree";
-import { findVirtualFileByName } from "../../../../../../core/workspace/fileTreeTraversal";
+import { findFileByWorkspacePath } from "../../../../../../core/workspace/fileTreeTraversal";
 import { Toggle } from "../../../../shared/components/Toggle";
 import { fmtBytes } from "../../../../shared/formatting";
 import {
@@ -49,7 +49,8 @@ export function RuntimePanel({
 }: RuntimePanelProps) {
   const runtimeVal = ree?.runtime && ree.runtime !== "__skipped__" ? ree.runtime.trim() : "";
   const runtimeIncluded = !!ree?.runtimeIncluded;
-  const canIncludeRuntime = !!runtimeVal;
+  const runtimeFile = runtimeVal ? findFileByWorkspacePath(files, runtimeVal) : null;
+  const canIncludeRuntime = !!runtimeVal && !!runtimeFile;
 
   const toggleRuntime = () => {
     if (!canIncludeRuntime) return;
@@ -59,7 +60,6 @@ export function RuntimePanel({
     }));
   };
 
-  const runtimeFile = runtimeVal ? findVirtualFileByName(files, runtimeVal) : null;
   const runtimeSizeStr = (() => {
     if (!runtimeFile) return null;
     if (typeof runtimeFile.size === "number" && runtimeFile.size > 0) {
@@ -131,6 +131,19 @@ export function RuntimePanel({
           labelBorderColor="#0891b225"
           onClick={() => onNavigate(PAGE.BUILD)}
         />
+        {runtimeVal && !runtimeFile && (
+          <PanelFieldRow
+            label="Status"
+            value="missing from workspace"
+            filled={false}
+            dotColor={C.error}
+            dotGlow="#dc262666"
+            labelColor={C.error}
+            labelBg="#fff1f2"
+            labelBorderColor="#fecdd3"
+            onClick={() => onNavigate(PAGE.BUILD)}
+          />
+        )}
         {runtimeSizeStr && (
           <PanelFieldRow
             label="Size"

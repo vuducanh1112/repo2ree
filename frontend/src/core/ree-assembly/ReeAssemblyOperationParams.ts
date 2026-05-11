@@ -5,10 +5,7 @@ export interface ReeAssemblyOperationParamsByKey {
     strict: boolean;
     swhid_check: boolean;
   };
-  build: {
-    no_cache: boolean;
-    platform: string;
-  };
+  build: Record<string, never>;
   hbom: Record<string, never>;
   sbom: {
     format: string;

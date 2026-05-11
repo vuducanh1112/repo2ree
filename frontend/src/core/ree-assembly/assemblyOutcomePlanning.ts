@@ -51,10 +51,9 @@ interface AssemblyServiceEffectPlan {
 export function planBuildEffect(args: { ree: ReeEditorViewModel }): BuildEffectPlan {
   const runtimeTarget =
     args.ree.runtime && args.ree.runtime !== "__skipped__" ? args.ree.runtime : null;
-  const producedName = runtimeTarget || "runtime.tar.gz";
 
   return {
-    successMessage: `Build complete — ${producedName} produced`,
+    successMessage: `Build complete${runtimeTarget ? `; selected runtime remains ${runtimeTarget}` : ""}`,
   };
 }
 

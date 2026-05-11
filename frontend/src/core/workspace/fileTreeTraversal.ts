@@ -1,6 +1,6 @@
 import type { FileTreeNode } from "./FileTree";
 
-export function walkFileTree<T>(
+function walkFileTree<T>(
   nodes: FileTreeNode[],
   visit: (node: FileTreeNode, path: string) => T | null,
   prefix = "",
@@ -25,6 +25,23 @@ export function findVirtualFileByName(nodes: FileTreeNode[], name: string): File
     if (node.type === "file" && node.name === base) return node;
     return null;
   });
+}
+
+export function normalizeWorkspacePath(path: string): string {
+  return path.replace(/^\//, "").split("/").filter(Boolean).join("/");
+}
+
+export function findFileByWorkspacePath(nodes: FileTreeNode[], path: string): FileTreeNode | null {
+  const normalized = normalizeWorkspacePath(path);
+  if (!normalized) return null;
+  return walkFileTree(nodes, (node, currentPath) => {
+    if (node.type === "file" && currentPath === normalized) return node;
+    return null;
+  });
+}
+
+export function workspaceFileExists(nodes: FileTreeNode[], path: string): boolean {
+  return !!findFileByWorkspacePath(nodes, path);
 }
 
 export function listTreeFiles(nodes: FileTreeNode[]): Array<{ path: string; content: string }> {
