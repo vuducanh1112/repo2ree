@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from repo2ree_core.hbom.hbom import GPUDefinition
+from repo2ree_core.domain.hbom import GPUDefinition
 from repo2ree_core.hbom.profiler_utils import run_command
 
 

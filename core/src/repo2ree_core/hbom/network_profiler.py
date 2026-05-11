@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
+from typing import Literal
 
-from repo2ree_core.hbom.hbom import NetworkDefinition
+from repo2ree_core.domain.hbom import NetworkDefinition
 from repo2ree_core.hbom.profiler_utils import read_optional_int, read_optional_text
+
+NetworkType = Literal["ethernet", "infiniband", "wifi", "cellular"]
 
 
 def _read_network_driver(interface_name: str) -> str:
@@ -32,7 +35,7 @@ def profile_network() -> dict[str, NetworkDefinition]:
         infiniband = (iface_dir / "device" / "infiniband").exists()
         driver_name = _read_network_driver(interface_name)
 
-        network_type = "ethernet"
+        network_type: NetworkType = "ethernet"
         if wireless:
             network_type = "wifi"
         elif infiniband or iface_type == "32":

@@ -17,10 +17,8 @@ from urllib.request import urlopen
 from pydantic import BaseModel, Field
 
 from repo2ree_api.settings import service_settings
-from repo2ree_api.metadata.ree import REE
+from repo2ree_core.domain.ree import REE
 
-
-WorkspaceStatus = Literal["draft", "ready", "sealed", "archived"]
 
 REE_ROOT_PREFIX = "ree/"
 REE_MANIFEST_ENTRY_PATH = f"{REE_ROOT_PREFIX}ree.json"

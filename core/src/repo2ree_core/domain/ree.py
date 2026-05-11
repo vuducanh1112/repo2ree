@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any, Literal, Mapping
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.experiment import Experiment
-from repo2ree_core.hbom import HBOM
 
 
 SourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]

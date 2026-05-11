@@ -6,7 +6,7 @@ import platform
 from pathlib import Path
 from typing import Any
 
-from repo2ree_core.hbom.hbom import CPUDefinition
+from repo2ree_core.domain.hbom import CPUDefinition
 
 
 def _parse_cpuinfo() -> dict[str, Any]:

@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.hbom import HBOM
+from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.hbom.generate_hbom import generate_hbom
 from repo2ree_api.run_management import (
     _append_run_log,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_core.hbom.hbom import MemoryDefinition
+from repo2ree_core.domain.hbom import MemoryDefinition
 from repo2ree_core.hbom.profiler_utils import round_gib
 
 

@@ -12,7 +12,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from repo2ree_api.settings import service_settings
-from repo2ree_api.metadata.ree import REE
+from repo2ree_core.domain.ree import REE
 
 
 class ReviewUploadInitPayload(BaseModel):
