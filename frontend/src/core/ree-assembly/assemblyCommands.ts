@@ -1,7 +1,6 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { ReeSpec } from "../ree/ReeSpec";
 import type { LogLine, ReeFile } from "../ree/ReeTypes";
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { FileTreeNode } from "../workspace/FileTree";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
@@ -16,7 +15,7 @@ interface Clock {
 }
 
 interface CreateAssemblyCommandPlannersArgs {
-  ree: ReeEditorViewModel;
+  ree: Pick<ReeSpec, "runtime">;
   workspaceFiles: FileTreeNode[];
   clock: Clock;
 }

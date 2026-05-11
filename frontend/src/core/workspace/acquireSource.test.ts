@@ -1,14 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { FileTreeNode } from "../../core/workspace/FileTree";
-import { createEmptyReeSpec } from "../ree/ReeSpec";
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import { createSourceUseCase } from "./acquireSource";
+import type { WorkspaceSourceState } from "./WorkspaceSourceState";
 
-function buildRee(): ReeEditorViewModel {
-  return {
-    ...createEmptyReeSpec(),
-    name: "demo",
-  };
+function buildRee(): WorkspaceSourceState {
+  return {};
 }
 
 const workspaceFiles: FileTreeNode[] = [{ id: "readme", name: "README.md", type: "file" }];
@@ -139,7 +135,7 @@ describe("createSourceUseCase", () => {
     const refreshWorkspaceFiles = vi.fn(async () => workspaceFiles);
 
     const useCase = createSourceUseCase({
-      ree: { ...buildRee(), origin_url: "https://example.org/repo.git" },
+      ree: buildRee(),
       executeCommands,
       sourceChanged: vi.fn(),
       runSourceAction: vi.fn(),

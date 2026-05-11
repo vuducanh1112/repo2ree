@@ -2,7 +2,6 @@ import type { ReeSpec } from "../../core/ree/ReeSpec";
 import type { FileTreeNode } from "../../core/workspace/FileTree";
 import { normalizeSnapshotArchiveName } from "../../core/workspace/PathUtils";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 
 type SourceExecutionStatus = "failed" | "canceled";
 
@@ -77,8 +76,8 @@ function snapshotArchiveNameFromSourceUrl(sourceUrl: string): string {
 }
 
 function validateSourceDownload(
-  ree: ReeEditorViewModel,
-  originType: ReeEditorViewModel["source_type"],
+  ree: WorkspaceSourceState,
+  originType: ReeSpec["source_type"],
   sourceUrl: string,
 ): SourceActionPlanResult<{ normalizedSourceUrl: string }> {
   if (ree.sourceAvailable && ree.sourceAcquiredBy === "upload") {
@@ -100,7 +99,7 @@ function validateSourceDownload(
 }
 
 function validateSourceUpload(
-  ree: ReeEditorViewModel,
+  ree: WorkspaceSourceState,
 ): SourceActionPlanResult<Record<string, never>> {
   if (ree.sourceAvailable && ree.sourceAcquiredBy === "download") {
     return {
@@ -122,7 +121,7 @@ function buildSourceExecutionRequestPlan(
 }
 
 function buildDownloadedSourceSuccess(args: {
-  originType: ReeEditorViewModel["source_type"];
+  originType: ReeSpec["source_type"];
   normalizedSourceUrl: string;
   workspaceFiles: FileTreeNode[];
   timestamp: string;
@@ -179,8 +178,8 @@ function buildUploadedSourceSuccess(args: {
 }
 
 export function planSourceDownloadAction(
-  ree: ReeEditorViewModel,
-  originType: ReeEditorViewModel["source_type"],
+  ree: WorkspaceSourceState,
+  originType: ReeSpec["source_type"],
   sourceUrl: string,
 ): SourceActionPlanResult<
   SourceExecutionRequestPlan & {
@@ -206,7 +205,7 @@ export function planSourceDownloadAction(
 }
 
 export function planSourceUploadAction(
-  ree: ReeEditorViewModel,
+  ree: WorkspaceSourceState,
   archiveName: string,
   archiveContentBase64?: string,
 ): SourceActionPlanResult<
@@ -240,7 +239,7 @@ export function planSourceExecutionFailure(status: SourceExecutionStatus): Sourc
 }
 
 export function planDownloadedSourceState(args: {
-  originType: ReeEditorViewModel["source_type"];
+  originType: ReeSpec["source_type"];
   normalizedSourceUrl: string;
   workspaceFiles: FileTreeNode[];
   timestamp: string;

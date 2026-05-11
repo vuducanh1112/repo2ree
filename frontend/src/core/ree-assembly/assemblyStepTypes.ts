@@ -1,4 +1,5 @@
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
+import type { ReeSpec } from "../ree/ReeSpec";
+import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 
 export type { Level } from "../review/Level";
 
@@ -9,7 +10,7 @@ export interface ReeAssemblyBadge {
 }
 
 export interface ReeAssemblyRequirement {
-  field: keyof ReeEditorViewModel;
+  field: keyof ReeSpec | keyof WorkspaceSourceState;
   label: string;
 }
 
@@ -61,7 +62,7 @@ export interface ArchiveRepo {
   url: string;
   desc: string;
   idLabel: string;
-  idField: keyof ReeEditorViewModel;
+  idField: keyof ReeSpec;
   idPlaceholder: string;
   params: ReeAssemblyParam[];
   requires: ReeAssemblyRequirement[];

@@ -1,6 +1,5 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { ReeSpec } from "../ree/ReeSpec";
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import type { EvaluationState } from "../review/EvaluationState";
 import { LEVELS } from "../review/levels";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
@@ -48,7 +47,7 @@ interface AssemblyServiceEffectPlan {
   successMessage: string;
 }
 
-export function planBuildEffect(args: { ree: ReeEditorViewModel }): BuildEffectPlan {
+export function planBuildEffect(args: { ree: Pick<ReeSpec, "runtime"> }): BuildEffectPlan {
   const runtimeTarget =
     args.ree.runtime && args.ree.runtime !== "__skipped__" ? args.ree.runtime : null;
 
@@ -97,7 +96,7 @@ export function planActivationEffect(): ActivationEffectPlan {
 export function planAssemblyServiceEffect(args: {
   key: ReeAssemblyOperationKey;
   params: GenericReeAssemblyParams;
-  ree: ReeEditorViewModel;
+  ree: Pick<ReeSpec, "runtime">;
   newLevel: number;
   timestamp: string;
   namespaceSuffix: string;

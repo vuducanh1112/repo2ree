@@ -1,6 +1,6 @@
 import type { RawReeDraftSlices } from "../ree/mapRawReeDraft";
+import type { ReeSpec } from "../ree/ReeSpec";
 import type { LogLine, ReeFile } from "../ree/ReeTypes";
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../workspace/FileTree";
 import {
   type AssemblyCommand,
@@ -57,7 +57,7 @@ interface ExecutionRunRunner {
 interface ExecuteAssemblyRunArgs {
   key: string;
   params: GenericReeAssemblyParams;
-  ree: ReeEditorViewModel;
+  ree: Pick<ReeSpec, "build_runtime_script" | "runtime" | "activation_script">;
   level: number;
   workspaceFiles: FileTreeNode[];
   executionRunner: ExecutionRunRunner;

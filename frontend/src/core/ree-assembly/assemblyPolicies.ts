@@ -1,4 +1,5 @@
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
+import type { ReeSpec } from "../ree/ReeSpec";
+import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { ReeAssemblyRequirement } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey } from "./assemblyTypes";
 
@@ -49,7 +50,7 @@ export function getReeAssemblyRequirements(key: ReeAssemblyOperationKey): ReeAss
 
 export function missingReeAssemblyRequirements(
   key: ReeAssemblyOperationKey,
-  ree: ReeEditorViewModel,
+  ree: Partial<ReeSpec & WorkspaceSourceState>,
 ): ReeAssemblyRequirement[] {
   return getReeAssemblyRequirements(key).filter((requirement) => !ree[requirement.field]);
 }

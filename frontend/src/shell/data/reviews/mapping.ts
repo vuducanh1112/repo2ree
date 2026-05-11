@@ -1,20 +1,15 @@
-import type { ArtifactStatus } from "../../../core/artifact/ArtifactStatus";
-import type { ReeSpec } from "../../../core/ree/ReeSpec";
-import type { EvaluationState } from "../../../core/review/EvaluationState";
+import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import type {
   ReviewDetail,
   ReviewUploadCompleteResponse,
   ReviewUploadInitResponse,
 } from "../../../core/review/ReviewTypes";
-import type { WorkspaceSourceState } from "../../../core/workspace/WorkspaceSourceState";
 import type {
   ReviewDetailDto,
   ReviewUploadCompleteResponseDto,
   ReviewUploadInitResponseDto,
 } from "../../infra/api/apiTypes";
 import { mapReviewDraftToReeSlices } from "../ree/mapping";
-
-type ReeEditorViewModel = ReeSpec & WorkspaceSourceState & ArtifactStatus & EvaluationState;
 
 export function mapReviewUploadInitResponse(
   response: ReviewUploadInitResponseDto,

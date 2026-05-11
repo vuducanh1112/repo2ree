@@ -1,6 +1,8 @@
-import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
+import type { ReeSpec } from "../ree/ReeSpec";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey, ReeAssemblyRunParamsByKey } from "./assemblyTypes";
+
+type AssemblyRee = Pick<ReeSpec, "build_runtime_script" | "runtime" | "activation_script">;
 
 type AssemblyRequestParamValue = string | boolean | number | null | undefined;
 
@@ -59,7 +61,7 @@ export function buildEvaluateAssemblyRunRequest(
 
 export function buildBuildAssemblyRunRequest(
   params: ReeAssemblyRunParamsByKey["build"],
-  ree: ReeEditorViewModel,
+  ree: AssemblyRee,
 ): ReeAssemblyRunRequestByKey["build"] {
   return {
     scriptKey: "build",
@@ -82,7 +84,7 @@ function buildHbomAssemblyRunRequest(
 
 export function buildSbomAssemblyRunRequest(
   params: ReeAssemblyRunParamsByKey["sbom"],
-  ree: ReeEditorViewModel,
+  ree: AssemblyRee,
 ): ReeAssemblyRunRequestByKey["sbom"] {
   return {
     scriptKey: "sbom",
@@ -94,7 +96,7 @@ export function buildSbomAssemblyRunRequest(
 
 export function buildActivationAssemblyRunRequest(
   params: ReeAssemblyRunParamsByKey["activation"],
-  ree: ReeEditorViewModel,
+  ree: AssemblyRee,
 ): ReeAssemblyRunRequestByKey["activation"] {
   void params;
   return {
@@ -108,7 +110,7 @@ export function buildActivationAssemblyRunRequest(
 export function buildAssemblyRunRequest<K extends ReeAssemblyOperationKey>(
   key: K,
   params: ReeAssemblyRunParamsByKey[K],
-  ree: ReeEditorViewModel,
+  ree: AssemblyRee,
 ): ReeAssemblyRunRequest<K> {
   switch (key) {
     case "evaluate":
@@ -140,7 +142,7 @@ export function buildAssemblyRunRequest<K extends ReeAssemblyOperationKey>(
 export function buildAssemblyRunParams(
   key: string,
   params: GenericReeAssemblyParams,
-  ree: ReeEditorViewModel,
+  ree: AssemblyRee,
 ): Record<string, AssemblyRequestParamValue> {
   if (key === "evaluate") {
     return buildEvaluateAssemblyRunRequest(params as ReeAssemblyRunParamsByKey["evaluate"]).params;
