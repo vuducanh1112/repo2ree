@@ -34,7 +34,7 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
     },
     async updateReeDraft(id, reePatch) {
       const reeId = await ensureReeId(runtime, id);
-      await runtime.reeApi.patchRee(reeId, { reePatch });
+      await runtime.reeApi.patchReeDraft(reeId, { reePatch });
     },
     async deleteFile(id, path) {
       const reeId = await ensureReeId(runtime, id);

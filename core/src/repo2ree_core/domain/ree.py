@@ -83,7 +83,7 @@ class ReeCatalogMetadata(BaseModel):
 
 
 class REE(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid")
 
     name: str = ""
     catalog_metadata: ReeCatalogMetadata = Field(default_factory=ReeCatalogMetadata)
@@ -99,23 +99,17 @@ class REE(BaseModel):
     repro_level: str | None = None
     detected_dependencies: str | None = None
     hardware_description: HBOM = Field(default_factory=HBOM)
-    eval_level: int = Field(default=0, alias="_evalLevel")
-    sealed_at: str | None = Field(default=None, alias="_sealedAt")
-    seal_hash: str | None = Field(default=None, alias="_sealHash")
-    source_available: bool = Field(default=False, alias="_sourceAvailable")
-    source_included: bool = Field(default=False, alias="_sourceIncluded")
-    source_acquired_by: SourceAcquiredBy = Field(default="", alias="_sourceAcquiredBy")
-    uploaded_archive: str | None = Field(default=None, alias="_uploadedArchive")
-    source_snapshot_archive: str | None = Field(
-        default=None, alias="_sourceSnapshotArchive"
-    )
-    source_snapshot_captured_at: str | None = Field(
-        default=None, alias="_sourceSnapshotCapturedAt"
-    )
-    runtime_included: bool = Field(default=False, alias="_runtimeIncluded")
-    downloadable_files: list[str] = Field(
-        default_factory=list, alias="_downloadableFiles"
-    )
+    eval_level: int = 0
+    sealed_at: str | None = None
+    seal_hash: str | None = None
+    source_available: bool = False
+    source_included: bool = False
+    source_acquired_by: SourceAcquiredBy = ""
+    uploaded_archive: str | None = None
+    source_snapshot_archive: str | None = None
+    source_snapshot_captured_at: str | None = None
+    runtime_included: bool = False
+    downloadable_files: list[str] = Field(default_factory=list)
     experiments: list[Experiment] = Field(default_factory=list)
 
     @field_validator("hardware_description", mode="before")
@@ -154,7 +148,7 @@ class REE(BaseModel):
         return ree.with_source(source if isinstance(source, dict) else None)
 
     def apply_patch(self, patch: Mapping[str, Any]) -> "REE":
-        merged = self.model_dump(by_alias=True)
+        merged = self.model_dump()
         merged.update(dict(patch or {}))
         try:
             return REE.model_validate(merged)

@@ -91,8 +91,8 @@ export class ReeApi {
     });
   }
 
-  async patchRee(reeId: ReeId, payload: PatchReeRequestDto): Promise<ReeDetailDto> {
-    return this.client.request<ReeDetailDto>(endpoints.ree(reeId), {
+  async patchReeDraft(reeId: ReeId, payload: PatchReeRequestDto): Promise<ReeDetailDto> {
+    return this.client.request<ReeDetailDto>(endpoints.reeDraft(reeId), {
       method: "PATCH",
       body: JSON.stringify(payload),
     });

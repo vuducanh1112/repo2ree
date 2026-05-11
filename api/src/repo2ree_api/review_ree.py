@@ -193,7 +193,7 @@ def _run_review_source_acquire(
 ) -> tuple[str, dict[str, object]]:
     metadata = _load_review_metadata(review_id)
     ree_draft = dict(metadata.get("reeDraft") or {})
-    if bool(ree_draft.get("_sourceIncluded")):
+    if bool(ree_draft.get("source_included")):
         _append_review_run_log(
             review_id,
             run_id,

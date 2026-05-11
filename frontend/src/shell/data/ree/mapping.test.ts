@@ -19,7 +19,7 @@ describe("shell/data/ree/mapping", () => {
           contributors: [{ identifier: "ada", name: "Ada" }],
           corresponding_author_identifier: "ada",
         },
-        _sourceAvailable: true,
+        source_available: true,
         hardware_description: { cpus: { Xeon: { vendor: "Intel", quantity: 2 } } },
       },
       files: [],

@@ -249,7 +249,7 @@ def _compute_evaluate_outputs(
         ree_id,
         WorkspacePatchPayload(
             reePatch={
-                "_evalLevel": level,
+                "eval_level": level,
                 "repro_level": repro_level,
                 "detected_dependencies": summary,
             }

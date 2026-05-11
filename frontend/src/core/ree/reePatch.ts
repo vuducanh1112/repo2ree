@@ -19,17 +19,8 @@ interface ReePatch extends Record<string, unknown> {
   detected_dependencies: string;
   experiments: ReeExperiment[];
   hardware_description: HBOM;
-  _sealedAt: string;
-  _sealHash: string;
-  _evalLevel: number;
-  _sourceIncluded: boolean;
-  _sourceAvailable: boolean;
-  _sourceAcquiredBy: string;
-  _uploadedArchive: string;
-  _sourceSnapshotArchive: string;
-  _sourceSnapshotCapturedAt: string;
-  _runtimeIncluded: boolean;
-  _downloadableFiles: string[];
+  source_included: boolean;
+  runtime_included: boolean;
 }
 
 interface ReePatchSlices {
@@ -43,7 +34,6 @@ export function toReePatchFromSlices({
   reeSpec,
   workspaceSourceState,
   artifactStatus,
-  evaluationState,
 }: ReePatchSlices): ReePatch {
   return {
     name: reeSpec.name || "",
@@ -61,17 +51,8 @@ export function toReePatchFromSlices({
     detected_dependencies: reeSpec.detected_dependencies || "",
     experiments: reeSpec.experiments || [],
     hardware_description: reeSpec.hardware_description || {},
-    _sealedAt: artifactStatus.sealedAt || "",
-    _sealHash: artifactStatus.sealHash || "",
-    _evalLevel: evaluationState.evalLevel ?? 0,
-    _sourceIncluded: !!workspaceSourceState.sourceIncluded,
-    _sourceAvailable: !!workspaceSourceState.sourceAvailable,
-    _sourceAcquiredBy: workspaceSourceState.sourceAcquiredBy || "",
-    _uploadedArchive: workspaceSourceState.uploadedArchive || "",
-    _sourceSnapshotArchive: workspaceSourceState.sourceSnapshotArchive || "",
-    _sourceSnapshotCapturedAt: workspaceSourceState.sourceSnapshotCapturedAt || "",
-    _runtimeIncluded: !!artifactStatus.runtimeIncluded,
-    _downloadableFiles: artifactStatus.downloadableFiles || [],
+    source_included: !!workspaceSourceState.sourceIncluded,
+    runtime_included: !!artifactStatus.runtimeIncluded,
   };
 }
 

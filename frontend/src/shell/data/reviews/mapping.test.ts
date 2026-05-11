@@ -64,7 +64,7 @@ describe("shell/data/reviews/mapping", () => {
       updatedAt: "2026-01-02T00:00:00Z",
       reeDraft: {
         source_type: "git",
-        _sourceAvailable: true,
+        source_available: true,
       },
     };
 

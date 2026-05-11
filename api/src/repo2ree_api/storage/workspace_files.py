@@ -36,6 +36,11 @@ class WorkspacePatchPayload(BaseModel):
     expectedVersion: str | None = None
 
 
+class ReeDraftPatchPayload(BaseModel):
+    reePatch: dict[str, Any] = Field(default_factory=dict)
+    expectedVersion: str | None = None
+
+
 class SourceAcquirePayload(BaseModel):
     originUrl: str
     sourceType: Literal["git", "tarball", "zip"]
@@ -118,9 +123,7 @@ def _default_metadata(ree_id: str, name: str | None = None) -> dict[str, Any]:
         "status": "draft",
         "createdAt": ts,
         "updatedAt": ts,
-        "reeDraft": REE(name=workspace_name).model_dump(
-            by_alias=True, exclude_none=True
-        ),
+        "reeDraft": REE(name=workspace_name).model_dump(exclude_none=True),
         "source": None,
     }
 
@@ -387,7 +390,7 @@ def _build_ree_download_entries(
 def _sync_downloadable_files_metadata(ree_id: str, metadata: dict[str, Any]) -> None:
     _, entries = _build_ree_download_entries(ree_id, metadata)
     ree_draft = dict(metadata.get("reeDraft") or {})
-    ree_draft["_downloadableFiles"] = [item["path"] for item in entries]
+    ree_draft["downloadable_files"] = [item["path"] for item in entries]
     metadata["reeDraft"] = ree_draft
 
 
@@ -502,7 +505,7 @@ def create_workspace(payload: WorkspaceCreatePayload) -> dict[str, Any]:
             name=str(payload.name or metadata["name"]),
             origin_url=payload.originUrl,
             source_type=payload.sourceType,
-        ).model_dump(by_alias=True, exclude_none=True)
+        ).model_dump(exclude_none=True)
         metadata = _write_metadata(ree_id, metadata)
         acquire_source(
             ree_id,
@@ -528,13 +531,54 @@ def create_workspace(payload: WorkspaceCreatePayload) -> dict[str, Any]:
     return get_workspace(ree_id, seed_metadata=_write_metadata(ree_id, metadata))
 
 
+_DRAFT_PATCH_FIELD_NAMES = {
+    field_name
+    for field_name, field in REE.model_fields.items()
+    if field_name
+    not in {
+        "eval_level",
+        "sealed_at",
+        "seal_hash",
+        "source_available",
+        "source_acquired_by",
+        "uploaded_archive",
+        "source_snapshot_archive",
+        "source_snapshot_captured_at",
+        "downloadable_files",
+    }
+}
+_DRAFT_PATCH_FIELDS = _DRAFT_PATCH_FIELD_NAMES
+
+
+def _validate_draft_patch(ree_patch: dict[str, Any]) -> None:
+    unsupported_fields = sorted(set(ree_patch) - _DRAFT_PATCH_FIELDS)
+    if unsupported_fields:
+        raise ValueError(
+            "REE draft patch contains backend-managed fields: "
+            + ", ".join(unsupported_fields)
+        )
+
+
+def patch_ree_draft(ree_id: str, patch_payload: ReeDraftPatchPayload) -> dict[str, Any]:
+    metadata = _read_metadata(ree_id)
+    ree_patch = dict(patch_payload.reePatch or {})
+    _validate_draft_patch(ree_patch)
+    return _patch_workspace_ree(ree_id, metadata, ree_patch)
+
+
 def patch_workspace(
     ree_id: str, patch_payload: WorkspacePatchPayload
 ) -> dict[str, Any]:
     metadata = _read_metadata(ree_id)
     ree_patch = dict(patch_payload.reePatch or {})
+    return _patch_workspace_ree(ree_id, metadata, ree_patch)
+
+
+def _patch_workspace_ree(
+    ree_id: str, metadata: dict[str, Any], ree_patch: dict[str, Any]
+) -> dict[str, Any]:
     ree = _ree_from_metadata(metadata).apply_patch(ree_patch)
-    metadata["reeDraft"] = ree.model_dump(by_alias=True, exclude_none=True)
+    metadata["reeDraft"] = ree.model_dump(exclude_none=True)
 
     if ree.name:
         metadata["name"] = ree.name
@@ -590,7 +634,7 @@ def build_workspace_ree_archive(ree_id: str) -> bytes:
     metadata = _read_metadata(ree_id)
     manifest, entries = _build_ree_download_entries(ree_id, metadata)
     ree_draft = dict(metadata.get("reeDraft") or {})
-    ree_draft["_downloadableFiles"] = [item["path"] for item in entries]
+    ree_draft["downloadable_files"] = [item["path"] for item in entries]
     metadata["reeDraft"] = ree_draft
     _json_dump(metadata_path(ree_id), metadata)
 
@@ -762,7 +806,7 @@ def acquire_source(ree_id: str, payload: SourceAcquirePayload) -> dict[str, Any]
         }
     )
     metadata["reeDraft"] = ree.with_source(metadata.get("source")).model_dump(
-        by_alias=True, exclude_none=True
+        exclude_none=True
     )
     return get_workspace(ree_id, seed_metadata=_write_metadata(ree_id, metadata))
 
@@ -846,7 +890,7 @@ def complete_source_upload(
     metadata["reeDraft"] = (
         _ree_from_metadata(metadata)
         .with_source(metadata["source"])
-        .model_dump(by_alias=True, exclude_none=True)
+        .model_dump(exclude_none=True)
     )
     return {
         "sourceSnapshotId": upload_token,
@@ -880,7 +924,7 @@ def remove_source(ree_id: str) -> dict[str, Any]:
             }
         )
     )
-    metadata["reeDraft"] = cleared_ree.model_dump(by_alias=True, exclude_none=True)
+    metadata["reeDraft"] = cleared_ree.model_dump(exclude_none=True)
     return {
         "invalidatedSteps": ["source", "workflow"],
         "workspace": get_workspace(

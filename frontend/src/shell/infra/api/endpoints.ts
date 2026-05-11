@@ -3,6 +3,7 @@ const API_V1_BASE = "/api/v1";
 export const endpoints = {
   rees: () => `${API_V1_BASE}/rees`,
   ree: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}`,
+  reeDraft: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/draft`,
   reeSourceAcquire: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source:acquire`,
   reeSourceUploadInit: (reeId: string) =>

@@ -93,7 +93,7 @@ def _default_review_metadata(
         "status": "uploading",
         "createdAt": ts,
         "updatedAt": ts,
-        "reeDraft": REE(name=default_name).model_dump(by_alias=True, exclude_none=True),
+        "reeDraft": REE(name=default_name).model_dump(exclude_none=True),
     }
 
 
@@ -226,10 +226,10 @@ def _extract_included_source_snapshot(
     destination_root: Path,
     ree_draft: dict[str, Any],
 ) -> None:
-    if not bool(ree_draft.get("_sourceIncluded")):
+    if not bool(ree_draft.get("source_included")):
         return
 
-    snapshot_ref = str(ree_draft.get("_sourceSnapshotArchive") or "").strip()
+    snapshot_ref = str(ree_draft.get("source_snapshot_archive") or "").strip()
     if not snapshot_ref:
         return
 
@@ -264,20 +264,20 @@ def _manifest_to_ree_draft(
         "zenodo_doi": manifest.get("zenodo_doi"),
         "dataverse_doi": manifest.get("dataverse_doi"),
         "hardware_description": manifest.get("hardware_description") or {},
-        "_evalLevel": manifest.get("eval_level") or 0,
-        "_sealedAt": manifest.get("sealed_at"),
-        "_sealHash": manifest.get("seal_hash"),
-        "_sourceIncluded": bool(manifest.get("source_included", False)),
-        "_sourceAvailable": bool(manifest.get("source_available", False)),
-        "_sourceAcquiredBy": manifest.get("source_acquired_by") or "",
-        "_sourceSnapshotArchive": manifest.get("source_snapshot_archive"),
-        "_sourceSnapshotCapturedAt": manifest.get("source_snapshot_captured_at"),
-        "_runtimeIncluded": bool(manifest.get("runtime_included", False)),
-        "_downloadableFiles": manifest.get("downloadable_files") or [],
-        "_uploadedArchive": uploaded_archive,
+        "eval_level": manifest.get("eval_level") or 0,
+        "sealed_at": manifest.get("sealed_at"),
+        "seal_hash": manifest.get("seal_hash"),
+        "source_included": bool(manifest.get("source_included", False)),
+        "source_available": bool(manifest.get("source_available", False)),
+        "source_acquired_by": manifest.get("source_acquired_by") or "",
+        "source_snapshot_archive": manifest.get("source_snapshot_archive"),
+        "source_snapshot_captured_at": manifest.get("source_snapshot_captured_at"),
+        "runtime_included": bool(manifest.get("runtime_included", False)),
+        "downloadable_files": manifest.get("downloadable_files") or [],
+        "uploaded_archive": uploaded_archive,
     }
     ree = REE.model_validate(payload)
-    return ree.model_dump(by_alias=True, exclude_none=True)
+    return ree.model_dump(exclude_none=True)
 
 
 def _list_files_under(

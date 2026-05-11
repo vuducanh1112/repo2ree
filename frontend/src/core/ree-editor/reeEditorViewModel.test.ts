@@ -49,7 +49,7 @@ describe("reeEditorViewModel", () => {
     expect(viewModel.evalLevel).toBe(0);
   });
 
-  it("derives compatibility inclusion state from legacy source and artifact booleans", () => {
+  it("derives inclusion state from source and artifact booleans", () => {
     const editorState = createReeEditorState({
       reeSpec: {
         ...createEmptyReeSpec(),

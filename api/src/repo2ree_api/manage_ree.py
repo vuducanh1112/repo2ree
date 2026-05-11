@@ -13,11 +13,11 @@ from repo2ree_api.run_management import (
 from repo2ree_api.storage.workspace_files import (
     SourceAcquirePayload,
     SourceUploadCompletePayload,
+    ReeDraftPatchPayload,
     build_workspace_ree_archive,
     UploadInitPayload,
     WorkspaceCreatePayload,
     WorkspaceFileContentPayload,
-    WorkspacePatchPayload,
     acquire_source,
     complete_source_upload,
     create_workspace,
@@ -29,7 +29,7 @@ from repo2ree_api.storage.workspace_files import (
     read_file_content,
     read_file_bytes,
     read_workspace_metadata,
-    patch_workspace,
+    patch_ree_draft,
     remove_source,
     delete_file_content,
     store_source_upload_bytes,
@@ -96,8 +96,8 @@ def get_workspace_route(ree_id: str):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@manage_ree_router.patch("/api/v1/rees/{ree_id}")
-def patch_workspace_route(ree_id: str, payload: WorkspacePatchPayload):
+@manage_ree_router.patch("/api/v1/rees/{ree_id}/draft")
+def patch_ree_draft_route(ree_id: str, payload: ReeDraftPatchPayload):
     try:
         current = read_workspace_metadata(ree_id)
         if payload.expectedVersion and payload.expectedVersion != current.get(
@@ -107,7 +107,7 @@ def patch_workspace_route(ree_id: str, payload: WorkspacePatchPayload):
                 status_code=409,
                 detail="Workspace version conflict",
             )
-        return patch_workspace(ree_id, payload)
+        return patch_ree_draft(ree_id, payload)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:

@@ -91,28 +91,28 @@ export function mapRawReeDraftToSlices({
       hardware_description: normalizeHBOM(draft.hardware_description),
     },
     workspaceSourceState: {
-      sourceAvailable: Boolean(draft._sourceAvailable),
-      sourceIncluded: Boolean(draft._sourceIncluded),
+      sourceAvailable: Boolean(draft.source_available),
+      sourceIncluded: Boolean(draft.source_included),
       sourceAcquiredBy:
-        (draft._sourceAcquiredBy as WorkspaceSourceState["sourceAcquiredBy"]) || undefined,
-      uploadedArchive: draft._uploadedArchive ? String(draft._uploadedArchive) : undefined,
-      sourceSnapshotArchive: draft._sourceSnapshotArchive
-        ? String(draft._sourceSnapshotArchive)
+        (draft.source_acquired_by as WorkspaceSourceState["sourceAcquiredBy"]) || undefined,
+      uploadedArchive: draft.uploaded_archive ? String(draft.uploaded_archive) : undefined,
+      sourceSnapshotArchive: draft.source_snapshot_archive
+        ? String(draft.source_snapshot_archive)
         : undefined,
-      sourceSnapshotCapturedAt: draft._sourceSnapshotCapturedAt
-        ? String(draft._sourceSnapshotCapturedAt)
+      sourceSnapshotCapturedAt: draft.source_snapshot_captured_at
+        ? String(draft.source_snapshot_captured_at)
         : undefined,
     },
     artifactStatus: {
-      runtimeIncluded: Boolean(draft._runtimeIncluded),
-      downloadableFiles: Array.isArray(draft._downloadableFiles)
-        ? draft._downloadableFiles.map((item) => String(item))
+      runtimeIncluded: Boolean(draft.runtime_included),
+      downloadableFiles: Array.isArray(draft.downloadable_files)
+        ? draft.downloadable_files.map((item) => String(item))
         : [],
-      sealedAt: draft._sealedAt ? String(draft._sealedAt) : undefined,
-      sealHash: draft._sealHash ? String(draft._sealHash) : undefined,
+      sealedAt: draft.sealed_at ? String(draft.sealed_at) : undefined,
+      sealHash: draft.seal_hash ? String(draft.seal_hash) : undefined,
     },
     evaluationState: {
-      evalLevel: Number(draft._evalLevel ?? 0),
+      evalLevel: Number(draft.eval_level ?? 0),
     },
   };
 }

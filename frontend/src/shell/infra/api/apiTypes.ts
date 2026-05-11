@@ -63,17 +63,17 @@ export interface ReeDraftDto {
   repro_level: string;
   detected_dependencies: string;
   hardware_description: Record<string, unknown>;
-  _sealedAt: string;
-  _sealHash: string;
-  _evalLevel: number;
-  _sourceIncluded: boolean;
-  _sourceAvailable: boolean;
-  _sourceAcquiredBy: string;
-  _uploadedArchive: string;
-  _sourceSnapshotArchive: string;
-  _sourceSnapshotCapturedAt: string;
-  _runtimeIncluded: boolean;
-  _downloadableFiles: string[];
+  sealed_at?: string;
+  seal_hash?: string;
+  eval_level?: number;
+  source_included?: boolean;
+  source_available?: boolean;
+  source_acquired_by?: string;
+  uploaded_archive?: string;
+  source_snapshot_archive?: string;
+  source_snapshot_captured_at?: string;
+  runtime_included?: boolean;
+  downloadable_files?: string[];
 }
 
 export interface ReeDetailDto extends ReeSummaryDto {

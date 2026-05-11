@@ -6,7 +6,7 @@ import { createEmptyReeSpec } from "./ReeSpec";
 import { toReePatchFromSlices } from "./reePatch";
 
 describe("toReePatchFromSlices", () => {
-  it("serializes persisted and transient slices into the legacy patch contract", () => {
+  it("serializes user-editable REE draft fields without backend-managed state", () => {
     const reeSpec = {
       ...createEmptyReeSpec(),
       name: "demo",
@@ -50,17 +50,8 @@ describe("toReePatchFromSlices", () => {
       }),
     ).toEqual({
       ...reeSpec,
-      _sealedAt: "2026-01-02T00:00:00Z",
-      _sealHash: "sha256:test",
-      _evalLevel: 4,
-      _sourceIncluded: true,
-      _sourceAvailable: true,
-      _sourceAcquiredBy: "download",
-      _uploadedArchive: "repo.tar.gz",
-      _sourceSnapshotArchive: "repo-original.tar.gz",
-      _sourceSnapshotCapturedAt: "2026-01-01T00:00:00Z",
-      _runtimeIncluded: true,
-      _downloadableFiles: ["runtime.tar.gz", "sbom.json"],
+      source_included: true,
+      runtime_included: true,
       zenodo_doi: "",
       dataverse_doi: "",
     });
@@ -77,12 +68,8 @@ describe("toReePatchFromSlices", () => {
     ).toMatchObject({
       name: "",
       origin_url: "",
-      _evalLevel: 0,
-      _sourceIncluded: false,
-      _sourceAvailable: false,
-      _sourceAcquiredBy: "",
-      _runtimeIncluded: false,
-      _downloadableFiles: [],
+      source_included: false,
+      runtime_included: false,
     });
   });
 });
