@@ -26,7 +26,6 @@ import {
   lgSuggestionButton,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
-import { assemblyToneSurfaceStyle } from "../../components/statusUiStyles";
 import { PAGE } from "../../state/pages";
 import type { PageMetadataEntryProps } from "../sharedAssemblyUi";
 
@@ -92,7 +91,6 @@ export function PageMetadataEntry({
   badges,
   focusedField,
   onReeChange,
-  onLockedChange,
   onGoAssemblyPage,
   onFocusedFieldChange,
 }: PageMetadataEntryProps) {

@@ -1,99 +1,17 @@
+import type React from "react";
 import { Ic } from "../../../shared/components/Icon";
-import { C, F } from "../../../theme/theme";
-import { FieldRow, FieldSection } from "../../components/fieldTips";
+import { lgColors, lgContentCard, lgInput, lgStyles } from "../../../theme/lightGlassTheme";
+import { F } from "../../../theme/theme";
 import { SourceUploadField, SourceUrlField } from "../../components/sourceRuntime";
 import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 import { SOURCE_TYPE_OPTIONS, type SourceTypeOption } from "./SourceAcquisitionPageHelpers";
-import { actionBtn, inputStyle } from "./SourceAcquisitionPageStyles";
 
-interface Step1Props {
+interface SourceAcquisitionCardProps {
+  repoMode: "url" | "upload";
   sourceConfigLocked: boolean;
-  repoMode: "url" | "upload";
   sourceInteractionLocked: boolean;
-  focus: (key: string) => void;
-  onRepoModeChange: (mode: "url" | "upload") => void;
-  setOriginTypeDraft: (value: SourceTypeOption | "") => void;
-  setOriginUrlDraft: (value: string) => void;
-}
-
-export function SourceStep1Section(props: Step1Props) {
-  const { sourceConfigLocked, repoMode, sourceInteractionLocked, focus } = props;
-  return (
-    <FieldSection
-      title="Step 1: Choose Source Path"
-      subtitle={
-        sourceConfigLocked ? (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "2px 8px",
-              borderRadius: 999,
-              border: "1px solid #fdba74",
-              background: "#fff7ed",
-              color: "#c2410c",
-              fontSize: 11,
-              fontWeight: 700,
-              lineHeight: 1.2,
-              marginLeft: 4,
-            }}
-          >
-            {Ic.lock(11)} Source configuration is locked. Clear the current workspace source to
-            change it.
-          </span>
-        ) : undefined
-      }
-      filledCount={repoMode ? 1 : 0}
-      totalCount={1}
-    >
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "10px 0" }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          {(["url", "upload"] as const).map((m) => {
-            const active = repoMode === m;
-            return (
-              <button
-                type="button"
-                key={m}
-                onClick={() => {
-                  focus("sourceAcquiredBy");
-                  if (sourceInteractionLocked || m === repoMode) return;
-                  props.onRepoModeChange(m);
-                  if (m === "upload") {
-                    props.setOriginTypeDraft("");
-                    props.setOriginUrlDraft("");
-                  }
-                }}
-                style={{
-                  ...actionBtn({ padding: "8px 10px", fontWeight: active ? 800 : 700 }),
-                  flex: 1,
-                  cursor: sourceInteractionLocked ? "not-allowed" : "pointer",
-                  border: `1.5px solid ${active ? C.accent : C.border}`,
-                  background: active ? C.accentBg : C.surface,
-                  color: active ? C.accent : C.textMid,
-                  opacity: sourceInteractionLocked ? 0.5 : 1,
-                }}
-              >
-                {m === "url" ? "Use origin URL" : "Upload tarball"}
-              </button>
-            );
-          })}
-        </div>
-        <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
-          {repoMode === "url"
-            ? "Point to an origin and fetch files into this workspace."
-            : "Bring a source snapshot directly from a local tarball."}
-        </div>
-      </div>
-    </FieldSection>
-  );
-}
-
-interface Step2Props {
-  repoMode: "url" | "upload";
   sourceInWorkspace: boolean;
   locked: boolean;
-  sourceConfigLocked: boolean;
   focusedField: string | null;
   originUrlDraft: string;
   originTypeDraft: SourceTypeOption | "";
@@ -105,6 +23,7 @@ interface Step2Props {
   downloadLabel: string;
   workspaceSourceState: SourceAcquisitionPageProps["workspaceSourceState"];
   focus: (key: string) => void;
+  onRepoModeChange: (mode: "url" | "upload") => void;
   setOriginUrlDraft: (value: string) => void;
   setOriginTypeDraft: (value: SourceTypeOption | "") => void;
   onDownloadSource: (originType: SourceTypeOption | "", originUrl: string) => void;
@@ -112,124 +31,200 @@ interface Step2Props {
   onWorkspaceUpload: SourceAcquisitionPageProps["onWorkspaceUpload"];
 }
 
-export function SourceStep2Section(props: Step2Props) {
-  return (
-    <FieldSection
-      title="Step 2: Acquire Source Snapshot"
-      filledCount={props.sourceInWorkspace ? 1 : 0}
-      totalCount={1}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      />
-      {props.repoMode === "url" && (
-        <FieldRow
-          fieldKey="origin_url"
-          locked={props.locked}
-          onFocus={() => props.focus("origin_url")}
-          active={props.focusedField === "origin_url"}
-        >
-          <SourceUrlField
-            locked={props.originInputLocked}
-            committedValue={props.originUrlDraft}
-            onCommit={(v) => props.setOriginUrlDraft(v)}
-            onFocus={() => props.focus("origin_url")}
-          />
-          {props.sourceConfigLocked && (
-            <div style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
-              Origin URL is locked after source is loaded. Clear workspace source to set a different
-              URL.
-            </div>
-          )}
-        </FieldRow>
-      )}
+function modeButton(active: boolean, locked: boolean): React.CSSProperties {
+  return {
+    flex: 1,
+    padding: "9px 14px",
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: active ? 800 : 600,
+    fontFamily: F.sans,
+    cursor: locked ? "not-allowed" : "pointer",
+    border: active ? "1px solid rgba(14, 165, 233, 0.45)" : "1px solid rgba(148, 163, 184, 0.34)",
+    background: active ? "rgba(239, 246, 255, 0.88)" : "rgba(255, 255, 255, 0.54)",
+    color: active ? lgColors.primaryDeep : lgColors.textMid,
+    opacity: locked ? 0.5 : 1,
+    transition: "all 0.15s",
+  };
+}
 
-      {props.repoMode === "url" ? (
-        <FieldRow
-          fieldKey="source_type"
-          locked={props.locked}
-          onFocus={() => props.focus("source_type")}
-          active={props.focusedField === "source_type"}
-        >
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <select
-              disabled={props.locked || props.sourceConfigLocked}
-              value={props.originTypeDraft}
-              onChange={(event) =>
-                props.setOriginTypeDraft(event.target.value as SourceTypeOption | "")
-              }
-              onFocus={() => props.focus("source_type")}
-              style={{ ...inputStyle(props.locked || props.sourceConfigLocked), flex: 1 }}
-            >
-              <option value="">Select origin type</option>
-              {SOURCE_TYPE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+function downloadButtonStyle(downloadDone: boolean, disabled: boolean): React.CSSProperties {
+  return {
+    padding: "9px 14px",
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: 800,
+    fontFamily: F.sans,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    cursor: disabled ? "not-allowed" : "pointer",
+    border: downloadDone
+      ? "1px solid rgba(34, 197, 94, 0.42)"
+      : "1px solid rgba(14, 165, 233, 0.42)",
+    background: downloadDone ? "rgba(240, 253, 244, 0.78)" : "rgba(239, 246, 255, 0.88)",
+    color: downloadDone ? lgColors.success : lgColors.primaryDeep,
+    opacity: disabled ? 0.6 : 1,
+    flexShrink: 0,
+  };
+}
+
+export function SourceAcquisitionCard(props: SourceAcquisitionCardProps) {
+  return (
+    <div style={lgContentCard(0)}>
+      <div style={{ ...lgStyles.label, marginBottom: 8 }}>Acquisition Method</div>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        {(["url", "upload"] as const).map((m) => {
+          const active = props.repoMode === m;
+          return (
             <button
               type="button"
-              disabled={props.locked || !props.canDownload || props.downloadRunning}
-              onClick={() => props.onDownloadSource(props.originTypeDraft, props.originUrlDraft)}
+              key={m}
+              onClick={() => {
+                props.focus("sourceAcquiredBy");
+                if (props.sourceInteractionLocked || m === props.repoMode) return;
+                props.onRepoModeChange(m);
+                if (m === "upload") {
+                  props.setOriginTypeDraft("");
+                  props.setOriginUrlDraft("");
+                }
+              }}
+              style={modeButton(active, props.sourceInteractionLocked)}
+            >
+              {m === "url" ? "Use origin URL" : "Upload tarball"}
+            </button>
+          );
+        })}
+      </div>
+
+      {props.sourceConfigLocked && (
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "4px 10px",
+            borderRadius: 999,
+            border: "1px solid rgba(245, 158, 11, 0.45)",
+            background: "rgba(254, 249, 195, 0.82)",
+            color: lgColors.warning,
+            fontSize: 11,
+            fontWeight: 700,
+            marginBottom: 10,
+          }}
+        >
+          {Ic.lock(11)} Configuration locked — clear workspace source to change method
+        </div>
+      )}
+
+      <div
+        style={{
+          fontSize: 12,
+          color: lgColors.textMuted,
+          fontFamily: F.sans,
+          marginBottom: 14,
+        }}
+      >
+        {props.repoMode === "url"
+          ? "Point to an origin and fetch files into this workspace."
+          : "Bring a source snapshot directly from a local tarball."}
+      </div>
+
+      <div
+        style={{
+          borderTop: "1px solid rgba(125, 211, 252, 0.28)",
+          paddingTop: 12,
+        }}
+      >
+        <div style={{ ...lgStyles.label, marginBottom: 8 }}>Source Snapshot</div>
+
+        {props.repoMode === "url" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <SourceUrlField
+              locked={props.originInputLocked}
+              committedValue={props.originUrlDraft}
+              onCommit={(v) => props.setOriginUrlDraft(v)}
+              onFocus={() => props.focus("origin_url")}
+            />
+            {props.sourceConfigLocked && (
+              <div style={lgStyles.helper}>
+                Origin URL is locked after source is loaded. Clear workspace source to change.
+              </div>
+            )}
+            <div
               style={{
-                ...actionBtn({ fontWeight: 800 }),
-                display: "inline-flex",
+                display: "flex",
+                gap: 8,
                 alignItems: "center",
-                gap: 6,
-                cursor:
-                  props.locked || !props.canDownload || props.downloadRunning
-                    ? "default"
-                    : "pointer",
-                border: `1.5px solid ${props.downloadDone ? "#22c55e" : C.accent}`,
-                background: props.downloadDone ? "#f0fdf4" : C.accentBg,
-                color: props.downloadDone ? "#15803d" : C.accent,
-                width: "fit-content",
-                opacity: props.locked || !props.canDownload ? 0.6 : 1,
+                flexWrap: "wrap",
               }}
             >
-              {props.downloadRunning ? Ic.loader(13) : Ic.download(13)}
-              {props.downloadLabel}
-            </button>
-            {props.downloadRunning && (
-              <button
-                type="button"
-                onClick={props.onCancelSource}
+              <select
+                disabled={props.locked || props.sourceConfigLocked}
+                value={props.originTypeDraft}
+                onChange={(e) => props.setOriginTypeDraft(e.target.value as SourceTypeOption | "")}
+                onFocus={() => props.focus("source_type")}
                 style={{
-                  ...actionBtn({ fontWeight: 700, padding: "8px 12px" }),
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  border: "1.5px solid #fecdd3",
-                  background: "#fff1f2",
-                  color: "#be123c",
-                  cursor: "pointer",
+                  ...lgInput(props.locked || props.sourceConfigLocked),
+                  flex: "1 1 140px",
                 }}
               >
-                {Ic.x(12)} Cancel
+                <option value="">Select origin type</option>
+                {SOURCE_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={props.locked || !props.canDownload || props.downloadRunning}
+                onClick={() => props.onDownloadSource(props.originTypeDraft, props.originUrlDraft)}
+                style={downloadButtonStyle(props.downloadDone, props.locked || !props.canDownload)}
+              >
+                {props.downloadRunning ? Ic.loader(13) : Ic.download(13)}
+                {props.downloadLabel}
               </button>
-            )}
+              {props.downloadRunning && (
+                <button
+                  type="button"
+                  onClick={props.onCancelSource}
+                  style={{
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    fontFamily: F.sans,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    border: "1px solid rgba(251, 113, 133, 0.4)",
+                    background: "rgba(255, 241, 242, 0.82)",
+                    color: lgColors.danger,
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  {Ic.x(12)} Cancel
+                </button>
+              )}
+            </div>
           </div>
-        </FieldRow>
-      ) : (
-        <SourceUploadField
-          locked={props.locked}
-          disabled={!props.canUpload}
-          disabledReason={
-            props.sourceInWorkspace
-              ? "Source is already loaded in workspace. Clear workspace source to switch method."
-              : undefined
-          }
-          committedName={props.workspaceSourceState.uploadedArchive}
-          onCommit={(payload) => props.onWorkspaceUpload(payload)}
-        />
-      )}
-    </FieldSection>
+        ) : (
+          <SourceUploadField
+            locked={props.locked}
+            disabled={!props.canUpload}
+            disabledReason={
+              props.sourceInWorkspace
+                ? "Source is already loaded. Clear workspace source to switch method."
+                : undefined
+            }
+            committedName={props.workspaceSourceState.uploadedArchive}
+            onCommit={(payload) => props.onWorkspaceUpload(payload)}
+          />
+        )}
+      </div>
+    </div>
   );
 }

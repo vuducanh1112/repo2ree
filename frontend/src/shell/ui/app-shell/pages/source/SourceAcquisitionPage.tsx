@@ -1,21 +1,56 @@
+import type React from "react";
 import { useEffect, useState } from "react";
 import { Ic } from "../../../shared/components/Icon";
 import { useFocusScroll } from "../../../shared/hooks/useFocusScroll";
 import {
-  S_WORKFLOW_PAGE_BODY,
-  S_WORKFLOW_PAGE_MAIN_COL,
-  S_WORKFLOW_PAGE_MAIN_SCROLL,
-  S_WORKFLOW_PAGE_NUDGE_WRAP,
-  S_WORKFLOW_PAGE_ROOT,
-} from "../../../theme/theme";
-import { AssemblyRunLogSection } from "../../components/assemblyRunPanels";
-import { FieldTipsSidebar } from "../../components/fieldTips";
-import { AssemblyPageHeader, NextStepNudge } from "../../components/pageChrome";
+  lgColors,
+  lgContentCard,
+  lgNextButton,
+  lgReadout,
+  lgStatusBadge,
+  lgStyles,
+} from "../../../theme/lightGlassTheme";
+import { F } from "../../../theme/theme";
+import { LogPanel } from "../../components/logPanel";
 import { PAGE } from "../../state/pages";
 import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 import type { SourceTypeOption } from "./SourceAcquisitionPageHelpers";
-import { SourceStep1Section, SourceStep2Section } from "./SourceAcquisitionPageSections";
+import { SourceAcquisitionCard } from "./SourceAcquisitionPageSections";
 import { SourceStep3Section } from "./SourceAcquisitionPageStep3Section";
+
+function SummaryLine({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <span style={{ fontSize: 11, color: lgColors.textMuted, fontFamily: F.sans }}>{label}</span>
+      <span
+        style={{
+          fontSize: 13,
+          color: lgColors.text,
+          fontFamily: F.sans,
+          lineHeight: 1.35,
+          overflowWrap: "anywhere",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function sourceBadge(sourceInWorkspace: boolean, running: boolean): React.CSSProperties {
+  if (running) {
+    return {
+      border: "1px solid rgba(245, 158, 11, 0.45)",
+      borderRadius: 99,
+      padding: "3px 8px",
+      color: lgColors.warning,
+      background: "rgba(254, 249, 195, 0.82)",
+      fontSize: 11,
+      fontWeight: 700,
+    };
+  }
+  return lgStatusBadge(sourceInWorkspace);
+}
 
 export function SourceAcquisitionPage({
   ree,
@@ -23,7 +58,6 @@ export function SourceAcquisitionPage({
   workspaceSourceState,
   locked,
   repoMode,
-  badges,
   actionStates,
   log,
   running,
@@ -43,6 +77,7 @@ export function SourceAcquisitionPage({
     ree.source_type || "",
   );
   const [originUrlDraft, setOriginUrlDraft] = useState(ree.origin_url || "");
+  const [logOpen, setLogOpen] = useState(false);
 
   const sourceInWorkspace = !!workspaceSourceState.sourceAvailable;
   const sourceIncluded = inclusionState.source === "included";
@@ -79,6 +114,10 @@ export function SourceAcquisitionPage({
     setOriginUrlDraft(ree.origin_url || "");
   }, [ree.origin_url]);
 
+  useEffect(() => {
+    if (running) setLogOpen(true);
+  }, [running]);
+
   useFocusScroll(focusedField);
 
   const originInputLocked = locked || sourceInWorkspace;
@@ -103,37 +142,77 @@ export function SourceAcquisitionPage({
       ? "Source was fetched from origin into this workspace."
       : "No source snapshot yet — choose a method above to continue.";
 
-  return (
-    <div style={S_WORKFLOW_PAGE_ROOT}>
-      <AssemblyPageHeader
-        color="#f59e0b"
-        icon={Ic.globe(18)}
-        title="Source Acquisition"
-        subtitle="Tell the source story in three steps: choose, acquire, then confirm snapshot behavior"
-        tips={[
-          "Pick one acquisition path and complete it end-to-end before moving on.",
-          "Once source is present, decide whether that snapshot is included in the final REE archive.",
-        ]}
-      />
+  const statusLabel = running ? "Acquiring" : sourceInWorkspace ? "Ready" : "Empty";
+  const methodConfigured = repoMode === "upload" || (!!ree.origin_url && !!ree.source_type);
+  const readinessDone = [methodConfigured, sourceInWorkspace].filter(Boolean).length;
+  const readinessTotal = 2;
+  const readinessPct = Math.round((readinessDone / readinessTotal) * 100);
 
-      <div style={S_WORKFLOW_PAGE_BODY}>
-        <div style={S_WORKFLOW_PAGE_MAIN_SCROLL}>
-          <div style={S_WORKFLOW_PAGE_MAIN_COL}>
-            <SourceStep1Section
-              sourceConfigLocked={sourceConfigLocked}
-              repoMode={repoMode}
-              sourceInteractionLocked={sourceInteractionLocked}
-              focus={focus}
-              onRepoModeChange={onRepoModeChange}
-              setOriginTypeDraft={setOriginTypeDraft}
-              setOriginUrlDraft={setOriginUrlDraft}
-            />
-            <div style={{ marginTop: 12 }}>
-              <SourceStep2Section
+  const showLog = running || logOpen;
+
+  return (
+    <div style={lgStyles.pageRoot}>
+      <div style={lgStyles.pageFrame}>
+        <div style={lgStyles.pageHeader}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+            <div
+              style={{
+                ...lgStyles.headerIcon,
+                color: "#f59e0b",
+                border: "1px solid rgba(245, 158, 11, 0.32)",
+                boxShadow: "0 14px 30px rgba(245, 158, 11, 0.14)",
+              }}
+            >
+              {Ic.globe(24)}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  flexWrap: "wrap",
+                  marginBottom: 4,
+                }}
+              >
+                <h1 style={lgStyles.title}>Source Acquisition</h1>
+                <span style={sourceBadge(sourceInWorkspace, running)}>{statusLabel}</span>
+              </div>
+              <p style={lgStyles.subtitle}>
+                Choose an acquisition path, load source into the workspace, then confirm snapshot
+                behavior.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div style={lgStyles.mainGrid}>
+          <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
+            <div style={lgStyles.sectionBody}>
+              <div style={lgStyles.sectionHeader}>
+                <div
+                  style={{
+                    ...lgStyles.sectionIcon,
+                    color: "#f59e0b",
+                    border: "1px solid rgba(245, 158, 11, 0.28)",
+                  }}
+                >
+                  {Ic.globe(19)}
+                </div>
+                <div>
+                  <h2 style={lgStyles.sectionTitle}>Source Configuration</h2>
+                  <div style={lgStyles.sectionSubtitle}>
+                    Three steps: choose, acquire, confirm snapshot
+                  </div>
+                </div>
+              </div>
+
+              <SourceAcquisitionCard
                 repoMode={repoMode}
+                sourceConfigLocked={sourceConfigLocked}
+                sourceInteractionLocked={sourceInteractionLocked}
                 sourceInWorkspace={sourceInWorkspace}
                 locked={locked}
-                sourceConfigLocked={sourceConfigLocked}
                 focusedField={focusedField}
                 originUrlDraft={originUrlDraft}
                 originTypeDraft={originTypeDraft}
@@ -145,14 +224,14 @@ export function SourceAcquisitionPage({
                 downloadLabel={downloadLabel}
                 workspaceSourceState={workspaceSourceState}
                 focus={focus}
+                onRepoModeChange={onRepoModeChange}
                 setOriginUrlDraft={setOriginUrlDraft}
                 setOriginTypeDraft={setOriginTypeDraft}
                 onDownloadSource={onDownloadSource}
                 onCancelSource={onCancelSource}
                 onWorkspaceUpload={onWorkspaceUpload}
               />
-            </div>
-            <div style={{ marginTop: 12 }}>
+
               <SourceStep3Section
                 step3Ready={step3Ready}
                 sourceIncludedEffective={sourceIncludedEffective}
@@ -167,25 +246,127 @@ export function SourceAcquisitionPage({
                 onGoAssemblyPage={onGoAssemblyPage}
                 onRemoveWorkspaceSource={onRemoveWorkspaceSource}
               />
+
+              <div style={lgContentCard()}>
+                <button
+                  type="button"
+                  onClick={() => setLogOpen((v) => !v)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    gap: 8,
+                  }}
+                >
+                  <span
+                    style={{
+                      ...lgStyles.label,
+                      gap: 8,
+                      color: running ? lgColors.blue : lgColors.text,
+                    }}
+                  >
+                    {running && (
+                      <span style={{ display: "flex", color: lgColors.blue }}>{Ic.loader(14)}</span>
+                    )}
+                    Acquisition log
+                    <span style={{ color: lgColors.textMuted, fontSize: 11, fontWeight: 400 }}>
+                      {running ? "Streaming" : log ? "Latest run" : "No runs yet"}
+                    </span>
+                  </span>
+                  <span style={{ color: lgColors.textMuted, display: "flex" }}>
+                    {showLog ? Ic.chevD(14) : Ic.chevR(14)}
+                  </span>
+                </button>
+                {showLog && (
+                  <div style={{ marginTop: 10 }}>
+                    <LogPanel log={log} running={running} />
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <AssemblyRunLogSection log={log} running={running} title="Source acquisition logs" />
+            <div style={lgStyles.footer}>
+              <span style={{ color: lgColors.textMuted, fontSize: 12 }} />
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => onGoAssemblyPage(PAGE.METADATA)}
+                  style={lgNextButton()}
+                >
+                  Next: Metadata {Ic.chevR(15)}
+                </button>
+              </div>
             </div>
+          </section>
 
-            <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-              <NextStepNudge stepKey={PAGE.SOURCE} badges={badges} onGo={onGoAssemblyPage} />
-            </div>
-          </div>
+          <aside style={lgStyles.aside}>
+            <section style={{ ...lgStyles.panel, padding: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <span style={{ color: "#f59e0b", display: "flex" }}>{Ic.globe(22)}</span>
+                <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Source Summary</h2>
+              </div>
+
+              <div style={lgStyles.summaryBox}>
+                <div style={lgStyles.overviewHeader}>
+                  <span style={lgStyles.overviewLabel}>Overview</span>
+                  <span style={sourceBadge(sourceInWorkspace, running)}>{statusLabel}</span>
+                </div>
+                <SummaryLine
+                  label="Method"
+                  value={repoMode === "upload" ? "Upload tarball" : "Origin URL"}
+                />
+                <SummaryLine label="Origin URL" value={ree.origin_url || "Not set"} />
+                <SummaryLine label="Origin type" value={ree.source_type || "Not set"} />
+                <SummaryLine
+                  label="Workspace"
+                  value={sourceInWorkspace ? "Source loaded" : "No source"}
+                />
+                <SummaryLine
+                  label="Acquired by"
+                  value={workspaceSourceState.sourceAcquiredBy || "—"}
+                />
+                <SummaryLine
+                  label="Include in REE"
+                  value={sourceInWorkspace ? (sourceIncludedEffective ? "Yes" : "No") : "—"}
+                />
+              </div>
+            </section>
+
+            <section style={{ ...lgStyles.panel, padding: 16 }}>
+              <div style={lgStyles.readinessHeader}>
+                <span>Acquisition Readiness</span>
+                <span style={{ color: lgColors.blue, fontFamily: F.mono }}>{readinessPct}%</span>
+              </div>
+              <div style={lgStyles.progressTrack}>
+                <div
+                  style={{
+                    ...lgStyles.progressFill,
+                    width: `${readinessPct}%`,
+                  }}
+                />
+              </div>
+              <div style={lgStyles.statGrid}>
+                <div style={lgReadout(lgStyles.statReadout)}>
+                  <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Required</span>
+                  <strong style={{ color: lgColors.text, fontSize: 18 }}>
+                    {readinessDone}/{readinessTotal}
+                  </strong>
+                </div>
+                <div style={lgReadout(lgStyles.statReadout)}>
+                  <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Source</span>
+                  <strong style={{ color: lgColors.text, fontSize: 18 }}>
+                    {sourceInWorkspace ? "✓" : "—"}
+                  </strong>
+                </div>
+              </div>
+            </section>
+          </aside>
         </div>
-
-        {focusedField && (
-          <FieldTipsSidebar
-            tipFields={["origin_url", "source_type", "sourceAcquiredBy", "sourceAvailable"]}
-            focusedField={focusedField}
-            onClear={() => onFocusedFieldChange(null)}
-          />
-        )}
       </div>
     </div>
   );

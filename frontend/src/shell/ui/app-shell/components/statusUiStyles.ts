@@ -150,21 +150,6 @@ export const assemblyToneSurfaceStyle = (tone: AssemblyTone): React.CSSPropertie
   color: WORKFLOW_TONE[tone].text,
 });
 
-export const sourceIncludedLabelStyle = (enabled: boolean): React.CSSProperties => ({
-  fontSize: 12,
-  fontWeight: 700,
-  color: enabled ? "#b45309" : C.textMid,
-  fontFamily: F.sans,
-});
-
-export const sourceClearButtonTone = (locked: boolean): React.CSSProperties => ({
-  border: "1.5px solid #fca5a5",
-  background: "#fee2e2",
-  color: "#991b1b",
-  cursor: locked ? "not-allowed" : "pointer",
-  opacity: locked ? 0.6 : 1,
-});
-
 export const runtimeFieldCardStyle = (isSet: boolean): React.CSSProperties => ({
   display: "flex",
   alignItems: "center",

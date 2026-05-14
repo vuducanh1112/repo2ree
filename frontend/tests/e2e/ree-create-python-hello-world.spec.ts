@@ -169,8 +169,8 @@ test("upload source archive into workspace", async ({ page }) => {
   ];
   const step3WorkspaceActions = page
     .locator("div")
-    .filter({ hasText: "Step 3: Workspace Actions" })
-    .filter({ hasText: "1/1" })
+    .filter({ hasText: "Workspace Snapshot" })
+    .filter({ hasText: /Browse workspace files/ })
     .first();
   const main = page.getByRole("main");
 
@@ -206,7 +206,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(
       step3WorkspaceActions.getByRole("button", { name: /Browse workspace files/i }),
     ).toBeVisible();
-    await expect(page.getByText("Source configuration is locked.")).toBeVisible();
+    await expect(page.getByText(/Configuration locked/)).toBeVisible();
     await expect(page.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
   });
 

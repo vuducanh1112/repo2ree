@@ -1,12 +1,10 @@
 import { Ic } from "../../../shared/components/Icon";
 import { Toggle } from "../../../shared/components/Toggle";
-import { C, F } from "../../../theme/theme";
-import { FieldSection } from "../../components/fieldTips";
-import { sourceClearButtonTone, sourceIncludedLabelStyle } from "../../components/statusUiStyles";
+import { lgColors, lgContentCard, lgGlassButton, lgStyles } from "../../../theme/lightGlassTheme";
+import { F } from "../../../theme/theme";
 import type { AppShellPage } from "../../state/pages";
 import { PAGE } from "../../state/pages";
 import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
-import { actionBtn } from "./SourceAcquisitionPageStyles";
 
 interface Step3Props {
   step3Ready: boolean;
@@ -25,55 +23,51 @@ interface Step3Props {
 
 export function SourceStep3Section(props: Step3Props) {
   return (
-    <FieldSection
-      title="Step 3: Workspace Actions"
-      filledCount={props.sourceInWorkspace ? 1 : 0}
-      totalCount={1}
-    >
+    <div style={lgContentCard()}>
+      <div style={{ ...lgStyles.label, marginBottom: 10 }}>Workspace Snapshot</div>
+
       {props.step3Ready ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "10px 0" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 10,
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <span style={sourceIncludedLabelStyle(props.sourceIncludedEffective)}>
-                Include snapshot in REE
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span
+              style={{
+                fontSize: 13,
+                fontFamily: F.sans,
+                color: lgColors.text,
+              }}
+            >
+              Include snapshot in REE
+            </span>
+            <Toggle
+              on={props.sourceIncludedEffective}
+              disabled={props.sourceIncludedLocked}
+              color="#0ea5e9"
+              onChange={props.onToggleSourceIncluded}
+              title={
+                props.sourceFromUpload
+                  ? "Uploads are always included in final REE to preserve source."
+                  : !props.sourceInWorkspace
+                    ? "Load source into workspace first"
+                    : props.sourceIncludedEffective
+                      ? "Source will be included in final REE"
+                      : "Source will be excluded from final REE"
+              }
+              width={36}
+              height={18}
+              knobSize={14}
+            />
+            {props.sourceFromUpload && (
+              <span style={lgStyles.helper}>
+                Uploaded source is always included to preserve reproducibility.
               </span>
-              <Toggle
-                on={props.sourceIncludedEffective}
-                disabled={props.sourceIncludedLocked}
-                color="#f59e0b"
-                onChange={props.onToggleSourceIncluded}
-                title={
-                  props.sourceFromUpload
-                    ? "Uploads are always included in final REE to preserve source."
-                    : !props.sourceInWorkspace
-                      ? "Load source into workspace first"
-                      : props.sourceIncludedEffective
-                        ? "Source will be included in final REE"
-                        : "Source will be excluded from final REE"
-                }
-                width={36}
-                height={18}
-                knobSize={14}
-              />
-              {props.sourceFromUpload && (
-                <span style={{ fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
-                  Uploaded source is always included so the archive remains reproducible.
-                </span>
-              )}
-            </div>
+            )}
           </div>
-          <div style={{ fontSize: 13, color: C.textMid, fontFamily: F.sans }}>
+
+          <div style={{ fontSize: 13, color: lgColors.textMid, fontFamily: F.sans }}>
             {props.acquisitionNarrative}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={() => {
@@ -81,17 +75,11 @@ export function SourceStep3Section(props: Step3Props) {
                 props.onGoAssemblyPage(PAGE.FILES);
               }}
               style={{
-                ...actionBtn({
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  cursor: "pointer",
-                }),
-                border: `1.5px solid ${C.border}`,
-                background: C.surface,
-                color: C.textMid,
+                ...lgGlassButton(),
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
               }}
-              title="Browse files"
             >
               {Ic.files(12)} Browse workspace files
             </button>
@@ -104,14 +92,20 @@ export function SourceStep3Section(props: Step3Props) {
                   props.onRemoveWorkspaceSource();
                 }}
                 style={{
-                  ...actionBtn({
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 7,
-                    padding: "8px 12px",
-                    fontWeight: 800,
-                  }),
-                  ...sourceClearButtonTone(props.locked),
+                  padding: "9px 14px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  fontFamily: F.sans,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  border: "1px solid rgba(251, 113, 133, 0.4)",
+                  background: props.locked
+                    ? "rgba(241, 245, 249, 0.72)"
+                    : "rgba(255, 241, 242, 0.82)",
+                  color: props.locked ? lgColors.textMuted : lgColors.danger,
+                  cursor: props.locked ? "not-allowed" : "pointer",
                 }}
               >
                 {Ic.x(12)} Clear workspace source
@@ -120,10 +114,10 @@ export function SourceStep3Section(props: Step3Props) {
           </div>
         </div>
       ) : (
-        <div style={{ padding: "10px 0", fontSize: 12, color: C.textMuted, fontFamily: F.sans }}>
-          Complete Step 2 to unlock this step.
+        <div style={lgStyles.helper}>
+          Complete the Source Snapshot step above to configure snapshot behavior.
         </div>
       )}
-    </FieldSection>
+    </div>
   );
 }
