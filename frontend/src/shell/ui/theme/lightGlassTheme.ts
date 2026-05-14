@@ -4,7 +4,7 @@ import { F } from "./tokens";
 
 type ActionTone = "neutral" | "primary" | "danger" | "success";
 
-export const LGC = {
+export const lgColors = {
   blue: "#0ea5e9",
   indigo: "#4f46e5",
   cyan: "#0891b2",
@@ -23,7 +23,7 @@ export const LGC = {
   white: "#fff",
 } as const;
 
-const LGB = {
+const lgBorders = {
   panel: "1px solid rgba(125, 211, 252, 0.58)",
   frame: "1px solid rgba(125, 211, 252, 0.48)",
   section: "1px solid rgba(125, 211, 252, 0.42)",
@@ -44,7 +44,7 @@ const LGB = {
   iconButton: "1px solid rgba(148, 163, 184, 0.35)",
 } as const;
 
-const LG_BG = {
+const lgBackgrounds = {
   page: "radial-gradient(circle at 80% 8%, rgba(14, 165, 233, 0.18), transparent 28%), radial-gradient(circle at 12% 18%, rgba(99, 102, 241, 0.12), transparent 24%), linear-gradient(135deg, #f8fbff 0%, #eef8ff 48%, #ffffff 100%)",
   frameGrid:
     "linear-gradient(rgba(14, 165, 233, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(14, 165, 233, 0.06) 1px, transparent 1px)",
@@ -69,17 +69,17 @@ const LG_BG = {
   ready: "rgba(220, 252, 231, 0.78)",
   draft: "rgba(254, 249, 195, 0.82)",
   progressTrack: "rgba(226, 232, 240, 0.76)",
-  next: `linear-gradient(135deg, ${LGC.blue}, ${LGC.indigo})`,
-  progress: `linear-gradient(90deg, ${LGC.cyan}, ${LGC.indigo})`,
+  next: `linear-gradient(135deg, ${lgColors.blue}, ${lgColors.indigo})`,
+  progress: `linear-gradient(90deg, ${lgColors.cyan}, ${lgColors.indigo})`,
   selectChevron:
     "linear-gradient(45deg, transparent 50%, #334155 50%), linear-gradient(135deg, #334155 50%, transparent 50%)",
 } as const;
 
-export const LGS = {
+export const lgStyles = {
   panel: {
-    border: LGB.panel,
+    border: lgBorders.panel,
     borderRadius: 12,
-    background: LG_BG.panel,
+    background: lgBackgrounds.panel,
     boxShadow: "0 24px 70px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.88)",
     backdropFilter: "blur(18px)",
   },
@@ -95,12 +95,12 @@ export const LGS = {
     gap: 6,
     fontSize: 12,
     fontWeight: 700,
-    color: LGC.text,
+    color: lgColors.text,
     fontFamily: F.sans,
   },
   helper: {
     fontSize: 11,
-    color: LGC.textMuted,
+    color: lgColors.textMuted,
     lineHeight: 1.4,
     fontFamily: F.sans,
   },
@@ -109,17 +109,17 @@ export const LGS = {
     minHeight: 0,
     overflow: "auto",
     padding: 24,
-    color: LGC.text,
-    background: LG_BG.page,
+    color: lgColors.text,
+    background: lgBackgrounds.page,
     fontFamily: F.sans,
   },
   pageFrame: {
     minHeight: "100%",
-    border: LGB.frame,
+    border: lgBorders.frame,
     borderRadius: 14,
-    backgroundImage: LG_BG.frameGrid,
+    backgroundImage: lgBackgrounds.frameGrid,
     backgroundSize: "22px 22px",
-    backgroundColor: LG_BG.frame,
+    backgroundColor: lgBackgrounds.frame,
     boxShadow: "inset 0 0 80px rgba(14, 165, 233, 0.07)",
     padding: 22,
   },
@@ -139,22 +139,22 @@ export const LGS = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: LGC.cyan,
-    background: LG_BG.icon,
+    color: lgColors.cyan,
+    background: lgBackgrounds.icon,
     border: "1px solid rgba(14, 165, 233, 0.32)",
     boxShadow: "0 14px 30px rgba(14, 165, 233, 0.16)",
     flexShrink: 0,
   },
   title: {
     margin: 0,
-    color: LGC.text,
+    color: lgColors.text,
     fontSize: 21,
     lineHeight: 1.2,
     fontWeight: 800,
   },
   subtitle: {
     margin: 0,
-    color: LGC.textMid,
+    color: lgColors.textMid,
     fontSize: 13,
     lineHeight: 1.45,
   },
@@ -180,17 +180,17 @@ export const LGS = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: LGC.blue,
-    border: LGB.sectionStrong,
-    background: LG_BG.iconSoft,
+    color: lgColors.blue,
+    border: lgBorders.sectionStrong,
+    background: lgBackgrounds.iconSoft,
   },
   sectionTitle: {
     margin: 0,
     fontSize: 18,
-    color: LGC.text,
+    color: lgColors.text,
   },
   sectionSubtitle: {
-    color: LGC.textMuted,
+    color: lgColors.textMuted,
     fontSize: 12,
   },
   fieldsGrid: {
@@ -198,29 +198,15 @@ export const LGS = {
     gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
     gap: 18,
   },
-  contentCard: {
-    marginTop: 12,
-    border: LGB.section,
-    borderRadius: 8,
-    background: LG_BG.glass,
-    padding: 12,
-  },
-  firstContentCard: {
-    marginTop: 18,
-    border: LGB.section,
-    borderRadius: 8,
-    background: LG_BG.glass,
-    padding: 12,
-  },
   chip: {
     display: "inline-flex",
     alignItems: "center",
     gap: 5,
-    border: LGB.chip,
+    border: lgBorders.chip,
     borderRadius: 6,
     padding: "5px 8px",
-    color: LGC.chipText,
-    background: LG_BG.chip,
+    color: lgColors.chipText,
+    background: lgBackgrounds.chip,
     fontSize: 12,
     fontFamily: F.sans,
     maxWidth: "100%",
@@ -244,9 +230,9 @@ export const LGS = {
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 999,
-    border: LGB.iconButton,
-    background: LG_BG.glassStrong,
-    color: LGC.textMid,
+    border: lgBorders.iconButton,
+    background: lgBackgrounds.glassStrong,
+    color: lgColors.textMid,
     cursor: "pointer",
     padding: 0,
   },
@@ -272,7 +258,7 @@ export const LGS = {
     justifyContent: "space-between",
     borderTop: "1px solid rgba(125, 211, 252, 0.38)",
     padding: "14px 22px",
-    background: LG_BG.footer,
+    background: lgBackgrounds.footer,
     flexWrap: "wrap",
   },
   aside: {
@@ -281,10 +267,10 @@ export const LGS = {
     gap: 12,
   },
   summaryBox: {
-    border: LGB.section,
+    border: lgBorders.section,
     borderRadius: 9,
     padding: 14,
-    background: LG_BG.readout,
+    background: lgBackgrounds.readout,
     display: "flex",
     flexDirection: "column",
     gap: 14,
@@ -295,7 +281,7 @@ export const LGS = {
     gap: 10,
   },
   overviewLabel: {
-    color: LGC.overview,
+    color: lgColors.overview,
     fontSize: 11,
     fontWeight: 800,
     letterSpacing: 0.5,
@@ -307,7 +293,7 @@ export const LGS = {
     gap: 6,
     fontSize: 12,
     fontWeight: 700,
-    color: LGC.text,
+    color: lgColors.text,
     fontFamily: F.sans,
     justifyContent: "space-between",
     marginBottom: 10,
@@ -315,14 +301,14 @@ export const LGS = {
   progressTrack: {
     height: 8,
     borderRadius: 99,
-    background: LG_BG.progressTrack,
+    background: lgBackgrounds.progressTrack,
     overflow: "hidden",
-    border: LGB.progress,
+    border: lgBorders.progress,
   },
   progressFill: {
     height: "100%",
     borderRadius: 99,
-    background: LG_BG.progress,
+    background: lgBackgrounds.progress,
     boxShadow: "0 0 16px rgba(14, 165, 233, 0.28)",
     transition: "width 0.25s ease",
   },
@@ -333,6 +319,7 @@ export const LGS = {
     gap: 8,
   },
   statReadout: {
+    display: "flex",
     minHeight: 62,
     flexDirection: "column",
     alignItems: "flex-start",
@@ -343,10 +330,10 @@ export const LGS = {
     marginBottom: 10,
   },
   contributorCard: {
-    border: LGB.row,
+    border: lgBorders.row,
     borderRadius: 8,
     padding: "8px 10px",
-    background: LG_BG.row,
+    background: lgBackgrounds.row,
   },
   contributorHeader: {
     display: "flex",
@@ -377,14 +364,14 @@ export const LGS = {
 export function lgInput(locked: boolean, active = false): React.CSSProperties {
   return {
     width: "100%",
-    border: `1px solid ${active ? LGB.inputActive : LGB.input}`,
+    border: `1px solid ${active ? lgBorders.inputActive : lgBorders.input}`,
     borderRadius: 8,
     padding: "12px 13px",
     minHeight: 42,
     fontSize: 14,
     fontFamily: F.sans,
-    color: locked ? LGC.textMuted : LGC.text,
-    background: locked ? LG_BG.disabled : LG_BG.input,
+    color: locked ? lgColors.textMuted : lgColors.text,
+    background: locked ? lgBackgrounds.disabled : lgBackgrounds.input,
     boxShadow: active
       ? "0 0 0 3px rgba(14, 165, 233, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.92)"
       : "inset 0 1px 0 rgba(255, 255, 255, 0.92)",
@@ -399,7 +386,7 @@ export function lgReadout(extra: React.CSSProperties = {}): React.CSSProperties 
     display: "flex",
     alignItems: "center",
     gap: 8,
-    color: LGC.textMid,
+    color: lgColors.textMid,
     ...extra,
   };
 }
@@ -408,23 +395,23 @@ export function lgActionButton(tone: ActionTone, disabled = false): React.CSSPro
   const tones = {
     neutral: {
       border: "rgba(148, 163, 184, 0.34)",
-      background: LG_BG.glassStrong,
-      color: LGC.textMid,
+      background: lgBackgrounds.glassStrong,
+      color: lgColors.textMid,
     },
     primary: {
       border: "rgba(14, 165, 233, 0.35)",
-      background: LG_BG.primary,
-      color: LGC.primaryDeep,
+      background: lgBackgrounds.primary,
+      color: lgColors.primaryDeep,
     },
     danger: {
       border: "rgba(251, 113, 133, 0.4)",
-      background: LG_BG.danger,
-      color: LGC.danger,
+      background: lgBackgrounds.danger,
+      color: lgColors.danger,
     },
     success: {
       border: "rgba(34, 197, 94, 0.36)",
-      background: LG_BG.success,
-      color: LGC.success,
+      background: lgBackgrounds.success,
+      color: lgColors.success,
     },
   }[tone];
 
@@ -435,8 +422,8 @@ export function lgActionButton(tone: ActionTone, disabled = false): React.CSSPro
     padding: 0,
     border: `1px solid ${tones.border}`,
     borderRadius: 8,
-    background: disabled ? LG_BG.disabled : tones.background,
-    color: disabled ? LGC.textMuted : tones.color,
+    background: disabled ? lgBackgrounds.disabled : tones.background,
+    color: disabled ? lgColors.textMuted : tones.color,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
@@ -447,11 +434,11 @@ export function lgActionButton(tone: ActionTone, disabled = false): React.CSSPro
 
 export function lgStatusBadge(ready: boolean): React.CSSProperties {
   return {
-    border: ready ? LGB.successStrong : LGB.warning,
+    border: ready ? lgBorders.successStrong : lgBorders.warning,
     borderRadius: 99,
     padding: "3px 8px",
-    color: ready ? LGC.success : LGC.warning,
-    background: ready ? LG_BG.ready : LG_BG.draft,
+    color: ready ? lgColors.success : lgColors.warning,
+    background: ready ? lgBackgrounds.ready : lgBackgrounds.draft,
     fontSize: 11,
     fontWeight: 700,
   };
@@ -462,10 +449,10 @@ export function lgCorrespondingBadge(): React.CSSProperties {
     display: "inline-flex",
     alignItems: "center",
     gap: 5,
-    border: LGB.success,
+    border: lgBorders.success,
     borderRadius: 999,
-    background: LG_BG.successStrong,
-    color: LGC.success,
+    background: lgBackgrounds.successStrong,
+    color: lgColors.success,
     padding: "3px 8px",
     fontSize: 11,
     fontWeight: 700,
@@ -476,11 +463,11 @@ export function lgCorrespondingBadge(): React.CSSProperties {
 export function lgNextButton(): React.CSSProperties {
   return {
     ...S_ACTION_BUTTON_BASE,
-    border: LGB.actionNext,
+    border: lgBorders.actionNext,
     borderRadius: 8,
     padding: "10px 18px",
-    color: LGC.white,
-    background: LG_BG.next,
+    color: lgColors.white,
+    background: lgBackgrounds.next,
     fontWeight: 800,
     display: "flex",
     alignItems: "center",
@@ -493,9 +480,9 @@ export function lgNextButton(): React.CSSProperties {
 export function lgGlassButton(): React.CSSProperties {
   return {
     ...S_ACTION_BUTTON_BASE,
-    border: LGB.actionPrimary,
-    background: LG_BG.primary,
-    color: LGC.primaryDeep,
+    border: lgBorders.actionPrimary,
+    background: lgBackgrounds.primary,
+    color: lgColors.primaryDeep,
     borderRadius: 8,
     padding: "9px 14px",
     fontWeight: 700,
@@ -503,12 +490,22 @@ export function lgGlassButton(): React.CSSProperties {
   };
 }
 
+export function lgContentCard(marginTop = 12): React.CSSProperties {
+  return {
+    marginTop,
+    border: lgBorders.section,
+    borderRadius: 8,
+    background: lgBackgrounds.glass,
+    padding: 12,
+  };
+}
+
 export function lgSuggestionButton(): React.CSSProperties {
   return {
     ...S_ACTION_BUTTON_BASE,
-    border: LGB.suggestion,
-    background: LG_BG.suggestion,
-    color: LGC.suggestionText,
+    border: lgBorders.suggestion,
+    background: lgBackgrounds.suggestion,
+    color: lgColors.suggestionText,
     borderRadius: 999,
     padding: "5px 10px",
     fontSize: 12,

@@ -13,15 +13,16 @@ import type { ReeContributor } from "../../../../../core/ree/ReeSpec";
 import { Ic } from "../../../shared/components/Icon";
 import { useFocusScroll } from "../../../shared/hooks/useFocusScroll";
 import {
-  LGC,
-  LGS,
   lgActionButton,
+  lgColors,
+  lgContentCard,
   lgCorrespondingBadge,
   lgGlassButton,
   lgInput,
   lgNextButton,
   lgReadout,
   lgStatusBadge,
+  lgStyles,
   lgSuggestionButton,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
@@ -41,20 +42,20 @@ function MetadataField({
   children: React.ReactNode;
 }) {
   return (
-    <div style={LGS.fieldFrame}>
-      <span style={LGS.label}>
+    <div style={lgStyles.fieldFrame}>
+      <span style={lgStyles.label}>
         {label}
-        {required && <span style={{ color: LGC.required }}>*</span>}
-        <span style={{ color: LGC.blue, display: "flex" }}>{Ic.info(12)}</span>
+        {required && <span style={{ color: lgColors.required }}>*</span>}
+        <span style={{ color: lgColors.blue, display: "flex" }}>{Ic.info(12)}</span>
       </span>
       {children}
-      {help && <span style={LGS.helper}>{help}</span>}
+      {help && <span style={lgStyles.helper}>{help}</span>}
     </div>
   );
 }
 
 function MetadataChip({ children }: { children: React.ReactNode }) {
-  return <span style={LGS.chip}>{children}</span>;
+  return <span style={lgStyles.chip}>{children}</span>;
 }
 
 const KEYWORD_SUGGESTIONS = [
@@ -69,11 +70,11 @@ const KEYWORD_SUGGESTIONS = [
 function SummaryLine({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <span style={{ fontSize: 11, color: LGC.textMuted, fontFamily: F.sans }}>{label}</span>
+      <span style={{ fontSize: 11, color: lgColors.textMuted, fontFamily: F.sans }}>{label}</span>
       <span
         style={{
           fontSize: 13,
-          color: LGC.text,
+          color: lgColors.text,
           fontFamily: F.sans,
           lineHeight: 1.35,
           overflowWrap: "anywhere",
@@ -217,11 +218,11 @@ export function PageMetadataEntry({
   };
 
   return (
-    <div style={LGS.pageRoot}>
-      <div style={LGS.pageFrame}>
-        <div style={LGS.pageHeader}>
+    <div style={lgStyles.pageRoot}>
+      <div style={lgStyles.pageFrame}>
+        <div style={lgStyles.pageHeader}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-            <div style={LGS.headerIcon}>{Ic.grid(24)}</div>
+            <div style={lgStyles.headerIcon}>{Ic.grid(24)}</div>
             <div style={{ minWidth: 0 }}>
               <div
                 style={{
@@ -232,12 +233,12 @@ export function PageMetadataEntry({
                   marginBottom: 4,
                 }}
               >
-                <h1 style={LGS.title}>Metadata</h1>
+                <h1 style={lgStyles.title}>Metadata</h1>
                 <span style={lgStatusBadge(identityFilled)}>
                   {identityFilled ? "Ready" : "Draft"}
                 </span>
               </div>
-              <p style={LGS.subtitle}>
+              <p style={lgStyles.subtitle}>
                 Provide the identity details that follow this Reusable Execution Environment through
                 the assembly workflow.
               </p>
@@ -267,18 +268,18 @@ export function PageMetadataEntry({
           ) : null}
         </div>
 
-        <div style={LGS.mainGrid}>
-          <section style={{ ...LGS.panel, overflow: "hidden" }}>
-            <div style={LGS.sectionBody}>
-              <div style={LGS.sectionHeader}>
-                <div style={LGS.sectionIcon}>{Ic.file(19)}</div>
+        <div style={lgStyles.mainGrid}>
+          <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
+            <div style={lgStyles.sectionBody}>
+              <div style={lgStyles.sectionHeader}>
+                <div style={lgStyles.sectionIcon}>{Ic.file(19)}</div>
                 <div>
-                  <h2 style={LGS.sectionTitle}>Metadata Entry</h2>
-                  <div style={LGS.sectionSubtitle}>Stable naming and provenance context</div>
+                  <h2 style={lgStyles.sectionTitle}>Metadata Entry</h2>
+                  <div style={lgStyles.sectionSubtitle}>Stable naming and provenance context</div>
                 </div>
               </div>
 
-              <div style={LGS.fieldsGrid}>
+              <div style={lgStyles.fieldsGrid}>
                 <MetadataField
                   label="REE Name"
                   required
@@ -357,17 +358,17 @@ export function PageMetadataEntry({
                 </MetadataField>
               </div>
 
-              <div style={LGS.firstContentCard}>
-                <div style={{ ...LGS.label, marginBottom: 10 }}>Keywords</div>
-                <div style={LGS.chipRow}>
+              <div style={lgContentCard(18)}>
+                <div style={{ ...lgStyles.label, marginBottom: 10 }}>Keywords</div>
+                <div style={lgStyles.chipRow}>
                   {keywords.map((keyword) => (
-                    <span key={keyword} style={LGS.inlineChipWrap}>
+                    <span key={keyword} style={lgStyles.inlineChipWrap}>
                       <MetadataChip>{keyword}</MetadataChip>
                       {!locked && (
                         <button
                           type="button"
                           onClick={() => removeKeyword(keyword)}
-                          style={LGS.iconRemoveSmall}
+                          style={lgStyles.iconRemoveSmall}
                           aria-label={`Remove keyword ${keyword}`}
                         >
                           {Ic.x(12)}
@@ -377,8 +378,8 @@ export function PageMetadataEntry({
                   ))}
                 </div>
                 {!locked && (
-                  <div style={LGS.keywordControls}>
-                    <div style={LGS.flexWrapRow}>
+                  <div style={lgStyles.keywordControls}>
+                    <div style={lgStyles.flexWrapRow}>
                       <input
                         value={pendingKeyword}
                         onChange={(event) => setPendingKeyword(event.target.value)}
@@ -400,7 +401,7 @@ export function PageMetadataEntry({
                       </button>
                     </div>
                     {availableSuggestions.length > 0 && (
-                      <div style={LGS.suggestionWrap}>
+                      <div style={lgStyles.suggestionWrap}>
                         {availableSuggestions.map((keyword) => (
                           <button
                             key={keyword}
@@ -415,23 +416,28 @@ export function PageMetadataEntry({
                     )}
                   </div>
                 )}
-                {locked && <div style={LGS.helper}>Unlock fields to add or remove keywords.</div>}
+                {locked && (
+                  <div style={lgStyles.helper}>Unlock fields to add or remove keywords.</div>
+                )}
                 {keywords.length === 0 && (
-                  <div style={LGS.helper}>
+                  <div style={lgStyles.helper}>
                     No keywords yet. Add at least one for discoverability.
                   </div>
                 )}
               </div>
 
-              <div style={LGS.contentCard}>
-                <div style={{ ...LGS.label, marginBottom: 10 }}>Contributors</div>
+              <div style={lgContentCard()}>
+                <div style={{ ...lgStyles.label, marginBottom: 10 }}>Contributors</div>
 
                 {contributors.length > 0 && (
-                  <div style={LGS.contributorList}>
+                  <div style={lgStyles.contributorList}>
                     {contributors.map((contributor) => (
-                      <div key={`${contributor.identifier}-detail`} style={LGS.contributorCard}>
-                        <div style={LGS.contributorHeader}>
-                          <strong style={{ color: LGC.text, fontSize: 13 }}>
+                      <div
+                        key={`${contributor.identifier}-detail`}
+                        style={lgStyles.contributorCard}
+                      >
+                        <div style={lgStyles.contributorHeader}>
+                          <strong style={{ color: lgColors.text, fontSize: 13 }}>
                             {contributor.name}
                           </strong>
                           {correspondingAuthor === contributor.identifier && (
@@ -439,7 +445,7 @@ export function PageMetadataEntry({
                           )}
                         </div>
                         {editingContributorId === contributor.identifier ? (
-                          <div style={LGS.contributorFieldsGrid}>
+                          <div style={lgStyles.contributorFieldsGrid}>
                             <input
                               value={contributorDraft.identifier}
                               onChange={(event) =>
@@ -486,25 +492,28 @@ export function PageMetadataEntry({
                             />
                           </div>
                         ) : (
-                          <div style={LGS.contributorFieldsGrid}>
-                            <div style={LGS.helper}>
-                              <strong style={{ color: LGC.text }}>Identifier:</strong>{" "}
+                          <div style={lgStyles.contributorFieldsGrid}>
+                            <div style={lgStyles.helper}>
+                              <strong style={{ color: lgColors.text }}>Identifier:</strong>{" "}
                               {contributor.identifier}
                             </div>
-                            <div style={LGS.helper}>
-                              <strong style={{ color: LGC.text }}>Name:</strong> {contributor.name}
+                            <div style={lgStyles.helper}>
+                              <strong style={{ color: lgColors.text }}>Name:</strong>{" "}
+                              {contributor.name}
                             </div>
-                            <div style={LGS.helper}>
-                              <strong style={{ color: LGC.text }}>Affiliation Name:</strong>{" "}
+                            <div style={lgStyles.helper}>
+                              <strong style={{ color: lgColors.text }}>Affiliation Name:</strong>{" "}
                               {contributor.affiliation_name || "Not set"}
                             </div>
-                            <div style={LGS.helper}>
-                              <strong style={{ color: LGC.text }}>Affiliation Identifier:</strong>{" "}
+                            <div style={lgStyles.helper}>
+                              <strong style={{ color: lgColors.text }}>
+                                Affiliation Identifier:
+                              </strong>{" "}
                               {contributor.affiliation_identifier || "Not set"}
                             </div>
                           </div>
                         )}
-                        <div style={LGS.contributorActions}>
+                        <div style={lgStyles.contributorActions}>
                           {editingContributorId === contributor.identifier ? (
                             <>
                               <button
@@ -586,7 +595,7 @@ export function PageMetadataEntry({
                   </div>
                 )}
                 {!locked && (
-                  <div style={LGS.contributorAddGrid}>
+                  <div style={lgStyles.contributorAddGrid}>
                     <input
                       value={pendingContributor.identifier}
                       onChange={(event) =>
@@ -644,7 +653,7 @@ export function PageMetadataEntry({
                   </div>
                 )}
                 {contributorAddError && (
-                  <div style={{ ...LGS.helper, color: LGC.danger, marginTop: 8 }}>
+                  <div style={{ ...lgStyles.helper, color: lgColors.danger, marginTop: 8 }}>
                     {contributorAddError}
                   </div>
                 )}
@@ -655,13 +664,15 @@ export function PageMetadataEntry({
                     </button>
                   </div>
                 )}
-                {contributors.length === 0 && <div style={LGS.helper}>No contributors yet.</div>}
+                {contributors.length === 0 && (
+                  <div style={lgStyles.helper}>No contributors yet.</div>
+                )}
               </div>
             </div>
 
-            <div style={LGS.footer}>
-              <span style={{ color: LGC.textMuted, fontSize: 12 }}>
-                <span style={{ color: LGC.required }}>*</span> Required fields
+            <div style={lgStyles.footer}>
+              <span style={{ color: lgColors.textMuted, fontSize: 12 }}>
+                <span style={{ color: lgColors.required }}>*</span> Required fields
               </span>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button
@@ -675,16 +686,16 @@ export function PageMetadataEntry({
             </div>
           </section>
 
-          <aside style={LGS.aside}>
-            <section style={{ ...LGS.panel, padding: 16 }}>
+          <aside style={lgStyles.aside}>
+            <section style={{ ...lgStyles.panel, padding: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <span style={{ color: LGC.cyan, display: "flex" }}>{Ic.package(22)}</span>
-                <h2 style={{ margin: 0, fontSize: 15, color: LGC.text }}>REE Summary</h2>
+                <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.package(22)}</span>
+                <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>REE Summary</h2>
               </div>
 
-              <div style={LGS.summaryBox}>
-                <div style={LGS.overviewHeader}>
-                  <span style={LGS.overviewLabel}>Overview</span>
+              <div style={lgStyles.summaryBox}>
+                <div style={lgStyles.overviewHeader}>
+                  <span style={lgStyles.overviewLabel}>Overview</span>
                   <span style={lgStatusBadge(identityFilled)}>
                     {identityFilled ? "Live" : "Needs name"}
                   </span>
@@ -716,37 +727,39 @@ export function PageMetadataEntry({
               </div>
             </section>
 
-            <section style={{ ...LGS.panel, padding: 16 }}>
-              <div style={LGS.readinessHeader}>
+            <section style={{ ...lgStyles.panel, padding: 16 }}>
+              <div style={lgStyles.readinessHeader}>
                 <span>Metadata Readiness</span>
-                <span style={{ color: LGC.blue, fontFamily: F.mono }}>{completionPct}%</span>
+                <span style={{ color: lgColors.blue, fontFamily: F.mono }}>{completionPct}%</span>
               </div>
-              <div style={LGS.progressTrack}>
+              <div style={lgStyles.progressTrack}>
                 <div
                   style={{
-                    ...LGS.progressFill,
+                    ...lgStyles.progressFill,
                     width: `${completionPct}%`,
                   }}
                 />
               </div>
-              <div style={LGS.statGrid}>
+              <div style={lgStyles.statGrid}>
                 <div
                   style={{
-                    ...lgReadout(LGS.statReadout),
+                    ...lgReadout(lgStyles.statReadout),
                   }}
                 >
-                  <span style={{ color: LGC.textMuted, fontSize: 11 }}>Required</span>
-                  <strong style={{ color: LGC.text, fontSize: 18 }}>
+                  <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Required</span>
+                  <strong style={{ color: lgColors.text, fontSize: 18 }}>
                     {requiredDone}/{requiredTotal}
                   </strong>
                 </div>
                 <div
                   style={{
-                    ...lgReadout(LGS.statReadout),
+                    ...lgReadout(lgStyles.statReadout),
                   }}
                 >
-                  <span style={{ color: LGC.textMuted, fontSize: 11 }}>Context</span>
-                  <strong style={{ color: LGC.text, fontSize: 18 }}>{completionCount}/5</strong>
+                  <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Context</span>
+                  <strong style={{ color: lgColors.text, fontSize: 18 }}>
+                    {completionCount}/5
+                  </strong>
                 </div>
               </div>
             </section>
