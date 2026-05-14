@@ -88,115 +88,28 @@ def _docker_sync_workspace_from_container(
     run_id: str,
 ) -> bool:
     _append_run_log(
-        ree_id, run_id, "system", "info", "Syncing container workspace changes to host"
+        ree_id, run_id, "system", "info", "Syncing container workspace to host"
     )
 
-    diff_cmd = [docker_bin, "diff", container_name]
+    cp_cmd = [docker_bin, "cp", f"{container_name}:/workspace/.", str(workspace_path)]
     _append_run_log(
         ree_id,
         run_id,
         "system",
         "info",
-        "$ " + " ".join(shlex.quote(t) for t in diff_cmd),
+        "$ " + " ".join(shlex.quote(t) for t in cp_cmd),
     )
-    diff_result = subprocess.run(diff_cmd, capture_output=True, text=True)
-    if diff_result.returncode != 0:
+    cp_result = subprocess.run(cp_cmd, capture_output=True, text=True)
+    if cp_result.returncode != 0:
         _append_run_log(
-            ree_id, run_id, "system", "error", "Failed to get container diff"
+            ree_id, run_id, "system", "error", "Failed to copy workspace from container"
         )
-        for line in diff_result.stderr.splitlines():
+        for line in cp_result.stderr.splitlines():
             if line.strip():
                 _append_run_log(ree_id, run_id, "stderr", "warn", line)
         return False
 
-    workspace_prefix = "/workspace"
-    changed_in_container: list[str] = []  # absolute container paths (A or C)
-
-    for line in diff_result.stdout.splitlines():
-        if len(line) < 3:
-            continue
-        kind, container_path = line[0], line[2:]
-        if not (
-            container_path == workspace_prefix
-            or container_path.startswith(workspace_prefix + "/")
-        ):
-            continue
-        rel = container_path[len(workspace_prefix) :].lstrip("/")
-        if not rel:
-            continue
-        if kind in ("A", "C"):
-            changed_in_container.append(container_path)
-
-    if not changed_in_container:
-        _append_run_log(ree_id, run_id, "system", "info", "Sync complete: 0 changed")
-        return True
-
-    # Classify each changed path as file or directory in one exec call.
-    # Output format: <type>\t<path> — tab-separated to handle spaces in paths.
-    stat_cmd = [
-        docker_bin,
-        "exec",
-        "-i",
-        container_name,
-        "sh",
-        "-c",
-        "while IFS= read -r p; do"
-        '  t=$(stat -c \'%F\' "$p" 2>/dev/null) && printf \'%s\\t%s\\n\' "$t" "$p" || true;'
-        " done",
-    ]
-    stat_result = subprocess.run(
-        stat_cmd,
-        input="\n".join(changed_in_container),
-        capture_output=True,
-        text=True,
-    )
-
-    file_paths: list[str] = []
-    dir_paths: list[str] = []
-    for line in stat_result.stdout.splitlines():
-        if "\t" not in line:
-            continue
-        kind, container_path = line.split("\t", 1)
-        if kind in ("regular file", "regular empty file", "symbolic link"):
-            file_paths.append(container_path)
-        elif kind == "directory":
-            dir_paths.append(container_path)
-
-    for container_path in dir_paths:
-        rel = container_path[len(workspace_prefix) :].lstrip("/")
-        (workspace_path / rel).mkdir(parents=True, exist_ok=True)
-
-    for container_path in file_paths:
-        rel = container_path[len(workspace_prefix) :].lstrip("/")
-        host_path = workspace_path / rel
-        host_path.parent.mkdir(parents=True, exist_ok=True)
-        cp_cmd = [
-            docker_bin,
-            "cp",
-            f"{container_name}:{container_path}",
-            str(host_path),
-        ]
-        cp_result = subprocess.run(cp_cmd, capture_output=True, text=True)
-        if cp_result.returncode != 0:
-            _append_run_log(
-                ree_id,
-                run_id,
-                "system",
-                "error",
-                f"Failed to copy {rel} from container",
-            )
-            for line in cp_result.stderr.splitlines():
-                if line.strip():
-                    _append_run_log(ree_id, run_id, "stderr", "warn", line)
-            return False
-
-    _append_run_log(
-        ree_id,
-        run_id,
-        "system",
-        "info",
-        f"Sync complete: {len(file_paths)} file(s), {len(dir_paths)} dir(s) changed",
-    )
+    _append_run_log(ree_id, run_id, "system", "info", "Sync complete")
     return True
 
 
