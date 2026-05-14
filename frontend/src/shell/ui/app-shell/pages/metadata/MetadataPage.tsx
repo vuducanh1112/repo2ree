@@ -161,10 +161,7 @@ export function PageMetadataEntry({
       setContributorAddError(result.error);
       return;
     }
-    onReeChange((current) => {
-      const currentResult = addCatalogContributor(current, pendingContributor);
-      return currentResult.ok ? currentResult.spec : current;
-    });
+    onReeChange(() => result.spec);
     setPendingContributor({
       identifier: "",
       name: "",
@@ -195,14 +192,7 @@ export function PageMetadataEntry({
       setContributorAddError(result.error);
       return;
     }
-    onReeChange((current) => {
-      const currentResult = updateCatalogContributor(
-        current,
-        editingContributorId,
-        contributorDraft,
-      );
-      return currentResult.ok ? currentResult.spec : current;
-    });
+    onReeChange(() => result.spec);
     setContributorAddError("");
     setEditingContributorId(null);
   };
@@ -244,28 +234,6 @@ export function PageMetadataEntry({
               </p>
             </div>
           </div>
-
-          {locked ? (
-            <button
-              type="button"
-              onClick={() => onLockedChange(false)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 12px",
-                ...assemblyToneSurfaceStyle("warn"),
-                borderRadius: 8,
-                cursor: "pointer",
-                fontSize: 13,
-                fontFamily: F.sans,
-                fontWeight: 700,
-                flexShrink: 0,
-              }}
-            >
-              {Ic.unlock(13)} Unlock fields
-            </button>
-          ) : null}
         </div>
 
         <div style={lgStyles.mainGrid}>
