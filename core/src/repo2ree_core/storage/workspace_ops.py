@@ -46,10 +46,17 @@ from repo2ree_core.storage.layout import (
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.storage.tree import copy_tree_contents
 from repo2ree_core.workspace.bundle import (
-    BundleCandidate,
+    REE_ARTIFACTS_PREFIX,
+    REE_MANIFEST_ENTRY_PATH,
+    REE_OVERLAY_PREFIX,
+    REE_SNAPSHOT_ENTRY_PATH,
+    REE_WORKSPACE_DIR_ENTRY,
+    ArtifactPlan,
     build_zip_bytes,
-    plan_bundle_entries,
+    plan_artifact_layout,
+    rewrite_manifest_for_bundle,
     safe_filename,
+    should_include_snapshot,
 )
 from repo2ree_core.workspace.inventory import (
     classify_file_kind,
@@ -57,7 +64,15 @@ from repo2ree_core.workspace.inventory import (
     is_reserved_workspace_filename,
     should_inline_file_content,
 )
-from repo2ree_core.workspace.manifest import build_manifest_payload
+
+
+# Deferred import to break the storage → workspace_ops → manifest → storage cycle.
+def _build_manifest_payload(
+    metadata: dict[str, Any], ree: REE, *, ree_id: str
+) -> dict[str, Any]:
+    from repo2ree_core.workspace.manifest import build_manifest_payload
+
+    return build_manifest_payload(metadata, ree, ree_id=ree_id)
 
 
 # Fields the caller may patch; backend-managed ones are excluded.
@@ -155,12 +170,95 @@ def _write_metadata(
     return metadata
 
 
+def _list_tree_relpaths(root: Path) -> list[str]:
+    """Sorted POSIX relative paths of every file beneath ``root`` (shell)."""
+    if not root.is_dir():
+        return []
+    return sorted(
+        fp.relative_to(root).as_posix() for fp in root.rglob("*") if fp.is_file()
+    )
+
+
+def _build_artifact_plan(layout: ReeLayout, ree: REE) -> ArtifactPlan:
+    """Snapshot disk state and delegate layout decisions to the pure planner."""
+    workspace_files = frozenset(_list_tree_relpaths(layout.workspace))
+    on_disk_artifacts = _list_tree_relpaths(layout.artifacts)
+    return plan_artifact_layout(
+        on_disk_artifact_relpaths=on_disk_artifacts,
+        workspace_runtime_path=ree.runtime,
+        workspace_sbom_path=ree.sbom,
+        workspace_files=workspace_files,
+        runtime_included=ree.runtime_included,
+    )
+
+
+def _bundle_archive_paths(
+    layout: ReeLayout, artifact_plan: ArtifactPlan, *, include_snapshot: bool
+) -> list[str]:
+    """Archive paths that would appear in the bundle, without reading bytes."""
+    paths = [REE_MANIFEST_ENTRY_PATH]
+    if include_snapshot and layout.snapshot_archive.exists():
+        paths.append(REE_SNAPSHOT_ENTRY_PATH)
+    paths.append(REE_OVERLAY_PREFIX)
+    for rel in _list_tree_relpaths(layout.overlay):
+        paths.append(f"{REE_OVERLAY_PREFIX}{rel}")
+    paths.append(REE_ARTIFACTS_PREFIX)
+    for rel in artifact_plan.on_disk_relpaths:
+        paths.append(f"{REE_ARTIFACTS_PREFIX}{rel}")
+    for archive_name in sorted(artifact_plan.workspace_pulls.values()):
+        paths.append(f"{REE_ARTIFACTS_PREFIX}{archive_name}")
+    paths.append(REE_WORKSPACE_DIR_ENTRY)
+    return paths
+
+
+def _bundle_entry_bytes(
+    layout: ReeLayout,
+    artifact_plan: ArtifactPlan,
+    *,
+    include_snapshot: bool,
+    manifest_bytes: bytes,
+) -> list[tuple[str, bytes]]:
+    """Read bytes for every entry included in the bundle (shell)."""
+    entries: list[tuple[str, bytes]] = [(REE_MANIFEST_ENTRY_PATH, manifest_bytes)]
+    if include_snapshot and layout.snapshot_archive.exists():
+        entries.append((REE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive.read_bytes()))
+    entries.append((REE_OVERLAY_PREFIX, b""))
+    for rel in _list_tree_relpaths(layout.overlay):
+        entries.append(
+            (f"{REE_OVERLAY_PREFIX}{rel}", (layout.overlay / rel).read_bytes())
+        )
+    entries.append((REE_ARTIFACTS_PREFIX, b""))
+    for rel in artifact_plan.on_disk_relpaths:
+        entries.append(
+            (f"{REE_ARTIFACTS_PREFIX}{rel}", (layout.artifacts / rel).read_bytes())
+        )
+    for ws_rel, archive_name in sorted(artifact_plan.workspace_pulls.items()):
+        entries.append(
+            (
+                f"{REE_ARTIFACTS_PREFIX}{archive_name}",
+                (layout.workspace / ws_rel).read_bytes(),
+            )
+        )
+    entries.append((REE_WORKSPACE_DIR_ENTRY, b""))
+    return entries
+
+
 def _sync_downloadable_files(
     storage_root: Path, ree_id: str, metadata: dict[str, Any]
 ) -> None:
-    _, entries = _build_download_entries(storage_root, ree_id, metadata)
+    layout = _layout(storage_root, ree_id)
+    ree = _ree_from_metadata(metadata)
+    manifest = _build_manifest_payload(metadata, ree, ree_id=ree_id)
+    artifact_plan = _build_artifact_plan(layout, ree)
     ree_draft = dict(metadata.get("reeDraft") or {})
-    ree_draft["downloadable_files"] = [item["path"] for item in entries]
+    ree_draft["downloadable_files"] = _bundle_archive_paths(
+        layout,
+        artifact_plan,
+        include_snapshot=should_include_snapshot(
+            source_included=bool(manifest.get("source_included")),
+            source_snapshot_archive=manifest.get("source_snapshot_archive"),
+        ),
+    )
     metadata["reeDraft"] = ree_draft
 
 
@@ -168,7 +266,7 @@ def _persist_manifest_sidecar(
     storage_root: Path, ree_id: str, metadata: dict[str, Any]
 ) -> None:
     ree = _ree_from_metadata(metadata)
-    manifest, _ = build_manifest_payload(metadata, ree, ree_id=ree_id)
+    manifest = _build_manifest_payload(metadata, ree, ree_id=ree_id)
     _store(storage_root, ree_id).write_manifest(manifest)
 
 
@@ -254,91 +352,6 @@ def _workspace_ree_files_with_content(
             {"path": rel, "kind": "ree", "tag": tag, "size": size, "content": content}
         )
     return ree_files
-
-
-def _build_download_entries(
-    storage_root: Path,
-    ree_id: str,
-    metadata: dict[str, Any],
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    layout = _layout(storage_root, ree_id)
-    ree = _ree_from_metadata(metadata)
-    manifest, candidates = plan_bundle_entries(metadata, ree, ree_id=ree_id)
-    entries: list[dict[str, Any]] = []
-    for candidate in candidates:
-        kept = _materialize_candidate(layout, candidate)
-        if kept is not None:
-            entries.append(kept)
-    manifest["runtime_included"] = any(e["tag"] == "Runtime" for e in entries)
-    return manifest, entries
-
-
-def _materialize_candidate(
-    layout: ReeLayout, candidate: BundleCandidate
-) -> dict[str, Any] | None:
-    if candidate.source_kind == "inline":
-        return {
-            "path": candidate.archive_path,
-            "kind": candidate.kind,
-            "tag": candidate.tag,
-            "workspacePath": None,
-            "content": candidate.inline_content,
-        }
-    if candidate.source_kind == "workspace":
-        rel = candidate.source_path or ""
-        if not rel:
-            return None
-        fp = layout.workspace_file(rel)
-        if not fp.exists() or not fp.is_file():
-            return None
-        return {
-            "path": candidate.archive_path,
-            "kind": candidate.kind,
-            "tag": candidate.tag,
-            "workspacePath": rel,
-            "content": None,
-        }
-    if candidate.source_kind == "ree":
-        rel = candidate.source_path or ""
-        if not rel:
-            return None
-        fp = layout.root / rel
-        if not fp.exists() or not fp.is_file():
-            return None
-        return {
-            "path": candidate.archive_path,
-            "kind": candidate.kind,
-            "tag": candidate.tag,
-            "workspacePath": None,
-            "reePath": rel,
-            "content": None,
-        }
-    return None
-
-
-def _iter_entry_bytes(
-    layout: ReeLayout, entries: list[dict[str, Any]]
-) -> list[tuple[str, bytes]]:
-    out: list[tuple[str, bytes]] = []
-    for entry in entries:
-        archive_path = str(entry["path"])
-        inline = entry.get("content")
-        ws_path = entry.get("workspacePath")
-        ree_path = entry.get("reePath")
-        if isinstance(inline, str):
-            out.append((archive_path, inline.encode("utf-8")))
-            continue
-        if isinstance(ree_path, str) and ree_path:
-            fp = (layout.root / ree_path).resolve()
-            if fp.exists() and fp.is_file():
-                out.append((archive_path, fp.read_bytes()))
-            continue
-        if not isinstance(ws_path, str) or not ws_path:
-            continue
-        fp = layout.workspace_file(ws_path)
-        if fp.exists() and fp.is_file():
-            out.append((archive_path, fp.read_bytes()))
-    return out
 
 
 def _clear_workspace_content(store: ReeStore) -> None:
@@ -782,12 +795,31 @@ def remove_source(storage_root: Path, ree_id: str) -> dict[str, Any]:
 def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
     metadata = _read_metadata(storage_root, ree_id)
     layout = _layout(storage_root, ree_id)
-    manifest, entries = _build_download_entries(storage_root, ree_id, metadata)
+    ree = _ree_from_metadata(metadata)
+    sidecar_manifest = _build_manifest_payload(metadata, ree, ree_id=ree_id)
+
+    artifact_plan = _build_artifact_plan(layout, ree)
+    include_snapshot = should_include_snapshot(
+        source_included=bool(sidecar_manifest.get("source_included")),
+        source_snapshot_archive=sidecar_manifest.get("source_snapshot_archive"),
+    )
+    bundle_manifest = rewrite_manifest_for_bundle(
+        sidecar_manifest, artifact_plan.manifest_remap
+    )
+    manifest_bytes = json.dumps(bundle_manifest, indent=2, sort_keys=True).encode(
+        "utf-8"
+    )
+    entries = _bundle_entry_bytes(
+        layout,
+        artifact_plan,
+        include_snapshot=include_snapshot,
+        manifest_bytes=manifest_bytes,
+    )
     ree_draft = dict(metadata.get("reeDraft") or {})
-    ree_draft["downloadable_files"] = [e["path"] for e in entries]
+    ree_draft["downloadable_files"] = [path for path, _ in entries]
     metadata["reeDraft"] = ree_draft
     store = _store(storage_root, ree_id)
     store.write_metadata_json(metadata)
-    archive_bytes = build_zip_bytes(_iter_entry_bytes(layout, entries))
-    store.write_manifest(manifest)
+    archive_bytes = build_zip_bytes(entries)
+    store.write_manifest(sidecar_manifest)
     return archive_bytes

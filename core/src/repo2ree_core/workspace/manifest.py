@@ -21,14 +21,8 @@ def build_manifest_payload(
     ree: REE,
     *,
     ree_id: str,
-) -> tuple[dict[str, Any], set[str]]:
-    """Merge ``ree`` with workspace ``metadata`` into the published manifest.
-
-    Returns the manifest dict and the set of workspace paths it claims as
-    named slots (runtime, sbom, build script, activation script). Callers
-    that enumerate workspace files for bundling use the second value to
-    avoid double-listing those paths.
-    """
+) -> dict[str, Any]:
+    """Merge ``ree`` with workspace ``metadata`` into the published manifest."""
     runtime_path = normalize_workspace_path(ree.runtime)
     sbom_path = normalize_workspace_path(ree.sbom)
     build_script_path = normalize_workspace_path(ree.build_runtime_script)
@@ -49,10 +43,4 @@ def build_manifest_payload(
     manifest["build_script"] = build_script_path or None
     manifest["activation_script"] = activation_script_path or None
     manifest["sbom"] = sbom_path or None
-
-    excluded_paths = {
-        p
-        for p in (runtime_path, sbom_path, build_script_path, activation_script_path)
-        if p
-    }
-    return manifest, excluded_paths
+    return manifest

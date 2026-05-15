@@ -27,12 +27,15 @@ from pathlib import Path, PurePosixPath
 
 _METADATA_FILENAME = ".workspace.json"
 _MANIFEST_FILENAME = "manifest.json"
-_SNAPSHOT_FILENAME = "snapshot.tar.gz"
 _UPLOAD_STAGING_DIRNAME = "upload-staging"
 _UPSTREAM_DIRNAME = "upstream"
-_OVERLAY_DIRNAME = "overlay"
-_ARTIFACTS_DIRNAME = "artifacts"
-_WORKSPACE_DIRNAME = "workspace"
+
+# Public names: shared with the bundle layout so the published REE mirrors
+# the on-disk tree. Import these (rather than redefining) to avoid drift.
+SNAPSHOT_FILENAME = "snapshot.tar.gz"
+OVERLAY_DIRNAME = "overlay"
+ARTIFACTS_DIRNAME = "artifacts"
+WORKSPACE_DIRNAME = "workspace"
 
 
 @dataclass(frozen=True)
@@ -59,7 +62,7 @@ class ReeLayout:
 
     @property
     def snapshot_archive(self) -> Path:
-        return self.root / _SNAPSHOT_FILENAME
+        return self.root / SNAPSHOT_FILENAME
 
     @property
     def upload_staging(self) -> Path:
@@ -71,15 +74,15 @@ class ReeLayout:
 
     @property
     def overlay(self) -> Path:
-        return self.root / _OVERLAY_DIRNAME
+        return self.root / OVERLAY_DIRNAME
 
     @property
     def artifacts(self) -> Path:
-        return self.root / _ARTIFACTS_DIRNAME
+        return self.root / ARTIFACTS_DIRNAME
 
     @property
     def workspace(self) -> Path:
-        return self.root / _WORKSPACE_DIRNAME
+        return self.root / WORKSPACE_DIRNAME
 
     def upstream_file(self, rel: str | PurePosixPath) -> Path:
         return self._resolve_under(self.upstream, rel)
