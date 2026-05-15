@@ -1,5 +1,5 @@
 
-.PHONY: fe-checks
+.PHONY: fe-checks fe-tests be-checks core-checks api-checks test-checks core-tests api-tests
 
 fe-checks:
 	@echo "Running frontend checks..."
@@ -16,16 +16,46 @@ fe-checks:
 		npx depcruise src tests
 
 
-be-checks:
-	@echo "Running backend checks..."
-
+core-checks:
+	@echo "Running core checks..."
 	@echo "Running ruff check..."
-	ruff check api/src
+	ruff check core/src core/tests
 	@echo "Running ruff format..."
-	ruff format api/src
+	ruff format core/src core/tests
 	@echo "Running mypy..."
-	mypy api/src
+	mypy core/src core/tests
 
+api-checks:
+	@echo "Running api checks..."
+	@echo "Running ruff check..."
+	ruff check api/src api/tests
+	@echo "Running ruff format..."
+	ruff format api/src api/tests
+	@echo "Running mypy..."
+	mypy api/src api/tests
+
+test-checks:
+	@echo "Running test checks..."
+	@echo "Running ruff check..."
+	ruff check core/tests api/tests
+	@echo "Running ruff format..."
+	ruff format core/tests api/tests
+	@echo "Running mypy..."
+	mypy core/tests api/tests
+
+be-checks: core-checks api-checks
+
+core-tests:
+	@echo "Running core tests..."
+	pytest core/tests
+
+api-tests:
+	@echo "Running api tests..."
+	pytest api/tests
+
+fe-tests:
+	@echo "Running frontend unit tests..."
+	cd frontend && npx vitest run
 
 e2e-tests:
 	@echo "Running end-to-end tests..."
