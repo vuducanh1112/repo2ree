@@ -4,38 +4,20 @@ import { Ic } from "../../../shared/components/Icon";
 import { useFocusScroll } from "../../../shared/hooks/useFocusScroll";
 import {
   lgColors,
-  lgContentCard,
   lgNextButton,
   lgReadout,
   lgStatusBadge,
   lgStyles,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
-import { LogPanel } from "../../components/logPanel";
+import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
+import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { SummaryLine } from "../../components/SummaryLine";
 import { PAGE } from "../../state/pages";
 import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 import type { SourceTypeOption } from "./SourceAcquisitionPageHelpers";
 import { SourceAcquisitionCard } from "./SourceAcquisitionPageSections";
 import { SourceStep3Section } from "./SourceAcquisitionPageStep3Section";
-
-function SummaryLine({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <span style={{ fontSize: 11, color: lgColors.textMuted, fontFamily: F.sans }}>{label}</span>
-      <span
-        style={{
-          fontSize: 13,
-          color: lgColors.text,
-          fontFamily: F.sans,
-          lineHeight: 1.35,
-          overflowWrap: "anywhere",
-        }}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
 
 function sourceBadge(sourceInWorkspace: boolean, running: boolean): React.CSSProperties {
   if (running) {
@@ -77,7 +59,6 @@ export function SourceAcquisitionPage({
     ree.source_type || "",
   );
   const [originUrlDraft, setOriginUrlDraft] = useState(ree.origin_url || "");
-  const [logOpen, setLogOpen] = useState(false);
 
   const sourceInWorkspace = !!workspaceSourceState.sourceAvailable;
   const sourceIncluded = inclusionState.source === "included";
@@ -114,10 +95,6 @@ export function SourceAcquisitionPage({
     setOriginUrlDraft(ree.origin_url || "");
   }, [ree.origin_url]);
 
-  useEffect(() => {
-    if (running) setLogOpen(true);
-  }, [running]);
-
   useFocusScroll(focusedField);
 
   const originInputLocked = locked || sourceInWorkspace;
@@ -148,43 +125,20 @@ export function SourceAcquisitionPage({
   const readinessTotal = 2;
   const readinessPct = Math.round((readinessDone / readinessTotal) * 100);
 
-  const showLog = running || logOpen;
-
   return (
     <div style={lgStyles.pageRoot}>
       <div style={lgStyles.pageFrame}>
-        <div style={lgStyles.pageHeader}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-            <div
-              style={{
-                ...lgStyles.headerIcon,
-                color: "#f59e0b",
-                border: "1px solid rgba(245, 158, 11, 0.32)",
-                boxShadow: "0 14px 30px rgba(245, 158, 11, 0.14)",
-              }}
-            >
-              {Ic.globe(24)}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  flexWrap: "wrap",
-                  marginBottom: 4,
-                }}
-              >
-                <h1 style={lgStyles.title}>Source Acquisition</h1>
-                <span style={sourceBadge(sourceInWorkspace, running)}>{statusLabel}</span>
-              </div>
-              <p style={lgStyles.subtitle}>
-                Choose an acquisition path, load source into the workspace, then confirm snapshot
-                behavior.
-              </p>
-            </div>
-          </div>
-        </div>
+        <GlassPageHeader
+          icon={Ic.globe(24)}
+          iconTint={{
+            color: "#f59e0b",
+            border: "rgba(245, 158, 11, 0.32)",
+            shadow: "rgba(245, 158, 11, 0.14)",
+          }}
+          title="Source Acquisition"
+          subtitle="Choose an acquisition path, load source into the workspace, then confirm snapshot behavior."
+          badges={<span style={sourceBadge(sourceInWorkspace, running)}>{statusLabel}</span>}
+        />
 
         <div style={lgStyles.mainGrid}>
           <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
@@ -247,47 +201,7 @@ export function SourceAcquisitionPage({
                 onRemoveWorkspaceSource={onRemoveWorkspaceSource}
               />
 
-              <div style={lgContentCard()}>
-                <button
-                  type="button"
-                  onClick={() => setLogOpen((v) => !v)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    width: "100%",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                    gap: 8,
-                  }}
-                >
-                  <span
-                    style={{
-                      ...lgStyles.label,
-                      gap: 8,
-                      color: running ? lgColors.blue : lgColors.text,
-                    }}
-                  >
-                    {running && (
-                      <span style={{ display: "flex", color: lgColors.blue }}>{Ic.loader(14)}</span>
-                    )}
-                    Acquisition log
-                    <span style={{ color: lgColors.textMuted, fontSize: 11, fontWeight: 400 }}>
-                      {running ? "Streaming" : log ? "Latest run" : "No runs yet"}
-                    </span>
-                  </span>
-                  <span style={{ color: lgColors.textMuted, display: "flex" }}>
-                    {showLog ? Ic.chevD(14) : Ic.chevR(14)}
-                  </span>
-                </button>
-                {showLog && (
-                  <div style={{ marginTop: 10 }}>
-                    <LogPanel log={log} running={running} />
-                  </div>
-                )}
-              </div>
+              <CollapsibleLogCard log={log} running={running} title="Acquisition log" />
             </div>
 
             <div style={lgStyles.footer}>

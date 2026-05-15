@@ -118,32 +118,6 @@ const WORKFLOW_TONE = {
   info: { bg: "#ecfeff", border: "#a5f3fc", icon: "#0e7490", text: "#155e75" },
 } as const;
 
-export const assemblyTonePanelStyle = (tone: AssemblyTone): React.CSSProperties => {
-  const toneStyle = WORKFLOW_TONE[tone];
-  return {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 6,
-    padding: "4px 6px",
-    borderRadius: 6,
-    background: toneStyle.bg,
-    border: `1px solid ${toneStyle.border}`,
-  };
-};
-
-export const assemblyToneIconStyle = (tone: AssemblyTone): React.CSSProperties => ({
-  display: "flex",
-  color: WORKFLOW_TONE[tone].icon,
-  flexShrink: 0,
-  marginTop: 1,
-});
-
-export const assemblyToneTextStyle = (tone: AssemblyTone): React.CSSProperties => ({
-  fontSize: 11,
-  color: WORKFLOW_TONE[tone].text,
-  lineHeight: 1.35,
-});
-
 export const assemblyToneSurfaceStyle = (tone: AssemblyTone): React.CSSProperties => ({
   background: WORKFLOW_TONE[tone].bg,
   border: `1px solid ${WORKFLOW_TONE[tone].border}`,

@@ -294,13 +294,15 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(main.getByText("Evaluate", { exact: true })).toBeVisible();
     await clickDemo(
       page,
-      main.getByRole("button", { name: /^Play Run$/ }),
+      main.getByRole("button", { name: /^Play Run Evaluate$/ }),
       "Run evaluation to obtain reproducibility score",
     );
-    await expect(main.getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 20000 });
+    await expect(main.getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible({
+      timeout: 20000,
+    });
     await showcasePanel(
       page,
-      main.getByText("Output", { exact: true }).first(),
+      main.getByText("Run Log", { exact: true }).first(),
       "Review output logs",
     );
     await expectOverviewCableActive("Evaluate");

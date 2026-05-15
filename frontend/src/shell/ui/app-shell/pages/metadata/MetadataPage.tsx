@@ -26,6 +26,8 @@ import {
   lgSuggestionButton,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
+import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { SummaryLine } from "../../components/SummaryLine";
 import { PAGE } from "../../state/pages";
 import type { PageMetadataEntryProps } from "../sharedAssemblyUi";
 
@@ -65,25 +67,6 @@ const KEYWORD_SUGGESTIONS = [
   "workflow-automation",
   "scientific-computing",
 ];
-
-function SummaryLine({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      <span style={{ fontSize: 11, color: lgColors.textMuted, fontFamily: F.sans }}>{label}</span>
-      <span
-        style={{
-          fontSize: 13,
-          color: lgColors.text,
-          fontFamily: F.sans,
-          lineHeight: 1.35,
-          overflowWrap: "anywhere",
-        }}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
 
 export function PageMetadataEntry({
   reeSpec,
@@ -208,31 +191,14 @@ export function PageMetadataEntry({
   return (
     <div style={lgStyles.pageRoot}>
       <div style={lgStyles.pageFrame}>
-        <div style={lgStyles.pageHeader}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-            <div style={lgStyles.headerIcon}>{Ic.grid(24)}</div>
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  flexWrap: "wrap",
-                  marginBottom: 4,
-                }}
-              >
-                <h1 style={lgStyles.title}>Metadata</h1>
-                <span style={lgStatusBadge(identityFilled)}>
-                  {identityFilled ? "Ready" : "Draft"}
-                </span>
-              </div>
-              <p style={lgStyles.subtitle}>
-                Provide the identity details that follow this Reusable Execution Environment through
-                the assembly workflow.
-              </p>
-            </div>
-          </div>
-        </div>
+        <GlassPageHeader
+          icon={Ic.grid(24)}
+          title="Metadata"
+          subtitle="Provide the identity details that follow this Reusable Execution Environment through the assembly workflow."
+          badges={
+            <span style={lgStatusBadge(identityFilled)}>{identityFilled ? "Ready" : "Draft"}</span>
+          }
+        />
 
         <div style={lgStyles.mainGrid}>
           <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
