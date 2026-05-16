@@ -110,20 +110,6 @@ export const assemblyStatusBadgeStyle = (accentColor: string): React.CSSProperti
   border: `1px solid ${accentColor}40`,
 });
 
-type AssemblyTone = "warn" | "good" | "info";
-
-const WORKFLOW_TONE = {
-  warn: { bg: "#fffbeb", border: "#fde68a", icon: "#b45309", text: "#92400e" },
-  good: { bg: "#f0fdf4", border: "#bbf7d0", icon: "#15803d", text: "#166534" },
-  info: { bg: "#ecfeff", border: "#a5f3fc", icon: "#0e7490", text: "#155e75" },
-} as const;
-
-export const assemblyToneSurfaceStyle = (tone: AssemblyTone): React.CSSProperties => ({
-  background: WORKFLOW_TONE[tone].bg,
-  border: `1px solid ${WORKFLOW_TONE[tone].border}`,
-  color: WORKFLOW_TONE[tone].text,
-});
-
 export const runtimeFieldCardStyle = (isSet: boolean): React.CSSProperties => ({
   display: "flex",
   alignItems: "center",

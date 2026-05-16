@@ -60,32 +60,11 @@ export const S_FIELD_TIP_CARD_COMMANDS_LABEL: React.CSSProperties = {
   marginBottom: 8,
 };
 
-export const S_WORKFLOW_PAGE_ROOT: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  height: "100%",
-  minHeight: 0,
-  overflow: "hidden",
-};
-
 export const S_WORKFLOW_PAGE_BODY: React.CSSProperties = {
   flex: 1,
   minHeight: 0,
   display: "flex",
   overflow: "hidden",
-};
-
-export const S_WORKFLOW_PAGE_MAIN_SCROLL: React.CSSProperties = {
-  flex: 1,
-  overflowY: "auto",
-  padding: 28,
-  minWidth: 0,
-};
-
-export const S_WORKFLOW_PAGE_MAIN_COL: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 20,
 };
 
 export const S_WORKFLOW_PAGE_NUDGE_WRAP: React.CSSProperties = {

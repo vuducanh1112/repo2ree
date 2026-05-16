@@ -1,5 +1,6 @@
 import type React from "react";
-import { C, F, S_ACTION_BUTTON_BASE } from "../../../theme/theme";
+import { lgColors } from "../../../theme/lightGlassTheme";
+import { F, S_ACTION_BUTTON_BASE } from "../../../theme/theme";
 
 export const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,
@@ -8,13 +9,15 @@ export const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties 
 
 export const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
   width: "100%",
-  border: `1.5px solid ${C.border}`,
+  border: "1px solid rgba(95, 142, 190, 0.42)",
   borderRadius: 7,
-  padding: "9px 12px",
-  fontSize: 14,
+  padding: "8px 11px",
+  fontSize: 13,
   fontFamily: F.mono,
-  color: C.text,
-  background: locked ? C.surfaceAlt : C.surface,
+  color: locked ? lgColors.textMuted : lgColors.text,
+  background: locked ? "rgba(241, 245, 249, 0.72)" : "rgba(255, 255, 255, 0.72)",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.92)",
+  outline: "none",
   transition: "border-color 0.15s, box-shadow 0.15s",
   ...extra,
 });

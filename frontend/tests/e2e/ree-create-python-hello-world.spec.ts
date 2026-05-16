@@ -268,7 +268,7 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("button", { name: /Create HBOM.*Enter hardware bill of materials/ }),
       "Add a hardware bill of materials entry",
     );
-    await expect(main.getByText("Create Hardware BOM", { exact: true })).toBeVisible();
+    await expect(main.getByText("Hardware BOM", { exact: true })).toBeVisible();
     await clickDemo(
       page,
       main.locator("button").filter({ hasText: "Add CPU" }).first(),
@@ -300,11 +300,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(main.getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible({
       timeout: 20000,
     });
-    await showcasePanel(
-      page,
-      main.getByText("Run Log").first(),
-      "Review output logs",
-    );
+    await showcasePanel(page, main.getByText("Run Log").first(), "Review output logs");
     await expectOverviewCableActive("Evaluate");
   });
 
