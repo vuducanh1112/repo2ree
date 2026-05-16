@@ -302,7 +302,7 @@ test("upload source archive into workspace", async ({ page }) => {
     });
     await showcasePanel(
       page,
-      main.getByText("Run Log", { exact: true }).first(),
+      main.getByText("Run Log").first(),
       "Review output logs",
     );
     await expectOverviewCableActive("Evaluate");
