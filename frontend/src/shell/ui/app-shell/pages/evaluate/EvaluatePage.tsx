@@ -1,7 +1,13 @@
 import { scanDependencies } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
 import { LEVELS } from "../../../../../core/review/levels";
 import { Ic } from "../../../shared/components/Icon";
-import { lgColors, lgNextButton, lgStatusBadge, lgStyles } from "../../../theme/lightGlassTheme";
+import {
+  lgColors,
+  lgNextButton,
+  lgOutcomeBadge,
+  lgStatusBadge,
+  lgStyles,
+} from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
 import { assemblyStepIcon } from "../../assemblyStepIcons";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
@@ -59,20 +65,7 @@ export function PageEvaluate({
             <>
               <span style={lgStatusBadge(statusReady)}>{statusLabel}</span>
               {hasScoreOutput && badge && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: badge.color,
-                    background: badge.bg,
-                    border: `1px solid ${badge.color}40`,
-                    borderRadius: 99,
-                    padding: "3px 9px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
+                <span style={lgOutcomeBadge(badge.color, badge.bg)}>
                   {Ic.check(11)} {badge.label}
                 </span>
               )}

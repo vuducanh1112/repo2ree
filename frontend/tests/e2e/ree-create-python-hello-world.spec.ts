@@ -319,11 +319,6 @@ test("upload source archive into workspace", async ({ page }) => {
     );
     await clickDemo(page, main.getByRole("button", { name: /Run build/ }), "Run runtime build");
     await expect(main.getByRole("button", { name: /Re-build/ })).toBeVisible({ timeout: 20000 });
-    await showcasePanel(
-      page,
-      main.getByText("Output", { exact: true }).first(),
-      "Review build logs",
-    );
     await clickDemo(
       page,
       page.getByPlaceholder("runtime.tar.gz").locator("..").getByTitle("Browse repository files"),
@@ -337,11 +332,7 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("button", { name: "python_hello_world/runtime.tar" }),
       "Select produced runtime file",
     );
-    await clickDemo(
-      page,
-      main.locator('button[aria-label="Toggle runtime included"]'),
-      "Mark runtime as included",
-    );
+    await clickDemo(page, main.getByTitle("Include runtime in REE"), "Mark runtime as included");
     await expectOverviewCableActive("Runtime");
   });
 

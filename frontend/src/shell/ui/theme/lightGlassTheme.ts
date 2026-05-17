@@ -444,6 +444,21 @@ export function lgStatusBadge(ready: boolean): React.CSSProperties {
   };
 }
 
+export function lgOutcomeBadge(color: string, bg: string): React.CSSProperties {
+  return {
+    fontSize: 11,
+    fontWeight: 700,
+    color,
+    background: bg,
+    border: `1px solid ${color}40`,
+    borderRadius: 99,
+    padding: "3px 9px",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+  };
+}
+
 export function lgCorrespondingBadge(): React.CSSProperties {
   return {
     display: "inline-flex",
@@ -487,6 +502,59 @@ export function lgGlassButton(): React.CSSProperties {
     padding: "9px 14px",
     fontWeight: 700,
     cursor: "pointer",
+  };
+}
+
+export function lgPrimaryActionButton(disabled = false): React.CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    border: `1px solid ${disabled ? lgBorders.actionNeutral.replace("1px solid ", "") : "rgba(14, 165, 233, 0.42)"}`,
+    background: disabled ? lgBackgrounds.disabled : lgBackgrounds.next,
+    color: disabled ? lgColors.textMuted : lgColors.white,
+    padding: "10px 18px",
+    borderRadius: 8,
+    fontWeight: 800,
+    fontSize: 12,
+    cursor: disabled ? "not-allowed" : "pointer",
+    fontFamily: F.sans,
+    boxShadow: disabled ? "none" : "0 12px 24px rgba(14, 165, 233, 0.22)",
+  };
+}
+
+type LgBannerTone = "success" | "danger" | "muted";
+
+export function lgInfoBanner(tone: LgBannerTone): React.CSSProperties {
+  const palette = {
+    success: { border: "rgba(34, 197, 94, 0.32)", background: lgBackgrounds.success },
+    danger: { border: "rgba(251, 113, 133, 0.4)", background: lgBackgrounds.danger },
+    muted: { border: "rgba(148, 163, 184, 0.34)", background: lgBackgrounds.glassStrong },
+  }[tone];
+  return {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 14px",
+    borderRadius: 8,
+    border: `1px solid ${palette.border}`,
+    background: palette.background,
+    flexWrap: "wrap",
+    fontFamily: F.sans,
+  };
+}
+
+export function lgPillChip(active: boolean): React.CSSProperties {
+  return {
+    fontSize: 11,
+    fontWeight: 700,
+    color: active ? lgColors.chipText : lgColors.textMuted,
+    background: active ? lgBackgrounds.chip : lgBackgrounds.disabled,
+    border: active ? lgBorders.chip : lgBorders.actionNeutral,
+    borderRadius: 99,
+    padding: "3px 9px",
+    fontFamily: F.sans,
   };
 }
 
