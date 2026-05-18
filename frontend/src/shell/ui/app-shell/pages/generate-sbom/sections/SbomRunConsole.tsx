@@ -1,11 +1,18 @@
 import type { ReeAssemblyRequirement } from "../../../../../../core/ree-assembly/assemblyStepTypes";
 import { Ic } from "../../../../shared/components/Icon";
-import { lgColors, lgPrimaryActionButton, lgStyles } from "../../../../theme/lightGlassTheme";
+import {
+  lgColors,
+  lgInfoBanner,
+  lgPrimaryActionButton,
+  lgStyles,
+} from "../../../../theme/lightGlassTheme";
 import { GlassCancelButton } from "../../../components/GlassCancelButton";
 import { MissingInputsBanner } from "../../runtime-environment/MissingInputsBanner";
 
-interface BuildRunConsoleProps {
+interface SbomRunConsoleProps {
   color: string;
+  runtimePath: string;
+  runtimePathExists: boolean;
   running: boolean;
   runDone: boolean;
   missing: ReeAssemblyRequirement[];
@@ -14,27 +21,44 @@ interface BuildRunConsoleProps {
   onGoFields?: () => void;
 }
 
-export function BuildRunConsole({
+export function SbomRunConsole({
   color,
+  runtimePath,
+  runtimePathExists,
   running,
   runDone,
   missing,
   onRun,
   onCancel,
   onGoFields,
-}: BuildRunConsoleProps) {
+}: SbomRunConsoleProps) {
   const hasMissing = missing.length > 0;
-  const disabled = running || hasMissing;
-  const buttonLabel = running ? "Building…" : runDone ? "Re-build" : "Run build";
-
+  const disabled = running || hasMissing || !runtimePathExists;
+  const label = running ? "Generating..." : runDone ? "Regenerate SBOM" : "Generate SBOM";
   return (
     <section style={{ ...lgStyles.panel, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <span style={{ color, display: "flex" }}>{Ic.play(22)}</span>
-        <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Run Build</h2>
+        <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Run SBOM</h2>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <MissingInputsBanner missing={missing} onGoFields={onGoFields} />
+        {runtimePath && !runtimePathExists && (
+          <div style={lgInfoBanner("danger")}>
+            <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.info(13)}</span>
+            <span style={{ fontSize: 12, color: lgColors.danger }}>
+              Runtime file must exist before SBOM generation can run.
+            </span>
+          </div>
+        )}
+        {!runtimePath && !hasMissing && (
+          <div style={lgInfoBanner("muted")}>
+            <span style={{ color: lgColors.textMuted, display: "flex" }}>{Ic.info(13)}</span>
+            <span style={{ fontSize: 12, color: lgColors.textMid }}>
+              Select a runtime artifact on the build tab first.
+            </span>
+          </div>
+        )}
         <button
           type="button"
           onClick={onRun}
@@ -46,11 +70,13 @@ export function BuildRunConsole({
           >
             {running ? Ic.loader(14) : Ic.play(14)}
           </span>
-          {buttonLabel}
+          {label}
         </button>
         {running && onCancel && <GlassCancelButton onClick={onCancel} />}
-        {!hasMissing && (
-          <span style={lgStyles.helper}>Executes the build script and records logs.</span>
+        {!disabled && (
+          <span style={lgStyles.helper}>
+            Scans <code>{runtimePath}</code> and writes <code>sbom.json</code>.
+          </span>
         )}
       </div>
     </section>

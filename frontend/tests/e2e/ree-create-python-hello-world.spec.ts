@@ -307,10 +307,14 @@ test("upload source archive into workspace", async ({ page }) => {
   await test.step("Build runtime", async () => {
     await clickDemo(
       page,
-      page.getByRole("button", { name: /Build Runtime.*Build the runtime tarball/ }),
+      page.getByRole("button", { name: /Runtime.*Build and inventory runtime/ }),
       "Build runtime artifact",
     );
-    await expect(main.getByText("Build Runtime", { exact: true })).toBeVisible();
+    await expect(main.getByText("Runtime Environment", { exact: true })).toBeVisible();
+    await expect(main.getByRole("button", { name: /Build Runtime/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await fillDemo(
       page,
       page.getByPlaceholder("build_runtime.sh"),
@@ -337,28 +341,24 @@ test("upload source archive into workspace", async ({ page }) => {
   });
 
   await test.step("Generate SBOM", async () => {
+    const generateSbomTab = main
+      .locator("button[aria-pressed]")
+      .filter({ hasText: "Generate SBOM" });
+    await clickDemo(page, generateSbomTab, "Generate SBOM");
+    await expect(generateSbomTab).toHaveAttribute("aria-pressed", "true");
+    await expect(main.getByText("Scan Target", { exact: true })).toBeVisible();
     await clickDemo(
       page,
-      page.getByRole("button", { name: /Generate SBOM.*Scan runtime with syft/ }),
-      "Generate SBOM",
-    );
-    await expect(main.getByText("Generate SBOM", { exact: true })).toBeVisible();
-    await clickDemo(
-      page,
-      main.getByRole("button", { name: /^Play Generate SBOM$/ }),
+      main.getByRole("button", { name: /Generate SBOM/ }).last(),
       "Run SBOM scan",
     );
     await expect(main.getByRole("button", { name: /Regenerate SBOM/ })).toBeVisible({
       timeout: 20000,
     });
-    await expect(main.getByText("SBOM run succeeded", { exact: true })).toBeVisible({
+    await expect(main.getByText("SBOM ready", { exact: true }).first()).toBeVisible({
       timeout: 20000,
     });
-    await showcasePanel(
-      page,
-      main.getByText("Output", { exact: true }).first(),
-      "Review SBOM logs",
-    );
+    await showcasePanel(page, main.getByText(/SBOM log/i).first(), "Review SBOM logs");
     await expectOverviewCableActive("SBOM");
   });
 

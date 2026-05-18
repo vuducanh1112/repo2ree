@@ -580,3 +580,23 @@ export function lgSuggestionButton(): React.CSSProperties {
     cursor: "pointer",
   };
 }
+
+export function lgSegmentedTab(active: boolean): React.CSSProperties {
+  return {
+    ...S_ACTION_BUTTON_BASE,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 38,
+    borderRadius: 9,
+    padding: "8px 13px",
+    border: active ? "1px solid rgba(14, 165, 233, 0.58)" : lgBorders.actionNeutral,
+    background: active ? "rgba(239, 246, 255, 0.94)" : "rgba(255, 255, 255, 0.58)",
+    color: active ? lgColors.primaryDeep : lgColors.textMid,
+    boxShadow: active ? "0 12px 26px rgba(14, 165, 233, 0.16)" : "none",
+    cursor: "pointer",
+    fontFamily: F.sans,
+    fontSize: 12,
+    fontWeight: 800,
+  };
+}

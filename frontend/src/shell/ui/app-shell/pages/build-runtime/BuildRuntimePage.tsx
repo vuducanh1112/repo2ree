@@ -5,7 +5,9 @@ import {
   buildFooterHint,
   buildRunStatusLabel,
   deriveRuntimeFileSize,
+  resolvedRuntimePath,
 } from "../../../../../core/ree-assembly/buildRuntimeUiState";
+import { resolvedSbomPath } from "../../../../../core/ree-assembly/sbomUiState";
 import {
   removeWorkspaceFileByPath,
   upsertWorkspaceFileByPath,
@@ -21,8 +23,13 @@ import {
   lgStyles,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
-import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassSectionHeader } from "../../components/GlassSectionHeader";
+import { LastRunStamp } from "../../components/LastRunStamp";
 import { PAGE } from "../../state/pages";
+import {
+  RUNTIME_ENV_COLOR,
+  RuntimeEnvironmentShell,
+} from "../runtime-environment/RuntimeEnvironmentShell";
 import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import {
@@ -95,7 +102,7 @@ export function PageBuildRuntime({
     onReeSpecChange?.((current) => ({ ...current, build_runtime_script: "" }));
   }, [onReeSpecChange]);
 
-  const finalRuntime = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
+  const finalRuntime = resolvedRuntimePath(ree.runtime);
   const runtimePathExists = finalRuntime ? workspaceFileExists(files, finalRuntime) : false;
   const includeRuntime = inclusionState.runtime === "included";
   const finalRuntimeFile = useMemo(
@@ -107,15 +114,21 @@ export function PageBuildRuntime({
     [finalRuntimeFile],
   );
 
-  const runtimeHint = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
+  const sbomPath = resolvedSbomPath(ree.sbom);
+  const sbomNode = useMemo(
+    () => (sbomPath ? findFileByPath(files, sbomPath) : null),
+    [files, sbomPath],
+  );
 
   const hasScript = !!scriptPath;
   const statusLabel = buildRunStatusLabel({ running, runDone, hasScript });
+  const sbomReady = !!sbomPath && !!sbomNode;
 
   const headerBadges = (
     <>
       {scriptPath && <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{scriptPath}</span>}
       <span style={lgStatusBadge(runDone)}>{statusLabel}</span>
+      <span style={lgStatusBadge(sbomReady)}>{sbomReady ? "SBOM ready" : "SBOM pending"}</span>
       {runDone && badge && (
         <span style={lgOutcomeBadge(badge.color, badge.bg)}>
           {Ic.check(11)} {badge.label}
@@ -124,151 +137,104 @@ export function PageBuildRuntime({
     </>
   );
 
-  const headerRight =
-    runDone && ts ? (
-      <span
-        style={{
-          fontSize: 11,
-          color: lgColors.textMuted,
-          fontFamily: F.mono,
-          flexShrink: 0,
-        }}
-      >
-        Last built{" "}
-        {new Date(ts).toLocaleString([], {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </span>
-    ) : null;
+  const headerRight = runDone && ts ? <LastRunStamp label="Last built" ts={ts} /> : null;
 
   return (
-    <div style={lgStyles.pageRoot}>
-      <div style={lgStyles.pageFrame}>
-        <GlassPageHeader
-          icon={Ic.cpu(24)}
-          iconTint={{
-            color: assemblyStep.color,
-            border: `${assemblyStep.color}55`,
-            shadow: `${assemblyStep.color}28`,
-          }}
-          title={assemblyStep.label}
-          subtitle={assemblyStep.desc}
-          badges={headerBadges}
-          right={headerRight}
-        />
+    <RuntimeEnvironmentShell
+      active={PAGE.BUILD}
+      buildReady={!!finalRuntime && runtimePathExists}
+      sbomReady={sbomReady}
+      onGo={onGo}
+      headerBadges={headerBadges}
+      headerRight={headerRight}
+      main={
+        <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
+          <div style={lgStyles.sectionBody}>
+            <GlassSectionHeader
+              icon={Ic.terminal(19)}
+              color={RUNTIME_ENV_COLOR}
+              title="Build Script"
+              subtitle="One script — pick existing, write your own, or generate from a base."
+            />
 
-        <div style={lgStyles.mainGrid}>
-          <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-            <div style={lgStyles.sectionBody}>
-              <div style={lgStyles.sectionHeader}>
-                <div
-                  style={{
-                    ...lgStyles.sectionIcon,
-                    color: assemblyStep.color,
-                    border: `1px solid ${assemblyStep.color}48`,
-                  }}
-                >
-                  {Ic.terminal(19)}
-                </div>
-                <div>
-                  <h2 style={lgStyles.sectionTitle}>Build Script</h2>
-                  <div style={lgStyles.sectionSubtitle}>
-                    One script — pick existing, write your own, or generate from a base.
-                  </div>
-                </div>
-              </div>
+            <BuildScriptCard
+              scriptPath={scriptPath}
+              scriptContent={scriptContent}
+              source={scriptSource}
+              runtimeHint={finalRuntime}
+              files={files}
+              onCommit={handleCommitScript}
+              onClear={handleClearScript}
+              onSourceChange={setScriptSource}
+            />
 
-              <BuildScriptCard
-                scriptPath={scriptPath}
-                scriptContent={scriptContent}
-                source={scriptSource}
-                runtimeHint={runtimeHint}
-                files={files}
-                onCommit={handleCommitScript}
-                onClear={handleClearScript}
-                onSourceChange={setScriptSource}
+            <div style={{ marginTop: 22 }}>
+              <GlassSectionHeader
+                icon={Ic.archive(19)}
+                color={RUNTIME_ENV_COLOR}
+                title="Runtime Artifact"
+                subtitle="The file produced by your build, consumed by SBOM and activation."
               />
 
-              <div style={{ marginTop: 22 }}>
-                <div style={lgStyles.sectionHeader}>
-                  <div
-                    style={{
-                      ...lgStyles.sectionIcon,
-                      color: assemblyStep.color,
-                      border: `1px solid ${assemblyStep.color}48`,
-                    }}
-                  >
-                    {Ic.archive(19)}
-                  </div>
-                  <div>
-                    <h2 style={lgStyles.sectionTitle}>Runtime Artifact</h2>
-                    <div style={lgStyles.sectionSubtitle}>
-                      The file produced by your build, consumed by SBOM and activation.
-                    </div>
-                  </div>
-                </div>
-
-                <RuntimeArtifactCard
-                  runtimePath={finalRuntime}
-                  runtimeSize={finalRuntimeSize}
-                  runtimePathExists={runtimePathExists}
-                  includeRuntime={includeRuntime}
-                  files={files}
-                  onRuntimeChange={handleRuntimeChange}
-                  onIncludedToggle={() =>
-                    onArtifactStatusChange?.((current) => ({
-                      ...current,
-                      runtimeIncluded: !includeRuntime,
-                    }))
-                  }
-                />
-              </div>
-
-              <BuildLogCard log={log} running={running} ts={ts} />
+              <RuntimeArtifactCard
+                runtimePath={finalRuntime}
+                runtimeSize={finalRuntimeSize}
+                runtimePathExists={runtimePathExists}
+                includeRuntime={includeRuntime}
+                files={files}
+                onRuntimeChange={handleRuntimeChange}
+                onIncludedToggle={() =>
+                  onArtifactStatusChange?.((current) => ({
+                    ...current,
+                    runtimeIncluded: !includeRuntime,
+                  }))
+                }
+              />
             </div>
 
-            <div style={lgStyles.footer}>
-              <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
-                {buildFooterHint({ runDone, hasScript })}
-              </span>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button type="button" onClick={() => onGo?.(PAGE.SBOM)} style={lgNextButton()}>
-                  Next: Generate SBOM {Ic.chevR(15)}
-                </button>
-              </div>
-            </div>
-          </section>
+            <BuildLogCard log={log} running={running} ts={ts} />
+          </div>
 
-          <aside style={lgStyles.aside}>
-            <BuildRunConsole
-              running={running}
-              runDone={runDone}
-              missing={missing}
-              onRun={() => onRun(assemblyStep.key, buildParams)}
-              onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
-              onGoFields={onGoFields}
-            />
-            <BuildSummaryAside
-              scriptPath={scriptPath}
-              source={scriptSource}
-              runtimePath={finalRuntime}
-              runtimePathExists={runtimePathExists}
-              includeRuntime={includeRuntime}
-              runtimeSize={finalRuntimeSize}
-              runDone={runDone}
-            />
-            <BuildReadinessAside
-              hasScript={!!scriptPath}
-              hasRuntime={!!finalRuntime}
-              runtimePathExists={runtimePathExists}
-              runDone={runDone}
-            />
-          </aside>
-        </div>
-      </div>
-    </div>
+          <div style={lgStyles.footer}>
+            <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
+              {buildFooterHint({ runDone, hasScript })}
+            </span>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => onGo?.(PAGE.SBOM)} style={lgNextButton()}>
+                Next: Generate SBOM {Ic.chevR(15)}
+              </button>
+            </div>
+          </div>
+        </section>
+      }
+      aside={
+        <>
+          <BuildRunConsole
+            color={RUNTIME_ENV_COLOR}
+            running={running}
+            runDone={runDone}
+            missing={missing}
+            onRun={() => onRun(assemblyStep.key, buildParams)}
+            onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
+            onGoFields={onGoFields}
+          />
+          <BuildSummaryAside
+            scriptPath={scriptPath}
+            source={scriptSource}
+            runtimePath={finalRuntime}
+            runtimePathExists={runtimePathExists}
+            includeRuntime={includeRuntime}
+            runtimeSize={finalRuntimeSize}
+            runDone={runDone}
+          />
+          <BuildReadinessAside
+            hasScript={!!scriptPath}
+            hasRuntime={!!finalRuntime}
+            runtimePathExists={runtimePathExists}
+            runDone={runDone}
+          />
+        </>
+      }
+    />
   );
 }

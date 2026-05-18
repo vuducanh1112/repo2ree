@@ -184,7 +184,7 @@ export function RuntimePanel({
           }}
           {...hoverBrightness(95)}
         >
-          → Go to Build Runtime
+          → Go to Runtime
         </button>
       </div>
     </div>

@@ -2,8 +2,8 @@ import type { Badges, Timestamps } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { C, F, S_SECTION_LABEL } from "../../theme/theme";
 import { NavEntryButton } from "../AppShellNav";
-import type { AppShellPage } from "../state/pages";
-import { hasProcessStepCompleted, PROCESS_STEPS } from "./processSteps";
+import { type AppShellPage, isRuntimeEnvPage, PAGE } from "../state/pages";
+import { PROCESS_STEPS, resolveNavCompleted } from "./processSteps";
 
 interface LifecycleNavProps {
   page: AppShellPage;
@@ -23,7 +23,7 @@ export function LifecycleNav({
   setPage,
 }: LifecycleNavProps) {
   const completedCount = PROCESS_STEPS.filter((step) =>
-    hasProcessStepCompleted(step.key, ree, badges),
+    resolveNavCompleted(step, ree, badges),
   ).length;
 
   return (
@@ -55,8 +55,8 @@ export function LifecycleNav({
         }}
       >
         {PROCESS_STEPS.map((step, index) => {
-          const isActive = page === step.key;
-          const hasRun = hasProcessStepCompleted(step.key, ree, badges);
+          const isActive = page === step.key || (step.key === PAGE.BUILD && isRuntimeEnvPage(page));
+          const hasRun = resolveNavCompleted(step, ree, badges);
           const timestamp = timestamps[step.key];
           const tsShort = timestamp
             ? new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })

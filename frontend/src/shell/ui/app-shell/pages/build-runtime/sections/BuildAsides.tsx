@@ -7,9 +7,11 @@ import {
   runtimeSummaryStatusLabel,
 } from "../../../../../../core/ree-assembly/buildRuntimeUiState";
 import { Ic } from "../../../../shared/components/Icon";
-import { lgColors, lgReadout, lgStatusBadge, lgStyles } from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
+import { lgColors, lgStatusBadge, lgStyles } from "../../../../theme/lightGlassTheme";
+import { ReadinessPanel } from "../../../components/ReadinessPanel";
 import { SummaryLine } from "../../../components/SummaryLine";
+import { SummaryPanel } from "../../../components/SummaryPanel";
+import { ReadinessStat } from "../../runtime-environment/ReadinessStat";
 
 interface BuildSummaryAsideProps {
   scriptPath: string;
@@ -37,24 +39,18 @@ export function BuildSummaryAside({
     includeRuntime,
   });
   return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.cpu(22)}</span>
-        <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Build Summary</h2>
+    <SummaryPanel title="Build Summary" icon={Ic.cpu(22)} iconColor={lgColors.cyan}>
+      <div style={lgStyles.overviewHeader}>
+        <span style={lgStyles.overviewLabel}>Overview</span>
+        <span style={lgStatusBadge(runDone)}>{summaryLabel}</span>
       </div>
-      <div style={lgStyles.summaryBox}>
-        <div style={lgStyles.overviewHeader}>
-          <span style={lgStyles.overviewLabel}>Overview</span>
-          <span style={lgStatusBadge(runDone)}>{summaryLabel}</span>
-        </div>
-        <SummaryLine label="Script" value={scriptPath || "Not set"} />
-        <SummaryLine label="Source" value={provenanceLabel(scriptPath ? source : null)} />
-        <SummaryLine label="Runtime artifact" value={runtimePath || "Not selected"} />
-        <SummaryLine label="Runtime status" value={runtimeSummaryStatusLabel(runtimeStatus)} />
-        <SummaryLine label="Runtime size" value={runtimeSize || "—"} />
-        <SummaryLine label="Last build" value={runDone ? "Completed" : "Not run yet"} />
-      </div>
-    </section>
+      <SummaryLine label="Script" value={scriptPath || "Not set"} />
+      <SummaryLine label="Source" value={provenanceLabel(scriptPath ? source : null)} />
+      <SummaryLine label="Runtime artifact" value={runtimePath || "Not selected"} />
+      <SummaryLine label="Runtime status" value={runtimeSummaryStatusLabel(runtimeStatus)} />
+      <SummaryLine label="Runtime size" value={runtimeSize || "—"} />
+      <SummaryLine label="Last build" value={runDone ? "Completed" : "Not run yet"} />
+    </SummaryPanel>
   );
 }
 
@@ -73,34 +69,10 @@ export function BuildReadinessAside({
 }: BuildReadinessAsideProps) {
   const r = buildReadiness({ hasScript, hasRuntime, runtimePathExists, runDone });
   return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
-      <div style={lgStyles.readinessHeader}>
-        <span>Build Readiness</span>
-        <span style={{ color: lgColors.blue, fontFamily: F.mono }}>{r.percent}%</span>
-      </div>
-      <div style={lgStyles.progressTrack}>
-        <div style={{ ...lgStyles.progressFill, width: `${r.percent}%` }} />
-      </div>
-      <div style={lgStyles.statGrid}>
-        <Stat label="Script" done={r.hasScript} />
-        <Stat label="Runtime" done={r.runtimeReady} />
-        <Stat label="Built" done={r.runDone} />
-        <div style={lgReadout(lgStyles.statReadout)}>
-          <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Checks</span>
-          <strong style={{ color: lgColors.text, fontSize: 18 }}>
-            {r.done}/{r.total}
-          </strong>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Stat({ label, done }: { label: string; done: boolean }) {
-  return (
-    <div style={lgReadout(lgStyles.statReadout)}>
-      <span style={{ color: lgColors.textMuted, fontSize: 11 }}>{label}</span>
-      <strong style={{ color: lgColors.text, fontSize: 18 }}>{done ? "✓" : "—"}</strong>
-    </div>
+    <ReadinessPanel title="Build Readiness" percent={r.percent} done={r.done} total={r.total}>
+      <ReadinessStat label="Script" done={r.hasScript} />
+      <ReadinessStat label="Runtime" done={r.runtimeReady} />
+      <ReadinessStat label="Built" done={r.runDone} />
+    </ReadinessPanel>
   );
 }

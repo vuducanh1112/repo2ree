@@ -33,7 +33,6 @@ export function useAssemblyStepPageController({
   const { reeId } = useApiRuntime();
   const { page } = uiChrome;
   const { badges, assemblyOperationParams, actionStates, timestamps, activeRunIds } = assemblyRun;
-
   const assemblyStep = useMemo(() => REE_ASSEMBLY_STEPS.find((step) => step.key === page), [page]);
 
   const missing = useMemo(() => {

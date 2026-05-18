@@ -38,12 +38,6 @@ export const S_FIELD_LABEL_TEXT_SM: React.CSSProperties = {
   fontFamily: F.sans,
 };
 
-export const S_TEXT_ITALIC_11: React.CSSProperties = {
-  fontStyle: "italic",
-  fontWeight: 400,
-  fontSize: 11,
-};
-
 export const S_FIELD_TIP_CARD_BLOCK: React.CSSProperties = {
   marginBottom: 16,
 };
@@ -160,15 +154,6 @@ export const S_WORKFLOW_PAGE_LOG_WRAP: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   minHeight: 0,
-};
-
-export const S_STATUS_BADGE_SM_BASE: React.CSSProperties = {
-  fontSize: 10,
-  fontFamily: F.sans,
-  fontWeight: 700,
-  borderRadius: 4,
-  padding: "2px 7px",
-  flexShrink: 0,
 };
 
 export const S_TEXT_MUTED_11: React.CSSProperties = {

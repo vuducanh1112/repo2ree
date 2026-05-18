@@ -1,3 +1,9 @@
+const SKIPPED_SENTINEL = "__skipped__";
+
+export function resolvedRuntimePath(raw: string | null | undefined): string {
+  return raw && raw !== SKIPPED_SENTINEL ? raw : "";
+}
+
 export type BuildScriptSourceKind = "picked" | "manual" | "generated";
 
 export interface BuildScriptSource {

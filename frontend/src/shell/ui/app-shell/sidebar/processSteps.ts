@@ -2,6 +2,8 @@ import { hbomHasAnyComponents } from "../../../../core/hbom/HbomSummary";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import { REE_ASSEMBLY_STEPS } from "../../../../core/ree-assembly/assemblyCatalog";
 import type { ReeAssemblyDefinition } from "../../../../core/ree-assembly/assemblyStepTypes";
+import { resolvedRuntimePath } from "../../../../core/ree-assembly/buildRuntimeUiState";
+import { resolvedSbomPath } from "../../../../core/ree-assembly/sbomUiState";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { Ic } from "../../shared/components/Icon";
 import { type AppShellPage, PAGE } from "../state/pages";
@@ -13,6 +15,7 @@ interface ProcessStep {
   IC: (size?: number) => JSX.Element;
   automation: ReeAssemblyDefinition | null;
   desc: string;
+  navCompleted?: (ree: ReeEditorViewModel, badges: Badges) => boolean;
 }
 
 const AUTOMATION_BY_KEY: Record<string, ReeAssemblyDefinition> = Object.fromEntries(
@@ -55,21 +58,14 @@ export const PROCESS_STEPS: ProcessStep[] = [
   {
     n: 5,
     key: PAGE.BUILD,
-    label: "Build Runtime",
+    label: "Runtime",
     IC: Ic.cpu,
     automation: AUTOMATION_BY_KEY[PAGE.BUILD],
-    desc: "Build the runtime tarball",
+    desc: "Build and inventory runtime",
+    navCompleted: runtimeNavCompleted,
   },
   {
     n: 6,
-    key: PAGE.SBOM,
-    label: "Generate SBOM",
-    IC: Ic.package,
-    automation: AUTOMATION_BY_KEY[PAGE.SBOM],
-    desc: "Scan runtime with syft",
-  },
-  {
-    n: 7,
     key: PAGE.ACTIVATION,
     label: "Test Activation",
     IC: Ic.shield,
@@ -77,7 +73,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Verify container activates",
   },
   {
-    n: 8,
+    n: 7,
     key: PAGE.EXPERIMENTS,
     label: "Experiments",
     IC: Ic.terminal,
@@ -85,7 +81,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Define reproducibility experiment commands",
   },
   {
-    n: 9,
+    n: 8,
     key: PAGE.ARCHIVE,
     label: "Deposit & Share",
     IC: Ic.globe,
@@ -93,7 +89,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Archive and publish",
   },
   {
-    n: 10,
+    n: 9,
     key: PAGE.SEAL,
     label: "Seal",
     IC: Ic.lock,
@@ -102,17 +98,30 @@ export const PROCESS_STEPS: ProcessStep[] = [
   },
 ];
 
-export function hasProcessStepCompleted(
-  stepKey: AppShellPage,
-  ree: ReeEditorViewModel,
-  badges: Badges,
-) {
+export function runtimeNavCompleted(ree: ReeEditorViewModel, badges: Badges): boolean {
+  const runCompleted = !!badges?.build && !!badges?.sbom;
+  const artifactsPresent = !!resolvedRuntimePath(ree.runtime) && !!resolvedSbomPath(ree.sbom);
+  return runCompleted || artifactsPresent;
+}
+
+function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel, badges: Badges) {
   if (stepKey === PAGE.SOURCE) return !!ree.sourceAvailable;
   if (stepKey === PAGE.METADATA) return !!ree.name;
   if (stepKey === PAGE.EXPERIMENTS)
     return (ree.experiments || []).some((entry) => !!entry.name.trim());
   if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.hardware_description);
+  if (stepKey === PAGE.BUILD) return !!badges?.build;
   if (stepKey === PAGE.SEAL) return !!ree.sealedAt;
   if (stepKey === PAGE.ARCHIVE) return !!badges?.swh || !!badges?.zenodo || !!badges?.dataverse;
   return !!badges?.[stepKey];
+}
+
+export function resolveNavCompleted(
+  step: ProcessStep,
+  ree: ReeEditorViewModel,
+  badges: Badges,
+): boolean {
+  return step.navCompleted
+    ? step.navCompleted(ree, badges)
+    : hasProcessStepCompleted(step.key, ree, badges);
 }

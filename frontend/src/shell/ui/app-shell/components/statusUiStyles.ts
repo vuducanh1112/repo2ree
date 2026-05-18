@@ -1,5 +1,5 @@
 import type React from "react";
-import { C, F, S_SECTION_LABEL_SMALL, S_STATUS_BADGE_SM_BASE } from "../../theme/theme";
+import { C, F } from "../../theme/theme";
 
 export const assemblySectionCardStyle = (active = false): React.CSSProperties => ({
   border: `1.5px solid ${active ? C.accentBorder : C.border}`,
@@ -50,69 +50,4 @@ export const WORKFLOW_LOG_EMPTY_STYLE: React.CSSProperties = {
   minHeight: 200,
   gap: 8,
   color: C.textMuted,
-};
-
-export const assemblyStatusCardStyle = (
-  isSet: boolean,
-  accentColor: string,
-): React.CSSProperties => ({
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  padding: "10px 14px",
-  background: isSet ? `${accentColor}12` : C.surfaceAlt,
-  border: `1.5px solid ${isSet ? `${accentColor}40` : C.border}`,
-  borderRadius: 9,
-});
-
-export const assemblyStatusIconWrapStyle = (
-  isSet: boolean,
-  accentColor: string,
-): React.CSSProperties => ({
-  width: 28,
-  height: 28,
-  borderRadius: 7,
-  flexShrink: 0,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: isSet ? `${accentColor}18` : `${C.border}40`,
-});
-
-export const assemblyStatusKeyStyle = (
-  isSet: boolean,
-  accentColor: string,
-): React.CSSProperties => ({
-  ...S_SECTION_LABEL_SMALL,
-  letterSpacing: 0.8,
-  color: isSet ? accentColor : C.textMuted,
-  opacity: 0.7,
-  marginBottom: 1,
-});
-
-export const assemblyStatusValueStyle = (
-  isSet: boolean,
-  accentColor: string,
-): React.CSSProperties => ({
-  fontSize: 12,
-  fontWeight: 700,
-  fontFamily: F.mono,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-  color: isSet ? accentColor : C.textMuted,
-});
-
-export const assemblyStatusBadgeStyle = (accentColor: string): React.CSSProperties => ({
-  ...S_STATUS_BADGE_SM_BASE,
-  color: accentColor,
-  background: `${accentColor}12`,
-  border: `1px solid ${accentColor}40`,
-});
-
-export const RUNTIME_STATUS_BADGE_STYLE: React.CSSProperties = {
-  ...S_STATUS_BADGE_SM_BASE,
-  color: "#16a34a",
-  background: "#f0fdf4",
-  border: "1px solid #bbf7d0",
 };
