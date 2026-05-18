@@ -3,12 +3,13 @@ import { Ic } from "../../../shared/components/Icon";
 import { lgColors, lgSegmentedTab } from "../../../theme/lightGlassTheme";
 import { type AppShellPage, PAGE } from "../../state/pages";
 
-type RuntimeEnvTab = typeof PAGE.BUILD | typeof PAGE.SBOM;
+type RuntimeEnvTab = typeof PAGE.BUILD | typeof PAGE.SBOM | typeof PAGE.ACTIVATION;
 
 interface RuntimeEnvironmentTabsProps {
   active: RuntimeEnvTab;
   buildReady: boolean;
   sbomReady: boolean;
+  activationReady: boolean;
   onGo?: (key: AppShellPage) => void;
 }
 
@@ -16,6 +17,7 @@ export function RuntimeEnvironmentTabs({
   active,
   buildReady,
   sbomReady,
+  activationReady,
   onGo,
 }: RuntimeEnvironmentTabsProps) {
   return (
@@ -40,6 +42,13 @@ export function RuntimeEnvironmentTabs({
         icon={Ic.package(14)}
         label="Generate SBOM"
         onClick={() => onGo?.(PAGE.SBOM)}
+      />
+      <RuntimeEnvironmentTab
+        active={active === PAGE.ACTIVATION}
+        ready={activationReady}
+        icon={Ic.shield(14)}
+        label="Test Activation"
+        onClick={() => onGo?.(PAGE.ACTIVATION)}
       />
     </div>
   );

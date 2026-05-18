@@ -39,6 +39,7 @@ export function PageGenerateSBOM({
   assemblyStep,
   ree,
   inclusionState,
+  badges,
   workspaceFiles,
   log,
   running,
@@ -70,6 +71,7 @@ export function PageGenerateSBOM({
   };
 
   const buildReady = !!runtimePath && runtimePathExists;
+  const activationReady = !!badges?.activation;
 
   const headerBadges = (
     <>
@@ -79,6 +81,9 @@ export function PageGenerateSBOM({
       <span style={lgStatusBadge(buildReady)}>{buildReady ? "Build ready" : "Build pending"}</span>
       <span style={lgStatusBadge(!!sbomPath && !!sbomNode)}>
         {sbomPath && sbomNode ? "SBOM ready" : "SBOM pending"}
+      </span>
+      <span style={lgStatusBadge(activationReady)}>
+        {activationReady ? "Activation ready" : "Activation pending"}
       </span>
       {runDone && badge && (
         <span style={lgOutcomeBadge(badge.color, badge.bg)}>
@@ -95,6 +100,7 @@ export function PageGenerateSBOM({
       active={PAGE.SBOM}
       buildReady={!!runtimePath && runtimePathExists}
       sbomReady={!!sbomPath && !!sbomNode}
+      activationReady={activationReady}
       onGo={onGo}
       headerBadges={headerBadges}
       headerRight={headerRight}

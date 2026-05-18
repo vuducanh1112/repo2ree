@@ -17,10 +17,10 @@ export const PAGE = {
   ACTIVATION: "activation",
 } as const;
 
-// The Runtime Environment section combines the Build and SBOM sub-pages
-// under a single sidebar entry. BUILD is the canonical landing page.
+// The Runtime Environment section combines the Build, SBOM, and Activation
+// sub-pages under a single sidebar entry. BUILD is the canonical landing page.
 export function isRuntimeEnvPage(page: AppShellPage): boolean {
-  return page === PAGE.BUILD || page === PAGE.SBOM;
+  return page === PAGE.BUILD || page === PAGE.SBOM || page === PAGE.ACTIVATION;
 }
 
 export const APP_ROUTE = {

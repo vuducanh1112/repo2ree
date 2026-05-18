@@ -307,7 +307,9 @@ test("upload source archive into workspace", async ({ page }) => {
   await test.step("Build runtime", async () => {
     await clickDemo(
       page,
-      page.getByRole("button", { name: /Runtime.*Build and inventory runtime/ }),
+      page.getByRole("button", {
+        name: /Runtime Environment.*Build, inventory, and verify runtime/,
+      }),
       "Build runtime artifact",
     );
     await expect(main.getByText("Runtime Environment", { exact: true })).toBeVisible();
@@ -365,15 +367,15 @@ test("upload source archive into workspace", async ({ page }) => {
   //console.log("SBOM generated, proceeding to activation test...");
 
   await test.step("Test activation", async () => {
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: /Test Activation.*Verify container activates/ }),
-      "Run activation test",
-    );
-    await expect(main.getByText("Test Activation", { exact: true })).toBeVisible();
+    const activationTab = main
+      .locator("button[aria-pressed]")
+      .filter({ hasText: "Test Activation" });
+    await clickDemo(page, activationTab, "Open activation test");
+    await expect(activationTab).toHaveAttribute("aria-pressed", "true");
+    await expect(main.getByText("Activation Script", { exact: true })).toBeVisible();
     await fillDemo(
       page,
-      page.getByPlaceholder("activation_test.sh"),
+      main.getByPlaceholder("activation_test.sh").first(),
       "python_hello_world/activate_runtime.sh",
       "Provide activation script path",
     );
@@ -383,11 +385,7 @@ test("upload source archive into workspace", async ({ page }) => {
       "Execute activation",
     );
     await expect(main.getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 20000 });
-    await showcasePanel(
-      page,
-      main.getByText("Output", { exact: true }).first(),
-      "Review activation logs",
-    );
+    await showcasePanel(page, main.getByText(/Activation log/i).first(), "Review activation logs");
     await expectOverviewCableActive("Activation");
   });
 

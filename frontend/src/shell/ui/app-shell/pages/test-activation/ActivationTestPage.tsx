@@ -1,38 +1,39 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import {
+  type ActivationScriptSource,
+  activationFooterHint,
+} from "../../../../../core/ree-assembly/activationUiState";
+import type { ReeAssemblyRunParams } from "../../../../../core/ree-assembly/assemblyTypes";
+import { resolvedRuntimePath } from "../../../../../core/ree-assembly/buildRuntimeUiState";
+import { resolvedSbomPath } from "../../../../../core/ree-assembly/sbomUiState";
 import { workspaceFileExists } from "../../../../../core/workspace/fileTreeTraversal";
 import { Ic } from "../../../shared/components/Icon";
 import {
-  C,
-  S_FIELD_HELP_TEXT_SMALL,
-  S_FIELD_LABEL_TEXT_SM,
-  S_FIELD_ROW_REQUIRED_BADGE,
-  S_FIELD_STACK_GAP_5,
-  S_FIELD_STACK_GAP_14,
-  S_FLEX_ROW_CENTER_GAP_6,
-  S_SECTION_LABEL,
-  S_WORKFLOW_PAGE_BODY,
-  S_WORKFLOW_PAGE_LOG_WRAP,
-  S_WORKFLOW_PAGE_NUDGE_WRAP,
-  S_WORKFLOW_PAGE_SCRIPTS_WRAP,
-  S_WORKFLOW_SERVICE_MAIN_SCROLL,
-  S_WORKFLOW_SERVICE_ROOT,
-} from "../../../theme/theme";
-import {
-  AssemblyRunActionSection,
-  AssemblyRunLogSection,
-} from "../../components/assemblyRunPanels";
-import {
-  descToTwoTierTips,
-  FieldRow,
-  FieldSection,
-  FieldTipsSidebar,
-} from "../../components/fieldTips";
-import { AssemblyPageHeader, NextStepNudge } from "../../components/pageChrome";
-import { FilePicker, ScriptPanel } from "../../components/scriptAndFile";
-import { FIELD_META } from "../../fieldTips/fieldMeta";
+  lgColors,
+  lgNextButton,
+  lgOutcomeBadge,
+  lgPillChip,
+  lgStatusBadge,
+  lgStyles,
+} from "../../../theme/lightGlassTheme";
+import { F } from "../../../theme/theme";
+import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
+import { GlassSectionHeader } from "../../components/GlassSectionHeader";
+import { LastRunStamp } from "../../components/LastRunStamp";
 import { PAGE } from "../../state/pages";
-import { SVC_SCRIPT_FIELDS } from "../sharedAssemblyConstants";
+import {
+  RUNTIME_ENV_COLOR,
+  RuntimeEnvironmentShell,
+} from "../runtime-environment/RuntimeEnvironmentShell";
+import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
+import {
+  ActivationReadinessAside,
+  ActivationRunConsole,
+  ActivationScriptCard,
+  ActivationSummaryAside,
+  ActivationTargetCard,
+} from "./sections";
 
 export function PageTestActivation({
   assemblyStep,
@@ -53,126 +54,166 @@ export function PageTestActivation({
   onReeSpecChange,
   onPersistWorkspaceFile,
 }: AssemblyPageProps) {
-  const files = workspaceFiles;
+  const files = workspaceFiles || [];
 
-  const asLabel = FIELD_META.activation_script?.label || "Activation script";
-  const buildColor = assemblyStep?.color || "#ef4444";
-  const [focusedField, setFocusedField] = useState<string | null>(null);
-  const runtimePath = ree.runtime && ree.runtime !== "__skipped__" ? ree.runtime : "";
-  const runtimePathExists = runtimePath ? workspaceFileExists(files || [], runtimePath) : false;
+  const scriptPath = ree.activation_script || "";
+  const scriptFile = useMemo(
+    () => (scriptPath ? findFileByPath(files, scriptPath) : null),
+    [files, scriptPath],
+  );
+  const scriptPresent = !!scriptFile;
+
+  const [scriptSource, setScriptSource] = useState<ActivationScriptSource | null>(
+    scriptPath ? { kind: "picked" } : null,
+  );
+
+  const runtimePath = resolvedRuntimePath(ree.runtime);
+  const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
+  const sbomPath = resolvedSbomPath(ree.sbom);
+  const sbomPathExists = sbomPath ? workspaceFileExists(files, sbomPath) : false;
+
+  const activationParams: ReeAssemblyRunParams<"activation"> =
+    params as ReeAssemblyRunParams<"activation">;
+  const buildReady = !!runtimePath && runtimePathExists;
+  const activationReady = !!badges?.activation;
+
+  const handleCommitScript = useCallback(
+    (path: string, content: string) => {
+      const previousPath = scriptPath || undefined;
+      onReeSpecChange?.((current) => ({ ...current, activation_script: path }));
+      void onPersistWorkspaceFile?.(previousPath, path, content);
+    },
+    [onPersistWorkspaceFile, onReeSpecChange, scriptPath],
+  );
+
+  const handleClearScript = useCallback(
+    () => onReeSpecChange?.((current) => ({ ...current, activation_script: "" })),
+    [onReeSpecChange],
+  );
+
+  const headerBadges = (
+    <>
+      {runtimePath && (
+        <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{runtimePath}</span>
+      )}
+      {scriptPath && <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{scriptPath}</span>}
+      <span style={lgStatusBadge(buildReady)}>{buildReady ? "Build ready" : "Build pending"}</span>
+      <span style={lgStatusBadge(!!sbomPath && sbomPathExists)}>
+        {sbomPath && sbomPathExists ? "SBOM ready" : "SBOM pending"}
+      </span>
+      <span style={lgStatusBadge(activationReady)}>
+        {activationReady ? "Activation ready" : "Activation pending"}
+      </span>
+      {runDone && badge && (
+        <span style={lgOutcomeBadge(badge.color, badge.bg)}>
+          {Ic.check(11)} {badge.label}
+        </span>
+      )}
+    </>
+  );
+
+  const headerRight = runDone && ts ? <LastRunStamp label="Last verified" ts={ts} /> : null;
 
   return (
-    <div style={S_WORKFLOW_SERVICE_ROOT}>
-      <AssemblyPageHeader
-        color={assemblyStep.color}
-        icon={Ic.play(18)}
-        title={assemblyStep?.label || "Test activation"}
-        subtitle="Run the activation test script to verify the runtime loads and activates correctly"
-        tips={descToTwoTierTips(assemblyStep.desc)}
-        runDone={runDone}
-        badge={badge}
-        ts={ts}
-        missingCount={missing.length}
-        onGoFields={onGoFields}
-      />
+    <RuntimeEnvironmentShell
+      active={PAGE.ACTIVATION}
+      buildReady={buildReady}
+      sbomReady={!!sbomPath && sbomPathExists}
+      activationReady={activationReady}
+      onGo={onGo}
+      headerBadges={headerBadges}
+      headerRight={headerRight}
+      main={
+        <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
+          <div style={lgStyles.sectionBody}>
+            <GlassSectionHeader
+              icon={Ic.shield(19)}
+              color={RUNTIME_ENV_COLOR}
+              title="Activation Script"
+              subtitle="Select an existing smoke test or write the script that proves the runtime starts."
+            />
 
-      <div style={S_WORKFLOW_PAGE_BODY}>
-        <div style={S_WORKFLOW_SERVICE_MAIN_SCROLL}>
-          <FieldSection
-            title="Fields"
-            icon={Ic.play()}
-            filledCount={ree.activation_script ? 1 : 0}
-            totalCount={1}
-          >
-            <FieldRow
-              fieldKey="activation_script"
-              onFocus={() => setFocusedField("activation_script")}
-              active={focusedField === "activation_script"}
-            >
-              <div style={S_FIELD_STACK_GAP_14}>
-                <div style={S_FIELD_STACK_GAP_5}>
-                  <div style={S_FLEX_ROW_CENTER_GAP_6}>
-                    <span style={S_FIELD_LABEL_TEXT_SM}>{asLabel}</span>
-                    <span style={S_FIELD_ROW_REQUIRED_BADGE}>required</span>
-                  </div>
-                  <div style={S_FIELD_HELP_TEXT_SMALL}>
-                    Shell script that loads the runtime and verifies the environment activates
-                    correctly
-                  </div>
-                  <FilePicker
-                    disabled={false}
-                    value={ree.activation_script}
-                    onChange={(v) =>
-                      onReeSpecChange?.((current) => ({ ...current, activation_script: v }))
-                    }
-                    files={files || []}
-                    placeholder="activation_test.sh"
-                    filterFn={(p) => /\.sh$/i.test(p)}
-                  />
-                </div>
-              </div>
-            </FieldRow>
-          </FieldSection>
+            <ActivationScriptCard
+              scriptPath={scriptPath}
+              scriptContent={scriptFile?.content || ""}
+              source={scriptSource}
+              runtimeHint={runtimePath}
+              files={files}
+              onCommit={handleCommitScript}
+              onClear={handleClearScript}
+              onSourceChange={setScriptSource}
+            />
 
-          {runtimePath && !runtimePathExists && (
-            <div style={{ color: C.error, fontSize: 12 }}>
-              Selected runtime is not present in the current workspace files.
+            <div style={{ marginTop: 22 }}>
+              <GlassSectionHeader
+                icon={Ic.cpu(19)}
+                color={RUNTIME_ENV_COLOR}
+                title="Runtime Under Test"
+                subtitle="Activation reuses the runtime artifact from Build Runtime and the inventory context from Generate SBOM."
+              />
+
+              <ActivationTargetCard
+                runtimePath={runtimePath}
+                runtimePathExists={runtimePathExists}
+                sbomPath={sbomPath}
+                sbomPathExists={sbomPathExists}
+                onGoBuild={() => onGo?.(PAGE.BUILD)}
+                onGoSbom={() => onGo?.(PAGE.SBOM)}
+              />
             </div>
-          )}
 
-          <AssemblyRunActionSection
-            color={buildColor}
+            <div style={{ marginTop: 22 }}>
+              <CollapsibleLogCard
+                log={log}
+                running={running}
+                title={ts ? "Activation log" : "Activation logs"}
+              />
+            </div>
+          </div>
+
+          <div style={lgStyles.footer}>
+            <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
+              {activationFooterHint({ runDone })}
+            </span>
+            <button type="button" onClick={() => onGo?.(PAGE.EXPERIMENTS)} style={lgNextButton()}>
+              Next: Experiments {Ic.chevR(15)}
+            </button>
+          </div>
+        </section>
+      }
+      aside={
+        <>
+          <ActivationRunConsole
+            color={RUNTIME_ENV_COLOR}
+            runtimePath={runtimePath}
+            runtimePathExists={runtimePathExists}
+            scriptPath={scriptPath}
+            scriptPresent={scriptPresent}
             running={running}
             runDone={runDone}
-            disabled={running || missing?.length > 0 || !runtimePathExists}
-            idleLabel="Run activation"
-            runningLabel="Running…"
-            helperText={
-              runtimePath && !runtimePathExists
-                ? "Selected runtime is not present in the current workspace files."
-                : "Runs the activation test script in the runtime environment."
-            }
-            onCancel={() => onCancel?.(assemblyStep.key)}
-            onRun={() => onRun(assemblyStep.key, params)}
+            missing={missing}
+            onRun={() => onRun(assemblyStep.key, activationParams)}
+            onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
+            onGoFields={onGoFields}
           />
-
-          <div style={S_WORKFLOW_PAGE_SCRIPTS_WRAP}>
-            <div style={{ ...S_SECTION_LABEL, marginBottom: 14 }}>Scripts</div>
-            {SVC_SCRIPT_FIELDS.activation?.map((sf) => (
-              <ScriptPanel
-                key={sf.fieldKey}
-                scriptKind={sf.scriptKind || null}
-                fieldKey={sf.fieldKey}
-                files={files || []}
-                onPersistWorkspaceFile={onPersistWorkspaceFile}
-                ree={ree}
-                onReeSpecChange={onReeSpecChange}
-                saveToWorkspaceOnly
-              />
-            ))}
-          </div>
-
-          <div style={S_WORKFLOW_PAGE_LOG_WRAP}>
-            <AssemblyRunLogSection log={log} running={running} />
-          </div>
-
-          <div style={S_WORKFLOW_PAGE_NUDGE_WRAP}>
-            <NextStepNudge
-              stepKey={PAGE.ACTIVATION}
-              badges={badges || {}}
-              onGo={onGo || (() => {})}
-            />
-          </div>
-        </div>
-
-        <FieldTipsSidebar
-          tipFields={["activation_script", "runtime"]}
-          focusedField={focusedField}
-          onFocusField={setFocusedField}
-          onClear={() => setFocusedField(null)}
-          emptyMessage="Choose a field to see examples, format rules, and commands."
-        />
-      </div>
-    </div>
+          <ActivationSummaryAside
+            runtimePath={runtimePath}
+            runtimePathExists={runtimePathExists}
+            sbomPath={sbomPath}
+            sbomPathExists={sbomPathExists}
+            scriptPath={scriptPath}
+            scriptPresent={scriptPresent}
+            runDone={runDone}
+          />
+          <ActivationReadinessAside
+            runtimePath={runtimePath}
+            runtimePathExists={runtimePathExists}
+            scriptPath={scriptPath}
+            scriptPresent={scriptPresent}
+            runDone={runDone}
+          />
+        </>
+      }
+    />
   );
 }

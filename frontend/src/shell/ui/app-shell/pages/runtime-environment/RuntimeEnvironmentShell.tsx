@@ -1,18 +1,17 @@
 import type React from "react";
 import { Ic } from "../../../shared/components/Icon";
-import { lgColors, lgStyles } from "../../../theme/lightGlassTheme";
+import { lgPageColors, lgStyles } from "../../../theme/lightGlassTheme";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import type { AppShellPage, PAGE } from "../../state/pages";
 import { RuntimeEnvironmentTabs } from "./RuntimeEnvironmentTabs";
 
-// Shared section colour for the Runtime Environment chrome and its sub-pages —
-// kept stable across the Build and SBOM tabs so the section reads as one unit.
-export const RUNTIME_ENV_COLOR = lgColors.cyan;
+export const RUNTIME_ENV_COLOR = lgPageColors.runtimeEnv;
 
 interface RuntimeEnvironmentShellProps {
-  active: typeof PAGE.BUILD | typeof PAGE.SBOM;
+  active: typeof PAGE.BUILD | typeof PAGE.SBOM | typeof PAGE.ACTIVATION;
   buildReady: boolean;
   sbomReady: boolean;
+  activationReady: boolean;
   onGo?: (key: AppShellPage) => void;
   headerBadges: React.ReactNode;
   headerRight?: React.ReactNode;
@@ -24,6 +23,7 @@ export function RuntimeEnvironmentShell({
   active,
   buildReady,
   sbomReady,
+  activationReady,
   onGo,
   headerBadges,
   headerRight,
@@ -41,7 +41,7 @@ export function RuntimeEnvironmentShell({
             shadow: `${RUNTIME_ENV_COLOR}28`,
           }}
           title="Runtime Environment"
-          subtitle="Build the executable environment and generate the software inventory from it."
+          subtitle="Build the executable environment, generate the software inventory, and verify startup."
           badges={headerBadges}
           right={headerRight}
         />
@@ -50,6 +50,7 @@ export function RuntimeEnvironmentShell({
           active={active}
           buildReady={buildReady}
           sbomReady={sbomReady}
+          activationReady={activationReady}
           onGo={onGo}
         />
 

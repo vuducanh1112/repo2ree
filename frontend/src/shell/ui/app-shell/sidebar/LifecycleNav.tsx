@@ -57,7 +57,7 @@ export function LifecycleNav({
         {PROCESS_STEPS.map((step, index) => {
           const isActive = page === step.key || (step.key === PAGE.BUILD && isRuntimeEnvPage(page));
           const hasRun = resolveNavCompleted(step, ree, badges);
-          const timestamp = timestamps[step.key];
+          const timestamp = resolveStepTimestamp(step.key, timestamps);
           const tsShort = timestamp
             ? new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
             : null;
@@ -159,4 +159,15 @@ export function LifecycleNav({
       </div>
     </>
   );
+}
+
+function resolveStepTimestamp(stepKey: AppShellPage, timestamps: Timestamps): string | undefined {
+  if (stepKey !== PAGE.BUILD) {
+    return timestamps[stepKey];
+  }
+
+  return [timestamps.build, timestamps.sbom, timestamps.activation]
+    .filter((value): value is string => !!value)
+    .sort()
+    .at(-1);
 }

@@ -58,22 +58,14 @@ export const PROCESS_STEPS: ProcessStep[] = [
   {
     n: 5,
     key: PAGE.BUILD,
-    label: "Runtime",
+    label: "Runtime Environment",
     IC: Ic.cpu,
     automation: AUTOMATION_BY_KEY[PAGE.BUILD],
-    desc: "Build and inventory runtime",
+    desc: "Build, inventory, and verify runtime",
     navCompleted: runtimeNavCompleted,
   },
   {
     n: 6,
-    key: PAGE.ACTIVATION,
-    label: "Test Activation",
-    IC: Ic.shield,
-    automation: AUTOMATION_BY_KEY[PAGE.ACTIVATION],
-    desc: "Verify container activates",
-  },
-  {
-    n: 7,
     key: PAGE.EXPERIMENTS,
     label: "Experiments",
     IC: Ic.terminal,
@@ -81,7 +73,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Define reproducibility experiment commands",
   },
   {
-    n: 8,
+    n: 7,
     key: PAGE.ARCHIVE,
     label: "Deposit & Share",
     IC: Ic.globe,
@@ -89,7 +81,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Archive and publish",
   },
   {
-    n: 9,
+    n: 8,
     key: PAGE.SEAL,
     label: "Seal",
     IC: Ic.lock,
@@ -99,9 +91,10 @@ export const PROCESS_STEPS: ProcessStep[] = [
 ];
 
 export function runtimeNavCompleted(ree: ReeEditorViewModel, badges: Badges): boolean {
-  const runCompleted = !!badges?.build && !!badges?.sbom;
+  const runCompleted = !!badges?.build && !!badges?.sbom && !!badges?.activation;
   const artifactsPresent = !!resolvedRuntimePath(ree.runtime) && !!resolvedSbomPath(ree.sbom);
-  return runCompleted || artifactsPresent;
+  const activationConfigured = !!ree.activation_script?.trim();
+  return runCompleted || (artifactsPresent && activationConfigured);
 }
 
 function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel, badges: Badges) {

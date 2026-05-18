@@ -8,10 +8,6 @@ import {
   resolvedRuntimePath,
 } from "../../../../../core/ree-assembly/buildRuntimeUiState";
 import { resolvedSbomPath } from "../../../../../core/ree-assembly/sbomUiState";
-import {
-  removeWorkspaceFileByPath,
-  upsertWorkspaceFileByPath,
-} from "../../../../../core/workspace/fileTreeOps";
 import { workspaceFileExists } from "../../../../../core/workspace/fileTreeTraversal";
 import { Ic } from "../../../shared/components/Icon";
 import {
@@ -45,6 +41,7 @@ export function PageBuildRuntime({
   assemblyStep,
   ree,
   inclusionState,
+  badges,
   workspaceFiles,
   log,
   running,
@@ -87,15 +84,10 @@ export function PageBuildRuntime({
   const handleCommitScript = useCallback(
     (path: string, content: string) => {
       const previousPath = scriptPath || undefined;
-      const withoutPrevious =
-        previousPath && previousPath !== path
-          ? removeWorkspaceFileByPath(files, previousPath)
-          : files;
-      upsertWorkspaceFileByPath(withoutPrevious, path, content, { tag: PAGE.SOURCE });
       onReeSpecChange?.((current) => ({ ...current, build_runtime_script: path }));
       void onPersistWorkspaceFile?.(previousPath, path, content);
     },
-    [files, onPersistWorkspaceFile, onReeSpecChange, scriptPath],
+    [onPersistWorkspaceFile, onReeSpecChange, scriptPath],
   );
 
   const handleClearScript = useCallback(() => {
@@ -123,12 +115,16 @@ export function PageBuildRuntime({
   const hasScript = !!scriptPath;
   const statusLabel = buildRunStatusLabel({ running, runDone, hasScript });
   const sbomReady = !!sbomPath && !!sbomNode;
+  const activationReady = !!badges?.activation;
 
   const headerBadges = (
     <>
       {scriptPath && <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{scriptPath}</span>}
       <span style={lgStatusBadge(runDone)}>{statusLabel}</span>
       <span style={lgStatusBadge(sbomReady)}>{sbomReady ? "SBOM ready" : "SBOM pending"}</span>
+      <span style={lgStatusBadge(activationReady)}>
+        {activationReady ? "Activation ready" : "Activation pending"}
+      </span>
       {runDone && badge && (
         <span style={lgOutcomeBadge(badge.color, badge.bg)}>
           {Ic.check(11)} {badge.label}
@@ -144,6 +140,7 @@ export function PageBuildRuntime({
       active={PAGE.BUILD}
       buildReady={!!finalRuntime && runtimePathExists}
       sbomReady={sbomReady}
+      activationReady={activationReady}
       onGo={onGo}
       headerBadges={headerBadges}
       headerRight={headerRight}

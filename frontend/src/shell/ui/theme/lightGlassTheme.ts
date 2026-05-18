@@ -23,6 +23,10 @@ export const lgColors = {
   white: "#fff",
 } as const;
 
+export const lgPageColors = {
+  runtimeEnv: lgColors.cyan,
+} as const;
+
 const lgBorders = {
   panel: "1px solid rgba(125, 211, 252, 0.58)",
   frame: "1px solid rgba(125, 211, 252, 0.48)",

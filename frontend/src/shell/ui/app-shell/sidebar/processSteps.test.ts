@@ -4,16 +4,19 @@ import { createEmptyReeEditorViewModel } from "../../../../core/ree-editor/reeEd
 import { runtimeNavCompleted } from "./processSteps";
 
 describe("runtimeNavCompleted", () => {
-  it("uses completed build and sbom badges when present", () => {
+  it("uses completed build, sbom, and activation badges when present", () => {
     const ree = createEmptyReeEditorViewModel();
-    expect(runtimeNavCompleted(ree, { build: true, sbom: true } as Badges)).toBe(true);
+    expect(runtimeNavCompleted(ree, { build: true, sbom: true, activation: true } as Badges)).toBe(
+      true,
+    );
   });
 
-  it("uses durable runtime and sbom metadata after reload/import", () => {
+  it("uses durable runtime, sbom, and activation metadata after reload/import", () => {
     const ree = {
       ...createEmptyReeEditorViewModel(),
       runtime: "runtime.tar.gz",
       sbom: "sbom.json",
+      activation_script: "activation_test.sh",
     };
 
     expect(runtimeNavCompleted(ree, {} as Badges)).toBe(true);
@@ -33,6 +36,7 @@ describe("runtimeNavCompleted", () => {
     const ree = {
       ...createEmptyReeEditorViewModel(),
       runtime: "runtime.tar.gz",
+      sbom: "sbom.json",
     };
 
     expect(runtimeNavCompleted(ree, {} as Badges)).toBe(false);

@@ -1,6 +1,4 @@
-import type React from "react";
-import { fileType } from "../../../shared/formatting";
-import { C, F, S_SCRIPT_VIEW_MESSAGE_BASE } from "../../../theme/theme";
+import { C, F } from "../../../theme/theme";
 
 interface FileTypeStyle {
   color: string;
@@ -89,29 +87,5 @@ export function CodeLineList({ lines, paddingRight = 16, startLine = 1 }: CodeLi
         );
       })}
     </>
-  );
-}
-
-export function getFileTypeStyle(path: string): FileTypeStyle {
-  return FILE_TYPE_COLORS[fileType(path)] || FILE_TYPE_COLORS.text;
-}
-
-interface ViewMessageProps {
-  children: React.ReactNode;
-  color: string;
-  fontStyle?: React.CSSProperties["fontStyle"];
-}
-
-export function ScriptViewMessage({ children, color, fontStyle }: ViewMessageProps) {
-  return (
-    <div
-      style={{
-        ...S_SCRIPT_VIEW_MESSAGE_BASE,
-        color,
-        fontStyle,
-      }}
-    >
-      {children}
-    </div>
   );
 }
