@@ -19,5 +19,6 @@ export const GLOBAL_CSS = `
   :where(button, [role="button"], a, input, select, textarea):focus:not(:focus-visible) {
     outline: none;
   }
+  :where(button, [role="button"]):not(:disabled):active { transform: translateY(1px); }
   .nav-item { transition: background 0.12s, color 0.12s; }
 `;

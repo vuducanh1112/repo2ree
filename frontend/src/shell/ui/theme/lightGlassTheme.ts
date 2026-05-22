@@ -43,7 +43,6 @@ const lgBorders = {
   chip: "1px solid rgba(79, 70, 229, 0.28)",
   suggestion: "1px solid rgba(79, 70, 229, 0.24)",
   actionPrimary: "1px solid rgba(14, 165, 233, 0.35)",
-  actionNext: "1px solid rgba(14, 165, 233, 0.42)",
   actionNeutral: "1px solid rgba(148, 163, 184, 0.34)",
   iconButton: "1px solid rgba(148, 163, 184, 0.35)",
 } as const;
@@ -484,20 +483,24 @@ export function lgCorrespondingBadge(): React.CSSProperties {
   };
 }
 
+// Forward-navigation ("Next: …") is intentionally a tier below the page's
+// primary operation: a tinted, bordered button rather than the gradient +
+// glow reserved for lgPrimaryActionButton (Run / Commit). This keeps a single
+// loudest call-to-action per page instead of two competing gradient buttons.
 export function lgNextButton(): React.CSSProperties {
   return {
     ...S_ACTION_BUTTON_BASE,
-    border: lgBorders.actionNext,
+    border: lgBorders.actionPrimary,
     borderRadius: 8,
     padding: "10px 18px",
-    color: lgColors.white,
-    background: lgBackgrounds.next,
-    fontWeight: 800,
+    color: lgColors.primaryDeep,
+    background: lgBackgrounds.primary,
+    fontWeight: 700,
     display: "flex",
     alignItems: "center",
     gap: 8,
     cursor: "pointer",
-    boxShadow: "0 14px 30px rgba(14, 165, 233, 0.22)",
+    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.7)",
   };
 }
 
