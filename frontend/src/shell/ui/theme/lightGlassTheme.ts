@@ -79,7 +79,12 @@ const lgBackgrounds = {
     "linear-gradient(45deg, transparent 50%, #334155 50%), linear-gradient(135deg, #334155 50%, transparent 50%)",
 } as const;
 
-export const lgStyles = {
+// Identity helper: the constraint contextually types each member as
+// React.CSSProperties (so literals like flexDirection: "column" are preserved
+// rather than widened to string), while T keeps the specific keys for safety.
+const styleSheet = <T extends Record<string, React.CSSProperties>>(s: T): T => s;
+
+export const lgStyles = styleSheet({
   panel: {
     border: lgBorders.panel,
     borderRadius: 12,
@@ -363,7 +368,7 @@ export const lgStyles = {
     marginTop: 10,
     justifyContent: "flex-end",
   },
-} satisfies Record<string, React.CSSProperties>;
+});
 
 export function lgInput(locked: boolean, active = false): React.CSSProperties {
   return {

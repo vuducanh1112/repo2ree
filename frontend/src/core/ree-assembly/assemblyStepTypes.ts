@@ -38,13 +38,6 @@ export interface ReeAssemblyDefinition {
   params: ReeAssemblyParam[];
 }
 
-export interface RequirementsBannerProps {
-  status: "missing" | "met";
-  items?: ReeAssemblyRequirement[];
-  onAction?: () => void;
-  actionLabel?: string;
-}
-
 export interface ToastState {
   message: string;
   type: "info" | "success" | "error";

@@ -1,5 +1,6 @@
 import type { ArchiveRepo } from "../../../../../../core/ree-assembly/assemblyStepTypes";
-import { C, F, S_SECTION_LABEL } from "../../../../theme/theme";
+import { lgColors, lgContentCard, lgInput, lgStyles } from "../../../../theme/lightGlassTheme";
+import { F } from "../../../../theme/theme";
 
 interface ArchiveParamsCardProps {
   repo: ArchiveRepo;
@@ -9,150 +10,98 @@ interface ArchiveParamsCardProps {
 
 export function ArchiveParamsCard({ repo, getParam, setParam }: ArchiveParamsCardProps) {
   return (
-    <div
-      style={{
-        background: C.surface,
-        border: `1px solid ${C.border}`,
-        borderRadius: 10,
-        overflow: "hidden",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-      }}
-    >
-      <div
-        style={{
-          padding: "8px 16px",
-          background: "#fafbfd",
-          borderBottom: `1px solid ${C.border}`,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        <div
-          style={{
-            width: 3,
-            height: 14,
-            borderRadius: 99,
-            background: C.borderMid,
-            flexShrink: 0,
-          }}
-        />
-        <span style={{ ...S_SECTION_LABEL, letterSpacing: 1 }}>Parameters</span>
-      </div>
-      <div
-        style={{
-          padding: "10px 16px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-        }}
-      >
-        {repo.params.map((p) => (
-          <div key={p.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-              <label
-                htmlFor={`repo-${repo.key}-param-${p.key}`}
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: C.textMid,
-                  fontFamily: F.sans,
-                }}
-              >
+    <div style={lgContentCard()}>
+      <div style={{ ...lgStyles.label, marginBottom: 12 }}>Deposit parameters</div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {repo.params.map((p) => {
+          const inputId = `repo-${repo.key}-param-${p.key}`;
+          const value = getParam(repo.key, p.key);
+          return (
+            <div key={p.key} style={lgStyles.fieldFrame}>
+              <label htmlFor={inputId} style={lgStyles.label}>
                 {p.label}
+                {p.hint && <span style={{ ...lgStyles.helper, fontWeight: 400 }}>{p.hint}</span>}
               </label>
-              <span style={{ fontSize: 12, color: C.textMuted }}>{p.hint}</span>
-            </div>
-            {p.type === "bool" ? (
-              <button
-                id={`repo-${repo.key}-param-${p.key}`}
-                type="button"
-                onClick={() => setParam(repo.key, p.key, !getParam(repo.key, p.key))}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  border: `1.5px solid ${getParam(repo.key, p.key) ? C.accent : C.border}`,
-                  background: getParam(repo.key, p.key) ? C.accentBg : C.bg,
-                  cursor: "pointer",
-                  width: "fit-content",
-                  transition: "all 0.15s",
-                }}
-              >
-                <div
+
+              {p.type === "bool" ? (
+                <button
+                  id={inputId}
+                  type="button"
+                  onClick={() => setParam(repo.key, p.key, !value)}
                   style={{
-                    width: 30,
-                    height: 16,
-                    borderRadius: 99,
-                    background: getParam(repo.key, p.key) ? C.accent : C.borderMid,
-                    position: "relative",
-                    transition: "background 0.2s",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 9,
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: `1px solid ${value ? "rgba(14, 165, 233, 0.55)" : "rgba(148, 163, 184, 0.34)"}`,
+                    background: value ? "rgba(239, 246, 255, 0.9)" : "rgba(255, 255, 255, 0.6)",
+                    cursor: "pointer",
+                    width: "fit-content",
+                    transition: "all 0.15s",
                   }}
                 >
-                  <div
+                  <span
                     style={{
-                      position: "absolute",
-                      top: 2,
-                      left: getParam(repo.key, p.key) ? 16 : 2,
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: "#fff",
-                      transition: "left 0.2s",
+                      width: 32,
+                      height: 18,
+                      borderRadius: 99,
+                      background: value ? lgColors.blue : "rgba(148, 163, 184, 0.5)",
+                      position: "relative",
+                      transition: "background 0.2s",
+                      flexShrink: 0,
                     }}
-                  />
-                </div>
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontFamily: F.sans,
-                    color: getParam(repo.key, p.key) ? C.accent : C.textMuted,
-                  }}
+                  >
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 2,
+                        left: value ? 16 : 2,
+                        width: 14,
+                        height: 14,
+                        borderRadius: "50%",
+                        background: "#fff",
+                        boxShadow: "0 1px 3px rgba(15, 23, 42, 0.3)",
+                        transition: "left 0.2s",
+                      }}
+                    />
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      fontFamily: F.sans,
+                      color: value ? lgColors.primaryDeep : lgColors.textMuted,
+                    }}
+                  >
+                    {value ? "Yes" : "No"}
+                  </span>
+                </button>
+              ) : p.type === "select" ? (
+                <select
+                  id={inputId}
+                  value={String(value ?? "")}
+                  onChange={(event) => setParam(repo.key, p.key, event.target.value)}
+                  style={{ ...lgInput(false), fontFamily: F.mono, cursor: "pointer" }}
                 >
-                  {getParam(repo.key, p.key) ? "yes" : "no"}
-                </span>
-              </button>
-            ) : p.type === "select" ? (
-              <select
-                id={`repo-${repo.key}-param-${p.key}`}
-                value={String(getParam(repo.key, p.key) ?? "")}
-                onChange={(event) => setParam(repo.key, p.key, event.target.value)}
-                style={{
-                  border: `1.5px solid ${C.border}`,
-                  borderRadius: 7,
-                  padding: "6px 10px",
-                  fontSize: 14,
-                  fontFamily: F.mono,
-                  color: C.text,
-                  background: C.surface,
-                }}
-              >
-                {(p.options ?? []).map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id={`repo-${repo.key}-param-${p.key}`}
-                value={String(getParam(repo.key, p.key) ?? "")}
-                onChange={(event) => setParam(repo.key, p.key, event.target.value)}
-                style={{
-                  border: `1.5px solid ${C.border}`,
-                  borderRadius: 7,
-                  padding: "6px 10px",
-                  fontSize: 14,
-                  fontFamily: F.mono,
-                  color: C.text,
-                  background: C.surface,
-                }}
-              />
-            )}
-          </div>
-        ))}
+                  {(p.options ?? []).map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id={inputId}
+                  value={String(value ?? "")}
+                  onChange={(event) => setParam(repo.key, p.key, event.target.value)}
+                  style={{ ...lgInput(false), fontFamily: F.mono }}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,96 +1,12 @@
 import type React from "react";
-import type { Badges } from "../../../../core/ree/ReeTypes";
 import type { ReeAssemblyBadge } from "../../../../core/ree-assembly/assemblyStepTypes";
 import { Ic } from "../../shared/components/Icon";
-import { C, F, hoverBg, S_ACTION_BUTTON_BASE } from "../../theme/theme";
-import { type AppShellPage, PAGE } from "../state/pages";
+import { C, F, S_ACTION_BUTTON_BASE } from "../../theme/theme";
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,
   ...extra,
 });
-
-interface NextStepNudgeProps {
-  stepKey: string;
-  badges: Badges;
-  onGo: (key: AppShellPage) => void;
-}
-export function NextStepNudge({ stepKey, onGo }: NextStepNudgeProps) {
-  const Steps: Array<{
-    key: AppShellPage;
-    nextKey: AppShellPage | null;
-    nextLabel: string | null;
-    cond: () => boolean;
-  }> = [
-    { key: PAGE.SOURCE, nextKey: PAGE.METADATA, nextLabel: "Provide Metadata", cond: () => true },
-    { key: PAGE.METADATA, nextKey: PAGE.HBOM, nextLabel: "Create Hardware BOM", cond: () => true },
-    { key: PAGE.HBOM, nextKey: PAGE.EVALUATE, nextLabel: "Evaluate", cond: () => true },
-    { key: PAGE.EVALUATE, nextKey: PAGE.BUILD, nextLabel: "Build Runtime", cond: () => true },
-    { key: PAGE.BUILD, nextKey: PAGE.SBOM, nextLabel: "Generate SBOM", cond: () => true },
-    { key: PAGE.SBOM, nextKey: PAGE.ACTIVATION, nextLabel: "Test Activation", cond: () => true },
-    {
-      key: PAGE.ACTIVATION,
-      nextKey: PAGE.EXPERIMENTS,
-      nextLabel: "Experiments",
-      cond: () => true,
-    },
-    {
-      key: PAGE.EXPERIMENTS,
-      nextKey: PAGE.ARCHIVE,
-      nextLabel: "Deposit & Share",
-      cond: () => true,
-    },
-    { key: PAGE.ARCHIVE, nextKey: PAGE.SEAL, nextLabel: "Seal", cond: () => true },
-    { key: PAGE.SEAL, nextKey: null, nextLabel: null, cond: () => false },
-  ];
-  const step = Steps.find((assemblyStep) => assemblyStep.key === stepKey);
-  const nextKey = step?.nextKey;
-  const nextLabel = step?.nextLabel;
-  if (!step || !nextKey || !nextLabel) return null;
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "9px 14px",
-        background: C.accentBg,
-        border: `1px solid ${C.accentBorder}`,
-        borderRadius: 9,
-        marginBottom: 20,
-        animation: "fadeUp 0.2s ease",
-      }}
-    >
-      <span style={{ color: C.accent, display: "flex", flexShrink: 0 }}>{Ic.chevR()}</span>
-      <span style={{ fontSize: 13, color: C.textMid, fontFamily: F.sans, flex: 1 }}>
-        Next step:
-      </span>
-      <button
-        type="button"
-        onClick={() => onGo(nextKey)}
-        style={{
-          ...actionBtn({
-            border: "none",
-            padding: "5px 12px",
-            background: C.accent,
-            color: "#fff",
-          }),
-          display: "flex",
-          alignItems: "center",
-          gap: 5,
-          cursor: "pointer",
-          flexShrink: 0,
-          borderRadius: 6,
-          transition: "background 0.13s",
-        }}
-        {...hoverBg("#1d4ed8", C.accent)}
-      >
-        {nextLabel} →
-      </button>
-    </div>
-  );
-}
 
 interface AssemblyPageHeaderProps {
   color: string;
@@ -235,5 +151,3 @@ export function AssemblyPageHeader({
     </div>
   );
 }
-
-export { RequirementsBanner } from "./pageChromeRequirements";

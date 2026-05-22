@@ -29,8 +29,8 @@ function CardHeader({ label, hint }: { label: string; hint?: string }) {
         flexWrap: "wrap",
       }}
     >
-      <div style={lgStyles.label as React.CSSProperties}>{label}</div>
-      {hint && <span style={lgStyles.helper as React.CSSProperties}>{hint}</span>}
+      <div style={lgStyles.label}>{label}</div>
+      {hint && <span style={lgStyles.helper}>{hint}</span>}
     </div>
   );
 }
@@ -174,7 +174,7 @@ export function EvaluateRunConsoleCard({
           </button>
         )}
         {!hasMissing && (
-          <span style={lgStyles.helper as React.CSSProperties}>
+          <span style={lgStyles.helper}>
             {sourceLoadedInWorkspace
               ? "Scans the workspace and computes a reproducibility level."
               : "Load source into the workspace first."}

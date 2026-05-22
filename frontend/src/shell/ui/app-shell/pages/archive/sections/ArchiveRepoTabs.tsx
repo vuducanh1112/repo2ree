@@ -1,7 +1,7 @@
 import type { Badges } from "../../../../../../core/ree/ReeTypes";
 import type { ArchiveRepo } from "../../../../../../core/ree-assembly/assemblyStepTypes";
 import { Ic } from "../../../../shared/components/Icon";
-import { C, F, hoverBg, hoverBorderColor, hoverIf } from "../../../../theme/theme";
+import { lgSegmentedTab } from "../../../../theme/lightGlassTheme";
 
 interface ArchiveRepoTabsProps {
   repositories: ArchiveRepo[];
@@ -17,7 +17,7 @@ export function ArchiveRepoTabs({
   onSelect,
 }: ArchiveRepoTabsProps) {
   return (
-    <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+    <div style={{ display: "flex", gap: 10, marginBottom: 22, flexWrap: "wrap" }}>
       {repositories.map((archiveRepo) => {
         const isActive = activeRepo === archiveRepo.key;
         const isDone = !!badges[archiveRepo.key];
@@ -27,40 +27,23 @@ export function ArchiveRepoTabs({
             key={archiveRepo.key}
             onClick={() => onSelect(archiveRepo.key)}
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "9px 16px",
-              borderRadius: 8,
-              border: `1.5px solid ${isActive ? archiveRepo.color : isDone ? `${archiveRepo.color}40` : C.border}`,
-              background: isActive ? `${archiveRepo.color}10` : isDone ? archiveRepo.bg : C.surface,
-              cursor: "pointer",
-              transition: "all 0.15s",
+              ...lgSegmentedTab(isActive),
               flex: 1,
+              minWidth: 140,
               justifyContent: "center",
+              ...(isActive
+                ? {
+                    border: `1px solid ${archiveRepo.color}99`,
+                    color: archiveRepo.color,
+                    boxShadow: `0 12px 26px ${archiveRepo.color}26`,
+                  }
+                : {}),
             }}
-            {...hoverIf(
-              !isActive,
-              hoverBorderColor(
-                `${archiveRepo.color}70`,
-                isDone ? `${archiveRepo.color}40` : C.border,
-              ),
-            )}
-            {...hoverIf(!isActive, hoverBg(archiveRepo.bg, isDone ? archiveRepo.bg : C.surface))}
           >
             {isDone && (
               <span style={{ color: archiveRepo.color, display: "flex" }}>{Ic.check(13)}</span>
             )}
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: isActive ? 700 : 500,
-                color: isActive ? archiveRepo.color : isDone ? archiveRepo.color : C.textMid,
-                fontFamily: F.sans,
-              }}
-            >
-              {archiveRepo.label}
-            </span>
+            {archiveRepo.label}
           </button>
         );
       })}

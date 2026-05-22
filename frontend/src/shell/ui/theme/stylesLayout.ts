@@ -1,16 +1,5 @@
 import type React from "react";
 
-export const S_FIELD_STACK_GAP_14: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 14,
-};
-
-export const S_FLEX_ROW_GAP_8: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-};
-
 export const S_FLEX_ROW_CENTER_GAP_6: React.CSSProperties = {
   display: "flex",
   alignItems: "center",

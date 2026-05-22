@@ -612,7 +612,7 @@ export function ExperimentsSuggestionsAside({
       <div style={{ fontSize: 11, color: lgColors.textMuted, marginBottom: 10 }}>
         Common verifications — click to add a prefilled experiment.
       </div>
-      <div style={lgStyles.suggestionWrap as React.CSSProperties}>
+      <div style={lgStyles.suggestionWrap}>
         {EXPERIMENT_SUGGESTIONS.map((suggestion) => (
           <button
             key={suggestion.name}

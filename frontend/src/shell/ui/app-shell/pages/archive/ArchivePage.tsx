@@ -5,12 +5,15 @@ import { ARCHIVE_REPOSITORIES } from "../../../../../core/ree-assembly/archiveRe
 import type { GenericReeAssemblyParams } from "../../../../../core/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
 import { Ic } from "../../../shared/components/Icon";
-import { S_FIELD_STACK_GAP_14 } from "../../../theme/theme";
-import { AssemblyPageHeader, NextStepNudge, RequirementsBanner } from "../../components/pageChrome";
+import { lgColors, lgNextButton, lgStatusBadge, lgStyles } from "../../../theme/lightGlassTheme";
+import { F } from "../../../theme/theme";
+import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { type AppShellPage, PAGE } from "../../state/pages";
 import { ArchiveActionPanel } from "./sections/ArchiveActionPanel";
 import { ArchiveParamsCard } from "./sections/ArchiveParamsCard";
 import { ArchivePrereqBanners } from "./sections/ArchivePrereqBanners";
+import { ArchiveReadinessAside } from "./sections/ArchiveReadinessAside";
 import { ArchiveRepoSummaryCard } from "./sections/ArchiveRepoSummaryCard";
 import { ArchiveRepoTabs } from "./sections/ArchiveRepoTabs";
 
@@ -63,69 +66,94 @@ export function PageArchive({
   const activationDone = !!badges.activation;
   const capstoneReady = buildDone && sbomDone && activationDone;
   const isSealed = !!artifactStatus.sealedAt;
+  const depositedAnywhere = !!badges.swh || !!badges.zenodo || !!badges.dataverse;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        minHeight: 0,
-        overflow: "hidden",
-        animation: "fadeUp 0.2s ease",
-      }}
-    >
-      <AssemblyPageHeader
-        color={repo.color}
-        icon={Ic.globe(18)}
-        title="Deposit & Share"
-        subtitle="Deposit your REE to a long-term archive and receive a citable permanent identifier"
-        tips={[
-          "Complete Build Runtime, SBOM, and Activation before depositing.",
-          "Choose one repository and provide the parameters required by that archive.",
-        ]}
-      />
+    <div style={lgStyles.pageRoot}>
+      <div style={lgStyles.pageFrame}>
+        <GlassPageHeader
+          icon={Ic.globe(24)}
+          iconTint={{
+            color: repo.color,
+            border: `${repo.color}55`,
+            shadow: `${repo.color}30`,
+          }}
+          title="Deposit & Share"
+          subtitle="Deposit your REE to a long-term archive and receive a citable permanent identifier."
+          badges={
+            <>
+              <span style={lgStatusBadge(capstoneReady)}>
+                {capstoneReady ? "Prereqs ready" : "Prereqs pending"}
+              </span>
+              <span style={lgStatusBadge(depositedAnywhere)}>
+                {depositedAnywhere ? "Deposited" : "Not deposited"}
+              </span>
+              {assignedId && <span style={lgStatusBadge(true)}>{repo.idLabel} assigned</span>}
+            </>
+          }
+        />
 
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-        <div style={{ padding: 24, maxWidth: 860 }}>
-          <ArchivePrereqBanners
-            capstoneReady={capstoneReady}
-            buildDone={buildDone}
-            sbomDone={sbomDone}
-            activationDone={activationDone}
-            isSealed={isSealed}
-          />
+        <ArchivePrereqBanners
+          capstoneReady={capstoneReady}
+          buildDone={buildDone}
+          sbomDone={sbomDone}
+          activationDone={activationDone}
+          isSealed={isSealed}
+        />
 
-          <ArchiveRepoTabs
-            repositories={ARCHIVE_REPOSITORIES}
-            activeRepo={activeRepo}
-            badges={badges}
-            onSelect={setActiveRepo}
-          />
+        <ArchiveRepoTabs
+          repositories={ARCHIVE_REPOSITORIES}
+          activeRepo={activeRepo}
+          badges={badges}
+          onSelect={setActiveRepo}
+        />
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div style={S_FIELD_STACK_GAP_14}>
+        <div style={lgStyles.mainGrid}>
+          <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
+            <div style={lgStyles.sectionBody}>
+              <GlassSectionHeader
+                icon={Ic.archive(19)}
+                color={repo.color}
+                title={repo.label}
+                subtitle="Review the destination and provide the parameters this archive requires."
+              />
+
               <ArchiveRepoSummaryCard repo={repo} assignedId={assignedId} />
               <ArchiveParamsCard repo={repo} getParam={getParam} setParam={setParam} />
-              {missing.length > 0 && <RequirementsBanner status="missing" items={missing} />}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <ArchiveActionPanel
-                repo={repo}
-                canRun={canRun}
-                earned={earned}
-                running={running}
-                logs={logs}
-                onRun={onRun}
-                getParam={getParam}
-              />
+            <div style={lgStyles.footer}>
+              <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
+                {isSealed
+                  ? "REE is sealed — deposits are final."
+                  : "Deposit can proceed before sealing, but Seal is still required to finish."}
+              </span>
+              <button type="button" onClick={() => onGo(PAGE.SEAL)} style={lgNextButton()}>
+                Next: Seal {Ic.chevR(15)}
+              </button>
             </div>
-          </div>
+          </section>
 
-          <div style={{ padding: "24px 24px 24px", flexShrink: 0 }}>
-            <NextStepNudge stepKey={PAGE.ARCHIVE} badges={badges || {}} onGo={onGo} />
-          </div>
+          <aside style={lgStyles.aside}>
+            <ArchiveActionPanel
+              repo={repo}
+              canRun={canRun}
+              earned={earned}
+              running={running}
+              missing={missing}
+              logs={logs}
+              onRun={onRun}
+              getParam={getParam}
+            />
+            <ArchiveReadinessAside
+              buildDone={buildDone}
+              sbomDone={sbomDone}
+              activationDone={activationDone}
+              isSealed={isSealed}
+              repo={repo}
+              assignedId={assignedId}
+            />
+          </aside>
         </div>
       </div>
     </div>
