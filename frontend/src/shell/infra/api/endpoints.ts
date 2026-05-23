@@ -11,7 +11,6 @@ export const endpoints = {
   reeSourceUploadComplete: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source:upload-complete`,
   reeSource: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source`,
-  reeFiles: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files`,
   reeFileContent: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/content`,
   reeFileRaw: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/raw`,
@@ -25,13 +24,10 @@ export const endpoints = {
   reeActivationTest: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/activation-test`,
   reeEvaluate: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/evaluate`,
-  reeRuns: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs`,
   reeRun: (reeId: string, runId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs/${encodeURIComponent(runId)}`,
   reeRunCancel: (reeId: string, runId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs/${encodeURIComponent(runId)}:cancel`,
-  reeRunRetry: (reeId: string, runId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs/${encodeURIComponent(runId)}:retry`,
   reeRunLogs: (reeId: string, runId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs/${encodeURIComponent(runId)}/logs`,
   reviewUploadInit: () => `${API_V1_BASE}/reviews:upload-init`,

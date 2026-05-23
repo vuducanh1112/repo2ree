@@ -24,9 +24,7 @@ from repo2ree_api.storage.workspace_files import (
     delete_workspace,
     get_workspace,
     init_source_upload,
-    list_files,
     list_workspace_metadata,
-    read_file_content,
     read_file_bytes,
     read_workspace_metadata,
     patch_ree_draft,
@@ -231,42 +229,6 @@ def remove_source_route(ree_id: str):
         return remove_source(ree_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@manage_ree_router.get("/api/v1/rees/{ree_id}/files")
-def list_workspace_files_route(
-    ree_id: str,
-    path: str | None = Query(None),
-    recursive: bool | None = Query(None),
-    scope: str | None = Query(None),
-):
-    try:
-        files = list_files(ree_id)
-        if path:
-            normalized = path.strip("/")
-            files = [
-                item
-                for item in files
-                if item["path"] == normalized
-                or item["path"].startswith(f"{normalized}/")
-            ]
-        if scope == "source":
-            files = [item for item in files if item["kind"] == "source"]
-        elif scope == "generated":
-            files = [item for item in files if item["kind"] == "generated"]
-        return {"nodes": files}
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@manage_ree_router.get("/api/v1/rees/{ree_id}/files/content")
-def get_workspace_file_content_route(ree_id: str, path: str = Query(...)):
-    try:
-        return read_file_content(ree_id, path)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @manage_ree_router.get("/api/v1/rees/{ree_id}/files/raw")

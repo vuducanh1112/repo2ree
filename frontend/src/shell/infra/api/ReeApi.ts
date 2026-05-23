@@ -19,18 +19,6 @@ interface ListReesQuery {
   status?: string;
 }
 
-interface ReeFilesQuery {
-  path?: string;
-  recursive?: boolean;
-  scope?: "source" | "generated" | "all";
-}
-
-interface ReeFileContentResponse {
-  content: string;
-  etag?: string;
-  updatedAt?: string;
-}
-
 interface PutReeFileContentRequest {
   path: string;
   content: string;
@@ -135,22 +123,6 @@ export class ReeApi {
     });
   }
 
-  async getFiles(
-    reeId: ReeId,
-    query: ReeFilesQuery = {},
-  ): Promise<{ nodes: Array<{ path: string; kind: string; size?: number }> }> {
-    const searchParams = new URLSearchParams();
-    if (query.path) searchParams.set("path", query.path);
-    if (typeof query.recursive === "boolean")
-      searchParams.set("recursive", String(query.recursive));
-    if (query.scope) searchParams.set("scope", query.scope);
-    return this.client.request<{ nodes: Array<{ path: string; kind: string; size?: number }> }>(
-      endpoints.reeFiles(reeId),
-      { method: "GET" },
-      searchParams,
-    );
-  }
-
   async getFileBytes(reeId: ReeId, path: string): Promise<ArrayBuffer> {
     const searchParams = new URLSearchParams({ path });
     return this.client.requestArrayBuffer(
@@ -168,15 +140,6 @@ export class ReeApi {
       bytes: response.bytes,
       fileName: parseContentDispositionFilename(response.headers.get("content-disposition")),
     };
-  }
-
-  async getFileContent(reeId: ReeId, path: string): Promise<ReeFileContentResponse> {
-    const searchParams = new URLSearchParams({ path });
-    return this.client.request<ReeFileContentResponse>(
-      endpoints.reeFileContent(reeId),
-      { method: "GET" },
-      searchParams,
-    );
   }
 
   async putFileContent(

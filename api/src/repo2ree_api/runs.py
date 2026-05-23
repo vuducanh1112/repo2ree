@@ -3,67 +3,18 @@ from __future__ import annotations
 import shutil
 import subprocess
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
-from repo2ree_api.build_runtime import (
-    CreateBuildRuntimeRunPayload,
-    create_build_run_state,
-)
 from repo2ree_api.run_management import (
     _append_run_log,
     _get_run_state,
-    _list_run_states,
     _mark_cancel_requested,
     _paginate,
     _run_summary,
 )
-from repo2ree_api.activation_test import (
-    CreateActivationTestRunPayload,
-    create_activation_run_state,
-)
-from repo2ree_api.evaluate import (
-    CreateEvaluateRunPayload,
-    create_evaluate_run_state,
-)
-from repo2ree_api.generate_hbom import (
-    CreateGenerateHbomRunPayload,
-    create_generate_hbom_run_state,
-)
-from repo2ree_api.generate_sbom import (
-    CreateGenerateSbomRunPayload,
-    create_generate_sbom_run_state,
-)
 
 
 runs_router = APIRouter()
-
-
-@runs_router.get("/api/v1/rees/{ree_id}/runs")
-def list_workspace_runs(
-    ree_id: str,
-    cursor: str | None = Query(None),
-    limit: int | None = Query(None),
-):
-    runs = _list_run_states(ree_id)
-    runs.sort(key=lambda item: item.get("createdAt", ""), reverse=True)
-    page, next_cursor, has_more = _paginate(runs, cursor=cursor, limit=limit)
-    items = [
-        {
-            key: run[key]
-            for key in (
-                "runId",
-                "reeId",
-                "operation",
-                "status",
-                "createdAt",
-                "startedAt",
-                "finishedAt",
-                "outputs",
-            )
-        }
-        for run in page
-    ]
-    return {"items": items, "nextCursor": next_cursor, "hasMore": has_more}
 
 
 @runs_router.get("/api/v1/rees/{ree_id}/runs/{run_id}")
@@ -88,44 +39,6 @@ def get_workspace_run_logs(
         "hasMore": has_more,
         "runStatus": run_state["status"],
     }
-
-
-@runs_router.post("/api/v1/rees/{ree_id}/runs/{run_id}:retry")
-def retry_workspace_run(ree_id: str, run_id: str):
-    run_state = _get_run_state(ree_id, run_id)
-    request_payload = run_state.get("request", {})
-    operation = run_state["operation"]
-    if operation == "build":
-        build_payload = CreateBuildRuntimeRunPayload(
-            build_runtime_script_path=request_payload.get(
-                "build_runtime_script_path", ""
-            ),
-        )
-        return _run_summary(create_build_run_state(ree_id, build_payload))
-    if operation == "sbom":
-        sbom_payload = CreateGenerateSbomRunPayload(
-            produced_runtime_path=request_payload.get("produced_runtime_path", "")
-        )
-        return _run_summary(create_generate_sbom_run_state(ree_id, sbom_payload))
-    if operation == "hbom":
-        hbom_payload = CreateGenerateHbomRunPayload(
-            idempotencyKey=request_payload.get("idempotencyKey")
-        )
-        return _run_summary(create_generate_hbom_run_state(ree_id, hbom_payload))
-    if operation == "activation":
-        activation_payload = CreateActivationTestRunPayload(
-            activation_script_path=request_payload.get("activation_script_path", "")
-        )
-        return _run_summary(create_activation_run_state(ree_id, activation_payload))
-    if operation == "evaluate":
-        evaluate_payload = CreateEvaluateRunPayload(
-            strict=bool(request_payload.get("strict", False)),
-            swhid_check=bool(request_payload.get("swhid_check", True)),
-        )
-        return _run_summary(create_evaluate_run_state(ree_id, evaluate_payload))
-    raise HTTPException(
-        status_code=400, detail=f"Unsupported operation for retry: {operation}"
-    )
 
 
 @runs_router.post("/api/v1/rees/{ree_id}/runs/{run_id}:cancel")

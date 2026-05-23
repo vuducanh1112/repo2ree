@@ -1,6 +1,5 @@
 import type { ApiClient } from "./ApiClient";
 import type {
-  ApiListResponse,
   CreateActivationTestRunRequestDto,
   CreateBuildRuntimeRunRequestDto,
   CreateEvaluateRunRequestDto,
@@ -12,13 +11,6 @@ import type {
   WorkflowRunStatusDto,
 } from "./apiTypes";
 import { endpoints } from "./endpoints";
-
-interface ListRunsQuery {
-  operation?: string;
-  status?: WorkflowRunStatusDto;
-  cursor?: string;
-  limit?: number;
-}
 
 interface ListRunLogsQuery {
   cursor?: string;
@@ -79,22 +71,6 @@ export class ExecutionRunsApi {
     });
   }
 
-  async listRuns(
-    reeId: string,
-    query: ListRunsQuery = {},
-  ): Promise<ApiListResponse<WorkflowRunDto>> {
-    const searchParams = new URLSearchParams();
-    if (query.operation) searchParams.set("operation", query.operation);
-    if (query.status) searchParams.set("status", query.status);
-    if (query.cursor) searchParams.set("cursor", query.cursor);
-    if (typeof query.limit === "number") searchParams.set("limit", String(query.limit));
-    return this.client.request<ApiListResponse<WorkflowRunDto>>(
-      endpoints.reeRuns(reeId),
-      { method: "GET" },
-      searchParams,
-    );
-  }
-
   async getRun(reeId: string, runId: string): Promise<WorkflowRunDto> {
     return this.client.request<WorkflowRunDto>(endpoints.reeRun(reeId, runId), {
       method: "GET",
@@ -106,12 +82,6 @@ export class ExecutionRunsApi {
       endpoints.reeRunCancel(reeId, runId),
       { method: "POST" },
     );
-  }
-
-  async retryRun(reeId: string, runId: string): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.reeRunRetry(reeId, runId), {
-      method: "POST",
-    });
   }
 
   async listRunLogs(
