@@ -523,7 +523,7 @@ export function lgPrimaryActionButton(disabled = false): React.CSSProperties {
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    border: `1px solid ${disabled ? lgBorders.actionNeutral.replace("1px solid ", "") : "rgba(14, 165, 233, 0.42)"}`,
+    border: disabled ? lgBorders.actionNeutral : "1px solid rgba(14, 165, 233, 0.42)",
     background: disabled ? lgBackgrounds.disabled : lgBackgrounds.next,
     color: disabled ? lgColors.textMuted : lgColors.white,
     padding: "10px 18px",
