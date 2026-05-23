@@ -4,86 +4,42 @@ import { REE_ASSEMBLY_STEPS } from "../../../../../../core/ree-assembly/assembly
 import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
 import { LEVELS } from "../../../../../../core/review/levels";
 import { Ic } from "../../../../shared/components/Icon";
-import {
-  C,
-  F,
-  hoverBrightness,
-  S_FLEX_ROW_CENTER_GAP_6,
-  S_OVERVIEW_META_FOOTER,
-  S_OVERVIEW_PANEL_BADGE_BASE,
-  S_OVERVIEW_PANEL_BUTTON_BASE,
-  S_OVERVIEW_PANEL_FOOTER,
-  S_OVERVIEW_PANEL_HEADER_ROW,
-  S_PANEL_HEADER_LABEL,
-} from "../../../../theme/theme";
+import { lgBackgrounds, lgColors, lgStage } from "../../../../theme/lightGlassTheme";
+import { F, S_FLEX_ROW_CENTER_GAP_6 } from "../../../../theme/theme";
 import { type AppShellPage, isValidAppShellPage, PAGE } from "../../../state/pages";
+import { OverviewNavButton, OverviewPanel } from "./OverviewPanel";
 import { PanelFieldRow } from "./PanelFieldRow";
-
-const panel = (extra: React.CSSProperties = {}): React.CSSProperties => ({
-  background: C.surface,
-  border: `1px solid ${C.border}`,
-  borderRadius: 8,
-  ...extra,
-});
 
 export function SwhCard(props: {
   ree: ReeEditorViewModel;
   onNavigate: (key: AppShellPage) => void;
   swhRef: React.RefObject<HTMLDivElement>;
 }) {
+  const tint = lgStage.swh;
   return (
-    <div ref={props.swhRef} style={panel({ overflow: "hidden" })}>
-      <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
-        <div
-          style={{
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: "#e4572e",
-            boxShadow: props.ree.swhid ? "0 0 5px #e4572e99" : "none",
-          }}
+    <OverviewPanel
+      panelRef={props.swhRef}
+      tint={tint}
+      title="Software Heritage"
+      active={!!props.ree.swhid}
+      footer={
+        <OverviewNavButton
+          tint={tint}
+          label="Go to Software Heritage"
+          onClick={() => props.onNavigate?.(PAGE.ARCHIVE)}
         />
-        <span style={S_PANEL_HEADER_LABEL}>Software Heritage</span>
-        <span
-          style={{
-            ...S_OVERVIEW_PANEL_BADGE_BASE,
-            color: "#e4572e",
-            background: "#fff7f5",
-            border: "1px solid #fbd0c4",
-          }}
-        >
-          SWH
-        </span>
-      </div>
+      }
+    >
       <PanelFieldRow
         label="SWHID"
         value={props.ree.swhid || null}
         filled={!!props.ree.swhid}
-        dotColor="#e4572e"
-        dotGlow="#e4572e99"
-        labelColor="#9a3412"
-        labelBg="#fff7f5"
-        labelBorderColor="#e4572e25"
+        tint={tint}
         emptyText="not archived"
         isLast
         onClick={() => props.onNavigate?.(PAGE.ARCHIVE)}
       />
-      <div style={S_OVERVIEW_PANEL_FOOTER}>
-        <button
-          type="button"
-          onClick={() => props.onNavigate?.(PAGE.ARCHIVE)}
-          style={{
-            ...S_OVERVIEW_PANEL_BUTTON_BASE,
-            color: "#9a3412",
-            background: "#fff7f5",
-            border: "1px solid #fbd0c4",
-          }}
-          {...hoverBrightness(95)}
-        >
-          → Go to Software Heritage
-        </button>
-      </div>
-    </div>
+    </OverviewPanel>
   );
 }
 
@@ -99,6 +55,7 @@ export function EvaluateCard(props: {
   );
   if (!assemblyStep) return null;
 
+  const tint = lgStage.evaluate;
   const evaluateDate = props.timestamps[assemblyStep.key]
     ? new Date(props.timestamps[assemblyStep.key]).toLocaleString([], {
         month: "short",
@@ -110,41 +67,35 @@ export function EvaluateCard(props: {
   const earned = !!props.badges[assemblyStep.key];
 
   return (
-    <div ref={props.evaluateRef} style={panel({ overflow: "hidden" })}>
-      <div style={S_OVERVIEW_PANEL_HEADER_ROW}>
-        <div
-          style={{
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: earned ? assemblyStep.badge.color : "#d1d5db",
-            boxShadow: earned ? `0 0 5px ${assemblyStep.badge.color}99` : "none",
-          }}
+    <OverviewPanel
+      panelRef={props.evaluateRef}
+      tint={tint}
+      title="Evaluate"
+      active={earned}
+      footer={
+        <OverviewNavButton
+          tint={tint}
+          label="Go to Evaluate"
+          onClick={() =>
+            props.onNavigate?.(
+              isValidAppShellPage(assemblyStep.key)
+                ? (assemblyStep.key as AppShellPage)
+                : PAGE.OVERVIEW,
+            )
+          }
         />
-        <span style={S_PANEL_HEADER_LABEL}>Evaluate</span>
-        {earned && (
-          <span
-            style={{
-              ...S_OVERVIEW_PANEL_BADGE_BASE,
-              color: assemblyStep.badge.color,
-              background: assemblyStep.badge.bg,
-              border: `1px solid ${assemblyStep.badge.color}40`,
-            }}
-          >
-            OK
-          </span>
-        )}
-      </div>
-      <div style={S_OVERVIEW_META_FOOTER}>
+      }
+    >
+      <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
         <div style={S_FLEX_ROW_CENTER_GAP_6}>
-          <span style={{ display: "flex", color: earned ? assemblyStep.badge.color : C.textMuted }}>
+          <span style={{ display: "flex", color: earned ? tint.line : lgColors.textMuted }}>
             {Ic.star(12)}
           </span>
           <span
             style={{
-              fontSize: 10,
+              fontSize: 11,
               fontFamily: F.sans,
-              color: earned ? C.text : C.textMuted,
+              color: earned ? lgColors.text : lgColors.textMuted,
               flex: 1,
             }}
           >
@@ -154,7 +105,14 @@ export function EvaluateCard(props: {
           </span>
         </div>
         {earned && evaluateDate && (
-          <div style={{ fontSize: 9, fontFamily: F.mono, color: C.textMuted, letterSpacing: 0.2 }}>
+          <div
+            style={{
+              fontSize: 9,
+              fontFamily: F.mono,
+              color: lgColors.textMuted,
+              letterSpacing: 0.2,
+            }}
+          >
             {evaluateDate}
           </div>
         )}
@@ -163,43 +121,24 @@ export function EvaluateCard(props: {
             display: "flex",
             alignItems: "center",
             gap: 5,
-            padding: "5px 8px",
-            borderRadius: 5,
-            background: earned ? assemblyStep.badge.bg : C.surfaceAlt,
-            border: `1px solid ${earned ? `${assemblyStep.badge.color}40` : C.border}`,
+            padding: "5px 9px",
+            borderRadius: 6,
+            background: earned ? tint.bg : lgBackgrounds.disabled,
+            border: `1px solid ${earned ? tint.border : "rgba(148, 163, 184, 0.34)"}`,
           }}
         >
           <span
             style={{
               fontSize: 10,
               fontFamily: F.sans,
-              color: earned ? assemblyStep.badge.color : C.textMuted,
-              fontWeight: 600,
+              color: earned ? tint.ink : lgColors.textMuted,
+              fontWeight: 700,
             }}
           >
             {earned ? "✓ score computed" : "run Evaluate"}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() =>
-            props.onNavigate?.(
-              isValidAppShellPage(assemblyStep.key)
-                ? (assemblyStep.key as AppShellPage)
-                : PAGE.OVERVIEW,
-            )
-          }
-          style={{
-            ...S_OVERVIEW_PANEL_BUTTON_BASE,
-            color: assemblyStep.badge.color,
-            background: assemblyStep.badge.bg,
-            border: `1px solid ${assemblyStep.badge.color}40`,
-          }}
-          {...hoverBrightness(95)}
-        >
-          → Go to Evaluate
-        </button>
       </div>
-    </div>
+    </OverviewPanel>
   );
 }

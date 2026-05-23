@@ -1,3 +1,4 @@
+import { lgBackgrounds } from "../../../../../theme/lightGlassTheme";
 import { F } from "../../../../../theme/theme";
 
 interface SealConfirmWarningProps {
@@ -11,8 +12,8 @@ export function SealConfirmWarning({ missing }: SealConfirmWarningProps) {
         margin: "12px 20px 0",
         padding: "10px 12px",
         borderRadius: 8,
-        background: "#fffbeb",
-        border: "1.5px solid #fde68a",
+        background: lgBackgrounds.draft,
+        border: "1px solid rgba(245, 158, 11, 0.45)",
       }}
     >
       <div

@@ -1,4 +1,3 @@
-import { C } from "../../../../../theme/theme";
 import { SealConfirmActions } from "./SealConfirmActions";
 import { SealConfirmCopy } from "./SealConfirmCopy";
 import { SealConfirmHeader } from "./SealConfirmHeader";
@@ -61,12 +60,13 @@ export function SealConfirmModal({
       />
       <div
         style={{
-          background: C.surface,
+          background: "rgba(255, 255, 255, 0.92)",
+          backdropFilter: "blur(18px)",
           borderRadius: 14,
           width: 380,
           maxWidth: "90vw",
-          border: `1.5px solid ${C.border}`,
-          boxShadow: "0 8px 40px rgba(0,0,0,0.22)",
+          border: "1px solid rgba(125, 211, 252, 0.58)",
+          boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
           overflow: "hidden",
           position: "relative",
           zIndex: 1,

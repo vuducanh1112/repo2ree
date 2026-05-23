@@ -5,6 +5,7 @@ import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEdito
 import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
 import { listTreeFiles } from "../../../../../core/workspace/fileTreeTraversal";
 import type { WorkspaceSourceState } from "../../../../../core/workspace/WorkspaceSourceState";
+import { lgStyles } from "../../../theme/lightGlassTheme";
 import type { AppShellPage } from "../../state/pages";
 import {
   OverviewColumns,
@@ -81,43 +82,45 @@ export function PageOverview({
   );
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: 28 }}>
-      <OverviewHeader ree={ree} level={level} />
-      <OverviewColumns
-        ree={ree}
-        level={level}
-        badges={badges}
-        timestamps={timestamps}
-        files={files}
-        fileCount={fileCount}
-        totalBytes={totalBytes}
-        locked={locked}
-        podSize={podSize}
-        onGoField={onGoField}
-        onNavigate={onNavigate}
-        onWorkspaceSourceStateChange={onWorkspaceSourceStateChange}
-        onArtifactStatusChange={onArtifactStatusChange}
-        onSeal={onSeal}
-        onPreviewReviewer={onPreviewReviewer}
-        onDownloadRee={onDownloadRee}
-        refs={{
-          cableContainerRef,
-          sourceRef,
-          runtimeRef,
-          leftPanelRef,
-          hbomRef,
-          swhRef,
-          evaluateRef,
-          sbomRef,
-          sealRef,
-          archiveRef,
-          activationRef,
-          podSvgRef,
-          podColumnRef,
-        }}
-      />
-      <OverviewLevelStrip level={level} />
-      <OverviewFieldsPanel ree={ree} />
+    <div style={lgStyles.pageRoot}>
+      <div style={lgStyles.pageFrame}>
+        <OverviewHeader ree={ree} level={level} badges={badges} />
+        <OverviewColumns
+          ree={ree}
+          level={level}
+          badges={badges}
+          timestamps={timestamps}
+          files={files}
+          fileCount={fileCount}
+          totalBytes={totalBytes}
+          locked={locked}
+          podSize={podSize}
+          onGoField={onGoField}
+          onNavigate={onNavigate}
+          onWorkspaceSourceStateChange={onWorkspaceSourceStateChange}
+          onArtifactStatusChange={onArtifactStatusChange}
+          onSeal={onSeal}
+          onPreviewReviewer={onPreviewReviewer}
+          onDownloadRee={onDownloadRee}
+          refs={{
+            cableContainerRef,
+            sourceRef,
+            runtimeRef,
+            leftPanelRef,
+            hbomRef,
+            swhRef,
+            evaluateRef,
+            sbomRef,
+            sealRef,
+            archiveRef,
+            activationRef,
+            podSvgRef,
+            podColumnRef,
+          }}
+        />
+        <OverviewLevelStrip level={level} />
+        <OverviewFieldsPanel ree={ree} />
+      </div>
     </div>
   );
 }

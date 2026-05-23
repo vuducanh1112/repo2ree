@@ -1,5 +1,6 @@
 import { Ic } from "../../../../../shared/components/Icon";
-import { C, hoverBg, hoverBrightness, S_ACTION_BUTTON_BASE } from "../../../../../theme/theme";
+import { lgBackgrounds, lgColors } from "../../../../../theme/lightGlassTheme";
+import { hoverBg, hoverBrightness, S_ACTION_BUTTON_BASE } from "../../../../../theme/theme";
 
 interface SealConfirmActionsProps {
   onClose: () => void;
@@ -31,13 +32,13 @@ export function SealConfirmActions({
           padding: "8px 16px",
           borderRadius: 7,
           fontSize: 12,
-          fontWeight: 600,
+          fontWeight: 700,
           cursor: "pointer",
-          background: C.surfaceAlt,
-          color: C.textMid,
-          border: `1.5px solid ${C.border}`,
+          background: lgBackgrounds.glassStrong,
+          color: lgColors.textMid,
+          border: "1px solid rgba(148, 163, 184, 0.34)",
         }}
-        {...hoverBg(C.border, C.surfaceAlt)}
+        {...hoverBg("rgba(241, 245, 249, 0.9)", lgBackgrounds.glassStrong)}
       >
         Cancel
       </button>

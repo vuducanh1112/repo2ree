@@ -1,12 +1,7 @@
 import type React from "react";
 import { Ic } from "../../../../../shared/components/Icon";
-import {
-  C,
-  F,
-  hoverBrightness,
-  S_ACTION_BUTTON_BASE,
-  S_OVERVIEW_SEAL_STATUS_BADGE_BASE,
-} from "../../../../../theme/theme";
+import { lgBackgrounds, lgColors, lgStyles } from "../../../../../theme/lightGlassTheme";
+import { F, hoverBrightness, S_ACTION_BUTTON_BASE } from "../../../../../theme/theme";
 import type { SealCableItem } from "./helpers";
 
 interface LevelMeta {
@@ -33,45 +28,25 @@ export function SealStatusCard({
   missing,
   onShowConfirm,
 }: SealStatusCardProps) {
+  const liveCount = cableItems.filter((item) => item.live).length;
   return (
-    <div
-      ref={sealRef}
-      style={{
-        width: "100%",
-        maxWidth: 480,
-        background: C.surface,
-        border: `1.5px solid ${C.border}`,
-        borderRadius: 10,
-        overflow: "hidden",
-      }}
-    >
+    <div ref={sealRef} style={{ ...lgStyles.overviewPanel, width: "100%", maxWidth: 480 }}>
       <div
         style={{
-          padding: "9px 14px",
-          borderBottom: `1px solid ${C.border}`,
+          padding: "10px 14px",
+          borderBottom: "1px solid rgba(148, 163, 184, 0.24)",
           display: "flex",
           alignItems: "center",
           gap: 10,
+          background: lgBackgrounds.glassStrong,
         }}
       >
         <span
-          style={{
-            fontSize: 10,
-            fontFamily: F.mono,
-            color: C.textMuted,
-            flexShrink: 0,
-          }}
+          style={{ fontSize: 10, fontFamily: F.mono, color: lgColors.textMuted, flexShrink: 0 }}
         >
-          {cableItems.filter((item) => item.live).length}/{cableItems.length} connected
+          {liveCount}/{cableItems.length} connected
         </span>
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            gap: 3,
-            alignItems: "center",
-          }}
-        >
+        <div style={{ flex: 1, display: "flex", gap: 3, alignItems: "center" }}>
           {cableItems.map((item) => (
             <div
               key={item.label}
@@ -80,7 +55,7 @@ export function SealStatusCard({
                 flex: 1,
                 height: 3,
                 borderRadius: 99,
-                background: item.live ? currentLevelMeta.color : C.border,
+                background: item.live ? currentLevelMeta.color : "rgba(148, 163, 184, 0.4)",
                 transition: "background 0.3s",
               }}
             />
@@ -89,7 +64,13 @@ export function SealStatusCard({
         {allLive ? (
           <span
             style={{
-              ...S_OVERVIEW_SEAL_STATUS_BADGE_BASE,
+              fontSize: 10,
+              fontFamily: F.mono,
+              fontWeight: 700,
+              borderRadius: 99,
+              padding: "2px 8px",
+              letterSpacing: 0.5,
+              flexShrink: 0,
               color: currentLevelMeta.color,
               background: `${currentLevelMeta.color}14`,
               border: `1px solid ${currentLevelMeta.color}40`,
@@ -100,47 +81,33 @@ export function SealStatusCard({
         ) : (
           <span
             style={{
-              ...S_OVERVIEW_SEAL_STATUS_BADGE_BASE,
-              color: "#d97706",
-              background: "#fffbeb",
-              border: "1px solid #fde68a",
+              fontSize: 10,
+              fontFamily: F.mono,
+              fontWeight: 700,
+              borderRadius: 99,
+              padding: "2px 8px",
+              letterSpacing: 0.5,
+              flexShrink: 0,
+              color: lgColors.warning,
+              background: lgBackgrounds.draft,
+              border: "1px solid rgba(245, 158, 11, 0.45)",
             }}
           >
             incomplete
           </span>
         )}
       </div>
-      <div
-        style={{
-          padding: "10px 14px",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}
-      >
-        <div
-          style={{
-            flex: 1,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 11,
-              fontFamily: F.mono,
-              fontWeight: 600,
-              color: C.text,
-            }}
-          >
+      <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontFamily: F.sans, fontWeight: 800, color: lgColors.text }}>
             Seal REE
           </div>
           <div
             style={{
-              ...{
-                fontSize: 10,
-                fontFamily: F.mono,
-                marginTop: 2,
-              },
-              color: allLive ? C.textMuted : "#d97706",
+              fontSize: 11,
+              fontFamily: F.sans,
+              marginTop: 2,
+              color: allLive ? lgColors.textMuted : lgColors.warning,
             }}
           >
             {allLive
@@ -152,34 +119,25 @@ export function SealStatusCard({
           type="button"
           onClick={onShowConfirm}
           style={{
-            ...{
-              ...S_ACTION_BUTTON_BASE,
-              display: "flex",
-              alignItems: "center",
-              gap: 7,
-              padding: "8px 18px",
-              borderRadius: 7,
-              flexShrink: 0,
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: 0.3,
-              cursor: "pointer",
-              color: "#fff",
-              transition: "all 0.2s",
-            },
+            ...S_ACTION_BUTTON_BASE,
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            padding: "9px 18px",
+            borderRadius: 8,
+            flexShrink: 0,
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: 0.3,
+            cursor: "pointer",
+            color: lgColors.white,
             background: currentLevelMeta.color,
-            border: `1.5px solid ${currentLevelMeta.color}`,
-            boxShadow: `0 2px 10px ${currentLevelMeta.color}50`,
+            border: `1px solid ${currentLevelMeta.color}`,
+            boxShadow: `0 12px 24px ${currentLevelMeta.color}40`,
           }}
           {...hoverBrightness(92)}
         >
-          <span
-            style={{
-              display: "flex",
-            }}
-          >
-            {Ic.lock(13)}
-          </span>
+          <span style={{ display: "flex" }}>{Ic.lock(13)}</span>
           Seal
         </button>
       </div>

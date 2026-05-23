@@ -1,16 +1,13 @@
 import React from "react";
-import { C, F } from "../../../../theme/theme";
+import { type LgStageTint, lgColors, lgStageDot } from "../../../../theme/lightGlassTheme";
+import { F } from "../../../../theme/theme";
 
 interface PanelFieldRowProps {
   label: string;
   value: string | null | undefined;
   emptyText?: string;
   filled: boolean;
-  dotColor: string;
-  dotGlow: string;
-  labelColor: string;
-  labelBg: string;
-  labelBorderColor: string;
+  tint: LgStageTint;
   onClick?: () => void;
   isLast?: boolean;
 }
@@ -20,11 +17,7 @@ export function PanelFieldRow({
   value,
   emptyText = "not set",
   filled,
-  dotColor,
-  dotGlow,
-  labelColor,
-  labelBg,
-  labelBorderColor,
+  tint,
   onClick,
   isLast,
 }: PanelFieldRowProps) {
@@ -51,11 +44,7 @@ export function PanelFieldRow({
   };
 
   return (
-    <div
-      style={{
-        position: "relative",
-      }}
-    >
+    <div style={{ position: "relative" }}>
       <button
         type="button"
         ref={rowRef}
@@ -63,81 +52,56 @@ export function PanelFieldRow({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         style={{
-          ...{
-            display: "flex",
-            alignItems: "stretch",
-            width: "100%",
-            textAlign: "left",
-            border: "none",
-            transition: "background 0.12s",
-          },
-          background: hovered && onClick ? C.surfaceAlt : "transparent",
-          borderBottom: isLast ? "none" : `1px solid ${C.border}`,
+          display: "flex",
+          alignItems: "stretch",
+          width: "100%",
+          textAlign: "left",
+          border: "none",
+          transition: "background 0.12s",
+          background: hovered && onClick ? "rgba(239, 246, 255, 0.7)" : "transparent",
+          borderBottom: isLast ? "none" : "1px solid rgba(148, 163, 184, 0.24)",
           cursor: onClick ? "pointer" : "default",
         }}
       >
         <div
           style={{
-            ...{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              padding: "4px 8px",
-              minWidth: 80,
-              maxWidth: 80,
-              flexShrink: 0,
-            },
-            borderRight: `1px solid ${filled ? labelBorderColor : C.border}`,
-            background: filled ? labelBg : "transparent",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 9px",
+            minWidth: 84,
+            maxWidth: 84,
+            flexShrink: 0,
+            borderRight: `1px solid ${filled ? tint.border : "rgba(148, 163, 184, 0.24)"}`,
+            background: filled ? tint.bg : "transparent",
           }}
         >
-          <div
-            style={{
-              ...{
-                width: 5,
-                height: 5,
-                borderRadius: "50%",
-                flexShrink: 0,
-              },
-              background: filled ? dotColor : "#d1d5db",
-              boxShadow: filled ? `0 0 5px ${dotGlow}` : "none",
-            }}
-          />
+          <div style={lgStageDot(tint.line, filled)} />
           <span
             style={{
-              ...{
-                fontSize: 10,
-                fontFamily: F.sans,
-                fontWeight: 600,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              },
-              color: filled ? labelColor : C.textMuted,
+              fontSize: 10,
+              fontFamily: F.sans,
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              color: filled ? tint.ink : lgColors.textMuted,
             }}
           >
             {label}
           </span>
         </div>
-        <div
-          style={{
-            padding: "4px 8px",
-            flex: 1,
-            minWidth: 0,
-          }}
-        >
+        <div style={{ padding: "5px 9px", flex: 1, minWidth: 0 }}>
           <span
             ref={valueRef}
             style={{
-              ...{
-                fontSize: 10,
-                fontFamily: F.mono,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                display: "block",
-              },
-              color: filled ? C.textMid : C.textMuted,
+              fontSize: 10,
+              fontFamily: F.mono,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "block",
+              color: filled ? lgColors.textMid : lgColors.textMuted,
               fontStyle: filled ? "normal" : "italic",
             }}
           >
@@ -148,22 +112,20 @@ export function PanelFieldRow({
       {showTooltip && tooltipPos && (
         <div
           style={{
-            ...{
-              position: "fixed",
-              zIndex: 9999,
-              background: C.text,
-              color: "#fff",
-              fontFamily: F.mono,
-              fontSize: 11,
-              padding: "5px 9px",
-              borderRadius: 6,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-all",
-              maxWidth: 320,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.22)",
-              pointerEvents: "none",
-              lineHeight: 1.5,
-            },
+            position: "fixed",
+            zIndex: 9999,
+            background: lgColors.text,
+            color: "#fff",
+            fontFamily: F.mono,
+            fontSize: 11,
+            padding: "5px 9px",
+            borderRadius: 6,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
+            maxWidth: 320,
+            boxShadow: "0 4px 16px rgba(15, 23, 42, 0.22)",
+            pointerEvents: "none",
+            lineHeight: 1.5,
             left: tooltipPos.x,
             top: tooltipPos.y - 34,
           }}
@@ -176,7 +138,7 @@ export function PanelFieldRow({
               left: 14,
               width: 10,
               height: 10,
-              background: C.text,
+              background: lgColors.text,
               transform: "rotate(45deg)",
               borderRadius: 1,
             }}

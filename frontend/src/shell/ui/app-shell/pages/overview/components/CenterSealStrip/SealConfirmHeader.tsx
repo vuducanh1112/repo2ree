@@ -1,5 +1,6 @@
 import { Ic } from "../../../../../shared/components/Icon";
-import { C, F } from "../../../../../theme/theme";
+import { lgColors } from "../../../../../theme/lightGlassTheme";
+import { F } from "../../../../../theme/theme";
 
 interface SealConfirmHeaderProps {
   color: string;
@@ -10,7 +11,7 @@ export function SealConfirmHeader({ color }: SealConfirmHeaderProps) {
     <div
       style={{
         padding: "16px 20px 12px",
-        borderBottom: `1px solid ${C.border}`,
+        borderBottom: "1px solid rgba(148, 163, 184, 0.24)",
       }}
     >
       <div
@@ -49,9 +50,9 @@ export function SealConfirmHeader({ color }: SealConfirmHeaderProps) {
           <div
             style={{
               fontSize: 14,
-              fontWeight: 700,
+              fontWeight: 800,
               fontFamily: F.sans,
-              color: C.text,
+              color: lgColors.text,
             }}
           >
             Seal this REE?
@@ -60,7 +61,7 @@ export function SealConfirmHeader({ color }: SealConfirmHeaderProps) {
             style={{
               fontSize: 11,
               fontFamily: F.sans,
-              color: C.textMuted,
+              color: lgColors.textMuted,
               marginTop: 1,
             }}
           >

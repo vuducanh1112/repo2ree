@@ -50,7 +50,7 @@ const lgBorders = {
   iconButton: "1px solid rgba(148, 163, 184, 0.35)",
 } as const;
 
-const lgBackgrounds = {
+export const lgBackgrounds = {
   page: "radial-gradient(circle at 80% 8%, rgba(14, 165, 233, 0.18), transparent 28%), radial-gradient(circle at 12% 18%, rgba(99, 102, 241, 0.12), transparent 24%), linear-gradient(135deg, #f8fbff 0%, #eef8ff 48%, #ffffff 100%)",
   frameGrid:
     "linear-gradient(rgba(14, 165, 233, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(14, 165, 233, 0.06) 1px, transparent 1px)",
@@ -370,6 +370,47 @@ export const lgStyles = styleSheet({
     marginTop: 10,
     justifyContent: "flex-end",
   },
+  overviewPanel: {
+    border: lgBorders.panel,
+    borderRadius: 10,
+    background: lgBackgrounds.glass,
+    backdropFilter: "blur(14px)",
+    boxShadow: "0 12px 32px rgba(15, 23, 42, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.85)",
+    overflow: "hidden",
+  },
+  overviewPanelHeaderRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "9px 12px",
+    borderBottom: lgBorders.row,
+    background: lgBackgrounds.glassStrong,
+  },
+  overviewPanelLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: lgColors.text,
+    fontFamily: F.sans,
+    letterSpacing: 0.2,
+  },
+  overviewPanelFields: {
+    display: "flex",
+    flexDirection: "column",
+  },
+  overviewPanelFooter: {
+    padding: 10,
+    borderTop: lgBorders.row,
+    background: lgBackgrounds.footer,
+    display: "flex",
+    flexDirection: "column",
+    gap: 7,
+  },
+  overviewIncludeRow: {
+    marginLeft: "auto",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+  },
 });
 
 export function lgInput(locked: boolean, active = false): React.CSSProperties {
@@ -637,6 +678,65 @@ export function lgFileTypeColor(category: FileTypeCategory): string {
     archive: lgColors.violet,
     binary: lgColors.textMuted,
   }[category];
+}
+
+// ── Overview dashboard ──────────────────────────────────────────────────────
+// The Overview page is a spatial dashboard: small translucent "stage" panels
+// orbit the central specimen pod, each tinted with its stage hue for wayfinding
+// (the same hue carried by its connecting cable). A tint bundles the vivid line
+// colour (dot / cable), a deep ink for text, and translucent glass fills.
+export interface LgStageTint {
+  ink: string;
+  line: string;
+  bg: string;
+  border: string;
+}
+
+function lgStageTint(line: string, ink: string): LgStageTint {
+  return { line, ink, bg: `${line}14`, border: `${line}3d` };
+}
+
+export const lgStage = {
+  source: lgStageTint("#f59e0b", "#b45309"),
+  metadata: lgStageTint("#22c55e", "#15803d"),
+  hbom: lgStageTint("#0f766e", "#115e59"),
+  runtime: lgStageTint("#0891b2", "#155e75"),
+  sbom: lgStageTint("#16a34a", "#15803d"),
+  swh: lgStageTint("#e4572e", "#9a3412"),
+  archive: lgStageTint("#059669", "#065f46"),
+  activation: lgStageTint("#7c3aed", "#5b21b6"),
+  evaluate: lgStageTint("#7c3aed", "#5b21b6"),
+  danger: lgStageTint("#e11d48", "#be123c"),
+} as const;
+
+export function lgStageDot(line: string, active: boolean): React.CSSProperties {
+  return {
+    width: 7,
+    height: 7,
+    borderRadius: "50%",
+    flexShrink: 0,
+    background: active ? line : "rgba(148, 163, 184, 0.55)",
+    boxShadow: active ? `0 0 7px ${line}` : "none",
+  };
+}
+
+export function lgPanelNavButton(tint: LgStageTint): React.CSSProperties {
+  return {
+    ...S_ACTION_BUTTON_BASE,
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    fontSize: 11,
+    fontWeight: 700,
+    borderRadius: 7,
+    padding: "7px 10px",
+    cursor: "pointer",
+    color: tint.ink,
+    background: tint.bg,
+    border: `1px solid ${tint.border}`,
+  };
 }
 
 export function lgSegmentedTab(active: boolean): React.CSSProperties {

@@ -1,4 +1,5 @@
-import { C, F } from "../../../../../theme/theme";
+import { lgColors } from "../../../../../theme/lightGlassTheme";
+import { F } from "../../../../../theme/theme";
 
 interface SealConfirmCopyProps {
   allLive: boolean;
@@ -23,7 +24,7 @@ export function SealConfirmCopy({
         style={{
           fontSize: 12,
           fontFamily: F.sans,
-          color: C.textMid,
+          color: lgColors.textMid,
           lineHeight: 1.6,
         }}
       >

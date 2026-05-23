@@ -1,8 +1,8 @@
 import type React from "react";
 import type { ReeEditorViewModel } from "../../../../../../../core/ree-editor/reeEditorViewModel";
 import { Ic } from "../../../../../shared/components/Icon";
+import { lgBackgrounds, lgColors } from "../../../../../theme/lightGlassTheme";
 import {
-  C,
   F,
   hoverBg,
   hoverBorderColor,
@@ -48,48 +48,35 @@ export function SealedSealCard({
     <div
       ref={sealRef}
       style={{
-        ...{
-          width: "100%",
-          maxWidth: 480,
-          background: C.surface,
-          borderRadius: 10,
-          overflow: "hidden",
-        },
-        border: `1.5px solid ${currentLevelMeta.color}50`,
-        boxShadow: `0 0 0 3px ${currentLevelMeta.color}14, 0 2px 12px rgba(0,0,0,0.07)`,
+        width: "100%",
+        maxWidth: 480,
+        borderRadius: 12,
+        overflow: "hidden",
+        background: "rgba(255, 255, 255, 0.62)",
+        backdropFilter: "blur(14px)",
+        border: `1px solid ${currentLevelMeta.color}50`,
+        boxShadow: `0 0 0 3px ${currentLevelMeta.color}14, 0 12px 32px rgba(15, 23, 42, 0.1)`,
       }}
     >
       <div
         style={{
-          ...{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "9px 14px",
-          },
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "10px 14px",
           borderBottom: `1px solid ${currentLevelMeta.color}30`,
-          background: `${currentLevelMeta.color}0c`,
+          background: `${currentLevelMeta.color}10`,
         }}
       >
-        <span
-          style={{
-            ...{
-              display: "flex",
-              flexShrink: 0,
-            },
-            color: currentLevelMeta.color,
-          }}
-        >
+        <span style={{ display: "flex", flexShrink: 0, color: currentLevelMeta.color }}>
           {Ic.lock(13)}
         </span>
         <span
           style={{
-            ...{
-              fontSize: 11,
-              fontWeight: 700,
-              fontFamily: F.sans,
-              letterSpacing: 0.4,
-            },
+            fontSize: 11,
+            fontWeight: 800,
+            fontFamily: F.sans,
+            letterSpacing: 0.4,
             color: currentLevelMeta.color,
           }}
         >
@@ -97,15 +84,13 @@ export function SealedSealCard({
         </span>
         <span
           style={{
-            ...{
-              marginLeft: "auto",
-              fontSize: 9,
-              fontFamily: F.mono,
-              borderRadius: 3,
-              padding: "1px 6px",
-              letterSpacing: 0.6,
-              fontWeight: 700,
-            },
+            marginLeft: "auto",
+            fontSize: 9,
+            fontFamily: F.mono,
+            borderRadius: 99,
+            padding: "2px 7px",
+            letterSpacing: 0.6,
+            fontWeight: 700,
             color: currentLevelMeta.color,
             background: `${currentLevelMeta.color}18`,
             border: `1px solid ${currentLevelMeta.color}40`,
@@ -114,21 +99,14 @@ export function SealedSealCard({
           L{level} · {currentLevelMeta.label}
         </span>
       </div>
-      <div
-        style={{
-          padding: "10px 14px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-        }}
-      >
+      <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={S_OVERVIEW_SEALED_META_ROW}>
           <span style={S_OVERVIEW_SEALED_META_KEY}>hash</span>
           <span
             style={{
               fontFamily: F.mono,
               fontSize: 11,
-              color: C.text,
+              color: lgColors.text,
               fontWeight: 600,
               letterSpacing: 0.8,
               overflow: "hidden",
@@ -141,24 +119,11 @@ export function SealedSealCard({
         </div>
         <div style={S_OVERVIEW_SEALED_META_ROW}>
           <span style={S_OVERVIEW_SEALED_META_KEY}>sealed</span>
-          <span
-            style={{
-              fontFamily: F.mono,
-              fontSize: 10,
-              color: C.textMid,
-            }}
-          >
+          <span style={{ fontFamily: F.mono, fontSize: 10, color: lgColors.textMid }}>
             {sealDate}
           </span>
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 3,
-            marginTop: 2,
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 2 }}>
           {cableItems.map((item) => (
             <div
               key={item.label}
@@ -167,8 +132,8 @@ export function SealedSealCard({
                 flex: 1,
                 height: 3,
                 borderRadius: 99,
-                background: item.live ? currentLevelMeta.color : "#d1d5db",
-                opacity: item.live ? 0.85 : 0.4,
+                background: item.live ? currentLevelMeta.color : "rgba(148, 163, 184, 0.45)",
+                opacity: item.live ? 0.85 : 0.5,
               }}
             />
           ))}
@@ -179,14 +144,11 @@ export function SealedSealCard({
             onClick={onPreviewReviewer}
             style={{
               ...S_OVERVIEW_SEALED_ACTION_BTN_BASE,
-              background: `linear-gradient(135deg, ${currentLevelMeta.color}18 0%, ${currentLevelMeta.color}0c 100%)`,
-              border: `1.5px solid ${currentLevelMeta.color}50`,
+              background: `${currentLevelMeta.color}14`,
+              border: `1px solid ${currentLevelMeta.color}50`,
               color: currentLevelMeta.color,
             }}
-            {...hoverBg(
-              `${currentLevelMeta.color}28`,
-              `linear-gradient(135deg, ${currentLevelMeta.color}18 0%, ${currentLevelMeta.color}0c 100%)`,
-            )}
+            {...hoverBg(`${currentLevelMeta.color}22`, `${currentLevelMeta.color}14`)}
             {...hoverBorderColor(`${currentLevelMeta.color}80`, `${currentLevelMeta.color}50`)}
           >
             {Ic.star(12)}
@@ -199,12 +161,12 @@ export function SealedSealCard({
             onClick={onDownloadRee}
             style={{
               ...S_OVERVIEW_SEALED_ACTION_BTN_BASE,
-              background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-              border: "1.5px solid #86efac",
-              color: "#15803d",
+              background: lgBackgrounds.success,
+              border: "1px solid rgba(34, 197, 94, 0.42)",
+              color: lgColors.success,
             }}
-            {...hoverBg("#bbf7d0", "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)")}
-            {...hoverBorderColor("#4ade80", "#86efac")}
+            {...hoverBg("rgba(220, 252, 231, 0.9)", lgBackgrounds.success)}
+            {...hoverBorderColor("rgba(34, 197, 94, 0.7)", "rgba(34, 197, 94, 0.42)")}
           >
             {Ic.download(12)}
             Download REE
