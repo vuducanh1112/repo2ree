@@ -1,4 +1,5 @@
 .direnv
+.env
 
 .pytest_cache/
 .venv/
