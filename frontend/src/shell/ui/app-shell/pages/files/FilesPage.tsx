@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { ReeFile } from "../../../../../core/ree/ReeTypes";
 import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
+import { lgPageColors } from "../../../theme/lightGlassTheme";
 import { S_WORKFLOW_PAGE_BODY, S_WORKFLOW_SERVICE_ROOT } from "../../../theme/theme";
 import { AssemblyPageHeader } from "../../components/pageChrome";
 import { FilesEmptyState } from "./FilesEmptyState";
@@ -30,11 +31,12 @@ export function PageFiles({ files, reeFiles, onDownloadWorkspaceFile }: PageFile
     ? reeFlatEntries.find((entry) => entry.node.id === selectedId) || null
     : null;
   const selectedFile = selectedSourceEntry?.node || selectedReeEntry?.node || null;
+  const selectedPath = selectedSourceEntry?.path || selectedReeEntry?.path || null;
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
       <AssemblyPageHeader
-        color="#6366f1"
+        color={lgPageColors.files}
         icon={Ic.files(18)}
         title="Files"
         subtitle="Inspect workspace inputs and generated REE files side by side"
@@ -58,6 +60,7 @@ export function PageFiles({ files, reeFiles, onDownloadWorkspaceFile }: PageFile
           <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
             <FileViewer
               file={selectedFile}
+              path={selectedPath}
               onClose={() => setSelectedId(null)}
               label={reeFlatFiles.find((f) => f.id === selectedId) ? "ree" : "workspace"}
               onDownload={

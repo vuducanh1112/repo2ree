@@ -1,4 +1,5 @@
 import type React from "react";
+import type { FileTypeCategory } from "../../../core/workspace/PathUtils";
 import { S_ACTION_BUTTON_BASE } from "./stylesCore";
 import { F } from "./tokens";
 
@@ -8,6 +9,7 @@ export const lgColors = {
   blue: "#0ea5e9",
   indigo: "#4f46e5",
   cyan: "#0891b2",
+  violet: "#7c3aed",
   text: "#0f172a",
   textMid: "#475569",
   textMuted: "#64748b",
@@ -25,6 +27,7 @@ export const lgColors = {
 
 export const lgPageColors = {
   runtimeEnv: lgColors.cyan,
+  files: lgColors.indigo,
 } as const;
 
 const lgBorders = {
@@ -591,6 +594,49 @@ export function lgSuggestionButton(): React.CSSProperties {
     fontSize: 12,
     cursor: "pointer",
   };
+}
+
+// File-browser surfaces. The tree pane and viewer are translucent glass that
+// float over the page's gradient backdrop rather than the old opaque white.
+export const lgTree = {
+  pane: {
+    background: "rgba(255, 255, 255, 0.55)",
+    borderColor: "rgba(125, 211, 252, 0.42)",
+  },
+  sectionBg: "rgba(248, 250, 252, 0.86)",
+  selectedBg: "rgba(224, 242, 254, 0.92)",
+  selectedText: lgColors.primaryDeep,
+  selectedBorder: "rgba(14, 165, 233, 0.5)",
+  hoverBg: "rgba(239, 246, 255, 0.7)",
+  highlightBg: lgBackgrounds.draft,
+  highlightBorder: "rgba(245, 158, 11, 0.45)",
+  highlightText: lgColors.warning,
+  viewerBg: "rgba(248, 250, 252, 0.62)",
+  viewerHeaderBg: lgBackgrounds.glassStrong,
+  chipBg: lgBackgrounds.glassStrong,
+  inputBg: lgBackgrounds.input,
+  calloutBg: "rgba(255, 255, 255, 0.6)",
+} as const;
+
+// Tints for the file viewer's lightweight Dockerfile/shell syntax highlighter.
+export const lgSyntax = {
+  lineNumber: "rgba(148, 163, 184, 0.85)",
+  comment: "#94a3b8",
+  keyword: lgColors.overview,
+  command: "#15803d",
+  string: "#b45309",
+} as const;
+
+// Presentational tint per coarse file category (see classifyFileType).
+export function lgFileTypeColor(category: FileTypeCategory): string {
+  return {
+    code: lgColors.blue,
+    data: lgColors.indigo,
+    doc: lgColors.textMid,
+    container: lgColors.cyan,
+    archive: lgColors.violet,
+    binary: lgColors.textMuted,
+  }[category];
 }
 
 export function lgSegmentedTab(active: boolean): React.CSSProperties {

@@ -2,10 +2,11 @@ import type React from "react";
 import { useState } from "react";
 import type { ReeFile } from "../../../../../core/ree/ReeTypes";
 import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
+import { splitDisplayPath } from "../../../../../core/workspace/PathUtils";
 import { Ic } from "../../../shared/components/Icon";
 import { fmtBytes } from "../../../shared/formatting";
+import { lgColors, lgSyntax, lgTree } from "../../../theme/lightGlassTheme";
 import {
-  C,
   F,
   hoverBorderColor,
   hoverColor,
@@ -16,18 +17,28 @@ import { FILE_VIEWER_MAX_CHARS, FILE_VIEWER_MAX_LINES, isLikelyTextFile } from "
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,
+  background: "none",
+  border: `1px solid ${lgTree.pane.borderColor}`,
+  borderRadius: 4,
+  padding: "2px 8px",
+  fontSize: 10,
+  color: lgColors.textMuted,
+  transition: "all 0.12s",
+  flexShrink: 0,
   ...extra,
 });
 
 interface FileViewerProps {
   file: FileTreeNode | ReeFile;
+  path?: string | null;
   onClose: () => void;
   label?: string;
   onDownload?: () => Promise<void>;
 }
 
-export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps) {
+export function FileViewer({ file, path, onClose, label, onDownload }: FileViewerProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedPath, setCopiedPath] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const likelyTextFile = isLikelyTextFile(file.name);
   const unavailableInlineText =
@@ -45,10 +56,18 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
   const previewLines = previewText.split("\n");
   const truncatedByLines = !hasBinaryContent && previewLines.length > FILE_VIEWER_MAX_LINES;
   const truncated = truncatedByChars || truncatedByLines;
+  const displayPath = path || file.name;
+  const { dirPrefix, baseName } = splitDisplayPath(displayPath);
   const copy = () => {
     navigator.clipboard?.writeText(file.content || binaryLabel || "");
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
+  };
+  const copyPath = () => {
+    if (!path) return;
+    navigator.clipboard?.writeText(path);
+    setCopiedPath(true);
+    setTimeout(() => setCopiedPath(false), 1800);
   };
   const download = async () => {
     if (!onDownload || downloading) return;
@@ -72,7 +91,12 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
 
   return (
     <div
-      style={{ display: "flex", flexDirection: "column", height: "100%", background: "#f8fafc" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: lgTree.viewerBg,
+      }}
     >
       <div
         style={{
@@ -80,24 +104,39 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
           alignItems: "center",
           gap: 8,
           padding: "8px 12px",
-          borderBottom: `1px solid ${C.border}`,
-          background: C.surface,
+          borderBottom: `1px solid ${lgTree.pane.borderColor}`,
+          background: lgTree.viewerHeaderBg,
+          backdropFilter: "blur(8px)",
           flexShrink: 0,
         }}
       >
-        <span style={{ display: "flex", color: C.textMuted }}>{Ic.file(12)}</span>
+        <span style={{ display: "flex", color: lgColors.textMuted, flexShrink: 0 }}>
+          {Ic.file(12)}
+        </span>
         <span
-          style={{
-            fontFamily: F.mono,
-            fontSize: 12,
-            color: C.textMid,
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
+          title={displayPath}
+          style={{ display: "flex", flex: 1, minWidth: 0, fontFamily: F.mono, fontSize: 12 }}
         >
-          {file.name}
+          {dirPrefix && (
+            <span
+              style={{
+                color: lgColors.textMuted,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                minWidth: 0,
+                direction: "rtl",
+                textAlign: "left",
+              }}
+            >
+              {dirPrefix}
+            </span>
+          )}
+          <span
+            style={{ color: lgColors.text, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}
+          >
+            {baseName}
+          </span>
         </span>
         {label && (
           <span
@@ -105,9 +144,9 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
               fontSize: 9,
               fontWeight: 700,
               letterSpacing: 0.5,
-              color: C.textMuted,
-              background: C.surfaceAlt,
-              border: `1px solid ${C.border}`,
+              color: lgColors.textMuted,
+              background: lgTree.chipBg,
+              border: `1px solid ${lgTree.pane.borderColor}`,
               borderRadius: 3,
               padding: "1px 5px",
               fontFamily: F.sans,
@@ -117,24 +156,27 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
             {label}
           </span>
         )}
+        {path && (
+          <button
+            type="button"
+            onClick={copyPath}
+            title="Copy path"
+            style={actionBtn(
+              copiedPath ? { color: lgColors.success, borderColor: "rgba(34, 197, 94, 0.42)" } : {},
+            )}
+            {...hoverIf(!copiedPath, hoverBorderColor(lgColors.blue, lgTree.pane.borderColor))}
+            {...hoverIf(!copiedPath, hoverColor(lgColors.blue, lgColors.textMuted))}
+          >
+            {copiedPath ? "✓ path" : "path"}
+          </button>
+        )}
         {shouldOfferDownload ? (
           <button
             type="button"
             onClick={download}
-            style={{
-              ...actionBtn({
-                background: "none",
-                border: `1px solid ${C.border}`,
-                borderRadius: 4,
-                padding: "2px 8px",
-                fontSize: 10,
-                color: C.textMuted,
-                transition: "all 0.12s",
-              }),
-              flexShrink: 0,
-            }}
-            {...hoverIf(!downloading, hoverBorderColor(C.accent, C.border))}
-            {...hoverIf(!downloading, hoverColor(C.accent, C.textMuted))}
+            style={actionBtn()}
+            {...hoverIf(!downloading, hoverBorderColor(lgColors.blue, lgTree.pane.borderColor))}
+            {...hoverIf(!downloading, hoverColor(lgColors.blue, lgColors.textMuted))}
             disabled={downloading}
           >
             {downloading ? "downloading…" : "download"}
@@ -143,20 +185,9 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
           <button
             type="button"
             onClick={copy}
-            style={{
-              ...actionBtn({
-                background: "none",
-                border: `1px solid ${C.border}`,
-                borderRadius: 4,
-                padding: "2px 8px",
-                fontSize: 10,
-                color: copied ? "#16a34a" : C.textMuted,
-                transition: "all 0.12s",
-              }),
-              flexShrink: 0,
-            }}
-            {...hoverIf(!copied, hoverBorderColor(C.accent, C.border))}
-            {...hoverIf(!copied, hoverColor(C.accent, C.textMuted))}
+            style={actionBtn(copied ? { color: lgColors.success } : {})}
+            {...hoverIf(!copied, hoverBorderColor(lgColors.blue, lgTree.pane.borderColor))}
+            {...hoverIf(!copied, hoverColor(lgColors.blue, lgColors.textMuted))}
           >
             {copied ? "✓ copied" : "copy"}
           </button>
@@ -164,16 +195,17 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
         <button
           type="button"
           onClick={onClose}
+          title="Close"
           style={{
             background: "none",
             border: "none",
             cursor: "pointer",
-            color: C.textMuted,
+            color: lgColors.textMuted,
             display: "flex",
             padding: 2,
             borderRadius: 4,
           }}
-          {...hoverColor(C.text, C.textMuted)}
+          {...hoverColor(lgColors.text, lgColors.textMuted)}
         >
           {Ic.x(12)}
         </button>
@@ -185,10 +217,10 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
               margin: "0 10px 8px",
               padding: "8px 10px",
               borderRadius: 6,
-              border: `1px solid ${C.border}`,
-              background: C.surfaceAlt,
+              border: `1px solid ${lgTree.pane.borderColor}`,
+              background: lgTree.calloutBg,
               fontSize: 11,
-              color: C.textMuted,
+              color: lgColors.textMuted,
               fontFamily: F.sans,
             }}
           >
@@ -202,7 +234,7 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
             lineCounts.set(line, occurrenceIndex + 1);
             return (
               <div
-                key={`dockerfile-line-${line}-${occurrenceIndex}`}
+                key={`viewer-line-${line}-${occurrenceIndex}`}
                 style={{ display: "flex", alignItems: "baseline" }}
               >
                 <span
@@ -213,7 +245,7 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
                     paddingLeft: 10,
                     fontSize: 10,
                     fontFamily: F.mono,
-                    color: C.borderMid,
+                    color: lgSyntax.lineNumber,
                     userSelect: "none",
                     flexShrink: 0,
                   }}
@@ -228,19 +260,18 @@ export function FileViewer({ file, onClose, label, onDownload }: FileViewerProps
                     whiteSpace: "pre",
                     display: "block",
                     paddingRight: 16,
-                    color: hasBinaryContent
-                      ? C.textMuted
-                      : unavailableInlineText
-                        ? C.textMuted
+                    color:
+                      hasBinaryContent || unavailableInlineText
+                        ? lgColors.textMuted
                         : line.startsWith("#")
-                          ? "#94a3b8"
+                          ? lgSyntax.comment
                           : /^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)
-                            ? "#0369a1"
+                            ? lgSyntax.keyword
                             : /^(set |echo |docker |pip )/.test(line)
-                              ? "#15803d"
+                              ? lgSyntax.command
                               : /^\s*"/.test(line) && line.includes(":")
-                                ? "#b45309"
-                                : C.text,
+                                ? lgSyntax.string
+                                : lgColors.text,
                   }}
                 >
                   {line || " "}

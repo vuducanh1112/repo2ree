@@ -35,6 +35,21 @@ export const Ic = {
   file: (s = 15) => (
     <Svg size={s} d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm0 0v6h6" sw={1.4} />
   ),
+  fileCode: (s = 15) => (
+    <Svg
+      size={s}
+      sw={1.4}
+      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm0 0v6h6M10 12l-2 2 2 2M14 12l2 2-2 2"
+    />
+  ),
+  fileArchive: (s = 15) => (
+    <Svg
+      size={s}
+      sw={1.4}
+      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm0 0v6h6M11 12h2M11 15h2M11 18h2"
+    />
+  ),
+  search: (s = 15) => <Svg size={s} d="M11 18a7 7 0 100-14 7 7 0 000 14zM21 21l-4.35-4.35" />,
   chevR: (s = 15) => <Svg size={s} d="M9 18l6-6-6-6" />,
   chevD: (s = 15) => <Svg size={s} d="M6 9l6 6 6-6" />,
   download: (s = 15) => (

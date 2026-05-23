@@ -1,5 +1,6 @@
 import { Ic } from "../../../shared/components/Icon";
-import { C, F } from "../../../theme/theme";
+import { lgColors, lgTree } from "../../../theme/lightGlassTheme";
+import { F } from "../../../theme/theme";
 
 export function FilesEmptyState() {
   return (
@@ -9,10 +10,10 @@ export function FilesEmptyState() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: C.textMuted,
+        color: lgColors.textMuted,
         flexDirection: "column",
         gap: 8,
-        background: "#f8fafc",
+        background: lgTree.viewerBg,
       }}
     >
       <span style={{ display: "flex", opacity: 0.3 }}>{Ic.file(28)}</span>

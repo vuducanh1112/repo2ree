@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
-import { C, F, hoverBg, hoverIf } from "../../theme/theme";
+import { classifyFileType } from "../../../../core/workspace/PathUtils";
+import { lgColors, lgFileTypeColor, lgTree } from "../../theme/lightGlassTheme";
+import { F, hoverBg, hoverIf } from "../../theme/theme";
 import { Ic } from "./Icon";
 
 interface FileNodeProps {
@@ -9,6 +11,19 @@ interface FileNodeProps {
   onSelect: (node: FileTreeNode) => void;
   selectedId: string | null;
   highlightedPaths?: Set<string>;
+  /** Force every folder open (used while a filter is active). */
+  forceOpen?: boolean;
+}
+
+function fileTypeIcon(name: string, size: number) {
+  const category = classifyFileType(name);
+  const glyph =
+    category === "code"
+      ? Ic.fileCode(size)
+      : category === "archive"
+        ? Ic.fileArchive(size)
+        : Ic.file(size);
+  return { glyph, color: lgFileTypeColor(category) };
 }
 
 export function FileNode({
@@ -17,11 +32,14 @@ export function FileNode({
   onSelect,
   selectedId,
   highlightedPaths = new Set(),
+  forceOpen = false,
 }: FileNodeProps) {
   const [open, setOpen] = useState(depth < 1);
   const isFolder = node.type === "folder";
   const isSel = selectedId === node.id;
   const isHighlighted = !isFolder && highlightedPaths.has(node.name);
+  const isOpen = forceOpen || open;
+  const fileIcon = isFolder ? null : fileTypeIcon(node.name, 14);
 
   const handleNodeClick = () => {
     if (isFolder) {
@@ -50,15 +68,27 @@ export function FileNode({
           textAlign: "left",
           width: "100%",
           paddingLeft: 8 + depth * 14,
-          background: isSel ? C.accentBg : isHighlighted ? "#fef3c7" : "transparent",
-          border: isHighlighted && !isSel ? "1px solid #fde68a" : "1px solid transparent",
-          color: isSel ? C.accent : isHighlighted ? "#92400e" : isFolder ? C.text : C.textMid,
+          background: isSel
+            ? lgTree.selectedBg
+            : isHighlighted
+              ? lgTree.highlightBg
+              : "transparent",
+          border: `1px solid ${
+            isSel ? lgTree.selectedBorder : isHighlighted ? lgTree.highlightBorder : "transparent"
+          }`,
+          color: isSel
+            ? lgTree.selectedText
+            : isHighlighted
+              ? lgTree.highlightText
+              : isFolder
+                ? lgColors.text
+                : lgColors.textMid,
         }}
         {...hoverIf(
           !isSel,
           hoverBg(
-            isHighlighted ? "#fef3c7" : C.surfaceAlt,
-            isHighlighted ? "#fef3c7" : "transparent",
+            isHighlighted ? lgTree.highlightBg : lgTree.hoverBg,
+            isHighlighted ? lgTree.highlightBg : "transparent",
           ),
         )}
       >
@@ -66,12 +96,12 @@ export function FileNode({
           <>
             <span
               style={{
-                color: C.textMuted,
+                color: lgColors.textMuted,
                 display: "flex",
                 width: 12,
               }}
             >
-              {open ? Ic.chevD(12) : Ic.chevR(12)}
+              {isOpen ? Ic.chevD(12) : Ic.chevR(12)}
             </span>
             {Ic.folder(14)}
           </>
@@ -80,9 +110,10 @@ export function FileNode({
             style={{
               marginLeft: 12,
               display: "flex",
+              color: isSel ? lgTree.selectedText : fileIcon?.color,
             }}
           >
-            {Ic.file(14)}
+            {fileIcon?.glyph}
           </span>
         )}
         <span
@@ -100,9 +131,9 @@ export function FileNode({
             style={{
               fontSize: 9,
               fontWeight: 700,
-              color: "#b45309",
-              background: "#fef3c7",
-              border: "1px solid #fde68a",
+              color: lgTree.highlightText,
+              background: lgTree.highlightBg,
+              border: `1px solid ${lgTree.highlightBorder}`,
               borderRadius: 3,
               padding: "0 3px",
               fontFamily: F.sans,
@@ -114,7 +145,7 @@ export function FileNode({
         )}
       </button>
       {isFolder &&
-        open &&
+        isOpen &&
         node.children?.map((c) => (
           <FileNode
             key={c.id}
@@ -123,6 +154,7 @@ export function FileNode({
             onSelect={onSelect}
             selectedId={selectedId}
             highlightedPaths={highlightedPaths}
+            forceOpen={forceOpen}
           />
         ))}
     </div>
