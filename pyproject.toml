@@ -27,3 +27,10 @@ notebooks = [
 
 [tool.mypy]
 mypy_path = ["core/src", "api/src", "api/cli"]
+
+# docker (docker-py) ships no py.typed and has no maintained stub package, so
+# treat the whole namespace as untyped (Any) rather than analyzing its sources.
+[[tool.mypy.overrides]]
+module = ["docker", "docker.*"]
+ignore_missing_imports = true
+follow_imports = "skip"

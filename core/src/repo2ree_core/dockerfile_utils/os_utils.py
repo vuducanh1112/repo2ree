@@ -55,10 +55,10 @@ def get_os_release_lightweight(image_name: str) -> tuple[str, str]:
 
     except docker.errors.ImageNotFound:
         print(f"Error: Image '{image_name}' not found.")
-        return ""
+        return "", ""
     except Exception as e:
         print(f"An error occurred: {e}")
-        return ""
+        return "", ""
 
 
 def get_docker_image_digest(image_name: str) -> str | None:
@@ -114,7 +114,7 @@ def parse_os_release(os_release_str: str) -> OSReleaseInfo:
         version_id=info.get("VERSION_ID", ""),
         version=info.get("VERSION", ""),
         version_code_name=info.get("VERSION_CODENAME", ""),
-        id=info.get("ID", ""),
+        id=OSReleaseID(info.get("ID", "")),
     )
 
     return os_release_info

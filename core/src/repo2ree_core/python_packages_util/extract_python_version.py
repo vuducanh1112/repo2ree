@@ -52,6 +52,8 @@ def extract_python_version_from_packages(
         except Exception:
             continue
 
+    return None
+
 
 def find_declared_python_version(repo_dir: Path) -> SpecifierSet | None:
     for func in [
@@ -65,6 +67,8 @@ def find_declared_python_version(repo_dir: Path) -> SpecifierSet | None:
         result = func(repo_dir)
         if result:
             return result
+
+    return None
 
 
 def get_required_python_from_pyproject(repo_dir: Path) -> SpecifierSet | None:

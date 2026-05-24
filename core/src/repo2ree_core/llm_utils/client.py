@@ -38,8 +38,8 @@ def generate_completion(
                 full_response.append(json.loads(line))
 
         response_text = ""
-        for response in full_response:
-            response_text += response.get("response", "")
+        for response_chunk in full_response:
+            response_text += response_chunk.get("response", "")
 
         return response_text
     except requests.HTTPError as e:

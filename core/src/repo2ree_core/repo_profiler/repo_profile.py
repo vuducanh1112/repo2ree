@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from datetime import datetime
+from typing import Any
 import json
 import logging
 
@@ -75,7 +76,7 @@ def profile_repository(repo_dir: Path) -> PythonRepoProfile:
 
     profile_created_at = datetime.now()
 
-    readme_extracted_data = {}
+    readme_extracted_data: dict[str, Any] = {}
     if (repo_dir / "README.md").exists():
         logging.info("Extracting data from README.md using LLM.")
         # readme_extracted_data = extract_python_and_dependencies_from_readme(
@@ -153,7 +154,7 @@ def extract_declared_dependencies(
     )
     ##############
 
-    declared_dependencies = dict()
+    declared_dependencies: dict[str, list[DeclaredDependency]] = dict()
     for config_file in configuration_files:
         declared_dependencies[str(config_file)] = []
         if config_file.name == "requirements.txt":
@@ -287,7 +288,7 @@ def extract_python_and_dependencies_from_readme(readme_path: Path) -> dict:
 
 
 def validate_llm_extracted_data(data: dict, source_data: str) -> dict:
-    new_data = {
+    new_data: dict[str, Any] = {
         "python_version": None,
         "dependencies": set(),
     }

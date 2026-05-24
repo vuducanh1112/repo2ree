@@ -356,11 +356,12 @@ def lookup_package_version(
                 architecture=architecture,
             )
         case PackageInstallCommand.PIP:
-            version = get_latest_version_on_pypi_until_date(package_name, date)
-            if not version:
+            pypi_version = get_latest_version_on_pypi_until_date(package_name, date)
+            if not pypi_version:
                 raise ValueError(
                     f"Could not find a PyPI version for package '{package_name}' until date {date.isoformat()}"
                 )
+            version = pypi_version
         case _:
             raise ValueError(f"Unsupported package install command: {install_command}")
 
@@ -380,7 +381,7 @@ def split_shell_command(command: str) -> SplittedShellCommand:
     delimited_command = []
     delimited_command_tokens = []
     delimiters = []
-    delimited_command_tokens_buffer = []
+    delimited_command_tokens_buffer: list[str] = []
 
     for token in tokens:
         if " " in token:

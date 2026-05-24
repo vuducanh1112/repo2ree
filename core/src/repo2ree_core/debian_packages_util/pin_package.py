@@ -175,7 +175,7 @@ def get_put_snapshot_sources_shell_command(
     """
     snapshot = snapshot_date.strftime("%Y%m%dT%H%M%SZ")
 
-    run_command = str
+    run_command = ""
 
     keep_apt_cache_command = [
         """rm -f /etc/apt/apt.conf.d/docker-clean""",
@@ -214,7 +214,7 @@ def get_put_snapshot_sources_shell_command(
         case OSReleaseID.UBUNTU:
             snapshot_archive_base = "http://snapshot.ubuntu.com/"
 
-            commands: list[str] = []
+            commands = []
 
             commands.append(
                 """if [ -e /etc/apt/sources.list.d/ubuntu.sources ]; then rm -f /etc/apt/sources.list.d/ubuntu.sources; fi;"""
