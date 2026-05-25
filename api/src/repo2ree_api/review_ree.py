@@ -14,12 +14,17 @@ from urllib.request import urlopen
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_api.api_utils import (
+    append_completed_process_output,
+    paginate,
+    require_non_empty_path,
+    resolve_relative_path,
+)
 from repo2ree_api.review_run_management import (
     _append_review_run_log,
     _get_review_run_state,
     _is_cancel_requested,
     _mark_review_cancel_requested,
-    _paginate,
     _review_run_summary,
     _start_background_review_run,
 )
@@ -69,26 +74,16 @@ def _review_workspace_root(review_id: str) -> Path:
 
 
 def _resolve_path_in_root(root: Path, relative_path: str) -> Path:
-    candidate = (root / relative_path).resolve()
-    try:
-        candidate.relative_to(root)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=400, detail="Invalid review workspace path"
-        ) from exc
-    return candidate
+    return resolve_relative_path(
+        root,
+        relative_path,
+        invalid_detail="Invalid review workspace path",
+    )
 
 
 def _resolve_review_relative_path(review_id: str, relative_path: str) -> Path:
     workspace_root = _review_workspace_root(review_id)
     return _resolve_path_in_root(workspace_root, relative_path)
-
-
-def _require_non_empty_path(path_value: str, field_name: str) -> str:
-    path = (path_value or "").strip()
-    if not path:
-        raise HTTPException(status_code=400, detail=f"{field_name} is required")
-    return path
 
 
 def _clear_review_non_ree_content(review_id: str) -> None:
@@ -180,12 +175,12 @@ def _append_subprocess_output(
     run_id: str,
     result: subprocess.CompletedProcess[str],
 ) -> None:
-    for line in (result.stdout or "").splitlines():
-        if line.strip():
-            _append_review_run_log(review_id, run_id, "stdout", "info", line)
-    for line in (result.stderr or "").splitlines():
-        if line.strip():
-            _append_review_run_log(review_id, run_id, "stderr", "warn", line)
+    append_completed_process_output(
+        result,
+        lambda stream, level, message: _append_review_run_log(
+            review_id, run_id, stream, level, message
+        ),
+    )
 
 
 def _run_review_source_acquire(
@@ -522,10 +517,10 @@ def review_source_acquire_route(review_id: str):
 @review_ree_router.post("/api/v1/reviews/{review_id}/build-runtime")
 def review_build_runtime_route(review_id: str, payload: ReviewBuildRuntimePayload):
     try:
-        script_path = _require_non_empty_path(
+        script_path = require_non_empty_path(
             payload.build_runtime_script_path, "build_runtime_script_path"
         )
-        runtime_path = _require_non_empty_path(
+        runtime_path = require_non_empty_path(
             payload.produced_runtime_path, "produced_runtime_path"
         )
         run_state = _start_background_review_run(
@@ -548,7 +543,7 @@ def review_build_runtime_route(review_id: str, payload: ReviewBuildRuntimePayloa
 @review_ree_router.post("/api/v1/reviews/{review_id}/activation-test")
 def review_activation_route(review_id: str, payload: ReviewActivationTestPayload):
     try:
-        script_path = _require_non_empty_path(
+        script_path = require_non_empty_path(
             payload.activation_script_path, "activation_script_path"
         )
         run_state = _start_background_review_run(
@@ -578,7 +573,7 @@ def review_run_logs_route(
 ):
     run_state = _get_review_run_state(review_id, run_id)
     logs = run_state.get("logs", [])
-    page, next_cursor, has_more = _paginate(logs, cursor=cursor, limit=limit)
+    page, next_cursor, has_more = paginate(logs, cursor=cursor, limit=limit)
     return {
         "entries": page,
         "nextCursor": next_cursor,

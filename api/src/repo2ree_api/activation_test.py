@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -10,6 +9,7 @@ from repo2ree_core.container.run_script import (
     ContainerScriptRun,
     run_script_in_container,
 )
+from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
@@ -30,18 +30,6 @@ class CreateActivationTestRunPayload(BaseModel):
 
     activation_script_path: str
     idempotencyKey: str | None = None
-
-
-def _resolve_workspace_relative_path(ree_id: str, relative_path: str) -> Path:
-    root = workspace_dir(ree_id).resolve()
-    candidate = (root / relative_path).resolve()
-    try:
-        candidate.relative_to(root)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid workspace path") from exc
-    if candidate.name.startswith(".workspace") or candidate.name.startswith(".upload."):
-        raise HTTPException(status_code=400, detail="Invalid workspace path")
-    return candidate
 
 
 def resolve_activation_script_path(
@@ -67,7 +55,12 @@ def resolve_activation_script_path(
     if not script_path:
         raise HTTPException(status_code=400, detail="activation_script is required")
 
-    script_abs_path = _resolve_workspace_relative_path(ree_id, script_path)
+    script_abs_path = resolve_relative_path(
+        workspace_dir(ree_id).resolve(),
+        script_path,
+        invalid_detail="Invalid workspace path",
+        blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
+    )
     if not script_abs_path.exists() or not script_abs_path.is_file():
         raise HTTPException(
             status_code=400, detail=f"Activation script not found: {script_path}"
@@ -81,8 +74,13 @@ def run_activation_test(
     run_id: str,
     activation_script_path: str,
 ) -> tuple[str, dict[str, Any]]:
-    # Re-validate inside the worker; the route resolves the path up front.
-    _resolve_workspace_relative_path(ree_id, activation_script_path)
+    # Re-validate inside the worker before launching the container.
+    resolve_relative_path(
+        workspace_dir(ree_id).resolve(),
+        activation_script_path,
+        invalid_detail="Invalid workspace path",
+        blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
+    )
 
     spec = ContainerScriptRun(
         workspace_path=workspace_dir(ree_id).resolve(),

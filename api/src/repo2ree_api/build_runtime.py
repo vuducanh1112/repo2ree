@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.container.run_script import (
     ContainerScriptRun,
     run_script_in_container,
+)
+from repo2ree_api.api_utils import (
+    WORKSPACE_CONTROL_PREFIXES,
+    require_non_empty_path,
+    resolve_relative_path,
 )
 from repo2ree_api.run_management import (
     _append_run_log,
@@ -31,32 +35,18 @@ class CreateBuildRuntimeRunPayload(_StrictRequestModel):
     idempotencyKey: str | None = None
 
 
-def _resolve_workspace_relative_path(ree_id: str, relative_path: str) -> Path:
-    root = workspace_dir(ree_id).resolve()
-    candidate = (root / relative_path).resolve()
-    try:
-        candidate.relative_to(root)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid workspace path") from exc
-    if candidate.name.startswith(".workspace") or candidate.name.startswith(".upload."):
-        raise HTTPException(status_code=400, detail="Invalid workspace path")
-    return candidate
-
-
-def _require_non_empty_path(path_value: str, field_name: str) -> str:
-    path = path_value.strip()
-    if not path:
-        raise HTTPException(status_code=400, detail=f"{field_name} is required")
-    return path
-
-
 def _docker_build_run(
     ree_id: str,
     run_id: str,
     script_relative_path: str,
 ) -> tuple[str, dict[str, Any]]:
-    # Re-validate inside the worker; the route resolves the path up front.
-    _resolve_workspace_relative_path(ree_id, script_relative_path)
+    # Validate inside the worker before launching the container.
+    resolve_relative_path(
+        workspace_dir(ree_id).resolve(),
+        script_relative_path,
+        invalid_detail="Invalid workspace path",
+        blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
+    )
 
     spec = ContainerScriptRun(
         workspace_path=workspace_dir(ree_id).resolve(),
@@ -103,7 +93,7 @@ def create_build_run_state(
     ree_id: str,
     payload: CreateBuildRuntimeRunPayload,
 ) -> dict[str, Any]:
-    script_path = _require_non_empty_path(
+    script_path = require_non_empty_path(
         payload.build_runtime_script_path,
         "build_runtime_script_path",
     )

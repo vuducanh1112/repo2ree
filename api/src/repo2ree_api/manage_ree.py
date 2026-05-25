@@ -4,6 +4,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
+from repo2ree_api.api_utils import paginate
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
@@ -46,23 +47,6 @@ def _archive_download_filename(ree_id: str) -> str:
     return f"{safe_stem}.zip"
 
 
-def _paginate_items(
-    items: list[dict], cursor: str | None = None, limit: int | None = None
-):
-    start = 0
-    if cursor:
-        try:
-            start = max(int(cursor), 0)
-        except ValueError:
-            start = 0
-    end = len(items)
-    if limit is not None and limit >= 0:
-        end = min(start + limit, len(items))
-    page = items[start:end]
-    next_cursor = str(end) if end < len(items) else None
-    return page, next_cursor
-
-
 @manage_ree_router.post("/api/v1/rees")
 def create_workspace_route(payload: WorkspaceCreatePayload):
     try:
@@ -82,7 +66,7 @@ def list_workspaces_route(
     status: str | None = Query(None),
 ):
     items = list_workspace_metadata(status=status)
-    page, next_cursor = _paginate_items(items, cursor=cursor, limit=limit)
+    page, next_cursor, _has_more = paginate(items, cursor=cursor, limit=limit)
     return {"items": page, "nextCursor": next_cursor}
 
 

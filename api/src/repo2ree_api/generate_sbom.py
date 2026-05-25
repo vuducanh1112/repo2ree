@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.sbom.generate_sbom import generate_sbom
+from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
@@ -30,18 +30,6 @@ class CreateGenerateSbomRunPayload(BaseModel):
     idempotencyKey: str | None = None
 
 
-def _resolve_workspace_relative_path(ree_id: str, relative_path: str) -> Path:
-    root = workspace_dir(ree_id).resolve()
-    candidate = (root / relative_path).resolve()
-    try:
-        candidate.relative_to(root)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid workspace path") from exc
-    if candidate.name.startswith(".workspace") or candidate.name.startswith(".upload."):
-        raise HTTPException(status_code=400, detail="Invalid workspace path")
-    return candidate
-
-
 def resolve_sbom_runtime_path(
     ree_id: str,
     produced_runtime_path: str | None,
@@ -60,7 +48,12 @@ def resolve_sbom_runtime_path(
             status_code=400, detail="produced_runtime_path is required for sbom runs"
         )
 
-    runtime_abs_path = _resolve_workspace_relative_path(ree_id, runtime_path)
+    runtime_abs_path = resolve_relative_path(
+        workspace_dir(ree_id).resolve(),
+        runtime_path,
+        invalid_detail="Invalid workspace path",
+        blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
+    )
     if not runtime_abs_path.exists() or not runtime_abs_path.is_file():
         raise HTTPException(
             status_code=400, detail=f"Runtime tarball not found: {runtime_path}"
@@ -78,7 +71,12 @@ def resolve_sbom_runtime_path(
 def generate_sbom_for_runtime(
     ree_id: str, runtime_relative_path: str
 ) -> dict[str, Any]:
-    runtime_abs_path = _resolve_workspace_relative_path(ree_id, runtime_relative_path)
+    runtime_abs_path = resolve_relative_path(
+        workspace_dir(ree_id).resolve(),
+        runtime_relative_path,
+        invalid_detail="Invalid workspace path",
+        blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
+    )
     output_dir = workspace_dir(ree_id)
     generated_sbom_path = generate_sbom(runtime_abs_path, output_dir)
     sbom_relative_path = "sbom.json"

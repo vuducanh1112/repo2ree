@@ -214,21 +214,3 @@ def _get_review_run_state(review_id: str, run_id: str) -> dict[str, Any]:
     if not run_state:
         raise HTTPException(status_code=404, detail="Run not found")
     return run_state
-
-
-def _paginate(
-    items: list[dict[str, Any]], cursor: str | None, limit: int | None
-) -> tuple[list[dict[str, Any]], str | None, bool]:
-    start = 0
-    if cursor:
-        try:
-            start = max(int(cursor), 0)
-        except ValueError:
-            start = 0
-    end = len(items)
-    if limit is not None and limit >= 0:
-        end = min(start + limit, len(items))
-    page = items[start:end]
-    has_more = end < len(items)
-    next_cursor = str(end) if has_more else None
-    return page, next_cursor, has_more

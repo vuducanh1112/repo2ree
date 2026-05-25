@@ -5,11 +5,11 @@ import subprocess
 
 from fastapi import APIRouter, Query
 
+from repo2ree_api.api_utils import paginate
 from repo2ree_api.run_management import (
     _append_run_log,
     _get_run_state,
     _mark_cancel_requested,
-    _paginate,
     _run_summary,
 )
 
@@ -32,7 +32,7 @@ def get_workspace_run_logs(
 ):
     run_state = _get_run_state(ree_id, run_id)
     logs = run_state.get("logs", [])
-    page, next_cursor, has_more = _paginate(logs, cursor=cursor, limit=limit)
+    page, next_cursor, has_more = paginate(logs, cursor=cursor, limit=limit)
     return {
         "entries": page,
         "nextCursor": next_cursor,

@@ -20,6 +20,7 @@ from repo2ree_core.repo_profiler.reproducibility_report import (
     parse_renovate_stdout,
 )
 
+from repo2ree_api.api_utils import append_completed_process_output
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
@@ -178,12 +179,12 @@ def create_evaluate_run_state(
             check=False,
         )
 
-        for line in completed.stdout.splitlines():
-            if line.strip():
-                _append_run_log(ree_id, run_id, "stdout", "info", line)
-        for line in completed.stderr.splitlines():
-            if line.strip():
-                _append_run_log(ree_id, run_id, "stderr", "warn", line)
+        append_completed_process_output(
+            completed,
+            lambda stream, level, message: _append_run_log(
+                ree_id, run_id, stream, level, message
+            ),
+        )
 
         if _is_cancel_requested(ree_id, run_id):
             _append_run_log(ree_id, run_id, "system", "warn", "Evaluate run canceled")
