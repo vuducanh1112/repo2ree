@@ -23,7 +23,17 @@ from repo2ree_api.run_management import (
 from repo2ree_api.storage.workspace_files import workspace_dir
 
 
+# ================================================
+# Router
+# ================================================
+
+
 build_runtime_router = APIRouter()
+
+
+# ================================================
+# Data Models
+# ================================================
 
 
 class _StrictRequestModel(BaseModel):
@@ -33,6 +43,24 @@ class _StrictRequestModel(BaseModel):
 class CreateBuildRuntimeRunPayload(_StrictRequestModel):
     build_runtime_script_path: str
     idempotencyKey: str | None = None
+
+
+# ================================================
+# Route Handlers
+# ================================================
+
+
+@build_runtime_router.post("/api/v1/rees/{ree_id}/build-runtime")
+def create_workspace_build_runtime_run(
+    ree_id: str, payload: CreateBuildRuntimeRunPayload
+):
+    run_state = create_build_run_state(ree_id, payload)
+    return _run_summary(run_state)
+
+
+# ================================================
+# Helpers
+# ================================================
 
 
 def _docker_build_run(
@@ -108,11 +136,3 @@ def create_build_run_state(
             script_relative_path=script_path,
         ),
     )
-
-
-@build_runtime_router.post("/api/v1/rees/{ree_id}/build-runtime")
-def create_workspace_build_runtime_run(
-    ree_id: str, payload: CreateBuildRuntimeRunPayload
-):
-    run_state = create_build_run_state(ree_id, payload)
-    return _run_summary(run_state)

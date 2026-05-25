@@ -41,7 +41,17 @@ from repo2ree_api.storage.review_files import (
 )
 
 
+# ================================================
+# Router
+# ================================================
+
+
 review_ree_router = APIRouter()
+
+
+# ================================================
+# Data Models
+# ================================================
 
 
 class _StrictRequestModel(BaseModel):
@@ -57,6 +67,177 @@ class ReviewBuildRuntimePayload(_StrictRequestModel):
 class ReviewActivationTestPayload(_StrictRequestModel):
     activation_script_path: str
     idempotencyKey: str | None = None
+
+
+# ================================================
+# Route Handlers
+# ================================================
+
+
+@review_ree_router.post("/api/v1/reviews:upload-init")
+def review_upload_init_route(payload: ReviewUploadInitPayload):
+    try:
+        return init_review_upload(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@review_ree_router.put("/api/v1/reviews/{review_id}/upload/{upload_token}")
+async def review_upload_put_route(review_id: str, upload_token: str, request: Request):
+    try:
+        data = await request.body()
+        return store_review_upload_bytes(review_id, upload_token, data)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@review_ree_router.post("/api/v1/reviews/{review_id}:upload-complete")
+def review_upload_complete_route(review_id: str, payload: ReviewUploadCompletePayload):
+    try:
+        return complete_review_upload(review_id, payload)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@review_ree_router.get("/api/v1/reviews/{review_id}")
+def get_review_route(review_id: str):
+    try:
+        return get_review(review_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@review_ree_router.post("/api/v1/reviews/{review_id}/source:acquire")
+def review_source_acquire_route(review_id: str):
+    try:
+        run_state = _start_background_review_run(
+            review_id=review_id,
+            operation="source",
+            request_payload={"mode": "download"},
+            run_id_prefix="review-source",
+            runner=_run_review_source_acquire,
+        )
+        return _review_run_summary(run_state)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@review_ree_router.post("/api/v1/reviews/{review_id}/build-runtime")
+def review_build_runtime_route(review_id: str, payload: ReviewBuildRuntimePayload):
+    try:
+        script_path = require_non_empty_path(
+            payload.build_runtime_script_path, "build_runtime_script_path"
+        )
+        runtime_path = require_non_empty_path(
+            payload.produced_runtime_path, "produced_runtime_path"
+        )
+        run_state = _start_background_review_run(
+            review_id=review_id,
+            operation="build",
+            request_payload={
+                "build_runtime_script_path": script_path,
+                "produced_runtime_path": runtime_path,
+            },
+            run_id_prefix="review-build",
+            runner=lambda rid, run_id: _run_review_build_runtime(
+                rid, run_id, script_path, runtime_path
+            ),
+        )
+        return _review_run_summary(run_state)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@review_ree_router.post("/api/v1/reviews/{review_id}/activation-test")
+def review_activation_route(review_id: str, payload: ReviewActivationTestPayload):
+    try:
+        script_path = require_non_empty_path(
+            payload.activation_script_path, "activation_script_path"
+        )
+        run_state = _start_background_review_run(
+            review_id=review_id,
+            operation="activation",
+            request_payload={"activation_script_path": script_path},
+            run_id_prefix="review-activation",
+            runner=lambda rid, run_id: _run_review_activation(rid, run_id, script_path),
+        )
+        return _review_run_summary(run_state)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@review_ree_router.get("/api/v1/reviews/{review_id}/runs/{run_id}")
+def review_run_get_route(review_id: str, run_id: str):
+    run_state = _get_review_run_state(review_id, run_id)
+    return _review_run_summary(run_state)
+
+
+@review_ree_router.get("/api/v1/reviews/{review_id}/runs/{run_id}/logs")
+def review_run_logs_route(
+    review_id: str,
+    run_id: str,
+    cursor: str | None = Query(None),
+    limit: int | None = Query(None),
+):
+    run_state = _get_review_run_state(review_id, run_id)
+    logs = run_state.get("logs", [])
+    page, next_cursor, has_more = paginate(logs, cursor=cursor, limit=limit)
+    return {
+        "entries": page,
+        "nextCursor": next_cursor,
+        "hasMore": has_more,
+        "runStatus": run_state["status"],
+    }
+
+
+@review_ree_router.post("/api/v1/reviews/{review_id}/runs/{run_id}:cancel")
+def review_run_cancel_route(review_id: str, run_id: str):
+    run_state = _get_review_run_state(review_id, run_id)
+    current_status = run_state.get("status")
+    if current_status in {"succeeded", "failed", "canceled"}:
+        return {"status": current_status}
+
+    _mark_review_cancel_requested(review_id, run_id)
+    _append_review_run_log(
+        review_id,
+        run_id,
+        "system",
+        "warn",
+        "Cancel requested by user",
+    )
+
+    operation = run_state.get("operation")
+    docker_bin = shutil.which("docker") or "docker"
+    if operation == "build":
+        container_name = f"repo2ree-review-build-{run_id}"
+        try:
+            subprocess.run(
+                [docker_bin, "rm", "-f", container_name],
+                capture_output=True,
+                text=True,
+            )
+        except Exception:
+            pass
+    elif operation == "activation":
+        container_name = f"repo2ree-review-activation-{run_id}"
+        try:
+            subprocess.run(
+                [docker_bin, "rm", "-f", container_name],
+                capture_output=True,
+                text=True,
+            )
+        except Exception:
+            pass
+
+    refreshed = _get_review_run_state(review_id, run_id)
+    return {"status": refreshed["status"]}
+
+
+# ================================================
+# Helpers
+# ================================================
 
 
 def _load_review_metadata(review_id: str) -> dict[str, Any]:
@@ -462,164 +643,3 @@ def _run_review_activation(
         review_id, run_id, "system", "info", "Activation run succeeded"
     )
     return "succeeded", {"activationScriptPath": activation_script_path}
-
-
-@review_ree_router.post("/api/v1/reviews:upload-init")
-def review_upload_init_route(payload: ReviewUploadInitPayload):
-    try:
-        return init_review_upload(payload)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@review_ree_router.put("/api/v1/reviews/{review_id}/upload/{upload_token}")
-async def review_upload_put_route(review_id: str, upload_token: str, request: Request):
-    try:
-        data = await request.body()
-        return store_review_upload_bytes(review_id, upload_token, data)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@review_ree_router.post("/api/v1/reviews/{review_id}:upload-complete")
-def review_upload_complete_route(review_id: str, payload: ReviewUploadCompletePayload):
-    try:
-        return complete_review_upload(review_id, payload)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@review_ree_router.get("/api/v1/reviews/{review_id}")
-def get_review_route(review_id: str):
-    try:
-        return get_review(review_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@review_ree_router.post("/api/v1/reviews/{review_id}/source:acquire")
-def review_source_acquire_route(review_id: str):
-    try:
-        run_state = _start_background_review_run(
-            review_id=review_id,
-            operation="source",
-            request_payload={"mode": "download"},
-            run_id_prefix="review-source",
-            runner=_run_review_source_acquire,
-        )
-        return _review_run_summary(run_state)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@review_ree_router.post("/api/v1/reviews/{review_id}/build-runtime")
-def review_build_runtime_route(review_id: str, payload: ReviewBuildRuntimePayload):
-    try:
-        script_path = require_non_empty_path(
-            payload.build_runtime_script_path, "build_runtime_script_path"
-        )
-        runtime_path = require_non_empty_path(
-            payload.produced_runtime_path, "produced_runtime_path"
-        )
-        run_state = _start_background_review_run(
-            review_id=review_id,
-            operation="build",
-            request_payload={
-                "build_runtime_script_path": script_path,
-                "produced_runtime_path": runtime_path,
-            },
-            run_id_prefix="review-build",
-            runner=lambda rid, run_id: _run_review_build_runtime(
-                rid, run_id, script_path, runtime_path
-            ),
-        )
-        return _review_run_summary(run_state)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@review_ree_router.post("/api/v1/reviews/{review_id}/activation-test")
-def review_activation_route(review_id: str, payload: ReviewActivationTestPayload):
-    try:
-        script_path = require_non_empty_path(
-            payload.activation_script_path, "activation_script_path"
-        )
-        run_state = _start_background_review_run(
-            review_id=review_id,
-            operation="activation",
-            request_payload={"activation_script_path": script_path},
-            run_id_prefix="review-activation",
-            runner=lambda rid, run_id: _run_review_activation(rid, run_id, script_path),
-        )
-        return _review_run_summary(run_state)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@review_ree_router.get("/api/v1/reviews/{review_id}/runs/{run_id}")
-def review_run_get_route(review_id: str, run_id: str):
-    run_state = _get_review_run_state(review_id, run_id)
-    return _review_run_summary(run_state)
-
-
-@review_ree_router.get("/api/v1/reviews/{review_id}/runs/{run_id}/logs")
-def review_run_logs_route(
-    review_id: str,
-    run_id: str,
-    cursor: str | None = Query(None),
-    limit: int | None = Query(None),
-):
-    run_state = _get_review_run_state(review_id, run_id)
-    logs = run_state.get("logs", [])
-    page, next_cursor, has_more = paginate(logs, cursor=cursor, limit=limit)
-    return {
-        "entries": page,
-        "nextCursor": next_cursor,
-        "hasMore": has_more,
-        "runStatus": run_state["status"],
-    }
-
-
-@review_ree_router.post("/api/v1/reviews/{review_id}/runs/{run_id}:cancel")
-def review_run_cancel_route(review_id: str, run_id: str):
-    run_state = _get_review_run_state(review_id, run_id)
-    current_status = run_state.get("status")
-    if current_status in {"succeeded", "failed", "canceled"}:
-        return {"status": current_status}
-
-    _mark_review_cancel_requested(review_id, run_id)
-    _append_review_run_log(
-        review_id,
-        run_id,
-        "system",
-        "warn",
-        "Cancel requested by user",
-    )
-
-    operation = run_state.get("operation")
-    docker_bin = shutil.which("docker") or "docker"
-    if operation == "build":
-        container_name = f"repo2ree-review-build-{run_id}"
-        try:
-            subprocess.run(
-                [docker_bin, "rm", "-f", container_name],
-                capture_output=True,
-                text=True,
-            )
-        except Exception:
-            pass
-    elif operation == "activation":
-        container_name = f"repo2ree-review-activation-{run_id}"
-        try:
-            subprocess.run(
-                [docker_bin, "rm", "-f", container_name],
-                capture_output=True,
-                text=True,
-            )
-        except Exception:
-            pass
-
-    refreshed = _get_review_run_state(review_id, run_id)
-    return {"status": refreshed["status"]}

@@ -20,7 +20,17 @@ from repo2ree_api.storage.workspace_files import (
 )
 
 
+# ================================================
+# Router
+# ================================================
+
+
 generate_sbom_router = APIRouter()
+
+
+# ================================================
+# Data Models
+# ================================================
 
 
 class CreateGenerateSbomRunPayload(BaseModel):
@@ -28,6 +38,24 @@ class CreateGenerateSbomRunPayload(BaseModel):
 
     produced_runtime_path: str
     idempotencyKey: str | None = None
+
+
+# ================================================
+# Route Handlers
+# ================================================
+
+
+@generate_sbom_router.post("/api/v1/rees/{ree_id}/generate-sbom")
+def create_workspace_generate_sbom_run(
+    ree_id: str, payload: CreateGenerateSbomRunPayload
+):
+    run_state = create_generate_sbom_run_state(ree_id, payload)
+    return _run_summary(run_state)
+
+
+# ================================================
+# Helpers
+# ================================================
 
 
 def resolve_sbom_runtime_path(
@@ -150,11 +178,3 @@ def create_generate_sbom_run_state(
         run_id_prefix="sbom",
         runner=_runner,
     )
-
-
-@generate_sbom_router.post("/api/v1/rees/{ree_id}/generate-sbom")
-def create_workspace_generate_sbom_run(
-    ree_id: str, payload: CreateGenerateSbomRunPayload
-):
-    run_state = create_generate_sbom_run_state(ree_id, payload)
-    return _run_summary(run_state)

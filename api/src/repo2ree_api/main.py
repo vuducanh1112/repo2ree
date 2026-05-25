@@ -20,6 +20,11 @@ from repo2ree_api.storage.init_storage import (
 )
 
 
+# ================================================
+# App Setup
+# ================================================
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # This runs ON STARTUP
@@ -45,6 +50,11 @@ app.include_router(evaluate_router)
 app.include_router(runs_router)
 app.include_router(manage_ree_router)
 app.include_router(review_ree_router)
+
+
+# ================================================
+# Exception Handlers
+# ================================================
 
 
 @app.exception_handler(FastAPIHTTPException)
@@ -81,6 +91,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
             }
         },
     )
+
+
+# ================================================
+# Routes
+# ================================================
 
 
 @app.get("/")

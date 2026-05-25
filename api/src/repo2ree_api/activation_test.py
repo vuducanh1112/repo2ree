@@ -22,7 +22,17 @@ from repo2ree_api.storage.workspace_files import (
 )
 
 
+# ================================================
+# Router
+# ================================================
+
+
 activation_test_router = APIRouter()
+
+
+# ================================================
+# Data Models
+# ================================================
 
 
 class CreateActivationTestRunPayload(BaseModel):
@@ -30,6 +40,24 @@ class CreateActivationTestRunPayload(BaseModel):
 
     activation_script_path: str
     idempotencyKey: str | None = None
+
+
+# ================================================
+# Route Handlers
+# ================================================
+
+
+@activation_test_router.post("/api/v1/rees/{ree_id}/activation-test")
+def create_workspace_activation_test_run(
+    ree_id: str, payload: CreateActivationTestRunPayload
+):
+    run_state = create_activation_run_state(ree_id, payload)
+    return _run_summary(run_state)
+
+
+# ================================================
+# Helpers
+# ================================================
 
 
 def resolve_activation_script_path(
@@ -152,11 +180,3 @@ def create_activation_run_state(
         run_id_prefix="activation",
         runner=_runner,
     )
-
-
-@activation_test_router.post("/api/v1/rees/{ree_id}/activation-test")
-def create_workspace_activation_test_run(
-    ree_id: str, payload: CreateActivationTestRunPayload
-):
-    run_state = create_activation_run_state(ree_id, payload)
-    return _run_summary(run_state)

@@ -35,16 +35,18 @@ from repo2ree_api.storage.workspace_files import (
     write_file_content,
 )
 
+
+# ================================================
+# Router
+# ================================================
+
+
 manage_ree_router = APIRouter()
 
 
-def _archive_download_filename(ree_id: str) -> str:
-    metadata = read_workspace_metadata(ree_id)
-    raw_name = str(metadata.get("name") or "").strip()
-    safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._-")
-    if not safe_stem:
-        safe_stem = "ree"
-    return f"{safe_stem}.zip"
+# ================================================
+# Route Handlers
+# ================================================
 
 
 @manage_ree_router.post("/api/v1/rees")
@@ -265,3 +267,17 @@ def download_workspace_ree_archive_route(ree_id: str):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+# ================================================
+# Helpers
+# ================================================
+
+
+def _archive_download_filename(ree_id: str) -> str:
+    metadata = read_workspace_metadata(ree_id)
+    raw_name = str(metadata.get("name") or "").strip()
+    safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._-")
+    if not safe_stem:
+        safe_stem = "ree"
+    return f"{safe_stem}.zip"

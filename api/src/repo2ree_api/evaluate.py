@@ -35,13 +35,17 @@ from repo2ree_api.storage.workspace_files import (
 )
 
 
+# ================================================
+# Router
+# ================================================
+
+
 evaluate_router = APIRouter()
 
-_REPORT_FILENAME = "reproducibility-report.json"
 
-
-def _report_path(ree_id: str) -> Path:
-    return artifact_dir(ree_id) / _REPORT_FILENAME
+# ================================================
+# Data Models
+# ================================================
 
 
 class CreateEvaluateRunPayload(BaseModel):
@@ -49,6 +53,39 @@ class CreateEvaluateRunPayload(BaseModel):
 
     strict: bool = False
     idempotencyKey: str | None = None
+
+
+# ================================================
+# Route Handlers
+# ================================================
+
+
+@evaluate_router.post("/api/v1/rees/{ree_id}/evaluate")
+def create_workspace_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload):
+    run_state = create_evaluate_run_state(ree_id, payload)
+    return _run_summary(run_state)
+
+
+@evaluate_router.get("/api/v1/rees/{ree_id}/evaluate/report")
+def get_workspace_evaluate_report(ree_id: str) -> dict[str, Any]:
+    path = _report_path(ree_id)
+    if not path.exists():
+        raise HTTPException(
+            status_code=404, detail="No reproducibility report; run evaluate first"
+        )
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+# ================================================
+# Helpers
+# ================================================
+
+
+_REPORT_FILENAME = "reproducibility-report.json"
+
+
+def _report_path(ree_id: str) -> Path:
+    return artifact_dir(ree_id) / _REPORT_FILENAME
 
 
 def _is_workspace_control_file(path: Path) -> bool:
@@ -222,19 +259,3 @@ def create_evaluate_run_state(
         run_id_prefix="evaluate",
         runner=_runner,
     )
-
-
-@evaluate_router.post("/api/v1/rees/{ree_id}/evaluate")
-def create_workspace_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload):
-    run_state = create_evaluate_run_state(ree_id, payload)
-    return _run_summary(run_state)
-
-
-@evaluate_router.get("/api/v1/rees/{ree_id}/evaluate/report")
-def get_workspace_evaluate_report(ree_id: str) -> dict[str, Any]:
-    path = _report_path(ree_id)
-    if not path.exists():
-        raise HTTPException(
-            status_code=404, detail="No reproducibility report; run evaluate first"
-        )
-    return json.loads(path.read_text(encoding="utf-8"))

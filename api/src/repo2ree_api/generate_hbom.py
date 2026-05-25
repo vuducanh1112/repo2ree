@@ -20,13 +20,41 @@ from repo2ree_api.storage.workspace_files import (
 )
 
 
+# ================================================
+# Router
+# ================================================
+
+
 generate_hbom_router = APIRouter()
+
+
+# ================================================
+# Data Models
+# ================================================
 
 
 class CreateGenerateHbomRunPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     idempotencyKey: str | None = None
+
+
+# ================================================
+# Route Handlers
+# ================================================
+
+
+@generate_hbom_router.post("/api/v1/rees/{ree_id}/generate-hbom")
+def create_workspace_generate_hbom_run(
+    ree_id: str, payload: CreateGenerateHbomRunPayload
+):
+    run_state = create_generate_hbom_run_state(ree_id, payload)
+    return _run_summary(run_state)
+
+
+# ================================================
+# Helpers
+# ================================================
 
 
 def _merge_hbom(existing: HBOM, profiled: HBOM) -> HBOM:
@@ -104,11 +132,3 @@ def create_generate_hbom_run_state(
         run_id_prefix="hbom",
         runner=_runner,
     )
-
-
-@generate_hbom_router.post("/api/v1/rees/{ree_id}/generate-hbom")
-def create_workspace_generate_hbom_run(
-    ree_id: str, payload: CreateGenerateHbomRunPayload
-):
-    run_state = create_generate_hbom_run_state(ree_id, payload)
-    return _run_summary(run_state)

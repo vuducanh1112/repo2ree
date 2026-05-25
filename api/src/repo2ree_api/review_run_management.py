@@ -11,12 +11,21 @@ from fastapi import HTTPException
 from repo2ree_api.storage.review_files import review_metadata_path
 
 
-ReviewRunOperation = Literal["build", "activation", "source"]
+# ================================================
+# State
+# ================================================
 
+
+ReviewRunOperation = Literal["build", "activation", "source"]
 
 _REVIEW_RUN_STORE: dict[str, dict[str, dict[str, Any]]] = {}
 _REVIEW_RUN_CONTROL: dict[str, dict[str, dict[str, Any]]] = {}
 _REVIEW_STORE_LOCK = RLock()
+
+
+# ================================================
+# Helpers
+# ================================================
 
 
 def _utc_now() -> str:

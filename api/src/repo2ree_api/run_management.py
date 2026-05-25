@@ -11,12 +11,21 @@ from fastapi import HTTPException
 from repo2ree_api.storage.workspace_files import workspace_exists
 
 
-RunOperation = Literal["build", "sbom", "hbom", "activation", "source", "evaluate"]
+# ================================================
+# State
+# ================================================
 
+
+RunOperation = Literal["build", "sbom", "hbom", "activation", "source", "evaluate"]
 
 _RUN_STORE: dict[str, dict[str, dict[str, Any]]] = {}
 _RUN_CONTROL: dict[str, dict[str, dict[str, Any]]] = {}
 _STORE_LOCK = RLock()
+
+
+# ================================================
+# Helpers
+# ================================================
 
 
 def _utc_now() -> str:

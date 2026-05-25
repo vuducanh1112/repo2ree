@@ -8,7 +8,17 @@ from typing import Any
 from fastapi import HTTPException
 
 
+# ================================================
+# Constants
+# ================================================
+
+
 WORKSPACE_CONTROL_PREFIXES = (".workspace", ".upload.")
+
+
+# ================================================
+# Helpers
+# ================================================
 
 
 def paginate(
