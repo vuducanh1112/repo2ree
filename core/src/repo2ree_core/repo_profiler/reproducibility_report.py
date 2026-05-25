@@ -1,12 +1,12 @@
 """Reproducibility threat report.
 
-Pure analysis layer: turns a Renovate ``--dry-run=extract`` payload plus a set of
-workspace file signals into a structured report that enumerates concrete threats
-to reproducibility (unpinned dependencies, missing lockfile, floating base image,
+Pure analysis layer: turns a ``DependencyInventory`` plus a set of workspace
+file signals into a structured report that enumerates concrete threats to
+reproducibility (unpinned dependencies, missing lockfile, floating base image,
 non-declarative system, ...).
 
-No I/O and no subprocess: the Renovate run and the serialization of the report to
-a file live in the API layer. This module only computes.
+No I/O and no subprocess: running any dependency analysis tool and serializing
+the report to a file live in the API layer.  This module only computes.
 
 Functions carry design-by-contract assertions (pre-/post-conditions) for the
 invariants that the type system cannot express.
@@ -14,7 +14,6 @@ invariants that the type system cannot express.
 
 from __future__ import annotations
 
-import json
 import re
 from enum import Enum
 from typing import Any
@@ -22,10 +21,12 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from pydantic.alias_generators import to_camel
 
+from .dependency_inventory import Dependency, DependencyInventory
 
-###################
+
+# ================================================
 # Data models
-###################
+# ================================================
 
 
 class ThreatCategory(str, Enum):
@@ -157,9 +158,9 @@ class FileSignals(BaseModel):
     dockerfile_texts: list[str] = Field(default_factory=list)
 
 
-###################
-# Filename classifiers  (pure; used by the shell to build FileSignals)
-###################
+# ================================================
+# Filename classifiers and other pure helpers
+# ================================================
 
 _MANIFEST_NAMES: frozenset[str] = frozenset(
     {
@@ -199,32 +200,9 @@ def is_vm_artifact_filename(lower_name: str) -> bool:
     )
 
 
-###################
-# Renovate output parser  (pure; no subprocess, no file I/O)
-###################
-
-_RENOVATE_EXTRACT_MARKER = "Extracted dependencies (repository=local)"
-
-
-def parse_renovate_stdout(stdout: str) -> dict[str, Any] | None:
-    """Extract the dependency payload from Renovate ``--dry-run=extract`` stdout."""
-    marker_pos = stdout.find(_RENOVATE_EXTRACT_MARKER)
-    if marker_pos < 0:
-        return None
-    json_start = stdout.find("{", marker_pos)
-    if json_start < 0:
-        return None
-    decoder = json.JSONDecoder()
-    try:
-        payload, _ = decoder.raw_decode(stdout[json_start:])
-    except json.JSONDecodeError:
-        return None
-    return payload if isinstance(payload, dict) else None
-
-
-###################
+# ================================================
 # Threat catalog
-###################
+# ================================================
 
 # Static copy: title / detail / remediation per threat id. The `affected` list and
 # `blocking` flag are filled in at detection time.
@@ -323,116 +301,33 @@ _MACHINE_GATE: dict[MachineLevel, tuple[str, ...]] = {
 }
 
 
-###################
+# ================================================
 # Internals
-###################
+# ================================================
 
 
 _RANGE_TOKENS = ("<", ">", "~", "^", "*", "||", ",")
-_DOCKER_DATASOURCE = "docker"
-
-
-def _package_files(payload: dict[str, Any] | None) -> dict[str, Any]:
-    """Normalize a Renovate extract payload to a manager -> [package file] mapping.
-
-    Renovate prints ``"packageFiles": { <manager>: [...] }``. Depending on how the
-    caller slices the log, the payload is either the whole object (with a
-    ``packageFiles`` key) or already the inner value. Accept both.
-    """
-    if not isinstance(payload, dict):
-        return {}
-    inner = payload.get("packageFiles")
-    package_files = inner if isinstance(inner, dict) else payload
-    return {k: v for k, v in package_files.items() if isinstance(v, list)}
-
-
-def _is_exact_pin(version: str | None) -> bool:
-    if not version:
-        return False
-    normalized = version.strip()
-    if not normalized:
-        return False
-    if normalized.startswith("=="):
-        return True
-    if any(token in normalized for token in _RANGE_TOKENS):
-        return False
-    return bool(re.match(r"^[0-9][A-Za-z0-9._+\-]*$", normalized))
 
 
 def _classify(version: str | None) -> str:
     """Classify a declared version string: pinned | ranged | unpinned."""
     if not version or not version.strip():
         return "unpinned"
-    if _is_exact_pin(version):
+    normalized = version.strip()
+    if normalized.startswith("==") or (
+        not any(token in normalized for token in _RANGE_TOKENS)
+        and bool(re.match(r"^[0-9][A-Za-z0-9._+\-]*$", normalized))
+    ):
         return "pinned"
     return "ranged"
 
 
-def _iter_deps(package_files: dict[str, Any]):
-    """Yield (manager, dep) for every dependency across all package files."""
-    for manager, files in package_files.items():
-        for package_file in files:
-            if not isinstance(package_file, dict):
-                continue
-            for dep in package_file.get("deps") or []:
-                if isinstance(dep, dict):
-                    yield manager, dep
-
-
-def _is_container_dep(manager: str, dep: dict[str, Any]) -> bool:
-    return dep.get("datasource") == _DOCKER_DATASOURCE or manager.startswith(
-        ("dockerfile", "docker-compose")
+def _dep_label(dep: Dependency) -> str:
+    return (
+        f"{dep.name} {dep.declared_version}".strip()
+        if dep.declared_version
+        else dep.name
     )
-
-
-def _summarize_dependencies(package_files: dict[str, Any]) -> DependencySummary:
-    """Per-dependency inventory, excluding container image references."""
-    manifests = {
-        package_file.get("packageFile")
-        for manager, files in package_files.items()
-        for package_file in files
-        if isinstance(package_file, dict)
-        and not any(
-            _is_container_dep(manager, dep)
-            for dep in (package_file.get("deps") or [])
-            if isinstance(dep, dict)
-        )
-    }
-    summary = DependencySummary(manifests=len({m for m in manifests if m}))
-    for manager, dep in _iter_deps(package_files):
-        if _is_container_dep(manager, dep):
-            continue
-        summary.total += 1
-        if dep.get("lockedVersion"):
-            summary.locked += 1
-            continue
-        kind = _classify(dep.get("currentValue"))
-        if kind == "pinned":
-            summary.pinned += 1
-        elif kind == "ranged":
-            summary.ranged += 1
-        else:
-            summary.unpinned += 1
-
-    ##############
-    assert summary.total == (
-        summary.pinned + summary.ranged + summary.unpinned + summary.locked
-    ), "dependency summary buckets must partition the total"
-    ##############
-    return summary
-
-
-def _dep_label(dep: dict[str, Any]) -> str:
-    name = str(dep.get("depName") or dep.get("packageName") or "?")
-    version = dep.get("currentValue")
-    return f"{name} {version}".strip() if version else name
-
-
-def _image_is_floating(dep: dict[str, Any]) -> bool:
-    """A container image is floating when it carries no content digest."""
-    if dep.get("currentDigest"):
-        return False
-    return True
 
 
 def _apt_install_is_unpinned(dockerfile_text: str) -> bool:
@@ -444,6 +339,33 @@ def _apt_install_is_unpinned(dockerfile_text: str) -> bool:
             if "=" not in re.sub(r"--[a-z-]+", "", line):
                 return True
     return False
+
+
+def _summarize_dependencies(inventory: DependencyInventory) -> DependencySummary:
+    """Per-dependency inventory, excluding container image references."""
+    library_deps = [d for d in inventory.dependencies if d.kind == "library"]
+    manifests = {d.manifest_path for d in library_deps if d.manifest_path}
+    summary = DependencySummary(manifests=len(manifests))
+    for dep in library_deps:
+        summary.total += 1
+        if dep.locked_version:
+            summary.locked += 1
+            continue
+        kind = _classify(dep.declared_version)
+        if kind == "pinned":
+            summary.pinned += 1
+        elif kind == "ranged":
+            summary.ranged += 1
+        else:
+            summary.unpinned += 1
+
+    # ----------------------------------------------------------------
+    assert summary.total == (
+        summary.pinned + summary.ranged + summary.unpinned + summary.locked
+    ), "dependency summary buckets must partition the total"
+    # ----------------------------------------------------------------
+
+    return summary
 
 
 def _dependency_level(summary: DependencySummary) -> DependencyLevel:
@@ -473,6 +395,9 @@ def _machine_level(file_signals: FileSignals) -> MachineLevel:
 
 
 def _make_threat(threat_id: str, affected: list[str] | None = None) -> Threat:
+    # ----------------------------------------------------------------
+    assert threat_id in _CATALOG, f"unknown threat id: {threat_id!r}"
+    # ----------------------------------------------------------------
     spec = _CATALOG[threat_id]
     return Threat(
         id=threat_id,
@@ -486,29 +411,27 @@ def _make_threat(threat_id: str, affected: list[str] | None = None) -> Threat:
 
 
 def _detect_threats(
-    package_files: dict[str, Any],
+    inventory: DependencyInventory,
     summary: DependencySummary,
     file_signals: FileSignals,
 ) -> list[Threat]:
     threats: list[Threat] = []
+    library_deps = [d for d in inventory.dependencies if d.kind == "library"]
+    container_deps = [d for d in inventory.dependencies if d.kind == "container_image"]
 
     # --- Dependency category ---
     if summary.manifests == 0 and summary.total == 0:
         threats.append(_make_threat("no-manifest"))
     else:
         unpinned = [
-            _dep_label(dep)
-            for manager, dep in _iter_deps(package_files)
-            if not _is_container_dep(manager, dep)
-            and not dep.get("lockedVersion")
-            and _classify(dep.get("currentValue")) == "unpinned"
+            _dep_label(d)
+            for d in library_deps
+            if not d.locked_version and _classify(d.declared_version) == "unpinned"
         ]
         ranged = [
-            _dep_label(dep)
-            for manager, dep in _iter_deps(package_files)
-            if not _is_container_dep(manager, dep)
-            and not dep.get("lockedVersion")
-            and _classify(dep.get("currentValue")) == "ranged"
+            _dep_label(d)
+            for d in library_deps
+            if not d.locked_version and _classify(d.declared_version) == "ranged"
         ]
         if unpinned:
             threats.append(_make_threat("unpinned-deps", unpinned))
@@ -519,14 +442,9 @@ def _detect_threats(
 
     # --- Environment axis ---
     if not file_signals.has_dockerfile and not file_signals.has_nix_file:
-        # Axis at None: nothing captures the system/OS.
         threats.append(_make_threat("no-container"))
     else:
-        floating = [
-            _dep_label(dep)
-            for manager, dep in _iter_deps(package_files)
-            if _is_container_dep(manager, dep) and _image_is_floating(dep)
-        ]
+        floating = [_dep_label(d) for d in container_deps if d.digest is None]
         if floating:
             threats.append(_make_threat("floating-base-image", floating))
         if any(
@@ -540,11 +458,12 @@ def _detect_threats(
     if not file_signals.has_vm:
         threats.append(_make_threat("no-vm"))
 
-    ##############
+    # ----------------------------------------------------------------
     ids = [threat.id for threat in threats]
     assert len(ids) == len(set(ids)), "duplicate threat ids emitted"
     assert all(threat_id in _CATALOG for threat_id in ids), "unknown threat id"
-    ##############
+    # ----------------------------------------------------------------
+
     return threats
 
 
@@ -572,7 +491,7 @@ def _rank_and_mark(
         key=lambda threat: (not threat.blocking, _SEVERITY_RANK[threat.severity]),
     )
 
-    ##############
+    # ----------------------------------------------------------------
     blocking_per_dimension: dict[ThreatCategory, int] = {}
     for threat in ordered:
         if threat.blocking:
@@ -583,31 +502,33 @@ def _rank_and_mark(
         "at most one blocking threat per dimension"
     )
     assert len(ordered) == len(threats), "ranking must not drop threats"
-    ##############
+    # ----------------------------------------------------------------
+
     return ordered
 
 
-###################
+# ================================================
 # Entry point
-###################
+# ================================================
 
 
 def build_report(
-    renovate_payload: dict[str, Any] | None,
+    inventory: DependencyInventory | None,
     file_signals: FileSignals,
 ) -> ReproducibilityReport:
-    """Build the reproducibility threat report from a Renovate extract payload and
+    """Build the reproducibility threat report from a dependency inventory and
     workspace file signals."""
 
-    package_files = _package_files(renovate_payload)
-    summary = _summarize_dependencies(package_files)
+    if inventory is None:
+        inventory = DependencyInventory()
+    summary = _summarize_dependencies(inventory)
     if summary.manifests == 0 and summary.total == 0 and file_signals.has_manifest:
         summary.manifests = 1
     dependency_level = _dependency_level(summary)
     environment_level = _environment_level(file_signals)
     machine_level = _machine_level(file_signals)
     threats = _rank_and_mark(
-        _detect_threats(package_files, summary, file_signals),
+        _detect_threats(inventory, summary, file_signals),
         dependency_level,
         environment_level,
         machine_level,
@@ -621,9 +542,10 @@ def build_report(
         threats=threats,
     )
 
-    ##############
+    # ----------------------------------------------------------------
     assert all(threat.id in _CATALOG for threat in report.threats), (
         "report contains unknown threat id"
     )
-    ##############
+    # ----------------------------------------------------------------
+
     return report

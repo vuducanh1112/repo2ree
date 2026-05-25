@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Any
 
 from repo2ree_core.repo_profiler.reproducibility_report import (
     FileSignals,
@@ -7,8 +8,11 @@ from repo2ree_core.repo_profiler.reproducibility_report import (
     ThreatCategory,
     _apt_install_is_unpinned,
     _classify,
-    _package_files,
     build_report,
+)
+from repo2ree_core.repo_profiler.sources.renovate import (
+    _inventory_from_payload,
+    _package_files,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures" / "renovate"
@@ -16,6 +20,13 @@ FIXTURES = Path(__file__).parent / "fixtures" / "renovate"
 
 def _load(name: str) -> dict:
     return json.loads((FIXTURES / name).read_text())
+
+
+def _from_renovate(payload: dict[str, Any] | None):
+    """Convert a raw Renovate payload (or None) to a DependencyInventory for tests."""
+    if payload is None:
+        return None
+    return _inventory_from_payload(payload)
 
 
 def _threat_ids(report) -> set[str]:
@@ -62,7 +73,7 @@ def test_apt_heuristic():
 
 def test_mixed_sample_threats_and_summary():
     report = build_report(
-        _load("mixed_sample.json"),
+        _from_renovate(_load("mixed_sample.json")),
         FileSignals(has_dockerfile=True),
     )
     summary = report.dependency_summary
@@ -93,7 +104,7 @@ def _blocking_ids(report) -> set[str]:
 
 def test_mixed_sample_axes_are_independent():
     report = build_report(
-        _load("mixed_sample.json"),
+        _from_renovate(_load("mixed_sample.json")),
         FileSignals(has_dockerfile=True),
     )
     # Dependency axis: exact pins but no lockfile -> Pinned (2).
@@ -112,7 +123,7 @@ def test_mixed_sample_axes_are_independent():
 
 def test_pinned_no_lock_pins_deps_but_has_no_environment():
     report = build_report(
-        _load("pinned_no_lock.json"),
+        _from_renovate(_load("pinned_no_lock.json")),
         FileSignals(),
     )
     assert report.dependency_level == 2  # Pinned
@@ -125,7 +136,7 @@ def test_pinned_no_lock_pins_deps_but_has_no_environment():
 
 def test_locked_deps_reach_locked_axis_but_no_environment():
     report = build_report(
-        _load("locked_uv.json"),
+        _from_renovate(_load("locked_uv.json")),
         FileSignals(),
     )
     s = report.dependency_summary
@@ -157,7 +168,7 @@ def test_partially_locked_deps_do_not_reach_locked_axis():
         ]
     }
 
-    report = build_report(payload, FileSignals())
+    report = build_report(_from_renovate(payload), FileSignals())
 
     assert report.dependency_level == 2
     assert "range-pins" in _threat_ids(report)
@@ -174,7 +185,7 @@ def test_manifest_signal_without_renovate_deps_scores_declared():
 
 def test_vm_present_satisfies_machine_axis():
     report = build_report(
-        _load("locked_uv.json"),
+        _from_renovate(_load("locked_uv.json")),
         FileSignals(has_nix_file=True, has_vm=True),
     )
     # Locked deps, declarative env, and a VM -> the ideal, no threats at all.
@@ -185,7 +196,7 @@ def test_vm_present_satisfies_machine_axis():
 
 
 def test_empty_payload_yields_no_manifest_and_no_environment():
-    report = build_report(_load("empty.json"), FileSignals())
+    report = build_report(_from_renovate(_load("empty.json")), FileSignals())
     assert (
         report.dependency_level,
         report.environment_level,
@@ -201,7 +212,7 @@ def test_empty_payload_yields_no_manifest_and_no_environment():
 
 def test_unpinned_apt_detected_from_dockerfile_text():
     report = build_report(
-        _load("pinned_no_lock.json"),
+        _from_renovate(_load("pinned_no_lock.json")),
         FileSignals(
             has_manifest=True,
             has_dockerfile=True,
@@ -212,7 +223,7 @@ def test_unpinned_apt_detected_from_dockerfile_text():
 
 
 def test_report_serializes_camel_case():
-    report = build_report(_load("pinned_no_lock.json"), FileSignals())
+    report = build_report(_from_renovate(_load("pinned_no_lock.json")), FileSignals())
     dumped = report.model_dump(by_alias=True)
     assert {"dependencyLevel", "environmentLevel", "machineLevel"} <= set(dumped)
     assert "ladderLevel" not in dumped

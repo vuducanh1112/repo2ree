@@ -1,4 +1,4 @@
-import json
+import time
 
 import pytest
 
@@ -20,16 +20,6 @@ def temp_storage(tmp_path, monkeypatch):
     yield tmp_path
 
 
-_RENOVATE_STDOUT = """
- INFO: Extracted dependencies (repository=local)
-{"pip_requirements":[{"deps":[
-  {"depName":"flask","datasource":"pypi"},
-  {"depName":"requests","currentValue":"==2.31.0","datasource":"pypi"}
-],"packageFile":"requirements.txt"}]}
- INFO: Repository finished (repository=local)
-"""
-
-
 def _make_workspace_with_files() -> str:
     from repo2ree_api.storage.workspace_files import (
         WorkspaceCreatePayload,
@@ -46,38 +36,54 @@ def _make_workspace_with_files() -> str:
     return ree_id
 
 
-def test_compute_outputs_builds_report_and_writes_artifact():
-    from repo2ree_api.evaluate import _compute_evaluate_outputs, _report_path
+def _build_report():
+    from repo2ree_core.repo_profiler.reproducibility_report import (
+        FileSignals,
+        build_report,
+    )
+    from repo2ree_core.repo_profiler.sources.renovate import parse_renovate_stdout
 
-    ree_id = _make_workspace_with_files()
+    renovate_stdout = """
+     INFO: Extracted dependencies (repository=local)
+    {"pip_requirements":[{"deps":[
+      {"depName":"flask","datasource":"pypi"},
+      {"depName":"requests","currentValue":"==2.31.0","datasource":"pypi"}
+    ],"packageFile":"requirements.txt"}]}
+     INFO: Repository finished (repository=local)
+    """
+    inventory = parse_renovate_stdout(renovate_stdout)
+    assert inventory is not None
+    return build_report(inventory, FileSignals(has_manifest=True, has_dockerfile=True))
 
-    outputs = _compute_evaluate_outputs(
-        ree_id=ree_id,
-        strict=True,
-        renovate_stdout=_RENOVATE_STDOUT,
-        renovate_exit_code=0,
+
+def _wait_for_terminal_run_status(ree_id: str, run_id: str) -> str:
+    from repo2ree_api.run_management import _get_run_state
+
+    for _ in range(120):
+        status = _get_run_state(ree_id, run_id)["status"]
+        if status in {"succeeded", "failed", "canceled"}:
+            return status
+        time.sleep(0.02)
+    raise AssertionError(f"Run {run_id} did not reach terminal state in time")
+
+
+def test_write_report_file_persists_artifact_and_get_endpoint_reads_it():
+    from repo2ree_api.evaluate import (
+        _report_path,
+        _write_report_file,
+        get_workspace_evaluate_report,
     )
 
-    # The bare-managers payload shape is normalized by the core analyzer, so the
-    # deps are actually seen (the historical API bug is gone).
-    assert outputs["dependencyCount"] == 2
-    assert outputs["manifestCount"] == 1
-    # Pinned deps (no lock) -> dependency axis 2; Dockerfile, no nix -> env 1; no VM -> 0.
-    assert outputs["dependencyLevel"] == 2
-    assert outputs["environmentLevel"] == 1
-    assert outputs["machineLevel"] == 0
+    ree_id = _make_workspace_with_files()
+    report = _build_report()
 
-    threat_ids = {threat["id"] for threat in outputs["report"]["threats"]}
-    assert "unpinned-deps" in threat_ids  # flask
-    assert "no-lockfile" in threat_ids  # requests pinned, no lock
-    assert "no-nix" in threat_ids  # dockerfile but no nix
+    _write_report_file(ree_id, report)
 
-    # Standalone artifact file written and readable via the GET endpoint.
     assert _report_path(ree_id).exists()
-    on_disk = json.loads(_report_path(ree_id).read_text())
+    on_disk = get_workspace_evaluate_report(ree_id)
     assert "ladderLevel" not in on_disk
     assert on_disk["dependencyLevel"] == 2
-    assert "dependencySummary" in on_disk
+    assert on_disk["dependencySummary"]["total"] == 2
 
 
 def test_get_report_endpoint_404_before_run():
@@ -91,20 +97,75 @@ def test_get_report_endpoint_404_before_run():
     assert excinfo.value.status_code == 404
 
 
-def test_get_report_endpoint_returns_written_report():
+def test_evaluate_run_succeeds_and_persists_outputs(monkeypatch):
     from repo2ree_api.evaluate import (
-        _compute_evaluate_outputs,
-        get_workspace_evaluate_report,
+        CreateEvaluateRunPayload,
+        create_evaluate_run_state,
     )
+    from repo2ree_api.run_management import _get_run_state
+    from repo2ree_api.storage.workspace_files import get_workspace
+
+    def fake_analyze_repo(repo_path, log=None, strict=False):
+        assert repo_path.is_dir()
+        assert strict is False
+        if log is not None:
+            log("system", "error", "Tool exited with code 1")
+            log("stdout", "info", "Using extracted dependencies despite config errors")
+        return _build_report()
+
+    monkeypatch.setattr("repo2ree_api.evaluate.analyze_repo", fake_analyze_repo)
 
     ree_id = _make_workspace_with_files()
-    _compute_evaluate_outputs(
-        ree_id=ree_id,
-        strict=False,
-        renovate_stdout=_RENOVATE_STDOUT,
-        renovate_exit_code=0,
-    )
+    run = create_evaluate_run_state(ree_id, CreateEvaluateRunPayload(strict=False))
+    run_id = run["runId"]
 
-    report = get_workspace_evaluate_report(ree_id)
-    assert report["dependencyLevel"] == 2
-    assert any(threat["blocking"] for threat in report["threats"])
+    assert _wait_for_terminal_run_status(ree_id, run_id) == "succeeded"
+
+    run_state = _get_run_state(ree_id, run_id)
+    outputs = run_state["outputs"]
+    assert outputs["dependencyCount"] == 2
+    assert outputs["manifestCount"] == 1
+    assert outputs["dependencyLevel"] == 2
+    assert outputs["environmentLevel"] == 1
+    assert outputs["machineLevel"] == 0
+    assert any(threat["blocking"] for threat in outputs["report"]["threats"])
+
+    detail = get_workspace(ree_id)
+    ree_draft = detail["reeDraft"]
+    assert ree_draft["dependency_level"] == 2
+    assert ree_draft["environment_level"] == 1
+    assert ree_draft["machine_level"] == 0
+    assert ree_draft["detected_dependencies"] == "2 dependencies across 1 manifest file"
+
+    messages = [entry["message"] for entry in run_state["logs"]]
+    assert any("Tool exited with code 1" in msg for msg in messages)
+    assert any("Evaluate run succeeded" in msg for msg in messages)
+
+
+def test_evaluate_run_fails_when_strict_analysis_has_no_extractable_output(monkeypatch):
+    from repo2ree_api.evaluate import (
+        CreateEvaluateRunPayload,
+        create_evaluate_run_state,
+    )
+    from repo2ree_api.run_management import _get_run_state
+    from repo2ree_core.repo_profiler.profiler import AnalysisError
+
+    def fake_analyze_repo(repo_path, log=None, strict=False):
+        assert repo_path.is_dir()
+        assert strict is True
+        raise AnalysisError("Dependency analysis produced no extractable output")
+
+    monkeypatch.setattr("repo2ree_api.evaluate.analyze_repo", fake_analyze_repo)
+
+    ree_id = _make_workspace_with_files()
+    run = create_evaluate_run_state(ree_id, CreateEvaluateRunPayload(strict=True))
+    run_id = run["runId"]
+
+    assert _wait_for_terminal_run_status(ree_id, run_id) == "failed"
+
+    run_state = _get_run_state(ree_id, run_id)
+    assert run_state["outputs"] == {}
+    messages = [entry["message"] for entry in run_state["logs"]]
+    assert any(
+        "Dependency analysis produced no extractable output" in msg for msg in messages
+    )
