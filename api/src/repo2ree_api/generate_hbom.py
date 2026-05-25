@@ -99,16 +99,16 @@ def create_generate_hbom_run_state(
 ) -> dict[str, Any]:
     request_payload = {"idempotencyKey": payload.idempotencyKey}
 
-    def _runner(ws_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
-        _append_run_log(ws_id, run_id, "system", "info", f"Starting hbom run {run_id}")
-        if _is_cancel_requested(ws_id, run_id):
-            _append_run_log(ws_id, run_id, "system", "warn", "HBOM run canceled")
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        _append_run_log(ree_id, run_id, "system", "info", f"Starting hbom run {run_id}")
+        if _is_cancel_requested(ree_id, run_id):
+            _append_run_log(ree_id, run_id, "system", "warn", "HBOM run canceled")
             return "canceled", {}
         try:
-            outputs = generate_hbom_for_workspace(ws_id)
+            outputs = generate_hbom_for_workspace(ree_id)
         except Exception as exc:
             _append_run_log(
-                ws_id,
+                ree_id,
                 run_id,
                 "system",
                 "error",
@@ -116,13 +116,13 @@ def create_generate_hbom_run_state(
             )
             raise
         _append_run_log(
-            ws_id,
+            ree_id,
             run_id,
             "system",
             "info",
             "Generated hardware description",
         )
-        _append_run_log(ws_id, run_id, "system", "info", "HBOM run succeeded")
+        _append_run_log(ree_id, run_id, "system", "info", "HBOM run succeeded")
         return "succeeded", outputs
 
     return _start_background_run(

@@ -136,25 +136,25 @@ def create_generate_sbom_run_state(
     )
     request_payload = {"produced_runtime_path": runtime_path}
 
-    def _runner(ws_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
-        _append_run_log(ws_id, run_id, "system", "info", f"Starting sbom run {run_id}")
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        _append_run_log(ree_id, run_id, "system", "info", f"Starting sbom run {run_id}")
         _append_run_log(
-            ws_id, run_id, "system", "info", f"Runtime input: {runtime_path}"
+            ree_id, run_id, "system", "info", f"Runtime input: {runtime_path}"
         )
-        if _is_cancel_requested(ws_id, run_id):
-            _append_run_log(ws_id, run_id, "system", "warn", "SBOM run canceled")
+        if _is_cancel_requested(ree_id, run_id):
+            _append_run_log(ree_id, run_id, "system", "warn", "SBOM run canceled")
             return "canceled", {
                 "runtimeRelativePath": runtime_path,
                 "format": "spdx-json",
             }
         try:
             outputs = generate_sbom_for_runtime(
-                ree_id=ws_id,
+                ree_id=ree_id,
                 runtime_relative_path=runtime_path,
             )
         except Exception as exc:
             _append_run_log(
-                ws_id,
+                ree_id,
                 run_id,
                 "system",
                 "error",
@@ -162,13 +162,13 @@ def create_generate_sbom_run_state(
             )
             raise
         _append_run_log(
-            ws_id,
+            ree_id,
             run_id,
             "system",
             "info",
             f"Generated SBOM: {outputs['sbomRelativePath']}",
         )
-        _append_run_log(ws_id, run_id, "system", "info", "SBOM run succeeded")
+        _append_run_log(ree_id, run_id, "system", "info", "SBOM run succeeded")
         return "succeeded", outputs
 
     return _start_background_run(
