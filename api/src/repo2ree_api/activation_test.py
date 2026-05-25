@@ -163,12 +163,12 @@ def create_activation_run_state(
     )
     request_payload = {"activation_script_path": activation_script_path}
 
-    def _runner(ws_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
-        if _is_cancel_requested(ws_id, run_id):
-            _append_run_log(ws_id, run_id, "system", "warn", "Activation run canceled")
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        if _is_cancel_requested(ree_id, run_id):
+            _append_run_log(ree_id, run_id, "system", "warn", "Activation run canceled")
             return "canceled", {"activationScriptPath": activation_script_path}
         return run_activation_test(
-            ree_id=ws_id,
+            ree_id=ree_id,
             run_id=run_id,
             activation_script_path=activation_script_path,
         )

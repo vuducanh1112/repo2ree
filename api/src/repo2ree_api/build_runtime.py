@@ -130,8 +130,8 @@ def create_build_run_state(
         operation="build",
         request_payload={"build_runtime_script_path": script_path},
         run_id_prefix="build",
-        runner=lambda ws_id, run_id: _docker_build_run(
-            ree_id=ws_id,
+        runner=lambda ree_id, run_id: _docker_build_run(
+            ree_id=ree_id,
             run_id=run_id,
             script_relative_path=script_path,
         ),
