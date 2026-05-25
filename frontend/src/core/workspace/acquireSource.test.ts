@@ -154,4 +154,31 @@ describe("createSourceUseCase", () => {
       toastType: "info",
     });
   });
+
+  it("returns whether the source clear actually succeeded", async () => {
+    const successUseCase = createSourceUseCase({
+      ree: buildRee(),
+      executeCommands: vi.fn(),
+      sourceChanged: vi.fn(),
+      runSourceAction: vi.fn(),
+      refreshWorkspaceFiles: vi.fn(async () => workspaceFiles),
+      clearWorkspace: vi.fn(async () => {}),
+      nowIso: () => "2026-01-01T00:00:00Z",
+    });
+
+    const failedUseCase = createSourceUseCase({
+      ree: buildRee(),
+      executeCommands: vi.fn(),
+      sourceChanged: vi.fn(),
+      runSourceAction: vi.fn(),
+      refreshWorkspaceFiles: vi.fn(),
+      clearWorkspace: vi.fn(async () => {
+        throw new Error("boom");
+      }),
+      nowIso: () => "2026-01-01T00:00:00Z",
+    });
+
+    await expect(successUseCase.removeSource()).resolves.toBe(true);
+    await expect(failedUseCase.removeSource()).resolves.toBe(false);
+  });
 });

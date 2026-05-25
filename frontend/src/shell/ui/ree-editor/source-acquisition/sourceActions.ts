@@ -12,6 +12,7 @@ import { runSourceWorkspaceAction } from "../../../../core/workspace/sourceAcqui
 import { serializeWorkspaceResetPayload } from "../../../../core/workspace/WorkspaceReset";
 import type { AppShellClock } from "../../../app/bootstrap/ports";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
+import { queryKeys } from "../../../data/queryKeys";
 import type { ReeClient } from "../../../data/ree/client";
 import {
   executeSourceCommands,
@@ -130,8 +131,11 @@ export function createSourceActions({
     void runUpload();
   };
 
-  const handleRemoveWorkspaceSource = () => {
-    void sourceAcquisition.removeSource();
+  const handleRemoveWorkspaceSource = async () => {
+    const removed = await sourceAcquisition.removeSource();
+    if (removed) {
+      queryClient.setQueryData(queryKeys.evaluateReport(reeId), null);
+    }
   };
 
   return {

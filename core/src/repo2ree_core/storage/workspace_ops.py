@@ -780,12 +780,21 @@ def remove_source(storage_root: Path, ree_id: str) -> dict[str, Any]:
                 "sbom": "",
                 "source_included": False,
                 "runtime_included": False,
+                "dependency_level": 0,
+                "environment_level": 0,
+                "machine_level": 0,
+                "detected_dependencies": None,
             }
         )
     )
+    report_path = _layout(storage_root, ree_id).artifact_file(
+        "reproducibility-report.json"
+    )
+    if report_path.exists():
+        report_path.unlink()
     metadata["reeDraft"] = cleared_ree.model_dump(exclude_none=True)
     return {
-        "invalidatedSteps": ["source", "workflow"],
+        "invalidatedSteps": ["source", "evaluate", "workflow"],
         "workspace": get_workspace(
             storage_root,
             ree_id,

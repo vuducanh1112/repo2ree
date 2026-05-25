@@ -157,7 +157,7 @@ export function createSourceUseCase({
       }
     },
 
-    async removeSource(): Promise<void> {
+    async removeSource(): Promise<boolean> {
       sourceChanged({ silent: true });
       try {
         await clearWorkspace();
@@ -174,6 +174,7 @@ export function createSourceUseCase({
           },
           { type: "toast", message: clearPlan.infoMessage, toastType: "info" },
         ]);
+        return true;
       } catch (error) {
         executeCommands([
           {
@@ -185,6 +186,7 @@ export function createSourceUseCase({
             toastType: "error",
           },
         ]);
+        return false;
       }
     },
   };
