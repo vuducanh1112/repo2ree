@@ -60,12 +60,13 @@ export interface ReeDraftDto {
   swhid: string;
   zenodo_doi: string;
   dataverse_doi: string;
-  repro_level: string;
   detected_dependencies: string;
   hardware_description: Record<string, unknown>;
   sealed_at?: string;
   seal_hash?: string;
-  eval_level?: number;
+  dependency_level?: number;
+  environment_level?: number;
+  machine_level?: number;
   source_included?: boolean;
   source_available?: boolean;
   source_acquired_by?: string;
@@ -189,7 +190,6 @@ export interface CreateActivationTestRunRequestDto {
 
 export interface CreateEvaluateRunRequestDto {
   strict: boolean;
-  swhid_check: boolean;
   idempotencyKey?: string;
 }
 

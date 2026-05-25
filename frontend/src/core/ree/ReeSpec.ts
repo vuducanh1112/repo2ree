@@ -91,7 +91,6 @@ export interface ReeSpec {
   swhid: string;
   zenodo_doi?: string;
   dataverse_doi?: string;
-  repro_level?: string;
   detected_dependencies?: string;
   experiments?: ReeExperiment[];
   hardware_description: HBOM;

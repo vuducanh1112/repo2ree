@@ -52,7 +52,6 @@ function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClien
         case "evaluate":
           run = await runtime.runsApi.createEvaluateRun(reeId, {
             strict: Boolean(params.strict),
-            swhid_check: Boolean(params.swhid_check),
           });
           break;
         case "source": {

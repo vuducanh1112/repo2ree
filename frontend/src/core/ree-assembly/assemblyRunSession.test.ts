@@ -18,7 +18,7 @@ describe("createAssemblyRunSession", () => {
     expect(
       session.mergeAssemblyOperationParams(
         {
-          evaluate: { strict: false, swhid_check: true },
+          evaluate: { strict: false },
           build: {},
           hbom: {},
           sbom: { format: "spdx-json" },
@@ -28,7 +28,7 @@ describe("createAssemblyRunSession", () => {
         { timeout: "120", verbose: true },
       ),
     ).toEqual({
-      evaluate: { strict: false, swhid_check: true },
+      evaluate: { strict: false },
       build: {},
       hbom: {},
       sbom: { format: "spdx-json" },

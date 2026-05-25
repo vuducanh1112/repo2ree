@@ -14,7 +14,6 @@ interface SealConfirmModalProps {
   onConfirm: () => void;
   missing: { key: string; label: string }[];
   allLive: boolean;
-  level: number;
   totalCables: number;
   currentLevelMeta: LevelMeta;
 }
@@ -25,7 +24,6 @@ export function SealConfirmModal({
   onConfirm,
   missing,
   allLive,
-  level,
   totalCables,
   currentLevelMeta,
 }: SealConfirmModalProps) {
@@ -78,7 +76,6 @@ export function SealConfirmModal({
 
         <SealConfirmCopy
           allLive={allLive}
-          level={level}
           totalCables={totalCables}
           currentLabel={currentLevelMeta.label}
         />

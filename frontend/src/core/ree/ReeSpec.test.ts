@@ -12,7 +12,6 @@ function buildReeDraft() {
     swhid: "swh:1:dir:test",
     zenodo_doi: "10.1234/example",
     dataverse_doi: "doi:10.5678/example",
-    repro_level: "L4",
     detected_dependencies: "4 dependencies",
     hardware_description: {
       cpus: {},
@@ -32,7 +31,7 @@ function buildReeDraft() {
     downloadableFiles: ["runtime.tar.gz", "sbom.json"],
     sealedAt: "2026-01-02T00:00:00Z",
     sealHash: "sha256:test",
-    evalLevel: 4,
+    dependencyLevel: 3,
   };
 }
 
@@ -42,6 +41,6 @@ describe("Ree draft shape", () => {
     expect(ree.name).toBe("demo");
     expect(ree.sourceAvailable).toBe(true);
     expect(ree.runtimeIncluded).toBe(true);
-    expect(ree.evalLevel).toBe(4);
+    expect(ree.dependencyLevel).toBe(3);
   });
 });

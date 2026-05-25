@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from typing import Any, Literal, Mapping
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.experiment import Experiment
 
@@ -96,10 +103,12 @@ class REE(BaseModel):
     swhid: str = ""
     zenodo_doi: str | None = None
     dataverse_doi: str | None = None
-    repro_level: str | None = None
     detected_dependencies: str | None = None
     hardware_description: HBOM = Field(default_factory=HBOM)
-    eval_level: int = 0
+    # Reproducibility axes (replaces the old single eval_level ladder).
+    dependency_level: int = 0
+    environment_level: int = 0
+    machine_level: int = 0
     sealed_at: str | None = None
     seal_hash: str | None = None
     source_available: bool = False
@@ -111,6 +120,33 @@ class REE(BaseModel):
     runtime_included: bool = False
     downloadable_files: list[str] = Field(default_factory=list)
     experiments: list[Experiment] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_legacy_reproducibility_fields(cls, value: Any) -> Any:
+        if not isinstance(value, Mapping):
+            return value
+
+        normalized = dict(value)
+        old_level = normalized.pop("eval_level", None)
+        normalized.pop("repro_level", None)
+        if old_level is None:
+            return normalized
+
+        try:
+            level = int(old_level)
+        except (TypeError, ValueError):
+            level = 0
+
+        normalized.setdefault(
+            "dependency_level",
+            3 if level >= 4 else 2 if level >= 3 else 1 if level >= 2 else 0,
+        )
+        normalized.setdefault(
+            "environment_level", 2 if level >= 6 else 1 if level >= 5 else 0
+        )
+        normalized.setdefault("machine_level", 0)
+        return normalized
 
     @field_validator("hardware_description", mode="before")
     @classmethod
@@ -226,7 +262,9 @@ class REE(BaseModel):
             "hardware_description": self.hardware_description.model_dump(),
             "sealed_at": self.sealed_at or None,
             "seal_hash": self.seal_hash or None,
-            "eval_level": self.eval_level or 0,
+            "dependency_level": self.dependency_level or 0,
+            "environment_level": self.environment_level or 0,
+            "machine_level": self.machine_level or 0,
             "source_included": bool(self.source_included),
             "source_available": bool(self.source_available),
             "source_acquired_by": self.source_acquired_by or None,

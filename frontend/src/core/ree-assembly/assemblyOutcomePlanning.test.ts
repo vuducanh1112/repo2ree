@@ -36,14 +36,12 @@ describe("assemblyOutcomePlanning", () => {
 
   it("plans evaluate metadata", () => {
     const result = planEvaluateEffect({
-      newLevel: 3,
       dependencyCount: 5,
       manifestCount: 2,
     });
 
-    expect(result.evaluationStatePatch.evalLevel).toBe(3);
     expect(result.reeSpecPatch.detected_dependencies).toContain("5 dependencies");
-    expect(result.successMessage).toContain("L3");
+    expect(result.successMessage).toContain("5 dependencies");
   });
 
   it("plans activation success text", () => {
@@ -55,7 +53,6 @@ describe("assemblyOutcomePlanning", () => {
       key: "build",
       params: {},
       ree: buildRee(),
-      newLevel: 2,
       timestamp: "2026-01-01T00:00:00Z",
       namespaceSuffix: "123",
       dependencyCount: 0,
@@ -70,14 +67,12 @@ describe("assemblyOutcomePlanning", () => {
       key: "evaluate",
       params: {},
       ree: buildRee(),
-      newLevel: 4,
       timestamp: "2026-01-01T00:00:00Z",
       namespaceSuffix: "123",
       dependencyCount: 7,
       manifestCount: 3,
     });
 
-    expect(result.evaluationStatePatch?.evalLevel).toBe(4);
-    expect(result.successMessage).toContain("L4");
+    expect(result.successMessage).toContain("7 dependencies across 3 manifest files");
   });
 });

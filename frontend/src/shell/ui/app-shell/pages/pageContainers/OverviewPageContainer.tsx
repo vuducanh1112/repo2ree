@@ -8,7 +8,7 @@ export function OverviewPageContainer({
   workspaceRemote,
   assemblyRun,
   uiChrome,
-  level,
+  evaluation,
   commands,
 }: AppShellPageContainerProps) {
   const { page } = uiChrome;
@@ -26,7 +26,7 @@ export function OverviewPageContainer({
         ree={ree}
         onWorkspaceSourceStateChange={commands.setWorkspaceSourceState}
         onArtifactStatusChange={commands.setArtifactStatus}
-        level={level}
+        evaluation={evaluation}
         onNavigate={commands.setPage}
         badges={badges}
         timestamps={timestamps}

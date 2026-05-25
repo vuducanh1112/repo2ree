@@ -2,7 +2,7 @@ import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
 import { deriveReeInclusionState, type ReeInclusionState } from "../../core/ree/ReeInclusionState";
 import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
 import type { ActionStates, Badges, Timestamps } from "../../core/ree/ReeTypes";
-import type { EvaluationState } from "../../core/review/EvaluationState";
+import { type EvaluationState, emptyEvaluationState } from "../../core/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 
 export interface ReeEditorUiState {
@@ -50,7 +50,7 @@ export function createReeEditorState(input: CreateReeEditorStateInput = {}): Ree
     reeSpec,
     workspaceSourceState,
     artifactStatus,
-    evaluationState: input.evaluationState ?? { evalLevel: 0 },
+    evaluationState: input.evaluationState ?? emptyEvaluationState(),
     inclusionState:
       input.inclusionState ??
       deriveReeInclusionState({

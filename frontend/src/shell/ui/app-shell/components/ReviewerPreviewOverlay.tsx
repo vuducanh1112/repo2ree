@@ -1,6 +1,8 @@
 import type React from "react";
-import type { Level, StepState } from "../../../../core/ree-assembly/assemblyStepTypes";
+import type { StepState } from "../../../../core/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
+import type { StandingMeta } from "../../../../core/review/axes";
+import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import { ReviewerView } from "../../reviewer/ReviewerView";
 import { Ic } from "../../shared/components/Icon";
 import {
@@ -17,8 +19,8 @@ interface ReviewerPreviewOverlayProps {
   ree: ReeEditorViewModel;
   onClose: () => void;
   PodOrbitControl: React.ComponentType<{
-    level: number;
-    levelMeta: Level;
+    evaluation: EvaluationState;
+    levelMeta: StandingMeta;
     stepStates: Record<string, StepState>;
     allDone: boolean;
     isRunningAll: boolean;

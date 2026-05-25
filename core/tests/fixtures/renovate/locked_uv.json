@@ -1,0 +1,11 @@
+{
+  "pep621": [
+    {
+      "deps": [
+        { "depName": "requests", "packageName": "requests", "currentValue": "==2.31.0", "lockedVersion": "2.31.0", "datasource": "pypi" },
+        { "depName": "numpy", "packageName": "numpy", "currentValue": ">=1.20", "lockedVersion": "1.26.4", "datasource": "pypi" }
+      ],
+      "packageFile": "pyproject.toml"
+    }
+  ]
+}

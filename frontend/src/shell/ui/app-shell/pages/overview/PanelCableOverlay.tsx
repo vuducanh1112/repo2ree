@@ -1,20 +1,21 @@
 import React, { useRef } from "react";
 import type { Badges } from "../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
-import { LEVELS } from "../../../../../core/review/levels";
+import { standingMeta } from "../../../../../core/review/axes";
+import type { EvaluationState } from "../../../../../core/review/EvaluationState";
 import { type CableGeo, measureCableGeo, type PanelRefs } from "./PanelCableOverlayHelpers";
 import { CableOverlaySvg } from "./PanelCableOverlaySections";
 
 interface PanelCableOverlayProps extends PanelRefs {
   containerRef: React.RefObject<HTMLDivElement>;
   podSvgRef: React.RefObject<SVGSVGElement>;
-  level: number;
+  evaluation: EvaluationState;
   badges: Badges;
   ree: ReeEditorViewModel;
 }
 
 export function PanelCableOverlay(props: PanelCableOverlayProps) {
-  const levelMeta = LEVELS[Math.min(props.level, 7)];
+  const levelMeta = standingMeta(props.evaluation);
   const [geo, setGeo] = React.useState<CableGeo | null>(null);
   const rafRef = useRef<number | null>(null);
 

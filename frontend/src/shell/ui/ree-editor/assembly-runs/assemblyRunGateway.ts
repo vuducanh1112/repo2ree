@@ -28,7 +28,6 @@ interface RunSessionPort {
 
 interface CreateAssemblyRunGatewayArgs {
   ree: ReeEditorViewModel;
-  level: number;
   workspaceFiles: FileTreeNode[];
   dispatch: ReeEditorDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
@@ -54,7 +53,6 @@ interface CreateAssemblyRunGatewayArgs {
 
 export function createAssemblyRunGateway({
   ree,
-  level,
   workspaceFiles,
   dispatch,
   persistWorkspaceFile,
@@ -78,7 +76,6 @@ export function createAssemblyRunGateway({
       key,
       params,
       ree,
-      level,
       workspaceFiles,
       dispatch,
       persistWorkspaceFile,

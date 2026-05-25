@@ -28,7 +28,7 @@ describe("reeEditorViewModel", () => {
         sealedAt: "2026-01-01T00:00:00Z",
       },
       evaluationState: {
-        evalLevel: 3,
+        dependencyLevel: 3,
       },
     });
 
@@ -37,7 +37,7 @@ describe("reeEditorViewModel", () => {
     expect(viewModel.name).toBe("demo");
     expect(viewModel.sourceAvailable).toBe(true);
     expect(viewModel.runtimeIncluded).toBe(true);
-    expect(viewModel.evalLevel).toBe(3);
+    expect(viewModel.dependencyLevel).toBe(3);
   });
 
   it("creates an empty view model with product and editor defaults", () => {
@@ -46,7 +46,7 @@ describe("reeEditorViewModel", () => {
     expect(viewModel.name).toBe("");
     expect(viewModel.sourceAvailable).toBe(false);
     expect(viewModel.runtimeIncluded).toBe(false);
-    expect(viewModel.evalLevel).toBe(0);
+    expect(viewModel.dependencyLevel).toBe(0);
   });
 
   it("derives inclusion state from source and artifact booleans", () => {

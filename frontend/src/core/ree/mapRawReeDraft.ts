@@ -83,7 +83,6 @@ export function mapRawReeDraftToSlices({
       swhid: String(draft.swhid ?? ""),
       zenodo_doi: draft.zenodo_doi ? String(draft.zenodo_doi) : undefined,
       dataverse_doi: draft.dataverse_doi ? String(draft.dataverse_doi) : undefined,
-      repro_level: draft.repro_level ? String(draft.repro_level) : undefined,
       detected_dependencies: draft.detected_dependencies
         ? String(draft.detected_dependencies)
         : undefined,
@@ -112,7 +111,9 @@ export function mapRawReeDraftToSlices({
       sealHash: draft.seal_hash ? String(draft.seal_hash) : undefined,
     },
     evaluationState: {
-      evalLevel: Number(draft.eval_level ?? 0),
+      dependencyLevel: Number(draft.dependency_level ?? 0),
+      environmentLevel: Number(draft.environment_level ?? 0),
+      machineLevel: Number(draft.machine_level ?? 0),
     },
   };
 }

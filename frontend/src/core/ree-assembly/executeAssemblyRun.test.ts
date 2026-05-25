@@ -14,10 +14,7 @@ function buildRee(): ReeEditorViewModel {
 
 function buildHandlers(): AssemblyCommandPlannerMap {
   return {
-    evaluate: (_params, newLevel) => [
-      { type: "setEvaluationState", evaluationState: { evalLevel: newLevel } },
-      { type: "toast", message: `Evaluated at L${newLevel}`, toastType: "success" },
-    ],
+    evaluate: () => [{ type: "toast", message: "Evaluate complete", toastType: "success" }],
     build: () => [{ type: "toast", message: "Build complete", toastType: "success" }],
     hbom: () => [{ type: "toast", message: "HBOM complete", toastType: "success" }],
     sbom: () => [{ type: "toast", message: "SBOM complete", toastType: "success" }],
@@ -46,7 +43,6 @@ describe("executeAssemblyRun", () => {
       key: "build",
       params: {},
       ree: buildRee(),
-      level: 2,
       workspaceFiles: [],
       executionRunner: {
         startExecutionRun: vi.fn(async () => ({ runId: "run-1" })),
@@ -98,7 +94,6 @@ describe("executeAssemblyRun", () => {
       key: "build",
       params: {},
       ree: buildRee(),
-      level: 2,
       workspaceFiles: [],
       executionRunner: {
         startExecutionRun: vi.fn(async () => ({ runId: "run-1" })),
@@ -134,7 +129,6 @@ describe("executeAssemblyRun", () => {
       key: "swh",
       params: {},
       ree: buildRee(),
-      level: 2,
       workspaceFiles: [],
       executionRunner: {
         startExecutionRun: vi.fn(async () => ({ runId: "run-1" })),

@@ -1,7 +1,8 @@
 import React from "react";
 import type { Badges } from "../../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
-import { LEVELS } from "../../../../../../core/review/levels";
+import { standingMeta } from "../../../../../../core/review/axes";
+import type { EvaluationState } from "../../../../../../core/review/EvaluationState";
 import { buildSealCableItems } from "./CenterSealStrip/helpers";
 import { SealConfirmModal } from "./CenterSealStrip/SealConfirmModal";
 import { SealedSealCard } from "./CenterSealStrip/SealedSealCard";
@@ -10,7 +11,7 @@ import { SealStatusCard } from "./CenterSealStrip/SealStatusCard";
 interface CenterSealStripProps {
   ree: ReeEditorViewModel;
   locked: boolean;
-  level: number;
+  evaluation: EvaluationState;
   badges: Badges;
   onSeal: () => void;
   onPreviewReviewer: () => void;
@@ -21,7 +22,7 @@ interface CenterSealStripProps {
 export function CenterSealStrip({
   ree,
   locked,
-  level,
+  evaluation,
   badges,
   onSeal,
   onPreviewReviewer,
@@ -35,13 +36,12 @@ export function CenterSealStrip({
   const totalCables = cableItems.length;
   const allLive = liveCount === totalCables;
   const missing = cableItems.filter((item) => !item.live);
-  const currentLevelMeta = LEVELS[Math.min(level, 7)];
+  const currentLevelMeta = standingMeta(evaluation);
 
   if (sealed) {
     return (
       <SealedSealCard
         ree={ree}
-        level={level}
         onPreviewReviewer={onPreviewReviewer}
         onDownloadRee={onDownloadRee}
         sealRef={sealRef}
@@ -62,14 +62,12 @@ export function CenterSealStrip({
         }}
         missing={missing}
         allLive={allLive}
-        level={level}
         totalCables={totalCables}
         currentLevelMeta={currentLevelMeta}
       />
 
       <SealStatusCard
         sealRef={sealRef}
-        level={level}
         currentLevelMeta={currentLevelMeta}
         cableItems={cableItems}
         allLive={allLive}

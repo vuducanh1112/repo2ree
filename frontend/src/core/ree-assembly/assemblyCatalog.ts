@@ -23,13 +23,6 @@ export const REE_ASSEMBLY_STEPS: ReeAssemblyCatalogEntry[] = [
         default: false,
         hint: "Fail if any optional fields are missing",
       },
-      {
-        key: "swhid_check",
-        label: "Check SWHID",
-        type: "bool",
-        default: true,
-        hint: "Verify the SWHID is resolvable at Software Heritage",
-      },
     ],
   },
   {
@@ -95,7 +88,7 @@ export const REE_ASSEMBLY_STEPS: ReeAssemblyCatalogEntry[] = [
 ];
 
 const DEFAULT_REE_ASSEMBLY_OPERATION_PARAMS: ReeAssemblyOperationParams = {
-  evaluate: { strict: false, swhid_check: true },
+  evaluate: { strict: false },
   build: {},
   hbom: {},
   sbom: { format: "spdx-json" },

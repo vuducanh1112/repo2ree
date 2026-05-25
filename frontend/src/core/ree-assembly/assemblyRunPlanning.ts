@@ -1,7 +1,6 @@
 import type { ReeSpec } from "../ree/ReeSpec";
 import { planManualArtifactCompletion } from "../workspace/manualArtifactUpdatePlanning";
 import {
-  deriveReeAssemblyStepLevel,
   isTerminalExecutionRunFailure,
   planAssemblyRunCompletion,
   planTerminalExecutionRunFailure,
@@ -41,7 +40,6 @@ export function planManualArtifactUpdateSuccess(
 
 export {
   buildAssemblyRunParams,
-  deriveReeAssemblyStepLevel,
   isTerminalExecutionRunFailure,
   planAssemblyRunCompletion,
   planTerminalExecutionRunFailure,

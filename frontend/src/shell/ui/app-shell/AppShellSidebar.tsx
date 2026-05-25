@@ -1,6 +1,6 @@
 import type { Badges, Timestamps } from "../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
-import { LEVELS } from "../../../core/review/levels";
+import { standingMeta } from "../../../core/review/axes";
 import { Ic } from "../shared/components/Icon";
 import { C, hoverBg, hoverColor } from "../theme/theme";
 import { NavEntryButton } from "./AppShellNav";
@@ -33,8 +33,12 @@ export function AppShellSidebar({
   onDownloadRee,
   onPreviewReviewer,
 }: AppShellSidebarProps) {
-  const level = Math.min(ree.evalLevel ?? 0, LEVELS.length - 1);
-  const levelMeta = LEVELS[level];
+  const evaluation = {
+    dependencyLevel: ree.dependencyLevel ?? 0,
+    environmentLevel: ree.environmentLevel ?? 0,
+    machineLevel: ree.machineLevel ?? 0,
+  };
+  const levelMeta = standingMeta(evaluation);
   const cableStates = getPodCableStates(ree, badges);
   const leftCables = cableStates
     .filter((cable) => cable.podSide === "left")
@@ -93,9 +97,9 @@ export function AppShellSidebar({
       </div>
 
       <OverviewCard
+        evaluation={evaluation}
         navCollapsed={navCollapsed}
         page={page}
-        level={level}
         levelMeta={levelMeta}
         cableStates={cableStates}
         leftCables={leftCables}

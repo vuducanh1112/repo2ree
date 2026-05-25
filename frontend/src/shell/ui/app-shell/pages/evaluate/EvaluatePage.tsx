@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { scanDependencies } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
-import { LEVELS } from "../../../../../core/review/levels";
+import { useApiRuntime } from "../../../../data/apiRuntime";
+import { useEvaluateReportQuery } from "../../../../data/evaluate/queries";
 import { Ic } from "../../../shared/components/Icon";
 import {
   lgColors,
@@ -15,18 +17,18 @@ import { PAGE } from "../../state/pages";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { countContainerAndNixFiles } from "./EvaluatePageHelpers";
 import {
+  EvaluateAxesCard,
   EvaluateDependenciesCard,
   EvaluateLogCard,
   EvaluateReadinessAside,
-  EvaluateReproducibilityCard,
   EvaluateRunConsoleCard,
+  EvaluateThreatsCard,
   EvaluateWorkspaceAside,
 } from "./EvaluatePageSections";
 
 export function PageEvaluate({
   assemblyStep,
   workspaceSourceState,
-  evaluationState,
   workspaceFiles,
   log,
   running,
@@ -44,11 +46,20 @@ export function PageEvaluate({
   const depGroups = scanDependencies(files || []);
   const { containerCount, nixCount } = countContainerAndNixFiles(files || []);
   const hasRun = !!log;
-  const hasScoreOutput = !!runDone;
+  const { reeId } = useApiRuntime();
+  // The report is a persisted artifact, so fetch it whenever we have an REE — this
+  // keeps the page populated across reloads/navigation (runDone is transient).
+  const reportQuery = useEvaluateReportQuery({ reeId, enabled: !!reeId });
+  const { refetch: refetchReport } = reportQuery;
+  const report = reportQuery.data ?? null;
+  const threats = report?.threats ?? [];
+  // Refresh the report when a run finishes while the page is open.
+  useEffect(() => {
+    if (runDone) void refetchReport();
+  }, [runDone, refetchReport]);
+  const hasScoreOutput = !!report;
   const sourceLoadedInWorkspace = !!workspaceSourceState.sourceAvailable;
   const IC = assemblyStepIcon(assemblyStep.iconKey);
-  const level = Math.min(evaluationState.evalLevel ?? 0, LEVELS.length - 1);
-  const completionPct = Math.round((level / (LEVELS.length - 1)) * 100);
   const hasMissing = missing.length > 0;
 
   const statusLabel = running ? "Running" : hasScoreOutput ? "Scored" : "Not run";
@@ -101,12 +112,18 @@ export function PageEvaluate({
                 <div>
                   <h2 style={lgStyles.sectionTitle}>Reproducibility Analysis</h2>
                   <div style={lgStyles.sectionSubtitle}>
-                    Declared dependencies, container and Nix signals, and the resulting level.
+                    Dependency declaration and environment capture, scored as independent axes.
                   </div>
                 </div>
               </div>
 
-              <EvaluateReproducibilityCard hasScoreOutput={hasScoreOutput} level={level} />
+              <EvaluateAxesCard hasScoreOutput={hasScoreOutput} report={report} />
+
+              <EvaluateThreatsCard
+                hasScoreOutput={hasScoreOutput}
+                threats={threats}
+                loading={reportQuery.isLoading}
+              />
 
               <EvaluateDependenciesCard
                 hasRun={hasRun}
@@ -143,12 +160,7 @@ export function PageEvaluate({
               onCancel={() => onCancel?.(assemblyStep.key)}
               onGoFields={onGoFields}
             />
-            <EvaluateReadinessAside
-              hasScoreOutput={hasScoreOutput}
-              level={level}
-              completionPct={completionPct}
-              ts={ts}
-            />
+            <EvaluateReadinessAside hasScoreOutput={hasScoreOutput} report={report} ts={ts} />
             <EvaluateWorkspaceAside
               sourceLoadedInWorkspace={sourceLoadedInWorkspace}
               containerCount={containerCount}

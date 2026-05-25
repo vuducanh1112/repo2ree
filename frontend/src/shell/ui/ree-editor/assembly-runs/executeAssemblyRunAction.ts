@@ -20,7 +20,6 @@ interface ExecuteAssemblyRunActionArgs {
   key: string;
   params: GenericReeAssemblyParams;
   ree: ReeEditorViewModel;
-  level: number;
   workspaceFiles: FileTreeNode[];
   dispatch: ReeEditorDispatch;
   persistWorkspaceFile: (path: string, content: string) => void;
@@ -47,7 +46,6 @@ export async function executeAssemblyRunAction({
   key,
   params,
   ree,
-  level,
   workspaceFiles,
   dispatch,
   persistWorkspaceFile,
@@ -69,7 +67,6 @@ export async function executeAssemblyRunAction({
     key,
     params,
     ree,
-    level,
     workspaceFiles,
     executionRunner: {
       startExecutionRun: (scriptKey, runParams) => startExecutionRun(scriptKey, runParams),

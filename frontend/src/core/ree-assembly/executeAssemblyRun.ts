@@ -7,11 +7,9 @@ import {
   type AssemblyCommandPlannerMap,
   nonAssemblyPlanToCommands,
 } from "./assemblyCommands";
-import { computeEvaluateLevelFromFiles } from "./assemblyDependencyAnalysis";
 import { isReeAssemblyOperationKey } from "./assemblyPolicies";
 import { runExecutionLifecycle } from "./assemblyRunLifecycle";
 import {
-  deriveReeAssemblyStepLevel,
   isTerminalExecutionRunFailure,
   planAssemblyRunCompletion,
   planManualArtifactUpdateSuccess,
@@ -58,7 +56,6 @@ interface ExecuteAssemblyRunArgs {
   key: string;
   params: GenericReeAssemblyParams;
   ree: Pick<ReeSpec, "build_runtime_script" | "runtime" | "activation_script">;
-  level: number;
   workspaceFiles: FileTreeNode[];
   executionRunner: ExecutionRunRunner;
   assemblyCommandPlanners: AssemblyCommandPlannerMap;
@@ -82,8 +79,6 @@ export async function executeAssemblyRun({
   key,
   params,
   ree,
-  level,
-  workspaceFiles,
   executionRunner,
   assemblyCommandPlanners,
   generatedIds,
@@ -173,11 +168,8 @@ export async function executeAssemblyRun({
     }
   }
 
-  const evaluatedLevel = computeEvaluateLevelFromFiles(workspaceFiles || []);
-  const newLevel = deriveReeAssemblyStepLevel(key, level, evaluatedLevel);
-
   if (isReeAssemblyOperationKey(key)) {
-    executeCommands(getAssemblyCommands(assemblyCommandPlanners, key, params, newLevel));
+    executeCommands(getAssemblyCommands(assemblyCommandPlanners, key, params));
     return { lines, ts };
   }
 
@@ -197,19 +189,18 @@ function getAssemblyCommands(
   planners: AssemblyCommandPlannerMap,
   key: keyof AssemblyCommandPlannerMap,
   params: GenericReeAssemblyParams,
-  newLevel: number,
 ): AssemblyCommand[] {
   if (key === "evaluate") {
-    return planners.evaluate(params as ReeAssemblyRunParamsByKey["evaluate"], newLevel);
+    return planners.evaluate(params as ReeAssemblyRunParamsByKey["evaluate"]);
   }
   if (key === "hbom") {
-    return planners.hbom(params as ReeAssemblyRunParamsByKey["hbom"], newLevel);
+    return planners.hbom(params as ReeAssemblyRunParamsByKey["hbom"]);
   }
   if (key === "build") {
-    return planners.build(params as ReeAssemblyRunParamsByKey["build"], newLevel);
+    return planners.build(params as ReeAssemblyRunParamsByKey["build"]);
   }
   if (key === "sbom") {
-    return planners.sbom(params as ReeAssemblyRunParamsByKey["sbom"], newLevel);
+    return planners.sbom(params as ReeAssemblyRunParamsByKey["sbom"]);
   }
-  return planners.activation(params as ReeAssemblyRunParamsByKey["activation"], newLevel);
+  return planners.activation(params as ReeAssemblyRunParamsByKey["activation"]);
 }

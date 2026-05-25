@@ -20,7 +20,6 @@ describe("toReePatchFromSlices", () => {
       runtime: "runtime.tar.gz",
       sbom: "sbom.json",
       swhid: "swh:1:dir:test",
-      repro_level: "L4",
       detected_dependencies: "4 dependencies",
     };
     const workspaceSourceState: WorkspaceSourceState = {
@@ -38,7 +37,7 @@ describe("toReePatchFromSlices", () => {
       sealHash: "sha256:test",
     };
     const evaluationState: EvaluationState = {
-      evalLevel: 4,
+      dependencyLevel: 3,
     };
 
     expect(

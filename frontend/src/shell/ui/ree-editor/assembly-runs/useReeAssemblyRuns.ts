@@ -23,7 +23,6 @@ import { createAssemblyRunGateway } from "./assemblyRunGateway";
 interface UseReeAssemblyRunsArgs {
   dispatch: React.Dispatch<AppShellAction>;
   ree: ReeEditorViewModel;
-  level: number;
   workspaceFiles: FileTreeNode[];
   persistWorkspaceFile: (
     previousPath: string | undefined,
@@ -38,7 +37,6 @@ interface UseReeAssemblyRunsArgs {
 export function useReeAssemblyRuns({
   dispatch,
   ree,
-  level,
   workspaceFiles,
   persistWorkspaceFile,
   refreshWorkspace,
@@ -59,7 +57,6 @@ export function useReeAssemblyRuns({
 
   return createAssemblyRunGateway({
     ree,
-    level,
     workspaceFiles,
     dispatch,
     persistWorkspaceFile: (path: string, content: string) => {

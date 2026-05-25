@@ -1,7 +1,5 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { ReeSpec } from "../ree/ReeSpec";
-import type { EvaluationState } from "../review/EvaluationState";
-import { LEVELS } from "../review/levels";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey } from "./assemblyTypes";
 
@@ -30,7 +28,6 @@ interface HbomEffectPlan {
 
 interface EvaluateEffectPlan {
   reeSpecPatch: Partial<ReeSpec>;
-  evaluationStatePatch: Partial<EvaluationState>;
   successMessage: string;
 }
 
@@ -42,7 +39,6 @@ interface AssemblyServiceEffectPlan {
   persistedFile?: PersistedFilePlan;
   reeSpecPatch?: Partial<ReeSpec>;
   artifactStatusPatch?: Partial<ArtifactStatus>;
-  evaluationStatePatch?: Partial<EvaluationState>;
   errorMessage?: string;
   successMessage: string;
 }
@@ -70,20 +66,14 @@ export function planSbomEffect(): SbomEffectPlan {
 }
 
 export function planEvaluateEffect(args: {
-  newLevel: number;
   dependencyCount: number;
   manifestCount: number;
 }): EvaluateEffectPlan {
-  const label = LEVELS[Math.min(args.newLevel, 7)].label;
   const depSummary = `${args.dependencyCount} dependenc${args.dependencyCount === 1 ? "y" : "ies"} across ${args.manifestCount} manifest file${args.manifestCount === 1 ? "" : "s"}`;
 
   return {
-    reeSpecPatch: {
-      repro_level: `L${args.newLevel} · ${label}`,
-      detected_dependencies: depSummary,
-    },
-    evaluationStatePatch: { evalLevel: args.newLevel },
-    successMessage: `L${args.newLevel} · ${label}`,
+    reeSpecPatch: { detected_dependencies: depSummary },
+    successMessage: depSummary,
   };
 }
 
@@ -97,7 +87,6 @@ export function planAssemblyServiceEffect(args: {
   key: ReeAssemblyOperationKey;
   params: GenericReeAssemblyParams;
   ree: Pick<ReeSpec, "runtime">;
-  newLevel: number;
   timestamp: string;
   namespaceSuffix: string;
   dependencyCount: number;
@@ -120,7 +109,6 @@ export function planAssemblyServiceEffect(args: {
   }
 
   return planEvaluateEffect({
-    newLevel: args.newLevel,
     dependencyCount: args.dependencyCount,
     manifestCount: args.manifestCount,
   });

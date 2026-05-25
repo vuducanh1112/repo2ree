@@ -1,0 +1,629 @@
+"""Reproducibility threat report.
+
+Pure analysis layer: turns a Renovate ``--dry-run=extract`` payload plus a set of
+workspace file signals into a structured report that enumerates concrete threats
+to reproducibility (unpinned dependencies, missing lockfile, floating base image,
+non-declarative system, ...).
+
+No I/O and no subprocess: the Renovate run and the serialization of the report to
+a file live in the API layer. This module only computes.
+
+Functions carry design-by-contract assertions (pre-/post-conditions) for the
+invariants that the type system cannot express.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic.alias_generators import to_camel
+
+
+###################
+# Data models
+###################
+
+
+class ThreatCategory(str, Enum):
+    # Independent reproducibility dimensions, each scored on its own axis rather
+    # than a single linear ladder. Dependency declaration (what software is
+    # installed), environment capture (the container / declarative software
+    # stack), and machine capture (a VM pinning the whole machine + OS) are
+    # orthogonal — the ideal setup is a VM *and* a container/Nix environment.
+    DEPENDENCY = "dependency"
+    ENVIRONMENT = "environment"
+    MACHINE = "machine"
+
+
+class DependencyLevel(int, Enum):
+    NONE = 0  # no manifest
+    DECLARED = 1  # manifest, but unpinned / range-only
+    PINNED = 2  # exact top-level pins
+    LOCKED = 3  # lockfile present
+
+    @property
+    def label(self) -> str:
+        return {0: "None", 1: "Declared", 2: "Pinned", 3: "Locked"}[self.value]
+
+
+class EnvironmentLevel(int, Enum):
+    NONE = 0  # no container / Nix
+    CONTAINER = 1  # container image, but not declarative
+    DECLARATIVE = 2  # declarative system spec (e.g. Nix)
+
+    @property
+    def label(self) -> str:
+        return {0: "None", 1: "Container", 2: "Declarative"}[self.value]
+
+
+class MachineLevel(int, Enum):
+    NONE = 0  # no VM image
+    VM = 1  # a virtual machine image / definition is provided
+
+    @property
+    def label(self) -> str:
+        return {0: "None", 1: "Virtual machine"}[self.value]
+
+
+class Severity(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+_SEVERITY_RANK: dict[Severity, int] = {
+    Severity.HIGH: 0,
+    Severity.MEDIUM: 1,
+    Severity.LOW: 2,
+}
+
+
+class _CamelModel(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class Threat(_CamelModel):
+    id: str
+    category: ThreatCategory
+    severity: Severity
+    blocking: bool = False
+    title: str
+    detail: str
+    remediation: str
+    affected: list[str] = Field(default_factory=list)
+
+
+class DependencySummary(_CamelModel):
+    manifests: int = 0
+    total: int = 0
+    pinned: int = 0
+    ranged: int = 0
+    unpinned: int = 0
+    locked: int = 0
+
+
+class ReproducibilityReport(_CamelModel):
+    # Three orthogonal axes — the model evaluate actually reasons about. The levels
+    # are int-enums, so they serialize to their integer value on the wire.
+    dependency_level: DependencyLevel
+    environment_level: EnvironmentLevel
+    machine_level: MachineLevel
+    dependency_summary: DependencySummary
+    threats: list[Threat]
+
+    # Labels are derived from their level, never set independently, so they can
+    # never drift out of sync. They are still serialized (computed fields) so the
+    # wire contract keeps `dependencyLevelLabel` etc.
+    # mypy does not support decorators on properties (python/mypy#1362), so the
+    # @computed_field lines need an explicit ignore.
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def dependency_level_label(self) -> str:
+        return self.dependency_level.label
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def environment_level_label(self) -> str:
+        return self.environment_level.label
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def machine_level_label(self) -> str:
+        return self.machine_level.label
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def detected_dependencies(self) -> str:
+        total = self.dependency_summary.total
+        manifests = self.dependency_summary.manifests
+        return (
+            f"{total} dependenc{'y' if total == 1 else 'ies'} across "
+            f"{manifests} manifest file{'s' if manifests != 1 else ''}"
+        )
+
+
+class FileSignals(BaseModel):
+    """Filesystem-derived signals, gathered by the caller from the workspace."""
+
+    has_manifest: bool = False
+    has_dockerfile: bool = False
+    has_nix_file: bool = False
+    has_vm: bool = False
+    # Raw text of any Dockerfiles, used for the apt-pinning heuristic.
+    dockerfile_texts: list[str] = Field(default_factory=list)
+
+
+###################
+# Filename classifiers  (pure; used by the shell to build FileSignals)
+###################
+
+_MANIFEST_NAMES: frozenset[str] = frozenset(
+    {
+        "requirements.txt",
+        "pyproject.toml",
+        "environment.yml",
+        "environment.yaml",
+        "package.json",
+        "pipfile",
+    }
+)
+
+_VM_IMAGE_SUFFIXES = (".ova", ".ovf", ".qcow2", ".vmdk", ".vdi", ".box")
+
+
+def is_manifest_filename(lower_name: str) -> bool:
+    return lower_name in _MANIFEST_NAMES or bool(
+        re.match(r"^requirements[-_].+\.txt$", lower_name)
+    )
+
+
+def is_dockerfile_filename(lower_name: str) -> bool:
+    return (
+        lower_name
+        in {"dockerfile", "containerfile", "docker-compose.yml", "docker-compose.yaml"}
+        or lower_name.startswith("dockerfile.")
+        or lower_name.startswith("containerfile.")
+    )
+
+
+def is_vm_artifact_filename(lower_name: str) -> bool:
+    return (
+        lower_name == "vagrantfile"
+        or lower_name.endswith(".pkr.hcl")
+        or lower_name.endswith(".pkr.json")
+        or lower_name.endswith(_VM_IMAGE_SUFFIXES)
+    )
+
+
+###################
+# Renovate output parser  (pure; no subprocess, no file I/O)
+###################
+
+_RENOVATE_EXTRACT_MARKER = "Extracted dependencies (repository=local)"
+
+
+def parse_renovate_stdout(stdout: str) -> dict[str, Any] | None:
+    """Extract the dependency payload from Renovate ``--dry-run=extract`` stdout."""
+    marker_pos = stdout.find(_RENOVATE_EXTRACT_MARKER)
+    if marker_pos < 0:
+        return None
+    json_start = stdout.find("{", marker_pos)
+    if json_start < 0:
+        return None
+    decoder = json.JSONDecoder()
+    try:
+        payload, _ = decoder.raw_decode(stdout[json_start:])
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+###################
+# Threat catalog
+###################
+
+# Static copy: title / detail / remediation per threat id. The `affected` list and
+# `blocking` flag are filled in at detection time.
+_CATALOG: dict[str, dict[str, Any]] = {
+    "no-manifest": {
+        "category": ThreatCategory.DEPENDENCY,
+        "severity": Severity.HIGH,
+        "title": "No dependency manifest",
+        "detail": "No requirements.txt, pyproject.toml, environment.yml or similar "
+        "manifest was found, so the dependency set is undefined.",
+        "remediation": "Create a formal dependency file (e.g. requirements.txt).",
+    },
+    "unpinned-deps": {
+        "category": ThreatCategory.DEPENDENCY,
+        "severity": Severity.HIGH,
+        "title": "Unpinned dependencies",
+        "detail": "Some dependencies are declared without any version. Installs "
+        "resolve to whatever is newest on the day they run.",
+        "remediation": "Pin required versions (e.g. pandas==2.1.0).",
+    },
+    "range-pins": {
+        "category": ThreatCategory.DEPENDENCY,
+        "severity": Severity.MEDIUM,
+        "title": "Range-pinned dependencies",
+        "detail": "Some dependencies use version ranges (>=, ~=, ^). Minor and "
+        "patch versions can drift between installs.",
+        "remediation": "Pin exact versions, then capture a lockfile.",
+    },
+    "no-lockfile": {
+        "category": ThreatCategory.DEPENDENCY,
+        "severity": Severity.MEDIUM,
+        "title": "No lockfile",
+        "detail": "Top-level dependencies are pinned but no lockfile was found, so "
+        "transitive dependencies still float.",
+        "remediation": "Use a lockfile (e.g. poetry.lock, uv.lock).",
+    },
+    "floating-base-image": {
+        "category": ThreatCategory.ENVIRONMENT,
+        "severity": Severity.HIGH,
+        "title": "Floating base image",
+        "detail": "A container base image is referenced without a content digest, "
+        "so the same tag can resolve to different images over time.",
+        "remediation": "Pin base images by digest (FROM image:tag@sha256:...).",
+    },
+    "unpinned-apt": {
+        "category": ThreatCategory.ENVIRONMENT,
+        "severity": Severity.MEDIUM,
+        "title": "Unpinned system packages",
+        "detail": "A Dockerfile installs apt packages without version constraints, "
+        "so system libraries can change between builds.",
+        "remediation": "Pin apt package versions (apt-get install pkg=version).",
+    },
+    "no-container": {
+        "category": ThreatCategory.ENVIRONMENT,
+        "severity": Severity.LOW,
+        "title": "No container environment",
+        "detail": "No container or declarative environment is provided, so system "
+        "libraries (glibc, BLAS, CUDA) are not captured.",
+        "remediation": "Add a container image (Dockerfile).",
+    },
+    "no-nix": {
+        "category": ThreatCategory.ENVIRONMENT,
+        "severity": Severity.LOW,
+        "title": "Non-declarative system environment",
+        "detail": "A container exists but the base image and apt steps are not "
+        "declarative, so the system environment is only approximately reproducible.",
+        "remediation": "Use a declarative system spec (e.g. Nix).",
+    },
+    "no-vm": {
+        "category": ThreatCategory.MACHINE,
+        "severity": Severity.LOW,
+        "title": "No virtual machine",
+        "detail": "No VM image is provided. A VM pins the whole machine and OS — the "
+        "strongest complement to a container or Nix environment.",
+        "remediation": "Provide a VM image (e.g. an OVA, qcow2, or Vagrantfile).",
+    },
+}
+
+# Per axis, the threat ids (in priority order) that gate the step to the next
+# level on that axis. The first one actually present becomes `blocking` — so each
+# axis surfaces at most one blocking threat.
+_DEP_GATE: dict[DependencyLevel, tuple[str, ...]] = {
+    DependencyLevel.NONE: ("no-manifest",),
+    DependencyLevel.DECLARED: ("unpinned-deps", "range-pins"),
+    DependencyLevel.PINNED: ("no-lockfile",),
+    DependencyLevel.LOCKED: (),
+}
+_ENV_GATE: dict[EnvironmentLevel, tuple[str, ...]] = {
+    EnvironmentLevel.NONE: ("no-container",),
+    EnvironmentLevel.CONTAINER: ("no-nix", "floating-base-image", "unpinned-apt"),
+    EnvironmentLevel.DECLARATIVE: (),
+}
+_MACHINE_GATE: dict[MachineLevel, tuple[str, ...]] = {
+    MachineLevel.NONE: ("no-vm",),
+    MachineLevel.VM: (),
+}
+
+
+###################
+# Internals
+###################
+
+
+_RANGE_TOKENS = ("<", ">", "~", "^", "*", "||", ",")
+_DOCKER_DATASOURCE = "docker"
+
+
+def _package_files(payload: dict[str, Any] | None) -> dict[str, Any]:
+    """Normalize a Renovate extract payload to a manager -> [package file] mapping.
+
+    Renovate prints ``"packageFiles": { <manager>: [...] }``. Depending on how the
+    caller slices the log, the payload is either the whole object (with a
+    ``packageFiles`` key) or already the inner value. Accept both.
+    """
+    if not isinstance(payload, dict):
+        return {}
+    inner = payload.get("packageFiles")
+    package_files = inner if isinstance(inner, dict) else payload
+    return {k: v for k, v in package_files.items() if isinstance(v, list)}
+
+
+def _is_exact_pin(version: str | None) -> bool:
+    if not version:
+        return False
+    normalized = version.strip()
+    if not normalized:
+        return False
+    if normalized.startswith("=="):
+        return True
+    if any(token in normalized for token in _RANGE_TOKENS):
+        return False
+    return bool(re.match(r"^[0-9][A-Za-z0-9._+\-]*$", normalized))
+
+
+def _classify(version: str | None) -> str:
+    """Classify a declared version string: pinned | ranged | unpinned."""
+    if not version or not version.strip():
+        return "unpinned"
+    if _is_exact_pin(version):
+        return "pinned"
+    return "ranged"
+
+
+def _iter_deps(package_files: dict[str, Any]):
+    """Yield (manager, dep) for every dependency across all package files."""
+    for manager, files in package_files.items():
+        for package_file in files:
+            if not isinstance(package_file, dict):
+                continue
+            for dep in package_file.get("deps") or []:
+                if isinstance(dep, dict):
+                    yield manager, dep
+
+
+def _is_container_dep(manager: str, dep: dict[str, Any]) -> bool:
+    return dep.get("datasource") == _DOCKER_DATASOURCE or manager.startswith(
+        ("dockerfile", "docker-compose")
+    )
+
+
+def _summarize_dependencies(package_files: dict[str, Any]) -> DependencySummary:
+    """Per-dependency inventory, excluding container image references."""
+    manifests = {
+        package_file.get("packageFile")
+        for manager, files in package_files.items()
+        for package_file in files
+        if isinstance(package_file, dict)
+        and not any(
+            _is_container_dep(manager, dep)
+            for dep in (package_file.get("deps") or [])
+            if isinstance(dep, dict)
+        )
+    }
+    summary = DependencySummary(manifests=len({m for m in manifests if m}))
+    for manager, dep in _iter_deps(package_files):
+        if _is_container_dep(manager, dep):
+            continue
+        summary.total += 1
+        if dep.get("lockedVersion"):
+            summary.locked += 1
+            continue
+        kind = _classify(dep.get("currentValue"))
+        if kind == "pinned":
+            summary.pinned += 1
+        elif kind == "ranged":
+            summary.ranged += 1
+        else:
+            summary.unpinned += 1
+
+    ##############
+    assert summary.total == (
+        summary.pinned + summary.ranged + summary.unpinned + summary.locked
+    ), "dependency summary buckets must partition the total"
+    ##############
+    return summary
+
+
+def _dep_label(dep: dict[str, Any]) -> str:
+    name = str(dep.get("depName") or dep.get("packageName") or "?")
+    version = dep.get("currentValue")
+    return f"{name} {version}".strip() if version else name
+
+
+def _image_is_floating(dep: dict[str, Any]) -> bool:
+    """A container image is floating when it carries no content digest."""
+    if dep.get("currentDigest"):
+        return False
+    return True
+
+
+def _apt_install_is_unpinned(dockerfile_text: str) -> bool:
+    """Heuristic: a Dockerfile apt(-get) install without any `pkg=version` pin."""
+    for raw in dockerfile_text.splitlines():
+        line = raw.strip()
+        if re.search(r"\bapt(?:-get)?\s+install\b", line):
+            # A pinned install names a version with `pkg=ver`.
+            if "=" not in re.sub(r"--[a-z-]+", "", line):
+                return True
+    return False
+
+
+def _dependency_level(summary: DependencySummary) -> DependencyLevel:
+    """Maturity of dependency *declaration*, independent of the environment."""
+    if summary.total == 0 and summary.manifests == 0:
+        return DependencyLevel.NONE
+    if summary.total > 0 and summary.locked == summary.total:
+        return DependencyLevel.LOCKED
+    if summary.pinned > 0 or summary.locked > 0:
+        return DependencyLevel.PINNED
+    return DependencyLevel.DECLARED
+
+
+def _environment_level(file_signals: FileSignals) -> EnvironmentLevel:
+    """Maturity of the software-stack *capture* (container / declarative)."""
+    if file_signals.has_nix_file:
+        return EnvironmentLevel.DECLARATIVE
+    if file_signals.has_dockerfile:
+        return EnvironmentLevel.CONTAINER
+    return EnvironmentLevel.NONE
+
+
+def _machine_level(file_signals: FileSignals) -> MachineLevel:
+    """Whether the whole machine/OS is pinned by a VM image — orthogonal to the
+    container/declarative environment axis (the ideal is a VM *and* a container)."""
+    return MachineLevel.VM if file_signals.has_vm else MachineLevel.NONE
+
+
+def _make_threat(threat_id: str, affected: list[str] | None = None) -> Threat:
+    spec = _CATALOG[threat_id]
+    return Threat(
+        id=threat_id,
+        category=spec["category"],
+        severity=spec["severity"],
+        title=spec["title"],
+        detail=spec["detail"],
+        remediation=spec["remediation"],
+        affected=affected or [],
+    )
+
+
+def _detect_threats(
+    package_files: dict[str, Any],
+    summary: DependencySummary,
+    file_signals: FileSignals,
+) -> list[Threat]:
+    threats: list[Threat] = []
+
+    # --- Dependency category ---
+    if summary.manifests == 0 and summary.total == 0:
+        threats.append(_make_threat("no-manifest"))
+    else:
+        unpinned = [
+            _dep_label(dep)
+            for manager, dep in _iter_deps(package_files)
+            if not _is_container_dep(manager, dep)
+            and not dep.get("lockedVersion")
+            and _classify(dep.get("currentValue")) == "unpinned"
+        ]
+        ranged = [
+            _dep_label(dep)
+            for manager, dep in _iter_deps(package_files)
+            if not _is_container_dep(manager, dep)
+            and not dep.get("lockedVersion")
+            and _classify(dep.get("currentValue")) == "ranged"
+        ]
+        if unpinned:
+            threats.append(_make_threat("unpinned-deps", unpinned))
+        if ranged:
+            threats.append(_make_threat("range-pins", ranged))
+        if summary.pinned > 0 and summary.locked == 0:
+            threats.append(_make_threat("no-lockfile"))
+
+    # --- Environment axis ---
+    if not file_signals.has_dockerfile and not file_signals.has_nix_file:
+        # Axis at None: nothing captures the system/OS.
+        threats.append(_make_threat("no-container"))
+    else:
+        floating = [
+            _dep_label(dep)
+            for manager, dep in _iter_deps(package_files)
+            if _is_container_dep(manager, dep) and _image_is_floating(dep)
+        ]
+        if floating:
+            threats.append(_make_threat("floating-base-image", floating))
+        if any(
+            _apt_install_is_unpinned(text) for text in file_signals.dockerfile_texts
+        ):
+            threats.append(_make_threat("unpinned-apt"))
+        if file_signals.has_dockerfile and not file_signals.has_nix_file:
+            threats.append(_make_threat("no-nix"))
+
+    # --- Machine axis ---
+    if not file_signals.has_vm:
+        threats.append(_make_threat("no-vm"))
+
+    ##############
+    ids = [threat.id for threat in threats]
+    assert len(ids) == len(set(ids)), "duplicate threat ids emitted"
+    assert all(threat_id in _CATALOG for threat_id in ids), "unknown threat id"
+    ##############
+    return threats
+
+
+def _rank_and_mark(
+    threats: list[Threat],
+    dependency_level: DependencyLevel,
+    environment_level: EnvironmentLevel,
+    machine_level: MachineLevel,
+) -> list[Threat]:
+    """Mark the threat that gates the next level on each axis (if present) and sort
+    so blocking threats come first, then by descending severity."""
+    present = {threat.id: threat for threat in threats}
+    for gate in (
+        _DEP_GATE.get(dependency_level, ()),
+        _ENV_GATE.get(environment_level, ()),
+        _MACHINE_GATE.get(machine_level, ()),
+    ):
+        for candidate in gate:
+            if candidate in present:
+                present[candidate].blocking = True
+                break
+
+    ordered = sorted(
+        threats,
+        key=lambda threat: (not threat.blocking, _SEVERITY_RANK[threat.severity]),
+    )
+
+    ##############
+    blocking_per_dimension: dict[ThreatCategory, int] = {}
+    for threat in ordered:
+        if threat.blocking:
+            blocking_per_dimension[threat.category] = (
+                blocking_per_dimension.get(threat.category, 0) + 1
+            )
+    assert all(count <= 1 for count in blocking_per_dimension.values()), (
+        "at most one blocking threat per dimension"
+    )
+    assert len(ordered) == len(threats), "ranking must not drop threats"
+    ##############
+    return ordered
+
+
+###################
+# Entry point
+###################
+
+
+def build_report(
+    renovate_payload: dict[str, Any] | None,
+    file_signals: FileSignals,
+) -> ReproducibilityReport:
+    """Build the reproducibility threat report from a Renovate extract payload and
+    workspace file signals."""
+
+    package_files = _package_files(renovate_payload)
+    summary = _summarize_dependencies(package_files)
+    if summary.manifests == 0 and summary.total == 0 and file_signals.has_manifest:
+        summary.manifests = 1
+    dependency_level = _dependency_level(summary)
+    environment_level = _environment_level(file_signals)
+    machine_level = _machine_level(file_signals)
+    threats = _rank_and_mark(
+        _detect_threats(package_files, summary, file_signals),
+        dependency_level,
+        environment_level,
+        machine_level,
+    )
+
+    report = ReproducibilityReport(
+        dependency_level=dependency_level,
+        environment_level=environment_level,
+        machine_level=machine_level,
+        dependency_summary=summary,
+        threats=threats,
+    )
+
+    ##############
+    assert all(threat.id in _CATALOG for threat in report.threats), (
+        "report contains unknown threat id"
+    )
+    ##############
+    return report

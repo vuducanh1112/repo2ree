@@ -19,7 +19,7 @@ describe("enforceSourceOriginRules", () => {
         downloadableFiles: [],
       },
       evaluationState: {
-        evalLevel: 0,
+        dependencyLevel: 0,
       },
     });
 
@@ -42,7 +42,7 @@ describe("enforceSourceOriginRules", () => {
         downloadableFiles: [],
       },
       evaluationState: {
-        evalLevel: 0,
+        dependencyLevel: 0,
       },
     });
 
@@ -68,7 +68,7 @@ describe("enforceSourceOriginRules", () => {
         downloadableFiles: [],
       },
       evaluationState: {
-        evalLevel: 2,
+        dependencyLevel: 2,
       },
     };
     const result = enforceSourceOriginRules(state);

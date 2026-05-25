@@ -1,10 +1,3 @@
-export interface LevelMeta {
-  color: string;
-  bg: string;
-  ink: string;
-  short: string;
-}
-
 export const POD_M: Record<string, string> = {
   face: "#e8edf4",
   raised: "#f2f5f9",

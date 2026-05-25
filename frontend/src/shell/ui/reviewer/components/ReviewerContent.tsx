@@ -1,9 +1,10 @@
 import type { ReeFile } from "../../../../core/ree/ReeTypes";
 import type {
-  Level,
   ReeAssemblyParamValue,
   StepState,
 } from "../../../../core/ree-assembly/assemblyStepTypes";
+import type { StandingMeta } from "../../../../core/review/axes";
+import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import { PageFiles } from "../../app-shell/pages/files/FilesPage";
 import { C } from "../../theme/theme";
@@ -17,8 +18,8 @@ import {
 
 interface ReviewerContentProps {
   reviewerPage: "review" | "files";
-  level: number;
-  levelMeta: Level;
+  evaluation: EvaluationState;
+  levelMeta: StandingMeta;
   stepStates: Partial<Record<ReactivationStepKey, StepState>>;
   stepLogs: Partial<Record<ReactivationStepKey, import("../../../../core/ree/ReeTypes").LogLine[]>>;
   stepParams: Record<ReactivationStepKey, ReactivationParams>;
@@ -31,8 +32,8 @@ interface ReviewerContentProps {
   reviewWorkspaceTree: FileTreeNode[];
   reviewReeFiles: ReeFile[];
   PodOrbitControl: React.ComponentType<{
-    level: number;
-    levelMeta: Level;
+    evaluation: EvaluationState;
+    levelMeta: StandingMeta;
     stepStates: Record<string, StepState>;
     allDone: boolean;
     isRunningAll: boolean;
@@ -42,7 +43,7 @@ interface ReviewerContentProps {
 
 export function ReviewerContent({
   reviewerPage,
-  level,
+  evaluation,
   levelMeta,
   stepStates,
   stepLogs,
@@ -77,7 +78,7 @@ export function ReviewerContent({
             }}
           >
             <PodOrbitControl
-              level={level}
+              evaluation={evaluation}
               levelMeta={levelMeta}
               stepStates={stepStates}
               allDone={allDone}

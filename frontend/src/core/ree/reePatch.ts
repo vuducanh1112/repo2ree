@@ -15,7 +15,6 @@ interface ReePatch extends Record<string, unknown> {
   swhid: string;
   zenodo_doi: string;
   dataverse_doi: string;
-  repro_level: string;
   detected_dependencies: string;
   experiments: ReeExperiment[];
   hardware_description: HBOM;
@@ -47,7 +46,6 @@ export function toReePatchFromSlices({
     swhid: reeSpec.swhid || "",
     zenodo_doi: reeSpec.zenodo_doi || "",
     dataverse_doi: reeSpec.dataverse_doi || "",
-    repro_level: reeSpec.repro_level || "",
     detected_dependencies: reeSpec.detected_dependencies || "",
     experiments: reeSpec.experiments || [],
     hardware_description: reeSpec.hardware_description || {},
@@ -72,7 +70,6 @@ export function toReePatch(
       swhid: ree.swhid,
       zenodo_doi: ree.zenodo_doi,
       dataverse_doi: ree.dataverse_doi,
-      repro_level: ree.repro_level,
       detected_dependencies: ree.detected_dependencies,
       experiments: ree.experiments || [],
       hardware_description: ree.hardware_description,
@@ -92,7 +89,9 @@ export function toReePatch(
       sealHash: ree.sealHash,
     },
     evaluationState: {
-      evalLevel: ree.evalLevel,
+      dependencyLevel: ree.dependencyLevel,
+      environmentLevel: ree.environmentLevel,
+      machineLevel: ree.machineLevel,
     },
   });
 }

@@ -11,7 +11,6 @@ interface ReeAssemblyRunRequestByKey {
     scriptKey: "evaluate";
     params: {
       strict: boolean;
-      swhid_check: boolean;
       idempotencyKey?: string;
     };
   };
@@ -54,7 +53,6 @@ export function buildEvaluateAssemblyRunRequest(
     scriptKey: "evaluate",
     params: {
       strict: Boolean(params.strict),
-      swhid_check: Boolean(params.swhid_check),
     },
   };
 }

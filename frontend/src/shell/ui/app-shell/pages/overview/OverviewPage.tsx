@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import type { ArtifactStatus } from "../../../../../core/artifact/ArtifactStatus";
 import type { Badges, Timestamps } from "../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
+import type { EvaluationState } from "../../../../../core/review/EvaluationState";
 import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
 import { listTreeFiles } from "../../../../../core/workspace/fileTreeTraversal";
 import type { WorkspaceSourceState } from "../../../../../core/workspace/WorkspaceSourceState";
@@ -18,7 +19,7 @@ interface PageOverviewProps {
   ree: ReeEditorViewModel;
   onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
   onArtifactStatusChange: React.Dispatch<React.SetStateAction<ArtifactStatus>>;
-  level: number;
+  evaluation: EvaluationState;
   onNavigate: (key: AppShellPage) => void;
   badges?: Badges;
   timestamps?: Timestamps;
@@ -35,7 +36,7 @@ export function PageOverview({
   ree,
   onWorkspaceSourceStateChange,
   onArtifactStatusChange,
-  level,
+  evaluation,
   onNavigate,
   badges = {},
   timestamps = {},
@@ -84,10 +85,10 @@ export function PageOverview({
   return (
     <div style={lgStyles.pageRoot}>
       <div style={lgStyles.pageFrame}>
-        <OverviewHeader ree={ree} level={level} badges={badges} />
+        <OverviewHeader ree={ree} evaluation={evaluation} badges={badges} />
         <OverviewColumns
           ree={ree}
-          level={level}
+          evaluation={evaluation}
           badges={badges}
           timestamps={timestamps}
           files={files}
@@ -118,7 +119,7 @@ export function PageOverview({
             podColumnRef,
           }}
         />
-        <OverviewLevelStrip level={level} />
+        <OverviewLevelStrip evaluation={evaluation} />
         <OverviewFieldsPanel ree={ree} />
       </div>
     </div>

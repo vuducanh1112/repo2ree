@@ -1,13 +1,14 @@
 import { hbomSummaryLines } from "../../../../core/hbom/HbomSummary";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
+import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import { Ic } from "../../shared/components/Icon";
-import { LevelBadge } from "../../shared/components/LevelBadge";
+import { AxisBadges } from "../../shared/components/LevelBadge";
 import { C, F, hoverBg, S_SECTION_LABEL_SMALL } from "../../theme/theme";
 import { MetaRow, RvProvenanceChain } from "../reviewerSupport";
 
 interface ReviewerSidebarProps {
   ree: ReeEditorViewModel;
-  level: number;
+  evaluation: EvaluationState;
   levelMeta: {
     bg: string;
     color: string;
@@ -60,7 +61,7 @@ function ReviewerNavButton({
 
 export function ReviewerSidebar({
   ree,
-  level,
+  evaluation,
   levelMeta,
   sealDate,
   reviewerPage,
@@ -110,7 +111,7 @@ export function ReviewerSidebar({
         >
           {ree.name}
         </div>
-        <LevelBadge level={level} />
+        <AxisBadges evaluation={evaluation} />
         <div
           style={{
             marginTop: 10,

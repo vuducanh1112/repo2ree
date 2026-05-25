@@ -2,7 +2,8 @@ import type React from "react";
 import type { Badges, Timestamps } from "../../../../../../core/ree/ReeTypes";
 import { REE_ASSEMBLY_STEPS } from "../../../../../../core/ree-assembly/assemblyCatalog";
 import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
-import { LEVELS } from "../../../../../../core/review/levels";
+import { standingMeta } from "../../../../../../core/review/axes";
+import type { EvaluationState } from "../../../../../../core/review/EvaluationState";
 import { Ic } from "../../../../shared/components/Icon";
 import { lgBackgrounds, lgColors, lgStage } from "../../../../theme/lightGlassTheme";
 import { F, S_FLEX_ROW_CENTER_GAP_6 } from "../../../../theme/theme";
@@ -46,7 +47,7 @@ export function SwhCard(props: {
 export function EvaluateCard(props: {
   badges: Badges;
   timestamps: Timestamps;
-  level: number;
+  evaluation: EvaluationState;
   onNavigate: (key: AppShellPage) => void;
   evaluateRef: React.RefObject<HTMLDivElement>;
 }) {
@@ -99,9 +100,7 @@ export function EvaluateCard(props: {
               flex: 1,
             }}
           >
-            {earned
-              ? `L${props.level} — ${LEVELS[Math.min(props.level, 7)].label}`
-              : "Not evaluated"}
+            {earned ? standingMeta(props.evaluation).label : "Not evaluated"}
           </span>
         </div>
         {earned && evaluateDate && (

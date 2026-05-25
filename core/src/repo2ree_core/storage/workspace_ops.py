@@ -81,7 +81,9 @@ _DRAFT_PATCH_FIELDS: frozenset[str] = frozenset(
     for field_name in REE.model_fields
     if field_name
     not in {
-        "eval_level",
+        "dependency_level",
+        "environment_level",
+        "machine_level",
         "sealed_at",
         "seal_hash",
         "source_available",

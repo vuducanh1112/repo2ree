@@ -5,7 +5,10 @@ import type {
   Timestamps,
 } from "../../../../core/ree/ReeTypes";
 import { initialReeAssemblyOperationParams } from "../../../../core/ree-assembly/assemblyCatalog";
-import type { EvaluationState } from "../../../../core/review/EvaluationState";
+import {
+  type EvaluationState,
+  emptyEvaluationState,
+} from "../../../../core/review/EvaluationState";
 
 export interface AssemblyRunState {
   actionStates: ActionStates;
@@ -22,9 +25,7 @@ export function createInitialAssemblyRunState(): AssemblyRunState {
     badges: {},
     timestamps: {},
     assemblyOperationParams: initialReeAssemblyOperationParams(),
-    evaluationState: {
-      evalLevel: 0,
-    },
+    evaluationState: emptyEvaluationState(),
     activeRunIds: {},
   };
 }

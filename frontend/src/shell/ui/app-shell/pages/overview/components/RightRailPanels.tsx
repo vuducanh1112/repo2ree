@@ -1,6 +1,7 @@
 import type React from "react";
 import type { Badges, Timestamps } from "../../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
+import type { EvaluationState } from "../../../../../../core/review/EvaluationState";
 import type { AppShellPage as AppShellPageType } from "../../../state/pages";
 import { ActivationCard, ArchiveCard } from "./RightRailPanelArchiveActivation";
 import { EvaluateCard, SwhCard } from "./RightRailPanelSections";
@@ -9,7 +10,7 @@ interface RightRailPanelsProps {
   ree: ReeEditorViewModel;
   badges: Badges;
   timestamps: Timestamps;
-  level: number;
+  evaluation: EvaluationState;
   onNavigate: (key: AppShellPageType) => void;
   onGoField: (key: string) => void;
   swhRef: React.RefObject<HTMLDivElement>;
@@ -22,7 +23,7 @@ export function RightRailPanels({
   ree,
   badges,
   timestamps,
-  level,
+  evaluation,
   onNavigate,
   onGoField,
   swhRef,
@@ -46,7 +47,7 @@ export function RightRailPanels({
       <EvaluateCard
         badges={badges}
         timestamps={timestamps}
-        level={level}
+        evaluation={evaluation}
         onNavigate={onNavigate}
         evaluateRef={evaluateRef}
       />

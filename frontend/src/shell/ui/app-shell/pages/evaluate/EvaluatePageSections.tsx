@@ -1,9 +1,14 @@
 import type { LogEntry } from "../../../../../core/ree/ReeTypes";
 import type { DepGroup } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
 import type { ReeAssemblyRequirement } from "../../../../../core/ree-assembly/assemblyStepTypes";
-import { LEVELS } from "../../../../../core/review/levels";
+import { DEPENDENCY_AXIS, ENVIRONMENT_AXIS, MACHINE_AXIS } from "../../../../../core/review/axes";
+import type {
+  ReproducibilityReport,
+  Threat,
+  ThreatCategory,
+  ThreatSeverity,
+} from "../../../../../core/review/Threat";
 import { Ic } from "../../../shared/components/Icon";
-import { LevelBadge } from "../../../shared/components/LevelBadge";
 import {
   lgColors,
   lgContentCard,
@@ -185,70 +190,69 @@ export function EvaluateRunConsoleCard({
   );
 }
 
-export function EvaluateReproducibilityCard({
-  hasScoreOutput,
+function AxisTrack({
+  label,
+  hint,
+  stepLabels,
   level,
+  accent,
 }: {
-  hasScoreOutput: boolean;
+  label: string;
+  hint: string;
+  stepLabels: readonly string[];
   level: number;
+  accent: string;
 }) {
-  const active = LEVELS[level];
-
   return (
-    <div style={lgContentCard()}>
-      <CardHeader
-        label="Reproducibility Ladder"
-        hint={hasScoreOutput ? `Standing L${level} of ${LEVELS.length - 1}` : "Awaiting run"}
-      />
-
+    <div>
       <div
         style={{
           display: "flex",
-          alignItems: "center",
-          gap: 6,
-          marginBottom: 14,
-          flexWrap: "wrap",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          gap: 8,
+          marginBottom: 8,
         }}
       >
-        {LEVELS.map((levelConfig, idx) => {
-          const reached = hasScoreOutput && idx <= level;
-          const isActive = hasScoreOutput && idx === level;
+        <span style={{ fontSize: 12, fontWeight: 800, color: lgColors.text }}>{label}</span>
+        <span style={{ fontSize: 11, color: accent, fontFamily: F.mono, fontWeight: 700 }}>
+          {hint}
+        </span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        {stepLabels.map((stepLabel, idx) => {
+          const reached = idx <= level;
+          const isActive = idx === level;
           return (
-            <div key={levelConfig.n} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div key={stepLabel} style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div
-                title={levelConfig.label}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  minWidth: 30,
-                  height: 26,
-                  padding: "0 8px",
+                  height: 24,
+                  padding: "0 10px",
                   borderRadius: 99,
                   fontSize: 11,
-                  fontWeight: 800,
+                  fontWeight: 700,
                   fontFamily: F.mono,
-                  color: reached ? levelConfig.ink : lgColors.textMuted,
-                  background: reached ? levelConfig.bg : "rgba(255,255,255,0.6)",
+                  color: reached ? accent : lgColors.textMuted,
+                  background: reached ? `${accent}14` : "rgba(255,255,255,0.6)",
                   border: `1px solid ${
-                    isActive
-                      ? `${levelConfig.color}aa`
-                      : reached
-                        ? `${levelConfig.color}55`
-                        : "rgba(148,163,184,0.32)"
+                    isActive ? `${accent}aa` : reached ? `${accent}55` : "rgba(148,163,184,0.32)"
                   }`,
-                  boxShadow: isActive ? `0 0 0 3px ${levelConfig.color}22` : "none",
+                  boxShadow: isActive ? `0 0 0 3px ${accent}22` : "none",
                 }}
               >
-                L{levelConfig.n}
+                {stepLabel}
               </div>
-              {idx < LEVELS.length - 1 && (
+              {idx < stepLabels.length - 1 && (
                 <div
                   style={{
-                    width: 18,
+                    width: 14,
                     height: 2,
                     borderRadius: 99,
-                    background: reached ? `${levelConfig.color}88` : "rgba(148,163,184,0.28)",
+                    background: reached ? `${accent}88` : "rgba(148,163,184,0.28)",
                   }}
                 />
               )}
@@ -256,58 +260,47 @@ export function EvaluateReproducibilityCard({
           );
         })}
       </div>
+    </div>
+  );
+}
 
-      {hasScoreOutput ? (
-        <div
-          style={{
-            border: `1px solid ${active.color}44`,
-            background: active.bg,
-            borderRadius: 9,
-            padding: 12,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <LevelBadge level={level} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: active.ink }}>{active.label}</span>
-          </div>
-          <div style={{ fontSize: 12, color: lgColors.textMid, lineHeight: 1.45 }}>
-            {active.desc}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                padding: "8px 10px",
-                border: "1px solid rgba(245, 158, 11, 0.42)",
-                background: "rgba(254, 252, 232, 0.82)",
-                borderRadius: 8,
-                fontSize: 12,
-                color: lgColors.warning,
-              }}
-            >
-              <span style={{ display: "flex", flexShrink: 0 }}>{Ic.info(12)}</span>
-              <span>{active.problem || "No bottleneck called out at this level."}</span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                padding: "8px 10px",
-                border: "1px solid rgba(34, 197, 94, 0.42)",
-                background: "rgba(220, 252, 231, 0.78)",
-                borderRadius: 8,
-                fontSize: 12,
-                color: lgColors.success,
-              }}
-            >
-              <span style={{ display: "flex", flexShrink: 0 }}>{Ic.check(12)}</span>
-              <span>{active.fix || "No additional fix suggested at this level."}</span>
-            </div>
-          </div>
+export function EvaluateAxesCard({
+  hasScoreOutput,
+  report,
+}: {
+  hasScoreOutput: boolean;
+  report: ReproducibilityReport | null;
+}) {
+  return (
+    <div style={lgContentCard()}>
+      <CardHeader
+        label="Reproducibility Axes"
+        hint={hasScoreOutput ? "Two independent dimensions" : "Awaiting run"}
+      />
+
+      {hasScoreOutput && report ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <AxisTrack
+            label="Dependency declaration"
+            hint={report.dependencyLevelLabel}
+            stepLabels={DEPENDENCY_AXIS.steps}
+            level={report.dependencyLevel}
+            accent={lgColors.blue}
+          />
+          <AxisTrack
+            label="Environment capture"
+            hint={report.environmentLevelLabel}
+            stepLabels={ENVIRONMENT_AXIS.steps}
+            level={report.environmentLevel}
+            accent={lgColors.cyan}
+          />
+          <AxisTrack
+            label="Machine capture"
+            hint={report.machineLevelLabel}
+            stepLabels={MACHINE_AXIS.steps}
+            level={report.machineLevel}
+            accent={lgColors.indigo}
+          />
         </div>
       ) : (
         <div
@@ -321,7 +314,209 @@ export function EvaluateReproducibilityCard({
             fontSize: 12,
           }}
         >
-          No Evaluate output yet. Run the evaluator to place this REE on the ladder.
+          No Evaluate output yet. Run the evaluator to score the dependency and environment axes.
+        </div>
+      )}
+    </div>
+  );
+}
+
+const THREAT_DIMENSIONS: { category: ThreatCategory; label: string }[] = [
+  { category: "dependency", label: "Dependency declaration" },
+  { category: "environment", label: "Environment capture" },
+  { category: "machine", label: "Machine capture" },
+];
+
+const SEVERITY_META: Record<
+  ThreatSeverity,
+  { label: string; color: string; bg: string; border: string }
+> = {
+  high: { label: "high", color: "#dc2626", bg: "#fef2f2", border: "#fca5a5" },
+  medium: { label: "medium", color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
+  low: { label: "low", color: "#0369a1", bg: "#f0f9ff", border: "#7dd3fc" },
+};
+
+function ThreatRow({ threat }: { threat: Threat }) {
+  const meta = SEVERITY_META[threat.severity];
+  return (
+    <div
+      style={{
+        border: `1px solid ${threat.blocking ? meta.border : "rgba(148,163,184,0.32)"}`,
+        background: threat.blocking ? meta.bg : "rgba(255,255,255,0.55)",
+        borderRadius: 9,
+        padding: 12,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 800,
+            textTransform: "uppercase",
+            letterSpacing: 0.3,
+            color: meta.color,
+            background: meta.bg,
+            border: `1px solid ${meta.border}`,
+            borderRadius: 99,
+            padding: "2px 8px",
+            fontFamily: F.mono,
+          }}
+        >
+          {meta.label}
+        </span>
+        <span style={{ fontSize: 11, color: lgColors.textMuted, fontFamily: F.mono }}>
+          {threat.category}
+        </span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: lgColors.text }}>{threat.title}</span>
+        {threat.blocking && (
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: 10,
+              fontWeight: 800,
+              color: meta.color,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            {Ic.info(11)} blocking next level
+          </span>
+        )}
+      </div>
+
+      <div style={{ fontSize: 12, color: lgColors.textMid, lineHeight: 1.45 }}>{threat.detail}</div>
+
+      {threat.affected.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {threat.affected.slice(0, 8).map((entry) => (
+            <span
+              key={entry}
+              style={{
+                fontSize: 11,
+                fontFamily: F.mono,
+                color: lgColors.textMid,
+                background: "rgba(255,255,255,0.7)",
+                border: "1px solid rgba(148,163,184,0.32)",
+                borderRadius: 4,
+                padding: "1px 6px",
+              }}
+            >
+              {entry}
+            </span>
+          ))}
+          {threat.affected.length > 8 && (
+            <span style={{ fontSize: 11, color: lgColors.textMuted, fontFamily: F.mono }}>
+              +{threat.affected.length - 8} more
+            </span>
+          )}
+        </div>
+      )}
+
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          padding: "7px 10px",
+          border: "1px solid rgba(34, 197, 94, 0.42)",
+          background: "rgba(220, 252, 231, 0.6)",
+          borderRadius: 8,
+          fontSize: 12,
+          color: lgColors.success,
+        }}
+      >
+        <span style={{ display: "flex", flexShrink: 0 }}>{Ic.check(12)}</span>
+        <span>{threat.remediation}</span>
+      </div>
+    </div>
+  );
+}
+
+export function EvaluateThreatsCard({
+  hasScoreOutput,
+  threats,
+  loading,
+}: {
+  hasScoreOutput: boolean;
+  threats: Threat[];
+  loading: boolean;
+}) {
+  const sorted = threats; // backend already sorts blocking-first, then by severity
+
+  return (
+    <div style={lgContentCard()}>
+      <CardHeader
+        label="Reproducibility Threats"
+        hint={
+          !hasScoreOutput
+            ? "Awaiting run"
+            : loading
+              ? "Loading…"
+              : sorted.length > 0
+                ? `${sorted.length} found`
+                : "None detected"
+        }
+      />
+
+      {!hasScoreOutput ? (
+        <div
+          style={{
+            border: "1px dashed rgba(148, 163, 184, 0.5)",
+            background: "rgba(255,255,255,0.45)",
+            borderRadius: 9,
+            padding: 16,
+            textAlign: "center",
+            color: lgColors.textMuted,
+            fontSize: 12,
+          }}
+        >
+          Run Evaluate to surface threats to reproducibility.
+        </div>
+      ) : sorted.length === 0 ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            border: "1px solid rgba(34, 197, 94, 0.42)",
+            background: "rgba(220, 252, 231, 0.6)",
+            borderRadius: 9,
+            padding: 12,
+            fontSize: 12,
+            color: lgColors.success,
+          }}
+        >
+          <span style={{ display: "flex" }}>{Ic.check(14)}</span>
+          {loading ? "Loading report…" : "No reproducibility threats detected."}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {THREAT_DIMENSIONS.map(({ category, label }) => {
+            const inDimension = sorted.filter((threat) => threat.category === category);
+            if (inDimension.length === 0) return null;
+            return (
+              <div key={category} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.4,
+                    color: lgColors.textMuted,
+                    fontFamily: F.mono,
+                  }}
+                >
+                  {label}
+                </div>
+                {inDimension.map((threat) => (
+                  <ThreatRow key={threat.id} threat={threat} />
+                ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -425,17 +620,15 @@ export function EvaluateLogCard({ log, running }: { log: LogEntry | null; runnin
 
 export function EvaluateReadinessAside({
   hasScoreOutput,
-  level,
-  completionPct,
+  report,
   ts,
 }: {
   hasScoreOutput: boolean;
-  level: number;
-  completionPct: number;
+  report: ReproducibilityReport | null;
   ts?: string | null;
 }) {
-  const active = LEVELS[level];
-  const standing = `${level} / ${LEVELS.length - 1}`;
+  const blockingCount = report ? report.threats.filter((threat) => threat.blocking).length : 0;
+  const dash = "—";
 
   return (
     <section style={{ ...lgStyles.panel, padding: 16 }}>
@@ -446,55 +639,28 @@ export function EvaluateReadinessAside({
 
       <div style={lgStyles.summaryBox}>
         <div style={lgStyles.overviewHeader}>
-          <span style={lgStyles.overviewLabel}>Standing</span>
+          <span style={lgStyles.overviewLabel}>Result</span>
           <span style={lgStatusBadge(hasScoreOutput)}>{hasScoreOutput ? "Scored" : "Not run"}</span>
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "10px 0",
-          }}
-        >
-          {hasScoreOutput ? (
-            <LevelBadge level={level} large />
-          ) : (
-            <div style={{ fontSize: 12, color: lgColors.textMuted, fontStyle: "italic" }}>
-              Run Evaluate to place on ladder
-            </div>
-          )}
-        </div>
-        <div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: 11,
-              color: lgColors.textMuted,
-              marginBottom: 4,
-            }}
-          >
-            <span>Progress</span>
-            <span style={{ color: lgColors.blue, fontFamily: F.mono }}>{completionPct}%</span>
+        <div style={lgStyles.statGrid}>
+          <div style={lgReadout(lgStyles.statReadout)}>
+            <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Dependencies</span>
+            <strong style={{ color: lgColors.blue, fontSize: 14, fontFamily: F.mono }}>
+              {hasScoreOutput && report ? report.dependencyLevelLabel : dash}
+            </strong>
           </div>
-          <div style={lgStyles.progressTrack}>
-            <div
-              style={{
-                ...lgStyles.progressFill,
-                width: `${hasScoreOutput ? completionPct : 0}%`,
-                background: hasScoreOutput
-                  ? `linear-gradient(90deg, ${active.color}, ${lgColors.indigo})`
-                  : lgStyles.progressFill.background,
-              }}
-            />
+          <div style={lgReadout(lgStyles.statReadout)}>
+            <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Environment</span>
+            <strong style={{ color: lgColors.cyan, fontSize: 14, fontFamily: F.mono }}>
+              {hasScoreOutput && report ? report.environmentLevelLabel : dash}
+            </strong>
           </div>
         </div>
         <div style={lgStyles.statGrid}>
           <div style={lgReadout(lgStyles.statReadout)}>
-            <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Standing</span>
+            <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Blocking threats</span>
             <strong style={{ color: lgColors.text, fontSize: 18, fontFamily: F.mono }}>
-              {hasScoreOutput ? standing : "—"}
+              {hasScoreOutput ? String(blockingCount) : dash}
             </strong>
           </div>
           <div style={lgReadout(lgStyles.statReadout)}>

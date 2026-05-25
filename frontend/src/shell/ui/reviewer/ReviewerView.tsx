@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { LogLine, ReeFile } from "../../../core/ree/ReeTypes";
 import type {
-  Level,
   ReeAssemblyParamValue,
   StepState,
 } from "../../../core/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
-import { LEVELS } from "../../../core/review/levels";
+import { type StandingMeta, standingMeta } from "../../../core/review/axes";
+import type { EvaluationState } from "../../../core/review/EvaluationState";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { useReviewClient } from "../../data/reviews/client";
 import { C } from "../theme/theme";
@@ -35,8 +35,8 @@ interface ReviewerViewProps {
   reviewWorkspaceFiles?: Array<{ path: string; size?: number }>;
   onBack: () => void;
   PodOrbitControl: React.ComponentType<{
-    level: number;
-    levelMeta: Level;
+    evaluation: EvaluationState;
+    levelMeta: StandingMeta;
     stepStates: Record<string, StepState>;
     allDone: boolean;
     isRunningAll: boolean;
@@ -57,8 +57,12 @@ export function ReviewerView({
   const [reviewerPage, setReviewerPage] = useState<"review" | "files">("review");
   const [reviewRootFilesState, setReviewRootFilesState] = useState(reviewFiles);
   const [reviewWorkspaceFilesState, setReviewWorkspaceFilesState] = useState(reviewWorkspaceFiles);
-  const level = ree.evalLevel ?? 5;
-  const levelMeta = LEVELS[Math.min(level, 7)];
+  const evaluation: EvaluationState = {
+    dependencyLevel: ree.dependencyLevel ?? 0,
+    environmentLevel: ree.environmentLevel ?? 0,
+    machineLevel: ree.machineLevel ?? 0,
+  };
+  const levelMeta = standingMeta(evaluation);
   const sealDate = formatSealDate(ree.sealedAt);
 
   const [stepStates, setStepStates] = useState<Partial<Record<ReactivationStepKey, StepState>>>({});
@@ -255,7 +259,7 @@ export function ReviewerView({
       <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
         <ReviewerSidebar
           ree={ree}
-          level={level}
+          evaluation={evaluation}
           levelMeta={levelMeta}
           sealDate={sealDate}
           reviewerPage={reviewerPage}
@@ -264,7 +268,7 @@ export function ReviewerView({
         />
         <ReviewerContent
           reviewerPage={reviewerPage}
-          level={level}
+          evaluation={evaluation}
           levelMeta={levelMeta}
           stepStates={stepStates}
           stepLogs={stepLogs}

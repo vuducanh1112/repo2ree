@@ -1,12 +1,13 @@
 import { C } from "../../../../theme/theme";
-import { type LevelMeta, POD_GRAPHS } from "./podWidgetData";
+import { POD_GRAPHS } from "./podWidgetData";
 
 interface PodDepGraphProps {
+  // Dependency-axis level (0..3); selects the dependency-graph illustration.
   level: number;
-  levelMeta: LevelMeta;
+  color: string;
 }
 
-export function PodDepGraph({ level, levelMeta }: PodDepGraphProps) {
+export function PodDepGraph({ level, color }: PodDepGraphProps) {
   if (level === 0)
     return (
       <g opacity="0.3">
@@ -35,7 +36,7 @@ export function PodDepGraph({ level, levelMeta }: PodDepGraphProps) {
             y1={na.y}
             x2={nb.x}
             y2={nb.y}
-            stroke={levelMeta.color}
+            stroke={color}
             strokeWidth="1.6"
             opacity="0.38"
           />
@@ -47,8 +48,8 @@ export function PodDepGraph({ level, levelMeta }: PodDepGraphProps) {
             cx={graphNode.x}
             cy={graphNode.y}
             r={graphNode.r}
-            fill={graphNode.root ? levelMeta.color : C.surface}
-            stroke={levelMeta.color}
+            fill={graphNode.root ? color : C.surface}
+            stroke={color}
             strokeWidth={graphNode.root ? 0 : 1.8}
           />
           {graphNode.root && (

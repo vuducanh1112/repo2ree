@@ -53,10 +53,7 @@ export type AssemblyCommand =
   | { type: "toast"; message: string; toastType: "info" | "success" | "error" };
 
 export type AssemblyCommandPlannerMap = {
-  [K in ReeAssemblyOperationKey]: (
-    params: ReeAssemblyRunParamsByKey[K],
-    newLevel: number,
-  ) => AssemblyCommand[];
+  [K in ReeAssemblyOperationKey]: (params: ReeAssemblyRunParamsByKey[K]) => AssemblyCommand[];
 };
 
 export function createAssemblyCommandPlanners({
@@ -65,59 +62,55 @@ export function createAssemblyCommandPlanners({
   clock,
 }: CreateAssemblyCommandPlannersArgs): AssemblyCommandPlannerMap {
   return {
-    build: (runParams, newLevel) =>
+    build: (runParams) =>
       assemblyEffectPlanToCommands(
         planAssemblyServiceEffect({
           key: "build",
           params: runParams as GenericReeAssemblyParams,
           ree,
-          newLevel,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
           dependencyCount: 0,
           manifestCount: 0,
         }),
       ),
-    hbom: (runParams, newLevel) =>
+    hbom: (runParams) =>
       assemblyEffectPlanToCommands(
         planAssemblyServiceEffect({
           key: "hbom",
           params: runParams as GenericReeAssemblyParams,
           ree,
-          newLevel,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
           dependencyCount: 0,
           manifestCount: 0,
         }),
       ),
-    sbom: (runParams, newLevel) =>
+    sbom: (runParams) =>
       assemblyEffectPlanToCommands(
         planAssemblyServiceEffect({
           key: "sbom",
           params: runParams as GenericReeAssemblyParams,
           ree,
-          newLevel,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
           dependencyCount: 0,
           manifestCount: 0,
         }),
       ),
-    activation: (runParams, newLevel) =>
+    activation: (runParams) =>
       assemblyEffectPlanToCommands(
         planAssemblyServiceEffect({
           key: "activation",
           params: runParams as GenericReeAssemblyParams,
           ree,
-          newLevel,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
           dependencyCount: 0,
           manifestCount: 0,
         }),
       ),
-    evaluate: (runParams, newLevel) => {
+    evaluate: (runParams) => {
       const groups = scanDependencies(workspaceFiles || []);
       const dependencyCount = groups.reduce((sum, group) => sum + group.packages.length, 0);
       return assemblyEffectPlanToCommands(
@@ -125,7 +118,6 @@ export function createAssemblyCommandPlanners({
           key: "evaluate",
           params: runParams as GenericReeAssemblyParams,
           ree,
-          newLevel,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
           dependencyCount,
@@ -140,7 +132,6 @@ function assemblyEffectPlanToCommands(plan: {
   persistedFile?: { path: string; content: string };
   reeSpecPatch?: Partial<ReeSpec>;
   artifactStatusPatch?: Partial<ArtifactStatus>;
-  evaluationStatePatch?: Partial<EvaluationState>;
   errorMessage?: string;
   successMessage: string;
 }): AssemblyCommand[] {
@@ -157,9 +148,6 @@ function assemblyEffectPlanToCommands(plan: {
   }
   if (plan.artifactStatusPatch) {
     commands.push({ type: "setArtifactStatus", artifactStatus: plan.artifactStatusPatch });
-  }
-  if (plan.evaluationStatePatch) {
-    commands.push({ type: "setEvaluationState", evaluationState: plan.evaluationStatePatch });
   }
   if (plan.errorMessage) {
     commands.push({ type: "toast", message: plan.errorMessage, toastType: "error" });

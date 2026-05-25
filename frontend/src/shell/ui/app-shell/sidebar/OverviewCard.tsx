@@ -1,3 +1,4 @@
+import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import { C, F, hoverBg } from "../../theme/theme";
 import { PodWidget } from "../pages/overview/PodWidget";
 import type { getPodCableStates } from "../pages/overview/podCableState";
@@ -9,11 +10,12 @@ type PodCableState = ReturnType<typeof getPodCableStates>[number];
 interface OverviewCardProps {
   navCollapsed: boolean;
   page: AppShellPage;
-  level: number;
+  evaluation: EvaluationState;
   levelMeta: {
     bg: string;
     color: string;
     ink: string;
+    short: string;
   };
   cableStates: PodCableState[];
   leftCables: PodCableState[];
@@ -73,7 +75,7 @@ function CableIndicator({
 export function OverviewCard({
   navCollapsed,
   page,
-  level,
+  evaluation,
   levelMeta,
   cableStates,
   leftCables,
@@ -113,7 +115,7 @@ export function OverviewCard({
               minHeight: 40,
             }}
           >
-            <PodWidget level={level} size={40} compact />
+            <PodWidget evaluation={evaluation} size={40} compact />
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -146,7 +148,7 @@ export function OverviewCard({
                   padding: "1px 6px",
                 }}
               >
-                L{level}
+                {levelMeta.short}
               </span>
             </div>
 
@@ -175,7 +177,7 @@ export function OverviewCard({
                 ))}
               </div>
 
-              <PodWidget level={level} size={66} compact />
+              <PodWidget evaluation={evaluation} size={66} compact />
 
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                 {rightCables.map((cable) => (

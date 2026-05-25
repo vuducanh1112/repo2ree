@@ -3,7 +3,6 @@ export type ReeAssemblyOperationKey = "evaluate" | "build" | "hbom" | "sbom" | "
 export interface ReeAssemblyOperationParamsByKey {
   evaluate: {
     strict: boolean;
-    swhid_check: boolean;
   };
   build: Record<string, never>;
   hbom: Record<string, never>;

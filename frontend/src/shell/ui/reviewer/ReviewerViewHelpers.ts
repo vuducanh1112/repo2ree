@@ -10,7 +10,15 @@ import {
 } from "./reviewerSupport";
 
 export function resolveReviewerRee(reeInput?: ReeEditorViewModel): ReeEditorViewModel {
-  return reeInput || { ...createEmptyReeSpec(), evalLevel: 0, runtimeIncluded: false };
+  return (
+    reeInput || {
+      ...createEmptyReeSpec(),
+      dependencyLevel: 0,
+      environmentLevel: 0,
+      machineLevel: 0,
+      runtimeIncluded: false,
+    }
+  );
 }
 
 export function formatSealDate(sealedAt?: string): string {

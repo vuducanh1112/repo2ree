@@ -11,7 +11,6 @@ interface LevelMeta {
 
 interface SealStatusCardProps {
   sealRef: React.RefObject<HTMLDivElement>;
-  level: number;
   currentLevelMeta: LevelMeta;
   cableItems: SealCableItem[];
   allLive: boolean;
@@ -21,7 +20,6 @@ interface SealStatusCardProps {
 
 export function SealStatusCard({
   sealRef,
-  level,
   currentLevelMeta,
   cableItems,
   allLive,
@@ -111,7 +109,7 @@ export function SealStatusCard({
             }}
           >
             {allLive
-              ? `L${level} · ${currentLevelMeta.label} — all panels connected`
+              ? ` — all panels connected`
               : `${missing.length} panel${missing.length !== 1 ? "s" : ""} not yet connected`}
           </div>
         </div>

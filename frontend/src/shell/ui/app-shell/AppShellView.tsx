@@ -1,5 +1,7 @@
 import type React from "react";
-import type { Level, StepState } from "../../../core/ree-assembly/assemblyStepTypes";
+import type { StepState } from "../../../core/ree-assembly/assemblyStepTypes";
+import type { StandingMeta } from "../../../core/review/axes";
+import type { EvaluationState } from "../../../core/review/EvaluationState";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { C, F, hoverBg, hoverColor } from "../theme/theme";
@@ -11,8 +13,8 @@ import { useAppShell } from "./hooks/useAppShell";
 interface AppShellViewProps {
   onBack: () => void;
   PodOrbitControl: React.ComponentType<{
-    level: number;
-    levelMeta: Level;
+    evaluation: EvaluationState;
+    levelMeta: StandingMeta;
     stepStates: Record<string, StepState>;
     allDone: boolean;
     isRunningAll: boolean;
@@ -28,7 +30,7 @@ export function AppShellView({ onBack, PodOrbitControl }: AppShellViewProps) {
     workspaceRemote,
     assemblyRun,
     uiChrome,
-    level,
+    evaluation,
     currentReeFiles,
     commands,
     reviewer,
@@ -107,7 +109,7 @@ export function AppShellView({ onBack, PodOrbitControl }: AppShellViewProps) {
           workspaceRemote={workspaceRemote}
           assemblyRun={assemblyRun}
           uiChrome={uiChrome}
-          level={level}
+          evaluation={evaluation}
           currentReeFiles={currentReeFiles}
           commands={commands}
         />

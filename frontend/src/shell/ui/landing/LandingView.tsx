@@ -1,6 +1,6 @@
 import type React from "react";
 import { useRef, useState } from "react";
-import { LEVELS } from "../../../core/review/levels";
+import { AXES } from "../../../core/review/axes";
 import { useApiRuntime } from "../../data/apiRuntime";
 import { useReeClient } from "../../data/ree/client";
 import { useReviewClient } from "../../data/reviews/client";
@@ -229,9 +229,9 @@ export function LandingView({ onLoad }: LandingViewProps) {
             flexWrap: "wrap",
           }}
         >
-          {LEVELS.map((l) => (
+          {AXES.map((axis) => (
             <div
-              key={l.n}
+              key={axis.key}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -241,8 +241,8 @@ export function LandingView({ onLoad }: LandingViewProps) {
                 fontFamily: F.sans,
               }}
             >
-              <div style={{ width: 7, height: 7, borderRadius: "50%", background: l.color }} />L
-              {l.n} {l.label}
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: axis.color }} />
+              {axis.label} ({axis.steps.join(" → ")})
             </div>
           ))}
         </div>

@@ -1,6 +1,4 @@
-import { LEVELS } from "../review/levels";
 import type { FileTreeNode } from "../workspace/FileTree";
-import { listTreeFiles } from "../workspace/fileTreeTraversal";
 
 export type PinStatus = "exact" | "range" | "none";
 
@@ -218,70 +216,4 @@ export function scanDependencies(nodes: FileTreeNode[], path = ""): DepGroup[] {
     }
   }
   return results;
-}
-
-export function computeEvaluateLevelFromFiles(nodes: FileTreeNode[]): number {
-  const files = nodes || [];
-  const allPaths = listTreeFiles(files).map((entry) => entry.path.toLowerCase());
-  const hasReadme = allPaths.some(
-    (path) => path.endsWith("readme.md") || path.endsWith("readme.txt"),
-  );
-
-  const manifestPaths = allPaths.filter((path) => {
-    const base = path.split("/").pop() || "";
-    return !!getManifestParser(base);
-  });
-  const hasManifest = manifestPaths.length > 0;
-
-  const depGroups = scanDependencies(files);
-  const deps = depGroups.flatMap((group) => group.packages);
-  const hasTopPins = deps.some((dep) => dep.pinned === "exact");
-
-  const lockFiles = new Set([
-    "poetry.lock",
-    "pipfile.lock",
-    "uv.lock",
-    "pdm.lock",
-    "package-lock.json",
-    "yarn.lock",
-    "pnpm-lock.yaml",
-    "conda-lock.yml",
-    "conda-lock.yaml",
-  ]);
-  const hasLockfile = allPaths.some((path) => lockFiles.has(path.split("/").pop() || ""));
-
-  const hasContainer = allPaths.some((path) => {
-    const name = path.split("/").pop() || "";
-    return (
-      name === "dockerfile" ||
-      name === "containerfile" ||
-      name.startsWith("dockerfile.") ||
-      name.startsWith("containerfile.") ||
-      name === "docker-compose.yml" ||
-      name === "docker-compose.yaml"
-    );
-  });
-
-  const hasNix = allPaths.some((path) => path.endsWith(".nix"));
-  const hasBeyondSignals = allPaths.some((path) => {
-    const name = path.split("/").pop() || "";
-    return (
-      name.includes("reproduc") ||
-      name.includes("determin") ||
-      name.includes("provenance") ||
-      name.includes("hardware") ||
-      name.includes("swhid")
-    );
-  });
-
-  let level = 0;
-  if (hasReadme) level = 1;
-  if (hasManifest) level = 2;
-  if (hasTopPins) level = 3;
-  if (hasLockfile) level = 4;
-  if (hasContainer) level = 5;
-  if (hasNix) level = 6;
-  if (hasNix && hasBeyondSignals) level = 7;
-
-  return Math.max(0, Math.min(level, LEVELS.length - 1));
 }

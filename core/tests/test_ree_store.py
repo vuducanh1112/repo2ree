@@ -62,6 +62,14 @@ def test_metadata_roundtrip(tmp_path):
     assert read_back.status == original.status
 
 
+def test_ree_accepts_legacy_single_reproducibility_level():
+    ree = REE.model_validate({"name": "demo", "eval_level": 6, "repro_level": "L6"})
+
+    assert ree.dependency_level == 3
+    assert ree.environment_level == 2
+    assert ree.machine_level == 0
+
+
 def test_read_metadata_raises_when_absent(tmp_path):
     store = _store(tmp_path)
     store.ensure_dirs()

@@ -20,11 +20,10 @@ function buildRee(): ReeEditorViewModel {
 
 describe("assemblyRunRequests", () => {
   it("builds explicit evaluate request payloads", () => {
-    expect(buildEvaluateAssemblyRunRequest({ strict: true, swhid_check: false })).toEqual({
+    expect(buildEvaluateAssemblyRunRequest({ strict: true })).toEqual({
       scriptKey: "evaluate",
       params: {
         strict: true,
-        swhid_check: false,
       },
     });
   });

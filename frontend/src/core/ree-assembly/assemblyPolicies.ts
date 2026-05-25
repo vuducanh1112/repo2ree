@@ -65,14 +65,6 @@ export function shouldRefreshWorkspaceAfterAssemblyStep(key: string): boolean {
   return WORKSPACE_REFRESH_ASSEMBLY_STEPS.has(key as ReeAssemblyOperationKey);
 }
 
-export function deriveReeAssemblyStepLevel(
-  key: string,
-  currentLevel: number,
-  evaluatedLevel: number,
-): number {
-  return key === "evaluate" ? evaluatedLevel : currentLevel;
-}
-
 interface AssemblyRunCompletionPlan {
   actionState: "done";
   badge: true;

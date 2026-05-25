@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { ReeSpec } from "../ree/ReeSpec";
 import type { ActionStates, Badges, ReeAssemblyOperationParams, Timestamps } from "../ree/ReeTypes";
-import type { EvaluationState } from "../review/EvaluationState";
+import { type EvaluationState, emptyEvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "./WorkspaceSourceState";
 
 export interface SourceChangeInput {
@@ -38,7 +38,6 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
       sbom: "",
       swhid: "",
       detected_dependencies: "",
-      repro_level: "",
       zenodo_doi: "",
     },
     workspaceSourceState: {
@@ -53,10 +52,7 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
       ...input.artifactStatus,
       runtimeIncluded: false,
     },
-    evaluationState: {
-      ...input.evaluationState,
-      evalLevel: 0,
-    },
+    evaluationState: emptyEvaluationState(),
     badges: {},
     timestamps: {},
     actionStates: {},

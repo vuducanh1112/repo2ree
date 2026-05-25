@@ -16,7 +16,7 @@ export interface AppShellPageContainerProps {
   workspaceRemote: AppShellController["workspaceRemote"];
   assemblyRun: AppShellController["assemblyRun"];
   uiChrome: AppShellController["uiChrome"];
-  level: AppShellController["level"];
+  evaluation: AppShellController["evaluation"];
   currentReeFiles: AppShellController["currentReeFiles"];
   commands: AppShellController["commands"];
 }

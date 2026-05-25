@@ -3,7 +3,6 @@ import { createEmptyReeSpec } from "../ree/ReeSpec";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import {
   buildAssemblyRunParams,
-  deriveReeAssemblyStepLevel,
   isTerminalExecutionRunFailure,
   planAssemblyRunCompletion,
   planManualArtifactUpdateSuccess,
@@ -41,11 +40,6 @@ describe("assemblyRunPlanning", () => {
     expect(shouldRefreshWorkspaceAfterAssemblyStep("build")).toBe(true);
     expect(shouldRefreshWorkspaceAfterAssemblyStep("hbom")).toBe(true);
     expect(shouldRefreshWorkspaceAfterAssemblyStep("evaluate")).toBe(false);
-  });
-
-  it("recomputes level only for evaluate runs", () => {
-    expect(deriveReeAssemblyStepLevel("evaluate", 2, 4)).toBe(4);
-    expect(deriveReeAssemblyStepLevel("build", 2, 4)).toBe(2);
   });
 
   it("plans generic assembly run completion state", () => {

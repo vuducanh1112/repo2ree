@@ -70,7 +70,6 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
   const { runAction, runAssemblyStep, cancelAction } = useReeAssemblyRuns({
     dispatch,
     ree,
-    level: ree.evalLevel ?? 0,
     workspaceFiles,
     persistWorkspaceFile,
     refreshWorkspace,
@@ -140,7 +139,11 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
     inclusionState: reeEditorState.inclusionState,
     workspaceRemote,
     assemblyRun,
-    level: ree.evalLevel ?? 0,
+    evaluation: {
+      dependencyLevel: ree.dependencyLevel ?? 0,
+      environmentLevel: ree.environmentLevel ?? 0,
+      machineLevel: ree.machineLevel ?? 0,
+    },
     currentReeFiles: reeArtifactFiles,
     commands,
     reviewer: {

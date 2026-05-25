@@ -16,7 +16,6 @@ function buildWorkspaceState(): SourceChangeInput {
       activation_script: "activate.sh",
       sbom: "sbom.json",
       swhid: "swh:1:dir:abc",
-      repro_level: "L3",
       detected_dependencies: "3 dependencies",
     },
     workspaceSourceState: {
@@ -29,7 +28,7 @@ function buildWorkspaceState(): SourceChangeInput {
     artifactStatus: {
       runtimeIncluded: true,
     },
-    evaluationState: { evalLevel: 3 },
+    evaluationState: { dependencyLevel: 3 },
     actionStates: {},
     badges: {},
     timestamps: {},
@@ -50,6 +49,6 @@ describe("computeSourceChangeConsequences", () => {
     expect(reset.sourceSnapshotArchiveName).toBe("");
     expect(reset.reeSpec.runtime).toBe("");
     expect(reset.reeSpec.origin_url).toBe("");
-    expect(reset.evaluationState.evalLevel).toBe(0);
+    expect(reset.evaluationState.dependencyLevel).toBe(0);
   });
 });

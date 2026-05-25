@@ -1,8 +1,6 @@
 import type { ReeSpec } from "../ree/ReeSpec";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 
-export type { Level } from "../review/Level";
-
 export interface ReeAssemblyBadge {
   label: string;
   color: string;

@@ -79,6 +79,12 @@ export class ReeApi {
     });
   }
 
+  async getEvaluateReport(reeId: ReeId): Promise<unknown> {
+    return this.client.request<unknown>(endpoints.reeEvaluateReport(reeId), {
+      method: "GET",
+    });
+  }
+
   async patchReeDraft(reeId: ReeId, payload: PatchReeRequestDto): Promise<ReeDetailDto> {
     return this.client.request<ReeDetailDto>(endpoints.reeDraft(reeId), {
       method: "PATCH",

@@ -2,7 +2,10 @@ import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
 import { enforceSourceOriginRules } from "../../../../core/artifact/sourceOriginRules";
 import { createEmptyReeSpec } from "../../../../core/ree/ReeSpec";
 import type { ReeAssemblyOperationParams } from "../../../../core/ree/ReeTypes";
-import type { EvaluationState } from "../../../../core/review/EvaluationState";
+import {
+  type EvaluationState,
+  emptyEvaluationState,
+} from "../../../../core/review/EvaluationState";
 import { computeSourceChangeConsequences } from "../../../../core/workspace/sourceChangeConsequences";
 import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
 import {
@@ -42,7 +45,7 @@ export function createInitialState(
       runtimeIncluded: false,
       downloadableFiles: [],
     },
-    evaluationState: initialState.evaluationState ?? { evalLevel: 0 },
+    evaluationState: initialState.evaluationState ?? emptyEvaluationState(),
   });
   return {
     reeDraft: {

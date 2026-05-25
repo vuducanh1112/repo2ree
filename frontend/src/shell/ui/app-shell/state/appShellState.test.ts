@@ -26,7 +26,7 @@ function buildRee(): ReeEditorViewModel {
     sourceIncluded: false,
     runtimeIncluded: false,
     downloadableFiles: [],
-    evalLevel: 0,
+    dependencyLevel: 0,
   };
 }
 
@@ -44,7 +44,6 @@ function toInitialSlices(ree: ReeEditorViewModel) {
       swhid: ree.swhid,
       zenodo_doi: ree.zenodo_doi,
       dataverse_doi: ree.dataverse_doi,
-      repro_level: ree.repro_level,
       detected_dependencies: ree.detected_dependencies,
       experiments: ree.experiments,
       hardware_description: ree.hardware_description,
@@ -64,7 +63,7 @@ function toInitialSlices(ree: ReeEditorViewModel) {
       sealHash: ree.sealHash,
     },
     evaluationState: {
-      evalLevel: ree.evalLevel,
+      dependencyLevel: ree.dependencyLevel,
     },
   };
 }
@@ -196,8 +195,8 @@ describe("appShellState", () => {
 
   it("updates evaluation state via named transition", () => {
     const initial = createInitialState(toInitialSlices(buildRee()));
-    const next = appShellReducer(initial, setEvaluationState({ evalLevel: 3 }));
-    expect(next.assemblyRun.evaluationState.evalLevel).toBe(3);
+    const next = appShellReducer(initial, setEvaluationState({ dependencyLevel: 3 }));
+    expect(next.assemblyRun.evaluationState.dependencyLevel).toBe(3);
   });
 
   it("marks a run key as loading via named transition", () => {

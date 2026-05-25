@@ -19,7 +19,6 @@ interface LevelMeta {
 
 interface SealedSealCardProps {
   ree: ReeEditorViewModel;
-  level: number;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
   sealRef: React.RefObject<HTMLDivElement>;
@@ -29,7 +28,6 @@ interface SealedSealCardProps {
 
 export function SealedSealCard({
   ree,
-  level,
   onPreviewReviewer,
   onDownloadRee,
   sealRef,
@@ -96,7 +94,7 @@ export function SealedSealCard({
             border: `1px solid ${currentLevelMeta.color}40`,
           }}
         >
-          L{level} · {currentLevelMeta.label}
+          {currentLevelMeta.label}
         </span>
       </div>
       <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>

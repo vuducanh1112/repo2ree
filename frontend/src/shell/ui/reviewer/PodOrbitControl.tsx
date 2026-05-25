@@ -1,13 +1,15 @@
-import type { Level, StepState } from "../../../core/ree-assembly/assemblyStepTypes";
+import type { StepState } from "../../../core/ree-assembly/assemblyStepTypes";
+import type { StandingMeta } from "../../../core/review/axes";
+import type { EvaluationState } from "../../../core/review/EvaluationState";
 import { PodWidget } from "../app-shell/pages/overview/PodWidget";
 import { Ic } from "../shared/components/Icon";
-import { LevelBadge } from "../shared/components/LevelBadge";
+import { AxisBadges } from "../shared/components/LevelBadge";
 import { C, F } from "../theme/theme";
 import { REACTIVATION_STEPS } from "./reviewerSupport";
 
 interface PodOrbitControlProps {
-  level: number;
-  levelMeta: Level;
+  evaluation: EvaluationState;
+  levelMeta: StandingMeta;
   stepStates: Record<string, StepState>;
   allDone: boolean;
   isRunningAll: boolean;
@@ -15,7 +17,7 @@ interface PodOrbitControlProps {
 }
 
 export function PodOrbitControl({
-  level,
+  evaluation,
   levelMeta,
   stepStates,
   allDone,
@@ -53,7 +55,7 @@ export function PodOrbitControl({
             whiteSpace: "nowrap",
           }}
         >
-          <LevelBadge level={level} large />
+          <AxisBadges evaluation={evaluation} large />
         </div>
         <svg
           width={podSize}
@@ -120,7 +122,7 @@ export function PodOrbitControl({
           })}
         </svg>
         <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
-          <PodWidget level={level} size={podSize} />
+          <PodWidget evaluation={evaluation} size={podSize} />
         </div>
       </div>
 

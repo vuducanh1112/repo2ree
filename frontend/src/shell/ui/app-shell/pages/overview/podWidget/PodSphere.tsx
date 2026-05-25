@@ -1,20 +1,27 @@
-import { LEVELS } from "../../../../../../core/review/levels";
+import {
+  axisFraction,
+  axisStandings,
+  bottleneckAxis,
+  DEPENDENCY_AXIS,
+} from "../../../../../../core/review/axes";
+import type { EvaluationState } from "../../../../../../core/review/EvaluationState";
 import { F } from "../../../../theme/theme";
 import { PodBolt } from "./PodBolt";
 import { PodBoltRing } from "./PodBoltRing";
 import { PodDepGraph } from "./PodDepGraph";
-import { type LevelMeta, POD_M } from "./podWidgetData";
+import { POD_M } from "./podWidgetData";
 
 interface PodSphereProps {
   CX: number;
   CY: number;
   SR: number;
-  level: number;
+  evaluation: EvaluationState;
 }
 
-export function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
-  const levelMeta = LEVELS[Math.min(level, 7)] as LevelMeta,
-    frac = level / 7;
+export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
+  const tint = bottleneckAxis(evaluation).axis;
+  const standings = axisStandings(evaluation);
+  const depLevel = evaluation.dependencyLevel ?? 0;
   return (
     <g>
       <defs>
@@ -24,12 +31,12 @@ export function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
           <stop offset="100%" stopColor={POD_M.shadow} />
         </radialGradient>
         <radialGradient id="ovPortholeBg" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={levelMeta.bg} />
-          <stop offset="100%" stopColor={levelMeta.bg} stopOpacity="0.55" />
+          <stop offset="0%" stopColor={tint.bg} />
+          <stop offset="100%" stopColor={tint.bg} stopOpacity="0.55" />
         </radialGradient>
         <radialGradient id="ovPortholeGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={levelMeta.color} stopOpacity="0.12" />
-          <stop offset="100%" stopColor={levelMeta.color} stopOpacity="0" />
+          <stop offset="0%" stopColor={tint.color} stopOpacity="0.12" />
+          <stop offset="100%" stopColor={tint.color} stopOpacity="0" />
         </radialGradient>
         <radialGradient id="ovPortholeGloss" cx="32%" cy="28%" r="56%">
           <stop offset="0%" stopColor="#fff" stopOpacity="0.55" />
@@ -124,26 +131,29 @@ export function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
       <circle cx={CX} cy={CY} r={SR * 0.48} fill={POD_M.deep} stroke={POD_M.weld} strokeWidth="2" />
       <circle cx={CX} cy={CY} r={SR * 0.46} fill="#050e1a" stroke={POD_M.deep} strokeWidth="1" />
       <circle cx={CX} cy={CY} r={SR * 0.45} fill="url(#ovPortholeBg)" />
-      {level > 0 &&
-        (() => {
-          const progressRadius = SR * 0.43,
-            ang = frac * 2 * Math.PI,
-            x2 = CX + progressRadius * Math.sin(ang),
-            y2 = CY - progressRadius * Math.cos(ang);
-          return (
-            <path
-              d={`M ${CX} ${CY - progressRadius} A ${progressRadius} ${progressRadius} 0 ${frac > 0.5 ? 1 : 0} 1 ${x2} ${y2}`}
-              fill="none"
-              stroke={levelMeta.color}
-              strokeWidth="3.5"
-              opacity="0.5"
-              strokeLinecap="round"
-            />
-          );
-        })()}
+      {/* One progress arc per reproducibility axis, concentric. */}
+      {standings.map(({ axis, level }, idx) => {
+        const frac = axisFraction(axis, level);
+        if (frac <= 0) return null;
+        const progressRadius = SR * (0.43 - idx * 0.07);
+        const ang = frac * 2 * Math.PI;
+        const x2 = CX + progressRadius * Math.sin(ang);
+        const y2 = CY - progressRadius * Math.cos(ang);
+        return (
+          <path
+            key={axis.key}
+            d={`M ${CX} ${CY - progressRadius} A ${progressRadius} ${progressRadius} 0 ${frac > 0.5 ? 1 : 0} 1 ${x2} ${y2}`}
+            fill="none"
+            stroke={axis.color}
+            strokeWidth="3.5"
+            opacity="0.85"
+            strokeLinecap="round"
+          />
+        );
+      })}
       <circle cx={CX} cy={CY} r={SR * 0.44} fill="url(#ovPortholeGlow)" />
       <g transform={`translate(${CX},${CY})`} clipPath="url(#ovPortholeClip)">
-        <PodDepGraph level={level} levelMeta={levelMeta} />
+        <PodDepGraph level={depLevel} color={DEPENDENCY_AXIS.color} />
       </g>
       <circle cx={CX} cy={CY} r={SR * 0.45} fill="url(#ovPortholeGloss)" opacity="0.5" />
       <ellipse
@@ -155,16 +165,14 @@ export function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
         opacity="0.32"
         transform={`rotate(-22,${CX - SR * 0.14},${CY - SR * 0.18})`}
       />
-      {[
-        { a: -55, col: "#16a34a" },
-        { a: 55, col: level >= 4 ? "#0ea5e9" : POD_M.shadow },
-        { a: 125, col: level >= 7 ? "#059669" : POD_M.shadow },
-        { a: 235, col: POD_M.shadow },
-      ].map((indicator) => {
-        const px = CX + SR * 0.82 * Math.cos((indicator.a * Math.PI) / 180),
-          py = CY + SR * 0.82 * Math.sin((indicator.a * Math.PI) / 180);
+      {/* One indicator light per axis: lit in its accent color once the axis is topped out. */}
+      {standings.map(({ axis, level }, idx) => {
+        const angle = -55 + idx * 90;
+        const px = CX + SR * 0.82 * Math.cos((angle * Math.PI) / 180);
+        const py = CY + SR * 0.82 * Math.sin((angle * Math.PI) / 180);
+        const lit = axisFraction(axis, level) >= 1;
         return (
-          <g key={indicator.a}>
+          <g key={axis.key}>
             <rect
               x={px - 5}
               y={py - 5}
@@ -175,7 +183,7 @@ export function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
               stroke={POD_M.deep}
               strokeWidth="0.8"
             />
-            <circle cx={px} cy={py} r="3" fill={indicator.col} opacity="0.9" />
+            <circle cx={px} cy={py} r="3" fill={lit ? axis.color : POD_M.shadow} opacity="0.9" />
           </g>
         );
       })}
@@ -195,17 +203,17 @@ export function PodSphere({ CX, CY, SR, level }: PodSphereProps) {
         textAnchor="middle"
         fontSize="7"
         fontFamily={F.mono}
-        fill={levelMeta.ink}
+        fill={tint.ink}
         letterSpacing="1.5"
       >
-        {levelMeta.short}
+        {tint.short}
       </text>
       <circle
         cx={CX}
         cy={CY}
         r={SR}
         fill="none"
-        stroke={levelMeta.color}
+        stroke={tint.color}
         strokeWidth="1.5"
         opacity="0.4"
       />

@@ -2,7 +2,13 @@ import React from "react";
 import type { ArtifactStatus } from "../../../../../core/artifact/ArtifactStatus";
 import type { Badges, Timestamps } from "../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
-import { LEVELS } from "../../../../../core/review/levels";
+import {
+  axisFraction,
+  axisStandings,
+  axisStepLabel,
+  standingMeta,
+} from "../../../../../core/review/axes";
+import type { EvaluationState } from "../../../../../core/review/EvaluationState";
 import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../../../../core/workspace/WorkspaceSourceState";
 import { Ic } from "../../../shared/components/Icon";
@@ -68,14 +74,14 @@ function OverviewReadinessMeter({
 
 export function OverviewHeader({
   ree,
-  level,
+  evaluation,
   badges,
 }: {
   ree: ReeEditorViewModel;
-  level: number;
+  evaluation: EvaluationState;
   badges: Badges;
 }) {
-  const levelMeta = LEVELS[Math.min(level, 7)];
+  const levelMeta = standingMeta(evaluation);
   const cableItems = buildSealCableItems(ree, badges);
   const live = cableItems.filter((item) => item.live).length;
 
@@ -126,7 +132,7 @@ export function OverviewHeader({
 
 interface OverviewColumnsProps {
   ree: ReeEditorViewModel;
-  level: number;
+  evaluation: EvaluationState;
   badges: Badges;
   timestamps: Timestamps;
   files: FileTreeNode[];
@@ -178,7 +184,7 @@ export function OverviewColumns(props: OverviewColumnsProps) {
         archiveRef={refs.archiveRef}
         activationRef={refs.activationRef}
         podSvgRef={refs.podSvgRef}
-        level={props.level}
+        evaluation={props.evaluation}
         badges={props.badges}
         ree={props.ree}
       />
@@ -249,12 +255,12 @@ export function OverviewColumns(props: OverviewColumnsProps) {
           zIndex: 1,
         }}
       >
-        <PodWidget level={props.level} svgRef={refs.podSvgRef} size={props.podSize} />
+        <PodWidget evaluation={props.evaluation} svgRef={refs.podSvgRef} size={props.podSize} />
 
         <CenterSealStrip
           ree={props.ree}
           locked={props.locked}
-          level={props.level}
+          evaluation={props.evaluation}
           badges={props.badges}
           onSeal={props.onSeal}
           onPreviewReviewer={props.onPreviewReviewer}
@@ -267,7 +273,7 @@ export function OverviewColumns(props: OverviewColumnsProps) {
         ree={props.ree}
         badges={props.badges}
         timestamps={props.timestamps}
-        level={props.level}
+        evaluation={props.evaluation}
         onNavigate={props.onNavigate}
         onGoField={props.onGoField}
         swhRef={refs.swhRef}
@@ -279,93 +285,100 @@ export function OverviewColumns(props: OverviewColumnsProps) {
   );
 }
 
-export function OverviewLevelStrip({ level }: { level: number }) {
+export function OverviewLevelStrip({ evaluation }: { evaluation: EvaluationState }) {
   return (
     <div style={{ ...lgStyles.overviewPanel, marginTop: 20, padding: "16px 20px" }}>
-      <div
-        style={{
-          ...lgStyles.overviewLabel,
-          marginBottom: 14,
-        }}
-      >
-        Reproducibility Level
-      </div>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        {LEVELS.map((levelConfig, i) => {
-          const isReached = i <= level;
-          const isCurrent = i === level;
-          const isLast = i === LEVELS.length - 1;
-          return (
-            <React.Fragment key={levelConfig.n}>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 5,
-                  flex: 1,
-                }}
-              >
-                <div
-                  style={{
-                    width: isCurrent ? 14 : 9,
-                    height: isCurrent ? 14 : 9,
-                    borderRadius: "50%",
-                    background: isReached ? levelConfig.color : "rgba(148, 163, 184, 0.4)",
-                    border: isCurrent ? `2.5px solid ${levelConfig.color}` : "none",
-                    boxShadow: isCurrent ? `0 0 0 4px ${levelConfig.color}22` : "none",
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    fontFamily: F.mono,
-                    letterSpacing: 0.4,
-                    color: isReached ? levelConfig.ink : lgColors.textMuted,
-                    background: isReached ? `${levelConfig.color}18` : "rgba(241, 245, 249, 0.7)",
-                    border: `1px solid ${isReached ? `${levelConfig.color}40` : "rgba(148, 163, 184, 0.4)"}`,
-                    borderRadius: 3,
-                    padding: "0 5px",
-                    lineHeight: "18px",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  L{i}
-                </span>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: isCurrent ? 700 : 400,
-                    color: isCurrent
-                      ? lgColors.text
-                      : isReached
-                        ? lgColors.textMid
-                        : lgColors.textMuted,
-                    fontFamily: F.sans,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {levelConfig.label}
-                </span>
-              </div>
-              {!isLast && (
-                <div
-                  style={{
-                    height: 2,
-                    flex: 1,
-                    maxWidth: 28,
-                    background: i < level ? levelConfig.color : "rgba(148, 163, 184, 0.4)",
-                    borderRadius: 1,
-                    flexShrink: 0,
-                    marginBottom: 34,
-                  }}
-                />
-              )}
-            </React.Fragment>
-          );
-        })}
+      <div style={{ ...lgStyles.overviewLabel, marginBottom: 14 }}>Reproducibility Axes</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {axisStandings(evaluation).map(({ axis, level }) => (
+          <div key={axis.key} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                fontFamily: F.sans,
+                color: lgColors.text,
+                width: 96,
+                flexShrink: 0,
+              }}
+            >
+              {axis.label}
+            </span>
+            <div style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
+              {axis.steps.map((stepLabel, i) => {
+                const reached = i <= level;
+                const isCurrent = i === level;
+                const isLast = i === axis.steps.length - 1;
+                return (
+                  <React.Fragment key={stepLabel}>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: isCurrent ? 14 : 9,
+                          height: isCurrent ? 14 : 9,
+                          borderRadius: "50%",
+                          background: reached ? axis.color : "rgba(148, 163, 184, 0.4)",
+                          border: isCurrent ? `2.5px solid ${axis.color}` : "none",
+                          boxShadow: isCurrent ? `0 0 0 4px ${axis.color}22` : "none",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: isCurrent ? 700 : 400,
+                          color: isCurrent
+                            ? lgColors.text
+                            : reached
+                              ? lgColors.textMid
+                              : lgColors.textMuted,
+                          fontFamily: F.sans,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {stepLabel}
+                      </span>
+                    </div>
+                    {!isLast && (
+                      <div
+                        style={{
+                          height: 2,
+                          flex: 1,
+                          background:
+                            i < level && axisFraction(axis, level) > 0
+                              ? axis.color
+                              : "rgba(148, 163, 184, 0.4)",
+                          borderRadius: 1,
+                          marginBottom: 18,
+                        }}
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+            <span
+              style={{
+                fontSize: 10,
+                fontFamily: F.mono,
+                fontWeight: 700,
+                color: axis.color,
+                width: 96,
+                textAlign: "right",
+                flexShrink: 0,
+              }}
+            >
+              {axisStepLabel(axis, level)}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
