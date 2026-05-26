@@ -4,11 +4,16 @@ import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import {
   createEmptyReeCatalogMetadata,
+  type ExpectedOutput,
   type ReeCatalogMetadata,
   type ReeContributor,
   type ReeExperiment,
   type ReeSpec,
 } from "./ReeSpec";
+
+// ================================================
+// Types
+// ================================================
 
 interface MapRawReeDraftToReeOptions {
   reeDraft: Record<string, unknown> | null | undefined;
@@ -22,6 +27,10 @@ export interface RawReeDraftSlices {
   artifactStatus: ArtifactStatus;
   evaluationState: EvaluationState;
 }
+
+// ================================================
+// Helpers
+// ================================================
 
 function mapRawCatalogMetadata(value: unknown): ReeCatalogMetadata {
   const metadata = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -53,6 +62,10 @@ function mapRawCatalogMetadata(value: unknown): ReeCatalogMetadata {
   };
 }
 
+// ================================================
+// Mapper
+// ================================================
+
 export function mapRawReeDraftToSlices({
   reeDraft,
   fallbackName,
@@ -66,6 +79,9 @@ export function mapRawReeDraftToSlices({
           name: String(item.name ?? ""),
           description: String(item.description ?? ""),
           command: String(item.command ?? ""),
+          ...(Array.isArray(item.outputs) && item.outputs.length > 0
+            ? { outputs: item.outputs as ExpectedOutput[] }
+            : {}),
         };
       })
     : [];

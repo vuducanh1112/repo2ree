@@ -25,6 +25,10 @@ import {
   ExperimentsSuggestionsAside,
 } from "./ExperimentsPageSections";
 
+// ================================================
+// Page component
+// ================================================
+
 export function PageExperiments({
   reeSpec,
   locked,
@@ -34,6 +38,10 @@ export function PageExperiments({
   focusedField: _focusedField,
 }: PageExperimentsProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  // ================================================
+  // Derived state
+  // ================================================
 
   const experiments: ReeExperiment[] = reeSpec.experiments || [];
 
@@ -75,10 +83,19 @@ export function PageExperiments({
 
   const selectedExperiment = selectedIndex !== null ? (experiments[selectedIndex] ?? null) : null;
 
+  // ================================================
+  // Coverage stats
+  // ================================================
+
   const total = experiments.length;
   const withName = experiments.filter((e) => e.name.trim() !== "").length;
   const withCommand = experiments.filter((e) => e.command.trim() !== "").length;
   const withDescription = experiments.filter((e) => e.description.trim() !== "").length;
+  const withOutputs = experiments.filter((e) => (e.outputs?.length ?? 0) > 0).length;
+
+  // ================================================
+  // Render
+  // ================================================
 
   const headerBadges = (
     <>
@@ -114,6 +131,10 @@ export function PageExperiments({
             <ExperimentDetail
               experiment={selectedExperiment}
               index={selectedIndex}
+              otherNames={experiments
+                .filter((_, i) => i !== selectedIndex)
+                .map((e) => e.name.trim())
+                .filter(Boolean)}
               locked={locked}
               onUpdate={(patch) => updateExperiment(selectedIndex, patch)}
               onBack={() => {
@@ -184,6 +205,7 @@ export function PageExperiments({
               withName={withName}
               withCommand={withCommand}
               withDescription={withDescription}
+              withOutputs={withOutputs}
             />
             <ExperimentsSuggestionsAside locked={locked} onAdd={addFromSuggestion} />
             <ExperimentsAboutAside />

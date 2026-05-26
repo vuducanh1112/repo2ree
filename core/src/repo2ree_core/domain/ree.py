@@ -14,8 +14,17 @@ from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.experiment import Experiment
 
 
+# ================================================
+# Types
+# ================================================
+
 SourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]
 SourceAcquiredBy = Literal["", "download", "upload"]
+
+
+# ================================================
+# Helpers
+# ================================================
 
 _HBOM_COMPONENT_FIELD_MAP = {
     "cpus": "cpus",
@@ -67,6 +76,11 @@ def _normalize_hbom_payload(value: Mapping[str, Any]) -> dict[str, Any]:
         normalized["extra_info"][key] = item
 
     return normalized
+
+
+# ================================================
+# Data Models
+# ================================================
 
 
 class Contributor(BaseModel):
@@ -165,6 +179,13 @@ class REE(BaseModel):
         if value in (None, ""):
             return ReeCatalogMetadata()
         return value
+
+    @model_validator(mode="after")
+    def _unique_experiment_names(self) -> "REE":
+        names = [e.name for e in self.experiments if e.name]
+        if len(names) != len(set(names)):
+            raise ValueError("experiment names must be unique")
+        return self
 
     @classmethod
     def from_metadata(cls, metadata: Mapping[str, Any]) -> "REE":

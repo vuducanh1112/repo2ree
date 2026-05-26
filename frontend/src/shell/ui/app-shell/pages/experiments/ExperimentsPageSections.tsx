@@ -1,6 +1,11 @@
 import type React from "react";
 import { useState } from "react";
-import type { ReeExperiment } from "../../../../../core/ree/ReeSpec";
+import type {
+  ExpectedOutput,
+  OutputMatch,
+  OutputSource,
+  ReeExperiment,
+} from "../../../../../core/ree/ReeSpec";
 import { Ic } from "../../../shared/components/Icon";
 import {
   lgActionButton,
@@ -44,7 +49,9 @@ const EXPERIMENT_SUGGESTIONS: ExperimentSuggestion[] = [
   },
 ];
 
-// ── Catalog (cards) ──────────────────────────────────────────────────────────
+// ================================================
+// Catalog (cards)
+// ================================================
 
 export function ExperimentCardList({
   experiments,
@@ -95,6 +102,7 @@ function ExperimentCard({
   const name = experiment.name.trim();
   const command = experiment.command.trim();
   const description = experiment.description.trim();
+  const outputCount = experiment.outputs?.length ?? 0;
 
   return (
     <div
@@ -169,6 +177,21 @@ function ExperimentCard({
           >
             {name || "untitled experiment"}
           </h3>
+          {outputCount > 0 && (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: lgColors.success,
+                background: "rgba(220, 252, 231, 0.85)",
+                border: "1px solid rgba(34, 197, 94, 0.35)",
+                borderRadius: 99,
+                padding: "2px 7px",
+              }}
+            >
+              {outputCount} {outputCount === 1 ? "output" : "outputs"}
+            </span>
+          )}
           <span
             style={{
               color: hovered ? lgColors.blue : lgColors.textMuted,
@@ -287,11 +310,14 @@ function ExperimentEmptyState({ locked, onAdd }: { locked: boolean; onAdd: () =>
   );
 }
 
-// ── Detail view ──────────────────────────────────────────────────────────────
+// ================================================
+// Detail view
+// ================================================
 
 export function ExperimentDetail({
   experiment,
   index,
+  otherNames,
   locked,
   onUpdate,
   onBack,
@@ -299,14 +325,25 @@ export function ExperimentDetail({
 }: {
   experiment: ReeExperiment;
   index: number;
+  otherNames: string[];
   locked: boolean;
   onUpdate: (patch: Partial<ReeExperiment>) => void;
   onBack: () => void;
   onRemove: () => void;
 }) {
+  const trimmedName = experiment.name.trim();
+  const isDuplicateName = trimmedName !== "" && otherNames.includes(trimmedName);
+  const canRun = trimmedName !== "" && !isDuplicateName;
+
   return (
     <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-      <DetailBreadcrumb index={index} locked={locked} onBack={onBack} onRemove={onRemove} />
+      <DetailBreadcrumb
+        index={index}
+        locked={locked}
+        canRun={canRun}
+        onBack={onBack}
+        onRemove={onRemove}
+      />
 
       <div style={{ ...lgStyles.sectionBody, display: "flex", flexDirection: "column", gap: 18 }}>
         <DetailField label="Name" required>
@@ -315,8 +352,16 @@ export function ExperimentDetail({
             value={experiment.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
             placeholder="smoke-test"
-            style={lgInput(locked)}
+            style={{
+              ...lgInput(locked),
+              ...(isDuplicateName ? { borderColor: "rgba(239, 68, 68, 0.7)" } : {}),
+            }}
           />
+          {isDuplicateName && (
+            <span style={{ fontSize: 11, color: lgColors.required, marginTop: 2 }}>
+              Another experiment already uses this name.
+            </span>
+          )}
         </DetailField>
 
         <DetailField label="Description" help="What this experiment verifies in the REE.">
@@ -340,13 +385,30 @@ export function ExperimentDetail({
           />
         </DetailField>
 
-        <DetailPlaceholder label="Results" hint="Available after the first run." />
-        <DetailPlaceholder label="Traces" hint="Captured artefacts will appear here." />
+        <OutputsEditor
+          outputs={experiment.outputs}
+          locked={locked}
+          onChange={(outputs) => onUpdate({ outputs })}
+        />
       </div>
 
       <div style={lgStyles.footer}>
-        <span style={{ color: lgColors.textMuted, fontSize: 12 }}>Edits save automatically.</span>
-        <button type="button" onClick={onBack} style={lgNextButton()}>
+        <span style={{ color: lgColors.textMuted, fontSize: 12 }}>
+          {!locked && trimmedName === ""
+            ? "A name is required."
+            : !locked && isDuplicateName
+              ? "Fix the duplicate name to continue."
+              : "Edits save automatically."}
+        </span>
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={!locked && !canRun}
+          style={{
+            ...lgNextButton(),
+            ...(!locked && !canRun ? { opacity: 0.45, cursor: "not-allowed" } : {}),
+          }}
+        >
           {Ic.check(15)} Save & back to catalog
         </button>
       </div>
@@ -357,11 +419,13 @@ export function ExperimentDetail({
 function DetailBreadcrumb({
   index,
   locked,
+  canRun,
   onBack,
   onRemove,
 }: {
   index: number;
   locked: boolean;
+  canRun: boolean;
   onBack: () => void;
   onRemove: () => void;
 }) {
@@ -411,7 +475,7 @@ function DetailBreadcrumb({
       <button
         type="button"
         disabled
-        title="Run is not yet wired up"
+        title={canRun ? "Run is not yet wired up" : "Add a unique name before running"}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -424,6 +488,7 @@ function DetailBreadcrumb({
           fontWeight: 700,
           fontSize: 12,
           cursor: "not-allowed",
+          opacity: canRun ? 1 : 0.45,
         }}
       >
         {Ic.play(12)} Run
@@ -471,46 +536,275 @@ function DetailField({
   );
 }
 
-function DetailPlaceholder({ label, hint }: { label: string; hint: string }) {
+// ================================================
+// Expected outputs editor
+// ================================================
+
+function OutputsEditor({
+  outputs,
+  locked,
+  onChange,
+}: {
+  outputs: ExpectedOutput[] | undefined;
+  locked: boolean;
+  onChange: (outputs: ExpectedOutput[]) => void;
+}) {
+  const list = outputs ?? [];
+
+  const addOutput = () => {
+    onChange([...list, { source: { kind: "stdout" }, match: { mode: "contains", value: "" } }]);
+  };
+
+  const removeOutput = (i: number) => {
+    onChange(list.filter((_, idx) => idx !== i));
+  };
+
+  const updateOutput = (i: number, updated: ExpectedOutput) => {
+    onChange(list.map((o, idx) => (idx === i ? updated : o)));
+  };
+
   return (
     <div style={lgStyles.fieldFrame}>
-      <span style={lgStyles.label}>{label}</span>
-      <div
-        style={{
-          border: "1px dashed rgba(148, 163, 184, 0.45)",
-          borderRadius: 9,
-          padding: "18px 16px",
-          background: "rgba(248, 250, 252, 0.6)",
-          color: lgColors.textMuted,
-          fontSize: 12,
-          fontFamily: F.sans,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-        }}
-      >
-        <span style={{ display: "flex" }}>{Ic.info(13)}</span>
-        {hint}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={lgStyles.label}>Expected outputs</span>
+        {!locked && (
+          <button
+            type="button"
+            onClick={addOutput}
+            style={{
+              ...lgGlassButton(),
+              padding: "4px 10px",
+              fontSize: 11,
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
+            {Ic.plus(11)} Add
+          </button>
+        )}
       </div>
+      {list.length === 0 ? (
+        <div
+          style={{
+            border: "1px dashed rgba(148, 163, 184, 0.45)",
+            borderRadius: 9,
+            padding: "16px",
+            background: "rgba(248, 250, 252, 0.6)",
+            color: lgColors.textMuted,
+            fontSize: 12,
+            textAlign: "center",
+            lineHeight: 1.5,
+          }}
+        >
+          No expected outputs defined. Add one to make this experiment falsifiable.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {list.map((output, i) => (
+            <OutputRow
+              key={`out-${String(i)}`}
+              output={output}
+              locked={locked}
+              onUpdate={(updated) => updateOutput(i, updated)}
+              onRemove={() => removeOutput(i)}
+            />
+          ))}
+        </div>
+      )}
+      <span style={lgStyles.helper}>
+        Declare what this command must produce for the experiment to be considered reproduced.
+      </span>
     </div>
   );
 }
 
-// ── Aside cards ──────────────────────────────────────────────────────────────
+function OutputRow({
+  output,
+  locked,
+  onUpdate,
+  onRemove,
+}: {
+  output: ExpectedOutput;
+  locked: boolean;
+  onUpdate: (updated: ExpectedOutput) => void;
+  onRemove: () => void;
+}) {
+  const { source, match } = output;
+
+  const setSourceKind = (kind: OutputSource["kind"]) => {
+    const newSource: OutputSource =
+      kind === "file"
+        ? { kind: "file", path: source.kind === "file" ? source.path : "" }
+        : { kind };
+    onUpdate({ source: newSource, match });
+  };
+
+  const setPath = (path: string) => {
+    if (source.kind !== "file") return;
+    onUpdate({ source: { kind: "file", path }, match });
+  };
+
+  const setMatchMode = (mode: OutputMatch["mode"]) => {
+    const next: OutputMatch =
+      mode === "numeric"
+        ? { mode, value: match.value, epsilon: match.mode === "numeric" ? match.epsilon : 1e-6 }
+        : { mode, value: match.value };
+    onUpdate({ source, match: next });
+  };
+
+  const setMatchValue = (value: string) => {
+    onUpdate({ source, match: { ...match, value } });
+  };
+
+  const setEpsilon = (raw: string) => {
+    if (match.mode !== "numeric") return;
+    const parsed = Number.parseFloat(raw);
+    if (!Number.isNaN(parsed)) onUpdate({ source, match: { ...match, epsilon: parsed } });
+  };
+
+  const matchPlaceholder =
+    match.mode === "sha256"
+      ? "a3f5c7d1e8b2..."
+      : match.mode === "regex"
+        ? "accuracy: \\d+\\.\\d+"
+        : match.mode === "numeric"
+          ? "0.9542"
+          : match.mode === "custom"
+            ? "python validate.py"
+            : "PASSED";
+
+  const inlineInput: React.CSSProperties = {
+    ...lgInput(locked),
+    minHeight: "auto",
+    padding: "6px 10px",
+    fontSize: 12,
+    width: "auto",
+  };
+
+  const inlineLabel: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 700,
+    color: lgColors.textMuted,
+    minWidth: 44,
+    textAlign: "right",
+  };
+
+  return (
+    <div
+      style={{
+        border: "1px solid rgba(148, 163, 184, 0.32)",
+        borderRadius: 9,
+        padding: "10px 12px",
+        background: "rgba(248, 250, 252, 0.7)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <span style={inlineLabel}>Source</span>
+        <select
+          disabled={locked}
+          value={source.kind}
+          onChange={(e) => setSourceKind(e.target.value as OutputSource["kind"])}
+          style={{ ...inlineInput, minWidth: 90 }}
+        >
+          <option value="stdout">stdout</option>
+          <option value="stderr">stderr</option>
+          <option value="file">file</option>
+        </select>
+        {source.kind === "file" && (
+          <input
+            disabled={locked}
+            value={source.path}
+            onChange={(e) => setPath(e.target.value)}
+            placeholder="results/output.txt"
+            style={{ ...inlineInput, flex: 1, fontFamily: F.mono }}
+          />
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <span style={inlineLabel}>Match</span>
+        <select
+          disabled={locked}
+          value={match.mode}
+          onChange={(e) => setMatchMode(e.target.value as OutputMatch["mode"])}
+          style={{ ...inlineInput, minWidth: 90 }}
+        >
+          <option value="contains">contains</option>
+          <option value="regex">regex</option>
+          <option value="numeric">numeric</option>
+          <option value="sha256">sha256</option>
+          <option value="custom">custom</option>
+        </select>
+        <input
+          disabled={locked}
+          value={match.value}
+          onChange={(e) => setMatchValue(e.target.value)}
+          placeholder={matchPlaceholder}
+          style={{
+            ...inlineInput,
+            flex: 1,
+            fontFamily: match.mode === "contains" ? F.sans : F.mono,
+          }}
+        />
+        {match.mode === "numeric" && (
+          <>
+            <span style={{ fontSize: 12, color: lgColors.textMuted, whiteSpace: "nowrap" }}>±</span>
+            <input
+              disabled={locked}
+              value={match.epsilon}
+              onChange={(e) => setEpsilon(e.target.value)}
+              placeholder="1e-6"
+              style={{ ...inlineInput, width: 80, fontFamily: F.mono }}
+            />
+          </>
+        )}
+      </div>
+
+      {!locked && (
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={onRemove}
+            style={{
+              ...lgActionButton("danger"),
+              width: "auto",
+              padding: "3px 9px",
+              fontSize: 11,
+              fontWeight: 700,
+              gap: 5,
+            }}
+          >
+            {Ic.x(10)} Remove
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ================================================
+// Aside cards
+// ================================================
 
 export function ExperimentsCoverageAside({
   total,
   withName,
   withCommand,
   withDescription,
+  withOutputs,
 }: {
   total: number;
   withName: number;
   withCommand: number;
   withDescription: number;
+  withOutputs: number;
 }) {
-  const incomplete = total - Math.min(withName, withCommand);
+  const incomplete = total - Math.min(withName, withCommand, withOutputs);
   const allComplete = total > 0 && incomplete === 0;
   return (
     <section style={{ ...lgStyles.panel, padding: 16 }}>
@@ -528,6 +822,7 @@ export function ExperimentsCoverageAside({
           <CoverageRow label="With name" value={withName} total={total} />
           <CoverageRow label="With command" value={withCommand} total={total} />
           <CoverageRow label="With description" value={withDescription} total={total} />
+          <CoverageRow label="With outputs" value={withOutputs} total={total} />
           {!allComplete && (
             <div
               style={{

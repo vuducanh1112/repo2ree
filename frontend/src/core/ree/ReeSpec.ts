@@ -2,6 +2,11 @@
 // the product object. Keep this type narrow - only persisted REE fields. Anything
 // UI-, runtime-, or session-flavored belongs in the corresponding slice under
 // application/.
+
+// ================================================
+// Hardware types
+// ================================================
+
 export type DeviceModel = string;
 
 export interface CPUDefinition {
@@ -48,11 +53,34 @@ export interface NetworkDefinition {
   extra_info: Record<string, unknown>;
 }
 
+// ================================================
+// Experiment types
+// ================================================
+
+export type OutputSource = { kind: "file"; path: string } | { kind: "stdout" } | { kind: "stderr" };
+
+export type OutputMatch =
+  | { mode: "sha256"; value: string }
+  | { mode: "contains"; value: string }
+  | { mode: "regex"; value: string }
+  | { mode: "numeric"; value: string; epsilon: number }
+  | { mode: "custom"; value: string };
+
+export interface ExpectedOutput {
+  source: OutputSource;
+  match: OutputMatch;
+}
+
 export interface ReeExperiment {
   name: string;
   description: string;
   command: string;
+  outputs?: ExpectedOutput[];
 }
+
+// ================================================
+// REE types
+// ================================================
 
 export interface ReeContributor {
   identifier: string;
@@ -95,6 +123,10 @@ export interface ReeSpec {
   experiments?: ReeExperiment[];
   hardware_description: HBOM;
 }
+
+// ================================================
+// Factories
+// ================================================
 
 export function createEmptyReeCatalogMetadata(): ReeCatalogMetadata {
   return {
