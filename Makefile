@@ -53,6 +53,8 @@ api-tests:
 	@echo "Running api tests..."
 	pytest api/tests
 
+be-tests: core-tests api-tests
+
 fe-tests:
 	@echo "Running frontend unit tests..."
 	cd frontend && npx vitest run
