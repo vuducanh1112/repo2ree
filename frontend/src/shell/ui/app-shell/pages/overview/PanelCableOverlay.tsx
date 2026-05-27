@@ -52,6 +52,7 @@ export function PanelCableOverlay(props: PanelCableOverlayProps) {
       props.sealRef,
       props.archiveRef,
       props.activationRef,
+      props.experimentsRef,
       props.hbomRef,
     ];
     const targets = [props.containerRef, ...panelRefs] as React.RefObject<Element>[];

@@ -3,6 +3,7 @@ import type { Badges, Timestamps } from "../../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
 import type { EvaluationState } from "../../../../../../core/review/EvaluationState";
 import type { AppShellPage as AppShellPageType } from "../../../state/pages";
+import { ExperimentsPanel } from "./ExperimentsPanel";
 import { ActivationCard, ArchiveCard } from "./RightRailPanelArchiveActivation";
 import { EvaluateCard, SwhCard } from "./RightRailPanelSections";
 
@@ -17,6 +18,7 @@ interface RightRailPanelsProps {
   evaluateRef: React.RefObject<HTMLDivElement>;
   archiveRef: React.RefObject<HTMLDivElement>;
   activationRef: React.RefObject<HTMLDivElement>;
+  experimentsRef: React.RefObject<HTMLDivElement>;
 }
 
 export function RightRailPanels({
@@ -30,6 +32,7 @@ export function RightRailPanels({
   evaluateRef,
   archiveRef,
   activationRef,
+  experimentsRef,
 }: RightRailPanelsProps) {
   return (
     <div
@@ -59,6 +62,7 @@ export function RightRailPanels({
         onGoField={onGoField}
         activationRef={activationRef}
       />
+      <ExperimentsPanel ree={ree} experimentsRef={experimentsRef} onNavigate={onNavigate} />
     </div>
   );
 }

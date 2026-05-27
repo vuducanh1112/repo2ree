@@ -29,6 +29,7 @@ export function getPodCableStates(ree: ReeEditorViewModel, badges: Badges): PodC
   const swhConnected = !!ree.swhid?.trim();
   const evaluateConnected = !!badges?.evaluate;
   const sealConnected = !!ree.sealedAt;
+  const experimentsConnected = !!ree.experiments?.some((e) => e.command.trim() !== "");
 
   return [
     {
@@ -120,6 +121,16 @@ export function getPodCableStates(ree: ReeEditorViewModel, badges: Badges): PodC
       color: "#7c3aed",
       shadow: "#3b0764",
       connected: evaluateConnected,
+    },
+    {
+      id: "experiments",
+      label: "Experiments",
+      side: "left",
+      podSide: "right",
+      podRank: 5,
+      color: "#4f46e5",
+      shadow: "#3730a3",
+      connected: experimentsConnected,
     },
     {
       id: "seal",

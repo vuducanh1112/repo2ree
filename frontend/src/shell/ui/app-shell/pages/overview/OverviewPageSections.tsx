@@ -159,6 +159,7 @@ interface OverviewColumnsProps {
     sealRef: React.RefObject<HTMLDivElement>;
     archiveRef: React.RefObject<HTMLDivElement>;
     activationRef: React.RefObject<HTMLDivElement>;
+    experimentsRef: React.RefObject<HTMLDivElement>;
     podSvgRef: React.RefObject<SVGSVGElement>;
     podColumnRef: React.RefObject<HTMLDivElement>;
   };
@@ -183,6 +184,7 @@ export function OverviewColumns(props: OverviewColumnsProps) {
         sealRef={refs.sealRef}
         archiveRef={refs.archiveRef}
         activationRef={refs.activationRef}
+        experimentsRef={refs.experimentsRef}
         podSvgRef={refs.podSvgRef}
         evaluation={props.evaluation}
         badges={props.badges}
@@ -280,6 +282,7 @@ export function OverviewColumns(props: OverviewColumnsProps) {
         evaluateRef={refs.evaluateRef}
         archiveRef={refs.archiveRef}
         activationRef={refs.activationRef}
+        experimentsRef={refs.experimentsRef}
       />
     </div>
   );

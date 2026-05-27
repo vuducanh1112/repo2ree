@@ -706,6 +706,7 @@ export const lgStage = {
   archive: lgStageTint("#059669", "#065f46"),
   activation: lgStageTint("#7c3aed", "#5b21b6"),
   evaluate: lgStageTint("#7c3aed", "#5b21b6"),
+  experiments: lgStageTint("#4f46e5", "#3730a3"),
   danger: lgStageTint("#e11d48", "#be123c"),
 } as const;
 

@@ -61,6 +61,7 @@ export function PageOverview({
   const sealRef = useRef<HTMLDivElement>(null);
   const archiveRef = useRef<HTMLDivElement>(null);
   const activationRef = useRef<HTMLDivElement>(null);
+  const experimentsRef = useRef<HTMLDivElement>(null);
 
   const [podSize, setPodSize] = React.useState(480);
   React.useEffect(() => {
@@ -115,6 +116,7 @@ export function PageOverview({
             sealRef,
             archiveRef,
             activationRef,
+            experimentsRef,
             podSvgRef,
             podColumnRef,
           }}

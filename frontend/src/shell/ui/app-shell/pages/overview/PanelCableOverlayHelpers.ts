@@ -62,6 +62,7 @@ interface PanelRefs {
   sealRef: React.RefObject<HTMLDivElement>;
   archiveRef: React.RefObject<HTMLDivElement>;
   activationRef: React.RefObject<HTMLDivElement>;
+  experimentsRef: React.RefObject<HTMLDivElement>;
 }
 
 function svgPtToContainer(
@@ -179,6 +180,14 @@ function buildPanelSpecs(
       color: cableById.evaluate?.color || "#7c3aed",
       shadow: cableById.evaluate?.shadow || "#3b0764",
       connected: !!cableById.evaluate?.connected,
+    },
+    {
+      id: "experiments",
+      ref: refs.experimentsRef,
+      side: "left",
+      color: cableById.experiments?.color || "#4f46e5",
+      shadow: cableById.experiments?.shadow || "#3730a3",
+      connected: !!cableById.experiments?.connected,
     },
     {
       id: "seal",
