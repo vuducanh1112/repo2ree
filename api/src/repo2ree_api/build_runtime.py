@@ -5,10 +5,7 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.container.run_script import (
-    ContainerScriptRun,
-    run_script_in_container,
-)
+from repo2ree_core.working_environment import run_workspace_script
 from repo2ree_api.api_utils import (
     WORKSPACE_CONTROL_PREFIXES,
     require_non_empty_path,
@@ -68,50 +65,39 @@ def _docker_build_run(
     run_id: str,
     script_relative_path: str,
 ) -> tuple[str, dict[str, Any]]:
-    # Validate inside the worker before launching the container.
+    workspace = workspace_dir(ree_id).resolve()
+
+    # Validate path before provisioning the environment.
     resolve_relative_path(
-        workspace_dir(ree_id).resolve(),
+        workspace,
         script_relative_path,
         invalid_detail="Invalid workspace path",
         blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
     )
 
-    spec = ContainerScriptRun(
-        workspace_path=workspace_dir(ree_id).resolve(),
+    def _log(stream: str, level: str, message: str) -> None:
+        _append_run_log(ree_id, run_id, stream, level, message)
+
+    _log("system", "info", f"Starting build run {run_id}")
+    _log("system", "info", f"Build script: {script_relative_path}")
+
+    outcome = run_workspace_script(
+        workspace=workspace,
         script_rel_path=script_relative_path,
-        container_name=f"repo2ree-build-{run_id}",
-        echo_label="build_runtime_script",
-        sync_workspace_back=True,
-    )
-
-    _append_run_log(ree_id, run_id, "system", "info", f"Starting build run {run_id}")
-    _append_run_log(
-        ree_id, run_id, "system", "info", f"Starting container image {spec.image}"
-    )
-    _append_run_log(
-        ree_id, run_id, "system", "info", f"Build script: {script_relative_path}"
-    )
-
-    outcome = run_script_in_container(
-        spec,
-        log=lambda stream, level, message: _append_run_log(
-            ree_id, run_id, stream, level, message
-        ),
+        run_id=run_id,
+        log=_log,
         is_canceled=lambda: _is_cancel_requested(ree_id, run_id),
+        echo_label="build_runtime_script",
+        sync_out_on_success=True,
     )
 
-    _append_run_log(
-        ree_id,
-        run_id,
+    _log(
         "system",
         "info" if outcome.status == "succeeded" else "error",
         f"Build run {outcome.status} (exit code {outcome.exit_code})",
     )
 
-    outputs: dict[str, Any] = {
-        "buildRuntimeScriptPath": script_relative_path,
-        "dockerImage": spec.image,
-    }
+    outputs: dict[str, Any] = {"buildRuntimeScriptPath": script_relative_path}
     if outcome.exit_code is not None:
         outputs["containerExitCode"] = outcome.exit_code
     return outcome.status, outputs

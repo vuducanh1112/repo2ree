@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import hashlib
 from contextlib import contextmanager
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from repo2ree_core.container.run_script import ContainerRunOutcome
+from repo2ree_core.working_environment import (
+    ProvisioningCanceledError,
+    ScriptStep,
+    StepOutcome,
+)
 from repo2ree_core.experiment.experiment import (
     ContainsMatch,
     CustomMatch,
@@ -382,24 +387,39 @@ def test_build_capture_bundle_refuses_parent_traversal(tmp_path):
 # ================================================
 
 
-def test_custom_match_runs_validator_inside_runtime(tmp_path, monkeypatch):
-    captured = {}
+class _FakeWE:
+    """Minimal WorkingEnvironment fake for unit tests."""
 
-    def fake_run_script_in_container(spec, **kwargs):
-        captured["spec"] = spec
-        return ContainerRunOutcome(status="succeeded", exit_code=0)
+    def __init__(self, exec_outcome: StepOutcome) -> None:
+        self._outcome = exec_outcome
+        self.put_calls: list[tuple[str, str]] = []
+        self.exec_calls: list[ScriptStep] = []
 
-    monkeypatch.setattr(
-        "repo2ree_core.experiment.run.run_script_in_container",
-        fake_run_script_in_container,
-    )
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        pass
+
+    def exec_script(self, step: ScriptStep, *, log, is_canceled) -> StepOutcome:
+        self.exec_calls.append(step)
+        return self._outcome
+
+    def put_file(self, rel_path: str, content: str) -> None:
+        self.put_calls.append((rel_path, content))
+
+    def sync_out(self, *, log) -> bool:
+        return True
+
+
+def test_custom_match_runs_validator_inside_runtime(tmp_path):
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0))
 
     match = CustomMatch(mode="custom", value="grep -q NEEDLE")
     passed, detail = _evaluate_custom_match(
         match=match,
         text="line1\nNEEDLE\n",
-        workspace=tmp_path,
-        runtime_image="runtime:test",
+        we=fake_we,
         run_id="run-123",
         output_index=0,
         log=lambda *_: None,
@@ -408,26 +428,22 @@ def test_custom_match_runs_validator_inside_runtime(tmp_path, monkeypatch):
 
     assert passed
     assert detail == "custom script exited 0"
-    assert captured["spec"].image == "runtime:test"
-    assert captured["spec"].stdin_text == "line1\nNEEDLE\n"
-    assert captured["spec"].working_dir.as_posix() == "/workspace"
+    assert len(fake_we.put_calls) == 1
+    assert fake_we.put_calls[0][1] == "grep -q NEEDLE"
+    assert len(fake_we.exec_calls) == 1
+    step = fake_we.exec_calls[0]
+    assert step.stdin_text == "line1\nNEEDLE\n"
+    assert step.working_dir_rel == ""
 
 
-def test_custom_match_fails_on_nonzero_runtime_exit(tmp_path, monkeypatch):
-    def fake_run_script_in_container(spec, **kwargs):
-        return ContainerRunOutcome(status="failed", exit_code=7)
-
-    monkeypatch.setattr(
-        "repo2ree_core.experiment.run.run_script_in_container",
-        fake_run_script_in_container,
-    )
+def test_custom_match_fails_on_nonzero_runtime_exit(tmp_path):
+    fake_we = _FakeWE(StepOutcome("failed", exit_code=7))
 
     match = CustomMatch(mode="custom", value="grep -q NEEDLE")
     passed, detail = _evaluate_custom_match(
         match=match,
         text="no match",
-        workspace=tmp_path,
-        runtime_image="runtime:test",
+        we=fake_we,
         run_id="run-123",
         output_index=0,
         log=lambda *_: None,
@@ -462,24 +478,18 @@ def test_experiment_name_rejects_path_unsafe_names(name):
 
 
 def test_run_experiment_marks_verify_mismatch_as_failed(tmp_path, monkeypatch):
-    captured = {}
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="FAILED\n"))
 
     @contextmanager
     def fake_loaded_runtime_image(*args, **kwargs):
         yield "runtime:test"
 
-    def fake_run_script_in_container(spec, **kwargs):
-        captured["spec"] = spec
-        return ContainerRunOutcome(
-            status="succeeded",
-            exit_code=0,
-            captured_stdout="FAILED\n",
-        )
+    @contextmanager
+    def fake_acquire(workspace, run_id, *, log, image=None, **kwargs):
+        assert image == "runtime:test"
+        yield fake_we
 
-    monkeypatch.setattr(
-        "repo2ree_core.experiment.run.run_script_in_container",
-        fake_run_script_in_container,
-    )
+    monkeypatch.setattr("repo2ree_core.experiment.run.acquire", fake_acquire)
     monkeypatch.setattr(
         "repo2ree_core.experiment.run.loaded_runtime_image",
         fake_loaded_runtime_image,
@@ -508,24 +518,23 @@ def test_run_experiment_marks_verify_mismatch_as_failed(tmp_path, monkeypatch):
 
     assert result.status == "failed"
     assert result.run_outputs["verdict"] == "fail"
-    assert captured["spec"].image == "runtime:test"
-    assert captured["spec"].working_dir.as_posix() == "/workspace"
+    assert len(fake_we.exec_calls) == 1
+    assert fake_we.exec_calls[0].working_dir_rel == ""
 
 
 def test_run_experiment_canceled_skips_output_evaluation(tmp_path, monkeypatch):
     evaluated = []
+    fake_we = _FakeWE(StepOutcome("canceled", exit_code=None))
 
     @contextmanager
     def fake_loaded_runtime_image(*args, **kwargs):
         yield "runtime:test"
 
-    def fake_run_script_in_container(spec, **kwargs):
-        return ContainerRunOutcome(status="canceled", exit_code=None)
+    @contextmanager
+    def fake_acquire(workspace, run_id, *, log, image=None, **kwargs):
+        yield fake_we
 
-    monkeypatch.setattr(
-        "repo2ree_core.experiment.run.run_script_in_container",
-        fake_run_script_in_container,
-    )
+    monkeypatch.setattr("repo2ree_core.experiment.run.acquire", fake_acquire)
     monkeypatch.setattr(
         "repo2ree_core.experiment.run.loaded_runtime_image",
         fake_loaded_runtime_image,
@@ -558,3 +567,91 @@ def test_run_experiment_canceled_skips_output_evaluation(tmp_path, monkeypatch):
 
     assert result.status == "canceled"
     assert evaluated == []
+
+
+def test_run_experiment_returns_canceled_when_provisioning_is_canceled(
+    tmp_path, monkeypatch
+):
+    @contextmanager
+    def fake_loaded_runtime_image(*args, **kwargs):
+        yield "runtime:test"
+
+    @contextmanager
+    def fake_acquire(workspace, run_id, *, log, image=None, **kwargs):
+        raise ProvisioningCanceledError("Run canceled during provisioning")
+        yield
+
+    monkeypatch.setattr("repo2ree_core.experiment.run.acquire", fake_acquire)
+    monkeypatch.setattr(
+        "repo2ree_core.experiment.run.loaded_runtime_image",
+        fake_loaded_runtime_image,
+    )
+
+    experiment = Experiment(
+        name="smoke",
+        command="echo ok",
+        outputs=[],
+    )
+
+    result = run_experiment(
+        workspace=tmp_path,
+        experiment=experiment,
+        mode="verify",
+        runtime_archive_path=tmp_path / "runtime.tar.gz",
+        run_id="run-123",
+        log=lambda *_: None,
+        is_canceled=lambda: True,
+    )
+
+    assert result.status == "canceled"
+    assert result.run_outputs["runtimeImage"] == "runtime:test"
+    assert result.run_outputs["exitCode"] is None
+
+
+def test_run_experiment_ignores_cleanup_unlink_errors(tmp_path, monkeypatch):
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="ok\n"))
+    original_unlink = Path.unlink
+
+    @contextmanager
+    def fake_loaded_runtime_image(*args, **kwargs):
+        yield "runtime:test"
+
+    @contextmanager
+    def fake_acquire(workspace, run_id, *, log, image=None, **kwargs):
+        yield fake_we
+
+    def flaky_unlink(path: Path, *args, **kwargs):
+        if path.name == "exp_run-123.sh":
+            raise OSError("cleanup failed")
+        return original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr("repo2ree_core.experiment.run.acquire", fake_acquire)
+    monkeypatch.setattr(
+        "repo2ree_core.experiment.run.loaded_runtime_image",
+        fake_loaded_runtime_image,
+    )
+    monkeypatch.setattr("pathlib.Path.unlink", flaky_unlink)
+
+    experiment = Experiment(
+        name="smoke",
+        command="echo ok",
+        outputs=[
+            ExpectedOutput(
+                source=StdoutSource(kind="stdout"),
+                match=ContainsMatch(mode="contains", value="ok"),
+            )
+        ],
+    )
+
+    result = run_experiment(
+        workspace=tmp_path,
+        experiment=experiment,
+        mode="verify",
+        runtime_archive_path=tmp_path / "runtime.tar.gz",
+        run_id="run-123",
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+
+    assert result.status == "succeeded"
+    assert result.run_outputs["verdict"] == "pass"

@@ -5,10 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.container.run_script import (
-    ContainerScriptRun,
-    run_script_in_container,
-)
+from repo2ree_core.working_environment import run_workspace_script
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.run_management import (
     _append_run_log,
@@ -102,51 +99,38 @@ def run_activation_test(
     run_id: str,
     activation_script_path: str,
 ) -> tuple[str, dict[str, Any]]:
-    # Re-validate inside the worker before launching the container.
+    workspace = workspace_dir(ree_id).resolve()
+
+    # Re-validate inside the worker before provisioning the environment.
     resolve_relative_path(
-        workspace_dir(ree_id).resolve(),
+        workspace,
         activation_script_path,
         invalid_detail="Invalid workspace path",
         blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
     )
 
-    spec = ContainerScriptRun(
-        workspace_path=workspace_dir(ree_id).resolve(),
+    def _log(stream: str, level: str, message: str) -> None:
+        _append_run_log(ree_id, run_id, stream, level, message)
+
+    _log("system", "info", f"Starting activation run {run_id}")
+    _log("system", "info", f"Activation script: {activation_script_path}")
+
+    outcome = run_workspace_script(
+        workspace=workspace,
         script_rel_path=activation_script_path,
-        container_name=f"repo2ree-activation-{run_id}",
+        run_id=run_id,
+        log=_log,
+        is_canceled=lambda: _is_cancel_requested(ree_id, run_id),
         echo_label="activation_script",
     )
 
-    _append_run_log(
-        ree_id, run_id, "system", "info", f"Starting activation run {run_id}"
-    )
-    _append_run_log(
-        ree_id, run_id, "system", "info", f"Starting container image {spec.image}"
-    )
-    _append_run_log(
-        ree_id, run_id, "system", "info", f"Activation script: {activation_script_path}"
-    )
-
-    outcome = run_script_in_container(
-        spec,
-        log=lambda stream, level, message: _append_run_log(
-            ree_id, run_id, stream, level, message
-        ),
-        is_canceled=lambda: _is_cancel_requested(ree_id, run_id),
-    )
-
-    _append_run_log(
-        ree_id,
-        run_id,
+    _log(
         "system",
         "info" if outcome.status == "succeeded" else "error",
         f"Activation run {outcome.status} (exit code {outcome.exit_code})",
     )
 
-    outputs: dict[str, Any] = {
-        "activationScriptPath": activation_script_path,
-        "dockerImage": spec.image,
-    }
+    outputs: dict[str, Any] = {"activationScriptPath": activation_script_path}
     if outcome.exit_code is not None:
         outputs["containerExitCode"] = outcome.exit_code
     return outcome.status, outputs

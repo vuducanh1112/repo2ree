@@ -2,27 +2,13 @@
 
 from __future__ import annotations
 
-import shlex
 import shutil
 import subprocess
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from .run_script import LogSink
-
-
-def _format_command(command: list[str]) -> str:
-    return "$ " + " ".join(shlex.quote(token) for token in command)
-
-
-def _stream_output(log: LogSink, result: subprocess.CompletedProcess[str]) -> None:
-    for line in (result.stdout or "").splitlines():
-        if line.strip():
-            log("stdout", "info", line)
-    for line in (result.stderr or "").splitlines():
-        if line.strip():
-            log("stderr", "warn", line)
+from repo2ree_core.container.run_script import LogSink, format_command, stream_output
 
 
 def _loaded_image_ref(load_result: subprocess.CompletedProcess[str]) -> str | None:
@@ -46,9 +32,9 @@ def loaded_runtime_image(
     run_image = f"repo2ree-runtime-{run_id}"
 
     load_cmd = [docker_bin, "load", "-i", str(runtime_archive_path)]
-    log("system", "info", _format_command(load_cmd))
+    log("system", "info", format_command(load_cmd))
     load_result = subprocess.run(load_cmd, capture_output=True, text=True)
-    _stream_output(log, load_result)
+    stream_output(log, load_result)
     if load_result.returncode != 0:
         raise RuntimeError(
             f"Failed to load runtime image from {runtime_archive_path.name}"
@@ -59,9 +45,9 @@ def loaded_runtime_image(
         raise RuntimeError("Docker did not report a loaded runtime image")
 
     tag_cmd = [docker_bin, "tag", loaded_ref, run_image]
-    log("system", "info", _format_command(tag_cmd))
+    log("system", "info", format_command(tag_cmd))
     tag_result = subprocess.run(tag_cmd, capture_output=True, text=True)
-    _stream_output(log, tag_result)
+    stream_output(log, tag_result)
     if tag_result.returncode != 0:
         raise RuntimeError(f"Failed to tag loaded runtime image {loaded_ref}")
 
