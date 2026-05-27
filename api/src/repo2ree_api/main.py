@@ -6,6 +6,7 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
 from repo2ree_api.build_runtime import build_runtime_router
+from repo2ree_api.experiment_run import experiment_run_router
 from repo2ree_api.generate_hbom import generate_hbom_router
 from repo2ree_api.generate_sbom import generate_sbom_router
 from repo2ree_api.activation_test import activation_test_router
@@ -43,6 +44,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(build_runtime_router)
+app.include_router(experiment_run_router)
 app.include_router(generate_hbom_router)
 app.include_router(generate_sbom_router)
 app.include_router(activation_test_router)

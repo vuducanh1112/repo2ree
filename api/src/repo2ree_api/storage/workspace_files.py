@@ -114,6 +114,15 @@ class WorkspaceFileContentPayload(BaseModel):
 
 
 # ================================================
+# Exceptions
+# ================================================
+
+
+class WorkspaceVersionConflictError(RuntimeError):
+    """Raised when a draft patch is applied against a stale workspace version."""
+
+
+# ================================================
 # Storage root accessor
 # ================================================
 
@@ -189,6 +198,10 @@ def create_workspace(payload: WorkspaceCreatePayload) -> dict[str, Any]:
 
 
 def patch_ree_draft(ree_id: str, payload: ReeDraftPatchPayload) -> dict[str, Any]:
+    if payload.expectedVersion:
+        current = _ops.read_workspace_metadata(workspace_root(), ree_id)
+        if payload.expectedVersion != current.get("updatedAt"):
+            raise WorkspaceVersionConflictError("Workspace version conflict")
     return _ops.patch_ree_draft(workspace_root(), ree_id, dict(payload.reePatch or {}))
 
 

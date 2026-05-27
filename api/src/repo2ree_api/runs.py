@@ -89,6 +89,27 @@ def cancel_workspace_run(ree_id: str, run_id: str):
             )
         except Exception:
             pass
+    elif operation == "experiment":
+        # Remove the main container AND any validator containers spawned for
+        # custom-match evaluation (named repo2ree-experiment-validator-{run_id}-*).
+        # Docker's --filter name= does a substring match, so the shared prefix
+        # covers both container types.
+        name_prefix = f"repo2ree-experiment-{run_id}"
+        try:
+            ps_result = subprocess.run(
+                [docker_bin, "ps", "-aq", "--filter", f"name={name_prefix}"],
+                capture_output=True,
+                text=True,
+            )
+            ids = ps_result.stdout.split()
+            if ids:
+                subprocess.run(
+                    [docker_bin, "rm", "-f", *ids],
+                    capture_output=True,
+                    text=True,
+                )
+        except Exception:
+            pass
 
     refreshed = _get_run_state(ree_id, run_id)
     return {"status": refreshed["status"]}

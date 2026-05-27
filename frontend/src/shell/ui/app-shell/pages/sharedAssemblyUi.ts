@@ -57,6 +57,7 @@ export interface PageMetadataEntryProps {
 }
 
 export interface PageExperimentsProps {
+  reeId: string;
   reeSpec: ReeSpec;
   locked: boolean;
   badges: Badges;
@@ -64,6 +65,7 @@ export interface PageExperimentsProps {
   onReeChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
   onGoAssemblyPage: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
+  onSnapshotComplete: () => Promise<void>;
 }
 
 export interface PageHardwareBomProps {

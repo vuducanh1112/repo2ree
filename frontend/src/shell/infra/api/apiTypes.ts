@@ -157,7 +157,12 @@ export type WorkflowOperationDto =
   | "source"
   | "swh"
   | "zenodo"
-  | "dataverse";
+  | "dataverse"
+  | "experiment";
+
+export interface CreateExperimentRunRequestDto {
+  mode: "verify" | "snapshot";
+}
 
 export type WorkflowRunStatusDto =
   | "created"

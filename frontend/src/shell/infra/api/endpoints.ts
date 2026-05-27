@@ -24,6 +24,8 @@ export const endpoints = {
   reeActivationTest: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/activation-test`,
   reeEvaluate: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/evaluate`,
+  reeExperimentRun: (reeId: string, experimentName: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/experiments/${encodeURIComponent(experimentName)}:run`,
   reeEvaluateReport: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/evaluate/report`,
   reeRun: (reeId: string, runId: string) =>

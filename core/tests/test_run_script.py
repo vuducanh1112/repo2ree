@@ -22,6 +22,17 @@ def test_exec_command_without_label_does_not_echo_script():
     assert payload == "set -e; cd /workspace/sub; sh /workspace/sub/run.sh"
 
 
+def test_exec_command_can_override_working_dir():
+    payload = build_exec_command(
+        Path("/workspace/.workspace/run.sh"),
+        ".workspace/run.sh",
+        echo_label=None,
+        working_dir=Path("/workspace"),
+    )
+
+    assert payload == "set -e; cd /workspace; sh /workspace/.workspace/run.sh"
+
+
 def test_exec_command_with_label_echoes_and_cats_script():
     payload = build_exec_command(
         Path("/workspace/sub/run.sh"), "sub/run.sh", echo_label="build_runtime_script"
@@ -58,7 +69,7 @@ class FakeDocker:
         self._fail_stdout = stdout
         self._fail_stderr = stderr
 
-    def run(self, command, capture_output=False, text=False):
+    def run(self, command, capture_output=False, text=False, input=None):
         self.calls.append(list(command))
         subcmd = command[1]
         if subcmd == self._fail_on:
@@ -147,6 +158,51 @@ def test_script_failure_reports_exec_exit_code(workspace, monkeypatch):
     assert fake.subcommands() == ["create", "cp", "start", "exec", "rm"]
 
 
+def test_stdin_text_keeps_exec_stdin_open(workspace, monkeypatch):
+    fake = FakeDocker()
+    _install(monkeypatch, fake)
+
+    outcome = run_script_in_container(
+        _spec(workspace, stdin_text="payload"),
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+
+    assert outcome.status == "succeeded"
+    assert fake.calls[3][0:3] == ["docker", "exec", "-i"]
+
+
+def test_login_shell_false_uses_plain_sh_c(workspace, monkeypatch):
+    fake = FakeDocker()
+    _install(monkeypatch, fake)
+
+    outcome = run_script_in_container(
+        _spec(workspace, login_shell=False),
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+
+    assert outcome.status == "succeeded"
+    exec_call = fake.calls[3]
+    # "sh" flag should be "-c", not "-lc"
+    assert exec_call[exec_call.index("sh") + 1] == "-c"
+
+
+def test_login_shell_true_uses_sh_lc(workspace, monkeypatch):
+    fake = FakeDocker()
+    _install(monkeypatch, fake)
+
+    outcome = run_script_in_container(
+        _spec(workspace, login_shell=True),
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+
+    assert outcome.status == "succeeded"
+    exec_call = fake.calls[3]
+    assert exec_call[exec_call.index("sh") + 1] == "-lc"
+
+
 def test_sync_back_failure_marks_failed(workspace, monkeypatch):
     # Fail the second cp (sync back); the first cp (copy in) succeeds because
     # the failure is keyed on a returncode the copy-in path won't hit.
@@ -155,7 +211,7 @@ def test_sync_back_failure_marks_failed(workspace, monkeypatch):
             super().__init__()
             self._cp_seen = 0
 
-        def run(self, command, capture_output=False, text=False):
+        def run(self, command, capture_output=False, text=False, input=None):
             self.calls.append(list(command))
             if command[1] == "cp":
                 self._cp_seen += 1

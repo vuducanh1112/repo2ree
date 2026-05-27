@@ -1,65 +1,71 @@
 from __future__ import annotations
 
+import re
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# Experiment names are used as a path segment when running an experiment
+# (".../experiments/{name}:run"), so they must stay free of characters that
+# break URL routing — chiefly "/" (and the "." / ".." path segments).
+EXPERIMENT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9 ._-]+$")
 
 
-class _FileSource(BaseModel):
+class FileSource(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["file"]
     path: str
 
 
-class _StdoutSource(BaseModel):
+class StdoutSource(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["stdout"]
 
 
-class _StderrSource(BaseModel):
+class StderrSource(BaseModel):
     model_config = ConfigDict(extra="forbid")
     kind: Literal["stderr"]
 
 
 OutputSource = Annotated[
-    _FileSource | _StdoutSource | _StderrSource,
+    FileSource | StdoutSource | StderrSource,
     Field(discriminator="kind"),
 ]
 
 
-class _Sha256Match(BaseModel):
+class Sha256Match(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mode: Literal["sha256"]
     value: str
 
 
-class _ContainsMatch(BaseModel):
+class ContainsMatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mode: Literal["contains"]
     value: str
 
 
-class _RegexMatch(BaseModel):
+class RegexMatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mode: Literal["regex"]
     value: str
 
 
-class _NumericMatch(BaseModel):
+class NumericMatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mode: Literal["numeric"]
     value: str  # expected number as a string to avoid JSON float precision loss
     epsilon: float
 
 
-class _CustomMatch(BaseModel):
+class CustomMatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mode: Literal["custom"]
     value: str  # shell command; receives actual output via stdin, exits 0 for match
 
 
 OutputMatch = Annotated[
-    _Sha256Match | _ContainsMatch | _RegexMatch | _NumericMatch | _CustomMatch,
+    Sha256Match | ContainsMatch | RegexMatch | NumericMatch | CustomMatch,
     Field(discriminator="mode"),
 ]
 
@@ -79,3 +85,15 @@ class Experiment(BaseModel):
     description: str = ""
     command: str = ""
     outputs: list[ExpectedOutput] = Field(default_factory=list)
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        if value == "":  # in-progress drafts may not have named the experiment yet
+            return value
+        if value in {".", ".."} or not EXPERIMENT_NAME_PATTERN.match(value):
+            raise ValueError(
+                "experiment name may only contain letters, digits, spaces, "
+                "'.', '_' and '-'"
+            )
+        return value

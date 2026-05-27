@@ -3,6 +3,7 @@ import type {
   CreateActivationTestRunRequestDto,
   CreateBuildRuntimeRunRequestDto,
   CreateEvaluateRunRequestDto,
+  CreateExperimentRunRequestDto,
   CreateGenerateHbomRunRequestDto,
   CreateGenerateSbomRunRequestDto,
   WorkflowLogEntryDto,
@@ -66,6 +67,17 @@ export class ExecutionRunsApi {
     payload: CreateEvaluateRunRequestDto,
   ): Promise<WorkflowRunDto> {
     return this.client.request<WorkflowRunDto>(endpoints.reeEvaluate(reeId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async createExperimentRun(
+    reeId: string,
+    experimentName: string,
+    payload: CreateExperimentRunRequestDto,
+  ): Promise<WorkflowRunDto> {
+    return this.client.request<WorkflowRunDto>(endpoints.reeExperimentRun(reeId, experimentName), {
       method: "POST",
       body: JSON.stringify(payload),
     });

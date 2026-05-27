@@ -15,6 +15,7 @@ from repo2ree_api.storage.workspace_files import (
     SourceAcquirePayload,
     SourceUploadCompletePayload,
     ReeDraftPatchPayload,
+    WorkspaceVersionConflictError,
     build_workspace_ree_archive,
     UploadInitPayload,
     WorkspaceCreatePayload,
@@ -55,6 +56,8 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
         return create_workspace(payload)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except WorkspaceVersionConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:

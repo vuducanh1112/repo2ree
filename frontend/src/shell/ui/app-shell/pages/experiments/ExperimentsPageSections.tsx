@@ -1,11 +1,17 @@
 import type React from "react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ExecutionRunStatus } from "../../../../../core/execution/ExecutionRunStatus";
+import type {
+  ExperimentOutputResult,
+  ExperimentRunOutputs,
+} from "../../../../../core/execution/ExperimentRun";
 import type {
   ExpectedOutput,
   OutputMatch,
   OutputSource,
   ReeExperiment,
 } from "../../../../../core/ree/ReeSpec";
+import { useApiRuntime } from "../../../../data/apiRuntime";
 import { Ic } from "../../../shared/components/Icon";
 import {
   lgActionButton,
@@ -18,7 +24,7 @@ import {
   lgSuggestionButton,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
-import { expId } from "./experimentsPageHelpers";
+import { expId, isValidExperimentName } from "./experimentsPageHelpers";
 
 export interface ExperimentSuggestion {
   name: string;
@@ -314,7 +320,19 @@ function ExperimentEmptyState({ locked, onAdd }: { locked: boolean; onAdd: () =>
 // Detail view
 // ================================================
 
+type RunState = {
+  reeId: string;
+  runId: string;
+  mode: "verify" | "snapshot";
+  status: ExecutionRunStatus;
+  outputs: ExperimentRunOutputs | null;
+  error: string | null;
+};
+
+const TERMINAL_STATUSES: ExecutionRunStatus[] = ["succeeded", "failed", "canceled"];
+
 export function ExperimentDetail({
+  reeId,
   experiment,
   index,
   otherNames,
@@ -322,7 +340,9 @@ export function ExperimentDetail({
   onUpdate,
   onBack,
   onRemove,
+  onSnapshotComplete,
 }: {
+  reeId: string;
   experiment: ReeExperiment;
   index: number;
   otherNames: string[];
@@ -330,10 +350,83 @@ export function ExperimentDetail({
   onUpdate: (patch: Partial<ReeExperiment>) => void;
   onBack: () => void;
   onRemove: () => void;
+  onSnapshotComplete: () => Promise<void>;
 }) {
+  const { runsApi, ensureReeId } = useApiRuntime();
+  const [runState, setRunState] = useState<RunState | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current !== null) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!runState || TERMINAL_STATUSES.includes(runState.status)) return;
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const run = await runsApi.getRun(runState.reeId, runState.runId);
+        const isTerminal = TERMINAL_STATUSES.includes(run.status);
+        const outputs = isTerminal
+          ? ((run.outputs as unknown as ExperimentRunOutputs | null) ?? null)
+          : null;
+        setRunState((prev) =>
+          prev ? { ...prev, status: run.status, outputs: outputs ?? prev.outputs } : prev,
+        );
+        if (isTerminal) {
+          stopPolling();
+          if (outputs?.snapshotApplied) {
+            await onSnapshotComplete();
+          }
+        }
+      } catch {
+        stopPolling();
+        setRunState((prev) => (prev ? { ...prev, error: "Failed to poll run status" } : prev));
+      }
+    }, 1500);
+    return stopPolling;
+  }, [runState, runsApi, stopPolling, onSnapshotComplete]);
+
+  const startRun = useCallback(
+    async (mode: "verify" | "snapshot") => {
+      setRunState(null);
+      try {
+        const resolvedReeId = await ensureReeId(reeId);
+        const run = await runsApi.createExperimentRun(resolvedReeId, experiment.name, {
+          mode,
+        });
+        setRunState({
+          reeId: resolvedReeId,
+          runId: run.runId,
+          mode,
+          status: run.status,
+          outputs: null,
+          error: null,
+        });
+      } catch {
+        setRunState({
+          reeId,
+          runId: "",
+          mode,
+          status: "failed",
+          outputs: null,
+          error: "Failed to start run",
+        });
+      }
+    },
+    [ensureReeId, reeId, experiment.name, runsApi],
+  );
+
   const trimmedName = experiment.name.trim();
   const isDuplicateName = trimmedName !== "" && otherNames.includes(trimmedName);
-  const canRun = trimmedName !== "" && !isDuplicateName;
+  const isInvalidName = !isValidExperimentName(experiment.name);
+  const canRun =
+    trimmedName !== "" && !isDuplicateName && !isInvalidName && experiment.command.trim() !== "";
+  const canSnapshot = canRun && !locked;
+  const isRunning = runState !== null && !TERMINAL_STATUSES.includes(runState.status);
 
   return (
     <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
@@ -341,8 +434,12 @@ export function ExperimentDetail({
         index={index}
         locked={locked}
         canRun={canRun}
+        canSnapshot={canSnapshot}
+        isRunning={isRunning}
         onBack={onBack}
         onRemove={onRemove}
+        onRun={() => void startRun("verify")}
+        onSnapshot={() => void startRun("snapshot")}
       />
 
       <div style={{ ...lgStyles.sectionBody, display: "flex", flexDirection: "column", gap: 18 }}>
@@ -354,12 +451,19 @@ export function ExperimentDetail({
             placeholder="smoke-test"
             style={{
               ...lgInput(locked),
-              ...(isDuplicateName ? { borderColor: "rgba(239, 68, 68, 0.7)" } : {}),
+              ...(isDuplicateName || isInvalidName
+                ? { borderColor: "rgba(239, 68, 68, 0.7)" }
+                : {}),
             }}
           />
           {isDuplicateName && (
             <span style={{ fontSize: 11, color: lgColors.required, marginTop: 2 }}>
               Another experiment already uses this name.
+            </span>
+          )}
+          {!isDuplicateName && isInvalidName && (
+            <span style={{ fontSize: 11, color: lgColors.required, marginTop: 2 }}>
+              Use only letters, digits, spaces, '.', '_' and '-'.
             </span>
           )}
         </DetailField>
@@ -390,6 +494,8 @@ export function ExperimentDetail({
           locked={locked}
           onChange={(outputs) => onUpdate({ outputs })}
         />
+
+        {runState && <RunResultPanel runState={runState} />}
       </div>
 
       <div style={lgStyles.footer}>
@@ -398,7 +504,9 @@ export function ExperimentDetail({
             ? "A name is required."
             : !locked && isDuplicateName
               ? "Fix the duplicate name to continue."
-              : "Edits save automatically."}
+              : !locked && isInvalidName
+                ? "Fix the invalid name to continue."
+                : "Edits save automatically."}
         </span>
         <button
           type="button"
@@ -420,15 +528,31 @@ function DetailBreadcrumb({
   index,
   locked,
   canRun,
+  canSnapshot,
+  isRunning,
   onBack,
   onRemove,
+  onRun,
+  onSnapshot,
 }: {
   index: number;
   locked: boolean;
   canRun: boolean;
+  canSnapshot: boolean;
+  isRunning: boolean;
   onBack: () => void;
   onRemove: () => void;
+  onRun: () => void;
+  onSnapshot: () => void;
 }) {
+  const runTitle = canRun
+    ? "Verify outputs against recorded expectations"
+    : "Add a unique name and command before running";
+  const snapshotTitle = locked
+    ? "Unlock the draft to update baselines"
+    : canRun
+      ? "Run command and capture outputs as sha256 baselines"
+      : "Add a unique name and command before snapshotting";
   return (
     <div
       style={{
@@ -474,24 +598,50 @@ function DetailBreadcrumb({
       <span style={{ flex: 1 }} />
       <button
         type="button"
-        disabled
-        title={canRun ? "Run is not yet wired up" : "Add a unique name before running"}
+        disabled={!canRun || isRunning}
+        title={runTitle}
+        onClick={onRun}
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          border: "1px solid rgba(148, 163, 184, 0.34)",
-          background: "rgba(241, 245, 249, 0.72)",
-          color: lgColors.textMuted,
+          border: "1px solid rgba(79, 70, 229, 0.45)",
+          background:
+            canRun && !isRunning ? "rgba(238, 242, 255, 0.9)" : "rgba(241, 245, 249, 0.72)",
+          color: canRun && !isRunning ? lgColors.blue : lgColors.textMuted,
           padding: "6px 14px",
           borderRadius: 8,
           fontWeight: 700,
           fontSize: 12,
-          cursor: "not-allowed",
-          opacity: canRun ? 1 : 0.45,
+          cursor: canRun && !isRunning ? "pointer" : "not-allowed",
+          opacity: canRun && !isRunning ? 1 : 0.45,
         }}
       >
-        {Ic.play(12)} Run
+        {isRunning ? Ic.loader(12) : Ic.play(12)}
+        {isRunning ? "Running…" : "Run"}
+      </button>
+      <button
+        type="button"
+        disabled={!canSnapshot || isRunning}
+        title={snapshotTitle}
+        onClick={onSnapshot}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          border: "1px solid rgba(34, 197, 94, 0.45)",
+          background:
+            canSnapshot && !isRunning ? "rgba(240, 253, 244, 0.9)" : "rgba(241, 245, 249, 0.72)",
+          color: canSnapshot && !isRunning ? lgColors.success : lgColors.textMuted,
+          padding: "6px 14px",
+          borderRadius: 8,
+          fontWeight: 700,
+          fontSize: 12,
+          cursor: canSnapshot && !isRunning ? "pointer" : "not-allowed",
+          opacity: canSnapshot && !isRunning ? 1 : 0.45,
+        }}
+      >
+        {Ic.refresh(12)} Snapshot
       </button>
       {!locked && (
         <button
@@ -532,6 +682,129 @@ function DetailField({
       </span>
       {children}
       {help && <span style={lgStyles.helper}>{help}</span>}
+    </div>
+  );
+}
+
+// ================================================
+// Run result panel
+// ================================================
+
+function RunResultPanel({ runState }: { runState: RunState }) {
+  const isTerminal = TERMINAL_STATUSES.includes(runState.status);
+  const { outputs } = runState;
+
+  const headerColor =
+    outputs?.verdict === "pass"
+      ? lgColors.success
+      : outputs?.verdict === "fail" || runState.status === "failed"
+        ? lgColors.required
+        : lgColors.textMuted;
+
+  const headerBg =
+    outputs?.verdict === "pass"
+      ? "rgba(220, 252, 231, 0.7)"
+      : outputs?.verdict === "fail" || runState.status === "failed"
+        ? "rgba(254, 226, 226, 0.7)"
+        : "rgba(248, 250, 252, 0.7)";
+
+  return (
+    <div style={lgStyles.fieldFrame}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={lgStyles.label}>
+          {runState.mode === "snapshot" ? "Snapshot result" : "Run result"}
+        </span>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: headerColor,
+            background: headerBg,
+            border: `1px solid ${headerColor}44`,
+            borderRadius: 99,
+            padding: "2px 8px",
+            fontFamily: F.mono,
+            textTransform: "uppercase",
+          }}
+        >
+          {!isTerminal ? runState.status : (outputs?.verdict ?? runState.status)}
+        </span>
+      </div>
+
+      {!isTerminal && (
+        <div
+          style={{
+            color: lgColors.textMuted,
+            fontSize: 12,
+            textAlign: "center",
+            padding: "10px 0",
+          }}
+        >
+          {Ic.loader(13)} Running experiment…
+        </div>
+      )}
+
+      {isTerminal && outputs && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {outputs.mode === "snapshot" ? (
+            <div
+              style={{
+                fontSize: 12,
+                color: outputs.snapshotApplied ? lgColors.success : lgColors.required,
+              }}
+            >
+              {outputs.snapshotApplied
+                ? (outputs.snapshotMessage ??
+                  `${outputs.snapshotCount ?? 0} baseline(s) saved (sha256). Outputs updated.`)
+                : (outputs.snapshotMessage ?? "Snapshot failed — command did not exit 0.")}
+            </div>
+          ) : outputs.outputResults && outputs.outputResults.length > 0 ? (
+            outputs.outputResults.map((r: ExperimentOutputResult) => (
+              <div
+                key={r.sourceKey}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "flex-start",
+                  fontSize: 12,
+                  padding: "6px 10px",
+                  borderRadius: 7,
+                  background: r.passed ? "rgba(220, 252, 231, 0.5)" : "rgba(254, 226, 226, 0.5)",
+                  border: `1px solid ${r.passed ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}`,
+                }}
+              >
+                <span
+                  style={{
+                    color: r.passed ? lgColors.success : lgColors.required,
+                    flexShrink: 0,
+                  }}
+                >
+                  {r.passed ? Ic.check(13) : Ic.x(13)}
+                </span>
+                <div>
+                  <span style={{ fontFamily: F.mono, fontWeight: 700, color: lgColors.textMuted }}>
+                    {r.sourceKey}
+                  </span>
+                  <span style={{ color: lgColors.textMuted, margin: "0 5px" }}>·</span>
+                  <span style={{ color: lgColors.textMuted }}>{r.detail}</span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div style={{ fontSize: 12, color: lgColors.textMuted }}>
+              {outputs.verdict === "pass"
+                ? "Command exited 0 — no output assertions declared."
+                : `Command failed (exit code ${outputs.exitCode ?? "?"}).`}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isTerminal && !outputs && (
+        <div style={{ fontSize: 12, color: lgColors.required }}>
+          Run {runState.status} — no output data available.
+        </div>
+      )}
     </div>
   );
 }

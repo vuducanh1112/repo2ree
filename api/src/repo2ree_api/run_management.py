@@ -16,7 +16,9 @@ from repo2ree_api.storage.workspace_files import workspace_exists
 # ================================================
 
 
-RunOperation = Literal["build", "sbom", "hbom", "activation", "source", "evaluate"]
+RunOperation = Literal[
+    "build", "sbom", "hbom", "activation", "source", "evaluate", "experiment"
+]
 
 _RUN_STORE: dict[str, dict[str, dict[str, Any]]] = {}
 _RUN_CONTROL: dict[str, dict[str, dict[str, Any]]] = {}

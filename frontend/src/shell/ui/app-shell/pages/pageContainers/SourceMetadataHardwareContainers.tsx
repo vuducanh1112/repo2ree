@@ -103,6 +103,7 @@ export function ExperimentsPageContainer({
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
+  const { reeId, reeApi } = useApiRuntime();
   const { page, focusedField } = uiChrome;
   const { locked, reeSpec } = reeDraft;
   const { badges } = assemblyRun;
@@ -111,8 +112,18 @@ export function ExperimentsPageContainer({
     return null;
   }
 
+  async function handleSnapshotComplete() {
+    const fresh = await reeApi.getRee(reeId);
+    const freshExperiments = (fresh.reeDraft as { experiments?: unknown[] }).experiments ?? [];
+    commands.setReeSpec((prev) => ({
+      ...prev,
+      experiments: freshExperiments as typeof prev.experiments,
+    }));
+  }
+
   return (
     <PageExperiments
+      reeId={reeId}
       reeSpec={reeSpec}
       locked={locked}
       badges={badges}
@@ -120,6 +131,7 @@ export function ExperimentsPageContainer({
       onReeChange={commands.setReeSpec}
       onGoAssemblyPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
+      onSnapshotComplete={handleSnapshotComplete}
     />
   );
 }

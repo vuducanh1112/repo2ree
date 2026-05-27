@@ -30,11 +30,13 @@ import {
 // ================================================
 
 export function PageExperiments({
+  reeId,
   reeSpec,
   locked,
   onReeChange,
   onGoAssemblyPage,
   onFocusedFieldChange,
+  onSnapshotComplete,
   focusedField: _focusedField,
 }: PageExperimentsProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -129,6 +131,7 @@ export function PageExperiments({
         <div style={lgStyles.mainGrid}>
           {selectedExperiment !== null && selectedIndex !== null ? (
             <ExperimentDetail
+              reeId={reeId}
               experiment={selectedExperiment}
               index={selectedIndex}
               otherNames={experiments
@@ -142,6 +145,7 @@ export function PageExperiments({
                 onFocusedFieldChange(null);
               }}
               onRemove={() => removeExperiment(selectedIndex)}
+              onSnapshotComplete={onSnapshotComplete}
             />
           ) : (
             <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
