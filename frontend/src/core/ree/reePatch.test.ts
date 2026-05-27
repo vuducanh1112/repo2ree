@@ -21,6 +21,21 @@ describe("toReePatchFromSlices", () => {
       sbom: "sbom.json",
       swhid: "swh:1:dir:test",
       detected_dependencies: "4 dependencies",
+      experiments: [
+        {
+          name: "benchmark",
+          description: "Measure throughput",
+          command: "python bench.py",
+          runtime_estimate: "15-20 min",
+          resource_estimates: {
+            cpu: "8 vCPU",
+            memory: "16 GB",
+            gpu: "1x A10",
+            storage: "5 GB scratch",
+            network: "offline",
+          },
+        },
+      ],
     };
     const workspaceSourceState: WorkspaceSourceState = {
       sourceAvailable: true,

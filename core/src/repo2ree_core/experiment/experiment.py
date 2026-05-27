@@ -76,6 +76,16 @@ class ExpectedOutput(BaseModel):
     match: OutputMatch
 
 
+class ResourceEstimates(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    cpu: str = ""
+    memory: str = ""
+    gpu: str = ""
+    storage: str = ""
+    network: str = ""
+
+
 class Experiment(BaseModel):
     """Experiment metadata attached to a REE draft."""
 
@@ -85,6 +95,8 @@ class Experiment(BaseModel):
     description: str = ""
     command: str = ""
     outputs: list[ExpectedOutput] = Field(default_factory=list)
+    runtime_estimate: str = ""
+    resource_estimates: ResourceEstimates = Field(default_factory=ResourceEstimates)
 
     @field_validator("name")
     @classmethod

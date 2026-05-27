@@ -71,10 +71,20 @@ export interface ExpectedOutput {
   match: OutputMatch;
 }
 
+export interface ExperimentResourceEstimates {
+  cpu: string;
+  memory: string;
+  gpu: string;
+  storage: string;
+  network: string;
+}
+
 export interface ReeExperiment {
   name: string;
   description: string;
   command: string;
+  runtime_estimate: string;
+  resource_estimates: ExperimentResourceEstimates;
   outputs?: ExpectedOutput[];
 }
 
@@ -136,6 +146,26 @@ export function createEmptyReeCatalogMetadata(): ReeCatalogMetadata {
     keywords: [],
     contributors: [],
     corresponding_author_identifier: null,
+  };
+}
+
+export function createEmptyExperimentResourceEstimates(): ExperimentResourceEstimates {
+  return {
+    cpu: "",
+    memory: "",
+    gpu: "",
+    storage: "",
+    network: "",
+  };
+}
+
+export function createEmptyReeExperiment(): ReeExperiment {
+  return {
+    name: "",
+    description: "",
+    command: "",
+    runtime_estimate: "",
+    resource_estimates: createEmptyExperimentResourceEstimates(),
   };
 }
 

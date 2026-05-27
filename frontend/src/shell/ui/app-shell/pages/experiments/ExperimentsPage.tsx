@@ -94,6 +94,10 @@ export function PageExperiments({
   const withCommand = experiments.filter((e) => e.command.trim() !== "").length;
   const withDescription = experiments.filter((e) => e.description.trim() !== "").length;
   const withOutputs = experiments.filter((e) => (e.outputs?.length ?? 0) > 0).length;
+  const withRuntimeEstimate = experiments.filter((e) => e.runtime_estimate.trim() !== "").length;
+  const withResourceEstimates = experiments.filter((e) =>
+    Object.values(e.resource_estimates).some((value) => value.trim() !== ""),
+  ).length;
 
   // ================================================
   // Render
@@ -210,6 +214,8 @@ export function PageExperiments({
               withCommand={withCommand}
               withDescription={withDescription}
               withOutputs={withOutputs}
+              withRuntimeEstimate={withRuntimeEstimate}
+              withResourceEstimates={withResourceEstimates}
             />
             <ExperimentsSuggestionsAside locked={locked} onAdd={addFromSuggestion} />
             <ExperimentsAboutAside />

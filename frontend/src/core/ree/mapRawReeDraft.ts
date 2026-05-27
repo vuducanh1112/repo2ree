@@ -3,7 +3,9 @@ import { normalizeHBOM } from "../hbom/HbomSummary";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import {
+  createEmptyExperimentResourceEstimates,
   createEmptyReeCatalogMetadata,
+  createEmptyReeExperiment,
   type ExpectedOutput,
   type ReeCatalogMetadata,
   type ReeContributor,
@@ -62,6 +64,18 @@ function mapRawCatalogMetadata(value: unknown): ReeCatalogMetadata {
   };
 }
 
+function mapRawResourceEstimates(value: unknown): ReeExperiment["resource_estimates"] {
+  const estimates = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  return {
+    ...createEmptyExperimentResourceEstimates(),
+    cpu: String(estimates.cpu ?? ""),
+    memory: String(estimates.memory ?? ""),
+    gpu: String(estimates.gpu ?? ""),
+    storage: String(estimates.storage ?? ""),
+    network: String(estimates.network ?? ""),
+  };
+}
+
 // ================================================
 // Mapper
 // ================================================
@@ -76,9 +90,12 @@ export function mapRawReeDraftToSlices({
     ? draft.experiments.map((entry) => {
         const item = (entry as Record<string, unknown>) || {};
         return {
+          ...createEmptyReeExperiment(),
           name: String(item.name ?? ""),
           description: String(item.description ?? ""),
           command: String(item.command ?? ""),
+          runtime_estimate: String(item.runtime_estimate ?? ""),
+          resource_estimates: mapRawResourceEstimates(item.resource_estimates),
           ...(Array.isArray(item.outputs) && item.outputs.length > 0
             ? { outputs: item.outputs as ExpectedOutput[] }
             : {}),

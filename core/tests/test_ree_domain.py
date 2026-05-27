@@ -41,3 +41,54 @@ def test_unique_experiment_names_allows_multiple_empty_names():
 def test_unique_experiment_names_allows_empty_list():
     ree = REE(name="demo")
     assert ree.experiments == []
+
+
+def test_experiment_estimates_default_to_empty_strings():
+    ree = REE.model_validate(
+        {
+            "name": "demo",
+            "experiments": [{"name": "smoke", "command": "pytest -q"}],
+        }
+    )
+
+    experiment = ree.experiments[0]
+    assert experiment.runtime_estimate == ""
+    assert experiment.resource_estimates.model_dump() == {
+        "cpu": "",
+        "memory": "",
+        "gpu": "",
+        "storage": "",
+        "network": "",
+    }
+
+
+def test_experiment_estimates_accept_runtime_and_resource_hints():
+    ree = REE.model_validate(
+        {
+            "name": "demo",
+            "experiments": [
+                {
+                    "name": "benchmark",
+                    "command": "python bench.py",
+                    "runtime_estimate": "15-20 min",
+                    "resource_estimates": {
+                        "cpu": "8 vCPU",
+                        "memory": "16 GB",
+                        "gpu": "1x A10",
+                        "storage": "5 GB scratch",
+                        "network": "offline",
+                    },
+                }
+            ],
+        }
+    )
+
+    experiment = ree.experiments[0]
+    assert experiment.runtime_estimate == "15-20 min"
+    assert experiment.resource_estimates.model_dump() == {
+        "cpu": "8 vCPU",
+        "memory": "16 GB",
+        "gpu": "1x A10",
+        "storage": "5 GB scratch",
+        "network": "offline",
+    }

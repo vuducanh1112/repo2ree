@@ -7,6 +7,7 @@ import type {
 } from "../../../../../core/execution/ExperimentRun";
 import type {
   ExpectedOutput,
+  ExperimentResourceEstimates,
   OutputMatch,
   OutputSource,
   ReeExperiment,
@@ -54,6 +55,10 @@ const EXPERIMENT_SUGGESTIONS: ExperimentSuggestion[] = [
     command: "bash run.sh",
   },
 ];
+
+function hasResourceEstimates(estimates: ExperimentResourceEstimates): boolean {
+  return Object.values(estimates).some((value) => value.trim() !== "");
+}
 
 // ================================================
 // Catalog (cards)
@@ -109,6 +114,8 @@ function ExperimentCard({
   const command = experiment.command.trim();
   const description = experiment.description.trim();
   const outputCount = experiment.outputs?.length ?? 0;
+  const runtimeEstimate = experiment.runtime_estimate.trim();
+  const hasResources = hasResourceEstimates(experiment.resource_estimates);
 
   return (
     <div
@@ -196,6 +203,36 @@ function ExperimentCard({
               }}
             >
               {outputCount} {outputCount === 1 ? "output" : "outputs"}
+            </span>
+          )}
+          {runtimeEstimate && (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: lgColors.blue,
+                background: "rgba(238, 242, 255, 0.88)",
+                border: "1px solid rgba(79, 70, 229, 0.28)",
+                borderRadius: 99,
+                padding: "2px 7px",
+              }}
+            >
+              ~ {runtimeEstimate}
+            </span>
+          )}
+          {hasResources && (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: lgColors.cyan,
+                background: "rgba(240, 249, 255, 0.88)",
+                border: "1px solid rgba(14, 165, 233, 0.28)",
+                borderRadius: 99,
+                padding: "2px 7px",
+              }}
+            >
+              resources
             </span>
           )}
           <span
@@ -488,6 +525,25 @@ export function ExperimentDetail({
             style={{ ...lgInput(locked), fontFamily: F.mono, fontSize: 13 }}
           />
         </DetailField>
+
+        <DetailField
+          label="Runtime estimate"
+          help="Expected wall-clock duration for a typical successful run."
+        >
+          <input
+            disabled={locked}
+            value={experiment.runtime_estimate}
+            onChange={(e) => onUpdate({ runtime_estimate: e.target.value })}
+            placeholder="5-10 min"
+            style={{ ...lgInput(locked), fontFamily: F.mono, fontSize: 13 }}
+          />
+        </DetailField>
+
+        <ResourceEstimatesEditor
+          estimates={experiment.resource_estimates}
+          locked={locked}
+          onChange={(resource_estimates) => onUpdate({ resource_estimates })}
+        />
 
         <OutputsEditor
           outputs={experiment.outputs}
@@ -810,6 +866,70 @@ function RunResultPanel({ runState }: { runState: RunState }) {
 }
 
 // ================================================
+// Resource estimates editor
+// ================================================
+
+function ResourceEstimatesEditor({
+  estimates,
+  locked,
+  onChange,
+}: {
+  estimates: ExperimentResourceEstimates;
+  locked: boolean;
+  onChange: (estimates: ExperimentResourceEstimates) => void;
+}) {
+  const updateField = (field: keyof ExperimentResourceEstimates, value: string) => {
+    onChange({ ...estimates, [field]: value });
+  };
+
+  const resourceFields: Array<{
+    field: keyof ExperimentResourceEstimates;
+    label: string;
+    placeholder: string;
+  }> = [
+    { field: "cpu", label: "CPU", placeholder: "4 vCPU sustained" },
+    { field: "memory", label: "Memory", placeholder: "8 GB RAM peak" },
+    { field: "gpu", label: "GPU", placeholder: "None or 1x T4" },
+    { field: "storage", label: "Storage", placeholder: "2 GB scratch output" },
+    { field: "network", label: "Network", placeholder: "Offline after setup" },
+  ];
+
+  return (
+    <div style={lgStyles.fieldFrame}>
+      <span style={lgStyles.label}>Resource estimates</span>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 10,
+        }}
+      >
+        {resourceFields.map(({ field, label, placeholder }) => (
+          <label
+            key={field}
+            style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}
+          >
+            <span style={{ fontSize: 11, fontWeight: 700, color: lgColors.textMuted }}>
+              {label}
+            </span>
+            <input
+              disabled={locked}
+              value={estimates[field]}
+              onChange={(e) => updateField(field, e.target.value)}
+              placeholder={placeholder}
+              style={{ ...lgInput(locked), fontFamily: F.mono, fontSize: 12 }}
+            />
+          </label>
+        ))}
+      </div>
+      <span style={lgStyles.helper}>
+        Capture the expected compute footprint so others can budget time and infrastructure.
+      </span>
+    </div>
+  );
+}
+
+// ================================================
 // Expected outputs editor
 // ================================================
 
@@ -1070,12 +1190,16 @@ export function ExperimentsCoverageAside({
   withCommand,
   withDescription,
   withOutputs,
+  withRuntimeEstimate,
+  withResourceEstimates,
 }: {
   total: number;
   withName: number;
   withCommand: number;
   withDescription: number;
   withOutputs: number;
+  withRuntimeEstimate: number;
+  withResourceEstimates: number;
 }) {
   const incomplete = total - Math.min(withName, withCommand, withOutputs);
   const allComplete = total > 0 && incomplete === 0;
@@ -1096,6 +1220,8 @@ export function ExperimentsCoverageAside({
           <CoverageRow label="With command" value={withCommand} total={total} />
           <CoverageRow label="With description" value={withDescription} total={total} />
           <CoverageRow label="With outputs" value={withOutputs} total={total} />
+          <CoverageRow label="With runtime est." value={withRuntimeEstimate} total={total} />
+          <CoverageRow label="With resource est." value={withResourceEstimates} total={total} />
           {!allComplete && (
             <div
               style={{
@@ -1112,7 +1238,7 @@ export function ExperimentsCoverageAside({
               }}
             >
               <span style={{ display: "flex" }}>{Ic.info(12)}</span>
-              {incomplete} need name & command.
+              {incomplete} still need the core runnable fields or expected outputs.
             </div>
           )}
           {allComplete && (
@@ -1211,7 +1337,7 @@ export function ExperimentsAboutAside() {
       </div>
       <div style={{ fontSize: 12, color: lgColors.textMid, lineHeight: 1.5 }}>
         Experiments are run inside the assembled REE to confirm it reproduces the expected outputs.
-        They are optional, but they raise the achievable reproducibility level.
+        Runtime and resource estimates help future users plan how expensive those checks will be.
       </div>
     </section>
   );

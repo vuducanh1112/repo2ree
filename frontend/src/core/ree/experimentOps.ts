@@ -1,9 +1,9 @@
-import type { ReeExperiment, ReeSpec } from "./ReeSpec";
+import { createEmptyReeExperiment, type ReeExperiment, type ReeSpec } from "./ReeSpec";
 
 export function addExperiment(spec: ReeSpec): ReeSpec {
   return {
     ...spec,
-    experiments: [...(spec.experiments ?? []), { name: "", description: "", command: "" }],
+    experiments: [...(spec.experiments ?? []), createEmptyReeExperiment()],
   };
 }
 
