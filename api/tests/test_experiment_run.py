@@ -70,12 +70,12 @@ def _make_workspace_with_experiment() -> str:
 
 
 def test_patch_ree_draft_rejects_stale_expected_version():
+    from fastapi.testclient import TestClient
+
+    from repo2ree_api.main import app
     from repo2ree_api.storage.workspace_files import (
-        ReeDraftPatchPayload,
         WorkspaceCreatePayload,
-        WorkspaceVersionConflictError,
         create_workspace,
-        patch_ree_draft,
         read_workspace_metadata,
     )
 
@@ -85,19 +85,20 @@ def test_patch_ree_draft_rejects_stale_expected_version():
     ree_id = workspace["reeId"]
     original_version = read_workspace_metadata(ree_id)["updatedAt"]
 
-    patch_ree_draft(
-        ree_id,
-        ReeDraftPatchPayload(reePatch={"name": "updated once"}),
-    )
+    client = TestClient(app)
+    client.patch(
+        f"/api/v1/rees/{ree_id}/draft",
+        json={"reePatch": {"name": "updated once"}},
+    ).raise_for_status()
 
-    with pytest.raises(WorkspaceVersionConflictError):
-        patch_ree_draft(
-            ree_id,
-            ReeDraftPatchPayload(
-                reePatch={"name": "stale update"},
-                expectedVersion=original_version,
-            ),
-        )
+    response = client.patch(
+        f"/api/v1/rees/{ree_id}/draft",
+        json={
+            "reePatch": {"name": "stale update"},
+            "expectedVersion": original_version,
+        },
+    )
+    assert response.status_code == 409
 
 
 def test_snapshot_run_fails_when_snapshot_persist_conflicts(monkeypatch):
