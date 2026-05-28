@@ -12,7 +12,9 @@ import type {
   OutputSource,
   ReeExperiment,
 } from "../../../../../core/ree/ReeSpec";
+import type { LogEntry, LogLine } from "../../../../../core/ree/ReeTypes";
 import { useApiRuntime } from "../../../../data/apiRuntime";
+import { useExecutionRunsClient } from "../../../../data/execution-runs/client";
 import { Ic } from "../../../shared/components/Icon";
 import {
   lgActionButton,
@@ -25,6 +27,7 @@ import {
   lgSuggestionButton,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
+import { LogPanel } from "../../components/logPanel";
 import { expId, isValidExperimentName } from "./experimentsPageHelpers";
 
 export interface ExperimentSuggestion {
@@ -364,7 +367,19 @@ type RunState = {
   status: ExecutionRunStatus;
   outputs: ExperimentRunOutputs | null;
   error: string | null;
+  startedAt: string;
+  logLines: LogLine[];
+  logCursor: string | undefined;
 };
+
+const MAX_RUN_LOG_LINES = 2000;
+
+function appendCappedLogLines(existing: LogLine[], incoming: LogLine[]): LogLine[] {
+  if (incoming.length === 0) return existing;
+  const merged = existing.concat(incoming);
+  if (merged.length <= MAX_RUN_LOG_LINES) return merged;
+  return merged.slice(merged.length - MAX_RUN_LOG_LINES);
+}
 
 const TERMINAL_STATUSES: ExecutionRunStatus[] = ["succeeded", "failed", "canceled"];
 
@@ -390,6 +405,7 @@ export function ExperimentDetail({
   onSnapshotComplete: () => Promise<void>;
 }) {
   const { runsApi, ensureReeId } = useApiRuntime();
+  const executionRunsClient = useExecutionRunsClient();
   const [runState, setRunState] = useState<RunState | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -400,18 +416,45 @@ export function ExperimentDetail({
     }
   }, []);
 
+  const fetchLogsOnce = useCallback(
+    async (reeId: string, runId: string, cursor: string | undefined) => {
+      let nextCursor = cursor;
+      const collected: LogLine[] = [];
+      for (let page = 0; page < 20; page += 1) {
+        const chunk = await executionRunsClient.getExecutionRunLogs(reeId, runId, nextCursor);
+        collected.push(...chunk.lines);
+        nextCursor = chunk.nextCursor || nextCursor;
+        if (!chunk.hasMore) break;
+        if (!chunk.nextCursor) break;
+      }
+      return { lines: collected, cursor: nextCursor };
+    },
+    [executionRunsClient],
+  );
+
   useEffect(() => {
     if (!runState || TERMINAL_STATUSES.includes(runState.status)) return;
     stopPolling();
     pollRef.current = setInterval(async () => {
       try {
-        const run = await runsApi.getRun(runState.reeId, runState.runId);
+        const [run, logChunk] = await Promise.all([
+          runsApi.getRun(runState.reeId, runState.runId),
+          fetchLogsOnce(runState.reeId, runState.runId, runState.logCursor),
+        ]);
         const isTerminal = TERMINAL_STATUSES.includes(run.status);
         const outputs = isTerminal
           ? ((run.outputs as unknown as ExperimentRunOutputs | null) ?? null)
           : null;
         setRunState((prev) =>
-          prev ? { ...prev, status: run.status, outputs: outputs ?? prev.outputs } : prev,
+          prev
+            ? {
+                ...prev,
+                status: run.status,
+                outputs: outputs ?? prev.outputs,
+                logLines: appendCappedLogLines(prev.logLines, logChunk.lines),
+                logCursor: logChunk.cursor ?? prev.logCursor,
+              }
+            : prev,
         );
         if (isTerminal) {
           stopPolling();
@@ -425,7 +468,7 @@ export function ExperimentDetail({
       }
     }, 1500);
     return stopPolling;
-  }, [runState, runsApi, stopPolling, onSnapshotComplete]);
+  }, [runState, runsApi, stopPolling, onSnapshotComplete, fetchLogsOnce]);
 
   const startRun = useCallback(
     async (mode: "verify" | "snapshot") => {
@@ -442,6 +485,9 @@ export function ExperimentDetail({
           status: run.status,
           outputs: null,
           error: null,
+          startedAt: run.startedAt || run.createdAt || new Date().toISOString(),
+          logLines: [],
+          logCursor: undefined,
         });
       } catch {
         setRunState({
@@ -451,6 +497,9 @@ export function ExperimentDetail({
           status: "failed",
           outputs: null,
           error: "Failed to start run",
+          startedAt: new Date().toISOString(),
+          logLines: [],
+          logCursor: undefined,
         });
       }
     },
@@ -749,6 +798,8 @@ function DetailField({
 function RunResultPanel({ runState }: { runState: RunState }) {
   const isTerminal = TERMINAL_STATUSES.includes(runState.status);
   const { outputs } = runState;
+  const logEntry: LogEntry | null =
+    runState.logLines.length > 0 ? { lines: runState.logLines, ts: runState.startedAt } : null;
 
   const headerColor =
     outputs?.verdict === "pass"
@@ -861,6 +912,10 @@ function RunResultPanel({ runState }: { runState: RunState }) {
           Run {runState.status} — no output data available.
         </div>
       )}
+
+      <div style={{ marginTop: 10, height: 320, display: "flex", flexDirection: "column" }}>
+        <LogPanel log={logEntry} running={!isTerminal} />
+      </div>
     </div>
   );
 }
