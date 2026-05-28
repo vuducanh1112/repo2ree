@@ -37,15 +37,6 @@ export function isLikelyTextFile(fileName: string): boolean {
   return TEXT_FILE_EXTENSIONS.has(ext);
 }
 
-export function flattenTree(nodes: FileTreeNode[]): FileTreeNode[] {
-  const result: FileTreeNode[] = [];
-  for (const node of nodes || []) {
-    if (node.type === "folder") result.push(...flattenTree(node.children || []));
-    else result.push(node);
-  }
-  return result;
-}
-
 interface FlatTreeEntry {
   node: FileTreeNode;
   path: string;

@@ -5,7 +5,6 @@ import type {
 } from "../../../../core/ree-assembly/assemblyStepTypes";
 import type { StandingMeta } from "../../../../core/review/axes";
 import type { EvaluationState } from "../../../../core/review/EvaluationState";
-import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import { PageFiles } from "../../app-shell/pages/files/FilesPage";
 import { C } from "../../theme/theme";
 import {
@@ -29,7 +28,6 @@ interface ReviewerContentProps {
   setParam: (stepKey: ReactivationStepKey, paramKey: string, value: ReeAssemblyParamValue) => void;
   runStep: (key: ReactivationStepKey, params: ReactivationParams) => boolean | Promise<boolean>;
   cancelStep: (key: ReactivationStepKey) => void | Promise<void>;
-  reviewWorkspaceTree: FileTreeNode[];
   reviewReeFiles: ReeFile[];
   PodOrbitControl: React.ComponentType<{
     evaluation: EvaluationState;
@@ -54,7 +52,6 @@ export function ReviewerContent({
   setParam,
   runStep,
   cancelStep,
-  reviewWorkspaceTree,
   reviewReeFiles,
   PodOrbitControl,
 }: ReviewerContentProps) {
@@ -118,7 +115,7 @@ export function ReviewerContent({
       ) : (
         <div style={{ padding: "20px 28px" }}>
           <div style={{ maxWidth: 980 }}>
-            <PageFiles files={reviewWorkspaceTree} reeFiles={reviewReeFiles} />
+            <PageFiles reeFiles={reviewReeFiles} />
           </div>
         </div>
       )}

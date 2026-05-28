@@ -7,7 +7,6 @@ import type {
 import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
 import { type StandingMeta, standingMeta } from "../../../core/review/axes";
 import type { EvaluationState } from "../../../core/review/EvaluationState";
-import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import { useReviewClient } from "../../data/reviews/client";
 import { C } from "../theme/theme";
 import { ReviewerContent } from "./components/ReviewerContent";
@@ -18,7 +17,6 @@ import {
   initReactivationParams,
   isTerminalStatus,
   mapReviewReeFiles,
-  mapReviewWorkspaceTree,
   resolveReviewerRee,
   sleep,
 } from "./ReviewerViewHelpers";
@@ -248,11 +246,6 @@ export function ReviewerView({
     [reviewRootFilesState],
   );
 
-  const reviewWorkspaceTree = useMemo<FileTreeNode[]>(
-    () => mapReviewWorkspaceTree(reviewWorkspaceFilesState),
-    [reviewWorkspaceFilesState],
-  );
-
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg }}>
       <ReviewerHeader title={ree.name || "untitled"} onBack={onBack} />
@@ -279,7 +272,6 @@ export function ReviewerView({
           setParam={setParam}
           runStep={runStep}
           cancelStep={cancelStep}
-          reviewWorkspaceTree={reviewWorkspaceTree}
           reviewReeFiles={reviewReeFiles}
           PodOrbitControl={PodOrbitControl}
         />

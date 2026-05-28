@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import type { ReeFile } from "../../../../../core/ree/ReeTypes";
-import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
 import { Ic } from "../../../shared/components/Icon";
 import { lgPageColors } from "../../../theme/lightGlassTheme";
 import { S_WORKFLOW_PAGE_BODY, S_WORKFLOW_SERVICE_ROOT } from "../../../theme/theme";
@@ -8,30 +7,29 @@ import { AssemblyPageHeader } from "../../components/pageChrome";
 import { FilesEmptyState } from "./FilesEmptyState";
 import { FilesTreePane } from "./FilesTreePane";
 import { FileViewer } from "./FileViewer";
-import { buildReeFileTree, flattenTree, flattenTreeWithPaths } from "./filesPageHelpers";
+import { buildReeFileTree, flattenTreeWithPaths } from "./filesPageHelpers";
+
+const WORKSPACE_PREFIX = "workspace/";
 
 interface PageFilesProps {
-  files: FileTreeNode[];
   reeFiles: ReeFile[];
   onDownloadWorkspaceFile?: (path: string, suggestedName?: string) => Promise<void>;
 }
 
-export function PageFiles({ files, reeFiles, onDownloadWorkspaceFile }: PageFilesProps) {
+export function PageFiles({ reeFiles, onDownloadWorkspaceFile }: PageFilesProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const sourceFiles = files || [];
   const reeFileTree = useMemo(() => buildReeFileTree(reeFiles), [reeFiles]);
-  const sourceFlatEntries = useMemo(() => flattenTreeWithPaths(sourceFiles), [sourceFiles]);
   const reeFlatEntries = useMemo(() => flattenTreeWithPaths(reeFileTree), [reeFileTree]);
-  const reeFlatFiles = useMemo(() => flattenTree(reeFileTree), [reeFileTree]);
 
-  const selectedSourceEntry = selectedId
-    ? sourceFlatEntries.find((entry) => entry.node.id === selectedId) || null
-    : null;
   const selectedReeEntry = selectedId
     ? reeFlatEntries.find((entry) => entry.node.id === selectedId) || null
     : null;
-  const selectedFile = selectedSourceEntry?.node || selectedReeEntry?.node || null;
-  const selectedPath = selectedSourceEntry?.path || selectedReeEntry?.path || null;
+  const selectedFile = selectedReeEntry?.node || null;
+  const selectedPath = selectedReeEntry?.path || null;
+
+  const workspaceDownloadPath = selectedPath?.startsWith(WORKSPACE_PREFIX)
+    ? selectedPath.slice(WORKSPACE_PREFIX.length)
+    : null;
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
@@ -39,17 +37,16 @@ export function PageFiles({ files, reeFiles, onDownloadWorkspaceFile }: PageFile
         color={lgPageColors.files}
         icon={Ic.files(18)}
         title="Files"
-        subtitle="Inspect workspace inputs and generated REE files side by side"
+        subtitle="Inspect the on-disk REE layout"
         tips={[
-          "Use this view to verify paths referenced by source, runtime, scripts, and SBOM fields.",
-          "Workspace is read-only here; run lifecycle steps to generate or update REE files.",
+          "The tree mirrors the REE directory: manifest, snapshot, upstream/, overlay/, artifacts/, workspace/.",
+          "Run lifecycle steps to generate or update REE files.",
         ]}
       />
 
       <div style={S_WORKFLOW_PAGE_BODY}>
         <FilesTreePane
-          sourceFiles={sourceFiles}
-          reeFiles={reeFiles}
+          reeFileCount={reeFiles.length}
           reeFileTree={reeFileTree}
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -62,10 +59,10 @@ export function PageFiles({ files, reeFiles, onDownloadWorkspaceFile }: PageFile
               file={selectedFile}
               path={selectedPath}
               onClose={() => setSelectedId(null)}
-              label={reeFlatFiles.find((f) => f.id === selectedId) ? "ree" : "workspace"}
+              label="ree"
               onDownload={
-                selectedSourceEntry?.path && onDownloadWorkspaceFile
-                  ? () => onDownloadWorkspaceFile(selectedSourceEntry.path, selectedFile.name)
+                workspaceDownloadPath && onDownloadWorkspaceFile
+                  ? () => onDownloadWorkspaceFile(workspaceDownloadPath, selectedFile.name)
                   : undefined
               }
             />

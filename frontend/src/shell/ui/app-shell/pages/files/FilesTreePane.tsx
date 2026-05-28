@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import type { ReeFile } from "../../../../../core/ree/ReeTypes";
 import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
 import { filterFileTree } from "../../../../../core/workspace/fileTreeFilter";
 import { FileNode } from "../../../shared/components/FileTree";
@@ -79,8 +78,7 @@ function EmptyHint({ text }: { text: string }) {
 }
 
 interface FilesTreePaneProps {
-  sourceFiles: FileTreeNode[];
-  reeFiles: ReeFile[];
+  reeFileCount: number;
   reeFileTree: FileTreeNode[];
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -88,8 +86,7 @@ interface FilesTreePaneProps {
 }
 
 export function FilesTreePane({
-  sourceFiles,
-  reeFiles,
+  reeFileCount,
   reeFileTree,
   selectedId,
   onSelect,
@@ -97,7 +94,6 @@ export function FilesTreePane({
 }: FilesTreePaneProps) {
   const [query, setQuery] = useState("");
   const filtering = query.trim().length > 0;
-  const filteredSource = useMemo(() => filterFileTree(sourceFiles, query), [sourceFiles, query]);
   const filteredRee = useMemo(() => filterFileTree(reeFileTree, query), [reeFileTree, query]);
 
   return (
@@ -169,26 +165,9 @@ export function FilesTreePane({
       </div>
 
       <div style={{ overflowY: "auto", flex: 1 }}>
-        <SectionHeader label="Workspace" badge="read-only" color="#f59e0b" />
-        <div style={{ padding: "4px 4px 8px" }}>
-          {filteredSource.length === 0 ? (
-            <EmptyHint text={filtering ? "No matching workspace files" : "No workspace files"} />
-          ) : (
-            filteredSource.map((sourceNode) => (
-              <FileNode
-                key={sourceNode.id}
-                node={sourceNode}
-                onSelect={(selectedNode) => onSelect(selectedNode.id)}
-                selectedId={selectedId}
-                forceOpen={filtering}
-              />
-            ))
-          )}
-        </div>
-
         <SectionHeader
           label="REE Files"
-          badge={`${reeFiles.length} file${reeFiles.length !== 1 ? "s" : ""}`}
+          badge={`${reeFileCount} file${reeFileCount !== 1 ? "s" : ""}`}
           color={lgColors.violet}
         />
         <div style={{ padding: "4px 4px 8px" }}>
@@ -197,7 +176,7 @@ export function FilesTreePane({
               text={
                 filtering
                   ? "No matching REE files"
-                  : reeFiles.length === 0
+                  : reeFileCount === 0
                     ? "Run Create & Build to generate files"
                     : "No REE files"
               }

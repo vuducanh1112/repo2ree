@@ -1,8 +1,6 @@
 import { createEmptyReeSpec } from "../../../core/ree/ReeSpec";
 import type { ReeFile } from "../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../core/ree-editor/reeEditorViewModel";
-import type { FileTreeNode } from "../../../core/workspace/FileTree";
-import { buildTreeFromPaths } from "./components/reviewerFileTree";
 import {
   REACTIVATION_STEPS,
   type ReactivationParams,
@@ -57,10 +55,4 @@ export function mapReviewReeFiles(
     tag: "REE",
     size: file.size,
   }));
-}
-
-export function mapReviewWorkspaceTree(
-  reviewWorkspaceFilesState: Array<{ path: string; size?: number }>,
-): FileTreeNode[] {
-  return buildTreeFromPaths(reviewWorkspaceFilesState || [], "review-workspace");
 }

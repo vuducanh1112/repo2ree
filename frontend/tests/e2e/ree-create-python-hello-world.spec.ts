@@ -218,7 +218,8 @@ test("upload source archive into workspace", async ({ page }) => {
     );
 
     await expect(main.getByText("Files", { exact: true })).toBeVisible();
-    await expect(page.getByText("Workspace", { exact: true })).toBeVisible();
+    await expect(page.getByText("REE Files", { exact: true })).toBeVisible();
+    await page.getByPlaceholder("Filter files…").fill("workspace");
     for (const nodeName of archiveNodeNames) {
       const escapedNodeName = nodeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       await expect(page.getByRole("button", { name: new RegExp(escapedNodeName) })).toBeVisible();
@@ -226,7 +227,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await clickDemo(
       page,
       page.getByRole("button", { name: /main\.py/i }).first(),
-      "Inspect the uploaded files. Here: python_hello_world/main.py",
+      "Inspect the uploaded files. Here: workspace/python_hello_world/main.py",
     );
     await page.waitForTimeout(1000);
     await showcaseScroll(page, 700);

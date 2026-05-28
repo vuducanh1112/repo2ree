@@ -60,7 +60,6 @@ from repo2ree_core.workspace.bundle import (
 )
 from repo2ree_core.workspace.inventory import (
     classify_file_kind,
-    is_metadata_file_name,
     is_reserved_workspace_filename,
     should_inline_file_content,
 )
@@ -324,34 +323,55 @@ def _workspace_files_with_content(
     return entries
 
 
+_REE_SUBTREE_TAGS: dict[str, str] = {
+    "upstream": "Upstream",
+    "overlay": "Overlay",
+    "artifacts": "Artifact",
+    "workspace": "Workspace",
+}
+
+
+def _ree_file_tag(rel: str) -> str:
+    if rel == "manifest.json":
+        return "Manifest"
+    if rel.endswith(".zip") or rel.endswith(".tar.gz"):
+        return "Archive"
+    top, _, _ = rel.partition("/")
+    return _REE_SUBTREE_TAGS.get(top, "REE")
+
+
 def _workspace_ree_files_with_content(
     storage_root: Path, ree_id: str
 ) -> list[dict[str, Any]]:
-    """Enumerate top-level files in the REE root (manifest, snapshot, etc.)."""
+    """Enumerate every file under the REE root, mirroring the on-disk layout."""
     layout = _layout(storage_root, ree_id)
     ree_root = layout.root
     if not ree_root.exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
     ree_files: list[dict[str, Any]] = []
-    for fp in sorted(ree_root.iterdir(), key=lambda p: p.name):
+    for fp in sorted(ree_root.rglob("*")):
         if not fp.is_file():
             continue
-        if is_metadata_file_name(fp.name):
+        if is_reserved_workspace_filename(fp.name):
             continue
-        rel = fp.relative_to(ree_root).as_posix()
+        rel_path = fp.relative_to(ree_root)
+        if any(part.startswith(".upload.") for part in rel_path.parts):
+            continue
+        rel = rel_path.as_posix()
         size = fp.stat().st_size
         content = (
             _read_text_if_possible(fp)
             if should_inline_file_content(rel, size)
             else None
         )
-        tag = "REE"
-        if rel == "manifest.json":
-            tag = "Manifest"
-        elif rel.endswith(".zip") or rel.endswith(".tar.gz"):
-            tag = "Archive"
         ree_files.append(
-            {"path": rel, "kind": "ree", "tag": tag, "size": size, "content": content}
+            {
+                "path": rel,
+                "kind": "ree",
+                "tag": _ree_file_tag(rel),
+                "size": size,
+                "content": content,
+            }
         )
     return ree_files
 

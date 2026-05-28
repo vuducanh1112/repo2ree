@@ -55,13 +55,11 @@ export function ArchivePageContainer({
 }
 
 export function FilesPageContainer({
-  workspaceRemote,
   uiChrome,
   currentReeFiles,
   commands,
 }: AppShellPageContainerProps) {
   const { page } = uiChrome;
-  const { workspaceFiles } = workspaceRemote;
 
   if (page !== PAGE.FILES) {
     return null;
@@ -70,7 +68,6 @@ export function FilesPageContainer({
   return (
     <ContentSection>
       <FilesPage
-        files={workspaceFiles}
         reeFiles={currentReeFiles}
         onDownloadWorkspaceFile={commands.onDownloadWorkspaceFile}
       />
