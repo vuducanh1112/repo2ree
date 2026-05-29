@@ -390,6 +390,52 @@ test("upload source archive into workspace", async ({ page }) => {
     await expectOverviewCableActive("Activation");
   });
 
+  await test.step("Run experiment", async () => {
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: /Experiments.*Define reproducibility experiment commands/ }),
+      "Open experiments page",
+    );
+    await expect(main.getByRole("heading", { name: "Experiments", exact: true })).toBeVisible();
+    await clickDemo(
+      page,
+      main.getByRole("button", { name: /Add experiment/i }).first(),
+      "Add a new experiment",
+    );
+    await fillDemo(page, main.getByPlaceholder("smoke-test"), "echo-hello", "Name the experiment");
+    await fillDemo(
+      page,
+      main.getByPlaceholder("pytest tests/smoke -q"),
+      "echo hello",
+      "Set the command to echo hello",
+    );
+    const outputsCard = main
+      .locator("div")
+      .filter({ hasText: /^Expected outputs/ })
+      .first();
+    await clickDemo(
+      page,
+      outputsCard.getByRole("button", { name: /Add/ }).first(),
+      "Declare an expected output",
+    );
+    await fillDemo(
+      page,
+      main.getByPlaceholder("PASSED").first(),
+      "hello",
+      "Require stdout to contain 'hello'",
+    );
+    await clickDemo(page, main.getByRole("button", { name: /^Play Run$/ }), "Run the experiment");
+    await page.waitForTimeout(5000);
+    await showcaseScroll(page, 800);
+    await showcaseScroll(page, 800);
+    await page.waitForTimeout(5000);
+    const runResultPanel = main
+      .locator("div")
+      .filter({ hasText: /^Run result/ })
+      .first();
+    await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible({ timeout: 30000 });
+  });
+
   await test.step("Seal and download", async () => {
     await clickDemo(
       page,
