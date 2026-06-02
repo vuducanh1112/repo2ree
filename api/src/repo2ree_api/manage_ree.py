@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import logging
 import re
+import uuid
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
@@ -34,35 +35,42 @@ from repo2ree_core.envelope.command import (
     UpdateSourceMetadataArgs,
     WriteFileArgs,
 )
-from repo2ree_core.storage.layout import WORKBENCH_ROOT, ReeLayout
+from repo2ree_core.storage.layout import WORKBENCH_ROOT
 from repo2ree_api.workbench.manager import WorkbenchHandle
-from repo2ree_api.storage.workspace_files import (
+from repo2ree_api.storage.upload_staging import (
+    discard_staged_upload,
+    new_upload_token,
+    stage_upload_bytes,
+    staged_upload_path,
+)
+from repo2ree_api.schemas import (
+    ReeDraftPatchPayload,
     SourceAcquirePayload,
     SourceUploadCompletePayload,
-    ReeDraftPatchPayload,
-    WorkspaceVersionConflictError,
-    build_workspace_ree_archive,
     UploadInitPayload,
     WorkspaceCreatePayload,
     WorkspaceFileContentPayload,
-    acquire_source,
-    complete_source_upload,
-    create_workspace,
-    delete_workspace,
-    get_workspace,
-    init_source_upload,
-    read_file_bytes,
-    read_workspace_metadata,
-    patch_ree_draft,
-    remove_source,
-    delete_file_content,
-    store_source_upload_bytes,
-    workspace_root,
-    write_file_content,
 )
 
 
 _log = logging.getLogger(__name__)
+
+
+def _require_handle(ree_id: str) -> WorkbenchHandle:
+    """Return the workbench handle for ree_id or raise.
+
+    404 if no workbench is registered for the REE; 503 if one is registered
+    but its container is not currently reachable. The workbench volume is the
+    single source of truth — there is no host-side fallback.
+    """
+    handle = workbench_manager.lookup(ree_id)
+    if handle is not None:
+        return handle
+    if workbench_manager.is_registered(ree_id):
+        raise HTTPException(
+            status_code=503, detail="Workbench unavailable for this REE"
+        )
+    raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
 
 
 def _run_workbench_acquire_pipeline(
@@ -117,33 +125,6 @@ def _run_workbench_acquire_pipeline(
             break
 
 
-def _mirror_to_workbench(ree_id: str, cmd: Command) -> None:
-    """Fire a single command at the workbench for a registered REE.
-
-    Non-fatal: logs a warning on failure so the host-side response is never
-    affected. Used by synchronous routes that mirror writes into the volume.
-    """
-    handle = workbench_manager.lookup(ree_id)
-    if handle is None:
-        return
-    try:
-
-        def _log_to_logger(stream: str, level: str, message: str) -> None:
-            _log.info("workbench mirror %s %s: %s", stream, level, message)
-
-        result = workbench_manager.dispatch_action(
-            handle, cmd, f"mirror-{cmd.operation}", _log_to_logger
-        )  # type: ignore[arg-type]
-        if result.status != "succeeded":
-            _log.warning(
-                "workbench mirror %s %s for %s", cmd.operation, result.status, ree_id
-            )
-    except Exception as exc:
-        _log.warning(
-            "workbench mirror %s failed for %s: %s", cmd.operation, ree_id, exc
-        )
-
-
 # ================================================
 # Router
 # ================================================
@@ -159,32 +140,24 @@ manage_ree_router = APIRouter()
 
 @manage_ree_router.post("/api/v1/rees")
 def create_workspace_route(payload: WorkspaceCreatePayload):
-    try:
-        result = create_workspace(payload)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except WorkspaceVersionConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if payload.sourceMode == "url" and not payload.originUrl:
+        raise HTTPException(
+            status_code=400, detail="originUrl is required for url source mode"
+        )
 
-    ree_id = result["reeId"]
+    ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
+    source_mode = "demo" if payload.sourceMode == "demo" else "draft"
+
     try:
-        handle = workbench_manager.provision(ree_id, name)
+        handle = workbench_manager.provision(ree_id, name, source_mode=source_mode)
     except Exception as exc:
-        try:
-            delete_workspace(ree_id)
-        except Exception:
-            pass
         raise HTTPException(
             status_code=500, detail=f"Workbench provisioning failed: {exc}"
         ) from exc
 
-    # For url mode, source was acquired synchronously on the host during
-    # create_workspace. Replicate that state into the workbench volume now.
+    # For url mode, acquire the source synchronously into the workbench volume
+    # so the response reflects acquired state.
     if payload.sourceMode == "url" and payload.originUrl:
         _run_workbench_acquire_pipeline(
             handle,
@@ -193,7 +166,7 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
             source_type=payload.sourceType or "git",
         )
 
-    return result
+    return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.get("/api/v1/rees")
@@ -211,353 +184,263 @@ def list_workspaces_route(
 
 @manage_ree_router.get("/api/v1/rees/{ree_id}")
 def get_workspace_route(ree_id: str):
-    try:
-        handle = workbench_manager.lookup(ree_id)
-        if handle is not None:
-            return workbench_manager.get_workspace(handle)
-        return get_workspace(ree_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    handle = _require_handle(ree_id)
+    return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.patch("/api/v1/rees/{ree_id}/draft")
 def patch_ree_draft_route(ree_id: str, payload: ReeDraftPatchPayload):
-    try:
-        current = _read_metadata(ree_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    handle = _require_handle(ree_id)
+    current = workbench_manager.get_ree_metadata(handle)
     if payload.expectedVersion and payload.expectedVersion != current.get("updatedAt"):
         raise HTTPException(status_code=409, detail="Workspace version conflict")
 
-    handle = workbench_manager.lookup(ree_id)
     cmd = PatchReeDraftCommand(
         args=PatchReeDraftArgs(patch=dict(payload.reePatch or {}))
     )
-    if handle is not None:
-        wb_result = workbench_manager.dispatch_action(
-            handle, cmd, "patch-draft", lambda *_: None
-        )
-        if wb_result.status != "succeeded":
-            raise HTTPException(
-                status_code=500, detail="Workbench patch_ree_draft failed"
-            )
-        try:
-            patch_ree_draft(ree_id, payload)
-        except Exception as exc:
-            _log.warning(
-                "host-side patch_ree_draft sync failed for %s: %s", ree_id, exc
-            )
-        return workbench_manager.get_workspace(handle)
-
-    try:
-        return patch_ree_draft(ree_id, payload)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    wb_result = workbench_manager.dispatch_action(
+        handle, cmd, "patch-draft", lambda *_: None
+    )
+    if wb_result.status != "succeeded":
+        raise HTTPException(status_code=500, detail="Workbench patch_ree_draft failed")
+    return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.delete("/api/v1/rees/{ree_id}")
 def delete_workspace_route(ree_id: str):
+    handle = _require_handle(ree_id)
     try:
-        delete_workspace(ree_id)
-
-        handle = workbench_manager.lookup(ree_id)
-        if handle is not None:
-            try:
-                workbench_manager.teardown(handle)
-            except Exception as exc:
-                _log.warning("workbench teardown failed for %s: %s", ree_id, exc)
-
-        return {
-            "deletedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "state": "deleted",
-        }
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        workbench_manager.teardown(handle)
+    except Exception as exc:
+        _log.warning("workbench teardown failed for %s: %s", ree_id, exc)
+        raise HTTPException(
+            status_code=500, detail=f"Workbench teardown failed: {exc}"
+        ) from exc
+    return {
+        "deletedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "state": "deleted",
+    }
 
 
 @manage_ree_router.post("/api/v1/rees/{ree_id}/source:acquire")
 def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
-    try:
-        request_payload = {
-            "mode": "download",
-            "originUrl": payload.originUrl,
-            "sourceType": payload.sourceType,
-        }
+    handle = _require_handle(ree_id)
+    request_payload = {
+        "mode": "download",
+        "originUrl": payload.originUrl,
+        "sourceType": payload.sourceType,
+    }
 
-        handle = workbench_manager.lookup(ree_id)
+    def _runner(ws_id: str, run_id: str):
+        def _log_run(stream: str, level: str, message: str) -> None:
+            _append_run_log(ws_id, run_id, stream, level, message)
 
-        def _runner(ws_id: str, run_id: str):
-            def _log(stream: str, level: str, message: str) -> None:
-                _append_run_log(ws_id, run_id, stream, level, message)
-
-            _log(
-                "system",
-                "info",
-                f"Starting source acquisition from {payload.originUrl}",
-            )
-            if _is_cancel_requested(ws_id, run_id):
-                _log("system", "warn", "Source acquisition canceled")
-                return "canceled", request_payload
-
-            # Host-side — always runs; keeps the frontend up to date.
-            acquire_source(ws_id, payload)
-
-            # Workbench-side — runs in parallel if a workbench is registered.
-            # Updates the volume so the REE state is observable via docker exec.
-            if handle is not None:
-                pipeline: list[Command] = [
-                    AcquireSourceCommand(
-                        args=AcquireSourceArgs(
-                            origin_url=payload.originUrl,
-                            source_type=payload.sourceType,  # type: ignore[arg-type]
-                            dest=WORKBENCH_ROOT / "upstream",
-                        )
-                    ),
-                    SnapshotUpstreamCommand(),
-                    MaterializeWorkspaceCommand(),
-                    UpdateSourceMetadataCommand(
-                        args=UpdateSourceMetadataArgs(
-                            origin_url=payload.originUrl,
-                            source_type=payload.sourceType,
-                        )
-                    ),
-                ]
-                for cmd in pipeline:
-                    result = workbench_manager.dispatch_action(
-                        handle, cmd, run_id, _log
-                    )
-                    if result.outputs:
-                        _update_run_outputs(ws_id, run_id, result.outputs)
-                    if result.status != "succeeded":
-                        _log(
-                            "system",
-                            "warn",
-                            f"Workbench step {cmd.operation} {result.status} — host-side succeeded",
-                        )
-                        break
-
-            _log("system", "info", "Source acquisition succeeded")
-            return "succeeded", request_payload
-
-        run_state = _start_background_run(
-            ree_id=ree_id,
-            operation="source",
-            request_payload=request_payload,
-            run_id_prefix="source",
-            runner=_runner,
+        _log_run(
+            "system",
+            "info",
+            f"Starting source acquisition from {payload.originUrl}",
         )
+        if _is_cancel_requested(ws_id, run_id):
+            _log_run("system", "warn", "Source acquisition canceled")
+            return "canceled", request_payload
 
-        return _run_summary(run_state)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        pipeline: list[Command] = [
+            AcquireSourceCommand(
+                args=AcquireSourceArgs(
+                    origin_url=payload.originUrl,
+                    source_type=payload.sourceType,  # type: ignore[arg-type]
+                    dest=WORKBENCH_ROOT / "upstream",
+                )
+            ),
+            SnapshotUpstreamCommand(),
+            MaterializeWorkspaceCommand(),
+            UpdateSourceMetadataCommand(
+                args=UpdateSourceMetadataArgs(
+                    origin_url=payload.originUrl,
+                    source_type=payload.sourceType,
+                )
+            ),
+        ]
+        for cmd in pipeline:
+            result = workbench_manager.dispatch_action(handle, cmd, run_id, _log_run)
+            if result.outputs:
+                _update_run_outputs(ws_id, run_id, result.outputs)
+            if result.status != "succeeded":
+                _log_run(
+                    "system",
+                    "error",
+                    f"Workbench step {cmd.operation} {result.status}",
+                )
+                return result.status, request_payload
+
+        _log_run("system", "info", "Source acquisition succeeded")
+        return "succeeded", request_payload
+
+    run_state = _start_background_run(
+        ree_id=ree_id,
+        operation="source",
+        request_payload=request_payload,
+        run_id_prefix="source",
+        runner=_runner,
+    )
+
+    return _run_summary(run_state)
 
 
 @manage_ree_router.post("/api/v1/rees/{ree_id}/source:upload-init")
 def upload_init_route(ree_id: str, payload: UploadInitPayload):
-    try:
-        return init_source_upload(ree_id, payload)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    _require_handle(ree_id)
+    result = new_upload_token()
+    token = result["uploadToken"]
+    result["uploadUrl"] = f"/api/v1/rees/{ree_id}/source:upload/{token}"
+    return result
 
 
 @manage_ree_router.put("/api/v1/rees/{ree_id}/source:upload/{upload_token}")
 async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Request):
-    try:
-        data = await request.body()
-        return store_source_upload_bytes(ree_id, upload_token, data)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    _require_handle(ree_id)
+    data = await request.body()
+    stage_upload_bytes(upload_token, data)
+    return {
+        "uploadToken": upload_token,
+        "storedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
 
 
 @manage_ree_router.post("/api/v1/rees/{ree_id}/source:upload-complete")
 def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
-    try:
-        request_payload = {
-            "mode": "upload",
-            "uploadToken": payload.uploadToken,
-            "archiveName": payload.archiveName,
-        }
+    handle = _require_handle(ree_id)
+    request_payload = {
+        "mode": "upload",
+        "uploadToken": payload.uploadToken,
+        "archiveName": payload.archiveName,
+    }
+    staged_host = staged_upload_path(payload.uploadToken)
 
-        handle = workbench_manager.lookup(ree_id)
-        staged_host = ReeLayout.for_ree(workspace_root(), ree_id).upload_staging_file(
-            payload.uploadToken
+    def _runner(ws_id: str, run_id: str):
+        def _log_run(stream: str, level: str, message: str) -> None:
+            _append_run_log(ws_id, run_id, stream, level, message)
+
+        _log_run(
+            "system",
+            "info",
+            f"Starting source upload extraction for {payload.archiveName}",
         )
+        if _is_cancel_requested(ws_id, run_id):
+            _log_run("system", "warn", "Source upload canceled")
+            return "canceled", request_payload
 
-        def _runner(ws_id: str, run_id: str):
-            def _log(stream: str, level: str, message: str) -> None:
-                _append_run_log(ws_id, run_id, stream, level, message)
+        if not staged_host.exists():
+            _log_run("system", "error", "Staged upload not found")
+            return "failed", request_payload
 
-            _log(
-                "system",
-                "info",
-                f"Starting source upload extraction for {payload.archiveName}",
+        try:
+            workbench_manager.copy_to_workbench(
+                handle,
+                str(staged_host),
+                f"/ree/upload-staging/{payload.uploadToken}.bin",
             )
-            if _is_cancel_requested(ws_id, run_id):
-                _log("system", "warn", "Source upload canceled")
-                return "canceled", request_payload
+        except Exception as exc:
+            _log_run("system", "error", f"docker cp to workbench failed: {exc}")
+            return "failed", request_payload
 
-            # Workbench-side copy must happen before the host-side call because
-            # complete_source_upload deletes the staged file after extracting it.
-            if handle is not None:
-                try:
-                    workbench_manager.copy_to_workbench(
-                        handle,
-                        str(staged_host),
-                        f"/ree/upload-staging/{payload.uploadToken}.bin",
-                    )
-                except Exception as exc:
-                    _log("system", "warn", f"docker cp to workbench failed: {exc}")
-                    handle_for_pipeline = None
-                else:
-                    handle_for_pipeline = handle
-            else:
-                handle_for_pipeline = None
+        pipeline: list[Command] = [
+            ExtractUploadCommand(
+                args=ExtractUploadArgs(
+                    upload_token=payload.uploadToken,
+                    archive_name=payload.archiveName,
+                )
+            ),
+            SnapshotUpstreamCommand(),
+            MaterializeWorkspaceCommand(),
+            UpdateSourceMetadataCommand(
+                args=UpdateSourceMetadataArgs(
+                    mode="upload",
+                    archive_name=payload.archiveName,
+                    upload_token=payload.uploadToken,
+                )
+            ),
+        ]
+        status = "succeeded"
+        for cmd in pipeline:
+            result = workbench_manager.dispatch_action(handle, cmd, run_id, _log_run)
+            if result.outputs:
+                _update_run_outputs(ws_id, run_id, result.outputs)
+            if result.status != "succeeded":
+                _log_run(
+                    "system",
+                    "error",
+                    f"Workbench step {cmd.operation} {result.status}",
+                )
+                status = result.status
+                break
 
-            # Host-side — always runs; keeps the frontend up to date.
-            complete_source_upload(ws_id, payload.uploadToken, payload.archiveName)
+        # Clean up the transient host landing file regardless of outcome.
+        discard_staged_upload(payload.uploadToken)
 
-            # Workbench-side pipeline — runs if the copy succeeded.
-            if handle_for_pipeline is not None:
-                pipeline: list[Command] = [
-                    ExtractUploadCommand(
-                        args=ExtractUploadArgs(
-                            upload_token=payload.uploadToken,
-                            archive_name=payload.archiveName,
-                        )
-                    ),
-                    SnapshotUpstreamCommand(),
-                    MaterializeWorkspaceCommand(),
-                    UpdateSourceMetadataCommand(
-                        args=UpdateSourceMetadataArgs(
-                            mode="upload",
-                            archive_name=payload.archiveName,
-                            upload_token=payload.uploadToken,
-                        )
-                    ),
-                ]
-                for cmd in pipeline:
-                    result = workbench_manager.dispatch_action(
-                        handle_for_pipeline, cmd, run_id, _log
-                    )
-                    if result.outputs:
-                        _update_run_outputs(ws_id, run_id, result.outputs)
-                    if result.status != "succeeded":
-                        _log(
-                            "system",
-                            "warn",
-                            f"Workbench step {cmd.operation} {result.status} — host-side succeeded",
-                        )
-                        break
+        if status == "succeeded":
+            _log_run("system", "info", "Source upload extraction succeeded")
+        return status, request_payload
 
-            _log("system", "info", "Source upload extraction succeeded")
-            return "succeeded", request_payload
+    run_state = _start_background_run(
+        ree_id=ree_id,
+        operation="source",
+        request_payload=request_payload,
+        run_id_prefix="source",
+        runner=_runner,
+    )
 
-        run_state = _start_background_run(
-            ree_id=ree_id,
-            operation="source",
-            request_payload=request_payload,
-            run_id_prefix="source",
-            runner=_runner,
-        )
-
-        return _run_summary(run_state)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _run_summary(run_state)
 
 
 @manage_ree_router.delete("/api/v1/rees/{ree_id}/source")
 def remove_source_route(ree_id: str):
-    handle = workbench_manager.lookup(ree_id)
-    if handle is not None:
-        wb_result = workbench_manager.dispatch_action(
-            handle, RemoveSourceCommand(), "remove-source", lambda *_: None
-        )
-        if wb_result.status != "succeeded":
-            raise HTTPException(
-                status_code=500, detail="Workbench remove_source failed"
-            )
-        try:
-            remove_source(ree_id)
-        except Exception as exc:
-            _log.warning("host-side remove_source sync failed for %s: %s", ree_id, exc)
-        return {
-            "invalidatedSteps": ["source", "evaluate", "workflow"],
-            "workspace": workbench_manager.get_workspace(handle),
-        }
-
-    try:
-        return remove_source(ree_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    handle = _require_handle(ree_id)
+    wb_result = workbench_manager.dispatch_action(
+        handle, RemoveSourceCommand(), "remove-source", lambda *_: None
+    )
+    if wb_result.status != "succeeded":
+        raise HTTPException(status_code=500, detail="Workbench remove_source failed")
+    return {
+        "invalidatedSteps": ["source", "evaluate", "workflow"],
+        "workspace": workbench_manager.get_workspace(handle),
+    }
 
 
 @manage_ree_router.get("/api/v1/rees/{ree_id}/files/raw")
 def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)):
+    handle = _require_handle(ree_id)
     try:
-        handle = workbench_manager.lookup(ree_id)
-        if handle is not None:
-            content = workbench_manager.read_file_bytes(handle, path)
-            return Response(content=content, media_type="application/octet-stream")
-        content = read_file_bytes(ree_id, path)
-        return Response(content=content, media_type="application/octet-stream")
-    except FileNotFoundError as exc:
+        content = workbench_manager.read_file_bytes(handle, path)
+    except RuntimeError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Response(content=content, media_type="application/octet-stream")
 
 
 @manage_ree_router.put("/api/v1/rees/{ree_id}/files/content")
 def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload):
-    handle = workbench_manager.lookup(ree_id)
+    handle = _require_handle(ree_id)
     cmd = WriteFileCommand(
         args=WriteFileArgs(path=payload.path, content=payload.content)
     )
-    if handle is not None:
-        wb_result = workbench_manager.dispatch_action(
-            handle, cmd, "write-file", lambda *_: None
-        )
-        if wb_result.status != "succeeded":
-            raise HTTPException(status_code=500, detail="Workbench write_file failed")
-        try:
-            write_file_content(ree_id, payload.path, payload.content)
-        except Exception as exc:
-            _log.warning("host-side write_file sync failed for %s: %s", ree_id, exc)
-        return wb_result.outputs or {"updatedAt": None}
-
-    try:
-        return write_file_content(ree_id, payload.path, payload.content)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    wb_result = workbench_manager.dispatch_action(
+        handle, cmd, "write-file", lambda *_: None
+    )
+    if wb_result.status != "succeeded":
+        raise HTTPException(status_code=500, detail="Workbench write_file failed")
+    return wb_result.outputs or {"updatedAt": None}
 
 
 @manage_ree_router.delete("/api/v1/rees/{ree_id}/files/content")
 def delete_workspace_file_content_route(ree_id: str, path: str = Query(...)):
-    handle = workbench_manager.lookup(ree_id)
+    handle = _require_handle(ree_id)
     cmd = DeleteFileCommand(args=DeleteFileArgs(path=path))
-    if handle is not None:
-        wb_result = workbench_manager.dispatch_action(
-            handle, cmd, "delete-file", lambda *_: None
-        )
-        if wb_result.status != "succeeded":
-            raise HTTPException(status_code=500, detail="Workbench delete_file failed")
-        try:
-            delete_file_content(ree_id, path)
-        except Exception as exc:
-            _log.warning("host-side delete_file sync failed for %s: %s", ree_id, exc)
-        return wb_result.outputs or {"deletedAt": None}
-
-    try:
-        return delete_file_content(ree_id, path)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    wb_result = workbench_manager.dispatch_action(
+        handle, cmd, "delete-file", lambda *_: None
+    )
+    if wb_result.status != "succeeded":
+        raise HTTPException(status_code=500, detail="Workbench delete_file failed")
+    return wb_result.outputs or {"deletedAt": None}
 
 
 @manage_ree_router.post("/api/v1/rees/{ree_id}/workbench/reprovision")
@@ -574,27 +457,22 @@ def reprovision_workbench_route(ree_id: str):
 
 @manage_ree_router.get("/api/v1/rees/{ree_id}/ree-archive")
 def download_workspace_ree_archive_route(ree_id: str):
+    handle = _require_handle(ree_id)
     try:
-        handle = workbench_manager.lookup(ree_id)
-        if handle is not None:
-            archive_bytes = workbench_manager.build_archive(handle)
-        else:
-            archive_bytes = build_workspace_ree_archive(ree_id)
-        archive_filename = _archive_download_filename(ree_id)
-        return Response(
-            content=archive_bytes,
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": (
-                    f'attachment; filename="{archive_filename}"; '
-                    f"filename*=UTF-8''{quote(archive_filename)}"
-                )
-            },
-        )
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
+        archive_bytes = workbench_manager.build_archive(handle)
+    except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    archive_filename = _archive_download_filename(handle)
+    return Response(
+        content=archive_bytes,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{archive_filename}"; '
+                f"filename*=UTF-8''{quote(archive_filename)}"
+            )
+        },
+    )
 
 
 # ================================================
@@ -602,19 +480,8 @@ def download_workspace_ree_archive_route(ree_id: str):
 # ================================================
 
 
-def _read_metadata(ree_id: str) -> dict:  # type: ignore[type-arg]
-    """Read REE metadata from the workbench when available, falling back to host."""
-    handle = workbench_manager.lookup(ree_id)
-    if handle is not None:
-        try:
-            return workbench_manager.get_ree_metadata(handle)
-        except Exception:
-            pass
-    return read_workspace_metadata(ree_id)
-
-
-def _archive_download_filename(ree_id: str) -> str:
-    metadata = _read_metadata(ree_id)
+def _archive_download_filename(handle: WorkbenchHandle) -> str:
+    metadata = workbench_manager.get_ree_metadata(handle)
     raw_name = str(metadata.get("name") or "").strip()
     safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._-")
     if not safe_stem:

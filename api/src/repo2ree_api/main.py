@@ -16,7 +16,7 @@ from repo2ree_api.manage_ree import manage_ree_router
 from repo2ree_api.review_ree import review_ree_router
 from fastapi.middleware.cors import CORSMiddleware
 from repo2ree_api.storage.init_storage import (
-    create_workspace_storage_if_not_exists,
+    create_upload_staging_if_not_exists,
     create_review_storage_if_not_exists,
 )
 
@@ -29,7 +29,7 @@ from repo2ree_api.storage.init_storage import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # This runs ON STARTUP
-    create_workspace_storage_if_not_exists()
+    create_upload_staging_if_not_exists()
     create_review_storage_if_not_exists()
     yield
     # This runs ON SHUTDOWN (clean up if needed)

@@ -5,6 +5,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
+from pathlib import Path
+
 from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_core.envelope.command import GenerateSbomArgs, GenerateSbomCommand
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
@@ -14,7 +16,6 @@ from repo2ree_api.run_management import (
     _run_summary,
     _start_background_run,
 )
-from repo2ree_api.storage.workspace_files import workspace_dir
 
 
 # ================================================
@@ -61,9 +62,11 @@ def _resolve_sbom_runtime_path(ree_id: str, produced_runtime_path: str) -> str:
         raise HTTPException(
             status_code=400, detail="produced_runtime_path is required for sbom runs"
         )
-    # Validate the path string is safe (no traversal, no control prefixes).
+    # Validate the path string is safe (no traversal, no control prefixes). The
+    # tarball lives in the workbench, so validate against a neutral virtual root
+    # rather than any host directory; the handler re-resolves inside /ree.
     resolve_relative_path(
-        workspace_dir(ree_id).resolve(),
+        Path("/__ree_workspace__"),
         runtime_path,
         invalid_detail="Invalid workspace path",
         blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,

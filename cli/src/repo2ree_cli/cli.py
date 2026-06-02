@@ -170,10 +170,17 @@ def acquire_source_cmd(origin_url: str, source_type: str, dest: str) -> None:
 @cli.command("init-ree")
 @click.option("--ree-id", required=True, help="The REE identifier.")
 @click.option("--name", default=None, help="Human-readable name for the REE.")
-def init_ree_cmd(ree_id: str, name: str | None) -> None:
+@click.option(
+    "--source-mode",
+    type=click.Choice(["draft", "demo"]),
+    default="draft",
+    help="Initial source mode: 'draft' (empty) or 'demo' (seeded README, ready).",
+)
+def init_ree_cmd(ree_id: str, name: str | None, source_mode: str) -> None:
     """Initialise the REE directory structure at /ree.
 
-    Creates the directory skeleton and writes an initial .workspace.json.
+    Creates the directory skeleton and writes an initial .workspace.json. For
+    ``--source-mode demo`` it also seeds a README and marks the REE ready.
     Idempotent: exits 0 without modifying anything if already initialised.
     """
     layout = ReeLayout.in_workbench()
@@ -197,6 +204,15 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
         "reeDraft": REE(name=ree_name).model_dump(exclude_none=True),
         "source": None,
     }
+
+    if source_mode == "demo":
+        (layout.workspace / "README.md").write_text(
+            "# Demo workspace\n\nThis workspace was initialized in demo mode.\n",
+            encoding="utf-8",
+        )
+        metadata["status"] = "ready"
+        metadata["source"] = {"mode": "demo", "acquiredAt": ts}
+
     store.write_metadata_json(metadata)
     click.echo(json.dumps({"status": "initialised", "reeId": ree_id}))
 

@@ -50,7 +50,9 @@ class WorkbenchManager:
     # Lifecycle
     # ------------------------------------------------
 
-    def provision(self, ree_id: str, name: str) -> WorkbenchHandle:
+    def provision(
+        self, ree_id: str, name: str, source_mode: str = "draft"
+    ) -> WorkbenchHandle:
         """Create volume + container, initialise the REE, register handle."""
         volume_name = f"repo2ree-ree-{ree_id}"
         container_name = f"repo2ree-wb-{ree_id}"
@@ -75,7 +77,15 @@ class WorkbenchManager:
         )
 
         _docker_exec(
-            container_name, "repo2ree", "init-ree", "--ree-id", ree_id, "--name", name
+            container_name,
+            "repo2ree",
+            "init-ree",
+            "--ree-id",
+            ree_id,
+            "--name",
+            name,
+            "--source-mode",
+            source_mode,
         )
 
         entry = WorkbenchEntry(
@@ -115,6 +125,10 @@ class WorkbenchManager:
         _docker_silent("rm", "-f", handle.container_name)
         _docker_silent("volume", "rm", handle.volume_name)
         self._registry.unregister(handle.ree_id)
+
+    def is_registered(self, ree_id: str) -> bool:
+        """True if a workbench is registered for ree_id (regardless of run state)."""
+        return self._registry.lookup(ree_id) is not None
 
     def lookup(self, ree_id: str) -> WorkbenchHandle | None:
         """Return the handle for ree_id, or None if not registered or not running."""
