@@ -155,8 +155,6 @@
             python313Packages.uv
             kubectl
 
-            renovate
-
             # graphviz for generating graphs with dependency cruiser
             graphviz
 
