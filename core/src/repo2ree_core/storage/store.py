@@ -155,6 +155,7 @@ class ReeStore:
         ):
             subtree.ensure_root()
         self.layout.upload_staging.mkdir(parents=True, exist_ok=True)
+        self.layout.runs.mkdir(parents=True, exist_ok=True)
 
     def remove(self) -> None:
         """Delete the entire REE directory tree. No-op if absent."""

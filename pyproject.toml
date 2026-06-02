@@ -26,7 +26,7 @@ notebooks = [
 ]
 
 [tool.mypy]
-mypy_path = ["core/src", "api/src", "api/cli"]
+mypy_path = ["core/src", "api/src", "cli/src"]
 
 # docker (docker-py) ships no py.typed and has no maintained stub package, so
 # treat the whole namespace as untyped (Any) rather than analyzing its sources.

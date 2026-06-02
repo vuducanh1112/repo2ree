@@ -6,6 +6,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.sbom.generate_sbom import generate_sbom
+from repo2ree_api.workbench.deps import workbench_manager
+from repo2ree_core.envelope.command import GenerateSbomArgs, GenerateSbomCommand
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.run_management import (
     _append_run_log,
@@ -161,6 +163,7 @@ def create_generate_sbom_run_state(
                 f"SBOM generation failed: {exc}",
             )
             raise
+        _shadow_generate_sbom(ree_id, run_id, runtime_path)
         _append_run_log(
             ree_id,
             run_id,
@@ -178,3 +181,38 @@ def create_generate_sbom_run_state(
         run_id_prefix="sbom",
         runner=_runner,
     )
+
+
+def _shadow_generate_sbom(ree_id: str, run_id: str, runtime_path: str) -> None:
+    handle = workbench_manager.lookup(ree_id)
+    if handle is None:
+        return
+
+    try:
+        result = workbench_manager.dispatch_action(
+            handle,
+            GenerateSbomCommand(
+                args=GenerateSbomArgs(produced_runtime_path=runtime_path)
+            ),
+            run_id,
+            lambda stream, level, message: _append_run_log(
+                ree_id, run_id, stream, level, message
+            ),
+        )
+    except Exception as exc:
+        _append_run_log(
+            ree_id,
+            run_id,
+            "system",
+            "warn",
+            f"Workbench step generate_sbom failed: {exc}",
+        )
+        return
+    if result.status != "succeeded":
+        _append_run_log(
+            ree_id,
+            run_id,
+            "system",
+            "warn",
+            f"Workbench step generate_sbom {result.status} — host-side succeeded",
+        )

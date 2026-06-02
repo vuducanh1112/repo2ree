@@ -1,6 +1,10 @@
 .direnv
 .env
 
+# Nix build output symlinks
+result
+result-*
+
 .pytest_cache/
 .venv/
 **/__pycache__/

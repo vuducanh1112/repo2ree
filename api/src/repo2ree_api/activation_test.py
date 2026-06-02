@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_core.envelope import ActivationTestCommand
+from repo2ree_core.envelope.command import ActivationTestArgs
 from repo2ree_core.working_environment import run_workspace_script
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.run_management import (
@@ -17,6 +20,9 @@ from repo2ree_api.storage.workspace_files import (
     read_workspace_metadata,
     workspace_dir,
 )
+from repo2ree_api.workbench.deps import workbench_manager
+
+_log = logging.getLogger(__name__)
 
 
 # ================================================
@@ -151,11 +157,14 @@ def create_activation_run_state(
         if _is_cancel_requested(ree_id, run_id):
             _append_run_log(ree_id, run_id, "system", "warn", "Activation run canceled")
             return "canceled", {"activationScriptPath": activation_script_path}
-        return run_activation_test(
+        status, outputs = run_activation_test(
             ree_id=ree_id,
             run_id=run_id,
             activation_script_path=activation_script_path,
         )
+        if status == "succeeded":
+            _shadow_activation_test(ree_id, run_id, activation_script_path)
+        return status, outputs
 
     return _start_background_run(
         ree_id=ree_id,
@@ -164,3 +173,27 @@ def create_activation_run_state(
         run_id_prefix="activation",
         runner=_runner,
     )
+
+
+def _shadow_activation_test(
+    ree_id: str, run_id: str, activation_script_path: str
+) -> None:
+    handle = workbench_manager.lookup(ree_id)
+    if handle is None:
+        return
+    try:
+        result = workbench_manager.dispatch_action(
+            handle,
+            ActivationTestCommand(
+                args=ActivationTestArgs(activation_script_path=activation_script_path)
+            ),
+            run_id,
+            _log.info,  # type: ignore[arg-type]
+        )
+    except Exception as exc:
+        _log.warning("Workbench step activation_test failed: %s", exc)
+        return
+    if result.status != "succeeded":
+        _log.warning(
+            "Workbench step activation_test %s — host-side succeeded", result.status
+        )

@@ -4,7 +4,7 @@ This module is part of the functional core: it contains the data type and
 path arithmetic, but performs no filesystem I/O. The imperative shell in
 ``repo2ree_api.storage`` uses ``ReeLayout`` to know where to read and write.
 
-Layout under ``<storage_root>/<ree_id>/``:
+Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
 
     .workspace.json       session metadata
     manifest.json         sealed REE spec sidecar
@@ -14,6 +14,7 @@ Layout under ``<storage_root>/<ree_id>/``:
     overlay/              user-added and tool-generated recipe files
     artifacts/            build outputs (runtime, sbom, ...)
     workspace/            materialized view (upstream + overlay) used at build time
+    runs/                 per-action NDJSON run logs (<run_id>.ndjson)
 
 ``upstream/`` and ``overlay/`` are the sources of truth; ``workspace/`` is
 derived and may be rebuilt at any time.
@@ -36,6 +37,10 @@ SNAPSHOT_FILENAME = "snapshot.tar.gz"
 OVERLAY_DIRNAME = "overlay"
 ARTIFACTS_DIRNAME = "artifacts"
 WORKSPACE_DIRNAME = "workspace"
+RUNS_DIRNAME = "runs"
+
+# Fixed mount point inside every REE workbench container.
+WORKBENCH_ROOT = Path("/ree")
 
 
 @dataclass(frozen=True)
@@ -51,6 +56,11 @@ class ReeLayout:
     @classmethod
     def for_ree(cls, storage_root: Path | str, ree_id: str) -> "ReeLayout":
         return cls(root=Path(storage_root) / ree_id)
+
+    @classmethod
+    def in_workbench(cls) -> "ReeLayout":
+        """Layout rooted at the fixed workbench mount point (/ree)."""
+        return cls(root=WORKBENCH_ROOT)
 
     @property
     def metadata(self) -> Path:
@@ -83,6 +93,16 @@ class ReeLayout:
     @property
     def workspace(self) -> Path:
         return self.root / WORKSPACE_DIRNAME
+
+    @property
+    def runs(self) -> Path:
+        return self.root / RUNS_DIRNAME
+
+    def run_log(self, run_id: str) -> Path:
+        """Path to the NDJSON log file for a single action run."""
+        if not run_id or "/" in run_id or "\\" in run_id or run_id.startswith("."):
+            raise ValueError(f"invalid run_id: {run_id!r}")
+        return self.runs / f"{run_id}.ndjson"
 
     def upstream_file(self, rel: str | PurePosixPath) -> Path:
         return self._resolve_under(self.upstream, rel)

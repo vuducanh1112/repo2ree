@@ -9,6 +9,11 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.repo_profiler.profiler import AnalysisError, analyze_repo
 from repo2ree_core.repo_profiler.reproducibility_report import ReproducibilityReport
+from repo2ree_api.workbench.deps import workbench_manager
+from repo2ree_core.envelope.command import (
+    EvaluateDependencyScoreArgs,
+    EvaluateDependencyScoreCommand,
+)
 
 from repo2ree_api.run_management import (
     _append_run_log,
@@ -139,6 +144,7 @@ def create_evaluate_run_state(
             "detectedDependencies": report.detected_dependencies,
             "report": report.model_dump(by_alias=True),
         }
+        _shadow_evaluate_dependency_score(ree_id, run_id, bool(payload.strict))
         _append_run_log(ree_id, run_id, "system", "info", "Evaluate run succeeded")
         return "succeeded", outputs
 
@@ -149,3 +155,38 @@ def create_evaluate_run_state(
         run_id_prefix="evaluate",
         runner=_runner,
     )
+
+
+def _shadow_evaluate_dependency_score(ree_id: str, run_id: str, strict: bool) -> None:
+    handle = workbench_manager.lookup(ree_id)
+    if handle is None:
+        return
+
+    try:
+        result = workbench_manager.dispatch_action(
+            handle,
+            EvaluateDependencyScoreCommand(
+                args=EvaluateDependencyScoreArgs(strict=strict)
+            ),
+            run_id,
+            lambda stream, level, message: _append_run_log(
+                ree_id, run_id, stream, level, message
+            ),
+        )
+    except Exception as exc:
+        _append_run_log(
+            ree_id,
+            run_id,
+            "system",
+            "warn",
+            f"Workbench step evaluate_dependency_score failed: {exc}",
+        )
+        return
+    if result.status != "succeeded":
+        _append_run_log(
+            ree_id,
+            run_id,
+            "system",
+            "warn",
+            f"Workbench step evaluate_dependency_score {result.status} — host-side succeeded",
+        )

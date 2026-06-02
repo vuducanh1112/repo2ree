@@ -14,8 +14,10 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.domain.ree import REE
+from repo2ree_core.envelope.command import RunExperimentArgs, RunExperimentCommand
 from repo2ree_core.experiment.experiment import ExpectedOutput, Experiment
 from repo2ree_core.experiment.run import run_experiment
+from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.run_management import (
     _append_run_log,
@@ -202,6 +204,7 @@ def _create_experiment_run_state(
             run_outputs["snapshotMessage"] = (
                 f"Saved {len(outcome.snapshot_to_persist)} baseline(s) to the draft."
             )
+        _shadow_experiment_run(ree_id, run_id, experiment_name, mode)
         return outcome.status, run_outputs
 
     return _start_background_run(
@@ -211,3 +214,43 @@ def _create_experiment_run_state(
         run_id_prefix="experiment",
         runner=_runner,
     )
+
+
+def _shadow_experiment_run(
+    ree_id: str,
+    run_id: str,
+    experiment_name: str,
+    mode: Literal["verify", "snapshot"],
+) -> None:
+    handle = workbench_manager.lookup(ree_id)
+    if handle is None:
+        return
+
+    try:
+        result = workbench_manager.dispatch_action(
+            handle,
+            RunExperimentCommand(
+                args=RunExperimentArgs(experiment_name=experiment_name, mode=mode)
+            ),
+            run_id,
+            lambda stream, level, message: _append_run_log(
+                ree_id, run_id, stream, level, message
+            ),
+        )
+    except Exception as exc:
+        _append_run_log(
+            ree_id,
+            run_id,
+            "system",
+            "warn",
+            f"Workbench step run_experiment failed: {exc}",
+        )
+        return
+    if result.status != "succeeded":
+        _append_run_log(
+            ree_id,
+            run_id,
+            "system",
+            "warn",
+            f"Workbench step run_experiment {result.status} — host-side completed",
+        )

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.domain.hbom import HBOM
+from repo2ree_core.envelope import GenerateHbomCommand
 from repo2ree_core.hbom.generate_hbom import generate_hbom
 from repo2ree_api.run_management import (
     _append_run_log,
@@ -18,6 +20,9 @@ from repo2ree_api.storage.workspace_files import (
     patch_workspace,
     read_workspace_metadata,
 )
+from repo2ree_api.workbench.deps import workbench_manager
+
+_log = logging.getLogger(__name__)
 
 
 # ================================================
@@ -123,6 +128,7 @@ def create_generate_hbom_run_state(
             "Generated hardware description",
         )
         _append_run_log(ree_id, run_id, "system", "info", "HBOM run succeeded")
+        _shadow_generate_hbom(ree_id, run_id)
         return "succeeded", outputs
 
     return _start_background_run(
@@ -132,3 +138,23 @@ def create_generate_hbom_run_state(
         run_id_prefix="hbom",
         runner=_runner,
     )
+
+
+def _shadow_generate_hbom(ree_id: str, run_id: str) -> None:
+    handle = workbench_manager.lookup(ree_id)
+    if handle is None:
+        return
+    try:
+        result = workbench_manager.dispatch_action(
+            handle,
+            GenerateHbomCommand(),
+            run_id,
+            _log.info,  # type: ignore[arg-type]
+        )
+    except Exception as exc:
+        _log.warning("Workbench step generate_hbom failed: %s", exc)
+        return
+    if result.status != "succeeded":
+        _log.warning(
+            "Workbench step generate_hbom %s — host-side succeeded", result.status
+        )

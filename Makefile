@@ -1,5 +1,5 @@
 
-.PHONY: fe-checks fe-tests be-checks core-checks api-checks test-checks core-tests api-tests
+.PHONY: fe-checks fe-tests be-checks core-checks api-checks cli-checks test-checks core-tests api-tests cli-tests workbench-image
 
 fe-checks:
 	@echo "Running frontend checks..."
@@ -43,7 +43,25 @@ test-checks:
 	@echo "Running mypy..."
 	mypy core/tests api/tests
 
-be-checks: core-checks api-checks
+cli-checks:
+	@echo "Running cli checks..."
+	@echo "Running ruff check..."
+	ruff check cli/src cli/tests
+	@echo "Running ruff format..."
+	ruff format cli/src cli/tests
+	@echo "Running mypy..."
+	mypy cli/src cli/tests
+
+be-checks: core-checks api-checks cli-checks
+
+workbench-image:
+	@echo "Staging untracked envelope sources for nix..."
+	git add -N core/src/repo2ree_core/envelope cli/src/repo2ree_cli/cli.py api/src/repo2ree_api/workbench 2>/dev/null || true
+	@echo "Building workbench image..."
+	nix build .#workbench-image
+	@echo "Loading into docker..."
+	docker load < result
+	@echo "Done: repo2ree-workbench:latest"
 
 core-tests:
 	@echo "Running core tests..."
@@ -53,7 +71,11 @@ api-tests:
 	@echo "Running api tests..."
 	pytest api/tests
 
-be-tests: core-tests api-tests
+cli-tests:
+	@echo "Running cli tests..."
+	pytest cli/tests
+
+be-tests: core-tests api-tests cli-tests
 
 fe-tests:
 	@echo "Running frontend unit tests..."

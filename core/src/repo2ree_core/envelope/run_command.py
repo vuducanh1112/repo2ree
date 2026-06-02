@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from repo2ree_core.container.run_script import LogSink
+from repo2ree_core.envelope.command import (
+    AcquireSourceCommand,
+    ActivationTestCommand,
+    BuildRuntimeCommand,
+    Command,
+    DeleteFileCommand,
+    EvaluateDependencyScoreCommand,
+    ExtractUploadCommand,
+    GenerateHbomCommand,
+    MaterializeWorkspaceCommand,
+    PatchReeDraftCommand,
+    RemoveSourceCommand,
+    RunExperimentCommand,
+    SnapshotUpstreamCommand,
+    UpdateSourceMetadataCommand,
+    WriteFileCommand,
+)
+from repo2ree_core.envelope.handlers.acquire_source import handle_acquire_source
+from repo2ree_core.envelope.handlers.build_runtime import handle_build_runtime
+from repo2ree_core.envelope.handlers.delete_file import handle_delete_file
+from repo2ree_core.envelope.handlers.evaluate_dependency_score import (
+    handle_evaluate_dependency_score,
+)
+from repo2ree_core.envelope.handlers.extract_upload import handle_extract_upload
+from repo2ree_core.envelope.handlers.activation_test import handle_activation_test
+from repo2ree_core.envelope.handlers.generate_hbom import handle_generate_hbom
+from repo2ree_core.envelope.handlers.materialize_workspace import (
+    handle_materialize_workspace,
+)
+from repo2ree_core.envelope.handlers.patch_ree_draft import handle_patch_ree_draft
+from repo2ree_core.envelope.handlers.remove_source import handle_remove_source
+from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
+from repo2ree_core.envelope.handlers.snapshot_upstream import handle_snapshot_upstream
+from repo2ree_core.envelope.handlers.update_source_metadata import (
+    handle_update_source_metadata,
+)
+from repo2ree_core.envelope.handlers.write_file import handle_write_file
+from repo2ree_core.envelope.result import ActionResult
+from repo2ree_core.working_environment.base import CancelCheck
+
+
+def run_command(
+    cmd: Command,
+    *,
+    log: LogSink,
+    run_id: str = "manual",
+    is_canceled: CancelCheck | None = None,
+) -> ActionResult:
+    """Dispatch a typed Command to its handler and return an ActionResult."""
+    cancel: CancelCheck = is_canceled if is_canceled is not None else lambda: False
+    if isinstance(cmd, AcquireSourceCommand):
+        return handle_acquire_source(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, SnapshotUpstreamCommand):
+        return handle_snapshot_upstream(log=log, is_canceled=cancel)
+    if isinstance(cmd, MaterializeWorkspaceCommand):
+        return handle_materialize_workspace(log=log, is_canceled=cancel)
+    if isinstance(cmd, UpdateSourceMetadataCommand):
+        return handle_update_source_metadata(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, ExtractUploadCommand):
+        return handle_extract_upload(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, WriteFileCommand):
+        return handle_write_file(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, DeleteFileCommand):
+        return handle_delete_file(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, PatchReeDraftCommand):
+        return handle_patch_ree_draft(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, RemoveSourceCommand):
+        return handle_remove_source(log=log, is_canceled=cancel)
+    if isinstance(cmd, BuildRuntimeCommand):
+        return handle_build_runtime(
+            cmd.args, run_id=run_id, log=log, is_canceled=cancel
+        )
+    if isinstance(cmd, EvaluateDependencyScoreCommand):
+        return handle_evaluate_dependency_score(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, RunExperimentCommand):
+        return handle_run_experiment(
+            cmd.args, run_id=run_id, log=log, is_canceled=cancel
+        )
+    if isinstance(cmd, GenerateHbomCommand):
+        return handle_generate_hbom(log=log, is_canceled=cancel)
+    if isinstance(cmd, ActivationTestCommand):
+        return handle_activation_test(
+            cmd.args, run_id=run_id, log=log, is_canceled=cancel
+        )
+    raise ValueError(f"Unhandled command operation: {cmd.operation!r}")  # type: ignore[union-attr]

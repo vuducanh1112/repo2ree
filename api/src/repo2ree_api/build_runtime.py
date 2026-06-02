@@ -6,6 +6,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.working_environment import run_workspace_script
+from repo2ree_api.workbench.deps import workbench_manager
+from repo2ree_core.envelope.command import BuildRuntimeArgs, BuildRuntimeCommand
 from repo2ree_api.api_utils import (
     WORKSPACE_CONTROL_PREFIXES,
     require_non_empty_path,
@@ -100,7 +102,37 @@ def _docker_build_run(
     outputs: dict[str, Any] = {"buildRuntimeScriptPath": script_relative_path}
     if outcome.exit_code is not None:
         outputs["containerExitCode"] = outcome.exit_code
+    _shadow_build_runtime(ree_id, run_id, script_relative_path, _log)
     return outcome.status, outputs
+
+
+def _shadow_build_runtime(
+    ree_id: str,
+    run_id: str,
+    script_relative_path: str,
+    log,
+) -> None:
+    handle = workbench_manager.lookup(ree_id)
+    if handle is None:
+        return
+    try:
+        result = workbench_manager.dispatch_action(
+            handle,
+            BuildRuntimeCommand(
+                args=BuildRuntimeArgs(build_runtime_script_path=script_relative_path)
+            ),
+            run_id,
+            log,
+        )
+    except Exception as exc:
+        log("system", "warn", f"Workbench step build_runtime failed: {exc}")
+        return
+    if result.status != "succeeded":
+        log(
+            "system",
+            "warn",
+            f"Workbench step build_runtime {result.status} — host-side completed",
+        )
 
 
 def create_build_run_state(
