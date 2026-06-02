@@ -13,6 +13,11 @@ from repo2ree_core.envelope import ActionResult, command_adapter, run_command
 from repo2ree_core.envelope.command import AcquireSourceArgs, AcquireSourceCommand
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.storage.workspace_ops import (
+    build_workspace_ree_archive as _build_archive,
+)
+from repo2ree_core.storage.workspace_ops import get_workspace as _get_workspace
+from repo2ree_core.storage.workspace_ops import read_file_bytes as _read_file_bytes
 
 
 # ------------------------------------------------
@@ -216,6 +221,96 @@ def get_ree_cmd() -> None:
 
     metadata = store.read_metadata_json()
     click.echo(json.dumps(metadata))
+
+
+# ------------------------------------------------
+# get-workspace
+# ------------------------------------------------
+
+
+@cli.command("get-workspace")
+def get_workspace_cmd() -> None:
+    """Emit full workspace state (metadata + file listings) as JSON.
+
+    Equivalent to the host-side get_workspace() but executed inside the
+    workbench container so the output reflects the workbench volume.
+    """
+    layout = ReeLayout.in_workbench()
+    # workspace_ops uses (storage_root, ree_id) addressing; the workbench
+    # volume is mounted at /ree, which maps to storage_root=/ and ree_id=ree.
+    storage_root = layout.root.parent
+    ree_id = layout.root.name
+    try:
+        result = _get_workspace(storage_root, ree_id)
+    except FileNotFoundError as exc:
+        click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
+        sys.exit(1)
+    click.echo(json.dumps(result))
+
+
+# ------------------------------------------------
+# build-archive
+# ------------------------------------------------
+
+
+@cli.command("build-archive")
+def build_archive_cmd() -> None:
+    """Write the REE zip archive bytes to stdout."""
+    layout = ReeLayout.in_workbench()
+    storage_root = layout.root.parent
+    ree_id = layout.root.name
+    try:
+        data = _build_archive(storage_root, ree_id)
+    except FileNotFoundError as exc:
+        click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
+        sys.exit(1)
+    sys.stdout.buffer.write(data)
+
+
+# ------------------------------------------------
+# read-file
+# ------------------------------------------------
+
+
+@cli.command("read-file")
+@click.option(
+    "--path", "file_path", required=True, help="Relative path within workspace"
+)
+def read_file_cmd(file_path: str) -> None:
+    """Write raw bytes of a workspace file to stdout."""
+    layout = ReeLayout.in_workbench()
+    storage_root = layout.root.parent
+    ree_id = layout.root.name
+    try:
+        data = _read_file_bytes(storage_root, ree_id, file_path)
+    except FileNotFoundError:
+        click.echo(json.dumps({"error": f"not found: {file_path}"}), file=sys.stderr)
+        sys.exit(1)
+    except ValueError as exc:
+        click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
+        sys.exit(1)
+    sys.stdout.buffer.write(data)
+
+
+# ------------------------------------------------
+# read-artifact
+# ------------------------------------------------
+
+
+@cli.command("read-artifact")
+@click.option(
+    "--path", "artifact_path", required=True, help="Relative path within artifacts/"
+)
+def read_artifact_cmd(artifact_path: str) -> None:
+    """Write raw bytes of an artifact file to stdout."""
+    layout = ReeLayout.in_workbench()
+    fp = layout.artifacts / artifact_path
+    if not fp.exists() or not fp.is_file():
+        click.echo(
+            json.dumps({"error": f"not found: {artifact_path}"}), file=sys.stderr
+        )
+        sys.exit(1)
+    sys.stdout.buffer.write(fp.read_bytes())
 
 
 # ------------------------------------------------

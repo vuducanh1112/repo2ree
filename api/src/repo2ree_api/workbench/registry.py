@@ -43,6 +43,17 @@ class WorkbenchRegistry:
             volume_name=record["volume_name"],
         )
 
+    def list_all(self) -> list[WorkbenchEntry]:
+        data = self._read()
+        return [
+            WorkbenchEntry(
+                ree_id=ree_id,
+                container_name=record["container_name"],
+                volume_name=record["volume_name"],
+            )
+            for ree_id, record in data.items()
+        ]
+
     def unregister(self, ree_id: str) -> None:
         data = self._read()
         data.pop(ree_id, None)

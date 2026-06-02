@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from repo2ree_api.storage.workspace_files import workspace_exists
+from repo2ree_api.workbench.deps import workbench_manager
 
 
 # ================================================
@@ -35,7 +35,7 @@ def _utc_now() -> str:
 
 
 def _require_workspace(ree_id: str) -> None:
-    if not workspace_exists(ree_id):
+    if workbench_manager.lookup(ree_id) is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
 

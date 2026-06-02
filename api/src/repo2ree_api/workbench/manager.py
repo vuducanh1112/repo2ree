@@ -225,6 +225,33 @@ class WorkbenchManager:
         raw = self.dispatch_query(handle, "get-ree")
         return json.loads(raw)
 
+    def get_workspace(self, handle: WorkbenchHandle) -> dict:  # type: ignore[type-arg]
+        raw = self.dispatch_query(handle, "get-workspace")
+        return json.loads(raw)
+
+    def read_file_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
+        return self.dispatch_query(handle, "read-file", "--path", path)
+
+    def read_artifact_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
+        return self.dispatch_query(handle, "read-artifact", "--path", path)
+
+    def build_archive(self, handle: WorkbenchHandle) -> bytes:
+        return self.dispatch_query(handle, "build-archive")
+
+    def list_all_metadata(self) -> list[dict]:  # type: ignore[type-arg]
+        """Return metadata for every registered workbench, skipping unreachable ones."""
+        results = []
+        for entry in self._registry.list_all():
+            handle = WorkbenchHandle.from_entry(entry)
+            if not self._is_running(handle.container_name):
+                continue
+            try:
+                results.append(self.get_ree_metadata(handle))
+            except Exception:
+                pass
+        results.sort(key=lambda m: m.get("updatedAt", ""), reverse=True)
+        return results
+
     def copy_to_workbench(
         self, handle: WorkbenchHandle, host_path: str, container_path: str
     ) -> None:

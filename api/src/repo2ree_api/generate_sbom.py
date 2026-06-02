@@ -5,7 +5,6 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.sbom.generate_sbom import generate_sbom
 from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_core.envelope.command import GenerateSbomArgs, GenerateSbomCommand
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
@@ -15,11 +14,7 @@ from repo2ree_api.run_management import (
     _run_summary,
     _start_background_run,
 )
-from repo2ree_api.storage.workspace_files import (
-    WorkspacePatchPayload,
-    patch_workspace,
-    workspace_dir,
-)
+from repo2ree_api.storage.workspace_files import workspace_dir
 
 
 # ================================================
@@ -60,159 +55,60 @@ def create_workspace_generate_sbom_run(
 # ================================================
 
 
-def resolve_sbom_runtime_path(
-    ree_id: str,
-    produced_runtime_path: str | None,
-    params: dict[str, Any],
-) -> str:
-    runtime_path = produced_runtime_path or str(
-        params.get("produced_runtime_path")
-        or params.get("runtime_path")
-        or params.get("runtime")
-        or ""
-    )
-    runtime_path = runtime_path.strip()
-
+def _resolve_sbom_runtime_path(ree_id: str, produced_runtime_path: str) -> str:
+    runtime_path = produced_runtime_path.strip()
     if not runtime_path:
         raise HTTPException(
             status_code=400, detail="produced_runtime_path is required for sbom runs"
         )
-
-    runtime_abs_path = resolve_relative_path(
+    # Validate the path string is safe (no traversal, no control prefixes).
+    resolve_relative_path(
         workspace_dir(ree_id).resolve(),
         runtime_path,
         invalid_detail="Invalid workspace path",
         blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
     )
-    if not runtime_abs_path.exists() or not runtime_abs_path.is_file():
-        raise HTTPException(
-            status_code=400, detail=f"Runtime tarball not found: {runtime_path}"
-        )
-
     if not runtime_path.lower().endswith((".tar", ".tar.gz", ".tgz")):
         raise HTTPException(
             status_code=400,
             detail="SBOM generation currently supports runtime tarballs only (.tar, .tar.gz, or .tgz)",
         )
-
     return runtime_path
-
-
-def generate_sbom_for_runtime(
-    ree_id: str, runtime_relative_path: str
-) -> dict[str, Any]:
-    runtime_abs_path = resolve_relative_path(
-        workspace_dir(ree_id).resolve(),
-        runtime_relative_path,
-        invalid_detail="Invalid workspace path",
-        blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
-    )
-    output_dir = workspace_dir(ree_id)
-    generated_sbom_path = generate_sbom(runtime_abs_path, output_dir)
-    sbom_relative_path = "sbom.json"
-    if generated_sbom_path.name != sbom_relative_path:
-        raise RuntimeError(
-            f"Unexpected generated SBOM filename: {generated_sbom_path.name}"
-        )
-
-    patch_workspace(
-        ree_id,
-        WorkspacePatchPayload(reePatch={"sbom": sbom_relative_path}),
-    )
-
-    return {
-        "sbomRelativePath": sbom_relative_path,
-        "runtimeRelativePath": runtime_relative_path,
-        "format": "spdx-json",
-    }
 
 
 def create_generate_sbom_run_state(
     ree_id: str,
     payload: CreateGenerateSbomRunPayload,
 ) -> dict[str, Any]:
-    runtime_path = resolve_sbom_runtime_path(
-        ree_id=ree_id,
-        produced_runtime_path=payload.produced_runtime_path,
-        params={},
-    )
-    request_payload = {"produced_runtime_path": runtime_path}
+    runtime_path = _resolve_sbom_runtime_path(ree_id, payload.produced_runtime_path)
 
     def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
-        _append_run_log(ree_id, run_id, "system", "info", f"Starting sbom run {run_id}")
-        _append_run_log(
-            ree_id, run_id, "system", "info", f"Runtime input: {runtime_path}"
-        )
+        def _log(stream: str, level: str, message: str) -> None:
+            _append_run_log(ree_id, run_id, stream, level, message)
+
         if _is_cancel_requested(ree_id, run_id):
-            _append_run_log(ree_id, run_id, "system", "warn", "SBOM run canceled")
-            return "canceled", {
-                "runtimeRelativePath": runtime_path,
-                "format": "spdx-json",
-            }
-        try:
-            outputs = generate_sbom_for_runtime(
-                ree_id=ree_id,
-                runtime_relative_path=runtime_path,
-            )
-        except Exception as exc:
-            _append_run_log(
-                ree_id,
-                run_id,
-                "system",
-                "error",
-                f"SBOM generation failed: {exc}",
-            )
-            raise
-        _shadow_generate_sbom(ree_id, run_id, runtime_path)
-        _append_run_log(
-            ree_id,
-            run_id,
-            "system",
-            "info",
-            f"Generated SBOM: {outputs['sbomRelativePath']}",
-        )
-        _append_run_log(ree_id, run_id, "system", "info", "SBOM run succeeded")
-        return "succeeded", outputs
+            _log("system", "warn", "SBOM run canceled")
+            return "canceled", {"runtimeRelativePath": runtime_path}
 
-    return _start_background_run(
-        ree_id=ree_id,
-        operation="sbom",
-        request_payload=request_payload,
-        run_id_prefix="sbom",
-        runner=_runner,
-    )
+        handle = workbench_manager.lookup(ree_id)
+        if handle is None:
+            _log("system", "error", "No workbench available for generate_sbom")
+            return "failed", {}
 
-
-def _shadow_generate_sbom(ree_id: str, run_id: str, runtime_path: str) -> None:
-    handle = workbench_manager.lookup(ree_id)
-    if handle is None:
-        return
-
-    try:
         result = workbench_manager.dispatch_action(
             handle,
             GenerateSbomCommand(
                 args=GenerateSbomArgs(produced_runtime_path=runtime_path)
             ),
             run_id,
-            lambda stream, level, message: _append_run_log(
-                ree_id, run_id, stream, level, message
-            ),
+            _log,
         )
-    except Exception as exc:
-        _append_run_log(
-            ree_id,
-            run_id,
-            "system",
-            "warn",
-            f"Workbench step generate_sbom failed: {exc}",
-        )
-        return
-    if result.status != "succeeded":
-        _append_run_log(
-            ree_id,
-            run_id,
-            "system",
-            "warn",
-            f"Workbench step generate_sbom {result.status} — host-side succeeded",
-        )
+        return result.status, result.outputs or {"runtimeRelativePath": runtime_path}
+
+    return _start_background_run(
+        ree_id=ree_id,
+        operation="sbom",
+        request_payload={"produced_runtime_path": runtime_path},
+        run_id_prefix="sbom",
+        runner=_runner,
+    )

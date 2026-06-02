@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -8,21 +7,13 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.envelope import ActivationTestCommand
 from repo2ree_core.envelope.command import ActivationTestArgs
-from repo2ree_core.working_environment import run_workspace_script
-from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
     _run_summary,
     _start_background_run,
 )
-from repo2ree_api.storage.workspace_files import (
-    read_workspace_metadata,
-    workspace_dir,
-)
 from repo2ree_api.workbench.deps import workbench_manager
-
-_log = logging.getLogger(__name__)
 
 
 # ================================================
@@ -63,137 +54,72 @@ def create_workspace_activation_test_run(
 # ================================================
 
 
-def resolve_activation_script_path(
+def _resolve_activation_script_path(
     ree_id: str,
-    *,
-    params: dict[str, Any] | None = None,
-    activation_script_path: str | None = None,
+    activation_script_path: str | None,
 ) -> str:
-    metadata = read_workspace_metadata(ree_id)
+    """Return the script path, falling back to the value stored in the REE draft."""
+    if activation_script_path and activation_script_path.strip():
+        return activation_script_path.strip()
+
+    handle = workbench_manager.lookup(ree_id)
+    if handle is not None:
+        try:
+            metadata = workbench_manager.get_ree_metadata(handle)
+        except Exception:
+            metadata = {}
+    else:
+        metadata = {}
+
     ree_draft = dict(metadata.get("reeDraft") or {})
-    params = dict(params or {})
-    script_path = (
-        activation_script_path
-        or str(
-            params.get("activation_script")
-            or params.get("activation_script_path")
-            or ree_draft.get("activation_script")
-            or ree_draft.get("validate_runtime_reproducibility_script")
-            or ""
-        ).strip()
-    )
+    script_path = str(
+        ree_draft.get("activation_script")
+        or ree_draft.get("validate_runtime_reproducibility_script")
+        or ""
+    ).strip()
 
     if not script_path:
         raise HTTPException(status_code=400, detail="activation_script is required")
-
-    script_abs_path = resolve_relative_path(
-        workspace_dir(ree_id).resolve(),
-        script_path,
-        invalid_detail="Invalid workspace path",
-        blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
-    )
-    if not script_abs_path.exists() or not script_abs_path.is_file():
-        raise HTTPException(
-            status_code=400, detail=f"Activation script not found: {script_path}"
-        )
-
     return script_path
-
-
-def run_activation_test(
-    ree_id: str,
-    run_id: str,
-    activation_script_path: str,
-) -> tuple[str, dict[str, Any]]:
-    workspace = workspace_dir(ree_id).resolve()
-
-    # Re-validate inside the worker before provisioning the environment.
-    resolve_relative_path(
-        workspace,
-        activation_script_path,
-        invalid_detail="Invalid workspace path",
-        blocked_prefixes=WORKSPACE_CONTROL_PREFIXES,
-    )
-
-    def _log(stream: str, level: str, message: str) -> None:
-        _append_run_log(ree_id, run_id, stream, level, message)
-
-    _log("system", "info", f"Starting activation run {run_id}")
-    _log("system", "info", f"Activation script: {activation_script_path}")
-
-    outcome = run_workspace_script(
-        workspace=workspace,
-        script_rel_path=activation_script_path,
-        run_id=run_id,
-        log=_log,
-        is_canceled=lambda: _is_cancel_requested(ree_id, run_id),
-        echo_label="activation_script",
-    )
-
-    _log(
-        "system",
-        "info" if outcome.status == "succeeded" else "error",
-        f"Activation run {outcome.status} (exit code {outcome.exit_code})",
-    )
-
-    outputs: dict[str, Any] = {"activationScriptPath": activation_script_path}
-    if outcome.exit_code is not None:
-        outputs["containerExitCode"] = outcome.exit_code
-    return outcome.status, outputs
 
 
 def create_activation_run_state(
     ree_id: str,
     payload: CreateActivationTestRunPayload,
 ) -> dict[str, Any]:
-    activation_script_path = resolve_activation_script_path(
-        ree_id,
-        params={},
-        activation_script_path=payload.activation_script_path,
+    activation_script_path = _resolve_activation_script_path(
+        ree_id, payload.activation_script_path
     )
-    request_payload = {"activation_script_path": activation_script_path}
 
     def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        def _log(stream: str, level: str, message: str) -> None:
+            _append_run_log(ree_id, run_id, stream, level, message)
+
         if _is_cancel_requested(ree_id, run_id):
-            _append_run_log(ree_id, run_id, "system", "warn", "Activation run canceled")
+            _log("system", "warn", "Activation run canceled")
             return "canceled", {"activationScriptPath": activation_script_path}
-        status, outputs = run_activation_test(
-            ree_id=ree_id,
-            run_id=run_id,
-            activation_script_path=activation_script_path,
-        )
-        if status == "succeeded":
-            _shadow_activation_test(ree_id, run_id, activation_script_path)
-        return status, outputs
 
-    return _start_background_run(
-        ree_id=ree_id,
-        operation="activation",
-        request_payload=request_payload,
-        run_id_prefix="activation",
-        runner=_runner,
-    )
+        handle = workbench_manager.lookup(ree_id)
+        if handle is None:
+            _log("system", "error", "No workbench available for activation_test")
+            return "failed", {}
 
-
-def _shadow_activation_test(
-    ree_id: str, run_id: str, activation_script_path: str
-) -> None:
-    handle = workbench_manager.lookup(ree_id)
-    if handle is None:
-        return
-    try:
         result = workbench_manager.dispatch_action(
             handle,
             ActivationTestCommand(
                 args=ActivationTestArgs(activation_script_path=activation_script_path)
             ),
             run_id,
-            _log.info,  # type: ignore[arg-type]
+            _log,
         )
-    except Exception as exc:
-        _log.warning("Workbench step activation_test failed: %s", exc)
-        return
-    if result.status != "succeeded":
-        _log.warning(
-            "Workbench step activation_test %s — host-side succeeded", result.status
-        )
+        return result.status, result.outputs or {
+            "activationScriptPath": activation_script_path
+        }
+
+    return _start_background_run(
+        ree_id=ree_id,
+        operation="activation",
+        request_payload={"activation_script_path": activation_script_path},
+        run_id_prefix="activation",
+        runner=_runner,
+    )
