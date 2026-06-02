@@ -9,6 +9,8 @@ import { AppShellContent } from "./AppShellContent";
 import { AppShellSidebar } from "./AppShellSidebar";
 import { ReviewerPreviewOverlay } from "./components/ReviewerPreviewOverlay";
 import { useAppShell } from "./hooks/useAppShell";
+import { AppShellProvider } from "./providers/AppShellProvider";
+import { PAGE } from "./state/pages";
 
 interface AppShellViewProps {
   onBack: () => void;
@@ -23,7 +25,16 @@ interface AppShellViewProps {
 }
 
 export function AppShellView({ onBack, PodOrbitControl }: AppShellViewProps) {
+  return (
+    <AppShellProvider>
+      <AppShellViewInner onBack={onBack} PodOrbitControl={PodOrbitControl} />
+    </AppShellProvider>
+  );
+}
+
+function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
   const {
+    provisioned,
     reeDraft,
     ree,
     inclusionState,
@@ -36,7 +47,9 @@ export function AppShellView({ onBack, PodOrbitControl }: AppShellViewProps) {
     reviewer,
   } = useAppShell();
   const { badges, timestamps } = assemblyRun;
-  const { toast, page, navCollapsed } = uiChrome;
+  const { toast, navCollapsed } = uiChrome;
+  const page = !provisioned ? PAGE.WORKBENCH : uiChrome.page;
+  const effectiveUiChrome = provisioned ? uiChrome : { ...uiChrome, page };
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg }}>
@@ -96,6 +109,7 @@ export function AppShellView({ onBack, PodOrbitControl }: AppShellViewProps) {
           navCollapsed={navCollapsed}
           badges={badges}
           timestamps={timestamps}
+          provisioned={provisioned}
           setPage={commands.setPage}
           setNavCollapsed={commands.setNavCollapsed}
           onDownloadRee={commands.onDownloadRee}
@@ -108,7 +122,7 @@ export function AppShellView({ onBack, PodOrbitControl }: AppShellViewProps) {
           reeDraft={reeDraft}
           workspaceRemote={workspaceRemote}
           assemblyRun={assemblyRun}
-          uiChrome={uiChrome}
+          uiChrome={effectiveUiChrome}
           evaluation={evaluation}
           currentReeFiles={currentReeFiles}
           commands={commands}

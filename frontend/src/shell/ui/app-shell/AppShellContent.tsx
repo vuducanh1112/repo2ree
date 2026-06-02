@@ -16,6 +16,7 @@ import {
   MetadataPageContainer,
   OverviewPageContainer,
   SourcePageContainer,
+  WorkbenchPageContainer,
 } from "./pages/AppShellPageSwitch";
 
 type AppShellController = ReturnType<typeof useAppShell>;
@@ -41,6 +42,7 @@ export function AppShellContent(props: AppShellContentProps) {
         <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_CENTER} />
       </div>
       <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_INNER}>
+        <WorkbenchPageContainer {...props} />
         <OverviewPageContainer {...props} />
         <SourcePageContainer {...props} />
         <MetadataPageContainer {...props} />

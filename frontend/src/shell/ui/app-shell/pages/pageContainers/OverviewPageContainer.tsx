@@ -1,4 +1,6 @@
-import { appShellPageForField, PAGE } from "../../state/pages";
+import { useNavigate } from "react-router-dom";
+import { useApiRuntime } from "../../../../data/apiRuntime";
+import { APP_ROUTE, appShellPageForField, PAGE } from "../../state/pages";
 import { PageOverview } from "../overview/OverviewPage";
 import { type AppShellPageContainerProps, ContentSection } from "./shared";
 
@@ -11,6 +13,8 @@ export function OverviewPageContainer({
   evaluation,
   commands,
 }: AppShellPageContainerProps) {
+  const { reeId, reeApi } = useApiRuntime();
+  const navigate = useNavigate();
   const { page } = uiChrome;
   const { badges, timestamps } = assemblyRun;
   const { workspaceFiles, sourceSnapshotFiles, artifactStatus } = workspaceRemote;
@@ -18,6 +22,11 @@ export function OverviewPageContainer({
 
   if (page !== PAGE.OVERVIEW && page !== PAGE.SEAL) {
     return null;
+  }
+
+  async function handleReleaseWorkbench() {
+    await reeApi.deleteRee(reeId);
+    navigate(APP_ROUTE.ROOT);
   }
 
   return (
@@ -40,6 +49,7 @@ export function OverviewPageContainer({
         onSeal={commands.onSeal}
         onPreviewReviewer={commands.openReviewPreview}
         onDownloadRee={artifactStatus.sealedAt ? commands.onDownloadRee : undefined}
+        onReleaseWorkbench={artifactStatus.sealedAt ? handleReleaseWorkbench : undefined}
       />
     </ContentSection>
   );

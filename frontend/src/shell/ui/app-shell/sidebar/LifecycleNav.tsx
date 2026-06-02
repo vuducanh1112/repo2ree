@@ -11,6 +11,7 @@ interface LifecycleNavProps {
   badges: Badges;
   timestamps: Timestamps;
   navCollapsed: boolean;
+  provisioned: boolean;
   setPage: (page: AppShellPage) => void;
 }
 
@@ -20,10 +21,11 @@ export function LifecycleNav({
   badges,
   timestamps,
   navCollapsed,
+  provisioned,
   setPage,
 }: LifecycleNavProps) {
   const completedCount = PROCESS_STEPS.filter((step) =>
-    resolveNavCompleted(step, ree, badges),
+    resolveNavCompleted(step, ree, badges, provisioned),
   ).length;
 
   return (
@@ -56,22 +58,28 @@ export function LifecycleNav({
       >
         {PROCESS_STEPS.map((step, index) => {
           const isActive = page === step.key || (step.key === PAGE.BUILD && isRuntimeEnvPage(page));
-          const hasRun = resolveNavCompleted(step, ree, badges);
+          const hasRun = resolveNavCompleted(step, ree, badges, provisioned);
           const timestamp = resolveStepTimestamp(step.key, timestamps);
           const tsShort = timestamp
             ? new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
             : null;
           const isLast = index === PROCESS_STEPS.length - 1;
+          const locked = !provisioned && step.key !== PAGE.WORKBENCH;
 
           return (
-            <div key={step.key} style={{ display: "flex", flexDirection: "column" }}>
+            <div
+              key={step.key}
+              style={{ display: "flex", flexDirection: "column", opacity: locked ? 0.4 : 1 }}
+            >
               <NavEntryButton
                 title={
                   navCollapsed
                     ? `${step.n}. ${step.label}${tsShort ? ` — last run ${tsShort}` : ""}`
                     : undefined
                 }
-                onClick={() => setPage(step.key)}
+                onClick={() => {
+                  if (!locked) setPage(step.key);
+                }}
                 isActive={isActive}
                 navCollapsed={navCollapsed}
               >

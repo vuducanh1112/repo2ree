@@ -16,6 +16,7 @@ interface CenterSealStripProps {
   onSeal: () => void;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
+  onReleaseWorkbench?: () => void;
   sealRef: React.RefObject<HTMLDivElement>;
 }
 
@@ -27,6 +28,7 @@ export function CenterSealStrip({
   onSeal,
   onPreviewReviewer,
   onDownloadRee,
+  onReleaseWorkbench,
   sealRef,
 }: CenterSealStripProps) {
   const [showSealConfirm, setShowSealConfirm] = React.useState(false);
@@ -44,6 +46,7 @@ export function CenterSealStrip({
         ree={ree}
         onPreviewReviewer={onPreviewReviewer}
         onDownloadRee={onDownloadRee}
+        onReleaseWorkbench={onReleaseWorkbench}
         sealRef={sealRef}
         cableItems={cableItems}
         currentLevelMeta={currentLevelMeta}

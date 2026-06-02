@@ -6,4 +6,5 @@ export {
   HardwareBomPageContainer,
   MetadataPageContainer,
   SourcePageContainer,
+  WorkbenchPageContainer,
 } from "./pageContainers/SourceMetadataHardwareContainers";

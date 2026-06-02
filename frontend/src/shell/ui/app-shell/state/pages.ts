@@ -2,6 +2,7 @@ import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorVi
 
 // Workspace shell pages.
 export const PAGE = {
+  WORKBENCH: "workbench",
   SOURCE: "source",
   METADATA: "metadata",
   EXPERIMENTS: "experiments",

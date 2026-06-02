@@ -30,6 +30,7 @@ interface PageOverviewProps {
   onSeal: () => void;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
+  onReleaseWorkbench?: () => void;
 }
 
 export function PageOverview({
@@ -47,6 +48,7 @@ export function PageOverview({
   onSeal,
   onPreviewReviewer,
   onDownloadRee,
+  onReleaseWorkbench,
 }: PageOverviewProps) {
   const cableContainerRef = useRef<HTMLDivElement>(null);
   const sourceRef = useRef<HTMLDivElement>(null);
@@ -104,6 +106,7 @@ export function PageOverview({
           onSeal={onSeal}
           onPreviewReviewer={onPreviewReviewer}
           onDownloadRee={onDownloadRee}
+          onReleaseWorkbench={onReleaseWorkbench}
           refs={{
             cableContainerRef,
             sourceRef,

@@ -147,6 +147,7 @@ interface OverviewColumnsProps {
   onSeal: () => void;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
+  onReleaseWorkbench?: () => void;
   refs: {
     cableContainerRef: React.RefObject<HTMLDivElement>;
     sourceRef: React.RefObject<HTMLDivElement>;
@@ -267,6 +268,7 @@ export function OverviewColumns(props: OverviewColumnsProps) {
           onSeal={props.onSeal}
           onPreviewReviewer={props.onPreviewReviewer}
           onDownloadRee={props.onDownloadRee}
+          onReleaseWorkbench={props.onReleaseWorkbench}
           sealRef={refs.sealRef}
         />
       </div>

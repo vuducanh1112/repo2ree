@@ -1,5 +1,6 @@
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
+import { DEFAULT_REE_ID } from "../../../../core/ree/ReeId";
 import type { ReeFile } from "../../../../core/ree/ReeTypes";
 import { createAssemblyRunSession } from "../../../../core/ree-assembly/assemblyRunSession";
 import {
@@ -36,7 +37,8 @@ interface UseReeEditorArgs {
 
 export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseReeEditorArgs) {
   const { reeId } = useApiRuntime();
-  const reeQuery = useReeQuery();
+  const provisioned = reeId !== DEFAULT_REE_ID;
+  const reeQuery = useReeQuery({ enabled: provisioned });
   const workspaceFiles = reeQuery.data?.files ?? [];
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
 
@@ -58,6 +60,7 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
   const { buildReePatch, refreshWorkspace, refreshWorkspaceFiles } = useReeDraftSync({
     ree,
     reeId,
+    provisioned,
     hydrateWorkspace,
   });
   const { persistWorkspaceFile } = useWorkspaceFilePersistence({
@@ -134,6 +137,7 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
   );
 
   return {
+    provisioned,
     reeDraft,
     ree,
     inclusionState: reeEditorState.inclusionState,

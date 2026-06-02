@@ -13,10 +13,16 @@ import type { HydratedWorkspaceSnapshot } from "./hydrateReeWorkspace";
 interface UseReeDraftSyncArgs {
   ree: ReeEditorViewModel;
   reeId: string;
+  provisioned: boolean;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
 
-export function useReeDraftSync({ ree, reeId, hydrateWorkspace }: UseReeDraftSyncArgs) {
+export function useReeDraftSync({
+  ree,
+  reeId,
+  provisioned,
+  hydrateWorkspace,
+}: UseReeDraftSyncArgs) {
   const initialPatchKey = JSON.stringify(toReePatch(ree));
   const lastSyncedReeRef = useRef<string>(initialPatchKey);
   const latestLocalPatchKeyRef = useRef<string>(initialPatchKey);
@@ -81,10 +87,12 @@ export function useReeDraftSync({ ree, reeId, hydrateWorkspace }: UseReeDraftSyn
   }, [buildReePatch]);
 
   useEffect(() => {
+    if (!provisioned) return;
     void refreshWorkspace({ forceReeHydration: true });
-  }, [refreshWorkspace]);
+  }, [provisioned, refreshWorkspace]);
 
   useEffect(() => {
+    if (!provisioned) return;
     const patch = buildReePatch();
     const patchKey = JSON.stringify(patch);
     const shouldScheduleSync = shouldScheduleReeDraftSync({
@@ -124,7 +132,7 @@ export function useReeDraftSync({ ree, reeId, hydrateWorkspace }: UseReeDraftSyn
         syncTimerRef.current = null;
       }
     };
-  }, [buildReePatch, refreshWorkspaceFiles, updateReeDraft]);
+  }, [buildReePatch, provisioned, refreshWorkspaceFiles, updateReeDraft]);
 
   return {
     buildReePatch,

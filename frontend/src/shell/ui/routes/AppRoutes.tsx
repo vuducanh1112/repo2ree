@@ -1,4 +1,12 @@
-import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+import { ApiClientProvider } from "../../data/apiRuntime";
 import { mapReviewDetailToReeEditorViewModel } from "../../data/reviews/mapping";
 import { useReviewQuery } from "../../data/reviews/queries";
 import { AppShellView } from "../app-shell/AppShellView";
@@ -43,6 +51,17 @@ function ReviewerRouteView({ onBack }: { onBack: () => void }) {
   );
 }
 
+function WorkspaceRoute({ onBack }: { onBack: () => void }) {
+  const [searchParams] = useSearchParams();
+  const reeId = searchParams.get("reeId") || undefined;
+
+  return (
+    <ApiClientProvider reeId={reeId} key={reeId ?? "new"}>
+      <AppShellView onBack={onBack} PodOrbitControl={PodOrbitControl} />
+    </ApiClientProvider>
+  );
+}
+
 export function AppRoutes() {
   const navigate = useNavigate();
 
@@ -52,9 +71,7 @@ export function AppRoutes() {
       <Route path="/explorer" element={<Navigate to={APP_ROUTE.WORKSPACE} replace />} />
       <Route
         path={APP_ROUTE.WORKSPACE}
-        element={
-          <AppShellView onBack={() => navigate(APP_ROUTE.ROOT)} PodOrbitControl={PodOrbitControl} />
-        }
+        element={<WorkspaceRoute onBack={() => navigate(APP_ROUTE.ROOT)} />}
       />
       <Route
         path={APP_ROUTE.REVIEWER}

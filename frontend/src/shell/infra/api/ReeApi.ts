@@ -161,6 +161,13 @@ export class ReeApi {
     );
   }
 
+  async reprovisionWorkbench(reeId: ReeId | string): Promise<{ status: string; reeId: string }> {
+    return this.client.request<{ status: string; reeId: string }>(
+      endpoints.reeWorkbenchReprovision(reeId),
+      { method: "POST" },
+    );
+  }
+
   async deleteFileContent(reeId: ReeId, path: string): Promise<{ deletedAt?: string }> {
     const searchParams = new URLSearchParams({ path });
     return this.client.request<{ deletedAt?: string }>(

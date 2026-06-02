@@ -1,8 +1,6 @@
 import type React from "react";
 import { useRef, useState } from "react";
 import { AXES } from "../../../core/review/axes";
-import { useApiRuntime } from "../../data/apiRuntime";
-import { useReeClient } from "../../data/ree/client";
 import { useReviewClient } from "../../data/reviews/client";
 import { APP_ROUTE, type AppLoadRoutePath } from "../app-shell/state/pages";
 import { Ic } from "../shared/components/Icon";
@@ -18,24 +16,14 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 });
 
 export function LandingView({ onLoad }: LandingViewProps) {
-  const { reeId } = useApiRuntime();
   const reviewClient = useReviewClient();
-  const reeClient = useReeClient();
-  const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingReviewUpload, setLoadingReviewUpload] = useState(false);
   const [reviewError, setReviewError] = useState<string>("");
   const reviewZipInputRef = useRef<HTMLInputElement | null>(null);
 
-  const createRee = async () => {
-    setLoadingCreate(true);
-    try {
-      const ree = await reeClient.getRee(reeId);
-      onLoad(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(ree.id)}`);
-    } catch {
-      onLoad(APP_ROUTE.WORKSPACE);
-    } finally {
-      setLoadingCreate(false);
-    }
+  const createRee = () => {
+    // Provisioning is deferred to the Workbench step inside the editor.
+    onLoad(APP_ROUTE.WORKSPACE);
   };
 
   const startReviewFromZip = async (file: File) => {
@@ -147,10 +135,7 @@ export function LandingView({ onLoad }: LandingViewProps) {
           </div>
           <button
             type="button"
-            onClick={() => {
-              void createRee();
-            }}
-            disabled={loadingCreate}
+            onClick={createRee}
             style={{
               ...actionBtn({
                 border: "none",
@@ -173,22 +158,13 @@ export function LandingView({ onLoad }: LandingViewProps) {
               justifyContent: "center",
             }}
           >
-            <span
-              style={{
-                display: "flex",
-                animation: loadingCreate ? "spin 0.9s linear infinite" : "none",
-              }}
-            >
-              {loadingCreate ? Ic.loader() : Ic.play()}
-            </span>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>
-              {loadingCreate ? "Creating…" : "Create REE"}
-            </span>
+            <span style={{ display: "flex" }}>{Ic.play()}</span>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>Create REE</span>
           </button>
           <button
             type="button"
             onClick={() => reviewZipInputRef.current?.click()}
-            disabled={loadingCreate || loadingReviewUpload}
+            disabled={loadingReviewUpload}
             style={{
               ...actionBtn({
                 border: `1px solid ${C.border}`,

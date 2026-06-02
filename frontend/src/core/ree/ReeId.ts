@@ -4,6 +4,7 @@ export function asReeId(value: string): ReeId {
   return value as ReeId;
 }
 
-// The default REE id used when the URL does not specify one. Each REE has
-// exactly one workspace; this id refers to the REE.
+// Sentinel id meaning "no REE provisioned yet" — used when the URL carries no
+// reeId. It never refers to a real REE; code treats reeId === DEFAULT_REE_ID as
+// the unprovisioned state and as the trigger to lazily create one.
 export const DEFAULT_REE_ID: ReeId = asReeId("active");

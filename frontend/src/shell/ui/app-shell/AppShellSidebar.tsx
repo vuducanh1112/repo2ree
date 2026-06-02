@@ -16,6 +16,7 @@ interface AppShellSidebarProps {
   navCollapsed: boolean;
   badges: Badges;
   timestamps: Timestamps;
+  provisioned: boolean;
   setPage: (page: AppShellPage) => void;
   setNavCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   onDownloadRee: () => void;
@@ -28,6 +29,7 @@ export function AppShellSidebar({
   navCollapsed,
   badges,
   timestamps,
+  provisioned,
   setPage,
   setNavCollapsed,
   onDownloadRee,
@@ -96,27 +98,34 @@ export function AppShellSidebar({
         </button>
       </div>
 
-      <OverviewCard
-        evaluation={evaluation}
-        navCollapsed={navCollapsed}
-        page={page}
-        levelMeta={levelMeta}
-        cableStates={cableStates}
-        leftCables={leftCables}
-        rightCables={rightCables}
-        topCable={topCable}
-        setPage={setPage}
-      />
+      <div style={{ opacity: provisioned ? 1 : 0.4 }}>
+        <OverviewCard
+          evaluation={evaluation}
+          navCollapsed={navCollapsed}
+          page={page}
+          levelMeta={levelMeta}
+          cableStates={cableStates}
+          leftCables={leftCables}
+          rightCables={rightCables}
+          topCable={topCable}
+          setPage={(p) => {
+            if (provisioned) setPage(p);
+          }}
+        />
+      </div>
 
       <div
         style={{
           padding: navCollapsed ? "4px 6px 8px" : "4px 8px 8px",
           borderBottom: `1px solid ${C.border}`,
+          opacity: provisioned ? 1 : 0.4,
         }}
       >
         <NavEntryButton
           title={navCollapsed ? "Browse Files" : undefined}
-          onClick={() => setPage(PAGE.FILES)}
+          onClick={() => {
+            if (provisioned) setPage(PAGE.FILES);
+          }}
           isActive={page === PAGE.FILES}
           navCollapsed={navCollapsed}
         >
@@ -147,6 +156,7 @@ export function AppShellSidebar({
         badges={badges}
         timestamps={timestamps}
         navCollapsed={navCollapsed}
+        provisioned={provisioned}
         setPage={setPage}
       />
 

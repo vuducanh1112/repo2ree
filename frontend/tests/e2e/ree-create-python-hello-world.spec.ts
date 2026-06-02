@@ -177,6 +177,15 @@ test("upload source archive into workspace", async ({ page }) => {
   await test.step("Open REE creation flow", async () => {
     await page.goto("/");
     await clickDemo(page, page.getByRole("button", { name: "Create REE" }), "Start REE creation");
+    await expect(page.getByRole("main").getByText("Workbench", { exact: true })).toBeVisible();
+  });
+
+  await test.step("Provision workbench", async () => {
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: /Provision workbench/i }),
+      "Provision the workbench",
+    );
     await expect(
       page.getByRole("main").getByText("Source Acquisition", { exact: true }),
     ).toBeVisible();
@@ -455,5 +464,13 @@ test("upload source archive into workspace", async ({ page }) => {
       clickDemo(page, sealedDownloadButton, "Download sealed REE package"),
     ]);
     expect(download.suggestedFilename()).toMatch(/\.zip$/i);
+  });
+
+  await test.step("Release workbench", async () => {
+    const releaseButton = main.getByRole("button", { name: /Release workbench/i }).first();
+    await expect(releaseButton).toBeVisible();
+    await clickDemo(page, releaseButton, "Release the workbench container");
+    await expect(page).toHaveURL("/");
+    await expect(page.getByRole("button", { name: /Create REE/i })).toBeVisible();
   });
 });
