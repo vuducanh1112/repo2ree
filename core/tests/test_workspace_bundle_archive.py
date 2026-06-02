@@ -22,7 +22,7 @@ def _make_ree(storage_root, name):
             "name": name,
             "status": "ready",
             "reeDraft": REE(name=name).model_dump(exclude_none=True),
-            "source": {"mode": "demo", "acquiredAt": "2026-01-01T00:00:00Z"},
+            "source": {"mode": "download", "acquiredAt": "2026-01-01T00:00:00Z"},
         }
     )
     return ree_id, layout

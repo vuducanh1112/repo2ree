@@ -29,10 +29,7 @@ interface SshDetails {
 // Kept narrow on purpose so raw infra DTOs (ReeDetailDto) don't leak into the UI
 // layer — see the shell-ui-no-raw-infra boundary.
 interface WorkbenchApi {
-  createRee(payload: {
-    sourceMode: "upload" | "url" | "demo";
-    name?: string;
-  }): Promise<{ reeId: string }>;
+  createRee(payload: { sourceMode: "upload" | "url"; name?: string }): Promise<{ reeId: string }>;
   reprovisionWorkbench(reeId: string): Promise<unknown>;
 }
 

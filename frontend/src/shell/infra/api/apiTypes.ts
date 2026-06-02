@@ -84,7 +84,7 @@ export interface ReeDetailDto extends ReeSummaryDto {
 }
 
 export interface CreateReeRequestDto {
-  sourceMode: "url" | "upload" | "demo";
+  sourceMode: "url" | "upload";
   originUrl?: string;
   sourceType?: "git" | "tarball" | "zip";
   name?: string;

@@ -147,10 +147,9 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
 
     ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
-    source_mode = "demo" if payload.sourceMode == "demo" else "draft"
 
     try:
-        handle = workbench_manager.provision(ree_id, name, source_mode=source_mode)
+        handle = workbench_manager.provision(ree_id, name)
     except Exception as exc:
         raise HTTPException(
             status_code=500, detail=f"Workbench provisioning failed: {exc}"

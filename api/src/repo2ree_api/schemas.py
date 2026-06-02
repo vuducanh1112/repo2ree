@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 
 class WorkspaceCreatePayload(BaseModel):
-    sourceMode: Literal["url", "upload", "demo"]
+    sourceMode: Literal["url", "upload"]
     originUrl: str | None = None
     sourceType: Literal["git", "tarball", "zip"] | None = None
     name: str | None = None

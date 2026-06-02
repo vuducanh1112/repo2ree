@@ -7,7 +7,7 @@ from repo2ree_core.domain.ree import REE
 
 
 WorkspaceStatus = Literal["draft", "ready", "sealed", "archived"]
-SourceMode = Literal["demo", "download", "upload"]
+SourceMode = Literal["download", "upload"]
 
 
 class SourceMetadata(BaseModel):

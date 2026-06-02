@@ -50,9 +50,7 @@ class WorkbenchManager:
     # Lifecycle
     # ------------------------------------------------
 
-    def provision(
-        self, ree_id: str, name: str, source_mode: str = "draft"
-    ) -> WorkbenchHandle:
+    def provision(self, ree_id: str, name: str) -> WorkbenchHandle:
         """Create volume + container, initialise the REE, register handle."""
         volume_name = f"repo2ree-ree-{ree_id}"
         container_name = f"repo2ree-wb-{ree_id}"
@@ -84,8 +82,6 @@ class WorkbenchManager:
             ree_id,
             "--name",
             name,
-            "--source-mode",
-            source_mode,
         )
 
         entry = WorkbenchEntry(
