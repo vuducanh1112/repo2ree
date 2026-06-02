@@ -113,6 +113,7 @@
             pkgs.iproute2
             pkgs.iptables
             pkgs.renovate  # evaluate_dependency_score shells out to renovate
+            pkgs.syft      # generate_sbom handler calls syft natively
 
             # Standard userland: sleep (entrypoint), mkdir, mv, etc.
             pkgs.coreutils

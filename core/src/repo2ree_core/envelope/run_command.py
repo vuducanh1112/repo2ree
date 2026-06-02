@@ -10,6 +10,7 @@ from repo2ree_core.envelope.command import (
     EvaluateDependencyScoreCommand,
     ExtractUploadCommand,
     GenerateHbomCommand,
+    GenerateSbomCommand,
     MaterializeWorkspaceCommand,
     PatchReeDraftCommand,
     RemoveSourceCommand,
@@ -27,6 +28,7 @@ from repo2ree_core.envelope.handlers.evaluate_dependency_score import (
 from repo2ree_core.envelope.handlers.extract_upload import handle_extract_upload
 from repo2ree_core.envelope.handlers.activation_test import handle_activation_test
 from repo2ree_core.envelope.handlers.generate_hbom import handle_generate_hbom
+from repo2ree_core.envelope.handlers.generate_sbom import handle_generate_sbom
 from repo2ree_core.envelope.handlers.materialize_workspace import (
     handle_materialize_workspace,
 )
@@ -81,6 +83,8 @@ def run_command(
         )
     if isinstance(cmd, GenerateHbomCommand):
         return handle_generate_hbom(log=log, is_canceled=cancel)
+    if isinstance(cmd, GenerateSbomCommand):
+        return handle_generate_sbom(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, ActivationTestCommand):
         return handle_activation_test(
             cmd.args, run_id=run_id, log=log, is_canceled=cancel

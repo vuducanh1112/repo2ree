@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+import subprocess
+from typing import Any
+
 from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.envelope.command import GenerateSbomArgs
 from repo2ree_core.envelope.handlers._common import (
@@ -7,7 +11,6 @@ from repo2ree_core.envelope.handlers._common import (
     resolve_workspace_path,
 )
 from repo2ree_core.envelope.result import ActionResult
-from repo2ree_core.sbom.generate_sbom import generate_sbom
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment import CancelCheck
@@ -42,23 +45,42 @@ def handle_generate_sbom(
         )
         return ActionResult(status="failed", exit_code=1)
 
+    output_path = layout.workspace / "sbom.json"
     log("system", "info", f"Runtime input: {runtime_path}")
+    log("system", "info", f"$ syft docker-archive:{runtime_abs} -o json={output_path}")
+
+    result = subprocess.run(
+        [
+            "syft",
+            f"docker-archive:{runtime_abs}",
+            "-o",
+            f"json={output_path}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    for line in result.stdout.splitlines():
+        log("stdout", "info", line)
+    for line in result.stderr.splitlines():
+        log("stdout", "info", line)
+
+    if result.returncode != 0:
+        log("system", "error", f"syft failed (exit {result.returncode})")
+        return ActionResult(status="failed", exit_code=result.returncode)
+
     try:
-        generated = generate_sbom(runtime_abs, layout.workspace)
-        if generated.name != "sbom.json":
-            raise RuntimeError(f"Unexpected generated SBOM filename: {generated.name}")
+        sbom_data = json.loads(output_path.read_text())
+        with open(layout.workspace / "sbom_readable.json", "w") as f:
+            json.dump(sbom_data, f, indent=2)
         patch_ree_draft_metadata(ReeStore(layout), {"sbom": "sbom.json"})
     except Exception as exc:
-        log("system", "error", f"SBOM generation failed: {exc}")
+        log("system", "error", f"post-processing SBOM failed: {exc}")
         return ActionResult(status="failed", exit_code=1)
 
     log("system", "info", "SBOM run succeeded")
-    return ActionResult(
-        status="succeeded",
-        exit_code=0,
-        outputs={
-            "sbomRelativePath": "sbom.json",
-            "runtimeRelativePath": runtime_path,
-            "format": "spdx-json",
-        },
-    )
+    outputs: dict[str, Any] = {
+        "sbomRelativePath": "sbom.json",
+        "runtimeRelativePath": runtime_path,
+        "format": "spdx-json",
+    }
+    return ActionResult(status="succeeded", exit_code=0, outputs=outputs)
