@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import shlex
 import subprocess
-from collections.abc import Callable
 from pathlib import Path
 
-LogSink = Callable[[str, str, str], None]
+from repo2ree_protocol.log import LogSink  # noqa: F401
 
 
 CONTAINER_WORKSPACE = Path("/workspace")

@@ -16,10 +16,10 @@ import json
 import subprocess
 from dataclasses import dataclass
 
-from repo2ree_core.container.run_script import LogSink
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
-from repo2ree_api.workbench.registry import WorkbenchEntry, WorkbenchRegistry
+from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
 
 
 @dataclass(frozen=True)
@@ -76,7 +76,7 @@ class WorkbenchManager:
 
         _docker_exec(
             container_name,
-            "repo2ree",
+            "repo2ree-exec",
             "init-ree",
             "--ree-id",
             ree_id,
@@ -171,7 +171,7 @@ class WorkbenchManager:
                 "exec",
                 "-i",
                 handle.container_name,
-                "repo2ree",
+                "repo2ree-exec",
                 "execute",
                 "--action",
                 "-",
@@ -221,7 +221,7 @@ class WorkbenchManager:
     def dispatch_query(self, handle: WorkbenchHandle, *argv: str) -> bytes:
         """Run a read-only CLI subcommand and return its stdout bytes."""
         result = subprocess.run(
-            ["docker", "exec", handle.container_name, "repo2ree", *argv],
+            ["docker", "exec", handle.container_name, "repo2ree-exec", *argv],
             capture_output=True,
         )
         if result.returncode != 0:

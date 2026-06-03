@@ -9,7 +9,8 @@ from typing import TextIO
 import click
 
 from repo2ree_core.domain.ree import REE
-from repo2ree_core.envelope import ActionResult, command_adapter, run_command
+from repo2ree_core.envelope.run_command import run_command
+from repo2ree_protocol import ActionResult, command_adapter
 from repo2ree_protocol.command import AcquireSourceArgs, AcquireSourceCommand
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore

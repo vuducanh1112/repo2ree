@@ -3,6 +3,7 @@ name = "repo2ree-api"
 version = "0.1.0"
 dependencies = [
     "repo2ree-protocol",
+    "repo2ree-supervisor",
     "repo2ree-core",
     "fastapi~=0.128.0",
     "uvicorn~=0.40.0",
@@ -12,6 +13,7 @@ dependencies = [
 
 [tool.uv.sources]
 repo2ree-protocol = { workspace = true }
+repo2ree-supervisor = { workspace = true }
 repo2ree-core = { workspace = true }
 
 [build-system]

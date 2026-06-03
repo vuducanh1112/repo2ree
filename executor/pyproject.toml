@@ -1,5 +1,5 @@
 [project]
-name = "repo2ree-cli"
+name = "repo2ree-executor"
 version = "0.1.0"
 dependencies = [
     "repo2ree-core",
@@ -10,8 +10,11 @@ dependencies = [
 repo2ree-core = { workspace = true }
 
 [project.scripts]
-repo2ree = "repo2ree_cli.__main__:main"
+repo2ree-exec = "repo2ree_executor.__main__:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/repo2ree_executor"]

@@ -36,7 +36,7 @@ from repo2ree_protocol.command import (
     WriteFileArgs,
 )
 from repo2ree_core.storage.layout import WORKBENCH_ROOT
-from repo2ree_api.workbench.manager import WorkbenchHandle
+from repo2ree_supervisor import WorkbenchHandle
 from repo2ree_api.storage.upload_staging import (
     discard_staged_upload,
     new_upload_token,

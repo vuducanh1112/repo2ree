@@ -15,7 +15,7 @@
 { pkgs }:
 
 let
-  # Python runtime carrying only what `repo2ree_cli.cli` reaches at
+  # Python runtime carrying only what `repo2ree_executor.cli` reaches at
   # import time. Keep this list minimal — adding deps here grows the
   # image and bypasses the reproducibility surface we're trying to
   # keep small.
@@ -42,19 +42,19 @@ let
       && !(pkgs.lib.hasSuffix ".pyc" base);
   };
 
-  repo2reeCliSrc = pkgs.lib.cleanSourceWith {
-    src = ../cli/src;
+  repo2reeExecutorSrc = pkgs.lib.cleanSourceWith {
+    src = ../executor/src;
     filter = path: type:
       let base = baseNameOf path; in
       !(type == "directory" && (base == "__pycache__" || base == ".pytest_cache"))
       && !(pkgs.lib.hasSuffix ".pyc" base);
   };
 
-  # `repo2ree` entrypoint script. Adds the source dirs to PYTHONPATH
-  # and dispatches through the CLI's __main__.
-  repo2reeBin = pkgs.writeShellScriptBin "repo2ree" ''
-    export PYTHONPATH="${repo2reeProtocolSrc}:${repo2reeCoreSrc}:${repo2reeCliSrc}''${PYTHONPATH:+:$PYTHONPATH}"
-    exec ${workbenchPython}/bin/python -m repo2ree_cli "$@"
+  # `repo2ree-exec` entrypoint script. Adds the source dirs to PYTHONPATH
+  # and dispatches through the executor's __main__.
+  repo2reeBin = pkgs.writeShellScriptBin "repo2ree-exec" ''
+    export PYTHONPATH="${repo2reeProtocolSrc}:${repo2reeCoreSrc}:${repo2reeExecutorSrc}''${PYTHONPATH:+:$PYTHONPATH}"
+    exec ${workbenchPython}/bin/python -m repo2ree_executor "$@"
   '';
 
   # Dev/test workbench entrypoint. It starts an in-container Docker

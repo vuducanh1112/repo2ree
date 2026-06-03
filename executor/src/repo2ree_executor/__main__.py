@@ -1,4 +1,4 @@
-from repo2ree_cli.cli import main
+from repo2ree_executor.cli import main
 
 if __name__ == "__main__":
     main()

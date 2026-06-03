@@ -1,7 +1,7 @@
 .PHONY: \
 	fe-checks fe-tests \
-	be-checks protocol-checks core-checks api-checks cli-checks \
-	be-tests core-tests api-tests cli-tests \
+	be-checks protocol-checks core-checks supervisor-checks api-checks executor-checks \
+	be-tests core-tests api-tests executor-tests \
 	test-checks \
 	workbench-image \
 	e2e-tests e2e-demo
@@ -44,19 +44,25 @@ core-checks:
 	ruff format core/src core/tests
 	mypy core/src core/tests
 
+supervisor-checks:
+	@echo "Running supervisor checks..."
+	ruff check supervisor/src
+	ruff format supervisor/src
+	mypy supervisor/src
+
 api-checks:
 	@echo "Running api checks..."
 	ruff check api/src api/tests
 	ruff format api/src api/tests
 	mypy api/src api/tests
 
-cli-checks:
-	@echo "Running cli checks..."
-	ruff check cli/src cli/tests
-	ruff format cli/src cli/tests
-	mypy cli/src cli/tests
+executor-checks:
+	@echo "Running executor checks..."
+	ruff check executor/src executor/tests
+	ruff format executor/src executor/tests
+	mypy executor/src executor/tests
 
-be-checks: protocol-checks core-checks api-checks cli-checks
+be-checks: protocol-checks core-checks supervisor-checks api-checks executor-checks
 
 # ================================================
 # Backend - tests
@@ -68,10 +74,10 @@ core-tests:
 api-tests:
 	pytest api/tests
 
-cli-tests:
-	pytest cli/tests
+executor-tests:
+	pytest executor/tests
 
-be-tests: core-tests api-tests cli-tests
+be-tests: core-tests api-tests executor-tests
 
 # ================================================
 # End-to-end tests
@@ -88,8 +94,8 @@ e2e-demo:
 # ================================================
 
 workbench-image:
-	@echo "Staging untracked envelope sources for nix..."
-	git add -N protocol/src core/src/repo2ree_core/envelope cli/src/repo2ree_cli/cli.py api/src/repo2ree_api/workbench 2>/dev/null || true
+	@echo "Staging untracked executor sources for nix..."
+	git add -N protocol/src core/src/repo2ree_core/envelope executor/src/repo2ree_executor 2>/dev/null || true
 	@echo "Building workbench image..."
 	nix build .#workbench-image
 	@echo "Loading into docker..."

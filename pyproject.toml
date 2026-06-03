@@ -8,7 +8,7 @@ requires-python = "~=3.13.0"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["protocol", "core", "api", "cli"]
+members = ["protocol", "core", "supervisor", "api", "executor"]
 
 [dependency-groups]
 dev = [
@@ -26,7 +26,7 @@ notebooks = [
 ]
 
 [tool.mypy]
-mypy_path = ["protocol/src", "core/src", "api/src", "cli/src"]
+mypy_path = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src"]
 
 # docker (docker-py) ships no py.typed and has no maintained stub package, so
 # treat the whole namespace as untyped (Any) rather than analyzing its sources.

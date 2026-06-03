@@ -6,9 +6,10 @@ requires-python = "==3.13.*"
 members = [
     "repo2ree",
     "repo2ree-api",
-    "repo2ree-cli",
     "repo2ree-core",
+    "repo2ree-executor",
     "repo2ree-protocol",
+    "repo2ree-supervisor",
 ]
 
 [[package]]
@@ -1686,6 +1687,7 @@ dependencies = [
     { name = "python-multipart" },
     { name = "repo2ree-core" },
     { name = "repo2ree-protocol" },
+    { name = "repo2ree-supervisor" },
     { name = "requests" },
     { name = "uvicorn" },
 ]
@@ -1696,23 +1698,9 @@ requires-dist = [
     { name = "python-multipart", specifier = "~=0.0.21" },
     { name = "repo2ree-core", editable = "core" },
     { name = "repo2ree-protocol", editable = "protocol" },
+    { name = "repo2ree-supervisor", editable = "supervisor" },
     { name = "requests", specifier = "~=2.32.5" },
     { name = "uvicorn", specifier = "~=0.40.0" },
-]
-
-[[package]]
-name = "repo2ree-cli"
-version = "0.1.0"
-source = { editable = "cli" }
-dependencies = [
-    { name = "click" },
-    { name = "repo2ree-core" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "click", specifier = "~=8.2.1" },
-    { name = "repo2ree-core", editable = "core" },
 ]
 
 [[package]]
@@ -1771,6 +1759,21 @@ dev = [
 ]
 
 [[package]]
+name = "repo2ree-executor"
+version = "0.1.0"
+source = { editable = "executor" }
+dependencies = [
+    { name = "click" },
+    { name = "repo2ree-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = "~=8.2.1" },
+    { name = "repo2ree-core", editable = "core" },
+]
+
+[[package]]
 name = "repo2ree-protocol"
 version = "0.1.0"
 source = { editable = "protocol" }
@@ -1780,6 +1783,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "pydantic", specifier = "~=2.11.7" }]
+
+[[package]]
+name = "repo2ree-supervisor"
+version = "0.1.0"
+source = { editable = "supervisor" }
+dependencies = [
+    { name = "repo2ree-protocol" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "repo2ree-protocol", editable = "protocol" }]
 
 [[package]]
 name = "requests"

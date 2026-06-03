@@ -1,4 +1,3 @@
-from repo2ree_api.workbench.manager import WorkbenchHandle, WorkbenchManager
-from repo2ree_api.workbench.registry import WorkbenchRegistry
+from repo2ree_supervisor import WorkbenchHandle, WorkbenchManager, WorkbenchRegistry
 
 __all__ = ["WorkbenchHandle", "WorkbenchManager", "WorkbenchRegistry"]
