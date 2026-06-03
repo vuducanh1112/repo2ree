@@ -19,6 +19,7 @@ from repo2ree_api.storage.init_storage import (
     create_upload_staging_if_not_exists,
     create_review_storage_if_not_exists,
 )
+from repo2ree_supervisor import WorkbenchUnavailableError
 
 
 # ================================================
@@ -79,6 +80,22 @@ async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
         }
 
     return JSONResponse(status_code=exc.status_code, content={"error": error_payload})
+
+
+@app.exception_handler(WorkbenchUnavailableError)
+async def workbench_unavailable_handler(
+    request: Request, exc: WorkbenchUnavailableError
+):
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": {
+                "code": "workbench_unavailable",
+                "message": "Workbench unavailable for this REE",
+                "details": None,
+            }
+        },
+    )
 
 
 @app.exception_handler(Exception)

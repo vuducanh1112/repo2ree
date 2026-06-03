@@ -1,4 +1,8 @@
-from repo2ree_supervisor.manager import WorkbenchHandle, WorkbenchManager
+from repo2ree_supervisor.manager import (
+    WorkbenchHandle,
+    WorkbenchManager,
+    WorkbenchUnavailableError,
+)
 from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
 
 __all__ = [
@@ -6,4 +10,5 @@ __all__ = [
     "WorkbenchHandle",
     "WorkbenchManager",
     "WorkbenchRegistry",
+    "WorkbenchUnavailableError",
 ]

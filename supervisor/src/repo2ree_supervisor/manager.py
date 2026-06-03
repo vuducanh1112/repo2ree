@@ -22,6 +22,16 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
 
 
+# Exit codes from `docker exec` that mean the container is gone / stopping.
+# 137 = killed by SIGKILL (container OOM-killed or being removed)
+# 126 = OCI runtime exec failed (container shutting down, broken init pipe)
+_CONTAINER_GONE_EXIT_CODES = frozenset({126, 137})
+
+
+class WorkbenchUnavailableError(RuntimeError):
+    """Raised when a docker exec fails because the container is gone or stopping."""
+
+
 @dataclass(frozen=True)
 class WorkbenchHandle:
     ree_id: str
@@ -206,6 +216,11 @@ class WorkbenchManager:
         stdout = proc.stdout.read().strip()
         proc.wait()
 
+        if proc.returncode in _CONTAINER_GONE_EXIT_CODES:
+            raise WorkbenchUnavailableError(
+                f"docker exec exited {proc.returncode} — container gone or stopping"
+            )
+
         if stdout:
             try:
                 return ActionResult.model_validate_json(stdout)
@@ -228,6 +243,13 @@ class WorkbenchManager:
             stderr = result.stderr.decode(errors="replace").strip()
             stdout = result.stdout.decode(errors="replace").strip()
             detail = stderr or stdout or "(no output on stdout/stderr)"
+            if (
+                result.returncode in _CONTAINER_GONE_EXIT_CODES
+                or "No such container" in detail
+            ):
+                raise WorkbenchUnavailableError(
+                    f"query {argv!r} failed (exit {result.returncode}): {detail}"
+                )
             raise RuntimeError(
                 f"query {argv!r} failed (exit {result.returncode}): {detail}"
             )
