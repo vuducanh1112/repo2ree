@@ -1,9 +1,8 @@
-import type React from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { LogEntry, LogLine } from "../../../../../core/ree/ReeTypes";
 import { Ic } from "../../../shared/components/Icon";
 import {
-  lgBackgrounds,
   lgColors,
   lgContentCard,
   lgGlassButton,
@@ -14,8 +13,20 @@ import {
   lgStyles,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
+import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassSectionHeader } from "../../components/GlassSectionHeader";
+import { SummaryLine } from "../../components/SummaryLine";
+import { SummaryPanel } from "../../components/SummaryPanel";
 import { APP_ROUTE } from "../../state/pages";
+import {
+  DetailRow,
+  ImageCard,
+  InfoNotePanel,
+  LocationOption,
+  STANDARD_IMAGE,
+  WORKBENCH_COLOR,
+} from "./WorkbenchPageSections";
 
 type LocationType = "local" | "remote";
 
@@ -40,27 +51,46 @@ interface WorkbenchPageProps {
   reeName?: string;
 }
 
+// Append a line to the page's client-side activity log. The provision and
+// reprovision endpoints return synchronously (no streamed container logs), so
+// this records the operation lifecycle the UI actually drives. The clock read
+// keeps this at the shell edge rather than the pure core.
+function appendLine(prev: LogEntry | null, type: LogLine["type"], msg: string): LogEntry {
+  const ts = new Date().toISOString();
+  return { lines: [...(prev?.lines ?? []), { type, msg, ts }], ts };
+}
+
 export function WorkbenchPage({ provisioned, reeId, reeApi, reeName }: WorkbenchPageProps) {
   const navigate = useNavigate();
   const [location, setLocation] = useState<LocationType>("local");
   const [ssh, setSsh] = useState<SshDetails>({ host: "", user: "", port: "22" });
-  const [name, setName] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reprovisioning, setReprovisioning] = useState(false);
   const [reprovisionError, setReprovisionError] = useState<string | null>(null);
+  const [log, setLog] = useState<LogEntry | null>(null);
+
+  const provisionLabel = location === "remote" && ssh.host ? ssh.host : "this machine";
 
   async function handleProvision() {
     setLoading(true);
     setError(null);
+    setLog(appendLine(null, "info", "Provisioning workbench…"));
+    setLog((l) => appendLine(l, "out", `Image: ${STANDARD_IMAGE.ref}`));
+    setLog((l) => appendLine(l, "out", `Location: ${provisionLabel}`));
     try {
+      // The REE's display name is owned by the Metadata page; provision with a
+      // neutral default and let the user rename it there.
       const created = await reeApi.createRee({
         sourceMode: "upload",
-        name: name.trim() || "REE Workspace",
+        name: "REE",
       });
+      setLog((l) => appendLine(l, "ok", "Workbench ready — opening workspace"));
       navigate(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(created.reeId)}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Provisioning failed");
+      const msg = err instanceof Error ? err.message : "Provisioning failed";
+      setError(msg);
+      setLog((l) => appendLine(l, "err", msg));
     } finally {
       setLoading(false);
     }
@@ -69,10 +99,16 @@ export function WorkbenchPage({ provisioned, reeId, reeApi, reeName }: Workbench
   async function handleReprovision() {
     setReprovisioning(true);
     setReprovisionError(null);
+    setLog(appendLine(null, "info", "Reprovisioning workbench…"));
+    setLog((l) => appendLine(l, "out", `Replacing container from ${STANDARD_IMAGE.ref}`));
+    setLog((l) => appendLine(l, "out", "Preserving /ree workspace volume"));
     try {
       await reeApi.reprovisionWorkbench(reeId);
+      setLog((l) => appendLine(l, "ok", "Workbench reprovisioned"));
     } catch (err) {
-      setReprovisionError(err instanceof Error ? err.message : "Reprovision failed");
+      const msg = err instanceof Error ? err.message : "Reprovision failed";
+      setReprovisionError(msg);
+      setLog((l) => appendLine(l, "err", msg));
     } finally {
       setReprovisioning(false);
     }
@@ -86,12 +122,14 @@ export function WorkbenchPage({ provisioned, reeId, reeApi, reeName }: Workbench
         ssh={ssh}
         reprovisioning={reprovisioning}
         reprovisionError={reprovisionError}
+        log={log}
         onReprovision={handleReprovision}
       />
     );
   }
 
   const canProvision = location === "local" || ssh.host.trim().length > 0;
+  const locationLabel = location === "remote" && ssh.host ? ssh.host : "This machine";
 
   return (
     <div style={lgStyles.pageRoot}>
@@ -100,44 +138,21 @@ export function WorkbenchPage({ provisioned, reeId, reeApi, reeName }: Workbench
           icon={Ic.package(24)}
           title="Workbench"
           subtitle="Choose where to provision the isolated workbench that will host your REE."
+          badges={<span style={lgStatusBadge(false)}>Not provisioned</span>}
         />
 
-        <div style={{ maxWidth: 540, display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={lgStyles.panel}>
+        <div style={lgStyles.mainGrid}>
+          <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
             <div style={lgStyles.sectionBody}>
-              <div style={lgStyles.sectionHeader}>
-                <div style={lgStyles.sectionIcon}>{Ic.file(19)}</div>
-                <div>
-                  <h2 style={lgStyles.sectionTitle}>REE Name</h2>
-                  <div style={lgStyles.sectionSubtitle}>
-                    Human-readable label for this workbench
-                  </div>
-                </div>
-              </div>
-              <input
-                id="ree-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="REE Workspace"
-                style={lgInput(false)}
+              <GlassSectionHeader
+                icon={Ic.cpu(19)}
+                color={WORKBENCH_COLOR}
+                title="Location"
+                subtitle="Where the workbench runs — the only configurable axis."
               />
-            </div>
-          </div>
-
-          <div style={lgStyles.panel}>
-            <div style={lgStyles.sectionBody}>
-              <div style={lgStyles.sectionHeader}>
-                <div style={lgStyles.sectionIcon}>{Ic.cpu(19)}</div>
-                <div>
-                  <h2 style={lgStyles.sectionTitle}>Location</h2>
-                  <div style={lgStyles.sectionSubtitle}>Where the workbench container will run</div>
-                </div>
-              </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <LocationOption
-                  id="local"
                   selected={location === "local"}
                   icon={Ic.cpu(16)}
                   label="Local"
@@ -145,7 +160,6 @@ export function WorkbenchPage({ provisioned, reeId, reeApi, reeName }: Workbench
                   onSelect={() => setLocation("local")}
                 />
                 <LocationOption
-                  id="remote"
                   selected={location === "remote"}
                   icon={Ic.globe(16)}
                   label="Remote"
@@ -201,107 +215,69 @@ export function WorkbenchPage({ provisioned, reeId, reeApi, reeName }: Workbench
                   </div>
                 </div>
               )}
-            </div>
-          </div>
 
-          {error && (
-            <div style={lgInfoBanner("danger")}>
-              <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.x(14)}</span>
-              <span style={{ fontSize: 13, color: lgColors.danger }}>{error}</span>
-            </div>
-          )}
+              <div style={{ marginTop: 26 }}>
+                <GlassSectionHeader
+                  icon={Ic.layers(19)}
+                  color={WORKBENCH_COLOR}
+                  title="Image"
+                  subtitle="The base image the workbench is built from."
+                />
+                <ImageCard image={STANDARD_IMAGE} />
+              </div>
 
-          <div>
-            <button
-              type="button"
-              onClick={handleProvision}
-              disabled={loading || !canProvision}
-              style={lgPrimaryActionButton(loading || !canProvision)}
-            >
-              {loading ? Ic.loader(15) : Ic.package(15)}
-              <span>{loading ? "Provisioning…" : "Provision workbench"}</span>
-            </button>
+              {error && (
+                <div style={{ ...lgInfoBanner("danger"), marginTop: 18 }}>
+                  <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.x(14)}</span>
+                  <span style={{ fontSize: 13, color: lgColors.danger }}>{error}</span>
+                </div>
+              )}
+
+              <div style={{ marginTop: 22 }}>
+                <CollapsibleLogCard log={log} running={loading} title="Provisioning log" />
+              </div>
+            </div>
+
+            <div style={lgStyles.footer}>
+              <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
+                {canProvision
+                  ? "Ready to provision — this can take a moment on first run."
+                  : "Enter a remote host to continue."}
+              </span>
+              <button
+                type="button"
+                onClick={handleProvision}
+                disabled={loading || !canProvision}
+                style={lgPrimaryActionButton(loading || !canProvision)}
+              >
+                {loading ? Ic.loader(15) : Ic.package(15)}
+                <span>{loading ? "Provisioning…" : "Provision workbench"}</span>
+              </button>
+            </div>
+          </section>
+
+          <div style={lgStyles.aside}>
+            <SummaryPanel title="Configuration" icon={Ic.settings(22)} iconColor={WORKBENCH_COLOR}>
+              <div style={lgStyles.overviewHeader}>
+                <span style={lgStyles.overviewLabel}>Overview</span>
+                <span style={lgStatusBadge(false)}>Pending</span>
+              </div>
+              <SummaryLine
+                label="Location"
+                value={location === "remote" ? "Remote (SSH)" : "Local"}
+              />
+              <SummaryLine label="Target" value={locationLabel} />
+              <SummaryLine
+                label="Image"
+                value={<span style={{ fontFamily: F.mono }}>{STANDARD_IMAGE.ref}</span>}
+              />
+            </SummaryPanel>
+
+            <InfoNotePanel />
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-interface LocationOptionProps {
-  id: LocationType;
-  selected: boolean;
-  icon: React.ReactNode;
-  label: string;
-  description: string;
-  onSelect: () => void;
-}
-
-function LocationOption({ selected, icon, label, description, onSelect }: LocationOptionProps) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "12px 14px",
-        borderRadius: 9,
-        border: selected
-          ? "1.5px solid rgba(14, 165, 233, 0.58)"
-          : "1.5px solid rgba(125, 211, 252, 0.38)",
-        background: selected ? "rgba(239, 246, 255, 0.94)" : lgBackgrounds.glassStrong,
-        cursor: "pointer",
-        textAlign: "left",
-        transition: "all 0.14s",
-        boxShadow: selected ? "0 8px 20px rgba(14, 165, 233, 0.12)" : "none",
-        fontFamily: F.sans,
-      }}
-    >
-      <div
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: 9,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: selected ? lgColors.primaryDeep : lgColors.textMid,
-          background: selected ? lgBackgrounds.primary : lgBackgrounds.iconSoft,
-          border: selected
-            ? "1px solid rgba(14, 165, 233, 0.35)"
-            : "1px solid rgba(125, 211, 252, 0.38)",
-          flexShrink: 0,
-        }}
-      >
-        {icon}
-      </div>
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: selected ? 700 : 500,
-            color: selected ? lgColors.primaryDeep : lgColors.text,
-          }}
-        >
-          {label}
-        </div>
-        <div style={{ fontSize: 12, color: lgColors.textMuted, marginTop: 1 }}>{description}</div>
-      </div>
-      <div
-        style={{
-          width: 16,
-          height: 16,
-          borderRadius: "50%",
-          border: `2px solid ${selected ? lgColors.blue : "rgba(148, 163, 184, 0.5)"}`,
-          background: selected ? lgColors.blue : "transparent",
-          flexShrink: 0,
-          boxShadow: selected ? `0 0 8px ${lgColors.blue}66` : "none",
-          transition: "all 0.14s",
-        }}
-      />
-    </button>
   );
 }
 
@@ -311,6 +287,7 @@ interface ProvisionedViewProps {
   ssh: SshDetails;
   reprovisioning: boolean;
   reprovisionError: string | null;
+  log: LogEntry | null;
   onReprovision: () => void;
 }
 
@@ -320,6 +297,7 @@ function ProvisionedView({
   ssh,
   reprovisioning,
   reprovisionError,
+  log,
   onReprovision,
 }: ProvisionedViewProps) {
   const locationLabel = location === "remote" && ssh.host ? ssh.host : "Local";
@@ -334,18 +312,23 @@ function ProvisionedView({
           badges={<span style={lgStatusBadge(true)}>Running</span>}
         />
 
-        <div style={{ maxWidth: 540, display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={lgStyles.panel}>
+        <div style={lgStyles.mainGrid}>
+          <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
             <div style={lgStyles.sectionBody}>
-              <div style={lgStyles.sectionHeader}>
-                <div style={lgStyles.sectionIcon}>{Ic.package(19)}</div>
-                <div>
-                  <h2 style={lgStyles.sectionTitle}>Workbench Details</h2>
-                </div>
-              </div>
+              <GlassSectionHeader
+                icon={Ic.package(19)}
+                color={WORKBENCH_COLOR}
+                title="Workbench Details"
+                subtitle="The live sandbox hosting this REE."
+              />
 
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <DetailRow label="REE" value={reeName || "—"} />
+                <DetailRow label="Image">
+                  <span style={{ fontSize: 13, color: lgColors.text, fontFamily: F.mono }}>
+                    {STANDARD_IMAGE.ref}
+                  </span>
+                </DetailRow>
                 <DetailRow label="Location" value={locationLabel} />
                 <DetailRow label="Status">
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -365,71 +348,56 @@ function ProvisionedView({
                   </div>
                 </DetailRow>
               </div>
-            </div>
-          </div>
 
-          {reprovisionError && (
-            <div style={lgInfoBanner("danger")}>
-              <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.x(14)}</span>
-              <span style={{ fontSize: 13, color: lgColors.danger }}>{reprovisionError}</span>
-            </div>
-          )}
+              {reprovisionError && (
+                <div style={{ ...lgInfoBanner("danger"), marginTop: 18 }}>
+                  <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.x(14)}</span>
+                  <span style={{ fontSize: 13, color: lgColors.danger }}>{reprovisionError}</span>
+                </div>
+              )}
 
-          <div>
-            <button
-              type="button"
-              onClick={onReprovision}
-              disabled={reprovisioning}
-              style={lgGlassButton()}
-            >
-              {Ic.refresh(14)}
-              <span style={{ marginLeft: 6 }}>
-                {reprovisioning ? "Reprovisioning…" : "Reprovision workbench"}
+              <div style={{ marginTop: 22 }}>
+                <CollapsibleLogCard log={log} running={reprovisioning} title="Workbench log" />
+              </div>
+            </div>
+
+            <div style={lgStyles.footer}>
+              <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
+                Reprovisioning replaces the container, keeping the /ree volume.
               </span>
-            </button>
+              <button
+                type="button"
+                onClick={onReprovision}
+                disabled={reprovisioning}
+                style={lgGlassButton()}
+              >
+                {Ic.refresh(14)}
+                <span style={{ marginLeft: 6 }}>
+                  {reprovisioning ? "Reprovisioning…" : "Reprovision workbench"}
+                </span>
+              </button>
+            </div>
+          </section>
+
+          <div style={lgStyles.aside}>
+            <SummaryPanel title="Runtime" icon={Ic.cpu(22)} iconColor={WORKBENCH_COLOR}>
+              <div style={lgStyles.overviewHeader}>
+                <span style={lgStyles.overviewLabel}>Overview</span>
+                <span style={lgStatusBadge(true)}>Healthy</span>
+              </div>
+              <SummaryLine label="REE name" value={reeName || "—"} />
+              <SummaryLine label="Location" value={locationLabel} />
+              <SummaryLine label="Isolation" value="Docker-in-docker sandbox" />
+              <SummaryLine
+                label="Image"
+                value={<span style={{ fontFamily: F.mono }}>{STANDARD_IMAGE.ref}</span>}
+              />
+            </SummaryPanel>
+
+            <InfoNotePanel />
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function DetailRow({
-  label,
-  value,
-  children,
-}: {
-  label: string;
-  value?: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "9px 12px",
-        borderRadius: 8,
-        background: lgBackgrounds.row,
-        border: "1px solid rgba(148, 163, 184, 0.3)",
-      }}
-    >
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          color: lgColors.textMuted,
-          fontFamily: F.mono,
-          minWidth: 72,
-          flexShrink: 0,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-        }}
-      >
-        {label}
-      </span>
-      {children ?? <span style={{ fontSize: 13, color: lgColors.text }}>{value}</span>}
     </div>
   );
 }
