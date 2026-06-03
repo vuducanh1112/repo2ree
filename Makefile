@@ -1,5 +1,5 @@
 
-.PHONY: fe-checks fe-tests be-checks core-checks api-checks cli-checks test-checks core-tests api-tests cli-tests workbench-image
+.PHONY: fe-checks fe-tests be-checks core-checks api-checks cli-checks test-checks core-tests api-tests cli-tests workbench-image e2e-tests e2e-demo
 
 fe-checks:
 	@echo "Running frontend checks..."
@@ -82,7 +82,12 @@ fe-tests:
 	cd frontend && npx vitest run
 
 e2e-tests:
-	@echo "Running end-to-end tests..."
+	@echo "Running fast end-to-end tests..."
 	cd frontend && \
-		npm exec -- playwright test -c playwright.config.ts tests/e2e/ree-create-python-hello-world.spec.ts
+		npm exec -- playwright test -c playwright.config.ts --project=e2e
+
+e2e-demo:
+	@echo "Running demo end-to-end walkthrough..."
+	cd frontend && \
+		npm exec -- playwright test -c playwright.config.ts --project=demo
 	

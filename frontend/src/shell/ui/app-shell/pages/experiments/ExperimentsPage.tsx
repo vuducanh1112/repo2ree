@@ -37,6 +37,7 @@ export function PageExperiments({
   onGoAssemblyPage,
   onFocusedFieldChange,
   onSnapshotComplete,
+  onBeforeRun,
   focusedField: _focusedField,
 }: PageExperimentsProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -150,6 +151,7 @@ export function PageExperiments({
               }}
               onRemove={() => removeExperiment(selectedIndex)}
               onSnapshotComplete={onSnapshotComplete}
+              onBeforeRun={onBeforeRun}
             />
           ) : (
             <section style={{ ...lgStyles.panel, overflow: "hidden" }}>

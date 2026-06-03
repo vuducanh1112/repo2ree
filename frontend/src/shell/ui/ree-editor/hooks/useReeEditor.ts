@@ -57,7 +57,12 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
   );
 
   const hydrateWorkspace = useMemo(() => createHydrateReeWorkspace(dispatch), [dispatch]);
-  const { buildReePatch, refreshWorkspace, refreshWorkspaceFiles } = useReeDraftSync({
+  const {
+    buildReePatch,
+    refreshWorkspace,
+    refreshWorkspaceFiles,
+    flush: flushReeDraft,
+  } = useReeDraftSync({
     ree,
     reeId,
     provisioned,
@@ -116,11 +121,13 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
         handleWorkspaceUpload,
         handleRemoveWorkspaceSource,
         downloadWorkspaceFile,
+        flushReeDraft,
       }),
     [
       cancelAction,
       dispatch,
       downloadWorkspaceFile,
+      flushReeDraft,
       handleDownloadRee,
       handleDownloadSourceFiles,
       handleRemoveWorkspaceSource,

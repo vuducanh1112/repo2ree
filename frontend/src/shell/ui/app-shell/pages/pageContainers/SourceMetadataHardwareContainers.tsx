@@ -151,6 +151,7 @@ export function ExperimentsPageContainer({
       onGoAssemblyPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
       onSnapshotComplete={handleSnapshotComplete}
+      onBeforeRun={commands.flushReeDraft}
     />
   );
 }

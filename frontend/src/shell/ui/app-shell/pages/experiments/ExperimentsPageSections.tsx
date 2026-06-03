@@ -393,6 +393,7 @@ export function ExperimentDetail({
   onBack,
   onRemove,
   onSnapshotComplete,
+  onBeforeRun,
 }: {
   reeId: string;
   experiment: ReeExperiment;
@@ -403,6 +404,7 @@ export function ExperimentDetail({
   onBack: () => void;
   onRemove: () => void;
   onSnapshotComplete: () => Promise<void>;
+  onBeforeRun: () => Promise<void>;
 }) {
   const { runsApi, ensureReeId } = useApiRuntime();
   const executionRunsClient = useExecutionRunsClient();
@@ -474,6 +476,10 @@ export function ExperimentDetail({
     async (mode: "verify" | "snapshot") => {
       setRunState(null);
       try {
+        // Flush any pending debounced draft edits (e.g. the command the user
+        // just typed) before running — the backend validates the run against
+        // the persisted draft, so a stale draft would 400 the run.
+        await onBeforeRun();
         const resolvedReeId = await ensureReeId(reeId);
         const run = await runsApi.createExperimentRun(resolvedReeId, experiment.name, {
           mode,
@@ -503,7 +509,7 @@ export function ExperimentDetail({
         });
       }
     },
-    [ensureReeId, reeId, experiment.name, runsApi],
+    [ensureReeId, reeId, experiment.name, runsApi, onBeforeRun],
   );
 
   const trimmedName = experiment.name.trim();

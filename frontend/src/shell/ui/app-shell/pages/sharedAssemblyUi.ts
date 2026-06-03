@@ -66,6 +66,9 @@ export interface PageExperimentsProps {
   onGoAssemblyPage: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
   onSnapshotComplete: () => Promise<void>;
+  // Persist pending draft edits before an experiment run, so the backend
+  // validates against the just-typed command rather than a stale draft.
+  onBeforeRun: () => Promise<void>;
 }
 
 export interface PageHardwareBomProps {

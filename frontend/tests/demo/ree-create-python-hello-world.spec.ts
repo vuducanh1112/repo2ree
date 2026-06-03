@@ -155,7 +155,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(page.getByText(`✓ ${label}`, { exact: true })).toBeVisible();
   };
 
-  const sourceArchive = path.resolve(__dirname, "resources/examples/python-hello-world.tar.gz");
+  const sourceArchive = path.resolve(__dirname, "../resources/examples/python-hello-world.tar.gz");
   const archiveEntries = execFileSync("tar", ["-tzf", sourceArchive], { encoding: "utf8" })
     .split("\n")
     .map((entry) => entry.trim())

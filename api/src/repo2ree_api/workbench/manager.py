@@ -225,9 +225,11 @@ class WorkbenchManager:
             capture_output=True,
         )
         if result.returncode != 0:
+            stderr = result.stderr.decode(errors="replace").strip()
+            stdout = result.stdout.decode(errors="replace").strip()
+            detail = stderr or stdout or "(no output on stdout/stderr)"
             raise RuntimeError(
-                f"query {argv!r} failed (exit {result.returncode}): "
-                f"{result.stderr.decode(errors='replace').strip()}"
+                f"query {argv!r} failed (exit {result.returncode}): {detail}"
             )
         return result.stdout
 

@@ -58,6 +58,7 @@ interface CreateReeEditorCommandsArgs {
   handleWorkspaceUpload: (payload: SourceUploadCommit) => void;
   handleRemoveWorkspaceSource: () => void;
   downloadWorkspaceFile: (path: string, suggestedName?: string) => Promise<void>;
+  flushReeDraft: () => Promise<void>;
 }
 
 export function createReeEditorCommands({
@@ -76,6 +77,7 @@ export function createReeEditorCommands({
   handleWorkspaceUpload,
   handleRemoveWorkspaceSource,
   downloadWorkspaceFile,
+  flushReeDraft,
 }: CreateReeEditorCommandsArgs) {
   const resolveNext = <T>(previous: T, value: Updater<T>): T => resolveUpdater(previous, value);
 
@@ -163,5 +165,6 @@ export function createReeEditorCommands({
       params: ReeAssemblyRunParams<K>,
     ) => runAssemblyStep(key, params),
     onPersistWorkspaceFile: persistWorkspaceFile,
+    flushReeDraft,
   };
 }
