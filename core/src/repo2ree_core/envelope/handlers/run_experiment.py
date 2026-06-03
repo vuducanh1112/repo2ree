@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.domain.ree import REE
-from repo2ree_core.envelope.command import RunExperimentArgs
+from repo2ree_protocol.command import RunExperimentArgs
 from repo2ree_core.envelope.handlers._common import (
     patch_ree_draft_metadata,
     resolve_workspace_path,
 )
-from repo2ree_core.envelope.result import ActionResult
+from repo2ree_protocol.result import ActionResult
 from repo2ree_core.experiment.run import run_experiment
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore

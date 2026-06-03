@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.domain.ree import REE
-from repo2ree_core.envelope.command import RunExperimentArgs, RunExperimentCommand
+from repo2ree_protocol.command import RunExperimentArgs, RunExperimentCommand
 from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_api.run_management import (
     _append_run_log,

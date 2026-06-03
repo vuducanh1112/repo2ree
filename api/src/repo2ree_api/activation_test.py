@@ -5,8 +5,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.envelope import ActivationTestCommand
-from repo2ree_core.envelope.command import ActivationTestArgs
+from repo2ree_protocol import ActivationTestCommand
+from repo2ree_protocol.command import ActivationTestArgs
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,

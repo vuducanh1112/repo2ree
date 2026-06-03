@@ -15,7 +15,7 @@ from repo2ree_api.run_management import (
     _update_run_outputs,
 )
 from repo2ree_api.workbench.deps import workbench_manager
-from repo2ree_core.envelope import (
+from repo2ree_protocol import (
     AcquireSourceCommand,
     DeleteFileCommand,
     ExtractUploadCommand,
@@ -26,7 +26,7 @@ from repo2ree_core.envelope import (
     UpdateSourceMetadataCommand,
     WriteFileCommand,
 )
-from repo2ree_core.envelope.command import (
+from repo2ree_protocol.command import (
     AcquireSourceArgs,
     Command,
     DeleteFileArgs,

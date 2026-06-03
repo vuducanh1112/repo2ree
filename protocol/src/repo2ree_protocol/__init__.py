@@ -1,5 +1,4 @@
-from repo2ree_protocol import (  # noqa: F401
-    ActionResult,
+from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
     BuildRuntimeCommand,
@@ -18,7 +17,7 @@ from repo2ree_protocol import (  # noqa: F401
     WriteFileCommand,
     command_adapter,
 )
-from repo2ree_core.envelope.run_command import run_command  # noqa: F401
+from repo2ree_protocol.result import ActionResult
 
 __all__ = [
     "ActionResult",
@@ -39,5 +38,4 @@ __all__ = [
     "UpdateSourceMetadataCommand",
     "WriteFileCommand",
     "command_adapter",
-    "run_command",
 ]

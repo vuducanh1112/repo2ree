@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.domain.ree import REE
-from repo2ree_core.envelope.result import ActionResult
+from repo2ree_protocol.result import ActionResult
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment.base import CancelCheck

@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.workbench.deps import workbench_manager
-from repo2ree_core.envelope.command import BuildRuntimeArgs, BuildRuntimeCommand
+from repo2ree_protocol.command import BuildRuntimeArgs, BuildRuntimeCommand
 from repo2ree_api.api_utils import require_non_empty_path
 from repo2ree_api.run_management import (
     _append_run_log,

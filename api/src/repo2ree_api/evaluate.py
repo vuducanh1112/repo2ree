@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.workbench.deps import workbench_manager
-from repo2ree_core.envelope.command import (
+from repo2ree_protocol.command import (
     EvaluateDependencyScoreArgs,
     EvaluateDependencyScoreCommand,
 )

@@ -17,8 +17,8 @@ import subprocess
 from dataclasses import dataclass
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.envelope.command import Command
-from repo2ree_core.envelope.result import ActionResult
+from repo2ree_protocol.command import Command
+from repo2ree_protocol.result import ActionResult
 from repo2ree_api.workbench.registry import WorkbenchEntry, WorkbenchRegistry
 
 

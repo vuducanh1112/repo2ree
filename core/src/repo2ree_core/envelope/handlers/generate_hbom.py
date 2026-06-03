@@ -9,7 +9,7 @@ from __future__ import annotations
 from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.envelope.handlers._common import patch_ree_draft_metadata
-from repo2ree_core.envelope.result import ActionResult
+from repo2ree_protocol.result import ActionResult
 from repo2ree_core.hbom.generate_hbom import generate_hbom
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore

@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from pathlib import Path
 
 from repo2ree_api.workbench.deps import workbench_manager
-from repo2ree_core.envelope.command import GenerateSbomArgs, GenerateSbomCommand
+from repo2ree_protocol.command import GenerateSbomArgs, GenerateSbomCommand
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.run_management import (
     _append_run_log,

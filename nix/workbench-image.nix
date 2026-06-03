@@ -26,6 +26,14 @@ let
 
   # Filter to just the Python sources so unrelated repo files don't
   # invalidate the image hash on every edit.
+  repo2reeProtocolSrc = pkgs.lib.cleanSourceWith {
+    src = ../protocol/src;
+    filter = path: type:
+      let base = baseNameOf path; in
+      !(type == "directory" && (base == "__pycache__" || base == ".pytest_cache"))
+      && !(pkgs.lib.hasSuffix ".pyc" base);
+  };
+
   repo2reeCoreSrc = pkgs.lib.cleanSourceWith {
     src = ../core/src;
     filter = path: type:
@@ -45,7 +53,7 @@ let
   # `repo2ree` entrypoint script. Adds the source dirs to PYTHONPATH
   # and dispatches through the CLI's __main__.
   repo2reeBin = pkgs.writeShellScriptBin "repo2ree" ''
-    export PYTHONPATH="${repo2reeCoreSrc}:${repo2reeCliSrc}''${PYTHONPATH:+:$PYTHONPATH}"
+    export PYTHONPATH="${repo2reeProtocolSrc}:${repo2reeCoreSrc}:${repo2reeCliSrc}''${PYTHONPATH:+:$PYTHONPATH}"
     exec ${workbenchPython}/bin/python -m repo2ree_cli "$@"
   '';
 

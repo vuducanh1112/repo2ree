@@ -5,12 +5,12 @@ import subprocess
 from typing import Any
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.envelope.command import GenerateSbomArgs
+from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_core.envelope.handlers._common import (
     patch_ree_draft_metadata,
     resolve_workspace_path,
 )
-from repo2ree_core.envelope.result import ActionResult
+from repo2ree_protocol.result import ActionResult
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment import CancelCheck

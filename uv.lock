@@ -8,6 +8,7 @@ members = [
     "repo2ree-api",
     "repo2ree-cli",
     "repo2ree-core",
+    "repo2ree-protocol",
 ]
 
 [[package]]
@@ -1684,6 +1685,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "python-multipart" },
     { name = "repo2ree-core" },
+    { name = "repo2ree-protocol" },
     { name = "requests" },
     { name = "uvicorn" },
 ]
@@ -1693,6 +1695,7 @@ requires-dist = [
     { name = "fastapi", specifier = "~=0.128.0" },
     { name = "python-multipart", specifier = "~=0.0.21" },
     { name = "repo2ree-core", editable = "core" },
+    { name = "repo2ree-protocol", editable = "protocol" },
     { name = "requests", specifier = "~=2.32.5" },
     { name = "uvicorn", specifier = "~=0.40.0" },
 ]
@@ -1726,6 +1729,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-debian" },
     { name = "pyyaml" },
+    { name = "repo2ree-protocol" },
     { name = "requests" },
     { name = "sqlmodel" },
     { name = "swh-model" },
@@ -1751,6 +1755,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = "~=2.12.0" },
     { name = "python-debian", specifier = "~=1.0.1" },
     { name = "pyyaml", specifier = "~=6.0.3" },
+    { name = "repo2ree-protocol", editable = "protocol" },
     { name = "requests", specifier = "~=2.32.5" },
     { name = "sqlmodel", specifier = "~=0.0.31" },
     { name = "swh-model", specifier = "~=8.4.1" },
@@ -1764,6 +1769,17 @@ dev = [
     { name = "types-pyyaml", specifier = "~=6.0.0" },
     { name = "types-requests", specifier = "~=2.32.0" },
 ]
+
+[[package]]
+name = "repo2ree-protocol"
+version = "0.1.0"
+source = { editable = "protocol" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = "~=2.11.7" }]
 
 [[package]]
 name = "requests"

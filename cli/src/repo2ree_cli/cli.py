@@ -10,7 +10,7 @@ import click
 
 from repo2ree_core.domain.ree import REE
 from repo2ree_core.envelope import ActionResult, command_adapter, run_command
-from repo2ree_core.envelope.command import AcquireSourceArgs, AcquireSourceCommand
+from repo2ree_protocol.command import AcquireSourceArgs, AcquireSourceCommand
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.storage.workspace_ops import (

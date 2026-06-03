@@ -9,12 +9,12 @@ from __future__ import annotations
 from typing import Any
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.envelope.command import ActivationTestArgs
+from repo2ree_protocol.command import ActivationTestArgs
 from repo2ree_core.envelope.handlers._common import (
     resolve_workspace_path,
     run_script_directly,
 )
-from repo2ree_core.envelope.result import ActionResult
+from repo2ree_protocol.result import ActionResult
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.working_environment import CancelCheck
 

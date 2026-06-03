@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.envelope import GenerateHbomCommand
+from repo2ree_protocol import GenerateHbomCommand
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,

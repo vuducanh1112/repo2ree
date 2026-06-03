@@ -2,6 +2,7 @@
 name = "repo2ree-core"
 version = "0.1.0"
 dependencies = [
+    "repo2ree-protocol",
     "docker~=7.1.0",
     "dockerfile-parse~=2.0.1",
     "GitPython~=3.1.45",
@@ -25,6 +26,9 @@ dev = [
     "types-PyYAML~=6.0.0",
     "types-dockerfile-parse~=2.0.0",
 ]
+
+[tool.uv.sources]
+repo2ree-protocol = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

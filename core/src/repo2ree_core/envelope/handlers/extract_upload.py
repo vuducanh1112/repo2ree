@@ -10,8 +10,8 @@ import tempfile
 from pathlib import Path
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.envelope.command import ExtractUploadArgs
-from repo2ree_core.envelope.result import ActionResult
+from repo2ree_protocol.command import ExtractUploadArgs
+from repo2ree_protocol.result import ActionResult
 from repo2ree_core.storage.extract import safe_extract_tar, safe_extract_zip
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
