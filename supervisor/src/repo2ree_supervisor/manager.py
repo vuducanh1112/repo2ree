@@ -32,6 +32,15 @@ class WorkbenchUnavailableError(RuntimeError):
     """Raised when a docker exec fails because the container is gone or stopping."""
 
 
+def _dind_volume_name(ree_id: str) -> str:
+    """Volume backing the workbench's in-container ``/var/lib/docker``.
+
+    Kept off the container's overlayfs rootfs so the nested daemon can use the
+    overlay2 storage driver (copy-on-write) instead of falling back to vfs.
+    """
+    return f"repo2ree-dind-{ree_id}"
+
+
 @dataclass(frozen=True)
 class WorkbenchHandle:
     ree_id: str
@@ -63,10 +72,15 @@ class WorkbenchManager:
     def provision(self, ree_id: str, name: str) -> WorkbenchHandle:
         """Create volume + container, initialise the REE, register handle."""
         volume_name = f"repo2ree-ree-{ree_id}"
+        dind_volume_name = _dind_volume_name(ree_id)
         container_name = f"repo2ree-wb-{ree_id}"
 
         _docker("volume", "create", volume_name)
+        _docker("volume", "create", dind_volume_name)
 
+        # No host docker.sock mount: the workbench runs its own in-container
+        # daemon (docker-in-docker) for full per-REE isolation. /var/lib/docker
+        # is volume-backed so the nested daemon uses overlay2, not vfs.
         _docker(
             "run",
             "-d",
@@ -75,10 +89,12 @@ class WorkbenchManager:
             container_name,
             "--restart",
             "unless-stopped",
+            "-e",
+            "DOCKER_DRIVER=overlay2",
             "-v",
             f"{volume_name}:/ree",
             "-v",
-            "/var/run/docker.sock:/var/run/docker.sock",
+            f"{dind_volume_name}:/var/lib/docker",
             self._image,
             "sleep",
             "infinity",
@@ -116,10 +132,12 @@ class WorkbenchManager:
             entry.container_name,
             "--restart",
             "unless-stopped",
+            "-e",
+            "DOCKER_DRIVER=overlay2",
             "-v",
             f"{entry.volume_name}:/ree",
             "-v",
-            "/var/run/docker.sock:/var/run/docker.sock",
+            f"{_dind_volume_name(entry.ree_id)}:/var/lib/docker",
             self._image,
             "sleep",
             "infinity",
@@ -127,9 +145,10 @@ class WorkbenchManager:
         return WorkbenchHandle.from_entry(entry)
 
     def teardown(self, handle: WorkbenchHandle) -> None:
-        """Stop + remove the container and its volume, unregister."""
+        """Stop + remove the container and its volumes, unregister."""
         _docker_silent("rm", "-f", handle.container_name)
         _docker_silent("volume", "rm", handle.volume_name)
+        _docker_silent("volume", "rm", _dind_volume_name(handle.ree_id))
         self._registry.unregister(handle.ree_id)
 
     def is_registered(self, ree_id: str) -> bool:

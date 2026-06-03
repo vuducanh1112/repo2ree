@@ -105,8 +105,10 @@ export async function buildRuntime(
   await main(page)
     .getByRole("button", { name: /Run build/ })
     .click();
+  // DinD: each workbench daemon starts with an empty image cache, so the first
+  // build is a cold pull + install (~30s+), not a warm shared-cache build.
   await expect(main(page).getByRole("button", { name: /Re-build/ })).toBeVisible({
-    timeout: 20000,
+    timeout: 90000,
   });
 
   // Select the produced runtime artifact via the repository file picker.
@@ -171,7 +173,8 @@ export async function testActivation(page: Page, activationScriptPath: string) {
   await main(page)
     .getByRole("button", { name: /Run activation/ })
     .click();
-  await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 20000 });
+  // DinD: cold `docker load` of the runtime image + run (no shared cache).
+  await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 90000 });
   await expectOverviewCableActive(page, "Activation");
 }
 
@@ -203,7 +206,8 @@ export async function runExperiment(
     .locator("div")
     .filter({ hasText: /^Run result/ })
     .first();
-  await expect(runResult.getByText("pass", { exact: true })).toBeVisible({ timeout: 30000 });
+  // DinD: cold runtime-image load + container run on the per-REE daemon.
+  await expect(runResult.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
 }
 
 /**

@@ -149,7 +149,10 @@ async function showcasePanel(page: Page, locator: Locator, narration: string) {
 }
 
 test("upload source archive into workspace", async ({ page }) => {
-  test.setTimeout(180000);
+  // DinD: every workbench builds against a cold (empty) image cache, so the
+  // build/activation/experiment steps are full cold pulls + installs. Combined
+  // with the narration delays this needs a much larger budget than warm runs.
+  test.setTimeout(420000);
 
   const expectOverviewCableActive = async (label: string) => {
     await expect(page.getByText(`✓ ${label}`, { exact: true })).toBeVisible();
@@ -308,7 +311,7 @@ test("upload source archive into workspace", async ({ page }) => {
       "Run evaluation to obtain reproducibility score",
     );
     await expect(main.getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible({
-      timeout: 20000,
+      timeout: 60000,
     });
     await showcasePanel(page, main.getByText("Run Log").first(), "Review output logs");
     await expectOverviewCableActive("Evaluate");
@@ -334,14 +337,22 @@ test("upload source archive into workspace", async ({ page }) => {
       "Provide build script path",
     );
     await clickDemo(page, main.getByRole("button", { name: /Run build/ }), "Run runtime build");
-    await expect(main.getByRole("button", { name: /Re-build/ })).toBeVisible({ timeout: 20000 });
+    // Dwell on the build log while it streams live (the cold DinD build runs
+    // for ~30s, so there is plenty to show). The panel tails new lines itself.
+    await showcasePanel(
+      page,
+      main.getByText(/Build log/i).first(),
+      "Watch the build log stream live",
+    );
+    await page.waitForTimeout(5000);
+    await expect(main.getByRole("button", { name: /Re-build/ })).toBeVisible({ timeout: 90000 });
     await clickDemo(
       page,
       page.getByPlaceholder("runtime.tar.gz").locator("..").getByTitle("Browse repository files"),
       "Open runtime file picker",
     );
     await expect(page.getByRole("button", { name: "python_hello_world/runtime.tar" })).toBeVisible({
-      timeout: 20000,
+      timeout: 30000,
     });
     await clickDemo(
       page,
@@ -365,10 +376,10 @@ test("upload source archive into workspace", async ({ page }) => {
       "Run SBOM scan",
     );
     await expect(main.getByRole("button", { name: /Regenerate SBOM/ })).toBeVisible({
-      timeout: 20000,
+      timeout: 60000,
     });
     await expect(main.getByText("SBOM ready", { exact: true }).first()).toBeVisible({
-      timeout: 20000,
+      timeout: 60000,
     });
     await showcasePanel(page, main.getByText(/SBOM log/i).first(), "Review SBOM logs");
     await expectOverviewCableActive("SBOM");
@@ -394,7 +405,7 @@ test("upload source archive into workspace", async ({ page }) => {
       main.getByRole("button", { name: /Run activation/ }),
       "Execute activation",
     );
-    await expect(main.getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 20000 });
+    await expect(main.getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 90000 });
     await showcasePanel(page, main.getByText(/Activation log/i).first(), "Review activation logs");
     await expectOverviewCableActive("Activation");
   });
@@ -442,7 +453,7 @@ test("upload source archive into workspace", async ({ page }) => {
       .locator("div")
       .filter({ hasText: /^Run result/ })
       .first();
-    await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible({ timeout: 30000 });
+    await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
   });
 
   await test.step("Seal and download", async () => {

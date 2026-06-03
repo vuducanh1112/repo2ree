@@ -36,7 +36,9 @@ export default defineConfig({
       name: "e2e",
       testDir: "./tests/e2e",
       outputDir: "./test-results/e2e",
-      timeout: 120 * 1000,
+      // Generous per-test budget: with DinD, each workbench builds against a
+      // cold (empty) image cache, so a test that builds + runs can need ~60s+.
+      timeout: 180 * 1000,
       expect: { timeout: 15 * 1000 },
       use: {
         ...baseUse,

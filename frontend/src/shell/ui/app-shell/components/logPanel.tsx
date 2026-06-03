@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { LogEntry, LogLine } from "../../../../core/ree/ReeTypes";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
@@ -46,6 +46,18 @@ function formatLineTimestamp(ts?: string): string {
 export function LogPanel({ log, running = false }: LogPanelProps) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
+  // Tail the log as new lines stream in. We "stick" to the bottom unless the
+  // user scrolls up to read history, then resume sticking once they return
+  // near the bottom. Without this the panel stays pinned at the first lines.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
+
+  const onLogScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+  };
+
   const renderLines = useMemo(() => {
     if (!log) return [];
     if (log.lines.length <= MAX_RENDER_LOG_LINES) return log.lines;
@@ -85,6 +97,13 @@ export function LogPanel({ log, running = false }: LogPanelProps) {
       };
     });
   }, [renderLines]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: line count is the re-run trigger; the body only touches the scroll node
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el && stickToBottomRef.current) el.scrollTop = el.scrollHeight;
+  }, [renderedEntries.length]);
+
   const onCopyLogs = async () => {
     if (!copyText) return;
     try {
@@ -152,6 +171,8 @@ export function LogPanel({ log, running = false }: LogPanelProps) {
           </div>
 
           <div
+            ref={scrollRef}
+            onScroll={onLogScroll}
             style={{
               overflowY: "auto",
               overflowX: "hidden",

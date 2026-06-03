@@ -67,7 +67,7 @@ let
     export DOCKER_HOST="unix:///var/run/docker.sock"
     export DOCKER_TLS_CERTDIR=""
 
-    mkdir -p /var/lib/docker /var/run /run /tmp /ree
+    mkdir -p /var/lib/docker /var/log /var/run /run /tmp /ree
 
     if [ ! -S /var/run/docker.sock ]; then
       storage_driver="''${DOCKER_DRIVER:-vfs}"
