@@ -87,7 +87,7 @@ const CATEGORIES: CategoryDescriptor[] = [
 ];
 
 export function PageHardwareBom({
-  ree: reeDraft,
+  ree: reeIntent,
   locked,
   badges: _badges,
   log,
@@ -102,7 +102,7 @@ export function PageHardwareBom({
   onRun,
   onCancel,
 }: PageHardwareBomProps) {
-  const { draft, updateDraft } = useHardwareBomDraft({ ree: reeDraft, onReeSpecChange });
+  const { draft, updateDraft } = useHardwareBomDraft({ ree: reeIntent, onReeSpecChange });
   const [activeCategory, setActiveCategory] = useState<CategoryDescriptor["key"]>("cpus");
 
   useFocusScroll(focusedField);

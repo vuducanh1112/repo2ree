@@ -1,4 +1,5 @@
 import React from "react";
+import type { InclusionOpts } from "../../../../../../core/ree/InclusionOpts";
 import type { Badges } from "../../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
 import { standingMeta } from "../../../../../../core/review/axes";
@@ -13,7 +14,7 @@ interface CenterSealStripProps {
   locked: boolean;
   evaluation: EvaluationState;
   badges: Badges;
-  onSeal: () => void;
+  onSeal: (inclusionOpts: InclusionOpts) => void;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
   onReleaseWorkbench?: () => void;
@@ -32,6 +33,21 @@ export function CenterSealStrip({
   sealRef,
 }: CenterSealStripProps) {
   const [showSealConfirm, setShowSealConfirm] = React.useState(false);
+  const sourceAvailable = !!ree.sourceAvailable;
+  const runtimeAvailable = !!ree.runtime?.trim() && ree.runtime !== "__skipped__";
+  const [includeSource, setIncludeSource] = React.useState(sourceAvailable);
+  const [includeRuntime, setIncludeRuntime] = React.useState(runtimeAvailable);
+
+  // Default the seal-time choices to whatever is available; the user can opt out
+  // in the confirmation window. Availability can change while authoring, so keep
+  // the defaults in step until the user has actually opened the window.
+  React.useEffect(() => {
+    if (!showSealConfirm) {
+      setIncludeSource(sourceAvailable);
+      setIncludeRuntime(runtimeAvailable);
+    }
+  }, [showSealConfirm, sourceAvailable, runtimeAvailable]);
+
   const sealed = locked && ree.sealedAt;
   const cableItems = buildSealCableItems(ree, badges);
   const liveCount = cableItems.filter((item) => item.live).length;
@@ -61,12 +77,21 @@ export function CenterSealStrip({
         onClose={() => setShowSealConfirm(false)}
         onConfirm={() => {
           setShowSealConfirm(false);
-          onSeal?.();
+          onSeal({
+            includeSource: sourceAvailable && includeSource,
+            includeRuntime: runtimeAvailable && includeRuntime,
+          });
         }}
         missing={missing}
         allLive={allLive}
         totalCables={totalCables}
         currentLevelMeta={currentLevelMeta}
+        sourceAvailable={sourceAvailable}
+        runtimeAvailable={runtimeAvailable}
+        includeSource={includeSource}
+        includeRuntime={includeRuntime}
+        onToggleSource={() => setIncludeSource((v) => !v)}
+        onToggleRuntime={() => setIncludeRuntime((v) => !v)}
       />
 
       <SealStatusCard

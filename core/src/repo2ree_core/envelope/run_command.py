@@ -12,7 +12,7 @@ from repo2ree_protocol.command import (
     GenerateHbomCommand,
     GenerateSbomCommand,
     MaterializeWorkspaceCommand,
-    PatchReeDraftCommand,
+    PatchReeIntentCommand,
     RemoveSourceCommand,
     RunExperimentCommand,
     SnapshotUpstreamCommand,
@@ -32,7 +32,7 @@ from repo2ree_core.envelope.handlers.generate_sbom import handle_generate_sbom
 from repo2ree_core.envelope.handlers.materialize_workspace import (
     handle_materialize_workspace,
 )
-from repo2ree_core.envelope.handlers.patch_ree_draft import handle_patch_ree_draft
+from repo2ree_core.envelope.handlers.patch_ree_intent import handle_patch_ree_intent
 from repo2ree_core.envelope.handlers.remove_source import handle_remove_source
 from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
 from repo2ree_core.envelope.handlers.snapshot_upstream import handle_snapshot_upstream
@@ -67,8 +67,8 @@ def run_command(
         return handle_write_file(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, DeleteFileCommand):
         return handle_delete_file(cmd.args, log=log, is_canceled=cancel)
-    if isinstance(cmd, PatchReeDraftCommand):
-        return handle_patch_ree_draft(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, PatchReeIntentCommand):
+        return handle_patch_ree_intent(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, RemoveSourceCommand):
         return handle_remove_source(log=log, is_canceled=cancel)
     if isinstance(cmd, BuildRuntimeCommand):

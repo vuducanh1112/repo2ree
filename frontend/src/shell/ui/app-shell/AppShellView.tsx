@@ -35,9 +35,8 @@ export function AppShellView({ onBack, PodOrbitControl }: AppShellViewProps) {
 function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
   const {
     provisioned,
-    reeDraft,
+    reeIntent,
     ree,
-    inclusionState,
     workspaceRemote,
     assemblyRun,
     uiChrome,
@@ -118,8 +117,7 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
 
         <AppShellContent
           ree={ree}
-          inclusionState={inclusionState}
-          reeDraft={reeDraft}
+          reeIntent={reeIntent}
           workspaceRemote={workspaceRemote}
           assemblyRun={assemblyRun}
           uiChrome={effectiveUiChrome}

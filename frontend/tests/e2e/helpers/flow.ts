@@ -88,9 +88,9 @@ export async function runEvaluate(page: Page) {
 }
 
 /**
- * Build the runtime artifact, select the produced file, and include it in the
- * REE. The Runtime cable only activates once the artifact is both selected and
- * included — building alone is not enough.
+ * Build the runtime artifact and select the produced file. The Runtime cable
+ * activates once the artifact is selected; whether it is bundled into the REE
+ * is chosen later in the seal window, not here.
  */
 export async function buildRuntime(
   page: Page,
@@ -121,8 +121,8 @@ export async function buildRuntime(
   await expect(producedRuntime).toBeVisible({ timeout: 20000 });
   await producedRuntime.click();
 
-  // Toggle "include" so the runtime becomes part of the REE.
-  await main(page).getByTitle("Include runtime in REE").click();
+  // Selecting the artifact is enough to activate the Runtime cable; bundling is
+  // decided in the seal window.
   await expectOverviewCableActive(page, "Runtime");
 }
 

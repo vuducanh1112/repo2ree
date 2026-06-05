@@ -25,7 +25,6 @@ function buildRee(): ReeEditorViewModel {
     sourceAvailable: false,
     sourceIncluded: false,
     runtimeIncluded: false,
-    downloadableFiles: [],
     dependencyLevel: 0,
   };
 }
@@ -44,7 +43,6 @@ function toInitialSlices(ree: ReeEditorViewModel) {
       swhid: ree.swhid,
       zenodo_doi: ree.zenodo_doi,
       dataverse_doi: ree.dataverse_doi,
-      detected_dependencies: ree.detected_dependencies,
       experiments: ree.experiments,
       hardware_description: ree.hardware_description,
     },
@@ -58,7 +56,6 @@ function toInitialSlices(ree: ReeEditorViewModel) {
     },
     artifactStatus: {
       runtimeIncluded: ree.runtimeIncluded,
-      downloadableFiles: ree.downloadableFiles,
       sealedAt: ree.sealedAt,
       sealHash: ree.sealHash,
     },
@@ -90,12 +87,12 @@ describe("appShellState", () => {
     });
     const view = createAppShellState(next);
 
-    expect(next.reeDraft.reeSpec.origin_url).toBe("https://example.org/repo.git");
-    expect(next.reeDraft.workspaceSourceState.sourceAvailable).toBe(true);
+    expect(next.reeIntent.reeSpec.origin_url).toBe("https://example.org/repo.git");
+    expect(next.reeSession.workspaceSourceState.sourceAvailable).toBe(true);
     expect(next.assemblyRun.actionStates.source).toBe("done");
     expect(next.assemblyRun.badges.source).toBe(true);
     expect(next.assemblyRun.timestamps.source).toBe("2026-01-01T00:00:00Z");
-    expect(next.reeDraft.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
+    expect(next.uiChrome.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
     expect(view.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
   });
 
@@ -136,8 +133,8 @@ describe("appShellState", () => {
     expect(next.assemblyRun.actionStates).toEqual({});
     expect(next.assemblyRun.badges).toEqual({});
     expect(next.assemblyRun.timestamps).toEqual({});
-    expect(next.reeDraft.reeSpec.origin_url).toBe("");
-    expect(next.reeDraft.workspaceSourceState.sourceAvailable).toBe(false);
+    expect(next.reeIntent.reeSpec.origin_url).toBe("");
+    expect(next.reeSession.workspaceSourceState.sourceAvailable).toBe(false);
   });
 
   it("keeps the aggregate selector aligned with the slice state", () => {
@@ -147,7 +144,7 @@ describe("appShellState", () => {
 
     expect(view.page).toBe(state.uiChrome.page);
     expect(view.assemblyOperationParams).toBe(state.assemblyRun.assemblyOperationParams);
-    expect(view.locked).toBe(state.reeDraft.locked);
+    expect(view.locked).toBe(state.uiChrome.locked);
     expect(createEmptyReeEditorViewModel().name).toBe("");
   });
 
@@ -158,7 +155,6 @@ describe("appShellState", () => {
         sourceAvailable: true,
         sourceIncluded: true,
         runtimeIncluded: true,
-        downloadableFiles: ["runtime.tar.gz"],
       }),
     );
 
@@ -170,9 +166,9 @@ describe("appShellState", () => {
       })),
     );
 
-    expect(next.reeDraft.reeSpec.name).toBe("renamed");
-    expect(next.reeDraft.workspaceSourceState).toEqual(initial.reeDraft.workspaceSourceState);
-    expect(next.reeDraft.artifactStatus).toEqual(initial.reeDraft.artifactStatus);
+    expect(next.reeIntent.reeSpec.name).toBe("renamed");
+    expect(next.reeSession.workspaceSourceState).toEqual(initial.reeSession.workspaceSourceState);
+    expect(next.reeSession.artifactStatus).toEqual(initial.reeSession.artifactStatus);
   });
 
   it("updates workspace source state via named transition", () => {
@@ -181,7 +177,7 @@ describe("appShellState", () => {
       initial,
       setWorkspaceSourceState((prev) => ({ ...prev, sourceAvailable: true })),
     );
-    expect(next.reeDraft.workspaceSourceState.sourceAvailable).toBe(true);
+    expect(next.reeSession.workspaceSourceState.sourceAvailable).toBe(true);
   });
 
   it("updates artifact status via named transition", () => {
@@ -190,7 +186,7 @@ describe("appShellState", () => {
       initial,
       setArtifactStatus((prev) => ({ ...prev, runtimeIncluded: true })),
     );
-    expect(next.reeDraft.artifactStatus.runtimeIncluded).toBe(true);
+    expect(next.reeSession.artifactStatus.runtimeIncluded).toBe(true);
   });
 
   it("updates evaluation state via named transition", () => {

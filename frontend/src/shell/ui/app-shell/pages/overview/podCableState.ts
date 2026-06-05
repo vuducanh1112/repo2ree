@@ -24,7 +24,7 @@ export function getPodCableStates(ree: ReeEditorViewModel, badges: Badges): PodC
   const archiveConnected = !!(ree.zenodo_doi || ree.dataverse_doi);
   const activationConnected = !!badges?.activation;
   const sourceConnected = !!ree.sourceAvailable;
-  const runtimeConnected = !!ree.runtimeIncluded;
+  const runtimeConnected = !!ree.runtime?.trim() && ree.runtime !== "__skipped__";
   const sbomConnected = !!ree.sbom?.trim();
   const swhConnected = !!ree.swhid?.trim();
   const evaluateConnected = !!badges?.evaluate;

@@ -38,7 +38,6 @@ import {
 export function PageGenerateSBOM({
   assemblyStep,
   ree,
-  inclusionState,
   badges,
   workspaceFiles,
   log,
@@ -58,7 +57,6 @@ export function PageGenerateSBOM({
   const runtimePath = resolvedRuntimePath(ree.runtime);
   const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
   const runtimeIsTarball = !!runtimePath && isRuntimeTarballPath(runtimePath);
-  const runtimeBundled = inclusionState.runtime === "included";
 
   const sbomPath = resolvedSbomPath(ree.sbom);
   const sbomNode = sbomPath ? findFileByPath(files, sbomPath) : null;
@@ -118,7 +116,6 @@ export function PageGenerateSBOM({
               runtimePath={runtimePath}
               runtimePathExists={runtimePathExists}
               runtimeIsTarball={runtimeIsTarball}
-              runtimeBundled={runtimeBundled}
               color={RUNTIME_ENV_COLOR}
               onGoBuild={() => onGo?.(PAGE.BUILD)}
             />
@@ -177,7 +174,6 @@ export function PageGenerateSBOM({
           <SbomSummaryAside
             runtimePath={runtimePath}
             runtimePathExists={runtimePathExists}
-            runtimeBundled={runtimeBundled}
             sbomPath={sbomPath}
             sbomNode={sbomNode}
             pkgCount={pkgCount}

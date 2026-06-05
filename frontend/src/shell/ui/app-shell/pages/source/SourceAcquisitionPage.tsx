@@ -36,7 +36,6 @@ function sourceBadge(sourceInWorkspace: boolean, running: boolean): React.CSSPro
 
 export function SourceAcquisitionPage({
   ree,
-  inclusionState,
   workspaceSourceState,
   locked,
   repoMode,
@@ -44,7 +43,6 @@ export function SourceAcquisitionPage({
   log,
   running,
   focusedField,
-  onWorkspaceSourceStateChange,
   onRepoModeChange,
   onGoAssemblyPage,
   onFocusedFieldChange,
@@ -61,31 +59,12 @@ export function SourceAcquisitionPage({
   const [originUrlDraft, setOriginUrlDraft] = useState(ree.origin_url || "");
 
   const sourceInWorkspace = !!workspaceSourceState.sourceAvailable;
-  const sourceIncluded = inclusionState.source === "included";
   const sourceFromUpload = workspaceSourceState.sourceAcquiredBy === "upload" && sourceInWorkspace;
   const sourceFromDownload =
     workspaceSourceState.sourceAcquiredBy === "download" && sourceInWorkspace;
   const sourceConfigLocked = sourceInWorkspace;
   const downloadDone = sourceFromDownload;
   const sourceInteractionLocked = locked || sourceConfigLocked;
-
-  const toggleSourceIncluded = () => {
-    focus("sourceAvailable");
-    if (locked || !sourceInWorkspace || workspaceSourceState.sourceAcquiredBy === "upload") return;
-    onWorkspaceSourceStateChange((current) => ({
-      ...current,
-      sourceIncluded: !sourceIncluded,
-    }));
-  };
-
-  useEffect(() => {
-    if (!sourceInWorkspace && workspaceSourceState.sourceIncluded) {
-      onWorkspaceSourceStateChange((current) => ({
-        ...current,
-        sourceIncluded: false,
-      }));
-    }
-  }, [sourceInWorkspace, workspaceSourceState.sourceIncluded, onWorkspaceSourceStateChange]);
 
   useEffect(() => {
     setOriginTypeDraft(ree.source_type || "");
@@ -98,8 +77,6 @@ export function SourceAcquisitionPage({
   useFocusScroll(focusedField);
 
   const originInputLocked = locked || sourceInWorkspace;
-  const sourceIncludedLocked = locked || !sourceInWorkspace || sourceFromUpload;
-  const sourceIncludedEffective = sourceFromUpload ? true : sourceIncluded;
   const step3Ready = sourceInWorkspace;
   const canDownload =
     !!originUrlDraft && !!originTypeDraft && repoMode === "url" && !sourceInWorkspace;
@@ -188,15 +165,10 @@ export function SourceAcquisitionPage({
 
               <SourceStep3Section
                 step3Ready={step3Ready}
-                sourceIncludedEffective={sourceIncludedEffective}
-                sourceIncludedLocked={sourceIncludedLocked}
-                sourceFromUpload={sourceFromUpload}
-                sourceInWorkspace={sourceInWorkspace}
                 acquisitionNarrative={acquisitionNarrative}
                 workspaceSourceState={workspaceSourceState}
                 locked={locked}
                 focus={focus}
-                onToggleSourceIncluded={toggleSourceIncluded}
                 onGoAssemblyPage={onGoAssemblyPage}
                 onRemoveWorkspaceSource={onRemoveWorkspaceSource}
               />
@@ -246,7 +218,7 @@ export function SourceAcquisitionPage({
                 />
                 <SummaryLine
                   label="Include in REE"
-                  value={sourceInWorkspace ? (sourceIncludedEffective ? "Yes" : "No") : "—"}
+                  value={sourceInWorkspace ? "Chosen at seal" : "—"}
                 />
               </div>
             </section>

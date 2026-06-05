@@ -10,7 +10,8 @@ import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceS
 import type { AssemblyRunState } from "./assemblyRunState";
 import type { AppShellPage } from "./pages";
 import { normalizeAppShellPage } from "./pages";
-import type { ReeDraftState } from "./reeDraft";
+import type { ReeIntentState } from "./reeIntent";
+import type { ReeSessionState } from "./reeSession";
 import type { UiChromeState } from "./uiChrome";
 
 interface AppShellState {
@@ -45,12 +46,14 @@ export interface AssemblyRunCompletionPayload {
   timestamp: string;
 }
 export function createAppShellState(params: {
-  reeDraft: ReeDraftState;
+  reeIntent: ReeIntentState;
+  reeSession: ReeSessionState;
   assemblyRun: AssemblyRunState;
   uiChrome: UiChromeState;
 }): AppShellState {
   return {
-    ...params.reeDraft,
+    ...params.reeIntent,
+    ...params.reeSession,
     ...params.assemblyRun,
     ...params.uiChrome,
   };

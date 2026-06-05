@@ -6,7 +6,6 @@ import { type AppShellPageContainerProps, ContentSection } from "./shared";
 
 export function OverviewPageContainer({
   ree,
-  reeDraft,
   workspaceRemote,
   assemblyRun,
   uiChrome,
@@ -15,10 +14,9 @@ export function OverviewPageContainer({
 }: AppShellPageContainerProps) {
   const { reeId, reeApi } = useApiRuntime();
   const navigate = useNavigate();
-  const { page } = uiChrome;
+  const { page, locked } = uiChrome;
   const { badges, timestamps } = assemblyRun;
   const { workspaceFiles, sourceSnapshotFiles, artifactStatus } = workspaceRemote;
-  const { locked } = reeDraft;
 
   if (page !== PAGE.OVERVIEW && page !== PAGE.SEAL) {
     return null;

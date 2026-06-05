@@ -10,7 +10,7 @@ function buildArgs(queryClient: QueryClient) {
     reeClient: {
       getRee: vi.fn(),
       updateFile: vi.fn(),
-      updateReeDraft: vi.fn(),
+      updateReeIntent: vi.fn(),
       deleteFile: vi.fn(),
       getFileBytes: vi.fn(),
       getReeArchive: vi.fn(),

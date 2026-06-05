@@ -127,19 +127,19 @@ class DeleteFileCommand(BaseModel):
     args: DeleteFileArgs
 
 
-class PatchReeDraftArgs(BaseModel):
-    """Apply a partial patch to reeDraft in /ree/.workspace.json."""
+class PatchReeIntentArgs(BaseModel):
+    """Apply a partial patch to reeIntent in /ree/.workspace.json."""
 
     model_config = ConfigDict(extra="forbid")
 
     patch: dict[str, Any]
 
 
-class PatchReeDraftCommand(BaseModel):
+class PatchReeIntentCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["patch_ree_draft"] = "patch_ree_draft"
-    args: PatchReeDraftArgs
+    operation: Literal["patch_ree_intent"] = "patch_ree_intent"
+    args: PatchReeIntentArgs
 
 
 class RemoveSourceArgs(BaseModel):
@@ -244,7 +244,7 @@ Command = Annotated[
         ExtractUploadCommand,
         WriteFileCommand,
         DeleteFileCommand,
-        PatchReeDraftCommand,
+        PatchReeIntentCommand,
         RemoveSourceCommand,
         BuildRuntimeCommand,
         GenerateSbomCommand,

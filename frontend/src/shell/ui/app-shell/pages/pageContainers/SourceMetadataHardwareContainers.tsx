@@ -43,16 +43,13 @@ const ASSEMBLY_PAGE_COMPONENTS: Record<string, (props: AssemblyPageProps) => JSX
 
 export function SourcePageContainer({
   ree,
-  inclusionState,
-  reeDraft,
   workspaceRemote,
   assemblyRun,
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
   const { reeId } = useApiRuntime();
-  const { page, focusedField } = uiChrome;
-  const { locked, repoMode } = reeDraft;
+  const { page, focusedField, locked, repoMode } = uiChrome;
   const { badges, actionStates } = assemblyRun;
   const sourceLog = useAssemblyRunLogEntry({
     reeId,
@@ -67,7 +64,6 @@ export function SourcePageContainer({
   return (
     <SourceAcquisitionPage
       ree={ree}
-      inclusionState={inclusionState}
       workspaceSourceState={workspaceRemote.workspaceSourceState}
       locked={locked}
       repoMode={repoMode}
@@ -89,13 +85,13 @@ export function SourcePageContainer({
 }
 
 export function MetadataPageContainer({
-  reeDraft,
+  reeIntent,
   assemblyRun,
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
-  const { page, focusedField } = uiChrome;
-  const { locked, reeSpec } = reeDraft;
+  const { page, focusedField, locked } = uiChrome;
+  const { reeSpec } = reeIntent;
   const { badges } = assemblyRun;
 
   if (page !== PAGE.METADATA) {
@@ -117,14 +113,14 @@ export function MetadataPageContainer({
 }
 
 export function ExperimentsPageContainer({
-  reeDraft,
+  reeIntent,
   assemblyRun,
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
   const { reeId, reeApi } = useApiRuntime();
-  const { page, focusedField } = uiChrome;
-  const { locked, reeSpec } = reeDraft;
+  const { page, focusedField, locked } = uiChrome;
+  const { reeSpec } = reeIntent;
   const { badges } = assemblyRun;
 
   if (page !== PAGE.EXPERIMENTS) {
@@ -151,21 +147,19 @@ export function ExperimentsPageContainer({
       onGoAssemblyPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
       onSnapshotComplete={handleSnapshotComplete}
-      onBeforeRun={commands.flushReeDraft}
+      onBeforeRun={commands.flushReeIntent}
     />
   );
 }
 
 export function HardwareBomPageContainer({
   ree,
-  reeDraft,
   assemblyRun,
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
   const { reeId } = useApiRuntime();
-  const { page, focusedField } = uiChrome;
-  const { locked } = reeDraft;
+  const { page, focusedField, locked } = uiChrome;
   const { badges, actionStates, timestamps } = assemblyRun;
   const hbomLog = useAssemblyRunLogEntry({
     reeId,
@@ -198,7 +192,7 @@ export function HardwareBomPageContainer({
 }
 
 export function AssemblyPageContainer(props: AppShellPageContainerProps) {
-  const { ree, inclusionState, workspaceRemote, assemblyRun, commands } = props;
+  const { ree, workspaceRemote, assemblyRun, commands } = props;
   const { badges } = assemblyRun;
   const { workspaceFiles, workspaceSourceState, artifactStatus } = workspaceRemote;
 
@@ -231,7 +225,6 @@ export function AssemblyPageContainer(props: AppShellPageContainerProps) {
       <AssemblyPageComponent
         assemblyStep={assemblyStep}
         ree={ree}
-        inclusionState={inclusionState}
         badges={badges}
         workspaceFiles={workspaceFiles}
         workspaceSourceState={workspaceSourceState}

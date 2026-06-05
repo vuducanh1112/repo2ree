@@ -3,7 +3,7 @@ const API_V1_BASE = "/api/v1";
 export const endpoints = {
   rees: () => `${API_V1_BASE}/rees`,
   ree: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}`,
-  reeDraft: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/draft`,
+  reeIntent: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/intent`,
   reeSourceAcquire: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source:acquire`,
   reeSourceUploadInit: (reeId: string) =>
@@ -14,7 +14,8 @@ export const endpoints = {
   reeFileContent: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/content`,
   reeFileRaw: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/raw`,
-  reeArchive: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive`,
+  reeArchive: (reeId: string, opts: { includeSource: boolean; includeRuntime: boolean }) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive?include_source=${opts.includeSource}&include_runtime=${opts.includeRuntime}`,
   reeWorkbenchReprovision: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/workbench/reprovision`,
   reeBuildRuntime: (reeId: string) =>

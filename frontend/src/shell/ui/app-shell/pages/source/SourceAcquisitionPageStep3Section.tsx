@@ -1,5 +1,4 @@
 import { Ic } from "../../../shared/components/Icon";
-import { Toggle } from "../../../shared/components/Toggle";
 import { lgColors, lgContentCard, lgGlassButton, lgStyles } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
 import type { AppShellPage } from "../../state/pages";
@@ -8,15 +7,10 @@ import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 
 interface Step3Props {
   step3Ready: boolean;
-  sourceIncludedEffective: boolean;
-  sourceIncludedLocked: boolean;
-  sourceFromUpload: boolean;
-  sourceInWorkspace: boolean;
   acquisitionNarrative: string;
   workspaceSourceState: SourceAcquisitionPageProps["workspaceSourceState"];
   locked: boolean;
   focus: (key: string) => void;
-  onToggleSourceIncluded: () => void;
   onGoAssemblyPage: (page: AppShellPage) => void;
   onRemoveWorkspaceSource: () => void;
 }
@@ -28,41 +22,6 @@ export function SourceStep3Section(props: Step3Props) {
 
       {props.step3Ready ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span
-              style={{
-                fontSize: 13,
-                fontFamily: F.sans,
-                color: lgColors.text,
-              }}
-            >
-              Include snapshot in REE
-            </span>
-            <Toggle
-              on={props.sourceIncludedEffective}
-              disabled={props.sourceIncludedLocked}
-              color="#0ea5e9"
-              onChange={props.onToggleSourceIncluded}
-              title={
-                props.sourceFromUpload
-                  ? "Uploads are always included in final REE to preserve source."
-                  : !props.sourceInWorkspace
-                    ? "Load source into workspace first"
-                    : props.sourceIncludedEffective
-                      ? "Source will be included in final REE"
-                      : "Source will be excluded from final REE"
-              }
-              width={36}
-              height={18}
-              knobSize={14}
-            />
-            {props.sourceFromUpload && (
-              <span style={lgStyles.helper}>
-                Uploaded source is always included to preserve reproducibility.
-              </span>
-            )}
-          </div>
-
           <div style={{ fontSize: 13, color: lgColors.textMid, fontFamily: F.sans }}>
             {props.acquisitionNarrative}
           </div>

@@ -6,11 +6,10 @@ sets status=ready, records snapshot location and source-mode-specific fields.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.ree_intent import PackagingPolicy, ReeIntent
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.envelope.handlers._common import utc_now
 from repo2ree_protocol.command import UpdateSourceMetadataArgs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_core.storage.layout import ReeLayout, SNAPSHOT_FILENAME
@@ -38,20 +37,11 @@ def handle_update_source_metadata(
     log("system", "info", "updating source metadata")
     try:
         metadata = store.read_metadata_json()
-        ts = _utc_now()
+        ts = utc_now()
         intent = ReeIntent.from_metadata(metadata)
 
         if args.mode == "upload":
             source = _upload_source(args, ts)
-            # Upload implies the user wants source included in the bundle.
-            intent = intent.model_copy(
-                update={
-                    "packaging": PackagingPolicy(
-                        source_included=True,
-                        runtime_included=intent.packaging.runtime_included,
-                    )
-                }
-            )
         else:
             source = _download_source(args, ts)
             intent = intent.model_copy(
@@ -102,7 +92,3 @@ def _upload_source(args: UpdateSourceMetadataArgs, ts: str) -> dict:  # type: ig
         "snapshotArchive": SNAPSHOT_FILENAME,
         "snapshotCapturedAt": ts,
     }
-
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")

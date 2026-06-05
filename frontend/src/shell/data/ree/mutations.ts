@@ -5,7 +5,7 @@ import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 import { useReeClient } from "./client";
 
-export function useUpdateReeDraftMutation(reeId?: string) {
+export function useUpdateReeIntentMutation(reeId?: string) {
   const runtime = useApiRuntime();
   const reeClient = useReeClient();
   const queryClient = useQueryClient();
@@ -13,7 +13,7 @@ export function useUpdateReeDraftMutation(reeId?: string) {
 
   return useMutation({
     mutationFn: (intentPatch: ReeIntentPatch) =>
-      reeClient.updateReeDraft(resolvedReeId, intentPatch),
+      reeClient.updateReeIntent(resolvedReeId, intentPatch),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.ree(resolvedReeId),

@@ -1,9 +1,6 @@
-import React from "react";
+import type React from "react";
 import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
-import type { WorkspaceSourceState } from "../../../../../../core/workspace/WorkspaceSourceState";
-import { Toggle } from "../../../../shared/components/Toggle";
-import { lgColors, lgStage, lgStyles } from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
+import { lgStage } from "../../../../theme/lightGlassTheme";
 import type { AppShellPage } from "../../../state/pages";
 import { PAGE } from "../../../state/pages";
 import { OverviewNavButton, OverviewPanel } from "./OverviewPanel";
@@ -16,7 +13,6 @@ interface SourcePanelProps {
   fileSummary: string;
   onGoField: (key: string) => void;
   onNavigate: (key: AppShellPage) => void;
-  onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
 }
 
 const tint = lgStage.source;
@@ -28,7 +24,6 @@ export function SourcePanel({
   fileSummary,
   onGoField,
   onNavigate,
-  onWorkspaceSourceStateChange,
 }: SourcePanelProps) {
   const sourceInWorkspace = !!ree.sourceAvailable;
   const sourceFromUpload = ree.sourceAcquiredBy === "upload" && !!ree.sourceAvailable;
@@ -39,52 +34,12 @@ export function SourcePanel({
       ? "Downloaded from origin"
       : "Not provided yet";
 
-  const sourceIncluded = sourceInWorkspace && !!ree.sourceIncluded;
-  const canIncludeSource = sourceInWorkspace;
-
-  const toggleSource = () => {
-    if (!canIncludeSource) return;
-    onWorkspaceSourceStateChange((current) => ({
-      ...current,
-      sourceIncluded: !sourceIncluded,
-    }));
-  };
-
-  React.useEffect(() => {
-    if (!sourceInWorkspace && ree.sourceIncluded) {
-      onWorkspaceSourceStateChange((current) => ({
-        ...current,
-        sourceIncluded: false,
-      }));
-    }
-  }, [sourceInWorkspace, ree.sourceIncluded, onWorkspaceSourceStateChange]);
-
   return (
     <OverviewPanel
       panelRef={sourceRef}
       tint={tint}
       title="Source"
       active={sourceInWorkspace}
-      headerRight={
-        <div style={{ ...lgStyles.overviewIncludeRow, opacity: canIncludeSource ? 1 : 0.45 }}>
-          <span
-            style={{
-              fontSize: 10,
-              fontFamily: F.sans,
-              fontWeight: 700,
-              color: sourceIncluded ? tint.ink : lgColors.textMuted,
-            }}
-          >
-            {sourceIncluded ? "Included" : "Include"}
-          </span>
-          <Toggle
-            on={sourceIncluded}
-            disabled={!canIncludeSource}
-            color={tint.line}
-            onChange={toggleSource}
-          />
-        </div>
-      }
       footer={
         <OverviewNavButton
           tint={tint}

@@ -16,7 +16,6 @@ function buildWorkspaceState(): SourceChangeInput {
       activation_script: "activate.sh",
       sbom: "sbom.json",
       swhid: "swh:1:dir:abc",
-      detected_dependencies: "3 dependencies",
     },
     workspaceSourceState: {
       sourceAvailable: true,

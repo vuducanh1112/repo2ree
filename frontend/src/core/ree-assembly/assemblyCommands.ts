@@ -132,6 +132,7 @@ function assemblyEffectPlanToCommands(plan: {
   persistedFile?: { path: string; content: string };
   reeSpecPatch?: Partial<ReeSpec>;
   artifactStatusPatch?: Partial<ArtifactStatus>;
+  evaluationStatePatch?: Partial<EvaluationState>;
   errorMessage?: string;
   successMessage: string;
 }): AssemblyCommand[] {
@@ -148,6 +149,9 @@ function assemblyEffectPlanToCommands(plan: {
   }
   if (plan.artifactStatusPatch) {
     commands.push({ type: "setArtifactStatus", artifactStatus: plan.artifactStatusPatch });
+  }
+  if (plan.evaluationStatePatch) {
+    commands.push({ type: "setEvaluationState", evaluationState: plan.evaluationStatePatch });
   }
   if (plan.errorMessage) {
     commands.push({ type: "toast", message: plan.errorMessage, toastType: "error" });

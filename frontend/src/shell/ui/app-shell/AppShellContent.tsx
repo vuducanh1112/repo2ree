@@ -23,8 +23,7 @@ type AppShellController = ReturnType<typeof useAppShell>;
 
 interface AppShellContentProps {
   ree: AppShellController["ree"];
-  inclusionState: AppShellController["inclusionState"];
-  reeDraft: AppShellController["reeDraft"];
+  reeIntent: AppShellController["reeIntent"];
   workspaceRemote: AppShellController["workspaceRemote"];
   assemblyRun: AppShellController["assemblyRun"];
   uiChrome: AppShellController["uiChrome"];

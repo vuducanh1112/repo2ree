@@ -20,7 +20,7 @@ from repo2ree_protocol import (
     DeleteFileCommand,
     ExtractUploadCommand,
     MaterializeWorkspaceCommand,
-    PatchReeDraftCommand,
+    PatchReeIntentCommand,
     RemoveSourceCommand,
     SnapshotUpstreamCommand,
     UpdateSourceMetadataCommand,
@@ -31,7 +31,7 @@ from repo2ree_protocol.command import (
     Command,
     DeleteFileArgs,
     ExtractUploadArgs,
-    PatchReeDraftArgs,
+    PatchReeIntentArgs,
     UpdateSourceMetadataArgs,
     WriteFileArgs,
 )
@@ -187,21 +187,21 @@ def get_workspace_route(ree_id: str):
     return workbench_manager.get_workspace(handle)
 
 
-@manage_ree_router.patch("/api/v1/rees/{ree_id}/draft")
-def patch_ree_draft_route(ree_id: str, payload: ReeIntentPatchPayload):
+@manage_ree_router.patch("/api/v1/rees/{ree_id}/intent")
+def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
     handle = _require_handle(ree_id)
     current = workbench_manager.get_ree_metadata(handle)
     if payload.expectedVersion and payload.expectedVersion != current.get("updatedAt"):
         raise HTTPException(status_code=409, detail="Workspace version conflict")
 
-    cmd = PatchReeDraftCommand(
-        args=PatchReeDraftArgs(patch=dict(payload.reeIntentPatch or {}))
+    cmd = PatchReeIntentCommand(
+        args=PatchReeIntentArgs(patch=dict(payload.reeIntentPatch or {}))
     )
     wb_result = workbench_manager.dispatch_action(
-        handle, cmd, "patch-draft", lambda *_: None
+        handle, cmd, "patch-intent", lambda *_: None
     )
     if wb_result.status != "succeeded":
-        raise HTTPException(status_code=500, detail="Workbench patch_ree_draft failed")
+        raise HTTPException(status_code=500, detail="Workbench patch_ree_intent failed")
     return workbench_manager.get_workspace(handle)
 
 
@@ -455,10 +455,16 @@ def reprovision_workbench_route(ree_id: str):
 
 
 @manage_ree_router.get("/api/v1/rees/{ree_id}/ree-archive")
-def download_workspace_ree_archive_route(ree_id: str):
+def download_workspace_ree_archive_route(
+    ree_id: str,
+    include_source: bool = Query(False),
+    include_runtime: bool = Query(False),
+):
     handle = _require_handle(ree_id)
     try:
-        archive_bytes = workbench_manager.build_archive(handle)
+        archive_bytes = workbench_manager.build_archive(
+            handle, include_source=include_source, include_runtime=include_runtime
+        )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     archive_filename = _archive_download_filename(handle)

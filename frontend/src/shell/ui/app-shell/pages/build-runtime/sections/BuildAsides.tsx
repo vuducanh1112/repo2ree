@@ -18,7 +18,6 @@ interface BuildSummaryAsideProps {
   source: BuildScriptSource | null;
   runtimePath: string;
   runtimePathExists: boolean;
-  includeRuntime: boolean;
   runtimeSize: string | null;
   runDone: boolean;
 }
@@ -28,7 +27,6 @@ export function BuildSummaryAside({
   source,
   runtimePath,
   runtimePathExists,
-  includeRuntime,
   runtimeSize,
   runDone,
 }: BuildSummaryAsideProps) {
@@ -36,7 +34,6 @@ export function BuildSummaryAside({
   const runtimeStatus = runtimeArtifactStatus({
     hasRuntime: !!runtimePath,
     runtimePathExists,
-    includeRuntime,
   });
   return (
     <SummaryPanel title="Build Summary" icon={Ic.cpu(22)} iconColor={lgColors.cyan}>

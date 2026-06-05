@@ -14,7 +14,6 @@ import { ReadinessStat } from "../../runtime-environment/ReadinessStat";
 interface SbomSummaryAsideProps {
   runtimePath: string;
   runtimePathExists: boolean;
-  runtimeBundled: boolean;
   sbomPath: string;
   sbomNode: FileTreeNode | null;
   pkgCount: number | null;
@@ -25,7 +24,6 @@ interface SbomSummaryAsideProps {
 export function SbomSummaryAside({
   runtimePath,
   runtimePathExists,
-  runtimeBundled,
   sbomPath,
   sbomNode,
   pkgCount,
@@ -35,7 +33,6 @@ export function SbomSummaryAside({
   const runtimeStatus = runtimeArtifactStatus({
     hasRuntime: !!runtimePath,
     runtimePathExists,
-    includeRuntime: runtimeBundled,
   });
   return (
     <SummaryPanel title="SBOM Summary" icon={Ic.package(22)} iconColor={lgColors.success}>

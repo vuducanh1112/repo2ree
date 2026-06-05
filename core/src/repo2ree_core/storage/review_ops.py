@@ -150,16 +150,11 @@ def _resolve_snapshot_archive(search_root: Path, snapshot_ref: str) -> Path | No
 def _extract_included_source_snapshot(
     snapshot_search_root: Path,
     destination_root: Path,
-    ree_draft: dict[str, Any],
+    session: ReeSession,
 ) -> None:
-    # ree_draft may be reeIntent + reeSession merged; source fields are in session.
-    source_included = bool(
-        ree_draft.get("source_included")
-        or (ree_draft.get("packaging") or {}).get("source_included")
-    )
-    if not source_included:
+    if not session.source_included:
         return
-    snapshot_ref = str(ree_draft.get("source_snapshot_archive") or "").strip()
+    snapshot_ref = (session.source_snapshot_archive or "").strip()
     if not snapshot_ref:
         return
     archive = _resolve_snapshot_archive(snapshot_search_root, snapshot_ref)
@@ -186,10 +181,6 @@ def _manifest_to_ree_intent(manifest: dict[str, Any]) -> dict[str, Any]:
         "zenodo_doi": manifest.get("zenodo_doi"),
         "dataverse_doi": manifest.get("dataverse_doi"),
         "hardware_description": manifest.get("hardware_description") or {},
-        "packaging": {
-            "source_included": bool(manifest.get("source_included", False)),
-            "runtime_included": bool(manifest.get("runtime_included", False)),
-        },
     }
     return ReeIntent.model_validate(payload).model_dump(exclude_none=True)
 
@@ -207,7 +198,8 @@ def _manifest_to_ree_session(
         "source_acquired_by": manifest.get("source_acquired_by") or "",
         "source_snapshot_archive": manifest.get("source_snapshot_archive"),
         "source_snapshot_captured_at": manifest.get("source_snapshot_captured_at"),
-        "downloadable_files": manifest.get("downloadable_files") or [],
+        "source_included": bool(manifest.get("source_included", False)),
+        "runtime_included": bool(manifest.get("runtime_included", False)),
         "uploaded_archive": uploaded_archive,
     }
     return ReeSession.model_validate(payload).model_dump(exclude_none=True)
@@ -257,10 +249,7 @@ def get_review(storage_root: Path, review_id: str) -> dict[str, Any]:
         _extract_included_source_snapshot(
             _review_dir(storage_root, review_id),
             _review_workspace_dir(storage_root, review_id),
-            {
-                **dict(metadata.get("reeIntent") or {}),
-                **dict(metadata.get("reeSession") or {}),
-            },
+            ReeSession.from_metadata(metadata),
         )
     detail = dict(metadata)
     detail["files"] = _list_files_under(_review_dir(storage_root, review_id))
@@ -353,7 +342,7 @@ def complete_review_upload(
     _extract_included_source_snapshot(
         _review_dir(storage_root, review_id),
         _review_workspace_dir(storage_root, review_id),
-        {**metadata["reeIntent"], **metadata["reeSession"]},
+        ReeSession.from_metadata(metadata),
     )
     _write_review_metadata(storage_root, review_id, metadata)
 

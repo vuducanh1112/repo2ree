@@ -20,7 +20,6 @@ describe("toReePatchFromSlices", () => {
       runtime: "runtime.tar.gz",
       sbom: "sbom.json",
       swhid: "swh:1:dir:test",
-      detected_dependencies: "4 dependencies",
       experiments: [
         {
           name: "benchmark",
@@ -47,7 +46,6 @@ describe("toReePatchFromSlices", () => {
     };
     const artifactStatus: ArtifactStatus = {
       runtimeIncluded: true,
-      downloadableFiles: ["runtime.tar.gz", "sbom.json"],
       sealedAt: "2026-01-02T00:00:00Z",
       sealHash: "sha256:test",
     };
@@ -66,7 +64,6 @@ describe("toReePatchFromSlices", () => {
       ...reeSpec,
       zenodo_doi: "",
       dataverse_doi: "",
-      packaging: { source_included: true, runtime_included: true },
     });
   });
 
@@ -81,7 +78,6 @@ describe("toReePatchFromSlices", () => {
     ).toMatchObject({
       name: "",
       origin_url: "",
-      packaging: { source_included: false, runtime_included: false },
     });
   });
 });

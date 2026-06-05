@@ -90,24 +90,21 @@ describe("buildRunStatusLabel", () => {
 });
 
 describe("runtimeArtifactStatus", () => {
-  const base = { hasRuntime: true, runtimePathExists: true, includeRuntime: true };
+  const base = { hasRuntime: true, runtimePathExists: true };
   it("unset when no runtime", () => {
     expect(runtimeArtifactStatus({ ...base, hasRuntime: false })).toBe("unset");
   });
   it("missing when path not in workspace", () => {
     expect(runtimeArtifactStatus({ ...base, runtimePathExists: false })).toBe("missing");
   });
-  it("excluded when not included", () => {
-    expect(runtimeArtifactStatus({ ...base, includeRuntime: false })).toBe("excluded");
-  });
-  it("included otherwise", () => {
-    expect(runtimeArtifactStatus(base)).toBe("included");
+  it("ready when present in workspace", () => {
+    expect(runtimeArtifactStatus(base)).toBe("ready");
   });
   it("has UI labels", () => {
     expect(runtimeArtifactStatusLabel("unset")).toBe("Not set");
     expect(runtimeArtifactStatusLabel("missing")).toBe("Missing");
-    expect(runtimeSummaryStatusLabel("included")).toBe("Bundled in REE");
-    expect(runtimeSummaryStatusLabel("excluded")).toBe("Selected · not bundled");
+    expect(runtimeArtifactStatusLabel("ready")).toBe("Ready");
+    expect(runtimeSummaryStatusLabel("ready")).toBe("In workspace");
   });
 });
 

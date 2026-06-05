@@ -23,26 +23,19 @@ export function enforceSourceOriginRules(
   const hasDownloadedSource =
     !!state.workspaceSourceState.sourceAvailable &&
     state.workspaceSourceState.sourceAcquiredBy === "download";
-  const hasUploadedSource =
-    !!state.workspaceSourceState.sourceAvailable &&
-    state.workspaceSourceState.sourceAcquiredBy === "upload";
 
   const nextReeSpec =
     !hasDownloadedSource && state.reeSpec.origin_url
       ? { ...state.reeSpec, origin_url: "" }
       : state.reeSpec;
-  const nextWorkspaceSourceState =
-    hasUploadedSource && !state.workspaceSourceState.sourceIncluded
-      ? { ...state.workspaceSourceState, sourceIncluded: true }
-      : state.workspaceSourceState;
 
-  if (nextReeSpec === state.reeSpec && nextWorkspaceSourceState === state.workspaceSourceState) {
+  if (nextReeSpec === state.reeSpec) {
     return state;
   }
 
   return {
     reeSpec: nextReeSpec,
-    workspaceSourceState: nextWorkspaceSourceState,
+    workspaceSourceState: state.workspaceSourceState,
     artifactStatus: state.artifactStatus,
     evaluationState: state.evaluationState,
   };

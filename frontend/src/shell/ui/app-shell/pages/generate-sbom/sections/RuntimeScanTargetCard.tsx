@@ -13,7 +13,6 @@ interface RuntimeScanTargetCardProps {
   runtimePath: string;
   runtimePathExists: boolean;
   runtimeIsTarball: boolean;
-  runtimeBundled: boolean;
   color: string;
   onGoBuild: () => void;
 }
@@ -22,7 +21,6 @@ export function RuntimeScanTargetCard({
   runtimePath,
   runtimePathExists,
   runtimeIsTarball,
-  runtimeBundled,
   color,
   onGoBuild,
 }: RuntimeScanTargetCardProps) {
@@ -75,7 +73,6 @@ export function RuntimeScanTargetCard({
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <span style={lgPillChip(!!runtimePath)}>{runtimeIsTarball ? "Tarball" : "Runtime"}</span>
-        <span style={lgPillChip(runtimeBundled)}>{runtimeBundled ? "Bundled" : "Not bundled"}</span>
       </div>
     </div>
   );

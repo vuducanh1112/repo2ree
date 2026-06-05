@@ -30,6 +30,7 @@ from repo2ree_api.review_run_management import (
 )
 
 from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_api.storage.review_files import (
     ReviewUploadCompletePayload,
     ReviewUploadInitPayload,
@@ -370,7 +371,8 @@ def _run_review_source_acquire(
 ) -> tuple[str, dict[str, object]]:
     metadata = _load_review_metadata(review_id)
     intent = ReeIntent.from_metadata(metadata)
-    if intent.packaging.source_included:
+    session = ReeSession.from_metadata(metadata)
+    if session.source_included:
         _append_review_run_log(
             review_id,
             run_id,

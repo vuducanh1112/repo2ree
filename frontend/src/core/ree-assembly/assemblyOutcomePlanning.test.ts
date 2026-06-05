@@ -40,7 +40,7 @@ describe("assemblyOutcomePlanning", () => {
       manifestCount: 2,
     });
 
-    expect(result.reeSpecPatch.detected_dependencies).toContain("5 dependencies");
+    expect(result.evaluationStatePatch.detectedDependencies).toContain("5 dependencies");
     expect(result.successMessage).toContain("5 dependencies");
   });
 

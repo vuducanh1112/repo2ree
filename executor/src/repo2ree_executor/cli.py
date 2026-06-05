@@ -258,13 +258,20 @@ def get_workspace_cmd() -> None:
 
 
 @cli.command("build-archive")
-def build_archive_cmd() -> None:
+@click.option("--include-source", is_flag=True, default=False)
+@click.option("--include-runtime", is_flag=True, default=False)
+def build_archive_cmd(include_source: bool, include_runtime: bool) -> None:
     """Write the REE zip archive bytes to stdout."""
     layout = ReeLayout.in_workbench()
     storage_root = layout.root.parent
     ree_id = layout.root.name
     try:
-        data = _build_archive(storage_root, ree_id)
+        data = _build_archive(
+            storage_root,
+            ree_id,
+            include_source=include_source,
+            include_runtime=include_runtime,
+        )
     except FileNotFoundError as exc:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)

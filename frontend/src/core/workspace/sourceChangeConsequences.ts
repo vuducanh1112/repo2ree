@@ -37,7 +37,6 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
       activation_script: "",
       sbom: "",
       swhid: "",
-      detected_dependencies: "",
       zenodo_doi: "",
     },
     workspaceSourceState: {

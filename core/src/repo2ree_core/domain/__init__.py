@@ -8,7 +8,6 @@ from .hbom import (
 )
 from .ree_intent import (
     Contributor,
-    PackagingPolicy,
     ReeCatalogMetadata,
     ReeIntent,
     SourceType,
@@ -22,7 +21,6 @@ __all__ = [
     "HBOM",
     "MemoryDefinition",
     "NetworkDefinition",
-    "PackagingPolicy",
     "ReeCatalogMetadata",
     "ReeIntent",
     "ReeSession",

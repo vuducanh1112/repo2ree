@@ -1,5 +1,4 @@
 import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
-import { deriveReeInclusionState, type ReeInclusionState } from "../../core/ree/ReeInclusionState";
 import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
 import type { ActionStates, Badges, Timestamps } from "../../core/ree/ReeTypes";
 import { type EvaluationState, emptyEvaluationState } from "../../core/review/EvaluationState";
@@ -23,7 +22,6 @@ export interface ReeEditorState {
   workspaceSourceState: WorkspaceSourceState;
   artifactStatus: ArtifactStatus;
   evaluationState: EvaluationState;
-  inclusionState: ReeInclusionState;
   editorUi: ReeEditorUiState;
   assemblyRuns: ReeAssemblyRunsState;
 }
@@ -33,7 +31,6 @@ interface CreateReeEditorStateInput {
   workspaceSourceState?: WorkspaceSourceState;
   artifactStatus?: ArtifactStatus;
   evaluationState?: EvaluationState;
-  inclusionState?: ReeInclusionState;
   editorUi?: Partial<ReeEditorUiState>;
   assemblyRuns?: Partial<ReeAssemblyRunsState>;
 }
@@ -41,23 +38,13 @@ interface CreateReeEditorStateInput {
 export function createReeEditorState(input: CreateReeEditorStateInput = {}): ReeEditorState {
   const reeSpec = input.reeSpec ?? createEmptyReeSpec();
   const workspaceSourceState = input.workspaceSourceState ?? { sourceAvailable: false };
-  const artifactStatus = input.artifactStatus ?? {
-    runtimeIncluded: false,
-    downloadableFiles: [],
-  };
+  const artifactStatus = input.artifactStatus ?? { runtimeIncluded: false };
 
   return {
     reeSpec,
     workspaceSourceState,
     artifactStatus,
     evaluationState: input.evaluationState ?? emptyEvaluationState(),
-    inclusionState:
-      input.inclusionState ??
-      deriveReeInclusionState({
-        workspaceSourceState,
-        artifactStatus,
-        reeSpec,
-      }),
     editorUi: {
       locked: false,
       repoMode: "url",
@@ -75,14 +62,9 @@ export function createReeEditorState(input: CreateReeEditorStateInput = {}): Ree
 }
 
 export function createReeEditorStateFromModel(args: {
-  reeDraft: {
-    reeSpec: ReeSpec;
-    workspaceSourceState: WorkspaceSourceState;
-    artifactStatus: ArtifactStatus;
-    locked: boolean;
-    repoMode: "url" | "upload";
-    sourceSnapshotArchiveName: string;
-  };
+  reeIntent: { reeSpec: ReeSpec };
+  reeSession: { workspaceSourceState: WorkspaceSourceState; artifactStatus: ArtifactStatus };
+  uiChrome: { locked: boolean; repoMode: "url" | "upload"; sourceSnapshotArchiveName: string };
   assemblyRun: {
     evaluationState: EvaluationState;
     actionStates: ActionStates;
@@ -91,16 +73,16 @@ export function createReeEditorStateFromModel(args: {
     activeRunIds: Record<string, string>;
   };
 }): ReeEditorState {
-  const { reeDraft, assemblyRun } = args;
+  const { reeIntent, reeSession, uiChrome, assemblyRun } = args;
   return createReeEditorState({
-    reeSpec: reeDraft.reeSpec,
-    workspaceSourceState: reeDraft.workspaceSourceState,
-    artifactStatus: reeDraft.artifactStatus,
+    reeSpec: reeIntent.reeSpec,
+    workspaceSourceState: reeSession.workspaceSourceState,
+    artifactStatus: reeSession.artifactStatus,
     evaluationState: assemblyRun.evaluationState,
     editorUi: {
-      locked: reeDraft.locked,
-      repoMode: reeDraft.repoMode,
-      sourceSnapshotArchiveName: reeDraft.sourceSnapshotArchiveName,
+      locked: uiChrome.locked,
+      repoMode: uiChrome.repoMode,
+      sourceSnapshotArchiveName: uiChrome.sourceSnapshotArchiveName,
     },
     assemblyRuns: {
       actionStates: assemblyRun.actionStates,

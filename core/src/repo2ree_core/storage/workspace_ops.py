@@ -111,7 +111,9 @@ def _list_tree_relpaths(root: Path) -> list[str]:
     )
 
 
-def _build_artifact_plan(layout: ReeLayout, intent: ReeIntent) -> ArtifactPlan:
+def _build_artifact_plan(
+    layout: ReeLayout, intent: ReeIntent, *, include_runtime: bool
+) -> ArtifactPlan:
     """Snapshot disk state and delegate layout decisions to the pure planner."""
     workspace_files = frozenset(_list_tree_relpaths(layout.workspace))
     on_disk_artifacts = _list_tree_relpaths(layout.artifacts)
@@ -120,27 +122,8 @@ def _build_artifact_plan(layout: ReeLayout, intent: ReeIntent) -> ArtifactPlan:
         workspace_runtime_path=intent.runtime,
         workspace_sbom_path=intent.sbom,
         workspace_files=workspace_files,
-        runtime_included=intent.packaging.runtime_included,
+        runtime_included=include_runtime,
     )
-
-
-def _bundle_archive_paths(
-    layout: ReeLayout, artifact_plan: ArtifactPlan, *, include_snapshot: bool
-) -> list[str]:
-    """Archive paths that would appear in the bundle, without reading bytes."""
-    paths = [REE_MANIFEST_ENTRY_PATH]
-    if include_snapshot and layout.snapshot_archive.exists():
-        paths.append(REE_SNAPSHOT_ENTRY_PATH)
-    paths.append(REE_OVERLAY_PREFIX)
-    for rel in _list_tree_relpaths(layout.overlay):
-        paths.append(f"{REE_OVERLAY_PREFIX}{rel}")
-    paths.append(REE_ARTIFACTS_PREFIX)
-    for rel in artifact_plan.on_disk_relpaths:
-        paths.append(f"{REE_ARTIFACTS_PREFIX}{rel}")
-    for archive_name in sorted(artifact_plan.workspace_pulls.values()):
-        paths.append(f"{REE_ARTIFACTS_PREFIX}{archive_name}")
-    paths.append(REE_WORKSPACE_DIR_ENTRY)
-    return paths
 
 
 def _bundle_entry_bytes(
@@ -173,27 +156,6 @@ def _bundle_entry_bytes(
         )
     entries.append((REE_WORKSPACE_DIR_ENTRY, b""))
     return entries
-
-
-def _sync_downloadable_files(
-    storage_root: Path, ree_id: str, metadata: dict[str, Any]
-) -> None:
-    layout = _layout(storage_root, ree_id)
-    intent = _intent_from_metadata(metadata)
-    session = _session_from_metadata(metadata)
-    manifest = _build_manifest_payload(metadata, intent, session, ree_id=ree_id)
-    artifact_plan = _build_artifact_plan(layout, intent)
-    updated_session = session.with_downloadables(
-        _bundle_archive_paths(
-            layout,
-            artifact_plan,
-            include_snapshot=should_include_snapshot(
-                source_included=bool(manifest.get("source_included")),
-                source_snapshot_archive=manifest.get("source_snapshot_archive"),
-            ),
-        )
-    )
-    metadata["reeSession"] = updated_session.model_dump(exclude_none=True)
 
 
 def _read_text_if_possible(path: Path) -> str | None:
@@ -299,7 +261,6 @@ def get_workspace(
     seed_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     metadata = seed_metadata or _read_metadata(storage_root, ree_id)
-    _sync_downloadable_files(storage_root, ree_id, metadata)
     detail = dict(metadata)
     detail["files"] = _workspace_files_with_content(storage_root, ree_id)
     detail["reeFiles"] = _workspace_ree_files_with_content(storage_root, ree_id)
@@ -314,17 +275,27 @@ def read_file_bytes(storage_root: Path, ree_id: str, path: str) -> bytes:
     return fp.read_bytes()
 
 
-def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
+def build_workspace_ree_archive(
+    storage_root: Path,
+    ree_id: str,
+    *,
+    include_source: bool,
+    include_runtime: bool,
+) -> bytes:
     metadata = _read_metadata(storage_root, ree_id)
     layout = _layout(storage_root, ree_id)
     intent = _intent_from_metadata(metadata)
-    session = _session_from_metadata(metadata)
+    session = _session_from_metadata(metadata).with_packaging(
+        source_included=include_source, runtime_included=include_runtime
+    )
     sidecar_manifest = _build_manifest_payload(metadata, intent, session, ree_id=ree_id)
 
-    artifact_plan = _build_artifact_plan(layout, intent)
+    artifact_plan = _build_artifact_plan(
+        layout, intent, include_runtime=include_runtime
+    )
     include_snapshot = should_include_snapshot(
-        source_included=bool(sidecar_manifest.get("source_included")),
-        source_snapshot_archive=sidecar_manifest.get("source_snapshot_archive"),
+        source_included=include_source,
+        source_snapshot_archive=session.source_snapshot_archive,
     )
     bundle_manifest = rewrite_manifest_for_bundle(
         sidecar_manifest, artifact_plan.manifest_remap
@@ -338,10 +309,6 @@ def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
         include_snapshot=include_snapshot,
         manifest_bytes=manifest_bytes,
     )
-    updated_session = session.with_downloadables([path for path, _ in entries])
-    metadata["reeSession"] = updated_session.model_dump(exclude_none=True)
     store = _store(storage_root, ree_id)
-    store.write_metadata_json(metadata)
-    archive_bytes = build_zip_bytes(entries)
     store.write_manifest(sidecar_manifest)
-    return archive_bytes
+    return build_zip_bytes(entries)

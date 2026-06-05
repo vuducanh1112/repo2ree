@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { ExecutionRun } from "../../../../core/execution/ExecutionRun";
-import type { RawReeDraftSlices } from "../../../../core/ree/mapRawReeDraft";
+import type { RawReeIntentSlices } from "../../../../core/ree/mapRawReeIntent";
 import type { LogEntry, ReeFile } from "../../../../core/ree/ReeTypes";
 import type { AssemblyCommandPlannerMap } from "../../../../core/ree-assembly/assemblyCommands";
 import { isReeAssemblyOperationKey } from "../../../../core/ree-assembly/assemblyPolicies";
@@ -46,7 +46,7 @@ interface CreateAssemblyRunGatewayArgs {
   refreshWorkspace: () => Promise<{
     workspaceFiles: FileTreeNode[];
     reeArtifactFiles: ReeFile[];
-    ree?: RawReeDraftSlices;
+    ree?: RawReeIntentSlices;
   }>;
   runSession: RunSessionPort;
 }

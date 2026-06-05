@@ -1,5 +1,5 @@
 import type React from "react";
-import type { RawReeDraftSlices } from "../../../../core/ree/mapRawReeDraft";
+import type { RawReeIntentSlices } from "../../../../core/ree/mapRawReeIntent";
 import type { ReeFile } from "../../../../core/ree/ReeTypes";
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import {
@@ -13,7 +13,7 @@ import type { AppShellAction } from "../../app-shell/state/types";
 export interface HydratedWorkspaceSnapshot {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
-  ree?: RawReeDraftSlices;
+  ree?: RawReeIntentSlices;
 }
 
 export function createHydrateReeWorkspace(dispatch: React.Dispatch<AppShellAction>) {

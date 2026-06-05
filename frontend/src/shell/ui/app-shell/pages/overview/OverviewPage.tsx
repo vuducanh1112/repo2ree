@@ -1,5 +1,6 @@
 import React, { useRef } from "react";
 import type { ArtifactStatus } from "../../../../../core/artifact/ArtifactStatus";
+import type { InclusionOpts } from "../../../../../core/ree/InclusionOpts";
 import type { Badges, Timestamps } from "../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
 import type { EvaluationState } from "../../../../../core/review/EvaluationState";
@@ -27,7 +28,7 @@ interface PageOverviewProps {
   files?: FileTreeNode[];
   snapshotFiles?: FileTreeNode[];
   locked?: boolean;
-  onSeal: () => void;
+  onSeal: (inclusionOpts: InclusionOpts) => void;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
   onReleaseWorkbench?: () => void;

@@ -22,7 +22,11 @@ export function buildSealCableItems(ree: ReeEditorViewModel, badges: Badges): Se
       live: hbomHasAnyComponents(ree.hardware_description),
     },
     { key: PAGE.SOURCE, label: "Source", live: !!ree.sourceAvailable },
-    { key: "runtime", label: "Runtime", live: !!ree.runtimeIncluded },
+    {
+      key: "runtime",
+      label: "Runtime",
+      live: !!ree.runtime?.trim() && ree.runtime !== "__skipped__",
+    },
     { key: "swh", label: "Software Heritage", live: !!ree.swhid },
     { key: "sbom", label: "SBOM", live: !!ree.sbom },
     { key: "evaluate", label: "Evaluate", live: !!badges?.evaluate },

@@ -4,7 +4,6 @@ import {
 } from "../../../../../../core/ree-assembly/buildRuntimeUiState";
 import type { FileTreeNode } from "../../../../../../core/workspace/FileTree";
 import { Ic } from "../../../../shared/components/Icon";
-import { Toggle } from "../../../../shared/components/Toggle";
 import {
   lgColors,
   lgContentCard,
@@ -19,28 +18,23 @@ interface RuntimeArtifactCardProps {
   runtimePath: string;
   runtimeSize: string | null;
   runtimePathExists: boolean;
-  includeRuntime: boolean;
   files: FileTreeNode[];
   onRuntimeChange: (path: string) => void;
-  onIncludedToggle: () => void;
 }
 
 export function RuntimeArtifactCard({
   runtimePath,
   runtimeSize,
   runtimePathExists,
-  includeRuntime,
   files,
   onRuntimeChange,
-  onIncludedToggle,
 }: RuntimeArtifactCardProps) {
   const hasRuntime = !!runtimePath;
   const status = runtimeArtifactStatus({
     hasRuntime,
     runtimePathExists,
-    includeRuntime,
   });
-  const ok = status === "included" || status === "excluded";
+  const ok = status === "ready";
 
   return (
     <div style={lgContentCard()}>
@@ -104,30 +98,6 @@ export function RuntimeArtifactCard({
               }}
             >
               {runtimeSize}
-            </span>
-          )}
-          {ok && (
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 11,
-                color: lgColors.textMid,
-                fontFamily: F.sans,
-                fontWeight: 700,
-              }}
-            >
-              <Toggle
-                on={includeRuntime}
-                color={lgColors.blue}
-                onChange={onIncludedToggle}
-                title="Include runtime in REE"
-                width={36}
-                height={18}
-                knobSize={14}
-              />
-              Include in REE
             </span>
           )}
         </div>

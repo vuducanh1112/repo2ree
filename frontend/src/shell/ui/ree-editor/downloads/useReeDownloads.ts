@@ -1,3 +1,4 @@
+import type { InclusionOpts } from "../../../../core/ree/InclusionOpts";
 import type { ReeIntentPatch } from "../../../../core/ree/reePatch";
 import {
   planReeArchiveDownload,
@@ -37,11 +38,11 @@ export function useReeDownloads({ buildReePatch, getReeName, showToast }: UseRee
     }
   };
 
-  const handleDownloadRee = () => {
+  const handleDownloadRee = (inclusionOpts: InclusionOpts) => {
     const runDownload = async () => {
       try {
-        await reeClient.updateReeDraft(reeId, buildReePatch());
-        const archiveDownload = await reeClient.getReeArchive(reeId);
+        await reeClient.updateReeIntent(reeId, buildReePatch());
+        const archiveDownload = await reeClient.getReeArchive(reeId, inclusionOpts);
         const plan = planReeArchiveDownload(getReeName(), archiveDownload.fileName);
         appShellPorts.browserDownloads.downloadBlob(archiveDownload.bytes, {
           fileName: plan.archiveFileName,

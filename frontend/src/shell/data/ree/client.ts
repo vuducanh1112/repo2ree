@@ -15,10 +15,13 @@ type ReeProjectState = NonNullable<ReturnType<typeof mapReeDetailToReeProject>["
 export interface ReeClient<TFile = unknown, TRee = unknown> {
   getRee(id: ReeId | string): Promise<ReeProject<TFile, TRee>>;
   updateFile(id: ReeId | string, path: string, content: string): Promise<void>;
-  updateReeDraft(id: ReeId | string, intentPatch: ReeIntentPatch): Promise<void>;
+  updateReeIntent(id: ReeId | string, intentPatch: ReeIntentPatch): Promise<void>;
   deleteFile(id: ReeId | string, path: string): Promise<void>;
   getFileBytes(id: ReeId | string, path: string): Promise<ArrayBuffer>;
-  getReeArchive(id: ReeId | string): Promise<WorkspaceBinaryDownload>;
+  getReeArchive(
+    id: ReeId | string,
+    opts: { includeSource: boolean; includeRuntime: boolean },
+  ): Promise<WorkspaceBinaryDownload>;
   resetWorkspaceRequest(id: ReeId | string, request: WorkspaceResetPayload): Promise<void>;
 }
 
@@ -33,9 +36,9 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
       const reeId = await ensureReeId(runtime, id);
       await runtime.reeApi.putFileContent(reeId, { path, content });
     },
-    async updateReeDraft(id, intentPatch) {
+    async updateReeIntent(id, intentPatch) {
       const reeId = await ensureReeId(runtime, id);
-      await runtime.reeApi.patchReeDraft(reeId, { reeIntentPatch: intentPatch });
+      await runtime.reeApi.patchReeIntent(reeId, { reeIntentPatch: intentPatch });
     },
     async deleteFile(id, path) {
       const reeId = await ensureReeId(runtime, id);
@@ -45,9 +48,9 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
       const reeId = await ensureReeId(runtime, id);
       return runtime.reeApi.getFileBytes(reeId, path);
     },
-    async getReeArchive(id) {
+    async getReeArchive(id, opts) {
       const reeId = await ensureReeId(runtime, id);
-      return runtime.reeApi.getReeArchive(reeId);
+      return runtime.reeApi.getReeArchive(reeId, opts);
     },
     async resetWorkspaceRequest(id, request) {
       const reeId = await ensureReeId(runtime, id);

@@ -7,8 +7,8 @@ interface WorkspaceHydrationPlanInput {
   isSyncingRee: boolean;
 }
 
-interface ReeDraftSyncPlanInput {
-  canUpdateReeDraft: boolean;
+interface ReeIntentSyncPlanInput {
+  canUpdateReeIntent: boolean;
   patchKey: string;
   lastSyncedPatchKey: string;
 }
@@ -28,8 +28,8 @@ export function shouldHydrateRemoteRee(input: WorkspaceHydrationPlanInput): bool
   return true;
 }
 
-export function shouldScheduleReeDraftSync(input: ReeDraftSyncPlanInput): boolean {
-  if (!input.canUpdateReeDraft) {
+export function shouldScheduleReeIntentSync(input: ReeIntentSyncPlanInput): boolean {
+  if (!input.canUpdateReeIntent) {
     return false;
   }
 

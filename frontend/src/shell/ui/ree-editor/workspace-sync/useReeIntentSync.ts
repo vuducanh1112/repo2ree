@@ -4,25 +4,25 @@ import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorVi
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import {
   shouldHydrateRemoteRee,
-  shouldScheduleReeDraftSync,
-} from "../../../../core/workspace/syncReeDraft";
-import { useUpdateReeDraftMutation } from "../../../data/ree/mutations";
+  shouldScheduleReeIntentSync,
+} from "../../../../core/workspace/syncReeIntent";
+import { useUpdateReeIntentMutation } from "../../../data/ree/mutations";
 import { useRefreshReeQuery } from "../../../data/ree/queries";
 import type { HydratedWorkspaceSnapshot } from "./hydrateReeWorkspace";
 
-interface UseReeDraftSyncArgs {
+interface UseReeIntentSyncArgs {
   ree: ReeEditorViewModel;
   reeId: string;
   provisioned: boolean;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
 
-export function useReeDraftSync({
+export function useReeIntentSync({
   ree,
   reeId,
   provisioned,
   hydrateWorkspace,
-}: UseReeDraftSyncArgs) {
+}: UseReeIntentSyncArgs) {
   const initialPatchKey = JSON.stringify(toReePatch(ree));
   const lastSyncedReeRef = useRef<string>(initialPatchKey);
   const latestLocalPatchKeyRef = useRef<string>(initialPatchKey);
@@ -31,7 +31,7 @@ export function useReeDraftSync({
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSyncRef = useRef<Promise<void> | null>(null);
   const fetchWorkspace = useRefreshReeQuery(reeId);
-  const { mutateAsync: updateReeDraft } = useUpdateReeDraftMutation(reeId);
+  const { mutateAsync: updateReeIntent } = useUpdateReeIntentMutation(reeId);
 
   const refreshWorkspace = useCallback(
     async (options: { forceReeHydration?: boolean } = {}): Promise<HydratedWorkspaceSnapshot> => {
@@ -88,12 +88,12 @@ export function useReeDraftSync({
   // on pendingSyncRef lets a flush() await it instead of racing a concurrent
   // PATCH. Intentionally does NOT swallow errors — callers decide (the
   // autosave retries on next edit; flush() surfaces the failure to its caller).
-  const runReeDraftSync = useCallback(
+  const runReeIntentSync = useCallback(
     (patch: ReturnType<typeof buildReePatch>, patchKey: string): Promise<void> => {
       const sync = (async () => {
         isSyncingReeRef.current = true;
         try {
-          await updateReeDraft(patch);
+          await updateReeIntent(patch);
           lastSyncedReeRef.current = patchKey;
           await refreshWorkspaceFiles();
         } finally {
@@ -108,7 +108,7 @@ export function useReeDraftSync({
       });
       return sync;
     },
-    [updateReeDraft, refreshWorkspaceFiles],
+    [updateReeIntent, refreshWorkspaceFiles],
   );
 
   // Force the latest local edits to the backend now, bypassing the debounce.
@@ -125,8 +125,8 @@ export function useReeDraftSync({
     }
     const patch = buildReePatch();
     const patchKey = JSON.stringify(patch);
-    const shouldSync = shouldScheduleReeDraftSync({
-      canUpdateReeDraft: provisioned,
+    const shouldSync = shouldScheduleReeIntentSync({
+      canUpdateReeIntent: provisioned,
       patchKey,
       lastSyncedPatchKey: lastSyncedReeRef.current,
     });
@@ -135,8 +135,8 @@ export function useReeDraftSync({
       clearTimeout(syncTimerRef.current);
       syncTimerRef.current = null;
     }
-    await runReeDraftSync(patch, patchKey);
-  }, [provisioned, buildReePatch, runReeDraftSync]);
+    await runReeIntentSync(patch, patchKey);
+  }, [provisioned, buildReePatch, runReeIntentSync]);
 
   useEffect(() => {
     latestLocalPatchKeyRef.current = JSON.stringify(buildReePatch());
@@ -148,11 +148,10 @@ export function useReeDraftSync({
   }, [provisioned, refreshWorkspace]);
 
   useEffect(() => {
-    if (!provisioned) return;
     const patch = buildReePatch();
     const patchKey = JSON.stringify(patch);
-    const shouldScheduleSync = shouldScheduleReeDraftSync({
-      canUpdateReeDraft: true,
+    const shouldScheduleSync = shouldScheduleReeIntentSync({
+      canUpdateReeIntent: provisioned,
       patchKey,
       lastSyncedPatchKey: lastSyncedReeRef.current,
     });
@@ -170,7 +169,7 @@ export function useReeDraftSync({
       syncTimerRef.current = null;
       // Keep local metadata editable: swallow the failure here so a transient
       // backend error doesn't surface mid-edit; it retries on the next change.
-      void runReeDraftSync(patch, patchKey).catch(() => {});
+      void runReeIntentSync(patch, patchKey).catch(() => {});
     }, 300);
 
     return () => {
@@ -179,7 +178,7 @@ export function useReeDraftSync({
         syncTimerRef.current = null;
       }
     };
-  }, [buildReePatch, provisioned, runReeDraftSync]);
+  }, [buildReePatch, provisioned, runReeIntentSync]);
 
   return {
     buildReePatch,

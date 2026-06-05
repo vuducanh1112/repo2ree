@@ -85,8 +85,8 @@ export class ReeApi {
     });
   }
 
-  async patchReeDraft(reeId: ReeId, payload: PatchReeRequestDto): Promise<ReeDetailDto> {
-    return this.client.request<ReeDetailDto>(endpoints.reeDraft(reeId), {
+  async patchReeIntent(reeId: ReeId, payload: PatchReeRequestDto): Promise<ReeDetailDto> {
+    return this.client.request<ReeDetailDto>(endpoints.reeIntent(reeId), {
       method: "PATCH",
       body: JSON.stringify(payload),
     });
@@ -138,10 +138,14 @@ export class ReeApi {
     );
   }
 
-  async getReeArchive(reeId: ReeId): Promise<{ bytes: ArrayBuffer; fileName?: string }> {
-    const response = await this.client.requestArrayBufferWithMeta(endpoints.reeArchive(reeId), {
-      method: "GET",
-    });
+  async getReeArchive(
+    reeId: ReeId,
+    opts: { includeSource: boolean; includeRuntime: boolean },
+  ): Promise<{ bytes: ArrayBuffer; fileName?: string }> {
+    const response = await this.client.requestArrayBufferWithMeta(
+      endpoints.reeArchive(reeId, opts),
+      { method: "GET" },
+    );
     return {
       bytes: response.bytes,
       fileName: parseContentDispositionFilename(response.headers.get("content-disposition")),

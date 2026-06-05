@@ -94,38 +94,6 @@ def test_experiment_estimates_accept_runtime_and_resource_hints():
 
 
 # ================================================
-# PackagingPolicy
-# ================================================
-
-
-def test_packaging_defaults_to_excluded():
-    intent = ReeIntent(name="demo")
-    assert intent.packaging.source_included is False
-    assert intent.packaging.runtime_included is False
-
-
-def test_packaging_survives_apply_patch():
-    intent = ReeIntent(name="demo")
-    patched = intent.apply_patch(
-        {"packaging": {"source_included": True, "runtime_included": False}}
-    )
-    assert patched.packaging.source_included is True
-    assert patched.packaging.runtime_included is False
-
-
-def test_packaging_appears_in_manifest():
-    intent = ReeIntent.model_validate(
-        {
-            "name": "demo",
-            "packaging": {"source_included": True, "runtime_included": True},
-        }
-    )
-    manifest = intent.as_manifest()
-    assert manifest["source_included"] is True
-    assert manifest["runtime_included"] is True
-
-
-# ================================================
 # ReeSession transitions
 # ================================================
 
@@ -160,14 +128,29 @@ def test_session_with_evaluation():
 
     session = ReeSession()
     updated = session.with_evaluation(
-        dependency_level=3, environment_level=2, machine_level=0
+        dependency_level=3,
+        environment_level=2,
+        machine_level=0,
+        detected_dependencies="4 dependencies across 1 manifest file",
     )
     assert updated.dependency_level == 3
     assert updated.environment_level == 2
     assert updated.machine_level == 0
+    assert updated.detected_dependencies == "4 dependencies across 1 manifest file"
+
+
+def test_session_with_packaging():
+    from repo2ree_core.domain.ree_session import ReeSession
+
+    session = ReeSession()
+    updated = session.with_packaging(source_included=True, runtime_included=True)
+    assert updated.source_included is True
+    assert updated.runtime_included is True
+    assert session.source_included is False
 
 
 def test_session_has_no_apply_patch():
     from repo2ree_core.domain.ree_session import ReeSession
 
     assert not hasattr(ReeSession, "apply_patch")
+    assert not hasattr(ReeSession, "with_downloadables")

@@ -99,7 +99,8 @@ def patch_ree_intent(store: ReeStore, patch: dict[str, Any]) -> None:
     metadata["reeIntent"] = intent.model_dump(exclude_none=True)
     if intent.name:
         metadata["name"] = intent.name
-    metadata["externalRef"] = intent.origin_url or None
+    if intent.origin_url:
+        metadata["externalRef"] = intent.origin_url
     source = metadata.get("source")
     if isinstance(source, dict) and intent.source_type:
         source["sourceType"] = intent.source_type

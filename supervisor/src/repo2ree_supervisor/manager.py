@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import threading
 from dataclasses import dataclass
 
 from repo2ree_protocol.log import LogSink
@@ -64,6 +65,14 @@ class WorkbenchManager:
     ):
         self._registry = registry
         self._image = workbench_image
+        self._ree_locks: dict[str, threading.Lock] = {}
+        self._ree_locks_lock = threading.Lock()
+
+    def _ree_lock(self, ree_id: str) -> threading.Lock:
+        with self._ree_locks_lock:
+            if ree_id not in self._ree_locks:
+                self._ree_locks[ree_id] = threading.Lock()
+            return self._ree_locks[ree_id]
 
     # ------------------------------------------------
     # Lifecycle
@@ -192,6 +201,16 @@ class WorkbenchManager:
         log: LogSink,
     ) -> ActionResult:
         """Run a typed Command inside the workbench; stream logs to log."""
+        with self._ree_lock(handle.ree_id):
+            return self._dispatch_action_locked(handle, cmd, run_id, log)
+
+    def _dispatch_action_locked(
+        self,
+        handle: WorkbenchHandle,
+        cmd: Command,
+        run_id: str,
+        log: LogSink,
+    ) -> ActionResult:
         cmd_json = cmd.model_dump_json()
 
         proc = subprocess.Popen(
@@ -288,8 +307,16 @@ class WorkbenchManager:
     def read_artifact_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
         return self.dispatch_query(handle, "read-artifact", "--path", path)
 
-    def build_archive(self, handle: WorkbenchHandle) -> bytes:
-        return self.dispatch_query(handle, "build-archive")
+    def build_archive(
+        self, handle: WorkbenchHandle, *, include_source: bool, include_runtime: bool
+    ) -> bytes:
+        args = []
+        if include_source:
+            args.append("--include-source")
+        if include_runtime:
+            args.append("--include-runtime")
+        with self._ree_lock(handle.ree_id):
+            return self.dispatch_query(handle, "build-archive", *args)
 
     def list_all_metadata(self) -> list[dict]:  # type: ignore[type-arg]
         """Return metadata for every registered workbench, skipping unreachable ones."""

@@ -71,14 +71,9 @@ def test_pure_no_filesystem_dependency(tmp_path, monkeypatch):
     assert a == b
 
 
-def test_packaging_policy_reflected_in_manifest():
-    from repo2ree_core.domain.ree_intent import PackagingPolicy
-
-    intent = ReeIntent(
-        name="demo",
-        packaging=PackagingPolicy(source_included=True, runtime_included=True),
-    )
-    manifest = build_manifest_payload({}, intent, _session(), ree_id="abc")
+def test_packaging_reflected_in_manifest_via_session():
+    session = ReeSession(source_included=True, runtime_included=True)
+    manifest = build_manifest_payload({}, _intent(), session, ree_id="abc")
     assert manifest["source_included"] is True
     assert manifest["runtime_included"] is True
 

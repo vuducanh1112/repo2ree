@@ -60,13 +60,8 @@ export interface ReeIntentDto {
   swhid: string;
   zenodo_doi: string;
   dataverse_doi: string;
-  detected_dependencies: string;
   hardware_description: Record<string, unknown>;
   experiments?: Array<Record<string, unknown>>;
-  packaging?: {
-    source_included?: boolean;
-    runtime_included?: boolean;
-  };
 }
 
 export interface ReeSessionDto {
@@ -75,12 +70,14 @@ export interface ReeSessionDto {
   dependency_level?: number;
   environment_level?: number;
   machine_level?: number;
+  detected_dependencies?: string;
   source_available?: boolean;
   source_acquired_by?: string;
   uploaded_archive?: string;
   source_snapshot_archive?: string;
   source_snapshot_captured_at?: string;
-  downloadable_files?: string[];
+  source_included?: boolean;
+  runtime_included?: boolean;
 }
 
 export interface ReeDetailDto extends ReeSummaryDto {

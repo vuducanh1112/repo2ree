@@ -49,7 +49,6 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
         **(metadata.get("reeIntent") or {}),
         "runtime": "/runtime.tar.gz",
         "sbom": " sbom.json ",
-        "packaging": {"source_included": False, "runtime_included": False},
     }
     metadata["reeSession"] = {
         **(metadata.get("reeSession") or {}),
@@ -57,7 +56,9 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     }
     _write_metadata(layout, metadata)
 
-    archive_bytes = build_workspace_ree_archive(storage_root, ree_id)
+    archive_bytes = build_workspace_ree_archive(
+        storage_root, ree_id, include_source=False, include_runtime=False
+    )
 
     with zipfile.ZipFile(io.BytesIO(archive_bytes)) as zf:
         names = zf.namelist()
@@ -68,9 +69,8 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     assert "ree/artifacts/sbom.json" in names
     assert manifest["runtime"] == "runtime.tar.gz"
     assert manifest["sbom"] == "artifacts/sbom.json"
-
-    updated_metadata = json.loads(layout.metadata.read_text(encoding="utf-8"))
-    assert updated_metadata["reeSession"]["downloadable_files"] == names
+    assert manifest["source_included"] is False
+    assert manifest["runtime_included"] is False
 
 
 def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tmp_path):
@@ -88,7 +88,6 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
         **(metadata.get("reeIntent") or {}),
         "runtime": "/runtime.tar.gz",
         "sbom": " sbom.json ",
-        "packaging": {"source_included": True, "runtime_included": True},
     }
     metadata["reeSession"] = {
         **(metadata.get("reeSession") or {}),
@@ -96,7 +95,9 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
     }
     _write_metadata(layout, metadata)
 
-    archive_bytes = build_workspace_ree_archive(storage_root, ree_id)
+    archive_bytes = build_workspace_ree_archive(
+        storage_root, ree_id, include_source=True, include_runtime=True
+    )
 
     with zipfile.ZipFile(io.BytesIO(archive_bytes)) as zf:
         names = zf.namelist()

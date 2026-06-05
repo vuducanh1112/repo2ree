@@ -1,5 +1,6 @@
 import React from "react";
 import type { ArtifactStatus } from "../../../../../core/artifact/ArtifactStatus";
+import type { InclusionOpts } from "../../../../../core/ree/InclusionOpts";
 import type { Badges, Timestamps } from "../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
 import {
@@ -144,7 +145,7 @@ interface OverviewColumnsProps {
   onNavigate: (key: AppShellPage) => void;
   onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
   onArtifactStatusChange: React.Dispatch<React.SetStateAction<ArtifactStatus>>;
-  onSeal: () => void;
+  onSeal: (inclusionOpts: InclusionOpts) => void;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
   onReleaseWorkbench?: () => void;
@@ -210,7 +211,6 @@ export function OverviewColumns(props: OverviewColumnsProps) {
           fileSummary={`${props.fileCount} file${props.fileCount !== 1 ? "s" : ""} · ${fmtBytes(props.totalBytes)}`}
           onGoField={props.onGoField}
           onNavigate={props.onNavigate}
-          onWorkspaceSourceStateChange={props.onWorkspaceSourceStateChange}
         />
 
         <MetadataPanel
@@ -233,7 +233,6 @@ export function OverviewColumns(props: OverviewColumnsProps) {
           runtimeRef={refs.runtimeRef}
           onGoField={props.onGoField}
           onNavigate={props.onNavigate}
-          onArtifactStatusChange={props.onArtifactStatusChange}
         />
 
         <SbomPanel

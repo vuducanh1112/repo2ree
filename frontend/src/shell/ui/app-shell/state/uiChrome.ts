@@ -8,6 +8,9 @@ export interface UiChromeState {
   focusedField: string | null;
   navCollapsed: boolean;
   showReviewPreview: boolean;
+  locked: boolean;
+  repoMode: "url" | "upload";
+  sourceSnapshotArchiveName: string;
 }
 
 export function createInitialUiChromeState(): UiChromeState {
@@ -17,5 +20,8 @@ export function createInitialUiChromeState(): UiChromeState {
     focusedField: null,
     navCollapsed: false,
     showReviewPreview: false,
+    locked: false,
+    repoMode: "url",
+    sourceSnapshotArchiveName: "",
   };
 }

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { mapRawReeDraftToSlices } from "./mapRawReeDraft";
+import { mapRawReeIntentToSlices } from "./mapRawReeIntent";
 
-describe("mapRawReeDraftToSlices", () => {
+describe("mapRawReeIntentToSlices", () => {
   it("hydrates experiment estimates from persisted intent", () => {
-    const mapped = mapRawReeDraftToSlices({
+    const mapped = mapRawReeIntentToSlices({
       reeIntent: {
         experiments: [
           {
@@ -42,7 +42,7 @@ describe("mapRawReeDraftToSlices", () => {
   });
 
   it("backfills missing experiment estimates with stable defaults", () => {
-    const mapped = mapRawReeDraftToSlices({
+    const mapped = mapRawReeIntentToSlices({
       reeIntent: {
         experiments: [{ name: "smoke", command: "pytest -q" }],
       },
@@ -66,10 +66,10 @@ describe("mapRawReeDraftToSlices", () => {
     ]);
   });
 
-  it("reads source_included and runtime_included from packaging", () => {
-    const mapped = mapRawReeDraftToSlices({
-      reeIntent: { packaging: { source_included: true, runtime_included: false } },
-      reeSession: { source_available: true },
+  it("reads source_included and runtime_included from session", () => {
+    const mapped = mapRawReeIntentToSlices({
+      reeIntent: {},
+      reeSession: { source_available: true, source_included: true, runtime_included: false },
       fallbackName: "demo",
     });
 

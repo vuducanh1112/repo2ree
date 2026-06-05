@@ -12,7 +12,7 @@ function buildReeDraft() {
     swhid: "swh:1:dir:test",
     zenodo_doi: "10.1234/example",
     dataverse_doi: "doi:10.5678/example",
-    detected_dependencies: "4 dependencies",
+    detectedDependencies: "4 dependencies",
     hardware_description: {
       cpus: {},
       gpus: {},
@@ -28,7 +28,6 @@ function buildReeDraft() {
     sourceSnapshotArchive: "repo-original.tar.gz",
     sourceSnapshotCapturedAt: "2026-01-01T00:00:00Z",
     runtimeIncluded: true,
-    downloadableFiles: ["runtime.tar.gz", "sbom.json"],
     sealedAt: "2026-01-02T00:00:00Z",
     sealHash: "sha256:test",
     dependencyLevel: 3,

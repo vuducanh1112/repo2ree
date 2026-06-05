@@ -6,7 +6,8 @@ import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
 import type { AssemblyRunCompletionPayload, SourceOutcomePayload } from "./appShellState";
 import type { AssemblyRunState } from "./assemblyRunState";
-import type { ReeDraftState } from "./reeDraft";
+import type { ReeIntentState } from "./reeIntent";
+import type { ReeSessionState } from "./reeSession";
 import type { UiChromeState } from "./uiChrome";
 
 export type Updater<T> = T | ((previous: T) => T);
@@ -16,7 +17,8 @@ export function resolveUpdater<T>(previous: T, updater: Updater<T>): T {
 }
 
 export interface SliceShape {
-  reeDraft: ReeDraftState;
+  reeIntent: ReeIntentState;
+  reeSession: ReeSessionState;
   assemblyRun: AssemblyRunState;
   uiChrome: UiChromeState;
 }

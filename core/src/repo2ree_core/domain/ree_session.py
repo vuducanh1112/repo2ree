@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Mapping
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 # ================================================
@@ -25,6 +25,9 @@ class ReeSession(BaseModel):
     dependency_level: int = 0
     environment_level: int = 0
     machine_level: int = 0
+    # Machine-produced summary of the dependencies detected during evaluation;
+    # settled alongside the reproducibility levels, never author-declared.
+    detected_dependencies: str | None = None
     sealed_at: str | None = None
     seal_hash: str | None = None
     source_available: bool = False
@@ -32,7 +35,11 @@ class ReeSession(BaseModel):
     uploaded_archive: str | None = None
     source_snapshot_archive: str | None = None
     source_snapshot_captured_at: str | None = None
-    downloadable_files: list[str] = Field(default_factory=list)
+    # Packaging facts settled at bundle time and recorded in the published
+    # manifest. Unset while authoring (inclusion is a download-time choice);
+    # populated when reconstructing a session from an uploaded manifest.
+    source_included: bool = False
+    runtime_included: bool = False
 
     @classmethod
     def from_metadata(cls, metadata: Mapping[str, Any]) -> "ReeSession":
@@ -61,7 +68,6 @@ class ReeSession(BaseModel):
 
         snapshot_archive = (
             str(source.get("snapshotArchive") or "")
-            or str(source.get("archiveName") or "")
             or self.source_snapshot_archive
             or None
         )
@@ -89,17 +95,26 @@ class ReeSession(BaseModel):
         dependency_level: int,
         environment_level: int,
         machine_level: int,
+        detected_dependencies: str,
     ) -> "ReeSession":
         return self.model_copy(
             update={
                 "dependency_level": dependency_level,
                 "environment_level": environment_level,
                 "machine_level": machine_level,
+                "detected_dependencies": detected_dependencies,
             }
         )
 
-    def with_downloadables(self, files: list[str]) -> "ReeSession":
-        return self.model_copy(update={"downloadable_files": list(files)})
+    def with_packaging(
+        self, *, source_included: bool, runtime_included: bool
+    ) -> "ReeSession":
+        return self.model_copy(
+            update={
+                "source_included": source_included,
+                "runtime_included": runtime_included,
+            }
+        )
 
     def as_manifest_fields(self) -> dict[str, Any]:
         return {
@@ -112,5 +127,6 @@ class ReeSession(BaseModel):
             "source_acquired_by": self.source_acquired_by or None,
             "source_snapshot_archive": self.source_snapshot_archive or None,
             "source_snapshot_captured_at": self.source_snapshot_captured_at or None,
-            "downloadable_files": list(self.downloadable_files or []),
+            "source_included": bool(self.source_included),
+            "runtime_included": bool(self.runtime_included),
         }

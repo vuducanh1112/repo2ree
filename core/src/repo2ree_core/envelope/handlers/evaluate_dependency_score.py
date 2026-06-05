@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_protocol.command import EvaluateDependencyScoreArgs
 from repo2ree_protocol.result import ActionResult
@@ -50,15 +49,12 @@ def handle_evaluate_dependency_score(
         )
         store = ReeStore(layout)
         metadata = store.read_metadata_json()
-        intent = ReeIntent.from_metadata(metadata).apply_patch(
-            {"detected_dependencies": report.detected_dependencies}
-        )
         session = ReeSession.from_metadata(metadata).with_evaluation(
             dependency_level=int(report.dependency_level),
             environment_level=int(report.environment_level),
             machine_level=int(report.machine_level),
+            detected_dependencies=report.detected_dependencies,
         )
-        metadata["reeIntent"] = intent.model_dump(exclude_none=True)
         metadata["reeSession"] = session.model_dump(exclude_none=True)
         metadata["updatedAt"] = utc_now()
         store.write_metadata_json(metadata)

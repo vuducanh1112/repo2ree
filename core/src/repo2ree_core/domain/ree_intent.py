@@ -102,15 +102,6 @@ class ReeCatalogMetadata(BaseModel):
     corresponding_author_identifier: str | None = None
 
 
-class PackagingPolicy(BaseModel):
-    """Author-declared choices about which blobs to include in the bundle."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    source_included: bool = False
-    runtime_included: bool = False
-
-
 class ReeIntent(BaseModel):
     """Author-declared reproducibility intent — the only patchable model."""
 
@@ -127,10 +118,8 @@ class ReeIntent(BaseModel):
     swhid: str = ""
     zenodo_doi: str | None = None
     dataverse_doi: str | None = None
-    detected_dependencies: str | None = None
     hardware_description: HBOM = Field(default_factory=HBOM)
     experiments: list[Experiment] = Field(default_factory=list)
-    packaging: PackagingPolicy = Field(default_factory=PackagingPolicy)
 
     @field_validator("hardware_description", mode="before")
     @classmethod
@@ -199,6 +188,4 @@ class ReeIntent(BaseModel):
                 experiment.model_dump(exclude_none=True)
                 for experiment in self.experiments
             ],
-            "source_included": bool(self.packaging.source_included),
-            "runtime_included": bool(self.packaging.runtime_included),
         }

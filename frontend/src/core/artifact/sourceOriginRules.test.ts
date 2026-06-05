@@ -14,39 +14,11 @@ describe("enforceSourceOriginRules", () => {
         sourceAcquiredBy: "upload",
         sourceIncluded: true,
       },
-      artifactStatus: {
-        runtimeIncluded: false,
-        downloadableFiles: [],
-      },
-      evaluationState: {
-        dependencyLevel: 0,
-      },
+      artifactStatus: { runtimeIncluded: false },
+      evaluationState: { dependencyLevel: 0 },
     });
 
     expect(result.reeSpec.origin_url).toBe("");
-  });
-
-  it("forces uploaded sources to remain included", () => {
-    const result = enforceSourceOriginRules({
-      reeSpec: {
-        ...createEmptyReeSpec(),
-        origin_url: "https://example.org/repo.git",
-      },
-      workspaceSourceState: {
-        sourceAvailable: true,
-        sourceAcquiredBy: "upload",
-        sourceIncluded: false,
-      },
-      artifactStatus: {
-        runtimeIncluded: false,
-        downloadableFiles: [],
-      },
-      evaluationState: {
-        dependencyLevel: 0,
-      },
-    });
-
-    expect(result.workspaceSourceState.sourceIncluded).toBe(true);
   });
 
   it("preserves identities when no updates are needed", () => {
@@ -63,13 +35,8 @@ describe("enforceSourceOriginRules", () => {
     const state = {
       reeSpec,
       workspaceSourceState,
-      artifactStatus: {
-        runtimeIncluded: true,
-        downloadableFiles: [],
-      },
-      evaluationState: {
-        dependencyLevel: 2,
-      },
+      artifactStatus: { runtimeIncluded: true },
+      evaluationState: { dependencyLevel: 2 },
     };
     const result = enforceSourceOriginRules(state);
 

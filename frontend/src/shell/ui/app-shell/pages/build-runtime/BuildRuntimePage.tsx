@@ -40,7 +40,6 @@ import {
 export function PageBuildRuntime({
   assemblyStep,
   ree,
-  inclusionState,
   badges,
   workspaceFiles,
   log,
@@ -55,7 +54,6 @@ export function PageBuildRuntime({
   missing,
   params,
   onReeSpecChange,
-  onArtifactStatusChange,
   onPersistWorkspaceFile,
 }: AssemblyPageProps) {
   const files = workspaceFiles || [];
@@ -96,7 +94,6 @@ export function PageBuildRuntime({
 
   const finalRuntime = resolvedRuntimePath(ree.runtime);
   const runtimePathExists = finalRuntime ? workspaceFileExists(files, finalRuntime) : false;
-  const includeRuntime = inclusionState.runtime === "included";
   const finalRuntimeFile = useMemo(
     () => (finalRuntime ? findFileByPath(files, finalRuntime) : null),
     [files, finalRuntime],
@@ -177,15 +174,8 @@ export function PageBuildRuntime({
                 runtimePath={finalRuntime}
                 runtimeSize={finalRuntimeSize}
                 runtimePathExists={runtimePathExists}
-                includeRuntime={includeRuntime}
                 files={files}
                 onRuntimeChange={handleRuntimeChange}
-                onIncludedToggle={() =>
-                  onArtifactStatusChange?.((current) => ({
-                    ...current,
-                    runtimeIncluded: !includeRuntime,
-                  }))
-                }
               />
             </div>
 
@@ -220,7 +210,6 @@ export function PageBuildRuntime({
             source={scriptSource}
             runtimePath={finalRuntime}
             runtimePathExists={runtimePathExists}
-            includeRuntime={includeRuntime}
             runtimeSize={finalRuntimeSize}
             runDone={runDone}
           />

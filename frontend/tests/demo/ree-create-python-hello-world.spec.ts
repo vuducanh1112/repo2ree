@@ -359,7 +359,6 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("button", { name: "python_hello_world/runtime.tar" }),
       "Select produced runtime file",
     );
-    await clickDemo(page, main.getByTitle("Include runtime in REE"), "Mark runtime as included");
     await expectOverviewCableActive("Runtime");
   });
 
@@ -465,16 +464,24 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(main.getByText("Seal REE", { exact: true })).toBeVisible();
     await clickDemo(page, main.getByRole("button", { name: /Seal/ }).first(), "Confirm sealing");
     await expect(main.getByText("Seal this REE?", { exact: true })).toBeVisible();
-    await clickDemo(page, main.getByRole("button", { name: /Seal (REE|anyway)/ }), "Finalize seal");
-    await expect(main.getByText("REE SEALED", { exact: true })).toBeVisible({ timeout: 20000 });
-    const sealedDownloadButton = main.getByRole("button", { name: /Download REE/ }).first();
-    await expect(sealedDownloadButton).toBeVisible();
+    // The seal window is where source/runtime bundling is chosen; both default
+    // to "included" since they are available in the workspace.
+    await expect(main.getByText("Bundle contents", { exact: true })).toBeVisible();
 
+    // Finalizing the seal both locks the REE and builds + downloads the archive
+    // with the chosen bundle contents.
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      clickDemo(page, sealedDownloadButton, "Download sealed REE package"),
+      clickDemo(
+        page,
+        main.getByRole("button", { name: /Seal (REE|anyway)/ }),
+        "Finalize seal — bundles and downloads the REE",
+      ),
     ]);
+    await expect(main.getByText("REE SEALED", { exact: true })).toBeVisible({ timeout: 20000 });
     expect(download.suggestedFilename()).toMatch(/\.zip$/i);
+    // The sealed card still offers a re-download of the same archive.
+    await expect(main.getByRole("button", { name: /Download REE/ }).first()).toBeVisible();
   });
 
   await test.step("Release workbench", async () => {

@@ -1,6 +1,7 @@
 import { SealConfirmActions } from "./SealConfirmActions";
 import { SealConfirmCopy } from "./SealConfirmCopy";
 import { SealConfirmHeader } from "./SealConfirmHeader";
+import { SealConfirmInclusion } from "./SealConfirmInclusion";
 import { SealConfirmWarning } from "./SealConfirmWarning";
 
 interface LevelMeta {
@@ -16,6 +17,12 @@ interface SealConfirmModalProps {
   allLive: boolean;
   totalCables: number;
   currentLevelMeta: LevelMeta;
+  sourceAvailable: boolean;
+  runtimeAvailable: boolean;
+  includeSource: boolean;
+  includeRuntime: boolean;
+  onToggleSource: () => void;
+  onToggleRuntime: () => void;
 }
 
 export function SealConfirmModal({
@@ -26,6 +33,12 @@ export function SealConfirmModal({
   allLive,
   totalCables,
   currentLevelMeta,
+  sourceAvailable,
+  runtimeAvailable,
+  includeSource,
+  includeRuntime,
+  onToggleSource,
+  onToggleRuntime,
 }: SealConfirmModalProps) {
   if (!open) return null;
 
@@ -78,6 +91,15 @@ export function SealConfirmModal({
           allLive={allLive}
           totalCables={totalCables}
           currentLabel={currentLevelMeta.label}
+        />
+
+        <SealConfirmInclusion
+          sourceAvailable={sourceAvailable}
+          runtimeAvailable={runtimeAvailable}
+          includeSource={includeSource}
+          includeRuntime={includeRuntime}
+          onToggleSource={onToggleSource}
+          onToggleRuntime={onToggleRuntime}
         />
 
         <SealConfirmActions

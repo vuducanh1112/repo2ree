@@ -12,7 +12,6 @@ export function createEmptyReeEditorViewModel(): ReeEditorViewModel {
     sourceAvailable: false,
     sourceIncluded: false,
     runtimeIncluded: false,
-    downloadableFiles: [],
     dependencyLevel: 0,
     environmentLevel: 0,
     machineLevel: 0,

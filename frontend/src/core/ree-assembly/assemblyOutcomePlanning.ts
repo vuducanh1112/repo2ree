@@ -1,5 +1,6 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { ReeSpec } from "../ree/ReeSpec";
+import type { EvaluationState } from "../review/EvaluationState";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey } from "./assemblyTypes";
 
@@ -27,7 +28,7 @@ interface HbomEffectPlan {
 }
 
 interface EvaluateEffectPlan {
-  reeSpecPatch: Partial<ReeSpec>;
+  evaluationStatePatch: Partial<EvaluationState>;
   successMessage: string;
 }
 
@@ -72,7 +73,7 @@ export function planEvaluateEffect(args: {
   const depSummary = `${args.dependencyCount} dependenc${args.dependencyCount === 1 ? "y" : "ies"} across ${args.manifestCount} manifest file${args.manifestCount === 1 ? "" : "s"}`;
 
   return {
-    reeSpecPatch: { detected_dependencies: depSummary },
+    evaluationStatePatch: { detectedDependencies: depSummary },
     successMessage: depSummary,
   };
 }

@@ -15,13 +15,8 @@ export interface ReeIntentPatch extends Record<string, unknown> {
   swhid: string;
   zenodo_doi: string;
   dataverse_doi: string;
-  detected_dependencies: string;
   experiments: ReeExperiment[];
   hardware_description: Record<string, unknown>;
-  packaging: {
-    source_included: boolean;
-    runtime_included: boolean;
-  };
 }
 
 interface ReePatchSlices {
@@ -31,11 +26,7 @@ interface ReePatchSlices {
   evaluationState: EvaluationState;
 }
 
-export function toReePatchFromSlices({
-  reeSpec,
-  workspaceSourceState,
-  artifactStatus,
-}: ReePatchSlices): ReeIntentPatch {
+export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatch {
   return {
     name: reeSpec.name || "",
     catalog_metadata: reeSpec.catalog_metadata,
@@ -48,16 +39,11 @@ export function toReePatchFromSlices({
     swhid: reeSpec.swhid || "",
     zenodo_doi: reeSpec.zenodo_doi || "",
     dataverse_doi: reeSpec.dataverse_doi || "",
-    detected_dependencies: reeSpec.detected_dependencies || "",
     experiments: reeSpec.experiments || [],
     hardware_description: (reeSpec.hardware_description || {}) as unknown as Record<
       string,
       unknown
     >,
-    packaging: {
-      source_included: !!workspaceSourceState.sourceIncluded,
-      runtime_included: !!artifactStatus.runtimeIncluded,
-    },
   };
 }
 
@@ -77,7 +63,6 @@ export function toReePatch(
       swhid: ree.swhid,
       zenodo_doi: ree.zenodo_doi,
       dataverse_doi: ree.dataverse_doi,
-      detected_dependencies: ree.detected_dependencies,
       experiments: ree.experiments || [],
       hardware_description: ree.hardware_description,
     },
@@ -91,7 +76,6 @@ export function toReePatch(
     },
     artifactStatus: {
       runtimeIncluded: ree.runtimeIncluded,
-      downloadableFiles: ree.downloadableFiles,
       sealedAt: ree.sealedAt,
       sealHash: ree.sealHash,
     },

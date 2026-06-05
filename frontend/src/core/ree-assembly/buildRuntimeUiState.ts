@@ -50,16 +50,15 @@ export function buildRunStatusLabel(input: {
   return "Empty";
 }
 
-type RuntimeArtifactStatus = "unset" | "missing" | "included" | "excluded";
+type RuntimeArtifactStatus = "unset" | "missing" | "ready";
 
 export function runtimeArtifactStatus(input: {
   hasRuntime: boolean;
   runtimePathExists: boolean;
-  includeRuntime: boolean;
 }): RuntimeArtifactStatus {
   if (!input.hasRuntime) return "unset";
   if (!input.runtimePathExists) return "missing";
-  return input.includeRuntime ? "included" : "excluded";
+  return "ready";
 }
 
 export function runtimeArtifactStatusLabel(status: RuntimeArtifactStatus): string {
@@ -68,10 +67,8 @@ export function runtimeArtifactStatusLabel(status: RuntimeArtifactStatus): strin
       return "Not set";
     case "missing":
       return "Missing";
-    case "included":
-      return "Included";
-    case "excluded":
-      return "Excluded";
+    case "ready":
+      return "Ready";
   }
 }
 
@@ -81,10 +78,8 @@ export function runtimeSummaryStatusLabel(status: RuntimeArtifactStatus): string
       return "—";
     case "missing":
       return "Missing in workspace";
-    case "included":
-      return "Bundled in REE";
-    case "excluded":
-      return "Selected · not bundled";
+    case "ready":
+      return "In workspace";
   }
 }
 

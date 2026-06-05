@@ -1,12 +1,9 @@
 import type React from "react";
-import type { ArtifactStatus } from "../../../../../../core/artifact/ArtifactStatus";
 import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../../../../core/workspace/FileTree";
 import { findFileByWorkspacePath } from "../../../../../../core/workspace/fileTreeTraversal";
-import { Toggle } from "../../../../shared/components/Toggle";
 import { fmtBytes } from "../../../../shared/formatting";
-import { lgColors, lgStage, lgStyles } from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
+import { lgStage } from "../../../../theme/lightGlassTheme";
 import type { AppShellPage } from "../../../state/pages";
 import { PAGE } from "../../../state/pages";
 import { OverviewNavButton, OverviewPanel } from "./OverviewPanel";
@@ -18,31 +15,13 @@ interface RuntimePanelProps {
   runtimeRef: React.RefObject<HTMLDivElement>;
   onGoField: (key: string) => void;
   onNavigate: (key: AppShellPage) => void;
-  onArtifactStatusChange: React.Dispatch<React.SetStateAction<ArtifactStatus>>;
 }
 
 const tint = lgStage.runtime;
 
-export function RuntimePanel({
-  ree,
-  files,
-  runtimeRef,
-  onGoField,
-  onNavigate,
-  onArtifactStatusChange,
-}: RuntimePanelProps) {
+export function RuntimePanel({ ree, files, runtimeRef, onGoField, onNavigate }: RuntimePanelProps) {
   const runtimeVal = ree?.runtime && ree.runtime !== "__skipped__" ? ree.runtime.trim() : "";
-  const runtimeIncluded = !!ree?.runtimeIncluded;
   const runtimeFile = runtimeVal ? findFileByWorkspacePath(files, runtimeVal) : null;
-  const canIncludeRuntime = !!runtimeVal && !!runtimeFile;
-
-  const toggleRuntime = () => {
-    if (!canIncludeRuntime) return;
-    onArtifactStatusChange((current) => ({
-      ...current,
-      runtimeIncluded: !runtimeIncluded,
-    }));
-  };
 
   const runtimeSizeStr = (() => {
     if (!runtimeFile) return null;
@@ -60,26 +39,6 @@ export function RuntimePanel({
       tint={tint}
       title="Runtime"
       active={!!runtimeVal}
-      headerRight={
-        <div style={{ ...lgStyles.overviewIncludeRow, opacity: canIncludeRuntime ? 1 : 0.45 }}>
-          <span
-            style={{
-              fontSize: 10,
-              fontFamily: F.sans,
-              fontWeight: 700,
-              color: runtimeIncluded ? tint.ink : lgColors.textMuted,
-            }}
-          >
-            {runtimeIncluded ? "Included" : "Include"}
-          </span>
-          <Toggle
-            on={runtimeIncluded}
-            disabled={!canIncludeRuntime}
-            color={tint.line}
-            onChange={toggleRuntime}
-          />
-        </div>
-      }
       footer={
         <OverviewNavButton
           tint={tint}

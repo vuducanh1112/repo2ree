@@ -14,7 +14,8 @@ import {
   type SourceOutcomePayload,
 } from "./appShellState";
 import { createInitialAssemblyRunState } from "./assemblyRunState";
-import { createInitialReeDraftState } from "./reeDraft";
+import { createInitialReeIntentState } from "./reeIntent";
+import { createInitialReeSessionState } from "./reeSession";
 import type { AppShellAction, AppShellContextState, SliceName, SliceShape } from "./types";
 import { resolveUpdater } from "./types";
 import { createInitialUiChromeState } from "./uiChrome";
@@ -41,18 +42,12 @@ export function createInitialState(
   const normalized = enforceSourceOriginRules({
     reeSpec: initialState.reeSpec ?? createEmptyReeSpec(),
     workspaceSourceState: initialState.workspaceSourceState ?? { sourceAvailable: false },
-    artifactStatus: initialState.artifactStatus ?? {
-      runtimeIncluded: false,
-      downloadableFiles: [],
-    },
+    artifactStatus: initialState.artifactStatus ?? { runtimeIncluded: false },
     evaluationState: initialState.evaluationState ?? emptyEvaluationState(),
   });
   return {
-    reeDraft: {
-      ...createInitialReeDraftState(normalized),
-      workspaceSourceState: normalized.workspaceSourceState,
-      artifactStatus: normalized.artifactStatus,
-    },
+    reeIntent: createInitialReeIntentState(normalized),
+    reeSession: createInitialReeSessionState(normalized),
     assemblyRun: {
       ...createInitialAssemblyRunState(),
       evaluationState: normalized.evaluationState,
@@ -84,17 +79,23 @@ function applySourceOutcome(
   state: AppShellContextState,
   outcome: SourceOutcomePayload,
 ): AppShellContextState {
-  const { reeDraft, assemblyRun } = state;
+  const { reeIntent, reeSession, assemblyRun } = state;
   return {
     ...state,
-    reeDraft: {
-      ...reeDraft,
+    reeIntent: {
+      ...reeIntent,
       reeSpec: outcome.reeSpecPatch
-        ? { ...reeDraft.reeSpec, ...outcome.reeSpecPatch }
-        : reeDraft.reeSpec,
+        ? { ...reeIntent.reeSpec, ...outcome.reeSpecPatch }
+        : reeIntent.reeSpec,
+    },
+    reeSession: {
+      ...reeSession,
       workspaceSourceState: outcome.workspaceSourceStatePatch
-        ? { ...reeDraft.workspaceSourceState, ...outcome.workspaceSourceStatePatch }
-        : reeDraft.workspaceSourceState,
+        ? { ...reeSession.workspaceSourceState, ...outcome.workspaceSourceStatePatch }
+        : reeSession.workspaceSourceState,
+    },
+    uiChrome: {
+      ...state.uiChrome,
       sourceSnapshotArchiveName: outcome.sourceSnapshotArchiveName,
     },
     assemblyRun: {
@@ -119,9 +120,9 @@ function updateReeSpec(
 ): AppShellContextState {
   return {
     ...state,
-    reeDraft: {
-      ...state.reeDraft,
-      reeSpec: resolveUpdater(state.reeDraft.reeSpec, updater),
+    reeIntent: {
+      ...state.reeIntent,
+      reeSpec: resolveUpdater(state.reeIntent.reeSpec, updater),
     },
   };
 }
@@ -132,9 +133,9 @@ function setWorkspaceSourceState(
 ): AppShellContextState {
   return {
     ...state,
-    reeDraft: {
-      ...state.reeDraft,
-      workspaceSourceState: resolveUpdater(state.reeDraft.workspaceSourceState, updater),
+    reeSession: {
+      ...state.reeSession,
+      workspaceSourceState: resolveUpdater(state.reeSession.workspaceSourceState, updater),
     },
   };
 }
@@ -145,9 +146,9 @@ function setArtifactStatus(
 ): AppShellContextState {
   return {
     ...state,
-    reeDraft: {
-      ...state.reeDraft,
-      artifactStatus: resolveUpdater(state.reeDraft.artifactStatus, updater),
+    reeSession: {
+      ...state.reeSession,
+      artifactStatus: resolveUpdater(state.reeSession.artifactStatus, updater),
     },
   };
 }
@@ -197,10 +198,7 @@ function setActiveRunId(
 function setLocked(state: AppShellContextState, locked: boolean): AppShellContextState {
   return {
     ...state,
-    reeDraft: {
-      ...state.reeDraft,
-      locked,
-    },
+    uiChrome: { ...state.uiChrome, locked },
   };
 }
 
@@ -210,10 +208,7 @@ function setRepoMode(
 ): AppShellContextState {
   return {
     ...state,
-    reeDraft: {
-      ...state.reeDraft,
-      repoMode,
-    },
+    uiChrome: { ...state.uiChrome, repoMode },
   };
 }
 
@@ -248,9 +243,9 @@ function resetAssemblyAfterSourceChange(
   assemblyOperationParams: ReeAssemblyOperationParams,
 ): AppShellContextState {
   const reset = computeSourceChangeConsequences({
-    reeSpec: state.reeDraft.reeSpec,
-    workspaceSourceState: state.reeDraft.workspaceSourceState,
-    artifactStatus: state.reeDraft.artifactStatus,
+    reeSpec: state.reeIntent.reeSpec,
+    workspaceSourceState: state.reeSession.workspaceSourceState,
+    artifactStatus: state.reeSession.artifactStatus,
     evaluationState: state.assemblyRun.evaluationState,
     actionStates: state.assemblyRun.actionStates,
     badges: state.assemblyRun.badges,
@@ -259,11 +254,17 @@ function resetAssemblyAfterSourceChange(
   });
   return {
     ...state,
-    reeDraft: {
-      ...state.reeDraft,
+    reeIntent: {
+      ...state.reeIntent,
       reeSpec: reset.reeSpec,
+    },
+    reeSession: {
+      ...state.reeSession,
       workspaceSourceState: reset.workspaceSourceState,
       artifactStatus: reset.artifactStatus,
+    },
+    uiChrome: {
+      ...state.uiChrome,
       sourceSnapshotArchiveName: reset.sourceSnapshotArchiveName,
     },
     assemblyRun: {

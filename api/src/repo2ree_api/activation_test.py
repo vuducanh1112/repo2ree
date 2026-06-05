@@ -71,12 +71,8 @@ def _resolve_activation_script_path(
     else:
         metadata = {}
 
-    ree_draft = dict(metadata.get("reeIntent") or {})
-    script_path = str(
-        ree_draft.get("activation_script")
-        or ree_draft.get("validate_runtime_reproducibility_script")
-        or ""
-    ).strip()
+    ree_intent = dict(metadata.get("reeIntent") or {})
+    script_path = str(ree_intent.get("activation_script") or "").strip()
 
     if not script_path:
         raise HTTPException(status_code=400, detail="activation_script is required")

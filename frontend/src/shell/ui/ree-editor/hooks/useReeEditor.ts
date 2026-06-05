@@ -16,7 +16,8 @@ import { useApiRuntime } from "../../../data/apiRuntime";
 import { useReeQuery } from "../../../data/ree/queries";
 import { showToast as enqueueToast } from "../../app-shell/state/actions";
 import type { AssemblyRunState } from "../../app-shell/state/assemblyRunState";
-import type { ReeDraftState } from "../../app-shell/state/reeDraft";
+import type { ReeIntentState } from "../../app-shell/state/reeIntent";
+import type { ReeSessionState } from "../../app-shell/state/reeSession";
 import type { AppShellAction } from "../../app-shell/state/types";
 import type { UiChromeState } from "../../app-shell/state/uiChrome";
 import { useReeAssemblyRuns } from "../assembly-runs/useReeAssemblyRuns";
@@ -25,17 +26,24 @@ import { useSourceAcquisition } from "../source-acquisition/useSourceAcquisition
 import type { ShowToast } from "../types";
 import { useWorkspaceFilePersistence } from "../workspace-files/useWorkspaceFilePersistence";
 import { createHydrateReeWorkspace } from "../workspace-sync/hydrateReeWorkspace";
-import { useReeDraftSync } from "../workspace-sync/useReeDraftSync";
+import { useReeIntentSync } from "../workspace-sync/useReeIntentSync";
 import { createReeEditorCommands } from "./createReeEditorCommands";
 
 interface UseReeEditorArgs {
-  reeDraft: ReeDraftState;
+  reeIntent: ReeIntentState;
+  reeSession: ReeSessionState;
   assemblyRun: AssemblyRunState;
   uiChrome: UiChromeState;
   dispatch: React.Dispatch<AppShellAction>;
 }
 
-export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseReeEditorArgs) {
+export function useReeEditor({
+  reeIntent,
+  reeSession,
+  assemblyRun,
+  uiChrome,
+  dispatch,
+}: UseReeEditorArgs) {
   const { reeId } = useApiRuntime();
   const provisioned = reeId !== DEFAULT_REE_ID;
   const reeQuery = useReeQuery({ enabled: provisioned });
@@ -43,8 +51,8 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
 
   const reeEditorState: ReeEditorState = useMemo(
-    () => createReeEditorStateFromModel({ reeDraft, assemblyRun }),
-    [reeDraft, assemblyRun],
+    () => createReeEditorStateFromModel({ reeIntent, reeSession, uiChrome, assemblyRun }),
+    [reeIntent, reeSession, uiChrome, assemblyRun],
   );
   const ree: ReeEditorViewModel = useMemo(
     () => createReeEditorViewModel(reeEditorState),
@@ -61,8 +69,8 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
     buildReePatch,
     refreshWorkspace,
     refreshWorkspaceFiles,
-    flush: flushReeDraft,
-  } = useReeDraftSync({
+    flush: flushReeIntent,
+  } = useReeIntentSync({
     ree,
     reeId,
     provisioned,
@@ -100,14 +108,14 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
   });
 
   const workspaceRemote = useMemo(
-    () => createWorkspaceRemoteState({ workspaceFiles, reeArtifactFiles, reeDraft }),
-    [workspaceFiles, reeArtifactFiles, reeDraft],
+    () => createWorkspaceRemoteState({ workspaceFiles, reeArtifactFiles, reeSession, uiChrome }),
+    [workspaceFiles, reeArtifactFiles, reeSession, uiChrome],
   );
   const commands = useMemo(
     () =>
       createReeEditorCommands({
-        reeDraft,
-        reeEditorState,
+        reeIntent,
+        reeSession,
         assemblyRun,
         uiChrome,
         dispatch,
@@ -121,20 +129,20 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
         handleWorkspaceUpload,
         handleRemoveWorkspaceSource,
         downloadWorkspaceFile,
-        flushReeDraft,
+        flushReeIntent,
       }),
     [
       cancelAction,
       dispatch,
       downloadWorkspaceFile,
-      flushReeDraft,
+      flushReeIntent,
       handleDownloadRee,
       handleDownloadSourceFiles,
       handleRemoveWorkspaceSource,
       handleWorkspaceUpload,
       persistWorkspaceFile,
-      reeDraft,
-      reeEditorState,
+      reeIntent,
+      reeSession,
       runAction,
       runAssemblyStep,
       showToast,
@@ -145,9 +153,9 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
 
   return {
     provisioned,
-    reeDraft,
+    reeIntent,
+    reeSession,
     ree,
-    inclusionState: reeEditorState.inclusionState,
     workspaceRemote,
     assemblyRun,
     evaluation: {
@@ -166,14 +174,15 @@ export function useReeEditor({ reeDraft, assemblyRun, uiChrome, dispatch }: UseR
 function createWorkspaceRemoteState(args: {
   workspaceFiles: FileTreeNode[];
   reeArtifactFiles: ReeFile[];
-  reeDraft: ReeDraftState;
+  reeSession: ReeSessionState;
+  uiChrome: UiChromeState;
 }) {
   return {
     workspaceFiles: args.workspaceFiles,
     reeArtifactFiles: args.reeArtifactFiles,
-    workspaceSourceState: args.reeDraft.workspaceSourceState,
-    artifactStatus: args.reeDraft.artifactStatus,
-    sourceSnapshotArchiveName: args.reeDraft.sourceSnapshotArchiveName,
+    workspaceSourceState: args.reeSession.workspaceSourceState,
+    artifactStatus: args.reeSession.artifactStatus,
+    sourceSnapshotArchiveName: args.uiChrome.sourceSnapshotArchiveName,
     sourceSnapshotFiles: [] as FileTreeNode[],
   };
 }

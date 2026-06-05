@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { shouldHydrateRemoteRee, shouldScheduleReeDraftSync } from "./syncReeDraft";
+import { shouldHydrateRemoteRee, shouldScheduleReeIntentSync } from "./syncReeIntent";
 
-describe("syncReeDraft planning", () => {
+describe("syncReeIntent planning", () => {
   it("avoids hydrating when local sync is pending", () => {
     expect(
       shouldHydrateRemoteRee({
@@ -69,16 +69,16 @@ describe("syncReeDraft planning", () => {
 
   it("only schedules remote draft sync when remote draft updates are available and dirty", () => {
     expect(
-      shouldScheduleReeDraftSync({
-        canUpdateReeDraft: true,
+      shouldScheduleReeIntentSync({
+        canUpdateReeIntent: true,
         patchKey: "local",
         lastSyncedPatchKey: "remote",
       }),
     ).toBe(true);
 
     expect(
-      shouldScheduleReeDraftSync({
-        canUpdateReeDraft: false,
+      shouldScheduleReeIntentSync({
+        canUpdateReeIntent: false,
         patchKey: "local",
         lastSyncedPatchKey: "remote",
       }),

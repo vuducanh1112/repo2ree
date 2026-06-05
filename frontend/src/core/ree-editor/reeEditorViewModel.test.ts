@@ -24,7 +24,6 @@ describe("reeEditorViewModel", () => {
       },
       artifactStatus: {
         runtimeIncluded: true,
-        downloadableFiles: ["runtime.tar.gz"],
         sealedAt: "2026-01-01T00:00:00Z",
       },
       evaluationState: {
@@ -47,27 +46,5 @@ describe("reeEditorViewModel", () => {
     expect(viewModel.sourceAvailable).toBe(false);
     expect(viewModel.runtimeIncluded).toBe(false);
     expect(viewModel.dependencyLevel).toBe(0);
-  });
-
-  it("derives inclusion state from source and artifact booleans", () => {
-    const editorState = createReeEditorState({
-      reeSpec: {
-        ...createEmptyReeSpec(),
-        runtime: "runtime.tar.gz",
-      },
-      workspaceSourceState: {
-        sourceAvailable: true,
-        sourceIncluded: false,
-      },
-      artifactStatus: {
-        runtimeIncluded: true,
-        downloadableFiles: [],
-      },
-    });
-
-    expect(editorState.inclusionState).toEqual({
-      source: "excluded",
-      runtime: "included",
-    });
   });
 });

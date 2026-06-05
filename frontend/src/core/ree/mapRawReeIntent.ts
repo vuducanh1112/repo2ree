@@ -17,14 +17,14 @@ import {
 // Types
 // ================================================
 
-interface MapRawReeDraftToReeOptions {
+interface MapRawReeIntentToReeOptions {
   reeIntent: Record<string, unknown> | null | undefined;
   reeSession?: Record<string, unknown> | null | undefined;
   fallbackName: string;
   fallbackOriginUrl?: string;
 }
 
-export interface RawReeDraftSlices {
+export interface RawReeIntentSlices {
   reeSpec: ReeSpec;
   workspaceSourceState: WorkspaceSourceState;
   artifactStatus: ArtifactStatus;
@@ -81,18 +81,14 @@ function mapRawResourceEstimates(value: unknown): ReeExperiment["resource_estima
 // Mapper
 // ================================================
 
-export function mapRawReeDraftToSlices({
+export function mapRawReeIntentToSlices({
   reeIntent,
   reeSession,
   fallbackName,
   fallbackOriginUrl = "",
-}: MapRawReeDraftToReeOptions): RawReeDraftSlices {
+}: MapRawReeIntentToReeOptions): RawReeIntentSlices {
   const intent = reeIntent || {};
   const session = reeSession || {};
-  const packaging =
-    intent.packaging && typeof intent.packaging === "object"
-      ? (intent.packaging as Record<string, unknown>)
-      : {};
 
   const experiments: ReeExperiment[] = Array.isArray(intent.experiments)
     ? intent.experiments.map((entry) => {
@@ -124,15 +120,12 @@ export function mapRawReeDraftToSlices({
       swhid: String(intent.swhid ?? ""),
       zenodo_doi: intent.zenodo_doi ? String(intent.zenodo_doi) : undefined,
       dataverse_doi: intent.dataverse_doi ? String(intent.dataverse_doi) : undefined,
-      detected_dependencies: intent.detected_dependencies
-        ? String(intent.detected_dependencies)
-        : undefined,
       experiments,
       hardware_description: normalizeHBOM(intent.hardware_description),
     },
     workspaceSourceState: {
       sourceAvailable: Boolean(session.source_available),
-      sourceIncluded: Boolean(packaging.source_included ?? session.source_included),
+      sourceIncluded: Boolean(session.source_included),
       sourceAcquiredBy:
         (session.source_acquired_by as WorkspaceSourceState["sourceAcquiredBy"]) || undefined,
       uploadedArchive: session.uploaded_archive ? String(session.uploaded_archive) : undefined,
@@ -144,10 +137,7 @@ export function mapRawReeDraftToSlices({
         : undefined,
     },
     artifactStatus: {
-      runtimeIncluded: Boolean(packaging.runtime_included ?? session.runtime_included),
-      downloadableFiles: Array.isArray(session.downloadable_files)
-        ? session.downloadable_files.map((item) => String(item))
-        : [],
+      runtimeIncluded: Boolean(session.runtime_included),
       sealedAt: session.sealed_at ? String(session.sealed_at) : undefined,
       sealHash: session.seal_hash ? String(session.seal_hash) : undefined,
     },
@@ -155,6 +145,9 @@ export function mapRawReeDraftToSlices({
       dependencyLevel: Number(session.dependency_level ?? 0),
       environmentLevel: Number(session.environment_level ?? 0),
       machineLevel: Number(session.machine_level ?? 0),
+      detectedDependencies: session.detected_dependencies
+        ? String(session.detected_dependencies)
+        : undefined,
     },
   };
 }

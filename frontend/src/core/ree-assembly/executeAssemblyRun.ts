@@ -1,4 +1,4 @@
-import type { RawReeDraftSlices } from "../ree/mapRawReeDraft";
+import type { RawReeIntentSlices } from "../ree/mapRawReeIntent";
 import type { ReeSpec } from "../ree/ReeSpec";
 import type { LogLine, ReeFile } from "../ree/ReeTypes";
 import type { FileTreeNode } from "../workspace/FileTree";
@@ -38,7 +38,7 @@ interface ExecutionRunResult {
 interface WorkspaceSnapshot {
   files: FileTreeNode[];
   reeFiles?: ReeFile[];
-  ree?: RawReeDraftSlices;
+  ree?: RawReeIntentSlices;
 }
 
 interface ExecutionRunRunner {

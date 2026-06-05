@@ -1,6 +1,5 @@
 import type React from "react";
 import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
-import type { ReeInclusionState } from "../../../../core/ree/ReeInclusionState";
 import type { ReeSpec } from "../../../../core/ree/ReeSpec";
 import type {
   ActionStates,
@@ -26,7 +25,6 @@ import type { AppShellPage } from "../state/pages";
 
 export interface SourceAcquisitionPageProps {
   ree: ReeEditorViewModel;
-  inclusionState: ReeInclusionState;
   workspaceSourceState: WorkspaceSourceState;
   locked: boolean;
   repoMode: "url" | "upload";
@@ -91,7 +89,6 @@ export interface PageHardwareBomProps {
 export interface AssemblyPageProps {
   assemblyStep: ReeAssemblyDefinition & { key: ReeAssemblyOperationKey };
   ree: ReeEditorViewModel;
-  inclusionState: ReeInclusionState;
   workspaceSourceState: WorkspaceSourceState;
   artifactStatus: ArtifactStatus;
   evaluationState: EvaluationState;
