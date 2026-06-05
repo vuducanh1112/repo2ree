@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { ReeId } from "../../../core/ree/ReeId";
+import type { ReeIntentPatch } from "../../../core/ree/reePatch";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import type { WorkspaceResetPayload } from "../../../core/workspace/WorkspaceReset";
 import type { ReeProject, WorkspaceBinaryDownload } from "../../../core/workspace/WorkspaceTypes";
@@ -14,7 +15,7 @@ type ReeProjectState = NonNullable<ReturnType<typeof mapReeDetailToReeProject>["
 export interface ReeClient<TFile = unknown, TRee = unknown> {
   getRee(id: ReeId | string): Promise<ReeProject<TFile, TRee>>;
   updateFile(id: ReeId | string, path: string, content: string): Promise<void>;
-  updateReeDraft(id: ReeId | string, reePatch: Record<string, unknown>): Promise<void>;
+  updateReeDraft(id: ReeId | string, intentPatch: ReeIntentPatch): Promise<void>;
   deleteFile(id: ReeId | string, path: string): Promise<void>;
   getFileBytes(id: ReeId | string, path: string): Promise<ArrayBuffer>;
   getReeArchive(id: ReeId | string): Promise<WorkspaceBinaryDownload>;
@@ -32,9 +33,9 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
       const reeId = await ensureReeId(runtime, id);
       await runtime.reeApi.putFileContent(reeId, { path, content });
     },
-    async updateReeDraft(id, reePatch) {
+    async updateReeDraft(id, intentPatch) {
       const reeId = await ensureReeId(runtime, id);
-      await runtime.reeApi.patchReeDraft(reeId, { reePatch });
+      await runtime.reeApi.patchReeDraft(reeId, { reeIntentPatch: intentPatch });
     },
     async deleteFile(id, path) {
       const reeId = await ensureReeId(runtime, id);

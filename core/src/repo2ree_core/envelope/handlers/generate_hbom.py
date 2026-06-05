@@ -1,14 +1,15 @@
 """Handler for the generate_hbom operation.
 
 Profiles the workbench container's hardware and merges the result into
-/ree/.workspace.json under reeDraft.hardware_description.
+/ree/.workspace.json under reeIntent.hardware_description.
 """
 
 from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.domain.hbom import HBOM
-from repo2ree_core.envelope.handlers._common import patch_ree_draft_metadata
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.envelope.handlers._common import patch_ree_intent
 from repo2ree_protocol.result import ActionResult
 from repo2ree_core.hbom.generate_hbom import generate_hbom
 from repo2ree_core.storage.layout import ReeLayout
@@ -45,9 +46,7 @@ def handle_generate_hbom(
 
     try:
         metadata = store.read_metadata_json()
-        existing_hbom = HBOM.model_validate(
-            ((metadata.get("reeDraft") or {}).get("hardware_description") or {})
-        )
+        existing_hbom = ReeIntent.from_metadata(metadata).hardware_description
         merged = HBOM(
             cpus={**profiled.cpus, **existing_hbom.cpus},
             gpus={**profiled.gpus, **existing_hbom.gpus},
@@ -56,7 +55,7 @@ def handle_generate_hbom(
             network={**profiled.network, **existing_hbom.network},
             extra_info={**profiled.extra_info, **existing_hbom.extra_info},
         )
-        patch_ree_draft_metadata(
+        patch_ree_intent(
             store, {"hardware_description": merged.model_dump(exclude_none=True)}
         )
     except Exception as exc:

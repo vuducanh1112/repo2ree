@@ -36,7 +36,7 @@ export interface ReeArtifactFileDto {
   tag?: string;
 }
 
-export interface ReeDraftDto {
+export interface ReeIntentDto {
   name: string;
   catalog_metadata: {
     description?: string;
@@ -62,23 +62,30 @@ export interface ReeDraftDto {
   dataverse_doi: string;
   detected_dependencies: string;
   hardware_description: Record<string, unknown>;
+  experiments?: Array<Record<string, unknown>>;
+  packaging?: {
+    source_included?: boolean;
+    runtime_included?: boolean;
+  };
+}
+
+export interface ReeSessionDto {
   sealed_at?: string;
   seal_hash?: string;
   dependency_level?: number;
   environment_level?: number;
   machine_level?: number;
-  source_included?: boolean;
   source_available?: boolean;
   source_acquired_by?: string;
   uploaded_archive?: string;
   source_snapshot_archive?: string;
   source_snapshot_captured_at?: string;
-  runtime_included?: boolean;
   downloadable_files?: string[];
 }
 
 export interface ReeDetailDto extends ReeSummaryDto {
-  reeDraft: Partial<ReeDraftDto>;
+  reeIntent: Partial<ReeIntentDto>;
+  reeSession?: Partial<ReeSessionDto>;
   files?: ReeFileDto[];
   reeFiles?: ReeArtifactFileDto[];
 }
@@ -91,7 +98,7 @@ export interface CreateReeRequestDto {
 }
 
 export interface PatchReeRequestDto {
-  reePatch: Partial<ReeDraftDto>;
+  reeIntentPatch: Record<string, unknown>;
   expectedVersion?: string;
 }
 
@@ -137,7 +144,8 @@ export interface ReviewDetailDto {
   createdAt: string;
   updatedAt: string;
   archiveName?: string;
-  reeDraft: Partial<ReeDraftDto>;
+  reeIntent: Partial<ReeIntentDto>;
+  reeSession?: Partial<ReeSessionDto>;
   files?: Array<{ path: string; size?: number }>;
   // wire-format field name: backend uses workspaceFiles for the file listing of an REE.
   workspaceFiles?: Array<{ path: string; size?: number }>;

@@ -25,13 +25,8 @@ class WorkspaceCreatePayload(BaseModel):
     name: str | None = None
 
 
-class WorkspacePatchPayload(BaseModel):
-    reePatch: dict[str, Any] = Field(default_factory=dict)
-    expectedVersion: str | None = None
-
-
-class ReeDraftPatchPayload(BaseModel):
-    reePatch: dict[str, Any] = Field(default_factory=dict)
+class ReeIntentPatchPayload(BaseModel):
+    reeIntentPatch: dict[str, Any] = Field(default_factory=dict)
     expectedVersion: str | None = None
 
 
@@ -63,4 +58,4 @@ class WorkspaceFileContentPayload(BaseModel):
 
 
 class WorkspaceVersionConflictError(RuntimeError):
-    """Raised when a draft patch is applied against a stale workspace version."""
+    """Raised when an intent patch is applied against a stale workspace version."""

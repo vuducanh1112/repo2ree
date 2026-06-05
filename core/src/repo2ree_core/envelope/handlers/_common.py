@@ -8,7 +8,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment.base import CancelCheck, StepOutcome
@@ -90,20 +90,19 @@ def run_script_directly(
     return StepOutcome(status, exit_code)
 
 
-def patch_ree_draft_metadata(store: ReeStore, patch: dict[str, Any]) -> None:
+def patch_ree_intent(store: ReeStore, patch: dict[str, Any]) -> None:
     if not store.metadata_exists():
         raise FileNotFoundError("metadata not found")
 
     metadata = store.read_metadata_json()
-    ree = REE.from_metadata(metadata).apply_patch(patch)
-    metadata["reeDraft"] = ree.model_dump(exclude_none=True)
-    if ree.name:
-        metadata["name"] = ree.name
-    if ree.origin_url:
-        metadata["externalRef"] = ree.origin_url
+    intent = ReeIntent.from_metadata(metadata).apply_patch(patch)
+    metadata["reeIntent"] = intent.model_dump(exclude_none=True)
+    if intent.name:
+        metadata["name"] = intent.name
+    metadata["externalRef"] = intent.origin_url or None
     source = metadata.get("source")
-    if isinstance(source, dict) and ree.source_type:
-        source["sourceType"] = ree.source_type
+    if isinstance(source, dict) and intent.source_type:
+        source["sourceType"] = intent.source_type
         metadata["source"] = source
     metadata["updatedAt"] = utc_now()
     store.write_metadata_json(metadata)

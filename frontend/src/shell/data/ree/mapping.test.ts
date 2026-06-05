@@ -3,14 +3,14 @@ import type { ReeDetailDto, ReviewDetailDto } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices, mapReviewDraftToReeSlices } from "./mapping";
 
 describe("shell/data/ree/mapping", () => {
-  it("maps review drafts into explicit slices consistently", () => {
+  it("maps review intent+session into explicit slices consistently", () => {
     const review: ReviewDetailDto = {
       reviewId: "rev-1",
       name: "review-demo",
       status: "ready",
       createdAt: "2026-01-01T00:00:00Z",
       updatedAt: "2026-01-01T00:00:00Z",
-      reeDraft: {
+      reeIntent: {
         origin_url: "https://example.org/repo.git",
         source_type: "git",
         catalog_metadata: {
@@ -19,9 +19,9 @@ describe("shell/data/ree/mapping", () => {
           contributors: [{ identifier: "ada", name: "Ada" }],
           corresponding_author_identifier: "ada",
         },
-        source_available: true,
         hardware_description: { cpus: { Xeon: { vendor: "Intel", quantity: 2 } } },
       },
+      reeSession: { source_available: true },
       files: [],
       workspaceFiles: [],
     };
@@ -44,7 +44,7 @@ describe("shell/data/ree/mapping", () => {
       createdAt: "2026-01-01T00:00:00Z",
       updatedAt: "2026-01-01T00:00:00Z",
       externalRef: "https://example.org/archive.tar.gz",
-      reeDraft: {},
+      reeIntent: {},
       files: [],
       reeFiles: [],
     };

@@ -29,6 +29,7 @@ from repo2ree_api.review_run_management import (
     _start_background_review_run,
 )
 
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_api.storage.review_files import (
     ReviewUploadCompletePayload,
     ReviewUploadInitPayload,
@@ -368,8 +369,8 @@ def _run_review_source_acquire(
     review_id: str, run_id: str
 ) -> tuple[str, dict[str, object]]:
     metadata = _load_review_metadata(review_id)
-    ree_draft = dict(metadata.get("reeDraft") or {})
-    if bool(ree_draft.get("source_included")):
+    intent = ReeIntent.from_metadata(metadata)
+    if intent.packaging.source_included:
         _append_review_run_log(
             review_id,
             run_id,
@@ -379,8 +380,8 @@ def _run_review_source_acquire(
         )
         return "succeeded", {"sourceIncluded": True}
 
-    origin_url = str(ree_draft.get("origin_url") or "").strip()
-    source_type = str(ree_draft.get("source_type") or "").strip()
+    origin_url = intent.origin_url.strip()
+    source_type = intent.source_type.strip()
     if not origin_url or source_type not in {"git", "tarball", "zip"}:
         raise HTTPException(
             status_code=400,

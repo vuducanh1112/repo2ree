@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 
 
 WorkspaceStatus = Literal["draft", "ready", "sealed", "archived"]
@@ -33,5 +34,6 @@ class WorkspaceMetadata(BaseModel):
     status: WorkspaceStatus = "draft"
     created_at: str = Field(alias="createdAt")
     updated_at: str = Field(alias="updatedAt")
-    ree_draft: REE = Field(alias="reeDraft")
+    ree_intent: ReeIntent = Field(alias="reeIntent")
+    ree_session: ReeSession = Field(alias="reeSession")
     source: SourceMetadata | None = None

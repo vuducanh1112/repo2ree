@@ -8,7 +8,8 @@ from typing import TextIO
 
 import click
 
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.run_command import run_command
 from repo2ree_protocol import ActionResult, command_adapter
 from repo2ree_protocol.command import AcquireSourceArgs, AcquireSourceCommand
@@ -195,7 +196,8 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
         "status": "draft",
         "createdAt": ts,
         "updatedAt": ts,
-        "reeDraft": REE(name=ree_name).model_dump(exclude_none=True),
+        "reeIntent": ReeIntent(name=ree_name).model_dump(exclude_none=True),
+        "reeSession": ReeSession().model_dump(exclude_none=True),
         "source": None,
     }
 

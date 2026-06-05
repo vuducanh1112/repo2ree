@@ -9,7 +9,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import PackagingPolicy, ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_protocol.command import UpdateSourceMetadataArgs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_core.storage.layout import ReeLayout, SNAPSHOT_FILENAME
@@ -38,20 +39,36 @@ def handle_update_source_metadata(
     try:
         metadata = store.read_metadata_json()
         ts = _utc_now()
+        intent = ReeIntent.from_metadata(metadata)
 
         if args.mode == "upload":
             source = _upload_source(args, ts)
-            ree = REE.from_metadata(metadata)
+            # Upload implies the user wants source included in the bundle.
+            intent = intent.model_copy(
+                update={
+                    "packaging": PackagingPolicy(
+                        source_included=True,
+                        runtime_included=intent.packaging.runtime_included,
+                    )
+                }
+            )
         else:
             source = _download_source(args, ts)
-            ree = REE.from_metadata(metadata).model_copy(
-                update={"origin_url": args.origin_url, "source_type": args.source_type}
+            intent = intent.model_copy(
+                update={
+                    "origin_url": args.origin_url,
+                    "source_type": args.source_type,
+                }
             )
+
+        session = ReeSession.from_metadata(metadata).with_source(source)
 
         metadata["source"] = source
         metadata["status"] = "ready"
+        metadata["externalRef"] = intent.origin_url or None
         metadata["updatedAt"] = ts
-        metadata["reeDraft"] = ree.with_source(source).model_dump(exclude_none=True)
+        metadata["reeIntent"] = intent.model_dump(exclude_none=True)
+        metadata["reeSession"] = session.model_dump(exclude_none=True)
 
         store.write_metadata_json(metadata)
     except Exception as exc:

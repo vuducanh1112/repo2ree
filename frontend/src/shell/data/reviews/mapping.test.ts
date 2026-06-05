@@ -32,7 +32,8 @@ describe("shell/data/reviews/mapping", () => {
       createdAt: "2026-01-01T00:00:00Z",
       updatedAt: "2026-01-02T00:00:00Z",
       archiveName: "review.tar.gz",
-      reeDraft: { origin_url: "https://example.org/repo.git" },
+      reeIntent: { origin_url: "https://example.org/repo.git" },
+      reeSession: {},
       files: [{ path: "out/file.txt", size: 12 }],
       workspaceFiles: [{ path: "src/index.ts", size: 45 }],
     };
@@ -48,7 +49,8 @@ describe("shell/data/reviews/mapping", () => {
       createdAt: "2026-01-01T00:00:00Z",
       updatedAt: "2026-01-02T00:00:00Z",
       archiveName: "review.tar.gz",
-      reeDraft: { origin_url: "https://example.org/repo.git" },
+      reeIntent: { origin_url: "https://example.org/repo.git" },
+      reeSession: {},
       files: [{ path: "out/file.txt", size: 12 }],
       workspaceFiles: [{ path: "src/index.ts", size: 45 }],
     });
@@ -62,10 +64,8 @@ describe("shell/data/reviews/mapping", () => {
       status: "ready",
       createdAt: "2026-01-01T00:00:00Z",
       updatedAt: "2026-01-02T00:00:00Z",
-      reeDraft: {
-        source_type: "git",
-        source_available: true,
-      },
+      reeIntent: { source_type: "git" },
+      reeSession: { source_available: true },
     };
 
     const view = mapReviewDetailToReeEditorViewModel(review);

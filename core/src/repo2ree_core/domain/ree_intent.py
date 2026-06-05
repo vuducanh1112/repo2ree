@@ -19,7 +19,6 @@ from repo2ree_core.experiment import Experiment
 # ================================================
 
 SourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]
-SourceAcquiredBy = Literal["", "download", "upload"]
 
 
 # ================================================
@@ -103,7 +102,18 @@ class ReeCatalogMetadata(BaseModel):
     corresponding_author_identifier: str | None = None
 
 
-class REE(BaseModel):
+class PackagingPolicy(BaseModel):
+    """Author-declared choices about which blobs to include in the bundle."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_included: bool = False
+    runtime_included: bool = False
+
+
+class ReeIntent(BaseModel):
+    """Author-declared reproducibility intent — the only patchable model."""
+
     model_config = ConfigDict(extra="forbid")
 
     name: str = ""
@@ -119,48 +129,8 @@ class REE(BaseModel):
     dataverse_doi: str | None = None
     detected_dependencies: str | None = None
     hardware_description: HBOM = Field(default_factory=HBOM)
-    # Reproducibility axes (replaces the old single eval_level ladder).
-    dependency_level: int = 0
-    environment_level: int = 0
-    machine_level: int = 0
-    sealed_at: str | None = None
-    seal_hash: str | None = None
-    source_available: bool = False
-    source_included: bool = False
-    source_acquired_by: SourceAcquiredBy = ""
-    uploaded_archive: str | None = None
-    source_snapshot_archive: str | None = None
-    source_snapshot_captured_at: str | None = None
-    runtime_included: bool = False
-    downloadable_files: list[str] = Field(default_factory=list)
     experiments: list[Experiment] = Field(default_factory=list)
-
-    @model_validator(mode="before")
-    @classmethod
-    def normalize_legacy_reproducibility_fields(cls, value: Any) -> Any:
-        if not isinstance(value, Mapping):
-            return value
-
-        normalized = dict(value)
-        old_level = normalized.pop("eval_level", None)
-        normalized.pop("repro_level", None)
-        if old_level is None:
-            return normalized
-
-        try:
-            level = int(old_level)
-        except (TypeError, ValueError):
-            level = 0
-
-        normalized.setdefault(
-            "dependency_level",
-            3 if level >= 4 else 2 if level >= 3 else 1 if level >= 2 else 0,
-        )
-        normalized.setdefault(
-            "environment_level", 2 if level >= 6 else 1 if level >= 5 else 0
-        )
-        normalized.setdefault("machine_level", 0)
-        return normalized
+    packaging: PackagingPolicy = Field(default_factory=PackagingPolicy)
 
     @field_validator("hardware_description", mode="before")
     @classmethod
@@ -181,90 +151,34 @@ class REE(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def _unique_experiment_names(self) -> "REE":
+    def _unique_experiment_names(self) -> "ReeIntent":
         names = [e.name for e in self.experiments if e.name]
         if len(names) != len(set(names)):
             raise ValueError("experiment names must be unique")
         return self
 
     @classmethod
-    def from_metadata(cls, metadata: Mapping[str, Any]) -> "REE":
-        draft = dict(metadata.get("reeDraft") or {})
-        if not draft.get("name"):
-            draft["name"] = str(metadata.get("name") or "")
-        if not draft.get("origin_url"):
-            draft["origin_url"] = str(metadata.get("externalRef") or "")
-
+    def from_metadata(cls, metadata: Mapping[str, Any]) -> "ReeIntent":
+        intent = dict(metadata.get("reeIntent") or {})
+        intent = {k: v for k, v in intent.items() if k in cls.model_fields}
+        if not intent.get("name"):
+            intent["name"] = str(metadata.get("name") or "")
+        if not intent.get("origin_url"):
+            intent["origin_url"] = str(metadata.get("externalRef") or "")
         source = metadata.get("source")
         if isinstance(source, dict):
             source_type = str(source.get("sourceType") or "")
-            if source_type and not draft.get("source_type"):
-                draft["source_type"] = source_type
+            if source_type and not intent.get("source_type"):
+                intent["source_type"] = source_type
+        return cls.model_validate(intent)
 
-        ree = cls.model_validate(draft)
-        return ree.with_source(source if isinstance(source, dict) else None)
-
-    def apply_patch(self, patch: Mapping[str, Any]) -> "REE":
+    def apply_patch(self, patch: Mapping[str, Any]) -> "ReeIntent":
         merged = self.model_dump()
         merged.update(dict(patch or {}))
         try:
-            return REE.model_validate(merged)
+            return ReeIntent.model_validate(merged)
         except ValidationError as exc:
-            raise ValueError(f"Invalid REE patch: {exc}") from exc
-
-    def with_source(self, source: Mapping[str, Any] | None) -> "REE":
-        if not source:
-            return self.model_copy(
-                update={
-                    "source_available": False,
-                    "source_acquired_by": "",
-                    "uploaded_archive": None,
-                    "source_snapshot_archive": None,
-                    "source_snapshot_captured_at": None,
-                }
-            )
-
-        mode = str(source.get("mode") or "")
-        acquired_by: SourceAcquiredBy = ""
-        if mode == "download":
-            acquired_by = "download"
-        elif mode == "upload":
-            acquired_by = "upload"
-
-        source_included = self.source_included
-        if acquired_by == "upload":
-            source_included = True
-
-        snapshot_archive = self.source_snapshot_archive
-        snapshot_archive = (
-            str(source.get("snapshotArchive") or "")
-            or str(source.get("archiveName") or "")
-            or snapshot_archive
-            or None
-        )
-
-        source_type = self.source_type
-        if isinstance(source.get("sourceType"), str) and source.get("sourceType"):
-            source_type = source["sourceType"]
-
-        return self.model_copy(
-            update={
-                "source_type": source_type,
-                "source_available": True,
-                "source_acquired_by": acquired_by,
-                "source_included": source_included,
-                "uploaded_archive": str(source.get("archiveName") or "")
-                or self.uploaded_archive,
-                "source_snapshot_archive": snapshot_archive,
-                "source_snapshot_captured_at": str(
-                    source.get("snapshotCapturedAt")
-                    or source.get("completedAt")
-                    or source.get("acquiredAt")
-                    or ""
-                )
-                or self.source_snapshot_captured_at,
-            }
-        )
+            raise ValueError(f"Invalid REE intent patch: {exc}") from exc
 
     def as_manifest(self) -> dict[str, Any]:
         return {
@@ -281,20 +195,10 @@ class REE(BaseModel):
             "zenodo_doi": self.zenodo_doi or None,
             "dataverse_doi": self.dataverse_doi or None,
             "hardware_description": self.hardware_description.model_dump(),
-            "sealed_at": self.sealed_at or None,
-            "seal_hash": self.seal_hash or None,
-            "dependency_level": self.dependency_level or 0,
-            "environment_level": self.environment_level or 0,
-            "machine_level": self.machine_level or 0,
-            "source_included": bool(self.source_included),
-            "source_available": bool(self.source_available),
-            "source_acquired_by": self.source_acquired_by or None,
-            "source_snapshot_archive": self.source_snapshot_archive or None,
-            "source_snapshot_captured_at": self.source_snapshot_captured_at or None,
-            "runtime_included": bool(self.runtime_included),
-            "downloadable_files": list(self.downloadable_files or []),
             "experiments": [
                 experiment.model_dump(exclude_none=True)
                 for experiment in self.experiments
             ],
+            "source_included": bool(self.packaging.source_included),
+            "runtime_included": bool(self.packaging.runtime_included),
         }

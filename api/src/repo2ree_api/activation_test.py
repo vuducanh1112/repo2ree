@@ -71,7 +71,7 @@ def _resolve_activation_script_path(
     else:
         metadata = {}
 
-    ree_draft = dict(metadata.get("reeDraft") or {})
+    ree_draft = dict(metadata.get("reeIntent") or {})
     script_path = str(
         ree_draft.get("activation_script")
         or ree_draft.get("validate_runtime_reproducibility_script")

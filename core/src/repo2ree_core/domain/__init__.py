@@ -6,13 +6,14 @@ from .hbom import (
     NetworkDefinition,
     StorageDefinition,
 )
-from .ree import (
+from .ree_intent import (
     Contributor,
-    REE,
+    PackagingPolicy,
     ReeCatalogMetadata,
-    SourceAcquiredBy,
+    ReeIntent,
     SourceType,
 )
+from .ree_session import ReeSession, SourceAcquiredBy
 
 __all__ = [
     "CPUDefinition",
@@ -21,8 +22,10 @@ __all__ = [
     "HBOM",
     "MemoryDefinition",
     "NetworkDefinition",
-    "REE",
+    "PackagingPolicy",
     "ReeCatalogMetadata",
+    "ReeIntent",
+    "ReeSession",
     "SourceAcquiredBy",
     "SourceType",
     "StorageDefinition",

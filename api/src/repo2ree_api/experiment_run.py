@@ -7,7 +7,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_protocol.command import RunExperimentArgs, RunExperimentCommand
 from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_api.run_management import (
@@ -69,10 +69,10 @@ def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     try:
-        ree = REE.from_metadata(metadata)
+        ree = ReeIntent.from_metadata(metadata)
     except Exception as exc:
         raise HTTPException(
-            status_code=400, detail=f"Invalid REE draft: {exc}"
+            status_code=400, detail=f"Invalid REE intent: {exc}"
         ) from exc
 
     if not ree.runtime.strip():

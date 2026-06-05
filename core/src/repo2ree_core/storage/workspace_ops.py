@@ -26,7 +26,8 @@ import json
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.storage.layout import (
     ReeLayout,
     normalize_workspace_path,
@@ -54,11 +55,15 @@ from repo2ree_core.workspace.inventory import (
 
 # Deferred import to break the storage → workspace_ops → manifest → storage cycle.
 def _build_manifest_payload(
-    metadata: dict[str, Any], ree: REE, *, ree_id: str
+    metadata: dict[str, Any],
+    intent: ReeIntent,
+    session: ReeSession,
+    *,
+    ree_id: str,
 ) -> dict[str, Any]:
     from repo2ree_core.workspace.manifest import build_manifest_payload
 
-    return build_manifest_payload(metadata, ree, ree_id=ree_id)
+    return build_manifest_payload(metadata, intent, session, ree_id=ree_id)
 
 
 # ---------------------------------------------------------------------------
@@ -75,11 +80,6 @@ def _store(storage_root: Path, ree_id: str) -> ReeStore:
 
 
 def _validate_user_path(path: str) -> str:
-    """Normalize and structurally validate a user-supplied path.
-
-    Returns the normalized path string. Raises ValueError for traversals,
-    absolute paths, or reserved filenames.
-    """
     normalized = normalize_workspace_path(path)
     validate_relative_path(normalized)
     if is_reserved_workspace_filename(PurePosixPath(normalized).name):
@@ -87,8 +87,12 @@ def _validate_user_path(path: str) -> str:
     return normalized
 
 
-def _ree_from_metadata(metadata: dict[str, Any]) -> REE:
-    return REE.from_metadata(metadata)
+def _intent_from_metadata(metadata: dict[str, Any]) -> ReeIntent:
+    return ReeIntent.from_metadata(metadata)
+
+
+def _session_from_metadata(metadata: dict[str, Any]) -> ReeSession:
+    return ReeSession.from_metadata(metadata)
 
 
 def _read_metadata(storage_root: Path, ree_id: str) -> dict[str, Any]:
@@ -107,16 +111,16 @@ def _list_tree_relpaths(root: Path) -> list[str]:
     )
 
 
-def _build_artifact_plan(layout: ReeLayout, ree: REE) -> ArtifactPlan:
+def _build_artifact_plan(layout: ReeLayout, intent: ReeIntent) -> ArtifactPlan:
     """Snapshot disk state and delegate layout decisions to the pure planner."""
     workspace_files = frozenset(_list_tree_relpaths(layout.workspace))
     on_disk_artifacts = _list_tree_relpaths(layout.artifacts)
     return plan_artifact_layout(
         on_disk_artifact_relpaths=on_disk_artifacts,
-        workspace_runtime_path=ree.runtime,
-        workspace_sbom_path=ree.sbom,
+        workspace_runtime_path=intent.runtime,
+        workspace_sbom_path=intent.sbom,
         workspace_files=workspace_files,
-        runtime_included=ree.runtime_included,
+        runtime_included=intent.packaging.runtime_included,
     )
 
 
@@ -175,19 +179,21 @@ def _sync_downloadable_files(
     storage_root: Path, ree_id: str, metadata: dict[str, Any]
 ) -> None:
     layout = _layout(storage_root, ree_id)
-    ree = _ree_from_metadata(metadata)
-    manifest = _build_manifest_payload(metadata, ree, ree_id=ree_id)
-    artifact_plan = _build_artifact_plan(layout, ree)
-    ree_draft = dict(metadata.get("reeDraft") or {})
-    ree_draft["downloadable_files"] = _bundle_archive_paths(
-        layout,
-        artifact_plan,
-        include_snapshot=should_include_snapshot(
-            source_included=bool(manifest.get("source_included")),
-            source_snapshot_archive=manifest.get("source_snapshot_archive"),
-        ),
+    intent = _intent_from_metadata(metadata)
+    session = _session_from_metadata(metadata)
+    manifest = _build_manifest_payload(metadata, intent, session, ree_id=ree_id)
+    artifact_plan = _build_artifact_plan(layout, intent)
+    updated_session = session.with_downloadables(
+        _bundle_archive_paths(
+            layout,
+            artifact_plan,
+            include_snapshot=should_include_snapshot(
+                source_included=bool(manifest.get("source_included")),
+                source_snapshot_archive=manifest.get("source_snapshot_archive"),
+            ),
+        )
     )
-    metadata["reeDraft"] = ree_draft
+    metadata["reeSession"] = updated_session.model_dump(exclude_none=True)
 
 
 def _read_text_if_possible(path: Path) -> str | None:
@@ -311,10 +317,11 @@ def read_file_bytes(storage_root: Path, ree_id: str, path: str) -> bytes:
 def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
     metadata = _read_metadata(storage_root, ree_id)
     layout = _layout(storage_root, ree_id)
-    ree = _ree_from_metadata(metadata)
-    sidecar_manifest = _build_manifest_payload(metadata, ree, ree_id=ree_id)
+    intent = _intent_from_metadata(metadata)
+    session = _session_from_metadata(metadata)
+    sidecar_manifest = _build_manifest_payload(metadata, intent, session, ree_id=ree_id)
 
-    artifact_plan = _build_artifact_plan(layout, ree)
+    artifact_plan = _build_artifact_plan(layout, intent)
     include_snapshot = should_include_snapshot(
         source_included=bool(sidecar_manifest.get("source_included")),
         source_snapshot_archive=sidecar_manifest.get("source_snapshot_archive"),
@@ -331,9 +338,8 @@ def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
         include_snapshot=include_snapshot,
         manifest_bytes=manifest_bytes,
     )
-    ree_draft = dict(metadata.get("reeDraft") or {})
-    ree_draft["downloadable_files"] = [path for path, _ in entries]
-    metadata["reeDraft"] = ree_draft
+    updated_session = session.with_downloadables([path for path, _ in entries])
+    metadata["reeSession"] = updated_session.model_dump(exclude_none=True)
     store = _store(storage_root, ree_id)
     store.write_metadata_json(metadata)
     archive_bytes = build_zip_bytes(entries)

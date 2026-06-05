@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.workspace.model import WorkspaceMetadata
@@ -17,7 +18,8 @@ def _make_metadata(ree_id: str = "ree-1", name: str = "demo") -> WorkspaceMetada
             "status": "draft",
             "createdAt": ts,
             "updatedAt": ts,
-            "reeDraft": REE(name=name).model_dump(exclude_none=True),
+            "reeIntent": ReeIntent(name=name).model_dump(exclude_none=True),
+            "reeSession": ReeSession().model_dump(exclude_none=True),
         }
     )
 
@@ -62,14 +64,6 @@ def test_metadata_roundtrip(tmp_path):
     assert read_back.status == original.status
 
 
-def test_ree_accepts_legacy_single_reproducibility_level():
-    ree = REE.model_validate({"name": "demo", "eval_level": 6, "repro_level": "L6"})
-
-    assert ree.dependency_level == 3
-    assert ree.environment_level == 2
-    assert ree.machine_level == 0
-
-
 def test_read_metadata_raises_when_absent(tmp_path):
     store = _store(tmp_path)
     store.ensure_dirs()
@@ -87,7 +81,8 @@ def test_write_metadata_uses_aliased_keys_on_disk(tmp_path):
     raw = json.loads(store.layout.metadata.read_text(encoding="utf-8"))
     assert "reeId" in raw
     assert "createdAt" in raw
-    assert "reeDraft" in raw
+    assert "reeIntent" in raw
+    assert "reeSession" in raw
 
 
 def test_write_metadata_creates_parent_if_missing(tmp_path):
@@ -153,7 +148,8 @@ def test_metadata_json_roundtrip_preserves_extra_fields(tmp_path):
         "status": "draft",
         "createdAt": "2026-01-01T00:00:00Z",
         "updatedAt": "2026-01-01T00:00:00Z",
-        "reeDraft": {"name": "demo"},
+        "reeIntent": {"name": "demo"},
+        "reeSession": {},
         "vendorExtraField": {"nested": [1, 2, 3]},
     }
     store.write_metadata_json(payload)

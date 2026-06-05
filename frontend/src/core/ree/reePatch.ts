@@ -1,9 +1,9 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import type { HBOM, ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec";
+import type { ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec";
 
-interface ReePatch extends Record<string, unknown> {
+export interface ReeIntentPatch extends Record<string, unknown> {
   name: string;
   catalog_metadata: ReeCatalogMetadata;
   origin_url: string;
@@ -17,9 +17,11 @@ interface ReePatch extends Record<string, unknown> {
   dataverse_doi: string;
   detected_dependencies: string;
   experiments: ReeExperiment[];
-  hardware_description: HBOM;
-  source_included: boolean;
-  runtime_included: boolean;
+  hardware_description: Record<string, unknown>;
+  packaging: {
+    source_included: boolean;
+    runtime_included: boolean;
+  };
 }
 
 interface ReePatchSlices {
@@ -33,7 +35,7 @@ export function toReePatchFromSlices({
   reeSpec,
   workspaceSourceState,
   artifactStatus,
-}: ReePatchSlices): ReePatch {
+}: ReePatchSlices): ReeIntentPatch {
   return {
     name: reeSpec.name || "",
     catalog_metadata: reeSpec.catalog_metadata,
@@ -48,15 +50,20 @@ export function toReePatchFromSlices({
     dataverse_doi: reeSpec.dataverse_doi || "",
     detected_dependencies: reeSpec.detected_dependencies || "",
     experiments: reeSpec.experiments || [],
-    hardware_description: reeSpec.hardware_description || {},
-    source_included: !!workspaceSourceState.sourceIncluded,
-    runtime_included: !!artifactStatus.runtimeIncluded,
+    hardware_description: (reeSpec.hardware_description || {}) as unknown as Record<
+      string,
+      unknown
+    >,
+    packaging: {
+      source_included: !!workspaceSourceState.sourceIncluded,
+      runtime_included: !!artifactStatus.runtimeIncluded,
+    },
   };
 }
 
 export function toReePatch(
   ree: ReeSpec & WorkspaceSourceState & ArtifactStatus & EvaluationState,
-): ReePatch {
+): ReeIntentPatch {
   return toReePatchFromSlices({
     reeSpec: {
       name: ree.name,

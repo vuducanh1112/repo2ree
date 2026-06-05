@@ -2,13 +2,13 @@
 
 Clears upstream/, overlay/, workspace/ and snapshot.tar.gz, then resets
 source fields in /ree/.workspace.json back to draft state.
-Mirrors the host-side remove_source behaviour.
 """
 
 from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_protocol.result import ActionResult
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
@@ -33,39 +33,28 @@ def handle_remove_source(
 
     log("system", "info", "remove_source: clearing content and resetting metadata")
     try:
-        # Clear all content directories and snapshot archive.
         for subtree in (store.upstream, store.overlay, store.workspace):
             subtree.clear()
             subtree.ensure_root()
         if layout.snapshot_archive.exists():
             layout.snapshot_archive.unlink()
 
-        # Reset metadata to draft state.
         metadata = store.read_metadata_json()
-        cleared_ree = (
-            REE.from_metadata(metadata)
-            .with_source(None)
-            .model_copy(
-                update={
-                    "origin_url": "",
-                    "source_type": "",
-                    "runtime": "",
-                    "build_runtime_script": "",
-                    "activation_script": "",
-                    "sbom": "",
-                    "source_included": False,
-                    "runtime_included": False,
-                    "dependency_level": 0,
-                    "environment_level": 0,
-                    "machine_level": 0,
-                    "detected_dependencies": None,
-                }
-            )
+        # Removing the source removes the basis for everything derived from it,
+        # so reset the intent to a blank slate — keeping only author metadata
+        # (name and catalog metadata) — and discard all session state.
+        existing_intent = ReeIntent.from_metadata(metadata)
+        cleared_intent = ReeIntent(
+            name=existing_intent.name,
+            catalog_metadata=existing_intent.catalog_metadata,
         )
+        cleared_session = ReeSession()
+
         metadata["status"] = "draft"
         metadata["externalRef"] = None
         metadata["source"] = None
-        metadata["reeDraft"] = cleared_ree.model_dump(exclude_none=True)
+        metadata["reeIntent"] = cleared_intent.model_dump(exclude_none=True)
+        metadata["reeSession"] = cleared_session.model_dump(exclude_none=True)
         store.write_metadata_json(metadata)
     except Exception as exc:
         log("system", "error", f"remove_source failed: {exc}")

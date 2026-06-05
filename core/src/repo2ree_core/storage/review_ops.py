@@ -20,7 +20,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.storage.extract import safe_extract_tar, safe_extract_zip
 
 
@@ -88,7 +89,8 @@ def _default_review_metadata(
         "status": "uploading",
         "createdAt": ts,
         "updatedAt": ts,
-        "reeDraft": REE(name=default_name).model_dump(exclude_none=True),
+        "reeIntent": ReeIntent(name=default_name).model_dump(exclude_none=True),
+        "reeSession": ReeSession().model_dump(exclude_none=True),
     }
 
 
@@ -150,7 +152,12 @@ def _extract_included_source_snapshot(
     destination_root: Path,
     ree_draft: dict[str, Any],
 ) -> None:
-    if not bool(ree_draft.get("source_included")):
+    # ree_draft may be reeIntent + reeSession merged; source fields are in session.
+    source_included = bool(
+        ree_draft.get("source_included")
+        or (ree_draft.get("packaging") or {}).get("source_included")
+    )
+    if not source_included:
         return
     snapshot_ref = str(ree_draft.get("source_snapshot_archive") or "").strip()
     if not snapshot_ref:
@@ -165,9 +172,7 @@ def _extract_included_source_snapshot(
         safe_extract_tar(archive, destination_root)
 
 
-def _manifest_to_ree_draft(
-    manifest: dict[str, Any], uploaded_archive: str
-) -> dict[str, Any]:
+def _manifest_to_ree_intent(manifest: dict[str, Any]) -> dict[str, Any]:
     payload = {
         "name": manifest.get("name") or "",
         "catalog_metadata": manifest.get("catalog_metadata") or {},
@@ -181,21 +186,31 @@ def _manifest_to_ree_draft(
         "zenodo_doi": manifest.get("zenodo_doi"),
         "dataverse_doi": manifest.get("dataverse_doi"),
         "hardware_description": manifest.get("hardware_description") or {},
+        "packaging": {
+            "source_included": bool(manifest.get("source_included", False)),
+            "runtime_included": bool(manifest.get("runtime_included", False)),
+        },
+    }
+    return ReeIntent.model_validate(payload).model_dump(exclude_none=True)
+
+
+def _manifest_to_ree_session(
+    manifest: dict[str, Any], uploaded_archive: str
+) -> dict[str, Any]:
+    payload = {
         "dependency_level": manifest.get("dependency_level") or 0,
         "environment_level": manifest.get("environment_level") or 0,
         "machine_level": manifest.get("machine_level") or 0,
         "sealed_at": manifest.get("sealed_at"),
         "seal_hash": manifest.get("seal_hash"),
-        "source_included": bool(manifest.get("source_included", False)),
         "source_available": bool(manifest.get("source_available", False)),
         "source_acquired_by": manifest.get("source_acquired_by") or "",
         "source_snapshot_archive": manifest.get("source_snapshot_archive"),
         "source_snapshot_captured_at": manifest.get("source_snapshot_captured_at"),
-        "runtime_included": bool(manifest.get("runtime_included", False)),
         "downloadable_files": manifest.get("downloadable_files") or [],
         "uploaded_archive": uploaded_archive,
     }
-    return REE.model_validate(payload).model_dump(exclude_none=True)
+    return ReeSession.model_validate(payload).model_dump(exclude_none=True)
 
 
 def _list_files_under(
@@ -242,7 +257,10 @@ def get_review(storage_root: Path, review_id: str) -> dict[str, Any]:
         _extract_included_source_snapshot(
             _review_dir(storage_root, review_id),
             _review_workspace_dir(storage_root, review_id),
-            dict(metadata.get("reeDraft") or {}),
+            {
+                **dict(metadata.get("reeIntent") or {}),
+                **dict(metadata.get("reeSession") or {}),
+            },
         )
     detail = dict(metadata)
     detail["files"] = _list_files_under(_review_dir(storage_root, review_id))
@@ -330,11 +348,12 @@ def complete_review_upload(
     metadata["status"] = "ready"
     metadata["name"] = str(manifest.get("name") or metadata.get("name") or "review")
     metadata["archiveName"] = archive_name
-    metadata["reeDraft"] = _manifest_to_ree_draft(manifest, archive_name)
+    metadata["reeIntent"] = _manifest_to_ree_intent(manifest)
+    metadata["reeSession"] = _manifest_to_ree_session(manifest, archive_name)
     _extract_included_source_snapshot(
         _review_dir(storage_root, review_id),
         _review_workspace_dir(storage_root, review_id),
-        dict(metadata.get("reeDraft") or {}),
+        {**metadata["reeIntent"], **metadata["reeSession"]},
     )
     _write_review_metadata(storage_root, review_id, metadata)
 

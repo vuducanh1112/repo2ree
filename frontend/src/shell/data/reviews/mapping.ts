@@ -29,7 +29,8 @@ export function mapReviewDtoToDetail(review: ReviewDetailDto): ReviewDetail {
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
     archiveName: review.archiveName,
-    reeDraft: review.reeDraft,
+    reeIntent: review.reeIntent,
+    reeSession: review.reeSession,
     files: review.files,
     workspaceFiles: review.workspaceFiles,
   };

@@ -3,7 +3,8 @@ import json
 import uuid
 import zipfile
 
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.storage.workspace_ops import build_workspace_ree_archive
@@ -21,7 +22,8 @@ def _make_ree(storage_root, name):
             "externalRef": None,
             "name": name,
             "status": "ready",
-            "reeDraft": REE(name=name).model_dump(exclude_none=True),
+            "reeIntent": ReeIntent(name=name).model_dump(exclude_none=True),
+            "reeSession": ReeSession().model_dump(exclude_none=True),
             "source": {"mode": "download", "acquiredAt": "2026-01-01T00:00:00Z"},
         }
     )
@@ -43,12 +45,14 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     (ree_root / "snapshot.tar.gz").write_bytes(b"snapshot-bytes")
 
     metadata = json.loads(layout.metadata.read_text(encoding="utf-8"))
-    metadata["reeDraft"] = {
-        **(metadata.get("reeDraft") or {}),
+    metadata["reeIntent"] = {
+        **(metadata.get("reeIntent") or {}),
         "runtime": "/runtime.tar.gz",
-        "runtime_included": False,
         "sbom": " sbom.json ",
-        "source_included": False,
+        "packaging": {"source_included": False, "runtime_included": False},
+    }
+    metadata["reeSession"] = {
+        **(metadata.get("reeSession") or {}),
         "source_snapshot_archive": "snapshot.tar.gz",
     }
     _write_metadata(layout, metadata)
@@ -66,7 +70,7 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     assert manifest["sbom"] == "artifacts/sbom.json"
 
     updated_metadata = json.loads(layout.metadata.read_text(encoding="utf-8"))
-    assert updated_metadata["reeDraft"]["downloadable_files"] == names
+    assert updated_metadata["reeSession"]["downloadable_files"] == names
 
 
 def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tmp_path):
@@ -80,12 +84,14 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
     (ree_root / "snapshot.tar.gz").write_bytes(b"snapshot-bytes")
 
     metadata = json.loads(layout.metadata.read_text(encoding="utf-8"))
-    metadata["reeDraft"] = {
-        **(metadata.get("reeDraft") or {}),
+    metadata["reeIntent"] = {
+        **(metadata.get("reeIntent") or {}),
         "runtime": "/runtime.tar.gz",
-        "runtime_included": True,
         "sbom": " sbom.json ",
-        "source_included": True,
+        "packaging": {"source_included": True, "runtime_included": True},
+    }
+    metadata["reeSession"] = {
+        **(metadata.get("reeSession") or {}),
         "source_snapshot_archive": " snapshot.tar.gz ",
     }
     _write_metadata(layout, metadata)

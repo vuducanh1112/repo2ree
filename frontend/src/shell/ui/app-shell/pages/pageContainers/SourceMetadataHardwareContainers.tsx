@@ -133,7 +133,7 @@ export function ExperimentsPageContainer({
 
   async function handleSnapshotComplete() {
     const fresh = await reeApi.getRee(reeId);
-    const freshExperiments = (fresh.reeDraft as { experiments?: unknown[] }).experiments ?? [];
+    const freshExperiments = (fresh.reeIntent as { experiments?: unknown[] }).experiments ?? [];
     commands.setReeSpec((prev) => ({
       ...prev,
       experiments: freshExperiments as typeof prev.experiments,

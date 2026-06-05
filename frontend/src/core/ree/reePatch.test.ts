@@ -64,10 +64,9 @@ describe("toReePatchFromSlices", () => {
       }),
     ).toEqual({
       ...reeSpec,
-      source_included: true,
-      runtime_included: true,
       zenodo_doi: "",
       dataverse_doi: "",
+      packaging: { source_included: true, runtime_included: true },
     });
   });
 
@@ -82,8 +81,7 @@ describe("toReePatchFromSlices", () => {
     ).toMatchObject({
       name: "",
       origin_url: "",
-      source_included: false,
-      runtime_included: false,
+      packaging: { source_included: false, runtime_included: false },
     });
   });
 });

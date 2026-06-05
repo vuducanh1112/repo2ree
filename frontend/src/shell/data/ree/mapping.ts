@@ -3,14 +3,16 @@ import type { ReeDetailDto, ReviewDetailDto } from "../../infra/api/apiTypes";
 
 export function mapReviewDraftToReeSlices(review: ReviewDetailDto) {
   return mapRawReeDraftToSlices({
-    reeDraft: review.reeDraft,
+    reeIntent: review.reeIntent,
+    reeSession: review.reeSession,
     fallbackName: review.name,
   });
 }
 
 export function mapReeDetailToReeSlices(ree: ReeDetailDto) {
   return mapRawReeDraftToSlices({
-    reeDraft: ree.reeDraft,
+    reeIntent: ree.reeIntent,
+    reeSession: ree.reeSession,
     fallbackName: ree.name,
     fallbackOriginUrl: ree.externalRef ?? "",
   });

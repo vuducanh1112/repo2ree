@@ -7,7 +7,7 @@ from typing import Any
 from repo2ree_core.container.run_script import LogSink
 from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_core.envelope.handlers._common import (
-    patch_ree_draft_metadata,
+    patch_ree_intent,
     resolve_workspace_path,
 )
 from repo2ree_protocol.result import ActionResult
@@ -72,7 +72,7 @@ def handle_generate_sbom(
         sbom_data = json.loads(output_path.read_text())
         with open(layout.workspace / "sbom_readable.json", "w") as f:
             json.dump(sbom_data, f, indent=2)
-        patch_ree_draft_metadata(ReeStore(layout), {"sbom": "sbom.json"})
+        patch_ree_intent(ReeStore(layout), {"sbom": "sbom.json"})
     except Exception as exc:
         log("system", "error", f"post-processing SBOM failed: {exc}")
         return ActionResult(status="failed", exit_code=1)

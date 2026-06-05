@@ -18,7 +18,8 @@ import {
 // ================================================
 
 interface MapRawReeDraftToReeOptions {
-  reeDraft: Record<string, unknown> | null | undefined;
+  reeIntent: Record<string, unknown> | null | undefined;
+  reeSession?: Record<string, unknown> | null | undefined;
   fallbackName: string;
   fallbackOriginUrl?: string;
 }
@@ -81,13 +82,20 @@ function mapRawResourceEstimates(value: unknown): ReeExperiment["resource_estima
 // ================================================
 
 export function mapRawReeDraftToSlices({
-  reeDraft,
+  reeIntent,
+  reeSession,
   fallbackName,
   fallbackOriginUrl = "",
 }: MapRawReeDraftToReeOptions): RawReeDraftSlices {
-  const draft = reeDraft || {};
-  const experiments: ReeExperiment[] = Array.isArray(draft.experiments)
-    ? draft.experiments.map((entry) => {
+  const intent = reeIntent || {};
+  const session = reeSession || {};
+  const packaging =
+    intent.packaging && typeof intent.packaging === "object"
+      ? (intent.packaging as Record<string, unknown>)
+      : {};
+
+  const experiments: ReeExperiment[] = Array.isArray(intent.experiments)
+    ? intent.experiments.map((entry) => {
         const item = (entry as Record<string, unknown>) || {};
         return {
           ...createEmptyReeExperiment(),
@@ -105,48 +113,48 @@ export function mapRawReeDraftToSlices({
 
   return {
     reeSpec: {
-      name: String(draft.name ?? fallbackName ?? ""),
-      catalog_metadata: mapRawCatalogMetadata(draft.catalog_metadata),
-      origin_url: String(draft.origin_url ?? fallbackOriginUrl ?? ""),
-      source_type: (draft.source_type as ReeSpec["source_type"]) || "",
-      runtime: String(draft.runtime ?? ""),
-      build_runtime_script: String(draft.build_runtime_script ?? ""),
-      activation_script: String(draft.activation_script ?? ""),
-      sbom: String(draft.sbom ?? ""),
-      swhid: String(draft.swhid ?? ""),
-      zenodo_doi: draft.zenodo_doi ? String(draft.zenodo_doi) : undefined,
-      dataverse_doi: draft.dataverse_doi ? String(draft.dataverse_doi) : undefined,
-      detected_dependencies: draft.detected_dependencies
-        ? String(draft.detected_dependencies)
+      name: String(intent.name ?? fallbackName ?? ""),
+      catalog_metadata: mapRawCatalogMetadata(intent.catalog_metadata),
+      origin_url: String(intent.origin_url ?? fallbackOriginUrl ?? ""),
+      source_type: (intent.source_type as ReeSpec["source_type"]) || "",
+      runtime: String(intent.runtime ?? ""),
+      build_runtime_script: String(intent.build_runtime_script ?? ""),
+      activation_script: String(intent.activation_script ?? ""),
+      sbom: String(intent.sbom ?? ""),
+      swhid: String(intent.swhid ?? ""),
+      zenodo_doi: intent.zenodo_doi ? String(intent.zenodo_doi) : undefined,
+      dataverse_doi: intent.dataverse_doi ? String(intent.dataverse_doi) : undefined,
+      detected_dependencies: intent.detected_dependencies
+        ? String(intent.detected_dependencies)
         : undefined,
       experiments,
-      hardware_description: normalizeHBOM(draft.hardware_description),
+      hardware_description: normalizeHBOM(intent.hardware_description),
     },
     workspaceSourceState: {
-      sourceAvailable: Boolean(draft.source_available),
-      sourceIncluded: Boolean(draft.source_included),
+      sourceAvailable: Boolean(session.source_available),
+      sourceIncluded: Boolean(packaging.source_included ?? session.source_included),
       sourceAcquiredBy:
-        (draft.source_acquired_by as WorkspaceSourceState["sourceAcquiredBy"]) || undefined,
-      uploadedArchive: draft.uploaded_archive ? String(draft.uploaded_archive) : undefined,
-      sourceSnapshotArchive: draft.source_snapshot_archive
-        ? String(draft.source_snapshot_archive)
+        (session.source_acquired_by as WorkspaceSourceState["sourceAcquiredBy"]) || undefined,
+      uploadedArchive: session.uploaded_archive ? String(session.uploaded_archive) : undefined,
+      sourceSnapshotArchive: session.source_snapshot_archive
+        ? String(session.source_snapshot_archive)
         : undefined,
-      sourceSnapshotCapturedAt: draft.source_snapshot_captured_at
-        ? String(draft.source_snapshot_captured_at)
+      sourceSnapshotCapturedAt: session.source_snapshot_captured_at
+        ? String(session.source_snapshot_captured_at)
         : undefined,
     },
     artifactStatus: {
-      runtimeIncluded: Boolean(draft.runtime_included),
-      downloadableFiles: Array.isArray(draft.downloadable_files)
-        ? draft.downloadable_files.map((item) => String(item))
+      runtimeIncluded: Boolean(packaging.runtime_included ?? session.runtime_included),
+      downloadableFiles: Array.isArray(session.downloadable_files)
+        ? session.downloadable_files.map((item) => String(item))
         : [],
-      sealedAt: draft.sealed_at ? String(draft.sealed_at) : undefined,
-      sealHash: draft.seal_hash ? String(draft.seal_hash) : undefined,
+      sealedAt: session.sealed_at ? String(session.sealed_at) : undefined,
+      sealHash: session.seal_hash ? String(session.seal_hash) : undefined,
     },
     evaluationState: {
-      dependencyLevel: Number(draft.dependency_level ?? 0),
-      environmentLevel: Number(draft.environment_level ?? 0),
-      machineLevel: Number(draft.machine_level ?? 0),
+      dependencyLevel: Number(session.dependency_level ?? 0),
+      environmentLevel: Number(session.environment_level ?? 0),
+      machineLevel: Number(session.machine_level ?? 0),
     },
   };
 }

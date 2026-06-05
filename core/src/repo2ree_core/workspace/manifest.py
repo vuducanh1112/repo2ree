@@ -2,9 +2,9 @@
 
 The manifest is the JSON payload written to ``manifest.json`` and embedded
 into the downloadable bundle as ``ree/ree.json``. It is computed from a
-:class:`~repo2ree_core.domain.ree.REE` together with the surrounding
-:class:`~repo2ree_core.workspace.model.WorkspaceMetadata` (name, origin URL,
-source type). This module performs no I/O.
+:class:`~repo2ree_core.domain.ree_intent.ReeIntent` and a
+:class:`~repo2ree_core.domain.ree_session.ReeSession` together with the
+surrounding workspace metadata. This module performs no I/O.
 """
 
 from __future__ import annotations
@@ -12,23 +12,25 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.storage.layout import normalize_workspace_path
 
 
 def build_manifest_payload(
     metadata: Mapping[str, Any],
-    ree: REE,
+    intent: ReeIntent,
+    session: ReeSession,
     *,
     ree_id: str,
 ) -> dict[str, Any]:
-    """Merge ``ree`` with workspace ``metadata`` into the published manifest."""
-    runtime_path = normalize_workspace_path(ree.runtime)
-    sbom_path = normalize_workspace_path(ree.sbom)
-    build_script_path = normalize_workspace_path(ree.build_runtime_script)
-    activation_script_path = normalize_workspace_path(ree.activation_script)
+    """Merge ``intent`` and ``session`` with workspace ``metadata`` into the published manifest."""
+    runtime_path = normalize_workspace_path(intent.runtime)
+    sbom_path = normalize_workspace_path(intent.sbom)
+    build_script_path = normalize_workspace_path(intent.build_runtime_script)
+    activation_script_path = normalize_workspace_path(intent.activation_script)
 
-    manifest = ree.as_manifest()
+    manifest = {**intent.as_manifest(), **session.as_manifest_fields()}
     manifest["name"] = (
         metadata.get("name") or manifest["name"] or f"workspace-{ree_id[:8]}"
     )

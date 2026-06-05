@@ -30,7 +30,8 @@ export interface ReviewDetail {
   createdAt: string;
   updatedAt: string;
   archiveName?: string;
-  reeDraft: Record<string, unknown>;
+  reeIntent: Record<string, unknown>;
+  reeSession?: Record<string, unknown>;
   files?: Array<{ path: string; size?: number }>;
   workspaceFiles?: Array<{ path: string; size?: number }>;
 }

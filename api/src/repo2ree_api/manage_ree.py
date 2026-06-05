@@ -44,7 +44,7 @@ from repo2ree_api.storage.upload_staging import (
     staged_upload_path,
 )
 from repo2ree_api.schemas import (
-    ReeDraftPatchPayload,
+    ReeIntentPatchPayload,
     SourceAcquirePayload,
     SourceUploadCompletePayload,
     UploadInitPayload,
@@ -188,14 +188,14 @@ def get_workspace_route(ree_id: str):
 
 
 @manage_ree_router.patch("/api/v1/rees/{ree_id}/draft")
-def patch_ree_draft_route(ree_id: str, payload: ReeDraftPatchPayload):
+def patch_ree_draft_route(ree_id: str, payload: ReeIntentPatchPayload):
     handle = _require_handle(ree_id)
     current = workbench_manager.get_ree_metadata(handle)
     if payload.expectedVersion and payload.expectedVersion != current.get("updatedAt"):
         raise HTTPException(status_code=409, detail="Workspace version conflict")
 
     cmd = PatchReeDraftCommand(
-        args=PatchReeDraftArgs(patch=dict(payload.reePatch or {}))
+        args=PatchReeDraftArgs(patch=dict(payload.reeIntentPatch or {}))
     )
     wb_result = workbench_manager.dispatch_action(
         handle, cmd, "patch-draft", lambda *_: None

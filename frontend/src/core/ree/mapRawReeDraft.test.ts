@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { mapRawReeDraftToSlices } from "./mapRawReeDraft";
 
 describe("mapRawReeDraftToSlices", () => {
-  it("hydrates experiment estimates from persisted drafts", () => {
+  it("hydrates experiment estimates from persisted intent", () => {
     const mapped = mapRawReeDraftToSlices({
-      reeDraft: {
+      reeIntent: {
         experiments: [
           {
             name: "benchmark",
@@ -43,7 +43,7 @@ describe("mapRawReeDraftToSlices", () => {
 
   it("backfills missing experiment estimates with stable defaults", () => {
     const mapped = mapRawReeDraftToSlices({
-      reeDraft: {
+      reeIntent: {
         experiments: [{ name: "smoke", command: "pytest -q" }],
       },
       fallbackName: "demo",
@@ -64,5 +64,17 @@ describe("mapRawReeDraftToSlices", () => {
         },
       },
     ]);
+  });
+
+  it("reads source_included and runtime_included from packaging", () => {
+    const mapped = mapRawReeDraftToSlices({
+      reeIntent: { packaging: { source_included: true, runtime_included: false } },
+      reeSession: { source_available: true },
+      fallbackName: "demo",
+    });
+
+    expect(mapped.workspaceSourceState.sourceIncluded).toBe(true);
+    expect(mapped.artifactStatus.runtimeIncluded).toBe(false);
+    expect(mapped.workspaceSourceState.sourceAvailable).toBe(true);
   });
 });

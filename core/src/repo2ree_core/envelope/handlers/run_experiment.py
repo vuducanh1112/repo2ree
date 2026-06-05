@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.ree import REE
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_protocol.command import RunExperimentArgs
 from repo2ree_core.envelope.handlers._common import (
-    patch_ree_draft_metadata,
+    patch_ree_intent,
     resolve_workspace_path,
 )
 from repo2ree_protocol.result import ActionResult
@@ -33,9 +33,9 @@ def handle_run_experiment(
 
     try:
         metadata = store.read_metadata_json()
-        ree = REE.from_metadata(metadata)
+        ree = ReeIntent.from_metadata(metadata)
     except Exception as exc:
-        log("system", "error", f"Invalid REE draft: {exc}")
+        log("system", "error", f"Invalid REE intent: {exc}")
         return ActionResult(status="failed", exit_code=1)
 
     runtime_path = ree.runtime.strip()
@@ -77,7 +77,7 @@ def handle_run_experiment(
 
     if outcome.snapshot_to_persist is not None:
         raw_experiments = list(
-            (metadata.get("reeDraft") or {}).get("experiments") or []
+            (metadata.get("reeIntent") or {}).get("experiments") or []
         )
         updated = False
         for i, raw_exp in enumerate(raw_experiments):
@@ -90,10 +90,10 @@ def handle_run_experiment(
                 break
         if updated:
             try:
-                patch_ree_draft_metadata(store, {"experiments": raw_experiments})
+                patch_ree_intent(store, {"experiments": raw_experiments})
                 outputs["snapshotApplied"] = True
                 outputs["snapshotMessage"] = (
-                    f"Saved {len(outcome.snapshot_to_persist)} baseline(s) to the draft."
+                    f"Saved {len(outcome.snapshot_to_persist)} baseline(s) to the intent."
                 )
             except Exception as exc:
                 log("system", "error", f"failed to persist snapshot: {exc}")

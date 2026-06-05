@@ -18,13 +18,13 @@ def temp_storage(tmp_path, monkeypatch):
     yield tmp_path
 
 
-def test_ree_from_metadata_normalizes_legacy_invalid_hardware_description_payload():
-    from repo2ree_core.domain.ree import REE
+def test_ree_from_metadata_normalizes_invalid_hardware_description_payload():
+    from repo2ree_core.domain.ree_intent import ReeIntent
 
-    ree = REE.from_metadata(
+    intent = ReeIntent.from_metadata(
         {
-            "reeDraft": {
-                "name": "legacy-hbom",
+            "reeIntent": {
+                "name": "hbom-test",
                 "hardware_description": {
                     "memory": "asdasd",
                     "cpu": "awdasd",
@@ -34,10 +34,10 @@ def test_ree_from_metadata_normalizes_legacy_invalid_hardware_description_payloa
         }
     )
 
-    assert ree.hardware_description.memory == {}
-    assert ree.hardware_description.cpus == {}
-    assert ree.hardware_description.gpus == {}
-    assert ree.hardware_description.extra_info == {
+    assert intent.hardware_description.memory == {}
+    assert intent.hardware_description.cpus == {}
+    assert intent.hardware_description.gpus == {}
+    assert intent.hardware_description.extra_info == {
         "memory": "asdasd",
         "cpu": "awdasd",
         "gpu": "awdwad",

@@ -1,3 +1,4 @@
+import type { ReeIntentPatch } from "../../../../core/ree/reePatch";
 import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
@@ -8,7 +9,7 @@ import { useReeClient } from "../../../data/ree/client";
 import type { ShowToast } from "../types";
 
 interface UseReeDownloadsArgs {
-  buildReePatch: () => Record<string, unknown>;
+  buildReePatch: () => ReeIntentPatch;
   getReeName: () => string;
   showToast: ShowToast;
 }

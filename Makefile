@@ -95,7 +95,7 @@ e2e-demo:
 
 workbench-image:
 	@echo "Staging untracked executor sources for nix..."
-	git add -N protocol/src core/src/repo2ree_core/envelope executor/src/repo2ree_executor 2>/dev/null || true
+	git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor 2>/dev/null || true
 	@echo "Building workbench image..."
 	nix build .#workbench-image
 	@echo "Loading into docker..."
