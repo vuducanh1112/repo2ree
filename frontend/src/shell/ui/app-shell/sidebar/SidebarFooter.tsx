@@ -4,15 +4,10 @@ import { ActionBtn } from "../AppShellNav";
 
 interface SidebarFooterProps {
   navCollapsed: boolean;
-  onDownloadRee: () => void;
   onPreviewReviewer: () => void;
 }
 
-export function SidebarFooter({
-  navCollapsed,
-  onDownloadRee,
-  onPreviewReviewer,
-}: SidebarFooterProps) {
+export function SidebarFooter({ navCollapsed, onPreviewReviewer }: SidebarFooterProps) {
   return (
     <div
       style={{
@@ -21,23 +16,6 @@ export function SidebarFooter({
         borderTop: `1px solid ${C.border}`,
       }}
     >
-      <div style={{ marginBottom: 8 }}>
-        <ActionBtn
-          title="Download REE"
-          label="Download REE"
-          subtitle="export backend archive"
-          icon={Ic.download(11)}
-          iconBg="#2563eb"
-          labelColor="#1e3a8a"
-          subtitleColor={C.textMuted}
-          background="#eef6ff"
-          border="#dbeafe"
-          hoverBackground="#e0f2ff"
-          hoverBorder="#93c5fd"
-          navCollapsed={navCollapsed}
-          onClick={onDownloadRee}
-        />
-      </div>
       <ActionBtn
         title="Preview Review"
         label="Preview"

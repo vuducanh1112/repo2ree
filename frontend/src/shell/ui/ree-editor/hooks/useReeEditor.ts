@@ -22,6 +22,7 @@ import type { AppShellAction } from "../../app-shell/state/types";
 import type { UiChromeState } from "../../app-shell/state/uiChrome";
 import { useReeAssemblyRuns } from "../assembly-runs/useReeAssemblyRuns";
 import { useReeDownloads } from "../downloads/useReeDownloads";
+import { useReeSeal } from "../seal/useReeSeal";
 import { useSourceAcquisition } from "../source-acquisition/useSourceAcquisition";
 import type { ShowToast } from "../types";
 import { useWorkspaceFilePersistence } from "../workspace-files/useWorkspaceFilePersistence";
@@ -66,7 +67,6 @@ export function useReeEditor({
 
   const hydrateWorkspace = useMemo(() => createHydrateReeWorkspace(dispatch), [dispatch]);
   const {
-    buildReePatch,
     refreshWorkspace,
     refreshWorkspaceFiles,
     flush: flushReeIntent,
@@ -102,10 +102,11 @@ export function useReeEditor({
       onRunFinished: runSession.noteRunFinished,
     });
   const { downloadWorkspaceFile, handleDownloadRee } = useReeDownloads({
-    buildReePatch,
     getReeName: () => ree.name || "",
     showToast,
+    reeId,
   });
+  const { handleSealRee } = useReeSeal({ reeId, showToast, hydrateWorkspace });
 
   const workspaceRemote = useMemo(
     () => createWorkspaceRemoteState({ workspaceFiles, reeArtifactFiles, reeSession, uiChrome }),
@@ -125,6 +126,7 @@ export function useReeEditor({
         cancelAction,
         persistWorkspaceFile,
         handleDownloadRee,
+        handleSealRee,
         handleDownloadSourceFiles,
         handleWorkspaceUpload,
         handleRemoveWorkspaceSource,
@@ -132,11 +134,13 @@ export function useReeEditor({
         flushReeIntent,
       }),
     [
+      assemblyRun,
       cancelAction,
       dispatch,
       downloadWorkspaceFile,
       flushReeIntent,
       handleDownloadRee,
+      handleSealRee,
       handleDownloadSourceFiles,
       handleRemoveWorkspaceSource,
       handleWorkspaceUpload,
@@ -147,7 +151,6 @@ export function useReeEditor({
       runAssemblyStep,
       showToast,
       uiChrome,
-      assemblyRun,
     ],
   );
 

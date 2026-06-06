@@ -7,7 +7,10 @@ from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.storage.workspace_ops import build_workspace_ree_archive
+from repo2ree_core.storage.workspace_ops import (
+    build_workspace_ree_archive,
+    seal_workspace_ree,
+)
 
 
 def _make_ree(storage_root, name):
@@ -34,6 +37,10 @@ def _write_metadata(layout, metadata):
     layout.metadata.write_text(json.dumps(metadata), encoding="utf-8")
 
 
+def _read_metadata(layout):
+    return json.loads(layout.metadata.read_text(encoding="utf-8"))
+
+
 def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     storage_root = tmp_path / "storage"
     ree_id, layout = _make_ree(storage_root, "bundle-test")
@@ -44,7 +51,7 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     (workspace_root / "sbom.json").write_text('{"bom":1}', encoding="utf-8")
     (ree_root / "snapshot.tar.gz").write_bytes(b"snapshot-bytes")
 
-    metadata = json.loads(layout.metadata.read_text(encoding="utf-8"))
+    metadata = _read_metadata(layout)
     metadata["reeIntent"] = {
         **(metadata.get("reeIntent") or {}),
         "runtime": "/runtime.tar.gz",
@@ -56,9 +63,14 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     }
     _write_metadata(layout, metadata)
 
-    archive_bytes = build_workspace_ree_archive(
-        storage_root, ree_id, include_source=False, include_runtime=False
+    seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=False,
+        runtime_included=False,
+        sealed_at="2026-01-01T00:00:00Z",
     )
+    archive_bytes = build_workspace_ree_archive(storage_root, ree_id)
 
     with zipfile.ZipFile(io.BytesIO(archive_bytes)) as zf:
         names = zf.namelist()
@@ -83,7 +95,7 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
     (workspace_root / "sbom.json").write_text('{"bom":1}', encoding="utf-8")
     (ree_root / "snapshot.tar.gz").write_bytes(b"snapshot-bytes")
 
-    metadata = json.loads(layout.metadata.read_text(encoding="utf-8"))
+    metadata = _read_metadata(layout)
     metadata["reeIntent"] = {
         **(metadata.get("reeIntent") or {}),
         "runtime": "/runtime.tar.gz",
@@ -95,9 +107,14 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
     }
     _write_metadata(layout, metadata)
 
-    archive_bytes = build_workspace_ree_archive(
-        storage_root, ree_id, include_source=True, include_runtime=True
+    seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=True,
+        runtime_included=True,
+        sealed_at="2026-01-01T00:00:00Z",
     )
+    archive_bytes = build_workspace_ree_archive(storage_root, ree_id)
 
     with zipfile.ZipFile(io.BytesIO(archive_bytes)) as zf:
         names = zf.namelist()
@@ -108,3 +125,118 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
     assert "ree/artifacts/sbom.json" in names
     assert manifest["runtime"] == "artifacts/runtime.tar.gz"
     assert manifest["sbom"] == "artifacts/sbom.json"
+
+
+def test_seal_persists_seal_facts_and_content_hash(tmp_path):
+    storage_root = tmp_path / "storage"
+    ree_id, layout = _make_ree(storage_root, "seal-test")
+    (layout.workspace / "test.py").write_text("print('hi')", encoding="utf-8")
+
+    outputs = seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=False,
+        runtime_included=False,
+        sealed_at="2026-06-05T12:00:00Z",
+    )
+
+    assert outputs["sealedAt"] == "2026-06-05T12:00:00Z"
+    assert outputs["sealHash"].startswith("sha256:")
+    assert len(outputs["sealHash"]) == len("sha256:") + 64
+
+    # Session persisted in metadata
+    metadata = _read_metadata(layout)
+    session = metadata["reeSession"]
+    assert session["sealed_at"] == "2026-06-05T12:00:00Z"
+    assert session["seal_hash"] == outputs["sealHash"]
+
+    # sealed.zip written
+    assert layout.sealed_archive.exists()
+
+    # manifest.json reflects seal facts
+    manifest = json.loads(layout.manifest.read_text(encoding="utf-8"))
+    assert manifest["sealed_at"] == "2026-06-05T12:00:00Z"
+    assert manifest["seal_hash"] == outputs["sealHash"]
+
+    # bundle contains manifest with matching seal_hash
+    with zipfile.ZipFile(layout.sealed_archive) as zf:
+        bundle_manifest = json.loads(zf.read("ree/ree.json"))
+    assert bundle_manifest["seal_hash"] == outputs["sealHash"]
+
+
+def test_seal_hash_is_stable_with_same_content(tmp_path):
+    storage_root = tmp_path / "storage"
+    ree_id, layout = _make_ree(storage_root, "stable-hash-test")
+    (layout.workspace / "code.py").write_text("x = 1", encoding="utf-8")
+
+    out1 = seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=False,
+        runtime_included=False,
+        sealed_at="2026-06-05T12:00:00Z",
+    )
+    out2 = seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=False,
+        runtime_included=False,
+        sealed_at="2026-06-05T12:00:00Z",
+    )
+    assert out1["sealHash"] == out2["sealHash"]
+
+
+def test_seal_hash_changes_with_different_content(tmp_path):
+    storage_root = tmp_path / "storage"
+    ree_id, layout = _make_ree(storage_root, "content-hash-test")
+
+    # Place the file in overlay/ so it ends up in the bundle entries.
+    (layout.overlay / "code.py").write_text("x = 1", encoding="utf-8")
+    out1 = seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=False,
+        runtime_included=False,
+        sealed_at="2026-06-05T12:00:00Z",
+    )
+
+    (layout.overlay / "code.py").write_text("x = 2", encoding="utf-8")
+    out2 = seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=False,
+        runtime_included=False,
+        sealed_at="2026-06-05T12:00:00Z",
+    )
+
+    assert out1["sealHash"] != out2["sealHash"]
+
+
+def test_build_archive_raises_before_seal(tmp_path):
+    storage_root = tmp_path / "storage"
+    ree_id, _ = _make_ree(storage_root, "unsealed")
+
+    try:
+        build_workspace_ree_archive(storage_root, ree_id)
+        assert False, "Expected RuntimeError"
+    except RuntimeError as exc:
+        assert "not sealed" in str(exc).lower()
+
+
+def test_build_archive_returns_stored_bytes_after_seal(tmp_path):
+    storage_root = tmp_path / "storage"
+    ree_id, layout = _make_ree(storage_root, "sealed-download")
+    (layout.workspace / "run.sh").write_text("echo hi", encoding="utf-8")
+
+    seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=False,
+        runtime_included=False,
+        sealed_at="2026-06-05T00:00:00Z",
+    )
+    bytes1 = build_workspace_ree_archive(storage_root, ree_id)
+    bytes2 = build_workspace_ree_archive(storage_root, ree_id)
+
+    assert bytes1 == bytes2
+    assert bytes1 == layout.sealed_archive.read_bytes()

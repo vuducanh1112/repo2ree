@@ -36,7 +36,7 @@ from repo2ree_protocol.command import (
     WriteFileArgs,
 )
 from repo2ree_core.storage.layout import WORKBENCH_ROOT
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import WorkbenchHandle, WorkbenchUnavailableError
 from repo2ree_api.storage.upload_staging import (
     discard_staged_upload,
     new_upload_token,
@@ -45,6 +45,7 @@ from repo2ree_api.storage.upload_staging import (
 )
 from repo2ree_api.schemas import (
     ReeIntentPatchPayload,
+    ReeSealPayload,
     SourceAcquirePayload,
     SourceUploadCompletePayload,
     UploadInitPayload,
@@ -53,7 +54,17 @@ from repo2ree_api.schemas import (
 )
 
 
+# ================================================
+# Logging
+# ================================================
+
+
 _log = logging.getLogger(__name__)
+
+
+# ================================================
+# Utility Functions
+# ================================================
 
 
 def _require_handle(ree_id: str) -> WorkbenchHandle:
@@ -454,19 +465,32 @@ def reprovision_workbench_route(ree_id: str):
     return {"status": "reprovisioned", "reeId": ree_id}
 
 
-@manage_ree_router.get("/api/v1/rees/{ree_id}/ree-archive")
-def download_workspace_ree_archive_route(
-    ree_id: str,
-    include_source: bool = Query(False),
-    include_runtime: bool = Query(False),
-):
+@manage_ree_router.post("/api/v1/rees/{ree_id}/ree:seal")
+def seal_ree_route(ree_id: str, payload: ReeSealPayload):
     handle = _require_handle(ree_id)
     try:
-        archive_bytes = workbench_manager.build_archive(
-            handle, include_source=include_source, include_runtime=include_runtime
+        workspace = workbench_manager.seal(
+            handle,
+            source_included=payload.includeSource,
+            runtime_included=payload.includeRuntime,
         )
+    except WorkbenchUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return workspace
+
+
+@manage_ree_router.get("/api/v1/rees/{ree_id}/ree-archive")
+def download_workspace_ree_archive_route(ree_id: str):
+    handle = _require_handle(ree_id)
+    try:
+        archive_bytes = workbench_manager.build_archive(handle)
+    except RuntimeError as exc:
+        detail = str(exc)
+        if "not sealed" in detail.lower():
+            raise HTTPException(status_code=409, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=detail) from exc
     archive_filename = _archive_download_filename(handle)
     return Response(
         content=archive_bytes,

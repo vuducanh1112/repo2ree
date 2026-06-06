@@ -1,4 +1,4 @@
-"""Read-only workspace/REE views and bundle assembly.
+"""Workspace/REE views and bundle assembly.
 
 Imperative shell: functions perform filesystem I/O through ReeStore and
 ReeLayout. No function reads from application settings; callers pass
@@ -7,21 +7,24 @@ ReeLayout. No function reads from application settings; callers pass
 These operations run **inside the workbench** (via the ``repo2ree`` CLI), which
 is the single source of truth for REE state. Mutating workspace operations
 (acquire, write, patch, upload, remove) are owned by the command-envelope
-handlers in ``repo2ree_core.envelope.handlers``; this module only provides the
-read views (``get_workspace``, ``read_file_bytes``) and the downloadable bundle
-builder (``build_workspace_ree_archive``) the CLI exposes.
+handlers in ``repo2ree_core.envelope.handlers``; this module provides the
+read views (``get_workspace``, ``read_file_bytes``), the sealing operation
+(``seal_workspace_ree``), and the sealed-bundle reader
+(``build_workspace_ree_archive``) the CLI exposes.
 
 Layered on-disk layout (per REE):
   upstream/        extracted source, treated as read-only
   overlay/         user-added and tool-generated recipe files
   workspace/       materialized view (upstream merged with overlay)
   snapshot.tar.gz  frozen upstream archive
+  sealed.zip       immutable sealed archive (written by seal_workspace_ree)
   .workspace.json  session metadata
   manifest.json    sealed REE spec sidecar
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -46,6 +49,7 @@ from repo2ree_core.workspace.bundle import (
     rewrite_manifest_for_bundle,
     should_include_snapshot,
 )
+from repo2ree_core.envelope.handlers._common import utc_now
 from repo2ree_core.workspace.inventory import (
     classify_file_kind,
     is_reserved_workspace_filename,
@@ -66,9 +70,9 @@ def _build_manifest_payload(
     return build_manifest_payload(metadata, intent, session, ree_id=ree_id)
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
+# ================================================
+# Internal Helpers
+# ================================================
 
 
 def _layout(storage_root: Path, ree_id: str) -> ReeLayout:
@@ -250,9 +254,9 @@ def _workspace_ree_files_with_content(
     return ree_files
 
 
-# ---------------------------------------------------------------------------
-# Public operations (read views + bundle builder)
-# ---------------------------------------------------------------------------
+# ================================================
+# Public Operations
+# ================================================
 
 
 def get_workspace(
@@ -275,26 +279,26 @@ def read_file_bytes(storage_root: Path, ree_id: str, path: str) -> bytes:
     return fp.read_bytes()
 
 
-def build_workspace_ree_archive(
-    storage_root: Path,
-    ree_id: str,
+def _assemble_bundle(
+    layout: ReeLayout,
+    metadata: dict[str, Any],
+    intent: ReeIntent,
+    session: ReeSession,
     *,
-    include_source: bool,
-    include_runtime: bool,
-) -> bytes:
-    metadata = _read_metadata(storage_root, ree_id)
-    layout = _layout(storage_root, ree_id)
-    intent = _intent_from_metadata(metadata)
-    session = _session_from_metadata(metadata).with_packaging(
-        source_included=include_source, runtime_included=include_runtime
-    )
-    sidecar_manifest = _build_manifest_payload(metadata, intent, session, ree_id=ree_id)
+    ree_id: str,
+) -> tuple[bytes, dict[str, Any]]:
+    """Build the ZIP bytes and sidecar manifest from settled intent + session.
 
+    The session must already carry the desired source_included/runtime_included
+    (and sealed_at/seal_hash when building the final sealed bundle).
+    Returns ``(zip_bytes, sidecar_manifest)``.
+    """
+    sidecar_manifest = _build_manifest_payload(metadata, intent, session, ree_id=ree_id)
     artifact_plan = _build_artifact_plan(
-        layout, intent, include_runtime=include_runtime
+        layout, intent, include_runtime=session.runtime_included
     )
     include_snapshot = should_include_snapshot(
-        source_included=include_source,
+        source_included=session.source_included,
         source_snapshot_archive=session.source_snapshot_archive,
     )
     bundle_manifest = rewrite_manifest_for_bundle(
@@ -309,6 +313,82 @@ def build_workspace_ree_archive(
         include_snapshot=include_snapshot,
         manifest_bytes=manifest_bytes,
     )
+    return build_zip_bytes(entries), sidecar_manifest
+
+
+def seal_workspace_ree(
+    storage_root: Path,
+    ree_id: str,
+    *,
+    source_included: bool,
+    runtime_included: bool,
+    sealed_at: str,
+) -> dict[str, Any]:
+    """Build, hash, and persist the sealed REE archive.
+
+    1. Assembles the bundle without seal stamps to compute a content digest.
+    2. Re-assembles with the real seal_hash embedded in the manifest.
+    3. Writes sealed.zip, manifest.json, and updates reeSession in metadata.
+
+    Returns the settled seal facts.
+    """
+    metadata = _read_metadata(storage_root, ree_id)
+    layout = _layout(storage_root, ree_id)
     store = _store(storage_root, ree_id)
+    intent = _intent_from_metadata(metadata)
+    session = _session_from_metadata(metadata).with_packaging(
+        source_included=source_included,
+        runtime_included=runtime_included,
+    )
+
+    # Pre-pass: assemble without seal stamps to obtain a stable content digest.
+    # Strip any previously persisted seal stamps so re-sealing produces the
+    # same digest when content hasn't changed.
+    preseal_session = session.model_copy(update={"sealed_at": None, "seal_hash": None})
+    preseal_bytes, _ = _assemble_bundle(
+        layout, metadata, intent, preseal_session, ree_id=ree_id
+    )
+    digest = hashlib.sha256(preseal_bytes).hexdigest()
+    seal_hash = f"sha256:{digest}"
+
+    # Settle all four seal facts into the session.
+    session = session.with_seal(
+        sealed_at=sealed_at,
+        seal_hash=seal_hash,
+        source_included=source_included,
+        runtime_included=runtime_included,
+    )
+
+    # Final assembly with the real seal_hash in the manifest.
+    zip_bytes, sidecar_manifest = _assemble_bundle(
+        layout, metadata, intent, session, ree_id=ree_id
+    )
+
+    # Persist everything atomically within the workbench lock (held by caller).
+    layout.sealed_archive.write_bytes(zip_bytes)
     store.write_manifest(sidecar_manifest)
-    return build_zip_bytes(entries)
+    metadata["reeSession"] = session.model_dump(exclude_none=True)
+    metadata["updatedAt"] = utc_now()
+    store.write_metadata_json(metadata)
+
+    return {
+        "sealedAt": session.sealed_at,
+        "sealHash": session.seal_hash,
+        "sourceIncluded": session.source_included,
+        "runtimeIncluded": session.runtime_included,
+    }
+
+
+def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
+    """Return the sealed archive bytes.
+
+    Raises RuntimeError if the REE has not been sealed yet.
+    """
+    metadata = _read_metadata(storage_root, ree_id)
+    session = _session_from_metadata(metadata)
+    if not session.is_sealed:
+        raise RuntimeError("REE is not sealed")
+    layout = _layout(storage_root, ree_id)
+    if not layout.sealed_archive.exists():
+        raise RuntimeError("Sealed archive file not found; please re-seal")
+    return layout.sealed_archive.read_bytes()

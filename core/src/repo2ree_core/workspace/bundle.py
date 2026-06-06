@@ -32,6 +32,11 @@ from repo2ree_core.storage.layout import (
 )
 
 
+# ================================================
+# Constants
+# ================================================
+
+
 # Bundle layout is derived from the on-disk layout so the two stay in sync.
 # The published manifest entry name (``ree.json``) is bundle-only — the on-disk
 # sidecar is ``manifest.json`` — so it lives here rather than in layout.py.
@@ -42,6 +47,13 @@ REE_SNAPSHOT_ENTRY_PATH = f"{REE_ROOT_PREFIX}{SNAPSHOT_FILENAME}"
 REE_OVERLAY_PREFIX = f"{REE_ROOT_PREFIX}{OVERLAY_DIRNAME}/"
 REE_ARTIFACTS_PREFIX = f"{REE_ROOT_PREFIX}{ARTIFACTS_DIRNAME}/"
 REE_WORKSPACE_DIR_ENTRY = f"{REE_ROOT_PREFIX}{WORKSPACE_DIRNAME}/"
+
+_EPOCH_DATE_TIME = (1980, 1, 1, 0, 0, 0)
+
+
+# ================================================
+# Helpers
+# ================================================
 
 
 def safe_filename(name: str | None, default: str) -> str:
@@ -64,12 +76,16 @@ def build_zip_bytes(entries: Iterable[tuple[str, bytes]]) -> bytes:
 
     ``entries`` is a sequence of ``(archive_path, content_bytes)`` pairs. An
     entry whose ``archive_path`` ends with ``/`` is written as an empty
-    directory. Pure given its inputs: no filesystem access.
+    directory. Entries receive a fixed epoch timestamp so the output is
+    byte-identical for identical inputs (enabling content-addressed seal hashes).
+    Pure given its inputs: no filesystem access.
     """
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
         for archive_path, content in entries:
-            archive.writestr(archive_path, content)
+            info = zipfile.ZipInfo(filename=archive_path, date_time=_EPOCH_DATE_TIME)
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, content)
     return buffer.getvalue()
 
 

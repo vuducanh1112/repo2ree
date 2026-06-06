@@ -1,4 +1,4 @@
-import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
+import { type ArtifactStatus, isSealed } from "../../core/artifact/ArtifactStatus";
 import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
 import type { ActionStates, Badges, Timestamps } from "../../core/ree/ReeTypes";
 import { type EvaluationState, emptyEvaluationState } from "../../core/review/EvaluationState";
@@ -80,7 +80,10 @@ export function createReeEditorStateFromModel(args: {
     artifactStatus: reeSession.artifactStatus,
     evaluationState: assemblyRun.evaluationState,
     editorUi: {
-      locked: uiChrome.locked,
+      // A sealed session is read-only regardless of transient UI flags, so the
+      // lock derives from the session's seal stamps. `uiChrome.locked` still
+      // covers non-seal locking paths (e.g. assembly-driven locks).
+      locked: uiChrome.locked || isSealed(reeSession.artifactStatus),
       repoMode: uiChrome.repoMode,
       sourceSnapshotArchiveName: uiChrome.sourceSnapshotArchiveName,
     },

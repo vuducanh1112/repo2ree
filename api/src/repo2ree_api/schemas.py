@@ -52,6 +52,11 @@ class WorkspaceFileContentPayload(BaseModel):
     ifMatch: str | None = None
 
 
+class ReeSealPayload(BaseModel):
+    includeSource: bool = False
+    includeRuntime: bool = False
+
+
 # ================================================
 # Exceptions
 # ================================================

@@ -111,7 +111,6 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
           provisioned={provisioned}
           setPage={commands.setPage}
           setNavCollapsed={commands.setNavCollapsed}
-          onDownloadRee={commands.onDownloadRee}
           onPreviewReviewer={commands.openReviewPreview}
         />
 

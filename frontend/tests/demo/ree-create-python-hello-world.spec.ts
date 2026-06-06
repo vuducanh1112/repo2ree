@@ -468,20 +468,29 @@ test("upload source archive into workspace", async ({ page }) => {
     // to "included" since they are available in the workspace.
     await expect(main.getByText("Bundle contents", { exact: true })).toBeVisible();
 
-    // Finalizing the seal both locks the REE and builds + downloads the archive
-    // with the chosen bundle contents.
+    // Finalizing the seal locks the REE (read-only) but no longer auto-downloads;
+    // sealing and downloading are now separate actions.
+    await clickDemo(
+      page,
+      main.getByRole("button", { name: /Seal (REE|anyway)/ }),
+      "Finalize seal — locks the REE with the chosen bundle contents",
+    );
+    // Sealing is a heavy synchronous round-trip (the backend assembles the
+    // bundle twice — a digest pre-pass plus the final stamped build — then
+    // re-enumerates the workspace), so allow the same budget as the other
+    // backend-bound steps rather than the tighter 20s that flaked under load.
+    await expect(main.getByText("REE SEALED", { exact: true })).toBeVisible({ timeout: 60000 });
+
+    // The sealed card offers an explicit download of the archive.
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       clickDemo(
         page,
-        main.getByRole("button", { name: /Seal (REE|anyway)/ }),
-        "Finalize seal — bundles and downloads the REE",
+        main.getByRole("button", { name: /Download REE/ }).first(),
+        "Download the sealed REE archive",
       ),
     ]);
-    await expect(main.getByText("REE SEALED", { exact: true })).toBeVisible({ timeout: 20000 });
     expect(download.suggestedFilename()).toMatch(/\.zip$/i);
-    // The sealed card still offers a re-download of the same archive.
-    await expect(main.getByRole("button", { name: /Download REE/ }).first()).toBeVisible();
   });
 
   await test.step("Release workbench", async () => {

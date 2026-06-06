@@ -1,6 +1,5 @@
 import type React from "react";
 import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
-import { planSealArtifactCommands } from "../../../../core/artifact/sealArtifactCommands";
 import type { InclusionOpts } from "../../../../core/ree/InclusionOpts";
 import type { ReeSpec } from "../../../../core/ree/ReeSpec";
 import type { ReeAssemblyOperationParams, SourceUploadCommit } from "../../../../core/ree/ReeTypes";
@@ -11,7 +10,6 @@ import type {
 } from "../../../../core/ree-assembly/assemblyTypes";
 import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
-import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
 import {
   clearToast,
   patch,
@@ -29,7 +27,6 @@ import type { ReeIntentState } from "../../app-shell/state/reeIntent";
 import type { ReeSessionState } from "../../app-shell/state/reeSession";
 import { type AppShellAction, resolveUpdater, type Updater } from "../../app-shell/state/types";
 import type { UiChromeState } from "../../app-shell/state/uiChrome";
-import { executeAssemblyCommands } from "../assembly-runs/assemblyActionEffects";
 import type { ShowToast } from "../types";
 
 interface CreateReeEditorCommandsArgs {
@@ -50,7 +47,8 @@ interface CreateReeEditorCommandsArgs {
     path: string,
     content: string,
   ) => Promise<void>;
-  handleDownloadRee: (inclusionOpts: InclusionOpts) => void;
+  handleDownloadRee: () => void;
+  handleSealRee: (inclusionOpts: InclusionOpts) => Promise<void>;
   handleDownloadSourceFiles: (
     originType: ReeIntentState["reeSpec"]["source_type"],
     sourceUrl: string,
@@ -73,6 +71,7 @@ export function createReeEditorCommands({
   cancelAction,
   persistWorkspaceFile,
   handleDownloadRee,
+  handleSealRee,
   handleDownloadSourceFiles,
   handleWorkspaceUpload,
   handleRemoveWorkspaceSource,
@@ -81,39 +80,20 @@ export function createReeEditorCommands({
 }: CreateReeEditorCommandsArgs) {
   const resolveNext = <T>(previous: T, value: Updater<T>): T => resolveUpdater(previous, value);
 
-  // Inclusion is a seal-time choice, not authoring state. On seal we record the
-  // settled packaging facts into the session (matching the backend's bundle-time
-  // `with_packaging`) and build the archive with the same parameters.
-  const settledInclusion = (): InclusionOpts => ({
-    includeSource: !!reeSession.workspaceSourceState.sourceIncluded,
-    includeRuntime: !!reeSession.artifactStatus.runtimeIncluded,
-  });
-
   const handleSeal = (inclusionOpts: InclusionOpts) => {
-    dispatch(
-      setWorkspaceSourceState((prev) => ({
-        ...prev,
-        sourceIncluded: inclusionOpts.includeSource,
-      })),
-    );
-    dispatch(
-      setArtifactStatus((prev) => ({
-        ...prev,
-        runtimeIncluded: inclusionOpts.includeRuntime,
-      })),
-    );
-    executeAssemblyCommands(
-      planSealArtifactCommands({
-        sealedAt: appShellPorts.clock.nowIso(),
-        sealHash: `sha256:${appShellPorts.random.hex(64)}`,
-      }),
-      {
-        dispatch,
-        persistWorkspaceFile: () => {},
-        showToast,
-      },
-    );
-    handleDownloadRee(inclusionOpts);
+    const runSeal = async () => {
+      // Flush pending intent edits first so the sealed bundle reflects them.
+      try {
+        await flushReeIntent();
+      } catch {
+        showToast("Seal failed: could not save pending changes", "error");
+        return;
+      }
+      // handleSealRee owns its own success/error toasts; the read-only lock
+      // derives from the sealed session it hydrates, so no optimistic dispatch.
+      await handleSealRee(inclusionOpts);
+    };
+    void runSeal();
   };
 
   // Phase 8: keep generic patch only for UI-chrome and low-risk editor toggles
@@ -158,7 +138,7 @@ export function createReeEditorCommands({
     closeReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: false })),
     clearToast: () => dispatch(clearToast()),
     onSeal: handleSeal,
-    onDownloadRee: () => handleDownloadRee(settledInclusion()),
+    onDownloadRee: handleDownloadRee,
     onDownloadSourceFiles: handleDownloadSourceFiles,
     onWorkspaceUpload: (payload: SourceUploadCommit) => handleWorkspaceUpload(payload),
     onRemoveWorkspaceSource: handleRemoveWorkspaceSource,

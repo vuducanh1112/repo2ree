@@ -13,6 +13,7 @@ function buildArgs(queryClient: QueryClient) {
       updateReeIntent: vi.fn(),
       deleteFile: vi.fn(),
       getFileBytes: vi.fn(),
+      sealRee: vi.fn(),
       getReeArchive: vi.fn(),
       resetWorkspaceRequest: vi.fn(async () => {}),
     },

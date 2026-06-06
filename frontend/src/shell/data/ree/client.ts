@@ -4,6 +4,7 @@ import type { ReeIntentPatch } from "../../../core/ree/reePatch";
 import type { FileTreeNode } from "../../../core/workspace/FileTree";
 import type { WorkspaceResetPayload } from "../../../core/workspace/WorkspaceReset";
 import type { ReeProject, WorkspaceBinaryDownload } from "../../../core/workspace/WorkspaceTypes";
+import type { ReeDetailDto } from "../../infra/api/apiTypes";
 import type { ReeApi } from "../../infra/api/ReeApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { ensureReeId } from "../client";
@@ -18,10 +19,11 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
   updateReeIntent(id: ReeId | string, intentPatch: ReeIntentPatch): Promise<void>;
   deleteFile(id: ReeId | string, path: string): Promise<void>;
   getFileBytes(id: ReeId | string, path: string): Promise<ArrayBuffer>;
-  getReeArchive(
+  sealRee(
     id: ReeId | string,
     opts: { includeSource: boolean; includeRuntime: boolean },
-  ): Promise<WorkspaceBinaryDownload>;
+  ): Promise<ReeDetailDto>;
+  getReeArchive(id: ReeId | string): Promise<WorkspaceBinaryDownload>;
   resetWorkspaceRequest(id: ReeId | string, request: WorkspaceResetPayload): Promise<void>;
 }
 
@@ -48,9 +50,13 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
       const reeId = await ensureReeId(runtime, id);
       return runtime.reeApi.getFileBytes(reeId, path);
     },
-    async getReeArchive(id, opts) {
+    async sealRee(id, opts) {
       const reeId = await ensureReeId(runtime, id);
-      return runtime.reeApi.getReeArchive(reeId, opts);
+      return runtime.reeApi.sealRee(reeId, opts);
+    },
+    async getReeArchive(id) {
+      const reeId = await ensureReeId(runtime, id);
+      return runtime.reeApi.getReeArchive(reeId);
     },
     async resetWorkspaceRequest(id, request) {
       const reeId = await ensureReeId(runtime, id);

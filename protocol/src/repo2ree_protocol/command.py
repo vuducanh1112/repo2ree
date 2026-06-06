@@ -234,6 +234,20 @@ class ActivationTestCommand(BaseModel):
     args: ActivationTestArgs
 
 
+class SealReeArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_included: bool = False
+    runtime_included: bool = False
+
+
+class SealReeCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["seal_ree"] = "seal_ree"
+    args: SealReeArgs = SealReeArgs()
+
+
 # Tagged union discriminated on 'operation'.
 Command = Annotated[
     Union[
@@ -252,6 +266,7 @@ Command = Annotated[
         RunExperimentCommand,
         GenerateHbomCommand,
         ActivationTestCommand,
+        SealReeCommand,
     ],
     Field(discriminator="operation"),
 ]

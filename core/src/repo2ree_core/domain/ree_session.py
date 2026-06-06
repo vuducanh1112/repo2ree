@@ -106,11 +106,32 @@ class ReeSession(BaseModel):
             }
         )
 
+    @property
+    def is_sealed(self) -> bool:
+        return bool(self.sealed_at and self.seal_hash)
+
     def with_packaging(
         self, *, source_included: bool, runtime_included: bool
     ) -> "ReeSession":
         return self.model_copy(
             update={
+                "source_included": source_included,
+                "runtime_included": runtime_included,
+            }
+        )
+
+    def with_seal(
+        self,
+        *,
+        sealed_at: str,
+        seal_hash: str,
+        source_included: bool,
+        runtime_included: bool,
+    ) -> "ReeSession":
+        return self.model_copy(
+            update={
+                "sealed_at": sealed_at,
+                "seal_hash": seal_hash,
                 "source_included": source_included,
                 "runtime_included": runtime_included,
             }

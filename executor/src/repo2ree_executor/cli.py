@@ -22,9 +22,9 @@ from repo2ree_core.storage.workspace_ops import get_workspace as _get_workspace
 from repo2ree_core.storage.workspace_ops import read_file_bytes as _read_file_bytes
 
 
-# ------------------------------------------------
-# Log sinks
-# ------------------------------------------------
+# ================================================
+# Logging
+# ================================================
 
 
 def _make_log_sink(run_log: TextIO | None):
@@ -42,9 +42,9 @@ def _make_log_sink(run_log: TextIO | None):
     return _log
 
 
-# ------------------------------------------------
-# Root group
-# ------------------------------------------------
+# ================================================
+# Root CLI group
+# ================================================
 
 
 @click.group()
@@ -56,9 +56,9 @@ def main() -> None:
     cli()
 
 
-# ------------------------------------------------
-# execute  (envelope path — used by the dispatcher)
-# ------------------------------------------------
+# ================================================
+# execute (generic Command envelope)
+# ================================================
 
 
 @cli.command("execute")
@@ -129,9 +129,9 @@ def execute_cmd(action_source: str, run_id: str | None) -> None:
         sys.exit(1)
 
 
-# ------------------------------------------------
+# ================================================
 # acquire-source  (argv-sugar path)
-# ------------------------------------------------
+# ================================================
 
 
 @cli.command("acquire-source")
@@ -164,9 +164,9 @@ def acquire_source_cmd(origin_url: str, source_type: str, dest: str) -> None:
     _emit_result(result)
 
 
-# ------------------------------------------------
+# ================================================
 # init-ree
-# ------------------------------------------------
+# ================================================
 
 
 @cli.command("init-ree")
@@ -205,9 +205,9 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
     click.echo(json.dumps({"status": "initialised", "reeId": ree_id}))
 
 
-# ------------------------------------------------
+# ================================================
 # get-ree
-# ------------------------------------------------
+# ================================================
 
 
 @cli.command("get-ree")
@@ -227,9 +227,9 @@ def get_ree_cmd() -> None:
     click.echo(json.dumps(metadata))
 
 
-# ------------------------------------------------
+# ================================================
 # get-workspace
-# ------------------------------------------------
+# ================================================
 
 
 @cli.command("get-workspace")
@@ -252,35 +252,28 @@ def get_workspace_cmd() -> None:
     click.echo(json.dumps(result))
 
 
-# ------------------------------------------------
+# ================================================
 # build-archive
-# ------------------------------------------------
+# ================================================
 
 
 @cli.command("build-archive")
-@click.option("--include-source", is_flag=True, default=False)
-@click.option("--include-runtime", is_flag=True, default=False)
-def build_archive_cmd(include_source: bool, include_runtime: bool) -> None:
-    """Write the REE zip archive bytes to stdout."""
+def build_archive_cmd() -> None:
+    """Write the sealed REE zip archive bytes to stdout."""
     layout = ReeLayout.in_workbench()
     storage_root = layout.root.parent
     ree_id = layout.root.name
     try:
-        data = _build_archive(
-            storage_root,
-            ree_id,
-            include_source=include_source,
-            include_runtime=include_runtime,
-        )
-    except FileNotFoundError as exc:
+        data = _build_archive(storage_root, ree_id)
+    except (FileNotFoundError, RuntimeError) as exc:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
     sys.stdout.buffer.write(data)
 
 
-# ------------------------------------------------
-# read-file
-# ------------------------------------------------
+# ================================================
+# Read
+# ================================================
 
 
 @cli.command("read-file")
@@ -303,11 +296,6 @@ def read_file_cmd(file_path: str) -> None:
     sys.stdout.buffer.write(data)
 
 
-# ------------------------------------------------
-# read-artifact
-# ------------------------------------------------
-
-
 @cli.command("read-artifact")
 @click.option(
     "--path", "artifact_path", required=True, help="Relative path within artifacts/"
@@ -324,9 +312,9 @@ def read_artifact_cmd(artifact_path: str) -> None:
     sys.stdout.buffer.write(fp.read_bytes())
 
 
-# ------------------------------------------------
+# ================================================
 # Helpers
-# ------------------------------------------------
+# ================================================
 
 
 def _emit_result(result: ActionResult) -> None:

@@ -8,6 +8,7 @@ Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
 
     .workspace.json       session metadata
     manifest.json         sealed REE spec sidecar
+    sealed.zip            immutable sealed archive (written by seal_ree)
     snapshot.tar.gz       frozen upstream archive
     upload-staging/       staging area for in-flight source uploads
     upstream/             extracted snapshot, treated as read-only
@@ -26,8 +27,14 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 
+# ================================================
+# Constants
+# ================================================
+
+
 _METADATA_FILENAME = ".workspace.json"
 _MANIFEST_FILENAME = "manifest.json"
+_SEALED_ARCHIVE_FILENAME = "sealed.zip"
 _UPLOAD_STAGING_DIRNAME = "upload-staging"
 _UPSTREAM_DIRNAME = "upstream"
 
@@ -41,6 +48,11 @@ RUNS_DIRNAME = "runs"
 
 # Fixed mount point inside every REE workbench container.
 WORKBENCH_ROOT = Path("/ree")
+
+
+# ================================================
+# Data Models
+# ================================================
 
 
 @dataclass(frozen=True)
@@ -69,6 +81,10 @@ class ReeLayout:
     @property
     def manifest(self) -> Path:
         return self.root / _MANIFEST_FILENAME
+
+    @property
+    def sealed_archive(self) -> Path:
+        return self.root / _SEALED_ARCHIVE_FILENAME
 
     @property
     def snapshot_archive(self) -> Path:
@@ -124,6 +140,11 @@ class ReeLayout:
     def _resolve_under(base: Path, rel: str | PurePosixPath) -> Path:
         validate_relative_path(rel)
         return base / Path(str(rel))
+
+
+# ================================================
+# Validation and Normalization
+# ================================================
 
 
 def validate_relative_path(rel: str | PurePosixPath) -> None:

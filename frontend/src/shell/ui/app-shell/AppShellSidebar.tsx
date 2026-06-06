@@ -19,7 +19,6 @@ interface AppShellSidebarProps {
   provisioned: boolean;
   setPage: (page: AppShellPage) => void;
   setNavCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
-  onDownloadRee: () => void;
   onPreviewReviewer: () => void;
 }
 
@@ -32,7 +31,6 @@ export function AppShellSidebar({
   provisioned,
   setPage,
   setNavCollapsed,
-  onDownloadRee,
   onPreviewReviewer,
 }: AppShellSidebarProps) {
   const evaluation = {
@@ -160,11 +158,7 @@ export function AppShellSidebar({
         setPage={setPage}
       />
 
-      <SidebarFooter
-        navCollapsed={navCollapsed}
-        onDownloadRee={onDownloadRee}
-        onPreviewReviewer={onPreviewReviewer}
-      />
+      <SidebarFooter navCollapsed={navCollapsed} onPreviewReviewer={onPreviewReviewer} />
     </nav>
   );
 }

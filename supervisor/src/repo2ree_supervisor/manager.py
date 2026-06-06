@@ -18,9 +18,14 @@ import threading
 from dataclasses import dataclass
 
 from repo2ree_protocol.log import LogSink
-from repo2ree_protocol.command import Command
+from repo2ree_protocol.command import Command, SealReeCommand, SealReeArgs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
+
+
+# ================================================
+# Constants
+# ================================================
 
 
 # Exit codes from `docker exec` that mean the container is gone / stopping.
@@ -29,17 +34,13 @@ from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
 _CONTAINER_GONE_EXIT_CODES = frozenset({126, 137})
 
 
+# ================================================
+# Utility Classes
+# ================================================
+
+
 class WorkbenchUnavailableError(RuntimeError):
     """Raised when a docker exec fails because the container is gone or stopping."""
-
-
-def _dind_volume_name(ree_id: str) -> str:
-    """Volume backing the workbench's in-container ``/var/lib/docker``.
-
-    Kept off the container's overlayfs rootfs so the nested daemon can use the
-    overlay2 storage driver (copy-on-write) instead of falling back to vfs.
-    """
-    return f"repo2ree-dind-{ree_id}"
 
 
 @dataclass(frozen=True)
@@ -55,6 +56,11 @@ class WorkbenchHandle:
             container_name=entry.container_name,
             volume_name=entry.volume_name,
         )
+
+
+# ================================================
+# Manager
+# ================================================
 
 
 class WorkbenchManager:
@@ -307,16 +313,28 @@ class WorkbenchManager:
     def read_artifact_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
         return self.dispatch_query(handle, "read-artifact", "--path", path)
 
-    def build_archive(
-        self, handle: WorkbenchHandle, *, include_source: bool, include_runtime: bool
-    ) -> bytes:
-        args = []
-        if include_source:
-            args.append("--include-source")
-        if include_runtime:
-            args.append("--include-runtime")
+    def seal(
+        self,
+        handle: WorkbenchHandle,
+        *,
+        source_included: bool,
+        runtime_included: bool,
+    ) -> dict:  # type: ignore[type-arg]
+        cmd = SealReeCommand(
+            args=SealReeArgs(
+                source_included=source_included,
+                runtime_included=runtime_included,
+            )
+        )
         with self._ree_lock(handle.ree_id):
-            return self.dispatch_query(handle, "build-archive", *args)
+            result = self._dispatch_action_locked(handle, cmd, "seal", lambda *_: None)
+        if result.status != "succeeded":
+            raise RuntimeError(f"seal_ree {result.status}")
+        return self.get_workspace(handle)
+
+    def build_archive(self, handle: WorkbenchHandle) -> bytes:
+        with self._ree_lock(handle.ree_id):
+            return self.dispatch_query(handle, "build-archive")
 
     def list_all_metadata(self) -> list[dict]:  # type: ignore[type-arg]
         """Return metadata for every registered workbench, skipping unreachable ones."""
@@ -347,9 +365,18 @@ class WorkbenchManager:
             )
 
 
-# ------------------------------------------------
+# ================================================
 # Helpers
-# ------------------------------------------------
+# ================================================
+
+
+def _dind_volume_name(ree_id: str) -> str:
+    """Volume backing the workbench's in-container ``/var/lib/docker``.
+
+    Kept off the container's overlayfs rootfs so the nested daemon can use the
+    overlay2 storage driver (copy-on-write) instead of falling back to vfs.
+    """
+    return f"repo2ree-dind-{ree_id}"
 
 
 def _docker(*args: str) -> None:

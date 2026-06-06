@@ -14,8 +14,8 @@ export const endpoints = {
   reeFileContent: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/content`,
   reeFileRaw: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/raw`,
-  reeArchive: (reeId: string, opts: { includeSource: boolean; includeRuntime: boolean }) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive?include_source=${opts.includeSource}&include_runtime=${opts.includeRuntime}`,
+  reeSeal: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:seal`,
+  reeArchive: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive`,
   reeWorkbenchReprovision: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/workbench/reprovision`,
   reeBuildRuntime: (reeId: string) =>

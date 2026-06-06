@@ -1,22 +1,19 @@
-import type { InclusionOpts } from "../../../../core/ree/InclusionOpts";
-import type { ReeIntentPatch } from "../../../../core/ree/reePatch";
+import type { ReeId } from "../../../../core/ree/ReeId";
 import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
 } from "../../../../core/workspace/workspaceFileMutationPlanning";
 import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
-import { useApiRuntime } from "../../../data/apiRuntime";
 import { useReeClient } from "../../../data/ree/client";
 import type { ShowToast } from "../types";
 
 interface UseReeDownloadsArgs {
-  buildReePatch: () => ReeIntentPatch;
   getReeName: () => string;
   showToast: ShowToast;
+  reeId: ReeId;
 }
 
-export function useReeDownloads({ buildReePatch, getReeName, showToast }: UseReeDownloadsArgs) {
-  const { reeId } = useApiRuntime();
+export function useReeDownloads({ getReeName, showToast, reeId }: UseReeDownloadsArgs) {
   const reeClient = useReeClient();
 
   const downloadWorkspaceFile = async (path: string, suggestedName?: string): Promise<void> => {
@@ -38,11 +35,10 @@ export function useReeDownloads({ buildReePatch, getReeName, showToast }: UseRee
     }
   };
 
-  const handleDownloadRee = (inclusionOpts: InclusionOpts) => {
+  const handleDownloadRee = () => {
     const runDownload = async () => {
       try {
-        await reeClient.updateReeIntent(reeId, buildReePatch());
-        const archiveDownload = await reeClient.getReeArchive(reeId, inclusionOpts);
+        const archiveDownload = await reeClient.getReeArchive(reeId);
         const plan = planReeArchiveDownload(getReeName(), archiveDownload.fileName);
         appShellPorts.browserDownloads.downloadBlob(archiveDownload.bytes, {
           fileName: plan.archiveFileName,

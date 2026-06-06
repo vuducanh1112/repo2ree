@@ -15,6 +15,7 @@ from repo2ree_protocol.command import (
     PatchReeIntentCommand,
     RemoveSourceCommand,
     RunExperimentCommand,
+    SealReeCommand,
     SnapshotUpstreamCommand,
     UpdateSourceMetadataCommand,
     WriteFileCommand,
@@ -35,6 +36,7 @@ from repo2ree_core.envelope.handlers.materialize_workspace import (
 from repo2ree_core.envelope.handlers.patch_ree_intent import handle_patch_ree_intent
 from repo2ree_core.envelope.handlers.remove_source import handle_remove_source
 from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
+from repo2ree_core.envelope.handlers.seal_ree import handle_seal_ree
 from repo2ree_core.envelope.handlers.snapshot_upstream import handle_snapshot_upstream
 from repo2ree_core.envelope.handlers.update_source_metadata import (
     handle_update_source_metadata,
@@ -89,4 +91,6 @@ def run_command(
         return handle_activation_test(
             cmd.args, run_id=run_id, log=log, is_canceled=cancel
         )
+    if isinstance(cmd, SealReeCommand):
+        return handle_seal_ree(cmd.args, log=log, is_canceled=cancel)
     raise ValueError(f"Unhandled command operation: {cmd.operation!r}")  # type: ignore[union-attr]
