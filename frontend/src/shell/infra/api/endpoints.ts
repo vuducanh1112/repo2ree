@@ -16,6 +16,7 @@ export const endpoints = {
   reeFileRaw: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/raw`,
   reeSeal: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:seal`,
   reeArchive: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive`,
+  reeReceipts: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/receipts`,
   reeWorkbenchReprovision: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/workbench/reprovision`,
   reeBuildRuntime: (reeId: string) =>

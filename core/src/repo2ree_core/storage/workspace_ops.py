@@ -41,6 +41,8 @@ from repo2ree_core.workspace.bundle import (
     REE_ARTIFACTS_PREFIX,
     REE_MANIFEST_ENTRY_PATH,
     REE_OVERLAY_PREFIX,
+    REE_RECEIPTS_JOURNAL_ENTRY,
+    REE_RECEIPTS_PREFIX,
     REE_SNAPSHOT_ENTRY_PATH,
     REE_WORKSPACE_DIR_ENTRY,
     ArtifactPlan,
@@ -157,6 +159,11 @@ def _bundle_entry_bytes(
                 f"{REE_ARTIFACTS_PREFIX}{archive_name}",
                 (layout.workspace / ws_rel).read_bytes(),
             )
+        )
+    entries.append((REE_RECEIPTS_PREFIX, b""))
+    if layout.receipts_journal.exists():
+        entries.append(
+            (REE_RECEIPTS_JOURNAL_ENTRY, layout.receipts_journal.read_bytes())
         )
     entries.append((REE_WORKSPACE_DIR_ENTRY, b""))
     return entries

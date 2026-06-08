@@ -1,6 +1,8 @@
+import { useQueryClient } from "@tanstack/react-query";
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import { planWorkspaceFilePersistence } from "../../../../core/workspace/workspaceFileMutationPlanning";
 import { useApiRuntime } from "../../../data/apiRuntime";
+import { queryKeys } from "../../../data/queryKeys";
 import { useReeClient } from "../../../data/ree/client";
 import type { ShowToast } from "../types";
 
@@ -15,6 +17,7 @@ export function useWorkspaceFilePersistence({
 }: UseWorkspaceFilePersistenceArgs) {
   const { reeId } = useApiRuntime();
   const reeClient = useReeClient();
+  const queryClient = useQueryClient();
 
   const persistWorkspaceFile = async (
     previousPath: string | undefined,
@@ -27,6 +30,7 @@ export function useWorkspaceFilePersistence({
         await reeClient.deleteFile(reeId, plan.normalizedPreviousPath || "");
       }
       await reeClient.updateFile(reeId, plan.normalizedPath, content);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.receipts(reeId) });
       await refreshWorkspaceFiles();
       showToast(plan.successMessage, "success");
     } catch (error) {

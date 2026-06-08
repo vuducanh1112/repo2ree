@@ -4,4 +4,5 @@ export const queryKeys = {
   assemblyRun: (reeId: string, runId: string) => ["assembly-run", reeId, runId] as const,
   assemblyRunLogs: (reeId: string, runId: string) => ["assembly-run-logs", reeId, runId] as const,
   review: (id: string) => ["review", id] as const,
+  receipts: (reeId: string) => ["receipts", reeId] as const,
 };

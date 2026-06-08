@@ -13,6 +13,7 @@ from repo2ree_api.activation_test import activation_test_router
 from repo2ree_api.evaluate import evaluate_router
 from repo2ree_api.runs import runs_router
 from repo2ree_api.manage_ree import manage_ree_router
+from repo2ree_api.receipts import receipts_router
 from repo2ree_api.review_ree import review_ree_router
 from fastapi.middleware.cors import CORSMiddleware
 from repo2ree_api.storage.init_storage import (
@@ -52,6 +53,7 @@ app.include_router(activation_test_router)
 app.include_router(evaluate_router)
 app.include_router(runs_router)
 app.include_router(manage_ree_router)
+app.include_router(receipts_router)
 app.include_router(review_ree_router)
 
 

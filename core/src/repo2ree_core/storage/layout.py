@@ -16,6 +16,7 @@ Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
     artifacts/            build outputs (runtime, sbom, ...)
     workspace/            materialized view (upstream + overlay) used at build time
     runs/                 per-action NDJSON run logs (<run_id>.ndjson)
+    receipts/             structural-operation journal (journal.ndjson)
 
 ``upstream/`` and ``overlay/`` are the sources of truth; ``workspace/`` is
 derived and may be rebuilt at any time.
@@ -45,6 +46,8 @@ OVERLAY_DIRNAME = "overlay"
 ARTIFACTS_DIRNAME = "artifacts"
 WORKSPACE_DIRNAME = "workspace"
 RUNS_DIRNAME = "runs"
+RECEIPTS_DIRNAME = "receipts"
+_RECEIPTS_JOURNAL_FILENAME = "journal.ndjson"
 
 # Fixed mount point inside every REE workbench container.
 WORKBENCH_ROOT = Path("/ree")
@@ -113,6 +116,14 @@ class ReeLayout:
     @property
     def runs(self) -> Path:
         return self.root / RUNS_DIRNAME
+
+    @property
+    def receipts(self) -> Path:
+        return self.root / RECEIPTS_DIRNAME
+
+    @property
+    def receipts_journal(self) -> Path:
+        return self.receipts / _RECEIPTS_JOURNAL_FILENAME
 
     def run_log(self, run_id: str) -> Path:
         """Path to the NDJSON log file for a single action run."""

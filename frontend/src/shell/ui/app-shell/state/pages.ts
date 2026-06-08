@@ -11,6 +11,7 @@ export const PAGE = {
   SEAL: "seal",
   ARCHIVE: "archive",
   FILES: "files",
+  PROVENANCE: "provenance",
   // Assembly pages — keys match assembly operation keys.
   EVALUATE: "evaluate",
   BUILD: "build",

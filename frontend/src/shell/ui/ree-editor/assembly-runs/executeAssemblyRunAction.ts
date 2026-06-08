@@ -12,6 +12,7 @@ import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorVi
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
 import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
+import { queryKeys } from "../../../data/queryKeys";
 import type { ShowToast } from "../types";
 import { executeAssemblyCommands, type ReeEditorDispatch } from "./assemblyActionEffects";
 import { pollExecutionRun } from "./pollExecutionRun";
@@ -70,14 +71,17 @@ export async function executeAssemblyRunAction({
     workspaceFiles,
     executionRunner: {
       startExecutionRun: (scriptKey, runParams) => startExecutionRun(scriptKey, runParams),
-      pollRun: (runId, onUpdateLogs) =>
-        pollExecutionRun(queryClient, executionRunsClient, {
+      pollRun: async (runId, onUpdateLogs) => {
+        const result = await pollExecutionRun(queryClient, executionRunsClient, {
           reeId,
           runId,
           onUpdate: onUpdateLogs,
           clock: ports.clock,
           sleep: ports.sleep,
-        }),
+        });
+        await queryClient.invalidateQueries({ queryKey: queryKeys.receipts(reeId) });
+        return result;
+      },
     },
     assemblyCommandPlanners,
     generatedIds: {

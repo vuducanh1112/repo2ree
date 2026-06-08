@@ -14,6 +14,7 @@ import {
   HardwareBomPageContainer,
   MetadataPageContainer,
   OverviewPageContainer,
+  ProvenancePageContainer,
   SourcePageContainer,
   WorkbenchPageContainer,
 } from "./pages/AppShellPageSwitch";
@@ -36,6 +37,7 @@ export function AppShellContent(props: AppShellPageContainerProps) {
         <HardwareBomPageContainer {...props} />
         <AssemblyPageContainer {...props} />
         <ArchivePageContainer {...props} />
+        <ProvenancePageContainer {...props} />
         <FilesPageContainer {...props} />
       </div>
     </main>

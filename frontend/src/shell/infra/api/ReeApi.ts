@@ -1,9 +1,11 @@
 import type { ReeId } from "../../../core/ree/ReeId";
 import type { ApiClient } from "./ApiClient";
 import type {
+  ActionReceiptDto,
   ApiListResponse,
   CreateReeRequestDto,
   PatchReeRequestDto,
+  ReceiptsListDto,
   ReeDetailDto,
   ReeSummaryDto,
   SourceAcquireRequestDto,
@@ -172,6 +174,13 @@ export class ReeApi {
         body: JSON.stringify(payload),
       },
     );
+  }
+
+  async getReceipts(reeId: ReeId | string): Promise<ActionReceiptDto[]> {
+    const res = await this.client.request<ReceiptsListDto>(endpoints.reeReceipts(String(reeId)), {
+      method: "GET",
+    });
+    return res.items;
   }
 
   async reprovisionWorkbench(reeId: ReeId | string): Promise<{ status: string; reeId: string }> {

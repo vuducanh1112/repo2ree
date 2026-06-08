@@ -96,6 +96,14 @@ export const PROCESS_STEPS: ProcessStep[] = [
     automation: null,
     desc: "Seal the REE",
   },
+  {
+    n: 10,
+    key: PAGE.PROVENANCE,
+    label: "Provenance",
+    IC: Ic.layers,
+    automation: null,
+    desc: "Replayable journal of structural operations",
+  },
 ];
 
 export function runtimeNavCompleted(ree: ReeEditorViewModel, badges: Badges): boolean {

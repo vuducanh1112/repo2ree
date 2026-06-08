@@ -17,6 +17,7 @@ import shlex
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Literal
 
 from repo2ree_core.container.run_script import (
     CONTAINER_WORKSPACE,
@@ -154,7 +155,9 @@ class DockerWorkingEnvironment:
                 "canceled", result.returncode, result.stdout or "", result.stderr or ""
             )
         else:
-            status = "succeeded" if result.returncode == 0 else "failed"
+            status: Literal["succeeded", "failed"] = (
+                "succeeded" if result.returncode == 0 else "failed"
+            )
             outcome = StepOutcome(
                 status, result.returncode, result.stdout or "", result.stderr or ""
             )
