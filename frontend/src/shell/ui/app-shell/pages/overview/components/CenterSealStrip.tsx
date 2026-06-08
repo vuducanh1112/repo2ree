@@ -1,9 +1,10 @@
 import React from "react";
 import type { InclusionOpts } from "../../../../../../core/ree/InclusionOpts";
-import type { Badges } from "../../../../../../core/ree/ReeTypes";
+import type { Badges, LogEntry } from "../../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
 import { standingMeta } from "../../../../../../core/review/axes";
 import type { EvaluationState } from "../../../../../../core/review/EvaluationState";
+import { CollapsibleLogCard } from "../../../components/CollapsibleLogCard";
 import { buildSealCableItems } from "./CenterSealStrip/helpers";
 import { SealConfirmModal } from "./CenterSealStrip/SealConfirmModal";
 import { SealedSealCard } from "./CenterSealStrip/SealedSealCard";
@@ -15,6 +16,8 @@ interface CenterSealStripProps {
   evaluation: EvaluationState;
   badges: Badges;
   onSeal: (inclusionOpts: InclusionOpts) => void;
+  sealRunning?: boolean;
+  sealLog?: LogEntry | null;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
   onReleaseWorkbench?: () => void;
@@ -27,6 +30,8 @@ export function CenterSealStrip({
   evaluation,
   badges,
   onSeal,
+  sealRunning = false,
+  sealLog = null,
   onPreviewReviewer,
   onDownloadRee,
   onReleaseWorkbench,
@@ -56,17 +61,26 @@ export function CenterSealStrip({
   const missing = cableItems.filter((item) => !item.live);
   const currentLevelMeta = standingMeta(evaluation);
 
+  const logPanel = (
+    <div style={{ width: "100%", maxWidth: 480 }}>
+      <CollapsibleLogCard log={sealLog} running={sealRunning} title="Seal log" />
+    </div>
+  );
+
   if (sealed) {
     return (
-      <SealedSealCard
-        ree={ree}
-        onPreviewReviewer={onPreviewReviewer}
-        onDownloadRee={onDownloadRee}
-        onReleaseWorkbench={onReleaseWorkbench}
-        sealRef={sealRef}
-        cableItems={cableItems}
-        currentLevelMeta={currentLevelMeta}
-      />
+      <>
+        <SealedSealCard
+          ree={ree}
+          onPreviewReviewer={onPreviewReviewer}
+          onDownloadRee={onDownloadRee}
+          onReleaseWorkbench={onReleaseWorkbench}
+          sealRef={sealRef}
+          cableItems={cableItems}
+          currentLevelMeta={currentLevelMeta}
+        />
+        {logPanel}
+      </>
     );
   }
 
@@ -100,8 +114,10 @@ export function CenterSealStrip({
         cableItems={cableItems}
         allLive={allLive}
         missing={missing}
+        sealRunning={sealRunning}
         onShowConfirm={() => setShowSealConfirm(true)}
       />
+      {logPanel}
     </>
   );
 }

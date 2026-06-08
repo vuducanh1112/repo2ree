@@ -44,6 +44,8 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
     currentReeFiles,
     commands,
     reviewer,
+    sealRunning,
+    sealLog,
   } = useAppShell();
   const { badges, timestamps } = assemblyRun;
   const { toast, navCollapsed } = uiChrome;
@@ -123,6 +125,8 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
           evaluation={evaluation}
           currentReeFiles={currentReeFiles}
           commands={commands}
+          sealRunning={sealRunning}
+          sealLog={sealLog}
         />
       </div>
 

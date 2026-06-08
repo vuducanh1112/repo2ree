@@ -27,7 +27,6 @@ import type { ReeIntentState } from "../../app-shell/state/reeIntent";
 import type { ReeSessionState } from "../../app-shell/state/reeSession";
 import { type AppShellAction, resolveUpdater, type Updater } from "../../app-shell/state/types";
 import type { UiChromeState } from "../../app-shell/state/uiChrome";
-import type { ShowToast } from "../types";
 
 interface CreateReeEditorCommandsArgs {
   reeIntent: ReeIntentState;
@@ -35,7 +34,6 @@ interface CreateReeEditorCommandsArgs {
   assemblyRun: AssemblyRunState;
   uiChrome: UiChromeState;
   dispatch: React.Dispatch<AppShellAction>;
-  showToast: ShowToast;
   runAction: (key: string, params?: GenericReeAssemblyParams) => Promise<void>;
   runAssemblyStep: <K extends ReeAssemblyOperationKey>(
     key: K,
@@ -65,7 +63,6 @@ export function createReeEditorCommands({
   assemblyRun,
   uiChrome,
   dispatch,
-  showToast,
   runAction,
   runAssemblyStep,
   cancelAction,
@@ -81,19 +78,7 @@ export function createReeEditorCommands({
   const resolveNext = <T>(previous: T, value: Updater<T>): T => resolveUpdater(previous, value);
 
   const handleSeal = (inclusionOpts: InclusionOpts) => {
-    const runSeal = async () => {
-      // Flush pending intent edits first so the sealed bundle reflects them.
-      try {
-        await flushReeIntent();
-      } catch {
-        showToast("Seal failed: could not save pending changes", "error");
-        return;
-      }
-      // handleSealRee owns its own success/error toasts; the read-only lock
-      // derives from the sealed session it hydrates, so no optimistic dispatch.
-      await handleSealRee(inclusionOpts);
-    };
-    void runSeal();
+    void handleSealRee(inclusionOpts);
   };
 
   // Phase 8: keep generic patch only for UI-chrome and low-risk editor toggles

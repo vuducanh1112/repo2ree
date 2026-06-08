@@ -15,6 +15,7 @@ interface SealStatusCardProps {
   cableItems: SealCableItem[];
   allLive: boolean;
   missing: { key: string; label: string }[];
+  sealRunning?: boolean;
   onShowConfirm: () => void;
 }
 
@@ -24,6 +25,7 @@ export function SealStatusCard({
   cableItems,
   allLive,
   missing,
+  sealRunning = false,
   onShowConfirm,
 }: SealStatusCardProps) {
   const liveCount = cableItems.filter((item) => item.live).length;
@@ -116,6 +118,7 @@ export function SealStatusCard({
         <button
           type="button"
           onClick={onShowConfirm}
+          disabled={sealRunning}
           style={{
             ...S_ACTION_BUTTON_BASE,
             display: "flex",
@@ -127,16 +130,24 @@ export function SealStatusCard({
             fontSize: 12,
             fontWeight: 800,
             letterSpacing: 0.3,
-            cursor: "pointer",
+            cursor: sealRunning ? "not-allowed" : "pointer",
             color: lgColors.white,
             background: currentLevelMeta.color,
             border: `1px solid ${currentLevelMeta.color}`,
             boxShadow: `0 12px 24px ${currentLevelMeta.color}40`,
+            opacity: sealRunning ? 0.7 : 1,
           }}
-          {...hoverBrightness(92)}
+          {...(sealRunning ? {} : hoverBrightness(92))}
         >
-          <span style={{ display: "flex" }}>{Ic.lock(13)}</span>
-          Seal
+          <span
+            style={{
+              display: "flex",
+              animation: sealRunning ? "spin 0.9s linear infinite" : "none",
+            }}
+          >
+            {sealRunning ? Ic.loader(13) : Ic.lock(13)}
+          </span>
+          {sealRunning ? "Sealing…" : "Seal"}
         </button>
       </div>
     </div>

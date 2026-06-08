@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { InclusionOpts } from "../../../../core/ree/InclusionOpts";
 import type { ReeId } from "../../../../core/ree/ReeId";
+import type { LogEntry } from "../../../../core/ree/ReeTypes";
 import { useReeClient } from "../../../data/ree/client";
 import { mapReeDetailToReeProject } from "../../../data/ree/reeMapping";
 import type { ShowToast } from "../types";
@@ -9,20 +11,32 @@ interface UseReeSealArgs {
   reeId: ReeId;
   showToast: ShowToast;
   hydrateWorkspace: (snapshot: HydratedWorkspaceSnapshot) => void;
+  flushReeIntent: () => Promise<void>;
 }
 
 /**
- * Owns the seal operation: ask the backend to build the sealed bundle, then
- * re-hydrate the workspace from the returned session. The session's seal stamps
- * drive the read-only lock (see `isSealed`), so the caller does not need to
- * toggle lock state optimistically. Both success and error feedback live here
- * so every caller gets consistent toasts.
+ * Owns the seal operation: flush pending intent edits, ask the backend to
+ * build the sealed bundle, then re-hydrate the workspace from the returned
+ * session. The session's seal stamps drive the read-only lock (see `isSealed`),
+ * so the caller does not need to toggle lock state optimistically. Both success
+ * and error feedback live here so every caller gets consistent toasts.
+ * sealRunning is set before the flush so the UI disables for the full operation.
  */
-export function useReeSeal({ reeId, showToast, hydrateWorkspace }: UseReeSealArgs) {
+export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent }: UseReeSealArgs) {
   const reeClient = useReeClient();
+  const [sealRunning, setSealRunning] = useState(false);
+  const [sealLog, setSealLog] = useState<LogEntry | null>(null);
 
   const handleSealRee = async (inclusionOpts: InclusionOpts): Promise<void> => {
+    const ts = new Date().toISOString();
+    setSealRunning(true);
+    setSealLog({ ts, lines: [{ type: "info", msg: "Sealing REE…" }] });
     try {
+      try {
+        await flushReeIntent();
+      } catch {
+        throw new Error("could not save pending changes");
+      }
       const workspaceDto = await reeClient.sealRee(reeId, {
         includeSource: inclusionOpts.includeSource,
         includeRuntime: inclusionOpts.includeRuntime,
@@ -33,11 +47,28 @@ export function useReeSeal({ reeId, showToast, hydrateWorkspace }: UseReeSealArg
         reeArtifactFiles: project.reeFiles ?? [],
         ree: project.ree,
       });
+      setSealLog({
+        ts,
+        lines: [
+          { type: "info", msg: "Sealing REE…" },
+          { type: "ok", msg: "Sealed — workspace updated" },
+        ],
+      });
       showToast("REE sealed — now read-only", "success");
     } catch (error) {
-      showToast(error instanceof Error ? `Seal failed: ${error.message}` : "Seal failed", "error");
+      const msg = `Seal failed: ${error instanceof Error ? error.message : "unknown error"}`;
+      setSealLog({
+        ts,
+        lines: [
+          { type: "info", msg: "Sealing REE…" },
+          { type: "err", msg },
+        ],
+      });
+      showToast(msg, "error");
+    } finally {
+      setSealRunning(false);
     }
   };
 
-  return { handleSealRee };
+  return { handleSealRee, sealRunning, sealLog };
 }

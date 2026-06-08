@@ -106,7 +106,12 @@ export function useReeEditor({
     showToast,
     reeId,
   });
-  const { handleSealRee } = useReeSeal({ reeId, showToast, hydrateWorkspace });
+  const { handleSealRee, sealRunning, sealLog } = useReeSeal({
+    reeId,
+    showToast,
+    hydrateWorkspace,
+    flushReeIntent,
+  });
 
   const workspaceRemote = useMemo(
     () => createWorkspaceRemoteState({ workspaceFiles, reeArtifactFiles, reeSession, uiChrome }),
@@ -120,7 +125,6 @@ export function useReeEditor({
         assemblyRun,
         uiChrome,
         dispatch,
-        showToast,
         runAction,
         runAssemblyStep,
         cancelAction,
@@ -149,7 +153,6 @@ export function useReeEditor({
       reeSession,
       runAction,
       runAssemblyStep,
-      showToast,
       uiChrome,
     ],
   );
@@ -168,6 +171,8 @@ export function useReeEditor({
     },
     currentReeFiles: reeArtifactFiles,
     commands,
+    sealRunning,
+    sealLog,
     reviewer: {
       showReviewPreview: uiChrome.showReviewPreview,
     },

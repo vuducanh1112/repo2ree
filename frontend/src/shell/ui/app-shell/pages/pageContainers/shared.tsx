@@ -18,6 +18,8 @@ export interface AppShellPageContainerProps {
   evaluation: AppShellController["evaluation"];
   currentReeFiles: AppShellController["currentReeFiles"];
   commands: AppShellController["commands"];
+  sealRunning: AppShellController["sealRunning"];
+  sealLog: AppShellController["sealLog"];
 }
 
 const CONTENT_SECTION_STYLE: CSSProperties = {

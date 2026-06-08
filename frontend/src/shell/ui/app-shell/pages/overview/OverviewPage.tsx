@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import type { ArtifactStatus } from "../../../../../core/artifact/ArtifactStatus";
 import type { InclusionOpts } from "../../../../../core/ree/InclusionOpts";
-import type { Badges, Timestamps } from "../../../../../core/ree/ReeTypes";
+import type { Badges, LogEntry, Timestamps } from "../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
 import type { EvaluationState } from "../../../../../core/review/EvaluationState";
 import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
@@ -29,6 +29,8 @@ interface PageOverviewProps {
   snapshotFiles?: FileTreeNode[];
   locked?: boolean;
   onSeal: (inclusionOpts: InclusionOpts) => void;
+  sealRunning?: boolean;
+  sealLog?: LogEntry | null;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
   onReleaseWorkbench?: () => void;
@@ -47,6 +49,8 @@ export function PageOverview({
   snapshotFiles = [],
   locked = false,
   onSeal,
+  sealRunning = false,
+  sealLog = null,
   onPreviewReviewer,
   onDownloadRee,
   onReleaseWorkbench,
@@ -105,6 +109,8 @@ export function PageOverview({
           onWorkspaceSourceStateChange={onWorkspaceSourceStateChange}
           onArtifactStatusChange={onArtifactStatusChange}
           onSeal={onSeal}
+          sealRunning={sealRunning}
+          sealLog={sealLog}
           onPreviewReviewer={onPreviewReviewer}
           onDownloadRee={onDownloadRee}
           onReleaseWorkbench={onReleaseWorkbench}

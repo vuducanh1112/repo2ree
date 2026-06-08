@@ -1,7 +1,7 @@
 import React from "react";
 import type { ArtifactStatus } from "../../../../../core/artifact/ArtifactStatus";
 import type { InclusionOpts } from "../../../../../core/ree/InclusionOpts";
-import type { Badges, Timestamps } from "../../../../../core/ree/ReeTypes";
+import type { Badges, LogEntry, Timestamps } from "../../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../../core/ree-editor/reeEditorViewModel";
 import {
   axisFraction,
@@ -146,6 +146,8 @@ interface OverviewColumnsProps {
   onWorkspaceSourceStateChange: React.Dispatch<React.SetStateAction<WorkspaceSourceState>>;
   onArtifactStatusChange: React.Dispatch<React.SetStateAction<ArtifactStatus>>;
   onSeal: (inclusionOpts: InclusionOpts) => void;
+  sealRunning?: boolean;
+  sealLog?: LogEntry | null;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
   onReleaseWorkbench?: () => void;
@@ -265,6 +267,8 @@ export function OverviewColumns(props: OverviewColumnsProps) {
           evaluation={props.evaluation}
           badges={props.badges}
           onSeal={props.onSeal}
+          sealRunning={props.sealRunning}
+          sealLog={props.sealLog}
           onPreviewReviewer={props.onPreviewReviewer}
           onDownloadRee={props.onDownloadRee}
           onReleaseWorkbench={props.onReleaseWorkbench}

@@ -11,6 +11,8 @@ export function OverviewPageContainer({
   uiChrome,
   evaluation,
   commands,
+  sealRunning,
+  sealLog,
 }: AppShellPageContainerProps) {
   const { reeId, reeApi } = useApiRuntime();
   const navigate = useNavigate();
@@ -45,6 +47,8 @@ export function OverviewPageContainer({
         snapshotFiles={sourceSnapshotFiles}
         locked={locked}
         onSeal={commands.onSeal}
+        sealRunning={sealRunning}
+        sealLog={sealLog}
         onPreviewReviewer={commands.openReviewPreview}
         onDownloadRee={artifactStatus.sealedAt ? commands.onDownloadRee : undefined}
         onReleaseWorkbench={artifactStatus.sealedAt ? handleReleaseWorkbench : undefined}
