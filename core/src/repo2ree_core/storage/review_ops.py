@@ -23,6 +23,7 @@ from typing import Any
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.storage.extract import safe_extract_tar, safe_extract_zip
+from repo2ree_core.time_utils import utc_now as _utc_now
 
 
 # ---------------------------------------------------------------------------
@@ -55,10 +56,6 @@ def _review_archive_path(storage_root: Path, review_id: str, archive_name: str) 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _read_review_metadata(storage_root: Path, review_id: str) -> dict[str, Any]:

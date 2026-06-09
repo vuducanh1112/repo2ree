@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 import logging
 import re
 import uuid
@@ -6,6 +5,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
+from repo2ree_core.time_utils import utc_now
 from repo2ree_api.api_utils import paginate
 from repo2ree_api.run_management import (
     _append_run_log,
@@ -17,6 +17,7 @@ from repo2ree_api.run_management import (
 from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_protocol import (
     AcquireSourceCommand,
+    ActionResult,
     DeleteFileCommand,
     ExtractUploadCommand,
     MaterializeWorkspaceCommand,
@@ -84,6 +85,51 @@ def _require_handle(ree_id: str) -> WorkbenchHandle:
     raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
 
 
+def _dispatch_or_500(
+    handle: WorkbenchHandle, cmd: Command, run_id: str, error_detail: str
+) -> ActionResult:
+    """Dispatch a single workbench command, raising HTTP 500 unless it succeeds."""
+    result = workbench_manager.dispatch_action(handle, cmd, run_id, lambda *_: None)
+    if result.status != "succeeded":
+        raise HTTPException(status_code=500, detail=error_detail)
+    return result
+
+
+def _source_pipeline(
+    lead: Command, metadata_args: UpdateSourceMetadataArgs
+) -> list[Command]:
+    """Build the standard source pipeline: <lead> → snapshot → materialize → update-metadata."""
+    return [
+        lead,
+        SnapshotUpstreamCommand(),
+        MaterializeWorkspaceCommand(),
+        UpdateSourceMetadataCommand(args=metadata_args),
+    ]
+
+
+def _run_source_pipeline(
+    handle: WorkbenchHandle,
+    ws_id: str,
+    run_id: str,
+    pipeline: list[Command],
+    log_run,
+) -> str:
+    """Dispatch each command in order, recording outputs and stopping on first non-success.
+
+    Returns the final status ("succeeded" or the failing step's status).
+    """
+    for cmd in pipeline:
+        result = workbench_manager.dispatch_action(handle, cmd, run_id, log_run)
+        if result.outputs:
+            _update_run_outputs(ws_id, run_id, result.outputs)
+        if result.status != "succeeded":
+            log_run(
+                "system", "error", f"Workbench step {cmd.operation} {result.status}"
+            )
+            return result.status
+    return "succeeded"
+
+
 def _run_workbench_acquire_pipeline(
     handle: WorkbenchHandle,
     ree_id: str,
@@ -96,7 +142,7 @@ def _run_workbench_acquire_pipeline(
     Non-fatal: logs warnings and stops the pipeline on first failure so the
     caller's response is not affected.
     """
-    pipeline: list[Command] = [
+    pipeline = _source_pipeline(
         AcquireSourceCommand(
             args=AcquireSourceArgs(
                 origin_url=origin_url,
@@ -104,15 +150,8 @@ def _run_workbench_acquire_pipeline(
                 dest=WORKBENCH_ROOT / "upstream",
             )
         ),
-        SnapshotUpstreamCommand(),
-        MaterializeWorkspaceCommand(),
-        UpdateSourceMetadataCommand(
-            args=UpdateSourceMetadataArgs(
-                origin_url=origin_url,
-                source_type=source_type,
-            )
-        ),
-    ]
+        UpdateSourceMetadataArgs(origin_url=origin_url, source_type=source_type),
+    )
     for cmd in pipeline:
         try:
             result = workbench_manager.dispatch_action(
@@ -208,11 +247,7 @@ def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
     cmd = PatchReeIntentCommand(
         args=PatchReeIntentArgs(patch=dict(payload.reeIntentPatch or {}))
     )
-    wb_result = workbench_manager.dispatch_action(
-        handle, cmd, "patch-intent", lambda *_: None
-    )
-    if wb_result.status != "succeeded":
-        raise HTTPException(status_code=500, detail="Workbench patch_ree_intent failed")
+    _dispatch_or_500(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
     return workbench_manager.get_workspace(handle)
 
 
@@ -227,7 +262,7 @@ def delete_workspace_route(ree_id: str):
             status_code=500, detail=f"Workbench teardown failed: {exc}"
         ) from exc
     return {
-        "deletedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "deletedAt": utc_now(),
         "state": "deleted",
     }
 
@@ -254,7 +289,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
             _log_run("system", "warn", "Source acquisition canceled")
             return "canceled", request_payload
 
-        pipeline: list[Command] = [
+        pipeline = _source_pipeline(
             AcquireSourceCommand(
                 args=AcquireSourceArgs(
                     origin_url=payload.originUrl,
@@ -262,26 +297,14 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
                     dest=WORKBENCH_ROOT / "upstream",
                 )
             ),
-            SnapshotUpstreamCommand(),
-            MaterializeWorkspaceCommand(),
-            UpdateSourceMetadataCommand(
-                args=UpdateSourceMetadataArgs(
-                    origin_url=payload.originUrl,
-                    source_type=payload.sourceType,
-                )
+            UpdateSourceMetadataArgs(
+                origin_url=payload.originUrl,
+                source_type=payload.sourceType,
             ),
-        ]
-        for cmd in pipeline:
-            result = workbench_manager.dispatch_action(handle, cmd, run_id, _log_run)
-            if result.outputs:
-                _update_run_outputs(ws_id, run_id, result.outputs)
-            if result.status != "succeeded":
-                _log_run(
-                    "system",
-                    "error",
-                    f"Workbench step {cmd.operation} {result.status}",
-                )
-                return result.status, request_payload
+        )
+        status = _run_source_pipeline(handle, ws_id, run_id, pipeline, _log_run)
+        if status != "succeeded":
+            return status, request_payload
 
         _log_run("system", "info", "Source acquisition succeeded")
         return "succeeded", request_payload
@@ -313,7 +336,7 @@ async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Requ
     stage_upload_bytes(upload_token, data)
     return {
         "uploadToken": upload_token,
-        "storedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "storedAt": utc_now(),
     }
 
 
@@ -354,36 +377,20 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
             _log_run("system", "error", f"docker cp to workbench failed: {exc}")
             return "failed", request_payload
 
-        pipeline: list[Command] = [
+        pipeline = _source_pipeline(
             ExtractUploadCommand(
                 args=ExtractUploadArgs(
                     upload_token=payload.uploadToken,
                     archive_name=payload.archiveName,
                 )
             ),
-            SnapshotUpstreamCommand(),
-            MaterializeWorkspaceCommand(),
-            UpdateSourceMetadataCommand(
-                args=UpdateSourceMetadataArgs(
-                    mode="upload",
-                    archive_name=payload.archiveName,
-                    upload_token=payload.uploadToken,
-                )
+            UpdateSourceMetadataArgs(
+                mode="upload",
+                archive_name=payload.archiveName,
+                upload_token=payload.uploadToken,
             ),
-        ]
-        status = "succeeded"
-        for cmd in pipeline:
-            result = workbench_manager.dispatch_action(handle, cmd, run_id, _log_run)
-            if result.outputs:
-                _update_run_outputs(ws_id, run_id, result.outputs)
-            if result.status != "succeeded":
-                _log_run(
-                    "system",
-                    "error",
-                    f"Workbench step {cmd.operation} {result.status}",
-                )
-                status = result.status
-                break
+        )
+        status = _run_source_pipeline(handle, ws_id, run_id, pipeline, _log_run)
 
         # Clean up the transient host landing file regardless of outcome.
         discard_staged_upload(payload.uploadToken)
@@ -406,11 +413,9 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
 @manage_ree_router.delete("/api/v1/rees/{ree_id}/source")
 def remove_source_route(ree_id: str):
     handle = _require_handle(ree_id)
-    wb_result = workbench_manager.dispatch_action(
-        handle, RemoveSourceCommand(), "remove-source", lambda *_: None
+    _dispatch_or_500(
+        handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed"
     )
-    if wb_result.status != "succeeded":
-        raise HTTPException(status_code=500, detail="Workbench remove_source failed")
     return {
         "invalidatedSteps": ["source", "evaluate", "workflow"],
         "workspace": workbench_manager.get_workspace(handle),
@@ -433,11 +438,9 @@ def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentP
     cmd = WriteFileCommand(
         args=WriteFileArgs(path=payload.path, content=payload.content)
     )
-    wb_result = workbench_manager.dispatch_action(
-        handle, cmd, "write-file", lambda *_: None
+    wb_result = _dispatch_or_500(
+        handle, cmd, "write-file", "Workbench write_file failed"
     )
-    if wb_result.status != "succeeded":
-        raise HTTPException(status_code=500, detail="Workbench write_file failed")
     return wb_result.outputs or {"updatedAt": None}
 
 
@@ -445,11 +448,9 @@ def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentP
 def delete_workspace_file_content_route(ree_id: str, path: str = Query(...)):
     handle = _require_handle(ree_id)
     cmd = DeleteFileCommand(args=DeleteFileArgs(path=path))
-    wb_result = workbench_manager.dispatch_action(
-        handle, cmd, "delete-file", lambda *_: None
+    wb_result = _dispatch_or_500(
+        handle, cmd, "delete-file", "Workbench delete_file failed"
     )
-    if wb_result.status != "succeeded":
-        raise HTTPException(status_code=500, detail="Workbench delete_file failed")
     return wb_result.outputs or {"deletedAt": None}
 
 

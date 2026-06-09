@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime, timezone
 from threading import RLock, Thread
 from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import HTTPException
 
+from repo2ree_core.time_utils import utc_now as _utc_now
 from repo2ree_api.storage.review_files import review_metadata_path
 
 
@@ -26,10 +26,6 @@ _REVIEW_STORE_LOCK = RLock()
 # ================================================
 # Helpers
 # ================================================
-
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _require_review(review_id: str) -> None:

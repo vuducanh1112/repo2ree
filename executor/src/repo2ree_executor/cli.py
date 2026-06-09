@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TextIO
 
@@ -11,6 +10,7 @@ import click
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.run_command import run_command
+from repo2ree_core.time_utils import utc_now as _utc_now
 from repo2ree_protocol import ActionResult, command_adapter
 from repo2ree_protocol.command import AcquireSourceArgs, AcquireSourceCommand
 from repo2ree_core.storage.layout import ReeLayout
@@ -57,7 +57,7 @@ def main() -> None:
 
 
 # ================================================
-# execute (generic Command envelope)
+# Execution commands
 # ================================================
 
 
@@ -129,11 +129,6 @@ def execute_cmd(action_source: str, run_id: str | None) -> None:
         sys.exit(1)
 
 
-# ================================================
-# acquire-source  (argv-sugar path)
-# ================================================
-
-
 @cli.command("acquire-source")
 @click.argument("origin_url")
 @click.option(
@@ -162,11 +157,6 @@ def acquire_source_cmd(origin_url: str, source_type: str, dest: str) -> None:
     )
     result = run_command(cmd, log=_make_log_sink(None))
     _emit_result(result)
-
-
-# ================================================
-# init-ree
-# ================================================
 
 
 @cli.command("init-ree")
@@ -206,7 +196,7 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
 
 
 # ================================================
-# get-ree
+# Inspection commands
 # ================================================
 
 
@@ -225,11 +215,6 @@ def get_ree_cmd() -> None:
 
     metadata = store.read_metadata_json()
     click.echo(json.dumps(metadata))
-
-
-# ================================================
-# get-workspace
-# ================================================
 
 
 @cli.command("get-workspace")
@@ -252,11 +237,6 @@ def get_workspace_cmd() -> None:
     click.echo(json.dumps(result))
 
 
-# ================================================
-# build-archive
-# ================================================
-
-
 @cli.command("build-archive")
 def build_archive_cmd() -> None:
     """Write the sealed REE zip archive bytes to stdout."""
@@ -269,11 +249,6 @@ def build_archive_cmd() -> None:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
     sys.stdout.buffer.write(data)
-
-
-# ================================================
-# Read
-# ================================================
 
 
 @cli.command("read-file")
@@ -321,7 +296,3 @@ def _emit_result(result: ActionResult) -> None:
     click.echo(result.model_dump_json())
     if result.status != "succeeded":
         sys.exit(1)
-
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")

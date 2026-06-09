@@ -3,7 +3,6 @@ from __future__ import annotations
 import shlex
 import subprocess
 import threading
-from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -11,13 +10,10 @@ from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
 from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.time_utils import utc_now  # noqa: F401  (re-exported)
 from repo2ree_core.working_environment.base import CancelCheck, StepOutcome
 
 WORKSPACE_CONTROL_PREFIXES = (".workspace", ".upload.")
-
-
-def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def resolve_workspace_path(layout: ReeLayout, rel_path: str) -> Path:
