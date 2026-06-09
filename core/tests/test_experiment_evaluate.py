@@ -9,10 +9,13 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from repo2ree_core.working_environment import (
-    ProvisioningCanceledError,
-    ScriptStep,
-    StepOutcome,
+from repo2ree_core.experiment.evaluate import (
+    CaptureBundle,
+    evaluate_match,
+    evaluate_output,
+    make_run_result,
+    snapshot_match_for,
+    snapshot_outputs,
 )
 from repo2ree_core.experiment.experiment import (
     ContainsMatch,
@@ -31,15 +34,11 @@ from repo2ree_core.experiment.run import (
     build_capture_bundle,
     run_experiment,
 )
-from repo2ree_core.experiment.evaluate import (
-    CaptureBundle,
-    evaluate_match,
-    evaluate_output,
-    make_run_result,
-    snapshot_match_for,
-    snapshot_outputs,
+from repo2ree_core.working_environment import (
+    ProvisioningCanceledError,
+    ScriptStep,
+    StepOutcome,
 )
-
 
 # ================================================
 # evaluate_match — sha256
@@ -459,9 +458,7 @@ def test_custom_match_fails_on_nonzero_runtime_exit(tmp_path):
 # ================================================
 
 
-@pytest.mark.parametrize(
-    "name", ["smoke", "smoke-test", "smoke_test", "smoke.v2", "My Test 1", ""]
-)
+@pytest.mark.parametrize("name", ["smoke", "smoke-test", "smoke_test", "smoke.v2", "My Test 1", ""])
 def test_experiment_name_accepts_path_safe_names(name):
     assert Experiment(name=name).name == name
 
@@ -569,9 +566,7 @@ def test_run_experiment_canceled_skips_output_evaluation(tmp_path, monkeypatch):
     assert evaluated == []
 
 
-def test_run_experiment_returns_canceled_when_provisioning_is_canceled(
-    tmp_path, monkeypatch
-):
+def test_run_experiment_returns_canceled_when_provisioning_is_canceled(tmp_path, monkeypatch):
     @contextmanager
     def fake_loaded_runtime_image(*args, **kwargs):
         yield "runtime:test"

@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from packaging.version import Version
 
 
@@ -16,15 +17,11 @@ def get_python_version_until_date(target_date: datetime) -> Version:
     }
 
     available_versions = [
-        Version(version)
-        for version, release_date in PYTHON_RELEASES.items()
-        if release_date <= target_date
+        Version(version) for version, release_date in PYTHON_RELEASES.items() if release_date <= target_date
     ]
 
     if not available_versions:
-        raise ValueError(
-            f"No Python versions found released before {target_date.isoformat()}"
-        )
+        raise ValueError(f"No Python versions found released before {target_date.isoformat()}")
 
     python_version = max(available_versions)
 

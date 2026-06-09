@@ -26,7 +26,6 @@ from repo2ree_core.working_environment.base import (
 )
 from repo2ree_core.working_environment.machine import LocalMachine
 
-
 # ================================================
 # Public API
 # ================================================
@@ -59,9 +58,7 @@ def acquire(
         kind:           Environment kind (``"container"`` only for now).
     """
     if machine != "local":
-        raise ValueError(
-            f"Machine {machine!r} is not supported yet; only 'local' is available"
-        )
+        raise ValueError(f"Machine {machine!r} is not supported yet; only 'local' is available")
     spec = WorkingEnvironmentSpec(
         workspace_path=workspace_path,
         run_id=run_id,

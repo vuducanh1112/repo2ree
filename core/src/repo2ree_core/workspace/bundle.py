@@ -31,7 +31,6 @@ from repo2ree_core.storage.layout import (
     normalize_workspace_path,
 )
 
-
 # ================================================
 # Constants
 # ================================================
@@ -62,13 +61,9 @@ def safe_filename(name: str | None, default: str) -> str:
     return candidate or default
 
 
-def should_include_snapshot(
-    *, source_included: bool, source_snapshot_archive: str | None
-) -> bool:
+def should_include_snapshot(*, source_included: bool, source_snapshot_archive: str | None) -> bool:
     """Whether the bundle should publish the source snapshot entry."""
-    return bool(
-        source_included and normalize_workspace_path(source_snapshot_archive or "")
-    )
+    return bool(source_included and normalize_workspace_path(source_snapshot_archive or ""))
 
 
 def build_zip_bytes(entries: Iterable[tuple[str, bytes]]) -> bytes:
@@ -149,9 +144,7 @@ def plan_artifact_layout(
     )
 
 
-def rewrite_manifest_for_bundle(
-    manifest: Mapping[str, Any], remap: Mapping[str, str]
-) -> dict[str, Any]:
+def rewrite_manifest_for_bundle(manifest: Mapping[str, Any], remap: Mapping[str, str]) -> dict[str, Any]:
     """Return a copy of ``manifest`` with ``runtime``/``sbom`` paths remapped."""
     rewritten = dict(manifest)
     for field in ("runtime", "sbom"):

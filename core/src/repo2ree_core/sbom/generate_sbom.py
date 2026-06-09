@@ -1,16 +1,16 @@
-from pathlib import Path
-import tempfile
 import json
+import tempfile
+from pathlib import Path
 
 from repo2ree_core.dockerfile_utils.build_image import build_docker_image
 from repo2ree_core.dockerfile_utils.extract_files import extract_file_from_image
 
 
 def generate_sbom(runtime_path: Path, output_dir: Path) -> Path:
-    ##############
-    assert runtime_path.exists(), "Runtime path must exist."
-    assert output_dir.exists(), "Output directory must exist."
-    ##############
+    if not runtime_path.exists():
+        raise FileNotFoundError(f"Runtime path must exist: {runtime_path}")
+    if not output_dir.exists():
+        raise FileNotFoundError(f"Output directory must exist: {output_dir}")
 
     syft_image_name = "ghcr.io/anchore/syft:v1.36.0"
     # syft_image_digest = (
@@ -22,7 +22,9 @@ def generate_sbom(runtime_path: Path, output_dir: Path) -> Path:
     dockerfile_contents += f"FROM {syft_image_name}\n"
     dockerfile_contents += "WORKDIR /workdir\n"
     dockerfile_contents += f"COPY {runtime_path.name} /workdir/{runtime_path.name}\n"
-    dockerfile_contents += f'RUN ["/syft", "docker-archive:/workdir/{runtime_path.name}", "-o", "json=/workdir/sbom.json"]'
+    dockerfile_contents += (
+        f'RUN ["/syft", "docker-archive:/workdir/{runtime_path.name}", "-o", "json=/workdir/sbom.json"]'
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         dockerfile_path = Path(tmpdir) / "Dockerfile-syft"
@@ -32,9 +34,7 @@ def generate_sbom(runtime_path: Path, output_dir: Path) -> Path:
     if image is None:
         raise RuntimeError("Failed to build Syft Docker image for SBOM generation.")
 
-    extract_file_from_image(
-        image.id, "/workdir/sbom.json", str(output_dir / "sbom.json")
-    )
+    extract_file_from_image(image.id, "/workdir/sbom.json", str(output_dir / "sbom.json"))
 
     image.remove(force=True)
 
@@ -44,9 +44,8 @@ def generate_sbom(runtime_path: Path, output_dir: Path) -> Path:
         parsed = json.loads(sbom_data)
         json.dump(parsed, f, indent=2)
 
-    ##############
-    assert generated_sbom_path.exists(), "Generated SBOM file was not created."
-    ##############
+    if not generated_sbom_path.exists():
+        raise RuntimeError("Generated SBOM file was not created.")
 
     return generated_sbom_path
 

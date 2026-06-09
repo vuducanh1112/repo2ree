@@ -12,16 +12,12 @@ def _session(**overrides) -> ReeSession:
 
 
 def test_metadata_name_overrides_intent_name():
-    manifest = build_manifest_payload(
-        {"name": "from-metadata"}, _intent(), _session(), ree_id="abc"
-    )
+    manifest = build_manifest_payload({"name": "from-metadata"}, _intent(), _session(), ree_id="abc")
     assert manifest["name"] == "from-metadata"
 
 
 def test_falls_back_to_ree_id_prefix_when_no_names():
-    manifest = build_manifest_payload(
-        {}, ReeIntent(name=""), _session(), ree_id="abcdef0123456789"
-    )
+    manifest = build_manifest_payload({}, ReeIntent(name=""), _session(), ree_id="abcdef0123456789")
     assert manifest["name"] == "workspace-abcdef01"
 
 
@@ -36,16 +32,12 @@ def test_metadata_external_ref_overrides_origin_url():
 
 
 def test_source_type_pulled_from_source_metadata_dict():
-    manifest = build_manifest_payload(
-        {"source": {"sourceType": "git"}}, _intent(), _session(), ree_id="abc"
-    )
+    manifest = build_manifest_payload({"source": {"sourceType": "git"}}, _intent(), _session(), ree_id="abc")
     assert manifest["source_type"] == "git"
 
 
 def test_source_type_falls_back_when_source_is_none():
-    manifest = build_manifest_payload(
-        {"source": None}, _intent(source_type="tarball"), _session(), ree_id="abc"
-    )
+    manifest = build_manifest_payload({"source": None}, _intent(source_type="tarball"), _session(), ree_id="abc")
     assert manifest["source_type"] == "tarball"
 
 

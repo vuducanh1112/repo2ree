@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from contextlib import suppress
 
 from fastapi import APIRouter, Query
 
@@ -12,7 +13,6 @@ from repo2ree_api.run_management import (
     _mark_cancel_requested,
     _run_summary,
 )
-
 
 # ================================================
 # Router
@@ -71,31 +71,27 @@ def cancel_workspace_run(ree_id: str, run_id: str):
     docker_bin = shutil.which("docker") or "docker"
     if operation == "build":
         container_name = f"repo2ree-build-{run_id}"
-        try:
+        with suppress(Exception):
             subprocess.run(
                 [docker_bin, "rm", "-f", container_name],
                 capture_output=True,
                 text=True,
             )
-        except Exception:
-            pass
     elif operation == "activation":
         container_name = f"repo2ree-activation-{run_id}"
-        try:
+        with suppress(Exception):
             subprocess.run(
                 [docker_bin, "rm", "-f", container_name],
                 capture_output=True,
                 text=True,
             )
-        except Exception:
-            pass
     elif operation == "experiment":
         # Remove the main container AND any validator containers spawned for
         # custom-match evaluation (named repo2ree-experiment-validator-{run_id}-*).
         # Docker's --filter name= does a substring match, so the shared prefix
         # covers both container types.
         name_prefix = f"repo2ree-experiment-{run_id}"
-        try:
+        with suppress(Exception):
             ps_result = subprocess.run(
                 [docker_bin, "ps", "-aq", "--filter", f"name={name_prefix}"],
                 capture_output=True,
@@ -108,8 +104,6 @@ def cancel_workspace_run(ree_id: str, run_id: str):
                     capture_output=True,
                     text=True,
                 )
-        except Exception:
-            pass
 
     refreshed = _get_run_state(ree_id, run_id)
     return {"status": refreshed["status"]}

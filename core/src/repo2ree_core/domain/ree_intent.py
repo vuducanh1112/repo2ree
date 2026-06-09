@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Mapping
+from collections.abc import Mapping
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -10,9 +11,9 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
 from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.experiment import Experiment
-
 
 # ================================================
 # Types
@@ -64,10 +65,7 @@ def _normalize_hbom_payload(value: Mapping[str, Any]) -> dict[str, Any]:
         if key == "extra_info":
             if isinstance(item, Mapping):
                 normalized["extra_info"].update(
-                    {
-                        str(extra_key): extra_value
-                        for extra_key, extra_value in item.items()
-                    }
+                    {str(extra_key): extra_value for extra_key, extra_value in item.items()}
                 )
             else:
                 normalized["extra_info"][key] = item
@@ -140,14 +138,14 @@ class ReeIntent(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def _unique_experiment_names(self) -> "ReeIntent":
+    def _unique_experiment_names(self) -> ReeIntent:
         names = [e.name for e in self.experiments if e.name]
         if len(names) != len(set(names)):
             raise ValueError("experiment names must be unique")
         return self
 
     @classmethod
-    def from_metadata(cls, metadata: Mapping[str, Any]) -> "ReeIntent":
+    def from_metadata(cls, metadata: Mapping[str, Any]) -> ReeIntent:
         intent = dict(metadata.get("reeIntent") or {})
         intent = {k: v for k, v in intent.items() if k in cls.model_fields}
         if not intent.get("name"):
@@ -161,7 +159,7 @@ class ReeIntent(BaseModel):
                 intent["source_type"] = source_type
         return cls.model_validate(intent)
 
-    def apply_patch(self, patch: Mapping[str, Any]) -> "ReeIntent":
+    def apply_patch(self, patch: Mapping[str, Any]) -> ReeIntent:
         merged = self.model_dump()
         merged.update(dict(patch or {}))
         try:
@@ -184,8 +182,5 @@ class ReeIntent(BaseModel):
             "zenodo_doi": self.zenodo_doi or None,
             "dataverse_doi": self.dataverse_doi or None,
             "hardware_description": self.hardware_description.model_dump(),
-            "experiments": [
-                experiment.model_dump(exclude_none=True)
-                for experiment in self.experiments
-            ],
+            "experiments": [experiment.model_dump(exclude_none=True) for experiment in self.experiments],
         }

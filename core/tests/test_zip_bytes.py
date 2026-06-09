@@ -1,6 +1,8 @@
 import io
 import zipfile
 
+import pytest
+
 from repo2ree_core.workspace.bundle import build_zip_bytes
 
 
@@ -30,7 +32,8 @@ def test_entries_written_at_their_paths():
 def test_preserves_input_order_for_duplicates():
     # Duplicates are caller's responsibility; consumer keeps the last
     # write when reading by name, but the zip records both entries.
-    data = build_zip_bytes([("dup", b"first"), ("dup", b"second")])
+    with pytest.warns(UserWarning, match="Duplicate name"):
+        data = build_zip_bytes([("dup", b"first"), ("dup", b"second")])
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
         names = [info.filename for info in zf.infolist()]
     assert names == ["dup", "dup"]

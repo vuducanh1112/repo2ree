@@ -1,22 +1,18 @@
-from pathlib import Path
-from tempfile import TemporaryDirectory
 import os
 import shutil
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import docker
 import docker.models
 import docker.models.images
 
 
-def build_docker_image(
-    build_context: Path, dockerfile: Path
-) -> docker.models.images.Image | None:
+def build_docker_image(build_context: Path, dockerfile: Path) -> docker.models.images.Image | None:
     dockerfile = dockerfile.resolve()
 
-    print(
-        f"Attempting to build Dockerfile: {dockerfile} in build context: {build_context}"
-    )
-    for root, dirs, files in os.walk(build_context):
+    print(f"Attempting to build Dockerfile: {dockerfile} in build context: {build_context}")
+    for root, _dirs, files in os.walk(build_context):
         for name in files:
             print(os.path.abspath(os.path.join(root, name)))
 
@@ -34,7 +30,7 @@ def build_docker_image(
 
         image, build_log = response
         for chunk in build_log:
-            for key, value in chunk.items():
+            for _key, value in chunk.items():
                 print(value, end="")
 
         print("\nBuild successful!")
@@ -44,10 +40,7 @@ def build_docker_image(
         print(f"\nBuild failed: {e}")
 
         if hasattr(e, "build_log"):
-            log_lines = [
-                (item.get("stream") or item.get("error") or "").strip()
-                for item in e.build_log
-            ]
+            log_lines = [(item.get("stream") or item.get("error") or "").strip() for item in e.build_log]
 
             full_log = "\n".join(filter(None, log_lines))
             print(full_log)

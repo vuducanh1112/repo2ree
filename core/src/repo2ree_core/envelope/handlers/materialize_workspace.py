@@ -7,11 +7,11 @@ with overlay winning on conflict. Idempotent — workspace is cleared first.
 from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_protocol.result import ActionResult
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.storage.tree import copy_tree_contents
 from repo2ree_core.working_environment.base import CancelCheck
+from repo2ree_protocol.result import ActionResult
 
 
 def handle_materialize_workspace(

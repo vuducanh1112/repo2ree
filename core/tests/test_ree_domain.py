@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
-from repo2ree_core.domain.ree_intent import ReeIntent
 
+from repo2ree_core.domain.ree_intent import ReeIntent
 
 # ================================================
 # Helpers

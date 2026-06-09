@@ -38,7 +38,4 @@ def test_snapshot_archive_name_respects_custom_fallback():
 
 def test_snapshot_archive_name_strips_archive_suffix_after_safe_filename():
     # path-like seed -> safe_filename keeps last component -> strip -> snapshot
-    assert (
-        snapshot_archive_name("https://example.com/owner/repo.tar.gz")
-        == "repo-snapshot.tar.gz"
-    )
+    assert snapshot_archive_name("https://example.com/owner/repo.tar.gz") == "repo-snapshot.tar.gz"

@@ -7,16 +7,15 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_protocol.command import RunExperimentArgs, RunExperimentCommand
-from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
     _run_summary,
     _start_background_run,
 )
-
+from repo2ree_api.workbench.deps import workbench_manager
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_protocol.command import RunExperimentArgs, RunExperimentCommand
 
 # ================================================
 # Router
@@ -71,9 +70,7 @@ def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
     try:
         ree = ReeIntent.from_metadata(metadata)
     except Exception as exc:
-        raise HTTPException(
-            status_code=400, detail=f"Invalid REE intent: {exc}"
-        ) from exc
+        raise HTTPException(status_code=400, detail=f"Invalid REE intent: {exc}") from exc
 
     if not ree.runtime.strip():
         raise HTTPException(
@@ -113,9 +110,7 @@ def _create_experiment_run_state(
 
         result = workbench_manager.dispatch_action(
             handle,
-            RunExperimentCommand(
-                args=RunExperimentArgs(experiment_name=experiment_name, mode=mode)
-            ),
+            RunExperimentCommand(args=RunExperimentArgs(experiment_name=experiment_name, mode=mode)),
             run_id,
             _log,
         )

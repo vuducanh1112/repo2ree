@@ -8,7 +8,7 @@ no per-REE workspace state.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from repo2ree_api.settings import service_settings
@@ -31,11 +31,7 @@ def new_upload_token() -> dict[str, str]:
     import uuid
 
     token = uuid.uuid4().hex
-    expires_at = (
-        (datetime.now(timezone.utc) + timedelta(hours=1))
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    expires_at = (datetime.now(UTC) + timedelta(hours=1)).isoformat().replace("+00:00", "Z")
     return {"uploadToken": token, "expiresAt": expires_at}
 
 

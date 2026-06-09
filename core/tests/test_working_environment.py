@@ -14,7 +14,6 @@ from repo2ree_core.working_environment.base import (
 )
 from repo2ree_core.working_environment.docker_env import DockerWorkingEnvironment
 
-
 # ================================================
 # Test infrastructure
 # ================================================
@@ -39,9 +38,7 @@ class FakeDocker:
     def run(self, command, capture_output=False, text=False, input=None):
         self.calls.append(list(command))
         if command[1] == self._fail_on:
-            return subprocess.CompletedProcess(
-                command, self._fail_rc, self._fail_stdout, self._fail_stderr
-            )
+            return subprocess.CompletedProcess(command, self._fail_rc, self._fail_stdout, self._fail_stderr)
         return subprocess.CompletedProcess(command, 0, "", "")
 
     def subcommands(self) -> list[str]:
@@ -89,9 +86,7 @@ def test_happy_path_runs_full_pipeline(workspace, monkeypatch):
     _install(monkeypatch, fake)
 
     with _we(workspace) as we:
-        outcome = we.exec_script(
-            _step(), log=lambda *_: None, is_canceled=lambda: False
-        )
+        outcome = we.exec_script(_step(), log=lambda *_: None, is_canceled=lambda: False)
 
     assert outcome.status == "succeeded"
     assert outcome.exit_code == 0
@@ -174,9 +169,7 @@ def test_exec_failure_reports_exit_code(workspace, monkeypatch):
     _install(monkeypatch, fake)
 
     with _we(workspace) as we:
-        outcome = we.exec_script(
-            _step(), log=lambda *_: None, is_canceled=lambda: False
-        )
+        outcome = we.exec_script(_step(), log=lambda *_: None, is_canceled=lambda: False)
 
     assert outcome.status == "failed"
     assert outcome.exit_code == 2
@@ -206,9 +199,7 @@ def test_stdin_text_passes_interactive_flag(workspace, monkeypatch):
     _install(monkeypatch, fake)
 
     with _we(workspace) as we:
-        we.exec_script(
-            _step(stdin_text="payload"), log=lambda *_: None, is_canceled=lambda: False
-        )
+        we.exec_script(_step(stdin_text="payload"), log=lambda *_: None, is_canceled=lambda: False)
 
     exec_call = fake.calls[3]  # create, cp, start, exec
     assert exec_call[0:3] == ["docker", "exec", "-i"]
@@ -230,9 +221,7 @@ def test_login_shell_false_uses_sh_c(workspace, monkeypatch):
     _install(monkeypatch, fake)
 
     with _we(workspace) as we:
-        we.exec_script(
-            _step(login_shell=False), log=lambda *_: None, is_canceled=lambda: False
-        )
+        we.exec_script(_step(login_shell=False), log=lambda *_: None, is_canceled=lambda: False)
 
     exec_call = fake.calls[3]
     sh_idx = exec_call.index("sh")
@@ -244,9 +233,7 @@ def test_login_shell_true_uses_sh_lc(workspace, monkeypatch):
     _install(monkeypatch, fake)
 
     with _we(workspace) as we:
-        we.exec_script(
-            _step(login_shell=True), log=lambda *_: None, is_canceled=lambda: False
-        )
+        we.exec_script(_step(login_shell=True), log=lambda *_: None, is_canceled=lambda: False)
 
     exec_call = fake.calls[3]
     sh_idx = exec_call.index("sh")
@@ -289,9 +276,7 @@ def test_sync_out_failure_returns_false(workspace, monkeypatch):
 
 
 def test_exec_logs_command_and_streams_stdout_stderr(workspace, monkeypatch):
-    fake = FakeDocker(
-        fail_on="exec", returncode=1, stdout="out line", stderr="err line"
-    )
+    fake = FakeDocker(fail_on="exec", returncode=1, stdout="out line", stderr="err line")
     _install(monkeypatch, fake)
 
     logged: list[tuple[str, str, str]] = []
@@ -326,9 +311,7 @@ def test_exec_script_rejects_path_escaping_workspace(workspace, monkeypatch):
             )
 
 
-def test_exec_script_rejects_working_directory_escaping_workspace(
-    workspace, monkeypatch
-):
+def test_exec_script_rejects_working_directory_escaping_workspace(workspace, monkeypatch):
     fake = FakeDocker()
     _install(monkeypatch, fake)
 
@@ -399,9 +382,7 @@ def test_put_file_rejects_path_escaping_workspace(workspace, monkeypatch):
             we.put_file("../escape.sh", "echo hi")
 
 
-def test_run_workspace_script_returns_canceled_when_provisioning_is_canceled(
-    tmp_path, monkeypatch
-):
+def test_run_workspace_script_returns_canceled_when_provisioning_is_canceled(tmp_path, monkeypatch):
     class _CancelOnEnter:
         def __enter__(self):
             raise ProvisioningCanceledError("Run canceled during provisioning")
@@ -409,9 +390,7 @@ def test_run_workspace_script_returns_canceled_when_provisioning_is_canceled(
         def __exit__(self, exc_type, exc_val, exc_tb):
             return None
 
-    monkeypatch.setattr(
-        manager_mod, "acquire", lambda *args, **kwargs: _CancelOnEnter()
-    )
+    monkeypatch.setattr(manager_mod, "acquire", lambda *args, **kwargs: _CancelOnEnter())
 
     outcome = manager_mod.run_workspace_script(
         workspace=tmp_path,

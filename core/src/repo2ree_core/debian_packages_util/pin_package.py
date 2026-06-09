@@ -1,15 +1,16 @@
 import datetime
-import lzma
-from pathlib import Path
 import io
+import lzma
+import tempfile
+from pathlib import Path
 
 import requests
-from pydantic import BaseModel
 from debian.deb822 import Packages
+from pydantic import BaseModel
 
 from repo2ree_core.dockerfile_utils.os_utils import OSReleaseID, OSReleaseInfo
 
-TMP_CACHE_DIR = Path("/tmp/repo2ree_cache")
+TMP_CACHE_DIR = Path(tempfile.gettempdir()) / "repo2ree_cache"
 
 ###################
 # Data Models
@@ -69,9 +70,7 @@ def get_latest_apt_package_version_until_date(
 
     apt_packages = parse_packages_file(package_list_str)
     if package_name not in apt_packages.packages:
-        Path("debug_packages_file.json").write_text(
-            APTPackages.model_dump_json(apt_packages, indent=2)
-        )
+        Path("debug_packages_file.json").write_text(APTPackages.model_dump_json(apt_packages, indent=2))
         raise ValueError(
             f"Package '{package_name}' not found in the Packages file for {os_release_info.id.value} {os_release_info.version_code_name} on {date.isoformat()}"
         )
@@ -111,11 +110,11 @@ def get_or_download_packages_file(
                     snapshot_url = f"{snapshot_archive_base}ubuntu/dists/{version_code_name}/main/binary-{architecture}/Packages.xz"
                 case "arm64" | "armhf" | "ppc64el" | "s390x" | "riscv64":
                     snapshot_archive_base = "http://ports.ubuntu.com/"
-                    snapshot_url = f"{snapshot_archive_base}dists/{version_code_name}/main/binary-{architecture}/Packages.xz"
-                case _:
-                    raise ValueError(
-                        f"Unsupported architecture for Ubuntu: {architecture}"
+                    snapshot_url = (
+                        f"{snapshot_archive_base}dists/{version_code_name}/main/binary-{architecture}/Packages.xz"
                     )
+                case _:
+                    raise ValueError(f"Unsupported architecture for Ubuntu: {architecture}")
         case _:
             raise ValueError(f"The OS does not use apt: {os_release_id}")
 
@@ -123,11 +122,9 @@ def get_or_download_packages_file(
     if not file_path.exists():
         file_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Downloading Packages file to: {file_path}")
-        response = requests.get(snapshot_url)
+        response = requests.get(snapshot_url, timeout=60)
         if response.status_code != 200:
-            raise ValueError(
-                f"Failed to download Packages file from {snapshot_url}: {response.status_code}"
-            )
+            raise ValueError(f"Failed to download Packages file from {snapshot_url}: {response.status_code}")
         with open(file_path, "wb") as f:
             f.write(response.content)
     else:
@@ -255,12 +252,8 @@ def get_put_snapshot_sources_shell_command(
 
             # http://snapshot.ubuntu.com is redirected to https, so we have to install ca-certificates
             commands.append("""export DEBIAN_FRONTEND=noninteractive;""")
-            commands.append(
-                """apt-get -o Acquire::https::Verify-Peer=false update >&2;"""
-            )
-            commands.append(
-                """apt-get -o Acquire::https::Verify-Peer=false install -y ca-certificates >&2;"""
-            )
+            commands.append("""apt-get -o Acquire::https::Verify-Peer=false update >&2;""")
+            commands.append("""apt-get -o Acquire::https::Verify-Peer=false install -y ca-certificates >&2;""")
 
             run_command = "\\\n    ".join(commands)
             # TODO Ubuntu >= 24.04 has new format

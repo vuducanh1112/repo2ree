@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Mapping
+from collections.abc import Mapping
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
-
 
 # ================================================
 # Types
@@ -42,12 +42,12 @@ class ReeSession(BaseModel):
     runtime_included: bool = False
 
     @classmethod
-    def from_metadata(cls, metadata: Mapping[str, Any]) -> "ReeSession":
+    def from_metadata(cls, metadata: Mapping[str, Any]) -> ReeSession:
         raw = dict(metadata.get("reeSession") or {})
         filtered = {k: v for k, v in raw.items() if k in cls.model_fields}
         return cls.model_validate(filtered)
 
-    def with_source(self, source: Mapping[str, Any] | None) -> "ReeSession":
+    def with_source(self, source: Mapping[str, Any] | None) -> ReeSession:
         if not source:
             return self.model_copy(
                 update={
@@ -66,24 +66,16 @@ class ReeSession(BaseModel):
         elif mode == "upload":
             acquired_by = "upload"
 
-        snapshot_archive = (
-            str(source.get("snapshotArchive") or "")
-            or self.source_snapshot_archive
-            or None
-        )
+        snapshot_archive = str(source.get("snapshotArchive") or "") or self.source_snapshot_archive or None
 
         return self.model_copy(
             update={
                 "source_available": True,
                 "source_acquired_by": acquired_by,
-                "uploaded_archive": str(source.get("archiveName") or "")
-                or self.uploaded_archive,
+                "uploaded_archive": str(source.get("archiveName") or "") or self.uploaded_archive,
                 "source_snapshot_archive": snapshot_archive,
                 "source_snapshot_captured_at": str(
-                    source.get("snapshotCapturedAt")
-                    or source.get("completedAt")
-                    or source.get("acquiredAt")
-                    or ""
+                    source.get("snapshotCapturedAt") or source.get("completedAt") or source.get("acquiredAt") or ""
                 )
                 or self.source_snapshot_captured_at,
             }
@@ -96,7 +88,7 @@ class ReeSession(BaseModel):
         environment_level: int,
         machine_level: int,
         detected_dependencies: str,
-    ) -> "ReeSession":
+    ) -> ReeSession:
         return self.model_copy(
             update={
                 "dependency_level": dependency_level,
@@ -110,9 +102,7 @@ class ReeSession(BaseModel):
     def is_sealed(self) -> bool:
         return bool(self.sealed_at and self.seal_hash)
 
-    def with_packaging(
-        self, *, source_included: bool, runtime_included: bool
-    ) -> "ReeSession":
+    def with_packaging(self, *, source_included: bool, runtime_included: bool) -> ReeSession:
         return self.model_copy(
             update={
                 "source_included": source_included,
@@ -127,7 +117,7 @@ class ReeSession(BaseModel):
         seal_hash: str,
         source_included: bool,
         runtime_included: bool,
-    ) -> "ReeSession":
+    ) -> ReeSession:
         return self.model_copy(
             update={
                 "sealed_at": sealed_at,

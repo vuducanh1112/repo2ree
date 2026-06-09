@@ -5,19 +5,16 @@ from typing import Any, Literal
 
 from fastapi import HTTPException
 
-from repo2ree_protocol.command import Command
 from repo2ree_api.run_registry import RunRegistry
 from repo2ree_api.workbench.deps import workbench_manager
-
+from repo2ree_protocol.command import Command
 
 # ================================================
 # Types
 # ================================================
 
 
-RunOperation = Literal[
-    "build", "sbom", "hbom", "activation", "source", "evaluate", "experiment"
-]
+RunOperation = Literal["build", "sbom", "hbom", "activation", "source", "evaluate", "experiment"]
 
 
 # ================================================
@@ -47,9 +44,7 @@ def _start_background_run(
     run_id_prefix: str,
     runner: Callable[[str, str], tuple[str, dict[str, Any]]],
 ) -> dict[str, Any]:
-    return _registry.start_background(
-        ree_id, operation, request_payload, run_id_prefix, runner
-    )
+    return _registry.start_background(ree_id, operation, request_payload, run_id_prefix, runner)
 
 
 def _start_single_command_run(

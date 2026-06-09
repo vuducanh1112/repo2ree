@@ -20,7 +20,6 @@ from .reproducibility_report import (
 )
 from .sources.renovate import run_extract
 
-
 # ================================================
 # Types
 # ================================================
@@ -52,9 +51,8 @@ def analyze_repo(
     Raises ``AnalysisError`` when ``strict=True`` and no dependency data could
     be extracted from any tool.
     """
-    # ----------------------------------------------------------------
-    assert repo_path.is_dir(), f"repo_path must be an existing directory: {repo_path}"
-    # ----------------------------------------------------------------
+    if not repo_path.is_dir():
+        raise ValueError(f"repo_path must be an existing directory: {repo_path}")
 
     _log: LogFn = log or (lambda *_: None)
     file_signals = _collect_file_signals(repo_path)
@@ -78,9 +76,7 @@ def _collect_file_signals(repo_path: Path) -> FileSignals:
         if is_dockerfile_filename(lower_name):
             signals.has_dockerfile = True
             try:
-                signals.dockerfile_texts.append(
-                    file_path.read_text(encoding="utf-8", errors="replace")
-                )
+                signals.dockerfile_texts.append(file_path.read_text(encoding="utf-8", errors="replace"))
             except OSError:
                 pass
         if lower_name.endswith(".nix"):
@@ -88,11 +84,8 @@ def _collect_file_signals(repo_path: Path) -> FileSignals:
         if is_vm_artifact_filename(lower_name):
             signals.has_vm = True
 
-    # ----------------------------------------------------------------
-    assert not signals.dockerfile_texts or signals.has_dockerfile, (
-        "dockerfile_texts populated without has_dockerfile flag"
-    )
-    # ----------------------------------------------------------------
+    if signals.dockerfile_texts and not signals.has_dockerfile:
+        raise AssertionError("dockerfile_texts populated without has_dockerfile flag")
 
     return signals
 

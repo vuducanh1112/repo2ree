@@ -233,6 +233,4 @@ def test_report_serializes_camel_case():
         "machineLevelLabel",
     } <= set(dumped)
     assert "dependencySummary" in dumped
-    assert set(dumped["dependencySummary"]).issuperset(
-        {"manifests", "total", "pinned", "ranged", "unpinned", "locked"}
-    )
+    assert set(dumped["dependencySummary"]).issuperset({"manifests", "total", "pinned", "ranged", "unpinned", "locked"})

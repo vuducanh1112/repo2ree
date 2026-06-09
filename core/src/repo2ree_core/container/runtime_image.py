@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 from repo2ree_core.container.run_script import LogSink, format_command, stream_output
@@ -36,9 +36,7 @@ def loaded_runtime_image(
     load_result = subprocess.run(load_cmd, capture_output=True, text=True)
     stream_output(log, load_result)
     if load_result.returncode != 0:
-        raise RuntimeError(
-            f"Failed to load runtime image from {runtime_archive_path.name}"
-        )
+        raise RuntimeError(f"Failed to load runtime image from {runtime_archive_path.name}")
 
     loaded_ref = _loaded_image_ref(load_result)
     if not loaded_ref:
@@ -54,11 +52,9 @@ def loaded_runtime_image(
     try:
         yield run_image
     finally:
-        try:
+        with suppress(Exception):
             subprocess.run(
                 [docker_bin, "rmi", "-f", run_image, loaded_ref],
                 capture_output=True,
                 text=True,
             )
-        except Exception:
-            pass

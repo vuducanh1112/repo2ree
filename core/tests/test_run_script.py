@@ -4,9 +4,7 @@ from repo2ree_core.container.run_script import build_exec_command
 
 
 def test_exec_command_without_label_does_not_echo_script():
-    payload = build_exec_command(
-        Path("/workspace/sub/run.sh"), "sub/run.sh", echo_label=None
-    )
+    payload = build_exec_command(Path("/workspace/sub/run.sh"), "sub/run.sh", echo_label=None)
 
     assert payload == "set -e; cd /workspace/sub; sh /workspace/sub/run.sh"
 
@@ -23,9 +21,7 @@ def test_exec_command_can_override_working_dir():
 
 
 def test_exec_command_with_label_echoes_and_cats_script():
-    payload = build_exec_command(
-        Path("/workspace/sub/run.sh"), "sub/run.sh", echo_label="build_runtime_script"
-    )
+    payload = build_exec_command(Path("/workspace/sub/run.sh"), "sub/run.sh", echo_label="build_runtime_script")
 
     segments = payload.split("; ")
     assert segments[0] == "set -e"
@@ -37,9 +33,7 @@ def test_exec_command_with_label_echoes_and_cats_script():
 
 
 def test_exec_command_quotes_paths_with_spaces():
-    payload = build_exec_command(
-        Path("/workspace/a b/run.sh"), "a b/run.sh", echo_label=None
-    )
+    payload = build_exec_command(Path("/workspace/a b/run.sh"), "a b/run.sh", echo_label=None)
 
     assert "cd '/workspace/a b'" in payload
     assert "sh '/workspace/a b/run.sh'" in payload

@@ -10,11 +10,11 @@ from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.envelope.handlers._common import patch_ree_intent
-from repo2ree_protocol.result import ActionResult
 from repo2ree_core.hbom.generate_hbom import generate_hbom
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment.base import CancelCheck
+from repo2ree_protocol.result import ActionResult
 
 
 def handle_generate_hbom(
@@ -55,9 +55,7 @@ def handle_generate_hbom(
             network={**profiled.network, **existing_hbom.network},
             extra_info={**profiled.extra_info, **existing_hbom.extra_info},
         )
-        patch_ree_intent(
-            store, {"hardware_description": merged.model_dump(exclude_none=True)}
-        )
+        patch_ree_intent(store, {"hardware_description": merged.model_dump(exclude_none=True)})
     except Exception as exc:
         log("system", "error", f"failed to persist hbom: {exc}")
         return ActionResult(status="failed", exit_code=1)

@@ -15,13 +15,13 @@ from __future__ import annotations
 import json
 import subprocess
 import threading
+from contextlib import suppress
 from dataclasses import dataclass
 
+from repo2ree_protocol.command import Command, SealReeArgs, SealReeCommand
 from repo2ree_protocol.log import LogSink
-from repo2ree_protocol.command import Command, SealReeCommand, SealReeArgs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
-
 
 # ================================================
 # Constants
@@ -50,7 +50,7 @@ class WorkbenchHandle:
     volume_name: str
 
     @classmethod
-    def from_entry(cls, entry: WorkbenchEntry) -> "WorkbenchHandle":
+    def from_entry(cls, entry: WorkbenchEntry) -> WorkbenchHandle:
         return cls(
             ree_id=entry.ree_id,
             container_name=entry.container_name,
@@ -238,9 +238,8 @@ class WorkbenchManager:
             text=True,
         )
 
-        assert proc.stdin is not None
-        assert proc.stdout is not None
-        assert proc.stderr is not None
+        if proc.stdin is None or proc.stdout is None or proc.stderr is None:
+            raise RuntimeError("Popen pipes unavailable — stdin/stdout/stderr not opened")
 
         proc.stdin.write(cmd_json)
         proc.stdin.close()
@@ -261,15 +260,11 @@ class WorkbenchManager:
         proc.wait()
 
         if proc.returncode in _CONTAINER_GONE_EXIT_CODES:
-            raise WorkbenchUnavailableError(
-                f"docker exec exited {proc.returncode} — container gone or stopping"
-            )
+            raise WorkbenchUnavailableError(f"docker exec exited {proc.returncode} — container gone or stopping")
 
         if stdout:
-            try:
+            with suppress(Exception):
                 return ActionResult.model_validate_json(stdout)
-            except Exception:
-                pass
 
         return ActionResult(status="failed", exit_code=proc.returncode or 1)
 
@@ -287,16 +282,9 @@ class WorkbenchManager:
             stderr = result.stderr.decode(errors="replace").strip()
             stdout = result.stdout.decode(errors="replace").strip()
             detail = stderr or stdout or "(no output on stdout/stderr)"
-            if (
-                result.returncode in _CONTAINER_GONE_EXIT_CODES
-                or "No such container" in detail
-            ):
-                raise WorkbenchUnavailableError(
-                    f"query {argv!r} failed (exit {result.returncode}): {detail}"
-                )
-            raise RuntimeError(
-                f"query {argv!r} failed (exit {result.returncode}): {detail}"
-            )
+            if result.returncode in _CONTAINER_GONE_EXIT_CODES or "No such container" in detail:
+                raise WorkbenchUnavailableError(f"query {argv!r} failed (exit {result.returncode}): {detail}")
+            raise RuntimeError(f"query {argv!r} failed (exit {result.returncode}): {detail}")
         return result.stdout
 
     def get_ree_metadata(self, handle: WorkbenchHandle) -> dict:  # type: ignore[type-arg]
@@ -343,16 +331,12 @@ class WorkbenchManager:
             handle = WorkbenchHandle.from_entry(entry)
             if not self._is_running(handle.container_name):
                 continue
-            try:
+            with suppress(Exception):
                 results.append(self.get_ree_metadata(handle))
-            except Exception:
-                pass
         results.sort(key=lambda m: m.get("updatedAt", ""), reverse=True)
         return results
 
-    def copy_to_workbench(
-        self, handle: WorkbenchHandle, host_path: str, container_path: str
-    ) -> None:
+    def copy_to_workbench(self, handle: WorkbenchHandle, host_path: str, container_path: str) -> None:
         """Copy a file from the host into the workbench container."""
         result = subprocess.run(
             ["docker", "cp", host_path, f"{handle.container_name}:{container_path}"],
@@ -360,9 +344,7 @@ class WorkbenchManager:
             text=True,
         )
         if result.returncode != 0:
-            raise RuntimeError(
-                f"docker cp failed: {result.stderr.strip() or result.stdout.strip()}"
-            )
+            raise RuntimeError(f"docker cp failed: {result.stderr.strip() or result.stdout.strip()}")
 
 
 # ================================================
@@ -382,9 +364,7 @@ def _dind_volume_name(ree_id: str) -> str:
 def _docker(*args: str) -> None:
     result = subprocess.run(["docker", *args], capture_output=True, text=True)
     if result.returncode != 0:
-        raise RuntimeError(
-            f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}"
-        )
+        raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
 
 
 def _docker_silent(*args: str) -> None:
@@ -399,6 +379,4 @@ def _docker_exec(container: str, *argv: str) -> None:
         text=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(
-            f"docker exec {argv[0]} failed: {result.stderr.strip() or result.stdout.strip()}"
-        )
+        raise RuntimeError(f"docker exec {argv[0]} failed: {result.stderr.strip() or result.stdout.strip()}")

@@ -33,11 +33,7 @@ def _parse_cpuinfo() -> dict[str, Any]:
         return {}
 
     first = processors[0]
-    socket_ids = {
-        entry.get("physical id", "").strip()
-        for entry in processors
-        if entry.get("physical id", "").strip()
-    }
+    socket_ids = {entry.get("physical id", "").strip() for entry in processors if entry.get("physical id", "").strip()}
     socket_count = len(socket_ids) or 1
 
     cores_per_socket = 1

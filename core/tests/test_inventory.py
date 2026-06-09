@@ -47,16 +47,11 @@ def test_should_inline_file_content_sbom_uses_higher_threshold():
 
 
 def test_should_inline_file_content_sbom_oversize_excluded():
-    assert (
-        should_inline_file_content("nested/sbom.json", MAX_INLINE_SBOM_BYTES + 1)
-        is False
-    )
+    assert should_inline_file_content("nested/sbom.json", MAX_INLINE_SBOM_BYTES + 1) is False
 
 
 def test_should_inline_file_content_case_insensitive_sbom_match():
-    assert (
-        should_inline_file_content("path/SBOM.JSON", MAX_INLINE_SBOM_BYTES + 1) is False
-    )
+    assert should_inline_file_content("path/SBOM.JSON", MAX_INLINE_SBOM_BYTES + 1) is False
 
 
 def test_classify_file_kind_returns_source_for_any_path():

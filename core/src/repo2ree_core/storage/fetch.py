@@ -23,7 +23,9 @@ def download_or_copy(origin_url: str, destination: Path) -> Path:
     """
     parsed = urlparse(origin_url)
     if parsed.scheme in {"http", "https"}:
-        with urlopen(origin_url) as response, destination.open("wb") as target:
+        # urlopen is stdlib — requests is not available in the workbench image.
+        # Scheme is validated on the line above, so only http/https reach here.
+        with urlopen(origin_url) as response, destination.open("wb") as target:  # noqa: S310
             shutil.copyfileobj(response, target)
         return destination
 

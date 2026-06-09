@@ -10,7 +10,6 @@ No filesystem I/O.
 
 from __future__ import annotations
 
-
 MAX_INLINE_TEXT_BYTES = 1024 * 1024
 MAX_INLINE_SBOM_BYTES = 8 * 1024 * 1024
 

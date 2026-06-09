@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_protocol.command import RunExperimentArgs
 from repo2ree_core.envelope.handlers._common import (
     patch_ree_intent,
     resolve_workspace_path,
 )
-from repo2ree_protocol.result import ActionResult
 from repo2ree_core.experiment.run import run_experiment
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment import CancelCheck
+from repo2ree_protocol.command import RunExperimentArgs
+from repo2ree_protocol.result import ActionResult
 
 
 def handle_run_experiment(
@@ -40,9 +40,7 @@ def handle_run_experiment(
 
     runtime_path = ree.runtime.strip()
     if not runtime_path:
-        log(
-            "system", "error", "Runtime artifact is required before running experiments"
-        )
+        log("system", "error", "Runtime artifact is required before running experiments")
         return ActionResult(status="failed", exit_code=1)
     try:
         runtime_abs = resolve_workspace_path(layout, runtime_path)
@@ -53,9 +51,7 @@ def handle_run_experiment(
         log("system", "error", f"Runtime artifact not found: {runtime_path}")
         return ActionResult(status="failed", exit_code=1)
 
-    experiment = next(
-        (exp for exp in ree.experiments if exp.name == args.experiment_name), None
-    )
+    experiment = next((exp for exp in ree.experiments if exp.name == args.experiment_name), None)
     if experiment is None:
         log("system", "error", f"Experiment {args.experiment_name!r} not found")
         return ActionResult(status="failed", exit_code=1)
@@ -76,9 +72,7 @@ def handle_run_experiment(
     outputs["runtimePath"] = runtime_path
 
     if outcome.snapshot_to_persist is not None:
-        raw_experiments = list(
-            (metadata.get("reeIntent") or {}).get("experiments") or []
-        )
+        raw_experiments = list((metadata.get("reeIntent") or {}).get("experiments") or [])
         updated = False
         for i, raw_exp in enumerate(raw_experiments):
             if raw_exp.get("name") == args.experiment_name:
@@ -92,9 +86,7 @@ def handle_run_experiment(
             try:
                 patch_ree_intent(store, {"experiments": raw_experiments})
                 outputs["snapshotApplied"] = True
-                outputs["snapshotMessage"] = (
-                    f"Saved {len(outcome.snapshot_to_persist)} baseline(s) to the intent."
-                )
+                outputs["snapshotMessage"] = f"Saved {len(outcome.snapshot_to_persist)} baseline(s) to the intent."
             except Exception as exc:
                 log("system", "error", f"failed to persist snapshot: {exc}")
                 outputs["snapshotApplied"] = False

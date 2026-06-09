@@ -8,7 +8,6 @@ from fastapi import HTTPException
 from repo2ree_api.run_registry import RunRegistry
 from repo2ree_api.storage.review_files import review_metadata_path
 
-
 # ================================================
 # Types
 # ================================================
@@ -43,6 +42,4 @@ def _start_background_review_run(
     run_id_prefix: str,
     runner: Callable[[str, str], tuple[str, dict[str, Any]]],
 ) -> dict[str, Any]:
-    return _registry.start_background(
-        review_id, operation, request_payload, run_id_prefix, runner
-    )
+    return _registry.start_background(review_id, operation, request_payload, run_id_prefix, runner)

@@ -14,7 +14,7 @@ Add new operations by:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
@@ -250,24 +250,22 @@ class SealReeCommand(BaseModel):
 
 # Tagged union discriminated on 'operation'.
 Command = Annotated[
-    Union[
-        AcquireSourceCommand,
-        SnapshotUpstreamCommand,
-        MaterializeWorkspaceCommand,
-        UpdateSourceMetadataCommand,
-        ExtractUploadCommand,
-        WriteFileCommand,
-        DeleteFileCommand,
-        PatchReeIntentCommand,
-        RemoveSourceCommand,
-        BuildRuntimeCommand,
-        GenerateSbomCommand,
-        EvaluateDependencyScoreCommand,
-        RunExperimentCommand,
-        GenerateHbomCommand,
-        ActivationTestCommand,
-        SealReeCommand,
-    ],
+    AcquireSourceCommand
+    | SnapshotUpstreamCommand
+    | MaterializeWorkspaceCommand
+    | UpdateSourceMetadataCommand
+    | ExtractUploadCommand
+    | WriteFileCommand
+    | DeleteFileCommand
+    | PatchReeIntentCommand
+    | RemoveSourceCommand
+    | BuildRuntimeCommand
+    | GenerateSbomCommand
+    | EvaluateDependencyScoreCommand
+    | RunExperimentCommand
+    | GenerateHbomCommand
+    | ActivationTestCommand
+    | SealReeCommand,
     Field(discriminator="operation"),
 ]
 

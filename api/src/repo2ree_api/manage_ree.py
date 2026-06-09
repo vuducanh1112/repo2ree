@@ -5,7 +5,6 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
-from repo2ree_core.time_utils import utc_now
 from repo2ree_api.api_utils import paginate
 from repo2ree_api.run_management import (
     _append_run_log,
@@ -14,7 +13,24 @@ from repo2ree_api.run_management import (
     _start_background_run,
     _update_run_outputs,
 )
+from repo2ree_api.schemas import (
+    ReeIntentPatchPayload,
+    ReeSealPayload,
+    SourceAcquirePayload,
+    SourceUploadCompletePayload,
+    UploadInitPayload,
+    WorkspaceCreatePayload,
+    WorkspaceFileContentPayload,
+)
+from repo2ree_api.storage.upload_staging import (
+    discard_staged_upload,
+    new_upload_token,
+    stage_upload_bytes,
+    staged_upload_path,
+)
 from repo2ree_api.workbench.deps import workbench_manager
+from repo2ree_core.storage.layout import WORKBENCH_ROOT
+from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol import (
     AcquireSourceCommand,
     ActionResult,
@@ -36,24 +52,7 @@ from repo2ree_protocol.command import (
     UpdateSourceMetadataArgs,
     WriteFileArgs,
 )
-from repo2ree_core.storage.layout import WORKBENCH_ROOT
 from repo2ree_supervisor import WorkbenchHandle, WorkbenchUnavailableError
-from repo2ree_api.storage.upload_staging import (
-    discard_staged_upload,
-    new_upload_token,
-    stage_upload_bytes,
-    staged_upload_path,
-)
-from repo2ree_api.schemas import (
-    ReeIntentPatchPayload,
-    ReeSealPayload,
-    SourceAcquirePayload,
-    SourceUploadCompletePayload,
-    UploadInitPayload,
-    WorkspaceCreatePayload,
-    WorkspaceFileContentPayload,
-)
-
 
 # ================================================
 # Logging
@@ -79,15 +78,11 @@ def _require_handle(ree_id: str) -> WorkbenchHandle:
     if handle is not None:
         return handle
     if workbench_manager.is_registered(ree_id):
-        raise HTTPException(
-            status_code=503, detail="Workbench unavailable for this REE"
-        )
+        raise HTTPException(status_code=503, detail="Workbench unavailable for this REE")
     raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
 
 
-def _dispatch_or_500(
-    handle: WorkbenchHandle, cmd: Command, run_id: str, error_detail: str
-) -> ActionResult:
+def _dispatch_or_500(handle: WorkbenchHandle, cmd: Command, run_id: str, error_detail: str) -> ActionResult:
     """Dispatch a single workbench command, raising HTTP 500 unless it succeeds."""
     result = workbench_manager.dispatch_action(handle, cmd, run_id, lambda *_: None)
     if result.status != "succeeded":
@@ -95,9 +90,7 @@ def _dispatch_or_500(
     return result
 
 
-def _source_pipeline(
-    lead: Command, metadata_args: UpdateSourceMetadataArgs
-) -> list[Command]:
+def _source_pipeline(lead: Command, metadata_args: UpdateSourceMetadataArgs) -> list[Command]:
     """Build the standard source pipeline: <lead> → snapshot → materialize → update-metadata."""
     return [
         lead,
@@ -123,9 +116,7 @@ def _run_source_pipeline(
         if result.outputs:
             _update_run_outputs(ws_id, run_id, result.outputs)
         if result.status != "succeeded":
-            log_run(
-                "system", "error", f"Workbench step {cmd.operation} {result.status}"
-            )
+            log_run("system", "error", f"Workbench step {cmd.operation} {result.status}")
             return result.status
     return "succeeded"
 
@@ -154,9 +145,7 @@ def _run_workbench_acquire_pipeline(
     )
     for cmd in pipeline:
         try:
-            result = workbench_manager.dispatch_action(
-                handle, cmd, f"init-{cmd.operation}", lambda *_: None
-            )
+            result = workbench_manager.dispatch_action(handle, cmd, f"init-{cmd.operation}", lambda *_: None)
         except Exception as exc:
             _log.warning(
                 "workbench acquire pipeline %s failed for %s: %s",
@@ -191,9 +180,7 @@ manage_ree_router = APIRouter()
 @manage_ree_router.post("/api/v1/rees")
 def create_workspace_route(payload: WorkspaceCreatePayload):
     if payload.sourceMode == "url" and not payload.originUrl:
-        raise HTTPException(
-            status_code=400, detail="originUrl is required for url source mode"
-        )
+        raise HTTPException(status_code=400, detail="originUrl is required for url source mode")
 
     ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
@@ -201,9 +188,7 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
     try:
         handle = workbench_manager.provision(ree_id, name)
     except Exception as exc:
-        raise HTTPException(
-            status_code=500, detail=f"Workbench provisioning failed: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"Workbench provisioning failed: {exc}") from exc
 
     # For url mode, acquire the source synchronously into the workbench volume
     # so the response reflects acquired state.
@@ -244,9 +229,7 @@ def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
     if payload.expectedVersion and payload.expectedVersion != current.get("updatedAt"):
         raise HTTPException(status_code=409, detail="Workspace version conflict")
 
-    cmd = PatchReeIntentCommand(
-        args=PatchReeIntentArgs(patch=dict(payload.reeIntentPatch or {}))
-    )
+    cmd = PatchReeIntentCommand(args=PatchReeIntentArgs(patch=dict(payload.reeIntentPatch or {})))
     _dispatch_or_500(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
     return workbench_manager.get_workspace(handle)
 
@@ -258,9 +241,7 @@ def delete_workspace_route(ree_id: str):
         workbench_manager.teardown(handle)
     except Exception as exc:
         _log.warning("workbench teardown failed for %s: %s", ree_id, exc)
-        raise HTTPException(
-            status_code=500, detail=f"Workbench teardown failed: {exc}"
-        ) from exc
+        raise HTTPException(status_code=500, detail=f"Workbench teardown failed: {exc}") from exc
     return {
         "deletedAt": utc_now(),
         "state": "deleted",
@@ -413,9 +394,7 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
 @manage_ree_router.delete("/api/v1/rees/{ree_id}/source")
 def remove_source_route(ree_id: str):
     handle = _require_handle(ree_id)
-    _dispatch_or_500(
-        handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed"
-    )
+    _dispatch_or_500(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
     return {
         "invalidatedSteps": ["source", "evaluate", "workflow"],
         "workspace": workbench_manager.get_workspace(handle),
@@ -435,12 +414,8 @@ def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)):
 @manage_ree_router.put("/api/v1/rees/{ree_id}/files/content")
 def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload):
     handle = _require_handle(ree_id)
-    cmd = WriteFileCommand(
-        args=WriteFileArgs(path=payload.path, content=payload.content)
-    )
-    wb_result = _dispatch_or_500(
-        handle, cmd, "write-file", "Workbench write_file failed"
-    )
+    cmd = WriteFileCommand(args=WriteFileArgs(path=payload.path, content=payload.content))
+    wb_result = _dispatch_or_500(handle, cmd, "write-file", "Workbench write_file failed")
     return wb_result.outputs or {"updatedAt": None}
 
 
@@ -448,9 +423,7 @@ def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentP
 def delete_workspace_file_content_route(ree_id: str, path: str = Query(...)):
     handle = _require_handle(ree_id)
     cmd = DeleteFileCommand(args=DeleteFileArgs(path=path))
-    wb_result = _dispatch_or_500(
-        handle, cmd, "delete-file", "Workbench delete_file failed"
-    )
+    wb_result = _dispatch_or_500(handle, cmd, "delete-file", "Workbench delete_file failed")
     return wb_result.outputs or {"deletedAt": None}
 
 
@@ -498,8 +471,7 @@ def download_workspace_ree_archive_route(ree_id: str):
         media_type="application/zip",
         headers={
             "Content-Disposition": (
-                f'attachment; filename="{archive_filename}"; '
-                f"filename*=UTF-8''{quote(archive_filename)}"
+                f"attachment; filename=\"{archive_filename}\"; filename*=UTF-8''{quote(archive_filename)}"
             )
         },
     )

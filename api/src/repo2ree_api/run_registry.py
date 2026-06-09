@@ -112,13 +112,9 @@ class RunRegistry:
                 return
             next_seq = int(run_state.get("_nextSeq", 1))
             logs = run_state.setdefault("logs", [])
-            run_state["_nextSeq"] = self._append_log_entry(
-                logs, next_seq, stream, level, message
-            )
+            run_state["_nextSeq"] = self._append_log_entry(logs, next_seq, stream, level, message)
 
-    def update_outputs(
-        self, entity_id: str, run_id: str, outputs: dict[str, Any]
-    ) -> None:
+    def update_outputs(self, entity_id: str, run_id: str, outputs: dict[str, Any]) -> None:
         with self._lock:
             run_state = self._run_store.get(entity_id, {}).get(run_id)
             if run_state:
@@ -194,19 +190,11 @@ class RunRegistry:
                     "error",
                     str(exc.detail or "Run failed"),
                 )
-                status = (
-                    "canceled"
-                    if self.is_cancel_requested(entity_id, run_id)
-                    else "failed"
-                )
+                status = "canceled" if self.is_cancel_requested(entity_id, run_id) else "failed"
                 outputs = {}
             except Exception as exc:
                 self.append_log(entity_id, run_id, "system", "error", str(exc))
-                status = (
-                    "canceled"
-                    if self.is_cancel_requested(entity_id, run_id)
-                    else "failed"
-                )
+                status = "canceled" if self.is_cancel_requested(entity_id, run_id) else "failed"
                 outputs = {}
             self.finalize(entity_id, run_id, status, outputs)
 

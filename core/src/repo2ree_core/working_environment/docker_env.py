@@ -33,7 +33,6 @@ from repo2ree_core.working_environment.base import (
     WorkingEnvironmentSpec,
 )
 
-
 # ================================================
 # Helpers
 # ================================================
@@ -114,18 +113,14 @@ class DockerWorkingEnvironment:
             step.script_rel_path,
             error_label="Script path",
         )
-        script_in_container = CONTAINER_WORKSPACE / script_abs.relative_to(
-            self._workspace
-        )
+        script_in_container = CONTAINER_WORKSPACE / script_abs.relative_to(self._workspace)
         working_dir: Path | None = None
         if step.working_dir_rel is not None:
             working_dir_abs = self._resolve_workspace_path(
                 step.working_dir_rel,
                 error_label="Working directory path",
             )
-            working_dir = CONTAINER_WORKSPACE / working_dir_abs.relative_to(
-                self._workspace
-            )
+            working_dir = CONTAINER_WORKSPACE / working_dir_abs.relative_to(self._workspace)
 
         exec_command = build_exec_command(
             script_in_container,
@@ -144,20 +139,14 @@ class DockerWorkingEnvironment:
             exec_command,
         ]
         log("system", "info", format_command(cmd))
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, input=step.stdin_text
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, input=step.stdin_text)
         stream_output(log, result)
 
         if is_canceled():
-            outcome = StepOutcome(
-                "canceled", result.returncode, result.stdout or "", result.stderr or ""
-            )
+            outcome = StepOutcome("canceled", result.returncode, result.stdout or "", result.stderr or "")
         else:
             status = "succeeded" if result.returncode == 0 else "failed"
-            outcome = StepOutcome(
-                status, result.returncode, result.stdout or "", result.stderr or ""
-            )
+            outcome = StepOutcome(status, result.returncode, result.stdout or "", result.stderr or "")
         return outcome
 
     def put_file(self, rel_path: str, content: str) -> None:
@@ -184,9 +173,7 @@ class DockerWorkingEnvironment:
             self._log("system", "info", format_command(mkdir_cmd))
             mkdir_result = subprocess.run(mkdir_cmd, capture_output=True, text=True)
             if mkdir_result.returncode != 0:
-                raise RuntimeError(
-                    f"put_file mkdir failed for {rel_path!r}: {mkdir_result.stderr.strip()}"
-                )
+                raise RuntimeError(f"put_file mkdir failed for {rel_path!r}: {mkdir_result.stderr.strip()}")
         cmd = [
             self._docker,
             "exec",
@@ -198,9 +185,7 @@ class DockerWorkingEnvironment:
         ]
         result = subprocess.run(cmd, input=content, text=True, capture_output=True)
         if result.returncode != 0:
-            raise RuntimeError(
-                f"put_file failed for {rel_path!r}: {result.stderr.strip()}"
-            )
+            raise RuntimeError(f"put_file failed for {rel_path!r}: {result.stderr.strip()}")
 
     def sync_out(self, *, log: LogSink) -> bool:
         """Copy the container workspace back to the host.
@@ -245,10 +230,7 @@ class DockerWorkingEnvironment:
         result = subprocess.run(cmd, capture_output=True, text=True)
         stream_output(self._log, result)
         if result.returncode != 0:
-            raise RuntimeError(
-                f"docker create failed (exit {result.returncode}): "
-                f"{result.stderr.strip()}"
-            )
+            raise RuntimeError(f"docker create failed (exit {result.returncode}): {result.stderr.strip()}")
         self._created = True
 
     def _cp_in(self) -> None:
@@ -263,10 +245,7 @@ class DockerWorkingEnvironment:
         stream_output(self._log, result)
         if result.returncode != 0:
             self._destroy()
-            raise RuntimeError(
-                f"docker cp (in) failed (exit {result.returncode}): "
-                f"{result.stderr.strip()}"
-            )
+            raise RuntimeError(f"docker cp (in) failed (exit {result.returncode}): {result.stderr.strip()}")
 
     def _start(self) -> None:
         cmd = [self._docker, "start", self._name]
@@ -275,10 +254,7 @@ class DockerWorkingEnvironment:
         stream_output(self._log, result)
         if result.returncode != 0:
             self._destroy()
-            raise RuntimeError(
-                f"docker start failed (exit {result.returncode}): "
-                f"{result.stderr.strip()}"
-            )
+            raise RuntimeError(f"docker start failed (exit {result.returncode}): {result.stderr.strip()}")
 
     def _destroy(self) -> None:
         if not self._created:

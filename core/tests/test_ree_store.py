@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -10,7 +10,7 @@ from repo2ree_core.workspace.model import WorkspaceMetadata
 
 
 def _make_metadata(ree_id: str = "ree-1", name: str = "demo") -> WorkspaceMetadata:
-    ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     return WorkspaceMetadata.model_validate(
         {
             "reeId": ree_id,

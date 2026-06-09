@@ -18,12 +18,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 from repo2ree_core.container.runtime_image import loaded_runtime_image
-from repo2ree_core.experiment.experiment import (
-    CustomMatch,
-    ExpectedOutput,
-    Experiment,
-    FileSource,
-)
 from repo2ree_core.experiment.evaluate import (
     CaptureBundle,
     ExperimentRunResult,
@@ -33,6 +27,12 @@ from repo2ree_core.experiment.evaluate import (
     snapshot_outputs,
     source_key,
 )
+from repo2ree_core.experiment.experiment import (
+    CustomMatch,
+    ExpectedOutput,
+    Experiment,
+    FileSource,
+)
 from repo2ree_core.working_environment import (
     CancelCheck,
     LogSink,
@@ -41,7 +41,6 @@ from repo2ree_core.working_environment import (
     WorkingEnvironment,
     acquire,
 )
-
 
 # ================================================
 # Result type
@@ -162,11 +161,7 @@ def _evaluate_all_outputs(
             key = source_key(expected.source)
             text = captures.text_for(expected.source)
             if text is None:
-                path = (
-                    expected.source.path
-                    if isinstance(expected.source, FileSource)
-                    else "?"
-                )
+                path = expected.source.path if isinstance(expected.source, FileSource) else "?"
                 output_results.append(
                     OutputResult(
                         source_key=key,
@@ -240,9 +235,7 @@ def run_experiment(
     log("system", "info", f"Command: {experiment.command}")
 
     try:
-        with loaded_runtime_image(
-            runtime_archive_path, run_id=run_id, log=log
-        ) as runtime_image:
+        with loaded_runtime_image(runtime_archive_path, run_id=run_id, log=log) as runtime_image:
             try:
                 with acquire(
                     workspace,
@@ -296,9 +289,7 @@ def run_experiment(
 
                     if mode == "verify":
                         if cmd_outcome.status == "canceled":
-                            return ExperimentRunOutcome(
-                                status="canceled", run_outputs=run_outputs
-                            )
+                            return ExperimentRunOutcome(status="canceled", run_outputs=run_outputs)
                         result = _evaluate_all_outputs(
                             experiment.outputs,
                             cmd_outcome.exit_code,
@@ -326,9 +317,7 @@ def run_experiment(
                         status = cmd_outcome.status
                         if status == "succeeded" and result.verdict == "fail":
                             status = "failed"
-                        return ExperimentRunOutcome(
-                            status=status, run_outputs=run_outputs
-                        )
+                        return ExperimentRunOutcome(status=status, run_outputs=run_outputs)
 
                     # snapshot: only record baselines when the command succeeded.
                     if cmd_outcome.status != "succeeded":
@@ -338,9 +327,7 @@ def run_experiment(
                             "warn",
                             "Snapshot skipped — command did not exit 0",
                         )
-                        return ExperimentRunOutcome(
-                            status=cmd_outcome.status, run_outputs=run_outputs
-                        )
+                        return ExperimentRunOutcome(status=cmd_outcome.status, run_outputs=run_outputs)
 
                     new_outputs = snapshot_outputs(experiment.outputs, captures)
                     run_outputs["snapshotCount"] = len(new_outputs)

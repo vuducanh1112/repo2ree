@@ -5,12 +5,11 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_protocol import GenerateHbomCommand
 from repo2ree_api.run_management import (
     _run_summary,
     _start_single_command_run,
 )
-
+from repo2ree_protocol import GenerateHbomCommand
 
 # ================================================
 # Router
@@ -37,9 +36,7 @@ class CreateGenerateHbomRunPayload(BaseModel):
 
 
 @generate_hbom_router.post("/api/v1/rees/{ree_id}/generate-hbom")
-def create_workspace_generate_hbom_run(
-    ree_id: str, payload: CreateGenerateHbomRunPayload
-):
+def create_workspace_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload):
     run_state = create_generate_hbom_run_state(ree_id, payload)
     return _run_summary(run_state)
 

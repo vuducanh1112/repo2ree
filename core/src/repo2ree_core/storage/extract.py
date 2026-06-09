@@ -36,7 +36,7 @@ def safe_extract_tar(archive: Path, destination: Path) -> None:
 
     with tarfile.open(archive, mode="r:*") as tar:
         safe_members = [member for member in tar.getmembers() if _is_safe(member)]
-        tar.extractall(destination, members=safe_members)
+        tar.extractall(destination, members=safe_members, filter="data")
 
 
 def safe_extract_zip(archive: Path, destination: Path) -> None:

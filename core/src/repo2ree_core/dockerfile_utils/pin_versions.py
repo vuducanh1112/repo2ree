@@ -1,20 +1,22 @@
-from enum import Enum
-import shlex
 import datetime
+import shlex
 import tempfile
+from enum import Enum
 
 from dockerfile_parse import DockerfileParser
 from pydantic import BaseModel, model_validator
 
 from repo2ree_core.debian_packages_util.pin_package import (
     get_latest_apt_package_version_until_date as pin_apt_package_version,
+)
+from repo2ree_core.debian_packages_util.pin_package import (
     get_put_snapshot_sources_shell_command,
 )
 from repo2ree_core.dockerfile_utils.os_utils import (
     OSReleaseInfo,
+    get_docker_image_digest,
     get_os_release_lightweight,
     parse_os_release,
-    get_docker_image_digest,
 )
 from repo2ree_core.python_packages_util.pin_pypi_package_version import (
     get_latest_version_on_pypi_until_date,
@@ -79,14 +81,10 @@ class SplittedShellCommand(BaseModel, frozen=True):
     @model_validator(mode="after")
     def validate_split(self) -> "SplittedShellCommand":
         if len(self.delimited_commands) != len(self.delimited_commands_tokens):
-            raise ValueError(
-                "Length of delimited_commands and delimited_commands_tokens must be the same."
-            )
+            raise ValueError("Length of delimited_commands and delimited_commands_tokens must be the same.")
 
         if len(self.delimited_commands) - 1 != len(self.delimiters):
-            raise ValueError(
-                "Length of delimiters must be one less than length of delimited_commands."
-            )
+            raise ValueError("Length of delimiters must be one less than length of delimited_commands.")
 
         rejoined_shell_command = ""
         for i, command in enumerate(self.delimited_commands):
@@ -97,15 +95,11 @@ class SplittedShellCommand(BaseModel, frozen=True):
         if shlex.split(rejoined_shell_command) != shlex.split(self.shell_command):
             print(shlex.split(rejoined_shell_command))
             print(shlex.split(self.shell_command))
-            raise ValueError(
-                "Reconstructed command does not match the original shell_command."
-            )
+            raise ValueError("Reconstructed command does not match the original shell_command.")
 
         for i in range(len(self.delimited_commands)):
             rejoined_delimited_command = " ".join(self.delimited_commands_tokens[i])
-            if shlex.split(rejoined_delimited_command) != shlex.split(
-                self.delimited_commands[i]
-            ):
+            if shlex.split(rejoined_delimited_command) != shlex.split(self.delimited_commands[i]):
                 raise ValueError(
                     f"Reconstructed delimited command at index {i} does not match the original delimited command."
                 )
@@ -146,9 +140,7 @@ def pin_dockerfile_base_image_and_packages(
         pinned_base_image = pin_base_image(image_name=dfp.baseimage, date=date)
         dfp.baseimage = pinned_base_image
 
-        architecture, os_release_str = get_os_release_lightweight(
-            image_name=dfp.baseimage
-        )
+        architecture, os_release_str = get_os_release_lightweight(image_name=dfp.baseimage)
         print(f"Architecture: {architecture}")
         print(f"/etc/os-release:\n{os_release_str}")
         os_release_info = parse_os_release(os_release_str)
@@ -273,9 +265,7 @@ def pin_dockerfile_package_install_commands(
                     value=new_shell_command,
                 )
             else:
-                print(
-                    f"No changes made to shell command: {splitted_shell_command.shell_command}"
-                )
+                print(f"No changes made to shell command: {splitted_shell_command.shell_command}")
 
         new_dockerfile_instructions.append(new_dockerfile_instruction)
 
@@ -289,9 +279,7 @@ def pin_dockerfile_package_install_commands(
                     value=snapshot_sources_command.strip(),
                 )
             )
-            print(
-                f"Inserted snapshot sources command after FROM: {snapshot_sources_command.strip()}"
-            )
+            print(f"Inserted snapshot sources command after FROM: {snapshot_sources_command.strip()}")
 
     return new_dockerfile_instructions
 
@@ -308,9 +296,7 @@ def pin_package_versions_of_install_command(
     if install_command == PackageInstallCommand.NONE:
         pinned_packages_install_command_tokens = command_tokens
     else:
-        packages = extract_packages_from_install_command(
-            command_tokens, install_command
-        )
+        packages = extract_packages_from_install_command(command_tokens, install_command)
         print(f"Extracted packages: {packages}")
 
         pinned_packages = {}
@@ -329,10 +315,8 @@ def pin_package_versions_of_install_command(
             print(f"Pinned package '{package}' to version '{version}'")
             pinned_packages[package] = version
 
-        pinned_packages_install_command_tokens = (
-            put_pinned_versions_into_install_command(
-                command_tokens, pinned_packages, install_command
-            )
+        pinned_packages_install_command_tokens = put_pinned_versions_into_install_command(
+            command_tokens, pinned_packages, install_command
         )
 
     return pinned_packages_install_command_tokens
@@ -448,9 +432,7 @@ def extract_packages_from_install_command(
     return packages
 
 
-def package_is_pinned(
-    package_name: str, package_install_command: PackageInstallCommand
-) -> bool:
+def package_is_pinned(package_name: str, package_install_command: PackageInstallCommand) -> bool:
     is_pinned = False
 
     match package_install_command:
@@ -468,9 +450,7 @@ def package_is_pinned(
             ):
                 is_pinned = True
         case _:
-            raise ValueError(
-                f"Unsupported package install command: {package_install_command}"
-            )
+            raise ValueError(f"Unsupported package install command: {package_install_command}")
 
     return is_pinned
 
@@ -503,9 +483,7 @@ def put_pinned_versions_into_install_command(
             new_command_tokens.append(token)
             continue
         if token in pinned_versions:
-            pinned_version = put_pinned_package_version(
-                token, pinned_versions[token], install_command
-            )
+            pinned_version = put_pinned_package_version(token, pinned_versions[token], install_command)
             new_command_tokens.append(pinned_version)
         else:
             new_command_tokens.append(token)
@@ -513,9 +491,7 @@ def put_pinned_versions_into_install_command(
     return new_command_tokens
 
 
-def put_pinned_package_version(
-    package_name: str, version: str, install_command: PackageInstallCommand
-) -> str:
+def put_pinned_package_version(package_name: str, version: str, install_command: PackageInstallCommand) -> str:
     pinned_package = ""
 
     match install_command:

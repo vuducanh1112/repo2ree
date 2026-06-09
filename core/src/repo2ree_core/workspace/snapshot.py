@@ -13,7 +13,6 @@ from pathlib import Path
 
 from repo2ree_core.workspace.bundle import safe_filename
 
-
 _ARCHIVE_SUFFIXES = (".tar.gz", ".tgz", ".zip", ".tar", ".git")
 
 

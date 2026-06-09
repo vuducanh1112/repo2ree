@@ -3,6 +3,8 @@ import json
 import uuid
 import zipfile
 
+import pytest
+
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.storage.layout import ReeLayout
@@ -216,11 +218,8 @@ def test_build_archive_raises_before_seal(tmp_path):
     storage_root = tmp_path / "storage"
     ree_id, _ = _make_ree(storage_root, "unsealed")
 
-    try:
+    with pytest.raises(RuntimeError, match="not sealed"):
         build_workspace_ree_archive(storage_root, ree_id)
-        assert False, "Expected RuntimeError"
-    except RuntimeError as exc:
-        assert "not sealed" in str(exc).lower()
 
 
 def test_build_archive_returns_stored_bytes_after_seal(tmp_path):

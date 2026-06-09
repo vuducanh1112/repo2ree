@@ -10,11 +10,11 @@ from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.handlers._common import utc_now
-from repo2ree_protocol.command import UpdateSourceMetadataArgs
-from repo2ree_protocol.result import ActionResult
-from repo2ree_core.storage.layout import ReeLayout, SNAPSHOT_FILENAME
+from repo2ree_core.storage.layout import SNAPSHOT_FILENAME, ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment.base import CancelCheck
+from repo2ree_protocol.command import UpdateSourceMetadataArgs
+from repo2ree_protocol.result import ActionResult
 
 
 def handle_update_source_metadata(

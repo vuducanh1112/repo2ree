@@ -66,7 +66,8 @@ def run_script_directly(
         cwd=script_dir,
     )
 
-    assert proc.stdout is not None
+    if proc.stdout is None:
+        raise RuntimeError("stdout pipe unavailable after Popen")
 
     def _stream() -> None:
         for line in proc.stdout:  # type: ignore[union-attr]

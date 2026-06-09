@@ -5,14 +5,13 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_protocol import ActivationTestCommand
-from repo2ree_protocol.command import ActivationTestArgs
 from repo2ree_api.run_management import (
     _run_summary,
     _start_single_command_run,
 )
 from repo2ree_api.workbench.deps import workbench_manager
-
+from repo2ree_protocol import ActivationTestCommand
+from repo2ree_protocol.command import ActivationTestArgs
 
 # ================================================
 # Router
@@ -40,9 +39,7 @@ class CreateActivationTestRunPayload(BaseModel):
 
 
 @activation_test_router.post("/api/v1/rees/{ree_id}/activation-test")
-def create_workspace_activation_test_run(
-    ree_id: str, payload: CreateActivationTestRunPayload
-):
+def create_workspace_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayload):
     run_state = create_activation_run_state(ree_id, payload)
     return _run_summary(run_state)
 
@@ -81,16 +78,12 @@ def create_activation_run_state(
     ree_id: str,
     payload: CreateActivationTestRunPayload,
 ) -> dict[str, Any]:
-    activation_script_path = _resolve_activation_script_path(
-        ree_id, payload.activation_script_path
-    )
+    activation_script_path = _resolve_activation_script_path(ree_id, payload.activation_script_path)
 
     return _start_single_command_run(
         ree_id,
         operation="activation",
-        command=ActivationTestCommand(
-            args=ActivationTestArgs(activation_script_path=activation_script_path)
-        ),
+        command=ActivationTestCommand(args=ActivationTestArgs(activation_script_path=activation_script_path)),
         run_id_prefix="activation",
         request_payload={"activation_script_path": activation_script_path},
         canceled_message="Activation run canceled",

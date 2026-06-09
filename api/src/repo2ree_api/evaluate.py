@@ -6,18 +6,17 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_api.workbench.deps import workbench_manager
-from repo2ree_protocol.command import (
-    EvaluateDependencyScoreArgs,
-    EvaluateDependencyScoreCommand,
-)
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
     _run_summary,
     _start_background_run,
 )
-
+from repo2ree_api.workbench.deps import workbench_manager
+from repo2ree_protocol.command import (
+    EvaluateDependencyScoreArgs,
+    EvaluateDependencyScoreCommand,
+)
 
 # ================================================
 # Router
@@ -65,9 +64,7 @@ def get_workspace_evaluate_report(ree_id: str) -> dict[str, Any]:
                 status_code=404,
                 detail="No reproducibility report; run evaluate first",
             ) from exc
-    raise HTTPException(
-        status_code=404, detail="No reproducibility report; run evaluate first"
-    )
+    raise HTTPException(status_code=404, detail="No reproducibility report; run evaluate first")
 
 
 # ================================================
@@ -96,9 +93,7 @@ def create_evaluate_run_state(
 
         result = workbench_manager.dispatch_action(
             handle,
-            EvaluateDependencyScoreCommand(
-                args=EvaluateDependencyScoreArgs(strict=payload.strict)
-            ),
+            EvaluateDependencyScoreCommand(args=EvaluateDependencyScoreArgs(strict=payload.strict)),
             run_id,
             _log,
         )

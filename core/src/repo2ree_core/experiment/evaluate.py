@@ -18,7 +18,6 @@ from repo2ree_core.experiment.experiment import (
     Sha256Match,
 )
 
-
 # ================================================
 # Capture bundle
 # ================================================
@@ -30,9 +29,7 @@ class CaptureBundle:
 
     stdout: str = ""
     stderr: str = ""
-    files: dict[str, bytes] = field(
-        default_factory=dict
-    )  # workspace-relative path -> bytes
+    files: dict[str, bytes] = field(default_factory=dict)  # workspace-relative path -> bytes
 
     def text_for(self, source: OutputSource) -> str | None:
         """Return UTF-8 text for *source*, or None if the file is missing."""
@@ -90,9 +87,7 @@ def source_key(source: OutputSource) -> str:
     return source.kind
 
 
-def evaluate_match(
-    match: OutputMatch, text: str, raw_bytes: bytes | None
-) -> tuple[bool, str]:
+def evaluate_match(match: OutputMatch, text: str, raw_bytes: bytes | None) -> tuple[bool, str]:
     """Return (passed, detail) for *match* against the captured value.
 
     ``text`` is the UTF-8 decoded content; ``raw_bytes`` is only used by the
@@ -164,9 +159,7 @@ def evaluate_output(expected: ExpectedOutput, captures: CaptureBundle) -> Output
     raw = captures.raw_bytes_for(source)
     passed, detail = evaluate_match(expected.match, text, raw)
 
-    return OutputResult(
-        source_key=key, mode=expected.match.mode, passed=passed, detail=detail
-    )
+    return OutputResult(source_key=key, mode=expected.match.mode, passed=passed, detail=detail)
 
 
 def make_run_result(

@@ -1,4 +1,3 @@
-from repo2ree_protocol.log import LogSink  # noqa: F401
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
@@ -19,6 +18,7 @@ from repo2ree_protocol.command import (
     WriteFileCommand,
     command_adapter,
 )
+from repo2ree_protocol.log import LogSink  # noqa: F401
 from repo2ree_protocol.result import ActionResult
 
 __all__ = [

@@ -17,7 +17,6 @@ from typing import Any
 
 from ..dependency_inventory import Dependency, DependencyInventory
 
-
 # ================================================
 # Types
 # ================================================
@@ -44,11 +43,8 @@ def run_extract(workspace_path: Path, log: LogFn) -> DependencyInventory | None:
     All stdout/stderr lines are forwarded to ``log``.  Returns ``None`` when
     Renovate produced no parseable dependency output.
     """
-    # ----------------------------------------------------------------
-    assert workspace_path.is_dir(), (
-        f"workspace_path must be an existing directory: {workspace_path}"
-    )
-    # ----------------------------------------------------------------
+    if not workspace_path.is_dir():
+        raise ValueError(f"workspace_path must be an existing directory: {workspace_path}")
 
     command = ["renovate", "--platform=local", "--dry-run=extract"]
     log("system", "info", "$ " + " ".join(shlex.quote(c) for c in command))
@@ -118,9 +114,7 @@ def _package_files(payload: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def _is_container_dep(manager: str, dep: dict[str, Any]) -> bool:
-    return dep.get("datasource") == _DOCKER_DATASOURCE or manager.startswith(
-        ("dockerfile", "docker-compose")
-    )
+    return dep.get("datasource") == _DOCKER_DATASOURCE or manager.startswith(("dockerfile", "docker-compose"))
 
 
 def _inventory_from_payload(payload: dict[str, Any]) -> DependencyInventory:
@@ -152,12 +146,7 @@ def _inventory_from_payload(payload: dict[str, Any]) -> DependencyInventory:
 
     inventory = DependencyInventory(dependencies=deps)
 
-    # ----------------------------------------------------------------
-    assert all(
-        d.manifest_path is None
-        for d in inventory.dependencies
-        if d.kind == "container_image"
-    ), "container_image deps must not carry a manifest_path"
-    # ----------------------------------------------------------------
+    if not all(d.manifest_path is None for d in inventory.dependencies if d.kind == "container_image"):
+        raise AssertionError("container_image deps must not carry a manifest_path")
 
     return inventory

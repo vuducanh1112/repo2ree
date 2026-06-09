@@ -26,7 +26,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-
 # ================================================
 # Constants
 # ================================================
@@ -66,11 +65,11 @@ class ReeLayout:
     root: Path
 
     @classmethod
-    def for_ree(cls, storage_root: Path | str, ree_id: str) -> "ReeLayout":
+    def for_ree(cls, storage_root: Path | str, ree_id: str) -> ReeLayout:
         return cls(root=Path(storage_root) / ree_id)
 
     @classmethod
-    def in_workbench(cls) -> "ReeLayout":
+    def in_workbench(cls) -> ReeLayout:
         """Layout rooted at the fixed workbench mount point (/ree)."""
         return cls(root=WORKBENCH_ROOT)
 
@@ -152,10 +151,8 @@ def validate_relative_path(rel: str | PurePosixPath) -> None:
 
     Pure validator intended to run before any path is handed to the shell.
     """
-    if not isinstance(rel, (str, PurePosixPath)):
-        raise TypeError(
-            f"relative path must be str or PurePosixPath, got {type(rel).__name__}"
-        )
+    if not isinstance(rel, str | PurePosixPath):
+        raise TypeError(f"relative path must be str or PurePosixPath, got {type(rel).__name__}")
     text = str(rel)
     if text == "":
         raise ValueError("relative path must not be empty")

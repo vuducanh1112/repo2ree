@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-
 
 WorkspaceStatus = Literal["draft", "ready", "sealed", "archived"]
 SourceMode = Literal["download", "upload"]

@@ -6,10 +6,10 @@ Packs /ree/upstream into /ree/snapshot.tar.gz. No-op if upstream is absent.
 from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_protocol.result import ActionResult
 from repo2ree_core.storage.extract import pack_directory_tar_gz
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.working_environment.base import CancelCheck
+from repo2ree_protocol.result import ActionResult
 
 
 def handle_snapshot_upstream(

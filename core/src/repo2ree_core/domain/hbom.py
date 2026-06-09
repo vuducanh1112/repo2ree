@@ -4,7 +4,6 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-
 DeviceModel = Annotated[
     str,
     StringConstraints(strip_whitespace=True, min_length=1),
@@ -87,9 +86,9 @@ class MemoryDefinition(BaseModel):
         ge=0,
         description="Capacity of one memory module in gibibytes/gigabytes as recorded.",
     )
-    memory_type: Literal[
-        "DDR3", "DDR4", "DDR5", "LPDDR4", "LPDDR5", "HBM2", "HBM2e", "HBM3"
-    ] = Field(default="DDR5", description="Memory technology used by the module.")
+    memory_type: Literal["DDR3", "DDR4", "DDR5", "LPDDR4", "LPDDR5", "HBM2", "HBM2e", "HBM3"] = Field(
+        default="DDR5", description="Memory technology used by the module."
+    )
     speed_mt_s: int = Field(
         default=0,
         ge=0,
@@ -176,7 +175,7 @@ class HBOM(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_component_keys(self) -> "HBOM":
+    def validate_component_keys(self) -> HBOM:
         for field_name in ("cpus", "gpus", "memory", "storage", "network"):
             components = getattr(self, field_name)
             for model_name in components:

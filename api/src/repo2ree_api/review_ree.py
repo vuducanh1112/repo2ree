@@ -7,6 +7,7 @@ import subprocess
 import tarfile
 import tempfile
 import zipfile
+from contextlib import suppress
 from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
@@ -28,9 +29,6 @@ from repo2ree_api.review_run_management import (
     _review_run_summary,
     _start_background_review_run,
 )
-
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_api.storage.review_files import (
     ReviewUploadCompletePayload,
     ReviewUploadInitPayload,
@@ -41,7 +39,8 @@ from repo2ree_api.storage.review_files import (
     review_workspace_dir,
     store_review_upload_bytes,
 )
-
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 
 # ================================================
 # Router
@@ -129,12 +128,8 @@ def review_source_acquire_route(review_id: str):
 @review_ree_router.post("/api/v1/reviews/{review_id}/build-runtime")
 def review_build_runtime_route(review_id: str, payload: ReviewBuildRuntimePayload):
     try:
-        script_path = require_non_empty_path(
-            payload.build_runtime_script_path, "build_runtime_script_path"
-        )
-        runtime_path = require_non_empty_path(
-            payload.produced_runtime_path, "produced_runtime_path"
-        )
+        script_path = require_non_empty_path(payload.build_runtime_script_path, "build_runtime_script_path")
+        runtime_path = require_non_empty_path(payload.produced_runtime_path, "produced_runtime_path")
         run_state = _start_background_review_run(
             review_id=review_id,
             operation="build",
@@ -143,9 +138,7 @@ def review_build_runtime_route(review_id: str, payload: ReviewBuildRuntimePayloa
                 "produced_runtime_path": runtime_path,
             },
             run_id_prefix="review-build",
-            runner=lambda rid, run_id: _run_review_build_runtime(
-                rid, run_id, script_path, runtime_path
-            ),
+            runner=lambda rid, run_id: _run_review_build_runtime(rid, run_id, script_path, runtime_path),
         )
         return _review_run_summary(run_state)
     except FileNotFoundError as exc:
@@ -155,9 +148,7 @@ def review_build_runtime_route(review_id: str, payload: ReviewBuildRuntimePayloa
 @review_ree_router.post("/api/v1/reviews/{review_id}/activation-test")
 def review_activation_route(review_id: str, payload: ReviewActivationTestPayload):
     try:
-        script_path = require_non_empty_path(
-            payload.activation_script_path, "activation_script_path"
-        )
+        script_path = require_non_empty_path(payload.activation_script_path, "activation_script_path")
         run_state = _start_background_review_run(
             review_id=review_id,
             operation="activation",
@@ -214,14 +205,12 @@ def review_run_cancel_route(review_id: str, run_id: str):
     if operation in {"build", "activation"}:
         docker_bin = shutil.which("docker") or "docker"
         container_name = f"repo2ree-review-{operation}-{run_id}"
-        try:
+        with suppress(Exception):
             subprocess.run(
                 [docker_bin, "rm", "-f", container_name],
                 capture_output=True,
                 text=True,
             )
-        except Exception:
-            pass
 
     refreshed = _get_review_run_state(review_id, run_id)
     return {"status": refreshed["status"]}
@@ -316,9 +305,7 @@ def _extract_archive_to_dir(archive_path: Path, destination: Path) -> None:
                 try:
                     candidate.relative_to(destination_root)
                 except ValueError as exc:
-                    raise HTTPException(
-                        status_code=400, detail="Invalid archive entry path"
-                    ) from exc
+                    raise HTTPException(status_code=400, detail="Invalid archive entry path") from exc
                 candidate.parent.mkdir(parents=True, exist_ok=True)
                 with zf.open(member, "r") as src, candidate.open("wb") as dst:
                     shutil.copyfileobj(src, dst)
@@ -332,9 +319,7 @@ def _extract_archive_to_dir(archive_path: Path, destination: Path) -> None:
             try:
                 candidate.relative_to(destination_root)
             except ValueError as exc:
-                raise HTTPException(
-                    status_code=400, detail="Invalid archive entry path"
-                ) from exc
+                raise HTTPException(status_code=400, detail="Invalid archive entry path") from exc
             source_obj = tf.extractfile(tar_member)
             if source_obj is None:
                 continue
@@ -350,9 +335,7 @@ def _append_subprocess_output(
 ) -> None:
     append_completed_process_output(
         result,
-        lambda stream, level, message: _append_review_run_log(
-            review_id, run_id, stream, level, message
-        ),
+        lambda stream, level, message: _append_review_run_log(review_id, run_id, stream, level, message),
     )
 
 
@@ -398,20 +381,14 @@ def _run_review_container_script(
             container_name,
             "sh",
             "-lc",
-            (
-                "set -e; "
-                f"cd {shlex.quote(str(script_in_container.parent))}; "
-                f"sh {shlex.quote(str(script_in_container))}"
-            ),
+            (f"set -e; cd {shlex.quote(str(script_in_container.parent))}; sh {shlex.quote(str(script_in_container))}"),
         ],
     ]
 
     for cmd in lifecycle:
         if _is_cancel_requested(review_id, run_id):
             subprocess.run(rm_cmd, capture_output=True, text=True)
-            _append_review_run_log(
-                review_id, run_id, "system", "warn", f"{noun} run canceled"
-            )
+            _append_review_run_log(review_id, run_id, "system", "warn", f"{noun} run canceled")
             return "canceled", None
         _append_review_run_log(
             review_id,
@@ -445,9 +422,7 @@ def _run_review_container_script(
     return "succeeded", None
 
 
-def _run_review_source_acquire(
-    review_id: str, run_id: str
-) -> tuple[str, dict[str, object]]:
+def _run_review_source_acquire(review_id: str, run_id: str) -> tuple[str, dict[str, object]]:
     metadata = _load_review_metadata(review_id)
     intent = ReeIntent.from_metadata(metadata)
     session = ReeSession.from_metadata(metadata)
@@ -477,9 +452,7 @@ def _run_review_source_acquire(
         f"Starting source acquire from {origin_url}",
     )
     if _is_cancel_requested(review_id, run_id):
-        _append_review_run_log(
-            review_id, run_id, "system", "warn", "Source acquire canceled"
-        )
+        _append_review_run_log(review_id, run_id, "system", "warn", "Source acquire canceled")
         return "canceled", {"originUrl": origin_url, "sourceType": source_type}
 
     root = _review_workspace_root(review_id)
@@ -501,9 +474,7 @@ def _run_review_source_acquire(
                     detail=result.stderr.strip() or "git clone failed",
                 )
             if _is_cancel_requested(review_id, run_id):
-                _append_review_run_log(
-                    review_id, run_id, "system", "warn", "Source acquire canceled"
-                )
+                _append_review_run_log(review_id, run_id, "system", "warn", "Source acquire canceled")
                 return "canceled", {"originUrl": origin_url, "sourceType": source_type}
             extracted_source_path = clone_dir
         else:
@@ -513,17 +484,13 @@ def _run_review_source_acquire(
             extract_dir.mkdir(parents=True, exist_ok=True)
             _extract_archive_to_dir(archive_path, extract_dir)
             if _is_cancel_requested(review_id, run_id):
-                _append_review_run_log(
-                    review_id, run_id, "system", "warn", "Source acquire canceled"
-                )
+                _append_review_run_log(review_id, run_id, "system", "warn", "Source acquire canceled")
                 return "canceled", {"originUrl": origin_url, "sourceType": source_type}
             extracted_source_path = extract_dir
 
         _copy_tree_contents(extracted_source_path, root)
 
-    _append_review_run_log(
-        review_id, run_id, "system", "info", "Source acquire succeeded"
-    )
+    _append_review_run_log(review_id, run_id, "system", "info", "Source acquire succeeded")
     return "succeeded", {"originUrl": origin_url, "sourceType": source_type}
 
 
@@ -536,17 +503,13 @@ def _run_review_build_runtime(
     mount_root = _review_workspace_root(review_id)
     script_abs_path = _resolve_review_relative_path(review_id, script_relative_path)
     if not script_abs_path.exists() or not script_abs_path.is_file():
-        raise HTTPException(
-            status_code=400, detail=f"Build script not found: {script_relative_path}"
-        )
+        raise HTTPException(status_code=400, detail=f"Build script not found: {script_relative_path}")
 
     script_in_container = Path("/workspace") / script_abs_path.relative_to(mount_root)
     runtime_abs_path = _resolve_path_in_root(mount_root, runtime_relative_path)
     runtime_in_container = Path("/workspace") / runtime_abs_path.relative_to(mount_root)
 
-    _append_review_run_log(
-        review_id, run_id, "system", "info", f"Build script: {script_relative_path}"
-    )
+    _append_review_run_log(review_id, run_id, "system", "info", f"Build script: {script_relative_path}")
     _append_review_run_log(
         review_id,
         run_id,
@@ -603,7 +566,5 @@ def _run_review_activation(
     if status != "succeeded":
         return status, outputs
 
-    _append_review_run_log(
-        review_id, run_id, "system", "info", "Activation run succeeded"
-    )
+    _append_review_run_log(review_id, run_id, "system", "info", "Activation run succeeded")
     return "succeeded", outputs

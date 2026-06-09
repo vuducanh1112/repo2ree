@@ -1,7 +1,7 @@
-import requests
 import json
-
 import logging
+
+import requests
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,7 +28,7 @@ def generate_completion(
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload)
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
         response.raise_for_status()  # Raise an error for bad responses
 
         full_response: list[dict] = []
@@ -57,13 +57,7 @@ if __name__ == "__main__":
     api_key = ""
     model = "deepseek-r1"
     readme_content = (
-        Path("./")
-        / "experiments"
-        / "subjects"
-        / "icse"
-        / "2020"
-        / "OpenVocabCodeNLM"
-        / "README.md"
+        Path("./") / "experiments" / "subjects" / "icse" / "2020" / "OpenVocabCodeNLM" / "README.md"
     ).read_text()
     prompt = f"""
 

@@ -31,6 +31,7 @@ from typing import Any
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.envelope.handlers._common import utc_now
 from repo2ree_core.storage.layout import (
     ReeLayout,
     normalize_workspace_path,
@@ -49,7 +50,6 @@ from repo2ree_core.workspace.bundle import (
     rewrite_manifest_for_bundle,
     should_include_snapshot,
 )
-from repo2ree_core.envelope.handlers._common import utc_now
 from repo2ree_core.workspace.inventory import (
     classify_file_kind,
     is_reserved_workspace_filename,
@@ -110,14 +110,10 @@ def _list_tree_relpaths(root: Path) -> list[str]:
     """Sorted POSIX relative paths of every file beneath ``root`` (shell)."""
     if not root.is_dir():
         return []
-    return sorted(
-        fp.relative_to(root).as_posix() for fp in root.rglob("*") if fp.is_file()
-    )
+    return sorted(fp.relative_to(root).as_posix() for fp in root.rglob("*") if fp.is_file())
 
 
-def _build_artifact_plan(
-    layout: ReeLayout, intent: ReeIntent, *, include_runtime: bool
-) -> ArtifactPlan:
+def _build_artifact_plan(layout: ReeLayout, intent: ReeIntent, *, include_runtime: bool) -> ArtifactPlan:
     """Snapshot disk state and delegate layout decisions to the pure planner."""
     workspace_files = frozenset(_list_tree_relpaths(layout.workspace))
     on_disk_artifacts = _list_tree_relpaths(layout.artifacts)
@@ -143,14 +139,10 @@ def _bundle_entry_bytes(
         entries.append((REE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive.read_bytes()))
     entries.append((REE_OVERLAY_PREFIX, b""))
     for rel in _list_tree_relpaths(layout.overlay):
-        entries.append(
-            (f"{REE_OVERLAY_PREFIX}{rel}", (layout.overlay / rel).read_bytes())
-        )
+        entries.append((f"{REE_OVERLAY_PREFIX}{rel}", (layout.overlay / rel).read_bytes()))
     entries.append((REE_ARTIFACTS_PREFIX, b""))
     for rel in artifact_plan.on_disk_relpaths:
-        entries.append(
-            (f"{REE_ARTIFACTS_PREFIX}{rel}", (layout.artifacts / rel).read_bytes())
-        )
+        entries.append((f"{REE_ARTIFACTS_PREFIX}{rel}", (layout.artifacts / rel).read_bytes()))
     for ws_rel, archive_name in sorted(artifact_plan.workspace_pulls.items()):
         entries.append(
             (
@@ -177,9 +169,7 @@ def _iter_workspace_files(store: ReeStore):
     yield from (p for p in sorted(root.rglob("*")) if p.is_file())
 
 
-def _workspace_files_with_content(
-    storage_root: Path, ree_id: str
-) -> list[dict[str, Any]]:
+def _workspace_files_with_content(storage_root: Path, ree_id: str) -> list[dict[str, Any]]:
     store = _store(storage_root, ree_id)
     root = store.layout.workspace
     entries: list[dict[str, Any]] = []
@@ -191,11 +181,7 @@ def _workspace_files_with_content(
                 "path": rel,
                 "kind": classify_file_kind(rel),
                 "size": size,
-                "content": (
-                    _read_text_if_possible(fp)
-                    if should_inline_file_content(rel, size)
-                    else None
-                ),
+                "content": (_read_text_if_possible(fp) if should_inline_file_content(rel, size) else None),
             }
         )
     return entries
@@ -218,9 +204,7 @@ def _ree_file_tag(rel: str) -> str:
     return _REE_SUBTREE_TAGS.get(top, "REE")
 
 
-def _workspace_ree_files_with_content(
-    storage_root: Path, ree_id: str
-) -> list[dict[str, Any]]:
+def _workspace_ree_files_with_content(storage_root: Path, ree_id: str) -> list[dict[str, Any]]:
     """Enumerate every file under the REE root, mirroring the on-disk layout."""
     layout = _layout(storage_root, ree_id)
     ree_root = layout.root
@@ -237,11 +221,7 @@ def _workspace_ree_files_with_content(
             continue
         rel = rel_path.as_posix()
         size = fp.stat().st_size
-        content = (
-            _read_text_if_possible(fp)
-            if should_inline_file_content(rel, size)
-            else None
-        )
+        content = _read_text_if_possible(fp) if should_inline_file_content(rel, size) else None
         ree_files.append(
             {
                 "path": rel,
@@ -294,19 +274,13 @@ def _assemble_bundle(
     Returns ``(zip_bytes, sidecar_manifest)``.
     """
     sidecar_manifest = _build_manifest_payload(metadata, intent, session, ree_id=ree_id)
-    artifact_plan = _build_artifact_plan(
-        layout, intent, include_runtime=session.runtime_included
-    )
+    artifact_plan = _build_artifact_plan(layout, intent, include_runtime=session.runtime_included)
     include_snapshot = should_include_snapshot(
         source_included=session.source_included,
         source_snapshot_archive=session.source_snapshot_archive,
     )
-    bundle_manifest = rewrite_manifest_for_bundle(
-        sidecar_manifest, artifact_plan.manifest_remap
-    )
-    manifest_bytes = json.dumps(bundle_manifest, indent=2, sort_keys=True).encode(
-        "utf-8"
-    )
+    bundle_manifest = rewrite_manifest_for_bundle(sidecar_manifest, artifact_plan.manifest_remap)
+    manifest_bytes = json.dumps(bundle_manifest, indent=2, sort_keys=True).encode("utf-8")
     entries = _bundle_entry_bytes(
         layout,
         artifact_plan,
@@ -345,9 +319,7 @@ def seal_workspace_ree(
     # Strip any previously persisted seal stamps so re-sealing produces the
     # same digest when content hasn't changed.
     preseal_session = session.model_copy(update={"sealed_at": None, "seal_hash": None})
-    preseal_bytes, _ = _assemble_bundle(
-        layout, metadata, intent, preseal_session, ree_id=ree_id
-    )
+    preseal_bytes, _ = _assemble_bundle(layout, metadata, intent, preseal_session, ree_id=ree_id)
     digest = hashlib.sha256(preseal_bytes).hexdigest()
     seal_hash = f"sha256:{digest}"
 
@@ -360,9 +332,7 @@ def seal_workspace_ree(
     )
 
     # Final assembly with the real seal_hash in the manifest.
-    zip_bytes, sidecar_manifest = _assemble_bundle(
-        layout, metadata, intent, session, ree_id=ree_id
-    )
+    zip_bytes, sidecar_manifest = _assemble_bundle(layout, metadata, intent, session, ree_id=ree_id)
 
     # Persist everything atomically within the workbench lock (held by caller).
     layout.sealed_archive.write_bytes(zip_bytes)

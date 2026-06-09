@@ -2,25 +2,24 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
+from repo2ree_api.activation_test import activation_test_router
 from repo2ree_api.build_runtime import build_runtime_router
+from repo2ree_api.evaluate import evaluate_router
 from repo2ree_api.experiment_run import experiment_run_router
 from repo2ree_api.generate_hbom import generate_hbom_router
 from repo2ree_api.generate_sbom import generate_sbom_router
-from repo2ree_api.activation_test import activation_test_router
-from repo2ree_api.evaluate import evaluate_router
-from repo2ree_api.runs import runs_router
 from repo2ree_api.manage_ree import manage_ree_router
 from repo2ree_api.review_ree import review_ree_router
-from fastapi.middleware.cors import CORSMiddleware
+from repo2ree_api.runs import runs_router
 from repo2ree_api.storage.init_storage import (
-    create_upload_staging_if_not_exists,
     create_review_storage_if_not_exists,
+    create_upload_staging_if_not_exists,
 )
 from repo2ree_supervisor import WorkbenchUnavailableError
-
 
 # ================================================
 # App Setup
@@ -83,9 +82,7 @@ async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
 
 
 @app.exception_handler(WorkbenchUnavailableError)
-async def workbench_unavailable_handler(
-    request: Request, exc: WorkbenchUnavailableError
-):
+async def workbench_unavailable_handler(request: Request, exc: WorkbenchUnavailableError):
     return JSONResponse(
         status_code=503,
         content={

@@ -25,6 +25,27 @@ notebooks = [
     "matplotlib~=3.10.7",
 ]
 
+[tool.ruff]
+src = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src"]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "S"]
+extend-ignore = [
+    # subprocess calls with a list arg (not shell=True) are the safe pattern;
+    # S603/S607 fire on every docker/git invocation and add no signal here.
+    "S603",
+    "S607",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"core/src/repo2ree_core/debian_packages_util/pin_package.py" = [
+    "E501",  # snapshot URL f-strings exceed 120 chars; non-wrappable archive URL format
+]
+"*/tests/*" = [
+    "S101",  # assert is the standard pytest assertion pattern
+]
+
 [tool.mypy]
 mypy_path = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src"]
 

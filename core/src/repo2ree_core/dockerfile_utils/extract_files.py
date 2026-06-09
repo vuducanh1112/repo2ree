@@ -1,11 +1,10 @@
-import docker
-import tarfile
 import io
+import tarfile
+
+import docker
 
 
-def extract_file_from_image(
-    image_name: str, file_path: str, destination_path: str
-) -> bool:
+def extract_file_from_image(image_name: str, file_path: str, destination_path: str) -> bool:
     """
     Extract a specific file from a Docker image.
 
@@ -37,9 +36,7 @@ def extract_file_from_image(
                 if member.isfile():
                     extracted = tar.extractfile(member)
                     if extracted is None:
-                        raise FileNotFoundError(
-                            f"Could not extract {member.name} from archive."
-                        )
+                        raise FileNotFoundError(f"Could not extract {member.name} from archive.")
                     with open(destination_path, "wb") as f:
                         f.write(extracted.read())
                     break

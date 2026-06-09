@@ -1,7 +1,7 @@
 from .hbom import (
+    HBOM,
     CPUDefinition,
     GPUDefinition,
-    HBOM,
     MemoryDefinition,
     NetworkDefinition,
     StorageDefinition,

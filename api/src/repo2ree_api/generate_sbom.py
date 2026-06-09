@@ -1,19 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
-from pathlib import Path
-
-from repo2ree_protocol.command import GenerateSbomArgs, GenerateSbomCommand
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.run_management import (
     _run_summary,
     _start_single_command_run,
 )
-
+from repo2ree_protocol.command import GenerateSbomArgs, GenerateSbomCommand
 
 # ================================================
 # Router
@@ -41,9 +39,7 @@ class CreateGenerateSbomRunPayload(BaseModel):
 
 
 @generate_sbom_router.post("/api/v1/rees/{ree_id}/generate-sbom")
-def create_workspace_generate_sbom_run(
-    ree_id: str, payload: CreateGenerateSbomRunPayload
-):
+def create_workspace_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload):
     run_state = create_generate_sbom_run_state(ree_id, payload)
     return _run_summary(run_state)
 
@@ -56,9 +52,7 @@ def create_workspace_generate_sbom_run(
 def _resolve_sbom_runtime_path(ree_id: str, produced_runtime_path: str) -> str:
     runtime_path = produced_runtime_path.strip()
     if not runtime_path:
-        raise HTTPException(
-            status_code=400, detail="produced_runtime_path is required for sbom runs"
-        )
+        raise HTTPException(status_code=400, detail="produced_runtime_path is required for sbom runs")
     # Validate the path string is safe (no traversal, no control prefixes). The
     # tarball lives in the workbench, so validate against a neutral virtual root
     # rather than any host directory; the handler re-resolves inside /ree.
@@ -85,9 +79,7 @@ def create_generate_sbom_run_state(
     return _start_single_command_run(
         ree_id,
         operation="sbom",
-        command=GenerateSbomCommand(
-            args=GenerateSbomArgs(produced_runtime_path=runtime_path)
-        ),
+        command=GenerateSbomCommand(args=GenerateSbomArgs(produced_runtime_path=runtime_path)),
         run_id_prefix="sbom",
         request_payload={"produced_runtime_path": runtime_path},
         canceled_message="SBOM run canceled",

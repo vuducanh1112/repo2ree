@@ -1,3 +1,4 @@
+import dataclasses
 from pathlib import Path
 
 import pytest
@@ -35,22 +36,18 @@ def test_relative_resolvers_join_under_their_subtree():
     layout = ReeLayout.for_ree("/r", "ree1")
     assert layout.upstream_file("src/main.py") == Path("/r/ree1/upstream/src/main.py")
     assert layout.overlay_file("Dockerfile") == Path("/r/ree1/overlay/Dockerfile")
-    assert layout.artifact_file("runtime.tar.gz") == Path(
-        "/r/ree1/artifacts/runtime.tar.gz"
-    )
+    assert layout.artifact_file("runtime.tar.gz") == Path("/r/ree1/artifacts/runtime.tar.gz")
     assert layout.workspace_file("build.sh") == Path("/r/ree1/workspace/build.sh")
 
 
 def test_upload_staging_file_uses_token_as_filename():
     layout = ReeLayout.for_ree("/r", "ree1")
-    assert layout.upload_staging_file("tok42") == Path(
-        "/r/ree1/upload-staging/tok42.bin"
-    )
+    assert layout.upload_staging_file("tok42") == Path("/r/ree1/upload-staging/tok42.bin")
 
 
 def test_layout_is_frozen():
     layout = ReeLayout.for_ree("/r", "ree1")
-    with pytest.raises(Exception):
+    with pytest.raises((TypeError, dataclasses.FrozenInstanceError)):
         layout.root = Path("/elsewhere")  # type: ignore[misc]
 
 

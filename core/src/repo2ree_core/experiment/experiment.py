@@ -104,8 +104,5 @@ class Experiment(BaseModel):
         if value == "":  # in-progress drafts may not have named the experiment yet
             return value
         if value in {".", ".."} or not EXPERIMENT_NAME_PATTERN.match(value):
-            raise ValueError(
-                "experiment name may only contain letters, digits, spaces, "
-                "'.', '_' and '-'"
-            )
+            raise ValueError("experiment name may only contain letters, digits, spaces, '.', '_' and '-'")
         return value

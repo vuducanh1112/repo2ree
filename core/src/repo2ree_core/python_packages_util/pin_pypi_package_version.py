@@ -2,13 +2,12 @@ import logging
 from datetime import datetime
 
 import requests
-from pydantic import BaseModel
 import tomli
 import tomli_w
-from packaging.version import Version
-from packaging.requirements import Requirement, InvalidRequirement
+from packaging.requirements import InvalidRequirement, Requirement
 from packaging.specifiers import SpecifierSet
-
+from packaging.version import Version
+from pydantic import BaseModel
 
 ###################
 # Data Models
@@ -37,9 +36,7 @@ class PYPIPackageInfo(BaseModel):
 ###################
 
 
-def get_latest_version_on_pypi_until_date(
-    package_name: str, target_date: datetime
-) -> str | None:
+def get_latest_version_on_pypi_until_date(package_name: str, target_date: datetime) -> str | None:
     pypi_package_info = get_pypi_package_info(package_name)
 
     versions = [Version(v) for v in pypi_package_info.releases.keys()]
@@ -52,9 +49,7 @@ def get_latest_version_on_pypi_until_date(
     return None
 
 
-def pin_package_versions_in_requirements_txt(
-    requirements_file_content: str, cutoff_date: datetime
-) -> str:
+def pin_package_versions_in_requirements_txt(requirements_file_content: str, cutoff_date: datetime) -> str:
     pinned_requirements_file_content = ""
 
     for line in requirements_file_content.splitlines():
@@ -63,16 +58,12 @@ def pin_package_versions_in_requirements_txt(
             pinned_requirements_file_content += line + "\n"
             continue
 
-        pinned_requirements_file_content += (
-            pin_python_dependency_in_string(line, cutoff_date) + "\n"
-        )
+        pinned_requirements_file_content += pin_python_dependency_in_string(line, cutoff_date) + "\n"
 
     return pinned_requirements_file_content
 
 
-def pin_package_versions_in_pyproject_toml(
-    pyproject_file_content: str, cutoff_date: datetime
-) -> str:
+def pin_package_versions_in_pyproject_toml(pyproject_file_content: str, cutoff_date: datetime) -> str:
     pyproject_data = tomli.loads(pyproject_file_content)
     # TODO handle other dependency sections like dev-dependencies, optional-dependencies, etc.
 
@@ -82,9 +73,7 @@ def pin_package_versions_in_pyproject_toml(
     pinned_dependencies = []
 
     for dependency in dependencies:
-        pinned_dependencies.append(
-            pin_python_dependency_in_string(dependency, cutoff_date)
-        )
+        pinned_dependencies.append(pin_python_dependency_in_string(dependency, cutoff_date))
 
     pyproject_data["project"]["dependencies"] = pinned_dependencies
     # TODO: This does not preserve formatting or comments
@@ -160,7 +149,7 @@ def get_pypi_package_info(package_name: str) -> PYPIPackageInfo:
     pypi_url = f"https://pypi.org/pypi/{package_name}/json"
 
     try:
-        response = requests.get(pypi_url)
+        response = requests.get(pypi_url, timeout=30)
         response.raise_for_status()
     except requests.RequestException as e:
         logging.error(f"Error fetching data from PyPI for package {package_name}: {e}")
@@ -171,9 +160,7 @@ def get_pypi_package_info(package_name: str) -> PYPIPackageInfo:
 
     for version in pypi_data.get("releases", {}):
         if len(pypi_data["releases"][version]) > 0:
-            pypi_package_release = PYPIPackageRelease.model_validate(
-                pypi_data["releases"][version][0]
-            )
+            pypi_package_release = PYPIPackageRelease.model_validate(pypi_data["releases"][version][0])
             releases[version] = pypi_package_release
 
     pypi_package_info = PYPIPackageInfo(name=package_name, releases=releases)

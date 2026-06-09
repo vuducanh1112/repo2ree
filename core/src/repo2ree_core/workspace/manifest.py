@@ -31,16 +31,10 @@ def build_manifest_payload(
     activation_script_path = normalize_workspace_path(intent.activation_script)
 
     manifest = {**intent.as_manifest(), **session.as_manifest_fields()}
-    manifest["name"] = (
-        metadata.get("name") or manifest["name"] or f"workspace-{ree_id[:8]}"
-    )
+    manifest["name"] = metadata.get("name") or manifest["name"] or f"workspace-{ree_id[:8]}"
     manifest["origin_url"] = metadata.get("externalRef") or manifest["origin_url"]
     source = metadata.get("source")
-    manifest["source_type"] = (
-        source.get("sourceType")
-        if isinstance(source, Mapping)
-        else manifest["source_type"]
-    )
+    manifest["source_type"] = source.get("sourceType") if isinstance(source, Mapping) else manifest["source_type"]
     manifest["runtime"] = runtime_path or None
     manifest["build_script"] = build_script_path or None
     manifest["activation_script"] = activation_script_path or None

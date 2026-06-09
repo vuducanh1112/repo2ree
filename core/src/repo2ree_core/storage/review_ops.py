@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import shutil
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -24,7 +24,6 @@ from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.storage.extract import safe_extract_tar, safe_extract_zip
 from repo2ree_core.time_utils import utc_now as _utc_now
-
 
 # ---------------------------------------------------------------------------
 # Layout helpers
@@ -65,9 +64,7 @@ def _read_review_metadata(storage_root: Path, review_id: str) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _write_review_metadata(
-    storage_root: Path, review_id: str, metadata: dict[str, Any]
-) -> dict[str, Any]:
+def _write_review_metadata(storage_root: Path, review_id: str, metadata: dict[str, Any]) -> dict[str, Any]:
     metadata["updatedAt"] = _utc_now()
     path = _review_metadata_path(storage_root, review_id)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -75,9 +72,7 @@ def _write_review_metadata(
     return metadata
 
 
-def _default_review_metadata(
-    review_id: str, file_name: str | None = None
-) -> dict[str, Any]:
+def _default_review_metadata(review_id: str, file_name: str | None = None) -> dict[str, Any]:
     ts = _utc_now()
     default_name = (file_name or "review").strip() or "review"
     return {
@@ -116,9 +111,7 @@ def _resolve_snapshot_archive(search_root: Path, snapshot_ref: str) -> Path | No
     if not normalized:
         return None
     norm_path = PurePosixPath(normalized)
-    if norm_path.is_absolute() or any(
-        part in {"", ".", ".."} for part in norm_path.parts
-    ):
+    if norm_path.is_absolute() or any(part in {"", ".", ".."} for part in norm_path.parts):
         raise ValueError("Invalid archive entry path")
 
     candidates = [normalized]
@@ -182,9 +175,7 @@ def _manifest_to_ree_intent(manifest: dict[str, Any]) -> dict[str, Any]:
     return ReeIntent.model_validate(payload).model_dump(exclude_none=True)
 
 
-def _manifest_to_ree_session(
-    manifest: dict[str, Any], uploaded_archive: str
-) -> dict[str, Any]:
+def _manifest_to_ree_session(manifest: dict[str, Any], uploaded_archive: str) -> dict[str, Any]:
     payload = {
         "dependency_level": manifest.get("dependency_level") or 0,
         "environment_level": manifest.get("environment_level") or 0,
@@ -202,9 +193,7 @@ def _manifest_to_ree_session(
     return ReeSession.model_validate(payload).model_dump(exclude_none=True)
 
 
-def _list_files_under(
-    root: Path, *, include_hidden: bool = True
-) -> list[dict[str, Any]]:
+def _list_files_under(root: Path, *, include_hidden: bool = True) -> list[dict[str, Any]]:
     if not root.exists():
         raise FileNotFoundError(f"Path not found: {root}")
     entries: list[dict[str, Any]] = []
@@ -250,9 +239,7 @@ def get_review(storage_root: Path, review_id: str) -> dict[str, Any]:
         )
     detail = dict(metadata)
     detail["files"] = _list_files_under(_review_dir(storage_root, review_id))
-    detail["workspaceFiles"] = _list_files_under(
-        _review_workspace_dir(storage_root, review_id)
-    )
+    detail["workspaceFiles"] = _list_files_under(_review_workspace_dir(storage_root, review_id))
     return detail
 
 
@@ -277,15 +264,11 @@ def init_review_upload(
     return {
         "reviewId": review_id,
         "uploadToken": token,
-        "expiresAt": (datetime.now(timezone.utc) + timedelta(hours=1))
-        .isoformat()
-        .replace("+00:00", "Z"),
+        "expiresAt": (datetime.now(UTC) + timedelta(hours=1)).isoformat().replace("+00:00", "Z"),
     }
 
 
-def store_review_upload_bytes(
-    storage_root: Path, review_id: str, token: str, data: bytes
-) -> dict[str, Any]:
+def store_review_upload_bytes(storage_root: Path, review_id: str, token: str, data: bytes) -> dict[str, Any]:
     if not _review_dir(storage_root, review_id).exists():
         raise FileNotFoundError(f"Review {review_id} not found")
     stage_path = _upload_stage_path(storage_root, review_id, token)

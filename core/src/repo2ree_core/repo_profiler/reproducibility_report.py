@@ -23,7 +23,6 @@ from pydantic.alias_generators import to_camel
 
 from .dependency_inventory import Dependency, DependencyInventory
 
-
 # ================================================
 # Data models
 # ================================================
@@ -177,15 +176,12 @@ _VM_IMAGE_SUFFIXES = (".ova", ".ovf", ".qcow2", ".vmdk", ".vdi", ".box")
 
 
 def is_manifest_filename(lower_name: str) -> bool:
-    return lower_name in _MANIFEST_NAMES or bool(
-        re.match(r"^requirements[-_].+\.txt$", lower_name)
-    )
+    return lower_name in _MANIFEST_NAMES or bool(re.match(r"^requirements[-_].+\.txt$", lower_name))
 
 
 def is_dockerfile_filename(lower_name: str) -> bool:
     return (
-        lower_name
-        in {"dockerfile", "containerfile", "docker-compose.yml", "docker-compose.yaml"}
+        lower_name in {"dockerfile", "containerfile", "docker-compose.yml", "docker-compose.yaml"}
         or lower_name.startswith("dockerfile.")
         or lower_name.startswith("containerfile.")
     )
@@ -323,11 +319,7 @@ def _classify(version: str | None) -> str:
 
 
 def _dep_label(dep: Dependency) -> str:
-    return (
-        f"{dep.name} {dep.declared_version}".strip()
-        if dep.declared_version
-        else dep.name
-    )
+    return f"{dep.name} {dep.declared_version}".strip() if dep.declared_version else dep.name
 
 
 def _apt_install_is_unpinned(dockerfile_text: str) -> bool:
@@ -359,11 +351,8 @@ def _summarize_dependencies(inventory: DependencyInventory) -> DependencySummary
         else:
             summary.unpinned += 1
 
-    # ----------------------------------------------------------------
-    assert summary.total == (
-        summary.pinned + summary.ranged + summary.unpinned + summary.locked
-    ), "dependency summary buckets must partition the total"
-    # ----------------------------------------------------------------
+    if summary.total != (summary.pinned + summary.ranged + summary.unpinned + summary.locked):
+        raise AssertionError("dependency summary buckets must partition the total")
 
     return summary
 
@@ -395,9 +384,8 @@ def _machine_level(file_signals: FileSignals) -> MachineLevel:
 
 
 def _make_threat(threat_id: str, affected: list[str] | None = None) -> Threat:
-    # ----------------------------------------------------------------
-    assert threat_id in _CATALOG, f"unknown threat id: {threat_id!r}"
-    # ----------------------------------------------------------------
+    if threat_id not in _CATALOG:
+        raise AssertionError(f"unknown threat id: {threat_id!r}")
     spec = _CATALOG[threat_id]
     return Threat(
         id=threat_id,
@@ -424,14 +412,10 @@ def _detect_threats(
         threats.append(_make_threat("no-manifest"))
     else:
         unpinned = [
-            _dep_label(d)
-            for d in library_deps
-            if not d.locked_version and _classify(d.declared_version) == "unpinned"
+            _dep_label(d) for d in library_deps if not d.locked_version and _classify(d.declared_version) == "unpinned"
         ]
         ranged = [
-            _dep_label(d)
-            for d in library_deps
-            if not d.locked_version and _classify(d.declared_version) == "ranged"
+            _dep_label(d) for d in library_deps if not d.locked_version and _classify(d.declared_version) == "ranged"
         ]
         if unpinned:
             threats.append(_make_threat("unpinned-deps", unpinned))
@@ -447,9 +431,7 @@ def _detect_threats(
         floating = [_dep_label(d) for d in container_deps if d.digest is None]
         if floating:
             threats.append(_make_threat("floating-base-image", floating))
-        if any(
-            _apt_install_is_unpinned(text) for text in file_signals.dockerfile_texts
-        ):
+        if any(_apt_install_is_unpinned(text) for text in file_signals.dockerfile_texts):
             threats.append(_make_threat("unpinned-apt"))
         if file_signals.has_dockerfile and not file_signals.has_nix_file:
             threats.append(_make_threat("no-nix"))
@@ -458,11 +440,11 @@ def _detect_threats(
     if not file_signals.has_vm:
         threats.append(_make_threat("no-vm"))
 
-    # ----------------------------------------------------------------
     ids = [threat.id for threat in threats]
-    assert len(ids) == len(set(ids)), "duplicate threat ids emitted"
-    assert all(threat_id in _CATALOG for threat_id in ids), "unknown threat id"
-    # ----------------------------------------------------------------
+    if len(ids) != len(set(ids)):
+        raise AssertionError("duplicate threat ids emitted")
+    if not all(threat_id in _CATALOG for threat_id in ids):
+        raise AssertionError("unknown threat id")
 
     return threats
 
@@ -491,18 +473,14 @@ def _rank_and_mark(
         key=lambda threat: (not threat.blocking, _SEVERITY_RANK[threat.severity]),
     )
 
-    # ----------------------------------------------------------------
     blocking_per_dimension: dict[ThreatCategory, int] = {}
     for threat in ordered:
         if threat.blocking:
-            blocking_per_dimension[threat.category] = (
-                blocking_per_dimension.get(threat.category, 0) + 1
-            )
-    assert all(count <= 1 for count in blocking_per_dimension.values()), (
-        "at most one blocking threat per dimension"
-    )
-    assert len(ordered) == len(threats), "ranking must not drop threats"
-    # ----------------------------------------------------------------
+            blocking_per_dimension[threat.category] = blocking_per_dimension.get(threat.category, 0) + 1
+    if not all(count <= 1 for count in blocking_per_dimension.values()):
+        raise AssertionError("at most one blocking threat per dimension")
+    if len(ordered) != len(threats):
+        raise AssertionError("ranking must not drop threats")
 
     return ordered
 
@@ -542,10 +520,7 @@ def build_report(
         threats=threats,
     )
 
-    # ----------------------------------------------------------------
-    assert all(threat.id in _CATALOG for threat in report.threats), (
-        "report contains unknown threat id"
-    )
-    # ----------------------------------------------------------------
+    if not all(threat.id in _CATALOG for threat in report.threats):
+        raise AssertionError("report contains unknown threat id")
 
     return report

@@ -17,10 +17,7 @@ def profile_gpus() -> dict[str, GPUDefinition]:
 
     for line in lspci.stdout.splitlines():
         lowered = line.lower()
-        if (
-            "vga compatible controller" not in lowered
-            and "3d controller" not in lowered
-        ):
+        if "vga compatible controller" not in lowered and "3d controller" not in lowered:
             continue
         details = line.split(":", 2)[-1].strip()
         if not details:

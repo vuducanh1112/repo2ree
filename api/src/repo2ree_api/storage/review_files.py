@@ -18,7 +18,6 @@ from pydantic import BaseModel
 import repo2ree_core.storage.review_ops as _ops
 from repo2ree_api.settings import service_settings
 
-
 # ================================================
 # Request / response payload models
 # ================================================
@@ -87,15 +86,9 @@ def init_review_upload(payload: ReviewUploadInitPayload) -> dict[str, Any]:
     return result
 
 
-def store_review_upload_bytes(
-    review_id: str, token: str, data: bytes
-) -> dict[str, Any]:
+def store_review_upload_bytes(review_id: str, token: str, data: bytes) -> dict[str, Any]:
     return _ops.store_review_upload_bytes(review_root(), review_id, token, data)
 
 
-def complete_review_upload(
-    review_id: str, payload: ReviewUploadCompletePayload
-) -> dict[str, Any]:
-    return _ops.complete_review_upload(
-        review_root(), review_id, payload.uploadToken, payload.archiveName
-    )
+def complete_review_upload(review_id: str, payload: ReviewUploadCompletePayload) -> dict[str, Any]:
+    return _ops.complete_review_upload(review_root(), review_id, payload.uploadToken, payload.archiveName)

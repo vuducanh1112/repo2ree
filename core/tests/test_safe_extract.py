@@ -46,7 +46,7 @@ def test_tar_skips_parent_traversal_entry(tmp_path):
 
 def test_tar_skips_absolute_path_entry(tmp_path):
     archive = tmp_path / "abs.tar"
-    _write_tar(archive, [("/tmp/escape.txt", b"x"), ("good.txt", b"ok")])
+    _write_tar(archive, [("/tmp/escape.txt", b"x"), ("good.txt", b"ok")])  # noqa: S108
 
     dest = tmp_path / "out"
     dest.mkdir()

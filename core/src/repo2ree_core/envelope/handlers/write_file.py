@@ -7,11 +7,11 @@ Mirrors the host-side write_file_content behaviour exactly.
 from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_protocol.command import WriteFileArgs
-from repo2ree_protocol.result import ActionResult
 from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment.base import CancelCheck
+from repo2ree_protocol.command import WriteFileArgs
+from repo2ree_protocol.result import ActionResult
 
 
 def handle_write_file(

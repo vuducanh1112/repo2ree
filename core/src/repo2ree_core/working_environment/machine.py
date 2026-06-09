@@ -19,7 +19,6 @@ from repo2ree_core.working_environment.base import (
     WorkingEnvironmentSpec,
 )
 
-
 # ================================================
 # Protocol
 # ================================================
@@ -54,10 +53,7 @@ class LocalMachine:
         kind: str = "container",
     ) -> WorkingEnvironment:
         if kind != "container":
-            raise ValueError(
-                f"LocalMachine does not support kind={kind!r}; "
-                "only 'container' is available"
-            )
+            raise ValueError(f"LocalMachine does not support kind={kind!r}; only 'container' is available")
         from repo2ree_core.working_environment.docker_env import (
             DockerWorkingEnvironment,
         )

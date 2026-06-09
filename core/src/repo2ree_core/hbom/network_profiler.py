@@ -47,9 +47,7 @@ def profile_network() -> dict[str, NetworkDefinition]:
 
         model_name = driver_name or interface_name
         key = model_name
-        if key in result and math.isclose(
-            result[key].bandwidth_gbps, bandwidth_gbps, rel_tol=0, abs_tol=0.01
-        ):
+        if key in result and math.isclose(result[key].bandwidth_gbps, bandwidth_gbps, rel_tol=0, abs_tol=0.01):
             result[key].quantity += 1
             continue
         if key in result:

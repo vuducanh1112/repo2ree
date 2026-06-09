@@ -10,9 +10,6 @@ import click
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.run_command import run_command
-from repo2ree_core.time_utils import utc_now as _utc_now
-from repo2ree_protocol import ActionResult, command_adapter
-from repo2ree_protocol.command import AcquireSourceArgs, AcquireSourceCommand
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.storage.workspace_ops import (
@@ -20,7 +17,9 @@ from repo2ree_core.storage.workspace_ops import (
 )
 from repo2ree_core.storage.workspace_ops import get_workspace as _get_workspace
 from repo2ree_core.storage.workspace_ops import read_file_bytes as _read_file_bytes
-
+from repo2ree_core.time_utils import utc_now as _utc_now
+from repo2ree_protocol import ActionResult, command_adapter
+from repo2ree_protocol.command import AcquireSourceArgs, AcquireSourceCommand
 
 # ================================================
 # Logging
@@ -31,9 +30,7 @@ def _make_log_sink(run_log: TextIO | None):
     """Return a LogSink that emits NDJSON to stderr (and optionally a run log file)."""
 
     def _log(stream: str, level: str, message: str) -> None:
-        event = json.dumps(
-            {"type": "log", "stream": stream, "level": level, "message": message}
-        )
+        event = json.dumps({"type": "log", "stream": stream, "level": level, "message": message})
         click.echo(event, file=sys.stderr)
         if run_log is not None:
             run_log.write(event + "\n")
@@ -252,9 +249,7 @@ def build_archive_cmd() -> None:
 
 
 @cli.command("read-file")
-@click.option(
-    "--path", "file_path", required=True, help="Relative path within workspace"
-)
+@click.option("--path", "file_path", required=True, help="Relative path within workspace")
 def read_file_cmd(file_path: str) -> None:
     """Write raw bytes of a workspace file to stdout."""
     layout = ReeLayout.in_workbench()
@@ -272,17 +267,13 @@ def read_file_cmd(file_path: str) -> None:
 
 
 @cli.command("read-artifact")
-@click.option(
-    "--path", "artifact_path", required=True, help="Relative path within artifacts/"
-)
+@click.option("--path", "artifact_path", required=True, help="Relative path within artifacts/")
 def read_artifact_cmd(artifact_path: str) -> None:
     """Write raw bytes of an artifact file to stdout."""
     layout = ReeLayout.in_workbench()
     fp = layout.artifacts / artifact_path
     if not fp.exists() or not fp.is_file():
-        click.echo(
-            json.dumps({"error": f"not found: {artifact_path}"}), file=sys.stderr
-        )
+        click.echo(json.dumps({"error": f"not found: {artifact_path}"}), file=sys.stderr)
         sys.exit(1)
     sys.stdout.buffer.write(fp.read_bytes())
 

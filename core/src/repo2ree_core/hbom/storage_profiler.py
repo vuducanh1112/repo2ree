@@ -10,9 +10,7 @@ from repo2ree_core.hbom.profiler_utils import round_gib, run_command
 StorageType = Literal["HDD", "SSD", "NVMe", "eMMC", "SD"]
 
 
-def _storage_type_for_device(
-    name: str, rotational: str, transport: str, model_name: str
-) -> tuple[StorageType, str]:
+def _storage_type_for_device(name: str, rotational: str, transport: str, model_name: str) -> tuple[StorageType, str]:
     lowered_name = name.lower()
     lowered_transport = transport.lower()
     lowered_model = model_name.lower()

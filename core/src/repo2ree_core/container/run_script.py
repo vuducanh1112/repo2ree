@@ -12,7 +12,6 @@ from pathlib import Path
 
 from repo2ree_protocol.log import LogSink  # noqa: F401
 
-
 CONTAINER_WORKSPACE = Path("/workspace")
 
 

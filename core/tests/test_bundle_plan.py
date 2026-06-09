@@ -38,12 +38,8 @@ def test_build_zip_bytes_produces_valid_zip():
 
 
 def test_snapshot_inclusion_requires_flag_and_snapshot_reference():
-    assert should_include_snapshot(
-        source_included=True, source_snapshot_archive="snapshot.tar.gz"
-    )
-    assert not should_include_snapshot(
-        source_included=False, source_snapshot_archive="snapshot.tar.gz"
-    )
+    assert should_include_snapshot(source_included=True, source_snapshot_archive="snapshot.tar.gz")
+    assert not should_include_snapshot(source_included=False, source_snapshot_archive="snapshot.tar.gz")
     assert not should_include_snapshot(source_included=True, source_snapshot_archive="")
 
 
