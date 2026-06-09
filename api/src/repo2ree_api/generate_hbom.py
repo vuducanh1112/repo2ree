@@ -7,12 +7,9 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_protocol import GenerateHbomCommand
 from repo2ree_api.run_management import (
-    _append_run_log,
-    _is_cancel_requested,
     _run_summary,
-    _start_background_run,
+    _start_single_command_run,
 )
-from repo2ree_api.workbench.deps import workbench_manager
 
 
 # ================================================
@@ -56,28 +53,11 @@ def create_generate_hbom_run_state(
     ree_id: str,
     payload: CreateGenerateHbomRunPayload,
 ) -> dict[str, Any]:
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
-        def _log(stream: str, level: str, message: str) -> None:
-            _append_run_log(ree_id, run_id, stream, level, message)
-
-        if _is_cancel_requested(ree_id, run_id):
-            _log("system", "warn", "HBOM run canceled")
-            return "canceled", {}
-
-        handle = workbench_manager.lookup(ree_id)
-        if handle is None:
-            _log("system", "error", "No workbench available for generate_hbom")
-            return "failed", {}
-
-        result = workbench_manager.dispatch_action(
-            handle, GenerateHbomCommand(), run_id, _log
-        )
-        return result.status, result.outputs or {}
-
-    return _start_background_run(
-        ree_id=ree_id,
+    return _start_single_command_run(
+        ree_id,
         operation="hbom",
-        request_payload={"idempotencyKey": payload.idempotencyKey},
+        command=GenerateHbomCommand(),
         run_id_prefix="hbom",
-        runner=_runner,
+        request_payload={"idempotencyKey": payload.idempotencyKey},
+        canceled_message="HBOM run canceled",
     )

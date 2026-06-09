@@ -211,19 +211,9 @@ def review_run_cancel_route(review_id: str, run_id: str):
     )
 
     operation = run_state.get("operation")
-    docker_bin = shutil.which("docker") or "docker"
-    if operation == "build":
-        container_name = f"repo2ree-review-build-{run_id}"
-        try:
-            subprocess.run(
-                [docker_bin, "rm", "-f", container_name],
-                capture_output=True,
-                text=True,
-            )
-        except Exception:
-            pass
-    elif operation == "activation":
-        container_name = f"repo2ree-review-activation-{run_id}"
+    if operation in {"build", "activation"}:
+        docker_bin = shutil.which("docker") or "docker"
+        container_name = f"repo2ree-review-{operation}-{run_id}"
         try:
             subprocess.run(
                 [docker_bin, "rm", "-f", container_name],
@@ -366,6 +356,95 @@ def _append_subprocess_output(
     )
 
 
+def _run_review_container_script(
+    review_id: str,
+    run_id: str,
+    *,
+    noun: str,
+    mount_root: Path,
+    script_in_container: Path,
+    copy_back: tuple[Path, Path] | None = None,
+) -> tuple[str, int | None]:
+    """Run a workspace script in a throwaway docker:latest container.
+
+    Drives the create → cp → start → exec lifecycle over the review workspace,
+    honoring cancellation between steps and always removing the container.
+    ``noun`` is the capitalised run name ("Build"/"Activation") and selects the
+    container name suffix. When ``copy_back`` is given, its (container_path,
+    host_dest) is copied out after a successful run.
+
+    Returns (status, container_exit_code); the exit code is set only on failure.
+    """
+    docker_bin = shutil.which("docker") or "docker"
+    container_name = f"repo2ree-review-{noun.lower()}-{run_id}"
+    rm_cmd = [docker_bin, "rm", "-f", container_name]
+    lifecycle = [
+        [
+            docker_bin,
+            "create",
+            "--name",
+            container_name,
+            "-v",
+            "/var/run/docker.sock:/var/run/docker.sock",
+            "docker:latest",
+            "sleep",
+            "infinity",
+        ],
+        [docker_bin, "cp", f"{mount_root}/.", f"{container_name}:/workspace"],
+        [docker_bin, "start", container_name],
+        [
+            docker_bin,
+            "exec",
+            container_name,
+            "sh",
+            "-lc",
+            (
+                "set -e; "
+                f"cd {shlex.quote(str(script_in_container.parent))}; "
+                f"sh {shlex.quote(str(script_in_container))}"
+            ),
+        ],
+    ]
+
+    for cmd in lifecycle:
+        if _is_cancel_requested(review_id, run_id):
+            subprocess.run(rm_cmd, capture_output=True, text=True)
+            _append_review_run_log(
+                review_id, run_id, "system", "warn", f"{noun} run canceled"
+            )
+            return "canceled", None
+        _append_review_run_log(
+            review_id,
+            run_id,
+            "system",
+            "info",
+            "$ " + " ".join(shlex.quote(token) for token in cmd),
+        )
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        _append_subprocess_output(review_id, run_id, result)
+        if result.returncode != 0:
+            subprocess.run(rm_cmd, capture_output=True, text=True)
+            return "failed", result.returncode
+
+    if copy_back is not None:
+        container_src, host_dest = copy_back
+        cp_back_cmd = [
+            docker_bin,
+            "cp",
+            f"{container_name}:{container_src}",
+            str(host_dest),
+        ]
+        cp_back_result = subprocess.run(cp_back_cmd, capture_output=True, text=True)
+        _append_subprocess_output(review_id, run_id, cp_back_result)
+        subprocess.run(rm_cmd, capture_output=True, text=True)
+        if cp_back_result.returncode != 0:
+            return "failed", cp_back_result.returncode
+        return "succeeded", None
+
+    subprocess.run(rm_cmd, capture_output=True, text=True)
+    return "succeeded", None
+
+
 def _run_review_source_acquire(
     review_id: str, run_id: str
 ) -> tuple[str, dict[str, object]]:
@@ -476,93 +555,25 @@ def _run_review_build_runtime(
         f"Expected runtime output: {runtime_relative_path}",
     )
 
-    docker_bin = shutil.which("docker") or "docker"
-    container_name = f"repo2ree-review-build-{run_id}"
-    docker_create_cmd = [
-        docker_bin,
-        "create",
-        "--name",
-        container_name,
-        "-v",
-        "/var/run/docker.sock:/var/run/docker.sock",
-        "docker:latest",
-        "sleep",
-        "infinity",
-    ]
-    docker_cp_cmd = [
-        docker_bin,
-        "cp",
-        f"{mount_root}/.",
-        f"{container_name}:/workspace",
-    ]
-    docker_start_cmd = [docker_bin, "start", container_name]
-    docker_exec_script_cmd = [
-        docker_bin,
-        "exec",
-        container_name,
-        "sh",
-        "-lc",
-        (
-            "set -e; "
-            f"cd {shlex.quote(str(script_in_container.parent))}; "
-            f"sh {shlex.quote(str(script_in_container))}"
-        ),
-    ]
-    docker_cp_back_cmd = [
-        docker_bin,
-        "cp",
-        f"{container_name}:{runtime_in_container}",
-        str(runtime_abs_path),
-    ]
-    docker_rm_cmd = [docker_bin, "rm", "-f", container_name]
-
-    for cmd in (
-        docker_create_cmd,
-        docker_cp_cmd,
-        docker_start_cmd,
-        docker_exec_script_cmd,
-    ):
-        if _is_cancel_requested(review_id, run_id):
-            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
-            _append_review_run_log(
-                review_id, run_id, "system", "warn", "Build run canceled"
-            )
-            return "canceled", {
-                "buildRuntimeScriptPath": script_relative_path,
-                "producedRuntimePath": runtime_relative_path,
-            }
-        _append_review_run_log(
-            review_id,
-            run_id,
-            "system",
-            "info",
-            "$ " + " ".join(shlex.quote(token) for token in cmd),
-        )
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        _append_subprocess_output(review_id, run_id, result)
-        if result.returncode != 0:
-            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
-            return "failed", {
-                "buildRuntimeScriptPath": script_relative_path,
-                "producedRuntimePath": runtime_relative_path,
-                "containerExitCode": result.returncode,
-            }
-
-    cp_back_result = subprocess.run(docker_cp_back_cmd, capture_output=True, text=True)
-    _append_subprocess_output(review_id, run_id, cp_back_result)
-    subprocess.run(docker_rm_cmd, capture_output=True, text=True)
-    if cp_back_result.returncode != 0:
-        return "failed", {
-            "buildRuntimeScriptPath": script_relative_path,
-            "producedRuntimePath": runtime_relative_path,
-            "containerExitCode": cp_back_result.returncode,
-        }
-
-    _append_review_run_log(review_id, run_id, "system", "info", "Build run succeeded")
-    return "succeeded", {
+    outputs: dict[str, object] = {
         "buildRuntimeScriptPath": script_relative_path,
         "producedRuntimePath": runtime_relative_path,
     }
+    status, exit_code = _run_review_container_script(
+        review_id,
+        run_id,
+        noun="Build",
+        mount_root=mount_root,
+        script_in_container=script_in_container,
+        copy_back=(runtime_in_container, runtime_abs_path),
+    )
+    if status == "failed" and exit_code is not None:
+        return "failed", {**outputs, "containerExitCode": exit_code}
+    if status != "succeeded":
+        return status, outputs
+
+    _append_review_run_log(review_id, run_id, "system", "info", "Build run succeeded")
+    return "succeeded", outputs
 
 
 def _run_review_activation(
@@ -579,70 +590,20 @@ def _run_review_activation(
         )
     script_in_container = Path("/workspace") / script_abs_path.relative_to(mount_root)
 
-    docker_bin = shutil.which("docker") or "docker"
-    container_name = f"repo2ree-review-activation-{run_id}"
-    docker_create_cmd = [
-        docker_bin,
-        "create",
-        "--name",
-        container_name,
-        "-v",
-        "/var/run/docker.sock:/var/run/docker.sock",
-        "docker:latest",
-        "sleep",
-        "infinity",
-    ]
-    docker_cp_cmd = [
-        docker_bin,
-        "cp",
-        f"{mount_root}/.",
-        f"{container_name}:/workspace",
-    ]
-    docker_start_cmd = [docker_bin, "start", container_name]
-    docker_exec_script_cmd = [
-        docker_bin,
-        "exec",
-        container_name,
-        "sh",
-        "-lc",
-        (
-            "set -e; "
-            f"cd {shlex.quote(str(script_in_container.parent))}; "
-            f"sh {shlex.quote(str(script_in_container))}"
-        ),
-    ]
-    docker_rm_cmd = [docker_bin, "rm", "-f", container_name]
+    outputs: dict[str, object] = {"activationScriptPath": activation_script_path}
+    status, exit_code = _run_review_container_script(
+        review_id,
+        run_id,
+        noun="Activation",
+        mount_root=mount_root,
+        script_in_container=script_in_container,
+    )
+    if status == "failed" and exit_code is not None:
+        return "failed", {**outputs, "containerExitCode": exit_code}
+    if status != "succeeded":
+        return status, outputs
 
-    for cmd in (
-        docker_create_cmd,
-        docker_cp_cmd,
-        docker_start_cmd,
-        docker_exec_script_cmd,
-    ):
-        if _is_cancel_requested(review_id, run_id):
-            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
-            _append_review_run_log(
-                review_id, run_id, "system", "warn", "Activation run canceled"
-            )
-            return "canceled", {"activationScriptPath": activation_script_path}
-        _append_review_run_log(
-            review_id,
-            run_id,
-            "system",
-            "info",
-            "$ " + " ".join(shlex.quote(token) for token in cmd),
-        )
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        _append_subprocess_output(review_id, run_id, result)
-        if result.returncode != 0:
-            subprocess.run(docker_rm_cmd, capture_output=True, text=True)
-            return "failed", {
-                "activationScriptPath": activation_script_path,
-                "containerExitCode": result.returncode,
-            }
-
-    subprocess.run(docker_rm_cmd, capture_output=True, text=True)
     _append_review_run_log(
         review_id, run_id, "system", "info", "Activation run succeeded"
     )
-    return "succeeded", {"activationScriptPath": activation_script_path}
+    return "succeeded", outputs

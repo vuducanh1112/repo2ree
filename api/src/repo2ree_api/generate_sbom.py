@@ -7,14 +7,11 @@ from pydantic import BaseModel, ConfigDict
 
 from pathlib import Path
 
-from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_protocol.command import GenerateSbomArgs, GenerateSbomCommand
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.run_management import (
-    _append_run_log,
-    _is_cancel_requested,
     _run_summary,
-    _start_background_run,
+    _start_single_command_run,
 )
 
 
@@ -85,33 +82,14 @@ def create_generate_sbom_run_state(
 ) -> dict[str, Any]:
     runtime_path = _resolve_sbom_runtime_path(ree_id, payload.produced_runtime_path)
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
-        def _log(stream: str, level: str, message: str) -> None:
-            _append_run_log(ree_id, run_id, stream, level, message)
-
-        if _is_cancel_requested(ree_id, run_id):
-            _log("system", "warn", "SBOM run canceled")
-            return "canceled", {"runtimeRelativePath": runtime_path}
-
-        handle = workbench_manager.lookup(ree_id)
-        if handle is None:
-            _log("system", "error", "No workbench available for generate_sbom")
-            return "failed", {}
-
-        result = workbench_manager.dispatch_action(
-            handle,
-            GenerateSbomCommand(
-                args=GenerateSbomArgs(produced_runtime_path=runtime_path)
-            ),
-            run_id,
-            _log,
-        )
-        return result.status, result.outputs or {"runtimeRelativePath": runtime_path}
-
-    return _start_background_run(
-        ree_id=ree_id,
+    return _start_single_command_run(
+        ree_id,
         operation="sbom",
-        request_payload={"produced_runtime_path": runtime_path},
+        command=GenerateSbomCommand(
+            args=GenerateSbomArgs(produced_runtime_path=runtime_path)
+        ),
         run_id_prefix="sbom",
-        runner=_runner,
+        request_payload={"produced_runtime_path": runtime_path},
+        canceled_message="SBOM run canceled",
+        fallback_outputs={"runtimeRelativePath": runtime_path},
     )

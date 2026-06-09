@@ -8,10 +8,8 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_protocol import ActivationTestCommand
 from repo2ree_protocol.command import ActivationTestArgs
 from repo2ree_api.run_management import (
-    _append_run_log,
-    _is_cancel_requested,
     _run_summary,
-    _start_background_run,
+    _start_single_command_run,
 )
 from repo2ree_api.workbench.deps import workbench_manager
 
@@ -87,35 +85,14 @@ def create_activation_run_state(
         ree_id, payload.activation_script_path
     )
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
-        def _log(stream: str, level: str, message: str) -> None:
-            _append_run_log(ree_id, run_id, stream, level, message)
-
-        if _is_cancel_requested(ree_id, run_id):
-            _log("system", "warn", "Activation run canceled")
-            return "canceled", {"activationScriptPath": activation_script_path}
-
-        handle = workbench_manager.lookup(ree_id)
-        if handle is None:
-            _log("system", "error", "No workbench available for activation_test")
-            return "failed", {}
-
-        result = workbench_manager.dispatch_action(
-            handle,
-            ActivationTestCommand(
-                args=ActivationTestArgs(activation_script_path=activation_script_path)
-            ),
-            run_id,
-            _log,
-        )
-        return result.status, result.outputs or {
-            "activationScriptPath": activation_script_path
-        }
-
-    return _start_background_run(
-        ree_id=ree_id,
+    return _start_single_command_run(
+        ree_id,
         operation="activation",
-        request_payload={"activation_script_path": activation_script_path},
+        command=ActivationTestCommand(
+            args=ActivationTestArgs(activation_script_path=activation_script_path)
+        ),
         run_id_prefix="activation",
-        runner=_runner,
+        request_payload={"activation_script_path": activation_script_path},
+        canceled_message="Activation run canceled",
+        fallback_outputs={"activationScriptPath": activation_script_path},
     )

@@ -12,6 +12,7 @@ from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.time_utils import utc_now  # noqa: F401  (re-exported)
 from repo2ree_core.working_environment.base import CancelCheck, StepOutcome
+from repo2ree_protocol.result import ActionResult
 
 WORKSPACE_CONTROL_PREFIXES = (".workspace", ".upload.")
 
@@ -84,6 +85,58 @@ def run_script_directly(
     exit_code = proc.returncode
     status = "succeeded" if exit_code == 0 else "failed"
     return StepOutcome(status, exit_code)
+
+
+def run_workspace_script_handler(
+    script_path: str,
+    *,
+    operation: str,
+    noun: str,
+    output_key: str,
+    run_id: str,
+    log: LogSink,
+    is_canceled: CancelCheck,
+) -> ActionResult:
+    """Validate and run a workspace script directly inside the workbench.
+
+    Shared by the build_runtime and activation_test handlers, which differ only
+    in their labels (``operation``/``noun``) and the output key. ``noun`` is the
+    capitalised run name (e.g. "Build", "Activation").
+    """
+    if is_canceled():
+        log("system", "warn", f"{operation} canceled before start")
+        return ActionResult(status="canceled")
+
+    layout = ReeLayout.in_workbench()
+    script_path = script_path.strip()
+    try:
+        resolve_workspace_path(layout, script_path)
+    except Exception as exc:
+        log("system", "error", f"invalid {noun.lower()} script path: {exc}")
+        return ActionResult(status="failed", exit_code=1)
+
+    log("system", "info", f"Starting {noun.lower()} run {run_id}")
+    log("system", "info", f"{noun} script: {script_path}")
+    outcome = run_script_directly(
+        workspace=layout.workspace.resolve(),
+        script_rel_path=script_path,
+        log=log,
+        is_canceled=is_canceled,
+    )
+
+    log(
+        "system",
+        "info" if outcome.status == "succeeded" else "error",
+        f"{noun} run {outcome.status} (exit code {outcome.exit_code})",
+    )
+    outputs: dict[str, Any] = {output_key: script_path}
+    if outcome.exit_code is not None:
+        outputs["containerExitCode"] = outcome.exit_code
+    return ActionResult(
+        status=outcome.status,
+        exit_code=outcome.exit_code or 0,
+        outputs=outputs,
+    )
 
 
 def patch_ree_intent(store: ReeStore, patch: dict[str, Any]) -> None:
