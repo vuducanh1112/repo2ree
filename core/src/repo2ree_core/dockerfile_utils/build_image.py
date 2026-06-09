@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -7,14 +8,16 @@ import docker
 import docker.models
 import docker.models.images
 
+logger = logging.getLogger(__name__)
+
 
 def build_docker_image(build_context: Path, dockerfile: Path) -> docker.models.images.Image | None:
     dockerfile = dockerfile.resolve()
 
-    print(f"Attempting to build Dockerfile: {dockerfile} in build context: {build_context}")
+    logger.info("Attempting to build Dockerfile: %s in build context: %s", dockerfile, build_context)
     for root, _dirs, files in os.walk(build_context):
         for name in files:
-            print(os.path.abspath(os.path.join(root, name)))
+            logger.debug("%s", os.path.abspath(os.path.join(root, name)))
 
     try:
         client = docker.from_env()
@@ -31,23 +34,22 @@ def build_docker_image(build_context: Path, dockerfile: Path) -> docker.models.i
         image, build_log = response
         for chunk in build_log:
             for _key, value in chunk.items():
-                print(value, end="")
+                logger.debug("%s", value)
 
-        print("\nBuild successful!")
+        logger.info("Build successful!")
         return image
 
     except docker.errors.BuildError as e:
-        print(f"\nBuild failed: {e}")
+        logger.error("Build failed: %s", e)
 
         if hasattr(e, "build_log"):
             log_lines = [(item.get("stream") or item.get("error") or "").strip() for item in e.build_log]
-
             full_log = "\n".join(filter(None, log_lines))
-            print(full_log)
+            logger.error("%s", full_log)
 
         return None
     except Exception as e:
-        print(f"\nAn unexpected error occurred: {e}")
+        logger.error("An unexpected error occurred: %s", e)
         return None
 
 

@@ -20,6 +20,7 @@ from repo2ree_core.storage.workspace_ops import read_file_bytes as _read_file_by
 from repo2ree_core.time_utils import utc_now as _utc_now
 from repo2ree_protocol import ActionResult, command_adapter
 from repo2ree_protocol.command import AcquireSourceArgs, AcquireSourceCommand
+from repo2ree_protocol.log import configure_logging as _configure_logging
 
 # ================================================
 # Logging
@@ -50,6 +51,7 @@ def cli() -> None:
 
 
 def main() -> None:
+    _configure_logging()
     cli()
 
 

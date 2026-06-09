@@ -1,8 +1,11 @@
+import logging
 from enum import Enum
 
 import docker
 import docker.errors
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 ###################
 # Data Models
@@ -54,10 +57,10 @@ def get_os_release_lightweight(image_name: str) -> tuple[str, str]:
         return architecture, os_release_str
 
     except docker.errors.ImageNotFound:
-        print(f"Error: Image '{image_name}' not found.")
+        logger.error("Image '%s' not found.", image_name)
         return "", ""
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error("An error occurred: %s", e)
         return "", ""
 
 
@@ -70,7 +73,7 @@ def get_docker_image_digest(image_name: str) -> str | None:
 
         # Check for digests
         if not image.attrs.get("RepoDigests"):
-            print(f"Image {image_name} has no digest. Pulling the image...")
+            logger.info("Image %s has no digest. Pulling the image...", image_name)
             image = client.images.pull(image_name)
 
         # A list of digests is returned, but for tagged images,
@@ -79,7 +82,7 @@ def get_docker_image_digest(image_name: str) -> str | None:
         return digest
 
     except docker.errors.ImageNotFound:
-        print(f"Image {image_name} not found locally. Pulling it from the registry...")
+        logger.info("Image %s not found locally. Pulling it from the registry...", image_name)
         image = client.images.pull(image_name)
 
         # After a pull, the digest should be available.
@@ -89,7 +92,7 @@ def get_docker_image_digest(image_name: str) -> str | None:
         else:
             return None
     except docker.errors.APIError as e:
-        print(f"An API error occurred: {e}")
+        logger.error("An API error occurred: %s", e)
         return None
 
 

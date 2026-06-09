@@ -19,6 +19,7 @@ from repo2ree_api.storage.init_storage import (
     create_review_storage_if_not_exists,
     create_upload_staging_if_not_exists,
 )
+from repo2ree_protocol.log import configure_logging
 from repo2ree_supervisor import WorkbenchUnavailableError
 
 # ================================================
@@ -28,7 +29,7 @@ from repo2ree_supervisor import WorkbenchUnavailableError
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # This runs ON STARTUP
+    configure_logging()
     create_upload_staging_if_not_exists()
     create_review_storage_if_not_exists()
     yield

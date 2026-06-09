@@ -1,4 +1,5 @@
 import datetime
+import logging
 import shlex
 import tempfile
 from enum import Enum
@@ -21,6 +22,8 @@ from repo2ree_core.dockerfile_utils.os_utils import (
 from repo2ree_core.python_packages_util.pin_pypi_package_version import (
     get_latest_version_on_pypi_until_date,
 )
+
+logger = logging.getLogger(__name__)
 
 ###################
 # Constants
@@ -93,8 +96,8 @@ class SplittedShellCommand(BaseModel, frozen=True):
             rejoined_shell_command += command
 
         if shlex.split(rejoined_shell_command) != shlex.split(self.shell_command):
-            print(shlex.split(rejoined_shell_command))
-            print(shlex.split(self.shell_command))
+            logger.debug("rejoined: %s", shlex.split(rejoined_shell_command))
+            logger.debug("original: %s", shlex.split(self.shell_command))
             raise ValueError("Reconstructed command does not match the original shell_command.")
 
         for i in range(len(self.delimited_commands)):
@@ -134,15 +137,15 @@ def pin_dockerfile_base_image_and_packages(
 
         # original_from = dfp.baseimage
 
-        print(dfp.parent_images)
-        print(dfp.baseimage)
+        logger.debug("parent_images: %s", dfp.parent_images)
+        logger.debug("baseimage: %s", dfp.baseimage)
 
         pinned_base_image = pin_base_image(image_name=dfp.baseimage, date=date)
         dfp.baseimage = pinned_base_image
 
         architecture, os_release_str = get_os_release_lightweight(image_name=dfp.baseimage)
-        print(f"Architecture: {architecture}")
-        print(f"/etc/os-release:\n{os_release_str}")
+        logger.debug("Architecture: %s", architecture)
+        logger.debug("/etc/os-release:\n%s", os_release_str)
         os_release_info = parse_os_release(os_release_str)
 
         snapshot_sources_command = get_put_snapshot_sources_shell_command(
@@ -181,9 +184,7 @@ def pin_dockerfile_base_image_and_packages(
 
         dfp.content = final_content
 
-        print("-----")
-        print(dfp.structure)
-        print("-----")
+        logger.debug("dockerfile structure: %s", dfp.structure)
 
         pinned_dockerfile_contents = final_content
 
@@ -204,10 +205,10 @@ def pin_base_image(image_name: str, date: datetime.date) -> str:
     if image_digest:
         base_image_repo_url = image_name.split(":")[0]
         pinned_image = base_image_repo_url + "@" + image_digest.split("@")[1]
-        print(f"Pinned base image '{image_name}' to its digest '{pinned_image}'")
+        logger.info("Pinned base image '%s' to its digest '%s'", image_name, pinned_image)
         new_image_name = pinned_image
     else:
-        print(f"Could not pin base image '{image_name}'. Using original.")
+        logger.warning("Could not pin base image '%s'. Using original.", image_name)
         new_image_name = image_name
 
     return new_image_name
@@ -233,7 +234,7 @@ def pin_dockerfile_package_install_commands(
 
         if dockerfile_instruction.instruction == "RUN":
             splitted_shell_command = split_shell_command(dockerfile_instruction.value)
-            print(splitted_shell_command)
+            logger.debug("split shell command: %s", splitted_shell_command)
             # Path("debug.json").write_text(splitted_shell_command.model_dump_json(indent=2))
 
             new_delimited_commands = []
@@ -253,8 +254,10 @@ def pin_dockerfile_package_install_commands(
                 new_shell_command += new_command
 
             if new_shell_command != splitted_shell_command.shell_command:
-                print(
-                    f"Updated shell command:\nFrom: {splitted_shell_command.shell_command}\nTo:   {new_shell_command}"
+                logger.info(
+                    "Updated shell command:\nFrom: %s\nTo:   %s",
+                    splitted_shell_command.shell_command,
+                    new_shell_command,
                 )
 
                 new_dockerfile_instruction = DockerfileInstruction(
@@ -265,7 +268,7 @@ def pin_dockerfile_package_install_commands(
                     value=new_shell_command,
                 )
             else:
-                print(f"No changes made to shell command: {splitted_shell_command.shell_command}")
+                logger.debug("No changes made to shell command: %s", splitted_shell_command.shell_command)
 
         new_dockerfile_instructions.append(new_dockerfile_instruction)
 
@@ -279,7 +282,7 @@ def pin_dockerfile_package_install_commands(
                     value=snapshot_sources_command.strip(),
                 )
             )
-            print(f"Inserted snapshot sources command after FROM: {snapshot_sources_command.strip()}")
+            logger.info("Inserted snapshot sources command after FROM: %s", snapshot_sources_command.strip())
 
     return new_dockerfile_instructions
 
@@ -297,13 +300,13 @@ def pin_package_versions_of_install_command(
         pinned_packages_install_command_tokens = command_tokens
     else:
         packages = extract_packages_from_install_command(command_tokens, install_command)
-        print(f"Extracted packages: {packages}")
+        logger.debug("Extracted packages: %s", packages)
 
         pinned_packages = {}
         for package in packages:
-            print(package)
+            logger.debug("Processing package: %s", package)
             if package_is_pinned(package, install_command):
-                print(f"Package '{package}' is already pinned. Skipping.")
+                logger.debug("Package '%s' is already pinned. Skipping.", package)
                 continue
             version = lookup_package_version(
                 package_name=package,
@@ -312,7 +315,7 @@ def pin_package_versions_of_install_command(
                 architecture=architecture,
                 install_command=install_command,
             )
-            print(f"Pinned package '{package}' to version '{version}'")
+            logger.info("Pinned package '%s' to version '%s'", package, version)
             pinned_packages[package] = version
 
         pinned_packages_install_command_tokens = put_pinned_versions_into_install_command(

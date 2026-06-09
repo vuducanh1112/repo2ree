@@ -3,7 +3,7 @@ import logging
 
 import requests
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def generate_completion(
@@ -43,15 +43,19 @@ def generate_completion(
 
         return response_text
     except requests.HTTPError as e:
-        logging.error(f"HTTP error occurred: {e}")
+        logger.error(f"HTTP error occurred: {e}")
         return ""
     except requests.RequestException as e:
-        logging.error(f"Error generating completion: {e}")
+        logger.error(f"Error generating completion: {e}")
         return ""
 
 
 if __name__ == "__main__":
     from pathlib import Path
+
+    from repo2ree_protocol.log import configure_logging
+
+    configure_logging()
 
     url = "http://host.docker.internal:11434/api/generate"
     api_key = ""
@@ -83,4 +87,4 @@ if __name__ == "__main__":
         format=format,
     )
 
-    print(completion)
+    logger.info("%s", completion)

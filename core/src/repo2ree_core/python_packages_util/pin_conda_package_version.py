@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import UTC, datetime
 from typing import Final
 
@@ -10,6 +11,8 @@ from pydantic import BaseModel
 from repo2ree_core.python_packages_util.pin_pypi_package_version import (
     pin_python_dependency_in_string,
 )
+
+logger = logging.getLogger(__name__)
 
 ###################
 # Constants
@@ -140,7 +143,12 @@ def get_anaconda_package_version_until_date(package_name: str, cutoff_date: date
             file_info = file_infos_by_version[version]
             upload_time = datetime.strptime(file_info.upload_time, "%Y-%m-%d %H:%M:%S.%f%z")
             if upload_time <= cutoff_date:
-                print(f"Found version '{version}' on channel '{channel}' uploaded at {upload_time.isoformat()}")
+                logger.info(
+                    "Found version '%s' on channel '%s' uploaded at %s",
+                    version,
+                    channel,
+                    upload_time.isoformat(),
+                )
                 return version
 
     return ""
@@ -187,7 +195,7 @@ def get_anaconda_package_data(package_name: str, channels: list[str]) -> dict:
 
     anaconda_channels_data: dict[str, dict] = {channel: dict() for channel in channels}
 
-    print(f"Searching for package '{package_name}' across channels: {', '.join(channels)}\n")
+    logger.info("Searching for package '%s' across channels: %s", package_name, ", ".join(channels))
 
     for channel in channels:
         api_url = f"{ANACONDA_API_URL}/{channel}/{package_name}"
@@ -205,13 +213,13 @@ def get_anaconda_package_data(package_name: str, channels: list[str]) -> dict:
         except requests.exceptions.HTTPError as e:
             # A 404 (Not Found) is common if the package isn't in that specific channel
             if e.response.status_code == 404:
-                print(f"   Package not found on channel '{channel}' (404).")
+                logger.debug("Package not found on channel '%s' (404).", channel)
             else:
-                print(f"   Error accessing channel '{channel}': HTTP Error {e.response.status_code}")
+                logger.warning("Error accessing channel '%s': HTTP Error %s", channel, e.response.status_code)
         except requests.exceptions.RequestException as e:
-            print(f"   An error occurred while connecting to Anaconda API for channel '{channel}': {e}")
+            logger.error("An error occurred while connecting to Anaconda API for channel '%s': %s", channel, e)
         except json.JSONDecodeError:
-            print(f"   Error: Received non-JSON response from channel '{channel}'.")
+            logger.error("Received non-JSON response from channel '%s'.", channel)
 
     return anaconda_channels_data
 

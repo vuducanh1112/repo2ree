@@ -1,7 +1,10 @@
 import io
+import logging
 import tarfile
 
 import docker
+
+logger = logging.getLogger(__name__)
 
 
 def extract_file_from_image(image_name: str, file_path: str, destination_path: str) -> bool:
@@ -46,8 +49,8 @@ def extract_file_from_image(image_name: str, file_path: str, destination_path: s
         return True
 
     except docker.errors.NotFound:
-        print(f"File {file_path} not found in image {image_name}.")
+        logger.error("File %s not found in image %s.", file_path, image_name)
         return False
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error("An error occurred: %s", e)
         return False

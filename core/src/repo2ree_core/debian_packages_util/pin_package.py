@@ -1,5 +1,6 @@
 import datetime
 import io
+import logging
 import lzma
 import tempfile
 from pathlib import Path
@@ -9,6 +10,8 @@ from debian.deb822 import Packages
 from pydantic import BaseModel
 
 from repo2ree_core.dockerfile_utils.os_utils import OSReleaseID, OSReleaseInfo
+
+logger = logging.getLogger(__name__)
 
 TMP_CACHE_DIR = Path(tempfile.gettempdir()) / "repo2ree_cache"
 
@@ -121,14 +124,14 @@ def get_or_download_packages_file(
     file_path = cache_location / snapshot_url.lstrip(snapshot_archive_base)
     if not file_path.exists():
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        print(f"Downloading Packages file to: {file_path}")
+        logger.info("Downloading Packages file to: %s", file_path)
         response = requests.get(snapshot_url, timeout=60)
         if response.status_code != 200:
             raise ValueError(f"Failed to download Packages file from {snapshot_url}: {response.status_code}")
         with open(file_path, "wb") as f:
             f.write(response.content)
     else:
-        print(f"Using cached Packages file: {file_path}")
+        logger.debug("Using cached Packages file: %s", file_path)
 
     with open(file_path, "rb") as f:
         compressed_data = f.read()
