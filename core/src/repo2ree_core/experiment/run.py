@@ -57,7 +57,7 @@ class ExperimentRunOutcome:
     and holds the baselines the caller must write back into the REE draft.
     """
 
-    status: Literal["succeeded", "failed", "canceled"]
+    status: str
     run_outputs: dict[str, Any]
     snapshot_to_persist: list[ExpectedOutput] | None = field(default=None)
 

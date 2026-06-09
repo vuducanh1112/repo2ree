@@ -153,26 +153,6 @@ export interface ReviewUploadCompleteResponseDto {
   review: ReviewDetailDto;
 }
 
-export interface ActionReceiptDto {
-  receipt_id: string;
-  operation: string;
-  command?: Record<string, unknown>;
-  action_digest: string;
-  input_digest?: string | null;
-  output_digest?: string | null;
-  status: "succeeded" | "failed" | "canceled";
-  exit_code: number;
-  outputs?: Record<string, unknown>;
-  started_at: string;
-  finished_at: string;
-  predecessor?: string | null;
-  log_ref?: string | null;
-}
-
-export interface ReceiptsListDto {
-  items: ActionReceiptDto[];
-}
-
 export type WorkflowOperationDto =
   | "evaluate"
   | "build"

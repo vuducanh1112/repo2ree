@@ -16,11 +16,9 @@ import json
 import subprocess
 import threading
 from dataclasses import dataclass
-from uuid import uuid4
 
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.command import Command, SealReeCommand, SealReeArgs
-from repo2ree_protocol.receipt import ActionReceipt
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
 
@@ -328,17 +326,11 @@ class WorkbenchManager:
                 runtime_included=runtime_included,
             )
         )
-        run_id = f"seal-{uuid4().hex}"
         with self._ree_lock(handle.ree_id):
-            result = self._dispatch_action_locked(handle, cmd, run_id, lambda *_: None)
+            result = self._dispatch_action_locked(handle, cmd, "seal", lambda *_: None)
         if result.status != "succeeded":
             raise RuntimeError(f"seal_ree {result.status}")
         return self.get_workspace(handle)
-
-    def get_receipts(self, handle: WorkbenchHandle) -> list[ActionReceipt]:
-        """Return the receipts journal as validated ActionReceipt models."""
-        raw = self.dispatch_query(handle, "get-receipts")
-        return [ActionReceipt.model_validate(item) for item in json.loads(raw)]
 
     def build_archive(self, handle: WorkbenchHandle) -> bytes:
         with self._ree_lock(handle.ree_id):

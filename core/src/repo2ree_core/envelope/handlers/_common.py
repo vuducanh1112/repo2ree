@@ -5,7 +5,7 @@ import subprocess
 import threading
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any, Literal
+from typing import Any
 
 from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.domain.ree_intent import ReeIntent
@@ -13,18 +13,7 @@ from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment.base import CancelCheck, StepOutcome
 
-
-# ================================================
-# Constants
-# ================================================
-
-
 WORKSPACE_CONTROL_PREFIXES = (".workspace", ".upload.")
-
-
-# ================================================
-# Helpers
-# ================================================
 
 
 def utc_now() -> str:
@@ -97,7 +86,7 @@ def run_script_directly(
 
     reader.join()
     exit_code = proc.returncode
-    status: Literal["succeeded", "failed"] = "succeeded" if exit_code == 0 else "failed"
+    status = "succeeded" if exit_code == 0 else "failed"
     return StepOutcome(status, exit_code)
 
 

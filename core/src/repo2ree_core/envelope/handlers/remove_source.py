@@ -1,8 +1,7 @@
 """Handler for the remove_source operation.
 
-Clears upstream/, overlay/, workspace/, snapshot.tar.gz and the receipt
-journal, then resets source fields in /ree/.workspace.json back to draft
-state. Author metadata (name, catalog metadata) is preserved.
+Clears upstream/, overlay/, workspace/ and snapshot.tar.gz, then resets
+source fields in /ree/.workspace.json back to draft state.
 """
 
 from __future__ import annotations
@@ -39,11 +38,6 @@ def handle_remove_source(
             subtree.ensure_root()
         if layout.snapshot_archive.exists():
             layout.snapshot_archive.unlink()
-        # The receipt journal records the structural ops that built the (now
-        # removed) source; resetting to a sourceless state makes them moot, so
-        # clear it too. remove_source itself is not journaled.
-        if layout.receipts_journal.exists():
-            layout.receipts_journal.unlink()
 
         metadata = store.read_metadata_json()
         # Removing the source removes the basis for everything derived from it,

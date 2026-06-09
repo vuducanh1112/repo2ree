@@ -1,11 +1,4 @@
 from repo2ree_protocol.log import LogSink  # noqa: F401
-from repo2ree_protocol.receipt import (  # noqa: F401
-    ActionReceipt,
-    NON_JOURNALED_OPERATIONS,
-    ReceiptClose,
-    ReceiptOpen,
-    compute_action_digest,
-)
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
@@ -29,13 +22,8 @@ from repo2ree_protocol.command import (
 from repo2ree_protocol.result import ActionResult
 
 __all__ = [
-    "ActionReceipt",
     "ActionResult",
-    "NON_JOURNALED_OPERATIONS",
-    "ReceiptClose",
-    "ReceiptOpen",
     "LogSink",
-    "compute_action_digest",
     "AcquireSourceCommand",
     "ActivationTestCommand",
     "BuildRuntimeCommand",

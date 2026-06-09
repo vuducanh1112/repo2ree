@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Protocol
 
 from repo2ree_core.container.run_script import LogSink
 
@@ -63,7 +63,7 @@ class ScriptStep:
 class StepOutcome:
     """Result of one ``exec_script`` call."""
 
-    status: Literal["succeeded", "failed", "canceled"]
+    status: str  # "succeeded" | "failed" | "canceled"
     exit_code: int | None = None
     captured_stdout: str = ""
     captured_stderr: str = ""

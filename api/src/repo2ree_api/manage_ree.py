@@ -116,7 +116,7 @@ def _run_workbench_acquire_pipeline(
     for cmd in pipeline:
         try:
             result = workbench_manager.dispatch_action(
-                handle, cmd, f"init-{cmd.operation}-{uuid.uuid4().hex}", lambda *_: None
+                handle, cmd, f"init-{cmd.operation}", lambda *_: None
             )
         except Exception as exc:
             _log.warning(
@@ -434,7 +434,7 @@ def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentP
         args=WriteFileArgs(path=payload.path, content=payload.content)
     )
     wb_result = workbench_manager.dispatch_action(
-        handle, cmd, f"write-file-{uuid.uuid4().hex}", lambda *_: None
+        handle, cmd, "write-file", lambda *_: None
     )
     if wb_result.status != "succeeded":
         raise HTTPException(status_code=500, detail="Workbench write_file failed")
@@ -446,7 +446,7 @@ def delete_workspace_file_content_route(ree_id: str, path: str = Query(...)):
     handle = _require_handle(ree_id)
     cmd = DeleteFileCommand(args=DeleteFileArgs(path=path))
     wb_result = workbench_manager.dispatch_action(
-        handle, cmd, f"delete-file-{uuid.uuid4().hex}", lambda *_: None
+        handle, cmd, "delete-file", lambda *_: None
     )
     if wb_result.status != "succeeded":
         raise HTTPException(status_code=500, detail="Workbench delete_file failed")
