@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import logging
 import shutil
 import subprocess
-from contextlib import suppress
 
 from fastapi import APIRouter, Query
 
@@ -13,6 +13,9 @@ from repo2ree_api.run_management import (
     _mark_cancel_requested,
     _run_summary,
 )
+from repo2ree_api.run_registry import TERMINAL_STATUSES
+
+logger = logging.getLogger(__name__)
 
 # ================================================
 # Router
@@ -55,7 +58,7 @@ def get_workspace_run_logs(
 def cancel_workspace_run(ree_id: str, run_id: str):
     run_state = _get_run_state(ree_id, run_id)
     current_status = run_state.get("status")
-    if current_status in {"succeeded", "failed", "canceled"}:
+    if current_status in TERMINAL_STATUSES:
         return {"status": current_status}
 
     _mark_cancel_requested(ree_id, run_id)
@@ -71,27 +74,31 @@ def cancel_workspace_run(ree_id: str, run_id: str):
     docker_bin = shutil.which("docker") or "docker"
     if operation == "build":
         container_name = f"repo2ree-build-{run_id}"
-        with suppress(Exception):
+        try:
             subprocess.run(
                 [docker_bin, "rm", "-f", container_name],
                 capture_output=True,
                 text=True,
             )
+        except Exception:
+            logger.warning("failed to kill build container %s", container_name, exc_info=True)
     elif operation == "activation":
         container_name = f"repo2ree-activation-{run_id}"
-        with suppress(Exception):
+        try:
             subprocess.run(
                 [docker_bin, "rm", "-f", container_name],
                 capture_output=True,
                 text=True,
             )
+        except Exception:
+            logger.warning("failed to kill activation container %s", container_name, exc_info=True)
     elif operation == "experiment":
         # Remove the main container AND any validator containers spawned for
         # custom-match evaluation (named repo2ree-experiment-validator-{run_id}-*).
         # Docker's --filter name= does a substring match, so the shared prefix
         # covers both container types.
         name_prefix = f"repo2ree-experiment-{run_id}"
-        with suppress(Exception):
+        try:
             ps_result = subprocess.run(
                 [docker_bin, "ps", "-aq", "--filter", f"name={name_prefix}"],
                 capture_output=True,
@@ -104,6 +111,8 @@ def cancel_workspace_run(ree_id: str, run_id: str):
                     capture_output=True,
                     text=True,
                 )
+        except Exception:
+            logger.warning("failed to kill experiment containers for %s", run_id, exc_info=True)
 
     refreshed = _get_run_state(ree_id, run_id)
     return {"status": refreshed["status"]}

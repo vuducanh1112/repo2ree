@@ -13,15 +13,19 @@ ActionResult is read from stdout once stderr is exhausted.
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 import threading
 from contextlib import suppress
 from dataclasses import dataclass
+from typing import Any
 
 from repo2ree_protocol.command import Command, SealReeArgs, SealReeCommand
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
+
+logger = logging.getLogger(__name__)
 
 # ================================================
 # Constants
@@ -177,9 +181,7 @@ class WorkbenchManager:
             return None
         handle = WorkbenchHandle.from_entry(entry)
         if not self._is_running(handle.container_name):
-            import logging
-
-            logging.getLogger(__name__).warning(
+            logger.warning(
                 "workbench container %s not running for %s — returning None",
                 handle.container_name,
                 ree_id,
@@ -287,11 +289,11 @@ class WorkbenchManager:
             raise RuntimeError(f"query {argv!r} failed (exit {result.returncode}): {detail}")
         return result.stdout
 
-    def get_ree_metadata(self, handle: WorkbenchHandle) -> dict:  # type: ignore[type-arg]
+    def get_ree_metadata(self, handle: WorkbenchHandle) -> dict[str, Any]:
         raw = self.dispatch_query(handle, "get-ree")
         return json.loads(raw)
 
-    def get_workspace(self, handle: WorkbenchHandle) -> dict:  # type: ignore[type-arg]
+    def get_workspace(self, handle: WorkbenchHandle) -> dict[str, Any]:
         raw = self.dispatch_query(handle, "get-workspace")
         return json.loads(raw)
 
@@ -307,7 +309,7 @@ class WorkbenchManager:
         *,
         source_included: bool,
         runtime_included: bool,
-    ) -> dict:  # type: ignore[type-arg]
+    ) -> dict[str, Any]:
         cmd = SealReeCommand(
             args=SealReeArgs(
                 source_included=source_included,
@@ -324,7 +326,7 @@ class WorkbenchManager:
         with self._ree_lock(handle.ree_id):
             return self.dispatch_query(handle, "build-archive")
 
-    def list_all_metadata(self) -> list[dict]:  # type: ignore[type-arg]
+    def list_all_metadata(self) -> list[dict[str, Any]]:
         """Return metadata for every registered workbench, skipping unreachable ones."""
         results = []
         for entry in self._registry.list_all():

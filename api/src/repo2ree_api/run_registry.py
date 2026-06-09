@@ -2,12 +2,30 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from threading import RLock, Thread
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import HTTPException
 
 from repo2ree_core.time_utils import utc_now
+
+# ================================================
+# Types
+# ================================================
+
+RunStatus = Literal[
+    "running",
+    "queued",
+    "created",
+    "provisioning",
+    "canceling",
+    "succeeded",
+    "failed",
+    "canceled",
+]
+
+TERMINAL_STATUSES: frozenset[str] = frozenset({"succeeded", "failed", "canceled"})
+ACTIVE_STATUSES: frozenset[str] = frozenset({"running", "queued", "created", "provisioning"})
 
 
 class RunRegistry:
@@ -91,7 +109,7 @@ class RunRegistry:
             if not run_state:
                 return
             run_state["status"] = status
-            if status in {"succeeded", "failed", "canceled"}:
+            if status in TERMINAL_STATUSES:
                 run_state["finishedAt"] = utc_now()
 
     # ================================================
@@ -132,12 +150,7 @@ class RunRegistry:
             if not control or not run_state:
                 return False
             control["cancelRequested"] = True
-            if run_state.get("status") in {
-                "running",
-                "queued",
-                "created",
-                "provisioning",
-            }:
+            if run_state.get("status") in ACTIVE_STATUSES:
                 run_state["status"] = "canceling"
             return True
 
@@ -148,10 +161,7 @@ class RunRegistry:
         status: str,
         outputs: dict[str, Any],
     ) -> None:
-        if self.is_cancel_requested(entity_id, run_id) and status not in {
-            "failed",
-            "succeeded",
-        }:
+        if self.is_cancel_requested(entity_id, run_id) and status not in {"failed", "succeeded"}:
             status = "canceled"
         self.update_outputs(entity_id, run_id, outputs)
         self._set_status(entity_id, run_id, status)

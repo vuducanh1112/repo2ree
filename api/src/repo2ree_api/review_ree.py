@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import shlex
 import shutil
 import subprocess
 import tarfile
 import tempfile
 import zipfile
-from contextlib import suppress
 from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
@@ -29,6 +29,7 @@ from repo2ree_api.review_run_management import (
     _review_run_summary,
     _start_background_review_run,
 )
+from repo2ree_api.run_registry import TERMINAL_STATUSES
 from repo2ree_api.storage.review_files import (
     ReviewUploadCompletePayload,
     ReviewUploadInitPayload,
@@ -41,6 +42,8 @@ from repo2ree_api.storage.review_files import (
 )
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+
+logger = logging.getLogger(__name__)
 
 # ================================================
 # Router
@@ -189,7 +192,7 @@ def review_run_logs_route(
 def review_run_cancel_route(review_id: str, run_id: str):
     run_state = _get_review_run_state(review_id, run_id)
     current_status = run_state.get("status")
-    if current_status in {"succeeded", "failed", "canceled"}:
+    if current_status in TERMINAL_STATUSES:
         return {"status": current_status}
 
     _mark_review_cancel_requested(review_id, run_id)
@@ -205,12 +208,14 @@ def review_run_cancel_route(review_id: str, run_id: str):
     if operation in {"build", "activation"}:
         docker_bin = shutil.which("docker") or "docker"
         container_name = f"repo2ree-review-{operation}-{run_id}"
-        with suppress(Exception):
+        try:
             subprocess.run(
                 [docker_bin, "rm", "-f", container_name],
                 capture_output=True,
                 text=True,
             )
+        except Exception:
+            logger.warning("failed to kill review container %s", container_name, exc_info=True)
 
     refreshed = _get_review_run_state(review_id, run_id)
     return {"status": refreshed["status"]}
