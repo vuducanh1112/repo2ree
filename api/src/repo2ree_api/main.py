@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,6 +6,12 @@ from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SimpleSpanProcessor
 
 from repo2ree_api.activation_test import activation_test_router
 from repo2ree_api.build_runtime import build_runtime_router
@@ -27,9 +34,20 @@ from repo2ree_supervisor import WorkbenchUnavailableError
 # ================================================
 
 
+def _setup_tracing() -> None:
+    provider = TracerProvider(resource=Resource({"service.name": "repo2ree-api"}))
+    endpoint = os.environ.get("OTLP_ENDPOINT")
+    if endpoint:
+        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{endpoint}/v1/traces")))
+    else:
+        provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+    trace.set_tracer_provider(provider)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
+    _setup_tracing()
     create_upload_staging_if_not_exists()
     create_review_storage_if_not_exists()
     yield
@@ -37,6 +55,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="The REE API backend", lifespan=lifespan)
+FastAPIInstrumentor.instrument_app(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

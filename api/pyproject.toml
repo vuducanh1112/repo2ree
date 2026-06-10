@@ -9,6 +9,8 @@ dependencies = [
     "uvicorn~=0.40.0",
     "python-multipart~=0.0.21",
     "requests~=2.32.5",
+    "opentelemetry-exporter-otlp~=1.42.1",
+    "opentelemetry-instrumentation-fastapi~=0.63b1",
 ]
 
 [tool.uv.sources]
