@@ -39,6 +39,7 @@ from repo2ree_protocol import (
     MaterializeWorkspaceCommand,
     PatchReeIntentCommand,
     RemoveSourceCommand,
+    SealReeCommand,
     SnapshotUpstreamCommand,
     UpdateSourceMetadataCommand,
     WriteFileCommand,
@@ -49,10 +50,11 @@ from repo2ree_protocol.command import (
     DeleteFileArgs,
     ExtractUploadArgs,
     PatchReeIntentArgs,
+    SealReeArgs,
     UpdateSourceMetadataArgs,
     WriteFileArgs,
 )
-from repo2ree_supervisor import WorkbenchHandle, WorkbenchUnavailableError
+from repo2ree_supervisor import WorkbenchHandle
 
 # ================================================
 # Logging
@@ -442,17 +444,15 @@ def reprovision_workbench_route(ree_id: str):
 @manage_ree_router.post("/api/v1/rees/{ree_id}/ree:seal")
 def seal_ree_route(ree_id: str, payload: ReeSealPayload):
     handle = _require_handle(ree_id)
-    try:
-        workspace = workbench_manager.seal(
-            handle,
+    cmd = SealReeCommand(
+        args=SealReeArgs(
             source_included=payload.includeSource,
             runtime_included=payload.includeRuntime,
         )
-    except WorkbenchUnavailableError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return workspace
+    )
+    _dispatch_or_500(handle, cmd, "seal", "Workbench seal_ree failed")
+    # Return the post-seal workspace so the client sees the sealed state.
+    return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.get("/api/v1/rees/{ree_id}/ree-archive")

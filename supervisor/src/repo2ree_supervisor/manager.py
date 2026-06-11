@@ -21,7 +21,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
 
-from repo2ree_protocol.command import Command, SealReeArgs, SealReeCommand
+from repo2ree_protocol.command import Command
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import (
@@ -362,8 +362,19 @@ class WorkbenchManager:
     # Query / mutation dispatch
     # ------------------------------------------------
 
-    def dispatch_query(self, handle: WorkbenchHandle, *argv: str) -> bytes:
-        """Run a read-only CLI subcommand and return its stdout bytes."""
+    def dispatch_query(self, handle: WorkbenchHandle, *argv: str, locked: bool = False) -> bytes:
+        """Run a read-only CLI subcommand and return its stdout bytes.
+
+        Set ``locked`` for queries that must observe a consistent snapshot — they
+        take the per-REE lock so no mutating action runs concurrently. Plain reads
+        leave it off and run unsynchronised.
+        """
+        if locked:
+            with self._ree_lock(handle.ree_id):
+                return self._dispatch_query(handle, *argv)
+        return self._dispatch_query(handle, *argv)
+
+    def _dispatch_query(self, handle: WorkbenchHandle, *argv: str) -> bytes:
         result = subprocess.run(
             ["docker", "exec", handle.container_name, "repo2ree-exec", *argv],
             capture_output=True,
@@ -392,28 +403,8 @@ class WorkbenchManager:
     def read_artifact_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
         return self.dispatch_query(handle, "read-artifact", "--path", path)
 
-    def seal(
-        self,
-        handle: WorkbenchHandle,
-        *,
-        source_included: bool,
-        runtime_included: bool,
-    ) -> dict[str, Any]:
-        cmd = SealReeCommand(
-            args=SealReeArgs(
-                source_included=source_included,
-                runtime_included=runtime_included,
-            )
-        )
-        with self._ree_lock(handle.ree_id):
-            result = self._dispatch_action_locked(handle, cmd, "seal", lambda *_: None)
-        if result.status != "succeeded":
-            raise RuntimeError(f"seal_ree {result.status}")
-        return self.get_workspace(handle)
-
     def build_archive(self, handle: WorkbenchHandle) -> bytes:
-        with self._ree_lock(handle.ree_id):
-            return self.dispatch_query(handle, "build-archive")
+        return self.dispatch_query(handle, "build-archive", locked=True)
 
     def list_all_metadata(self) -> list[dict[str, Any]]:
         """Return metadata for every registered workbench, skipping unreachable ones."""
