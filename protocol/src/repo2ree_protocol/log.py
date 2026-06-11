@@ -39,16 +39,19 @@ class _JsonFormatter(logging.Formatter):
 # ================================================
 
 
-def configure_logging() -> None:
+def configure_logging(*, structured: bool = False) -> None:
     """Configure root logger once.
 
-    JSON format when OTLP_ENDPOINT is set, plain text otherwise.
-    Log level defaults to INFO; override with LOG_LEVEL env var.
+    Emits JSON when ``structured`` is set (for a log aggregator), plain text
+    otherwise. The caller owns that decision — the API turns it on when a
+    collector is configured; the executor leaves it off, since its meaningful
+    logs travel as NDJSON through the LogSink relay, not this root handler.
+    Log level defaults to INFO; override with the LOG_LEVEL env var.
     """
     level_name = os.environ.get("LOG_LEVEL", "INFO").upper()
     level = getattr(logging, level_name, logging.INFO)
 
-    if os.environ.get("OTLP_ENDPOINT"):
+    if structured:
         formatter: logging.Formatter = _JsonFormatter()
     else:
         formatter = logging.Formatter("%(asctime)s %(levelname)-8s %(name)s %(message)s")

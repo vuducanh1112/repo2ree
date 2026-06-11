@@ -19,9 +19,18 @@ let
   # import time. Keep this list minimal — adding deps here grows the
   # image and bypasses the reproducibility surface we're trying to
   # keep small.
+  #
+  # The opentelemetry trio backs the executor's span relay: spans are
+  # encoded (proto-common) and streamed over stderr for the supervisor to
+  # forward. The executor never talks to a collector itself, so the OTLP
+  # HTTP exporter and `requests` are deliberately absent — those stay
+  # behind the host-side functions in repo2ree_protocol.tracing.
   workbenchPython = pkgs.python313.withPackages (ps: with ps; [
     click
     pydantic
+    opentelemetry-api
+    opentelemetry-sdk
+    opentelemetry-exporter-otlp-proto-common
   ]);
 
   # Filter to just the Python sources so unrelated repo files don't

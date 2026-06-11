@@ -2007,11 +2007,19 @@ name = "repo2ree-protocol"
 version = "0.1.0"
 source = { editable = "protocol" }
 dependencies = [
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-sdk" },
     { name = "pydantic" },
+    { name = "requests" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = "~=2.11.7" }]
+requires-dist = [
+    { name = "opentelemetry-exporter-otlp-proto-http", specifier = "~=1.42.1" },
+    { name = "opentelemetry-sdk", specifier = "~=1.42.1" },
+    { name = "pydantic", specifier = "~=2.11.7" },
+    { name = "requests", specifier = "~=2.32.5" },
+]
 
 [[package]]
 name = "repo2ree-supervisor"

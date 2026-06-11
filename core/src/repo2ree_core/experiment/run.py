@@ -41,6 +41,9 @@ from repo2ree_core.working_environment import (
     WorkingEnvironment,
     acquire,
 )
+from repo2ree_protocol.tracing import get_tracer
+
+tracer = get_tracer(__name__)
 
 # ================================================
 # Result type
@@ -244,15 +247,16 @@ def run_experiment(
                     is_canceled=is_canceled,
                     image=runtime_image,
                 ) as we:
-                    cmd_outcome = we.exec_script(
-                        ScriptStep(
-                            script_rel_path=script_rel,
-                            working_dir_rel="",
-                            login_shell=False,
-                        ),
-                        log=log,
-                        is_canceled=is_canceled,
-                    )
+                    with tracer.start_as_current_span("experiment.exec_command"):
+                        cmd_outcome = we.exec_script(
+                            ScriptStep(
+                                script_rel_path=script_rel,
+                                working_dir_rel="",
+                                login_shell=False,
+                            ),
+                            log=log,
+                            is_canceled=is_canceled,
+                        )
 
                     log(
                         "system",
@@ -290,15 +294,16 @@ def run_experiment(
                     if mode == "verify":
                         if cmd_outcome.status == "canceled":
                             return ExperimentRunOutcome(status="canceled", run_outputs=run_outputs)
-                        result = _evaluate_all_outputs(
-                            experiment.outputs,
-                            cmd_outcome.exit_code,
-                            captures,
-                            we=we,
-                            run_id=run_id,
-                            log=log,
-                            is_canceled=is_canceled,
-                        )
+                        with tracer.start_as_current_span("experiment.evaluate"):
+                            result = _evaluate_all_outputs(
+                                experiment.outputs,
+                                cmd_outcome.exit_code,
+                                captures,
+                                we=we,
+                                run_id=run_id,
+                                log=log,
+                                is_canceled=is_canceled,
+                            )
                         run_outputs["verdict"] = result.verdict
                         run_outputs["outputResults"] = [
                             {

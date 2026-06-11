@@ -44,6 +44,9 @@ from repo2ree_protocol.command import (
     WriteFileCommand,
 )
 from repo2ree_protocol.result import ActionResult
+from repo2ree_protocol.tracing import CommandSpanAttrs, get_tracer, record_command_status
+
+tracer = get_tracer(__name__)
 
 
 def run_command(
@@ -55,6 +58,20 @@ def run_command(
 ) -> ActionResult:
     """Dispatch a typed Command to its handler and return an ActionResult."""
     cancel: CancelCheck = is_canceled if is_canceled is not None else lambda: False
+    with tracer.start_as_current_span(f"command.{cmd.operation}") as span:
+        CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id).apply(span)
+        result = _dispatch(cmd, log=log, run_id=run_id, cancel=cancel)
+        record_command_status(span, result.status)
+        return result
+
+
+def _dispatch(
+    cmd: Command,
+    *,
+    log: LogSink,
+    run_id: str,
+    cancel: CancelCheck,
+) -> ActionResult:
     if isinstance(cmd, AcquireSourceCommand):
         return handle_acquire_source(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, SnapshotUpstreamCommand):

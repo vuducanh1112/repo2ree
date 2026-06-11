@@ -13,6 +13,9 @@ from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.time_utils import utc_now  # noqa: F401  (re-exported)
 from repo2ree_core.working_environment.base import CancelCheck, StepOutcome
 from repo2ree_protocol.result import ActionResult
+from repo2ree_protocol.tracing import get_tracer
+
+tracer = get_tracer(__name__)
 
 WORKSPACE_CONTROL_PREFIXES = (".workspace", ".upload.")
 
@@ -53,39 +56,40 @@ def run_script_directly(
         f"$ bash --login -c 'set -e; cd {shlex.quote(script_dir)}; source {shlex.quote(str(script_abs))}'",
     )
 
-    proc = subprocess.Popen(
-        [
-            "bash",
-            "--login",
-            "-c",
-            f"set -e; cd {shlex.quote(script_dir)}; source {shlex.quote(str(script_abs))}",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        cwd=script_dir,
-    )
+    with tracer.start_as_current_span("workbench.run_script"):
+        proc = subprocess.Popen(
+            [
+                "bash",
+                "--login",
+                "-c",
+                f"set -e; cd {shlex.quote(script_dir)}; source {shlex.quote(str(script_abs))}",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            cwd=script_dir,
+        )
 
-    if proc.stdout is None:
-        raise RuntimeError("stdout pipe unavailable after Popen")
+        if proc.stdout is None:
+            raise RuntimeError("stdout pipe unavailable after Popen")
 
-    def _stream() -> None:
-        for line in proc.stdout:  # type: ignore[union-attr]
-            log("stdout", "info", line.rstrip())
+        def _stream() -> None:
+            for line in proc.stdout:  # type: ignore[union-attr]
+                log("stdout", "info", line.rstrip())
 
-    reader = threading.Thread(target=_stream, daemon=True)
-    reader.start()
+        reader = threading.Thread(target=_stream, daemon=True)
+        reader.start()
 
-    while proc.poll() is None:
-        if is_canceled():
-            proc.terminate()
-            reader.join(timeout=5)
-            return StepOutcome("canceled")
+        while proc.poll() is None:
+            if is_canceled():
+                proc.terminate()
+                reader.join(timeout=5)
+                return StepOutcome("canceled")
 
-    reader.join()
-    exit_code = proc.returncode
-    status = "succeeded" if exit_code == 0 else "failed"
-    return StepOutcome(status, exit_code)
+        reader.join()
+        exit_code = proc.returncode
+        status = "succeeded" if exit_code == 0 else "failed"
+        return StepOutcome(status, exit_code)
 
 
 def run_workspace_script_handler(

@@ -8,6 +8,13 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from repo2ree_core.time_utils import utc_now
+from repo2ree_protocol.tracing import (
+    CommandSpanAttrs,
+    get_tracer,
+    record_command_status,
+)
+
+tracer = get_tracer(__name__)
 
 # ================================================
 # Types
@@ -190,23 +197,30 @@ class RunRegistry:
         )
 
         def _worker() -> None:
-            try:
-                status, outputs = runner(entity_id, run_id)
-            except HTTPException as exc:
-                self.append_log(
-                    entity_id,
-                    run_id,
-                    "system",
-                    "error",
-                    str(exc.detail or "Run failed"),
-                )
-                status = "canceled" if self.is_cancel_requested(entity_id, run_id) else "failed"
-                outputs = {}
-            except Exception as exc:
-                self.append_log(entity_id, run_id, "system", "error", str(exc))
-                status = "canceled" if self.is_cancel_requested(entity_id, run_id) else "failed"
-                outputs = {}
-            self.finalize(entity_id, run_id, status, outputs)
+            # Root span for the background run: it outlives the HTTP response, so
+            # it anchors its own trace. The dispatch_action span (same thread)
+            # nests under it.
+            with tracer.start_as_current_span(f"run.{operation}") as span:
+                CommandSpanAttrs(operation=operation, run_id=run_id).apply(span)
+                try:
+                    status, outputs = runner(entity_id, run_id)
+                except HTTPException as exc:
+                    self.append_log(
+                        entity_id,
+                        run_id,
+                        "system",
+                        "error",
+                        str(exc.detail or "Run failed"),
+                    )
+                    status = "canceled" if self.is_cancel_requested(entity_id, run_id) else "failed"
+                    outputs = {}
+                except Exception as exc:
+                    span.record_exception(exc)
+                    self.append_log(entity_id, run_id, "system", "error", str(exc))
+                    status = "canceled" if self.is_cancel_requested(entity_id, run_id) else "failed"
+                    outputs = {}
+                record_command_status(span, status)
+                self.finalize(entity_id, run_id, status, outputs)
 
         worker = Thread(target=_worker, daemon=True)
         with self._lock:

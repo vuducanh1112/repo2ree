@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import TextIO
@@ -21,6 +22,11 @@ from repo2ree_core.time_utils import utc_now as _utc_now
 from repo2ree_protocol import ActionResult, command_adapter
 from repo2ree_protocol.command import AcquireSourceArgs, AcquireSourceCommand
 from repo2ree_protocol.log import configure_logging as _configure_logging
+from repo2ree_protocol.tracing import (
+    attach_remote_context,
+    detach_context,
+    setup_relay_tracing,
+)
 
 # ================================================
 # Logging
@@ -51,7 +57,13 @@ def cli() -> None:
 
 
 def main() -> None:
+    # Plain (unstructured) root logs: the executor's meaningful logs ride the
+    # LogSink NDJSON relay, and it has no path to a collector anyway.
     _configure_logging()
+    # The supervisor sets TRACE_RELAY when it wants spans; they ride the stderr
+    # NDJSON stream back to it (this process has no path to the collector).
+    if os.environ.get("TRACE_RELAY"):
+        setup_relay_tracing("repo2ree-exec", sys.stderr)
     cli()
 
 
@@ -111,6 +123,9 @@ def execute_cmd(action_source: str, run_id: str | None) -> None:
         layout.runs.mkdir(parents=True, exist_ok=True)
         run_log = layout.run_log(run_id).open("a", encoding="utf-8")
 
+    # Attach the dispatcher's trace context (forwarded via TRACEPARENT) so the
+    # command span hangs under the host-side dispatch span.
+    ctx_token = attach_remote_context(os.environ.get("TRACEPARENT"))
     try:
         log = _make_log_sink(run_log)
         result = run_command(cmd, log=log, run_id=run_id or "manual")
@@ -121,6 +136,7 @@ def execute_cmd(action_source: str, run_id: str | None) -> None:
             run_log.write(result_line + "\n")
             run_log.flush()
     finally:
+        detach_context(ctx_token)
         if run_log is not None:
             run_log.close()
 

@@ -23,9 +23,18 @@ from typing import Any
 from repo2ree_protocol.command import Command, SealReeArgs, SealReeCommand
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_protocol.tracing import (
+    CommandSpanAttrs,
+    SpanSink,
+    current_traceparent,
+    get_tracer,
+    record_command_status,
+    record_ree_id,
+)
 from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
 
 logger = logging.getLogger(__name__)
+tracer = get_tracer(__name__)
 
 # ================================================
 # Constants
@@ -72,9 +81,11 @@ class WorkbenchManager:
         self,
         registry: WorkbenchRegistry,
         workbench_image: str,
+        span_sink: SpanSink | None = None,
     ):
         self._registry = registry
         self._image = workbench_image
+        self._span_sink = span_sink
         self._ree_locks: dict[str, threading.Lock] = {}
         self._ree_locks_lock = threading.Lock()
 
@@ -90,85 +101,91 @@ class WorkbenchManager:
 
     def provision(self, ree_id: str, name: str) -> WorkbenchHandle:
         """Create volume + container, initialise the REE, register handle."""
-        volume_name = f"repo2ree-ree-{ree_id}"
-        dind_volume_name = _dind_volume_name(ree_id)
-        container_name = f"repo2ree-wb-{ree_id}"
+        with tracer.start_as_current_span("workbench.provision") as span:
+            record_ree_id(span, ree_id)
+            volume_name = f"repo2ree-ree-{ree_id}"
+            dind_volume_name = _dind_volume_name(ree_id)
+            container_name = f"repo2ree-wb-{ree_id}"
 
-        _docker("volume", "create", volume_name)
-        _docker("volume", "create", dind_volume_name)
+            _docker("volume", "create", volume_name)
+            _docker("volume", "create", dind_volume_name)
 
-        # No host docker.sock mount: the workbench runs its own in-container
-        # daemon (docker-in-docker) for full per-REE isolation. /var/lib/docker
-        # is volume-backed so the nested daemon uses overlay2, not vfs.
-        _docker(
-            "run",
-            "-d",
-            "--privileged",
-            "--name",
-            container_name,
-            "--restart",
-            "unless-stopped",
-            "-e",
-            "DOCKER_DRIVER=overlay2",
-            "-v",
-            f"{volume_name}:/ree",
-            "-v",
-            f"{dind_volume_name}:/var/lib/docker",
-            self._image,
-            "sleep",
-            "infinity",
-        )
+            # No host docker.sock mount: the workbench runs its own in-container
+            # daemon (docker-in-docker) for full per-REE isolation. /var/lib/docker
+            # is volume-backed so the nested daemon uses overlay2, not vfs.
+            _docker(
+                "run",
+                "-d",
+                "--privileged",
+                "--name",
+                container_name,
+                "--restart",
+                "unless-stopped",
+                "-e",
+                "DOCKER_DRIVER=overlay2",
+                "-v",
+                f"{volume_name}:/ree",
+                "-v",
+                f"{dind_volume_name}:/var/lib/docker",
+                self._image,
+                "sleep",
+                "infinity",
+            )
 
-        _docker_exec(
-            container_name,
-            "repo2ree-exec",
-            "init-ree",
-            "--ree-id",
-            ree_id,
-            "--name",
-            name,
-        )
+            _docker_exec(
+                container_name,
+                "repo2ree-exec",
+                "init-ree",
+                "--ree-id",
+                ree_id,
+                "--name",
+                name,
+            )
 
-        entry = WorkbenchEntry(
-            ree_id=ree_id,
-            container_name=container_name,
-            volume_name=volume_name,
-        )
-        self._registry.register(entry)
-        return WorkbenchHandle.from_entry(entry)
+            entry = WorkbenchEntry(
+                ree_id=ree_id,
+                container_name=container_name,
+                volume_name=volume_name,
+            )
+            self._registry.register(entry)
+            return WorkbenchHandle.from_entry(entry)
 
     def reprovision(self, ree_id: str) -> WorkbenchHandle:
         """Replace the container with a fresh one from the current image, keeping the volume."""
-        entry = self._registry.lookup(ree_id)
-        if entry is None:
-            raise KeyError(f"no workbench registered for {ree_id}")
-        _docker_silent("rm", "-f", entry.container_name)
-        _docker(
-            "run",
-            "-d",
-            "--privileged",
-            "--name",
-            entry.container_name,
-            "--restart",
-            "unless-stopped",
-            "-e",
-            "DOCKER_DRIVER=overlay2",
-            "-v",
-            f"{entry.volume_name}:/ree",
-            "-v",
-            f"{_dind_volume_name(entry.ree_id)}:/var/lib/docker",
-            self._image,
-            "sleep",
-            "infinity",
-        )
-        return WorkbenchHandle.from_entry(entry)
+        with tracer.start_as_current_span("workbench.reprovision") as span:
+            record_ree_id(span, ree_id)
+            entry = self._registry.lookup(ree_id)
+            if entry is None:
+                raise KeyError(f"no workbench registered for {ree_id}")
+            _docker_silent("rm", "-f", entry.container_name)
+            _docker(
+                "run",
+                "-d",
+                "--privileged",
+                "--name",
+                entry.container_name,
+                "--restart",
+                "unless-stopped",
+                "-e",
+                "DOCKER_DRIVER=overlay2",
+                "-v",
+                f"{entry.volume_name}:/ree",
+                "-v",
+                f"{_dind_volume_name(entry.ree_id)}:/var/lib/docker",
+                self._image,
+                "sleep",
+                "infinity",
+            )
+            return WorkbenchHandle.from_entry(entry)
 
     def teardown(self, handle: WorkbenchHandle) -> None:
         """Stop + remove the container and its volumes, unregister."""
-        _docker_silent("rm", "-f", handle.container_name)
-        _docker_silent("volume", "rm", handle.volume_name)
-        _docker_silent("volume", "rm", _dind_volume_name(handle.ree_id))
-        self._registry.unregister(handle.ree_id)
+        with tracer.start_as_current_span("workbench.teardown") as span:
+            record_ree_id(span, handle.ree_id)
+            _docker_silent("rm", "-f", handle.container_name)
+            _docker_silent("volume", "rm", handle.volume_name)
+            _docker_silent("volume", "rm", _dind_volume_name(handle.ree_id))
+            self._registry.unregister(handle.ree_id)
 
     def is_registered(self, ree_id: str) -> bool:
         """True if a workbench is registered for ree_id (regardless of run state)."""
@@ -209,8 +226,12 @@ class WorkbenchManager:
         log: LogSink,
     ) -> ActionResult:
         """Run a typed Command inside the workbench; stream logs to log."""
-        with self._ree_lock(handle.ree_id):
-            return self._dispatch_action_locked(handle, cmd, run_id, log)
+        with tracer.start_as_current_span("workbench.dispatch_action") as span:
+            CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, ree_id=handle.ree_id).apply(span)
+            with self._ree_lock(handle.ree_id):
+                result = self._dispatch_action_locked(handle, cmd, run_id, log)
+            record_command_status(span, result.status)
+            return result
 
     def _dispatch_action_locked(
         self,
@@ -221,11 +242,23 @@ class WorkbenchManager:
     ) -> ActionResult:
         cmd_json = cmd.model_dump_json()
 
+        # Carry the active trace context into the executor so its spans hang
+        # under this dispatch span. When the API injected a span_sink, ask the
+        # executor to relay its spans back over stderr (it has no path to the
+        # collector itself); we forward them after the command completes.
+        trace_env: list[str] = []
+        traceparent = current_traceparent()
+        if traceparent:
+            trace_env += ["-e", f"TRACEPARENT={traceparent}"]
+        if self._span_sink is not None:
+            trace_env += ["-e", "TRACE_RELAY=1"]
+
         proc = subprocess.Popen(
             [
                 "docker",
                 "exec",
                 "-i",
+                *trace_env,
                 handle.container_name,
                 "repo2ree-exec",
                 "execute",
@@ -246,20 +279,28 @@ class WorkbenchManager:
         proc.stdin.write(cmd_json)
         proc.stdin.close()
 
-        # Stream stderr log events live.
+        # Stream stderr log events live; buffer relayed span events for egress.
+        span_payloads: list[str] = []
         for raw_line in proc.stderr:
             line = raw_line.rstrip()
             if not line:
                 continue
             try:
                 event = json.loads(line)
-                if event.get("type") == "log":
-                    log(event["stream"], event["level"], event["message"])
             except json.JSONDecodeError:
                 log("system", "info", line)
+                continue
+            event_type = event.get("type")
+            if event_type == "log":
+                log(event["stream"], event["level"], event["message"])
+            elif event_type == "span":
+                span_payloads.append(event["payload"])
 
         stdout = proc.stdout.read().strip()
         proc.wait()
+
+        if self._span_sink is not None and span_payloads:
+            self._span_sink(span_payloads)
 
         if proc.returncode in _CONTAINER_GONE_EXIT_CODES:
             raise WorkbenchUnavailableError(f"docker exec exited {proc.returncode} — container gone or stopping")
