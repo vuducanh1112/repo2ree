@@ -15,17 +15,22 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import os
+import queue
 import sys
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, TextIO
 
-from opentelemetry import context, trace
+from opentelemetry import context, metrics, trace
 
 if TYPE_CHECKING:
     from opentelemetry.proto.common.v1.common_pb2 import AnyValue as _PbAnyValue
     from opentelemetry.proto.trace.v1.trace_pb2 import Span as _PbSpan
+    from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
+from opentelemetry.metrics import Meter
 from opentelemetry.propagate import extract, inject
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
@@ -34,7 +39,7 @@ from opentelemetry.sdk.trace.export import (
     SpanExporter,
     SpanExportResult,
 )
-from opentelemetry.trace import Span, Tracer
+from opentelemetry.trace import Link, Span, StatusCode, Tracer
 
 # ``requests`` and the OTLP/HTTP exporter live behind the host-side functions
 # (setup_tracing, forward_relayed_spans) so the executor — which only streams
@@ -48,6 +53,43 @@ _ATTR_RUN_ID = "repo2ree.run_id"
 _ATTR_REE_ID = "repo2ree.ree_id"
 _ATTR_STATUS = "repo2ree.status"
 
+# Explicit histogram buckets (seconds) for every `*_seconds` instrument. The
+# SDK defaults top out near 10s, but workbench commands (builds, experiments)
+# routinely run minutes — without these boundaries everything lands in the
+# +Inf bucket and p95/p99 become meaningless. Spans second-to-minutes work.
+_DURATION_BUCKETS_SECONDS = (
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    10.0,
+    30.0,
+    60.0,
+    120.0,
+    300.0,
+    600.0,
+    1200.0,
+)
+
+
+def _build_resource(service_name: str) -> Resource:
+    """Resource identity shared by every provider in this process.
+
+    Beyond ``service.name`` we surface version and environment when present so
+    dashboards can slice by deploy. Both are optional env vars — unset in local
+    dev, injected in deployed environments.
+    """
+    attrs: dict[str, str] = {"service.name": service_name}
+    if version := os.environ.get("SERVICE_VERSION"):
+        attrs["service.version"] = version
+    if environment := os.environ.get("DEPLOY_ENV"):
+        attrs["deployment.environment"] = environment
+    return Resource.create(attrs)
+
+
 # ================================================
 # Bootstrap
 # ================================================
@@ -58,7 +100,7 @@ def setup_tracing(
     *,
     endpoint: str | None = None,
     console_fallback: bool = False,
-) -> None:
+) -> TracerProvider | None:
     """Configure the global TracerProvider once for this process.
 
     Exports via OTLP/HTTP to ``endpoint/v1/traces`` when provided. Otherwise,
@@ -66,13 +108,16 @@ def setup_tracing(
     not, tracing stays a no-op. The executor leaves the fallback off because its
     stdout/stderr carry the ActionResult/NDJSON protocol — console spans there
     would corrupt the stream.
+
+    Returns the provider so the caller can shut it down on clean exit, flushing
+    any buffered spans. Returns None when tracing is a no-op.
     """
     if not endpoint and not console_fallback:
-        return
+        return None
 
     from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 
-    provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
+    provider = TracerProvider(resource=_build_resource(service_name))
     if endpoint:
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
@@ -80,11 +125,56 @@ def setup_tracing(
     else:
         provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter(out=sys.stdout)))
     trace.set_tracer_provider(provider)
+    return provider
 
 
 def get_tracer(name: str) -> Tracer:
     """Return a tracer for the given module name (use ``__name__``)."""
     return trace.get_tracer(name)
+
+
+def setup_metrics(
+    service_name: str,
+    *,
+    endpoint: str | None = None,
+) -> MeterProvider | None:
+    """Configure the global MeterProvider once for this process.
+
+    Exports via OTLP/HTTP to ``endpoint/v1/metrics`` when provided; otherwise
+    stays a no-op (counters exist but record nothing). Call alongside
+    ``setup_tracing`` from the same process entry point.
+
+    Returns the provider so the caller can shut it down on clean exit, flushing
+    any buffered metrics. Returns None when metrics are a no-op.
+    """
+    if not endpoint:
+        return None
+
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+    from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
+
+    reader = PeriodicExportingMetricReader(OTLPMetricExporter(endpoint=f"{endpoint}/v1/metrics"))
+    # Convention: every duration histogram is named ``*_seconds`` and shares the
+    # long-tailed bucket set. Counters/gauges are untouched (the view only
+    # rebinds histogram aggregation).
+    duration_view = View(
+        instrument_name="*_seconds",
+        aggregation=ExplicitBucketHistogramAggregation(_DURATION_BUCKETS_SECONDS),
+    )
+    provider = MeterProvider(
+        resource=_build_resource(service_name),
+        metric_readers=[reader],
+        views=[duration_view],
+    )
+    metrics.set_meter_provider(provider)
+    return provider
+
+
+def get_meter(name: str) -> Meter:
+    """Return a meter for the given module name (use ``__name__``)."""
+    return metrics.get_meter(name)
 
 
 # ================================================
@@ -113,13 +203,58 @@ class CommandSpanAttrs:
 
 
 def record_command_status(span: Span, status: str) -> None:
-    """Record the terminal status of a command on its span."""
+    """Record the terminal status of a command on its span.
+
+    Also flips the span to ERROR when the command didn't succeed, so every
+    dispatch layer (core ``command.*``, host ``dispatch_action``, the API
+    ``run.*`` root) reports failure consistently — error-rate queries keyed on
+    span status would otherwise miss any layer that only set the attribute.
+    """
     span.set_attribute(_ATTR_STATUS, status)
+    if status != "succeeded":
+        span.set_status(StatusCode.ERROR, status)
 
 
 def record_ree_id(span: Span, ree_id: str) -> None:
     """Tag a span with the REE it operates on."""
     span.set_attribute(_ATTR_REE_ID, ree_id)
+
+
+def command_metric_attrs(operation: str, *, status: str | None = None) -> dict[str, str]:
+    """Build a metric attribute dict using the canonical ``repo2ree.*`` keys.
+
+    Keeps call sites from hardcoding the attribute strings, so the namespace
+    owned here stays the single source of truth for metrics as well as spans.
+    """
+    attrs = {_ATTR_OPERATION: operation}
+    if status is not None:
+        attrs[_ATTR_STATUS] = status
+    return attrs
+
+
+def current_span_link() -> Link | None:
+    """Capture the active span as a Link, or None when there's no valid span.
+
+    Used to bridge two traces that shouldn't share a root — e.g. the HTTP
+    request span and a background run span that outlives the response: the run
+    anchors its own trace but links back to the request that started it.
+    """
+    ctx = trace.get_current_span().get_span_context()
+    return Link(ctx) if ctx.is_valid else None
+
+
+def current_trace_context() -> tuple[str, str] | None:
+    """Return ``(trace_id, span_id)`` as zero-padded hex for the active span.
+
+    Stamps structured logs with the active trace so logs and traces are
+    joinable in the collector. Returns None when there is no recording span
+    (e.g. logs emitted outside any request/run). Keeps the OpenTelemetry import
+    behind this module so ``log.py`` need not depend on it directly.
+    """
+    ctx = trace.get_current_span().get_span_context()
+    if not ctx.is_valid:
+        return None
+    return f"{ctx.trace_id:032x}", f"{ctx.span_id:016x}"
 
 
 # ================================================
@@ -160,9 +295,15 @@ def setup_relay_tracing(service_name: str, stream: TextIO) -> None:
     Uses ``SimpleSpanProcessor`` so each span is emitted as it ends, before the
     process exits and the stream closes.
     """
-    provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
+    provider = TracerProvider(resource=_build_resource(service_name))
     provider.add_span_processor(SimpleSpanProcessor(_RelaySpanExporter(stream)))
     trace.set_tracer_provider(provider)
+
+
+_relay_drop_counter = get_meter(__name__).create_counter(
+    "workbench.span_relay_drop",
+    description="Number of executor spans dropped instead of forwarded to the collector.",
+)
 
 
 def forward_relayed_spans(payloads: list[str], endpoint: str) -> None:
@@ -178,20 +319,59 @@ def forward_relayed_spans(payloads: list[str], endpoint: str) -> None:
     url = f"{endpoint}/v1/traces"
     for payload in payloads:
         try:
-            requests.post(
+            resp = requests.post(
                 url,
                 data=base64.b64decode(payload),
                 headers={"Content-Type": "application/x-protobuf"},
                 timeout=5,
             )
+            resp.raise_for_status()
         except (requests.RequestException, ValueError) as exc:
+            _relay_drop_counter.add(1, {"reason": "post_failed"})
             logger.warning("failed to relay spans to %s: %s", url, exc)
 
 
+class _BackgroundSpanForwarder:
+    """Drain relayed span payloads to ``forward`` on a daemon thread.
+
+    Span egress must never sit on the command's critical path: the manager
+    enqueues payloads while holding the per-REE lock and reading executor
+    output, so a slow collector POST there would inflate ``execute_duration``
+    *and* delay other REEs waiting on the lock. Callers ``submit`` payloads
+    (non-blocking) and this thread does the network I/O with the sink's own
+    deadline. Best-effort: a full queue drops rather than blocks, and the
+    daemon thread lets the process exit without joining.
+    """
+
+    def __init__(self, forward: SpanSink, *, max_queue: int = 1024):
+        self._forward = forward
+        self._queue: queue.Queue[list[str]] = queue.Queue(maxsize=max_queue)
+        self._thread = threading.Thread(target=self._run, name="span-relay-forwarder", daemon=True)
+        self._thread.start()
+
+    def submit(self, payloads: list[str]) -> None:
+        if not payloads:
+            return
+        try:
+            self._queue.put_nowait(payloads)
+        except queue.Full:
+            _relay_drop_counter.add(len(payloads), {"reason": "queue_full"})
+
+    def _run(self) -> None:
+        while True:
+            payloads = self._queue.get()
+            try:
+                self._forward(payloads)
+            except Exception as exc:  # noqa: BLE001 — egress must never crash the worker
+                logger.warning("span relay forward failed: %s", exc)
+            finally:
+                self._queue.task_done()
+
+
 # Callable type for the workbench span relay sink injected into WorkbenchManager.
-# The manager collects relayed payloads from executor stderr and passes the full
-# list here once the command completes. Where they go (collector, console, /dev/null)
-# is entirely the caller's decision.
+# The manager hands relayed payloads here as they arrive off executor stderr. The
+# sink is non-blocking (enqueues for a background thread); where the bytes
+# ultimately go (collector, console, /dev/null) is the caller's decision.
 SpanSink = Callable[[list[str]], None]
 
 
@@ -204,6 +384,10 @@ def build_span_sink(endpoint: str | None, *, console_fallback: bool = False) -> 
     ``WorkbenchManager`` so the API composition root decides where executor spans
     go. A None sink means the manager never activates the relay (``TRACE_RELAY``
     is not injected, so the executor's tracer stays a no-op).
+
+    Either sink is wrapped in a ``_BackgroundSpanForwarder`` so the manager's
+    ``submit`` call returns immediately and the actual export (network POST or
+    protobuf decode + print) happens off the locked, latency-measured path.
     """
     if endpoint:
         _ep = endpoint
@@ -211,9 +395,9 @@ def build_span_sink(endpoint: str | None, *, console_fallback: bool = False) -> 
         def _forward(payloads: list[str]) -> None:
             forward_relayed_spans(payloads, _ep)
 
-        return _forward
+        return _BackgroundSpanForwarder(_forward).submit
     if console_fallback:
-        return _console_span_sink
+        return _BackgroundSpanForwarder(_console_span_sink).submit
     return None
 
 

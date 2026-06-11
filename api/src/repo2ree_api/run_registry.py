@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
+    current_span_link,
     get_tracer,
     record_command_status,
 )
@@ -196,11 +197,18 @@ class RunRegistry:
             request_payload=request_payload,
         )
 
+        # Capture the originating request span here, on the request thread,
+        # before we hand off to the worker — by the time the worker runs the
+        # request context is gone. Linked (not parented) so the run anchors its
+        # own trace while staying navigable from the request that started it.
+        request_link = current_span_link()
+
         def _worker() -> None:
             # Root span for the background run: it outlives the HTTP response, so
             # it anchors its own trace. The dispatch_action span (same thread)
             # nests under it.
-            with tracer.start_as_current_span(f"run.{operation}") as span:
+            links = [request_link] if request_link is not None else None
+            with tracer.start_as_current_span(f"run.{operation}", links=links) as span:
                 CommandSpanAttrs(operation=operation, run_id=run_id).apply(span)
                 try:
                     status, outputs = runner(entity_id, run_id)

@@ -16,6 +16,7 @@ import json
 import logging
 import subprocess
 import threading
+import time
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
@@ -26,7 +27,9 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     SpanSink,
+    command_metric_attrs,
     current_traceparent,
+    get_meter,
     get_tracer,
     record_command_status,
     record_ree_id,
@@ -35,6 +38,30 @@ from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
+_meter = get_meter(__name__)
+
+# ================================================
+# Metrics
+# ================================================
+
+_container_gone_counter = _meter.create_counter(
+    "workbench.container_gone",
+    description="Number of docker exec failures due to container gone or stopping.",
+)
+_reprovision_counter = _meter.create_counter(
+    "workbench.reprovision",
+    description="Number of workbench container reprovisioning operations.",
+)
+_exec_duration = _meter.create_histogram(
+    "workbench.execute_duration_seconds",
+    description="Wall-clock duration of workbench command execution (lock held, docker exec running).",
+    unit="s",
+)
+_lock_wait_duration = _meter.create_histogram(
+    "workbench.lock_wait_seconds",
+    description="Time a dispatch blocked on the per-REE lock before execution (another run in progress).",
+    unit="s",
+)
 
 # ================================================
 # Constants
@@ -130,6 +157,7 @@ class WorkbenchManager:
                 self._image,
                 "sleep",
                 "infinity",
+                timeout=120,
             )
 
             _docker_exec(
@@ -152,6 +180,7 @@ class WorkbenchManager:
 
     def reprovision(self, ree_id: str) -> WorkbenchHandle:
         """Replace the container with a fresh one from the current image, keeping the volume."""
+        _reprovision_counter.add(1)
         with tracer.start_as_current_span("workbench.reprovision") as span:
             record_ree_id(span, ree_id)
             entry = self._registry.lookup(ree_id)
@@ -175,6 +204,7 @@ class WorkbenchManager:
                 self._image,
                 "sleep",
                 "infinity",
+                timeout=120,
             )
             return WorkbenchHandle.from_entry(entry)
 
@@ -211,6 +241,7 @@ class WorkbenchManager:
             ["docker", "inspect", "--format", "{{.State.Running}}", container_name],
             capture_output=True,
             text=True,
+            timeout=10,
         )
         return result.returncode == 0 and result.stdout.strip() == "true"
 
@@ -228,8 +259,22 @@ class WorkbenchManager:
         """Run a typed Command inside the workbench; stream logs to log."""
         with tracer.start_as_current_span("workbench.dispatch_action") as span:
             CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, ree_id=handle.ree_id).apply(span)
+            # Time spent blocked here is per-REE lock contention (another run in
+            # progress); record it on acquisition so wait is a first-class metric
+            # rather than something inferred from the dispatch/execute span gap.
+            _lock_t0 = time.monotonic()
             with self._ree_lock(handle.ree_id):
-                result = self._dispatch_action_locked(handle, cmd, run_id, log)
+                _lock_wait_duration.record(
+                    time.monotonic() - _lock_t0,
+                    command_metric_attrs(str(cmd.operation)),
+                )
+                with tracer.start_as_current_span("workbench.execute"):
+                    _t0 = time.monotonic()
+                    result = self._dispatch_action_locked(handle, cmd, run_id, log)
+                    _exec_duration.record(
+                        time.monotonic() - _t0,
+                        command_metric_attrs(str(cmd.operation), status=result.status),
+                    )
             record_command_status(span, result.status)
             return result
 
@@ -279,8 +324,12 @@ class WorkbenchManager:
         proc.stdin.write(cmd_json)
         proc.stdin.close()
 
-        # Stream stderr log events live; buffer relayed span events for egress.
-        span_payloads: list[str] = []
+        # Stream stderr log events live; hand relayed span events to the sink as
+        # they arrive (not buffered to the end) so a command that hangs or gets
+        # killed still ships the spans it emitted before stalling — exactly the
+        # case a trace is most useful. The sink is non-blocking (it enqueues for
+        # a background forwarder), so the actual export never sits on this loop,
+        # the per-REE lock, or the measured execute window.
         for raw_line in proc.stderr:
             line = raw_line.rstrip()
             if not line:
@@ -293,16 +342,14 @@ class WorkbenchManager:
             event_type = event.get("type")
             if event_type == "log":
                 log(event["stream"], event["level"], event["message"])
-            elif event_type == "span":
-                span_payloads.append(event["payload"])
+            elif event_type == "span" and self._span_sink is not None:
+                self._span_sink([event["payload"]])
 
         stdout = proc.stdout.read().strip()
         proc.wait()
 
-        if self._span_sink is not None and span_payloads:
-            self._span_sink(span_payloads)
-
         if proc.returncode in _CONTAINER_GONE_EXIT_CODES:
+            _container_gone_counter.add(1, command_metric_attrs(str(cmd.operation)))
             raise WorkbenchUnavailableError(f"docker exec exited {proc.returncode} — container gone or stopping")
 
         if stdout:
@@ -320,6 +367,7 @@ class WorkbenchManager:
         result = subprocess.run(
             ["docker", "exec", handle.container_name, "repo2ree-exec", *argv],
             capture_output=True,
+            timeout=30,
         )
         if result.returncode != 0:
             stderr = result.stderr.decode(errors="replace").strip()
@@ -385,6 +433,7 @@ class WorkbenchManager:
             ["docker", "cp", host_path, f"{handle.container_name}:{container_path}"],
             capture_output=True,
             text=True,
+            timeout=30,
         )
         if result.returncode != 0:
             raise RuntimeError(f"docker cp failed: {result.stderr.strip() or result.stdout.strip()}")
@@ -404,15 +453,16 @@ def _dind_volume_name(ree_id: str) -> str:
     return f"repo2ree-dind-{ree_id}"
 
 
-def _docker(*args: str) -> None:
-    result = subprocess.run(["docker", *args], capture_output=True, text=True)
+def _docker(*args: str, timeout: int = 60) -> None:
+    result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
     if result.returncode != 0:
         raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
 
 
 def _docker_silent(*args: str) -> None:
     """Like _docker but ignores failures (for cleanup paths)."""
-    subprocess.run(["docker", *args], capture_output=True)
+    with suppress(Exception):
+        subprocess.run(["docker", *args], capture_output=True, timeout=30)
 
 
 def _docker_exec(container: str, *argv: str) -> None:
@@ -420,6 +470,7 @@ def _docker_exec(container: str, *argv: str) -> None:
         ["docker", "exec", container, *argv],
         capture_output=True,
         text=True,
+        timeout=60,
     )
     if result.returncode != 0:
         raise RuntimeError(f"docker exec {argv[0]} failed: {result.stderr.strip() or result.stdout.strip()}")

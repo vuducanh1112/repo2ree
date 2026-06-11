@@ -13,6 +13,8 @@ import os
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+from repo2ree_protocol.tracing import current_trace_context
+
 LogSink = Callable[[str, str, str], None]
 
 
@@ -27,10 +29,14 @@ class _JsonFormatter(logging.Formatter):
             "ts": datetime.fromtimestamp(record.created, UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
-            "message": self.formatMessage(record),
+            "message": record.getMessage(),
         }
         if record.exc_info:
             obj["exc"] = self.formatException(record.exc_info)
+        # Stamp the active trace so the collector can pivot log <-> trace.
+        trace_ctx = current_trace_context()
+        if trace_ctx is not None:
+            obj["trace_id"], obj["span_id"] = trace_ctx
         return json.dumps(obj)
 
 

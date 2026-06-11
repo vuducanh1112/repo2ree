@@ -14,15 +14,14 @@ tracer = get_tracer(__name__)
 
 
 def generate_hbom() -> HBOM:
-    with tracer.start_as_current_span("hbom.profile_cpu"):
+    with tracer.start_as_current_span("hbom.generate"):
         cpus = profile_cpus()
-    with tracer.start_as_current_span("hbom.profile_gpu"):
-        gpus = profile_gpus()
-    with tracer.start_as_current_span("hbom.profile_memory"):
+        # Only the GPU probe shells out (nvidia-smi/lspci), so it can be slow or
+        # hang; the other profilers just read /proc and don't warrant a span.
+        with tracer.start_as_current_span("hbom.profile_gpu"):
+            gpus = profile_gpus()
         memory = profile_memory()
-    with tracer.start_as_current_span("hbom.profile_storage"):
         storage = profile_storage()
-    with tracer.start_as_current_span("hbom.profile_network"):
         network = profile_network()
 
     return HBOM(

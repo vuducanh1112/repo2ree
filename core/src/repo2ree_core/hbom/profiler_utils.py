@@ -34,7 +34,7 @@ def read_optional_int(path: str | Path) -> int | None:
         return None
 
 
-def run_command(*args: str) -> subprocess.CompletedProcess[str] | None:
+def run_command(*args: str, timeout: int = 10) -> subprocess.CompletedProcess[str] | None:
     if not shutil.which(args[0]):
         return None
     try:
@@ -43,6 +43,7 @@ def run_command(*args: str) -> subprocess.CompletedProcess[str] | None:
             capture_output=True,
             text=True,
             check=False,
+            timeout=timeout,
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return None
