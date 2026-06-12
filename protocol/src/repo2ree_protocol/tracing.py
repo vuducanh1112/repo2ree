@@ -189,15 +189,19 @@ class CommandSpanAttrs:
     Owns the ``repo2ree.*`` attribute namespace so call sites pass typed fields
     instead of stringly-keyed ``set_attribute`` calls. Status is recorded
     separately via ``record_command_status`` once the command completes.
+
+    ``run_id`` is optional: background runs and workbench dispatches carry one,
+    but synchronous REE commands have no run and omit it.
     """
 
     operation: str
-    run_id: str
+    run_id: str | None = None
     ree_id: str | None = None
 
     def apply(self, span: Span) -> None:
         span.set_attribute(_ATTR_OPERATION, self.operation)
-        span.set_attribute(_ATTR_RUN_ID, self.run_id)
+        if self.run_id is not None:
+            span.set_attribute(_ATTR_RUN_ID, self.run_id)
         if self.ree_id is not None:
             span.set_attribute(_ATTR_REE_ID, self.ree_id)
 

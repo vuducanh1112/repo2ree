@@ -1,6 +1,9 @@
 import logging
 import re
+import time
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
@@ -54,6 +57,13 @@ from repo2ree_protocol.command import (
     UpdateSourceMetadataArgs,
     WriteFileArgs,
 )
+from repo2ree_protocol.tracing import (
+    CommandSpanAttrs,
+    command_metric_attrs,
+    get_meter,
+    get_tracer,
+    record_command_status,
+)
 from repo2ree_supervisor import WorkbenchHandle
 
 # ================================================
@@ -62,6 +72,56 @@ from repo2ree_supervisor import WorkbenchHandle
 
 
 _log = logging.getLogger(__name__)
+
+
+# ================================================
+# Observability
+# ================================================
+
+
+_tracer = get_tracer(__name__)
+_meter = get_meter(__name__)
+
+_command_counter = _meter.create_counter(
+    "ree.command",
+    description="Number of synchronous REE commands handled, by operation and status.",
+)
+_command_duration = _meter.create_histogram(
+    "ree.command_duration_seconds",
+    description="Wall-clock duration of a synchronous REE command handler.",
+    unit="s",
+)
+
+
+@contextmanager
+def _ree_command_span(operation: str, ree_id: str) -> Iterator[None]:
+    """Operation-level span + metrics for a synchronous REE command handler.
+
+    Mirrors the ``run.{operation}`` root that background runs get in the run
+    registry: every synchronous main command gets its own ``ree.{operation}``
+    span tagged with the REE and a terminal status, plus a duration histogram
+    and count, so traces and error-rate queries treat synchronous and
+    background commands uniformly. The inner ``workbench.dispatch_action`` span
+    nests beneath this one.
+
+    Wrap only the command work — call ``_require_handle`` first so a 404/503 for
+    an unknown or unreachable REE stays out of the command's status and metrics.
+    """
+    t0 = time.monotonic()
+    status = "succeeded"
+    with _tracer.start_as_current_span(f"ree.{operation}") as span:
+        CommandSpanAttrs(operation=operation, ree_id=ree_id).apply(span)
+        try:
+            yield
+        except Exception as exc:
+            status = "failed"
+            span.record_exception(exc)
+            raise
+        finally:
+            record_command_status(span, status)
+            attrs = command_metric_attrs(operation, status=status)
+            _command_duration.record(time.monotonic() - t0, attrs)
+            _command_counter.add(1, attrs)
 
 
 # ================================================
@@ -187,22 +247,23 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
     ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
 
-    try:
-        handle = workbench_manager.provision(ree_id, name)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Workbench provisioning failed: {exc}") from exc
+    with _ree_command_span("create", ree_id):
+        try:
+            handle = workbench_manager.provision(ree_id, name)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Workbench provisioning failed: {exc}") from exc
 
-    # For url mode, acquire the source synchronously into the workbench volume
-    # so the response reflects acquired state.
-    if payload.sourceMode == "url" and payload.originUrl:
-        _run_workbench_acquire_pipeline(
-            handle,
-            ree_id,
-            origin_url=payload.originUrl,
-            source_type=payload.sourceType or "git",
-        )
+        # For url mode, acquire the source synchronously into the workbench volume
+        # so the response reflects acquired state.
+        if payload.sourceMode == "url" and payload.originUrl:
+            _run_workbench_acquire_pipeline(
+                handle,
+                ree_id,
+                origin_url=payload.originUrl,
+                source_type=payload.sourceType or "git",
+            )
 
-    return workbench_manager.get_workspace(handle)
+        return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.get("/api/v1/rees")
@@ -227,27 +288,29 @@ def get_workspace_route(ree_id: str):
 @manage_ree_router.patch("/api/v1/rees/{ree_id}/intent")
 def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
     handle = _require_handle(ree_id)
-    current = workbench_manager.get_ree_metadata(handle)
-    if payload.expectedVersion and payload.expectedVersion != current.get("updatedAt"):
-        raise HTTPException(status_code=409, detail="Workspace version conflict")
+    with _ree_command_span("patch-intent", ree_id):
+        current = workbench_manager.get_ree_metadata(handle)
+        if payload.expectedVersion and payload.expectedVersion != current.get("updatedAt"):
+            raise HTTPException(status_code=409, detail="Workspace version conflict")
 
-    cmd = PatchReeIntentCommand(args=PatchReeIntentArgs(patch=dict(payload.reeIntentPatch or {})))
-    _dispatch_or_500(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
-    return workbench_manager.get_workspace(handle)
+        cmd = PatchReeIntentCommand(args=PatchReeIntentArgs(patch=dict(payload.reeIntentPatch or {})))
+        _dispatch_or_500(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
+        return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.delete("/api/v1/rees/{ree_id}")
 def delete_workspace_route(ree_id: str):
     handle = _require_handle(ree_id)
-    try:
-        workbench_manager.teardown(handle)
-    except Exception as exc:
-        _log.warning("workbench teardown failed for %s: %s", ree_id, exc)
-        raise HTTPException(status_code=500, detail=f"Workbench teardown failed: {exc}") from exc
-    return {
-        "deletedAt": utc_now(),
-        "state": "deleted",
-    }
+    with _ree_command_span("delete", ree_id):
+        try:
+            workbench_manager.teardown(handle)
+        except Exception as exc:
+            _log.warning("workbench teardown failed for %s: %s", ree_id, exc)
+            raise HTTPException(status_code=500, detail=f"Workbench teardown failed: {exc}") from exc
+        return {
+            "deletedAt": utc_now(),
+            "state": "deleted",
+        }
 
 
 @manage_ree_router.post("/api/v1/rees/{ree_id}/source:acquire")
@@ -396,11 +459,12 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
 @manage_ree_router.delete("/api/v1/rees/{ree_id}/source")
 def remove_source_route(ree_id: str):
     handle = _require_handle(ree_id)
-    _dispatch_or_500(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
-    return {
-        "invalidatedSteps": ["source", "evaluate", "workflow"],
-        "workspace": workbench_manager.get_workspace(handle),
-    }
+    with _ree_command_span("remove-source", ree_id):
+        _dispatch_or_500(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
+        return {
+            "invalidatedSteps": ["source", "evaluate", "workflow"],
+            "workspace": workbench_manager.get_workspace(handle),
+        }
 
 
 @manage_ree_router.get("/api/v1/rees/{ree_id}/files/raw")
@@ -416,17 +480,19 @@ def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)):
 @manage_ree_router.put("/api/v1/rees/{ree_id}/files/content")
 def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload):
     handle = _require_handle(ree_id)
-    cmd = WriteFileCommand(args=WriteFileArgs(path=payload.path, content=payload.content))
-    wb_result = _dispatch_or_500(handle, cmd, "write-file", "Workbench write_file failed")
-    return wb_result.outputs or {"updatedAt": None}
+    with _ree_command_span("write-file", ree_id):
+        cmd = WriteFileCommand(args=WriteFileArgs(path=payload.path, content=payload.content))
+        wb_result = _dispatch_or_500(handle, cmd, "write-file", "Workbench write_file failed")
+        return wb_result.outputs or {"updatedAt": None}
 
 
 @manage_ree_router.delete("/api/v1/rees/{ree_id}/files/content")
 def delete_workspace_file_content_route(ree_id: str, path: str = Query(...)):
     handle = _require_handle(ree_id)
-    cmd = DeleteFileCommand(args=DeleteFileArgs(path=path))
-    wb_result = _dispatch_or_500(handle, cmd, "delete-file", "Workbench delete_file failed")
-    return wb_result.outputs or {"deletedAt": None}
+    with _ree_command_span("delete-file", ree_id):
+        cmd = DeleteFileCommand(args=DeleteFileArgs(path=path))
+        wb_result = _dispatch_or_500(handle, cmd, "delete-file", "Workbench delete_file failed")
+        return wb_result.outputs or {"deletedAt": None}
 
 
 @manage_ree_router.post("/api/v1/rees/{ree_id}/workbench/reprovision")
@@ -444,37 +510,39 @@ def reprovision_workbench_route(ree_id: str):
 @manage_ree_router.post("/api/v1/rees/{ree_id}/ree:seal")
 def seal_ree_route(ree_id: str, payload: ReeSealPayload):
     handle = _require_handle(ree_id)
-    cmd = SealReeCommand(
-        args=SealReeArgs(
-            source_included=payload.includeSource,
-            runtime_included=payload.includeRuntime,
+    with _ree_command_span("seal", ree_id):
+        cmd = SealReeCommand(
+            args=SealReeArgs(
+                source_included=payload.includeSource,
+                runtime_included=payload.includeRuntime,
+            )
         )
-    )
-    _dispatch_or_500(handle, cmd, "seal", "Workbench seal_ree failed")
-    # Return the post-seal workspace so the client sees the sealed state.
-    return workbench_manager.get_workspace(handle)
+        _dispatch_or_500(handle, cmd, "seal", "Workbench seal_ree failed")
+        # Return the post-seal workspace so the client sees the sealed state.
+        return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.get("/api/v1/rees/{ree_id}/ree-archive")
 def download_workspace_ree_archive_route(ree_id: str):
     handle = _require_handle(ree_id)
-    try:
-        archive_bytes = workbench_manager.build_archive(handle)
-    except RuntimeError as exc:
-        detail = str(exc)
-        if "not sealed" in detail.lower():
-            raise HTTPException(status_code=409, detail=detail) from exc
-        raise HTTPException(status_code=400, detail=detail) from exc
-    archive_filename = _archive_download_filename(handle)
-    return Response(
-        content=archive_bytes,
-        media_type="application/zip",
-        headers={
-            "Content-Disposition": (
-                f"attachment; filename=\"{archive_filename}\"; filename*=UTF-8''{quote(archive_filename)}"
-            )
-        },
-    )
+    with _ree_command_span("ree-archive", ree_id):
+        try:
+            archive_bytes = workbench_manager.build_archive(handle)
+        except RuntimeError as exc:
+            detail = str(exc)
+            if "not sealed" in detail.lower():
+                raise HTTPException(status_code=409, detail=detail) from exc
+            raise HTTPException(status_code=400, detail=detail) from exc
+        archive_filename = _archive_download_filename(handle)
+        return Response(
+            content=archive_bytes,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": (
+                    f"attachment; filename=\"{archive_filename}\"; filename*=UTF-8''{quote(archive_filename)}"
+                )
+            },
+        )
 
 
 # ================================================
