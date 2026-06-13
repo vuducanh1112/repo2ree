@@ -10,3 +10,15 @@ result-*
 **/__pycache__/
 
 **/.DS_Store
+
+# Local runtime state
+.repo2ree/
+
+# Per-test telemetry artifacts (workbench container logs etc.)
+test-results/
+
+# Coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
