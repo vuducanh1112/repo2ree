@@ -15,7 +15,7 @@ from repo2ree_core.repo_profiler.sources.renovate import (
     _package_files,
 )
 
-FIXTURES = Path(__file__).parent / "fixtures" / "renovate"
+FIXTURES = Path(__file__).parent.parent / "fixtures" / "renovate"
 
 
 def _load(name: str) -> dict:

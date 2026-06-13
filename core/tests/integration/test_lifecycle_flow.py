@@ -1,0 +1,280 @@
+"""End-to-end flow test for the REE lifecycle.
+
+This is a *flow* test, not a unit test: it drives the real ``run_command``
+dispatcher through the sequence of typed commands that make up the REE
+lifecycle described in docs/REE.md, asserting the state of the durable
+``/ree`` tree after each transition.
+
+    acquire_source -> snapshot_upstream -> materialize_workspace
+        -> write_file -> (re-materialize) -> seal_ree
+
+It exercises every layer the control plane sits on top of — the command
+envelope, the dispatcher, the handlers, and the ``ReeStore`` / ``ReeLayout``
+filesystem shell — with no Docker, no HTTP, and no container transport.
+
+Nothing here is mocked. ``git`` runs for real against a local fixture
+repository (no network); the snapshot/materialize/overlay/seal steps are
+real filesystem operations. The only test-only seam is redirecting the
+``WORKBENCH_ROOT`` constant to a temp dir — the same real handler code,
+rooted at ``tmp_path`` instead of ``/ree``, not a behavior stub.
+
+Steps that require a real external tool are tested for real where that tool
+exists, and skipped (never faked) when it is absent:
+  * ``evaluate_dependency_score`` needs ``renovate`` — see the gated test below.
+  * ``build_runtime`` / ``run_experiment`` / ``activation_test`` /
+    ``generate_sbom`` need a Docker daemon — their home is the Docker-gated e2e.
+"""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+from dataclasses import dataclass, field
+from pathlib import Path
+from uuid import uuid4
+
+import pytest
+
+import repo2ree_core.storage.layout as layout_mod
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.envelope.run_command import run_command
+from repo2ree_core.storage.layout import ReeLayout
+from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.time_utils import utc_now
+from repo2ree_protocol.command import (
+    AcquireSourceArgs,
+    AcquireSourceCommand,
+    EvaluateDependencyScoreCommand,
+    MaterializeWorkspaceCommand,
+    SealReeCommand,
+    SnapshotUpstreamCommand,
+    WriteFileArgs,
+    WriteFileCommand,
+)
+
+# ================================================
+# Test infrastructure
+# ================================================
+
+
+@dataclass
+class LogCollector:
+    """A LogSink that records the NDJSON log events handlers emit.
+
+    The supervisor streams these back to the API over stderr; here we just
+    keep them so the test can assert the flow produced log output.
+    """
+
+    events: list[tuple[str, str, str]] = field(default_factory=list)
+
+    def __call__(self, stream: str, level: str, message: str) -> None:
+        self.events.append((stream, level, message))
+
+
+@dataclass
+class Ree:
+    """Handle to a temp REE wired up to look like the workbench's /ree tree."""
+
+    layout: ReeLayout
+    ree_id: str
+    log: LogCollector
+
+    def session(self) -> ReeSession:
+        return ReeSession.from_metadata(ReeStore(self.layout).read_metadata_json())
+
+
+def _make_source_repo(root: Path) -> Path:
+    """Create a small local git repo to stand in for an upstream source."""
+    repo = root / "source-repo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# demo project\n")
+    (repo / "requirements.txt").write_text("requests==2.31.0\n")
+    (repo / "Dockerfile").write_text("FROM python:3.13-slim\n")
+    (repo / "app.py").write_text("print('hello')\n")
+
+    def _git(*args: str) -> None:
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
+
+    _git("init", "-q")
+    _git("config", "user.email", "test@example.com")
+    _git("config", "user.name", "Test")
+    _git("add", ".")
+    _git("commit", "-q", "-m", "initial commit")
+    return repo
+
+
+def _init_ree(layout: ReeLayout, ree_id: str) -> None:
+    """Bootstrap the REE tree + initial metadata, mirroring ``init-ree``."""
+    store = ReeStore(layout)
+    store.ensure_dirs()
+    ts = utc_now()
+    name = f"workspace-{ree_id[:8]}"
+    store.write_metadata_json(
+        {
+            "reeId": ree_id,
+            "externalRef": None,
+            "name": name,
+            "status": "draft",
+            "createdAt": ts,
+            "updatedAt": ts,
+            "reeIntent": ReeIntent(name=name).model_dump(exclude_none=True),
+            "reeSession": ReeSession().model_dump(exclude_none=True),
+            "source": None,
+        }
+    )
+
+
+# ================================================
+# Fixtures
+# ================================================
+
+
+@pytest.fixture
+def source_repo(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return _make_source_repo(tmp_path_factory.mktemp("upstream"))
+
+
+@pytest.fixture
+def ree(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Ree:
+    """A temp REE whose root masquerades as the workbench mount point.
+
+    Handlers resolve their root via ``ReeLayout.in_workbench()``, which reads
+    the module-level ``WORKBENCH_ROOT`` at call time — so redirecting that
+    constant points the whole core at this temp tree.
+    """
+    ree_id = uuid4().hex
+    ree_root = tmp_path / ree_id
+    monkeypatch.setattr(layout_mod, "WORKBENCH_ROOT", ree_root)
+
+    layout = ReeLayout.in_workbench()
+    assert layout.root == ree_root
+    _init_ree(layout, ree_id)
+    return Ree(layout=layout, ree_id=ree_id, log=LogCollector())
+
+
+# ================================================
+# Flow test
+# ================================================
+
+
+def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
+    layout = ree.layout
+    log = ree.log
+
+    # --- acquire_source: clone upstream into upstream/ ------------------
+    result = run_command(
+        AcquireSourceCommand(
+            args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git", dest=layout.upstream)
+        ),
+        log=log,
+        run_id="acquire",
+    )
+    assert result.status == "succeeded"
+    assert (layout.upstream / "requirements.txt").is_file()
+    assert (layout.upstream / "app.py").is_file()
+    # the resolved commit is the source's reproducibility receipt
+    assert result.outputs["resolved_commit"]
+
+    # --- snapshot_upstream: freeze upstream into snapshot.tar.gz --------
+    result = run_command(SnapshotUpstreamCommand(), log=log, run_id="snapshot")
+    assert result.status == "succeeded"
+    assert layout.snapshot_archive.is_file()
+
+    # --- materialize_workspace: upstream -> workspace ------------------
+    result = run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize")
+    assert result.status == "succeeded"
+    assert (layout.workspace / "requirements.txt").is_file()
+    assert (layout.workspace / "app.py").is_file()
+
+    # --- write_file: the overlay's contribution beside the source ------
+    result = run_command(
+        WriteFileCommand(args=WriteFileArgs(path="build.sh", content="echo build\n")),
+        log=log,
+        run_id="write",
+    )
+    assert result.status == "succeeded"
+    assert (layout.overlay / "build.sh").is_file()
+    assert (layout.workspace / "build.sh").is_file()
+
+    # --- re-materialize: overlay survives a rebuild, upstream intact ---
+    result = run_command(MaterializeWorkspaceCommand(), log=log, run_id="rematerialize")
+    assert result.status == "succeeded"
+    assert (layout.workspace / "build.sh").read_text() == "echo build\n"
+    assert (layout.workspace / "requirements.txt").is_file()
+
+    # --- seal_ree: produce the immutable sealed bundle -----------------
+    result = run_command(SealReeCommand(), log=log, run_id="seal")
+    assert result.status == "succeeded"
+    assert layout.sealed_archive.is_file()
+    assert layout.manifest.is_file()
+    assert result.outputs["sealHash"].startswith("sha256:")
+
+    sealed_session = ree.session()
+    assert sealed_session.is_sealed
+    assert sealed_session.seal_hash == result.outputs["sealHash"]
+
+    # the flow streamed log events at every step (the supervisor's relay path)
+    assert log.events
+
+
+def test_seal_is_deterministic_for_unchanged_content(ree: Ree, source_repo: Path) -> None:
+    """Re-sealing unchanged content reproduces the same digest.
+
+    This is the content-addressing property the receipt/verify story rests on:
+    the seal hash names the bundle's content, not the moment it was sealed.
+    """
+    layout = ree.layout
+    log = ree.log
+
+    run_command(
+        AcquireSourceCommand(
+            args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git", dest=layout.upstream)
+        ),
+        log=log,
+        run_id="acquire",
+    )
+    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize")
+
+    first = run_command(SealReeCommand(), log=log, run_id="seal-1")
+    second = run_command(SealReeCommand(), log=log, run_id="seal-2")
+
+    assert first.status == second.status == "succeeded"
+    assert first.outputs["sealHash"] == second.outputs["sealHash"]
+
+
+# ================================================
+# Tool-gated flow steps
+# ================================================
+
+
+@pytest.mark.skipif(
+    shutil.which("renovate") is None,
+    reason="evaluate_dependency_score shells out to renovate; run for real where it exists, never mocked",
+)
+def test_evaluate_dependency_score_real(ree: Ree, source_repo: Path) -> None:
+    """Run dependency scoring against real ``renovate`` on a materialized workspace.
+
+    Skipped (not faked) when renovate is absent — the workbench image ships it,
+    so this runs for real there and in any env that has it on PATH.
+    """
+    layout = ree.layout
+    log = ree.log
+
+    run_command(
+        AcquireSourceCommand(
+            args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git", dest=layout.upstream)
+        ),
+        log=log,
+        run_id="acquire",
+    )
+    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize")
+
+    result = run_command(EvaluateDependencyScoreCommand(), log=log, run_id="evaluate")
+
+    assert result.status == "succeeded"
+    assert (layout.artifacts / "reproducibility-report.json").is_file()
+    # renovate detected the fixture's manifests (requirements.txt, Dockerfile)
+    assert result.outputs["manifestCount"] >= 1
+    # the evaluation outcome is settled into the durable session metadata
+    assert "dependencyLevel" in result.outputs

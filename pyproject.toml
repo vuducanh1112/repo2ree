@@ -15,6 +15,7 @@ dev = [
     "httpx~=0.28.1",
     "mypy~=1.20.1",
     "pytest~=8.4.1",
+    "pytest-cov~=7.1.0",
     "pre-commit~=4.3.0", 
     "ruff~=0.12.11",
     "syrupy~=5.0.0",
@@ -24,6 +25,34 @@ notebooks = [
     "notebook~=7.5.4",
     "matplotlib~=3.10.7",
 ]
+
+[tool.pytest.ini_options]
+# Show skip reasons in the summary: the docker-gated integration tiers skip
+# (never fake) when docker or the workbench image is absent, and a silent
+# skip is indistinguishable from a pass without this.
+addopts = "-ra"
+
+# Coverage measures the five workspace src trees. Listing them here lets the
+# Makefile pass a bare `--cov` (no per-package paths) and keeps the same
+# config for a direct `pytest --cov` run. Branch coverage is on because a lot
+# of the value is in the error/cancel branches the container-free tier added.
+[tool.coverage.run]
+branch = true
+source = [
+    "protocol/src/repo2ree_protocol",
+    "core/src/repo2ree_core",
+    "supervisor/src/repo2ree_supervisor",
+    "api/src/repo2ree_api",
+    "executor/src/repo2ree_executor",
+]
+omit = [
+    "*/__main__.py",  # trivial `python -m` entrypoints
+    "*/tests/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
 
 [tool.ruff]
 src = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src"]
@@ -48,6 +77,9 @@ extend-ignore = [
 
 [tool.mypy]
 mypy_path = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src"]
+# Test dirs ship no __init__.py, so module names must come from file paths —
+# otherwise the per-tier conftest.py files (unit/ and integration/) collide.
+explicit_package_bases = true
 
 # docker (docker-py) ships no py.typed and has no maintained stub package, so
 # treat the whole namespace as untyped (Any) rather than analyzing its sources.

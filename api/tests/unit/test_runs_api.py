@@ -1,0 +1,154 @@
+"""The runs endpoints over real HTTP, driven by a genuinely failing run.
+
+``source:upload-complete`` with no staged bytes fails inside the real runner
+before anything crosses the workbench boundary — which makes it the one
+background run the API can execute end-to-end (start → log feed → terminal
+status) with no container. The Docker-gated tier covers the succeeding twin.
+"""
+
+from __future__ import annotations
+
+import time
+from pathlib import Path
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+
+from repo2ree_supervisor import WorkbenchHandle
+
+# ================================================
+# Helpers
+# ================================================
+
+
+RUN_TIMEOUT_SECONDS = 10
+TERMINAL_RUN_STATUSES = frozenset({"succeeded", "failed", "canceled"})
+
+
+def _wait_for_run(client: TestClient, ree_id: str, run_id: str) -> str:
+    deadline = time.monotonic() + RUN_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        resp = client.get(f"/api/v1/rees/{ree_id}/runs/{run_id}")
+        assert resp.status_code == 200, resp.text
+        status = resp.json()["status"]
+        if status in TERMINAL_RUN_STATUSES:
+            return status
+        time.sleep(0.01)
+    pytest.fail(f"run {run_id} did not reach a terminal status within {RUN_TIMEOUT_SECONDS}s")
+
+
+def _start_failing_upload_run(client: TestClient, ree_id: str) -> dict[str, Any]:
+    """Complete an upload whose staged bytes were never PUT: the run fails for real."""
+    resp = client.post(
+        f"/api/v1/rees/{ree_id}/source:upload-complete",
+        json={"uploadToken": "never-staged", "archiveName": "project.zip"},
+    )
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+@pytest.fixture
+def failed_run(client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path) -> dict[str, Any]:
+    run = _start_failing_upload_run(client, online_ree.ree_id)
+    status = _wait_for_run(client, online_ree.ree_id, run["runId"])
+    assert status == "failed"
+    return run
+
+
+# ================================================
+# Run summary
+# ================================================
+
+
+def test_failed_run_summary_shape(client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]) -> None:
+    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['runId']}")
+    assert resp.status_code == 200
+    summary = resp.json()
+    assert summary["status"] == "failed"
+    assert summary["operation"] == "source"
+    assert summary["reeId"] == online_ree.ree_id
+    assert summary["finishedAt"] is not None
+    # internal bookkeeping never leaks into the API shape
+    assert "_nextSeq" not in summary
+    assert "logs" not in summary
+
+
+def test_run_endpoints_for_unknown_ree_are_404(client: TestClient) -> None:
+    assert client.get("/api/v1/rees/nope/runs/run-1").status_code == 404
+    assert client.get("/api/v1/rees/nope/runs/run-1/logs").status_code == 404
+
+
+def test_unknown_run_for_known_ree_is_404(client: TestClient, online_ree: WorkbenchHandle) -> None:
+    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/no-such-run")
+    assert resp.status_code == 404
+    assert resp.json()["error"]["message"] == "Run not found"
+
+
+# ================================================
+# Log feed + pagination
+# ================================================
+
+
+def test_failed_run_log_feed_carries_the_failure(
+    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+) -> None:
+    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['runId']}/logs")
+    assert resp.status_code == 200
+    logs = resp.json()
+    assert logs["runStatus"] == "failed"
+    messages = [entry["message"] for entry in logs["entries"]]
+    assert "Staged upload not found" in messages
+    assert logs["hasMore"] is False
+    assert logs["nextCursor"] is None
+
+
+def test_log_pagination_walks_the_feed(
+    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+) -> None:
+    base = f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['runId']}/logs"
+
+    first = client.get(base, params={"limit": 1}).json()
+    assert len(first["entries"]) == 1
+    assert first["hasMore"] is True
+    assert first["nextCursor"] == "1"
+
+    rest = client.get(base, params={"cursor": first["nextCursor"]}).json()
+    assert rest["hasMore"] is False
+    assert [e["seq"] for e in first["entries"] + rest["entries"]] == list(
+        range(1, len(first["entries"]) + len(rest["entries"]) + 1)
+    )
+
+
+def test_log_pagination_tolerates_garbage_cursor(
+    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+) -> None:
+    base = f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['runId']}/logs"
+    resp = client.get(base, params={"cursor": "not-a-number"})
+    assert resp.status_code == 200
+    assert resp.json()["entries"]  # falls back to the start, not a 500
+
+
+# ================================================
+# Cancel
+# ================================================
+
+
+def test_cancel_of_terminal_run_returns_status_unchanged(
+    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+) -> None:
+    run_id = failed_run["runId"]
+    logs_before = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}/logs").json()
+
+    resp = client.post(f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}:cancel")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "failed"}
+
+    # a no-op cancel appends no "Cancel requested" log entry
+    logs_after = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}/logs").json()
+    assert len(logs_after["entries"]) == len(logs_before["entries"])
+
+
+def test_cancel_of_unknown_run_is_404(client: TestClient, online_ree: WorkbenchHandle) -> None:
+    resp = client.post(f"/api/v1/rees/{online_ree.ree_id}/runs/no-such-run:cancel")
+    assert resp.status_code == 404

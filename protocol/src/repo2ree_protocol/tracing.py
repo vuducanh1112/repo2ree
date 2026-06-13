@@ -19,8 +19,9 @@ import os
 import queue
 import sys
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, TextIO
 
 from opentelemetry import context, metrics, trace
@@ -91,6 +92,36 @@ def _build_resource(service_name: str) -> Resource:
 
 
 # ================================================
+# Local span sink (no collector)
+# ================================================
+
+# When set, spans produced without a collector append to this path as one
+# JSON object per line instead of printing to stdout — a durable, greppable
+# record of what a dev server run or an integration test did.
+_TRACE_FILE_ENV = "TRACE_FILE"
+
+
+def _append_trace_lines(path: Path, lines: list[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.writelines(line + "\n" for line in lines)
+
+
+class _FileSpanExporter(SpanExporter):
+    """Append finished spans to a file as one JSON object per line."""
+
+    def __init__(self, path: Path):
+        self._path = path
+
+    def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
+        _append_trace_lines(self._path, [span.to_json(indent=None) for span in spans])
+        return SpanExportResult.SUCCESS
+
+    def shutdown(self) -> None:
+        pass
+
+
+# ================================================
 # Bootstrap
 # ================================================
 
@@ -104,10 +135,11 @@ def setup_tracing(
     """Configure the global TracerProvider once for this process.
 
     Exports via OTLP/HTTP to ``endpoint/v1/traces`` when provided. Otherwise,
-    if ``console_fallback`` is enabled, spans print to stdout for local dev; if
-    not, tracing stays a no-op. The executor leaves the fallback off because its
-    stdout/stderr carry the ActionResult/NDJSON protocol — console spans there
-    would corrupt the stream.
+    if ``console_fallback`` is enabled, spans go to the ``TRACE_FILE`` path
+    when that env var is set (one JSON object per line), or print to stdout;
+    if not, tracing stays a no-op. The executor leaves the fallback off
+    because its stdout/stderr carry the ActionResult/NDJSON protocol — console
+    spans there would corrupt the stream.
 
     Returns the provider so the caller can shut it down on clean exit, flushing
     any buffered spans. Returns None when tracing is a no-op.
@@ -122,6 +154,8 @@ def setup_tracing(
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
         provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{endpoint}/v1/traces")))
+    elif trace_file := os.environ.get(_TRACE_FILE_ENV):
+        provider.add_span_processor(SimpleSpanProcessor(_FileSpanExporter(Path(trace_file))))
     else:
         provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter(out=sys.stdout)))
     trace.set_tracer_provider(provider)
@@ -383,8 +417,8 @@ def build_span_sink(endpoint: str | None, *, console_fallback: bool = False) -> 
     """Return the sink the manager hands relayed executor spans to, or None.
 
     Mirrors ``setup_tracing``: forwards to the OTLP collector at ``endpoint`` when
-    set; otherwise, if ``console_fallback`` is on, decodes and prints spans to
-    stdout for local dev; otherwise returns None. Inject the result into
+    set; otherwise, if ``console_fallback`` is on, decodes spans and writes them
+    to the ``TRACE_FILE`` path or stdout for local dev; otherwise returns None. Inject the result into
     ``WorkbenchManager`` so the API composition root decides where executor spans
     go. A None sink means the manager never activates the relay (``TRACE_RELAY``
     is not injected, so the executor's tracer stays a no-op).
@@ -406,17 +440,19 @@ def build_span_sink(endpoint: str | None, *, console_fallback: bool = False) -> 
 
 
 def _console_span_sink(payloads: list[str]) -> None:
-    """Decode relayed OTLP payloads and print them to stdout for local dev.
+    """Decode relayed OTLP payloads for local dev: to TRACE_FILE or stdout.
 
     The relay carries executor spans as base64 OTLP protobuf so the supervisor
-    can forward bytes to a collector without understanding them. With no collector
-    we instead decode here and print, so workbench spans land in the same stdout
-    the API's ConsoleSpanExporter writes to. Host-side only — relies on
-    ``opentelemetry-proto``, which the minimal workbench image deliberately lacks.
-    Never raises: span egress must not break command flow.
+    can forward bytes to a collector without understanding them. With no
+    collector we instead decode here and write, so workbench spans land in the
+    same place (the ``TRACE_FILE`` path, or stdout) the host's local span
+    exporter writes to. Host-side only — relies on ``opentelemetry-proto``,
+    which the minimal workbench image deliberately lacks. Never raises: span
+    egress must not break command flow.
     """
     from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 
+    lines: list[str] = []
     for payload in payloads:
         try:
             request = ExportTraceServiceRequest()
@@ -427,7 +463,13 @@ def _console_span_sink(payloads: list[str]) -> None:
         for resource_spans in request.resource_spans:
             for scope_spans in resource_spans.scope_spans:
                 for span in scope_spans.spans:
-                    print(json.dumps(_format_relayed_span(span)), file=sys.stdout, flush=True)
+                    lines.append(json.dumps(_format_relayed_span(span)))
+
+    if trace_file := os.environ.get(_TRACE_FILE_ENV):
+        _append_trace_lines(Path(trace_file), lines)
+    else:
+        for line in lines:
+            print(line, file=sys.stdout, flush=True)
 
 
 def _format_relayed_span(span: _PbSpan) -> dict[str, object]:

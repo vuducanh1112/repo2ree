@@ -1,0 +1,182 @@
+"""The executor CLI contract, exercised without a container.
+
+The supervisor drives ``repo2ree-exec`` over ``docker exec`` and depends on
+its process contract: ActionResult JSON on stdout, NDJSON log events on
+stderr, and meaningful exit codes. These tests pin that contract with the
+real CLI, real handlers, and a real REE tree — the only seam is redirecting
+``WORKBENCH_ROOT`` to a temp dir, the same trick the core lifecycle flow test
+uses. The in-container composition is covered by the supervisor e2e.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+from click.testing import CliRunner
+
+import repo2ree_core.storage.layout as layout_mod
+from repo2ree_core.storage.layout import ReeLayout
+from repo2ree_executor.cli import cli
+from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand
+from repo2ree_protocol.result import ActionResult
+
+# ================================================
+# Fixtures / helpers
+# ================================================
+
+
+runner = CliRunner()
+
+
+@pytest.fixture
+def ree_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point the workbench mount at a temp dir; commands resolve it at call time."""
+    root = tmp_path / "ree"
+    monkeypatch.setattr(layout_mod, "WORKBENCH_ROOT", root)
+    return root
+
+
+@pytest.fixture
+def initialized_ree(ree_root: Path) -> Path:
+    result = runner.invoke(cli, ["init-ree", "--ree-id", "abc123", "--name", "demo"])
+    assert result.exit_code == 0, result.output
+    return ree_root
+
+
+def _stderr_events(result) -> list[dict]:  # type: ignore[type-arg]
+    return [json.loads(line) for line in result.stderr.splitlines() if line.strip()]
+
+
+# ================================================
+# init-ree / get-ree
+# ================================================
+
+
+def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
+    result = runner.invoke(cli, ["init-ree", "--ree-id", "abc123", "--name", "demo"])
+    assert result.exit_code == 0
+    assert json.loads(result.output) == {"status": "initialised", "reeId": "abc123"}
+
+    layout = ReeLayout.in_workbench()
+    assert layout.workspace.is_dir()
+    metadata = json.loads(layout.metadata.read_text())
+    assert metadata["reeId"] == "abc123"
+    assert metadata["name"] == "demo"
+    assert metadata["status"] == "draft"
+
+
+def test_init_ree_is_idempotent(initialized_ree: Path) -> None:
+    layout = ReeLayout.in_workbench()
+    before = layout.metadata.read_text()
+
+    result = runner.invoke(cli, ["init-ree", "--ree-id", "abc123"])
+    assert result.exit_code == 0
+    assert json.loads(result.output)["status"] == "already_initialised"
+    assert layout.metadata.read_text() == before
+
+
+def test_get_ree_before_init_exits_nonzero(ree_root: Path) -> None:
+    result = runner.invoke(cli, ["get-ree"])
+    assert result.exit_code == 1
+    assert json.loads(result.stderr) == {"error": "not initialised"}
+
+
+def test_get_ree_emits_metadata(initialized_ree: Path) -> None:
+    result = runner.invoke(cli, ["get-ree"])
+    assert result.exit_code == 0
+    assert json.loads(result.output)["reeId"] == "abc123"
+
+
+# ================================================
+# execute — the supervisor's dispatch contract
+# ================================================
+
+
+def test_execute_writes_result_to_stdout_and_logs_to_stderr(initialized_ree: Path) -> None:
+    cmd = WriteFileCommand(args=WriteFileArgs(path="build.sh", content="echo build\n"))
+    result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
+    assert result.exit_code == 0, result.output
+
+    # stdout carries exactly one ActionResult JSON line
+    action_result = ActionResult.model_validate_json(result.stdout.strip())
+    assert action_result.status == "succeeded"
+
+    # the file landed in overlay and workspace for real
+    layout = ReeLayout.in_workbench()
+    assert (layout.overlay / "build.sh").read_text() == "echo build\n"
+    assert (layout.workspace / "build.sh").read_text() == "echo build\n"
+
+    # stderr is pure NDJSON log events (the supervisor parses every line)
+    events = _stderr_events(result)
+    assert events
+    assert all(event["type"] == "log" for event in events)
+
+    # --run-id also appends the events + result to the durable run log
+    run_log_lines = [json.loads(line) for line in layout.run_log("run-1").read_text().splitlines()]
+    assert {"type": "result"} in run_log_lines
+
+
+def test_execute_invalid_action_json_exits_2_with_ndjson_error(ree_root: Path) -> None:
+    result = runner.invoke(cli, ["execute", "--action", "-"], input="not json")
+    assert result.exit_code == 2
+    [event] = _stderr_events(result)
+    assert event["type"] == "log"
+    assert event["level"] == "error"
+    assert "invalid action JSON" in event["message"]
+
+
+def test_execute_failing_command_exits_1_with_failed_result(initialized_ree: Path) -> None:
+    """A command that fails still emits its ActionResult before exiting non-zero."""
+    cmd = json.dumps(
+        {
+            "operation": "acquire_source",
+            "args": {
+                "origin_url": str(initialized_ree / "does-not-exist"),
+                "source_type": "git",
+                "dest": str(ReeLayout.in_workbench().upstream),
+            },
+        }
+    )
+    result = runner.invoke(cli, ["execute", "--action", "-"], input=cmd)
+    assert result.exit_code == 1
+    action_result = ActionResult.model_validate_json(result.stdout.strip())
+    assert action_result.status == "failed"
+
+
+# ================================================
+# Read-side queries
+# ================================================
+
+
+def test_read_file_round_trips_bytes(initialized_ree: Path) -> None:
+    cmd = WriteFileCommand(args=WriteFileArgs(path="data.txt", content="payload\n"))
+    assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
+
+    result = runner.invoke(cli, ["read-file", "--path", "data.txt"])
+    assert result.exit_code == 0
+    assert result.stdout_bytes == b"payload\n"
+
+
+def test_read_file_missing_exits_nonzero(initialized_ree: Path) -> None:
+    result = runner.invoke(cli, ["read-file", "--path", "missing.txt"])
+    assert result.exit_code == 1
+    assert "not found" in json.loads(result.stderr)["error"]
+
+
+def test_get_workspace_reflects_workspace_files(initialized_ree: Path) -> None:
+    cmd = WriteFileCommand(args=WriteFileArgs(path="app.py", content="print('hi')\n"))
+    assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
+
+    result = runner.invoke(cli, ["get-workspace"])
+    assert result.exit_code == 0
+    workspace = json.loads(result.output)
+    assert workspace["reeId"] == "abc123"
+    assert any(f.get("path") == "app.py" for f in workspace["files"])
+
+
+def test_build_archive_before_seal_exits_nonzero(initialized_ree: Path) -> None:
+    result = runner.invoke(cli, ["build-archive"])
+    assert result.exit_code == 1
+    assert json.loads(result.stderr)["error"]
