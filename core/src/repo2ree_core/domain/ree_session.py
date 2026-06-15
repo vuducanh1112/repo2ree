@@ -32,6 +32,7 @@ class ReeSession(BaseModel):
     seal_hash: str | None = None
     source_available: bool = False
     source_acquired_by: SourceAcquiredBy = ""
+    source_resolved_commit: str | None = None
     uploaded_archive: str | None = None
     source_snapshot_archive: str | None = None
     source_snapshot_captured_at: str | None = None
@@ -47,37 +48,23 @@ class ReeSession(BaseModel):
         filtered = {k: v for k, v in raw.items() if k in cls.model_fields}
         return cls.model_validate(filtered)
 
-    def with_source(self, source: Mapping[str, Any] | None) -> ReeSession:
-        if not source:
-            return self.model_copy(
-                update={
-                    "source_available": False,
-                    "source_acquired_by": "",
-                    "uploaded_archive": None,
-                    "source_snapshot_archive": None,
-                    "source_snapshot_captured_at": None,
-                }
-            )
-
-        mode = str(source.get("mode") or "")
-        acquired_by: SourceAcquiredBy = ""
-        if mode == "download":
-            acquired_by = "download"
-        elif mode == "upload":
-            acquired_by = "upload"
-
-        snapshot_archive = str(source.get("snapshotArchive") or "") or self.source_snapshot_archive or None
-
+    def with_source(
+        self,
+        *,
+        acquired_by: SourceAcquiredBy,
+        archive_name: str | None = None,
+        snapshot_archive: str | None = None,
+        snapshot_captured_at: str | None = None,
+        resolved_commit: str | None = None,
+    ) -> ReeSession:
         return self.model_copy(
             update={
                 "source_available": True,
                 "source_acquired_by": acquired_by,
-                "uploaded_archive": str(source.get("archiveName") or "") or self.uploaded_archive,
-                "source_snapshot_archive": snapshot_archive,
-                "source_snapshot_captured_at": str(
-                    source.get("snapshotCapturedAt") or source.get("completedAt") or source.get("acquiredAt") or ""
-                )
-                or self.source_snapshot_captured_at,
+                "source_resolved_commit": resolved_commit or None,
+                "uploaded_archive": archive_name or self.uploaded_archive,
+                "source_snapshot_archive": snapshot_archive or self.source_snapshot_archive or None,
+                "source_snapshot_captured_at": snapshot_captured_at or self.source_snapshot_captured_at,
             }
         )
 
@@ -126,18 +113,3 @@ class ReeSession(BaseModel):
                 "runtime_included": runtime_included,
             }
         )
-
-    def as_manifest_fields(self) -> dict[str, Any]:
-        return {
-            "sealed_at": self.sealed_at or None,
-            "seal_hash": self.seal_hash or None,
-            "dependency_level": self.dependency_level or 0,
-            "environment_level": self.environment_level or 0,
-            "machine_level": self.machine_level or 0,
-            "source_available": bool(self.source_available),
-            "source_acquired_by": self.source_acquired_by or None,
-            "source_snapshot_archive": self.source_snapshot_archive or None,
-            "source_snapshot_captured_at": self.source_snapshot_captured_at or None,
-            "source_included": bool(self.source_included),
-            "runtime_included": bool(self.runtime_included),
-        }

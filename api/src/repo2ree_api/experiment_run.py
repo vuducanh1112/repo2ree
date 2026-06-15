@@ -72,7 +72,7 @@ def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid REE intent: {exc}") from exc
 
-    if not ree.runtime.strip():
+    if not ree.runtime:
         raise HTTPException(
             status_code=400,
             detail="Runtime artifact is required before running experiments",

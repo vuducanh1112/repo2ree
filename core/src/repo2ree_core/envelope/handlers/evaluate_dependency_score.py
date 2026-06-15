@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.handlers._common import utc_now
 from repo2ree_core.repo_profiler.profiler import AnalysisError, analyze_repo
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
@@ -48,16 +46,13 @@ def handle_evaluate_dependency_score(
             encoding="utf-8",
         )
         store = ReeStore(layout)
-        metadata = store.read_metadata_json()
-        session = ReeSession.from_metadata(metadata).with_evaluation(
+        session = store.read_session().with_evaluation(
             dependency_level=int(report.dependency_level),
             environment_level=int(report.environment_level),
             machine_level=int(report.machine_level),
             detected_dependencies=report.detected_dependencies,
         )
-        metadata["reeSession"] = session.model_dump(exclude_none=True)
-        metadata["updatedAt"] = utc_now()
-        store.write_metadata_json(metadata)
+        store.write_session(session)
     except Exception as exc:
         log("system", "error", f"failed to persist evaluation outputs: {exc}")
         return ActionResult(status="failed", exit_code=1)

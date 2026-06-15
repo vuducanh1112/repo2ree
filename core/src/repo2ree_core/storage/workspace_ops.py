@@ -29,9 +29,6 @@ import json
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.handlers._common import utc_now
 from repo2ree_core.storage.layout import (
     ReeLayout,
     normalize_workspace_path,
@@ -59,15 +56,14 @@ from repo2ree_core.workspace.inventory import (
 
 # Deferred import to break the storage → workspace_ops → manifest → storage cycle.
 def _build_manifest_payload(
-    metadata: dict[str, Any],
-    intent: ReeIntent,
-    session: ReeSession,
+    intent: Any,
+    session: Any,
     *,
     ree_id: str,
 ) -> dict[str, Any]:
     from repo2ree_core.workspace.manifest import build_manifest_payload
 
-    return build_manifest_payload(metadata, intent, session, ree_id=ree_id)
+    return build_manifest_payload(intent, session, ree_id=ree_id)
 
 
 # ================================================
@@ -91,14 +87,6 @@ def _validate_user_path(path: str) -> str:
     return normalized
 
 
-def _intent_from_metadata(metadata: dict[str, Any]) -> ReeIntent:
-    return ReeIntent.from_metadata(metadata)
-
-
-def _session_from_metadata(metadata: dict[str, Any]) -> ReeSession:
-    return ReeSession.from_metadata(metadata)
-
-
 def _read_metadata(storage_root: Path, ree_id: str) -> dict[str, Any]:
     store = _store(storage_root, ree_id)
     if not store.metadata_exists():
@@ -113,7 +101,7 @@ def _list_tree_relpaths(root: Path) -> list[str]:
     return sorted(fp.relative_to(root).as_posix() for fp in root.rglob("*") if fp.is_file())
 
 
-def _build_artifact_plan(layout: ReeLayout, intent: ReeIntent, *, include_runtime: bool) -> ArtifactPlan:
+def _build_artifact_plan(layout: ReeLayout, intent: Any, *, include_runtime: bool) -> ArtifactPlan:
     """Snapshot disk state and delegate layout decisions to the pure planner."""
     workspace_files = frozenset(_list_tree_relpaths(layout.workspace))
     on_disk_artifacts = _list_tree_relpaths(layout.artifacts)
@@ -239,12 +227,8 @@ def _workspace_ree_files_with_content(storage_root: Path, ree_id: str) -> list[d
 # ================================================
 
 
-def get_workspace(
-    storage_root: Path,
-    ree_id: str,
-    seed_metadata: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    metadata = seed_metadata or _read_metadata(storage_root, ree_id)
+def get_workspace(storage_root: Path, ree_id: str) -> dict[str, Any]:
+    metadata = _read_metadata(storage_root, ree_id)
     detail = dict(metadata)
     detail["files"] = _workspace_files_with_content(storage_root, ree_id)
     detail["reeFiles"] = _workspace_ree_files_with_content(storage_root, ree_id)
@@ -261,9 +245,8 @@ def read_file_bytes(storage_root: Path, ree_id: str, path: str) -> bytes:
 
 def _assemble_bundle(
     layout: ReeLayout,
-    metadata: dict[str, Any],
-    intent: ReeIntent,
-    session: ReeSession,
+    intent: Any,
+    session: Any,
     *,
     ree_id: str,
 ) -> tuple[bytes, dict[str, Any]]:
@@ -273,7 +256,7 @@ def _assemble_bundle(
     (and sealed_at/seal_hash when building the final sealed bundle).
     Returns ``(zip_bytes, sidecar_manifest)``.
     """
-    sidecar_manifest = _build_manifest_payload(metadata, intent, session, ree_id=ree_id)
+    sidecar_manifest = _build_manifest_payload(intent, session, ree_id=ree_id)
     artifact_plan = _build_artifact_plan(layout, intent, include_runtime=session.runtime_included)
     include_snapshot = should_include_snapshot(
         source_included=session.source_included,
@@ -306,11 +289,12 @@ def seal_workspace_ree(
 
     Returns the settled seal facts.
     """
-    metadata = _read_metadata(storage_root, ree_id)
     layout = _layout(storage_root, ree_id)
     store = _store(storage_root, ree_id)
-    intent = _intent_from_metadata(metadata)
-    session = _session_from_metadata(metadata).with_packaging(
+    if not store.metadata_exists():
+        raise FileNotFoundError(f"REE {ree_id} not found")
+    intent = store.read_intent()
+    session = store.read_session().with_packaging(
         source_included=source_included,
         runtime_included=runtime_included,
     )
@@ -319,7 +303,7 @@ def seal_workspace_ree(
     # Strip any previously persisted seal stamps so re-sealing produces the
     # same digest when content hasn't changed.
     preseal_session = session.model_copy(update={"sealed_at": None, "seal_hash": None})
-    preseal_bytes, _ = _assemble_bundle(layout, metadata, intent, preseal_session, ree_id=ree_id)
+    preseal_bytes, _ = _assemble_bundle(layout, intent, preseal_session, ree_id=ree_id)
     digest = hashlib.sha256(preseal_bytes).hexdigest()
     seal_hash = f"sha256:{digest}"
 
@@ -332,14 +316,12 @@ def seal_workspace_ree(
     )
 
     # Final assembly with the real seal_hash in the manifest.
-    zip_bytes, sidecar_manifest = _assemble_bundle(layout, metadata, intent, session, ree_id=ree_id)
+    zip_bytes, sidecar_manifest = _assemble_bundle(layout, intent, session, ree_id=ree_id)
 
     # Persist everything atomically within the workbench lock (held by caller).
     layout.sealed_archive.write_bytes(zip_bytes)
     store.write_manifest(sidecar_manifest)
-    metadata["reeSession"] = session.model_dump(exclude_none=True)
-    metadata["updatedAt"] = utc_now()
-    store.write_metadata_json(metadata)
+    store.write_session(session)
 
     return {
         "sealedAt": session.sealed_at,
@@ -354,9 +336,10 @@ def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
 
     Raises RuntimeError if the REE has not been sealed yet.
     """
-    metadata = _read_metadata(storage_root, ree_id)
-    session = _session_from_metadata(metadata)
-    if not session.is_sealed:
+    store = _store(storage_root, ree_id)
+    if not store.metadata_exists():
+        raise FileNotFoundError(f"REE {ree_id} not found")
+    if not store.read_session().is_sealed:
         raise RuntimeError("REE is not sealed")
     layout = _layout(storage_root, ree_id)
     if not layout.sealed_archive.exists():

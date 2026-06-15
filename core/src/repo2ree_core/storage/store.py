@@ -16,7 +16,10 @@ from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
+from repo2ree_core.time_utils import utc_now
 from repo2ree_core.workspace.model import WorkspaceMetadata
 
 
@@ -184,6 +187,28 @@ class ReeStore:
     def write_metadata_json(self, payload: dict[str, Any]) -> None:
         """Write raw JSON metadata atomically. Companion to :meth:`read_metadata_json`."""
         _write_json_atomic(self.layout.metadata, payload)
+
+    # --- Typed intent / session accessors -------------------------------
+
+    def read_intent(self) -> ReeIntent:
+        return ReeIntent.from_metadata(self.read_metadata_json())
+
+    def write_intent(self, intent: ReeIntent) -> None:
+        raw = self.read_metadata_json()
+        raw["reeIntent"] = intent.model_dump(exclude_none=True)
+        raw["name"] = intent.name or raw.get("name", "")
+        raw["externalRef"] = intent.origin_url or None
+        raw["updatedAt"] = utc_now()
+        self.write_metadata_json(raw)
+
+    def read_session(self) -> ReeSession:
+        return ReeSession.from_metadata(self.read_metadata_json())
+
+    def write_session(self, session: ReeSession) -> None:
+        raw = self.read_metadata_json()
+        raw["reeSession"] = session.model_dump(exclude_none=True)
+        raw["updatedAt"] = utc_now()
+        self.write_metadata_json(raw)
 
     # --- Manifest -------------------------------------------------------
 

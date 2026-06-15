@@ -9,6 +9,7 @@ from __future__ import annotations
 from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.envelope.handlers._common import utc_now
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment.base import CancelCheck
@@ -39,23 +40,24 @@ def handle_remove_source(
         if layout.snapshot_archive.exists():
             layout.snapshot_archive.unlink()
 
-        metadata = store.read_metadata_json()
+        meta = store.read_metadata()
         # Removing the source removes the basis for everything derived from it,
-        # so reset the intent to a blank slate — keeping only author metadata
-        # (name and catalog metadata) — and discard all session state.
-        existing_intent = ReeIntent.from_metadata(metadata)
+        # so reset intent to a blank slate — keeping only author metadata
+        # (name and catalog_metadata) — and discard all session state.
         cleared_intent = ReeIntent(
-            name=existing_intent.name,
-            catalog_metadata=existing_intent.catalog_metadata,
+            name=meta.ree_intent.name,
+            catalog_metadata=meta.ree_intent.catalog_metadata,
         )
-        cleared_session = ReeSession()
-
-        metadata["status"] = "draft"
-        metadata["externalRef"] = None
-        metadata["source"] = None
-        metadata["reeIntent"] = cleared_intent.model_dump(exclude_none=True)
-        metadata["reeSession"] = cleared_session.model_dump(exclude_none=True)
-        store.write_metadata_json(metadata)
+        updated = meta.model_copy(
+            update={
+                "ree_intent": cleared_intent,
+                "ree_session": ReeSession(),
+                "status": "draft",
+                "updated_at": utc_now(),
+                "external_ref": None,
+            }
+        )
+        store.write_metadata(updated)
     except Exception as exc:
         log("system", "error", f"remove_source failed: {exc}")
         return ActionResult(status="failed", exit_code=1)

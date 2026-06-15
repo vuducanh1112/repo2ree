@@ -104,8 +104,8 @@ class ArtifactPlan:
 def plan_artifact_layout(
     *,
     on_disk_artifact_relpaths: Sequence[str],
-    workspace_runtime_path: str,
-    workspace_sbom_path: str,
+    workspace_runtime_path: str | None,
+    workspace_sbom_path: str | None,
     workspace_files: frozenset[str],
     runtime_included: bool,
 ) -> ArtifactPlan:

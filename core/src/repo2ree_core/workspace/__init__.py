@@ -1,3 +1,3 @@
-from .model import SourceMetadata, WorkspaceMetadata, WorkspaceStatus
+from .model import WorkspaceMetadata, WorkspaceStatus
 
-__all__ = ["SourceMetadata", "WorkspaceMetadata", "WorkspaceStatus"]
+__all__ = ["WorkspaceMetadata", "WorkspaceStatus"]

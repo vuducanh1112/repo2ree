@@ -7,7 +7,6 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.time_utils import utc_now  # noqa: F401  (re-exported)
@@ -147,17 +146,5 @@ def run_workspace_script_handler(
 def patch_ree_intent(store: ReeStore, patch: dict[str, Any]) -> None:
     if not store.metadata_exists():
         raise FileNotFoundError("metadata not found")
-
-    metadata = store.read_metadata_json()
-    intent = ReeIntent.from_metadata(metadata).apply_patch(patch)
-    metadata["reeIntent"] = intent.model_dump(exclude_none=True)
-    if intent.name:
-        metadata["name"] = intent.name
-    if intent.origin_url:
-        metadata["externalRef"] = intent.origin_url
-    source = metadata.get("source")
-    if isinstance(source, dict) and intent.source_type:
-        source["sourceType"] = intent.source_type
-        metadata["source"] = source
-    metadata["updatedAt"] = utc_now()
-    store.write_metadata_json(metadata)
+    intent = store.read_intent().apply_patch(patch)
+    store.write_intent(intent)

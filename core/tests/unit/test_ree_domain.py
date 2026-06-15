@@ -103,24 +103,24 @@ def test_session_with_source_sets_available():
 
     session = ReeSession()
     updated = session.with_source(
-        {
-            "mode": "download",
-            "snapshotArchive": "snapshot.tar.gz",
-            "completedAt": "2026-01-01T00:00:00Z",
-        }
+        acquired_by="download",
+        snapshot_archive="snapshot.tar.gz",
+        snapshot_captured_at="2026-01-01T00:00:00Z",
     )
     assert updated.source_available is True
     assert updated.source_acquired_by == "download"
     assert updated.source_snapshot_archive == "snapshot.tar.gz"
 
 
-def test_session_with_source_none_clears_fields():
+def test_session_with_source_records_resolved_commit():
     from repo2ree_core.domain.ree_session import ReeSession
 
-    session = ReeSession(source_available=True, source_acquired_by="download")
-    cleared = session.with_source(None)
-    assert cleared.source_available is False
-    assert cleared.source_acquired_by == ""
+    session = ReeSession()
+    updated = session.with_source(
+        acquired_by="download",
+        resolved_commit="abc123",
+    )
+    assert updated.source_resolved_commit == "abc123"
 
 
 def test_session_with_evaluation():

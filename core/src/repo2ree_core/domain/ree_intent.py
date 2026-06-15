@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
+    BeforeValidator,
     ConfigDict,
     Field,
     ValidationError,
@@ -20,6 +21,10 @@ from repo2ree_core.experiment import Experiment
 # ================================================
 
 SourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]
+
+NormalizedPath = Annotated[str | None, BeforeValidator(lambda v: (v or "").lstrip("/").strip() or None)]
+
+REE_MANIFEST_VERSION = 1  # bump on any breaking schema change
 
 
 # ================================================
@@ -109,10 +114,10 @@ class ReeIntent(BaseModel):
     catalog_metadata: ReeCatalogMetadata = Field(default_factory=ReeCatalogMetadata)
     origin_url: str = ""
     source_type: SourceType = ""
-    runtime: str = ""
-    build_runtime_script: str = ""
-    activation_script: str = ""
-    sbom: str = ""
+    runtime: NormalizedPath = None
+    build_runtime_script: NormalizedPath = None
+    activation_script: NormalizedPath = None
+    sbom: NormalizedPath = None
     swhid: str = ""
     zenodo_doi: str | None = None
     dataverse_doi: str | None = None
@@ -152,11 +157,6 @@ class ReeIntent(BaseModel):
             intent["name"] = str(metadata.get("name") or "")
         if not intent.get("origin_url"):
             intent["origin_url"] = str(metadata.get("externalRef") or "")
-        source = metadata.get("source")
-        if isinstance(source, dict):
-            source_type = str(source.get("sourceType") or "")
-            if source_type and not intent.get("source_type"):
-                intent["source_type"] = source_type
         return cls.model_validate(intent)
 
     def apply_patch(self, patch: Mapping[str, Any]) -> ReeIntent:
@@ -166,21 +166,3 @@ class ReeIntent(BaseModel):
             return ReeIntent.model_validate(merged)
         except ValidationError as exc:
             raise ValueError(f"Invalid REE intent patch: {exc}") from exc
-
-    def as_manifest(self) -> dict[str, Any]:
-        return {
-            "ree_version": "1.0",
-            "name": self.name or None,
-            "catalog_metadata": self.catalog_metadata.model_dump(),
-            "origin_url": self.origin_url or None,
-            "source_type": self.source_type or None,
-            "runtime": self.runtime or None,
-            "build_script": self.build_runtime_script or None,
-            "activation_script": self.activation_script or None,
-            "sbom": self.sbom or None,
-            "swhid": self.swhid or None,
-            "zenodo_doi": self.zenodo_doi or None,
-            "dataverse_doi": self.dataverse_doi or None,
-            "hardware_description": self.hardware_description.model_dump(),
-            "experiments": [experiment.model_dump(exclude_none=True) for experiment in self.experiments],
-        }

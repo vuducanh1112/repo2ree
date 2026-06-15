@@ -9,34 +9,24 @@ surrounding workspace metadata. This module performs no I/O.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 
-from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_intent import REE_MANIFEST_VERSION, ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.storage.layout import normalize_workspace_path
+
+_SESSION_MANIFEST_EXCLUDE = {"detected_dependencies", "uploaded_archive", "source_resolved_commit"}
 
 
 def build_manifest_payload(
-    metadata: Mapping[str, Any],
     intent: ReeIntent,
     session: ReeSession,
     *,
     ree_id: str,
 ) -> dict[str, Any]:
-    """Merge ``intent`` and ``session`` with workspace ``metadata`` into the published manifest."""
-    runtime_path = normalize_workspace_path(intent.runtime)
-    sbom_path = normalize_workspace_path(intent.sbom)
-    build_script_path = normalize_workspace_path(intent.build_runtime_script)
-    activation_script_path = normalize_workspace_path(intent.activation_script)
-
-    manifest = {**intent.as_manifest(), **session.as_manifest_fields()}
-    manifest["name"] = metadata.get("name") or manifest["name"] or f"workspace-{ree_id[:8]}"
-    manifest["origin_url"] = metadata.get("externalRef") or manifest["origin_url"]
-    source = metadata.get("source")
-    manifest["source_type"] = source.get("sourceType") if isinstance(source, Mapping) else manifest["source_type"]
-    manifest["runtime"] = runtime_path or None
-    manifest["build_script"] = build_script_path or None
-    manifest["activation_script"] = activation_script_path or None
-    manifest["sbom"] = sbom_path or None
-    return manifest
+    """Build the published manifest from ``intent`` and ``session``."""
+    return {
+        **intent.model_dump(),
+        **session.model_dump(exclude=_SESSION_MANIFEST_EXCLUDE),
+        "ree_version": REE_MANIFEST_VERSION,
+        "name": intent.name or f"workspace-{ree_id[:8]}",
+    }

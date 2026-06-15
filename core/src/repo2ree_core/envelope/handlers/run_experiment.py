@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.envelope.handlers._common import (
     patch_ree_intent,
     resolve_workspace_path,
@@ -32,13 +31,12 @@ def handle_run_experiment(
         return ActionResult(status="failed", exit_code=1)
 
     try:
-        metadata = store.read_metadata_json()
-        ree = ReeIntent.from_metadata(metadata)
+        ree = store.read_intent()
     except Exception as exc:
         log("system", "error", f"Invalid REE intent: {exc}")
         return ActionResult(status="failed", exit_code=1)
 
-    runtime_path = ree.runtime.strip()
+    runtime_path = ree.runtime
     if not runtime_path:
         log("system", "error", "Runtime artifact is required before running experiments")
         return ActionResult(status="failed", exit_code=1)
@@ -72,7 +70,7 @@ def handle_run_experiment(
     outputs["runtimePath"] = runtime_path
 
     if outcome.snapshot_to_persist is not None:
-        raw_experiments = list((metadata.get("reeIntent") or {}).get("experiments") or [])
+        raw_experiments = [e.model_dump() for e in ree.experiments]
         updated = False
         for i, raw_exp in enumerate(raw_experiments):
             if raw_exp.get("name") == args.experiment_name:
