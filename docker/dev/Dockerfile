@@ -32,6 +32,7 @@ RUN nix-env --version
 
 WORKDIR /repo2ree
 COPY flake.nix flake.lock ./
+COPY nix ./nix
 
 # Enable experimental features (nix-command and flakes)
 RUN mkdir -p /home/$USER/.config/nix && \
