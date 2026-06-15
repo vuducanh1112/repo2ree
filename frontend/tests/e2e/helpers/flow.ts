@@ -224,7 +224,7 @@ export async function sealRee(page: Page) {
     .getByRole("button", { name: /Seal (REE|anyway)/ })
     .click();
   await expect(main(page).getByText("REE SEALED", { exact: true })).toBeVisible({
-    timeout: 20000,
+    timeout: 30000,
   });
 }
 

@@ -8,7 +8,7 @@
 	be-coverage be-coverage-unit be-coverage-context \
 	test-checks \
 	workbench-image \
-	run-api e2e-tests e2e-demo e2e-coverage
+	e2e-tests e2e-demo e2e-coverage
 
 # ================================================
 # Frontend — checks and tests
@@ -159,18 +159,39 @@ be-coverage-context:
 # End-to-end tests
 # ================================================
 
+# Backend API server log for plain e2e runs (without coverage). Overwritten
+# on each run; use test-artifacts/coverage/e2e/backend.log for coverage runs.
+E2E_API_LOG = $(CURDIR)/test-artifacts/api-server.log
+
+define e2e_run  # $(1) = playwright --project name
+	@mkdir -p test-artifacts
+	@rm -f $(E2E_API_LOG)
+	@set -e; \
+	echo ">> starting backend on :8000 (log: $(E2E_API_LOG))"; \
+	uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
+		> $(E2E_API_LOG) 2>&1 & \
+	api_pid=$$!; \
+	trap 'kill -TERM $$api_pid 2>/dev/null || true; wait $$api_pid 2>/dev/null || true' EXIT; \
+	for i in $$(seq 1 30); do \
+		curl -sf http://127.0.0.1:8000/ >/dev/null 2>&1 && break; \
+		echo "  waiting for backend... ($$i/30)"; sleep 1; \
+	done; \
+	echo ">> backend ready — running playwright project=$(1)"; \
+	( cd frontend && npm exec -- playwright test \
+		-c playwright.config.ts --project=$(1) ); \
+	status=$$?; \
+	trap - EXIT; \
+	echo ">> stopping backend"; \
+	kill -TERM $$api_pid 2>/dev/null || true; \
+	wait $$api_pid 2>/dev/null || true; \
+	exit $$status
+endef
+
 e2e-tests:
-	cd frontend && npm exec -- playwright test -c playwright.config.ts --project=e2e
+	$(call e2e_run,e2e)
 
 e2e-demo:
-	cd frontend && npm exec -- playwright test -c playwright.config.ts --project=demo
-
-# Backend launcher. No --reload: reload spawns a child process the coverage
-# harness can't see, and e2e-coverage needs to own (and measure) this exact
-# process. Serves the same app the frontend's VITE_API_BASE_URL points at.
-# Needs docker + the workbench image, since requests provision real workbenches.
-run-api:
-	uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 > fastapi.log 2>&1
+	$(call e2e_run,demo)
 
 # Full-stack e2e coverage: browser (frontend) + server (backend) in one run.
 #
