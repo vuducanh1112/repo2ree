@@ -1,5 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
 
-  "ignoreDependencies": ["@biomejs/biome"]
+  "ignoreDependencies": ["@biomejs/biome"],
+
+  "entry": ["scripts/gen-frontend-coverage.mjs"]
 }

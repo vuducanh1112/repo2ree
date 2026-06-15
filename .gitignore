@@ -21,4 +21,5 @@ test-results/
 .coverage
 .coverage.*
 htmlcov/
+htmlcov-e2e/
 coverage.xml

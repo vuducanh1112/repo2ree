@@ -8,7 +8,7 @@
 	be-coverage be-coverage-unit be-coverage-context \
 	test-checks \
 	workbench-image \
-	e2e-tests e2e-demo
+	run-api e2e-tests e2e-demo e2e-coverage
 
 # ================================================
 # Frontend — checks and tests
@@ -163,6 +163,52 @@ e2e-tests:
 
 e2e-demo:
 	cd frontend && npm exec -- playwright test -c playwright.config.ts --project=demo
+
+# Backend launcher. No --reload: reload spawns a child process the coverage
+# harness can't see, and e2e-coverage needs to own (and measure) this exact
+# process. Serves the same app the frontend's VITE_API_BASE_URL points at.
+# Needs docker + the workbench image, since requests provision real workbenches.
+run-api:
+	uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 > fastapi.log 2>&1
+
+# Full-stack e2e coverage: browser (frontend) + server (backend) in one run.
+#
+# The backend is started *under* coverage (you can't measure an already-running
+# server), the e2e suite runs with E2E_COVERAGE=1 so the jsCoverage fixture
+# captures browser V8 coverage, then the backend gets a graceful SIGTERM so
+# coverage flushes its data on shutdown. Two reports come out: backend
+# (htmlcov-e2e/) and frontend (frontend/coverage/frontend/). Needs docker + the
+# workbench image + browsers, like the e2e suite itself.
+#
+# Backend data uses its own COVERAGE_FILE so it never clobbers be-coverage's.
+E2E_COVERAGE_FILE = $(CURDIR)/.coverage.e2e
+
+e2e-coverage:
+	@echo ">> starting backend under coverage on :8000"
+	@rm -f $(E2E_COVERAGE_FILE) $(E2E_COVERAGE_FILE).*
+	@rm -rf frontend/test-results/e2e-coverage/raw
+	@set -e; \
+	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage run --parallel-mode \
+		-m uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 > fastapi.log 2>&1 & \
+	api_pid=$$!; \
+	trap 'kill -TERM $$api_pid 2>/dev/null || true' EXIT; \
+	for i in $$(seq 1 30); do \
+		curl -sf http://127.0.0.1:8000/ >/dev/null 2>&1 && break; sleep 1; \
+	done; \
+	status=0; \
+	( cd frontend && E2E_COVERAGE=1 npm exec -- playwright test \
+		-c playwright.config.ts --project=e2e ) || status=$$?; \
+	echo ">> stopping backend (SIGTERM) so coverage flushes"; \
+	kill -TERM $$api_pid 2>/dev/null || true; \
+	wait $$api_pid 2>/dev/null || true; \
+	trap - EXIT; \
+	echo ">> backend coverage"; \
+	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage combine; \
+	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage html -d htmlcov-e2e; \
+	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage report; \
+	echo ">> frontend coverage"; \
+	( cd frontend && node scripts/gen-frontend-coverage.mjs ); \
+	exit $$status
 
 # ================================================
 # Build

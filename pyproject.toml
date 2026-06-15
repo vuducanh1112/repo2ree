@@ -38,6 +38,10 @@ addopts = "-ra"
 # of the value is in the error/cancel branches the container-free tier added.
 [tool.coverage.run]
 branch = true
+# e2e-coverage runs the API server under coverage and stops it with SIGTERM;
+# without this, coverage's atexit save never fires and the run records nothing.
+# Inert for the pytest targets, which exit normally.
+sigterm = true
 source = [
     "protocol/src/repo2ree_protocol",
     "core/src/repo2ree_core",
