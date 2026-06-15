@@ -35,7 +35,7 @@ export default defineConfig({
       // a trace is kept only for failures, which is cheap and debuggable.
       name: "e2e",
       testDir: "./tests/e2e",
-      outputDir: "./test-results/e2e",
+      outputDir: "./test-artifacts/playwright/e2e",
       // Generous per-test budget: with DinD, each workbench builds against a
       // cold (empty) image cache, so a test that builds + runs can need ~60s+.
       timeout: 180 * 1000,
@@ -53,7 +53,7 @@ export default defineConfig({
       // videos never collide with the e2e suite.
       name: "demo",
       testDir: "./tests/demo",
-      outputDir: "./test-results/demo",
+      outputDir: "./test-artifacts/playwright/demo",
       timeout: 300 * 1000,
       expect: { timeout: 10 * 1000 },
       use: {

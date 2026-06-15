@@ -4,9 +4,9 @@ import { test as base, expect } from "@playwright/test";
 import { cleanupWorkbench } from "./flow";
 
 // Raw per-test V8 coverage lands here; `scripts/gen-frontend-coverage.mjs`
-// merges it into an istanbul/lcov report. Under test-results/ so it's already
-// gitignored and cleared with the rest of the run artifacts.
-const COVERAGE_RAW_DIR = join(process.cwd(), "test-results", "e2e-coverage", "raw");
+// merges it into the report. Under test-artifacts/ (the one gitignored root for
+// all test output) alongside the generated coverage/.
+const COVERAGE_RAW_DIR = join(process.cwd(), "test-artifacts", "coverage-raw");
 
 /**
  * e2e `test` with guaranteed workbench teardown, plus opt-in JS coverage.

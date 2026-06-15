@@ -14,12 +14,12 @@ result-*
 # Local runtime state
 .repo2ree/
 
-# Per-test telemetry artifacts (workbench container logs etc.)
-test-results/
+# Test artifacts — all coverage reports/data and observability traces live
+# under one gitignored root (see test-artifacts/ layout in the Makefile).
+/test-artifacts/
 
-# Coverage artifacts
+# Coverage data files, in case a run lands one at the repo root rather than the
+# configured data_file path.
 .coverage
 .coverage.*
-htmlcov/
-htmlcov-e2e/
 coverage.xml

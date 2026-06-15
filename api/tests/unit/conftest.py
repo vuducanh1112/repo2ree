@@ -28,7 +28,7 @@ from uuid import uuid4
 
 import pytest
 
-TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-results" / "api-unit"
+TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "traces" / "api-unit"
 
 # Env vars take precedence over .env in pydantic-settings, and the settings
 # (plus the registry singleton built from them) are read at import time — so

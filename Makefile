@@ -112,19 +112,20 @@ supervisor-tests: supervisor-integration-tests
 be-tests: be-unit-tests be-integration-tests
 
 # ================================================
-# Coverage
+# Backend - tests with coverage
 # ================================================
 #
-# Both targets write an HTML report to htmlcov/ alongside the terminal
-# summary. The `--cov` source list lives in [tool.coverage.run] in
-# pyproject.toml, so a bare `--cov` is all pytest needs here.
+# Reports land under test-artifacts/coverage/<variant>/ (one per target, so they
+# never clobber each other); the .coverage data lives under
+# test-artifacts/coverage/data (set in [tool.coverage.run] in pyproject.toml).
+# The `--cov` source list also lives there, so a bare `--cov` is all pytest needs.
 
 # Container-free tiers in one process: fast and deterministic, runs anywhere.
 # The Docker-gated transport (supervisor manager, hbom profilers) is not
 # exercised, so it reads as uncovered — this number is a floor, not the truth.
 be-coverage-unit:
 	pytest core/tests/unit api/tests/unit executor/tests core/tests/integration \
-		--cov --cov-report=term-missing --cov-report=html
+		--cov --cov-report=term-missing --cov-report=html:test-artifacts/coverage/unit
 
 # Full suite: the honest number, but the integration tiers skip silently
 # without docker + the workbench image (build it with `make workbench-image`).
@@ -138,20 +139,20 @@ be-coverage:
 	pytest core/tests api/tests/unit supervisor/tests executor/tests \
 		--cov --cov-report=
 	pytest api/tests/integration \
-		--cov --cov-append --cov-report=term-missing --cov-report=html
+		--cov --cov-append --cov-report=term-missing --cov-report=html:test-artifacts/coverage/full
 
 # Per-test coverage: same two-process split as be-coverage, but each line is
 # tagged with the test that executed it (--cov-context=test). The HTML report
 # is built with `coverage html --show-contexts` so each source line lists which
-# tests hit it (use the filter box in htmlcov/index.html to narrow to one test).
-# --show-contexts is kept on this target only, so the plain be-coverage report
-# stays uncluttered.
+# tests hit it (use the filter box in the report's index.html to narrow to one
+# test). --show-contexts is kept on this target only, so the plain be-coverage
+# report stays uncluttered.
 be-coverage-context:
 	pytest core/tests api/tests/unit supervisor/tests executor/tests \
 		--cov --cov-context=test --cov-report=
 	pytest api/tests/integration \
 		--cov --cov-append --cov-context=test --cov-report=
-	coverage html --show-contexts
+	coverage html --show-contexts -d test-artifacts/coverage/context
 	coverage report
 
 # ================================================
@@ -177,19 +178,22 @@ run-api:
 # server), the e2e suite runs with E2E_COVERAGE=1 so the jsCoverage fixture
 # captures browser V8 coverage, then the backend gets a graceful SIGTERM so
 # coverage flushes its data on shutdown. Two reports come out: backend
-# (htmlcov-e2e/) and frontend (frontend/coverage/frontend/). Needs docker + the
-# workbench image + browsers, like the e2e suite itself.
+# (test-artifacts/coverage/e2e/) and frontend (frontend/test-artifacts/coverage/).
+# Needs docker + the workbench image + browsers, like the e2e suite itself.
 #
-# Backend data uses its own COVERAGE_FILE so it never clobbers be-coverage's.
-E2E_COVERAGE_FILE = $(CURDIR)/.coverage.e2e
+# Backend data uses its own COVERAGE_FILE so it never clobbers be-coverage's,
+# but lives in the same test-artifacts/coverage/data dir.
+E2E_COVERAGE_FILE = $(CURDIR)/test-artifacts/coverage/data/.coverage.e2e
 
 e2e-coverage:
 	@echo ">> starting backend under coverage on :8000"
 	@rm -f $(E2E_COVERAGE_FILE) $(E2E_COVERAGE_FILE).*
-	@rm -rf frontend/test-results/e2e-coverage/raw
+	@rm -rf frontend/test-artifacts/coverage-raw
+	@mkdir -p test-artifacts/coverage/e2e
 	@set -e; \
 	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage run --parallel-mode \
-		-m uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 > fastapi.log 2>&1 & \
+		-m uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
+		> test-artifacts/coverage/e2e/backend.log 2>&1 & \
 	api_pid=$$!; \
 	trap 'kill -TERM $$api_pid 2>/dev/null || true' EXIT; \
 	for i in $$(seq 1 30); do \
@@ -204,7 +208,7 @@ e2e-coverage:
 	trap - EXIT; \
 	echo ">> backend coverage"; \
 	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage combine; \
-	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage html -d htmlcov-e2e; \
+	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage html -d test-artifacts/coverage/e2e; \
 	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage report; \
 	echo ">> frontend coverage"; \
 	( cd frontend && node scripts/gen-frontend-coverage.mjs ); \

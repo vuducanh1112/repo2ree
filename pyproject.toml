@@ -38,6 +38,11 @@ addopts = "-ra"
 # of the value is in the error/cancel branches the container-free tier added.
 [tool.coverage.run]
 branch = true
+# All test artifacts live under test-artifacts/ (one gitignored root). Coverage
+# data — the .coverage db plus parallel .coverage.* files — goes here; coverage
+# creates the directory. The e2e target overrides this via COVERAGE_FILE to keep
+# its own data file alongside, in the same dir.
+data_file = "test-artifacts/coverage/data/.coverage"
 # e2e-coverage runs the API server under coverage and stops it with SIGTERM;
 # without this, coverage's atexit save never fires and the run records nothing.
 # Inert for the pytest targets, which exit normally.

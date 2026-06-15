@@ -11,8 +11,8 @@ import { join } from "node:path";
 import { CoverageReport } from "monocart-coverage-reports";
 
 const cwd = process.cwd();
-const rawDir = join(cwd, "test-results", "e2e-coverage", "raw");
-const outputDir = join(cwd, "coverage", "frontend");
+const rawDir = join(cwd, "test-artifacts", "coverage-raw");
+const outputDir = join(cwd, "test-artifacts", "coverage");
 
 if (!existsSync(rawDir)) {
   console.error(`No raw coverage at ${rawDir}.`);

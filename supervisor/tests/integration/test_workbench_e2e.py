@@ -45,7 +45,7 @@ from repo2ree_supervisor import WorkbenchHandle, WorkbenchManager, WorkbenchRegi
 
 WORKBENCH_IMAGE = "repo2ree-workbench:latest"
 
-TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-results" / "supervisor-e2e"
+TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "traces" / "supervisor-e2e"
 
 
 # ================================================
