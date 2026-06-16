@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { standingMeta } from "../../../../core/review/axes";
 import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import { C, F } from "../../theme/theme";
-import type { CableGeo } from "../pages/overview/PanelCableOverlayHelpers";
 import { CableOverlaySvg } from "../pages/overview/PanelCableOverlaySections";
 import { PodWidget } from "../pages/overview/PodWidget";
 import type { AppShellPage } from "../state/pages";
-import { PAGE } from "../state/pages";
 import { BenchConsole } from "./BenchConsole";
 import {
   CANVAS_NODES,
@@ -20,20 +18,10 @@ import {
   nodeSummary,
   type SummaryRow,
 } from "./canvasNodes";
+import { useCableGeometry } from "./useCableGeometry";
+import { useCanvasViewport } from "./useCanvasViewport";
 
 const DONE = "#10b981";
-const ZOOM_MIN = 0.45;
-const ZOOM_MAX = 1.7;
-// Pod sphere geometry inside PodWidget's 580-unit viewBox (centre + radius).
-const POD_CX = 290;
-const POD_CY = 290;
-const POD_SR = 118;
-
-interface Transform {
-  x: number;
-  y: number;
-  z: number;
-}
 
 interface CanvasHubProps {
   page: AppShellPage;
@@ -55,137 +43,33 @@ export function CanvasHub({
   onNavigate,
 }: CanvasHubProps) {
   const stageRef = useRef<HTMLDivElement>(null);
+  const worldRef = useRef<HTMLDivElement>(null);
   const podSvgRef = useRef<SVGSVGElement>(null);
   const nodeEls = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [tf, setTf] = useState<Transform>({ x: 0, y: 0, z: 1 });
-  const [animate, setAnimate] = useState(false);
-  const [geo, setGeo] = useState<CableGeo | null>(null);
-  const drag = useRef<{ sx: number; sy: number; x0: number; y0: number } | null>(null);
 
-  // Measure cable endpoints in the stage's screen space (so pan/zoom transforms
-  // on the world layer are absorbed), then feed the shared Overview cable look.
-  const measure = useCallback(() => {
-    const stage = stageRef.current;
-    const podSvg = podSvgRef.current;
-    if (!stage || !podSvg) return;
-    const ctm = podSvg.getScreenCTM();
-    if (!ctm) return;
-    const cRect = stage.getBoundingClientRect();
-    const toStage = (px: number, py: number) => ({
-      x: ctm.a * px + ctm.c * py + ctm.e - cRect.left,
-      y: ctm.b * px + ctm.d * py + ctm.f - cRect.top,
-    });
-    const center = toStage(POD_CX, POD_CY);
-    const edge = toStage(POD_CX + POD_SR, POD_CY);
-    const radius = Math.hypot(edge.x - center.x, edge.y - center.y);
-    const intercept = (x: number, y: number) => {
-      const dx = x - center.x;
-      const dy = y - center.y;
-      const len = Math.hypot(dx, dy) || 1;
-      return { x: center.x + (dx / len) * radius, y: center.y + (dy / len) * radius };
-    };
+  const {
+    tf,
+    animate,
+    nodeOffsets,
+    wasNodeDragged,
+    isPanning,
+    startPan,
+    startNodeDrag,
+    resetView,
+    zoomBy,
+  } = useCanvasViewport(stageRef);
 
-    const cables = CANVAS_NODES.flatMap((node) => {
-      if (node.key === PAGE.FILES) return [];
-      const el = nodeEls.current[node.key];
-      if (!el) return [];
-      const r = el.getBoundingClientRect();
-      const left = r.left - cRect.left;
-      const right = r.right - cRect.left;
-      const top = r.top - cRect.top;
-      const bottom = r.bottom - cRect.top;
-      let px = (left + right) / 2;
-      let py = (top + bottom) / 2;
-      if (node.x <= -60) px = right;
-      else if (node.x >= 60) px = left;
-      else if (node.y < 0) py = bottom;
-      else py = top;
-      const pod = intercept(px, py);
-      return [
-        {
-          id: node.key,
-          x1: px,
-          y1: py,
-          x2: pod.x,
-          y2: pod.y,
-          color: node.color,
-          shadow: node.shadow,
-          connected: isNodeDone(node, ree, badges),
-        },
-      ];
-    });
-    setGeo({ cables, decoCables: [], w: cRect.width, h: cRect.height });
-  }, [ree, badges]);
-
-  // Re-measure after every transform/data change (and on resize).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: tf re-measures cables on pan/zoom
-  useEffect(() => {
-    const id = requestAnimationFrame(measure);
-    return () => cancelAnimationFrame(id);
-  }, [measure, tf]);
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const ro = new ResizeObserver(() => requestAnimationFrame(measure));
-    ro.observe(stage);
-    return () => ro.disconnect();
-  }, [measure]);
-
-  // Wheel-to-zoom toward the cursor. Attached natively so preventDefault works.
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const onWheel = (event: WheelEvent) => {
-      event.preventDefault();
-      const rect = stage.getBoundingClientRect();
-      setAnimate(false);
-      setTf((prev) => {
-        const ox = event.clientX - rect.left - rect.width / 2 - prev.x;
-        const oy = event.clientY - rect.top - rect.height / 2 - prev.y;
-        const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
-        const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev.z * factor));
-        const ratio = z / prev.z - 1;
-        return { x: prev.x - ox * ratio, y: prev.y - oy * ratio, z };
-      });
-    };
-    stage.addEventListener("wheel", onWheel, { passive: false });
-    return () => stage.removeEventListener("wheel", onWheel);
-  }, []);
-
-  useEffect(() => {
-    const onMove = (event: MouseEvent) => {
-      const d = drag.current;
-      if (!d) return;
-      setTf((prev) => ({
-        ...prev,
-        x: d.x0 + (event.clientX - d.sx),
-        y: d.y0 + (event.clientY - d.sy),
-      }));
-    };
-    const onUp = () => {
-      drag.current = null;
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, []);
-
-  const startPan = (event: React.MouseEvent) => {
-    if ((event.target as HTMLElement).closest("[data-canvas-node]")) return;
-    setAnimate(false);
-    drag.current = { sx: event.clientX, sy: event.clientY, x0: tf.x, y0: tf.y };
-  };
-  const resetView = () => {
-    setAnimate(true);
-    setTf({ x: 0, y: 0, z: 1 });
-  };
-  const zoomBy = (factor: number) => {
-    setAnimate(true);
-    setTf((prev) => ({ ...prev, z: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev.z * factor)) }));
-  };
+  const geo = useCableGeometry({
+    stageRef,
+    podSvgRef,
+    worldRef,
+    nodeEls,
+    ree,
+    badges,
+    tf,
+    nodeOffsets,
+    animate,
+  });
 
   const { completed, total } = lifecycleProgress(ree, badges);
   const ready = completed >= total;
@@ -200,7 +84,7 @@ export function CanvasHub({
         position: "absolute",
         inset: 0,
         overflow: "hidden",
-        cursor: drag.current ? "grabbing" : "grab",
+        cursor: isPanning ? "grabbing" : "grab",
         opacity: dimmed ? 0.4 : 1,
         transition: "opacity 0.3s",
         background: `
@@ -212,6 +96,7 @@ export function CanvasHub({
       {geo && <CableOverlaySvg geo={geo} levelMeta={levelMeta} />}
 
       <div
+        ref={worldRef}
         style={{
           position: "absolute",
           left: "50%",
@@ -237,24 +122,31 @@ export function CanvasHub({
           }}
         />
         <div style={{ position: "absolute", left: 0, top: 0, transform: "translate(-50%,-50%)" }}>
-          <PodWidget evaluation={evaluation} svgRef={podSvgRef} size={300} />
+          <PodWidget evaluation={evaluation} svgRef={podSvgRef} size={380} />
         </div>
 
         <nav aria-label="Workspace pages">
-          {CANVAS_NODES.map((node) => (
-            <NodeCard
-              key={node.key}
-              node={node}
-              setRef={(el) => {
-                nodeEls.current[node.key] = el;
-              }}
-              done={isNodeDone(node, ree, badges)}
-              locked={isNodeLocked(node, provisioned)}
-              active={isNodeActive(node, page)}
-              rows={nodeSummary(node, ree)}
-              onNavigate={onNavigate}
-            />
-          ))}
+          {CANVAS_NODES.map((node) => {
+            const off = nodeOffsets[node.key] ?? { x: 0, y: 0 };
+            return (
+              <NodeCard
+                key={node.key}
+                node={node}
+                offsetX={off.x}
+                offsetY={off.y}
+                setRef={(el) => {
+                  nodeEls.current[node.key] = el;
+                }}
+                done={isNodeDone(node, ree, badges)}
+                locked={isNodeLocked(node, provisioned)}
+                active={isNodeActive(node, page)}
+                rows={nodeSummary(node, ree)}
+                onNavigate={onNavigate}
+                onStartDrag={startNodeDrag}
+                wasNodeDragged={wasNodeDragged}
+              />
+            );
+          })}
         </nav>
       </div>
 
@@ -297,15 +189,31 @@ export function CanvasHub({
 
 interface NodeCardProps {
   node: CanvasNode;
+  offsetX: number;
+  offsetY: number;
   setRef: (el: HTMLButtonElement | null) => void;
   done: boolean;
   locked: boolean;
   active: boolean;
   rows: SummaryRow[];
   onNavigate: (page: AppShellPage) => void;
+  onStartDrag: (key: string, sx: number, sy: number) => void;
+  wasNodeDragged: React.RefObject<boolean>;
 }
 
-function NodeCard({ node, setRef, done, locked, active, rows, onNavigate }: NodeCardProps) {
+function NodeCard({
+  node,
+  offsetX,
+  offsetY,
+  setRef,
+  done,
+  locked,
+  active,
+  rows,
+  onNavigate,
+  onStartDrag,
+  wasNodeDragged,
+}: NodeCardProps) {
   return (
     <button
       type="button"
@@ -313,11 +221,17 @@ function NodeCard({ node, setRef, done, locked, active, rows, onNavigate }: Node
       aria-label={node.label}
       ref={setRef}
       disabled={locked}
-      onClick={() => onNavigate(node.key)}
+      onMouseDown={(e) => {
+        if (!locked) onStartDrag(node.key, e.clientX, e.clientY);
+      }}
+      onClick={() => {
+        if (wasNodeDragged.current) return;
+        onNavigate(node.key);
+      }}
       style={{
         position: "absolute",
-        left: node.x,
-        top: node.y,
+        left: node.x + offsetX,
+        top: node.y + offsetY,
         transform: "translate(-50%,-50%)",
         width: 176,
         textAlign: "left",
