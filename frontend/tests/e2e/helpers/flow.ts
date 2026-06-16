@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect, type Page } from "@playwright/test";
+import { stepShot } from "../../screenshot";
 
 /**
  * Lean, reusable steps for driving the REE creation pipeline against a real
@@ -50,18 +51,23 @@ async function openPort(page: Page, label: string) {
 /** Land on the workbench page from the landing view. */
 export async function startReeCreation(page: Page) {
   await page.goto("/");
+  await stepShot(page, "start-ree-creation", "before");
   await page.getByRole("button", { name: "Create REE" }).click();
   await expect(main(page).getByText("Workbench", { exact: true })).toBeVisible();
+  await stepShot(page, "start-ree-creation", "after");
 }
 
 /** Provision the workbench container; resolves once Source Acquisition shows. */
 export async function provisionWorkbench(page: Page) {
+  await stepShot(page, "provision-workbench", "before");
   await page.getByRole("button", { name: /Provision workbench/i }).click();
   await expect(main(page).getByText("Source Acquisition", { exact: true })).toBeVisible();
+  await stepShot(page, "provision-workbench", "after");
 }
 
 /** Upload a tarball into the workspace and wait for the snapshot to settle. */
 export async function uploadSource(page: Page, archivePath: string) {
+  await stepShot(page, "upload-source", "before");
   await page.getByRole("button", { name: "Upload tarball" }).click();
   await page
     .locator('input[type="file"][accept=".zip,.tar,.gz,.tgz,.tar.gz"]')
@@ -74,6 +80,7 @@ export async function uploadSource(page: Page, archivePath: string) {
     .filter({ hasText: /Browse workspace files/ })
     .first();
   await expect(workspaceActions).toBeVisible();
+  await stepShot(page, "upload-source", "after");
   return workspaceActions;
 }
 
@@ -82,15 +89,18 @@ export async function provideMetadata(
   page: Page,
   meta: { name: string; version: string; description: string },
 ) {
+  await stepShot(page, "provide-metadata", "before");
   await openPort(page, "Metadata");
   await expect(main(page).getByRole("heading", { name: "Metadata", exact: true })).toBeVisible();
   await page.getByPlaceholder("deepfold-protein-structure-prediction").fill(meta.name);
   await page.getByPlaceholder("1.0.0").fill(meta.version);
   await page.getByPlaceholder("REE for reproducible execution of...").fill(meta.description);
+  await stepShot(page, "provide-metadata", "after");
 }
 
 /** Run dependency evaluation and wait for the score to be produced. */
 export async function runEvaluate(page: Page) {
+  await stepShot(page, "run-evaluate", "before");
   await openPort(page, "Repro Label");
   await expect(main(page).getByText("Evaluate", { exact: true })).toBeVisible();
   await main(page)
@@ -99,6 +109,7 @@ export async function runEvaluate(page: Page) {
   await expect(main(page).getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible({
     timeout: 20000,
   });
+  await stepShot(page, "run-evaluate", "after");
 }
 
 /**
@@ -111,6 +122,7 @@ export async function buildRuntime(
   buildScriptPath: string,
   producedRuntimePath: string,
 ) {
+  await stepShot(page, "build-runtime", "before");
   await openPort(page, "Runtime");
   await expect(main(page).getByText("Runtime Environment", { exact: true })).toBeVisible();
   await page.getByPlaceholder("build_runtime.sh").fill(buildScriptPath);
@@ -132,16 +144,19 @@ export async function buildRuntime(
   const producedRuntime = page.getByRole("button", { name: producedRuntimePath });
   await expect(producedRuntime).toBeVisible({ timeout: 20000 });
   await producedRuntime.click();
+  await stepShot(page, "build-runtime", "after");
 }
 
 /** Add a hardware BOM entry (a CPU component with a device model). */
 export async function provideHbom(page: Page, cpuModel: string) {
+  await stepShot(page, "provide-hbom", "before");
   await openPort(page, "Hardware");
   await expect(main(page).getByText("Hardware BOM", { exact: true })).toBeVisible();
   await main(page).locator("button").filter({ hasText: "Add CPU" }).first().click();
   const deviceModel = main(page).getByPlaceholder("Intel Core i9-14900K").first();
   await deviceModel.fill(cpuModel);
   await expect(deviceModel).toHaveValue(cpuModel);
+  await stepShot(page, "provide-hbom", "after");
 }
 
 /**
@@ -150,6 +165,7 @@ export async function provideHbom(page: Page, cpuModel: string) {
  * Environment page, so call after {@link buildRuntime}.
  */
 export async function generateSbom(page: Page) {
+  await stepShot(page, "generate-sbom", "before");
   const tab = main(page).locator("button[aria-pressed]").filter({ hasText: "Generate SBOM" });
   await tab.click();
   await expect(tab).toHaveAttribute("aria-pressed", "true");
@@ -164,6 +180,7 @@ export async function generateSbom(page: Page) {
   await expect(main(page).getByText("SBOM ready", { exact: true }).first()).toBeVisible({
     timeout: 20000,
   });
+  await stepShot(page, "generate-sbom", "after");
 }
 
 /**
@@ -172,6 +189,7 @@ export async function generateSbom(page: Page) {
  * {@link buildRuntime}.
  */
 export async function testActivation(page: Page, activationScriptPath: string) {
+  await stepShot(page, "test-activation", "before");
   const tab = main(page).locator("button[aria-pressed]").filter({ hasText: "Test Activation" });
   await tab.click();
   await expect(tab).toHaveAttribute("aria-pressed", "true");
@@ -182,6 +200,7 @@ export async function testActivation(page: Page, activationScriptPath: string) {
     .click();
   // DinD: cold `docker load` of the runtime image + run (no shared cache).
   await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 90000 });
+  await stepShot(page, "test-activation", "after");
 }
 
 /** Define a single experiment, run it, and wait for it to pass. */
@@ -189,6 +208,7 @@ export async function runExperiment(
   page: Page,
   experiment: { name: string; command: string; expectedStdout: string },
 ) {
+  await stepShot(page, "run-experiment", "before");
   await openPort(page, "Experiments");
   await expect(main(page).getByRole("heading", { name: "Experiments", exact: true })).toBeVisible();
   await main(page)
@@ -212,6 +232,7 @@ export async function runExperiment(
     .first();
   // DinD: cold runtime-image load + container run on the per-REE daemon.
   await expect(runResult.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
+  await stepShot(page, "run-experiment", "after");
 }
 
 /**
@@ -225,6 +246,7 @@ export function sealPanel(page: Page) {
 }
 
 export async function sealRee(page: Page) {
+  await stepShot(page, "seal-ree", "before");
   await openPort(page, "Seal");
   await expect(sealPanel(page).getByText("Seal REE", { exact: true })).toBeVisible();
   await sealPanel(page).getByRole("button", { name: /Seal/ }).first().click();
@@ -235,10 +257,12 @@ export async function sealRee(page: Page) {
   await expect(sealPanel(page).getByText("REE SEALED", { exact: true })).toBeVisible({
     timeout: 30000,
   });
+  await stepShot(page, "seal-ree", "after");
 }
 
 /** Release (tear down) the workbench container; returns to the landing view. */
 async function releaseWorkbench(page: Page) {
+  await stepShot(page, "release-workbench", "before");
   const releaseButton = sealPanel(page)
     .getByRole("button", { name: /Release workbench/i })
     .first();
@@ -246,6 +270,7 @@ async function releaseWorkbench(page: Page) {
   await releaseButton.click();
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("button", { name: /Create REE/i })).toBeVisible();
+  await stepShot(page, "release-workbench", "after");
 }
 
 /**

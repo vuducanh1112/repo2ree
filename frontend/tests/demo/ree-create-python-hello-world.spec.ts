@@ -1,9 +1,21 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
+import { stepShot } from "../screenshot";
 
 const DEMO_STEP_DELAY_MS = 350;
 const DEMO_NARRATION_DELAY_MS = 900;
+
+/**
+ * A demo step: runs the body inside a named `test.step` (so the trace/report
+ * groups its actions) and captures a named, ordered screenshot once the step's
+ * UI has settled.
+ */
+async function demoStep(page: Page, name: string, body: () => Promise<void>) {
+  await stepShot(page, name, "before");
+  await test.step(name, body);
+  await stepShot(page, name, "after");
+}
 
 async function showDemoFocus(locator: Locator, narration?: string) {
   await locator.evaluate((el, text) => {
@@ -173,13 +185,13 @@ test("upload source archive into workspace", async ({ page }) => {
     .first();
   const main = page.getByRole("main");
 
-  await test.step("Open REE creation flow", async () => {
+  await demoStep(page, "Open REE creation flow", async () => {
     await page.goto("/");
     await clickDemo(page, page.getByRole("button", { name: "Create REE" }), "Start REE creation");
     await expect(page.getByRole("main").getByText("Workbench", { exact: true })).toBeVisible();
   });
 
-  await test.step("Provision workbench", async () => {
+  await demoStep(page, "Provision workbench", async () => {
     await clickDemo(
       page,
       page.getByRole("button", { name: /Provision workbench/i }),
@@ -190,7 +202,7 @@ test("upload source archive into workspace", async ({ page }) => {
     ).toBeVisible();
   });
 
-  await test.step("Upload source archive", async () => {
+  await demoStep(page, "Upload source archive", async () => {
     await clickDemo(
       page,
       page.getByRole("button", { name: "Upload tarball" }),
@@ -206,7 +218,7 @@ test("upload source archive into workspace", async ({ page }) => {
     );
   });
 
-  await test.step("Review workspace source", async () => {
+  await demoStep(page, "Review workspace source", async () => {
     await expect(step3WorkspaceActions).toBeVisible();
     await expect(
       step3WorkspaceActions.getByRole("button", { name: /Clear workspace source/i }),
@@ -218,7 +230,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(page.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
   });
 
-  await test.step("Browse extracted files", async () => {
+  await demoStep(page, "Browse extracted files", async () => {
     await clickDemo(
       page,
       step3WorkspaceActions.getByRole("button", { name: /Browse workspace files/i }),
@@ -242,7 +254,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await showcaseScroll(page, -700);
   });
 
-  await test.step("Provide metadata", async () => {
+  await demoStep(page, "Provide metadata", async () => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
@@ -272,7 +284,7 @@ test("upload source archive into workspace", async ({ page }) => {
     );
   });
 
-  await test.step("Provide HBOM entry", async () => {
+  await demoStep(page, "Provide HBOM entry", async () => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
@@ -296,7 +308,7 @@ test("upload source archive into workspace", async ({ page }) => {
     );
   });
 
-  await test.step("Evaluate REE", async () => {
+  await demoStep(page, "Evaluate REE", async () => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
@@ -315,7 +327,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await showcasePanel(page, main.getByText("Run Log").first(), "Review output logs");
   });
 
-  await test.step("Build runtime", async () => {
+  await demoStep(page, "Build runtime", async () => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
@@ -358,7 +370,7 @@ test("upload source archive into workspace", async ({ page }) => {
     );
   });
 
-  await test.step("Generate SBOM", async () => {
+  await demoStep(page, "Generate SBOM", async () => {
     const generateSbomTab = main
       .locator("button[aria-pressed]")
       .filter({ hasText: "Generate SBOM" });
@@ -381,7 +393,7 @@ test("upload source archive into workspace", async ({ page }) => {
 
   //console.log("SBOM generated, proceeding to activation test...");
 
-  await test.step("Test activation", async () => {
+  await demoStep(page, "Test activation", async () => {
     const activationTab = main
       .locator("button[aria-pressed]")
       .filter({ hasText: "Test Activation" });
@@ -403,7 +415,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await showcasePanel(page, main.getByText(/Activation log/i).first(), "Review activation logs");
   });
 
-  await test.step("Run experiment", async () => {
+  await demoStep(page, "Run experiment", async () => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
@@ -450,7 +462,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
   });
 
-  await test.step("Seal and download", async () => {
+  await demoStep(page, "Seal and download", async () => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
@@ -497,7 +509,7 @@ test("upload source archive into workspace", async ({ page }) => {
     expect(download.suggestedFilename()).toMatch(/\.zip$/i);
   });
 
-  await test.step("Release workbench", async () => {
+  await demoStep(page, "Release workbench", async () => {
     const releaseButton = page
       .getByRole("region", { name: "Seal" })
       .getByRole("button", { name: /Release workbench/i })
