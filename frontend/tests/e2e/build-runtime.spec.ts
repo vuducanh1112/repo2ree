@@ -9,7 +9,7 @@ import {
 } from "./helpers/flow";
 
 test.describe("Runtime Environment page", () => {
-  test("building and including the runtime activates the Runtime cable", async ({ page }) => {
+  test("building and including the runtime marks the Runtime node done", async ({ page }) => {
     await startReeCreation(page);
     await provisionWorkbench(page);
     await uploadSource(page, pythonHelloWorld());

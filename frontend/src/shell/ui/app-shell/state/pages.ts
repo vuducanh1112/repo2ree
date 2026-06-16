@@ -56,7 +56,7 @@ const FIELD_TO_PAGE: Partial<Record<keyof ReeEditorViewModel, AppShellPage>> = {
   dataverse_doi: PAGE.ARCHIVE,
 };
 
-export function isValidAppShellPage(value: string): value is AppShellPage {
+function isValidAppShellPage(value: string): value is AppShellPage {
   return WORKSPACE_SHELL_PAGES.includes(value as AppShellPage);
 }
 

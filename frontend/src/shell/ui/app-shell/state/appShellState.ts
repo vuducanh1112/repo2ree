@@ -25,7 +25,6 @@ interface AppShellState {
   toast: ToastState | null;
   page: AppShellPage;
   focusedField: string | null;
-  navCollapsed: boolean;
   sourceSnapshotArchiveName: string;
   showReviewPreview: boolean;
 }

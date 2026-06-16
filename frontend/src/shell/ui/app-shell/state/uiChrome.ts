@@ -6,7 +6,6 @@ export interface UiChromeState {
   toast: ToastState | null;
   page: AppShellPage;
   focusedField: string | null;
-  navCollapsed: boolean;
   showReviewPreview: boolean;
   locked: boolean;
   repoMode: "url" | "upload";
@@ -18,7 +17,6 @@ export function createInitialUiChromeState(): UiChromeState {
     toast: null,
     page: PAGE.SOURCE,
     focusedField: null,
-    navCollapsed: false,
     showReviewPreview: false,
     locked: false,
     repoMode: "url",

@@ -85,12 +85,6 @@ export function createReeEditorCommands({
   // (page/nav/focus/review-preview/repo-mode).
   return {
     setPage: (nextPage: AppShellPage) => dispatch(patch("uiChrome", { page: nextPage })),
-    setNavCollapsed: (value: boolean | ((current: boolean) => boolean)) =>
-      dispatch(
-        patch("uiChrome", {
-          navCollapsed: typeof value === "function" ? value(uiChrome.navCollapsed) : value,
-        }),
-      ),
     setReeSpec: (value: Updater<ReeSpec>) =>
       dispatch(updateReeSpec(() => resolveNext(reeIntent.reeSpec, value))),
     setWorkspaceSourceState: (value: Updater<WorkspaceSourceState>) =>

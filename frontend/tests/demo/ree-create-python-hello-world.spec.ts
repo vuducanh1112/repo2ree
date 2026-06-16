@@ -154,10 +154,6 @@ test("upload source archive into workspace", async ({ page }) => {
   // with the narration delays this needs a much larger budget than warm runs.
   test.setTimeout(420000);
 
-  const expectOverviewCableActive = async (label: string) => {
-    await expect(page.getByText(`✓ ${label}`, { exact: true })).toBeVisible();
-  };
-
   const sourceArchive = path.resolve(__dirname, "../resources/examples/python-hello-world.tar.gz");
   const archiveEntries = execFileSync("tar", ["-tzf", sourceArchive], { encoding: "utf8" })
     .split("\n")
@@ -247,9 +243,10 @@ test("upload source archive into workspace", async ({ page }) => {
   });
 
   await test.step("Provide metadata", async () => {
+    await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("button", { name: /Provide Metadata.*project identity metadata/i }),
+      page.getByRole("navigation").getByRole("button", { name: "Metadata", exact: true }),
       "Provide project metadata",
     );
     await expect(main.getByRole("heading", { name: "Metadata", exact: true })).toBeVisible();
@@ -276,9 +273,10 @@ test("upload source archive into workspace", async ({ page }) => {
   });
 
   await test.step("Provide HBOM entry", async () => {
+    await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("button", { name: /Create HBOM.*Enter hardware bill of materials/ }),
+      page.getByRole("navigation").getByRole("button", { name: "Hardware", exact: true }),
       "Add a hardware bill of materials entry",
     );
     await expect(main.getByText("Hardware BOM", { exact: true })).toBeVisible();
@@ -299,9 +297,10 @@ test("upload source archive into workspace", async ({ page }) => {
   });
 
   await test.step("Evaluate REE", async () => {
+    await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("button", { name: /Evaluate.*Score reproducibility level/ }),
+      page.getByRole("navigation").getByRole("button", { name: "Repro Label", exact: true }),
       "Evaluate the projects risks to reproducibility, by analyzing declared dependencies",
     );
     await expect(main.getByText("Evaluate", { exact: true })).toBeVisible();
@@ -314,15 +313,13 @@ test("upload source archive into workspace", async ({ page }) => {
       timeout: 60000,
     });
     await showcasePanel(page, main.getByText("Run Log").first(), "Review output logs");
-    await expectOverviewCableActive("Evaluate");
   });
 
   await test.step("Build runtime", async () => {
+    await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("button", {
-        name: /Runtime Environment.*Build, inventory, and verify runtime/,
-      }),
+      page.getByRole("navigation").getByRole("button", { name: "Runtime", exact: true }),
       "Build runtime artifact",
     );
     await expect(main.getByText("Runtime Environment", { exact: true })).toBeVisible();
@@ -359,7 +356,6 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("button", { name: "python_hello_world/runtime.tar" }),
       "Select produced runtime file",
     );
-    await expectOverviewCableActive("Runtime");
   });
 
   await test.step("Generate SBOM", async () => {
@@ -381,7 +377,6 @@ test("upload source archive into workspace", async ({ page }) => {
       timeout: 60000,
     });
     await showcasePanel(page, main.getByText(/SBOM log/i).first(), "Review SBOM logs");
-    await expectOverviewCableActive("SBOM");
   });
 
   //console.log("SBOM generated, proceeding to activation test...");
@@ -406,13 +401,13 @@ test("upload source archive into workspace", async ({ page }) => {
     );
     await expect(main.getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 90000 });
     await showcasePanel(page, main.getByText(/Activation log/i).first(), "Review activation logs");
-    await expectOverviewCableActive("Activation");
   });
 
   await test.step("Run experiment", async () => {
+    await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("button", { name: /Experiments.*Define reproducibility experiment commands/ }),
+      page.getByRole("navigation").getByRole("button", { name: "Experiments", exact: true }),
       "Open experiments page",
     );
     await expect(main.getByRole("heading", { name: "Experiments", exact: true })).toBeVisible();
@@ -456,37 +451,46 @@ test("upload source archive into workspace", async ({ page }) => {
   });
 
   await test.step("Seal and download", async () => {
+    await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("button", { name: /Seal.*Seal the REE/ }),
+      page.getByRole("navigation").getByRole("button", { name: "Seal", exact: true }),
       "Seal the REE package",
     );
-    await expect(main.getByText("Seal REE", { exact: true })).toBeVisible();
-    await clickDemo(page, main.getByRole("button", { name: /Seal/ }).first(), "Confirm sealing");
-    await expect(main.getByText("Seal this REE?", { exact: true })).toBeVisible();
-    // The seal window is where source/runtime bundling is chosen; both default
-    // to "included" since they are available in the workspace.
-    await expect(main.getByText("Bundle contents", { exact: true })).toBeVisible();
+    // The seal panel is pinned inside the constellation hub, not the docked main.
+    const sealPanel = page.getByRole("region", { name: "Seal" });
+    await expect(sealPanel.getByText("Seal REE", { exact: true })).toBeVisible();
+    await clickDemo(
+      page,
+      sealPanel.getByRole("button", { name: /Seal/ }).first(),
+      "Confirm sealing",
+    );
+    await expect(sealPanel.getByText("Seal this REE?", { exact: true })).toBeVisible();
+    // The seal confirmation is where source/runtime bundling is chosen; both
+    // default to "included" since they are available in the workspace.
+    await expect(sealPanel.getByText("Bundle contents", { exact: true })).toBeVisible();
 
     // Finalizing the seal locks the REE (read-only) but no longer auto-downloads;
     // sealing and downloading are now separate actions.
     await clickDemo(
       page,
-      main.getByRole("button", { name: /Seal (REE|anyway)/ }),
+      sealPanel.getByRole("button", { name: /Seal (REE|anyway)/ }),
       "Finalize seal — locks the REE with the chosen bundle contents",
     );
     // Sealing is a heavy synchronous round-trip (the backend assembles the
     // bundle twice — a digest pre-pass plus the final stamped build — then
     // re-enumerates the workspace), so allow the same budget as the other
     // backend-bound steps rather than the tighter 20s that flaked under load.
-    await expect(main.getByText("REE SEALED", { exact: true })).toBeVisible({ timeout: 60000 });
+    await expect(sealPanel.getByText("REE SEALED", { exact: true })).toBeVisible({
+      timeout: 60000,
+    });
 
     // The sealed card offers an explicit download of the archive.
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       clickDemo(
         page,
-        main.getByRole("button", { name: /Download REE/ }).first(),
+        sealPanel.getByRole("button", { name: /Download REE/ }).first(),
         "Download the sealed REE archive",
       ),
     ]);
@@ -494,7 +498,10 @@ test("upload source archive into workspace", async ({ page }) => {
   });
 
   await test.step("Release workbench", async () => {
-    const releaseButton = main.getByRole("button", { name: /Release workbench/i }).first();
+    const releaseButton = page
+      .getByRole("region", { name: "Seal" })
+      .getByRole("button", { name: /Release workbench/i })
+      .first();
     await expect(releaseButton).toBeVisible();
     await clickDemo(page, releaseButton, "Release the workbench container");
     await expect(page).toHaveURL("/");

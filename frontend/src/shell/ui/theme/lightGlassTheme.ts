@@ -685,7 +685,7 @@ export function lgFileTypeColor(category: FileTypeCategory): string {
 // orbit the central specimen pod, each tinted with its stage hue for wayfinding
 // (the same hue carried by its connecting cable). A tint bundles the vivid line
 // colour (dot / cable), a deep ink for text, and translucent glass fills.
-export interface LgStageTint {
+interface LgStageTint {
   ink: string;
   line: string;
   bg: string;
@@ -709,36 +709,6 @@ export const lgStage = {
   experiments: lgStageTint("#4f46e5", "#3730a3"),
   danger: lgStageTint("#e11d48", "#be123c"),
 } as const;
-
-export function lgStageDot(line: string, active: boolean): React.CSSProperties {
-  return {
-    width: 7,
-    height: 7,
-    borderRadius: "50%",
-    flexShrink: 0,
-    background: active ? line : "rgba(148, 163, 184, 0.55)",
-    boxShadow: active ? `0 0 7px ${line}` : "none",
-  };
-}
-
-export function lgPanelNavButton(tint: LgStageTint): React.CSSProperties {
-  return {
-    ...S_ACTION_BUTTON_BASE,
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    fontSize: 11,
-    fontWeight: 700,
-    borderRadius: 7,
-    padding: "7px 10px",
-    cursor: "pointer",
-    color: tint.ink,
-    background: tint.bg,
-    border: `1px solid ${tint.border}`,
-  };
-}
 
 export function lgSegmentedTab(active: boolean): React.CSSProperties {
   return {

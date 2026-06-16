@@ -4,6 +4,9 @@ export const GLOBAL_CSS = `
   @keyframes fadeUp  { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
   @keyframes slideIn { from { opacity:0; transform:translateX(10px); } to { opacity:1; transform:translateX(0); } }
   @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 0 0 currentColor; } 50% { box-shadow: 0 0 0 4px transparent; } }
+  @keyframes busFlow { to { background-position-x: 8px; } }
+  @keyframes cableFlow { to { stroke-dashoffset: -20; } }
+  @keyframes dockIn { from { opacity:0; transform:translateX(26px) scale(.985); } to { opacity:1; transform:none; } }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family: Inter, system-ui, sans-serif; background: #f4f6f9; }
   ::-webkit-scrollbar { width:4px; height:4px; }

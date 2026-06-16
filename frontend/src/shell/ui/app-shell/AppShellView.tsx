@@ -6,7 +6,10 @@ import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { C, F, hoverBg, hoverColor } from "../theme/theme";
 import { AppShellContent } from "./AppShellContent";
-import { AppShellSidebar } from "./AppShellSidebar";
+import { CanvasHub } from "./canvas/CanvasHub";
+import { activeNode } from "./canvas/canvasNodes";
+import { FocusDock } from "./canvas/FocusDock";
+import { SealHubPanel } from "./canvas/SealHubPanel";
 import { ReviewerPreviewOverlay } from "./components/ReviewerPreviewOverlay";
 import { useAppShell } from "./hooks/useAppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
@@ -47,10 +50,14 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
     sealRunning,
     sealLog,
   } = useAppShell();
-  const { badges, timestamps } = assemblyRun;
-  const { toast, navCollapsed } = uiChrome;
+  const { badges } = assemblyRun;
+  const { toast } = uiChrome;
   const page = !provisioned ? PAGE.WORKBENCH : uiChrome.page;
   const effectiveUiChrome = provisioned ? uiChrome : { ...uiChrome, page };
+  // The constellation (pod hub) is the home view. Seal lives inside the hub as a
+  // pinned panel; every other page docks beside the pod.
+  const sealOpen = page === PAGE.SEAL;
+  const dockOpen = page !== PAGE.OVERVIEW && !sealOpen;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg }}>
@@ -101,33 +108,79 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
           {ree.name || "untitled"}
         </span>
         <div style={{ flex: 1 }} />
+        <button
+          type="button"
+          onClick={commands.openReviewPreview}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: "#fef3c7",
+            border: "1px solid #fde68a",
+            borderRadius: 7,
+            cursor: "pointer",
+            color: "#92400e",
+            padding: "5px 11px",
+            fontSize: 12.5,
+            fontWeight: 600,
+            fontFamily: F.sans,
+            transition: "all 0.12s",
+          }}
+          {...hoverBg("#fef08a66", "#fef3c7")}
+        >
+          <span style={{ display: "flex", color: "#f59e0b" }}>{Ic.star(13)}</span>
+          Preview review
+        </button>
       </header>
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
-        <AppShellSidebar
+      <div style={{ flex: 1, position: "relative", overflow: "hidden", minHeight: 0 }}>
+        <CanvasHub
           page={page}
           ree={ree}
-          navCollapsed={navCollapsed}
+          evaluation={evaluation}
           badges={badges}
-          timestamps={timestamps}
           provisioned={provisioned}
-          setPage={commands.setPage}
-          setNavCollapsed={commands.setNavCollapsed}
-          onPreviewReviewer={commands.openReviewPreview}
+          dimmed={dockOpen}
+          onNavigate={commands.setPage}
         />
 
-        <AppShellContent
-          ree={ree}
-          reeIntent={reeIntent}
-          workspaceRemote={workspaceRemote}
-          assemblyRun={assemblyRun}
-          uiChrome={effectiveUiChrome}
-          evaluation={evaluation}
-          currentReeFiles={currentReeFiles}
-          commands={commands}
-          sealRunning={sealRunning}
-          sealLog={sealLog}
-        />
+        {dockOpen && (
+          <FocusDock
+            node={activeNode(page)}
+            evaluation={evaluation}
+            closable={provisioned}
+            onClose={() => commands.setPage(PAGE.OVERVIEW)}
+          >
+            <AppShellContent
+              ree={ree}
+              reeIntent={reeIntent}
+              workspaceRemote={workspaceRemote}
+              assemblyRun={assemblyRun}
+              uiChrome={effectiveUiChrome}
+              evaluation={evaluation}
+              currentReeFiles={currentReeFiles}
+              commands={commands}
+              sealRunning={sealRunning}
+              sealLog={sealLog}
+            />
+          </FocusDock>
+        )}
+
+        {sealOpen && (
+          <SealHubPanel
+            ree={ree}
+            evaluation={evaluation}
+            badges={badges}
+            locked={uiChrome.locked}
+            sealed={!!workspaceRemote.artifactStatus.sealedAt}
+            sealRunning={sealRunning}
+            sealLog={sealLog}
+            onSeal={commands.onSeal}
+            onPreviewReviewer={commands.openReviewPreview}
+            onDownloadRee={commands.onDownloadRee}
+            onClose={() => commands.setPage(PAGE.OVERVIEW)}
+          />
+        )}
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={commands.clearToast} />}

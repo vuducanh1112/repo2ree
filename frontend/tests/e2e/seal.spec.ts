@@ -1,8 +1,8 @@
 import { expect, test } from "./helpers/fixtures";
 import {
-  main,
   provisionWorkbench,
   pythonHelloWorld,
+  sealPanel,
   sealRee,
   startReeCreation,
   uploadSource,
@@ -16,7 +16,7 @@ test.describe("Seal page", () => {
 
     await sealRee(page);
 
-    const downloadButton = main(page)
+    const downloadButton = sealPanel(page)
       .getByRole("button", { name: /Download REE/ })
       .first();
     await expect(downloadButton).toBeVisible();

@@ -17,16 +17,6 @@ function walkFileTree<T>(
   return null;
 }
 
-export function findVirtualFileByName(nodes: FileTreeNode[], name: string): FileTreeNode | null {
-  if (!name) return null;
-  const base = name.split("/").pop();
-  if (!base) return null;
-  return walkFileTree(nodes, (node) => {
-    if (node.type === "file" && node.name === base) return node;
-    return null;
-  });
-}
-
 export function normalizeWorkspacePath(path: string): string {
   return path.replace(/^\//, "").split("/").filter(Boolean).join("/");
 }

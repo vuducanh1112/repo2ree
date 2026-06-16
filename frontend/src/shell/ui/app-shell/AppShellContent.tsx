@@ -13,7 +13,6 @@ import {
   FilesPageContainer,
   HardwareBomPageContainer,
   MetadataPageContainer,
-  OverviewPageContainer,
   SourcePageContainer,
   WorkbenchPageContainer,
 } from "./pages/AppShellPageSwitch";
@@ -29,7 +28,6 @@ export function AppShellContent(props: AppShellPageContainerProps) {
       </div>
       <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_INNER}>
         <WorkbenchPageContainer {...props} />
-        <OverviewPageContainer {...props} />
         <SourcePageContainer {...props} />
         <MetadataPageContainer {...props} />
         <ExperimentsPageContainer {...props} />
