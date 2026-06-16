@@ -15,7 +15,10 @@ export interface UiChromeState {
 export function createInitialUiChromeState(): UiChromeState {
   return {
     toast: null,
-    page: PAGE.SOURCE,
+    // The hub canvas is home. Provisioning lands here (not a docked page); the
+    // user picks a node to dive in. Pre-provision the WorkbenchLab is shown
+    // regardless, so this only governs where the live editor opens.
+    page: PAGE.OVERVIEW,
     focusedField: null,
     showReviewPreview: false,
     locked: false,

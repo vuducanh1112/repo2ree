@@ -14,7 +14,6 @@ import {
   HardwareBomPageContainer,
   MetadataPageContainer,
   SourcePageContainer,
-  WorkbenchPageContainer,
 } from "./pages/AppShellPageSwitch";
 import type { AppShellPageContainerProps } from "./pages/pageContainers/shared";
 
@@ -27,7 +26,6 @@ export function AppShellContent(props: AppShellPageContainerProps) {
         <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_BG_BLOB_CENTER} />
       </div>
       <div style={S_WORKSPACE_EDITOR_MAIN_CONTENT_INNER}>
-        <WorkbenchPageContainer {...props} />
         <SourcePageContainer {...props} />
         <MetadataPageContainer {...props} />
         <ExperimentsPageContainer {...props} />

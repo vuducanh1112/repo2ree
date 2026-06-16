@@ -7,4 +7,3 @@ export { PageMetadataEntry } from "./metadata/MetadataPage";
 export type { AssemblyPageProps } from "./sharedAssemblyUi";
 export { SourceAcquisitionPage } from "./source/SourceAcquisitionPage";
 export { PageTestActivation } from "./test-activation/ActivationTestPage";
-export { WorkbenchPage } from "./workbench/WorkbenchPage";

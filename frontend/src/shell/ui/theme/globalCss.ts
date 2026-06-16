@@ -7,6 +7,7 @@ export const GLOBAL_CSS = `
   @keyframes busFlow { to { background-position-x: 8px; } }
   @keyframes cableFlow { to { stroke-dashoffset: -20; } }
   @keyframes dockIn { from { opacity:0; transform:translateX(26px) scale(.985); } to { opacity:1; transform:none; } }
+  @keyframes cradlePulse { 0%,100% { opacity:.45; transform:translate(-50%,-50%) scale(1); } 50% { opacity:.8; transform:translate(-50%,-50%) scale(1.04); } }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family: Inter, system-ui, sans-serif; background: #f4f6f9; }
   ::-webkit-scrollbar { width:4px; height:4px; }

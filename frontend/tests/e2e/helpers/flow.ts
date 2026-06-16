@@ -48,19 +48,25 @@ async function openPort(page: Page, label: string) {
   await nav(page).getByRole("button", { name: label, exact: true }).click();
 }
 
-/** Land on the workbench page from the landing view. */
+/** Land on the workbench lab (first screen of REE creation) from the landing view. */
 export async function startReeCreation(page: Page) {
   await page.goto("/");
   await stepShot(page, "start-ree-creation", "before");
   await page.getByRole("button", { name: "Create REE" }).click();
-  await expect(main(page).getByText("Workbench", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
   await stepShot(page, "start-ree-creation", "after");
 }
 
-/** Provision the workbench container; resolves once Source Acquisition shows. */
+/**
+ * Provision the workbench container. Provisioning now lands on the hub canvas
+ * (the live lab), so this resolves there and then dives into the Source node so
+ * the rest of the walkthrough continues from a docked page.
+ */
 export async function provisionWorkbench(page: Page) {
   await stepShot(page, "provision-workbench", "before");
   await page.getByRole("button", { name: /Provision workbench/i }).click();
+  await expect(nav(page).getByRole("button", { name: "Source", exact: true })).toBeVisible();
+  await openPort(page, "Source");
   await expect(main(page).getByText("Source Acquisition", { exact: true })).toBeVisible();
   await stepShot(page, "provision-workbench", "after");
 }

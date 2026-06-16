@@ -9,6 +9,7 @@ import { CableOverlaySvg } from "../pages/overview/PanelCableOverlaySections";
 import { PodWidget } from "../pages/overview/PodWidget";
 import type { AppShellPage } from "../state/pages";
 import { PAGE } from "../state/pages";
+import { BenchConsole } from "./BenchConsole";
 import {
   CANVAS_NODES,
   type CanvasNode,
@@ -109,12 +110,12 @@ export function CanvasHub({
           y2: pod.y,
           color: node.color,
           shadow: node.shadow,
-          connected: isNodeDone(node, ree, badges, provisioned),
+          connected: isNodeDone(node, ree, badges),
         },
       ];
     });
     setGeo({ cables, decoCables: [], w: cRect.width, h: cRect.height });
-  }, [ree, badges, provisioned]);
+  }, [ree, badges]);
 
   // Re-measure after every transform/data change (and on resize).
   // biome-ignore lint/correctness/useExhaustiveDependencies: tf re-measures cables on pan/zoom
@@ -186,7 +187,7 @@ export function CanvasHub({
     setTf((prev) => ({ ...prev, z: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev.z * factor)) }));
   };
 
-  const { completed, total } = lifecycleProgress(ree, badges, provisioned);
+  const { completed, total } = lifecycleProgress(ree, badges);
   const ready = completed >= total;
   const levelMeta = standingMeta(evaluation);
 
@@ -220,6 +221,21 @@ export function CanvasHub({
           transition: animate ? "transform 0.4s cubic-bezier(0.4,0,0.2,1)" : "none",
         }}
       >
+        {/* cradle socket: the pod is seated in the bench, not floating */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 96,
+            width: 320,
+            height: 96,
+            transform: "translate(-50%,-50%)",
+            borderRadius: "50%",
+            background:
+              "radial-gradient(ellipse at center, rgba(100,116,139,0.14) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }}
+        />
         <div style={{ position: "absolute", left: 0, top: 0, transform: "translate(-50%,-50%)" }}>
           <PodWidget evaluation={evaluation} svgRef={podSvgRef} size={300} />
         </div>
@@ -232,10 +248,10 @@ export function CanvasHub({
               setRef={(el) => {
                 nodeEls.current[node.key] = el;
               }}
-              done={isNodeDone(node, ree, badges, provisioned)}
+              done={isNodeDone(node, ree, badges)}
               locked={isNodeLocked(node, provisioned)}
               active={isNodeActive(node, page)}
-              rows={nodeSummary(node, ree, provisioned)}
+              rows={nodeSummary(node, ree)}
               onNavigate={onNavigate}
             />
           ))}
@@ -267,6 +283,8 @@ export function CanvasHub({
           </>
         )}
       </div>
+
+      <BenchConsole provisioned={provisioned} reeName={ree.name} />
 
       <CanvasControls
         onZoomIn={() => zoomBy(1.2)}

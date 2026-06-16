@@ -10,6 +10,7 @@ import { CanvasHub } from "./canvas/CanvasHub";
 import { activeNode } from "./canvas/canvasNodes";
 import { FocusDock } from "./canvas/FocusDock";
 import { SealHubPanel } from "./canvas/SealHubPanel";
+import { WorkbenchLab } from "./canvas/WorkbenchLab";
 import { ReviewerPreviewOverlay } from "./components/ReviewerPreviewOverlay";
 import { useAppShell } from "./hooks/useAppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
@@ -52,8 +53,7 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
   } = useAppShell();
   const { badges } = assemblyRun;
   const { toast } = uiChrome;
-  const page = !provisioned ? PAGE.WORKBENCH : uiChrome.page;
-  const effectiveUiChrome = provisioned ? uiChrome : { ...uiChrome, page };
+  const page = uiChrome.page;
   // The constellation (pod hub) is the home view. Seal lives inside the hub as a
   // pinned panel; every other page docks beside the pod.
   const sealOpen = page === PAGE.SEAL;
@@ -134,17 +134,23 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
       </header>
 
       <div style={{ flex: 1, position: "relative", overflow: "hidden", minHeight: 0 }}>
-        <CanvasHub
-          page={page}
-          ree={ree}
-          evaluation={evaluation}
-          badges={badges}
-          provisioned={provisioned}
-          dimmed={dockOpen}
-          onNavigate={commands.setPage}
-        />
+        {!provisioned ? (
+          // First screen of REE creation: the workbench IS the canvas — the lab
+          // the dormant pod sits in. Configuring it powers the lab on.
+          <WorkbenchLab evaluation={evaluation} />
+        ) : (
+          <CanvasHub
+            page={page}
+            ree={ree}
+            evaluation={evaluation}
+            badges={badges}
+            provisioned={provisioned}
+            dimmed={dockOpen}
+            onNavigate={commands.setPage}
+          />
+        )}
 
-        {dockOpen && (
+        {provisioned && dockOpen && (
           <FocusDock
             node={activeNode(page)}
             evaluation={evaluation}
@@ -156,7 +162,7 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
               reeIntent={reeIntent}
               workspaceRemote={workspaceRemote}
               assemblyRun={assemblyRun}
-              uiChrome={effectiveUiChrome}
+              uiChrome={uiChrome}
               evaluation={evaluation}
               currentReeFiles={currentReeFiles}
               commands={commands}

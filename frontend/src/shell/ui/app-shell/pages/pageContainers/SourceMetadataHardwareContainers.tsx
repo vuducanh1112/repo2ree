@@ -1,4 +1,3 @@
-import { DEFAULT_REE_ID } from "../../../../../core/ree/ReeId";
 import type { SourceUploadCommit } from "../../../../../core/ree/ReeTypes";
 import { useApiRuntime } from "../../../../data/apiRuntime";
 import { useAssemblyStepPageController } from "../../hooks/useAssemblyStepPageController";
@@ -13,26 +12,8 @@ import {
   PageMetadataEntry,
   PageTestActivation,
   SourceAcquisitionPage,
-  WorkbenchPage,
 } from "../index";
 import { type AppShellPageContainerProps, ContentSection, useAssemblyRunLogEntry } from "./shared";
-
-export function WorkbenchPageContainer({ ree, uiChrome }: AppShellPageContainerProps) {
-  const { reeId, reeApi } = useApiRuntime();
-  const { page } = uiChrome;
-
-  if (page !== PAGE.WORKBENCH) {
-    return null;
-  }
-
-  const provisioned = reeId !== DEFAULT_REE_ID;
-
-  return (
-    <ContentSection>
-      <WorkbenchPage provisioned={provisioned} reeId={reeId} reeApi={reeApi} reeName={ree.name} />
-    </ContentSection>
-  );
-}
 
 const ASSEMBLY_PAGE_COMPONENTS: Record<string, (props: AssemblyPageProps) => JSX.Element> = {
   evaluate: (props) => <PageEvaluate {...props} />,

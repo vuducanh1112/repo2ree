@@ -188,7 +188,7 @@ test("upload source archive into workspace", async ({ page }) => {
   await demoStep(page, "Open REE creation flow", async () => {
     await page.goto("/");
     await clickDemo(page, page.getByRole("button", { name: "Create REE" }), "Start REE creation");
-    await expect(page.getByRole("main").getByText("Workbench", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
   });
 
   await demoStep(page, "Provision workbench", async () => {
@@ -197,6 +197,12 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("button", { name: /Provision workbench/i }),
       "Provision the workbench",
     );
+    // Provisioning lands on the canvas hub; navigate into Source to continue the demo.
+    await expect(
+      page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape").catch(() => {});
+    await page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }).click();
     await expect(
       page.getByRole("main").getByText("Source Acquisition", { exact: true }),
     ).toBeVisible();

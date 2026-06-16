@@ -22,17 +22,11 @@ const AUTOMATION_BY_KEY: Record<string, ReeAssemblyDefinition> = Object.fromEntr
   REE_ASSEMBLY_STEPS.map((step) => [step.key, step]),
 ) as Record<string, ReeAssemblyDefinition>;
 
+// Workbench is intentionally absent: it IS the canvas (the lab), not a ring
+// node. Its lifecycle step is tracked separately via `provisioned`.
 export const PROCESS_STEPS: ProcessStep[] = [
   {
     n: 1,
-    key: PAGE.WORKBENCH,
-    label: "Workbench",
-    IC: Ic.package,
-    automation: null,
-    desc: "Choose a machine and provision the workbench",
-  },
-  {
-    n: 2,
     key: PAGE.SOURCE,
     label: "Source Acquisition",
     IC: Ic.globe,
@@ -40,7 +34,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Choose a source path, acquire the snapshot, and manage workspace source files",
   },
   {
-    n: 3,
+    n: 2,
     key: PAGE.METADATA,
     label: "Provide Metadata",
     IC: Ic.grid,
@@ -48,7 +42,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Input project identity metadata",
   },
   {
-    n: 4,
+    n: 3,
     key: PAGE.HBOM,
     label: "Create HBOM",
     IC: Ic.chip,
@@ -56,7 +50,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Enter hardware bill of materials",
   },
   {
-    n: 5,
+    n: 4,
     key: PAGE.EVALUATE,
     label: "Evaluate",
     IC: Ic.star,
@@ -64,7 +58,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Score reproducibility level",
   },
   {
-    n: 6,
+    n: 5,
     key: PAGE.BUILD,
     label: "Runtime Environment",
     IC: Ic.cpu,
@@ -73,7 +67,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     navCompleted: runtimeNavCompleted,
   },
   {
-    n: 7,
+    n: 6,
     key: PAGE.EXPERIMENTS,
     label: "Experiments",
     IC: Ic.terminal,
@@ -81,7 +75,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Define reproducibility experiment commands",
   },
   {
-    n: 8,
+    n: 7,
     key: PAGE.ARCHIVE,
     label: "Deposit & Share",
     IC: Ic.globe,
@@ -89,7 +83,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Archive and publish",
   },
   {
-    n: 9,
+    n: 8,
     key: PAGE.SEAL,
     label: "Seal",
     IC: Ic.lock,
@@ -105,13 +99,7 @@ export function runtimeNavCompleted(ree: ReeEditorViewModel, badges: Badges): bo
   return runCompleted || (artifactsPresent && activationConfigured);
 }
 
-function hasProcessStepCompleted(
-  stepKey: AppShellPage,
-  ree: ReeEditorViewModel,
-  badges: Badges,
-  provisioned: boolean,
-) {
-  if (stepKey === PAGE.WORKBENCH) return provisioned;
+function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel, badges: Badges) {
   if (stepKey === PAGE.SOURCE) return !!ree.sourceAvailable;
   if (stepKey === PAGE.METADATA) return !!ree.name;
   if (stepKey === PAGE.EXPERIMENTS)
@@ -127,9 +115,8 @@ export function resolveNavCompleted(
   step: ProcessStep,
   ree: ReeEditorViewModel,
   badges: Badges,
-  provisioned = false,
 ): boolean {
   return step.navCompleted
     ? step.navCompleted(ree, badges)
-    : hasProcessStepCompleted(step.key, ree, badges, provisioned);
+    : hasProcessStepCompleted(step.key, ree, badges);
 }

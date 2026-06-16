@@ -21,17 +21,10 @@ export interface CanvasNode {
   icon: (size?: number) => JSX.Element;
 }
 
+// The Workbench is no longer a cabled node: it IS the canvas — the lab the pod
+// sits in. Its setup lives in WorkbenchLab (pre-provision) and the bench
+// nameplate on the hub (post-provision), so it's absent from the ring here.
 export const CANVAS_NODES: CanvasNode[] = [
-  {
-    key: PAGE.WORKBENCH,
-    label: "Workbench",
-    kind: "setup",
-    x: 0,
-    y: -236,
-    color: "#64748b",
-    shadow: "#334155",
-    icon: Ic.package,
-  },
   {
     key: PAGE.SOURCE,
     label: "Source",
@@ -127,20 +120,16 @@ export const CANVAS_NODES: CanvasNode[] = [
 const STEP_BY_KEY = new Map(PROCESS_STEPS.map((step) => [step.key, step]));
 
 // A node reflects "done" from the same lifecycle source of truth the rail used.
-export function isNodeDone(
-  node: CanvasNode,
-  ree: ReeEditorViewModel,
-  badges: Badges,
-  provisioned: boolean,
-): boolean {
+export function isNodeDone(node: CanvasNode, ree: ReeEditorViewModel, badges: Badges): boolean {
   if (node.key === PAGE.FILES) return !!ree.sourceAvailable;
   const step = STEP_BY_KEY.get(node.key);
-  return step ? resolveNavCompleted(step, ree, badges, provisioned) : false;
+  return step ? resolveNavCompleted(step, ree, badges) : false;
 }
 
-// Until the workbench is provisioned, only the Workbench node is reachable.
-export function isNodeLocked(node: CanvasNode, provisioned: boolean): boolean {
-  return !provisioned && node.key !== PAGE.WORKBENCH;
+// Every node lives inside the workbench, so nothing on the ring is reachable
+// until the workbench (the lab) is provisioned.
+export function isNodeLocked(_node: CanvasNode, provisioned: boolean): boolean {
+  return !provisioned;
 }
 
 export function isNodeActive(node: CanvasNode, page: AppShellPage): boolean {
@@ -155,11 +144,8 @@ export function activeNode(page: AppShellPage): CanvasNode | undefined {
 export function lifecycleProgress(
   ree: ReeEditorViewModel,
   badges: Badges,
-  provisioned: boolean,
 ): { completed: number; total: number } {
-  const completed = PROCESS_STEPS.filter((step) =>
-    resolveNavCompleted(step, ree, badges, provisioned),
-  ).length;
+  const completed = PROCESS_STEPS.filter((step) => resolveNavCompleted(step, ree, badges)).length;
   return { completed, total: PROCESS_STEPS.length };
 }
 
@@ -177,14 +163,8 @@ function hostOf(url: string): string {
 }
 
 // Per-node summary, mirroring what the old Overview panels surfaced.
-export function nodeSummary(
-  node: CanvasNode,
-  ree: ReeEditorViewModel,
-  provisioned: boolean,
-): SummaryRow[] {
+export function nodeSummary(node: CanvasNode, ree: ReeEditorViewModel): SummaryRow[] {
   switch (node.key) {
-    case PAGE.WORKBENCH:
-      return [{ label: "Bench", value: provisioned ? "provisioned" : null }];
     case PAGE.SOURCE:
       return [
         { label: "Origin", value: ree.origin_url ? hostOf(ree.origin_url) : null },
