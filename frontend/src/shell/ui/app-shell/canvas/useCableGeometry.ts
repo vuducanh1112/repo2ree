@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import type { CableGeo } from "../pages/overview/PanelCableOverlayHelpers";
-import { PAGE } from "../state/pages";
 import { CANVAS_NODES, isNodeDone } from "./canvasNodes";
 import type { NodeOffsets, Transform } from "./useCanvasViewport";
 
@@ -67,7 +66,6 @@ export function useCableGeometry({
     };
 
     const cables = CANVAS_NODES.flatMap((node) => {
-      if (node.key === PAGE.FILES) return [];
       const el = nodeEls.current[node.key];
       if (!el) return [];
       const r = el.getBoundingClientRect();

@@ -27,6 +27,7 @@ interface AppShellState {
   focusedField: string | null;
   sourceSnapshotArchiveName: string;
   showReviewPreview: boolean;
+  filesConsoleOpen: boolean;
 }
 
 export interface SourceOutcomePayload {

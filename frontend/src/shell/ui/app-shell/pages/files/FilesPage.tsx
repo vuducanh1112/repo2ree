@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { ReeFile } from "../../../../../core/ree/ReeTypes";
 import { Ic } from "../../../shared/components/Icon";
 import { lgPageColors } from "../../../theme/lightGlassTheme";
@@ -7,29 +7,17 @@ import { AssemblyPageHeader } from "../../components/pageChrome";
 import { FilesEmptyState } from "./FilesEmptyState";
 import { FilesTreePane } from "./FilesTreePane";
 import { FileViewer } from "./FileViewer";
-import { buildReeFileTree, flattenTreeWithPaths } from "./filesPageHelpers";
-
-const WORKSPACE_PREFIX = "workspace/";
+import { useReeFileTree } from "./useReeFileTree";
 
 interface PageFilesProps {
   reeFiles: ReeFile[];
-  onDownloadWorkspaceFile?: (path: string, suggestedName?: string) => Promise<void>;
 }
 
-export function PageFiles({ reeFiles, onDownloadWorkspaceFile }: PageFilesProps) {
+export function PageFiles({ reeFiles }: PageFilesProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const reeFileTree = useMemo(() => buildReeFileTree(reeFiles), [reeFiles]);
-  const reeFlatEntries = useMemo(() => flattenTreeWithPaths(reeFileTree), [reeFileTree]);
+  const { tree: reeFileTree, entryById } = useReeFileTree(reeFiles);
 
-  const selectedReeEntry = selectedId
-    ? reeFlatEntries.find((entry) => entry.node.id === selectedId) || null
-    : null;
-  const selectedFile = selectedReeEntry?.node || null;
-  const selectedPath = selectedReeEntry?.path || null;
-
-  const workspaceDownloadPath = selectedPath?.startsWith(WORKSPACE_PREFIX)
-    ? selectedPath.slice(WORKSPACE_PREFIX.length)
-    : null;
+  const selectedFile = (selectedId ? entryById.get(selectedId)?.node : undefined) ?? null;
 
   return (
     <div style={S_WORKFLOW_SERVICE_ROOT}>
@@ -55,17 +43,7 @@ export function PageFiles({ reeFiles, onDownloadWorkspaceFile }: PageFilesProps)
 
         {selectedFile ? (
           <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
-            <FileViewer
-              file={selectedFile}
-              path={selectedPath}
-              onClose={() => setSelectedId(null)}
-              label="ree"
-              onDownload={
-                workspaceDownloadPath && onDownloadWorkspaceFile
-                  ? () => onDownloadWorkspaceFile(workspaceDownloadPath, selectedFile.name)
-                  : undefined
-              }
-            />
+            <FileViewer file={selectedFile} />
           </div>
         ) : (
           <FilesEmptyState />

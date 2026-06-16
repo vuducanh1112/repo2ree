@@ -2,7 +2,6 @@ import type { ExecutionRunLogs } from "../../../../../core/ree/ReeTypes";
 import { useApiRuntime } from "../../../../data/apiRuntime";
 import { PAGE } from "../../state/pages";
 import { PageArchive as ArchivePage } from "../archive/ArchivePage";
-import { PageFiles as FilesPage } from "../files/FilesPage";
 import { type AppShellPageContainerProps, ContentSection, useAssemblyRunLogEntry } from "./shared";
 
 export function ArchivePageContainer({
@@ -49,27 +48,6 @@ export function ArchivePageContainer({
         actionStates={actionStates}
         onRun={commands.onRunAction}
         onGo={commands.setPage}
-      />
-    </ContentSection>
-  );
-}
-
-export function FilesPageContainer({
-  uiChrome,
-  currentReeFiles,
-  commands,
-}: AppShellPageContainerProps) {
-  const { page } = uiChrome;
-
-  if (page !== PAGE.FILES) {
-    return null;
-  }
-
-  return (
-    <ContentSection>
-      <FilesPage
-        reeFiles={currentReeFiles}
-        onDownloadWorkspaceFile={commands.onDownloadWorkspaceFile}
       />
     </ContentSection>
   );

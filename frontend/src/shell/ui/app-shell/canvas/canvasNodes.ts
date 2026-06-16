@@ -13,7 +13,7 @@ import { type AppShellPage, isRuntimeEnvPage, PAGE } from "../state/pages";
 export interface CanvasNode {
   key: AppShellPage;
   label: string;
-  kind: "setup" | "declare" | "evidence" | "files";
+  kind: "setup" | "declare" | "evidence";
   x: number;
   y: number;
   color: string;
@@ -105,23 +105,12 @@ export const CANVAS_NODES: CanvasNode[] = [
     shadow: "#7f1d1d",
     icon: Ic.lock,
   },
-  {
-    key: PAGE.FILES,
-    label: "Files",
-    kind: "files",
-    x: 0,
-    y: 252,
-    color: "#64748b",
-    shadow: "#334155",
-    icon: Ic.files,
-  },
 ];
 
 const STEP_BY_KEY = new Map(PROCESS_STEPS.map((step) => [step.key, step]));
 
 // A node reflects "done" from the same lifecycle source of truth the rail used.
 export function isNodeDone(node: CanvasNode, ree: ReeEditorViewModel, badges: Badges): boolean {
-  if (node.key === PAGE.FILES) return !!ree.sourceAvailable;
   const step = STEP_BY_KEY.get(node.key);
   return step ? resolveNavCompleted(step, ree, badges) : false;
 }

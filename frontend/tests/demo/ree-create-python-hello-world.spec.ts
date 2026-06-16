@@ -181,7 +181,7 @@ test("upload source archive into workspace", async ({ page }) => {
   const step3WorkspaceActions = page
     .locator("div")
     .filter({ hasText: "Workspace Snapshot" })
-    .filter({ hasText: /Browse workspace files/ })
+    .filter({ hasText: /Clear workspace source/ })
     .first();
   const main = page.getByRole("main");
 
@@ -229,22 +229,21 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(
       step3WorkspaceActions.getByRole("button", { name: /Clear workspace source/i }),
     ).toBeVisible();
-    await expect(
-      step3WorkspaceActions.getByRole("button", { name: /Browse workspace files/i }),
-    ).toBeVisible();
     await expect(page.getByText(/Configuration locked/)).toBeVisible();
     await expect(page.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
   });
 
   await demoStep(page, "Browse extracted files", async () => {
+    // Files live in the file-tree HUD console docked on the canvas; leave the
+    // source dock and expand it.
+    await page.keyboard.press("Escape");
     await clickDemo(
       page,
-      step3WorkspaceActions.getByRole("button", { name: /Browse workspace files/i }),
-      "Browse workspace files",
+      page.getByRole("button", { name: "Expand files" }),
+      "Browse workspace files in the docked file console",
     );
 
-    await expect(main.getByText("Files", { exact: true })).toBeVisible();
-    await expect(page.getByText("REE Files", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Collapse files" })).toBeVisible();
     await page.getByPlaceholder("Filter files…").fill("workspace");
     for (const nodeName of archiveNodeNames) {
       const escapedNodeName = nodeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

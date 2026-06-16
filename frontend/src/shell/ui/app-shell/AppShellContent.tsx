@@ -10,7 +10,6 @@ import {
   ArchivePageContainer,
   AssemblyPageContainer,
   ExperimentsPageContainer,
-  FilesPageContainer,
   HardwareBomPageContainer,
   MetadataPageContainer,
   SourcePageContainer,
@@ -32,7 +31,6 @@ export function AppShellContent(props: AppShellPageContainerProps) {
         <HardwareBomPageContainer {...props} />
         <AssemblyPageContainer {...props} />
         <ArchivePageContainer {...props} />
-        <FilesPageContainer {...props} />
       </div>
     </main>
   );

@@ -10,6 +10,7 @@ export interface UiChromeState {
   locked: boolean;
   repoMode: "url" | "upload";
   sourceSnapshotArchiveName: string;
+  filesConsoleOpen: boolean;
 }
 
 export function createInitialUiChromeState(): UiChromeState {
@@ -24,5 +25,6 @@ export function createInitialUiChromeState(): UiChromeState {
     locked: false,
     repoMode: "url",
     sourceSnapshotArchiveName: "",
+    filesConsoleOpen: false,
   };
 }

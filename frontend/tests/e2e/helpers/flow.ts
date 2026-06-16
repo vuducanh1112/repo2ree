@@ -83,7 +83,7 @@ export async function uploadSource(page: Page, archivePath: string) {
   const workspaceActions = page
     .locator("div")
     .filter({ hasText: "Workspace Snapshot" })
-    .filter({ hasText: /Browse workspace files/ })
+    .filter({ hasText: /Clear workspace source/ })
     .first();
   await expect(workspaceActions).toBeVisible();
   await stepShot(page, "upload-source", "after");

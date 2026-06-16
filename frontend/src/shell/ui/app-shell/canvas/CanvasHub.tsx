@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import type { Badges } from "../../../../core/ree/ReeTypes";
+import type { Badges, ReeFile } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { standingMeta } from "../../../../core/review/axes";
 import type { EvaluationState } from "../../../../core/review/EvaluationState";
@@ -18,6 +18,7 @@ import {
   nodeSummary,
   type SummaryRow,
 } from "./canvasNodes";
+import { FileTreeConsole } from "./FileTreeConsole";
 import { useCableGeometry } from "./useCableGeometry";
 import { useCanvasViewport } from "./useCanvasViewport";
 
@@ -31,6 +32,9 @@ interface CanvasHubProps {
   provisioned: boolean;
   dimmed: boolean;
   onNavigate: (page: AppShellPage) => void;
+  reeFiles: ReeFile[];
+  filesConsoleOpen: boolean;
+  onFilesConsoleOpenChange: (open: boolean) => void;
 }
 
 export function CanvasHub({
@@ -41,6 +45,9 @@ export function CanvasHub({
   provisioned,
   dimmed,
   onNavigate,
+  reeFiles,
+  filesConsoleOpen,
+  onFilesConsoleOpenChange,
 }: CanvasHubProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
@@ -175,6 +182,12 @@ export function CanvasHub({
           </>
         )}
       </div>
+
+      <FileTreeConsole
+        reeFiles={reeFiles}
+        open={filesConsoleOpen}
+        onOpenChange={onFilesConsoleOpenChange}
+      />
 
       <BenchConsole provisioned={provisioned} reeName={ree.name} />
 
@@ -344,6 +357,7 @@ function CanvasControls({
   };
   return (
     <div
+      data-canvas-hud
       style={{
         position: "absolute",
         right: 16,

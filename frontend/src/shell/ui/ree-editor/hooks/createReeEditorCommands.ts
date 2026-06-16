@@ -113,6 +113,7 @@ export function createReeEditorCommands({
           typeof value === "function" ? value(current) : value,
         ),
       ),
+    setFilesConsoleOpen: (open: boolean) => dispatch(patch("uiChrome", { filesConsoleOpen: open })),
     openReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: true })),
     closeReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: false })),
     clearToast: () => dispatch(clearToast()),

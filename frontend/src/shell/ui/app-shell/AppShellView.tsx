@@ -147,6 +147,9 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
             provisioned={provisioned}
             dimmed={dockOpen}
             onNavigate={commands.setPage}
+            reeFiles={currentReeFiles}
+            filesConsoleOpen={uiChrome.filesConsoleOpen}
+            onFilesConsoleOpenChange={commands.setFilesConsoleOpen}
           />
         )}
 

@@ -10,7 +10,6 @@ export const PAGE = {
   OVERVIEW: "overview",
   SEAL: "seal",
   ARCHIVE: "archive",
-  FILES: "files",
   // Assembly pages — keys match assembly operation keys.
   EVALUATE: "evaluate",
   BUILD: "build",

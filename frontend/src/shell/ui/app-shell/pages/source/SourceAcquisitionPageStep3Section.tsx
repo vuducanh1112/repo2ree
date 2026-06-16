@@ -1,8 +1,6 @@
 import { Ic } from "../../../shared/components/Icon";
-import { lgColors, lgContentCard, lgGlassButton, lgStyles } from "../../../theme/lightGlassTheme";
+import { lgColors, lgContentCard, lgStyles } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
-import type { AppShellPage } from "../../state/pages";
-import { PAGE } from "../../state/pages";
 import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 
 interface Step3Props {
@@ -11,7 +9,6 @@ interface Step3Props {
   workspaceSourceState: SourceAcquisitionPageProps["workspaceSourceState"];
   locked: boolean;
   focus: (key: string) => void;
-  onGoAssemblyPage: (page: AppShellPage) => void;
   onRemoveWorkspaceSource: () => void;
 }
 
@@ -27,21 +24,6 @@ export function SourceStep3Section(props: Step3Props) {
           </div>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => {
-                props.focus("sourceAvailable");
-                props.onGoAssemblyPage(PAGE.FILES);
-              }}
-              style={{
-                ...lgGlassButton(),
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              {Ic.files(12)} Browse workspace files
-            </button>
             {props.workspaceSourceState.sourceAvailable && (
               <button
                 type="button"

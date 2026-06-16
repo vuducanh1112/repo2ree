@@ -37,7 +37,7 @@ export function isLikelyTextFile(fileName: string): boolean {
   return TEXT_FILE_EXTENSIONS.has(ext);
 }
 
-interface FlatTreeEntry {
+export interface FlatTreeEntry {
   node: FileTreeNode;
   path: string;
 }
@@ -85,8 +85,8 @@ export function buildReeFileTree(reeFiles: ReeFile[]): FileTreeNode[] {
       const part = parts[idx];
       folderPath = folderPath ? `${folderPath}/${part}` : part;
       const folder = ensureFolder(cursor, part, folderPath);
-      cursor = folder.children || [];
-      folder.children = cursor;
+      folder.children = folder.children ?? [];
+      cursor = folder.children;
     }
 
     const fileName = parts[parts.length - 1];

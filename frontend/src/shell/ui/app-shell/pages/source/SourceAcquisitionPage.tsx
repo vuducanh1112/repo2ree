@@ -169,7 +169,6 @@ export function SourceAcquisitionPage({
                 workspaceSourceState={workspaceSourceState}
                 locked={locked}
                 focus={focus}
-                onGoAssemblyPage={onGoAssemblyPage}
                 onRemoveWorkspaceSource={onRemoveWorkspaceSource}
               />
 

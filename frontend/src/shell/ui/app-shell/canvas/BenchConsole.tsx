@@ -50,6 +50,7 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
 
   return (
     <div
+      data-canvas-hud
       style={{
         position: "absolute",
         left: 16,

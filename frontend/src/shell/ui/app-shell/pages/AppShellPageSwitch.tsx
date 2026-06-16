@@ -1,4 +1,4 @@
-export { ArchivePageContainer, FilesPageContainer } from "./pageContainers/ArchiveFilesContainers";
+export { ArchivePageContainer } from "./pageContainers/ArchiveFilesContainers";
 export {
   AssemblyPageContainer,
   ExperimentsPageContainer,

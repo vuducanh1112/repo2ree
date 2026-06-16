@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { expect, test } from "./helpers/fixtures";
 import {
-  main,
   provisionWorkbench,
   pythonHelloWorld,
   startReeCreation,
@@ -21,8 +20,10 @@ test.describe("Source acquisition page", () => {
     await expect(page.getByText(/Configuration locked/)).toBeVisible();
     await expect(page.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
 
-    await workspaceActions.getByRole("button", { name: /Browse workspace files/i }).click();
-    await expect(main(page).getByText("Files", { exact: true })).toBeVisible();
+    // Files are browsable from the file-tree HUD console docked on the canvas.
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Expand files" }).click();
+    await expect(page.getByRole("button", { name: "Collapse files" })).toBeVisible();
 
     const archiveNodeNames = [
       ...new Set(

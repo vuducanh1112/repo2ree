@@ -62,6 +62,9 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
     const stage = stageRef.current;
     if (!stage) return;
     const onWheel = (event: WheelEvent) => {
+      // Let HUD overlays (file console, bench console, file viewer) scroll their
+      // own content instead of zooming/panning the canvas underneath.
+      if (event.target instanceof Element && event.target.closest("[data-canvas-hud]")) return;
       event.preventDefault();
       const rect = stage.getBoundingClientRect();
       setAnimate(false);
@@ -124,7 +127,11 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
   };
 
   const startPan = (event: React.MouseEvent) => {
-    if ((event.target as HTMLElement).closest("[data-canvas-node]")) return;
+    if (
+      event.target instanceof Element &&
+      event.target.closest("[data-canvas-node],[data-canvas-hud]")
+    )
+      return;
     setAnimate(false);
     setIsPanning(true);
     pan.current = { sx: event.clientX, sy: event.clientY, x0: tf.x, y0: tf.y };

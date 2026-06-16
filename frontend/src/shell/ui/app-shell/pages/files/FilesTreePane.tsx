@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
 import { filterFileTree } from "../../../../../core/workspace/fileTreeFilter";
 import { FileNode } from "../../../shared/components/FileTree";
-import { Ic } from "../../../shared/components/Icon";
 import { lgColors, lgTree } from "../../../theme/lightGlassTheme";
 import { F, S_SECTION_LABEL } from "../../../theme/theme";
+import { FileFilterInput } from "./FileFilterInput";
 
 interface SectionHeaderProps {
   label: string;
@@ -110,59 +110,7 @@ export function FilesTreePane({
         transition: "width 0.18s",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          margin: "8px 8px 6px",
-          padding: "0 8px",
-          borderRadius: 7,
-          border: `1px solid ${lgTree.pane.borderColor}`,
-          background: lgTree.inputBg,
-        }}
-      >
-        <span style={{ display: "flex", color: lgColors.textMuted, flexShrink: 0 }}>
-          {Ic.search(13)}
-        </span>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter files…"
-          aria-label="Filter files"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            padding: "7px 0",
-            fontSize: 12,
-            fontFamily: F.sans,
-            color: lgColors.text,
-          }}
-        />
-        {filtering && (
-          <button
-            type="button"
-            onClick={() => setQuery("")}
-            aria-label="Clear filter"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              color: lgColors.textMuted,
-              padding: 2,
-              flexShrink: 0,
-            }}
-          >
-            {Ic.x(12)}
-          </button>
-        )}
-      </div>
+      <FileFilterInput query={query} onChange={setQuery} />
 
       <div style={{ overflowY: "auto", flex: 1 }}>
         <SectionHeader
