@@ -8,8 +8,8 @@ import {
   uploadSource,
 } from "./helpers/flow";
 
-test.describe("Runtime Environment page", () => {
-  test("building and including the runtime marks the Runtime node done", async ({ page }) => {
+test.describe("Build Runtime page", () => {
+  test("building and including the runtime marks the Build node done", async ({ page }) => {
     await startReeCreation(page);
     await provisionWorkbench(page);
     await uploadSource(page, pythonHelloWorld());

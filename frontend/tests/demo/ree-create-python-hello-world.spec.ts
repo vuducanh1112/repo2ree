@@ -338,14 +338,10 @@ test("upload source archive into workspace", async ({ page }) => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Runtime", exact: true }),
+      page.getByRole("navigation").getByRole("button", { name: "Build", exact: true }),
       "Build runtime artifact",
     );
-    await expect(main.getByText("Runtime Environment", { exact: true })).toBeVisible();
-    await expect(main.getByRole("button", { name: /Build Runtime/ })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await expect(main.getByText("Build Runtime", { exact: true })).toBeVisible();
     await fillDemo(
       page,
       page.getByPlaceholder("build_runtime.sh"),
@@ -378,17 +374,14 @@ test("upload source archive into workspace", async ({ page }) => {
   });
 
   await demoStep(page, "Generate SBOM", async () => {
-    const generateSbomTab = main
-      .locator("button[aria-pressed]")
-      .filter({ hasText: "Generate SBOM" });
-    await clickDemo(page, generateSbomTab, "Generate SBOM");
-    await expect(generateSbomTab).toHaveAttribute("aria-pressed", "true");
-    await expect(main.getByText("Scan Target", { exact: true })).toBeVisible();
+    await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      main.getByRole("button", { name: /Generate SBOM/ }).last(),
-      "Run SBOM scan",
+      page.getByRole("navigation").getByRole("button", { name: "SBOM", exact: true }),
+      "Open SBOM page",
     );
+    await expect(main.getByText("Scan Target", { exact: true })).toBeVisible();
+    await clickDemo(page, main.getByRole("button", { name: /Generate SBOM/ }), "Run SBOM scan");
     await expect(main.getByRole("button", { name: /Regenerate SBOM/ })).toBeVisible({
       timeout: 60000,
     });
@@ -401,11 +394,12 @@ test("upload source archive into workspace", async ({ page }) => {
   //console.log("SBOM generated, proceeding to activation test...");
 
   await demoStep(page, "Test activation", async () => {
-    const activationTab = main
-      .locator("button[aria-pressed]")
-      .filter({ hasText: "Test Activation" });
-    await clickDemo(page, activationTab, "Open activation test");
-    await expect(activationTab).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Escape").catch(() => {});
+    await clickDemo(
+      page,
+      page.getByRole("navigation").getByRole("button", { name: "Activation", exact: true }),
+      "Open activation test",
+    );
     await expect(main.getByText("Activation Script", { exact: true })).toBeVisible();
     await fillDemo(
       page,

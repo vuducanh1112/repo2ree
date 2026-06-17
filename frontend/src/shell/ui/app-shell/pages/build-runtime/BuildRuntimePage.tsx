@@ -7,40 +7,66 @@ import {
   deriveRuntimeFileSize,
   resolvedRuntimePath,
 } from "../../../../../core/ree-assembly/buildRuntimeUiState";
-import { resolvedSbomPath } from "../../../../../core/ree-assembly/sbomUiState";
 import { workspaceFileExists } from "../../../../../core/workspace/fileTreeTraversal";
 import { Ic } from "../../../shared/components/Icon";
 import {
   lgColors,
-  lgNextButton,
   lgOutcomeBadge,
+  lgPageColors,
   lgPillChip,
+  lgPrimaryActionButton,
   lgStatusBadge,
   lgStyles,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
+import { GlassCancelButton } from "../../components/GlassCancelButton";
+import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { LastRunStamp } from "../../components/LastRunStamp";
-import { PAGE } from "../../state/pages";
-import {
-  RUNTIME_ENV_COLOR,
-  RuntimeEnvironmentShell,
-} from "../runtime-environment/RuntimeEnvironmentShell";
+import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
 import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
-import {
-  BuildLogCard,
-  BuildReadinessAside,
-  BuildRunConsole,
-  BuildScriptCard,
-  BuildSummaryAside,
-  RuntimeArtifactCard,
-} from "./sections";
+import { BuildLogCard, BuildScriptCard, RuntimeArtifactCard } from "./sections";
+
+const BUILD_PAGE_COLOR = lgPageColors.runtimeEnv;
+
+function BuildRunControls({
+  running,
+  runDone,
+  disabled,
+  onRun,
+  onCancel,
+}: {
+  running: boolean;
+  runDone: boolean;
+  disabled: boolean;
+  onRun: () => void;
+  onCancel?: () => void;
+}) {
+  const label = running ? "Building…" : runDone ? "Re-build" : "Run build";
+  return (
+    <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={onRun}
+        disabled={disabled}
+        style={lgPrimaryActionButton(disabled)}
+      >
+        <span
+          style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}
+        >
+          {running ? Ic.loader(14) : Ic.play(14)}
+        </span>
+        {label}
+      </button>
+      {running && onCancel && <GlassCancelButton onClick={onCancel} />}
+    </div>
+  );
+}
 
 export function PageBuildRuntime({
   assemblyStep,
   ree,
-  badges,
   workspaceFiles,
   log,
   running,
@@ -49,7 +75,6 @@ export function PageBuildRuntime({
   ts,
   onRun,
   onCancel,
-  onGo,
   onGoFields,
   missing,
   params,
@@ -103,50 +128,56 @@ export function PageBuildRuntime({
     [finalRuntimeFile],
   );
 
-  const sbomPath = resolvedSbomPath(ree.sbom);
-  const sbomNode = useMemo(
-    () => (sbomPath ? findFileByPath(files, sbomPath) : null),
-    [files, sbomPath],
-  );
-
   const hasScript = !!scriptPath;
+  const hasMissing = missing.length > 0;
   const statusLabel = buildRunStatusLabel({ running, runDone, hasScript });
-  const sbomReady = !!sbomPath && !!sbomNode;
-  const activationReady = !!badges?.activation;
-
-  const headerBadges = (
-    <>
-      {scriptPath && <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{scriptPath}</span>}
-      <span style={lgStatusBadge(runDone)}>{statusLabel}</span>
-      <span style={lgStatusBadge(sbomReady)}>{sbomReady ? "SBOM ready" : "SBOM pending"}</span>
-      <span style={lgStatusBadge(activationReady)}>
-        {activationReady ? "Activation ready" : "Activation pending"}
-      </span>
-      {runDone && badge && (
-        <span style={lgOutcomeBadge(badge.color, badge.bg)}>
-          {Ic.check(11)} {badge.label}
-        </span>
-      )}
-    </>
-  );
-
-  const headerRight = runDone && ts ? <LastRunStamp label="Last built" ts={ts} /> : null;
 
   return (
-    <RuntimeEnvironmentShell
-      active={PAGE.BUILD}
-      buildReady={!!finalRuntime && runtimePathExists}
-      sbomReady={sbomReady}
-      activationReady={activationReady}
-      onGo={onGo}
-      headerBadges={headerBadges}
-      headerRight={headerRight}
-      main={
+    <div style={pageRoot}>
+      <GlassPageHeader
+        icon={Ic.cpu(24)}
+        iconTint={{
+          color: BUILD_PAGE_COLOR,
+          border: `${BUILD_PAGE_COLOR}55`,
+          shadow: `${BUILD_PAGE_COLOR}28`,
+        }}
+        title="Build Runtime"
+        subtitle="Write or pick the build script that produces the runtime artifact."
+        badges={
+          <>
+            {scriptPath && (
+              <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{scriptPath}</span>
+            )}
+            <span style={lgStatusBadge(runDone)}>{statusLabel}</span>
+            {runDone && badge && (
+              <span style={lgOutcomeBadge(badge.color, badge.bg)}>
+                {Ic.check(11)} {badge.label}
+              </span>
+            )}
+          </>
+        }
+        right={
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            {runDone && ts && <LastRunStamp label="Last built" ts={ts} />}
+            <BuildRunControls
+              running={running}
+              runDone={runDone}
+              disabled={running || hasMissing}
+              onRun={() => onRun(assemblyStep.key, buildParams)}
+              onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
+            />
+          </div>
+        }
+      />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <MissingInputsBanner missing={missing} onGoFields={onGoFields} />
+
         <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
           <div style={lgStyles.sectionBody}>
             <GlassSectionHeader
               icon={Ic.terminal(19)}
-              color={RUNTIME_ENV_COLOR}
+              color={BUILD_PAGE_COLOR}
               title="Build Script"
               subtitle="One script — pick existing, write your own, or generate from a base."
             />
@@ -165,7 +196,7 @@ export function PageBuildRuntime({
             <div style={{ marginTop: 22 }}>
               <GlassSectionHeader
                 icon={Ic.archive(19)}
-                color={RUNTIME_ENV_COLOR}
+                color={BUILD_PAGE_COLOR}
                 title="Runtime Artifact"
                 subtitle="The file produced by your build, consumed by SBOM and activation."
               />
@@ -186,41 +217,17 @@ export function PageBuildRuntime({
             <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
               {buildFooterHint({ runDone, hasScript })}
             </span>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button type="button" onClick={() => onGo?.(PAGE.SBOM)} style={lgNextButton()}>
-                Next: Generate SBOM {Ic.chevR(15)}
-              </button>
-            </div>
           </div>
         </section>
-      }
-      aside={
-        <>
-          <BuildRunConsole
-            color={RUNTIME_ENV_COLOR}
-            running={running}
-            runDone={runDone}
-            missing={missing}
-            onRun={() => onRun(assemblyStep.key, buildParams)}
-            onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
-            onGoFields={onGoFields}
-          />
-          <BuildSummaryAside
-            scriptPath={scriptPath}
-            source={scriptSource}
-            runtimePath={finalRuntime}
-            runtimePathExists={runtimePathExists}
-            runtimeSize={finalRuntimeSize}
-            runDone={runDone}
-          />
-          <BuildReadinessAside
-            hasScript={!!scriptPath}
-            hasRuntime={!!finalRuntime}
-            runtimePathExists={runtimePathExists}
-            runDone={runDone}
-          />
-        </>
-      }
-    />
+      </div>
+    </div>
   );
 }
+
+const pageRoot: React.CSSProperties = {
+  height: "100%",
+  minHeight: 0,
+  overflow: "auto",
+  padding: "46px 36px 32px",
+  color: lgColors.text,
+};

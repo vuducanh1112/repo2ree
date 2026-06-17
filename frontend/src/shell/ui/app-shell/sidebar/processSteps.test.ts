@@ -1,44 +1,39 @@
 import { describe, expect, it } from "vitest";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import { createEmptyReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import { runtimeNavCompleted } from "./processSteps";
+import { PAGE } from "../state/pages";
+import { PROCESS_STEPS, resolveNavCompleted } from "./processSteps";
 
-describe("runtimeNavCompleted", () => {
-  it("uses completed build, sbom, and activation badges when present", () => {
+function stepFor(key: string) {
+  const step = PROCESS_STEPS.find((s) => s.key === key);
+  if (!step) throw new Error(`No step for key ${key}`);
+  return step;
+}
+
+describe("build step navCompleted", () => {
+  it("completes when the build badge is present", () => {
     const ree = createEmptyReeEditorViewModel();
-    expect(runtimeNavCompleted(ree, { build: true, sbom: true, activation: true } as Badges)).toBe(
+    expect(resolveNavCompleted(stepFor(PAGE.BUILD), ree, { build: true } as Badges)).toBe(true);
+  });
+
+  it("is not complete without the build badge", () => {
+    const ree = createEmptyReeEditorViewModel();
+    expect(resolveNavCompleted(stepFor(PAGE.BUILD), ree, {} as Badges)).toBe(false);
+  });
+});
+
+describe("sbom step navCompleted", () => {
+  it("completes when the sbom badge is present", () => {
+    const ree = createEmptyReeEditorViewModel();
+    expect(resolveNavCompleted(stepFor(PAGE.SBOM), ree, { sbom: true } as Badges)).toBe(true);
+  });
+});
+
+describe("activation step navCompleted", () => {
+  it("completes when the activation badge is present", () => {
+    const ree = createEmptyReeEditorViewModel();
+    expect(resolveNavCompleted(stepFor(PAGE.ACTIVATION), ree, { activation: true } as Badges)).toBe(
       true,
     );
-  });
-
-  it("uses durable runtime, sbom, and activation metadata after reload/import", () => {
-    const ree = {
-      ...createEmptyReeEditorViewModel(),
-      runtime: "runtime.tar.gz",
-      sbom: "sbom.json",
-      activation_script: "activation_test.sh",
-    };
-
-    expect(runtimeNavCompleted(ree, {} as Badges)).toBe(true);
-  });
-
-  it("ignores skipped sentinels in durable metadata", () => {
-    const ree = {
-      ...createEmptyReeEditorViewModel(),
-      runtime: "__skipped__",
-      sbom: "sbom.json",
-    };
-
-    expect(runtimeNavCompleted(ree, {} as Badges)).toBe(false);
-  });
-
-  it("requires both runtime and sbom durable metadata", () => {
-    const ree = {
-      ...createEmptyReeEditorViewModel(),
-      runtime: "runtime.tar.gz",
-      sbom: "sbom.json",
-    };
-
-    expect(runtimeNavCompleted(ree, {} as Badges)).toBe(false);
   });
 });

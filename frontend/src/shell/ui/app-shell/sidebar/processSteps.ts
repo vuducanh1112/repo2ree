@@ -2,8 +2,6 @@ import { hbomHasAnyComponents } from "../../../../core/hbom/HbomSummary";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import { REE_ASSEMBLY_STEPS } from "../../../../core/ree-assembly/assemblyCatalog";
 import type { ReeAssemblyDefinition } from "../../../../core/ree-assembly/assemblyStepTypes";
-import { resolvedRuntimePath } from "../../../../core/ree-assembly/buildRuntimeUiState";
-import { resolvedSbomPath } from "../../../../core/ree-assembly/sbomUiState";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { Ic } from "../../shared/components/Icon";
 import { type AppShellPage, PAGE } from "../state/pages";
@@ -60,14 +58,29 @@ export const PROCESS_STEPS: ProcessStep[] = [
   {
     n: 5,
     key: PAGE.BUILD,
-    label: "Runtime Environment",
+    label: "Build Runtime",
     IC: Ic.cpu,
     automation: AUTOMATION_BY_KEY[PAGE.BUILD],
-    desc: "Build, inventory, and verify runtime",
-    navCompleted: runtimeNavCompleted,
+    desc: "Build the runtime artifact",
   },
   {
     n: 6,
+    key: PAGE.SBOM,
+    label: "Generate SBOM",
+    IC: Ic.package,
+    automation: AUTOMATION_BY_KEY[PAGE.SBOM],
+    desc: "Inventory the software in the runtime",
+  },
+  {
+    n: 7,
+    key: PAGE.ACTIVATION,
+    label: "Test Activation",
+    IC: Ic.shield,
+    automation: AUTOMATION_BY_KEY[PAGE.ACTIVATION],
+    desc: "Verify the runtime starts and activates",
+  },
+  {
+    n: 8,
     key: PAGE.EXPERIMENTS,
     label: "Experiments",
     IC: Ic.terminal,
@@ -75,7 +88,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Define reproducibility experiment commands",
   },
   {
-    n: 7,
+    n: 9,
     key: PAGE.ARCHIVE,
     label: "Deposit & Share",
     IC: Ic.globe,
@@ -83,7 +96,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Archive and publish",
   },
   {
-    n: 8,
+    n: 10,
     key: PAGE.SEAL,
     label: "Seal",
     IC: Ic.lock,
@@ -91,13 +104,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
     desc: "Seal the REE",
   },
 ];
-
-export function runtimeNavCompleted(ree: ReeEditorViewModel, badges: Badges): boolean {
-  const runCompleted = !!badges?.build && !!badges?.sbom && !!badges?.activation;
-  const artifactsPresent = !!resolvedRuntimePath(ree.runtime) && !!resolvedSbomPath(ree.sbom);
-  const activationConfigured = !!ree.activation_script?.trim();
-  return runCompleted || (artifactsPresent && activationConfigured);
-}
 
 function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel, badges: Badges) {
   if (stepKey === PAGE.SOURCE) return !!ree.sourceAvailable;

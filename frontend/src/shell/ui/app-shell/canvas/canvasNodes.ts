@@ -5,7 +5,7 @@ import { axisStandings, axisStepLabel } from "../../../../core/review/axes";
 import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
 import { Ic } from "../../shared/components/Icon";
 import { PROCESS_STEPS, resolveNavCompleted } from "../sidebar/processSteps";
-import { type AppShellPage, isRuntimeEnvPage, PAGE } from "../state/pages";
+import { type AppShellPage, PAGE } from "../state/pages";
 
 // A canvas node is a page floating around the pod in the hub. `kind` keeps the
 // declarations/evidence split: things you DECLARE cluster left, evidence the
@@ -87,16 +87,43 @@ export const CANVAS_NODES: CanvasNode[] = [
     shadow: "#3b0764",
     icon: Ic.star,
   },
+  // Build / SBOM / Activation are the three facets of the runtime — the inner
+  // shell. They are plain inner-shell members (each cables to the inner shell),
+  // not a node-to-node chain. Direction is read from their layout: Build sits at
+  // the inlet (nearest the pod / the source-facing side), and SBOM + Activation
+  // sit downstream toward the core, since they consume the artifact Build emits.
   {
     key: PAGE.BUILD,
-    label: "Runtime",
+    label: "Build",
     kind: "evidence",
     zone: "inner",
-    x: 378,
-    y: -16,
+    x: 340,
+    y: 0,
     color: "#0891b2",
     shadow: "#164e63",
     icon: Ic.cpu,
+  },
+  {
+    key: PAGE.SBOM,
+    label: "SBOM",
+    kind: "evidence",
+    zone: "inner",
+    x: 520,
+    y: -58,
+    color: "#16a34a",
+    shadow: "#14532d",
+    icon: Ic.package,
+  },
+  {
+    key: PAGE.ACTIVATION,
+    label: "Activation",
+    kind: "evidence",
+    zone: "inner",
+    x: 520,
+    y: 75,
+    color: "#7c3aed",
+    shadow: "#3b0764",
+    icon: Ic.shield,
   },
   {
     key: PAGE.ARCHIVE,
@@ -181,7 +208,7 @@ export function isNodeLocked(_node: CanvasNode, provisioned: boolean): boolean {
 }
 
 export function isNodeActive(node: CanvasNode, page: AppShellPage): boolean {
-  return page === node.key || (node.key === PAGE.BUILD && isRuntimeEnvPage(page));
+  return page === node.key;
 }
 
 export function activeNode(page: AppShellPage): CanvasNode | undefined {
@@ -262,7 +289,15 @@ export function nodeSummary(
           label: "Runtime",
           value: ree.runtime && ree.runtime !== "__skipped__" ? "image ready" : null,
         },
-        { label: "SBOM", value: ree.sbom ? "inventoried" : null },
+      ];
+    case PAGE.SBOM:
+      return [{ label: "SBOM", value: ree.sbom ? "inventoried" : null }];
+    case PAGE.ACTIVATION:
+      return [
+        {
+          label: "Script",
+          value: ree.activation_script?.trim() ? "configured" : null,
+        },
       ];
     case PAGE.ARCHIVE:
       return [

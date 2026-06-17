@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import {
   type ActivationScriptSource,
   activationFooterHint,
+  activationRunLabel,
+  canRunActivation,
 } from "../../../../../core/ree-assembly/activationUiState";
 import type { ReeAssemblyRunParams } from "../../../../../core/ree-assembly/assemblyTypes";
 import { resolvedRuntimePath } from "../../../../../core/ree-assembly/buildRuntimeUiState";
@@ -10,35 +12,62 @@ import { workspaceFileExists } from "../../../../../core/workspace/fileTreeTrave
 import { Ic } from "../../../shared/components/Icon";
 import {
   lgColors,
-  lgNextButton,
   lgOutcomeBadge,
   lgPillChip,
+  lgPrimaryActionButton,
   lgStatusBadge,
   lgStyles,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
+import { GlassCancelButton } from "../../components/GlassCancelButton";
+import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { LastRunStamp } from "../../components/LastRunStamp";
-import { PAGE } from "../../state/pages";
-import {
-  RUNTIME_ENV_COLOR,
-  RuntimeEnvironmentShell,
-} from "../runtime-environment/RuntimeEnvironmentShell";
+import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
 import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
-import {
-  ActivationReadinessAside,
-  ActivationRunConsole,
-  ActivationScriptCard,
-  ActivationSummaryAside,
-  ActivationTargetCard,
-} from "./sections";
+import { ActivationScriptCard, ActivationTargetCard } from "./sections";
+
+const ACTIVATION_PAGE_COLOR = "#7c3aed";
+
+function ActivationRunControls({
+  running,
+  runDone,
+  disabled,
+  onRun,
+  onCancel,
+}: {
+  running: boolean;
+  runDone: boolean;
+  disabled: boolean;
+  onRun: () => void;
+  onCancel?: () => void;
+}) {
+  const label = activationRunLabel({ running, runDone });
+  return (
+    <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={onRun}
+        disabled={disabled}
+        style={lgPrimaryActionButton(disabled)}
+      >
+        <span
+          style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}
+        >
+          {running ? Ic.loader(14) : Ic.play(14)}
+        </span>
+        {label}
+      </button>
+      {running && onCancel && <GlassCancelButton onClick={onCancel} />}
+    </div>
+  );
+}
 
 export function PageTestActivation({
   assemblyStep,
   ree,
-  badges,
   workspaceFiles,
   log,
   running,
@@ -47,7 +76,6 @@ export function PageTestActivation({
   ts,
   onRun,
   onCancel,
-  onGo,
   onGoFields,
   missing,
   params,
@@ -74,8 +102,15 @@ export function PageTestActivation({
 
   const activationParams: ReeAssemblyRunParams<"activation"> =
     params as ReeAssemblyRunParams<"activation">;
-  const buildReady = !!runtimePath && runtimePathExists;
-  const activationReady = !!badges?.activation;
+
+  const scriptFileMissing = !!scriptPath && !scriptPresent;
+  const canRun = canRunActivation({
+    running,
+    hasMissing: missing.length > 0,
+    runtimePathExists,
+    scriptFileMissing,
+  });
+  const activationReady = runDone && canRun;
 
   const handleCommitScript = useCallback(
     (path: string, content: string) => {
@@ -91,44 +126,54 @@ export function PageTestActivation({
     [onReeSpecChange],
   );
 
-  const headerBadges = (
-    <>
-      {runtimePath && (
-        <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{runtimePath}</span>
-      )}
-      {scriptPath && <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{scriptPath}</span>}
-      <span style={lgStatusBadge(buildReady)}>{buildReady ? "Build ready" : "Build pending"}</span>
-      <span style={lgStatusBadge(!!sbomPath && sbomPathExists)}>
-        {sbomPath && sbomPathExists ? "SBOM ready" : "SBOM pending"}
-      </span>
-      <span style={lgStatusBadge(activationReady)}>
-        {activationReady ? "Activation ready" : "Activation pending"}
-      </span>
-      {runDone && badge && (
-        <span style={lgOutcomeBadge(badge.color, badge.bg)}>
-          {Ic.check(11)} {badge.label}
-        </span>
-      )}
-    </>
-  );
-
-  const headerRight = runDone && ts ? <LastRunStamp label="Last verified" ts={ts} /> : null;
-
   return (
-    <RuntimeEnvironmentShell
-      active={PAGE.ACTIVATION}
-      buildReady={buildReady}
-      sbomReady={!!sbomPath && sbomPathExists}
-      activationReady={activationReady}
-      onGo={onGo}
-      headerBadges={headerBadges}
-      headerRight={headerRight}
-      main={
+    <div style={pageRoot}>
+      <GlassPageHeader
+        icon={Ic.shield(24)}
+        iconTint={{
+          color: ACTIVATION_PAGE_COLOR,
+          border: `${ACTIVATION_PAGE_COLOR}55`,
+          shadow: `${ACTIVATION_PAGE_COLOR}28`,
+        }}
+        title="Test Activation"
+        subtitle="Verify the packaged runtime actually starts and activates."
+        badges={
+          <>
+            {scriptPath && (
+              <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{scriptPath}</span>
+            )}
+            <span style={lgStatusBadge(activationReady)}>
+              {activationReady ? "Activation ready" : "Activation pending"}
+            </span>
+            {runDone && badge && (
+              <span style={lgOutcomeBadge(badge.color, badge.bg)}>
+                {Ic.check(11)} {badge.label}
+              </span>
+            )}
+          </>
+        }
+        right={
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            {runDone && ts && <LastRunStamp label="Last verified" ts={ts} />}
+            <ActivationRunControls
+              running={running}
+              runDone={runDone}
+              disabled={!canRun}
+              onRun={() => onRun(assemblyStep.key, activationParams)}
+              onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
+            />
+          </div>
+        }
+      />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <MissingInputsBanner missing={missing} onGoFields={onGoFields} />
+
         <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
           <div style={lgStyles.sectionBody}>
             <GlassSectionHeader
               icon={Ic.shield(19)}
-              color={RUNTIME_ENV_COLOR}
+              color={ACTIVATION_PAGE_COLOR}
               title="Activation Script"
               subtitle="Select an existing smoke test or write the script that proves the runtime starts."
             />
@@ -147,7 +192,7 @@ export function PageTestActivation({
             <div style={{ marginTop: 22 }}>
               <GlassSectionHeader
                 icon={Ic.cpu(19)}
-                color={RUNTIME_ENV_COLOR}
+                color={ACTIVATION_PAGE_COLOR}
                 title="Runtime Under Test"
                 subtitle="Activation reuses the runtime artifact from Build Runtime and the inventory context from Generate SBOM."
               />
@@ -157,8 +202,6 @@ export function PageTestActivation({
                 runtimePathExists={runtimePathExists}
                 sbomPath={sbomPath}
                 sbomPathExists={sbomPathExists}
-                onGoBuild={() => onGo?.(PAGE.BUILD)}
-                onGoSbom={() => onGo?.(PAGE.SBOM)}
               />
             </div>
 
@@ -175,45 +218,17 @@ export function PageTestActivation({
             <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
               {activationFooterHint({ runDone })}
             </span>
-            <button type="button" onClick={() => onGo?.(PAGE.EXPERIMENTS)} style={lgNextButton()}>
-              Next: Experiments {Ic.chevR(15)}
-            </button>
           </div>
         </section>
-      }
-      aside={
-        <>
-          <ActivationRunConsole
-            color={RUNTIME_ENV_COLOR}
-            runtimePath={runtimePath}
-            runtimePathExists={runtimePathExists}
-            scriptPath={scriptPath}
-            scriptPresent={scriptPresent}
-            running={running}
-            runDone={runDone}
-            missing={missing}
-            onRun={() => onRun(assemblyStep.key, activationParams)}
-            onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
-            onGoFields={onGoFields}
-          />
-          <ActivationSummaryAside
-            runtimePath={runtimePath}
-            runtimePathExists={runtimePathExists}
-            sbomPath={sbomPath}
-            sbomPathExists={sbomPathExists}
-            scriptPath={scriptPath}
-            scriptPresent={scriptPresent}
-            runDone={runDone}
-          />
-          <ActivationReadinessAside
-            runtimePath={runtimePath}
-            runtimePathExists={runtimePathExists}
-            scriptPath={scriptPath}
-            scriptPresent={scriptPresent}
-            runDone={runDone}
-          />
-        </>
-      }
-    />
+      </div>
+    </div>
   );
 }
+
+const pageRoot: React.CSSProperties = {
+  height: "100%",
+  minHeight: 0,
+  overflow: "auto",
+  padding: "46px 36px 32px",
+  color: lgColors.text,
+};

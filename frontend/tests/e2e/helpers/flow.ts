@@ -127,8 +127,8 @@ export async function buildRuntime(
   producedRuntimePath: string,
 ) {
   await stepShot(page, "build-runtime", "before");
-  await openPort(page, "Runtime");
-  await expect(main(page).getByText("Runtime Environment", { exact: true })).toBeVisible();
+  await openPort(page, "Build");
+  await expect(main(page).getByText("Build Runtime", { exact: true })).toBeVisible();
   await page.getByPlaceholder("build_runtime.sh").fill(buildScriptPath);
   await main(page)
     .getByRole("button", { name: /Run build/ })
@@ -164,19 +164,15 @@ export async function provideHbom(page: Page, cpuModel: string) {
 }
 
 /**
- * Generate the SBOM. Assumes the runtime has been built and included (the scan
- * target defaults to it). Switches to the "Generate SBOM" tab on the Runtime
- * Environment page, so call after {@link buildRuntime}.
+ * Generate the SBOM. Navigates to the SBOM canvas node (now a standalone page,
+ * no longer a tab on the Runtime Environment page).
  */
 export async function generateSbom(page: Page) {
   await stepShot(page, "generate-sbom", "before");
-  const tab = main(page).locator("button[aria-pressed]").filter({ hasText: "Generate SBOM" });
-  await tab.click();
-  await expect(tab).toHaveAttribute("aria-pressed", "true");
+  await openPort(page, "SBOM");
   await expect(main(page).getByText("Scan Target", { exact: true })).toBeVisible();
   await main(page)
     .getByRole("button", { name: /Generate SBOM/ })
-    .last()
     .click();
   await expect(main(page).getByRole("button", { name: /Regenerate SBOM/ })).toBeVisible({
     timeout: 20000,
@@ -188,15 +184,12 @@ export async function generateSbom(page: Page) {
 }
 
 /**
- * Run the runtime activation test from the given script path. Switches to the
- * "Test Activation" tab on the Runtime Environment page, so call after
- * {@link buildRuntime}.
+ * Run the runtime activation test from the given script path. Navigates to
+ * the Activation canvas node (now a standalone page, not a tab).
  */
 export async function testActivation(page: Page, activationScriptPath: string) {
   await stepShot(page, "test-activation", "before");
-  const tab = main(page).locator("button[aria-pressed]").filter({ hasText: "Test Activation" });
-  await tab.click();
-  await expect(tab).toHaveAttribute("aria-pressed", "true");
+  await openPort(page, "Activation");
   await expect(main(page).getByText("Activation Script", { exact: true })).toBeVisible();
   await main(page).getByPlaceholder("activation_test.sh").first().fill(activationScriptPath);
   await main(page)

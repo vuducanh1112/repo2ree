@@ -1,7 +1,6 @@
 import { Ic } from "../../../../shared/components/Icon";
 import {
   lgColors,
-  lgGlassButton,
   lgInfoBanner,
   lgPageColors,
   lgPillChip,
@@ -15,8 +14,6 @@ interface ActivationTargetCardProps {
   runtimePathExists: boolean;
   sbomPath: string;
   sbomPathExists: boolean;
-  onGoBuild: () => void;
-  onGoSbom: () => void;
 }
 
 export function ActivationTargetCard({
@@ -24,8 +21,6 @@ export function ActivationTargetCard({
   runtimePathExists,
   sbomPath,
   sbomPathExists,
-  onGoBuild,
-  onGoSbom,
 }: ActivationTargetCardProps) {
   const runtimeReady = !!runtimePath && runtimePathExists;
 
@@ -63,14 +58,6 @@ export function ActivationTargetCard({
         </div>
       )}
 
-      {!runtimePath && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" onClick={onGoBuild} style={lgGlassButton()}>
-            {Ic.chevR(13)} Go to Build Runtime
-          </button>
-        </div>
-      )}
-
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <span style={lgPillChip(runtimeReady)}>
           {runtimeReady ? "Runtime file present" : "Runtime pending"}
@@ -79,18 +66,6 @@ export function ActivationTargetCard({
           {sbomPath && sbomPathExists ? "SBOM attached" : "SBOM pending"}
         </span>
       </div>
-
-      {(!sbomPath || !sbomPathExists) && (
-        <div style={lgInfoBanner("muted")}>
-          <span style={{ color: lgColors.textMuted, display: "flex" }}>{Ic.info(13)}</span>
-          <span style={{ fontSize: 12, color: lgColors.textMid, flex: 1 }}>
-            Generate the SBOM to finish the full Runtime Environment flow.
-          </span>
-          <button type="button" onClick={onGoSbom} style={lgGlassButton()}>
-            Open SBOM tab
-          </button>
-        </div>
-      )}
     </div>
   );
 }

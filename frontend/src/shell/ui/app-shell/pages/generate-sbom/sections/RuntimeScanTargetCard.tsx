@@ -3,7 +3,6 @@ import {
   lgColors,
   lgInfoBanner,
   lgPillChip,
-  lgPrimaryActionButton,
   lgStatusBadge,
   lgStyles,
 } from "../../../../theme/lightGlassTheme";
@@ -14,7 +13,6 @@ interface RuntimeScanTargetCardProps {
   runtimePathExists: boolean;
   runtimeIsTarball: boolean;
   color: string;
-  onGoBuild: () => void;
 }
 
 export function RuntimeScanTargetCard({
@@ -22,7 +20,6 @@ export function RuntimeScanTargetCard({
   runtimePathExists,
   runtimeIsTarball,
   color,
-  onGoBuild,
 }: RuntimeScanTargetCardProps) {
   const ready = !!runtimePath && runtimePathExists;
   return (
@@ -55,20 +52,6 @@ export function RuntimeScanTargetCard({
             Selected runtime is not present in the current workspace files.
           </span>
         </div>
-      )}
-
-      {!runtimePath && (
-        <button
-          type="button"
-          onClick={onGoBuild}
-          style={{
-            ...lgPrimaryActionButton(false),
-            width: "fit-content",
-            padding: "8px 12px",
-          }}
-        >
-          {Ic.chevR(13)} Go to Build Runtime
-        </button>
       )}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

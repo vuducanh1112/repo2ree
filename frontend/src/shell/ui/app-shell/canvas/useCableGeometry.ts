@@ -119,7 +119,31 @@ export function useCableGeometry({
         },
       ];
     });
-    setGeo({ cables, decoCables: [], w: cRect.width, h: cRect.height });
+
+    // Cross-shell dependency spine, drawn only when decomposed: source feeds the
+    // runtime feeds the experiment, i.e. outer shell → inner shell → core. We
+    // connect the column pods edge-to-edge so it reads as a faded backbone behind
+    // the membership cables. (In the assembled view the shells overlap into one
+    // pod, so there is nothing to span.)
+    const decoCables: CableGeo["decoCables"] = [];
+    if (exploded) {
+      const innerPod = podGeom(projectionPods.inner?.current ?? null);
+      const corePod = podGeom(projectionPods.core?.current ?? null);
+      const spine = (
+        id: string,
+        from: { center: { x: number; y: number }; radius: number } | null,
+        to: { center: { x: number; y: number }; radius: number } | null,
+      ) => {
+        if (!from || !to) return;
+        const a = intercept(from, to.center.x, to.center.y);
+        const b = intercept(to, from.center.x, from.center.y);
+        decoCables.push({ id, x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+      };
+      spine("spine-outer-inner", mainPod, innerPod);
+      spine("spine-inner-core", innerPod, corePod);
+    }
+
+    setGeo({ cables, decoCables, w: cRect.width, h: cRect.height });
   }, [stageRef, podSvgRef, nodeEls, ree, badges, exploded, projectionPods]);
 
   // Re-measure on every transform/offset/data change. While `animate` is on, the

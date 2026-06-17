@@ -10,35 +10,63 @@ import { workspaceFileExists } from "../../../../../core/workspace/fileTreeTrave
 import { Ic } from "../../../shared/components/Icon";
 import {
   lgColors,
-  lgNextButton,
+  lgInfoBanner,
   lgOutcomeBadge,
   lgPillChip,
+  lgPrimaryActionButton,
   lgStatusBadge,
   lgStyles,
 } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
+import { GlassCancelButton } from "../../components/GlassCancelButton";
+import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { LastRunStamp } from "../../components/LastRunStamp";
-import { PAGE } from "../../state/pages";
-import {
-  RUNTIME_ENV_COLOR,
-  RuntimeEnvironmentShell,
-} from "../runtime-environment/RuntimeEnvironmentShell";
+import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
 import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
-import {
-  RuntimeScanTargetCard,
-  SbomOutputCard,
-  SbomReadinessAside,
-  SbomRunConsole,
-  SbomSummaryAside,
-} from "./sections";
+import { RuntimeScanTargetCard, SbomOutputCard } from "./sections";
+
+const SBOM_PAGE_COLOR = "#16a34a";
+
+function SbomRunControls({
+  running,
+  runDone,
+  disabled,
+  onRun,
+  onCancel,
+}: {
+  running: boolean;
+  runDone: boolean;
+  disabled: boolean;
+  onRun: () => void;
+  onCancel?: () => void;
+}) {
+  const label = running ? "Generating…" : runDone ? "Regenerate SBOM" : "Generate SBOM";
+  return (
+    <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={onRun}
+        disabled={disabled}
+        style={lgPrimaryActionButton(disabled)}
+      >
+        <span
+          style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}
+        >
+          {running ? Ic.loader(14) : Ic.play(14)}
+        </span>
+        {label}
+      </button>
+      {running && onCancel && <GlassCancelButton onClick={onCancel} />}
+    </div>
+  );
+}
 
 export function PageGenerateSBOM({
   assemblyStep,
   ree,
-  badges,
   workspaceFiles,
   log,
   running,
@@ -47,7 +75,6 @@ export function PageGenerateSBOM({
   ts,
   onRun,
   onCancel,
-  onGo,
   onGoFields,
   missing,
   params,
@@ -69,45 +96,69 @@ export function PageGenerateSBOM({
   };
 
   const buildReady = !!runtimePath && runtimePathExists;
-  const activationReady = !!badges?.activation;
-
-  const headerBadges = (
-    <>
-      {runtimePath && (
-        <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{runtimePath}</span>
-      )}
-      <span style={lgStatusBadge(buildReady)}>{buildReady ? "Build ready" : "Build pending"}</span>
-      <span style={lgStatusBadge(!!sbomPath && !!sbomNode)}>
-        {sbomPath && sbomNode ? "SBOM ready" : "SBOM pending"}
-      </span>
-      <span style={lgStatusBadge(activationReady)}>
-        {activationReady ? "Activation ready" : "Activation pending"}
-      </span>
-      {runDone && badge && (
-        <span style={lgOutcomeBadge(badge.color, badge.bg)}>
-          {Ic.check(11)} {badge.label}
-        </span>
-      )}
-    </>
-  );
-
-  const headerRight = runDone && ts ? <LastRunStamp label="Last generated" ts={ts} /> : null;
+  const hasMissing = missing.length > 0;
+  const disabled = running || hasMissing || !runtimePathExists;
 
   return (
-    <RuntimeEnvironmentShell
-      active={PAGE.SBOM}
-      buildReady={!!runtimePath && runtimePathExists}
-      sbomReady={!!sbomPath && !!sbomNode}
-      activationReady={activationReady}
-      onGo={onGo}
-      headerBadges={headerBadges}
-      headerRight={headerRight}
-      main={
+    <div style={pageRoot}>
+      <GlassPageHeader
+        icon={Ic.package(24)}
+        iconTint={{
+          color: SBOM_PAGE_COLOR,
+          border: `${SBOM_PAGE_COLOR}55`,
+          shadow: `${SBOM_PAGE_COLOR}28`,
+        }}
+        title="Generate SBOM"
+        subtitle="Scan the built runtime and produce a software inventory."
+        badges={
+          <>
+            {runtimePath && (
+              <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{runtimePath}</span>
+            )}
+            <span style={lgStatusBadge(buildReady)}>
+              {buildReady ? "Build ready" : "Build pending"}
+            </span>
+            <span style={lgStatusBadge(!!sbomPath && !!sbomNode)}>
+              {sbomPath && sbomNode ? "SBOM ready" : "SBOM pending"}
+            </span>
+            {runDone && badge && (
+              <span style={lgOutcomeBadge(badge.color, badge.bg)}>
+                {Ic.check(11)} {badge.label}
+              </span>
+            )}
+          </>
+        }
+        right={
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            {runDone && ts && <LastRunStamp label="Last generated" ts={ts} />}
+            <SbomRunControls
+              running={running}
+              runDone={runDone}
+              disabled={disabled}
+              onRun={() => onRun(assemblyStep.key, sbomParams)}
+              onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
+            />
+          </div>
+        }
+      />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <MissingInputsBanner missing={missing} onGoFields={onGoFields} />
+
+        {runtimePath && !runtimePathExists && (
+          <div style={lgInfoBanner("danger")}>
+            <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.info(13)}</span>
+            <span style={{ fontSize: 12, color: lgColors.danger }}>
+              Runtime file must exist before SBOM generation can run.
+            </span>
+          </div>
+        )}
+
         <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
           <div style={lgStyles.sectionBody}>
             <GlassSectionHeader
               icon={Ic.cpu(19)}
-              color={RUNTIME_ENV_COLOR}
+              color={SBOM_PAGE_COLOR}
               title="Scan Target"
               subtitle="SBOM generation reads the runtime artifact selected on the build tab."
             />
@@ -116,20 +167,19 @@ export function PageGenerateSBOM({
               runtimePath={runtimePath}
               runtimePathExists={runtimePathExists}
               runtimeIsTarball={runtimeIsTarball}
-              color={RUNTIME_ENV_COLOR}
-              onGoBuild={() => onGo?.(PAGE.BUILD)}
+              color={SBOM_PAGE_COLOR}
             />
 
             <div style={{ marginTop: 22 }}>
               <GlassSectionHeader
                 icon={Ic.package(19)}
-                color={RUNTIME_ENV_COLOR}
+                color={SBOM_PAGE_COLOR}
                 title="Produced SBOM"
                 subtitle="The generated SPDX JSON file attached to ree.sbom."
               />
 
               <SbomOutputCard
-                color={RUNTIME_ENV_COLOR}
+                color={SBOM_PAGE_COLOR}
                 sbomPath={sbomPath}
                 sbomFilePresent={!!sbomNode}
                 pkgCount={pkgCount}
@@ -152,41 +202,17 @@ export function PageGenerateSBOM({
                 ? "SBOM is ready for packaging and review."
                 : "Generate the SBOM after the runtime artifact exists in the workspace."}
             </span>
-            <button type="button" onClick={() => onGo?.(PAGE.ACTIVATION)} style={lgNextButton()}>
-              Next: Test Activation {Ic.chevR(15)}
-            </button>
           </div>
         </section>
-      }
-      aside={
-        <>
-          <SbomRunConsole
-            color={RUNTIME_ENV_COLOR}
-            runtimePath={runtimePath}
-            runtimePathExists={runtimePathExists}
-            running={running}
-            runDone={runDone}
-            missing={missing}
-            onRun={() => onRun(assemblyStep.key, sbomParams)}
-            onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
-            onGoFields={onGoFields}
-          />
-          <SbomSummaryAside
-            runtimePath={runtimePath}
-            runtimePathExists={runtimePathExists}
-            sbomPath={sbomPath}
-            sbomNode={sbomNode}
-            pkgCount={pkgCount}
-            sbomFormat={sbomFormat}
-            runDone={runDone}
-          />
-          <SbomReadinessAside
-            runtimePath={runtimePath}
-            runtimePathExists={runtimePathExists}
-            sbomPath={sbomPath}
-          />
-        </>
-      }
-    />
+      </div>
+    </div>
   );
 }
+
+const pageRoot: React.CSSProperties = {
+  height: "100%",
+  minHeight: 0,
+  overflow: "auto",
+  padding: "46px 36px 32px",
+  color: lgColors.text,
+};
