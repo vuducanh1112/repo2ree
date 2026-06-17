@@ -3,7 +3,15 @@ import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import { PodWidget } from "../pages/overview/PodWidget";
+import type { PodShell } from "../pages/overview/podWidget/PodSphere";
 import { EXPLODE_BASE_POD, EXPLODE_LAYERS } from "./canvasNodes";
+
+// Zone → isolated shell for the decomposed view.
+const ZONE_SHELL: Record<string, PodShell> = {
+  outer: "outer",
+  inner: "inner",
+  core: "core",
+};
 
 // One pod graphic per column: the full specimen at origin, then shrinking
 // projections to the right. Each carries an svgRef so the cable geometry can
@@ -20,6 +28,8 @@ export function ProjectionPod({
   exploded?: boolean;
 }) {
   const isMain = layer.zone === "outer";
+  // Assembled: always show the full three-layer pod. Decomposed: each column shows its layer.
+  const shell: PodShell = exploded ? (ZONE_SHELL[layer.zone] ?? "full") : "full";
   return (
     <div
       style={{
@@ -37,6 +47,8 @@ export function ProjectionPod({
         svgRef={svgRef}
         size={EXPLODE_BASE_POD * layer.scale}
         compact={!isMain}
+        shell={shell}
+        idSuffix={layer.zone}
       />
     </div>
   );

@@ -172,7 +172,12 @@ export function CanvasHub({
 
         {/* the specimen, plus its shrinking projections to the right (real pod
             entities the inner/core cables anchor to) */}
-        <ProjectionPod evaluation={evaluation} svgRef={podSvgRef} layer={EXPLODE_LAYERS[0]} />
+        <ProjectionPod
+          evaluation={evaluation}
+          svgRef={podSvgRef}
+          layer={EXPLODE_LAYERS[0]}
+          exploded={exploded}
+        />
         <ProjectionPod
           evaluation={evaluation}
           svgRef={innerPodRef}

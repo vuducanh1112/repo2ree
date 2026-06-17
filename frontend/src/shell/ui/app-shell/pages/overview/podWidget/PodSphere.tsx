@@ -1,51 +1,70 @@
-import {
-  axisFraction,
-  axisStandings,
-  bottleneckAxis,
-  DEPENDENCY_AXIS,
-} from "../../../../../../core/review/axes";
+import { axisFraction, axisStandings, bottleneckAxis } from "../../../../../../core/review/axes";
 import type { EvaluationState } from "../../../../../../core/review/EvaluationState";
 import { F } from "../../../../theme/theme";
 import { PodBolt } from "./PodBolt";
 import { PodBoltRing } from "./PodBoltRing";
-import { PodDepGraph } from "./PodDepGraph";
+import { PodShellCore } from "./PodShellCore";
+import { PodShellInner } from "./PodShellInner";
 import { POD_M } from "./podWidgetData";
+
+export type PodShell = "full" | "outer" | "inner" | "core";
 
 interface PodSphereProps {
   CX: number;
   CY: number;
   SR: number;
   evaluation: EvaluationState;
+  shell?: PodShell;
+  /** Unique suffix for SVG IDs when multiple pods are on the same page. */
+  idSuffix?: string;
 }
 
-export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
+export function PodSphere({
+  CX,
+  CY,
+  SR,
+  evaluation,
+  shell = "full",
+  idSuffix = "",
+}: PodSphereProps) {
+  // Standalone inner or core: skip the outer mechanics entirely.
+  if (shell === "core") {
+    return (
+      <PodShellCore CX={CX} CY={CY} SR={SR} evaluation={evaluation} idSuffix={`s${idSuffix}`} />
+    );
+  }
+  if (shell === "inner") {
+    return (
+      <PodShellInner CX={CX} CY={CY} SR={SR} evaluation={evaluation} idSuffix={`s${idSuffix}`} />
+    );
+  }
+
   const tint = bottleneckAxis(evaluation).axis;
   const standings = axisStandings(evaluation);
-  const depLevel = evaluation.dependencyLevel ?? 0;
+
+  // Porthole radius — the "window" through the outer shell into the interior.
+  const PR = SR * 0.46;
+
+  const oId = `ov${idSuffix}`;
+
   return (
     <g>
       <defs>
-        <radialGradient id="ovPodFace" cx="36%" cy="30%" r="70%">
+        <radialGradient id={`${oId}PodFace`} cx="36%" cy="30%" r="70%">
           <stop offset="0%" stopColor={POD_M.raised} />
           <stop offset="55%" stopColor={POD_M.face} />
           <stop offset="100%" stopColor={POD_M.shadow} />
         </radialGradient>
-        <radialGradient id="ovPortholeBg" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={tint.bg} />
-          <stop offset="100%" stopColor={tint.bg} stopOpacity="0.55" />
-        </radialGradient>
-        <radialGradient id="ovPortholeGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={tint.color} stopOpacity="0.12" />
-          <stop offset="100%" stopColor={tint.color} stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id="ovPortholeGloss" cx="32%" cy="28%" r="56%">
+        <radialGradient id={`${oId}PortholeGloss`} cx="32%" cy="28%" r="56%">
           <stop offset="0%" stopColor="#fff" stopOpacity="0.55" />
           <stop offset="100%" stopColor="#fff" stopOpacity="0" />
         </radialGradient>
-        <clipPath id="ovPortholeClip">
-          <circle cx={CX} cy={CY} r={SR * 0.46} />
+        <clipPath id={`${oId}PortholeClip`}>
+          <circle cx={CX} cy={CY} r={PR} />
         </clipPath>
       </defs>
+
+      {/* ── drop shadow ── */}
       <ellipse
         cx={CX + 5}
         cy={CY + SR * 0.85}
@@ -54,8 +73,19 @@ export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
         fill="#0d1117"
         opacity="0.08"
       />
+
+      {/* ── outer shell body ── */}
       <circle cx={CX} cy={CY} r={SR + 1} fill={POD_M.deep} opacity="0.4" />
-      <circle cx={CX} cy={CY} r={SR} fill="url(#ovPodFace)" stroke={POD_M.deep} strokeWidth="1.2" />
+      <circle
+        cx={CX}
+        cy={CY}
+        r={SR}
+        fill={`url(#${oId}PodFace)`}
+        stroke={POD_M.deep}
+        strokeWidth="1.2"
+      />
+
+      {/* weld seam lines */}
       <ellipse
         cx={CX}
         cy={CY}
@@ -76,6 +106,8 @@ export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
         strokeWidth="0.9"
         opacity="0.5"
       />
+
+      {/* equatorial belt */}
       <ellipse
         cx={CX}
         cy={CY}
@@ -97,6 +129,8 @@ export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
           />
         ) : null;
       })}
+
+      {/* ── top and bottom pole panels ── */}
       <ellipse
         cx={CX}
         cy={CY - SR * 0.72}
@@ -119,6 +153,8 @@ export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
         opacity="0.7"
       />
       <PodBoltRing cx={CX} cy={CY + SR * 0.72} r={SR * 0.36} n={6} bR={3.5} />
+
+      {/* ── porthole collar ── */}
       <circle
         cx={CX}
         cy={CY}
@@ -129,33 +165,28 @@ export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
       />
       <PodBoltRing cx={CX} cy={CY} r={SR * 0.53} n={12} bR={3.8} />
       <circle cx={CX} cy={CY} r={SR * 0.48} fill={POD_M.deep} stroke={POD_M.weld} strokeWidth="2" />
-      <circle cx={CX} cy={CY} r={SR * 0.46} fill="#050e1a" stroke={POD_M.deep} strokeWidth="1" />
-      <circle cx={CX} cy={CY} r={SR * 0.45} fill="url(#ovPortholeBg)" />
-      {/* One progress arc per reproducibility axis, concentric. */}
-      {standings.map(({ axis, level }, idx) => {
-        const frac = axisFraction(axis, level);
-        if (frac <= 0) return null;
-        const progressRadius = SR * (0.43 - idx * 0.07);
-        const ang = frac * 2 * Math.PI;
-        const x2 = CX + progressRadius * Math.sin(ang);
-        const y2 = CY - progressRadius * Math.cos(ang);
-        return (
-          <path
-            key={axis.key}
-            d={`M ${CX} ${CY - progressRadius} A ${progressRadius} ${progressRadius} 0 ${frac > 0.5 ? 1 : 0} 1 ${x2} ${y2}`}
-            fill="none"
-            stroke={axis.color}
-            strokeWidth="3.5"
-            opacity="0.85"
-            strokeLinecap="round"
+
+      {/* ── porthole interior ── */}
+      {shell === "full" ? (
+        <g clipPath={`url(#${oId}PortholeClip)`}>
+          <PodShellInner
+            CX={CX}
+            CY={CY}
+            SR={PR}
+            evaluation={evaluation}
+            showCore
+            idSuffix={`p${idSuffix}`}
           />
-        );
-      })}
-      <circle cx={CX} cy={CY} r={SR * 0.44} fill="url(#ovPortholeGlow)" />
-      <g transform={`translate(${CX},${CY})`} clipPath="url(#ovPortholeClip)">
-        <PodDepGraph level={depLevel} color={DEPENDENCY_AXIS.color} />
-      </g>
-      <circle cx={CX} cy={CY} r={SR * 0.45} fill="url(#ovPortholeGloss)" opacity="0.5" />
+        </g>
+      ) : (
+        /* shell === "outer": sealed porthole, no interior visible */
+        <circle cx={CX} cy={CY} r={PR} fill={POD_M.deep} stroke={POD_M.weld} strokeWidth="1" />
+      )}
+
+      {/* porthole gloss overlay */}
+      <circle cx={CX} cy={CY} r={PR} fill={`url(#${oId}PortholeGloss)`} opacity="0.5" />
+
+      {/* ── outer sphere gloss highlight ── */}
       <ellipse
         cx={CX - SR * 0.14}
         cy={CY - SR * 0.18}
@@ -165,7 +196,8 @@ export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
         opacity="0.32"
         transform={`rotate(-22,${CX - SR * 0.14},${CY - SR * 0.18})`}
       />
-      {/* One indicator light per axis: lit in its accent color once the axis is topped out. */}
+
+      {/* ── indicator lights ── one per axis, lit when topped out ── */}
       {standings.map(({ axis, level }, idx) => {
         const angle = -55 + idx * 90;
         const px = CX + SR * 0.82 * Math.cos((angle * Math.PI) / 180);
@@ -187,6 +219,8 @@ export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
           </g>
         );
       })}
+
+      {/* ── model label plate ── */}
       <rect
         x={CX - 36}
         y={CY + SR - 26}
@@ -208,6 +242,8 @@ export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
       >
         {tint.short}
       </text>
+
+      {/* ── tint accent ring ── */}
       <circle
         cx={CX}
         cy={CY}
@@ -217,6 +253,8 @@ export function PodSphere({ CX, CY, SR, evaluation }: PodSphereProps) {
         strokeWidth="1.5"
         opacity="0.4"
       />
+
+      {/* outer gloss arc */}
       <path
         d={`M ${CX - SR * 0.68} ${CY - SR * 0.28} A ${SR} ${SR} 0 0 1 ${CX - SR * 0.28} ${CY - SR * 0.68}`}
         fill="none"

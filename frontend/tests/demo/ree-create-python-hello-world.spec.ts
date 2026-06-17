@@ -467,8 +467,25 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
   });
 
-  await demoStep(page, "Seal and download", async () => {
+  await demoStep(page, "Decompose pod", async () => {
     await page.keyboard.press("Escape").catch(() => {});
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: "Decompose" }),
+      "Decompose the pod into its three shells: outer, inner, and core",
+    );
+    await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
+    await page.waitForTimeout(1500);
+  });
+
+  await demoStep(page, "Seal and download", async () => {
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: "Reassemble" }),
+      "Reassemble the pod before sealing",
+    );
+    await expect(page.getByRole("button", { name: "Decompose" })).toBeVisible();
+    await page.waitForTimeout(800);
     await clickDemo(
       page,
       page.getByRole("navigation").getByRole("button", { name: "Seal", exact: true }),
