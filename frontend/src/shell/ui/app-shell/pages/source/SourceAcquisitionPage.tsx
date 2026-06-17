@@ -2,18 +2,9 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { Ic } from "../../../shared/components/Icon";
 import { useFocusScroll } from "../../../shared/hooks/useFocusScroll";
-import {
-  lgColors,
-  lgNextButton,
-  lgReadout,
-  lgStatusBadge,
-  lgStyles,
-} from "../../../theme/lightGlassTheme";
-import { F } from "../../../theme/theme";
+import { lgColors, lgStatusBadge } from "../../../theme/lightGlassTheme";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
-import { SummaryLine } from "../../components/SummaryLine";
-import { PAGE } from "../../state/pages";
 import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 import type { SourceTypeOption } from "./SourceAcquisitionPageHelpers";
 import { SourceAcquisitionCard } from "./SourceAcquisitionPageSections";
@@ -34,6 +25,23 @@ function sourceBadge(sourceInWorkspace: boolean, running: boolean): React.CSSPro
   return lgStatusBadge(sourceInWorkspace);
 }
 
+function clearSourceButton(locked: boolean): React.CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "8px 13px",
+    borderRadius: 8,
+    fontSize: 12.5,
+    fontWeight: 700,
+    border: "1px solid rgba(251, 113, 133, 0.4)",
+    background: locked ? "rgba(241, 245, 249, 0.72)" : "rgba(255, 241, 242, 0.82)",
+    color: locked ? lgColors.textMuted : lgColors.danger,
+    cursor: locked ? "not-allowed" : "pointer",
+    flexShrink: 0,
+  };
+}
+
 export function SourceAcquisitionPage({
   ree,
   workspaceSourceState,
@@ -44,7 +52,6 @@ export function SourceAcquisitionPage({
   running,
   focusedField,
   onRepoModeChange,
-  onGoAssemblyPage,
   onFocusedFieldChange,
   onDownloadSource,
   onCancelSource,
@@ -97,162 +104,79 @@ export function SourceAcquisitionPage({
       : "No source snapshot yet — choose a method above to continue.";
 
   const statusLabel = running ? "Acquiring" : sourceInWorkspace ? "Ready" : "Empty";
-  const methodConfigured = repoMode === "upload" || (!!ree.origin_url && !!ree.source_type);
-  const readinessDone = [methodConfigured, sourceInWorkspace].filter(Boolean).length;
-  const readinessTotal = 2;
-  const readinessPct = Math.round((readinessDone / readinessTotal) * 100);
 
   return (
-    <div style={lgStyles.pageRoot}>
-      <div style={lgStyles.pageFrame}>
-        <GlassPageHeader
-          icon={Ic.globe(24)}
-          iconTint={{
-            color: "#f59e0b",
-            border: "rgba(245, 158, 11, 0.32)",
-            shadow: "rgba(245, 158, 11, 0.14)",
-          }}
-          title="Source Acquisition"
-          subtitle="Choose an acquisition path, load source into the workspace, then confirm snapshot behavior."
-          badges={<span style={sourceBadge(sourceInWorkspace, running)}>{statusLabel}</span>}
+    // Minimal form sitting directly on the focus dock — no nested frame/panel
+    // layers. The dock supplies the floating surface over the canvas; the page
+    // only paints its own content.
+    <div style={pageRoot}>
+      <GlassPageHeader
+        icon={Ic.globe(24)}
+        iconTint={{
+          color: "#f59e0b",
+          border: "rgba(245, 158, 11, 0.32)",
+          shadow: "rgba(245, 158, 11, 0.14)",
+        }}
+        title="Source Acquisition"
+        subtitle="Choose an acquisition path, load source into the workspace, then confirm snapshot behavior."
+        badges={<span style={sourceBadge(sourceInWorkspace, running)}>{statusLabel}</span>}
+        right={
+          sourceInWorkspace ? (
+            <button
+              type="button"
+              disabled={locked}
+              onClick={() => {
+                focus("sourceAvailable");
+                onRemoveWorkspaceSource();
+              }}
+              style={clearSourceButton(locked)}
+            >
+              {Ic.x(13)} Clear source
+            </button>
+          ) : undefined
+        }
+      />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <SourceAcquisitionCard
+          repoMode={repoMode}
+          sourceConfigLocked={sourceConfigLocked}
+          sourceInteractionLocked={sourceInteractionLocked}
+          sourceInWorkspace={sourceInWorkspace}
+          locked={locked}
+          focusedField={focusedField}
+          originUrlDraft={originUrlDraft}
+          originTypeDraft={originTypeDraft}
+          originInputLocked={originInputLocked}
+          canDownload={canDownload}
+          canUpload={canUpload}
+          downloadRunning={downloadRunning}
+          downloadDone={downloadDone}
+          downloadLabel={downloadLabel}
+          workspaceSourceState={workspaceSourceState}
+          focus={focus}
+          onRepoModeChange={onRepoModeChange}
+          setOriginUrlDraft={setOriginUrlDraft}
+          setOriginTypeDraft={setOriginTypeDraft}
+          onDownloadSource={onDownloadSource}
+          onCancelSource={onCancelSource}
+          onWorkspaceUpload={onWorkspaceUpload}
         />
 
-        <div style={lgStyles.mainGrid}>
-          <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-            <div style={lgStyles.sectionBody}>
-              <div style={lgStyles.sectionHeader}>
-                <div
-                  style={{
-                    ...lgStyles.sectionIcon,
-                    color: "#f59e0b",
-                    border: "1px solid rgba(245, 158, 11, 0.28)",
-                  }}
-                >
-                  {Ic.globe(19)}
-                </div>
-                <div>
-                  <h2 style={lgStyles.sectionTitle}>Source Configuration</h2>
-                  <div style={lgStyles.sectionSubtitle}>
-                    Three steps: choose, acquire, confirm snapshot
-                  </div>
-                </div>
-              </div>
+        <SourceStep3Section step3Ready={step3Ready} acquisitionNarrative={acquisitionNarrative} />
 
-              <SourceAcquisitionCard
-                repoMode={repoMode}
-                sourceConfigLocked={sourceConfigLocked}
-                sourceInteractionLocked={sourceInteractionLocked}
-                sourceInWorkspace={sourceInWorkspace}
-                locked={locked}
-                focusedField={focusedField}
-                originUrlDraft={originUrlDraft}
-                originTypeDraft={originTypeDraft}
-                originInputLocked={originInputLocked}
-                canDownload={canDownload}
-                canUpload={canUpload}
-                downloadRunning={downloadRunning}
-                downloadDone={downloadDone}
-                downloadLabel={downloadLabel}
-                workspaceSourceState={workspaceSourceState}
-                focus={focus}
-                onRepoModeChange={onRepoModeChange}
-                setOriginUrlDraft={setOriginUrlDraft}
-                setOriginTypeDraft={setOriginTypeDraft}
-                onDownloadSource={onDownloadSource}
-                onCancelSource={onCancelSource}
-                onWorkspaceUpload={onWorkspaceUpload}
-              />
-
-              <SourceStep3Section
-                step3Ready={step3Ready}
-                acquisitionNarrative={acquisitionNarrative}
-                workspaceSourceState={workspaceSourceState}
-                locked={locked}
-                focus={focus}
-                onRemoveWorkspaceSource={onRemoveWorkspaceSource}
-              />
-
-              <CollapsibleLogCard log={log} running={running} title="Acquisition log" />
-            </div>
-
-            <div style={lgStyles.footer}>
-              <span style={{ color: lgColors.textMuted, fontSize: 12 }} />
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={() => onGoAssemblyPage(PAGE.METADATA)}
-                  style={lgNextButton()}
-                >
-                  Next: Metadata {Ic.chevR(15)}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <aside style={lgStyles.aside}>
-            <section style={{ ...lgStyles.panel, padding: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <span style={{ color: "#f59e0b", display: "flex" }}>{Ic.globe(22)}</span>
-                <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Source Summary</h2>
-              </div>
-
-              <div style={lgStyles.summaryBox}>
-                <div style={lgStyles.overviewHeader}>
-                  <span style={lgStyles.overviewLabel}>Overview</span>
-                  <span style={sourceBadge(sourceInWorkspace, running)}>{statusLabel}</span>
-                </div>
-                <SummaryLine
-                  label="Method"
-                  value={repoMode === "upload" ? "Upload tarball" : "Origin URL"}
-                />
-                <SummaryLine label="Origin URL" value={ree.origin_url || "Not set"} />
-                <SummaryLine label="Origin type" value={ree.source_type || "Not set"} />
-                <SummaryLine
-                  label="Workspace"
-                  value={sourceInWorkspace ? "Source loaded" : "No source"}
-                />
-                <SummaryLine
-                  label="Acquired by"
-                  value={workspaceSourceState.sourceAcquiredBy || "—"}
-                />
-                <SummaryLine
-                  label="Include in REE"
-                  value={sourceInWorkspace ? "Chosen at seal" : "—"}
-                />
-              </div>
-            </section>
-
-            <section style={{ ...lgStyles.panel, padding: 16 }}>
-              <div style={lgStyles.readinessHeader}>
-                <span>Acquisition Readiness</span>
-                <span style={{ color: lgColors.blue, fontFamily: F.mono }}>{readinessPct}%</span>
-              </div>
-              <div style={lgStyles.progressTrack}>
-                <div
-                  style={{
-                    ...lgStyles.progressFill,
-                    width: `${readinessPct}%`,
-                  }}
-                />
-              </div>
-              <div style={lgStyles.statGrid}>
-                <div style={lgReadout(lgStyles.statReadout)}>
-                  <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Required</span>
-                  <strong style={{ color: lgColors.text, fontSize: 18 }}>
-                    {readinessDone}/{readinessTotal}
-                  </strong>
-                </div>
-                <div style={lgReadout(lgStyles.statReadout)}>
-                  <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Source</span>
-                  <strong style={{ color: lgColors.text, fontSize: 18 }}>
-                    {sourceInWorkspace ? "✓" : "—"}
-                  </strong>
-                </div>
-              </div>
-            </section>
-          </aside>
-        </div>
+        <CollapsibleLogCard log={log} running={running} title="Acquisition log" />
       </div>
     </div>
   );
 }
+
+// The page is transparent so the dock surface reads through; generous top
+// padding clears the dock's stage label and close button.
+const pageRoot: React.CSSProperties = {
+  height: "100%",
+  minHeight: 0,
+  overflow: "auto",
+  padding: "46px 36px 32px",
+  color: lgColors.text,
+};

@@ -1,6 +1,6 @@
 import type React from "react";
 import { Ic } from "../../../shared/components/Icon";
-import { lgColors, lgContentCard, lgInput, lgStyles } from "../../../theme/lightGlassTheme";
+import { lgColors, lgInput, lgStyles } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
 import { SourceUploadField, SourceUrlField } from "../../components/sourceRuntime";
 import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
@@ -71,7 +71,7 @@ function downloadButtonStyle(downloadDone: boolean, disabled: boolean): React.CS
 
 export function SourceAcquisitionCard(props: SourceAcquisitionCardProps) {
   return (
-    <div style={lgContentCard(0)}>
+    <div>
       <div style={{ ...lgStyles.label, marginBottom: 8 }}>Acquisition Method</div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>

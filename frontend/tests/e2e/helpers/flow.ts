@@ -80,14 +80,12 @@ export async function uploadSource(page: Page, archivePath: string) {
     .setInputFiles(archivePath);
   await page.getByRole("button", { name: /Add to workspace/i }).click();
 
-  const workspaceActions = page
-    .locator("div")
-    .filter({ hasText: "Workspace Snapshot" })
-    .filter({ hasText: /Clear workspace source/ })
-    .first();
-  await expect(workspaceActions).toBeVisible();
+  // The clear-source action now lives in the page header (top-right), no longer
+  // inside the Workspace Snapshot block.
+  const clearSource = main(page).getByRole("button", { name: /Clear source/i });
+  await expect(clearSource).toBeVisible();
   await stepShot(page, "upload-source", "after");
-  return workspaceActions;
+  return clearSource;
 }
 
 /** Fill in project identity metadata. */

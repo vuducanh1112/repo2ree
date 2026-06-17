@@ -1,58 +1,19 @@
-import { Ic } from "../../../shared/components/Icon";
-import { lgColors, lgContentCard, lgStyles } from "../../../theme/lightGlassTheme";
+import { lgColors, lgStyles } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
-import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 
 interface Step3Props {
   step3Ready: boolean;
   acquisitionNarrative: string;
-  workspaceSourceState: SourceAcquisitionPageProps["workspaceSourceState"];
-  locked: boolean;
-  focus: (key: string) => void;
-  onRemoveWorkspaceSource: () => void;
 }
 
 export function SourceStep3Section(props: Step3Props) {
   return (
-    <div style={lgContentCard()}>
+    <div style={{ borderTop: "1px solid rgba(125, 211, 252, 0.28)", paddingTop: 20 }}>
       <div style={{ ...lgStyles.label, marginBottom: 10 }}>Workspace Snapshot</div>
 
       {props.step3Ready ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 13, color: lgColors.textMid, fontFamily: F.sans }}>
-            {props.acquisitionNarrative}
-          </div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {props.workspaceSourceState.sourceAvailable && (
-              <button
-                type="button"
-                disabled={props.locked}
-                onClick={() => {
-                  props.focus("sourceAvailable");
-                  props.onRemoveWorkspaceSource();
-                }}
-                style={{
-                  padding: "9px 14px",
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  fontFamily: F.sans,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  border: "1px solid rgba(251, 113, 133, 0.4)",
-                  background: props.locked
-                    ? "rgba(241, 245, 249, 0.72)"
-                    : "rgba(255, 241, 242, 0.82)",
-                  color: props.locked ? lgColors.textMuted : lgColors.danger,
-                  cursor: props.locked ? "not-allowed" : "pointer",
-                }}
-              >
-                {Ic.x(12)} Clear workspace source
-              </button>
-            )}
-          </div>
+        <div style={{ fontSize: 13, color: lgColors.textMid, fontFamily: F.sans }}>
+          {props.acquisitionNarrative}
         </div>
       ) : (
         <div style={lgStyles.helper}>

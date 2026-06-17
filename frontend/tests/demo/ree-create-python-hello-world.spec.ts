@@ -178,12 +178,9 @@ test("upload source archive into workspace", async ({ page }) => {
         .filter((name): name is string => Boolean(name)),
     ),
   ];
-  const step3WorkspaceActions = page
-    .locator("div")
-    .filter({ hasText: "Workspace Snapshot" })
-    .filter({ hasText: /Clear workspace source/ })
-    .first();
   const main = page.getByRole("main");
+  // Clear-source action moved to the page header (top-right) during the canvas redesign.
+  const clearSourceButton = main.getByRole("button", { name: /Clear source/i });
 
   await demoStep(page, "Open REE creation flow", async () => {
     await page.goto("/");
@@ -225,10 +222,7 @@ test("upload source archive into workspace", async ({ page }) => {
   });
 
   await demoStep(page, "Review workspace source", async () => {
-    await expect(step3WorkspaceActions).toBeVisible();
-    await expect(
-      step3WorkspaceActions.getByRole("button", { name: /Clear workspace source/i }),
-    ).toBeVisible();
+    await expect(clearSourceButton).toBeVisible();
     await expect(page.getByText(/Configuration locked/)).toBeVisible();
     await expect(page.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
   });

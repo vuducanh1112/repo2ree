@@ -12,11 +12,9 @@ test.describe("Source acquisition page", () => {
     await startReeCreation(page);
     await provisionWorkbench(page);
 
-    const workspaceActions = await uploadSource(page, pythonHelloWorld());
+    const clearSource = await uploadSource(page, pythonHelloWorld());
 
-    await expect(
-      workspaceActions.getByRole("button", { name: /Clear workspace source/i }),
-    ).toBeVisible();
+    await expect(clearSource).toBeVisible();
     await expect(page.getByText(/Configuration locked/)).toBeVisible();
     await expect(page.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
 
