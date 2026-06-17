@@ -21,11 +21,13 @@ import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorVi
 import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
+import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
 import type { AppShellPage } from "../state/pages";
 
 export interface SourceAcquisitionPageProps {
   ree: ReeEditorViewModel;
   workspaceSourceState: WorkspaceSourceState;
+  sourceRepo: SourceRepoMetadata | undefined;
   locked: boolean;
   repoMode: "url" | "upload";
   badges: Badges;

@@ -45,6 +45,7 @@ function clearSourceButton(locked: boolean): React.CSSProperties {
 export function SourceAcquisitionPage({
   ree,
   workspaceSourceState,
+  sourceRepo,
   locked,
   repoMode,
   actionStates,
@@ -163,7 +164,11 @@ export function SourceAcquisitionPage({
           onWorkspaceUpload={onWorkspaceUpload}
         />
 
-        <SourceStep3Section step3Ready={step3Ready} acquisitionNarrative={acquisitionNarrative} />
+        <SourceStep3Section
+          step3Ready={step3Ready}
+          acquisitionNarrative={acquisitionNarrative}
+          sourceMeta={sourceRepo}
+        />
 
         <CollapsibleLogCard log={log} running={running} title="Acquisition log" />
       </div>

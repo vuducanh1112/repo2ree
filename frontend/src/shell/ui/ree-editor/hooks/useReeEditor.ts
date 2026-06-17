@@ -12,6 +12,7 @@ import {
   type ReeEditorViewModel,
 } from "../../../../core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "../../../../core/workspace/FileTree";
+import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { useReeQuery } from "../../../data/ree/queries";
 import { showToast as enqueueToast } from "../../app-shell/state/actions";
@@ -50,6 +51,7 @@ export function useReeEditor({
   const reeQuery = useReeQuery({ enabled: provisioned });
   const workspaceFiles = reeQuery.data?.files ?? [];
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
+  const sourceRepo = reeQuery.data?.sourceRepo;
 
   const reeEditorState: ReeEditorState = useMemo(
     () => createReeEditorStateFromModel({ reeIntent, reeSession, uiChrome, assemblyRun }),
@@ -114,8 +116,15 @@ export function useReeEditor({
   });
 
   const workspaceRemote = useMemo(
-    () => createWorkspaceRemoteState({ workspaceFiles, reeArtifactFiles, reeSession, uiChrome }),
-    [workspaceFiles, reeArtifactFiles, reeSession, uiChrome],
+    () =>
+      createWorkspaceRemoteState({
+        workspaceFiles,
+        reeArtifactFiles,
+        reeSession,
+        uiChrome,
+        sourceRepo,
+      }),
+    [workspaceFiles, reeArtifactFiles, reeSession, uiChrome, sourceRepo],
   );
   const commands = useMemo(
     () =>
@@ -184,6 +193,7 @@ function createWorkspaceRemoteState(args: {
   reeArtifactFiles: ReeFile[];
   reeSession: ReeSessionState;
   uiChrome: UiChromeState;
+  sourceRepo: SourceRepoMetadata | undefined;
 }) {
   return {
     workspaceFiles: args.workspaceFiles,
@@ -192,5 +202,6 @@ function createWorkspaceRemoteState(args: {
     artifactStatus: args.reeSession.artifactStatus,
     sourceSnapshotArchiveName: args.uiChrome.sourceSnapshotArchiveName,
     sourceSnapshotFiles: [] as FileTreeNode[],
+    sourceRepo: args.sourceRepo,
   };
 }

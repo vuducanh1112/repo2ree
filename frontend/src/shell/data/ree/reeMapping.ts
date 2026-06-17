@@ -81,5 +81,6 @@ export function mapReeDetailToReeProject(
     files,
     reeFiles,
     ree: reeState,
+    sourceRepo: ree.sourceRepo,
   };
 }

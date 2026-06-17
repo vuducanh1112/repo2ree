@@ -16,7 +16,19 @@ test.describe("Source acquisition page", () => {
 
     await expect(clearSource).toBeVisible();
     await expect(page.getByText(/Configuration locked/)).toBeVisible();
-    await expect(page.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
+    // The archive name now appears both in the committed Source Snapshot field
+    // and as the Name in the Workspace Snapshot metadata, so match the first.
+    await expect(
+      page.getByText("python-hello-world.tar.gz", { exact: true }).first(),
+    ).toBeVisible();
+
+    // Workspace Snapshot surfaces the backend-computed source metadata. An
+    // uploaded tarball reports "Upload" as its origin and a known byte size.
+    const snapshot = page.getByText("Workspace Snapshot").locator("..");
+    await expect(snapshot.getByText("Origin", { exact: true })).toBeVisible();
+    await expect(snapshot.getByText("Upload", { exact: true })).toBeVisible();
+    await expect(snapshot.getByText("Size", { exact: true })).toBeVisible();
+    await expect(snapshot.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
 
     // Files are browsable from the file-tree HUD console docked on the canvas.
     await page.keyboard.press("Escape");

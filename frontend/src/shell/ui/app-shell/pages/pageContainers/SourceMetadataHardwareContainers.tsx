@@ -46,6 +46,7 @@ export function SourcePageContainer({
     <SourceAcquisitionPage
       ree={ree}
       workspaceSourceState={workspaceRemote.workspaceSourceState}
+      sourceRepo={workspaceRemote.sourceRepo}
       locked={locked}
       repoMode={repoMode}
       badges={badges}

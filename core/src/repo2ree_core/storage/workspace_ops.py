@@ -29,6 +29,9 @@ import json
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.source_repo import derive_source_repo_metadata
 from repo2ree_core.storage.layout import (
     ReeLayout,
     normalize_workspace_path,
@@ -230,8 +233,14 @@ def _workspace_ree_files_with_content(storage_root: Path, ree_id: str) -> list[d
 def get_workspace(storage_root: Path, ree_id: str) -> dict[str, Any]:
     metadata = _read_metadata(storage_root, ree_id)
     detail = dict(metadata)
-    detail["files"] = _workspace_files_with_content(storage_root, ree_id)
+    files = _workspace_files_with_content(storage_root, ree_id)
+    detail["files"] = files
     detail["reeFiles"] = _workspace_ree_files_with_content(storage_root, ree_id)
+    detail["sourceRepo"] = derive_source_repo_metadata(
+        ReeIntent.from_metadata(metadata),
+        ReeSession.from_metadata(metadata),
+        files,
+    ).model_dump(by_alias=True)
     return detail
 
 

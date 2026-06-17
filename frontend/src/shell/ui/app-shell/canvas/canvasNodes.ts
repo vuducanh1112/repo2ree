@@ -2,6 +2,7 @@ import { hbomHasAnyComponents } from "../../../../core/hbom/HbomSummary";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { standingMeta } from "../../../../core/review/axes";
+import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
 import { Ic } from "../../shared/components/Icon";
 import { PROCESS_STEPS, resolveNavCompleted } from "../sidebar/processSteps";
 import { type AppShellPage, isRuntimeEnvPage, PAGE } from "../state/pages";
@@ -210,13 +211,26 @@ function hostOf(url: string): string {
 }
 
 // Per-node summary, mirroring what the old Overview panels surfaced.
-export function nodeSummary(node: CanvasNode, ree: ReeEditorViewModel): SummaryRow[] {
+export function nodeSummary(
+  node: CanvasNode,
+  ree: ReeEditorViewModel,
+  sourceRepo?: SourceRepoMetadata,
+): SummaryRow[] {
   switch (node.key) {
-    case PAGE.SOURCE:
+    case PAGE.SOURCE: {
+      // Once a source is in the workspace, surface the backend-computed stats;
+      // before that, fall back to the declared origin so the card isn't empty.
+      const repo = ree.sourceAvailable ? sourceRepo : undefined;
       return [
-        { label: "Origin", value: ree.origin_url ? hostOf(ree.origin_url) : null },
-        { label: "Files", value: ree.sourceAvailable ? "in workspace" : null },
+        { label: "Name", value: repo?.name ?? null },
+        { label: "Size", value: repo?.sizeLabel ?? null },
+        {
+          label: "Origin",
+          value: repo ? hostOf(repo.origin) : ree.origin_url ? hostOf(ree.origin_url) : null,
+        },
+        { label: "SWHID", value: repo?.swhid ? "assigned" : null },
       ];
+    }
     case PAGE.METADATA:
       return [
         { label: "Name", value: ree.name || null },

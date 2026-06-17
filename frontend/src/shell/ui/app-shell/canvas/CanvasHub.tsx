@@ -3,6 +3,7 @@ import type { Badges, ReeFile } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { standingMeta } from "../../../../core/review/axes";
 import type { EvaluationState } from "../../../../core/review/EvaluationState";
+import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
 import { C, F } from "../../theme/theme";
 import { CableOverlaySvg } from "../pages/overview/PanelCableOverlaySections";
 import type { AppShellPage } from "../state/pages";
@@ -39,6 +40,7 @@ interface CanvasHubProps {
   dimmed: boolean;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
   reeFiles: ReeFile[];
+  sourceRepo: SourceRepoMetadata | undefined;
   filesConsoleOpen: boolean;
   onFilesConsoleOpenChange: (open: boolean) => void;
 }
@@ -52,6 +54,7 @@ export function CanvasHub({
   dimmed,
   onNavigate,
   reeFiles,
+  sourceRepo,
   filesConsoleOpen,
   onFilesConsoleOpenChange,
 }: CanvasHubProps) {
@@ -206,7 +209,7 @@ export function CanvasHub({
                 done={isNodeDone(node, ree, badges)}
                 locked={isNodeLocked(node, provisioned)}
                 active={isNodeActive(node, page)}
-                rows={nodeSummary(node, ree)}
+                rows={nodeSummary(node, ree, sourceRepo)}
                 projection={nodeProjection(node, exploded)}
                 onNavigate={onNavigate}
                 onStartDrag={startNodeDrag}

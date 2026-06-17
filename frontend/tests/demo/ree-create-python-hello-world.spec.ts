@@ -224,7 +224,13 @@ test("upload source archive into workspace", async ({ page }) => {
   await demoStep(page, "Review workspace source", async () => {
     await expect(clearSourceButton).toBeVisible();
     await expect(page.getByText(/Configuration locked/)).toBeVisible();
-    await expect(page.getByText("python-hello-world.tar.gz", { exact: true })).toBeVisible();
+    // Shown in both the committed Source Snapshot field and the Workspace
+    // Snapshot metadata Name, so match the first occurrence.
+    await expect(
+      page.getByText("python-hello-world.tar.gz", { exact: true }).first(),
+    ).toBeVisible();
+    const snapshot = page.getByText("Workspace Snapshot").locator("..");
+    await expect(snapshot.getByText("Upload", { exact: true })).toBeVisible();
   });
 
   await demoStep(page, "Browse extracted files", async () => {

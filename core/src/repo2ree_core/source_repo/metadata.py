@@ -1,0 +1,124 @@
+"""Derive display-ready source-repository metadata.
+
+Pure module: no filesystem or network I/O. Callers pass already-loaded intent,
+session and a file inventory (each entry carrying a ``size`` in bytes).
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable, Mapping
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
+
+from repo2ree_core.domain.ree_intent import ReeIntent, SourceType
+from repo2ree_core.domain.ree_session import ReeSession, SourceAcquiredBy
+
+_VCS_SUFFIX = ".git"
+
+
+# ================================================
+# Data Models
+# ================================================
+
+
+class SourceRepoMetadata(BaseModel):
+    """One coherent view of the source loaded into a workspace.
+
+    Field names are snake_case in Python; ``to_camel`` serializes them to the
+    camelCase the workspace API exposes (e.g. ``size_bytes`` → ``sizeBytes``).
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    name: str = ""
+    origin: str = ""
+    acquired_by: SourceAcquiredBy = ""
+    source_type: SourceType = ""
+    swhid: str = ""
+    size_bytes: int | None = None
+    size_label: str | None = None
+
+
+# ================================================
+# Helpers
+# ================================================
+
+
+def repo_name_from_origin_url(origin_url: str) -> str:
+    """Last path segment of ``origin_url`` without a trailing ``.git``.
+
+    ``https://github.com/acme/widget.git`` → ``widget``; ``""`` when none.
+    """
+    without_query = origin_url.split("?", 1)[0].split("#", 1)[0]
+    segments = [segment for segment in without_query.rstrip("/").split("/") if segment]
+    if not segments:
+        return ""
+    name = segments[-1]
+    if name.lower().endswith(_VCS_SUFFIX):
+        name = name[: -len(_VCS_SUFFIX)]
+    return name
+
+
+def total_source_size(files: Iterable[Mapping[str, Any]]) -> int | None:
+    """Sum the ``size`` of every file entry, or ``None`` if no entry has one."""
+    total = 0
+    saw_size = False
+    for entry in files:
+        size = entry.get("size")
+        if isinstance(size, int | float) and not isinstance(size, bool):
+            total += int(size)
+            saw_size = True
+    return total if saw_size else None
+
+
+def format_source_size(num_bytes: int) -> str:
+    """Render a byte count compactly, e.g. ``1.4 MB`` or ``512 B``."""
+    if num_bytes < 1024:
+        return f"{num_bytes} B"
+    units = ("KB", "MB", "GB", "TB")
+    value = num_bytes / 1024
+    unit = 0
+    while value >= 1024 and unit < len(units) - 1:
+        value /= 1024
+        unit += 1
+    rounded = round(value) if value >= 10 else round(value * 10) / 10
+    return f"{rounded:g} {units[unit]}"
+
+
+# ================================================
+# Derivation
+# ================================================
+
+
+def derive_source_repo_metadata(
+    intent: ReeIntent,
+    session: ReeSession,
+    files: Iterable[Mapping[str, Any]],
+) -> SourceRepoMetadata:
+    """Fold intent, session and the file inventory into one source record."""
+    from_upload = session.source_acquired_by == "upload"
+    repo_name = repo_name_from_origin_url(intent.origin_url)
+    uploaded = session.uploaded_archive or ""
+
+    # Name after the most specific thing we have: the archive for uploads, the
+    # origin repo for downloads, then fall through to whatever else is set.
+    preferred = uploaded if from_upload else repo_name
+    name = next(
+        (candidate for candidate in (preferred, repo_name, uploaded, intent.name) if candidate),
+        "Unnamed source",
+    )
+
+    size_bytes = total_source_size(files)
+    size_label = None if size_bytes is None else format_source_size(size_bytes)
+
+    return SourceRepoMetadata(
+        name=name,
+        origin=intent.origin_url or ("Upload" if from_upload else ""),
+        acquired_by=session.source_acquired_by,
+        source_type=intent.source_type,
+        swhid=intent.swhid,
+        size_bytes=size_bytes,
+        size_label=size_label,
+    )
