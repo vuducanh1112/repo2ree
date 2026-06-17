@@ -352,17 +352,6 @@ function NodeCard({
           <div style={{ fontSize: 13, fontWeight: 650, color: C.text, letterSpacing: -0.1 }}>
             {node.label}
           </div>
-          <div
-            style={{
-              fontFamily: F.mono,
-              fontSize: 8,
-              letterSpacing: 1,
-              color: C.textMuted,
-              textTransform: "uppercase",
-            }}
-          >
-            {node.kind}
-          </div>
         </div>
         <span
           style={{

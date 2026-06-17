@@ -271,9 +271,7 @@ async function releaseWorkbench(page: Page) {
   // the console first, then click the button.
   await page.keyboard.press("Escape").catch(() => {});
   await page.getByRole("button", { name: /Expand workbench console/i }).click();
-  const releaseButton = page
-    .getByRole("button", { name: /Release workbench/i })
-    .first();
+  const releaseButton = page.getByRole("button", { name: /Release workbench/i }).first();
   await expect(releaseButton).toBeVisible();
   await releaseButton.click();
   await expect(page).toHaveURL("/");
