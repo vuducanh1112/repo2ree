@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { appendLine } from "../../../../core/ree/logEntry";
 import type { LogEntry, LogLine } from "../../../../core/ree/ReeTypes";
 import { useApiRuntime } from "../../../data/apiRuntime";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import { STANDARD_IMAGE } from "../pages/workbench/WorkbenchPageSections";
+import { APP_ROUTE } from "../state/pages";
 
 const DONE = "#10b981";
 
@@ -28,9 +30,17 @@ interface BenchConsoleProps {
 // reprovision, with a terminal-style readout.
 export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
   const { reeId, reeApi } = useApiRuntime();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [reprovisioning, setReprovisioning] = useState(false);
+  const [releasing, setReleasing] = useState(false);
   const [log, setLog] = useState<LogEntry | null>(null);
+
+  async function handleReleaseWorkbench() {
+    setReleasing(true);
+    await reeApi.deleteRee(reeId);
+    navigate(APP_ROUTE.ROOT);
+  }
 
   async function handleReprovision() {
     setReprovisioning(true);
@@ -174,6 +184,35 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
           </button>
           <span style={{ fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
             Replaces the container, keeping the /ree volume.
+          </span>
+          <div style={{ height: 2, background: C.border, borderRadius: 99, margin: "4px 0" }} />
+          <button
+            type="button"
+            onClick={handleReleaseWorkbench}
+            disabled={releasing}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              width: "100%",
+              padding: "9px 14px",
+              borderRadius: 9,
+              border: "1px solid rgba(202, 138, 4, 0.38)",
+              background: "rgba(254, 249, 195, 0.72)",
+              color: "#92400e",
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: F.sans,
+              cursor: releasing ? "default" : "pointer",
+              opacity: releasing ? 0.6 : 1,
+            }}
+          >
+            {releasing ? Ic.loader(14) : Ic.x(14)}
+            <span>{releasing ? "Releasing…" : "Release workbench"}</span>
+          </button>
+          <span style={{ fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
+            Ends the REE session and removes this workbench.
           </span>
         </div>
       </div>

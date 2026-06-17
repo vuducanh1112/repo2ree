@@ -532,8 +532,10 @@ test("upload source archive into workspace", async ({ page }) => {
   });
 
   await demoStep(page, "Release workbench", async () => {
+    // The release button lives in the bench console HUD; open it first.
+    await page.keyboard.press("Escape").catch(() => {});
+    await page.getByRole("button", { name: /Expand workbench console/i }).click();
     const releaseButton = page
-      .getByRole("region", { name: "Seal" })
       .getByRole("button", { name: /Release workbench/i })
       .first();
     await expect(releaseButton).toBeVisible();

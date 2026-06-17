@@ -267,7 +267,11 @@ export async function sealRee(page: Page) {
 /** Release (tear down) the workbench container; returns to the landing view. */
 async function releaseWorkbench(page: Page) {
   await stepShot(page, "release-workbench", "before");
-  const releaseButton = sealPanel(page)
+  // The release button lives inside the bench console HUD (bottom-left). Open
+  // the console first, then click the button.
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.getByRole("button", { name: /Expand workbench console/i }).click();
+  const releaseButton = page
     .getByRole("button", { name: /Release workbench/i })
     .first();
   await expect(releaseButton).toBeVisible();
@@ -278,10 +282,9 @@ async function releaseWorkbench(page: Page) {
 }
 
 /**
- * Best-effort teardown for the workbench container a test provisioned. Seals
- * the REE (so the release control appears) and releases it. Safe to call after
- * any test — it no-ops when no provisioned session is present, and skips
- * sealing when the REE is already sealed.
+ * Best-effort teardown for the workbench container a test provisioned. Releases
+ * it via the bench console. Safe to call after any test — it no-ops when no
+ * provisioned session is present.
  */
 export async function cleanupWorkbench(page: Page) {
   // Only meaningful inside a provisioned editor session. A test that ended back
@@ -295,18 +298,6 @@ export async function cleanupWorkbench(page: Page) {
   const sealNav = nav(page).getByRole("button", { name: "Seal", exact: true });
   if (!(await sealNav.isEnabled().catch(() => false))) {
     return;
-  }
-
-  // The sealed state shows only while the hub's seal panel is open, so open it
-  // before deciding whether sealing is still needed.
-  await openPort(page, "Seal");
-  const alreadySealed = await sealPanel(page)
-    .getByText("REE SEALED", { exact: true })
-    .isVisible()
-    .catch(() => false);
-
-  if (!alreadySealed) {
-    await sealRee(page);
   }
 
   await releaseWorkbench(page);

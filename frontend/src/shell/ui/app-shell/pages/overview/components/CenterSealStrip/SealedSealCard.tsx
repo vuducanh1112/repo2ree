@@ -21,7 +21,6 @@ interface SealedSealCardProps {
   ree: ReeEditorViewModel;
   onPreviewReviewer: () => void;
   onDownloadRee?: () => void;
-  onReleaseWorkbench?: () => void;
   sealRef: React.RefObject<HTMLDivElement>;
   cableItems: SealCableItem[];
   currentLevelMeta: LevelMeta;
@@ -31,7 +30,6 @@ export function SealedSealCard({
   ree,
   onPreviewReviewer,
   onDownloadRee,
-  onReleaseWorkbench,
   sealRef,
   cableItems,
   currentLevelMeta,
@@ -170,23 +168,6 @@ export function SealedSealCard({
           >
             {Ic.download(12)}
             Download REE
-          </button>
-        )}
-        {onReleaseWorkbench && (
-          <button
-            type="button"
-            onClick={onReleaseWorkbench}
-            style={{
-              ...S_OVERVIEW_SEALED_ACTION_BTN_BASE,
-              background: "rgba(254, 249, 195, 0.72)",
-              border: "1px solid rgba(202, 138, 4, 0.38)",
-              color: "#92400e",
-            }}
-            {...hoverBg("rgba(254, 243, 199, 0.9)", "rgba(254, 249, 195, 0.72)")}
-            {...hoverBorderColor("rgba(202, 138, 4, 0.6)", "rgba(202, 138, 4, 0.38)")}
-          >
-            {Ic.x(12)}
-            Release workbench
           </button>
         )}
       </div>

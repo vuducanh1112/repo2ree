@@ -1,13 +1,10 @@
 import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import type { Badges, LogEntry } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import type { EvaluationState } from "../../../../core/review/EvaluationState";
-import { useApiRuntime } from "../../../data/apiRuntime";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import { CenterSealStrip } from "../pages/overview/components/CenterSealStrip";
-import { APP_ROUTE } from "../state/pages";
 
 interface SealHubPanelProps {
   ree: ReeEditorViewModel;
@@ -38,8 +35,6 @@ export function SealHubPanel({
   onDownloadRee,
   onClose,
 }: SealHubPanelProps) {
-  const { reeId, reeApi } = useApiRuntime();
-  const navigate = useNavigate();
   const sealRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,11 +44,6 @@ export function SealHubPanel({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  async function handleReleaseWorkbench() {
-    await reeApi.deleteRee(reeId);
-    navigate(APP_ROUTE.ROOT);
-  }
 
   return (
     <section
@@ -123,7 +113,6 @@ export function SealHubPanel({
         sealLog={sealLog}
         onPreviewReviewer={onPreviewReviewer}
         onDownloadRee={sealed ? onDownloadRee : undefined}
-        onReleaseWorkbench={sealed ? handleReleaseWorkbench : undefined}
         sealRef={sealRef}
       />
     </section>
