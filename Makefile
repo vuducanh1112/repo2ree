@@ -7,7 +7,7 @@
 	api-tests api-unit-tests api-integration-tests executor-tests \
 	be-coverage be-coverage-unit be-coverage-context \
 	test-checks \
-	workbench-image frontend-image frontend-npm-hash \
+	workbench-image frontend-image frontend-npm-hash backend-image \
 	e2e-tests e2e-demo e2e-coverage
 
 # ================================================
@@ -264,3 +264,11 @@ frontend-image: frontend-npm-hash
 	@echo "Loading into docker..."
 	docker load < result
 	@echo "Done: repo2ree-frontend:latest"
+
+# Backend is still a Dockerfile build (uv sync at image-build time), not a
+# nix image — so this is a plain docker build rather than build+load. The
+# tag matches what docker-compose expects.
+backend-image:
+	@echo "Building backend image..."
+	docker build -f docker/demo/backend.Dockerfile -t repo2ree-backend:latest .
+	@echo "Done: repo2ree-backend:latest"

@@ -13,8 +13,6 @@ Then open `http://localhost:3000`.
 This starts the frontend on port `3000` and the API on port `8000`.
 The backend container mounts `/var/run/docker.sock` because several repo2ree API flows shell out to Docker. In the demo compose setup, the backend stays rootless and stores its persistent data under `/app/.repo2ree`.
 
-To override the frontend API URL, set `VITE_API_BASE_URL`; to override demo storage paths, use `DEMO_WORKSPACE_STORAGE_DIR` and `DEMO_REVIEWS_STORAGE_DIR` because those paths are evaluated inside the backend container.
-
 
 ## Local development
 
