@@ -390,6 +390,7 @@ function NodeCard({
         >
           <span style={{ color: C.textMuted }}>{row.label}</span>
           <span
+            title={row.title}
             style={{
               color: row.value ? C.textMid : C.borderMid,
               overflow: "hidden",

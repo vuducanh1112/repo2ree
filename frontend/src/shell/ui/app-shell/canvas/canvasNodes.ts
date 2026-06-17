@@ -200,6 +200,8 @@ export function lifecycleProgress(
 export interface SummaryRow {
   label: string;
   value: string | null;
+  /** Full text shown on hover when `value` is a shortened form. */
+  title?: string;
 }
 
 function hostOf(url: string): string {
@@ -228,7 +230,7 @@ export function nodeSummary(
           label: "Origin",
           value: repo ? hostOf(repo.origin) : ree.origin_url ? hostOf(ree.origin_url) : null,
         },
-        { label: "SWHID", value: repo?.swhid ? "assigned" : null },
+        { label: "SWHID", value: repo?.swhid || null, title: repo?.swhid },
       ];
     }
     case PAGE.METADATA:
@@ -262,7 +264,7 @@ export function nodeSummary(
     case PAGE.ARCHIVE:
       return [
         { label: "DOI", value: ree.zenodo_doi || ree.dataverse_doi || null },
-        { label: "SWHID", value: ree.swhid ? "assigned" : null },
+        { label: "SWHID", value: ree.swhid || null, title: ree.swhid },
       ];
     case PAGE.SEAL:
       return [{ label: "State", value: ree.sealedAt ? "sealed" : "draft" }];

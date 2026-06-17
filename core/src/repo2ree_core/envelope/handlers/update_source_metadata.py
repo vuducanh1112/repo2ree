@@ -6,13 +6,29 @@ sets status=ready and records acquisition facts in reeIntent and reeSession.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from repo2ree_core.container.run_script import LogSink
 from repo2ree_core.envelope.handlers._common import utc_now
+from repo2ree_core.source_repo import directory_swhid
 from repo2ree_core.storage.layout import SNAPSHOT_FILENAME, ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.working_environment.base import CancelCheck
 from repo2ree_protocol.command import UpdateSourceMetadataArgs
 from repo2ree_protocol.result import ActionResult
+
+
+def _compute_source_swhid(upstream: Path, log: LogSink) -> str:
+    """Best-effort ``swh:1:dir:`` identifier of the acquired source tree.
+
+    Returns ``""`` (and logs a warning) on any failure: a missing tree or a
+    hashing error must not block marking the workspace ready.
+    """
+    try:
+        return directory_swhid(upstream)
+    except Exception as exc:
+        log("system", "warn", f"swhid computation skipped: {exc}")
+        return ""
 
 
 def handle_update_source_metadata(
@@ -37,8 +53,17 @@ def handle_update_source_metadata(
         meta = store.read_metadata()
         ts = utc_now()
 
+        # Stamp the computed identifier only when we got one, so a hashing
+        # failure never clobbers a swhid already on the intent.
+        swhid = _compute_source_swhid(layout.upstream, log)
+        swhid_update = {"swhid": swhid} if swhid else {}
+        if swhid:
+            log("system", "info", f"source swhid: {swhid}")
+
         if args.mode == "download":
-            intent = meta.ree_intent.model_copy(update={"origin_url": args.origin_url, "source_type": args.source_type})
+            intent = meta.ree_intent.model_copy(
+                update={"origin_url": args.origin_url, "source_type": args.source_type, **swhid_update}
+            )
             session = meta.ree_session.with_source(
                 acquired_by="download",
                 snapshot_archive=SNAPSHOT_FILENAME,
@@ -46,7 +71,7 @@ def handle_update_source_metadata(
                 resolved_commit=args.resolved_commit or None,
             )
         else:
-            intent = meta.ree_intent
+            intent = meta.ree_intent.model_copy(update=swhid_update)
             session = meta.ree_session.with_source(
                 acquired_by="upload",
                 archive_name=args.archive_name,

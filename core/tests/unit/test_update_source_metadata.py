@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.envelope.handlers import update_source_metadata as handler
+from repo2ree_core.storage.layout import ReeLayout
+from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.workspace.model import WorkspaceMetadata
+from repo2ree_protocol.command import UpdateSourceMetadataArgs
+
+
+def _seed_workspace(root: Path) -> ReeStore:
+    """A ready-to-update workspace rooted at ``root`` with an empty upstream tree."""
+    store = ReeStore(ReeLayout(root=root))
+    store.ensure_dirs()
+    store.write_metadata(
+        WorkspaceMetadata(
+            reeId="ree123",
+            name="demo",
+            createdAt="2026-01-01T00:00:00Z",
+            updatedAt="2026-01-01T00:00:00Z",
+            reeIntent=ReeIntent(),
+            reeSession=ReeSession(),
+        )
+    )
+    return store
+
+
+@pytest.fixture
+def workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
+    store = _seed_workspace(tmp_path)
+    monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
+    return store
+
+
+def _never_canceled() -> bool:
+    return False
+
+
+def _silent_log(*_: object) -> None:
+    return None
+
+
+class TestSwhidStamping:
+    def test_download_records_swhid_of_upstream_tree(self, workbench: ReeStore) -> None:
+        (workbench.layout.upstream / "a.txt").write_bytes(b"hello\n")
+
+        result = handler.handle_update_source_metadata(
+            UpdateSourceMetadataArgs(mode="download", origin_url="https://x/y.git", source_type="git"),
+            log=_silent_log,
+            is_canceled=_never_canceled,
+        )
+
+        assert result.status == "succeeded"
+        intent = workbench.read_metadata().ree_intent
+        # swh:1:dir of a tree holding a single "hello\n" file — git's tree hash.
+        assert intent.swhid.startswith("swh:1:dir:")
+        assert len(intent.swhid) == len("swh:1:dir:") + 40
+        assert intent.origin_url == "https://x/y.git"
+
+    def test_upload_records_swhid(self, workbench: ReeStore) -> None:
+        (workbench.layout.upstream / "a.txt").write_bytes(b"hello\n")
+
+        result = handler.handle_update_source_metadata(
+            UpdateSourceMetadataArgs(mode="upload", archive_name="src.tar.gz"),
+            log=_silent_log,
+            is_canceled=_never_canceled,
+        )
+
+        assert result.status == "succeeded"
+        assert workbench.read_metadata().ree_intent.swhid.startswith("swh:1:dir:")
+
+    def test_missing_upstream_leaves_swhid_empty_and_still_succeeds(self, workbench: ReeStore) -> None:
+        # ensure_dirs created an empty upstream dir; remove it to force a failure.
+        workbench.layout.upstream.rmdir()
+
+        result = handler.handle_update_source_metadata(
+            UpdateSourceMetadataArgs(mode="download", origin_url="https://x/y.git", source_type="git"),
+            log=_silent_log,
+            is_canceled=_never_canceled,
+        )
+
+        assert result.status == "succeeded"
+        assert workbench.read_metadata().ree_intent.swhid == ""
