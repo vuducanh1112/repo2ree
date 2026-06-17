@@ -13,15 +13,21 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   frontend:
-    build:
-      context: .
-      dockerfile: docker/demo/frontend.Dockerfile
-      args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    # Built with Nix (single pinned toolchain shared with the dev shell and
+    # workbench image), then loaded into the local Docker daemon:
+    #   nix build .#frontend-image && docker load < result
+    # Caddy serves the static bundle and reverse-proxies /api/* to the
+    # backend, so the browser only ever talks to this one origin (:3000) and
+    # there is no backend URL to configure — `docker compose up` just works.
+    image: repo2ree-frontend:latest
     depends_on:
       - backend
     ports:
       - "3000:3000"
+    # BACKEND_UPSTREAM defaults to the `backend` service name below, resolved
+    # by the compose network. Override only for non-compose deployments.
+    environment:
+      BACKEND_UPSTREAM: backend:8000
 
 volumes:
   repo2ree-demo-data:

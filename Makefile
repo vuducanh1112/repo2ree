@@ -7,7 +7,7 @@
 	api-tests api-unit-tests api-integration-tests executor-tests \
 	be-coverage be-coverage-unit be-coverage-context \
 	test-checks \
-	workbench-image \
+	workbench-image frontend-image frontend-npm-hash \
 	e2e-tests e2e-demo e2e-coverage
 
 # ================================================
@@ -247,3 +247,20 @@ workbench-image:
 	@echo "Loading into docker..."
 	docker load < result
 	@echo "Done: repo2ree-workbench:latest"
+
+# Regenerate the pinned npm-deps hash from frontend/package-lock.json. Run
+# this after any lockfile change; it uses prefetch-npm-deps (the same tool
+# buildNpmPackage uses internally), so the file can't disagree with the build.
+frontend-npm-hash:
+	@echo "Computing npm deps hash from frontend/package-lock.json..."
+	nix run nixpkgs#prefetch-npm-deps -- frontend/package-lock.json > nix/frontend-npm-deps.hash
+	@echo "Wrote nix/frontend-npm-deps.hash: $$(cat nix/frontend-npm-deps.hash)"
+
+frontend-image: frontend-npm-hash
+	@echo "Staging nix sources so the flake can see them..."
+	git add -N nix/frontend-image.nix nix/frontend-npm-deps.hash 2>/dev/null || true
+	@echo "Building frontend image..."
+	nix build .#frontend-image
+	@echo "Loading into docker..."
+	docker load < result
+	@echo "Done: repo2ree-frontend:latest"
