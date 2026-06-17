@@ -1,43 +1,45 @@
 # repo2ree — Toward a Truly REE Service
 
-A feature analysis grounded in the current codebase. repo2ree today is an
-excellent **environment-capture** tool. Becoming a true *Reusable Execution
-Environment* service requires three more pillars: a way to **verify
-reproduction**, a way to **reuse** an REE, and a way to **trust** one you
-didn't build.
+A feature analysis grounded in the current codebase. repo2ree now has the
+outline of an REE builder: source acquisition, build/runtime scripts, SBOM/HBOM
+generation, dependency evaluation, experiment runs, expected-output checks, and
+sealing. Becoming a true *Reusable Execution Environment* service still requires
+three pillars: stronger **verification**, a consumer-side **reuse** loop, and
+durable **trust over time**.
 
-## The core gap: outputs are not modeled
+## The core gap: receipts are not yet durable claims
 
 Reproducibility = same inputs + same environment → **same outputs**.
 
-`ReeSpec` (`frontend/src/core/ree/ReeSpec.ts`) captures inputs and environment —
-source, runtime, build/activation scripts, SBOM, hardware BOM, and experiment
-*commands* — but has **no concept of an expected output**. `ReeExperiment` is
-just `{ name, description, command }`; there is nowhere to record "this command
-should produce *this* result."
+`ReeSpec` (`frontend/src/core/ree/ReeSpec.ts`) now captures expected experiment
+outputs (`sha256`, `contains`, `regex`, `numeric`, `custom`) and the backend can
+run experiments through the typed command envelope
+(`api/src/repo2ree_api/experiment_run.py`,
+`core/src/repo2ree_core/experiment/run.py`). That is the right foundation.
 
-Consequence: "reproduces the same outputs" is currently unfalsifiable. The
-evaluate threat report can only score *how well the environment is pinned*,
-never *whether the REE actually reproduces*.
+The remaining gap is that an experiment run is still mostly an execution result,
+not a durable **Run Receipt** with content-addressed inputs, output contracts,
+predecessor lineage, archive identity, and reviewer-facing diffs. The product
+can check outputs, but it has not yet turned those checks into the citable claim
+object promised by the concept docs.
 
 ## Pillar 1 — Outputs & reproduction verification (keystone)
 
-The highest-leverage direction. Without it, the existing Experiments and Evaluate
-pages have no real meaning.
+The highest-leverage direction. The code has the first loop; now make it a
+publication-grade loop.
 
-- Expected-output capture per experiment (artifact paths, hashes, or a result
-  manifest).
-- A **re-run → diff against baseline** loop. This is what makes wiring up
-  Experiments-run worthwhile — otherwise "run" only checks "did it exit 0."
+- Promote experiment run results into immutable Run Receipts.
+- Add predecessor links so reviewer runs point at author runs.
+- Preserve captured files/stdout/stderr as content-addressed evidence.
+- Surface a **re-run → diff against baseline** loop in the UI, not just a
+  pass/fail run status.
 - A green/red "this REE reproduced" verdict, distinct from "this REE is
   well-specified."
 
-Frontend-visible today: the **Results** and **Traces** panes on the Experiments
-detail view are literal placeholders
-(`frontend/src/shell/ui/app-shell/pages/experiments/ExperimentsPageSections.tsx`),
-and the **Run** button is hard-disabled (`title="Run is not yet wired up"`).
-Note: a full implementation also needs a backend run endpoint for experiments —
-none exists today (build-runtime / activation-test / sbom / evaluate do).
+Frontend-visible today: experiment run/snapshot actions exist, and expected
+outputs can be evaluated. The missing surface is a durable receipt view:
+baseline vs. rerun, predecessor, captured artifacts, and claim-level comparison
+in one object a reviewer can cite.
 
 ## Pillar 2 — Reuse (the consumer side)
 
@@ -55,12 +57,15 @@ second persona: someone who finds an REE and runs it.
 
 A service implies REEs that outlive their authors.
 
+- **Sealed identity**: promote sealing from a UI action into a durable Seal
+  Manifest with `ree_digest`, detached signatures, timestamp evidence, and
+  archive-binding metadata.
 - **Drift detection**: dependencies rot. Dependencies are already extracted via
   Renovate — the natural extension is *scheduled re-build + re-run* with an alert
   when a previously-reproducing REE stops. A background/scheduled job fits here.
 - **Shareable trust artifact**: a consumer-facing "reproducibility report card" /
-  badge that can be relied on without re-running. The evaluate report is the
-  seed, but it is currently inward-facing.
+  badge that can be relied on without re-running. The evaluate report and
+  experiment verdicts are the seed, but they are still inward-facing.
 
 ## Lower-priority / ecosystem
 
@@ -74,8 +79,6 @@ A service implies REEs that outlive their authors.
 
 ## Recommendation
 
-Build toward an **outputs/result model and a reproduction-diff loop** first. It
-is the missing half of the product promise, it is already frontend-visible
-(the Experiments Results/Traces placeholders are waiting for it), and it
-converts everything already built from "well-described environment" into
-"verified reproduction."
+Build toward **durable Run Receipts and a reproduction-diff loop** first. The
+expected-output model is now present; the product move is to make each run
+citable, comparable, and depositable.

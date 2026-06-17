@@ -12,28 +12,22 @@ binds the three layers researchers already use — environments (Docker /
 Nix / VMs), experiments (parameterized runs with traces), and archive
 (Zenodo / Software Heritage) — into one continuous loop. **Repro Labels**
 disclose what you've got; **Run Receipts** record what you ran; **Verify**
-lets others re-derive your claim; **Archive** deposits the bundle on
-Zenodo with a DOI and source on SWH.
+lets others re-derive your claim; **Archive** prepares the bundle for
+Zenodo/Dataverse-style deposit and SWH-backed source identity.
 
 ## Context
 
-Developed within **NFDIxCS** — the German National Research Data
-Infrastructure consortium for computer science. The mandate is *durable,
-federated, FAIR-aligned infrastructure that composes with existing
-research-data tooling rather than replacing it.* That mandate is the
-reason the project is shaped as an integration layer rather than a
-stand-alone product.
+repo2ree is developed within **NFDIxCS**, the German National Research Data
+Infrastructure consortium for computer science. Its mandate is durable,
+federated, FAIR-aligned infrastructure that composes with existing tooling. That
+is why repo2ree is an integration layer, not another destination platform.
 
-The audience starts inside the NFDI ecosystem (partner institutions,
-Zenodo / institutional repository deposit, base services like PID4NFDI
-and IAM4NFDI) and grows outward through bottom-up author and reviewer
-adoption, with eventual integration into Artifact Evaluation tracks at
-CS venues as upside rather than table stakes.
+The first audience is NFDI: partner institutions, repository deposit workflows,
+PID/IAM base services, and Artifact Evaluation pilots.
 
 ## The gap
 
-The research-code world has two structural failures that no widely-adopted
-tool addresses:
+Research code has two structural failures:
 
 - **Reproducibility is unobservable.** A repo either builds for you or it
   doesn't. There is no *measurement* of how reproducible it is, what
@@ -44,15 +38,14 @@ tool addresses:
   parameters in this environment and getting these outputs* is not a
   structured, durable, citable object anywhere in the current toolchain.
 
-Both failures are **integration failures**: the build system can describe
-the environment but not score it; the experiment tracker can record runs
-but not bind them to the environment; the archive can preserve files but
-not compose them into a re-runnable bundle. No layer alone closes either
-gap.
+Both are **integration failures**. Build systems describe environments but do
+not score them. Trackers record runs but do not bind them to reusable
+environments. Archives preserve files but do not compose them into a re-runnable
+claim object.
 
 ## Three layers, one integration
 
-Reproducible CS research needs three layers, each with mature tools:
+Reproducible CS research already has mature tools at three layers:
 
 | Layer           | What it provides                                | Mature substrates                                                                       |
 |-----------------|-------------------------------------------------|-----------------------------------------------------------------------------------------|
@@ -60,21 +53,12 @@ Reproducible CS research needs three layers, each with mature tools:
 | **Experiment**  | Run computations and capture what they produced | Snakemake, Nextflow, CWL, REANA *(workflow shape)*; MLflow, W&B, Neptune, Aim *(tracking shape)*; plain scripts |
 | **Archive**     | Preserve and identify the artifact long-term    | Software Heritage, Zenodo, DataCite, PID4NFDI                                           |
 
-Nothing ties them together. Researchers stitch the stack manually — and
-most don't bother.
-
-**repo2ree is the integration layer**: the connective tissue that binds
-these three layers into one continuous reproducibility loop. The
-substrates stay what they are; repo2ree adds the vocabulary, the
-bindings, and the workflows that turn three separate tools into one
-citable artifact.
-
-The four named surfaces below are the points where the layers meet.
+Nothing ties them together. repo2ree leaves substrates in place and adds the
+vocabulary, bindings, and workflows that turn them into one citable artifact.
 
 ## Design principles
 
-Two principles run through every surface and shape every architectural
-choice.
+Two principles shape the product.
 
 ### Not a work environment
 
@@ -92,11 +76,8 @@ with code and data already in a working state and (often) rich
 provenance already captured; repo2ree's job starts where authoring
 ends.
 
-The negative claim is itself a positive design choice: it keeps the
-project focused on the lifecycle moments that matter (Label → Verify →
-Archive), makes "works on any repo, anywhere" achievable, and avoids
-lock-in. Users keep their preferred editor / hub / hosted env;
-repo2ree certifies the artifact that emerges from it.
+Users keep their editor, hub, or hosted environment; repo2ree certifies the
+artifact that emerges.
 
 ### One-click: bring a script, get a Receipt
 
@@ -110,31 +91,23 @@ platform to log into; no per-tool integration to write.
 | **Build the runtime**  | A `build_runtime_script` (the script you'd run locally)     | A built runtime image and a build Receipt          |
 | **Run a workflow**     | A command (the command you'd type locally)                  | A Run Receipt with parameters, traces, outputs     |
 | **Verify**             | One click                                                   | A new Receipt diffed against the original          |
-| **Archive**            | One click + tier choice                                     | A Zenodo DOI, an SWHID, a deposited bundle         |
+| **Archive**            | One click + tier choice                                     | A sealed, deposit-ready bundle; DOI/SWHID once adapters run |
 
-The principle is **bring a script, get a Receipt** — and equivalently
-for the other surfaces. The user is never asked to learn repo2ree's
-internal model; they bring what they already have, and repo2ree wraps
-it.
-
-This is the line that distinguishes repo2ree from both the platform
-tools (Renku, Code Ocean) that ask you to *adopt their environment* and
-the build-discipline tools (Nix, Bazel) that ask you to *learn their
-authoring language*.
+The user brings what they already have; repo2ree wraps it.
 
 ## Four nameable surfaces: two primitives, two workflows
 
-Two **primitives** — the artifacts — and two **workflows** — the
-flagship moments. Primitives are the things you cite and deposit;
-workflows are how the integration becomes visible to a reviewer or a
-funder.
+Two primitives are cited and deposited; two workflows make them useful.
 
 | Surface         | Kind      | What it is                                                                                                          |
 |-----------------|-----------|---------------------------------------------------------------------------------------------------------------------|
 | **Repro Label** | Primitive | The repo's standing reproducibility disclosure — a nutrition label.                                                 |
 | **Run Receipt** | Primitive | A single execution's structured record — environment, inputs, outputs, result.                                      |
 | **Verify**      | Workflow  | One click: re-derive a Receipt on your own compute, get a comparable, citable diff.                                 |
-| **Archive**     | Workflow  | One click: deposit the Label, Receipts, and the REE bundle on Zenodo with a DOI; source flows to Software Heritage. |
+| **Archive**     | Workflow  | One click: seal and prepare/deposit the Label, Receipts, and REE bundle through archival infrastructure. |
+
+Seal is the freeze point inside Archive: it creates the content digest that
+signatures and deposits refer to.
 
 ---
 
@@ -188,7 +161,7 @@ the number is not a structured thing anyone publishes.
 A Run Receipt is the structured thing:
 
 ```
-ree_digest      which environment exactly executed the run
+ree_digest      which sealed REE executed the run
 action_digest   which command + inputs (per the action envelope)
 parameters      typed run-specific inputs (seeds, hyperparams, data version)
 outputs         produced files, content-addressed
@@ -249,31 +222,26 @@ Author and reviewer use the **same machinery, symmetrically**. There is
 no special "review mode"; the reviewer just produces their own Receipts
 and publishes the predecessor links.
 
-**Why this matters for the project.** Verify is the *demoable artifact*
-— the moment that makes the abstract "we provide reproducibility
-infrastructure" immediately visible to a funder, a partner institution,
-or a venue chair.
-
 ---
 
 ### Archive
 
 *Integrates: Lifecycle artifacts → Archive substrates.*
 
-> *Click Archive. The REE composes into a bundle, deposits to Zenodo
-> with a DOI, and source-code components flow to Software Heritage with
-> SWHIDs. The bundle is the citable artifact; the service is just how
-> you got it there.*
+> *Click Archive. The REE composes into a bundle shaped for Zenodo,
+> Dataverse, or institutional deposit, with source identified through
+> Software Heritage when possible. The bundle is the citable artifact;
+> the service is just how you got it there.*
 
 Archive composes the primitives with **institutional archival
 infrastructure**. repo2ree never runs its own permanent archive; it
-composes with Software Heritage (source code), Zenodo (bundles and
-DOIs), and NFDI base services (PIDs, identity).
+composes with Software Heritage (source code), Zenodo/Dataverse-style
+repositories (bundles and DOIs), and NFDI base services (PIDs, identity).
 
 The bundle is a **composition manifest** rather than a self-contained
 tarball: source by SWHID *pointer* (because SWH owns source archival),
-overlay and Receipts inline (because they are repo2ree's contribution),
-artifacts by **fidelity tier**:
+overlay and Receipts inline (because they are repo2ree's contribution), a Seal
+Manifest that names the exact content, and artifacts by **fidelity tier**:
 
 | Tier        | Contents                                                  | Best for                                              |
 |-------------|-----------------------------------------------------------|-------------------------------------------------------|
@@ -285,17 +253,8 @@ Each tier is a strict superset of the previous. The Label discloses
 which tier was deposited — an observable reproducibility property
 visible to reviewers at a glance.
 
-**Why composition, not duplication.** SWH and Zenodo already exist, are
-funded, and are durable. The NFDI mandate is to compose with existing
-research-data infrastructure, not duplicate it. The Zenodo–SWH
-integration means a single deposit gives you a DOI, automatic
-source-code archival in SWH, and SWHIDs bound to the deposited bundle —
-without repo2ree maintaining any of it.
-
-**Why this matters for the project.** Archive is what makes the
-sustainability claim structural rather than aspirational: bundles
-survive the service because they live on Zenodo + SWH, not in
-repo2ree's storage.
+SWH, Zenodo, Dataverse, and institutional repositories already exist. Archive
+composes with them instead of duplicating them.
 
 ---
 
@@ -314,7 +273,8 @@ three layers:
   the run produced — it doesn't prescribe how the run logs metrics or
   which tracking system is in use.
 - **Archive.** Long-term preservation lives at Software Heritage
-  (source), Zenodo (bundles), and DataCite / PID4NFDI (identifiers).
+  (source), Zenodo/Dataverse/institutional repositories (bundles), and
+  DataCite / PID4NFDI (identifiers).
   repo2ree composes archive-ready bundles; it doesn't store anything
   permanently.
 
@@ -324,11 +284,7 @@ MLflow-instrumented run becomes a Receipt with the tracker's metadata
 preserved. A repo with no tracking yields a Receipt assembled from
 stdout, outputs, and exit code.
 
-The integration story is always `<your substrates> + repo2ree`, never
-`repo2ree vs. anything`. The only thing each substrate has to provide
-is its native job: build the environment, capture the run, preserve the
-artifact. Everything else — turning those into a Label, a Receipt, a
-Verify, an Archive — is the integration layer's job.
+The story is `<your substrates> + repo2ree`, never `repo2ree vs. anything`.
 
 ## Comparator landscape
 
@@ -342,7 +298,7 @@ and **cultural / analogue precedents** that frame the work.
 |--------------------------------------------------------|-------------|-----------------------------------------------------------------------------------------------------------------------------|
 | Nix / Bazel / Docker / conda / uv / apt                | Environment | repo2ree runs whatever the repo brought; the Label grades its reproducibility floor.                                        |
 | Snakemake / Nextflow / CWL / REANA (workflows) · MLflow / W&B / Neptune (tracking) · plain scripts | Experiment | The Run Receipt wraps whatever the substrate ran — workflow DAG, ML run, or single command — and preserves its metadata. |
-| Software Heritage / Zenodo / DataCite / PID4NFDI       | Archive     | The Archive workflow deposits via these services and consumes their PIDs. The SWH–Zenodo integration is leveraged directly. |
+| Software Heritage / Zenodo / Dataverse / DataCite / PID4NFDI | Archive | The Archive workflow prepares bundles for these services and consumes their identifiers. |
 
 ### Upstream authoring environments
 
@@ -378,169 +334,69 @@ stack.
 
 ## Related work
 
-> *Draft for paper-shaped use. This section overlaps the comparator
-> landscape above in coverage but presents the same material as prose
-> grouped by approach, suitable as the starting point for a Related Work
-> section in a paper.*
+> *Paper-shaped prose version of the comparator landscape above.*
 
-The reproducibility-of-computation problem has been approached from many
-angles. None of the existing projects provide the specific integration
-that repo2ree contributes — graded reproducibility as a public property
-of the repository, runs as content-addressed citable artifacts with
-predecessor lineage, and one-click cross-substrate re-derivation — but
-several occupy adjacent space that warrants honest comparison. This
-section groups related work by approach and articulates where repo2ree
-differs.
+Adjacent tools solve important pieces. repo2ree's claim is the binding:
+graded repository disclosure, citable Run Receipts with lineage, and
+cross-substrate re-derivation.
 
 ### Authoring-time reproducibility environments
 
-A line of work attempts to make the act of writing research code itself
-reproducibility-aware. [Renku](https://renkulab.io/) (Swiss Data
-Science Center) hosts a JupyterLab + GitLab environment that captures
-provenance continuously: every file save, kernel restart, dataset
-access, and workflow execution is recorded. [Code Ocean](https://codeocean.com/)
-provides a similar hosted editor for authoring "compute capsules."
-[devcontainer](https://containers.dev/), [GitHub Codespaces](https://github.com/features/codespaces),
-and [Gitpod](https://www.gitpod.io/) specify the working environment as
-code tied to the repo. [JupyterHub](https://jupyter.org/hub) and
-[Open OnDemand](https://openondemand.org/) are institutional hosted
-notebook deployments. [ReproZip](https://www.reprozip.org/) takes the
-opposite tack: rather than recording at authoring time, it traces a
-running execution post-hoc via syscall interception and packages the
-inputs into a re-runnable bundle.
+[Renku](https://renkulab.io/), [Code Ocean](https://codeocean.com/) editor
+mode, [JupyterHub](https://jupyter.org/hub), [Open OnDemand](https://openondemand.org/),
+[devcontainers](https://containers.dev/), Codespaces, and Gitpod make authoring
+more reproducible. [ReproZip](https://www.reprozip.org/) captures a run
+post-hoc.
 
-These tools answer "how do I work reproducibly?" — a different question
-from the one repo2ree addresses. Renku and similar require adoption of
-the hosted environment, which is incompatible with both the
-*Not a Work Environment* design principle and the use case of grading
-third-party or legacy repositories. repo2ree treats these systems as
-**upstream**: a Renku-authored project arrives at repo2ree with code,
-data, and provenance in a working state, and the Repro Label rewards
-the captured discipline.
+These tools answer "how do I work reproducibly?" repo2ree answers "now that the
+work exists, how do I disclose, verify, reuse, and archive it?" It treats these
+systems as upstream; the Repro Label rewards the discipline they captured.
 
 ### Hosted reproducibility platforms
 
-A second line of work hosts the entire research artifact on platform
-infrastructure. [Whole Tale](https://wholetale.org/) (NSF) provides
-"scholarly middleware" — containerized research environments linked to
-dataset PIDs and archive DOIs. Code Ocean also occupies this space in
-its publishing mode, producing runnable capsules with DOIs.
-[Binder / MyBinder](https://mybinder.org/) auto-builds ephemeral
-notebook environments from a repository for reader-facing execution.
-
-These platforms produce credible reproducible artifacts but require
-adoption of the platform itself. They lack substrate plurality (a user
-cannot bring an arbitrary Nix flake or conda environment), lack a
-graded reproducibility axis (artifacts are binary "works"/"doesn't"),
-and tie citability to the platform's own infrastructure. repo2ree
-differs in three ways: it works on any repository regardless of
-authoring environment, it grades reproducibility as a measured property
-of the repository rather than a platform feature, and it deposits
-citable artifacts on existing archival infrastructure
-(Zenodo / Software Heritage) rather than on its own service.
+[Whole Tale](https://wholetale.org/), Code Ocean publish mode, and
+[Binder / MyBinder](https://mybinder.org/) host runnable artifacts or sessions.
+They are valuable, but they ask users to adopt the platform. repo2ree works on
+repositories regardless of authoring environment, grades reproducibility as a
+repository property, and deposits through existing archive infrastructure.
 
 ### Build, workflow, and tracking substrates
 
-A third body of work addresses individual layers that repo2ree treats
-as integration substrates rather than competitors. At the **environment
-layer**: [Nix](https://nixos.org/) and [Guix](https://guix.gnu.org/)
-provide hermetic build semantics with cryptographic input-addressing
-of build outputs; [Bazel](https://bazel.build/) provides remote
-execution and content-addressed caching. At the **workflow layer**:
-[Snakemake](https://snakemake.readthedocs.io/) and
-[Nextflow](https://nextflow.io/) provide DSLs that specify and execute
-computational pipelines; the [Common Workflow Language](https://www.commonwl.org/)
-is a portable workflow specification consumed by multiple engines;
-[REANA](https://reanahub.io/) (CERN) executes CWL / Snakemake / Yadage
-workflows on Kubernetes-backed clusters, originally developed for HEP
-analysis preservation; [WorkflowHub](https://workflowhub.eu/) indexes
-workflow definitions and assigns identifiers to them. At the
-**tracking layer**: [MLflow](https://mlflow.org/),
-[Weights & Biases](https://wandb.ai/), [Neptune](https://neptune.ai/),
-and [Aim](https://aimstack.io/) record machine-learning runs with
-parameters, metrics, and artifacts.
+Environment tools such as Nix, Guix, Bazel, Docker, conda, and uv; workflow
+tools such as Snakemake, Nextflow, CWL, REANA, and WorkflowHub; and trackers
+such as MLflow, W&B, Neptune, and Aim are substrates. They are strong inside
+their layers.
 
-Each of these tools produces strong reproducibility properties within
-its layer, but none binds the three layers together. A Snakemake
-pipeline does not produce a reproducibility-graded Repro Label. An
-MLflow run is not a Zenodo-citable artifact bound to a
-Software-Heritage-archived environment. A Nix flake does not produce a
-reviewer-facing one-click Verify workflow. repo2ree's contribution is
-precisely this binding: it consumes whichever of these substrates the
-repository brought, grades them on consistent axes, wraps their runs
-into uniformly-shaped Receipts, and pushes the composition into
-long-term archival infrastructure.
+repo2ree binds those layers: it grades the repository, wraps runs into Receipts,
+and pushes the composition into archival infrastructure.
 
 ### Verification and attestation systems
 
-A fourth line of work, originating in software supply-chain security,
-provides cryptographic verification of build outputs. The
-[Reproducible Builds](https://reproducible-builds.org/) project and
-[rebuilderd](https://github.com/kpcyrd/rebuilderd) coordinate
-independent rebuilders that produce signed attestations of bit-equal
-builds for Debian, Arch, and similar package ecosystems.
-[SLSA](https://slsa.dev/) (Supply-chain Levels for Software Artifacts)
-defines a tiered framework for build-provenance claims.
-[in-toto](https://in-toto.io/) specifies a metadata format for
-end-to-end software supply-chain attestations.
+[Reproducible Builds](https://reproducible-builds.org/),
+[rebuilderd](https://github.com/kpcyrd/rebuilderd), [SLSA](https://slsa.dev/),
+and [in-toto](https://in-toto.io/) supply the pattern language:
+content-addressed inputs and outputs, signed attestations, and provenance
+chains.
 
-These systems share a family resemblance with the Run Receipt —
-content-addressed inputs and outputs, signed attestations,
-predecessor-style provenance chains — but operate at the **package**
-unit (a Debian deb, a Python wheel, a CI build output), not at the
-research-repository unit. They also focus on verification of
-deterministic builds, where most CS research code is non-deterministic
-by construction (GPU floating point, network non-determinism in
-installs, time-dependent randomness). repo2ree adopts the structural
-patterns (typed action envelopes, content-addressing, signed results)
-but applies them at a different granularity (the research repository +
-its run) and at a different default fidelity (input-identity
-reproducibility, with bit-identity opt-in for the subset of substrates
-that support it).
+repo2ree applies those patterns to research repositories and their runs, not
+only packages or CI outputs. Its default fidelity is input identity; bit identity
+is opt-in for substrates that support it.
 
 ### Archive infrastructure and cultural precedents
 
-A fifth line of work concerns long-term preservation and community
-practice. [Software Heritage](https://www.softwareheritage.org/)
-(Inria + UNESCO) archives source code at internet scale with intrinsic
-content-addressed identifiers (SWHIDs). [Zenodo](https://zenodo.org/)
-(CERN) provides DOI-bearing deposit for arbitrary research artifacts.
-[DataCite](https://datacite.org/) and [PID4NFDI](https://www.pid4nfdi.de/)
-issue handles for research-data resources.
-[RO-Crate](https://www.researchobject.org/ro-crate/) is a W3C-community
-packaging standard for research objects with JSON-LD metadata.
-[DataLad](https://www.datalad.org/) versions data and computation as
-git-annex datasets with optional DOI deposit.
-[Papers with Code](https://paperswithcode.com/) indexes
-(paper, repository, benchmark, claimed result) tuples for ML research.
-[ACM Artifact Evaluation tracks](https://www.acm.org/publications/policies/artifact-review-and-badging-current)
-describe the community process for reviewer-verified reproducibility.
+Software Heritage archives source with SWHIDs; Zenodo, Dataverse, DataCite, and
+PID4NFDI provide deposit and identifiers; RO-Crate and DataLad shape research
+objects and data; Papers with Code and ACM Artifact Evaluation show the cultural
+demand.
 
-repo2ree composes with this infrastructure rather than replacing any of
-it. The Archive workflow deposits bundles on Zenodo (gaining DOIs and
-inheriting the Zenodo–SWH integration), references SWHIDs for source
-pointers, and produces RO-Crate-shaped bundles consumable by existing
-tooling. Papers with Code becomes a target audience for a successor
-index: self-reported results are replaced by verified Run Receipts. ACM
-AE tracks become an adoption target: the cultural practice of reviewer
-reproducibility becomes automatable via the Verify workflow.
+repo2ree composes with this infrastructure. Archive prepares DOI-bearing
+bundles, references SWHIDs, and produces RO-Crate-shaped metadata. Verify turns
+artifact-evaluation practice into a repeatable workflow.
 
 ### Summary
 
-The space surveyed above is fragmented: each project addresses a slice
-of the reproducibility problem at a distinct layer, with distinct
-assumptions about who the user is, what they bring, and where the
-artifacts live. repo2ree contributes the *integration layer* that binds
-these otherwise separate concerns into a single workflow centred on
-four named surfaces: graded reproducibility as a public property of the
-repository (Repro Label), execution as a content-addressed citable
-artifact with predecessor lineage (Run Receipt), one-click
-cross-substrate re-derivation (Verify), and composition-not-duplication
-archival deposit (Archive). None of these surfaces is, in isolation, a
-wholesale novel concept — the structural patterns are borrowed from the
-Bazel Remote Execution API, Nix, RO-Crate, the SLSA family, and the
-reproducible-builds movement. The novelty is the binding: making the
-four surfaces consistent across substrates, accessible without platform
+The space is fragmented. repo2ree's novelty is the binding: Label, Receipt,
+Verify, and Archive made consistent across substrates, usable without platform
 adoption, and aligned with existing archival infrastructure.
 
 ## Audience
@@ -576,9 +432,7 @@ of NFDIxCS that underwrite that durability.
 
 ## Adoption pathway
 
-The infrastructure works **without** venue cooperation. AE-track
-integration is upside, not a prerequisite. Adoption proceeds bottom-up —
-the Software Heritage / DataCite / ORCID pattern:
+Adoption should work without venue cooperation:
 
 1. **NFDIxCS endorsement.** The format is the consortium's recommended
    way of documenting CS reproducibility. Partner institutions adopt by
@@ -597,14 +451,11 @@ the Software Heritage / DataCite / ORCID pattern:
    using the format. NFDIxCS provides the institutional channel for
    negotiating that integration at scale rather than venue by venue.
 
-Build the infrastructure, accumulate critical mass through institutional
-endorsement and bottom-up use, let venue integration follow on its own
-timeline.
+Build institutional and bottom-up use first; venue integration can follow.
 
 ## Sustainability
 
-NFDI funding is bounded; the infrastructure must survive past it. Two
-design commitments make this tractable:
+Two commitments make repo2ree survivable past any one service:
 
 - **Content-addressed artifacts.** Repro Labels and Run Receipts are
   immutable, content-addressed blobs. They survive on Zenodo,
@@ -618,48 +469,30 @@ design commitments make this tractable:
   repo and continue to work standalone; deposited bundles continue to
   resolve on Zenodo / SWH.
 
-The forward-compatible commitments in
-[ARCHITECTURE.md](ARCHITECTURE.md#content-addressed-state-cas-and-the-action-cache)
-(signed-result schema slot, resolver abstraction, content-addressed
-blob transport) are also what make federated and post-service-life
-adoption possible.
-
 ## Honest limits
 
-- **Grading is only as good as the graders.** Each substrate type needs
-  real inspection of its lockfile or manifest. That grading machinery
-  is the central investment behind the Repro Label and is in progress,
-  not finished.
-- **Receipts are immutable but executors aren't.** A Receipt signed by
-  an untrusted executor still requires trust in *that executor* —
-  unless the Action is bit-reproducible, in which case independent
-  re-derivations can attest to the same outputs (the
-  reproducible-builds model).
+- **Grading depends on real graders.** Each substrate type needs real lockfile
+  or manifest inspection. That machinery is in progress.
+- **Receipts are immutable; executors are trust roots.** A Receipt from an
+  untrusted executor still requires trust in that executor unless independent
+  bit-reproducible re-derivations agree.
 - **Substrate floor still applies.** If the repo's environment
   substrate is a floating-tag Dockerfile, Receipts produced against it
   are only as reproducible as the pulls happened to be at the time.
   The Label will say so loudly.
-- **Bit-for-bit determinism is opt-in, not the default claim.** Default
-  is input-identity caching
-  ([ARCHITECTURE.md](ARCHITECTURE.md#content-addressed-state-cas-and-the-action-cache));
-  bit-equal verification via action re-execution is only meaningful for
-  substrates whose builds are themselves bit-reproducible.
+- **Bit-for-bit determinism is opt-in.** Default is input-identity caching
+  ([ARCHITECTURE.md](ARCHITECTURE.md#content-addressed-state-cas-and-the-action-cache)).
+  Bit-equal verification only applies to bit-reproducible substrates.
 - **GPU and hardware variation are out of scope.** Software-deterministic
   to the extent the substrate is; floating-point identity across GPU
   models or CPU vendors is not promised.
 - **Archive horizon ~10 years on commodity hardware.** Beyond that
   needs emulation, which the archive format permits but the project
   does not provide.
-- **CS-scoped by design.** Born inside NFDIxCS; tuned to CS-specific
-  substrates and reproducibility threats. Other disciplines may benefit
-  but are not the target — other NFDI consortia serve their own
-  communities with their own tooling.
+- **CS-scoped by design.** Born inside NFDIxCS; tuned to CS substrates and
+  reproducibility threats. Other disciplines may benefit but are not the target.
 
 ## One-line summary
 
-repo2ree is the **NFDIxCS integration layer for reproducible CS
-research**: it binds environments, experiments, and archives — through
-*Repro Labels* disclosing what you've got, *Run Receipts* recording
-what you ran, *Verify* letting anyone re-derive your claim, and
-*Archive* depositing the whole bundle on Zenodo and SWH — into one
-continuous reproducibility loop.
+repo2ree is the **NFDIxCS integration layer for reproducible CS research**:
+Label what you have, Receipt what you ran, Verify the claim, Archive the bundle.

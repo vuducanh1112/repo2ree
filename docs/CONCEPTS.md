@@ -1,6 +1,6 @@
 # repo2ree — Concepts
 
-> **Status: concept reference (2026-05).** The **what** of repo2ree —
+> **Status: concept reference (2026-06).** The **what** of repo2ree —
 > normative definitions of the nouns, verbs, tiers, and states used
 > across the project. For *why* these concepts exist see
 > [POSITIONING.md](POSITIONING.md); for *how* they are implemented see
@@ -13,9 +13,9 @@ VMs), **experiments** (MLflow, W&B, plain logs), and **archives**
 (Software Heritage, Zenodo, PID4NFDI) — into one reproducibility
 workflow. The concepts below are the *names* of that integration: the
 **nouns** that travel between layers (Source, Overlay, REE, Repro
-Label, Run Receipt), the **workflows** that bind them (Verify,
-Archive), and the **tiers** and **states** that govern how they're
-composed.
+Label, Run Receipt), the **workflows** that bind them (Verify, Archive), the
+**Seal** operation that freezes them, and the **tiers** and **states** that
+govern how they're composed.
 
 Each primitive and workflow declares which layers it integrates.
 
@@ -24,8 +24,10 @@ Each primitive and workflow declares which layers it integrates.
 ### Source
 
 The pristine repository at a fixed commit. Owned by the original author;
-**never modified by repo2ree**. Lives in `/ree/workspace/` at runtime and
-typically resolves to a Software Heritage identifier (SWHID) once archived.
+**never modified by repo2ree**. Lives as a source snapshot under
+`/ree/upstream/`; `/ree/workspace/` is the materialized build/run view. A
+deposited Source should resolve to a Software Heritage identifier (SWHID) when
+available.
 
 A Source with a stable identifier (SWHID) is *Archive-ready*; a Source
 that exists only locally is *Draft* (see [lifecycle states](#ree-lifecycle-states)).
@@ -35,7 +37,7 @@ that exists only locally is *Draft* (see [lifecycle states](#ree-lifecycle-state
 repo2ree's contribution to the REE — sits *beside* the Source without
 modifying it. Holds the declaration, generated build scripts, generated
 Dockerfiles or flakes, and any other material that turns a bare
-repository into a fully-specified environment. Lives in `/ree/overlays/`
+repository into a fully-specified environment. Lives in `/ree/overlay/`
 at runtime; travels inline in the Archive bundle.
 
 The Overlay model is what makes repo2ree non-invasive: a reviewer (or
@@ -69,7 +71,7 @@ pip) and exposes it in lifecycle-layer vocabulary. **Primitive 1.**
 A single execution's structured, content-addressed record:
 
 ```
-ree_digest      which environment exactly executed the run
+ree_digest      which sealed REE executed the run
 action_digest   which command + inputs were issued
 parameters      typed run-specific inputs (seeds, hyperparams, …)
 outputs         produced files, content-addressed
@@ -88,7 +90,23 @@ the citable wrapper that pushes the run toward the archive.
 
 Author-Receipts and reviewer-Receipts are **structurally identical**;
 the `predecessor` pointer is what binds a reviewer's verification to
-the author's original claim. **Primitive 2.**
+the author's original claim. A verification receipt can be signed by the
+reviewer, executor, or venue as a claim about what was re-derived and under
+which comparison policy. **Primitive 2.**
+
+### Seal Manifest
+
+The content identity of a finalized REE. Seal computes a canonical manifest over
+the source identity, overlay, runtime artifact, dependency closure when present,
+Label, and Receipts:
+
+```text
+ree_digest = sha256(canonical_seal_manifest)
+```
+
+The digest names the REE. It does not by itself mean the REE is trusted,
+reproducible, signed, or deposited. Signatures are separate attestations over
+the digest. See [sealing.md](sealing.md).
 
 ## Workflows
 
@@ -102,26 +120,40 @@ The reviewer's one-click moment. Composes the two primitives:
 2. Re-execute each published Run Receipt against the same REE.
 3. Each re-execution produces a new Receipt whose `predecessor` points at
    the author's.
-4. Diffs are surfaced; the reviewer's Receipt set is itself depositable
+4. The verifier may sign the new Receipt as a reviewer-verification claim.
+5. Diffs are surfaced; the reviewer's Receipt set is itself depositable
    via [Archive](#archive) as a citable verification artifact.
 
 Author and reviewer use the same machinery. There is no special "review
 mode."
 
+### Seal
+
+*Integrates: Lifecycle artifacts → Trust vocabulary.*
+
+The freeze point before Archive. Seal creates the Seal Manifest and `ree_digest`
+from stable content digests. After sealing, edits to source, overlay, receipts,
+runtime artifacts, or selected archive tier create a new seal.
+
+Signing is append-only: authors, executors, reviewers, venues, institutions, and
+archive adapters can each sign typed claims over the same `ree_digest`.
+Signatures are not included in the digest they sign.
+
 ### Archive
 
 *Integrates: Lifecycle artifacts → Archive substrates.*
 
-The author's one-click deposit. Composes the primitives with
+The author's deposit/export workflow. Composes the primitives with
 institutional archival infrastructure:
 
 1. Compose the bundle: declaration + overlay + source-pointer + Receipts
-   + Label + (artifacts by chosen [fidelity tier](#fidelity-tiers)).
-2. Deposit on Zenodo via API; receive DOI.
-3. Source-code components flow to Software Heritage automatically via the
-   Zenodo–SWH integration; SWHIDs flow back into the bundle metadata.
-4. Optionally bind a PID via PID4NFDI for NFDI-internal references.
-5. The deposited bundle is now the canonical citable form of the REE.
+   + Label + Seal Manifest + (artifacts by chosen [fidelity tier](#fidelity-tiers)).
+2. Export or deposit the bundle through Zenodo, Dataverse, or an institutional
+   repository adapter.
+3. Bind source to Software Heritage when possible and record SWHIDs in metadata.
+4. Record the `ree_digest`, signatures, DOI/PID, and archive-binding metadata.
+5. Optionally bind a PID via PID4NFDI for NFDI-internal references.
+6. The deposited bundle becomes the canonical citable form of the REE.
 
 repo2ree never archives anything itself; it composes archive-ready
 bundles for services that do.
@@ -138,8 +170,8 @@ disclosed by the Label.
 | **Replay**  | Cite + the built runtime image                            | always (OCI + amd64)   | no                         | MB–GB   |
 | **Rebuild** | Replay + inputs closure (vendored deps)                   | always                 | yes, against dead internet | GB      |
 
-**Recommended default: Replay.** Long-term runnability without the cost
-of closure capture; sufficient for most paper-supplementary use cases.
+**Recommended default: Replay.** It preserves long-term runnability without the
+cost of full dependency-closure capture.
 
 ## REE lifecycle states
 
@@ -149,11 +181,12 @@ The REE moves through states as its archival readiness changes:
 |--------------------|---------------------------------------------------------------|--------------------------------------------------------------------------------|
 | **Draft**          | Source has no stable identifier; actively being edited; pre-deposit iteration | No — bundles carry source bytes inline only as a temporary snapshot |
 | **Archive-ready**  | Source resolves to an SWHID; declaration and overlay are stable | Yes                                                                          |
-| **Deposited**      | Bundle deposited on Zenodo; DOI assigned; SWHIDs registered  | Already archived; future Archives create new versions                          |
+| **Sealed**         | Seal Manifest and `ree_digest` exist; edits create a new seal | Yes                                                                          |
+| **Deposited**      | Bundle deposited or exported; archive identifiers recorded  | Already archived; future Archives create new versions                          |
 
-Promotion Draft → Archive-ready happens when the source acquires a
-stable identifier (push to a SWH-crawled forge; deposit via Zenodo's
-`save_code_now`; or via SWH's direct deposit API).
+Promotion Draft → Archive-ready happens when the source acquires a stable
+identifier, usually through a forge already crawled by Software Heritage or an
+explicit SWH save/deposit request.
 
 ## Use case → tier mapping
 
@@ -172,7 +205,8 @@ stable identifier (push to a SWH-crawled forge; deposit via Zenodo's
 
 - [POSITIONING.md](POSITIONING.md) — why each of these concepts exists in
   the project's strategic framing.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — implementation machinery (action
-  envelopes, CAS, ActionCache, bundle composition).
+- [ARCHITECTURE.md](ARCHITECTURE.md) — implementation machinery and target
+  hardening (action envelopes, CAS, ActionCache, bundle composition).
+- [sealing.md](sealing.md) — Seal Manifest, signatures, and long-term validation.
 - [REE_SERVICE_ROADMAP.md](REE_SERVICE_ROADMAP.md) — product-level
   build-out plan.

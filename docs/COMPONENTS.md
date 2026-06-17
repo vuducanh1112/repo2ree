@@ -1,32 +1,29 @@
 # repo2ree — Component & Package Architecture
 
-> **Status: proposed / in-design (2026-06).** The **code-organization**
-> companion to [ARCHITECTURE.md](ARCHITECTURE.md). That doc describes the
-> *runtime* model — the control-plane / execution-plane split, the isolation
-> boundary, the typed action envelope, CAS. This doc maps that model onto
-> **source packages**: what each component is, what it may depend on, where it
-> is deployed, and the dependency rules that keep the seam clean. For *what*
-> each concept means see [CONCEPTS.md](CONCEPTS.md); for *why* the product is
-> shaped this way see [POSITIONING.md](POSITIONING.md).
+> **Status: partially implemented + target rules (2026-06).** The
+> code-organization companion to [ARCHITECTURE.md](ARCHITECTURE.md). It maps
+> the runtime model onto source packages, deployment locations, and dependency
+> rules. For concepts see [CONCEPTS.md](CONCEPTS.md); for product framing see
+> [POSITIONING.md](POSITIONING.md).
 
 ## Mental model
 
 repo2ree is a **control plane driving an isolated execution plane over a typed
-command protocol** (the "thin client, fat agent" pattern — cf. kubectl→kubelet;
-see [Control plane / execution plane split](ARCHITECTURE.md#control-plane--execution-plane-split)).
-Two invariants shape every package boundary below:
+command protocol**; see
+[Control plane / execution plane split](ARCHITECTURE.md#control-plane--execution-plane-split).
+Two target invariants shape every package boundary below:
 
-1. **An REE is always built in an isolated workbench.** There is no
-   "run it directly on the host" mode in the shipped product — a non-isolated
-   build produces an REE whose reproducibility/provenance claims can't be
-   trusted. Isolation is not configurable.
-2. **The only configurable axis is *where the workbench runs*** — the docker
-   endpoint: a local daemon, or a remote host (ssh / docker context / later
-   k8s). Same protocol, same commands; only the transport target changes.
+1. **An REE is built through a workbench.** The main path provisions a per-REE
+   Docker-in-Docker workbench and dispatches typed commands into it. The target
+   is a stronger VM-backed workbench; legacy review routes are still being
+   migrated.
+2. **Only the workbench provider/location is configurable**: local Docker,
+   user-local Docker over ssh/context, or a registered runner/controller for
+   cloud, Kubernetes, and institutional environments. Protocol and commands stay
+   the same.
 
-From those two invariants the decomposition is forced: a piece that runs
-**inside** the workbench and a piece that runs **on the host** must be separate
-deployable units, joined only by the protocol they both speak.
+So the host-side control plane and the in-workbench executor are separate
+deployable units joined by one protocol.
 
 ## The decomposition: 3 libraries + 3 surfaces
 
@@ -41,14 +38,14 @@ a library call and shape the result back.
                     │           /        \
             ┌───────┴───┐   ┌───┴───┐  ┌───┴──┐
             │ executor  │   │repo2ree│  │ api  │   ← surfaces
-            │  (guest)  │   │ (host  │  │(http,│
+            │  (guest)  │   │(future │  │(http,│
             │           │   │  cli)  │  │ opt.)│
             └───────────┘   └────────┘  └──────┘
 
   LIBRARIES (logic)            SURFACES (entry points)
   ─────────────────            ───────────────────────
   protocol   the wire contract executor  guest, in-image, stdin→core→stdout
-  core       does the work     repo2ree  host cli — THE user/agent surface
+  core       does the work     repo2ree  future host cli — user/agent surface
   supervisor lifecycle+relay    api       host http — optional hosted UX
 ```
 
@@ -65,21 +62,20 @@ a library call and shape the result back.
 | surface | over | role | deployed |
 |---|---|---|---|
 | **executor** (`repo2ree-exec`) | core + protocol | one-shot: read a `Command` on stdin, run it via core, stream `LogEvent`s on stderr, emit `ActionResult` on stdout, exit. **No listening server.** | **image only** |
-| **`repo2ree`** (supervisor cli) | supervisor + protocol | **the primary user/agent surface.** Provision a workbench (local or remote), drive the pipeline, stream logs, pull artifacts, tear down. | host — *what users install* |
+| **`repo2ree`** (supervisor cli) | supervisor + protocol | **target user/agent surface.** Provision a workbench (local or remote), drive the pipeline, stream logs, pull artifacts, tear down. | host — *not implemented yet* |
 | **api** (http) | supervisor + protocol | **optional** hosted UX over the supervisor (what the frontend talks to; remote/multi-user access). | host |
 
 ## Dependency rules (the invariants that keep the seam clean)
 
-These are the rules a dependency-cruiser / import-linter config should enforce:
+These are the rules a dependency-cruiser / import-linter config should enforce
+as the migration finishes:
 
-1. **The host never imports `core`.** `supervisor`, `repo2ree` (cli), and `api`
-   depend on `protocol` only. Execution logic lives exclusively in the image.
-   This is what makes "nobody installs core" true at the dependency level, not
-   just by convention.
+1. **The host should not import effectful `core`.** `supervisor` and the future
+   host CLI depend on `protocol` only. `api` still imports a few `core` domain
+   and storage helpers today; keep shrinking that surface until execution logic
+   lives exclusively in the image.
 2. **Surfaces import their library, never each other.** `api` and `repo2ree`
-   are sibling surfaces over `supervisor`; neither imports the other. No
-   `cli → api` or `api → cli` edge. (This is precisely the edge that "fold
-   lifecycle into the existing cli" would have created — and why we didn't.)
+   are sibling surfaces over `supervisor`. No `cli -> api` or `api -> cli` edge.
 3. **`protocol` depends on nothing.** It is the seam; it must stay importable by
    both sides without dragging either side's logic along.
 4. **`core` carries no CLI/HTTP framework deps.** It is a pure library so it can
@@ -94,11 +90,9 @@ protocol ← supervisor ← { repo2ree(cli), api }
 
 ## Call graph — what is and isn't a process boundary
 
-A common misread is that the `api` shells out to the supervisor cli
-(`frontend → api → repo2ree → supervisor → …`). It does not. `api` and
-`repo2ree` are **sibling surfaces** that both import the **supervisor library
-in-process**. Neither goes through the other (that would be the `api → cli` edge
-rule 2 forbids).
+A common misread is that the `api` shells out to the supervisor cli. It does
+not. `api` and `repo2ree` are sibling surfaces that both import the
+`supervisor` library in-process.
 
 ```
 frontend ──http──► api ──┐
@@ -116,11 +110,11 @@ crosses a process/isolation boundary:
 | `api` / `repo2ree` → `supervisor` | **in-process function call** | same machine, same process — `supervisor.provision(...)`, `supervisor.dispatch(cmd, ...)`. No subprocess. |
 | `supervisor` → `executor` | **subprocess / transport** (`docker exec … repo2ree-exec`, `Command` on stdin) | crosses **into the isolated workbench** (and maybe to another machine via ssh). Can't be an in-process call; needs a wire — this is what the typed envelope is *for*. |
 
-The supervisor → executor hop is the **only** legitimate "invoke a cli" in the
-system, precisely because it's the one that crosses the sandbox. Everything to
-the left of the supervisor is plain function calls. (In a hosted deployment the
-api routes through the [service tier](#the-service-tier--multi-user-persistence-auth-hosted-only)
-before reaching the supervisor — still in-process.)
+The supervisor -> executor hop is the only legitimate "invoke a cli" path
+because it crosses the sandbox. Everything left of `supervisor` is a function
+call. In hosted mode, `api` may pass through the
+[service tier](#the-service-tier--multi-user-persistence-auth-hosted-only) first,
+still in-process.
 
 ## The two CLIs — why, and how to name them
 
@@ -132,27 +126,24 @@ and conflating them is the mistake to avoid:
 | **`repo2ree`** (supervisor cli) | on the host | argv | drive workbenches | **yes — this is what `pip install` gives you** |
 | **`repo2ree-exec`** (executor) | inside the workbench image | a `Command` on **stdin** | execute one command, exit | no — image-internal |
 
-The friendly name `repo2ree` belongs to the **host** cli — that's what a user or
-an agent types. The guest piece is a one-shot, stdin-driven executor invoked per
-command via `docker exec`; it is named **executor** (`repo2ree-exec`) to say
-exactly that: it *executes* one command and exits (no daemon), it is stdin-fed,
-and it fronts core. Avoid `agent` (collides with AI-agent), `server`/`daemon`
-(implies a listener — there isn't one), and bare `cli` (now ambiguous).
+The friendly name `repo2ree` belongs to the future host cli. The implemented
+guest piece is the stdin-driven `repo2ree-exec`: invoked per command via
+`docker exec`, executes once, emits a result, exits. Avoid `agent`,
+`server`/`daemon`, and bare `cli`; each is ambiguous here.
 
 ## Always isolated, location configurable
 
 Isolation is fixed; the docker endpoint is the knob. Because docker has native
-remote support, "local vs remote" is mostly a connection setting, not a second
-transport to write:
+remote support, the single-user CLI can treat "local vs remote" mostly as a
+connection setting, not a second transport to write:
 
 ```
 repo2ree create ./src -o ree.tar.gz                     # workbench on local daemon
 repo2ree create ./src -o ree.tar.gz --host ssh://build  # workbench on a remote box
 ```
 
-- The supervisor's transport targets a configurable docker endpoint
-  (`DOCKER_HOST` / docker context / `-H ssh://…`). An agent on a laptop can
-  offload heavy or untrusted builds to a remote, same cli, same commands.
+- The supervisor targets a configurable Docker endpoint (`DOCKER_HOST`, docker
+  context, `-H ssh://...`). Same cli, same commands.
 - **Handle resolution needs no registry daemon.** The container name is
   deterministic (`repo2ree-wb-{ree_id}`), so existence/run-state is a
   `docker inspect` — *docker itself is the registry* for the cli flow. The
@@ -160,9 +151,15 @@ repo2ree create ./src -o ree.tar.gz --host ssh://build  # workbench on a remote 
 - **The iterate loop stays fast despite always-isolated.** The workbench is
   persistent (`sleep infinity`, `restart unless-stopped`): provision once,
   `docker exec` per command, tear down at the end.
-- **This assumes docker (local or reachable) is always available** — the price
-  of the guarantee. An environment with no docker and no remote can't run the
-  product; that's by design, not a gap to patch with an unsafe local mode.
+- **Docker must be local or reachable.** An environment with no Docker and no
+  remote cannot run the product.
+
+This SSH/context form is the **user-controlled CLI case**: the user's local
+machine may use its own SSH agent or Docker context to reach a remote Docker
+host. In hosted mode, repo2ree should not receive SSH passwords, private keys,
+cloud admin credentials, or kubeconfigs. Cloud and university resources should
+be reached through a registered runner/controller inside the user's boundary;
+see [Remote execution clients](ARCHITECTURE.md#remote-execution-clients-user-owned-runners).
 
 ## What runs continuously — deployment modes
 
@@ -248,7 +245,7 @@ for the cli/local flow or a first single-tenant deployment.
 
 | audience | installs / pulls |
 |---|---|
-| user / agent (cli) | `repo2ree` (supervisor cli) + `protocol`; **+ a workbench image** (carries `core` + `executor`) |
+| user / agent (future cli) | `repo2ree` (supervisor cli) + `protocol`; **+ a workbench image** (carries `core` + `executor`) |
 | hosted deployment | the above + `api` (and the frontend it serves) |
 | workbench image | `protocol` + `core` + `executor` — *never* `supervisor` / `api` / cli |
 
@@ -257,10 +254,10 @@ The workbench **image is versioned and is part of the reproducibility anchor**
 [the wire form](ARCHITECTURE.md#the-wire-form-a-typed-action-envelope)). Pinning
 the image pins what produced the REE.
 
-## Test layout that follows
+## Target test layout
 
 The transport is an interface (`WorkbenchClient`) with **three**
-implementations — but only two are user-facing:
+implementations in the target design — but only two are user-facing:
 
 | transport | use | docker? |
 |---|---|---|
@@ -277,36 +274,31 @@ protocol/tests/      unit: envelope (de)serialization round-trips
 core/tests/          unit: command handlers, /ree ops          (existing)
 supervisor/tests/    unit: registry; lifecycle/relay w/ docker mocked
                      integration: against in-process transport
-cli/tests/e2e/       repo2ree: provision → acquire → build → run → seal → teardown
+cli/tests/e2e/       future repo2ree cli: provision → acquire → build → run → seal → teardown
 api/tests/e2e/       same flow over httpx against the FastAPI app
 frontend/tests/e2e/  existing UI e2e
 ```
 
-The three e2e suites share **one flow definition** per surface (acquire → build
+The e2e suites should share **one flow definition** per surface (acquire → build
 → evaluate → experiment → seal), mirroring how `frontend/tests/e2e/helpers/flow.ts`
-already factors the UI flow. Slow real-docker e2e runs once (cli, the agent's
-primary door); the rest is fast.
+already factors the UI flow. Today the API/frontend path carries that coverage;
+when the host CLI exists, it should reuse the same flow.
 
 ## Relationship to today's code
 
-This is the target shape; the current tree differs in three ways. See
-[Migration notes](ARCHITECTURE.md#migration-notes) for sequencing.
+The package split is now partly real:
 
-- **The supervisor is trapped in `api/`.** `WorkbenchManager` + the registry live
-  at [api/src/repo2ree_api/workbench/](api/src/repo2ree_api/workbench/) and do raw
-  docker orchestration — host logic in a surface. → extract to a `supervisor`
-  package; leave FastAPI glue (`deps.py`) in `api`.
-- **The protocol is folded into `core`.** The envelope lives at
-  `core/src/repo2ree_core/envelope/`. → hoist to its own `protocol` package so the
-  host can speak the contract without importing `core`. (Lowest urgency — do it
-  when "host imports core" actually starts to bite.)
-- **One transport, hard-wired to docker.** `WorkbenchManager.dispatch_action` /
-  `dispatch_query` weld lifecycle to docker-exec. → split out a `WorkbenchClient`
-  interface; add the `in-process` (test) and `docker-remote` impls.
-
-The current `cli/` package (`repo2ree_cli`, binary `repo2ree`) is today the
-**guest executor**. Under the target naming the friendly `repo2ree` name moves to
-the **host** supervisor cli, and the guest piece becomes `repo2ree-exec`.
+- **Done:** `protocol/` holds the typed command/result/log/tracing contract.
+- **Done:** `supervisor/` holds `WorkbenchManager` and the workbench registry.
+- **Done:** `executor/` provides `repo2ree-exec`, the image-internal command
+  runner.
+- **Still rough:** `api` still imports some `core` domain/storage helpers and
+  owns hosted UX concerns directly.
+- **Still rough:** `WorkbenchManager` has one local-Docker transport, not a
+  `WorkbenchClient` interface with local/remote/in-process implementations.
+- **Missing:** the user-facing host `repo2ree` supervisor CLI does not exist yet.
+- **Legacy:** review routes still carry older inline Docker flows and should move
+  behind the same supervisor/protocol path.
 
 ## Future surfaces — what the seams enable (optional, driver-gated)
 
@@ -324,6 +316,12 @@ a different existing seam, each separately optional:
 | **distribution** | fetch finished REEs from any peer | the artifact / CAS store interface | commodity — hermetic + content-addressing already suffices |
 | **execution** | run a build on a peer's workbench | the `WorkbenchClient` transport | the *differentiated* one — enabled by reproducibility |
 | **discovery / identity** | DHT + keys instead of the central `service`/DB | an alternative to the service tier | heaviest; usually unnecessary |
+
+The hosted-client version of this is the registered runner described in
+[Remote execution clients](ARCHITECTURE.md#remote-execution-clients-user-owned-runners):
+it leases typed Actions, runs them through a local provider, and returns
+digest-bound `ActionResult`s. A peer execution surface would reuse that same
+shape with a different discovery and trust layer.
 
 ### The distributed action cache (the core idea)
 
@@ -350,21 +348,14 @@ network whether `command_digest` is already satisfied.* Hit → fetch + verify,
 skip the build. Miss → build locally, publish the new entry. Same `Command`, same
 `ActionResult`; the network is just a cache tier in front of the supervisor.
 
-### Why hermeticity is the *enabler*, not a substitute
+### Hermeticity enables P2P execution
 
-The honest split on "isn't a hermetic artifact already enough?":
-
-- **For distribution — yes, it's enough.** A content-addressed REE is
-  fetch-and-verify from *any* backend (OCI registry, S3, IPFS, BitTorrent —
-  interchangeable). Make the artifact store an interface; a P2P backend is one
-  impl added the day someone needs it. Don't build bespoke P2P here.
-- **For execution — hermeticity is not a substitute, it's the precondition.**
-  Trustless remote execution is normally intractable (why trust a stranger's
-  build?). Reproducibility solves it: an untrusted peer's result is **verifiable
-  by re-running and comparing the output digest** — the Nix reproducible-builds
-  *rebuilder* / Bazel-RBE model. For a *reproducibility tool specifically*, a
-  verifiable rebuilder network is a genuinely differentiated capability that
-  exists **because** REEs are hermetic.
+- **Distribution:** a content-addressed REE is fetch-and-verify from any backend
+  (OCI registry, S3, IPFS, BitTorrent). Keep the artifact store pluggable; add a
+  P2P backend only when needed.
+- **Execution:** hermeticity is the precondition for trustless remote work. A
+  peer's result is useful only because it can be re-run and compared by digest,
+  in the Nix rebuilder / Bazel RBE shape.
 
 The two properties already built are exactly the two security primitives P2P
 needs: **content-addressing** makes distribution trustless (verify the artifact
