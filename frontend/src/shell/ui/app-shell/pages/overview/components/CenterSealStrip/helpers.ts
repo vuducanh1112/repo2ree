@@ -29,7 +29,7 @@ export function buildSealCableItems(ree: ReeEditorViewModel, badges: Badges): Se
     },
     { key: "swh", label: "Software Heritage", live: !!ree.swhid },
     { key: "sbom", label: "SBOM", live: !!ree.sbom },
-    { key: "evaluate", label: "Evaluate", live: !!badges?.evaluate },
+    { key: "evaluate", label: "Reproducibility Readiness", live: !!badges?.evaluate },
     {
       key: "archive",
       label: "Archival & DOIs",

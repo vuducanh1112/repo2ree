@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect } from "react";
 import { scanDependencies } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
 import { useApiRuntime } from "../../../../data/apiRuntime";
@@ -10,7 +11,6 @@ import {
   lgStatusBadge,
   lgStyles,
 } from "../../../theme/lightGlassTheme";
-import { F } from "../../../theme/theme";
 import { assemblyStepIcon } from "../../assemblyStepIcons";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { PAGE } from "../../state/pages";
@@ -20,8 +20,8 @@ import {
   EvaluateAxesCard,
   EvaluateDependenciesCard,
   EvaluateLogCard,
-  EvaluateReadinessAside,
-  EvaluateRunConsoleCard,
+  EvaluateMissingInputs,
+  EvaluateRunControls,
   EvaluateThreatsCard,
   EvaluateWorkspaceAside,
 } from "./EvaluatePageSections";
@@ -34,7 +34,6 @@ export function PageEvaluate({
   running,
   runDone,
   badge,
-  ts,
   onRun,
   onCancel,
   onGo,
@@ -66,111 +65,104 @@ export function PageEvaluate({
   const statusReady = hasScoreOutput && !hasMissing;
 
   return (
-    <div style={lgStyles.pageRoot}>
-      <div style={lgStyles.pageFrame}>
-        <GlassPageHeader
-          icon={IC(24)}
-          title={assemblyStep.label}
-          subtitle={assemblyStep.desc}
-          badges={
-            <>
-              <span style={lgStatusBadge(statusReady)}>{statusLabel}</span>
-              {hasScoreOutput && badge && (
-                <span style={lgOutcomeBadge(badge.color, badge.bg)}>
-                  {Ic.check(11)} {badge.label}
-                </span>
-              )}
-            </>
-          }
-          right={
-            hasScoreOutput && ts ? (
-              <span
-                style={{
-                  fontSize: 11,
-                  color: lgColors.textMuted,
-                  fontFamily: F.mono,
-                  flexShrink: 0,
-                }}
-              >
-                Last run{" "}
-                {new Date(ts).toLocaleString([], {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+    // Single column sitting directly on the focus dock — no right rail. The Run
+    // action lives in the header; the evaluation result folds into the column.
+    <div style={pageRoot}>
+      <GlassPageHeader
+        icon={IC(24)}
+        iconTint={{
+          color: "#7c3aed",
+          border: "rgba(124, 58, 237, 0.32)",
+          shadow: "rgba(124, 58, 237, 0.14)",
+        }}
+        title={assemblyStep.label}
+        subtitle={assemblyStep.desc}
+        badges={
+          <>
+            <span style={lgStatusBadge(statusReady)}>{statusLabel}</span>
+            {hasScoreOutput && badge && (
+              <span style={lgOutcomeBadge(badge.color, badge.bg)}>
+                {Ic.check(11)} {badge.label}
               </span>
-            ) : null
-          }
-        />
+            )}
+          </>
+        }
+        right={
+          <EvaluateRunControls
+            running={running}
+            runDone={runDone}
+            disabled={running || !sourceLoadedInWorkspace || hasMissing}
+            onRun={() => onRun(assemblyStep.key, params)}
+            onCancel={() => onCancel?.(assemblyStep.key)}
+          />
+        }
+      />
 
-        <div style={lgStyles.mainGrid}>
-          <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-            <div style={lgStyles.sectionBody}>
-              <div style={lgStyles.sectionHeader}>
-                <div style={lgStyles.sectionIcon}>{Ic.layers(19)}</div>
-                <div>
-                  <h2 style={lgStyles.sectionTitle}>Reproducibility Analysis</h2>
-                  <div style={lgStyles.sectionSubtitle}>
-                    Dependency declaration and environment capture, scored as independent axes.
-                  </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <EvaluateMissingInputs missing={missing} onGoFields={onGoFields} />
+
+        <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
+          <div style={lgStyles.sectionBody}>
+            <div style={lgStyles.sectionHeader}>
+              <div style={lgStyles.sectionIcon}>{Ic.layers(19)}</div>
+              <div>
+                <h2 style={lgStyles.sectionTitle}>Reproducibility Analysis</h2>
+                <div style={lgStyles.sectionSubtitle}>
+                  Dependency declaration and environment capture, scored as independent axes.
                 </div>
               </div>
-
-              <EvaluateAxesCard hasScoreOutput={hasScoreOutput} report={report} />
-
-              <EvaluateThreatsCard
-                hasScoreOutput={hasScoreOutput}
-                threats={threats}
-                loading={reportQuery.isLoading}
-              />
-
-              <EvaluateDependenciesCard
-                hasRun={hasRun}
-                depGroups={depGroups}
-                containerCount={containerCount}
-                nixCount={nixCount}
-              />
-
-              <EvaluateLogCard log={log} running={running} />
             </div>
 
-            <div style={lgStyles.footer}>
-              <span style={{ color: lgColors.textMuted, fontSize: 12 }}>
-                {hasScoreOutput
-                  ? "Evaluate output is current."
-                  : "Run Evaluate to compute a reproducibility score."}
-              </span>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button type="button" onClick={() => onGo?.(PAGE.BUILD)} style={lgNextButton()}>
-                  Next: Runtime & SBOM {Ic.chevR(15)}
-                </button>
-              </div>
-            </div>
-          </section>
+            <EvaluateAxesCard hasScoreOutput={hasScoreOutput} report={report} />
 
-          <aside style={lgStyles.aside}>
-            <EvaluateRunConsoleCard
-              running={running}
-              runDone={runDone}
-              disabled={running || !sourceLoadedInWorkspace || hasMissing}
-              sourceLoadedInWorkspace={sourceLoadedInWorkspace}
-              missing={missing}
-              onRun={() => onRun(assemblyStep.key, params)}
-              onCancel={() => onCancel?.(assemblyStep.key)}
-              onGoFields={onGoFields}
+            <EvaluateThreatsCard
+              hasScoreOutput={hasScoreOutput}
+              threats={threats}
+              loading={reportQuery.isLoading}
             />
-            <EvaluateReadinessAside hasScoreOutput={hasScoreOutput} report={report} ts={ts} />
-            <EvaluateWorkspaceAside
-              sourceLoadedInWorkspace={sourceLoadedInWorkspace}
+
+            <EvaluateDependenciesCard
+              hasRun={hasRun}
+              depGroups={depGroups}
               containerCount={containerCount}
               nixCount={nixCount}
-              manifestCount={depGroups.length}
-              fileCount={files?.length ?? 0}
             />
-          </aside>
-        </div>
+
+            <EvaluateLogCard log={log} running={running} />
+          </div>
+
+          <div style={lgStyles.footer}>
+            <span style={{ color: lgColors.textMuted, fontSize: 12 }}>
+              {hasScoreOutput
+                ? "Evaluate output is current."
+                : "Run Evaluate to compute a reproducibility score."}
+            </span>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => onGo?.(PAGE.BUILD)} style={lgNextButton()}>
+                Next: Runtime & SBOM {Ic.chevR(15)}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <EvaluateWorkspaceAside
+          sourceLoadedInWorkspace={sourceLoadedInWorkspace}
+          containerCount={containerCount}
+          nixCount={nixCount}
+          manifestCount={depGroups.length}
+          fileCount={files?.length ?? 0}
+        />
       </div>
     </div>
   );
 }
+
+// Transparent page so the dock surface reads through; generous top padding
+// clears the dock's stage label and close button.
+const pageRoot: React.CSSProperties = {
+  height: "100%",
+  minHeight: 0,
+  overflow: "auto",
+  padding: "46px 36px 32px",
+  color: lgColors.text,
+};

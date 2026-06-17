@@ -1,7 +1,7 @@
 import { hbomHasAnyComponents } from "../../../../core/hbom/HbomSummary";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import { standingMeta } from "../../../../core/review/axes";
+import { axisStandings, axisStepLabel } from "../../../../core/review/axes";
 import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
 import { Ic } from "../../shared/components/Icon";
 import { PROCESS_STEPS, resolveNavCompleted } from "../sidebar/processSteps";
@@ -78,7 +78,7 @@ export const CANVAS_NODES: CanvasNode[] = [
   },
   {
     key: PAGE.EVALUATE,
-    label: "Repro Label",
+    label: "Reproducibility Readiness",
     kind: "evidence",
     zone: "inner",
     x: 312,
@@ -249,10 +249,13 @@ export function nodeSummary(
       const count = (ree.experiments ?? []).filter((entry) => entry.command.trim() !== "").length;
       return [{ label: "Commands", value: count > 0 ? `${count} defined` : null }];
     }
-    case PAGE.EVALUATE: {
-      const scored = ree.dependencyLevel || ree.environmentLevel || ree.machineLevel;
-      return [{ label: "Level", value: scored ? standingMeta(ree).short : null }];
-    }
+    case PAGE.EVALUATE:
+      // Always surface each axis's standing — level 0 reads as "None", so the
+      // three axes are visible whether or not the REE has been scored yet.
+      return axisStandings(ree).map(({ axis, level }) => ({
+        label: axis.label,
+        value: axisStepLabel(axis, level),
+      }));
     case PAGE.BUILD:
       return [
         {

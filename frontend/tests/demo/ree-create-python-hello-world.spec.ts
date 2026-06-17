@@ -317,10 +317,12 @@ test("upload source archive into workspace", async ({ page }) => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Repro Label", exact: true }),
+      page
+        .getByRole("navigation")
+        .getByRole("button", { name: "Reproducibility Readiness", exact: true }),
       "Evaluate the projects risks to reproducibility, by analyzing declared dependencies",
     );
-    await expect(main.getByText("Evaluate", { exact: true })).toBeVisible();
+    await expect(main.getByText("Reproducibility Readiness", { exact: true })).toBeVisible();
     await clickDemo(
       page,
       main.getByRole("button", { name: /^Play Run Evaluate$/ }),

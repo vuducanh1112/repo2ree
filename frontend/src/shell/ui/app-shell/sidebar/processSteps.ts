@@ -52,7 +52,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
   {
     n: 4,
     key: PAGE.EVALUATE,
-    label: "Evaluate",
+    label: "Reproducibility Readiness",
     IC: Ic.star,
     automation: AUTOMATION_BY_KEY[PAGE.EVALUATE],
     desc: "Score reproducibility level",

@@ -10,7 +10,7 @@ type ReeAssemblyCatalogEntry = ReeAssemblyDefinition & { key: ReeAssemblyOperati
 export const REE_ASSEMBLY_STEPS: ReeAssemblyCatalogEntry[] = [
   {
     key: "evaluate",
-    label: "Evaluate",
+    label: "Reproducibility Readiness",
     iconKey: "star",
     color: "#7c3aed",
     badge: { label: "Evaluated", color: "#7c3aed", bg: "#f5f3ff" },

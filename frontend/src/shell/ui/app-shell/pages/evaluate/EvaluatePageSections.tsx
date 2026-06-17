@@ -9,13 +9,7 @@ import type {
   ThreatSeverity,
 } from "../../../../../core/review/Threat";
 import { Ic } from "../../../shared/components/Icon";
-import {
-  lgColors,
-  lgContentCard,
-  lgReadout,
-  lgStatusBadge,
-  lgStyles,
-} from "../../../theme/lightGlassTheme";
+import { lgColors, lgContentCard, lgStatusBadge, lgStyles } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";
 import { DependencyPanel } from "../../components/assemblyRunPanels";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
@@ -40,26 +34,21 @@ function CardHeader({ label, hint }: { label: string; hint?: string }) {
   );
 }
 
-export function EvaluateRunConsoleCard({
+// Run / Re-run (+ Cancel while running) — lives in the page header's action
+// slot now that the right rail is gone, mirroring the other redesigned pages.
+export function EvaluateRunControls({
   running,
   runDone,
   disabled,
-  sourceLoadedInWorkspace,
-  missing,
   onRun,
   onCancel,
-  onGoFields,
 }: {
   running: boolean;
   runDone: boolean;
   disabled: boolean;
-  sourceLoadedInWorkspace: boolean;
-  missing: ReeAssemblyRequirement[];
   onRun: () => void;
   onCancel: () => void;
-  onGoFields?: () => void;
 }) {
-  const hasMissing = missing.length > 0;
   const buttonLabel = running ? "Running…" : runDone ? "Re-run Evaluate" : "Run Evaluate";
 
   const runStyle: React.CSSProperties = {
@@ -77,116 +66,111 @@ export function EvaluateRunConsoleCard({
     fontFamily: F.sans,
     cursor: disabled ? "not-allowed" : "pointer",
     boxShadow: disabled ? "none" : "0 14px 30px rgba(14, 165, 233, 0.22)",
+    flexShrink: 0,
   };
 
   return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.play(22)}</span>
-        <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Run Evaluate</h2>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {hasMissing && (
-          <div
-            style={{
-              border: `1px solid ${lgColors.dangerBorder}`,
-              background: "rgba(255, 241, 242, 0.7)",
-              borderRadius: 8,
-              padding: 10,
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.info(13)}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: lgColors.danger }}>
-                Required inputs missing
-              </span>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {missing.map((item) => (
-                <span
-                  key={item.field}
-                  style={{
-                    fontSize: 11,
-                    fontFamily: F.sans,
-                    color: lgColors.danger,
-                    background: "rgba(255,255,255,0.55)",
-                    border: `1px solid ${lgColors.dangerBorder}`,
-                    borderRadius: 4,
-                    padding: "2px 8px",
-                  }}
-                >
-                  {item.label}
-                </span>
-              ))}
-            </div>
-            {onGoFields && (
-              <button
-                type="button"
-                onClick={onGoFields}
-                style={{
-                  alignSelf: "flex-start",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  border: `1px solid ${lgColors.dangerBorder}`,
-                  background: "rgba(255,255,255,0.6)",
-                  color: lgColors.danger,
-                  borderRadius: 6,
-                  padding: "4px 10px",
-                  cursor: "pointer",
-                }}
-              >
-                ← Source Acquisition
-              </button>
-            )}
-          </div>
-        )}
+    <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+      <button type="button" onClick={onRun} disabled={disabled} style={runStyle}>
+        <span
+          style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}
+        >
+          {running ? Ic.loader(14) : Ic.play(14)}
+        </span>
+        {buttonLabel}
+      </button>
+      {running && (
         <button
           type="button"
-          onClick={onRun}
-          disabled={disabled}
-          style={{ ...runStyle, width: "100%", justifyContent: "center" }}
+          onClick={onCancel}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            border: `1px solid ${lgColors.dangerBorder}`,
+            background: "rgba(255, 241, 242, 0.82)",
+            color: lgColors.danger,
+            padding: "8px 14px",
+            borderRadius: 8,
+            fontWeight: 700,
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
         >
-          <span
-            style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}
-          >
-            {running ? Ic.loader(14) : Ic.play(14)}
-          </span>
-          {buttonLabel}
+          {Ic.x(14)} Cancel
         </button>
-        {running && (
-          <button
-            type="button"
-            onClick={onCancel}
+      )}
+    </div>
+  );
+}
+
+// Surfaced inline in the column (the rail that used to host it is gone) so a
+// missing prerequisite still blocks the run with a clear way back.
+export function EvaluateMissingInputs({
+  missing,
+  onGoFields,
+}: {
+  missing: ReeAssemblyRequirement[];
+  onGoFields?: () => void;
+}) {
+  if (missing.length === 0) return null;
+  return (
+    <div
+      style={{
+        border: `1px solid ${lgColors.dangerBorder}`,
+        background: "rgba(255, 241, 242, 0.7)",
+        borderRadius: 9,
+        padding: 12,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.info(13)}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: lgColors.danger }}>
+          Required inputs missing
+        </span>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {missing.map((item) => (
+          <span
+            key={item.field}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              border: `1px solid ${lgColors.dangerBorder}`,
-              background: "rgba(255, 241, 242, 0.82)",
+              fontSize: 11,
+              fontFamily: F.sans,
               color: lgColors.danger,
-              padding: "8px 14px",
-              borderRadius: 8,
-              fontWeight: 700,
-              cursor: "pointer",
-              width: "100%",
+              background: "rgba(255,255,255,0.55)",
+              border: `1px solid ${lgColors.dangerBorder}`,
+              borderRadius: 4,
+              padding: "2px 8px",
             }}
           >
-            {Ic.x(14)} Cancel
-          </button>
-        )}
-        {!hasMissing && (
-          <span style={lgStyles.helper}>
-            {sourceLoadedInWorkspace
-              ? "Scans the workspace and computes a reproducibility level."
-              : "Load source into the workspace first."}
+            {item.label}
           </span>
-        )}
+        ))}
       </div>
-    </section>
+      {onGoFields && (
+        <button
+          type="button"
+          onClick={onGoFields}
+          style={{
+            alignSelf: "flex-start",
+            fontSize: 11,
+            fontWeight: 700,
+            border: `1px solid ${lgColors.dangerBorder}`,
+            background: "rgba(255,255,255,0.6)",
+            color: lgColors.danger,
+            borderRadius: 6,
+            padding: "4px 10px",
+            cursor: "pointer",
+          }}
+        >
+          ← Source Acquisition
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -616,70 +600,6 @@ export function EvaluateDependenciesCard({
 
 export function EvaluateLogCard({ log, running }: { log: LogEntry | null; running: boolean }) {
   return <CollapsibleLogCard log={log} running={running} title="Run Log" maxHeight={280} />;
-}
-
-export function EvaluateReadinessAside({
-  hasScoreOutput,
-  report,
-  ts,
-}: {
-  hasScoreOutput: boolean;
-  report: ReproducibilityReport | null;
-  ts?: string | null;
-}) {
-  const blockingCount = report ? report.threats.filter((threat) => threat.blocking).length : 0;
-  const dash = "—";
-
-  return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.shield(22)}</span>
-        <h2 style={{ margin: 0, fontSize: 15, color: lgColors.text }}>Evaluation Result</h2>
-      </div>
-
-      <div style={lgStyles.summaryBox}>
-        <div style={lgStyles.overviewHeader}>
-          <span style={lgStyles.overviewLabel}>Result</span>
-          <span style={lgStatusBadge(hasScoreOutput)}>{hasScoreOutput ? "Scored" : "Not run"}</span>
-        </div>
-        <div style={lgStyles.statGrid}>
-          <div style={lgReadout(lgStyles.statReadout)}>
-            <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Dependencies</span>
-            <strong style={{ color: lgColors.blue, fontSize: 14, fontFamily: F.mono }}>
-              {hasScoreOutput && report ? report.dependencyLevelLabel : dash}
-            </strong>
-          </div>
-          <div style={lgReadout(lgStyles.statReadout)}>
-            <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Environment</span>
-            <strong style={{ color: lgColors.cyan, fontSize: 14, fontFamily: F.mono }}>
-              {hasScoreOutput && report ? report.environmentLevelLabel : dash}
-            </strong>
-          </div>
-        </div>
-        <div style={lgStyles.statGrid}>
-          <div style={lgReadout(lgStyles.statReadout)}>
-            <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Blocking threats</span>
-            <strong style={{ color: lgColors.text, fontSize: 18, fontFamily: F.mono }}>
-              {hasScoreOutput ? String(blockingCount) : dash}
-            </strong>
-          </div>
-          <div style={lgReadout(lgStyles.statReadout)}>
-            <span style={{ color: lgColors.textMuted, fontSize: 11 }}>Last run</span>
-            <strong style={{ color: lgColors.text, fontSize: 13, fontFamily: F.mono }}>
-              {hasScoreOutput && ts
-                ? new Date(ts).toLocaleString([], {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "Never"}
-            </strong>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
 }
 
 export function EvaluateWorkspaceAside({

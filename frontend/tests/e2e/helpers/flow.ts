@@ -30,7 +30,7 @@ export function main(page: Page) {
 
 /**
  * The canvas hub. Navigation lives here as pod "nodes" (Source, Metadata,
- * Repro Label, Runtime, Hardware, Experiments, Archive, Seal) floating around
+ * Reproducibility Readiness, Runtime, Hardware, Experiments, Archive, Seal) floating around
  * the specimen pod — scope clicks here so short node labels don't collide with
  * same-named main buttons.
  */
@@ -105,8 +105,8 @@ export async function provideMetadata(
 /** Run dependency evaluation and wait for the score to be produced. */
 export async function runEvaluate(page: Page) {
   await stepShot(page, "run-evaluate", "before");
-  await openPort(page, "Repro Label");
-  await expect(main(page).getByText("Evaluate", { exact: true })).toBeVisible();
+  await openPort(page, "Reproducibility Readiness");
+  await expect(main(page).getByText("Reproducibility Readiness", { exact: true })).toBeVisible();
   await main(page)
     .getByRole("button", { name: /^Play Run Evaluate$/ })
     .click();
