@@ -10,10 +10,16 @@ import { type AppShellPage, isRuntimeEnvPage, PAGE } from "../state/pages";
 // declarations/evidence split: things you DECLARE cluster left, evidence the
 // system RETURNS clusters right. `x`/`y` are canvas coordinates with the pod at
 // the origin (0,0). `color`/`shadow` drive its cable to the pod.
+// `zone` groups nodes into concentric shells around the pod for the master
+// view: `core` is the experiment itself, `inner` the execution substrate it
+// runs on, `outer` the provenance/credential membrane around the whole thing.
+export type NodeZone = "outer" | "inner" | "core";
+
 export interface CanvasNode {
   key: AppShellPage;
   label: string;
   kind: "setup" | "declare" | "evidence";
+  zone: NodeZone;
   x: number;
   y: number;
   color: string;
@@ -29,6 +35,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     key: PAGE.SOURCE,
     label: "Source",
     kind: "declare",
+    zone: "outer",
     x: -312,
     y: -150,
     color: "#f59e0b",
@@ -39,6 +46,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     key: PAGE.METADATA,
     label: "Metadata",
     kind: "declare",
+    zone: "outer",
     x: -378,
     y: -16,
     color: "#22c55e",
@@ -49,6 +57,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     key: PAGE.HBOM,
     label: "Hardware",
     kind: "declare",
+    zone: "inner",
     x: -330,
     y: 120,
     color: "#0f766e",
@@ -59,6 +68,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     key: PAGE.EXPERIMENTS,
     label: "Experiments",
     kind: "declare",
+    zone: "core",
     x: -190,
     y: 236,
     color: "#4f46e5",
@@ -69,6 +79,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     key: PAGE.EVALUATE,
     label: "Repro Label",
     kind: "evidence",
+    zone: "inner",
     x: 312,
     y: -150,
     color: "#7c3aed",
@@ -79,6 +90,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     key: PAGE.BUILD,
     label: "Runtime",
     kind: "evidence",
+    zone: "inner",
     x: 378,
     y: -16,
     color: "#0891b2",
@@ -89,6 +101,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     key: PAGE.ARCHIVE,
     label: "Archive",
     kind: "evidence",
+    zone: "outer",
     x: 330,
     y: 120,
     color: "#e4572e",
@@ -99,6 +112,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     key: PAGE.SEAL,
     label: "Seal",
     kind: "evidence",
+    zone: "outer",
     x: 190,
     y: 236,
     color: "#b91c1c",
@@ -106,6 +120,50 @@ export const CANVAS_NODES: CanvasNode[] = [
     icon: Ic.lock,
   },
 ];
+
+// Exploded ("decomposed") view: each shell becomes its own column to the right,
+// drawn at a decreasing scale so the single pod graphic reads as magnification
+// levels (full artifact → substrate → core). Each column is a real pod entity
+// the cable geometry anchors to, so cables land on that column's pod surface.
+interface ProjectionLayer {
+  zone: NodeZone;
+  label: string;
+  sub: string;
+  /** World-x of the column centre (pod sits here). */
+  cx: number;
+  /** Size of the pod + its ring relative to the full pod. */
+  scale: number;
+}
+export const EXPLODE_BASE_POD = 380;
+export const EXPLODE_ZOOM = 0.55;
+// World-x the camera centres on when decomposed (mid-point of the spread).
+export const EXPLODE_CENTER = 450;
+export const EXPLODE_LAYERS: ProjectionLayer[] = [
+  { zone: "outer", label: "Outer shell", sub: "describe · certify · seal", cx: 0, scale: 1 },
+  { zone: "inner", label: "Inner shell", sub: "execution substrate", cx: 760, scale: 0.58 },
+  { zone: "core", label: "Core", sub: "the experiment", cx: 1240, scale: 0.38 },
+];
+const LAYER_BY_ZONE = new Map<NodeZone, ProjectionLayer>(
+  EXPLODE_LAYERS.map((layer) => [layer.zone, layer]),
+);
+
+export interface NodeProjection {
+  dx: number;
+  dy: number;
+  scale: number;
+}
+
+// Where a node sits in the exploded view: translate it into its shell's column
+// and shrink it to that column's scale. Assembled view is the identity.
+export function nodeProjection(node: CanvasNode, exploded: boolean): NodeProjection {
+  const layer = LAYER_BY_ZONE.get(node.zone);
+  if (!exploded || !layer) return { dx: 0, dy: 0, scale: 1 };
+  return {
+    dx: layer.cx + (layer.scale - 1) * node.x,
+    dy: (layer.scale - 1) * node.y,
+    scale: layer.scale,
+  };
+}
 
 const STEP_BY_KEY = new Map(PROCESS_STEPS.map((step) => [step.key, step]));
 

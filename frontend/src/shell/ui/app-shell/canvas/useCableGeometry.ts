@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import type { CableGeo } from "../pages/overview/PanelCableOverlayHelpers";
-import { CANVAS_NODES, isNodeDone } from "./canvasNodes";
+import { CANVAS_NODES, isNodeDone, type NodeZone } from "./canvasNodes";
 import type { NodeOffsets, Transform } from "./useCanvasViewport";
 
 // Pod sphere geometry inside PodWidget's 580-unit viewBox (centre + radius).
@@ -26,6 +26,10 @@ interface CableGeometryOptions {
   tf: Transform;
   nodeOffsets: NodeOffsets;
   animate: boolean;
+  /** When true, each shell's cables anchor to its own decomposed column pod. */
+  exploded: boolean;
+  /** Projection pod elements (inner/core columns) the cables anchor to when exploded. */
+  projectionPods: Partial<Record<NodeZone, React.RefObject<SVGSVGElement>>>;
 }
 
 // Measures cable endpoints between each node card and the pod's surface in the
@@ -41,6 +45,8 @@ export function useCableGeometry({
   tf,
   nodeOffsets,
   animate,
+  exploded,
+  projectionPods,
 }: CableGeometryOptions): CableGeo | null {
   const [geo, setGeo] = useState<CableGeo | null>(null);
 
@@ -48,21 +54,41 @@ export function useCableGeometry({
     const stage = stageRef.current;
     const podSvg = podSvgRef.current;
     if (!stage || !podSvg) return;
-    const ctm = podSvg.getScreenCTM();
-    if (!ctm) return;
     const cRect = stage.getBoundingClientRect();
-    const toStage = (px: number, py: number) => ({
-      x: ctm.a * px + ctm.c * py + ctm.e - cRect.left,
-      y: ctm.b * px + ctm.d * py + ctm.f - cRect.top,
-    });
-    const center = toStage(POD_CX, POD_CY);
-    const edge = toStage(POD_CX + POD_SR, POD_CY);
-    const radius = Math.hypot(edge.x - center.x, edge.y - center.y);
-    const intercept = (x: number, y: number) => {
-      const dx = x - center.x;
-      const dy = y - center.y;
+
+    // Centre + on-screen radius of a pod SVG, in the stage's coordinate space.
+    const podGeom = (svg: SVGSVGElement | null) => {
+      const ctm = svg?.getScreenCTM();
+      if (!ctm) return null;
+      const at = (vx: number, vy: number) => ({
+        x: ctm.a * vx + ctm.c * vy + ctm.e - cRect.left,
+        y: ctm.b * vx + ctm.d * vy + ctm.f - cRect.top,
+      });
+      const center = at(POD_CX, POD_CY);
+      const edge = at(POD_CX + POD_SR, POD_CY);
+      return { center, radius: Math.hypot(edge.x - center.x, edge.y - center.y) };
+    };
+
+    const mainPod = podGeom(podSvg);
+    if (!mainPod) return;
+    // Each shell anchors to its own column pod when exploded; otherwise everything
+    // ties back to the main pod.
+    const podForZone = (zone: NodeZone) => {
+      if (!exploded || zone === "outer") return mainPod;
+      return podGeom(projectionPods[zone]?.current ?? null) ?? mainPod;
+    };
+    const intercept = (
+      pod: { center: { x: number; y: number }; radius: number },
+      x: number,
+      y: number,
+    ) => {
+      const dx = x - pod.center.x;
+      const dy = y - pod.center.y;
       const len = Math.hypot(dx, dy) || 1;
-      return { x: center.x + (dx / len) * radius, y: center.y + (dy / len) * radius };
+      return {
+        x: pod.center.x + (dx / len) * pod.radius,
+        y: pod.center.y + (dy / len) * pod.radius,
+      };
     };
 
     const cables = CANVAS_NODES.flatMap((node) => {
@@ -79,7 +105,7 @@ export function useCableGeometry({
       else if (node.x >= 60) px = left;
       else if (node.y < 0) py = bottom;
       else py = top;
-      const pod = intercept(px, py);
+      const pod = intercept(podForZone(node.zone), px, py);
       return [
         {
           id: node.key,
@@ -94,7 +120,7 @@ export function useCableGeometry({
       ];
     });
     setGeo({ cables, decoCables: [], w: cRect.width, h: cRect.height });
-  }, [stageRef, podSvgRef, nodeEls, ree, badges]);
+  }, [stageRef, podSvgRef, nodeEls, ree, badges, exploded, projectionPods]);
 
   // Re-measure on every transform/offset/data change. While `animate` is on, the
   // world layer eases its transform, so we measure each frame until that

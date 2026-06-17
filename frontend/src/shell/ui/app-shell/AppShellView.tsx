@@ -1,4 +1,5 @@
 import type React from "react";
+import { useState } from "react";
 import type { StepState } from "../../../core/ree-assembly/assemblyStepTypes";
 import type { StandingMeta } from "../../../core/review/axes";
 import type { EvaluationState } from "../../../core/review/EvaluationState";
@@ -58,6 +59,14 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
   // pinned panel; every other page docks beside the pod.
   const sealOpen = page === PAGE.SEAL;
   const dockOpen = page !== PAGE.OVERVIEW && !sealOpen;
+
+  // Screen rect of the canvas panel that opened the dock, so the edit view can
+  // grow out of the panel the user clicked instead of feeling like a new page.
+  const [originRect, setOriginRect] = useState<DOMRect | null>(null);
+  const openPage = (next: typeof page, rect?: DOMRect) => {
+    if (rect) setOriginRect(rect);
+    commands.setPage(next);
+  };
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.bg }}>
@@ -146,7 +155,7 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
             badges={badges}
             provisioned={provisioned}
             dimmed={dockOpen}
-            onNavigate={commands.setPage}
+            onNavigate={openPage}
             reeFiles={currentReeFiles}
             filesConsoleOpen={uiChrome.filesConsoleOpen}
             onFilesConsoleOpenChange={commands.setFilesConsoleOpen}
@@ -156,7 +165,7 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
         {provisioned && dockOpen && (
           <FocusDock
             node={activeNode(page)}
-            evaluation={evaluation}
+            originRect={originRect}
             closable={provisioned}
             onClose={() => commands.setPage(PAGE.OVERVIEW)}
           >

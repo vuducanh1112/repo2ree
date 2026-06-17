@@ -7,6 +7,10 @@ export const GLOBAL_CSS = `
   @keyframes busFlow { to { background-position-x: 8px; } }
   @keyframes cableFlow { to { stroke-dashoffset: -20; } }
   @keyframes dockIn { from { opacity:0; transform:translateX(26px) scale(.985); } to { opacity:1; transform:none; } }
+  @keyframes growIn { from { opacity:0; transform:scale(.05); } to { opacity:1; transform:scale(1); } }
+  @keyframes labDriftA { 0%,100% { transform:translate(0,0); opacity:.65; } 50% { transform:translate(26px,-18px); opacity:1; } }
+  @keyframes labDriftB { 0%,100% { transform:translate(0,0); opacity:.5; } 50% { transform:translate(-22px,16px); opacity:.85; } }
+  @keyframes labScan { 0% { transform:translateY(-30%); opacity:0; } 40% { opacity:.7; } 100% { transform:translateY(140%); opacity:0; } }
   @keyframes cradlePulse { 0%,100% { opacity:.45; transform:translate(-50%,-50%) scale(1); } 50% { opacity:.8; transform:translate(-50%,-50%) scale(1.04); } }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family: Inter, system-ui, sans-serif; background: #f4f6f9; }

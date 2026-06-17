@@ -1,26 +1,32 @@
-import { useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Badges, ReeFile } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { standingMeta } from "../../../../core/review/axes";
 import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import { C, F } from "../../theme/theme";
 import { CableOverlaySvg } from "../pages/overview/PanelCableOverlaySections";
-import { PodWidget } from "../pages/overview/PodWidget";
 import type { AppShellPage } from "../state/pages";
 import { BenchConsole } from "./BenchConsole";
 import {
   CANVAS_NODES,
   type CanvasNode,
+  EXPLODE_CENTER,
+  EXPLODE_LAYERS,
+  EXPLODE_ZOOM,
   isNodeActive,
   isNodeDone,
   isNodeLocked,
   lifecycleProgress,
+  type NodeProjection,
+  nodeProjection,
   nodeSummary,
   type SummaryRow,
 } from "./canvasNodes";
+import { ExplodeScaffold, ExplodeToggle, ProjectionPod } from "./ExplodeView";
 import { FileTreeConsole } from "./FileTreeConsole";
+import { LabBackdrop } from "./LabBackdrop";
 import { useCableGeometry } from "./useCableGeometry";
-import { useCanvasViewport } from "./useCanvasViewport";
+import { type Transform, useCanvasViewport } from "./useCanvasViewport";
 
 const DONE = "#10b981";
 
@@ -31,7 +37,7 @@ interface CanvasHubProps {
   badges: Badges;
   provisioned: boolean;
   dimmed: boolean;
-  onNavigate: (page: AppShellPage) => void;
+  onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
   reeFiles: ReeFile[];
   filesConsoleOpen: boolean;
   onFilesConsoleOpenChange: (open: boolean) => void;
@@ -52,6 +58,8 @@ export function CanvasHub({
   const stageRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
   const podSvgRef = useRef<SVGSVGElement>(null);
+  const innerPodRef = useRef<SVGSVGElement>(null);
+  const corePodRef = useRef<SVGSVGElement>(null);
   const nodeEls = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const {
@@ -64,7 +72,27 @@ export function CanvasHub({
     startNodeDrag,
     resetView,
     zoomBy,
+    focusView,
   } = useCanvasViewport(stageRef);
+
+  const [exploded, setExploded] = useState(false);
+  // The pan/zoom the user had before decomposing, restored when they reassemble.
+  const preExplodeTf = useRef<Transform | null>(null);
+
+  // Pull the camera back and centre the spread when decomposing; on reassemble,
+  // return to wherever the user was framed before, not a hard reset.
+  const toggleExplode = () => {
+    const next = !exploded;
+    if (next) {
+      preExplodeTf.current = tf;
+      focusView({ x: -EXPLODE_CENTER * EXPLODE_ZOOM, y: 0, z: EXPLODE_ZOOM });
+    } else {
+      focusView(preExplodeTf.current ?? { x: 0, y: 0, z: 1 });
+    }
+    setExploded(next);
+  };
+
+  const projectionPods = useMemo(() => ({ inner: innerPodRef, core: corePodRef }), []);
 
   const geo = useCableGeometry({
     stageRef,
@@ -76,6 +104,8 @@ export function CanvasHub({
     tf,
     nodeOffsets,
     animate,
+    exploded,
+    projectionPods,
   });
 
   const { completed, total } = lifecycleProgress(ree, badges);
@@ -94,12 +124,21 @@ export function CanvasHub({
         cursor: isPanning ? "grabbing" : "grab",
         opacity: dimmed ? 0.4 : 1,
         transition: "opacity 0.3s",
+        boxShadow: "inset 0 0 220px rgba(30,58,138,0.10)",
         background: `
-          radial-gradient(circle at 50% 46%, #ffffff 0%, ${C.bg} 60%),
-          linear-gradient(${C.border} 1px, transparent 1px) 0 0 / 26px 26px,
-          linear-gradient(90deg, ${C.border} 1px, transparent 1px) 0 0 / 26px 26px`,
+          radial-gradient(120% 75% at 50% -8%, #ffffff 0%, rgba(255,255,255,0) 58%),
+          radial-gradient(58% 48% at 18% 22%, rgba(56,189,248,0.12) 0%, rgba(56,189,248,0) 70%),
+          radial-gradient(54% 44% at 83% 16%, rgba(129,140,248,0.12) 0%, rgba(129,140,248,0) 72%),
+          radial-gradient(75% 60% at 50% 118%, rgba(13,148,136,0.10) 0%, rgba(13,148,136,0) 72%),
+          linear-gradient(${C.border}cc 1px, transparent 1px) 0 0 / 130px 130px,
+          linear-gradient(90deg, ${C.border}cc 1px, transparent 1px) 0 0 / 130px 130px,
+          linear-gradient(${C.border}55 1px, transparent 1px) 0 0 / 26px 26px,
+          linear-gradient(90deg, ${C.border}55 1px, transparent 1px) 0 0 / 26px 26px,
+          radial-gradient(circle at 50% 44%, #f6fafe 0%, ${C.bg} 72%)`,
       }}
     >
+      <LabBackdrop />
+
       {geo && <CableOverlaySvg geo={geo} levelMeta={levelMeta} />}
 
       <div
@@ -128,9 +167,24 @@ export function CanvasHub({
             pointerEvents: "none",
           }}
         />
-        <div style={{ position: "absolute", left: 0, top: 0, transform: "translate(-50%,-50%)" }}>
-          <PodWidget evaluation={evaluation} svgRef={podSvgRef} size={380} />
-        </div>
+        {/* projection axis + per-column captions for the decomposed view */}
+        <ExplodeScaffold exploded={exploded} />
+
+        {/* the specimen, plus its shrinking projections to the right (real pod
+            entities the inner/core cables anchor to) */}
+        <ProjectionPod evaluation={evaluation} svgRef={podSvgRef} layer={EXPLODE_LAYERS[0]} />
+        <ProjectionPod
+          evaluation={evaluation}
+          svgRef={innerPodRef}
+          layer={EXPLODE_LAYERS[1]}
+          exploded={exploded}
+        />
+        <ProjectionPod
+          evaluation={evaluation}
+          svgRef={corePodRef}
+          layer={EXPLODE_LAYERS[2]}
+          exploded={exploded}
+        />
 
         <nav aria-label="Workspace pages">
           {CANVAS_NODES.map((node) => {
@@ -148,6 +202,7 @@ export function CanvasHub({
                 locked={isNodeLocked(node, provisioned)}
                 active={isNodeActive(node, page)}
                 rows={nodeSummary(node, ree)}
+                projection={nodeProjection(node, exploded)}
                 onNavigate={onNavigate}
                 onStartDrag={startNodeDrag}
                 wasNodeDragged={wasNodeDragged}
@@ -191,6 +246,8 @@ export function CanvasHub({
 
       <BenchConsole provisioned={provisioned} reeName={ree.name} />
 
+      <ExplodeToggle exploded={exploded} onToggle={toggleExplode} />
+
       <CanvasControls
         onZoomIn={() => zoomBy(1.2)}
         onZoomOut={() => zoomBy(1 / 1.2)}
@@ -209,7 +266,9 @@ interface NodeCardProps {
   locked: boolean;
   active: boolean;
   rows: SummaryRow[];
-  onNavigate: (page: AppShellPage) => void;
+  /** Where the card sits in the decomposed view (identity when assembled). */
+  projection: NodeProjection;
+  onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
   onStartDrag: (key: string, sx: number, sy: number) => void;
   wasNodeDragged: React.RefObject<boolean>;
 }
@@ -223,6 +282,7 @@ function NodeCard({
   locked,
   active,
   rows,
+  projection,
   onNavigate,
   onStartDrag,
   wasNodeDragged,
@@ -237,15 +297,15 @@ function NodeCard({
       onMouseDown={(e) => {
         if (!locked) onStartDrag(node.key, e.clientX, e.clientY);
       }}
-      onClick={() => {
+      onClick={(e) => {
         if (wasNodeDragged.current) return;
-        onNavigate(node.key);
+        onNavigate(node.key, e.currentTarget.getBoundingClientRect());
       }}
       style={{
         position: "absolute",
         left: node.x + offsetX,
         top: node.y + offsetY,
-        transform: "translate(-50%,-50%)",
+        transform: `translate(-50%,-50%) translate(${projection.dx}px,${projection.dy}px) scale(${projection.scale})`,
         width: 176,
         textAlign: "left",
         background: C.surface,
@@ -257,7 +317,8 @@ function NodeCard({
         boxShadow: active
           ? `0 0 0 3px ${C.accentBg}, 0 10px 28px rgba(37,99,235,0.22)`
           : "0 4px 16px rgba(13,17,23,0.07)",
-        transition: "box-shadow 0.15s, border-color 0.15s, opacity 0.35s",
+        transition:
+          "transform 0.4s cubic-bezier(0.4,0,0.2,1), box-shadow 0.15s, border-color 0.15s, opacity 0.35s",
       }}
     >
       <div

@@ -36,6 +36,8 @@ interface CanvasViewport {
   startNodeDrag: (key: string, sx: number, sy: number) => void;
   resetView: () => void;
   zoomBy: (factor: number) => void;
+  /** Eased move to an absolute transform (used to frame the exploded view). */
+  focusView: (next: Partial<Transform>) => void;
 }
 
 // Owns pan/zoom of the canvas and per-node drag offsets. Pan and node-drag share
@@ -148,6 +150,15 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
     setTf((prev) => ({ ...prev, z: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev.z * factor)) }));
   };
 
+  const focusView = (next: Partial<Transform>) => {
+    setAnimate(true);
+    setTf((prev) => ({
+      ...prev,
+      ...next,
+      z: next.z != null ? Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, next.z)) : prev.z,
+    }));
+  };
+
   return {
     tf,
     animate,
@@ -158,5 +169,6 @@ export function useCanvasViewport(stageRef: React.RefObject<HTMLDivElement>): Ca
     startNodeDrag,
     resetView,
     zoomBy,
+    focusView,
   };
 }
