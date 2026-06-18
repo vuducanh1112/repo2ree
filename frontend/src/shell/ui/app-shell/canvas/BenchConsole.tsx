@@ -7,8 +7,7 @@ import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import { STANDARD_IMAGE } from "../pages/workbench/WorkbenchPageSections";
 import { APP_ROUTE } from "../state/pages";
-
-const DONE = "#10b981";
+import { HudConsole } from "./HudConsole";
 
 const LOG_COLOR: Record<LogLine["type"], string> = {
   info: "#93c5fd",
@@ -59,164 +58,70 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
   }
 
   return (
-    <div
-      data-canvas-hud
-      style={{
-        position: "absolute",
-        left: 16,
-        bottom: 16,
-        width: open ? 320 : 212,
-        background: "rgba(255,255,255,0.92)",
-        border: `1px solid ${C.border}`,
-        borderRadius: 12,
-        boxShadow: open ? "0 18px 48px rgba(13,17,23,0.16)" : "0 4px 14px rgba(13,17,23,0.08)",
-        backdropFilter: "blur(4px)",
-        overflow: "hidden",
-        transition: "width 0.26s cubic-bezier(0.4,0,0.2,1), box-shadow 0.26s",
-      }}
+    <HudConsole
+      open={open}
+      onToggle={() => setOpen((v) => !v)}
+      widthOpen={320}
+      widthCollapsed={212}
+      outerStyle={{ left: 16, bottom: 16 }}
+      icon={Ic.package(16)}
+      iconColor="#64748b"
+      title="Workbench"
+      subtitle={open ? `The lab hosting ${reeName || "this REE"}` : STANDARD_IMAGE.ref}
+      on={provisioned}
+      expandLabel="Expand workbench console"
+      collapseLabel="Collapse workbench console"
+      bodyMaxHeight={420}
     >
+      <div style={{ height: 6 }} />
+      <StatRow label="Image" value={STANDARD_IMAGE.ref} mono />
+      <StatRow label="Location" value="Local" />
+      <StatRow label="Isolation" value="Docker-in-docker sandbox" />
+
+      <Terminal log={log} running={reprovisioning} />
+
       <button
         type="button"
-        aria-expanded={open}
-        aria-label={open ? "Collapse workbench console" : "Expand workbench console"}
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleReprovision}
+        disabled={reprovisioning}
+        style={reprovisionBtn(reprovisioning)}
+      >
+        {reprovisioning ? Ic.loader(14) : Ic.refresh(14)}
+        <span>{reprovisioning ? "Reprovisioning…" : "Reprovision workbench"}</span>
+      </button>
+      <span style={{ fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
+        Replaces the container, keeping the /ree volume.
+      </span>
+      <div style={{ height: 2, background: C.border, borderRadius: 99, margin: "4px 0" }} />
+      <button
+        type="button"
+        onClick={handleReleaseWorkbench}
+        disabled={releasing}
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 9,
+          justifyContent: "center",
+          gap: 7,
           width: "100%",
-          padding: "9px 12px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          textAlign: "left",
+          padding: "9px 14px",
+          borderRadius: 9,
+          border: "1px solid rgba(202, 138, 4, 0.38)",
+          background: "rgba(254, 249, 195, 0.72)",
+          color: "#92400e",
+          fontSize: 13,
+          fontWeight: 600,
+          fontFamily: F.sans,
+          cursor: releasing ? "default" : "pointer",
+          opacity: releasing ? 0.6 : 1,
         }}
       >
-        <span style={{ color: "#64748b", display: "flex" }}>{Ic.package(16)}</span>
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            display: "flex",
-            flexDirection: "column",
-            lineHeight: 1.3,
-          }}
-        >
-          <span style={{ fontSize: 12, fontWeight: 650, color: C.text }}>Workbench</span>
-          <span
-            style={{
-              fontFamily: F.mono,
-              fontSize: 9.5,
-              color: C.textMuted,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {open ? `The lab hosting ${reeName || "this REE"}` : STANDARD_IMAGE.ref}
-          </span>
-        </div>
-        <span
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            flexShrink: 0,
-            background: provisioned ? DONE : C.borderMid,
-            boxShadow: provisioned ? `0 0 7px ${DONE}88` : "none",
-          }}
-        />
-        <span
-          style={{
-            display: "flex",
-            color: C.textMuted,
-            flexShrink: 0,
-            transform: open ? "rotate(180deg)" : "none",
-            transition: "transform 0.26s",
-          }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <title>toggle</title>
-            <path
-              d="M6 15l6-6 6 6"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
+        {releasing ? Ic.loader(14) : Ic.x(14)}
+        <span>{releasing ? "Releasing…" : "Release workbench"}</span>
       </button>
-
-      {/* body grows/shrinks the panel in place */}
-      <div
-        style={{
-          maxHeight: open ? 420 : 0,
-          opacity: open ? 1 : 0,
-          overflow: "hidden",
-          transition: "max-height 0.28s cubic-bezier(0.4,0,0.2,1), opacity 0.2s",
-        }}
-      >
-        <div
-          style={{
-            padding: "2px 12px 12px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 7,
-            borderTop: `1px solid ${C.border}`,
-          }}
-        >
-          <div style={{ height: 6 }} />
-          <StatRow label="Image" value={STANDARD_IMAGE.ref} mono />
-          <StatRow label="Location" value="Local" />
-          <StatRow label="Isolation" value="Docker-in-docker sandbox" />
-
-          <Terminal log={log} running={reprovisioning} />
-
-          <button
-            type="button"
-            onClick={handleReprovision}
-            disabled={reprovisioning}
-            style={reprovisionBtn(reprovisioning)}
-          >
-            {reprovisioning ? Ic.loader(14) : Ic.refresh(14)}
-            <span>{reprovisioning ? "Reprovisioning…" : "Reprovision workbench"}</span>
-          </button>
-          <span style={{ fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
-            Replaces the container, keeping the /ree volume.
-          </span>
-          <div style={{ height: 2, background: C.border, borderRadius: 99, margin: "4px 0" }} />
-          <button
-            type="button"
-            onClick={handleReleaseWorkbench}
-            disabled={releasing}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-              width: "100%",
-              padding: "9px 14px",
-              borderRadius: 9,
-              border: "1px solid rgba(202, 138, 4, 0.38)",
-              background: "rgba(254, 249, 195, 0.72)",
-              color: "#92400e",
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: F.sans,
-              cursor: releasing ? "default" : "pointer",
-              opacity: releasing ? 0.6 : 1,
-            }}
-          >
-            {releasing ? Ic.loader(14) : Ic.x(14)}
-            <span>{releasing ? "Releasing…" : "Release workbench"}</span>
-          </button>
-          <span style={{ fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
-            Ends the REE session and removes this workbench.
-          </span>
-        </div>
-      </div>
-    </div>
+      <span style={{ fontSize: 11, color: C.textMuted, textAlign: "center", lineHeight: 1.4 }}>
+        Ends the REE session and removes this workbench.
+      </span>
+    </HudConsole>
   );
 }
 

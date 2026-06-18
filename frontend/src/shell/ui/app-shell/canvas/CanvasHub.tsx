@@ -5,12 +5,12 @@ import { standingMeta } from "../../../../core/review/axes";
 import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
 import { C, F } from "../../theme/theme";
-import { CableOverlaySvg } from "../pages/overview/PanelCableOverlaySections";
 import type { AppShellPage } from "../state/pages";
 import { BenchConsole } from "./BenchConsole";
+import { CableOverlaySvg } from "./CableOverlay";
+import { CanvasControls } from "./CanvasControls";
 import {
   CANVAS_NODES,
-  type CanvasNode,
   EXPLODE_CENTER,
   EXPLODE_LAYERS,
   EXPLODE_ZOOM,
@@ -18,18 +18,15 @@ import {
   isNodeDone,
   isNodeLocked,
   lifecycleProgress,
-  type NodeProjection,
   nodeProjection,
   nodeSummary,
-  type SummaryRow,
 } from "./canvasNodes";
 import { ExplodeScaffold, ExplodeToggle, ProjectionPod } from "./ExplodeView";
 import { FileTreeConsole } from "./FileTreeConsole";
 import { LabBackdrop } from "./LabBackdrop";
+import { NodeCard } from "./NodeCard";
 import { useCableGeometry } from "./useCableGeometry";
 import { type Transform, useCanvasViewport } from "./useCanvasViewport";
-
-const DONE = "#10b981";
 
 interface CanvasHubProps {
   page: AppShellPage;
@@ -228,7 +225,7 @@ export function CanvasHub({
           transform: "translateX(-50%)",
           fontFamily: F.mono,
           fontSize: 11.5,
-          color: ready ? DONE : C.textMid,
+          color: ready ? C.done : C.textMid,
           background: "rgba(255,255,255,0.8)",
           border: `1px solid ${C.border}`,
           borderRadius: 99,
@@ -237,7 +234,7 @@ export function CanvasHub({
         }}
       >
         {ready ? (
-          <b style={{ color: DONE }}>● archive-ready</b>
+          <b style={{ color: C.done }}>● archive-ready</b>
         ) : (
           <>
             <b style={{ color: C.text }}>{completed}</b>
@@ -261,194 +258,6 @@ export function CanvasHub({
         onZoomOut={() => zoomBy(1 / 1.2)}
         onReset={resetView}
       />
-    </div>
-  );
-}
-
-interface NodeCardProps {
-  node: CanvasNode;
-  offsetX: number;
-  offsetY: number;
-  setRef: (el: HTMLButtonElement | null) => void;
-  done: boolean;
-  locked: boolean;
-  active: boolean;
-  rows: SummaryRow[];
-  /** Where the card sits in the decomposed view (identity when assembled). */
-  projection: NodeProjection;
-  onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
-  onStartDrag: (key: string, sx: number, sy: number) => void;
-  wasNodeDragged: React.RefObject<boolean>;
-}
-
-function NodeCard({
-  node,
-  offsetX,
-  offsetY,
-  setRef,
-  done,
-  locked,
-  active,
-  rows,
-  projection,
-  onNavigate,
-  onStartDrag,
-  wasNodeDragged,
-}: NodeCardProps) {
-  return (
-    <button
-      type="button"
-      data-canvas-node
-      aria-label={node.label}
-      ref={setRef}
-      disabled={locked}
-      onMouseDown={(e) => {
-        if (!locked) onStartDrag(node.key, e.clientX, e.clientY);
-      }}
-      onClick={(e) => {
-        if (wasNodeDragged.current) return;
-        onNavigate(node.key, e.currentTarget.getBoundingClientRect());
-      }}
-      style={{
-        position: "absolute",
-        left: node.x + offsetX,
-        top: node.y + offsetY,
-        transform: `translate(-50%,-50%) translate(${projection.dx}px,${projection.dy}px) scale(${projection.scale})`,
-        width: 176,
-        textAlign: "left",
-        background: C.surface,
-        border: active ? `1px solid ${C.accent}` : `1px solid ${done ? "#bbf0d8" : C.border}`,
-        borderRadius: 13,
-        padding: "11px 13px",
-        cursor: locked ? "default" : "pointer",
-        opacity: locked ? 0.34 : 1,
-        boxShadow: active
-          ? `0 0 0 3px ${C.accentBg}, 0 10px 28px rgba(37,99,235,0.22)`
-          : "0 4px 16px rgba(13,17,23,0.07)",
-        transition:
-          "transform 0.4s cubic-bezier(0.4,0,0.2,1), box-shadow 0.15s, border-color 0.15s, opacity 0.35s",
-      }}
-    >
-      <div
-        style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: rows.length ? 9 : 0 }}
-      >
-        <span
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: 7,
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: done ? "#e7f9f1" : C.surfaceAlt,
-            border: `1px solid ${done ? "#bbf0d8" : C.border}`,
-            color: done ? node.color : C.textMuted,
-          }}
-        >
-          {node.icon(14)}
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 650, color: C.text, letterSpacing: -0.1 }}>
-            {node.label}
-          </div>
-        </div>
-        <span
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            flexShrink: 0,
-            background: done ? DONE : C.borderMid,
-            boxShadow: done ? `0 0 7px ${DONE}88` : "none",
-          }}
-        />
-      </div>
-
-      {rows.map((row) => (
-        <div
-          key={row.label}
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 8,
-            padding: "2px 0",
-            fontFamily: F.mono,
-            fontSize: 10.5,
-          }}
-        >
-          <span style={{ color: C.textMuted }}>{row.label}</span>
-          <span
-            title={row.title}
-            style={{
-              color: row.value ? C.textMid : C.borderMid,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              maxWidth: 104,
-            }}
-          >
-            {row.value ?? "—"}
-          </span>
-        </div>
-      ))}
-    </button>
-  );
-}
-
-function CanvasControls({
-  onZoomIn,
-  onZoomOut,
-  onReset,
-}: {
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onReset: () => void;
-}) {
-  const btn: React.CSSProperties = {
-    width: 34,
-    height: 32,
-    border: "none",
-    background: C.surface,
-    color: C.textMid,
-    fontSize: 16,
-    cursor: "pointer",
-  };
-  return (
-    <div
-      data-canvas-hud
-      style={{
-        position: "absolute",
-        right: 16,
-        bottom: 16,
-        display: "flex",
-        flexDirection: "column",
-        background: C.surface,
-        border: `1px solid ${C.border}`,
-        borderRadius: 10,
-        overflow: "hidden",
-        boxShadow: "0 4px 14px rgba(13,17,23,0.1)",
-      }}
-    >
-      <button type="button" title="Zoom in" onClick={onZoomIn} style={btn}>
-        +
-      </button>
-      <button
-        type="button"
-        title="Zoom out"
-        onClick={onZoomOut}
-        style={{ ...btn, borderTop: `1px solid ${C.border}` }}
-      >
-        −
-      </button>
-      <button
-        type="button"
-        title="Reset view"
-        onClick={onReset}
-        style={{ ...btn, fontSize: 12, borderTop: `1px solid ${C.border}` }}
-      >
-        ⤢
-      </button>
     </div>
   );
 }

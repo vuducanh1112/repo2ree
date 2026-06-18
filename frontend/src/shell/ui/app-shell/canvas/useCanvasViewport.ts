@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const ZOOM_MIN = 0.45;
+const ZOOM_MIN = 0.38;
 const ZOOM_MAX = 1.7;
 // Movement past this many screen px turns a node click into a drag.
 const DRAG_THRESHOLD = 4;

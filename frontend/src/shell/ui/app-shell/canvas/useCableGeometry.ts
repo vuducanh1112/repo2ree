@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import type { CableGeo } from "../pages/overview/PanelCableOverlayHelpers";
 import { PAGE } from "../state/pages";
+import type { CableGeo } from "./cableGeometry";
 import { CANVAS_NODES, isNodeDone, type NodeZone } from "./canvasNodes";
 import type { NodeOffsets, Transform } from "./useCanvasViewport";
 

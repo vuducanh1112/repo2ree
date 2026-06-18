@@ -4,12 +4,11 @@ import { filterFileTree } from "../../../../core/workspace/fileTreeFilter";
 import { FileNode } from "../../shared/components/FileTree";
 import { Ic } from "../../shared/components/Icon";
 import { lgColors } from "../../theme/lightGlassTheme";
-import { C, F } from "../../theme/theme";
+import { F } from "../../theme/theme";
 import { FileFilterInput } from "../pages/files/FileFilterInput";
 import { useReeFileTree } from "../pages/files/useReeFileTree";
 import { FileTabsPanel } from "./FileTabsPanel";
-
-const DONE = "#10b981";
+import { HudConsole } from "./HudConsole";
 
 const HUD_LEFT = 16;
 const HUD_TOP = 16;
@@ -85,150 +84,68 @@ export function FileTreeConsole({ reeFiles, open, onOpenChange }: FileTreeConsol
   };
 
   const hudWidth = open ? HUD_WIDTH_OPEN : HUD_WIDTH_COLLAPSED;
+  const fileCount = reeFiles.length;
 
   return (
     <>
-      <div
-        data-canvas-hud
-        style={{
-          position: "absolute",
+      <HudConsole
+        open={open}
+        onToggle={() => {
+          if (open) setActiveId(null);
+          onOpenChange(!open);
+        }}
+        widthOpen={HUD_WIDTH_OPEN}
+        widthCollapsed={HUD_WIDTH_COLLAPSED}
+        outerStyle={{
           left: HUD_LEFT,
           top: HUD_TOP,
-          width: hudWidth,
           maxHeight: "calc(100% - 32px)",
           display: "flex",
           flexDirection: "column",
-          background: "rgba(255,255,255,0.92)",
-          border: `1px solid ${C.border}`,
-          borderRadius: 12,
-          boxShadow: open ? "0 18px 48px rgba(13,17,23,0.16)" : "0 4px 14px rgba(13,17,23,0.08)",
-          backdropFilter: "blur(4px)",
-          overflow: "hidden",
-          transition: "width 0.26s cubic-bezier(0.4,0,0.2,1), box-shadow 0.26s",
         }}
+        icon={Ic.files(16)}
+        iconColor={lgColors.textMuted}
+        title="Files"
+        subtitle={
+          fileCount > 0
+            ? `${fileCount} file${fileCount !== 1 ? "s" : ""} on disk`
+            : "REE filesystem"
+        }
+        on={fileCount > 0}
+        expandLabel="Expand files"
+        collapseLabel="Collapse files"
       >
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-label={open ? "Collapse files" : "Expand files"}
-          onClick={() => {
-            if (open) setActiveId(null);
-            onOpenChange(!open);
-          }}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 9,
-            width: "100%",
-            padding: "9px 12px",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            textAlign: "left",
-            flexShrink: 0,
-          }}
-        >
-          <span style={{ color: lgColors.textMuted, display: "flex" }}>{Ic.files(16)}</span>
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              display: "flex",
-              flexDirection: "column",
-              lineHeight: 1.3,
-            }}
-          >
-            <span style={{ fontSize: 12, fontWeight: 650, color: C.text }}>Files</span>
-            <span
+        <FileFilterInput query={query} onChange={setQuery} />
+        <div style={{ overflowY: "auto", padding: "0 4px 8px", maxHeight: "min(52vh, 460px)" }}>
+          {filtered.length === 0 ? (
+            <div
               style={{
-                fontFamily: F.mono,
-                fontSize: 9.5,
-                color: C.textMuted,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                padding: "10px 12px",
+                fontSize: 11,
+                color: lgColors.textMuted,
+                fontFamily: F.sans,
+                fontStyle: "italic",
               }}
             >
-              {reeFiles.length > 0
-                ? `${reeFiles.length} file${reeFiles.length !== 1 ? "s" : ""} on disk`
-                : "REE filesystem"}
-            </span>
-          </div>
-          <span
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: "50%",
-              flexShrink: 0,
-              background: reeFiles.length > 0 ? DONE : C.borderMid,
-              boxShadow: reeFiles.length > 0 ? `0 0 7px ${DONE}88` : "none",
-            }}
-          />
-          <span
-            style={{
-              display: "flex",
-              color: C.textMuted,
-              flexShrink: 0,
-              transform: open ? "rotate(180deg)" : "none",
-              transition: "transform 0.26s",
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <title>toggle</title>
-              <path
-                d="M6 15l6-6 6 6"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-        </button>
-
-        {open && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 0,
-              borderTop: `1px solid ${C.border}`,
-            }}
-          >
-            <FileFilterInput query={query} onChange={setQuery} />
-
-            <div style={{ overflowY: "auto", padding: "0 4px 8px", maxHeight: "min(52vh, 460px)" }}>
-              {filtered.length === 0 ? (
-                <div
-                  style={{
-                    padding: "10px 12px",
-                    fontSize: 11,
-                    color: lgColors.textMuted,
-                    fontFamily: F.sans,
-                    fontStyle: "italic",
-                  }}
-                >
-                  {filtering
-                    ? "No matching REE files"
-                    : reeFiles.length === 0
-                      ? "Acquire source and run lifecycle steps to populate the REE."
-                      : "No REE files"}
-                </div>
-              ) : (
-                filtered.map((node) => (
-                  <FileNode
-                    key={node.id}
-                    node={node}
-                    onSelect={(picked) => openFile(picked.id)}
-                    selectedId={activeEntry?.node.id ?? null}
-                    forceOpen={filtering}
-                  />
-                ))
-              )}
+              {filtering
+                ? "No matching REE files"
+                : fileCount === 0
+                  ? "Acquire source and run lifecycle steps to populate the REE."
+                  : "No REE files"}
             </div>
-          </div>
-        )}
-      </div>
+          ) : (
+            filtered.map((node) => (
+              <FileNode
+                key={node.id}
+                node={node}
+                onSelect={(picked) => openFile(picked.id)}
+                selectedId={activeEntry?.node.id ?? null}
+                forceOpen={filtering}
+              />
+            ))
+          )}
+        </div>
+      </HudConsole>
 
       {open && activeEntry && (
         <FileTabsPanel

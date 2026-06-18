@@ -167,6 +167,7 @@ interface ProjectionLayer {
   scale: number;
 }
 export const EXPLODE_BASE_POD = 760;
+// Must stay above ZOOM_MIN in useCanvasViewport so focusView can reach it.
 export const EXPLODE_ZOOM = 0.42;
 // World-x the camera centres on when decomposed (mid-point of the spread).
 export const EXPLODE_CENTER = 1100;
