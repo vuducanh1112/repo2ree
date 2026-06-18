@@ -11,12 +11,9 @@ interface SealHubPanelProps {
   evaluation: EvaluationState;
   badges: Badges;
   locked: boolean;
-  sealed: boolean;
   sealRunning: boolean;
   sealLog: LogEntry | null;
   onSeal: (inclusionOpts: { includeSource: boolean; includeRuntime: boolean }) => void;
-  onPreviewReviewer: () => void;
-  onDownloadRee: () => void;
   onClose: () => void;
 }
 
@@ -27,12 +24,9 @@ export function SealHubPanel({
   evaluation,
   badges,
   locked,
-  sealed,
   sealRunning,
   sealLog,
   onSeal,
-  onPreviewReviewer,
-  onDownloadRee,
   onClose,
 }: SealHubPanelProps) {
   const sealRef = useRef<HTMLDivElement>(null);
@@ -111,8 +105,6 @@ export function SealHubPanel({
         onSeal={onSeal}
         sealRunning={sealRunning}
         sealLog={sealLog}
-        onPreviewReviewer={onPreviewReviewer}
-        onDownloadRee={sealed ? onDownloadRee : undefined}
         sealRef={sealRef}
       />
     </section>

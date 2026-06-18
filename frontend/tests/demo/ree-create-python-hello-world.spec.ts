@@ -489,23 +489,13 @@ test("upload source archive into workspace", async ({ page }) => {
     );
     // The seal panel is pinned inside the constellation hub, not the docked main.
     const sealPanel = page.getByRole("region", { name: "Seal" });
-    await expect(sealPanel.getByText("Seal REE", { exact: true })).toBeVisible();
-    await clickDemo(
-      page,
-      sealPanel.getByRole("button", { name: /Seal/ }).first(),
-      "Confirm sealing",
-    );
-    await expect(sealPanel.getByText("Seal this REE?", { exact: true })).toBeVisible();
-    // The seal confirmation is where source/runtime bundling is chosen; both
-    // default to "included" since they are available in the workspace.
+    // The seal panel now shows source/runtime bundle toggles inline before sealing.
     await expect(sealPanel.getByText("Bundle contents", { exact: true })).toBeVisible();
 
-    // Finalizing the seal locks the REE (read-only) but no longer auto-downloads;
-    // sealing and downloading are now separate actions.
     await clickDemo(
       page,
       sealPanel.getByRole("button", { name: /Seal (REE|anyway)/ }),
-      "Finalize seal — locks the REE with the chosen bundle contents",
+      "Seal — locks the REE with the chosen bundle contents",
     );
     // Sealing is a heavy synchronous round-trip (the backend assembles the
     // bundle twice — a digest pre-pass plus the final stamped build — then
@@ -515,12 +505,12 @@ test("upload source archive into workspace", async ({ page }) => {
       timeout: 60000,
     });
 
-    // The sealed card offers an explicit download of the archive.
+    // The Download REE button lives in the app header once the REE is sealed.
     const [download] = await Promise.all([
       page.waitForEvent("download"),
       clickDemo(
         page,
-        sealPanel.getByRole("button", { name: /Download REE/ }).first(),
+        page.getByRole("banner").getByRole("button", { name: /Download REE/ }),
         "Download the sealed REE archive",
       ),
     ]);

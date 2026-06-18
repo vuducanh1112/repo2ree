@@ -2,7 +2,6 @@ import { expect, test } from "./helpers/fixtures";
 import {
   provisionWorkbench,
   pythonHelloWorld,
-  sealPanel,
   sealRee,
   startReeCreation,
   uploadSource,
@@ -16,10 +15,8 @@ test.describe("Seal page", () => {
 
     await sealRee(page);
 
-    const downloadButton = sealPanel(page)
-      .getByRole("button", { name: /Download REE/ })
-      .first();
-    await expect(downloadButton).toBeVisible();
+    const downloadButton = page.getByRole("banner").getByRole("button", { name: /Download REE/ });
+    await expect(downloadButton).toBeEnabled();
     const [download] = await Promise.all([page.waitForEvent("download"), downloadButton.click()]);
     expect(download.suggestedFilename()).toMatch(/\.zip$/i);
   });

@@ -119,6 +119,33 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
         <div style={{ flex: 1 }} />
         <button
           type="button"
+          onClick={commands.onDownloadRee}
+          disabled={!workspaceRemote.artifactStatus.sealedAt}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: "rgba(220, 252, 231, 0.7)",
+            border: "1px solid rgba(34, 197, 94, 0.42)",
+            borderRadius: 7,
+            cursor: workspaceRemote.artifactStatus.sealedAt ? "pointer" : "not-allowed",
+            color: "#15803d",
+            padding: "5px 11px",
+            fontSize: 12.5,
+            fontWeight: 600,
+            fontFamily: F.sans,
+            transition: "all 0.12s",
+            opacity: workspaceRemote.artifactStatus.sealedAt ? 1 : 0.4,
+          }}
+          {...(workspaceRemote.artifactStatus.sealedAt
+            ? hoverBg("rgba(220, 252, 231, 0.9)", "rgba(220, 252, 231, 0.7)")
+            : {})}
+        >
+          <span style={{ display: "flex" }}>{Ic.download(13)}</span>
+          Download REE
+        </button>
+        <button
+          type="button"
           onClick={commands.openReviewPreview}
           style={{
             display: "flex",
@@ -191,12 +218,9 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
             evaluation={evaluation}
             badges={badges}
             locked={uiChrome.locked}
-            sealed={!!workspaceRemote.artifactStatus.sealedAt}
             sealRunning={sealRunning}
             sealLog={sealLog}
             onSeal={commands.onSeal}
-            onPreviewReviewer={commands.openReviewPreview}
-            onDownloadRee={commands.onDownloadRee}
             onClose={() => commands.setPage(PAGE.OVERVIEW)}
           />
         )}

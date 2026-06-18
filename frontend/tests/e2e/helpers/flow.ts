@@ -238,19 +238,18 @@ export async function runExperiment(
  * appear.
  */
 /** The seal panel pinned inside the constellation hub (not the docked main area). */
-export function sealPanel(page: Page) {
+function sealPanel(page: Page) {
   return page.getByRole("region", { name: "Seal" });
 }
 
 export async function sealRee(page: Page) {
   await stepShot(page, "seal-ree", "before");
   await openPort(page, "Seal");
-  await expect(sealPanel(page).getByText("Seal REE", { exact: true })).toBeVisible();
-  await sealPanel(page).getByRole("button", { name: /Seal/ }).first().click();
-  await expect(sealPanel(page).getByText("Seal this REE?", { exact: true })).toBeVisible();
-  await sealPanel(page)
+  const sealButton = sealPanel(page)
     .getByRole("button", { name: /Seal (REE|anyway)/ })
-    .click();
+    .first();
+  await expect(sealButton).toBeVisible();
+  await sealButton.click();
   await expect(sealPanel(page).getByText("REE SEALED", { exact: true })).toBeVisible({
     timeout: 30000,
   });

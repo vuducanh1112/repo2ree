@@ -3,6 +3,9 @@ import { Ic } from "../../../../../shared/components/Icon";
 import { lgBackgrounds, lgColors, lgStyles } from "../../../../../theme/lightGlassTheme";
 import { F, hoverBrightness, S_ACTION_BUTTON_BASE } from "../../../../../theme/theme";
 import type { SealCableItem } from "./helpers";
+import { SealConfirmCopy } from "./SealConfirmCopy";
+import { SealConfirmInclusion } from "./SealConfirmInclusion";
+import { SealConfirmWarning } from "./SealConfirmWarning";
 
 interface LevelMeta {
   color: string;
@@ -14,9 +17,16 @@ interface SealStatusCardProps {
   currentLevelMeta: LevelMeta;
   cableItems: SealCableItem[];
   allLive: boolean;
+  totalCables: number;
   missing: { key: string; label: string }[];
   sealRunning?: boolean;
-  onShowConfirm: () => void;
+  sourceAvailable: boolean;
+  runtimeAvailable: boolean;
+  includeSource: boolean;
+  includeRuntime: boolean;
+  onToggleSource: () => void;
+  onToggleRuntime: () => void;
+  onSeal: () => void;
 }
 
 export function SealStatusCard({
@@ -24,9 +34,16 @@ export function SealStatusCard({
   currentLevelMeta,
   cableItems,
   allLive,
+  totalCables,
   missing,
   sealRunning = false,
-  onShowConfirm,
+  sourceAvailable,
+  runtimeAvailable,
+  includeSource,
+  includeRuntime,
+  onToggleSource,
+  onToggleRuntime,
+  onSeal,
 }: SealStatusCardProps) {
   const liveCount = cableItems.filter((item) => item.live).length;
   return (
@@ -97,27 +114,28 @@ export function SealStatusCard({
           </span>
         )}
       </div>
-      <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontFamily: F.sans, fontWeight: 800, color: lgColors.text }}>
-            Seal REE
-          </div>
-          <div
-            style={{
-              fontSize: 11,
-              fontFamily: F.sans,
-              marginTop: 2,
-              color: allLive ? lgColors.textMuted : lgColors.warning,
-            }}
-          >
-            {allLive
-              ? ` — all panels connected`
-              : `${missing.length} panel${missing.length !== 1 ? "s" : ""} not yet connected`}
-          </div>
-        </div>
+
+      {!allLive && <SealConfirmWarning missing={missing} />}
+
+      <SealConfirmCopy
+        allLive={allLive}
+        totalCables={totalCables}
+        currentLabel={currentLevelMeta.label}
+      />
+
+      <SealConfirmInclusion
+        sourceAvailable={sourceAvailable}
+        runtimeAvailable={runtimeAvailable}
+        includeSource={includeSource}
+        includeRuntime={includeRuntime}
+        onToggleSource={onToggleSource}
+        onToggleRuntime={onToggleRuntime}
+      />
+
+      <div style={{ padding: "12px 14px", display: "flex", justifyContent: "flex-end" }}>
         <button
           type="button"
-          onClick={onShowConfirm}
+          onClick={onSeal}
           disabled={sealRunning}
           style={{
             ...S_ACTION_BUTTON_BASE,
@@ -147,7 +165,7 @@ export function SealStatusCard({
           >
             {sealRunning ? Ic.loader(13) : Ic.lock(13)}
           </span>
-          {sealRunning ? "Sealing…" : "Seal"}
+          {sealRunning ? "Sealing…" : allLive ? "Seal REE" : "Seal anyway"}
         </button>
       </div>
     </div>

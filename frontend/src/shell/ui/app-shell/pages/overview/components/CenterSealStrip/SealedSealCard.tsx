@@ -1,12 +1,9 @@
 import type React from "react";
 import type { ReeEditorViewModel } from "../../../../../../../core/ree-editor/reeEditorViewModel";
 import { Ic } from "../../../../../shared/components/Icon";
-import { lgBackgrounds, lgColors } from "../../../../../theme/lightGlassTheme";
+import { lgColors } from "../../../../../theme/lightGlassTheme";
 import {
   F,
-  hoverBg,
-  hoverBorderColor,
-  S_OVERVIEW_SEALED_ACTION_BTN_BASE,
   S_OVERVIEW_SEALED_META_KEY,
   S_OVERVIEW_SEALED_META_ROW,
 } from "../../../../../theme/theme";
@@ -19,8 +16,6 @@ interface LevelMeta {
 
 interface SealedSealCardProps {
   ree: ReeEditorViewModel;
-  onPreviewReviewer: () => void;
-  onDownloadRee?: () => void;
   sealRef: React.RefObject<HTMLDivElement>;
   cableItems: SealCableItem[];
   currentLevelMeta: LevelMeta;
@@ -28,8 +23,6 @@ interface SealedSealCardProps {
 
 export function SealedSealCard({
   ree,
-  onPreviewReviewer,
-  onDownloadRee,
   sealRef,
   cableItems,
   currentLevelMeta,
@@ -136,40 +129,6 @@ export function SealedSealCard({
             />
           ))}
         </div>
-        {onPreviewReviewer && (
-          <button
-            type="button"
-            onClick={onPreviewReviewer}
-            style={{
-              ...S_OVERVIEW_SEALED_ACTION_BTN_BASE,
-              background: `${currentLevelMeta.color}14`,
-              border: `1px solid ${currentLevelMeta.color}50`,
-              color: currentLevelMeta.color,
-            }}
-            {...hoverBg(`${currentLevelMeta.color}22`, `${currentLevelMeta.color}14`)}
-            {...hoverBorderColor(`${currentLevelMeta.color}80`, `${currentLevelMeta.color}50`)}
-          >
-            {Ic.star(12)}
-            Preview Review
-          </button>
-        )}
-        {onDownloadRee && (
-          <button
-            type="button"
-            onClick={onDownloadRee}
-            style={{
-              ...S_OVERVIEW_SEALED_ACTION_BTN_BASE,
-              background: lgBackgrounds.success,
-              border: "1px solid rgba(34, 197, 94, 0.42)",
-              color: lgColors.success,
-            }}
-            {...hoverBg("rgba(220, 252, 231, 0.9)", lgBackgrounds.success)}
-            {...hoverBorderColor("rgba(34, 197, 94, 0.7)", "rgba(34, 197, 94, 0.42)")}
-          >
-            {Ic.download(12)}
-            Download REE
-          </button>
-        )}
       </div>
     </div>
   );

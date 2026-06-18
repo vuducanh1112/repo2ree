@@ -39,20 +39,6 @@ export const S_OVERVIEW_SEALED_META_KEY: React.CSSProperties = {
   flexShrink: 0,
 };
 
-export const S_OVERVIEW_SEALED_ACTION_BTN_BASE: React.CSSProperties = {
-  ...S_ACTION_BUTTON_BASE,
-  marginTop: 6,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 7,
-  width: "100%",
-  padding: "8px 14px",
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
 export const S_SOURCE_UPLOAD_STATUS_LINE_BASE: React.CSSProperties = {
   marginTop: 6,
   fontSize: 11,
