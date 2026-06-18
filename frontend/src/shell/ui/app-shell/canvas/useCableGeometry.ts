@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import type { CableGeo } from "../pages/overview/PanelCableOverlayHelpers";
+import { PAGE } from "../state/pages";
 import { CANVAS_NODES, isNodeDone, type NodeZone } from "./canvasNodes";
 import type { NodeOffsets, Transform } from "./useCanvasViewport";
 
@@ -77,11 +78,10 @@ export function useCableGeometry({
       if (!exploded || zone === "outer") return mainPod;
       return podGeom(projectionPods[zone]?.current ?? null) ?? mainPod;
     };
-    const intercept = (
-      pod: { center: { x: number; y: number }; radius: number },
-      x: number,
-      y: number,
-    ) => {
+    type PodGeom = { center: { x: number; y: number }; radius: number };
+    type Rect = { left: number; right: number; top: number; bottom: number };
+
+    const intercept = (pod: PodGeom, x: number, y: number) => {
       const dx = x - pod.center.x;
       const dy = y - pod.center.y;
       const len = Math.hypot(dx, dy) || 1;
@@ -91,28 +91,51 @@ export function useCableGeometry({
       };
     };
 
-    const cables = CANVAS_NODES.flatMap((node) => {
-      const el = nodeEls.current[node.key];
-      if (!el) return [];
+    const rectOf = (key: string): Rect | null => {
+      const el = nodeEls.current[key];
+      if (!el) return null;
       const r = el.getBoundingClientRect();
-      const left = r.left - cRect.left;
-      const right = r.right - cRect.left;
-      const top = r.top - cRect.top;
-      const bottom = r.bottom - cRect.top;
-      let px = (left + right) / 2;
-      let py = (top + bottom) / 2;
-      if (node.x <= -60) px = right;
-      else if (node.x >= 60) px = left;
-      else if (node.y < 0) py = bottom;
-      else py = top;
-      const pod = intercept(podForZone(node.zone), px, py);
+      return {
+        left: r.left - cRect.left,
+        right: r.right - cRect.left,
+        top: r.top - cRect.top,
+        bottom: r.bottom - cRect.top,
+      };
+    };
+
+    // The point on a panel's border along the ray toward (tx,ty): the knob
+    // rides the edge that faces whatever the panel is wired to.
+    const edgeToward = (rect: Rect, tx: number, ty: number) => {
+      const cx = (rect.left + rect.right) / 2;
+      const cy = (rect.top + rect.bottom) / 2;
+      const dx = tx - cx;
+      const dy = ty - cy;
+      const hw = (rect.right - rect.left) / 2;
+      const hh = (rect.bottom - rect.top) / 2;
+      if ((dx === 0 && dy === 0) || hw === 0 || hh === 0) return { x: cx, y: cy };
+      const scale = 1 / Math.max(Math.abs(dx) / hw, Math.abs(dy) / hh);
+      return { x: cx + dx * scale, y: cy + dy * scale };
+    };
+
+    // Panels woven into the dependency chain don't also get a plain membership
+    // cable in the decomposed view — the chain already wires them up.
+    const CHAIN_KEYS = new Set<string>([PAGE.SOURCE, PAGE.BUILD, PAGE.ACTIVATION]);
+
+    const cables = CANVAS_NODES.flatMap((node) => {
+      if (exploded && CHAIN_KEYS.has(node.key)) return [];
+      const rect = rectOf(node.key);
+      if (!rect) return [];
+      const pod = podForZone(node.zone);
+      // Knob rides the panel edge facing the pod; the pod end faces that knob.
+      const panel = edgeToward(rect, pod.center.x, pod.center.y);
+      const hit = intercept(pod, panel.x, panel.y);
       return [
         {
           id: node.key,
-          x1: px,
-          y1: py,
-          x2: pod.x,
-          y2: pod.y,
+          x1: panel.x,
+          y1: panel.y,
+          x2: hit.x,
+          y2: hit.y,
           color: node.color,
           shadow: node.shadow,
           connected: isNodeDone(node, ree, badges),
@@ -120,27 +143,50 @@ export function useCableGeometry({
       ];
     });
 
-    // Cross-shell dependency spine, drawn only when decomposed: source feeds the
-    // runtime feeds the experiment, i.e. outer shell → inner shell → core. We
-    // connect the column pods edge-to-edge so it reads as a faded backbone behind
-    // the membership cables. (In the assembled view the shells overlap into one
-    // pod, so there is nothing to span.)
+    // Dependency chain spine, drawn only when decomposed. Traces the actual
+    // data flow through specific panels rather than connecting pods directly:
+    // outer shell → source panel → build runtime panel → inner shell → test
+    // activation panel → core. (In the assembled view the shells overlap into
+    // one pod, so there is nothing to span.)
     const decoCables: CableGeo["decoCables"] = [];
     if (exploded) {
       const innerPod = podGeom(projectionPods.inner?.current ?? null);
       const corePod = podGeom(projectionPods.core?.current ?? null);
-      const spine = (
-        id: string,
-        from: { center: { x: number; y: number }; radius: number } | null,
-        to: { center: { x: number; y: number }; radius: number } | null,
-      ) => {
-        if (!from || !to) return;
-        const a = intercept(from, to.center.x, to.center.y);
-        const b = intercept(to, from.center.x, from.center.y);
-        decoCables.push({ id, x1: a.x, y1: a.y, x2: b.x, y2: b.y });
+
+      type Anchor = { kind: "pod"; pod: PodGeom } | { kind: "rect"; rect: Rect };
+
+      const podAnchor = (pod: PodGeom | null): Anchor | null => (pod ? { kind: "pod", pod } : null);
+      const rectAnchor = (rect: Rect | null): Anchor | null =>
+        rect ? { kind: "rect", rect } : null;
+
+      const anchorCenter = (a: Anchor) =>
+        a.kind === "pod"
+          ? a.pod.center
+          : { x: (a.rect.left + a.rect.right) / 2, y: (a.rect.top + a.rect.bottom) / 2 };
+
+      const resolve = (a: Anchor, toward: { x: number; y: number }) =>
+        a.kind === "pod"
+          ? intercept(a.pod, toward.x, toward.y)
+          : edgeToward(a.rect, toward.x, toward.y);
+
+      // Wire two anchors, landing each endpoint on the side facing the other.
+      const link = (id: string, a: Anchor | null, b: Anchor | null) => {
+        if (!a || !b) return;
+        const p1 = resolve(a, anchorCenter(b));
+        const p2 = resolve(b, anchorCenter(a));
+        decoCables.push({ id, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y });
       };
-      spine("spine-outer-inner", mainPod, innerPod);
-      spine("spine-inner-core", innerPod, corePod);
+
+      const source = rectAnchor(rectOf(PAGE.SOURCE));
+      const build = rectAnchor(rectOf(PAGE.BUILD));
+      const activation = rectAnchor(rectOf(PAGE.ACTIVATION));
+
+      // outer shell → source → build runtime → inner shell → activation → core
+      link("chain-outer-source", podAnchor(mainPod), source);
+      link("chain-source-build", source, build);
+      link("chain-build-inner", build, podAnchor(innerPod));
+      link("chain-inner-activation", podAnchor(innerPod), activation);
+      link("chain-activation-core", activation, podAnchor(corePod));
     }
 
     setGeo({ cables, decoCables, w: cRect.width, h: cRect.height });

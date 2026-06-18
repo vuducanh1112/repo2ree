@@ -24,40 +24,17 @@ export function CableOverlaySvg({ geo, levelMeta }: CableOverlaySvgProps) {
       preserveAspectRatio="none"
     >
       <title>Panel connections</title>
-      <defs>
-        {decoCables.map((dc) => (
-          <linearGradient
-            key={dc.id}
-            id={`oDecoFade_${dc.id}`}
-            gradientUnits="userSpaceOnUse"
-            x1={dc.x1}
-            y1={dc.y1}
-            x2={dc.x2}
-            y2={dc.y2}
-          >
-            <stop offset="0%" stopColor="white" stopOpacity="1" />
-            <stop offset="60%" stopColor="white" stopOpacity="1" />
-            <stop offset="85%" stopColor="white" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="white" stopOpacity="0" />
-          </linearGradient>
-        ))}
-        {decoCables.map((dc) => (
-          <mask key={dc.id} id={`oDecoMask_${dc.id}`}>
-            <rect x="0" y="0" width={w} height={h} fill={`url(#oDecoFade_${dc.id})`} />
-          </mask>
-        ))}
-      </defs>
       {decoCables.map((dc) => {
         const d = cablePath(dc.x1, dc.y1, dc.x2, dc.y2);
         const dHl = cableHl(dc.x1, dc.y1, dc.x2, dc.y2);
         return (
-          <g key={dc.id} opacity="0.32" mask={`url(#oDecoMask_${dc.id})`}>
+          <g key={dc.id} opacity="0.5">
             <path
               d={d}
               fill="none"
               stroke="#334155"
               strokeWidth="12"
-              opacity="0.12"
+              opacity="0.14"
               strokeLinecap="round"
             />
             <path
@@ -84,6 +61,24 @@ export function CableOverlaySvg({ geo, levelMeta }: CableOverlaySvgProps) {
               opacity="0.55"
               strokeLinecap="round"
             />
+            <circle
+              cx={dc.x1}
+              cy={dc.y1}
+              r="5.5"
+              fill="#94a3b8"
+              stroke="#334155"
+              strokeWidth="1.3"
+            />
+            <circle cx={dc.x1} cy={dc.y1} r="2.4" fill="#fff" opacity="0.85" />
+            <circle
+              cx={dc.x2}
+              cy={dc.y2}
+              r="5.5"
+              fill="#94a3b8"
+              stroke="#334155"
+              strokeWidth="1.3"
+            />
+            <circle cx={dc.x2} cy={dc.y2} r="2.4" fill="#fff" opacity="0.85" />
           </g>
         );
       })}

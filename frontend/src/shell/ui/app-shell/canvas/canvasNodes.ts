@@ -23,6 +23,8 @@ export interface CanvasNode {
   zone: NodeZone;
   x: number;
   y: number;
+  /** Override x position used only in the decomposed (exploded) view. */
+  xExploded?: number;
   color: string;
   shadow: string;
   icon: (size?: number) => JSX.Element;
@@ -39,6 +41,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     zone: "outer",
     x: -312,
     y: -150,
+    xExploded: 312,
     color: "#f59e0b",
     shadow: "#92400e",
     icon: Ic.globe,
@@ -99,6 +102,7 @@ export const CANVAS_NODES: CanvasNode[] = [
     zone: "inner",
     x: 340,
     y: 0,
+    xExploded: -340,
     color: "#0891b2",
     shadow: "#164e63",
     icon: Ic.cpu,
@@ -162,14 +166,14 @@ interface ProjectionLayer {
   /** Size of the pod + its ring relative to the full pod. */
   scale: number;
 }
-export const EXPLODE_BASE_POD = 380;
-export const EXPLODE_ZOOM = 0.55;
+export const EXPLODE_BASE_POD = 760;
+export const EXPLODE_ZOOM = 0.42;
 // World-x the camera centres on when decomposed (mid-point of the spread).
-export const EXPLODE_CENTER = 450;
+export const EXPLODE_CENTER = 1100;
 export const EXPLODE_LAYERS: ProjectionLayer[] = [
   { zone: "outer", label: "Outer shell", sub: "describe · certify · seal", cx: 0, scale: 1 },
-  { zone: "inner", label: "Inner shell", sub: "execution substrate", cx: 760, scale: 0.58 },
-  { zone: "core", label: "Core", sub: "the experiment", cx: 1240, scale: 0.38 },
+  { zone: "inner", label: "Inner shell", sub: "execution substrate", cx: 1400, scale: 0.58 },
+  { zone: "core", label: "Core", sub: "the experiment", cx: 2200, scale: 0.38 },
 ];
 const LAYER_BY_ZONE = new Map<NodeZone, ProjectionLayer>(
   EXPLODE_LAYERS.map((layer) => [layer.zone, layer]),
@@ -183,11 +187,14 @@ export interface NodeProjection {
 
 // Where a node sits in the exploded view: translate it into its shell's column
 // and shrink it to that column's scale. Assembled view is the identity.
+// xExploded overrides node.x for the decomposed position only.
 export function nodeProjection(node: CanvasNode, exploded: boolean): NodeProjection {
   const layer = LAYER_BY_ZONE.get(node.zone);
   if (!exploded || !layer) return { dx: 0, dy: 0, scale: 1 };
+  const ex = node.xExploded ?? node.x;
   return {
-    dx: layer.cx + (layer.scale - 1) * node.x,
+    // layer.cx + layer.scale * ex - node.x  (card CSS left is node.x, so subtract it back)
+    dx: layer.cx + (layer.scale - 1) * node.x + layer.scale * (ex - node.x),
     dy: (layer.scale - 1) * node.y,
     scale: layer.scale,
   };
