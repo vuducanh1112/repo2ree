@@ -4,14 +4,15 @@
 > the implemented workbench/typed-envelope path and the target isolation/CAS
 > model that should harden it. For
 > *why* the integration is shaped this way see
-> [POSITIONING.md](POSITIONING.md); for *what* each named concept means
+> [research/POSITIONING.md](research/POSITIONING.md); for *what* each named concept means
 > normatively see [CONCEPTS.md](CONCEPTS.md); for *how the code is organized*
 > into packages (the libraries/surfaces split, dependency rules) see
 > [COMPONENTS.md](COMPONENTS.md).
 
 This doc covers how REEs are built and run: isolation, directory layout,
 orchestration/execution split, action envelopes, CAS, and bundle composition.
-For product evolution, see [REE_SERVICE_ROADMAP.md](REE_SERVICE_ROADMAP.md).
+For product evolution, see
+[REE_SERVICE_ROADMAP.md](research/REE_SERVICE_ROADMAP.md).
 
 ## Current state
 

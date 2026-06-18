@@ -4,7 +4,7 @@
 > code-organization companion to [ARCHITECTURE.md](ARCHITECTURE.md). It maps
 > the runtime model onto source packages, deployment locations, and dependency
 > rules. For concepts see [CONCEPTS.md](CONCEPTS.md); for product framing see
-> [POSITIONING.md](POSITIONING.md).
+> [research/POSITIONING.md](research/POSITIONING.md).
 
 ## Mental model
 

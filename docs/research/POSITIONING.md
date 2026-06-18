@@ -2,8 +2,8 @@
 
 > **Status: positioning statement (2026-05).** The **why** of repo2ree —
 > strategic framing, audience, and relationship to neighbouring tools.
-> For *what* each named concept means see [CONCEPTS.md](CONCEPTS.md);
-> for *how* it's implemented see [ARCHITECTURE.md](ARCHITECTURE.md).
+> For *what* each named concept means see [CONCEPTS.md](../CONCEPTS.md);
+> for *how* it's implemented see [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ## In one sentence
 
@@ -195,7 +195,7 @@ Each Receipt is content-addressed and immutable. What this changes:
 
 The machinery — typed action envelope, content-addressed inputs and
 outputs, signable result — is in
-[ARCHITECTURE.md](ARCHITECTURE.md#the-wire-form-a-typed-action-envelope).
+[ARCHITECTURE.md](../ARCHITECTURE.md#the-wire-form-a-typed-action-envelope).
 
 ---
 
@@ -481,7 +481,7 @@ Two commitments make repo2ree survivable past any one service:
   are only as reproducible as the pulls happened to be at the time.
   The Label will say so loudly.
 - **Bit-for-bit determinism is opt-in.** Default is input-identity caching
-  ([ARCHITECTURE.md](ARCHITECTURE.md#content-addressed-state-cas-and-the-action-cache)).
+  ([ARCHITECTURE.md](../ARCHITECTURE.md#content-addressed-state-cas-and-the-action-cache)).
   Bit-equal verification only applies to bit-reproducible substrates.
 - **GPU and hardware variation are out of scope.** Software-deterministic
   to the extent the substrate is; floating-point identity across GPU

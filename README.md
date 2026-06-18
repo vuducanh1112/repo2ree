@@ -1,5 +1,11 @@
 # repo2ree
 
+Public product docs live in [docs/public/README.md](docs/public/README.md).
+Contributor setup, deployment, and test docs live under
+[docs/engineering/](docs/engineering/).
+Research and paper-facing notes live under
+[docs/research/](docs/research/).
+
 ## Quick demo
 
 To try the app locally with Docker, build the local images once:
