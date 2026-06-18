@@ -10,8 +10,7 @@ export interface ReeAssemblyOperationParamsByKey {
     format: string;
   };
   activation: {
-    timeout: string;
-    verbose: boolean;
+    mode: "verify" | "snapshot";
   };
 }
 

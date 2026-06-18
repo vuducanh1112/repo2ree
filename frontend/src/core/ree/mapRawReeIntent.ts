@@ -4,13 +4,17 @@ import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import {
   createEmptyExperimentResourceEstimates,
+  createEmptyReeActivation,
   createEmptyReeCatalogMetadata,
   createEmptyReeExperiment,
+  createEmptyRuntimeEntry,
   type ExpectedOutput,
+  type ReeActivation,
   type ReeCatalogMetadata,
   type ReeContributor,
   type ReeExperiment,
   type ReeSpec,
+  type RuntimeEntry,
 } from "./ReeSpec";
 
 // ================================================
@@ -77,6 +81,34 @@ function mapRawResourceEstimates(value: unknown): ReeExperiment["resource_estima
   };
 }
 
+function mapRawActivation(value: unknown): ReeActivation {
+  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  return {
+    ...createEmptyReeActivation(),
+    description: String(raw.description ?? ""),
+    command: String(raw.command ?? ""),
+    runtime_estimate: String(raw.runtime_estimate ?? ""),
+    resource_estimates: mapRawResourceEstimates(raw.resource_estimates),
+    ...(Array.isArray(raw.outputs) && raw.outputs.length > 0
+      ? { outputs: raw.outputs as ExpectedOutput[] }
+      : {}),
+  };
+}
+
+function mapRawRuntimeEntry(value: unknown): RuntimeEntry {
+  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  switch (raw.kind) {
+    case "native":
+      return { kind: "native", activate: String(raw.activate ?? "") };
+    case "singularity":
+      return { kind: "singularity", sif: String(raw.sif ?? "") };
+    case "vm":
+      return { kind: "vm", host: String(raw.host ?? "") };
+    default:
+      return createEmptyRuntimeEntry();
+  }
+}
+
 // ================================================
 // Mapper
 // ================================================
@@ -114,8 +146,9 @@ export function mapRawReeIntentToSlices({
       origin_url: String(intent.origin_url ?? fallbackOriginUrl ?? ""),
       source_type: (intent.source_type as ReeSpec["source_type"]) || "",
       runtime: String(intent.runtime ?? ""),
+      runtime_entry: mapRawRuntimeEntry(intent.runtime_entry),
       build_runtime_script: String(intent.build_runtime_script ?? ""),
-      activation_script: String(intent.activation_script ?? ""),
+      activation: mapRawActivation(intent.activation),
       sbom: String(intent.sbom ?? ""),
       swhid: String(intent.swhid ?? ""),
       zenodo_doi: intent.zenodo_doi ? String(intent.zenodo_doi) : undefined,

@@ -68,7 +68,7 @@ export const REACTIVATION_STEPS: ReactivationStep[] = [
     color: "#16a34a",
     desc: "Load the rebuilt runtime and run the activation script to verify the environment starts cleanly.",
     logLines: (ree) => [
-      { type: "info", msg: `Running: bash ${ree.activation_script}` },
+      { type: "info", msg: `Running: ${ree.activation?.command ?? "(activation command)"}` },
       { type: "info", msg: "docker load < runtime.tar.gz" },
       { type: "info", msg: "Loaded image: ree:latest" },
       { type: "info", msg: `docker run --rm --entrypoint="" ree:latest echo ok` },

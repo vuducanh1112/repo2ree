@@ -13,11 +13,14 @@ and out rather than one container per script invocation.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
 from repo2ree_core.container.runtime_image import loaded_runtime_image
+from repo2ree_core.domain.env_entry import DockerEntry, EnvEntry
 from repo2ree_core.experiment.evaluate import (
     CaptureBundle,
     ExperimentRunResult,
@@ -30,8 +33,8 @@ from repo2ree_core.experiment.evaluate import (
 from repo2ree_core.experiment.experiment import (
     CustomMatch,
     ExpectedOutput,
-    Experiment,
     FileSource,
+    Runnable,
 )
 from repo2ree_core.working_environment import (
     CancelCheck,
@@ -202,21 +205,67 @@ def _evaluate_all_outputs(
 # ================================================
 
 
-def run_experiment(
+@contextmanager
+def _entered_environment(
+    entry: EnvEntry,
     *,
     workspace: Path,
-    experiment: Experiment,
+    runtime_archive_path: Path | None,
+    run_id: str,
+    log: LogSink,
+    is_canceled: CancelCheck,
+) -> Iterator[tuple[WorkingEnvironment, str]]:
+    """Provision the WorkingEnvironment for *entry* and yield ``(we, descriptor)``.
+
+    ``descriptor`` names the substrate that hosted the run (the loaded image tag
+    for Docker, or the entry kind otherwise) for the run record.
+
+    Docker is the only substrate that materializes the runtime artifact (loading
+    the image tarball); the others enter the runtime in place.
+    """
+    if isinstance(entry, DockerEntry):
+        if runtime_archive_path is None:
+            raise ValueError("Docker entry requires a built runtime artifact")
+        with loaded_runtime_image(runtime_archive_path, run_id=run_id, log=log) as runtime_image:
+            with acquire(
+                workspace,
+                run_id,
+                log=log,
+                is_canceled=is_canceled,
+                image=runtime_image,
+                entry=entry,
+            ) as we:
+                yield we, runtime_image
+    else:
+        with acquire(
+            workspace,
+            run_id,
+            log=log,
+            is_canceled=is_canceled,
+            entry=entry,
+        ) as we:
+            yield we, entry.kind
+
+
+def run_runnable(
+    *,
+    workspace: Path,
+    runnable: Runnable,
+    label: str,
     mode: Literal["verify", "snapshot"],
-    runtime_archive_path: Path,
+    entry: EnvEntry,
+    runtime_archive_path: Path | None,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ExperimentRunOutcome:
-    """Run *experiment*'s command in a WorkingEnvironment and compute its outcome.
+    """Run *runnable*'s command through *entry* and compute its outcome.
 
-    One environment is provisioned for the full run: workspace is copied in
-    once, the command executes, file outputs are optionally synced back, and
-    all custom validators share the same running container before teardown.
+    Shared by experiments and activation — both are :class:`Runnable`, both
+    enter the runtime through the same :class:`EnvEntry`. One environment is
+    provisioned for the full run: workspace is copied in once, the command
+    executes, file outputs are optionally synced back, and all custom
+    validators share the same running environment before teardown.
     """
     workspace = workspace.resolve()
 
@@ -227,135 +276,136 @@ def run_experiment(
     control_dir.mkdir(exist_ok=True)
     script_name = f"exp_{run_id}.sh"
     script_path = control_dir / script_name
-    script_path.write_text(experiment.command, encoding="utf-8")
+    script_path.write_text(runnable.command, encoding="utf-8")
     script_rel = f".workspace/{script_name}"
 
-    has_file_outputs = any(isinstance(o.source, FileSource) for o in experiment.outputs)
+    has_file_outputs = any(isinstance(o.source, FileSource) for o in runnable.outputs)
 
-    log("system", "info", f"Starting experiment run {run_id}")
-    log("system", "info", f"Experiment: {experiment.name!r}")
+    log("system", "info", f"Starting run {run_id}")
+    log("system", "info", f"Subject: {label!r}")
+    log("system", "info", f"Substrate: {entry.kind}")
     log("system", "info", f"Mode: {mode}")
-    log("system", "info", f"Command: {experiment.command}")
+    log("system", "info", f"Command: {runnable.command}")
 
     try:
-        with loaded_runtime_image(runtime_archive_path, run_id=run_id, log=log) as runtime_image:
-            try:
-                with acquire(
+        try:
+            with _entered_environment(
+                entry,
+                workspace=workspace,
+                runtime_archive_path=runtime_archive_path,
+                run_id=run_id,
+                log=log,
+                is_canceled=is_canceled,
+            ) as (we, runtime_image):
+                with tracer.start_as_current_span("experiment.exec_command"):
+                    cmd_outcome = we.exec_script(
+                        ScriptStep(
+                            script_rel_path=script_rel,
+                            working_dir_rel="",
+                            login_shell=False,
+                        ),
+                        log=log,
+                        is_canceled=is_canceled,
+                    )
+
+                log(
+                    "system",
+                    "info" if cmd_outcome.status == "succeeded" else "error",
+                    f"Environment {cmd_outcome.status} (exit code {cmd_outcome.exit_code})",
+                )
+
+                # Sync file outputs back to host so build_capture_bundle can read them.
+                if has_file_outputs and cmd_outcome.status == "succeeded":
+                    if not we.sync_out(log=log):
+                        return ExperimentRunOutcome(
+                            status="failed",
+                            run_outputs={
+                                "subjectName": label,
+                                "mode": mode,
+                                "exitCode": cmd_outcome.exit_code,
+                                "substrate": runtime_image,
+                            },
+                        )
+
+                captures = build_capture_bundle(
+                    cmd_outcome.captured_stdout,
+                    cmd_outcome.captured_stderr,
+                    runnable.outputs,
                     workspace,
-                    run_id,
-                    log=log,
-                    is_canceled=is_canceled,
-                    image=runtime_image,
-                ) as we:
-                    with tracer.start_as_current_span("experiment.exec_command"):
-                        cmd_outcome = we.exec_script(
-                            ScriptStep(
-                                script_rel_path=script_rel,
-                                working_dir_rel="",
-                                login_shell=False,
-                            ),
+                )
+
+                run_outputs: dict[str, Any] = {
+                    "subjectName": label,
+                    "mode": mode,
+                    "exitCode": cmd_outcome.exit_code,
+                    "substrate": runtime_image,
+                }
+
+                if mode == "verify":
+                    if cmd_outcome.status == "canceled":
+                        return ExperimentRunOutcome(status="canceled", run_outputs=run_outputs)
+                    with tracer.start_as_current_span("experiment.evaluate"):
+                        result = _evaluate_all_outputs(
+                            runnable.outputs,
+                            cmd_outcome.exit_code,
+                            captures,
+                            we=we,
+                            run_id=run_id,
                             log=log,
                             is_canceled=is_canceled,
                         )
-
+                    run_outputs["verdict"] = result.verdict
+                    run_outputs["outputResults"] = [
+                        {
+                            "sourceKey": r.source_key,
+                            "mode": r.mode,
+                            "passed": r.passed,
+                            "detail": r.detail,
+                        }
+                        for r in result.output_results
+                    ]
                     log(
                         "system",
-                        "info" if cmd_outcome.status == "succeeded" else "error",
-                        f"Container {cmd_outcome.status} (exit code {cmd_outcome.exit_code})",
+                        "info" if result.verdict == "pass" else "error",
+                        f"Verdict: {result.verdict.upper()}",
                     )
+                    status = cmd_outcome.status
+                    if status == "succeeded" and result.verdict == "fail":
+                        status = "failed"
+                    return ExperimentRunOutcome(status=status, run_outputs=run_outputs)
 
-                    # Sync file outputs back to host so build_capture_bundle can read them.
-                    if has_file_outputs and cmd_outcome.status == "succeeded":
-                        if not we.sync_out(log=log):
-                            return ExperimentRunOutcome(
-                                status="failed",
-                                run_outputs={
-                                    "experimentName": experiment.name,
-                                    "mode": mode,
-                                    "exitCode": cmd_outcome.exit_code,
-                                    "runtimeImage": runtime_image,
-                                },
-                            )
-
-                    captures = build_capture_bundle(
-                        cmd_outcome.captured_stdout,
-                        cmd_outcome.captured_stderr,
-                        experiment.outputs,
-                        workspace,
-                    )
-
-                    run_outputs: dict[str, Any] = {
-                        "experimentName": experiment.name,
-                        "mode": mode,
-                        "exitCode": cmd_outcome.exit_code,
-                        "runtimeImage": runtime_image,
-                    }
-
-                    if mode == "verify":
-                        if cmd_outcome.status == "canceled":
-                            return ExperimentRunOutcome(status="canceled", run_outputs=run_outputs)
-                        with tracer.start_as_current_span("experiment.evaluate"):
-                            result = _evaluate_all_outputs(
-                                experiment.outputs,
-                                cmd_outcome.exit_code,
-                                captures,
-                                we=we,
-                                run_id=run_id,
-                                log=log,
-                                is_canceled=is_canceled,
-                            )
-                        run_outputs["verdict"] = result.verdict
-                        run_outputs["outputResults"] = [
-                            {
-                                "sourceKey": r.source_key,
-                                "mode": r.mode,
-                                "passed": r.passed,
-                                "detail": r.detail,
-                            }
-                            for r in result.output_results
-                        ]
-                        log(
-                            "system",
-                            "info" if result.verdict == "pass" else "error",
-                            f"Experiment verdict: {result.verdict.upper()}",
-                        )
-                        status = cmd_outcome.status
-                        if status == "succeeded" and result.verdict == "fail":
-                            status = "failed"
-                        return ExperimentRunOutcome(status=status, run_outputs=run_outputs)
-
-                    # snapshot: only record baselines when the command succeeded.
-                    if cmd_outcome.status != "succeeded":
-                        run_outputs["snapshotApplied"] = False
-                        log(
-                            "system",
-                            "warn",
-                            "Snapshot skipped — command did not exit 0",
-                        )
-                        return ExperimentRunOutcome(status=cmd_outcome.status, run_outputs=run_outputs)
-
-                    new_outputs = snapshot_outputs(experiment.outputs, captures)
-                    run_outputs["snapshotCount"] = len(new_outputs)
+                # snapshot: only record baselines when the command succeeded.
+                if cmd_outcome.status != "succeeded":
+                    run_outputs["snapshotApplied"] = False
                     log(
                         "system",
-                        "info",
-                        f"Snapshot captured: {len(new_outputs)} baseline(s) ready",
+                        "warn",
+                        "Snapshot skipped — command did not exit 0",
                     )
-                    return ExperimentRunOutcome(
-                        status=cmd_outcome.status,
-                        run_outputs=run_outputs,
-                        snapshot_to_persist=new_outputs,
-                    )
-            except ProvisioningCanceledError:
-                return ExperimentRunOutcome(
-                    status="canceled",
-                    run_outputs={
-                        "experimentName": experiment.name,
-                        "mode": mode,
-                        "exitCode": None,
-                        "runtimeImage": runtime_image,
-                    },
+                    return ExperimentRunOutcome(status=cmd_outcome.status, run_outputs=run_outputs)
+
+                new_outputs = snapshot_outputs(runnable.outputs, captures)
+                run_outputs["snapshotCount"] = len(new_outputs)
+                log(
+                    "system",
+                    "info",
+                    f"Snapshot captured: {len(new_outputs)} baseline(s) ready",
                 )
+                return ExperimentRunOutcome(
+                    status=cmd_outcome.status,
+                    run_outputs=run_outputs,
+                    snapshot_to_persist=new_outputs,
+                )
+        except ProvisioningCanceledError:
+            return ExperimentRunOutcome(
+                status="canceled",
+                run_outputs={
+                    "subjectName": label,
+                    "mode": mode,
+                    "exitCode": None,
+                    "substrate": None,
+                },
+            )
     finally:
         try:
             script_path.unlink(missing_ok=True)

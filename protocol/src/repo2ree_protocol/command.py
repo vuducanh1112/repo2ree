@@ -224,14 +224,17 @@ class GenerateHbomCommand(BaseModel):
 class ActivationTestArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    activation_script_path: str
+    # Activation runs the REE's stored Activation through its runtime entry;
+    # there is no per-run script path. ``verify`` checks declared outputs,
+    # ``snapshot`` records baselines.
+    mode: Literal["verify", "snapshot"] = "verify"
 
 
 class ActivationTestCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: Literal["activation_test"] = "activation_test"
-    args: ActivationTestArgs
+    args: ActivationTestArgs = ActivationTestArgs()
 
 
 class SealReeArgs(BaseModel):

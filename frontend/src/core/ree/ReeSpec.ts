@@ -79,14 +79,31 @@ export interface ExperimentResourceEstimates {
   network: string;
 }
 
-export interface ReeExperiment {
-  name: string;
+// A Runnable is anything executed inside the runtime: an experiment or the
+// REE's activation. They share the executable contract; activation has no name.
+export interface ReeRunnable {
   description: string;
   command: string;
   runtime_estimate: string;
   resource_estimates: ExperimentResourceEstimates;
   outputs?: ExpectedOutput[];
 }
+
+export interface ReeExperiment extends ReeRunnable {
+  name: string;
+}
+
+export type ReeActivation = ReeRunnable;
+
+// How to enter the built runtime artifact — a property of the runtime, shared
+// by activation and every experiment. Mirrors the backend EnvEntry union.
+export type RuntimeEntry =
+  | { kind: "docker" }
+  | { kind: "native"; activate: string }
+  | { kind: "singularity"; sif: string }
+  | { kind: "vm"; host: string };
+
+export type RuntimeEntryKind = RuntimeEntry["kind"];
 
 // ================================================
 // REE types
@@ -123,8 +140,9 @@ export interface ReeSpec {
   origin_url: string;
   source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
   runtime: string;
+  runtime_entry: RuntimeEntry;
   build_runtime_script: string;
-  activation_script: string;
+  activation: ReeActivation;
   sbom: string;
   swhid: string;
   zenodo_doi?: string;
@@ -168,6 +186,19 @@ export function createEmptyReeExperiment(): ReeExperiment {
   };
 }
 
+export function createEmptyReeActivation(): ReeActivation {
+  return {
+    description: "",
+    command: "",
+    runtime_estimate: "",
+    resource_estimates: createEmptyExperimentResourceEstimates(),
+  };
+}
+
+export function createEmptyRuntimeEntry(): RuntimeEntry {
+  return { kind: "docker" };
+}
+
 export function createEmptyReeSpec(): ReeSpec {
   return {
     name: "",
@@ -175,8 +206,9 @@ export function createEmptyReeSpec(): ReeSpec {
     origin_url: "",
     source_type: "",
     runtime: "",
+    runtime_entry: createEmptyRuntimeEntry(),
     build_runtime_script: "",
-    activation_script: "",
+    activation: createEmptyReeActivation(),
     sbom: "",
     swhid: "",
     experiments: [],

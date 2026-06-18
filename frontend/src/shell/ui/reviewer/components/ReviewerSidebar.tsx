@@ -168,7 +168,12 @@ export function ReviewerSidebar({
         <MetaRow label="Origin URL" value={ree.origin_url} mono href={ree.origin_url} />
         <MetaRow label="Runtime" value={ree.runtime} mono color={C.textMid} />
         <MetaRow label="Build Script" value={ree.build_runtime_script} mono color={C.textMid} />
-        <MetaRow label="Activation Script" value={ree.activation_script} mono color={C.textMid} />
+        <MetaRow
+          label="Activation Command"
+          value={ree.activation?.command}
+          mono
+          color={C.textMid}
+        />
         <MetaRow label="SBOM" value={ree.sbom} mono color={C.textMid} />
         {hardwareLines.length > 0 && (
           <div style={{ paddingTop: 8 }}>

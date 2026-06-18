@@ -33,15 +33,14 @@ describe("assemblyPolicies", () => {
     ]);
   });
 
-  it("requires both selected runtime and activation script for activation", () => {
-    const ree = {
-      ...buildRee(),
-      runtime: "runtime.tar.gz",
-    };
-
-    expect(missingReeAssemblyRequirements("activation", ree)).toEqual([
-      { field: "activation_script", label: "Activation script" },
+  it("requires only runtime for activation", () => {
+    const reeNoRuntime = buildRee();
+    expect(missingReeAssemblyRequirements("activation", reeNoRuntime)).toEqual([
+      { field: "runtime", label: "Runtime" },
     ]);
+
+    const reeWithRuntime = { ...buildRee(), runtime: "runtime.tar.gz" };
+    expect(missingReeAssemblyRequirements("activation", reeWithRuntime)).toEqual([]);
   });
 
   it("marks only file-producing assembly steps for workspace refresh", () => {

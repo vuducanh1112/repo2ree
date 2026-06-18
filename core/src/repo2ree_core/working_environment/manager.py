@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from repo2ree_core.domain.env_entry import EnvEntry, NativeEntry
 from repo2ree_core.working_environment.base import (
     CancelCheck,
     LogSink,
@@ -31,6 +32,17 @@ from repo2ree_core.working_environment.machine import LocalMachine
 # ================================================
 
 
+# Maps an EnvEntry discriminator to the WorkingEnvironment kind a Machine
+# knows how to provision. Adding a substrate is: a new EnvEntry, an entry
+# here, and a Machine branch.
+_ENTRY_KIND_TO_ENV_KIND = {
+    "docker": "container",
+    "native": "native",
+    "singularity": "singularity",
+    "vm": "vm",
+}
+
+
 def acquire(
     workspace_path: Path,
     run_id: str,
@@ -38,8 +50,9 @@ def acquire(
     log: LogSink,
     is_canceled: CancelCheck | None = None,
     image: str | None = None,
+    entry: EnvEntry | None = None,
     machine: str = "local",
-    kind: str = "container",
+    kind: str | None = None,
 ) -> WorkingEnvironment:
     """Return a WorkingEnvironment for *workspace_path* / *run_id*.
 
@@ -54,17 +67,24 @@ def acquire(
         run_id:         Unique identifier for this run; used in container names.
         log:            Log sink for provisioning steps (create, cp, start, rm).
         image:          Override the base image; ``None`` → implementation default.
+        entry:          Runtime entry recipe; selects the substrate (kind).
+                        ``None`` → Docker container (the historical default).
         machine:        Placement selector (``"local"`` only for now).
-        kind:           Environment kind (``"container"`` only for now).
+        kind:           Explicit environment kind override; normally derived
+                        from *entry*.
     """
     if machine != "local":
         raise ValueError(f"Machine {machine!r} is not supported yet; only 'local' is available")
+    if kind is None:
+        kind = _ENTRY_KIND_TO_ENV_KIND.get(entry.kind, "container") if entry is not None else "container"
+    activate = entry.activate if isinstance(entry, NativeEntry) else ""
     spec = WorkingEnvironmentSpec(
         workspace_path=workspace_path,
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,
         image=image,
+        activate=activate,
     )
     we = LocalMachine().create_working_environment(spec, kind=kind)
     return we

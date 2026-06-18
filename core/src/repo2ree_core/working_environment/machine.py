@@ -45,17 +45,33 @@ class Machine(Protocol):
 
 
 class LocalMachine:
-    """Uses the local Docker daemon. Supports kind=``"container"``."""
+    """Hosts WorkingEnvironments locally.
+
+    Supports ``kind="container"`` (Docker) and ``kind="native"`` (the workbench
+    itself). ``"singularity"`` and ``"vm"`` are recognized but not yet
+    implemented.
+    """
 
     def create_working_environment(
         self,
         spec: WorkingEnvironmentSpec,
         kind: str = "container",
     ) -> WorkingEnvironment:
-        if kind != "container":
-            raise ValueError(f"LocalMachine does not support kind={kind!r}; only 'container' is available")
-        from repo2ree_core.working_environment.docker_env import (
-            DockerWorkingEnvironment,
-        )
+        if kind == "container":
+            from repo2ree_core.working_environment.docker_env import (
+                DockerWorkingEnvironment,
+            )
 
-        return DockerWorkingEnvironment(spec)
+            return DockerWorkingEnvironment(spec)
+        if kind == "native":
+            from repo2ree_core.working_environment.native_env import (
+                NativeWorkingEnvironment,
+            )
+
+            return NativeWorkingEnvironment(spec)
+        if kind in ("singularity", "vm"):
+            raise NotImplementedError(
+                f"Substrate {kind!r} is declared but not yet implemented; "
+                "only 'container' (docker) and 'native' run today"
+            )
+        raise ValueError(f"LocalMachine does not support kind={kind!r}")

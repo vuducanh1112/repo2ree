@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.run_management import (
     _run_summary,
     _start_single_command_run,
 )
-from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_protocol import ActivationTestCommand
 from repo2ree_protocol.command import ActivationTestArgs
 
@@ -29,7 +28,7 @@ activation_test_router = APIRouter()
 class CreateActivationTestRunPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    activation_script_path: str
+    mode: Literal["verify", "snapshot"] = "verify"
     idempotencyKey: str | None = None
 
 
@@ -49,43 +48,16 @@ def create_workspace_activation_test_run(ree_id: str, payload: CreateActivationT
 # ================================================
 
 
-def _resolve_activation_script_path(
-    ree_id: str,
-    activation_script_path: str | None,
-) -> str:
-    """Return the script path, falling back to the value stored in the REE draft."""
-    if activation_script_path and activation_script_path.strip():
-        return activation_script_path.strip()
-
-    handle = workbench_manager.lookup(ree_id)
-    if handle is not None:
-        try:
-            metadata = workbench_manager.get_ree_metadata(handle)
-        except Exception:
-            metadata = {}
-    else:
-        metadata = {}
-
-    ree_intent = dict(metadata.get("reeIntent") or {})
-    script_path = str(ree_intent.get("activation_script") or "").strip()
-
-    if not script_path:
-        raise HTTPException(status_code=400, detail="activation_script is required")
-    return script_path
-
-
 def create_activation_run_state(
     ree_id: str,
     payload: CreateActivationTestRunPayload,
 ) -> dict[str, Any]:
-    activation_script_path = _resolve_activation_script_path(ree_id, payload.activation_script_path)
-
     return _start_single_command_run(
         ree_id,
         operation="activation",
-        command=ActivationTestCommand(args=ActivationTestArgs(activation_script_path=activation_script_path)),
+        command=ActivationTestCommand(args=ActivationTestArgs(mode=payload.mode)),
         run_id_prefix="activation",
-        request_payload={"activation_script_path": activation_script_path},
+        request_payload={"mode": payload.mode},
         canceled_message="Activation run canceled",
-        fallback_outputs={"activationScriptPath": activation_script_path},
+        fallback_outputs={"mode": payload.mode},
     )

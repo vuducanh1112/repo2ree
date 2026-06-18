@@ -56,9 +56,10 @@ export interface ReeIntentDto {
   origin_url: string;
   source_type: string;
   runtime: string;
+  runtime_entry?: Record<string, unknown>;
   sbom: string;
   build_runtime_script: string;
-  activation_script: string;
+  activation?: Record<string, unknown>;
   swhid: string;
   zenodo_doi: string;
   dataverse_doi: string;
@@ -199,7 +200,7 @@ export interface CreateGenerateHbomRunRequestDto {
 }
 
 export interface CreateActivationTestRunRequestDto {
-  activation_script_path: string;
+  mode?: "verify" | "snapshot";
   idempotencyKey?: string;
 }
 

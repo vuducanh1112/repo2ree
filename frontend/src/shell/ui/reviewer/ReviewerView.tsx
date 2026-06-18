@@ -124,7 +124,7 @@ export function ReviewerView({
     } else {
       runId = (
         await reviewClient.createActivationTestRun(reviewId, {
-          activation_script_path: ree.activation_script,
+          mode: "verify",
         })
       ).runId;
     }

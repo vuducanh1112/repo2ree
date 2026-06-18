@@ -42,7 +42,7 @@ const FIELD_TO_PAGE: Partial<Record<keyof ReeEditorViewModel, AppShellPage>> = {
   hardware_description: PAGE.HBOM,
   runtime: PAGE.BUILD,
   build_runtime_script: PAGE.BUILD,
-  activation_script: PAGE.ACTIVATION,
+  activation: PAGE.ACTIVATION,
   sbom: PAGE.SBOM,
   swhid: PAGE.ARCHIVE,
   zenodo_doi: PAGE.ARCHIVE,

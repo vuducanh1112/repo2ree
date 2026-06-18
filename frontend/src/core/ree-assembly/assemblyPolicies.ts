@@ -21,10 +21,7 @@ const REE_ASSEMBLY_REQUIREMENTS: Record<ReeAssemblyOperationKey, ReeAssemblyRequ
   ],
   hbom: [],
   sbom: [{ field: "runtime", label: "Runtime" }],
-  activation: [
-    { field: "runtime", label: "Runtime" },
-    { field: "activation_script", label: "Activation script" },
-  ],
+  activation: [{ field: "runtime", label: "Runtime" }],
 };
 
 const WORKSPACE_REFRESH_ASSEMBLY_STEPS = new Set<ReeAssemblyOperationKey>([

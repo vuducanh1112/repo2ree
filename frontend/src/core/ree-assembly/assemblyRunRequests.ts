@@ -2,7 +2,7 @@ import type { ReeSpec } from "../ree/ReeSpec";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey, ReeAssemblyRunParamsByKey } from "./assemblyTypes";
 
-type AssemblyRee = Pick<ReeSpec, "build_runtime_script" | "runtime" | "activation_script">;
+type AssemblyRee = Pick<ReeSpec, "build_runtime_script" | "runtime">;
 
 type AssemblyRequestParamValue = string | boolean | number | null | undefined;
 
@@ -37,7 +37,7 @@ interface ReeAssemblyRunRequestByKey {
   activation: {
     scriptKey: "activation";
     params: {
-      activation_script_path: string;
+      mode: "verify" | "snapshot";
       idempotencyKey?: string;
     };
   };
@@ -94,13 +94,12 @@ export function buildSbomAssemblyRunRequest(
 
 export function buildActivationAssemblyRunRequest(
   params: ReeAssemblyRunParamsByKey["activation"],
-  ree: AssemblyRee,
+  _ree: AssemblyRee,
 ): ReeAssemblyRunRequestByKey["activation"] {
-  void params;
   return {
     scriptKey: "activation",
     params: {
-      activation_script_path: String(ree.activation_script ?? ""),
+      mode: params.mode === "snapshot" ? "snapshot" : "verify",
     },
   };
 }

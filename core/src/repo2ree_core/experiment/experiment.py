@@ -86,17 +86,27 @@ class ResourceEstimates(BaseModel):
     network: str = ""
 
 
-class Experiment(BaseModel):
-    """Experiment metadata attached to a REE draft."""
+class Runnable(BaseModel):
+    """The executable contract shared by experiments and activation.
+
+    Something that runs a *command* inside the runtime environment and checks
+    its declared *outputs*. Activation and experiments differ in identity and
+    role, not in how they execute — that lives here.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str = ""
     description: str = ""
     command: str = ""
     outputs: list[ExpectedOutput] = Field(default_factory=list)
     runtime_estimate: str = ""
     resource_estimates: ResourceEstimates = Field(default_factory=ResourceEstimates)
+
+
+class Experiment(Runnable):
+    """A named experiment attached to a REE draft. Zero or more per REE."""
+
+    name: str = ""
 
     @field_validator("name")
     @classmethod
@@ -106,3 +116,13 @@ class Experiment(BaseModel):
         if value in {".", ".."} or not EXPERIMENT_NAME_PATTERN.match(value):
             raise ValueError("experiment name may only contain letters, digits, spaces, '.', '_' and '-'")
         return value
+
+
+class Activation(Runnable):
+    """The REE's required activation — a singleton sibling of experiments.
+
+    Activation proves the runtime is inhabitable through its declared
+    :class:`~repo2ree_core.domain.env_entry.EnvEntry`, and every experiment
+    runs through that same entry. There is exactly one per REE, so it is
+    unnamed. An empty activation still runs a generic liveness probe.
+    """

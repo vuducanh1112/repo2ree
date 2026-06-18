@@ -1,5 +1,5 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
-import type { ReeSpec } from "../ree/ReeSpec";
+import { createEmptyReeActivation, createEmptyRuntimeEntry, type ReeSpec } from "../ree/ReeSpec";
 import type { ActionStates, Badges, ReeAssemblyOperationParams, Timestamps } from "../ree/ReeTypes";
 import { type EvaluationState, emptyEvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "./WorkspaceSourceState";
@@ -33,8 +33,9 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
       ...input.reeSpec,
       origin_url: "",
       runtime: "",
+      runtime_entry: createEmptyRuntimeEntry(),
       build_runtime_script: "",
-      activation_script: "",
+      activation: createEmptyReeActivation(),
       sbom: "",
       swhid: "",
       zenodo_doi: "",

@@ -6,7 +6,8 @@ export interface ExperimentOutputResult {
 }
 
 export interface ExperimentRunOutputs {
-  experimentName: string;
+  // The runnable that was executed — an experiment's name, or "activation".
+  subjectName: string;
   mode: "verify" | "snapshot";
   exitCode: number | null;
   verdict?: "pass" | "fail";
@@ -15,5 +16,6 @@ export interface ExperimentRunOutputs {
   snapshotCount?: number;
   snapshotMessage?: string;
   runtimePath?: string;
-  runtimeImage?: string;
+  // The substrate that hosted the run: a Docker image tag, or the entry kind.
+  substrate?: string;
 }

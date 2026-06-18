@@ -303,8 +303,8 @@ export function nodeSummary(
     case PAGE.ACTIVATION:
       return [
         {
-          label: "Script",
-          value: ree.activation_script?.trim() ? "configured" : null,
+          label: "Command",
+          value: ree.activation?.command?.trim() ? "configured" : null,
         },
       ];
     case PAGE.ARCHIVE:

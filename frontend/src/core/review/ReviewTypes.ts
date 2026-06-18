@@ -55,7 +55,7 @@ export interface ReviewClient {
   createActivationTestRun(
     reviewId: string,
     payload: {
-      activation_script_path: string;
+      mode?: "verify" | "snapshot";
     },
   ): Promise<ExecutionRun>;
   getRun(reviewId: string, runId: string): Promise<ExecutionRun>;

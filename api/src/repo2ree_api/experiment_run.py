@@ -101,7 +101,7 @@ def _create_experiment_run_state(
 
         if _is_cancel_requested(ree_id, run_id):
             _log("system", "warn", "Experiment run canceled")
-            return "canceled", {"experimentName": experiment_name, "mode": mode}
+            return "canceled", {"subjectName": experiment_name, "mode": mode}
 
         handle = workbench_manager.lookup(ree_id)
         if handle is None:
@@ -115,7 +115,7 @@ def _create_experiment_run_state(
             _log,
         )
         return result.status, result.outputs or {
-            "experimentName": experiment_name,
+            "subjectName": experiment_name,
             "mode": mode,
         }
 

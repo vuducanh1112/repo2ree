@@ -22,17 +22,17 @@ describe("createAssemblyRunSession", () => {
           build: {},
           hbom: {},
           sbom: { format: "spdx-json" },
-          activation: { timeout: "60", verbose: false },
+          activation: { mode: "verify" },
         },
         "activation",
-        { timeout: "120", verbose: true },
+        { mode: "snapshot" },
       ),
     ).toEqual({
       evaluate: { strict: false },
       build: {},
       hbom: {},
       sbom: { format: "spdx-json" },
-      activation: { timeout: "120", verbose: true },
+      activation: { mode: "snapshot" },
     });
   });
 

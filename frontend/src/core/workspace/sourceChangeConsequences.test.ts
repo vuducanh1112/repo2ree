@@ -13,7 +13,6 @@ function buildWorkspaceState(): SourceChangeInput {
       source_type: "git",
       runtime: "runtime.tar.gz",
       build_runtime_script: "build.sh",
-      activation_script: "activate.sh",
       sbom: "sbom.json",
       swhid: "swh:1:dir:abc",
     },

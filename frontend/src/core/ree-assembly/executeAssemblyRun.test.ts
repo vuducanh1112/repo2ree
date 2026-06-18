@@ -8,7 +8,6 @@ function buildRee(): ReeEditorViewModel {
   return {
     ...createEmptyReeSpec(),
     name: "demo",
-    activation_script: "activate.sh",
   };
 }
 

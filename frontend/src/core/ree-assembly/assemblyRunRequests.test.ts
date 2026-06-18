@@ -14,7 +14,6 @@ function buildRee(): ReeEditorViewModel {
     name: "demo",
     runtime: "runtime.tar.gz",
     build_runtime_script: "scripts/build.sh",
-    activation_script: "scripts/activate.sh",
   };
 }
 
@@ -46,10 +45,10 @@ describe("assemblyRunRequests", () => {
         produced_runtime_path: "runtime.tar.gz",
       },
     });
-    expect(buildActivationAssemblyRunRequest({ timeout: "60", verbose: false }, ree)).toEqual({
+    expect(buildActivationAssemblyRunRequest({ mode: "verify" }, ree)).toEqual({
       scriptKey: "activation",
       params: {
-        activation_script_path: "scripts/activate.sh",
+        mode: "verify",
       },
     });
   });

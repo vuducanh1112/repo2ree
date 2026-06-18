@@ -67,21 +67,15 @@ export const REE_ASSEMBLY_STEPS: ReeAssemblyCatalogEntry[] = [
     iconKey: "shield",
     color: "#7c3aed",
     badge: { label: "Activation passed", color: "#7c3aed", bg: "#f5f3ff" },
-    desc: "Check that the packaged environment actually starts and activates. This loads the runtime tarball and verifies activation succeeds by running the activation script.",
+    desc: "Check that the packaged environment actually starts and activates. This enters the runtime through its configured entry and runs the activation command, the same way experiments enter the runtime.",
     params: [
       {
-        key: "timeout",
-        label: "Timeout (s)",
-        type: "text",
-        default: "60",
-        hint: "Max seconds to wait for container start",
-      },
-      {
-        key: "verbose",
-        label: "Verbose output",
-        type: "bool",
-        default: false,
-        hint: "Print full stdout from container",
+        key: "mode",
+        label: "Mode",
+        type: "select",
+        default: "verify",
+        options: ["verify", "snapshot"],
+        hint: "verify checks declared outputs; snapshot records baselines",
       },
     ],
   },
@@ -92,7 +86,7 @@ const DEFAULT_REE_ASSEMBLY_OPERATION_PARAMS: ReeAssemblyOperationParams = {
   build: {},
   hbom: {},
   sbom: { format: "spdx-json" },
-  activation: { timeout: "60", verbose: false },
+  activation: { mode: "verify" },
 };
 
 export function defaultParamsForReeAssemblyOperation<K extends ReeAssemblyOperationKey>(

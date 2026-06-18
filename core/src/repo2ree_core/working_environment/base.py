@@ -40,7 +40,8 @@ class WorkingEnvironmentSpec:
     run_id: str
     log: LogSink
     is_canceled: CancelCheck | None = None
-    image: str | None = None  # base image; None → implementation default
+    image: str | None = None  # docker base image; None → implementation default
+    activate: str = ""  # native substrate: command sourced before each run
 
 
 @dataclass(frozen=True)

@@ -13,7 +13,6 @@ describe("reeEditorViewModel", () => {
         source_type: "git",
         runtime: "runtime.tar.gz",
         build_runtime_script: "build_runtime.sh",
-        activation_script: "activation_test.sh",
         sbom: "sbom.spdx.json",
         swhid: "swh:1:dir:abc",
       },

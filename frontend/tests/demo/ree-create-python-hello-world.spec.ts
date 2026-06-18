@@ -400,12 +400,12 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("navigation").getByRole("button", { name: "Activation", exact: true }),
       "Open activation test",
     );
-    await expect(main.getByText("Activation Script", { exact: true })).toBeVisible();
+    await expect(main.getByText("Activation Command", { exact: true })).toBeVisible();
     await fillDemo(
       page,
-      main.getByPlaceholder("activation_test.sh").first(),
-      "python_hello_world/activate_runtime.sh",
-      "Provide activation script path",
+      main.getByPlaceholder(/e\.g\. python/).first(),
+      "python -c \"import sys; print('ok')\"",
+      "Enter activation command",
     );
     await clickDemo(
       page,

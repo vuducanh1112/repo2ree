@@ -14,16 +14,15 @@ function buildRee(): ReeEditorViewModel {
   return {
     ...createEmptyReeSpec(),
     name: "demo",
-    activation_script: "activate.sh",
   };
 }
 
 describe("assemblyRunPlanning", () => {
-  it("adds activation script only for activation runs", () => {
+  it("sends mode param for activation runs", () => {
     const ree = buildRee();
 
-    expect(buildAssemblyRunParams("activation", { timeout: "60" }, ree)).toEqual({
-      activation_script_path: "activate.sh",
+    expect(buildAssemblyRunParams("activation", { mode: "verify" }, ree)).toEqual({
+      mode: "verify",
     });
     expect(buildAssemblyRunParams("build", {}, ree)).toEqual({
       build_runtime_script_path: "",

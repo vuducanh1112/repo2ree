@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from repo2ree_core.domain.env_entry import DockerEntry
 from repo2ree_core.experiment.evaluate import (
     CaptureBundle,
     evaluate_match,
@@ -32,7 +33,7 @@ from repo2ree_core.experiment.experiment import (
 from repo2ree_core.experiment.run import (
     _evaluate_custom_match,
     build_capture_bundle,
-    run_experiment,
+    run_runnable,
 )
 from repo2ree_core.working_environment import (
     ProvisioningCanceledError,
@@ -503,10 +504,12 @@ def test_run_experiment_marks_verify_mismatch_as_failed(tmp_path, monkeypatch):
         ],
     )
 
-    result = run_experiment(
+    result = run_runnable(
         workspace=tmp_path,
-        experiment=experiment,
+        runnable=experiment,
+        label=experiment.name,
         mode="verify",
+        entry=DockerEntry(),
         runtime_archive_path=tmp_path / "runtime.tar.gz",
         run_id="run-123",
         log=lambda *_: None,
@@ -552,10 +555,12 @@ def test_run_experiment_canceled_skips_output_evaluation(tmp_path, monkeypatch):
         ],
     )
 
-    result = run_experiment(
+    result = run_runnable(
         workspace=tmp_path,
-        experiment=experiment,
+        runnable=experiment,
+        label=experiment.name,
         mode="verify",
+        entry=DockerEntry(),
         runtime_archive_path=tmp_path / "runtime.tar.gz",
         run_id="run-123",
         log=lambda *_: None,
@@ -588,10 +593,12 @@ def test_run_experiment_returns_canceled_when_provisioning_is_canceled(tmp_path,
         outputs=[],
     )
 
-    result = run_experiment(
+    result = run_runnable(
         workspace=tmp_path,
-        experiment=experiment,
+        runnable=experiment,
+        label=experiment.name,
         mode="verify",
+        entry=DockerEntry(),
         runtime_archive_path=tmp_path / "runtime.tar.gz",
         run_id="run-123",
         log=lambda *_: None,
@@ -599,7 +606,9 @@ def test_run_experiment_returns_canceled_when_provisioning_is_canceled(tmp_path,
     )
 
     assert result.status == "canceled"
-    assert result.run_outputs["runtimeImage"] == "runtime:test"
+    # Canceled during provisioning: the image tag only lives inside the
+    # environment context manager, so the record reports no runtime image.
+    assert result.run_outputs["substrate"] is None
     assert result.run_outputs["exitCode"] is None
 
 
@@ -638,10 +647,12 @@ def test_run_experiment_ignores_cleanup_unlink_errors(tmp_path, monkeypatch):
         ],
     )
 
-    result = run_experiment(
+    result = run_runnable(
         workspace=tmp_path,
-        experiment=experiment,
+        runnable=experiment,
+        label=experiment.name,
         mode="verify",
+        entry=DockerEntry(),
         runtime_archive_path=tmp_path / "runtime.tar.gz",
         run_id="run-123",
         log=lambda *_: None,

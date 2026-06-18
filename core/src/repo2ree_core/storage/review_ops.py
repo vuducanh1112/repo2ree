@@ -158,20 +158,26 @@ def _extract_included_source_snapshot(
 
 
 def _manifest_to_ree_intent(manifest: dict[str, Any]) -> dict[str, Any]:
-    payload = {
+    payload: dict[str, Any] = {
         "name": manifest.get("name") or "",
         "catalog_metadata": manifest.get("catalog_metadata") or {},
         "origin_url": manifest.get("origin_url") or "",
         "source_type": manifest.get("source_type") or "",
         "runtime": manifest.get("runtime") or "",
         "build_runtime_script": manifest.get("build_script") or "",
-        "activation_script": manifest.get("activation_script") or "",
         "sbom": manifest.get("sbom") or "",
         "swhid": manifest.get("swhid") or "",
         "zenodo_doi": manifest.get("zenodo_doi"),
         "dataverse_doi": manifest.get("dataverse_doi"),
         "hardware_description": manifest.get("hardware_description") or {},
     }
+    # Optional fields fall back to their model defaults (Activation(), DockerEntry()).
+    if manifest.get("activation"):
+        payload["activation"] = manifest["activation"]
+    if manifest.get("runtime_entry"):
+        payload["runtime_entry"] = manifest["runtime_entry"]
+    if manifest.get("experiments"):
+        payload["experiments"] = manifest["experiments"]
     return ReeIntent.model_validate(payload).model_dump(exclude_none=True)
 
 
