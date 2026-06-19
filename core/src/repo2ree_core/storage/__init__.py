@@ -8,11 +8,10 @@ from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore, SubtreeStore
 from repo2ree_core.storage.tree import copy_tree_contents
 
-# ``workspace_ops`` and ``review_ops`` are intentionally NOT eagerly imported
-# here: they pull in ``workspace.bundle``, which in turn imports layout
-# constants from this package. Eager re-export would create an import cycle
-# at module-init time. Consumers should ``import repo2ree_core.storage.<mod>``
-# explicitly, which works without going through this ``__init__``.
+# ``workspace_ops`` is intentionally NOT eagerly imported here: it pulls in
+# ``workspace.bundle``, which in turn imports layout constants from this
+# package. Eager re-export would create an import cycle at module-init time.
+# Consumers should ``import repo2ree_core.storage.workspace_ops`` explicitly.
 
 __all__ = [
     "ReeLayout",

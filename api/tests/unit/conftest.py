@@ -11,8 +11,8 @@ faked — nothing fabricates an ``ActionResult`` to pretend a command ran.
 Everything that crosses the boundary for real belongs to the Docker-gated
 integration tier.
 
-Host-side state (upload staging, reviews, the workbench registry) is
-redirected into a throwaway directory via env vars *before* the app module —
+Host-side state (upload staging, the workbench registry) is redirected into a
+throwaway directory via env vars *before* the app module —
 and with it the workbench-manager singleton — is imported, so a developer's
 ``.env`` or live registry can't leak into the tests.
 """
@@ -35,7 +35,6 @@ TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "tra
 # this must run before any repo2ree_api import below.
 _state_dir = Path(tempfile.mkdtemp(prefix="repo2ree-api-utest-"))
 os.environ["UPLOAD_STAGING_DIR"] = str(_state_dir / "upload-staging")
-os.environ["REVIEWS_STORAGE_DIR"] = str(_state_dir / "reviews")
 os.environ["WORKBENCH_REGISTRY_FILE"] = str(_state_dir / "workbench-registry.json")
 
 # OpenTelemetry's set_tracer_provider is honored once per process, so two API

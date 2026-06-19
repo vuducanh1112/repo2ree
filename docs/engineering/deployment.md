@@ -69,7 +69,7 @@ host Docker socket; they run privileged Docker-in-Docker with their own daemon.
 
 | Volume | Mounted at | Purpose |
 |---|---|---|
-| `repo2ree-demo-data` | `/app/.repo2ree` in the backend | Backend-local metadata such as reviews and upload staging. |
+| `repo2ree-demo-data` | `/app/.repo2ree` in the backend | Backend-local metadata such as upload staging and workbench registry. |
 
 REE execution state lives in per-REE Docker volumes created by the supervisor,
 not inside `repo2ree-demo-data`.
@@ -80,7 +80,6 @@ Backend variables:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `REVIEWS_STORAGE_DIR` | `.repo2ree/reviews` locally, `/app/.repo2ree/reviews` in demo compose | Review metadata/storage path. |
 | `UPLOAD_STAGING_DIR` | `.repo2ree/upload-staging` | Temporary upload landing zone before files enter a workbench. |
 | `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Registry file mapping REE ids to workbench containers and volumes. |
 | `WORKBENCH_IMAGE` | `repo2ree-workbench:latest` | Image used for per-REE workbenches. |

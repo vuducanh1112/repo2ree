@@ -35,9 +35,6 @@ does not receive the host socket. It runs its own daemon and stores
 
 The risk has moved: untrusted repo code no longer holds the host Docker socket
 on the main path, but the workbench is still privileged and not VM-backed.
-Legacy review routes in
-[review_ree.py](api/src/repo2ree_api/review_ree.py) still run older inline Docker
-flows and remain migration targets.
 
 ## Target isolation model: VM-backed working environments
 
@@ -704,11 +701,6 @@ explicit SWH save/deposit request.
   Docker-in-Docker workbench. The target is the same `/ree` volume and command
   envelope under a Kata/Sysbox-backed runtime, without relying on a privileged
   shared-kernel container.
-- **The inline-docker blocks in [review_ree.py](api/src/repo2ree_api/review_ree.py)**
-  are the primary migration target: each should be sorted into "pure → stays as
-  a host-side pure helper" vs "effectful → becomes a typed command run through
-  `repo2ree-exec`." That inventory effectively defines the future host CLI
-  surface.
 
 ## Open decisions
 

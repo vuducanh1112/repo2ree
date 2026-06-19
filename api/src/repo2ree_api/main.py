@@ -14,13 +14,9 @@ from repo2ree_api.experiment_run import experiment_run_router
 from repo2ree_api.generate_hbom import generate_hbom_router
 from repo2ree_api.generate_sbom import generate_sbom_router
 from repo2ree_api.manage_ree import manage_ree_router
-from repo2ree_api.review_ree import review_ree_router
 from repo2ree_api.runs import runs_router
 from repo2ree_api.settings import service_settings
-from repo2ree_api.storage.init_storage import (
-    create_review_storage_if_not_exists,
-    create_upload_staging_if_not_exists,
-)
+from repo2ree_api.storage.init_storage import create_upload_staging_if_not_exists
 from repo2ree_protocol.log import configure_logging
 from repo2ree_protocol.tracing import setup_metrics, setup_tracing
 from repo2ree_supervisor import WorkbenchUnavailableError
@@ -36,7 +32,6 @@ async def lifespan(app: FastAPI):
     tracer_provider = setup_tracing("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT, console_fallback=True)
     meter_provider = setup_metrics("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT)
     create_upload_staging_if_not_exists()
-    create_review_storage_if_not_exists()
     yield
     if tracer_provider is not None:
         tracer_provider.shutdown()
@@ -61,7 +56,6 @@ app.include_router(activation_test_router)
 app.include_router(evaluate_router)
 app.include_router(runs_router)
 app.include_router(manage_ree_router)
-app.include_router(review_ree_router)
 
 
 # ================================================

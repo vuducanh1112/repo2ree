@@ -117,7 +117,6 @@ The API reads `.env` through `pydantic-settings`. Useful local variables:
 | Variable | Default | Purpose |
 |---|---|---|
 | `UPLOAD_STAGING_DIR` | `.repo2ree/upload-staging` | Temporary HTTP upload landing zone before files enter a workbench. |
-| `REVIEWS_STORAGE_DIR` | `.repo2ree/reviews` | Local review metadata/storage path. |
 | `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Host-side map from REE id to workbench container/volume. |
 | `WORKBENCH_IMAGE` | `repo2ree-workbench:latest` | Workbench image used by the API/supervisor. |
 | `OTLP_ENDPOINT` | unset | OTLP collector base URL for traces/metrics. |

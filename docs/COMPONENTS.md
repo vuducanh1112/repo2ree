@@ -15,8 +15,7 @@ Two target invariants shape every package boundary below:
 
 1. **An REE is built through a workbench.** The main path provisions a per-REE
    Docker-in-Docker workbench and dispatches typed commands into it. The target
-   is a stronger VM-backed workbench; legacy review routes are still being
-   migrated.
+   is a stronger VM-backed workbench.
 2. **Only the workbench provider/location is configurable**: local Docker,
    user-local Docker over ssh/context, or a registered runner/controller for
    cloud, Kubernetes, and institutional environments. Protocol and commands stay
@@ -297,8 +296,6 @@ The package split is now partly real:
 - **Still rough:** `WorkbenchManager` has one local-Docker transport, not a
   `WorkbenchClient` interface with local/remote/in-process implementations.
 - **Missing:** the user-facing host `repo2ree` supervisor CLI does not exist yet.
-- **Legacy:** review routes still carry older inline Docker flows and should move
-  behind the same supervisor/protocol path.
 
 ## Future surfaces — what the seams enable (optional, driver-gated)
 

@@ -4,15 +4,10 @@ import pytest
 @pytest.fixture(autouse=True)
 def temp_storage(tmp_path, monkeypatch):
     from repo2ree_api.settings import service_settings
-    from repo2ree_api.storage.init_storage import (
-        create_review_storage_if_not_exists,
-        create_upload_staging_if_not_exists,
-    )
+    from repo2ree_api.storage.init_storage import create_upload_staging_if_not_exists
 
     monkeypatch.setattr(service_settings, "UPLOAD_STAGING_DIR", tmp_path / "upload-staging")
-    monkeypatch.setattr(service_settings, "REVIEWS_STORAGE_DIR", tmp_path / "reviews")
     create_upload_staging_if_not_exists()
-    create_review_storage_if_not_exists()
     yield tmp_path
 
 
