@@ -8,7 +8,15 @@ Research and paper-facing notes live under
 
 ## Quick demo
 
-To try the app locally with Docker, build the local images once:
+To try the app locally with Docker, use the published Docker Hub images:
+
+```bash
+docker compose up
+```
+
+Then open `http://localhost:3000`.
+
+To build the images locally from this repository:
 
 ```bash
 make frontend-image
@@ -16,13 +24,14 @@ make backend-image
 make workbench-image
 ```
 
-Then start the stack:
+Then run compose with the local image tags:
 
 ```bash
+REPO2REE_FRONTEND_IMAGE=repo2ree-frontend:latest \
+REPO2REE_BACKEND_IMAGE=repo2ree-backend:latest \
+REPO2REE_WORKBENCH_IMAGE=repo2ree-workbench:latest \
 docker compose up
 ```
-
-Then open `http://localhost:3000`.
 
 This starts the frontend on port `3000` and the API on port `8000`.
 The backend container mounts `/var/run/docker.sock` because several repo2ree API flows shell out to Docker. In the demo compose setup, the backend stays rootless and stores its persistent data under `/app/.repo2ree`.

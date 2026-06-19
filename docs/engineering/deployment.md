@@ -14,7 +14,29 @@ repo2ree has two deployed surfaces today:
 Each REE gets a separate workbench container named `repo2ree-wb-{ree_id}` plus
 Docker volumes for `/ree` state and the nested Docker daemon.
 
-## Build Images
+## Run With Published Images
+
+The public demo path uses Docker Hub images and does not require Nix:
+
+```bash
+docker compose up
+```
+
+Then open `http://localhost:3000`.
+
+`docker-compose.yml` defaults to the current Docker Hub demo images:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `REPO2REE_FRONTEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-frontend:edge` | Frontend image served by Caddy. |
+| `REPO2REE_BACKEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-backend:edge` | FastAPI backend image. |
+| `REPO2REE_WORKBENCH_IMAGE` | `docker.io/vuducanh1112/repo2ree-workbench:edge` | Image the backend launches for per-REE workbenches. |
+
+The backend receives `WORKBENCH_IMAGE` from `REPO2REE_WORKBENCH_IMAGE` because
+it launches workbench containers through the mounted Docker socket after
+startup.
+
+## Build Images Locally
 
 Build and load the frontend image:
 
@@ -32,8 +54,7 @@ make backend-image
 ```
 
 This runs the Dockerfile build for `docker/demo/backend.Dockerfile` and tags the
-result as `repo2ree-backend:latest`. `docker compose up --build backend` can
-also build the backend because `docker-compose.yml` includes its build context.
+result as `repo2ree-backend:latest`.
 
 Build and load the workbench image:
 
@@ -44,9 +65,12 @@ make workbench-image
 The API expects `repo2ree-workbench:latest` unless `WORKBENCH_IMAGE` is
 overridden.
 
-## Run The Demo Stack
+## Run With Local Images
 
 ```bash
+REPO2REE_FRONTEND_IMAGE=repo2ree-frontend:latest \
+REPO2REE_BACKEND_IMAGE=repo2ree-backend:latest \
+REPO2REE_WORKBENCH_IMAGE=repo2ree-workbench:latest \
 docker compose up
 ```
 
@@ -82,7 +106,7 @@ Backend variables:
 |---|---|---|
 | `UPLOAD_STAGING_DIR` | `.repo2ree/upload-staging` | Temporary upload landing zone before files enter a workbench. |
 | `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Registry file mapping REE ids to workbench containers and volumes. |
-| `WORKBENCH_IMAGE` | `repo2ree-workbench:latest` | Image used for per-REE workbenches. |
+| `WORKBENCH_IMAGE` | Set by compose from `REPO2REE_WORKBENCH_IMAGE` | Image used for per-REE workbenches. |
 | `OTLP_ENDPOINT` | unset | OTLP collector base URL. |
 | `TRACE_FILE` | unset | Local NDJSON trace sink when no collector is configured. |
 
@@ -122,14 +146,15 @@ Useful checks after starting the stack:
 ```bash
 curl -f http://localhost:8000/
 docker ps --filter 'name=repo2ree'
-docker image inspect repo2ree-workbench:latest
+docker image inspect "${REPO2REE_WORKBENCH_IMAGE:-docker.io/vuducanh1112/repo2ree-workbench:edge}"
 docker volume ls --filter 'name=repo2ree'
 ```
 
 If workbench provisioning fails, check:
 
 - The backend container can access `/var/run/docker.sock`.
-- `repo2ree-workbench:latest` exists in the same Docker daemon the backend uses.
+- The configured workbench image can be pulled by the same Docker daemon the
+  backend uses.
 - The host supports privileged containers.
 - Workbench logs with `docker logs repo2ree-wb-{ree_id}`.
 - Nested Docker logs inside the workbench at `/var/log/dockerd.log`.
@@ -139,7 +164,7 @@ If workbench provisioning fails, check:
 For a non-compose deployment, keep the same boundaries:
 
 - Run the backend where it can reach the intended Docker daemon.
-- Provide `repo2ree-workbench:latest` to that daemon.
+- Provide the configured workbench image to that daemon.
 - Run the frontend image with `BACKEND_UPSTREAM` set to the backend host and
   port reachable from the Caddy container.
 - Persist backend `.repo2ree` state and do not treat workbench Docker volumes as

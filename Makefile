@@ -8,6 +8,8 @@
 	be-coverage be-coverage-unit be-coverage-context \
 	test-checks \
 	workbench-image frontend-image frontend-npm-hash backend-image \
+	images check-ghcr-namespace check-dockerhub-namespace \
+	push-ghcr push-ghcr-local push-dockerhub push-dockerhub-local push-registries \
 	e2e-tests e2e-demo e2e-coverage
 
 # ================================================
@@ -239,6 +241,24 @@ e2e-coverage:
 # Build
 # ================================================
 
+# Example:
+#   make push-registries GHCR_NAMESPACE=github-org DOCKERHUB_NAMESPACE=dockerhub-org IMAGE_TAG=demo
+IMAGE_TAG ?= edge
+
+FRONTEND_IMAGE_NAME ?= repo2ree-frontend
+BACKEND_IMAGE_NAME ?= repo2ree-backend
+WORKBENCH_IMAGE_NAME ?= repo2ree-workbench
+
+LOCAL_FRONTEND_IMAGE := $(FRONTEND_IMAGE_NAME):latest
+LOCAL_BACKEND_IMAGE := $(BACKEND_IMAGE_NAME):latest
+LOCAL_WORKBENCH_IMAGE := $(WORKBENCH_IMAGE_NAME):latest
+
+GHCR_REGISTRY ?= ghcr.io
+GHCR_NAMESPACE ?= repo2ree
+
+DOCKERHUB_REGISTRY ?= docker.io
+DOCKERHUB_NAMESPACE ?= repo2ree
+
 workbench-image:
 	@echo "Staging untracked executor sources for nix..."
 	git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor 2>/dev/null || true
@@ -272,3 +292,44 @@ backend-image:
 	@echo "Building backend image..."
 	docker build -f docker/demo/backend.Dockerfile -t repo2ree-backend:latest .
 	@echo "Done: repo2ree-backend:latest"
+
+images: frontend-image backend-image workbench-image
+
+check-ghcr-namespace:
+	@test -n "$(GHCR_NAMESPACE)" || (echo "Set GHCR_NAMESPACE to your GitHub user or org, for example: make push-ghcr GHCR_NAMESPACE=repo2ree" >&2; exit 2)
+
+check-dockerhub-namespace:
+	@test -n "$(DOCKERHUB_NAMESPACE)" || (echo "Set DOCKERHUB_NAMESPACE to your Docker Hub user or org, for example: make push-dockerhub DOCKERHUB_NAMESPACE=repo2ree" >&2; exit 2)
+
+push-ghcr:
+	$(MAKE) check-ghcr-namespace
+	$(MAKE) images
+	$(MAKE) push-ghcr-local
+
+push-ghcr-local: check-ghcr-namespace
+	docker tag $(LOCAL_FRONTEND_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
+	docker tag $(LOCAL_BACKEND_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
+	docker tag $(LOCAL_WORKBENCH_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
+	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
+	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
+	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
+
+push-dockerhub:
+	$(MAKE) check-dockerhub-namespace
+	$(MAKE) images
+	$(MAKE) push-dockerhub-local
+
+push-dockerhub-local: check-dockerhub-namespace
+	docker tag $(LOCAL_FRONTEND_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
+	docker tag $(LOCAL_BACKEND_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
+	docker tag $(LOCAL_WORKBENCH_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
+	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
+	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
+	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
+
+push-registries:
+	$(MAKE) check-ghcr-namespace
+	$(MAKE) check-dockerhub-namespace
+	$(MAKE) images
+	$(MAKE) push-ghcr-local
+	$(MAKE) push-dockerhub-local
