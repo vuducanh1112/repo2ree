@@ -5,6 +5,9 @@
 result
 result-*
 
+# Local build artifacts
+/dist/
+
 .pytest_cache/
 .venv/
 **/__pycache__/

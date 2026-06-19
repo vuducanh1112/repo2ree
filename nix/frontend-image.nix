@@ -99,9 +99,17 @@ let
         root * ${frontendDist}
         encode gzip zstd
 
+        # Hashed assets are content-addressed, so cache them forever. Everything
+        # else (the SPA shell served at / and on deep-link fallbacks) must stay
+        # fresh so a redeploy is picked up on the next load. We can't key the
+        # no-cache header off /index.html: `header` runs before `try_files`
+        # rewrites the path, so on / and deep links the request path isn't
+        # /index.html yet and the header would never apply. Match by "not an
+        # asset" instead.
         @assets path /assets/*
         header @assets Cache-Control "public, max-age=31536000, immutable"
-        header /index.html Cache-Control "no-cache"
+        @html not path /assets/*
+        header @html Cache-Control "no-cache"
 
         try_files {path} /index.html
         file_server

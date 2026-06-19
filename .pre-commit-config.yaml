@@ -4,3 +4,17 @@ repos:
     hooks:
       - id: ruff-check
       - id: ruff-format
+
+  # Keep the pinned npm-deps hash in sync with the frontend lockfile. Runs only
+  # when package-lock.json is staged; regenerates nix/frontend-npm-deps.hash and,
+  # if it changed, fails the commit so you re-stage it (same flow as ruff-format).
+  # Prevents committing a lockfile change with a stale hash that would only break
+  # later at `nix build` time.
+  - repo: local
+    hooks:
+      - id: frontend-npm-hash
+        name: frontend npm-deps hash in sync with lockfile
+        language: system
+        entry: make frontend-npm-hash
+        files: ^frontend/package-lock\.json$
+        pass_filenames: false

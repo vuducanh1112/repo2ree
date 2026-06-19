@@ -7,8 +7,12 @@
 	api-tests api-unit-tests api-integration-tests executor-tests \
 	be-coverage be-coverage-unit be-coverage-context \
 	test-checks \
-	workbench-image frontend-image frontend-npm-hash backend-image \
-	images check-ghcr-namespace check-dockerhub-namespace \
+	image-archive-dir stage-nix-sources \
+	workbench-image workbench-image-archive \
+	frontend-image frontend-image-archive frontend-npm-hash \
+	backend-image backend-image-archive \
+	image-archives images load-image-archives \
+	push-dockerhub-archives push-ghcr-archives \
 	push-ghcr push-ghcr-local push-dockerhub push-dockerhub-local push-registries \
 	e2e-tests e2e-demo e2e-coverage
 
@@ -243,6 +247,10 @@ e2e-coverage:
 
 # Example:
 #   make push-registries GHCR_NAMESPACE=github-org DOCKERHUB_NAMESPACE=dockerhub-org IMAGE_TAG=demo
+#
+# Image archive targets write loadable tarballs under IMAGE_ARCHIVE_DIR. That
+# makes the build output portable when building inside a dev container and
+# loading/pushing from the host Docker client.
 IMAGE_TAG ?= edge
 
 FRONTEND_IMAGE_NAME ?= repo2ree-frontend
@@ -253,60 +261,105 @@ LOCAL_FRONTEND_IMAGE := $(FRONTEND_IMAGE_NAME):latest
 LOCAL_BACKEND_IMAGE := $(BACKEND_IMAGE_NAME):latest
 LOCAL_WORKBENCH_IMAGE := $(WORKBENCH_IMAGE_NAME):latest
 
+IMAGE_ARCHIVE_DIR ?= dist/images
+FRONTEND_IMAGE_ARCHIVE := $(IMAGE_ARCHIVE_DIR)/$(FRONTEND_IMAGE_NAME)-latest.tar
+BACKEND_IMAGE_ARCHIVE := $(IMAGE_ARCHIVE_DIR)/$(BACKEND_IMAGE_NAME)-latest.tar
+WORKBENCH_IMAGE_ARCHIVE := $(IMAGE_ARCHIVE_DIR)/$(WORKBENCH_IMAGE_NAME)-latest.tar
+
 GHCR_REGISTRY ?= ghcr.io
-GHCR_NAMESPACE ?= repo2ree
+GHCR_NAMESPACE ?= vuducanh1112
 
 DOCKERHUB_REGISTRY ?= docker.io
-DOCKERHUB_NAMESPACE ?= repo2ree
+DOCKERHUB_NAMESPACE ?= vuducanh1112
 
-workbench-image:
-	@echo "Staging untracked executor sources for nix..."
-	git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor 2>/dev/null || true
+image-archive-dir:
+	@mkdir -p $(IMAGE_ARCHIVE_DIR)
+
+# Nix only sees files git tracks, so intent-add the untracked executor sources
+# before building the workbench image.
+stage-nix-sources:
+	@git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor 2>/dev/null || true
+
+# ---- Normal path: build and load straight into the local Docker. ----
+# These do NOT write tarballs; use the *-image-archive targets for that.
+
+workbench-image: stage-nix-sources
 	@echo "Building workbench image..."
 	nix build .#workbench-image
 	@echo "Loading into docker..."
 	docker load < result
-	@echo "Done: repo2ree-workbench:latest"
+	@echo "Done: $(LOCAL_WORKBENCH_IMAGE)"
 
-# Regenerate the pinned npm-deps hash from frontend/package-lock.json. Run
-# this after any lockfile change; it uses prefetch-npm-deps (the same tool
-# buildNpmPackage uses internally), so the file can't disagree with the build.
+frontend-image:
+	@echo "Building frontend image..."
+	nix build .#frontend-image
+	@echo "Loading into docker..."
+	docker load < result
+	@echo "Done: $(LOCAL_FRONTEND_IMAGE)"
+
+# Backend is a Dockerfile build (uv sync at image-build time), not a nix image,
+# so `docker build` already loads it into the local Docker. The tag matches what
+# docker-compose expects.
+backend-image:
+	@echo "Building backend image..."
+	docker build -f docker/demo/backend.Dockerfile -t $(LOCAL_BACKEND_IMAGE) .
+	@echo "Done: $(LOCAL_BACKEND_IMAGE)"
+
+images: frontend-image backend-image workbench-image
+
+# Regenerate the pinned npm-deps hash from frontend/package-lock.json. Run this
+# manually after any lockfile change (it is intentionally NOT a build prereq, so
+# building an image never re-prefetches or rewrites this tracked file). It uses
+# prefetch-npm-deps (the same tool buildNpmPackage uses), so it can't disagree
+# with the build.
 frontend-npm-hash:
 	@echo "Computing npm deps hash from frontend/package-lock.json..."
 	nix run nixpkgs#prefetch-npm-deps -- frontend/package-lock.json > nix/frontend-npm-deps.hash
 	@echo "Wrote nix/frontend-npm-deps.hash: $$(cat nix/frontend-npm-deps.hash)"
 
-frontend-image: frontend-npm-hash
-	@echo "Staging nix sources so the flake can see them..."
-	git add -N nix/frontend-image.nix nix/frontend-npm-deps.hash 2>/dev/null || true
-	@echo "Building frontend image..."
+# ---- Archive path (opt-in): write loadable tarballs under IMAGE_ARCHIVE_DIR. ----
+# For building inside the dev container and loading/pushing from the host Docker
+# client: `make image-archives`, copy dist/images to the host, then
+# `make load-image-archives` + `make push-dockerhub-local` there. Kept off the
+# normal images/push-* path so a plain build/push writes no tarballs.
+
+workbench-image-archive: stage-nix-sources | image-archive-dir
+	@echo "Building workbench image archive..."
+	nix build .#workbench-image
+	cp -fL result $(WORKBENCH_IMAGE_ARCHIVE)
+	@echo "Wrote $(WORKBENCH_IMAGE_ARCHIVE)"
+
+frontend-image-archive: | image-archive-dir
+	@echo "Building frontend image archive..."
 	nix build .#frontend-image
-	@echo "Loading into docker..."
-	docker load < result
-	@echo "Done: repo2ree-frontend:latest"
+	cp -fL result $(FRONTEND_IMAGE_ARCHIVE)
+	@echo "Wrote $(FRONTEND_IMAGE_ARCHIVE)"
 
-# Backend is still a Dockerfile build (uv sync at image-build time), not a
-# nix image — so this is a plain docker build rather than build+load. The
-# tag matches what docker-compose expects.
-backend-image:
-	@echo "Building backend image..."
-	docker build -f docker/demo/backend.Dockerfile -t repo2ree-backend:latest .
-	@echo "Done: repo2ree-backend:latest"
+# Backend reuses the already-built/loaded image, so there's no second build.
+backend-image-archive: backend-image | image-archive-dir
+	@echo "Writing $(BACKEND_IMAGE_ARCHIVE)..."
+	docker save $(LOCAL_BACKEND_IMAGE) -o $(BACKEND_IMAGE_ARCHIVE)
+	@echo "Wrote $(BACKEND_IMAGE_ARCHIVE)"
 
-images: frontend-image backend-image workbench-image
+image-archives: frontend-image-archive backend-image-archive workbench-image-archive
 
-check-ghcr-namespace:
-	@test -n "$(GHCR_NAMESPACE)" || (echo "Set GHCR_NAMESPACE to your GitHub user or org, for example: make push-ghcr GHCR_NAMESPACE=repo2ree" >&2; exit 2)
+load-image-archives:
+	docker load -i $(FRONTEND_IMAGE_ARCHIVE)
+	docker load -i $(BACKEND_IMAGE_ARCHIVE)
+	docker load -i $(WORKBENCH_IMAGE_ARCHIVE)
 
-check-dockerhub-namespace:
-	@test -n "$(DOCKERHUB_NAMESPACE)" || (echo "Set DOCKERHUB_NAMESPACE to your Docker Hub user or org, for example: make push-dockerhub DOCKERHUB_NAMESPACE=repo2ree" >&2; exit 2)
+# Host-side one-shot: load the archives built in the devcontainer, then push.
+# Lets the devcontainer build credential-free (`make image-archives`) while the
+# host (the only place with registry creds) loads and pushes in a single step.
+push-dockerhub-archives: load-image-archives push-dockerhub-local
+
+push-ghcr-archives: load-image-archives push-ghcr-local
 
 push-ghcr:
-	$(MAKE) check-ghcr-namespace
 	$(MAKE) images
 	$(MAKE) push-ghcr-local
 
-push-ghcr-local: check-ghcr-namespace
+push-ghcr-local:
 	docker tag $(LOCAL_FRONTEND_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
 	docker tag $(LOCAL_BACKEND_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
 	docker tag $(LOCAL_WORKBENCH_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
@@ -315,11 +368,10 @@ push-ghcr-local: check-ghcr-namespace
 	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
 
 push-dockerhub:
-	$(MAKE) check-dockerhub-namespace
 	$(MAKE) images
 	$(MAKE) push-dockerhub-local
 
-push-dockerhub-local: check-dockerhub-namespace
+push-dockerhub-local:
 	docker tag $(LOCAL_FRONTEND_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
 	docker tag $(LOCAL_BACKEND_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
 	docker tag $(LOCAL_WORKBENCH_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
@@ -328,8 +380,6 @@ push-dockerhub-local: check-dockerhub-namespace
 	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
 
 push-registries:
-	$(MAKE) check-ghcr-namespace
-	$(MAKE) check-dockerhub-namespace
 	$(MAKE) images
 	$(MAKE) push-ghcr-local
 	$(MAKE) push-dockerhub-local
