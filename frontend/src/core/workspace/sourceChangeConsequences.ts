@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import { type EvaluationState, emptyEvaluationState } from "../evaluate/EvaluationState";
 import { createEmptyReeActivation, createEmptyRuntimeEntry, type ReeSpec } from "../ree/ReeSpec";
 import type { ActionStates, Badges, ReeAssemblyOperationParams, Timestamps } from "../ree/ReeTypes";
-import { type EvaluationState, emptyEvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "./WorkspaceSourceState";
 
 export interface SourceChangeInput {

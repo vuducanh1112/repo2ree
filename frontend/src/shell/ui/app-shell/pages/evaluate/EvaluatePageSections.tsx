@@ -1,13 +1,13 @@
-import type { LogEntry } from "../../../../../core/ree/ReeTypes";
-import type { DepGroup } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
-import type { ReeAssemblyRequirement } from "../../../../../core/ree-assembly/assemblyStepTypes";
-import { DEPENDENCY_AXIS, ENVIRONMENT_AXIS, MACHINE_AXIS } from "../../../../../core/review/axes";
+import { DEPENDENCY_AXIS, ENVIRONMENT_AXIS, MACHINE_AXIS } from "../../../../../core/evaluate/axes";
 import type {
   ReproducibilityReport,
   Threat,
   ThreatCategory,
   ThreatSeverity,
-} from "../../../../../core/review/Threat";
+} from "../../../../../core/evaluate/Threat";
+import type { LogEntry } from "../../../../../core/ree/ReeTypes";
+import type { DepGroup } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
+import type { ReeAssemblyRequirement } from "../../../../../core/ree-assembly/assemblyStepTypes";
 import { Ic } from "../../../shared/components/Icon";
 import { lgColors, lgContentCard, lgStatusBadge, lgStyles } from "../../../theme/lightGlassTheme";
 import { F } from "../../../theme/theme";

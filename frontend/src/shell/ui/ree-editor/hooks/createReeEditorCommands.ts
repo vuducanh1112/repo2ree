@@ -1,5 +1,6 @@
 import type React from "react";
 import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
+import type { EvaluationState } from "../../../../core/evaluate/EvaluationState";
 import type { InclusionOpts } from "../../../../core/ree/InclusionOpts";
 import type { ReeSpec } from "../../../../core/ree/ReeSpec";
 import type { ReeAssemblyOperationParams, SourceUploadCommit } from "../../../../core/ree/ReeTypes";
@@ -8,7 +9,6 @@ import type {
   ReeAssemblyOperationKey,
   ReeAssemblyRunParams,
 } from "../../../../core/ree-assembly/assemblyTypes";
-import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
 import {
   clearToast,
@@ -114,8 +114,6 @@ export function createReeEditorCommands({
         ),
       ),
     setFilesConsoleOpen: (open: boolean) => dispatch(patch("uiChrome", { filesConsoleOpen: open })),
-    openReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: true })),
-    closeReviewPreview: () => dispatch(patch("uiChrome", { showReviewPreview: false })),
     clearToast: () => dispatch(clearToast()),
     onSeal: handleSeal,
     onDownloadRee: handleDownloadRee,

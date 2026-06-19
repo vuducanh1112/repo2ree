@@ -1,27 +1,5 @@
 import type React from "react";
 
-export const S_FLEX_ROW_CENTER_GAP_6: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-};
-
-export const S_WORKFLOW_PAGE_BODY: React.CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  display: "flex",
-  overflow: "hidden",
-};
-
-export const S_WORKFLOW_SERVICE_ROOT: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  flex: 1,
-  minHeight: 0,
-  overflow: "hidden",
-  animation: "fadeUp 0.2s ease",
-};
-
 export const S_WORKSPACE_EDITOR_MAIN_CONTENT_ROOT: React.CSSProperties = {
   flex: 1,
   display: "flex",

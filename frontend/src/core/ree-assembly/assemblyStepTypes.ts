@@ -41,8 +41,6 @@ export interface ToastState {
   type: "info" | "success" | "error";
 }
 
-export type StepState = "idle" | "loading" | "done";
-
 export interface ArchiveRepo {
   key: string;
   label: string;

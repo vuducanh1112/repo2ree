@@ -122,43 +122,6 @@ export interface UploadInitResponseDto {
   expiresAt: string;
 }
 
-export interface ReviewUploadInitRequestDto {
-  fileName: string;
-  size: number;
-  contentType: string;
-}
-
-export interface ReviewUploadInitResponseDto {
-  reviewId: string;
-  uploadUrl: string;
-  uploadToken: string;
-  expiresAt: string;
-}
-
-export interface ReviewUploadCompleteRequestDto {
-  uploadToken: string;
-  archiveName: string;
-}
-
-export interface ReviewDetailDto {
-  reviewId: string;
-  name: string;
-  status: "uploading" | "ready";
-  createdAt: string;
-  updatedAt: string;
-  archiveName?: string;
-  reeIntent: Partial<ReeIntentDto>;
-  reeSession?: Partial<ReeSessionDto>;
-  files?: Array<{ path: string; size?: number }>;
-  // wire-format field name: backend uses workspaceFiles for the file listing of an REE.
-  workspaceFiles?: Array<{ path: string; size?: number }>;
-}
-
-export interface ReviewUploadCompleteResponseDto {
-  status: "ready";
-  review: ReviewDetailDto;
-}
-
 export type WorkflowOperationDto =
   | "evaluate"
   | "build"

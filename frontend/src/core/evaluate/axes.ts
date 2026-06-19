@@ -1,6 +1,5 @@
 // The three orthogonal reproducibility axes. Single source of truth for their
-// labels, step names and colors — shared by the Evaluate page, the overview pod,
-// the reviewer and the sidebar. Replaces the old single linear ladder (levels.ts).
+// labels, step names and colors — shared by the Evaluate page and the overview pod.
 
 import type { EvaluationState } from "./EvaluationState";
 
@@ -90,7 +89,7 @@ export function bottleneckAxis(evaluation: EvaluationState): AxisStanding {
   );
 }
 
-export interface StandingMeta {
+interface StandingMeta {
   color: string;
   bg: string;
   ink: string;

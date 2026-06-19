@@ -4,14 +4,12 @@ import { asReeId, DEFAULT_REE_ID, type ReeId } from "../../core/ree/ReeId";
 import { ApiClient } from "../infra/api/ApiClient";
 import { ExecutionRunsApi } from "../infra/api/ExecutionRunsApi";
 import { ReeApi } from "../infra/api/ReeApi";
-import { ReviewsApi } from "../infra/api/ReviewsApi";
 
 export interface ApiRuntimeValue {
   reeId: ReeId;
   ensureReeId: (requestedId: ReeId | string) => Promise<ReeId>;
   reeApi: ReeApi;
   runsApi: ExecutionRunsApi;
-  reviewsApi: ReviewsApi;
 }
 
 interface ApiClientProviderProps {
@@ -35,7 +33,6 @@ export function createApiRuntime({
   const client = new ApiClient({ baseUrl });
   const reeApi = new ReeApi(client);
   const runsApi = new ExecutionRunsApi(client);
-  const reviewsApi = new ReviewsApi(client);
   const contextReeId = initialReeId
     ? asReeId(initialReeId)
     : reeId
@@ -63,7 +60,6 @@ export function createApiRuntime({
     ensureReeId,
     reeApi,
     runsApi,
-    reviewsApi,
   };
 }
 

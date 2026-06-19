@@ -1,13 +1,5 @@
 import { mapRawReeIntentToSlices } from "../../../core/ree/mapRawReeIntent";
-import type { ReeDetailDto, ReviewDetailDto } from "../../infra/api/apiTypes";
-
-export function mapReviewDraftToReeSlices(review: ReviewDetailDto) {
-  return mapRawReeIntentToSlices({
-    reeIntent: review.reeIntent,
-    reeSession: review.reeSession,
-    fallbackName: review.name,
-  });
-}
+import type { ReeDetailDto } from "../../infra/api/apiTypes";
 
 export function mapReeDetailToReeSlices(ree: ReeDetailDto) {
   return mapRawReeIntentToSlices({

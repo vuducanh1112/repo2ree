@@ -1,6 +1,6 @@
 import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
+import type { EvaluationState } from "../../core/evaluate/EvaluationState";
 import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
-import type { EvaluationState } from "../../core/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 import type { ReeEditorState } from "./reeEditorState";
 

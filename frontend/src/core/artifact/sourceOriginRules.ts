@@ -1,6 +1,6 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { ReeSpec } from "../ree/ReeSpec";
-import type { EvaluationState } from "../review/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 
 interface SourceOriginRulesStateInput {

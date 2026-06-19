@@ -168,23 +168,3 @@ export function hbomHasAnyComponents(hbom: HBOM): boolean {
     0
   );
 }
-
-export function hbomSummaryLines(hbom: HBOM): string[] {
-  const lines: string[] = [];
-  for (const [model, cpu] of Object.entries(hbom.cpus)) {
-    lines.push(`CPU: ${model} x${cpu.quantity}`);
-  }
-  for (const [model, gpu] of Object.entries(hbom.gpus)) {
-    lines.push(`GPU: ${model} x${gpu.quantity}`);
-  }
-  for (const [model, memory] of Object.entries(hbom.memory)) {
-    lines.push(`Memory: ${model} x${memory.quantity}`);
-  }
-  for (const [model, storage] of Object.entries(hbom.storage)) {
-    lines.push(`Storage: ${model} x${storage.quantity}`);
-  }
-  for (const [model, network] of Object.entries(hbom.network)) {
-    lines.push(`Network: ${model} x${network.quantity}`);
-  }
-  return lines;
-}

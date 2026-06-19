@@ -1,7 +1,7 @@
 import { type ArtifactStatus, isSealed } from "../../core/artifact/ArtifactStatus";
+import { type EvaluationState, emptyEvaluationState } from "../../core/evaluate/EvaluationState";
 import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
 import type { ActionStates, Badges, Timestamps } from "../../core/ree/ReeTypes";
-import { type EvaluationState, emptyEvaluationState } from "../../core/review/EvaluationState";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 
 export interface ReeEditorUiState {

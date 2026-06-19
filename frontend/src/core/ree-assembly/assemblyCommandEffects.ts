@@ -1,6 +1,6 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { ReeSpec } from "../ree/ReeSpec";
-import type { EvaluationState } from "../review/EvaluationState";
 import type { SourceCommand } from "../workspace/sourceAcquisitionCommands";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { AssemblyCommand } from "./assemblyCommands";

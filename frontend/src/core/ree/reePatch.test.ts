@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
-import type { EvaluationState } from "../review/EvaluationState";
+import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import { createEmptyReeSpec } from "./ReeSpec";
 import { toReePatchFromSlices } from "./reePatch";

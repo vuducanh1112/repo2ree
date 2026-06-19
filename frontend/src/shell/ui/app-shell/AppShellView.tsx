@@ -1,8 +1,4 @@
-import type React from "react";
 import { useState } from "react";
-import type { StepState } from "../../../core/ree-assembly/assemblyStepTypes";
-import type { StandingMeta } from "../../../core/review/axes";
-import type { EvaluationState } from "../../../core/review/EvaluationState";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { C, F, hoverBg, hoverColor } from "../theme/theme";
@@ -12,32 +8,23 @@ import { activeNode } from "./canvas/canvasNodes";
 import { FocusDock } from "./canvas/FocusDock";
 import { SealHubPanel } from "./canvas/SealHubPanel";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
-import { ReviewerPreviewOverlay } from "./components/ReviewerPreviewOverlay";
 import { useAppShell } from "./hooks/useAppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
 import { PAGE } from "./state/pages";
 
 interface AppShellViewProps {
   onBack: () => void;
-  PodOrbitControl: React.ComponentType<{
-    evaluation: EvaluationState;
-    levelMeta: StandingMeta;
-    stepStates: Record<string, StepState>;
-    allDone: boolean;
-    isRunningAll: boolean;
-    onRunAll: () => void;
-  }>;
 }
 
-export function AppShellView({ onBack, PodOrbitControl }: AppShellViewProps) {
+export function AppShellView({ onBack }: AppShellViewProps) {
   return (
     <AppShellProvider>
-      <AppShellViewInner onBack={onBack} PodOrbitControl={PodOrbitControl} />
+      <AppShellViewInner onBack={onBack} />
     </AppShellProvider>
   );
 }
 
-function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
+function AppShellViewInner({ onBack }: AppShellViewProps) {
   const {
     provisioned,
     reeIntent,
@@ -48,7 +35,6 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
     evaluation,
     currentReeFiles,
     commands,
-    reviewer,
     sealRunning,
     sealLog,
   } = useAppShell();
@@ -144,29 +130,6 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
           <span style={{ display: "flex" }}>{Ic.download(13)}</span>
           Download REE
         </button>
-        <button
-          type="button"
-          onClick={commands.openReviewPreview}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            background: "#fef3c7",
-            border: "1px solid #fde68a",
-            borderRadius: 7,
-            cursor: "pointer",
-            color: "#92400e",
-            padding: "5px 11px",
-            fontSize: 12.5,
-            fontWeight: 600,
-            fontFamily: F.sans,
-            transition: "all 0.12s",
-          }}
-          {...hoverBg("#fef08a66", "#fef3c7")}
-        >
-          <span style={{ display: "flex", color: "#f59e0b" }}>{Ic.star(13)}</span>
-          Preview review
-        </button>
       </header>
 
       <div style={{ flex: 1, position: "relative", overflow: "hidden", minHeight: 0 }}>
@@ -227,13 +190,6 @@ function AppShellViewInner({ onBack, PodOrbitControl }: AppShellViewProps) {
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={commands.clearToast} />}
-
-      <ReviewerPreviewOverlay
-        open={reviewer.showReviewPreview}
-        ree={ree}
-        onClose={commands.closeReviewPreview}
-        PodOrbitControl={PodOrbitControl}
-      />
     </div>
   );
 }

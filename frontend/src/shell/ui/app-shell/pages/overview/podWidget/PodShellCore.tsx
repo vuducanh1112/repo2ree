@@ -1,5 +1,5 @@
-import { DEPENDENCY_AXIS } from "../../../../../../core/review/axes";
-import type { EvaluationState } from "../../../../../../core/review/EvaluationState";
+import { DEPENDENCY_AXIS } from "../../../../../../core/evaluate/axes";
+import type { EvaluationState } from "../../../../../../core/evaluate/EvaluationState";
 import { PodDepGraph } from "./PodDepGraph";
 
 interface PodShellCoreProps {

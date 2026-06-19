@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
+import type { EvaluationState } from "../../core/evaluate/EvaluationState";
 import type { ReeSpec } from "../../core/ree/ReeSpec";
 import type { LogLine, ReeAssemblyOperationParams, ReeFile } from "../../core/ree/ReeTypes";
-import type { EvaluationState } from "../../core/review/EvaluationState";
 import type { FileTreeNode } from "../../core/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 import { initialReeAssemblyOperationParams } from "../ree-assembly/assemblyCatalog";

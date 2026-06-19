@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
+import type { EvaluationState } from "../../../../core/evaluate/EvaluationState";
 import type { Badges, LogEntry } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import type { EvaluationState } from "../../../../core/review/EvaluationState";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import { CenterSealStrip } from "../pages/overview/components/CenterSealStrip";

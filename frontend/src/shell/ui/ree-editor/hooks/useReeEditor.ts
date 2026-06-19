@@ -182,9 +182,6 @@ export function useReeEditor({
     commands,
     sealRunning,
     sealLog,
-    reviewer: {
-      showReviewPreview: uiChrome.showReviewPreview,
-    },
   };
 }
 

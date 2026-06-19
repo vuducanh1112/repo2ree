@@ -1,7 +1,7 @@
+import { axisStandings, axisStepLabel } from "../../../../core/evaluate/axes";
 import { hbomHasAnyComponents } from "../../../../core/hbom/HbomSummary";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import { axisStandings, axisStepLabel } from "../../../../core/review/axes";
 import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
 import { Ic } from "../../shared/components/Icon";
 import { PROCESS_STEPS, resolveNavCompleted } from "../sidebar/processSteps";

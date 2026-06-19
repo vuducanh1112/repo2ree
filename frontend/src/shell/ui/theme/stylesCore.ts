@@ -11,11 +11,6 @@ export const S_SECTION_LABEL: React.CSSProperties = {
   fontWeight: 700,
 };
 
-export const S_SECTION_LABEL_SMALL: React.CSSProperties = {
-  ...S_SECTION_LABEL,
-  fontSize: 10,
-};
-
 export const S_ACTION_BUTTON_BASE: React.CSSProperties = {
   border: `1.5px solid ${C.border}`,
   borderRadius: 7,

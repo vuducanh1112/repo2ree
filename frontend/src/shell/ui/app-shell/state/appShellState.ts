@@ -26,7 +26,6 @@ interface AppShellState {
   page: AppShellPage;
   focusedField: string | null;
   sourceSnapshotArchiveName: string;
-  showReviewPreview: boolean;
   filesConsoleOpen: boolean;
 }
 

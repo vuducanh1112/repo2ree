@@ -1,5 +1,5 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
-import type { EvaluationState } from "../review/EvaluationState";
+import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type {
   ReeActivation,

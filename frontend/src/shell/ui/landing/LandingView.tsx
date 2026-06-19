@@ -1,10 +1,8 @@
 import type React from "react";
-import { useRef, useState } from "react";
-import { AXES } from "../../../core/review/axes";
-import { useReviewClient } from "../../data/reviews/client";
+import { AXES } from "../../../core/evaluate/axes";
 import { APP_ROUTE, type AppLoadRoutePath } from "../app-shell/state/pages";
 import { Ic } from "../shared/components/Icon";
-import { C, F, hoverBg, hoverColor, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
+import { C, F, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
 
 interface LandingViewProps {
   onLoad: (path: AppLoadRoutePath) => void;
@@ -16,55 +14,9 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 });
 
 export function LandingView({ onLoad }: LandingViewProps) {
-  const reviewClient = useReviewClient();
-  const [loadingReviewUpload, setLoadingReviewUpload] = useState(false);
-  const [reviewError, setReviewError] = useState<string>("");
-  const reviewZipInputRef = useRef<HTMLInputElement | null>(null);
-
   const createRee = () => {
     // Provisioning is deferred to the Workbench step inside the editor.
     onLoad(APP_ROUTE.WORKSPACE);
-  };
-
-  const startReviewFromZip = async (file: File) => {
-    setLoadingReviewUpload(true);
-    setReviewError("");
-    try {
-      const init = await reviewClient.initReviewUpload({
-        fileName: file.name,
-        size: file.size,
-        contentType: file.type || "application/zip",
-      });
-
-      await reviewClient.uploadReviewBytes(init.uploadUrl, await file.arrayBuffer());
-      await reviewClient.completeReviewUpload(init.reviewId, {
-        uploadToken: init.uploadToken,
-        archiveName: file.name,
-      });
-
-      onLoad(`${APP_ROUTE.REVIEWER}?reviewId=${encodeURIComponent(init.reviewId)}`);
-    } catch (error) {
-      setReviewError(
-        error instanceof Error
-          ? error.message
-          : "Failed to start review. Upload a ZIP containing ree/ree.json.",
-      );
-    } finally {
-      setLoadingReviewUpload(false);
-    }
-  };
-
-  const handleReviewZipSelection: React.ChangeEventHandler<HTMLInputElement> = (event) => {
-    const selectedFile = event.target.files?.[0];
-    event.currentTarget.value = "";
-    if (!selectedFile) {
-      return;
-    }
-    if (!selectedFile.name.toLowerCase().endsWith(".zip")) {
-      setReviewError("Review upload requires a .zip archive containing ree/ree.json.");
-      return;
-    }
-    void startReviewFromZip(selectedFile);
   };
 
   return (
@@ -161,40 +113,6 @@ export function LandingView({ onLoad }: LandingViewProps) {
             <span style={{ display: "flex" }}>{Ic.play()}</span>
             <span style={{ fontSize: 14, fontWeight: 600 }}>Create REE</span>
           </button>
-          <button
-            type="button"
-            onClick={() => reviewZipInputRef.current?.click()}
-            disabled={loadingReviewUpload}
-            style={{
-              ...actionBtn({
-                border: `1px solid ${C.border}`,
-                borderRadius: 8,
-                padding: 8,
-                background: "transparent",
-                color: C.textMid,
-                fontWeight: 400,
-                transition: "background 0.13s, color 0.13s",
-              }),
-              background: "transparent",
-              cursor: "pointer",
-              width: "100%",
-              color: C.textMid,
-            }}
-            {...hoverBg(C.surfaceAlt, "transparent")}
-            {...hoverColor(C.text, C.textMid)}
-          >
-            {loadingReviewUpload ? "Uploading Review ZIP…" : "Review REE"}
-          </button>
-          <input
-            ref={reviewZipInputRef}
-            type="file"
-            accept=".zip,application/zip"
-            onChange={handleReviewZipSelection}
-            style={{ display: "none" }}
-          />
-          {reviewError && (
-            <div style={{ fontSize: 12, color: "#b91c1c", lineHeight: 1.4 }}>{reviewError}</div>
-          )}
         </div>
         <div
           style={{

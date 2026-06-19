@@ -1,6 +1,6 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
+import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { ReeSpec } from "../ree/ReeSpec";
-import type { EvaluationState } from "../review/EvaluationState";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey } from "./assemblyTypes";
 

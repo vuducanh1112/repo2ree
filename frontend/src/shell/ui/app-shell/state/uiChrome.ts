@@ -6,7 +6,6 @@ export interface UiChromeState {
   toast: ToastState | null;
   page: AppShellPage;
   focusedField: string | null;
-  showReviewPreview: boolean;
   locked: boolean;
   repoMode: "url" | "upload";
   sourceSnapshotArchiveName: string;
@@ -21,7 +20,6 @@ export function createInitialUiChromeState(): UiChromeState {
     // regardless, so this only governs where the live editor opens.
     page: PAGE.OVERVIEW,
     focusedField: null,
-    showReviewPreview: false,
     locked: false,
     repoMode: "url",
     sourceSnapshotArchiveName: "",

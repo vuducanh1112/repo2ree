@@ -20,14 +20,11 @@ export const PAGE = {
 export const APP_ROUTE = {
   ROOT: "/",
   WORKSPACE: "/workspace",
-  REVIEWER: "/reviewer",
 } as const;
 
 export type AppLoadRoutePath =
   | typeof APP_ROUTE.WORKSPACE
-  | typeof APP_ROUTE.REVIEWER
-  | `${typeof APP_ROUTE.WORKSPACE}?${string}`
-  | `${typeof APP_ROUTE.REVIEWER}?${string}`;
+  | `${typeof APP_ROUTE.WORKSPACE}?${string}`;
 
 export type AppShellPage = (typeof PAGE)[keyof typeof PAGE];
 const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as AppShellPage[];
