@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Badges } from "../../../../core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { PAGE } from "../state/pages";
-import type { CableGeo } from "./cableGeometry";
+import type { Cable, CableGeo } from "./cableGeometry";
 import { CANVAS_NODES, isNodeDone, type NodeZone } from "./canvasNodes";
 import type { NodeOffsets, Transform } from "./useCanvasViewport";
 
@@ -121,34 +121,12 @@ export function useCableGeometry({
     // cable in the decomposed view — the chain already wires them up.
     const CHAIN_KEYS = new Set<string>([PAGE.SOURCE, PAGE.BUILD, PAGE.ACTIVATION]);
 
-    const cables = CANVAS_NODES.flatMap((node) => {
-      if (exploded && CHAIN_KEYS.has(node.key)) return [];
-      const rect = rectOf(node.key);
-      if (!rect) return [];
-      const pod = podForZone(node.zone);
-      // Knob rides the panel edge facing the pod; the pod end faces that knob.
-      const panel = edgeToward(rect, pod.center.x, pod.center.y);
-      const hit = intercept(pod, panel.x, panel.y);
-      return [
-        {
-          id: node.key,
-          x1: panel.x,
-          y1: panel.y,
-          x2: hit.x,
-          y2: hit.y,
-          color: node.color,
-          shadow: node.shadow,
-          connected: isNodeDone(node, ree, badges),
-        },
-      ];
-    });
+    // Dependency chain spine, drawn only when decomposed (pushed first so they
+    // render under member cables). Traces the actual data flow through specific
+    // panels rather than connecting pods directly: outer shell → source panel →
+    // build runtime panel → inner shell → test activation panel → core.
+    const cables: Cable[] = [];
 
-    // Dependency chain spine, drawn only when decomposed. Traces the actual
-    // data flow through specific panels rather than connecting pods directly:
-    // outer shell → source panel → build runtime panel → inner shell → test
-    // activation panel → core. (In the assembled view the shells overlap into
-    // one pod, so there is nothing to span.)
-    const decoCables: CableGeo["decoCables"] = [];
     if (exploded) {
       const innerPod = podGeom(projectionPods.inner?.current ?? null);
       const corePod = podGeom(projectionPods.core?.current ?? null);
@@ -169,27 +147,92 @@ export function useCableGeometry({
           ? intercept(a.pod, toward.x, toward.y)
           : edgeToward(a.rect, toward.x, toward.y);
 
-      // Wire two anchors, landing each endpoint on the side facing the other.
-      const link = (id: string, a: Anchor | null, b: Anchor | null) => {
+      const link = (
+        id: string,
+        a: Anchor | null,
+        b: Anchor | null,
+        connected: boolean,
+        color: string,
+        shadow: string,
+      ) => {
         if (!a || !b) return;
         const p1 = resolve(a, anchorCenter(b));
         const p2 = resolve(b, anchorCenter(a));
-        decoCables.push({ id, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y });
+        cables.push({ id, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, connected, color, shadow });
       };
+
+      const chainNodeMeta = new Map(
+        CANVAS_NODES.filter((n) => CHAIN_KEYS.has(n.key)).map((n) => [n.key, n]),
+      );
+      const sourceNode = chainNodeMeta.get(PAGE.SOURCE);
+      const buildNode = chainNodeMeta.get(PAGE.BUILD);
+      const activationNode = chainNodeMeta.get(PAGE.ACTIVATION);
+      if (!sourceNode || !buildNode || !activationNode) return;
+      const sourceDone = isNodeDone(sourceNode, ree, badges);
+      const buildDone = isNodeDone(buildNode, ree, badges);
+      const activationDone = isNodeDone(activationNode, ree, badges);
 
       const source = rectAnchor(rectOf(PAGE.SOURCE));
       const build = rectAnchor(rectOf(PAGE.BUILD));
       const activation = rectAnchor(rectOf(PAGE.ACTIVATION));
 
       // outer shell → source → build runtime → inner shell → activation → core
-      link("chain-outer-source", podAnchor(mainPod), source);
-      link("chain-source-build", source, build);
-      link("chain-build-inner", build, podAnchor(innerPod));
-      link("chain-inner-activation", podAnchor(innerPod), activation);
-      link("chain-activation-core", activation, podAnchor(corePod));
+      link(
+        "chain-outer-source",
+        podAnchor(mainPod),
+        source,
+        sourceDone,
+        sourceNode.color,
+        sourceNode.shadow,
+      );
+      link("chain-source-build", source, build, buildDone, buildNode.color, buildNode.shadow);
+      link(
+        "chain-build-inner",
+        build,
+        podAnchor(innerPod),
+        buildDone,
+        buildNode.color,
+        buildNode.shadow,
+      );
+      link(
+        "chain-inner-activation",
+        podAnchor(innerPod),
+        activation,
+        activationDone,
+        activationNode.color,
+        activationNode.shadow,
+      );
+      link(
+        "chain-activation-core",
+        activation,
+        podAnchor(corePod),
+        activationDone,
+        activationNode.color,
+        activationNode.shadow,
+      );
     }
 
-    setGeo({ cables, decoCables, w: cRect.width, h: cRect.height });
+    for (const node of CANVAS_NODES) {
+      if (exploded && CHAIN_KEYS.has(node.key)) continue;
+      const rect = rectOf(node.key);
+      if (!rect) continue;
+      const pod = podForZone(node.zone);
+      // Knob rides the panel edge facing the pod; the pod end faces that knob.
+      const panel = edgeToward(rect, pod.center.x, pod.center.y);
+      const hit = intercept(pod, panel.x, panel.y);
+      cables.push({
+        id: node.key,
+        x1: panel.x,
+        y1: panel.y,
+        x2: hit.x,
+        y2: hit.y,
+        color: node.color,
+        shadow: node.shadow,
+        connected: isNodeDone(node, ree, badges),
+      });
+    }
+
+    setGeo({ cables, w: cRect.width, h: cRect.height });
   }, [stageRef, podSvgRef, nodeEls, ree, badges, exploded, projectionPods]);
 
   // Re-measure on every transform/offset/data change. While `animate` is on, the

@@ -85,7 +85,7 @@ function CableStrand({
 }
 
 export function CableOverlaySvg({ geo, levelMeta }: CableOverlaySvgProps) {
-  const { cables, decoCables, w, h } = geo;
+  const { cables, w, h } = geo;
 
   return (
     <svg
@@ -103,27 +103,6 @@ export function CableOverlaySvg({ geo, levelMeta }: CableOverlaySvgProps) {
       preserveAspectRatio="none"
     >
       <title>Panel connections</title>
-      {decoCables.map((dc) => (
-        <g key={dc.id} opacity="0.5">
-          <CableStrand
-            x1={dc.x1}
-            y1={dc.y1}
-            x2={dc.x2}
-            y2={dc.y2}
-            outerColor="#334155"
-            outerWidth={12}
-            outerOpacity={0.14}
-            midColor="#94a3b8"
-            midWidth={8}
-            midOpacity={0.5}
-            innerColor="#e2e8f0"
-            innerWidth={4}
-            innerOpacity={0.75}
-            knobFill="#94a3b8"
-            knobStroke="#334155"
-          />
-        </g>
-      ))}
       {cables.map((c) => {
         const color = c.connected ? c.color : "#94a3b8";
         const shadow = c.connected ? c.shadow : "#334155";

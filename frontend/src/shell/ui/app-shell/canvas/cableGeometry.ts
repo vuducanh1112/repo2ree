@@ -11,7 +11,6 @@ export interface Cable {
 
 export interface CableGeo {
   cables: Cable[];
-  decoCables: Array<{ id: string; x1: number; y1: number; x2: number; y2: number }>;
   w: number;
   h: number;
 }
