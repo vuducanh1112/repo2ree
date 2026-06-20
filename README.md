@@ -16,6 +16,31 @@ docker compose up
 
 Then open `http://localhost:3000`.
 
+### Run without cloning the repository
+
+Fetch the compose file straight from the repository and start the stack from
+stdin. The `-p repo2ree` project name gives stable container/volume names and a
+clean teardown later:
+
+```bash
+curl -fsSL https://codeberg.org/vuducanh1112/repo2ree/raw/branch/main/docker-compose.yml \
+  | docker compose -p repo2ree -f - up -d
+```
+
+Then open `http://localhost:3000`.
+
+To stop it — no compose file needed, the project name is enough:
+
+```bash
+docker compose -p repo2ree down      # stop and remove containers + network
+docker compose -p repo2ree down -v   # also delete the demo-data volume
+```
+
+To refresh to the latest published images, append `--pull always` to the `up`
+command.
+
+### Build the images locally
+
 To build the images locally from this repository:
 
 ```bash
