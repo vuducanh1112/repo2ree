@@ -1,6 +1,6 @@
-import type { DepGroup } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
-import { PIN_META } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
-import { C, hoverBg, hoverBorderColor, hoverIf } from "../../../theme/theme";
+import type { DepGroup } from "@core/ree-assembly/assemblyDependencyAnalysis";
+import { PIN_META } from "@core/ree-assembly/assemblyDependencyAnalysis";
+import { C, hoverBg, hoverBorderColor, hoverIf } from "@shell/ui/theme/theme";
 import { actionBtn } from "./shared";
 
 interface DependencySummaryFiltersProps {

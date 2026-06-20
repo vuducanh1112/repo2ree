@@ -67,7 +67,11 @@ export async function provisionWorkbench(page: Page) {
   await page.getByRole("button", { name: /Provision workbench/i }).click();
   await expect(nav(page).getByRole("button", { name: "Source", exact: true })).toBeVisible();
   await openPort(page, "Source");
-  await expect(main(page).getByText("Source Acquisition", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Source Acquisition" }).getByText("Source Acquisition", {
+      exact: true,
+    }),
+  ).toBeVisible();
   await stepShot(page, "provision-workbench", "after");
 }
 
@@ -80,9 +84,10 @@ export async function uploadSource(page: Page, archivePath: string) {
     .setInputFiles(archivePath);
   await page.getByRole("button", { name: /Add to workspace/i }).click();
 
-  // The clear-source action now lives in the page header (top-right), no longer
-  // inside the Workspace Snapshot block.
-  const clearSource = main(page).getByRole("button", { name: /Clear source/i });
+  // The clear-source action lives in the source hub panel header (top-right).
+  const clearSource = page
+    .getByRole("region", { name: "Source Acquisition" })
+    .getByRole("button", { name: /Clear source/i });
   await expect(clearSource).toBeVisible();
   await stepShot(page, "upload-source", "after");
   return clearSource;
@@ -108,7 +113,7 @@ export async function runEvaluate(page: Page) {
   await openPort(page, "Reproducibility Readiness");
   await expect(main(page).getByText("Reproducibility Readiness", { exact: true })).toBeVisible();
   await main(page)
-    .getByRole("button", { name: /^Play Run Evaluate$/ })
+    .getByRole("button", { name: /^Run Evaluate$/ })
     .click();
   await expect(main(page).getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible({
     timeout: 20000,
@@ -170,14 +175,13 @@ export async function provideHbom(page: Page, cpuModel: string) {
 export async function generateSbom(page: Page) {
   await stepShot(page, "generate-sbom", "before");
   await openPort(page, "SBOM");
-  await expect(main(page).getByText("Scan Target", { exact: true })).toBeVisible();
-  await main(page)
-    .getByRole("button", { name: /Generate SBOM/ })
-    .click();
-  await expect(main(page).getByRole("button", { name: /Regenerate SBOM/ })).toBeVisible({
+  const panel = page.getByRole("region", { name: "Generate SBOM" });
+  await expect(panel.getByRole("button", { name: /^Generate$/ })).toBeVisible();
+  await panel.getByRole("button", { name: /^Generate$/ }).click();
+  await expect(panel.getByRole("button", { name: /^Regenerate$/ })).toBeVisible({
     timeout: 20000,
   });
-  await expect(main(page).getByText("SBOM ready", { exact: true }).first()).toBeVisible({
+  await expect(panel.getByText("SBOM ready", { exact: true }).first()).toBeVisible({
     timeout: 20000,
   });
   await stepShot(page, "generate-sbom", "after");
@@ -220,9 +224,7 @@ export async function runExperiment(
     .first();
   await outputsCard.getByRole("button", { name: /Add/ }).first().click();
   await main(page).getByPlaceholder("PASSED").first().fill(experiment.expectedStdout);
-  await main(page)
-    .getByRole("button", { name: /^Play Run$/ })
-    .click();
+  await main(page).getByRole("button", { name: /^Run$/ }).click();
   const runResult = main(page)
     .locator("div")
     .filter({ hasText: /^Run result/ })

@@ -1,6 +1,6 @@
-import type { SourceRepoMetadata } from "../../../../../core/workspace/WorkspaceTypes";
-import { lgColors, lgStyles } from "../../../theme/lightGlassTheme";
-import { F } from "../../../theme/theme";
+import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import { lgColors, lgStyles } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 import { SummaryLine } from "../../components/SummaryLine";
 
 interface Step3Props {

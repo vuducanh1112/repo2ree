@@ -1,5 +1,5 @@
+import type { ReeFile } from "@core/ree/ReeTypes";
 import { useMemo } from "react";
-import type { ReeFile } from "../../../../../core/ree/ReeTypes";
 import { buildReeFileTree, flattenTreeWithPaths } from "./filesPageHelpers";
 
 export function useReeFileTree(reeFiles: ReeFile[]) {

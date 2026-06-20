@@ -1,13 +1,13 @@
-import { useEffect, useState } from "react";
 import {
   type BuildScriptMode,
   type BuildScriptSource,
   modeForSource,
   sourceAfterGenerate,
   sourceAfterSave,
-} from "../../../../../../core/ree-assembly/buildRuntimeUiState";
-import type { FileTreeNode } from "../../../../../../core/workspace/FileTree";
-import { Ic } from "../../../../shared/components/Icon";
+} from "@core/ree-assembly/buildRuntimeUiState";
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import { FilePicker } from "@shell/ui/app-shell/components/scriptAndFile";
+import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
   lgContentCard,
@@ -15,9 +15,9 @@ import {
   lgInput,
   lgPrimaryActionButton,
   lgStyles,
-} from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
-import { FilePicker } from "../../../components/scriptAndFile";
+} from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
+import { useEffect, useState } from "react";
 import { defaultScriptTemplates, findFileByPath } from "../../sharedAssemblyHelpers";
 import { BASE_HINTS } from "./buildScriptBaseHints";
 import { BaseChip, ModeSegmentedControl, ProvenanceChip } from "./buildScriptUiPrimitives";

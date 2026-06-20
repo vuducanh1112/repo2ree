@@ -1,5 +1,5 @@
+import type { LogEntry } from "@core/ree/ReeTypes";
 import { useEffect, useState } from "react";
-import type { LogEntry } from "../../../../core/ree/ReeTypes";
 import { Ic } from "../../shared/components/Icon";
 import { lgColors, lgContentCard, lgStyles } from "../../theme/lightGlassTheme";
 import { LogPanel } from "./logPanel";

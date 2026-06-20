@@ -1,138 +1,80 @@
-import { useRef, useState } from "react";
-import { Ic } from "../../../shared/components/Icon";
-import { C, F, hoverBrightness, hoverIf, S_SOURCE_URL_STATUS_BASE } from "../../../theme/theme";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { C, F, S_SOURCE_URL_STATUS_BASE } from "@shell/ui/theme/theme";
 import { inp } from "./shared";
 
 interface SourceUrlFieldProps {
   locked: boolean;
-  committedValue: string;
-  onCommit: (value: string) => void;
+  /** Live URL value, owned by the parent so a single Download button can act on it. */
+  value: string;
+  /** Previously committed origin, used to warn that a change resets downstream results. */
+  priorValue?: string;
+  onChange: (value: string) => void;
   onFocus?: () => void;
 }
-export function SourceUrlField({ locked, committedValue, onCommit, onFocus }: SourceUrlFieldProps) {
-  const [draft, setDraft] = useState(committedValue || "");
-  const [checkState, setCheckState] = useState<"idle" | "checking" | "reachable" | "unreachable">(
-    "idle",
-  );
-  const [checkedFor, setCheckedFor] = useState<string>("");
 
-  const prevCommitted = useRef<string | undefined>(committedValue);
-  if (prevCommitted.current !== committedValue) {
-    prevCommitted.current = committedValue;
-    setDraft(committedValue || "");
-    if ((committedValue || "") !== checkedFor) {
-      setCheckState("idle");
-      setCheckedFor("");
-    }
-  }
+const URL_PATTERN = /^https?:\/\/[^\s]+$/i;
 
-  const isDirty = draft.trim() !== (committedValue || "").trim();
+export function isLikelySourceUrl(value: string): boolean {
+  return URL_PATTERN.test(value.trim());
+}
 
-  const handleCheckReachable = async () => {
-    const candidate = draft.trim();
-    if (!candidate) return;
-    setCheckState("checking");
-    setCheckedFor(candidate);
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    const reachable = /^https?:\/\/[^\s]+$/i.test(candidate);
-    setCheckState(reachable ? "reachable" : "unreachable");
-    if (reachable) onCommit(candidate);
-  };
+// Plain controlled input — no separate "check reachable" step. Reachability is
+// validated as part of the single Download action in the parent, so typing a URL
+// and pressing Download is the whole flow.
+export function SourceUrlField({
+  locked,
+  value,
+  priorValue,
+  onChange,
+  onFocus,
+}: SourceUrlFieldProps) {
+  const trimmed = value.trim();
+  const valid = isLikelySourceUrl(value);
+  const prior = (priorValue || "").trim();
+  const changesPrior = !!prior && trimmed !== prior;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "stretch",
-        }}
-      >
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ flex: 1, position: "relative" }}>
         <div
           style={{
-            flex: 1,
-            position: "relative",
+            position: "absolute",
+            left: 10,
+            top: "50%",
+            transform: "translateY(-50%)",
+            color: C.textMuted,
+            pointerEvents: "none",
           }}
         >
-          <div
-            style={{
-              position: "absolute",
-              left: 10,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: C.textMuted,
-              pointerEvents: "none",
-            }}
-          >
-            {Ic.link()}
-          </div>
-          <input
-            disabled={locked}
-            value={draft}
-            onChange={(event) => {
-              const next = event.target.value;
-              setDraft(next);
-              if (!next.trim()) {
-                onCommit("");
-              }
-              if (checkedFor && next.trim() !== checkedFor) {
-                setCheckState("idle");
-                setCheckedFor("");
-              }
-            }}
-            onFocus={onFocus}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && draft.trim()) handleCheckReachable();
-            }}
-            placeholder="https://github.com/org/repo"
-            style={{
-              ...inp(locked),
-              paddingLeft: 32,
-              borderColor: isDirty ? "#f59e0b" : undefined,
-            }}
-          />
+          {Ic.link()}
         </div>
-        <button
-          type="button"
-          onClick={handleCheckReachable}
-          disabled={locked || !draft.trim() || checkState === "checking"}
+        <input
+          disabled={locked}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onFocus={onFocus}
+          placeholder="https://github.com/org/repo"
           style={{
-            ...{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "7px 13px",
-              borderRadius: 7,
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: F.sans,
-              flexShrink: 0,
-              transition: "all 0.15s",
-              whiteSpace: "nowrap",
-            },
-            cursor: locked || !draft.trim() || checkState === "checking" ? "default" : "pointer",
-            border: `1.5px solid ${draft.trim() ? C.accentBorder : C.border}`,
-            background: draft.trim() ? C.accentBg : C.surfaceAlt,
-            color: draft.trim() ? C.accent : C.textMuted,
-            opacity: locked ? 0.5 : 1,
+            ...inp(locked),
+            paddingLeft: 32,
+            borderColor: trimmed && !valid ? "#f59e0b" : undefined,
           }}
-          {...hoverIf(!locked && !!draft.trim() && checkState !== "checking", hoverBrightness(96))}
-        >
-          {checkState === "checking" ? Ic.loader(13) : Ic.link(13)} Check reachable
-        </button>
+        />
       </div>
-      {isDirty && draft.trim() && (
+
+      {changesPrior && (
         <div style={{ ...S_SOURCE_URL_STATUS_BASE, color: "#92400e" }}>
           {Ic.info(10)} Setting a new source will reset all downstream results.
         </div>
       )}
-      {committedValue && !isDirty && (
+
+      {trimmed && !valid && (
+        <div style={{ ...S_SOURCE_URL_STATUS_BASE, color: "#b45309" }}>
+          {Ic.info(10)} Enter a full http(s) URL.
+        </div>
+      )}
+
+      {valid && !changesPrior && (
         <div
           style={{
             display: "flex",
@@ -144,25 +86,9 @@ export function SourceUrlField({ locked, committedValue, onCommit, onFocus }: So
           }}
         >
           {Ic.check(10)}
-          <span
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {committedValue}
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {trimmed}
           </span>
-        </div>
-      )}
-      {checkState === "reachable" && checkedFor === draft.trim() && (
-        <div style={{ ...S_SOURCE_URL_STATUS_BASE, color: "#15803d" }}>
-          {Ic.check(10)} URL reachable
-        </div>
-      )}
-      {checkState === "unreachable" && checkedFor === draft.trim() && (
-        <div style={{ ...S_SOURCE_URL_STATUS_BASE, color: "#b45309" }}>
-          {Ic.info(10)} URL not reachable (or invalid format)
         </div>
       )}
     </div>

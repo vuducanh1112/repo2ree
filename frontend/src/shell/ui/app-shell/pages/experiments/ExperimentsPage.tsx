@@ -1,18 +1,18 @@
-import { useState } from "react";
 import {
   addExperiment as coreAddExperiment,
   removeExperiment as coreRemoveExperiment,
   patchExperiment,
-} from "../../../../../core/ree/experimentOps";
-import type { ReeExperiment, ReeSpec } from "../../../../../core/ree/ReeSpec";
-import { Ic } from "../../../shared/components/Icon";
+} from "@core/ree/experimentOps";
+import type { ReeExperiment, ReeSpec } from "@core/ree/ReeSpec";
+import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
   lgGlassButton,
   lgNextButton,
   lgStatusBadge,
   lgStyles,
-} from "../../../theme/lightGlassTheme";
+} from "@shell/ui/theme/lightGlassTheme";
+import { useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { PAGE } from "../../state/pages";
 import type { PageExperimentsProps } from "../sharedAssemblyUi";

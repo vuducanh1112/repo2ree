@@ -1,5 +1,5 @@
+import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LogEntry, LogLine } from "../../../../core/ree/ReeTypes";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import {

@@ -1,5 +1,5 @@
-import { Ic } from "../../../shared/components/Icon";
-import { C, F, hoverColor } from "../../../theme/theme";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { C, F, hoverColor } from "@shell/ui/theme/theme";
 import { CodeLineList, PREVIEW_LINES } from "./shared";
 export function FilePickerWarning(props: {
   notFound: boolean;

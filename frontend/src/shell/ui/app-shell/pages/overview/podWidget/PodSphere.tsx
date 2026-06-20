@@ -1,6 +1,6 @@
-import { axisFraction, axisStandings, bottleneckAxis } from "../../../../../../core/evaluate/axes";
-import type { EvaluationState } from "../../../../../../core/evaluate/EvaluationState";
-import { F } from "../../../../theme/theme";
+import { axisFraction, axisStandings, bottleneckAxis } from "@core/evaluate/axes";
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import { F } from "@shell/ui/theme/theme";
 import { PodBolt } from "./PodBolt";
 import { PodBoltRing } from "./PodBoltRing";
 import { PodShellCore } from "./PodShellCore";

@@ -1,13 +1,13 @@
-import type React from "react";
-import { useEffect, useRef, useState } from "react";
 import {
   draftFromHBOM,
   type HardwareBomDraft,
   hbomFromDraft,
   hbomSyncKey,
-} from "../../../../core/hbom/hardwareBomDraft";
-import type { ReeSpec } from "../../../../core/ree/ReeSpec";
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
+} from "@core/hbom/hardwareBomDraft";
+import type { ReeSpec } from "@core/ree/ReeSpec";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface UseHardwareBomDraftArgs {
   ree: ReeEditorViewModel;

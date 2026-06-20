@@ -1,10 +1,7 @@
+import type { ExecutionRun } from "@core/execution/ExecutionRun";
+import type { LogEntry } from "@core/ree/ReeTypes";
+import { useExecutionRunLogsQuery, useExecutionRunQuery } from "@shell/data/execution-runs/queries";
 import { type CSSProperties, type ReactNode, useMemo } from "react";
-import type { ExecutionRun } from "../../../../../core/execution/ExecutionRun";
-import type { LogEntry } from "../../../../../core/ree/ReeTypes";
-import {
-  useExecutionRunLogsQuery,
-  useExecutionRunQuery,
-} from "../../../../data/execution-runs/queries";
 import type { useAppShell } from "../../hooks/useAppShell";
 
 export type AppShellController = ReturnType<typeof useAppShell>;

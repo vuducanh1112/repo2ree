@@ -1,5 +1,5 @@
-import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
-import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
+import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 
 export interface ReeSessionState {
   workspaceSourceState: WorkspaceSourceState;

@@ -1,360 +1,40 @@
-import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { ExecutionRunStatus } from "../../../../../core/execution/ExecutionRunStatus";
-import type {
-  ExperimentOutputResult,
-  ExperimentRunOutputs,
-} from "../../../../../core/execution/ExperimentRun";
+import type { ExecutionRunStatus } from "@core/execution/ExecutionRunStatus";
+import type { ExperimentOutputResult, ExperimentRunOutputs } from "@core/execution/ExperimentRun";
 import type {
   ExpectedOutput,
   ExperimentResourceEstimates,
   OutputMatch,
   OutputSource,
   ReeExperiment,
-} from "../../../../../core/ree/ReeSpec";
-import type { LogEntry, LogLine } from "../../../../../core/ree/ReeTypes";
-import { useApiRuntime } from "../../../../data/apiRuntime";
-import { useExecutionRunsClient } from "../../../../data/execution-runs/client";
-import { Ic } from "../../../shared/components/Icon";
+} from "@core/ree/ReeSpec";
+import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
+import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useExecutionRunsClient } from "@shell/data/execution-runs/client";
+import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgActionButton,
   lgColors,
-  lgContentCard,
   lgGlassButton,
   lgInput,
   lgNextButton,
   lgStyles,
-  lgSuggestionButton,
-} from "../../../theme/lightGlassTheme";
-import { F } from "../../../theme/theme";
+} from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LogPanel } from "../../components/logPanel";
+import { RunActionButton } from "../../components/RunActionButton";
 import { expId, isValidExperimentName } from "./experimentsPageHelpers";
 
-export interface ExperimentSuggestion {
-  name: string;
-  description: string;
-  command: string;
-}
-
-const EXPERIMENT_SUGGESTIONS: ExperimentSuggestion[] = [
-  {
-    name: "pytest",
-    description: "Run the project's pytest suite.",
-    command: "pytest -q",
-  },
-  {
-    name: "import-smoke",
-    description: "Import the main package to verify install.",
-    command: 'python -c "import {{package}}"',
-  },
-  {
-    name: "make-test",
-    description: "Invoke the project's Makefile test target.",
-    command: "make test",
-  },
-  {
-    name: "run-script",
-    description: "Execute the project's main entry script.",
-    command: "bash run.sh",
-  },
-];
-
-function hasResourceEstimates(estimates: ExperimentResourceEstimates): boolean {
-  return Object.values(estimates).some((value) => value.trim() !== "");
-}
-
-// ================================================
-// Catalog (cards)
-// ================================================
-
-export function ExperimentCardList({
-  experiments,
-  locked,
-  onSelect,
-  onAdd,
-  onRemove,
-}: {
-  experiments: ReeExperiment[];
-  locked: boolean;
-  onSelect: (index: number) => void;
-  onAdd: () => void;
-  onRemove: (index: number) => void;
-}) {
-  if (experiments.length === 0) {
-    return <ExperimentEmptyState locked={locked} onAdd={onAdd} />;
-  }
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {experiments.map((exp, index) => (
-        <ExperimentCard
-          key={`exp-${String(index)}`}
-          experiment={exp}
-          index={index}
-          locked={locked}
-          onSelect={() => onSelect(index)}
-          onRemove={() => onRemove(index)}
-        />
-      ))}
-    </div>
-  );
-}
-
-function ExperimentCard({
-  experiment,
-  index,
-  locked,
-  onSelect,
-  onRemove,
-}: {
-  experiment: ReeExperiment;
-  index: number;
-  locked: boolean;
-  onSelect: () => void;
-  onRemove: () => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  const name = experiment.name.trim();
-  const command = experiment.command.trim();
-  const description = experiment.description.trim();
-  const outputCount = experiment.outputs?.length ?? 0;
-  const runtimeEstimate = experiment.runtime_estimate.trim();
-  const hasResources = hasResourceEstimates(experiment.resource_estimates);
-
-  return (
-    <div
-      style={{
-        border: hovered
-          ? "1px solid rgba(14, 165, 233, 0.55)"
-          : "1px solid rgba(125, 211, 252, 0.42)",
-        borderRadius: 11,
-        background: "rgba(255, 255, 255, 0.7)",
-        boxShadow: hovered
-          ? "0 14px 30px rgba(14, 165, 233, 0.16)"
-          : "0 6px 16px rgba(15, 23, 42, 0.05)",
-        transition: "border-color 0.15s, box-shadow 0.15s",
-        overflow: "hidden",
-      }}
-    >
-      <button
-        type="button"
-        onClick={onSelect}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        onFocus={() => setHovered(true)}
-        onBlur={() => setHovered(false)}
-        style={{
-          width: "100%",
-          textAlign: "left",
-          background: "transparent",
-          border: "none",
-          padding: "14px 16px 12px",
-          cursor: "pointer",
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: F.mono,
-              fontSize: 10,
-              fontWeight: 800,
-              letterSpacing: "0.08em",
-              color: lgColors.cyan,
-              border: "1px solid rgba(14, 165, 233, 0.32)",
-              background: "rgba(240, 249, 255, 0.85)",
-              borderRadius: 6,
-              padding: "2px 7px",
-            }}
-          >
-            {expId(index)}
-          </span>
-          <h3
-            style={{
-              margin: 0,
-              fontSize: 15,
-              fontWeight: 700,
-              color: name ? lgColors.text : lgColors.textMuted,
-              fontStyle: name ? "normal" : "italic",
-              flex: 1,
-              minWidth: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {name || "untitled experiment"}
-          </h3>
-          {outputCount > 0 && (
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: lgColors.success,
-                background: "rgba(220, 252, 231, 0.85)",
-                border: "1px solid rgba(34, 197, 94, 0.35)",
-                borderRadius: 99,
-                padding: "2px 7px",
-              }}
-            >
-              {outputCount} {outputCount === 1 ? "output" : "outputs"}
-            </span>
-          )}
-          {runtimeEstimate && (
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: lgColors.blue,
-                background: "rgba(238, 242, 255, 0.88)",
-                border: "1px solid rgba(79, 70, 229, 0.28)",
-                borderRadius: 99,
-                padding: "2px 7px",
-              }}
-            >
-              ~ {runtimeEstimate}
-            </span>
-          )}
-          {hasResources && (
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: lgColors.cyan,
-                background: "rgba(240, 249, 255, 0.88)",
-                border: "1px solid rgba(14, 165, 233, 0.28)",
-                borderRadius: 99,
-                padding: "2px 7px",
-              }}
-            >
-              resources
-            </span>
-          )}
-          <span
-            style={{
-              color: hovered ? lgColors.blue : lgColors.textMuted,
-              display: "flex",
-              transition: "color 0.15s",
-            }}
-          >
-            {Ic.chevR(15)}
-          </span>
-        </div>
-
-        <div
-          style={{
-            fontFamily: F.mono,
-            fontSize: 12,
-            color: command ? lgColors.textMid : lgColors.textMuted,
-            background: "rgba(248, 250, 252, 0.78)",
-            border: "1px solid rgba(148, 163, 184, 0.28)",
-            borderRadius: 7,
-            padding: "7px 10px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            opacity: command ? 1 : 0.7,
-          }}
-        >
-          {command || "no command set"}
-        </div>
-
-        {description && (
-          <div
-            style={{
-              fontSize: 12,
-              color: lgColors.textMid,
-              lineHeight: 1.45,
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
-            {description}
-          </div>
-        )}
-      </button>
-
-      {!locked && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            padding: "0 12px 10px",
-          }}
-        >
-          <button
-            type="button"
-            onClick={onRemove}
-            style={{
-              ...lgActionButton("danger"),
-              width: "auto",
-              padding: "4px 10px",
-              fontSize: 11,
-              fontWeight: 700,
-              gap: 5,
-            }}
-          >
-            {Ic.x(11)} Delete
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ExperimentEmptyState({ locked, onAdd }: { locked: boolean; onAdd: () => void }) {
-  return (
-    <div
-      style={{
-        ...lgContentCard(0),
-        padding: "40px 24px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 12,
-        textAlign: "center",
-      }}
-    >
-      <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.terminal(28)}</span>
-      <div style={{ fontSize: 14, fontWeight: 700, color: lgColors.text }}>No experiments yet</div>
-      <div
-        style={{
-          fontSize: 12,
-          color: lgColors.textMid,
-          maxWidth: 320,
-          lineHeight: 1.5,
-        }}
-      >
-        Add a verification command and the assembled REE will be checked against it.
-      </div>
-      {!locked && (
-        <button
-          type="button"
-          onClick={onAdd}
-          style={{
-            ...lgGlassButton(),
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            marginTop: 4,
-          }}
-        >
-          {Ic.plus(13)} Add experiment
-        </button>
-      )}
-    </div>
-  );
-}
+// The experiments page is composed from three modules; re-exported here so the
+// page keeps a single import surface.
+export { ExperimentCardList } from "./ExperimentCardList";
+export {
+  type ExperimentSuggestion,
+  ExperimentsAboutAside,
+  ExperimentsCoverageAside,
+  ExperimentsSuggestionsAside,
+} from "./ExperimentsAsides";
 
 // ================================================
 // Detail view
@@ -707,11 +387,12 @@ function DetailBreadcrumb({
         {expId(index)}
       </span>
       <span style={{ flex: 1 }} />
-      <button
-        type="button"
+      <RunActionButton
+        label={isRunning ? "Running…" : "Run"}
+        running={isRunning}
         disabled={!canRun || isRunning}
+        iconSize={12}
         title={runTitle}
-        onClick={onRun}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -727,10 +408,8 @@ function DetailBreadcrumb({
           cursor: canRun && !isRunning ? "pointer" : "not-allowed",
           opacity: canRun && !isRunning ? 1 : 0.45,
         }}
-      >
-        {isRunning ? Ic.loader(12) : Ic.play(12)}
-        {isRunning ? "Running…" : "Run"}
-      </button>
+        onRun={onRun}
+      />
       <button
         type="button"
         disabled={!canSnapshot || isRunning}
@@ -1244,162 +923,3 @@ function OutputRow({
 // ================================================
 // Aside cards
 // ================================================
-
-export function ExperimentsCoverageAside({
-  total,
-  withName,
-  withCommand,
-  withDescription,
-  withOutputs,
-  withRuntimeEstimate,
-  withResourceEstimates,
-}: {
-  total: number;
-  withName: number;
-  withCommand: number;
-  withDescription: number;
-  withOutputs: number;
-  withRuntimeEstimate: number;
-  withResourceEstimates: number;
-}) {
-  const incomplete = total - Math.min(withName, withCommand, withOutputs);
-  const allComplete = total > 0 && incomplete === 0;
-  return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.layers(18)}</span>
-        <h3 style={{ margin: 0, fontSize: 14, color: lgColors.text }}>Coverage</h3>
-      </div>
-      {total === 0 ? (
-        <div style={{ fontSize: 12, color: lgColors.textMid, lineHeight: 1.5 }}>
-          No experiments yet. Add one to start tracking coverage.
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <CoverageRow label="Experiments" value={total} total={total} />
-          <CoverageRow label="With name" value={withName} total={total} />
-          <CoverageRow label="With command" value={withCommand} total={total} />
-          <CoverageRow label="With description" value={withDescription} total={total} />
-          <CoverageRow label="With outputs" value={withOutputs} total={total} />
-          <CoverageRow label="With runtime est." value={withRuntimeEstimate} total={total} />
-          <CoverageRow label="With resource est." value={withResourceEstimates} total={total} />
-          {!allComplete && (
-            <div
-              style={{
-                marginTop: 4,
-                fontSize: 11,
-                color: lgColors.warning,
-                background: "rgba(254, 249, 195, 0.7)",
-                border: "1px solid rgba(245, 158, 11, 0.45)",
-                borderRadius: 7,
-                padding: "6px 9px",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <span style={{ display: "flex" }}>{Ic.info(12)}</span>
-              {incomplete} still need the core runnable fields or expected outputs.
-            </div>
-          )}
-          {allComplete && (
-            <div
-              style={{
-                marginTop: 4,
-                fontSize: 11,
-                color: lgColors.success,
-                background: "rgba(220, 252, 231, 0.78)",
-                border: "1px solid rgba(34, 197, 94, 0.42)",
-                borderRadius: 7,
-                padding: "6px 9px",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <span style={{ display: "flex" }}>{Ic.check(12)}</span>
-              All experiments are complete.
-            </div>
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function CoverageRow({ label, value, total }: { label: string; value: number; total: number }) {
-  const pct = total === 0 ? 0 : Math.round((value / total) * 100);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: 11,
-          color: lgColors.textMid,
-        }}
-      >
-        <span>{label}</span>
-        <span style={{ fontFamily: F.mono, color: lgColors.text, fontWeight: 700 }}>
-          {value}/{total}
-        </span>
-      </div>
-      <div style={lgStyles.progressTrack}>
-        <div style={{ ...lgStyles.progressFill, width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-export function ExperimentsSuggestionsAside({
-  locked,
-  onAdd,
-}: {
-  locked: boolean;
-  onAdd: (suggestion: ExperimentSuggestion) => void;
-}) {
-  return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.plus(18)}</span>
-        <h3 style={{ margin: 0, fontSize: 14, color: lgColors.text }}>Quick add</h3>
-      </div>
-      <div style={{ fontSize: 11, color: lgColors.textMuted, marginBottom: 10 }}>
-        Common verifications — click to add a prefilled experiment.
-      </div>
-      <div style={lgStyles.suggestionWrap}>
-        {EXPERIMENT_SUGGESTIONS.map((suggestion) => (
-          <button
-            key={suggestion.name}
-            type="button"
-            disabled={locked}
-            onClick={() => onAdd(suggestion)}
-            title={suggestion.command}
-            style={{
-              ...lgSuggestionButton(),
-              opacity: locked ? 0.5 : 1,
-              cursor: locked ? "not-allowed" : "pointer",
-            }}
-          >
-            {suggestion.name}
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export function ExperimentsAboutAside() {
-  return (
-    <section style={{ ...lgStyles.panel, padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.info(18)}</span>
-        <h3 style={{ margin: 0, fontSize: 14, color: lgColors.text }}>About experiments</h3>
-      </div>
-      <div style={{ fontSize: 12, color: lgColors.textMid, lineHeight: 1.5 }}>
-        Experiments are run inside the assembled REE to confirm it reproduces the expected outputs.
-        Runtime and resource estimates help future users plan how expensive those checks will be.
-      </div>
-    </section>
-  );
-}

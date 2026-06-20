@@ -6,7 +6,9 @@ import { AppShellContent } from "./AppShellContent";
 import { CanvasHub } from "./canvas/CanvasHub";
 import { activeNode } from "./canvas/canvasNodes";
 import { FocusDock } from "./canvas/FocusDock";
+import { SbomHubPanel } from "./canvas/SbomHubPanel";
 import { SealHubPanel } from "./canvas/SealHubPanel";
+import { SourceHubPanel } from "./canvas/SourceHubPanel";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
 import { useAppShell } from "./hooks/useAppShell";
 import { AppShellProvider } from "./providers/AppShellProvider";
@@ -41,10 +43,13 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   const { badges } = assemblyRun;
   const { toast } = uiChrome;
   const page = uiChrome.page;
-  // The constellation (pod hub) is the home view. Seal lives inside the hub as a
-  // pinned panel; every other page docks beside the pod.
+  // The constellation (pod hub) is the home view. Seal and the one-press SBOM
+  // step live inside the hub as compact floating panels; every other page docks
+  // beside the pod.
   const sealOpen = page === PAGE.SEAL;
-  const dockOpen = page !== PAGE.OVERVIEW && !sealOpen;
+  const sbomOpen = page === PAGE.SBOM;
+  const sourceOpen = page === PAGE.SOURCE;
+  const dockOpen = page !== PAGE.OVERVIEW && !sealOpen && !sbomOpen && !sourceOpen;
 
   // Screen rect of the canvas panel that opened the dock, so the edit view can
   // grow out of the panel the user clicked instead of feeling like a new page.
@@ -173,6 +178,28 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
               sealLog={sealLog}
             />
           </FocusDock>
+        )}
+
+        {sourceOpen && (
+          <SourceHubPanel
+            ree={ree}
+            workspaceRemote={workspaceRemote}
+            assemblyRun={assemblyRun}
+            uiChrome={uiChrome}
+            commands={commands}
+            onClose={() => commands.setPage(PAGE.OVERVIEW)}
+          />
+        )}
+
+        {sbomOpen && (
+          <SbomHubPanel
+            ree={ree}
+            workspaceRemote={workspaceRemote}
+            assemblyRun={assemblyRun}
+            uiChrome={uiChrome}
+            commands={commands}
+            onClose={() => commands.setPage(PAGE.OVERVIEW)}
+          />
         )}
 
         {sealOpen && (

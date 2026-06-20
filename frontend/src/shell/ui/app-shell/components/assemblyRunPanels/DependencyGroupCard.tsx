@@ -1,7 +1,7 @@
-import type { DepGroup } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
-import { ECO_META, PIN_META } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
-import { Ic } from "../../../shared/components/Icon";
-import { C, F, hoverBg, S_SECTION_LABEL } from "../../../theme/theme";
+import type { DepGroup } from "@core/ree-assembly/assemblyDependencyAnalysis";
+import { ECO_META, PIN_META } from "@core/ree-assembly/assemblyDependencyAnalysis";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { C, F, hoverBg, S_SECTION_LABEL } from "@shell/ui/theme/theme";
 
 interface DependencyGroupCardProps {
   group: DepGroup;

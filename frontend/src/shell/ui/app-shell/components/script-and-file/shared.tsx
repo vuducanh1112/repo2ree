@@ -1,4 +1,4 @@
-import { C, F } from "../../../theme/theme";
+import { C, F } from "@shell/ui/theme/theme";
 
 interface FileTypeStyle {
   color: string;

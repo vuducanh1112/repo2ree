@@ -1,17 +1,17 @@
-import type { QueryClient } from "@tanstack/react-query";
-import type { ExecutionRun } from "../../../../core/execution/ExecutionRun";
-import type { RawReeIntentSlices } from "../../../../core/ree/mapRawReeIntent";
-import type { LogEntry, ReeFile } from "../../../../core/ree/ReeTypes";
+import type { ExecutionRun } from "@core/execution/ExecutionRun";
+import type { RawReeIntentSlices } from "@core/ree/mapRawReeIntent";
+import type { LogEntry, ReeFile } from "@core/ree/ReeTypes";
 import type {
   AssemblyCommand,
   AssemblyCommandPlannerMap,
-} from "../../../../core/ree-assembly/assemblyCommands";
-import type { GenericReeAssemblyParams } from "../../../../core/ree-assembly/assemblyStepTypes";
-import { executeAssemblyRun } from "../../../../core/ree-assembly/executeAssemblyRun";
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import type { FileTreeNode } from "../../../../core/workspace/FileTree";
-import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
-import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
+} from "@core/ree-assembly/assemblyCommands";
+import type { GenericReeAssemblyParams } from "@core/ree-assembly/assemblyStepTypes";
+import { executeAssemblyRun } from "@core/ree-assembly/executeAssemblyRun";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import type { AppShellRuntimePorts } from "@shell/app/bootstrap/ports";
+import type { ExecutionRunsClient } from "@shell/data/execution-runs/client";
+import type { QueryClient } from "@tanstack/react-query";
 import type { ShowToast } from "../types";
 import { executeAssemblyCommands, type ReeEditorDispatch } from "./assemblyActionEffects";
 import { pollExecutionRun } from "./pollExecutionRun";

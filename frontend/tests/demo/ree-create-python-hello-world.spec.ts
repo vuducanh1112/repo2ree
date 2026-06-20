@@ -179,8 +179,10 @@ test("upload source archive into workspace", async ({ page }) => {
     ),
   ];
   const main = page.getByRole("main");
-  // Clear-source action moved to the page header (top-right) during the canvas redesign.
-  const clearSourceButton = main.getByRole("button", { name: /Clear source/i });
+  // Source acquisition is now a floating hub panel (role=region), not a docked
+  // page; its Clear-source action lives in that panel's header.
+  const sourcePanel = page.getByRole("region", { name: "Source Acquisition" });
+  const clearSourceButton = sourcePanel.getByRole("button", { name: /Clear source/i });
 
   await demoStep(page, "Open REE creation flow", async () => {
     await page.goto("/");
@@ -201,7 +203,9 @@ test("upload source archive into workspace", async ({ page }) => {
     await page.keyboard.press("Escape").catch(() => {});
     await page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }).click();
     await expect(
-      page.getByRole("main").getByText("Source Acquisition", { exact: true }),
+      page.getByRole("region", { name: "Source Acquisition" }).getByText("Source Acquisition", {
+        exact: true,
+      }),
     ).toBeVisible();
   });
 
@@ -325,7 +329,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(main.getByText("Reproducibility Readiness", { exact: true })).toBeVisible();
     await clickDemo(
       page,
-      main.getByRole("button", { name: /^Play Run Evaluate$/ }),
+      main.getByRole("button", { name: /^Run Evaluate$/ }),
       "Run evaluation to obtain reproducibility score",
     );
     await expect(main.getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible({
@@ -380,15 +384,15 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("navigation").getByRole("button", { name: "SBOM", exact: true }),
       "Open SBOM page",
     );
-    await expect(main.getByText("Scan Target", { exact: true })).toBeVisible();
-    await clickDemo(page, main.getByRole("button", { name: /Generate SBOM/ }), "Run SBOM scan");
-    await expect(main.getByRole("button", { name: /Regenerate SBOM/ })).toBeVisible({
+    const sbomPanel = page.getByRole("region", { name: "Generate SBOM" });
+    await clickDemo(page, sbomPanel.getByRole("button", { name: /^Generate$/ }), "Run SBOM scan");
+    await expect(sbomPanel.getByRole("button", { name: /^Regenerate$/ })).toBeVisible({
       timeout: 60000,
     });
-    await expect(main.getByText("SBOM ready", { exact: true }).first()).toBeVisible({
+    await expect(sbomPanel.getByText("SBOM ready", { exact: true }).first()).toBeVisible({
       timeout: 60000,
     });
-    await showcasePanel(page, main.getByText(/SBOM log/i).first(), "Review SBOM logs");
+    await showcasePanel(page, sbomPanel.getByText(/SBOM log/i).first(), "Review SBOM logs");
   });
 
   //console.log("SBOM generated, proceeding to activation test...");
@@ -451,7 +455,7 @@ test("upload source archive into workspace", async ({ page }) => {
       "hello",
       "Require stdout to contain 'hello'",
     );
-    await clickDemo(page, main.getByRole("button", { name: /^Play Run$/ }), "Run the experiment");
+    await clickDemo(page, main.getByRole("button", { name: /^Run$/ }), "Run the experiment");
     await page.waitForTimeout(5000);
     await showcaseScroll(page, 800);
     await showcaseScroll(page, 800);

@@ -1,10 +1,10 @@
-import type { ReeId } from "../../../../core/ree/ReeId";
+import type { ReeId } from "@core/ree/ReeId";
 import {
   planReeArchiveDownload,
   planWorkspaceFileDownload,
-} from "../../../../core/workspace/workspaceFileMutationPlanning";
-import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
-import { useReeClient } from "../../../data/ree/client";
+} from "@core/workspace/workspaceFileMutationPlanning";
+import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
+import { useReeClient } from "@shell/data/ree/client";
 import type { ShowToast } from "../types";
 
 interface UseReeDownloadsArgs {

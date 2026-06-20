@@ -1,5 +1,5 @@
-import type { ExecutionRunLogs } from "../../../../../core/ree/ReeTypes";
-import { useApiRuntime } from "../../../../data/apiRuntime";
+import type { ExecutionRunLogs } from "@core/ree/ReeTypes";
+import { useApiRuntime } from "@shell/data/apiRuntime";
 import { PAGE } from "../../state/pages";
 import { PageArchive as ArchivePage } from "../archive/ArchivePage";
 import { type AppShellPageContainerProps, ContentSection, useAssemblyRunLogEntry } from "./shared";

@@ -1,18 +1,18 @@
-import type { QueryClient } from "@tanstack/react-query";
-import type { ExecutionRun } from "../../../../core/execution/ExecutionRun";
-import type { RawReeIntentSlices } from "../../../../core/ree/mapRawReeIntent";
-import type { LogEntry, ReeFile } from "../../../../core/ree/ReeTypes";
-import type { AssemblyCommandPlannerMap } from "../../../../core/ree-assembly/assemblyCommands";
-import { isReeAssemblyOperationKey } from "../../../../core/ree-assembly/assemblyPolicies";
-import type { GenericReeAssemblyParams } from "../../../../core/ree-assembly/assemblyStepTypes";
+import type { ExecutionRun } from "@core/execution/ExecutionRun";
+import type { RawReeIntentSlices } from "@core/ree/mapRawReeIntent";
+import type { LogEntry, ReeFile } from "@core/ree/ReeTypes";
+import type { AssemblyCommandPlannerMap } from "@core/ree-assembly/assemblyCommands";
+import { isReeAssemblyOperationKey } from "@core/ree-assembly/assemblyPolicies";
+import type { GenericReeAssemblyParams } from "@core/ree-assembly/assemblyStepTypes";
 import type {
   ReeAssemblyOperationKey,
   ReeAssemblyRunParams,
-} from "../../../../core/ree-assembly/assemblyTypes";
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import type { FileTreeNode } from "../../../../core/workspace/FileTree";
-import type { AppShellRuntimePorts } from "../../../app/bootstrap/ports";
-import type { ExecutionRunsClient } from "../../../data/execution-runs/client";
+} from "@core/ree-assembly/assemblyTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import type { AppShellRuntimePorts } from "@shell/app/bootstrap/ports";
+import type { ExecutionRunsClient } from "@shell/data/execution-runs/client";
+import type { QueryClient } from "@tanstack/react-query";
 import type { ShowToast } from "../types";
 import type { ReeEditorDispatch } from "./assemblyActionEffects";
 import { executeAssemblyRunAction } from "./executeAssemblyRunAction";

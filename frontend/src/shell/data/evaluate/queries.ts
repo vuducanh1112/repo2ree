@@ -1,8 +1,5 @@
+import { parseReproducibilityReport, type ReproducibilityReport } from "@core/evaluate/Threat";
 import { useQuery } from "@tanstack/react-query";
-import {
-  parseReproducibilityReport,
-  type ReproducibilityReport,
-} from "../../../core/evaluate/Threat";
 import { useApiRuntime } from "../apiRuntime";
 import { ensureReeId, resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";

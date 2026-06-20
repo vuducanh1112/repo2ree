@@ -1,6 +1,6 @@
-import { Toggle } from "../../../../../shared/components/Toggle";
-import { lgColors, lgStage } from "../../../../../theme/lightGlassTheme";
-import { F } from "../../../../../theme/theme";
+import { Toggle } from "@shell/ui/shared/components/Toggle";
+import { lgColors, lgStage } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface InclusionRow {
   label: string;

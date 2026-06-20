@@ -1,5 +1,5 @@
-import { axisFraction, axisStandings } from "../../../../../../core/evaluate/axes";
-import type { EvaluationState } from "../../../../../../core/evaluate/EvaluationState";
+import { axisFraction, axisStandings } from "@core/evaluate/axes";
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { PodShellCore } from "./PodShellCore";
 
 interface PodShellInnerProps {

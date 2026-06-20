@@ -1,6 +1,6 @@
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import { classifyFileType } from "@core/workspace/PathUtils";
 import { useState } from "react";
-import type { FileTreeNode } from "../../../../core/workspace/FileTree";
-import { classifyFileType } from "../../../../core/workspace/PathUtils";
 import { lgColors, lgFileTypeColor, lgTree } from "../../theme/lightGlassTheme";
 import { F, hoverBg, hoverIf } from "../../theme/theme";
 import { Ic } from "./Icon";

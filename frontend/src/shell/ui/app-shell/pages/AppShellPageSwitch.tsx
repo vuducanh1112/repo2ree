@@ -4,5 +4,4 @@ export {
   ExperimentsPageContainer,
   HardwareBomPageContainer,
   MetadataPageContainer,
-  SourcePageContainer,
 } from "./pageContainers/SourceMetadataHardwareContainers";

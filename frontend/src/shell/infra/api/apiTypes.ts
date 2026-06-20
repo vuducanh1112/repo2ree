@@ -1,4 +1,4 @@
-import type { SourceRepoMetadata } from "../../../core/workspace/WorkspaceTypes";
+import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 
 export interface ApiErrorEnvelope {
   error: {

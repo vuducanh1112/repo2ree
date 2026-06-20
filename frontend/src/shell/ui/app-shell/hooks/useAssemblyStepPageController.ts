@@ -1,17 +1,14 @@
-import { useCallback, useMemo } from "react";
-import type { ExecutionRun } from "../../../../core/execution/ExecutionRun";
+import type { ExecutionRun } from "@core/execution/ExecutionRun";
 import {
   defaultParamsForReeAssemblyOperation,
   REE_ASSEMBLY_STEPS,
-} from "../../../../core/ree-assembly/assemblyCatalog";
-import { missingReeAssemblyRequirements } from "../../../../core/ree-assembly/assemblyPolicies";
-import type { ReeAssemblyParamValue } from "../../../../core/ree-assembly/assemblyStepTypes";
-import type { ReeAssemblyRunParams } from "../../../../core/ree-assembly/assemblyTypes";
-import { useApiRuntime } from "../../../data/apiRuntime";
-import {
-  useExecutionRunLogsQuery,
-  useExecutionRunQuery,
-} from "../../../data/execution-runs/queries";
+} from "@core/ree-assembly/assemblyCatalog";
+import { missingReeAssemblyRequirements } from "@core/ree-assembly/assemblyPolicies";
+import type { ReeAssemblyParamValue } from "@core/ree-assembly/assemblyStepTypes";
+import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
+import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useExecutionRunLogsQuery, useExecutionRunQuery } from "@shell/data/execution-runs/queries";
+import { useCallback, useMemo } from "react";
 import { appShellPageForField } from "../state/pages";
 import type { useAppShell } from "./useAppShell";
 

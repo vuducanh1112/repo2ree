@@ -1,7 +1,7 @@
+import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import { queryKeys } from "@shell/data/queryKeys";
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
-import { createEmptyReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import { queryKeys } from "../../../data/queryKeys";
 import { createSourceActions } from "./sourceActions";
 
 function buildArgs(queryClient: QueryClient) {

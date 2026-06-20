@@ -1,10 +1,10 @@
+import { standingMeta } from "@core/evaluate/axes";
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import type { InclusionOpts } from "@core/ree/InclusionOpts";
+import type { Badges, LogEntry } from "@core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
 import React from "react";
-import { standingMeta } from "../../../../../../core/evaluate/axes";
-import type { EvaluationState } from "../../../../../../core/evaluate/EvaluationState";
-import type { InclusionOpts } from "../../../../../../core/ree/InclusionOpts";
-import type { Badges, LogEntry } from "../../../../../../core/ree/ReeTypes";
-import type { ReeEditorViewModel } from "../../../../../../core/ree-editor/reeEditorViewModel";
-import { CollapsibleLogCard } from "../../../components/CollapsibleLogCard";
 import { buildSealCableItems } from "./CenterSealStrip/helpers";
 import { SealedSealCard } from "./CenterSealStrip/SealedSealCard";
 import { SealStatusCard } from "./CenterSealStrip/SealStatusCard";

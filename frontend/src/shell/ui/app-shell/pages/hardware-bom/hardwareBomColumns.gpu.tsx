@@ -1,4 +1,4 @@
-import type { GPURow } from "../../../../../core/hbom/hardwareBomDraft";
+import type { GPURow } from "@core/hbom/hardwareBomDraft";
 import type { GpuColumnsArgs, HardwareColumn } from "./hardwareBomColumns.types";
 
 export function createGpuColumns({

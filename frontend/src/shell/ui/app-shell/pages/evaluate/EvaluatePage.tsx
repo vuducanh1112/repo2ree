@@ -1,19 +1,12 @@
+import { scanDependencies } from "@core/ree-assembly/assemblyDependencyAnalysis";
+import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgColors, lgOutcomeBadge, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import type React from "react";
 import { useEffect } from "react";
-import { scanDependencies } from "../../../../../core/ree-assembly/assemblyDependencyAnalysis";
-import { useApiRuntime } from "../../../../data/apiRuntime";
-import { useEvaluateReportQuery } from "../../../../data/evaluate/queries";
-import { Ic } from "../../../shared/components/Icon";
-import {
-  lgColors,
-  lgNextButton,
-  lgOutcomeBadge,
-  lgStatusBadge,
-  lgStyles,
-} from "../../../theme/lightGlassTheme";
 import { assemblyStepIcon } from "../../assemblyStepIcons";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
-import { PAGE } from "../../state/pages";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { countContainerAndNixFiles } from "./EvaluatePageHelpers";
 import {
@@ -36,7 +29,6 @@ export function PageEvaluate({
   badge,
   onRun,
   onCancel,
-  onGo,
   onGoFields,
   missing,
   params,
@@ -127,8 +119,6 @@ export function PageEvaluate({
               containerCount={containerCount}
               nixCount={nixCount}
             />
-
-            <EvaluateLogCard log={log} running={running} />
           </div>
 
           <div style={lgStyles.footer}>
@@ -137,11 +127,6 @@ export function PageEvaluate({
                 ? "Evaluate output is current."
                 : "Run Evaluate to compute a reproducibility score."}
             </span>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button type="button" onClick={() => onGo?.(PAGE.BUILD)} style={lgNextButton()}>
-                Next: Runtime & SBOM {Ic.chevR(15)}
-              </button>
-            </div>
           </div>
         </section>
 
@@ -152,6 +137,8 @@ export function PageEvaluate({
           manifestCount={depGroups.length}
           fileCount={files?.length ?? 0}
         />
+
+        <EvaluateLogCard log={log} running={running} />
       </div>
     </div>
   );

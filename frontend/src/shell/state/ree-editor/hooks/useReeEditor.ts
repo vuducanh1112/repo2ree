@@ -1,26 +1,26 @@
-import type React from "react";
-import { useCallback, useMemo, useRef } from "react";
-import { DEFAULT_REE_ID } from "../../../../core/ree/ReeId";
-import type { ReeFile } from "../../../../core/ree/ReeTypes";
-import { createAssemblyRunSession } from "../../../../core/ree-assembly/assemblyRunSession";
+import { DEFAULT_REE_ID } from "@core/ree/ReeId";
+import type { ReeFile } from "@core/ree/ReeTypes";
+import { createAssemblyRunSession } from "@core/ree-assembly/assemblyRunSession";
 import {
   createReeEditorStateFromModel,
   type ReeEditorState,
-} from "../../../../core/ree-editor/reeEditorState";
+} from "@core/ree-editor/reeEditorState";
 import {
   createReeEditorViewModel,
   type ReeEditorViewModel,
-} from "../../../../core/ree-editor/reeEditorViewModel";
-import type { FileTreeNode } from "../../../../core/workspace/FileTree";
-import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
-import { useApiRuntime } from "../../../data/apiRuntime";
-import { useReeQuery } from "../../../data/ree/queries";
-import { showToast as enqueueToast } from "../../app-shell/state/actions";
-import type { AssemblyRunState } from "../../app-shell/state/assemblyRunState";
-import type { ReeIntentState } from "../../app-shell/state/reeIntent";
-import type { ReeSessionState } from "../../app-shell/state/reeSession";
-import type { AppShellAction } from "../../app-shell/state/types";
-import type { UiChromeState } from "../../app-shell/state/uiChrome";
+} from "@core/ree-editor/reeEditorViewModel";
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeQuery } from "@shell/data/ree/queries";
+import { showToast as enqueueToast } from "@shell/ui/app-shell/state/actions";
+import type { AssemblyRunState } from "@shell/ui/app-shell/state/assemblyRunState";
+import type { ReeIntentState } from "@shell/ui/app-shell/state/reeIntent";
+import type { ReeSessionState } from "@shell/ui/app-shell/state/reeSession";
+import type { AppShellAction } from "@shell/ui/app-shell/state/types";
+import type { UiChromeState } from "@shell/ui/app-shell/state/uiChrome";
+import type React from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useReeAssemblyRuns } from "../assembly-runs/useReeAssemblyRuns";
 import { useReeDownloads } from "../downloads/useReeDownloads";
 import { useReeSeal } from "../seal/useReeSeal";

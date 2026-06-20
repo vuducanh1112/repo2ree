@@ -1,5 +1,5 @@
-import { lgColors } from "../../../../../theme/lightGlassTheme";
-import { F } from "../../../../../theme/theme";
+import { lgColors } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface SealConfirmCopyProps {
   allLive: boolean;

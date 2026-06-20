@@ -1,5 +1,5 @@
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type React from "react";
-import type { EvaluationState } from "../../../../core/evaluate/EvaluationState";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import { PodWidget } from "../pages/overview/PodWidget";

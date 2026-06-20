@@ -1,12 +1,8 @@
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgColors } from "@shell/ui/theme/lightGlassTheme";
+import { F, S_OVERVIEW_SEALED_META_KEY, S_OVERVIEW_SEALED_META_ROW } from "@shell/ui/theme/theme";
 import type React from "react";
-import type { ReeEditorViewModel } from "../../../../../../../core/ree-editor/reeEditorViewModel";
-import { Ic } from "../../../../../shared/components/Icon";
-import { lgColors } from "../../../../../theme/lightGlassTheme";
-import {
-  F,
-  S_OVERVIEW_SEALED_META_KEY,
-  S_OVERVIEW_SEALED_META_ROW,
-} from "../../../../../theme/theme";
 import type { SealCableItem } from "./helpers";
 
 interface LevelMeta {

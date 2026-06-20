@@ -1,13 +1,10 @@
+import { toReePatch, toReePatchFromSlices } from "@core/ree/reePatch";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import { shouldHydrateRemoteRee, shouldScheduleReeIntentSync } from "@core/workspace/syncReeIntent";
+import { useUpdateReeIntentMutation } from "@shell/data/ree/mutations";
+import { useRefreshReeQuery } from "@shell/data/ree/queries";
 import { useCallback, useEffect, useRef } from "react";
-import { toReePatch, toReePatchFromSlices } from "../../../../core/ree/reePatch";
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import type { FileTreeNode } from "../../../../core/workspace/FileTree";
-import {
-  shouldHydrateRemoteRee,
-  shouldScheduleReeIntentSync,
-} from "../../../../core/workspace/syncReeIntent";
-import { useUpdateReeIntentMutation } from "../../../data/ree/mutations";
-import { useRefreshReeQuery } from "../../../data/ree/queries";
 import type { HydratedWorkspaceSnapshot } from "./hydrateReeWorkspace";
 
 interface UseReeIntentSyncArgs {

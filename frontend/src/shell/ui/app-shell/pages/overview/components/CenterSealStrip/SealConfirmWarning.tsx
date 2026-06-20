@@ -1,5 +1,5 @@
-import { lgBackgrounds } from "../../../../../theme/lightGlassTheme";
-import { F } from "../../../../../theme/theme";
+import { lgBackgrounds } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface SealConfirmWarningProps {
   missing: { key: string; label: string }[];

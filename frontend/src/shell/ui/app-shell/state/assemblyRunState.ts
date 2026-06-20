@@ -1,14 +1,11 @@
-import {
-  type EvaluationState,
-  emptyEvaluationState,
-} from "../../../../core/evaluate/EvaluationState";
+import { type EvaluationState, emptyEvaluationState } from "@core/evaluate/EvaluationState";
 import type {
   ActionStates,
   Badges,
   ReeAssemblyOperationParams,
   Timestamps,
-} from "../../../../core/ree/ReeTypes";
-import { initialReeAssemblyOperationParams } from "../../../../core/ree-assembly/assemblyCatalog";
+} from "@core/ree/ReeTypes";
+import { initialReeAssemblyOperationParams } from "@core/ree-assembly/assemblyCatalog";
 
 export interface AssemblyRunState {
   actionStates: ActionStates;

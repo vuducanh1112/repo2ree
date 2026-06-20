@@ -1,7 +1,7 @@
-import type { ArchiveRepo } from "../../../../../../core/ree-assembly/assemblyStepTypes";
-import { Ic } from "../../../../shared/components/Icon";
-import { lgColors, lgContentCard } from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
+import type { ArchiveRepo } from "@core/ree-assembly/assemblyStepTypes";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgColors, lgContentCard } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface ArchiveRepoSummaryCardProps {
   repo: ArchiveRepo;

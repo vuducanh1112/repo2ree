@@ -1,12 +1,12 @@
-import type React from "react";
 import {
   type BuildScriptMode,
   type BuildScriptSource,
   provenanceLabel,
-} from "../../../../../../core/ree-assembly/buildRuntimeUiState";
-import { Ic } from "../../../../shared/components/Icon";
-import { lgColors, lgPillChip } from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
+} from "@core/ree-assembly/buildRuntimeUiState";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgColors, lgPillChip } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
+import type React from "react";
 
 export function ProvenanceChip({ source }: { source: BuildScriptSource | null }) {
   return <span style={lgPillChip(!!source)}>{provenanceLabel(source)}</span>;

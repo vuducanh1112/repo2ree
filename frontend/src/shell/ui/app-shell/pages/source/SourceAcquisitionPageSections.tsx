@@ -1,7 +1,7 @@
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgColors, lgInput, lgStyles } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 import type React from "react";
-import { Ic } from "../../../shared/components/Icon";
-import { lgColors, lgInput, lgStyles } from "../../../theme/lightGlassTheme";
-import { F } from "../../../theme/theme";
 import { SourceUploadField, SourceUrlField } from "../../components/sourceRuntime";
 import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 import { SOURCE_TYPE_OPTIONS, type SourceTypeOption } from "./SourceAcquisitionPageHelpers";
@@ -16,6 +16,7 @@ interface SourceAcquisitionCardProps {
   originUrlDraft: string;
   originTypeDraft: SourceTypeOption | "";
   originInputLocked: boolean;
+  priorOriginUrl: string;
   canDownload: boolean;
   canUpload: boolean;
   downloadRunning: boolean;
@@ -143,8 +144,9 @@ export function SourceAcquisitionCard(props: SourceAcquisitionCardProps) {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <SourceUrlField
               locked={props.originInputLocked}
-              committedValue={props.originUrlDraft}
-              onCommit={(v) => props.setOriginUrlDraft(v)}
+              value={props.originUrlDraft}
+              priorValue={props.priorOriginUrl}
+              onChange={(v) => props.setOriginUrlDraft(v)}
               onFocus={() => props.focus("origin_url")}
             />
             {props.sourceConfigLocked && (

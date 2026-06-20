@@ -1,12 +1,12 @@
-import { Ic } from "../../../../shared/components/Icon";
+import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
   lgInfoBanner,
   lgPillChip,
   lgStatusBadge,
   lgStyles,
-} from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
+} from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface RuntimeScanTargetCardProps {
   runtimePath: string;

@@ -1,7 +1,7 @@
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgBackgrounds, lgColors, lgStatusBadge } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 import type React from "react";
-import { Ic } from "../../../shared/components/Icon";
-import { lgBackgrounds, lgColors, lgStatusBadge } from "../../../theme/lightGlassTheme";
-import { F } from "../../../theme/theme";
 
 // The workbench owns the cyan hue across this page (header icon, section
 // accents, summary glyphs) so it reads as one coherent stage rather than a

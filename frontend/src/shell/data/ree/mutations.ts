@@ -1,5 +1,5 @@
+import type { ReeIntentPatch } from "@core/ree/reePatch";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ReeIntentPatch } from "../../../core/ree/reePatch";
 import { useApiRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";

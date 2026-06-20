@@ -1,5 +1,3 @@
-import type React from "react";
-import { useMemo, useState } from "react";
 import {
   addCatalogContributor,
   addCatalogKeyword,
@@ -8,10 +6,10 @@ import {
   removeCatalogKeyword,
   setCorrespondingCatalogContributor,
   updateCatalogContributor,
-} from "../../../../../core/ree/catalogMetadataOps";
-import type { ReeContributor } from "../../../../../core/ree/ReeSpec";
-import { Ic } from "../../../shared/components/Icon";
-import { useFocusScroll } from "../../../shared/hooks/useFocusScroll";
+} from "@core/ree/catalogMetadataOps";
+import type { ReeContributor } from "@core/ree/ReeSpec";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { useFocusScroll } from "@shell/ui/shared/hooks/useFocusScroll";
 import {
   lgActionButton,
   lgColors,
@@ -21,7 +19,9 @@ import {
   lgStatusBadge,
   lgStyles,
   lgSuggestionButton,
-} from "../../../theme/lightGlassTheme";
+} from "@shell/ui/theme/lightGlassTheme";
+import type React from "react";
+import { useMemo, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import type { PageMetadataEntryProps } from "../sharedAssemblyUi";
 

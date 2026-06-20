@@ -1,6 +1,6 @@
+import { bottleneckAxis } from "@core/evaluate/axes";
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type React from "react";
-import { bottleneckAxis } from "../../../../../core/evaluate/axes";
-import type { EvaluationState } from "../../../../../core/evaluate/EvaluationState";
 import { type PodShell, PodSphere } from "./podWidget/PodSphere";
 import { POD_M } from "./podWidget/podWidgetData";
 

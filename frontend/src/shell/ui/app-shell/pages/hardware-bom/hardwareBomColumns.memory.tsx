@@ -1,4 +1,4 @@
-import type { MemoryRow } from "../../../../../core/hbom/hardwareBomDraft";
+import type { MemoryRow } from "@core/hbom/hardwareBomDraft";
 import { MEMORY_TYPES } from "./hardwareBomColumns.constants";
 import type { HardwareColumn, MemoryColumnsArgs } from "./hardwareBomColumns.types";
 

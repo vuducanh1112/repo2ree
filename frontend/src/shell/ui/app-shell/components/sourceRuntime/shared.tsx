@@ -1,5 +1,5 @@
+import { C, F } from "@shell/ui/theme/theme";
 import type React from "react";
-import { C, F } from "../../../theme/theme";
 
 export const inp = (locked: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
   width: "100%",

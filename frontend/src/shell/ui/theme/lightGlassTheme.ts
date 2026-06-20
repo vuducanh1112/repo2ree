@@ -1,5 +1,5 @@
+import type { FileTypeCategory } from "@core/workspace/PathUtils";
 import type React from "react";
-import type { FileTypeCategory } from "../../../core/workspace/PathUtils";
 import { S_ACTION_BUTTON_BASE } from "./stylesCore";
 import { F } from "./tokens";
 
@@ -432,17 +432,6 @@ export function lgInput(locked: boolean, active = false): React.CSSProperties {
   };
 }
 
-export function lgReadout(extra: React.CSSProperties = {}): React.CSSProperties {
-  return {
-    ...lgInput(true),
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    color: lgColors.textMid,
-    ...extra,
-  };
-}
-
 export function lgActionButton(tone: ActionTone, disabled = false): React.CSSProperties {
   const tones = {
     neutral: {
@@ -577,6 +566,29 @@ export function lgPrimaryActionButton(disabled = false): React.CSSProperties {
     cursor: disabled ? "not-allowed" : "pointer",
     fontFamily: F.sans,
     boxShadow: disabled ? "none" : "0 12px 24px rgba(14, 165, 233, 0.22)",
+  };
+}
+
+// Solid accent-coloured run button (SBOM, Hardware BOM). Identical shape to the
+// primary action, but tinted with a page-specific accent rather than the shared
+// blue, so each hub action keeps its own colour identity.
+export function lgAccentActionButton(accent: string, disabled = false): React.CSSProperties {
+  return {
+    ...S_ACTION_BUTTON_BASE,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "8px 16px",
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: 0.3,
+    cursor: disabled ? "not-allowed" : "pointer",
+    color: lgColors.white,
+    background: accent,
+    border: `1px solid ${accent}`,
+    boxShadow: `0 12px 24px ${accent}40`,
+    opacity: disabled ? 0.55 : 1,
   };
 }
 

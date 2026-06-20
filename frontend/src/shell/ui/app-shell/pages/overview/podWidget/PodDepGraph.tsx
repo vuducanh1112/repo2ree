@@ -1,4 +1,4 @@
-import { C } from "../../../../theme/theme";
+import { C } from "@shell/ui/theme/theme";
 import { POD_GRAPHS } from "./podWidgetData";
 
 interface PodDepGraphProps {

@@ -1,6 +1,6 @@
+import { Ic, Svg } from "@shell/ui/shared/components/Icon";
+import { C, F, hoverBg, hoverColor, hoverIf } from "@shell/ui/theme/theme";
 import type React from "react";
-import { Ic, Svg } from "../../../shared/components/Icon";
-import { C, F, hoverBg, hoverColor, hoverIf } from "../../../theme/theme";
 
 export function FilePickerInputRow(props: {
   draft: string;

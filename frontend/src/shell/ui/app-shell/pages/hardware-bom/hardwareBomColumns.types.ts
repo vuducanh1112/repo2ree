@@ -1,11 +1,11 @@
-import type React from "react";
 import type {
   CPURow,
   GPURow,
   MemoryRow,
   NetworkRow,
   StorageRow,
-} from "../../../../../core/hbom/hardwareBomDraft";
+} from "@core/hbom/hardwareBomDraft";
+import type React from "react";
 
 export interface HardwareColumn<RowT> {
   key: string;

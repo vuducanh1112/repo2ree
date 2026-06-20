@@ -1,14 +1,20 @@
-import type { ReeAssemblyRequirement } from "../../../../../core/ree-assembly/assemblyStepTypes";
-import { Ic } from "../../../shared/components/Icon";
-import { lgColors, lgInfoBanner } from "../../../theme/lightGlassTheme";
-import { F } from "../../../theme/theme";
+import type { ReeAssemblyRequirement } from "@core/ree-assembly/assemblyStepTypes";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgColors, lgInfoBanner } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface MissingInputsBannerProps {
   missing: ReeAssemblyRequirement[];
   onGoFields?: () => void;
+  /** Label for the jump-back button (when onGoFields is set). */
+  goLabel?: string;
 }
 
-export function MissingInputsBanner({ missing, onGoFields }: MissingInputsBannerProps) {
+export function MissingInputsBanner({
+  missing,
+  onGoFields,
+  goLabel = "Jump to required field",
+}: MissingInputsBannerProps) {
   if (missing.length === 0) return null;
   return (
     <div style={{ ...lgInfoBanner("danger"), flexDirection: "column", alignItems: "stretch" }}>
@@ -52,7 +58,7 @@ export function MissingInputsBanner({ missing, onGoFields }: MissingInputsBanner
             cursor: "pointer",
           }}
         >
-          Jump to required field
+          {goLabel}
         </button>
       )}
     </div>

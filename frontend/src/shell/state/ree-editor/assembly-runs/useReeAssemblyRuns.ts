@@ -1,21 +1,21 @@
-import { useQueryClient } from "@tanstack/react-query";
-import type React from "react";
-import { initialReeAssemblyOperationParams } from "../../../../core/ree-assembly/assemblyCatalog";
-import { createAssemblyCommandPlanners } from "../../../../core/ree-assembly/assemblyCommands";
-import type { createAssemblyRunSession } from "../../../../core/ree-assembly/assemblyRunSession";
-import type { GenericReeAssemblyParams } from "../../../../core/ree-assembly/assemblyStepTypes";
-import type { ReeAssemblyRunParams } from "../../../../core/ree-assembly/assemblyTypes";
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import type { FileTreeNode } from "../../../../core/workspace/FileTree";
-import { appShellPorts } from "../../../app/bootstrap/appShellPorts";
-import { useApiRuntime } from "../../../data/apiRuntime";
-import { useExecutionRunsClient } from "../../../data/execution-runs/client";
+import { initialReeAssemblyOperationParams } from "@core/ree-assembly/assemblyCatalog";
+import { createAssemblyCommandPlanners } from "@core/ree-assembly/assemblyCommands";
+import type { createAssemblyRunSession } from "@core/ree-assembly/assemblyRunSession";
+import type { GenericReeAssemblyParams } from "@core/ree-assembly/assemblyStepTypes";
+import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
+import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useExecutionRunsClient } from "@shell/data/execution-runs/client";
 import {
   useCancelExecutionRunMutation,
   useStartExecutionRunMutation,
-} from "../../../data/execution-runs/mutations";
-import { setAssemblyOperationParams } from "../../app-shell/state/actions";
-import type { AppShellAction } from "../../app-shell/state/types";
+} from "@shell/data/execution-runs/mutations";
+import { setAssemblyOperationParams } from "@shell/ui/app-shell/state/actions";
+import type { AppShellAction } from "@shell/ui/app-shell/state/types";
+import { useQueryClient } from "@tanstack/react-query";
+import type React from "react";
 import type { ShowToast } from "../types";
 import type { HydratedWorkspaceSnapshot } from "../workspace-sync/hydrateReeWorkspace";
 import { createAssemblyRunGateway } from "./assemblyRunGateway";

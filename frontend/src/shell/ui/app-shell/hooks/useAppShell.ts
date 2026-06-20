@@ -1,4 +1,4 @@
-import { useReeEditor } from "../../ree-editor/hooks/useReeEditor";
+import { useReeEditor } from "@shell/state/ree-editor/hooks/useReeEditor";
 import { useAppShellContext } from "../providers/AppShellProvider";
 
 export function useAppShell() {

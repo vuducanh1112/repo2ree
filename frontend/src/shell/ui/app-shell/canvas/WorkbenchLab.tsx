@@ -1,9 +1,9 @@
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import { appendLine } from "@core/ree/logEntry";
+import type { LogEntry } from "@core/ree/ReeTypes";
+import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { EvaluationState } from "../../../../core/evaluate/EvaluationState";
-import { appendLine } from "../../../../core/ree/logEntry";
-import type { LogEntry } from "../../../../core/ree/ReeTypes";
-import { useApiRuntime } from "../../../data/apiRuntime";
 import { Ic } from "../../shared/components/Icon";
 import {
   lgColors,

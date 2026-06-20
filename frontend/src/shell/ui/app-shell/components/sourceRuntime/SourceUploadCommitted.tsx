@@ -1,5 +1,5 @@
-import { Ic } from "../../../shared/components/Icon";
-import { C, F, hoverBorderColor, hoverColor } from "../../../theme/theme";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { C, F, hoverBorderColor, hoverColor } from "@shell/ui/theme/theme";
 
 interface SourceUploadCommittedProps {
   committedName: string;

@@ -1,28 +1,27 @@
-import { useCallback, useMemo, useState } from "react";
-import type { ReeAssemblyRunParams } from "../../../../../core/ree-assembly/assemblyTypes";
-import type { BuildScriptSource } from "../../../../../core/ree-assembly/buildRuntimeUiState";
+import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
+import type { BuildScriptSource } from "@core/ree-assembly/buildRuntimeUiState";
 import {
   buildFooterHint,
   buildRunStatusLabel,
   deriveRuntimeFileSize,
   resolvedRuntimePath,
-} from "../../../../../core/ree-assembly/buildRuntimeUiState";
-import { workspaceFileExists } from "../../../../../core/workspace/fileTreeTraversal";
-import { Ic } from "../../../shared/components/Icon";
+} from "@core/ree-assembly/buildRuntimeUiState";
+import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
+import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
   lgOutcomeBadge,
   lgPageColors,
   lgPillChip,
-  lgPrimaryActionButton,
   lgStatusBadge,
   lgStyles,
-} from "../../../theme/lightGlassTheme";
-import { F } from "../../../theme/theme";
-import { GlassCancelButton } from "../../components/GlassCancelButton";
+} from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
+import { useCallback, useMemo, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { LastRunStamp } from "../../components/LastRunStamp";
+import { RunActionButton } from "../../components/RunActionButton";
 import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
 import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
@@ -43,24 +42,14 @@ function BuildRunControls({
   onRun: () => void;
   onCancel?: () => void;
 }) {
-  const label = running ? "Building…" : runDone ? "Re-build" : "Run build";
   return (
-    <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-      <button
-        type="button"
-        onClick={onRun}
-        disabled={disabled}
-        style={lgPrimaryActionButton(disabled)}
-      >
-        <span
-          style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}
-        >
-          {running ? Ic.loader(14) : Ic.play(14)}
-        </span>
-        {label}
-      </button>
-      {running && onCancel && <GlassCancelButton onClick={onCancel} />}
-    </div>
+    <RunActionButton
+      label={running ? "Building…" : runDone ? "Re-build" : "Run build"}
+      running={running}
+      disabled={disabled}
+      onRun={onRun}
+      onCancel={onCancel}
+    />
   );
 }
 

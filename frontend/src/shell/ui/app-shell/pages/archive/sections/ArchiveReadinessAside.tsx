@@ -1,8 +1,8 @@
-import type { ArchiveRepo } from "../../../../../../core/ree-assembly/assemblyStepTypes";
-import { Ic } from "../../../../shared/components/Icon";
-import { lgColors, lgStatusBadge, lgStyles } from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
-import { SummaryLine } from "../../../components/SummaryLine";
+import type { ArchiveRepo } from "@core/ree-assembly/assemblyStepTypes";
+import { SummaryLine } from "@shell/ui/app-shell/components/SummaryLine";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgColors, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface ArchiveReadinessAsideProps {
   buildDone: boolean;

@@ -1,6 +1,6 @@
-import { Ic } from "../../../shared/components/Icon";
-import { lgColors, lgTree } from "../../../theme/lightGlassTheme";
-import { F } from "../../../theme/theme";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgColors, lgTree } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface FileFilterInputProps {
   query: string;

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   type HardwareBomDraft,
   newCpuRow,
@@ -6,27 +5,25 @@ import {
   newMemoryRow,
   newNetworkRow,
   newStorageRow,
-} from "../../../../../core/hbom/hardwareBomDraft";
-import { Ic } from "../../../shared/components/Icon";
-import { useFocusScroll } from "../../../shared/hooks/useFocusScroll";
+} from "@core/hbom/hardwareBomDraft";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { useFocusScroll } from "@shell/ui/shared/hooks/useFocusScroll";
 import {
+  lgAccentActionButton,
   lgColors,
   lgGlassButton,
-  lgNextButton,
   lgStatusBadge,
   lgStyles,
-} from "../../../theme/lightGlassTheme";
-import { F } from "../../../theme/theme";
+} from "@shell/ui/theme/lightGlassTheme";
+import { F, S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
+import { useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { RunActionButton } from "../../components/RunActionButton";
 import { useHardwareBomDraft } from "../../hooks/useHardwareBomDraft";
-import { PAGE } from "../../state/pages";
 import type { PageHardwareBomProps } from "../sharedAssemblyUi";
 import {
   type CategoryDescriptor,
-  HardwareBomReadinessAside,
-  HardwareBomRunConsole,
-  HardwareBomSummaryAside,
   HardwareCategoryTabs,
   HardwareTableCard,
 } from "./HardwareBomPageSections";
@@ -38,6 +35,8 @@ import {
   createStorageColumns,
 } from "./hardwareBomColumns";
 import { inp, selectInp } from "./hardwareBomPageHelpers";
+
+const HBOM_ACCENT = "#0f766e";
 
 function generateRowId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random()}`;
@@ -97,7 +96,6 @@ export function PageHardwareBom({
   focusedField,
   onReeSpecChange,
   onLockedChange,
-  onGoAssemblyPage,
   onFocusedFieldChange,
   onRun,
   onCancel,
@@ -256,21 +254,57 @@ export function PageHardwareBom({
     </>
   );
 
-  const headerRight = locked ? (
-    <button
-      type="button"
-      onClick={() => onLockedChange(false)}
-      style={{
-        ...lgGlassButton(),
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        fontSize: 12,
-      }}
-    >
-      {Ic.unlock(13)} Unlock fields
-    </button>
-  ) : null;
+  const runDisabled = running || locked;
+  const runLabel = running ? "Profiling…" : runDone ? "Re-profile" : "Profile machine";
+
+  const headerRight = (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+      {locked && (
+        <button
+          type="button"
+          onClick={() => onLockedChange(false)}
+          style={{
+            ...lgGlassButton(),
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 12,
+          }}
+        >
+          {Ic.unlock(13)} Unlock fields
+        </button>
+      )}
+      {running && onCancel && (
+        <button
+          type="button"
+          onClick={() => onCancel("hbom")}
+          style={{
+            ...S_ACTION_BUTTON_BASE,
+            display: "flex",
+            alignItems: "center",
+            padding: "8px 10px",
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            color: lgColors.danger,
+            background: "rgba(255, 241, 242, 0.82)",
+            border: `1px solid ${lgColors.dangerBorder}`,
+          }}
+        >
+          {Ic.x(13)}
+        </button>
+      )}
+      <RunActionButton
+        label={runLabel}
+        running={running}
+        disabled={runDisabled}
+        iconSize={13}
+        style={lgAccentActionButton(HBOM_ACCENT, runDisabled)}
+        onRun={() => onRun("hbom", {})}
+      />
+    </div>
+  );
 
   return (
     <div style={lgStyles.pageRoot}>
@@ -288,82 +322,50 @@ export function PageHardwareBom({
           right={headerRight}
         />
 
-        <div style={lgStyles.mainGrid}>
-          <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-            <div style={lgStyles.sectionBody}>
-              <div style={lgStyles.sectionHeader}>
-                <div
-                  style={{
-                    ...lgStyles.sectionIcon,
-                    color: "#0f766e",
-                    border: "1px solid rgba(15, 118, 110, 0.28)",
-                  }}
-                >
-                  {Ic.layers(19)}
-                </div>
-                <div>
-                  <h2 style={lgStyles.sectionTitle}>Hardware Inventory</h2>
-                  <div style={lgStyles.sectionSubtitle}>
-                    Switch categories below — only the device model is required per row.
-                  </div>
+        <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
+          <div style={lgStyles.sectionBody}>
+            <div style={lgStyles.sectionHeader}>
+              <div
+                style={{
+                  ...lgStyles.sectionIcon,
+                  color: "#0f766e",
+                  border: "1px solid rgba(15, 118, 110, 0.28)",
+                }}
+              >
+                {Ic.layers(19)}
+              </div>
+              <div>
+                <h2 style={lgStyles.sectionTitle}>Hardware Inventory</h2>
+                <div style={lgStyles.sectionSubtitle}>
+                  Switch categories below — only the device model is required per row.
                 </div>
               </div>
-
-              <HardwareCategoryTabs
-                categories={CATEGORIES}
-                counts={counts}
-                activeKey={activeCategory}
-                onSelect={setActiveCategory}
-              />
-
-              {renderActiveCategory()}
-
-              <CollapsibleLogCard
-                log={log}
-                running={running}
-                title={ts ? "Profiling log" : "Profiling logs"}
-              />
             </div>
 
-            <div style={lgStyles.footer}>
-              <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
-                {totalRows === 0
-                  ? "Run Profile This Machine to prefill the tables, then adjust as needed."
-                  : `${totalRows} ${totalRows === 1 ? "device" : "devices"} across ${categoriesWithRows} of 5 categories.`}
-              </span>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={() => onGoAssemblyPage(PAGE.EVALUATE)}
-                  style={lgNextButton()}
-                >
-                  Next: Evaluate {Ic.chevR(15)}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <aside style={lgStyles.aside}>
-            <HardwareBomRunConsole
-              running={running}
-              runDone={runDone}
-              locked={locked}
-              onRun={() => onRun("hbom", {})}
-              onCancel={onCancel ? () => onCancel("hbom") : undefined}
-            />
-            <HardwareBomSummaryAside
+            <HardwareCategoryTabs
+              categories={CATEGORIES}
               counts={counts}
-              totalRows={totalRows}
-              categoriesWithRows={categoriesWithRows}
-              runDone={runDone}
+              activeKey={activeCategory}
+              onSelect={setActiveCategory}
             />
-            <HardwareBomReadinessAside
-              categoriesWithRows={categoriesWithRows}
-              totalRows={totalRows}
-              runDone={runDone}
+
+            {renderActiveCategory()}
+
+            <CollapsibleLogCard
+              log={log}
+              running={running}
+              title={ts ? "Profiling log" : "Profiling logs"}
             />
-          </aside>
-        </div>
+          </div>
+
+          <div style={lgStyles.footer}>
+            <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
+              {totalRows === 0
+                ? "Run Profile This Machine to prefill the tables, then adjust as needed."
+                : `${totalRows} ${totalRows === 1 ? "device" : "devices"} across ${categoriesWithRows} of 5 categories.`}
+            </span>
+          </div>
+        </section>
       </div>
     </div>
   );

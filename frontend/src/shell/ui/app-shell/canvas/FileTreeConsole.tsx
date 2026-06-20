@@ -1,6 +1,6 @@
+import type { ReeFile } from "@core/ree/ReeTypes";
+import { filterFileTree } from "@core/workspace/fileTreeFilter";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReeFile } from "../../../../core/ree/ReeTypes";
-import { filterFileTree } from "../../../../core/workspace/fileTreeFilter";
 import { FileNode } from "../../shared/components/FileTree";
 import { Ic } from "../../shared/components/Icon";
 import { lgColors } from "../../theme/lightGlassTheme";

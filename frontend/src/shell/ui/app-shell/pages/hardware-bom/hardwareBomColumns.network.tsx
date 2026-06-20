@@ -1,4 +1,4 @@
-import type { NetworkRow } from "../../../../../core/hbom/hardwareBomDraft";
+import type { NetworkRow } from "@core/hbom/hardwareBomDraft";
 import { NETWORK_TYPES } from "./hardwareBomColumns.constants";
 import type { HardwareColumn, NetworkColumnsArgs } from "./hardwareBomColumns.types";
 

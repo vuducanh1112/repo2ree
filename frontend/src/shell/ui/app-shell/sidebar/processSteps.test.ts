@@ -1,6 +1,6 @@
+import type { Badges } from "@core/ree/ReeTypes";
+import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { describe, expect, it } from "vitest";
-import type { Badges } from "../../../../core/ree/ReeTypes";
-import { createEmptyReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { PAGE } from "../state/pages";
 import { PROCESS_STEPS, resolveNavCompleted } from "./processSteps";
 

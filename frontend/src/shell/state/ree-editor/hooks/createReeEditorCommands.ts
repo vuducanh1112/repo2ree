@@ -1,15 +1,14 @@
-import type React from "react";
-import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
-import type { EvaluationState } from "../../../../core/evaluate/EvaluationState";
-import type { InclusionOpts } from "../../../../core/ree/InclusionOpts";
-import type { ReeSpec } from "../../../../core/ree/ReeSpec";
-import type { ReeAssemblyOperationParams, SourceUploadCommit } from "../../../../core/ree/ReeTypes";
-import type { GenericReeAssemblyParams } from "../../../../core/ree-assembly/assemblyStepTypes";
+import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import type { InclusionOpts } from "@core/ree/InclusionOpts";
+import type { ReeSpec } from "@core/ree/ReeSpec";
+import type { ReeAssemblyOperationParams, SourceUploadCommit } from "@core/ree/ReeTypes";
+import type { GenericReeAssemblyParams } from "@core/ree-assembly/assemblyStepTypes";
 import type {
   ReeAssemblyOperationKey,
   ReeAssemblyRunParams,
-} from "../../../../core/ree-assembly/assemblyTypes";
-import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
+} from "@core/ree-assembly/assemblyTypes";
+import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 import {
   clearToast,
   patch,
@@ -20,13 +19,14 @@ import {
   setRepoMode,
   setWorkspaceSourceState,
   updateReeSpec,
-} from "../../app-shell/state/actions";
-import type { AssemblyRunState } from "../../app-shell/state/assemblyRunState";
-import type { AppShellPage } from "../../app-shell/state/pages";
-import type { ReeIntentState } from "../../app-shell/state/reeIntent";
-import type { ReeSessionState } from "../../app-shell/state/reeSession";
-import { type AppShellAction, resolveUpdater, type Updater } from "../../app-shell/state/types";
-import type { UiChromeState } from "../../app-shell/state/uiChrome";
+} from "@shell/ui/app-shell/state/actions";
+import type { AssemblyRunState } from "@shell/ui/app-shell/state/assemblyRunState";
+import type { AppShellPage } from "@shell/ui/app-shell/state/pages";
+import type { ReeIntentState } from "@shell/ui/app-shell/state/reeIntent";
+import type { ReeSessionState } from "@shell/ui/app-shell/state/reeSession";
+import { type AppShellAction, resolveUpdater, type Updater } from "@shell/ui/app-shell/state/types";
+import type { UiChromeState } from "@shell/ui/app-shell/state/uiChrome";
+import type React from "react";
 
 interface CreateReeEditorCommandsArgs {
   reeIntent: ReeIntentState;

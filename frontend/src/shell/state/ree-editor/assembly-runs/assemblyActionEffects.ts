@@ -3,9 +3,9 @@ import {
   mapAssemblyCommandsToEffects,
   mapSourceCommandsToEffects,
   type WorkspaceStateCommand,
-} from "../../../../core/ree-assembly/assemblyCommandEffects";
-import type { AssemblyCommand } from "../../../../core/ree-assembly/assemblyCommands";
-import type { SourceCommand } from "../../../../core/workspace/sourceAcquisitionCommands";
+} from "@core/ree-assembly/assemblyCommandEffects";
+import type { AssemblyCommand } from "@core/ree-assembly/assemblyCommands";
+import type { SourceCommand } from "@core/workspace/sourceAcquisitionCommands";
 import {
   applySourceOutcome,
   completeAssemblyRun,
@@ -17,8 +17,8 @@ import {
   setLocked,
   setWorkspaceSourceState,
   updateReeSpec,
-} from "../../app-shell/state/actions";
-import type { AppShellAction } from "../../app-shell/state/types";
+} from "@shell/ui/app-shell/state/actions";
+import type { AppShellAction } from "@shell/ui/app-shell/state/types";
 import type { ShowToast } from "../types";
 
 export type ReeEditorDispatch = (action: AppShellAction) => void;

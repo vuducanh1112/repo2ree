@@ -1,5 +1,5 @@
-import type { LogEntry } from "../../../../../../core/ree/ReeTypes";
-import { CollapsibleLogCard } from "../../../components/CollapsibleLogCard";
+import type { LogEntry } from "@core/ree/ReeTypes";
+import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
 
 interface BuildLogCardProps {
   log: LogEntry | null;

@@ -1,8 +1,8 @@
+import { appendLine } from "@core/ree/logEntry";
+import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
+import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { appendLine } from "../../../../core/ree/logEntry";
-import type { LogEntry, LogLine } from "../../../../core/ree/ReeTypes";
-import { useApiRuntime } from "../../../data/apiRuntime";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import { STANDARD_IMAGE } from "../pages/workbench/WorkbenchPageSections";

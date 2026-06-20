@@ -1,6 +1,6 @@
+import type { Badges } from "@core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { useCallback, useEffect, useState } from "react";
-import type { Badges } from "../../../../core/ree/ReeTypes";
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
 import { PAGE } from "../state/pages";
 import type { Cable, CableGeo } from "./cableGeometry";
 import { CANVAS_NODES, isNodeDone, type NodeZone } from "./canvasNodes";

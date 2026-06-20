@@ -1,7 +1,7 @@
-import type { Badges } from "../../../../../../core/ree/ReeTypes";
-import type { ArchiveRepo } from "../../../../../../core/ree-assembly/assemblyStepTypes";
-import { Ic } from "../../../../shared/components/Icon";
-import { lgSegmentedTab } from "../../../../theme/lightGlassTheme";
+import type { Badges } from "@core/ree/ReeTypes";
+import type { ArchiveRepo } from "@core/ree-assembly/assemblyStepTypes";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgSegmentedTab } from "@shell/ui/theme/lightGlassTheme";
 
 interface ArchiveRepoTabsProps {
   repositories: ArchiveRepo[];

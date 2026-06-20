@@ -1,16 +1,16 @@
-import type React from "react";
-import { isSealed, preserveSeal } from "../../../../core/artifact/ArtifactStatus";
-import type { RawReeIntentSlices } from "../../../../core/ree/mapRawReeIntent";
-import type { ReeFile } from "../../../../core/ree/ReeTypes";
-import type { FileTreeNode } from "../../../../core/workspace/FileTree";
+import { isSealed, preserveSeal } from "@core/artifact/ArtifactStatus";
+import type { RawReeIntentSlices } from "@core/ree/mapRawReeIntent";
+import type { ReeFile } from "@core/ree/ReeTypes";
+import type { FileTreeNode } from "@core/workspace/FileTree";
 import {
   setArtifactStatus,
   setEvaluationState,
   setLocked,
   setWorkspaceSourceState,
   updateReeSpec,
-} from "../../app-shell/state/actions";
-import type { AppShellAction } from "../../app-shell/state/types";
+} from "@shell/ui/app-shell/state/actions";
+import type { AppShellAction } from "@shell/ui/app-shell/state/types";
+import type React from "react";
 
 export interface HydratedWorkspaceSnapshot {
   workspaceFiles: FileTreeNode[];

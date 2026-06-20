@@ -1,13 +1,10 @@
-import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
-import { enforceSourceOriginRules } from "../../../../core/artifact/sourceOriginRules";
-import {
-  type EvaluationState,
-  emptyEvaluationState,
-} from "../../../../core/evaluate/EvaluationState";
-import { createEmptyReeSpec } from "../../../../core/ree/ReeSpec";
-import type { ReeAssemblyOperationParams } from "../../../../core/ree/ReeTypes";
-import { computeSourceChangeConsequences } from "../../../../core/workspace/sourceChangeConsequences";
-import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
+import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
+import { enforceSourceOriginRules } from "@core/artifact/sourceOriginRules";
+import { type EvaluationState, emptyEvaluationState } from "@core/evaluate/EvaluationState";
+import { createEmptyReeSpec } from "@core/ree/ReeSpec";
+import type { ReeAssemblyOperationParams } from "@core/ree/ReeTypes";
+import { computeSourceChangeConsequences } from "@core/workspace/sourceChangeConsequences";
+import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 import {
   type AssemblyRunCompletionPayload,
   normalizeUiChromePage,

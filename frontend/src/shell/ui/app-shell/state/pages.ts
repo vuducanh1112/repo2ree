@@ -1,4 +1,4 @@
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 
 // Workspace shell pages.
 export const PAGE = {

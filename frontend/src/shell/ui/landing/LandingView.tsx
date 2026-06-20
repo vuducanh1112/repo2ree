@@ -1,5 +1,5 @@
+import { AXES } from "@core/evaluate/axes";
 import type React from "react";
-import { AXES } from "../../../core/evaluate/axes";
 import { APP_ROUTE, type AppLoadRoutePath } from "../app-shell/state/pages";
 import { Ic } from "../shared/components/Icon";
 import { C, F, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";

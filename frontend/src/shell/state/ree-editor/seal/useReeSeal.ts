@@ -1,9 +1,9 @@
+import type { InclusionOpts } from "@core/ree/InclusionOpts";
+import type { ReeId } from "@core/ree/ReeId";
+import type { LogEntry } from "@core/ree/ReeTypes";
+import { useReeClient } from "@shell/data/ree/client";
+import { mapReeDetailToReeProject } from "@shell/data/ree/reeMapping";
 import { useState } from "react";
-import type { InclusionOpts } from "../../../../core/ree/InclusionOpts";
-import type { ReeId } from "../../../../core/ree/ReeId";
-import type { LogEntry } from "../../../../core/ree/ReeTypes";
-import { useReeClient } from "../../../data/ree/client";
-import { mapReeDetailToReeProject } from "../../../data/ree/reeMapping";
 import type { ShowToast } from "../types";
 import type { HydratedWorkspaceSnapshot } from "../workspace-sync/hydrateReeWorkspace";
 

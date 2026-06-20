@@ -1,6 +1,6 @@
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { C, F } from "@shell/ui/theme/theme";
 import type React from "react";
-import { Ic } from "../../../shared/components/Icon";
-import { C, F } from "../../../theme/theme";
 
 interface SourceUploadDropzoneProps {
   dragging: boolean;

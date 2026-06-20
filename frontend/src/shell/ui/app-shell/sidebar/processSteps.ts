@@ -1,8 +1,8 @@
-import { hbomHasAnyComponents } from "../../../../core/hbom/HbomSummary";
-import type { Badges } from "../../../../core/ree/ReeTypes";
-import { REE_ASSEMBLY_STEPS } from "../../../../core/ree-assembly/assemblyCatalog";
-import type { ReeAssemblyDefinition } from "../../../../core/ree-assembly/assemblyStepTypes";
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
+import { hbomHasAnyComponents } from "@core/hbom/HbomSummary";
+import type { Badges } from "@core/ree/ReeTypes";
+import { REE_ASSEMBLY_STEPS } from "@core/ree-assembly/assemblyCatalog";
+import type { ReeAssemblyDefinition } from "@core/ree-assembly/assemblyStepTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { Ic } from "../../shared/components/Icon";
 import { type AppShellPage, PAGE } from "../state/pages";
 

@@ -1,5 +1,5 @@
 import { expect, test } from "./helpers/fixtures";
-import { main, provisionWorkbench, startReeCreation } from "./helpers/flow";
+import { provisionWorkbench, startReeCreation } from "./helpers/flow";
 
 test.describe("Workbench lab", () => {
   test("provisioning reveals source acquisition", async ({ page }) => {
@@ -9,6 +9,10 @@ test.describe("Workbench lab", () => {
 
     await provisionWorkbench(page);
 
-    await expect(main(page).getByText("Source Acquisition", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Source Acquisition" }).getByText("Source Acquisition", {
+        exact: true,
+      }),
+    ).toBeVisible();
   });
 });

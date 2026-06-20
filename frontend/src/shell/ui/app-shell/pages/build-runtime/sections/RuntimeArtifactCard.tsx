@@ -1,18 +1,18 @@
 import {
   runtimeArtifactStatus,
   runtimeArtifactStatusLabel,
-} from "../../../../../../core/ree-assembly/buildRuntimeUiState";
-import type { FileTreeNode } from "../../../../../../core/workspace/FileTree";
-import { Ic } from "../../../../shared/components/Icon";
+} from "@core/ree-assembly/buildRuntimeUiState";
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import { FilePicker } from "@shell/ui/app-shell/components/scriptAndFile";
+import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
   lgContentCard,
   lgInfoBanner,
   lgStatusBadge,
   lgStyles,
-} from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
-import { FilePicker } from "../../../components/scriptAndFile";
+} from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface RuntimeArtifactCardProps {
   runtimePath: string;

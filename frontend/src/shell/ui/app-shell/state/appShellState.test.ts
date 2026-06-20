@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { createEmptyReeSpec } from "../../../../core/ree/ReeSpec";
+import { createEmptyReeSpec } from "@core/ree/ReeSpec";
 import {
   createEmptyReeEditorViewModel,
   type ReeEditorViewModel,
-} from "../../../../core/ree-editor/reeEditorViewModel";
+} from "@core/ree-editor/reeEditorViewModel";
+import { describe, expect, it } from "vitest";
 import {
   clearToast,
   completeAssemblyRun,

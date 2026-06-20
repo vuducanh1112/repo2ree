@@ -1,4 +1,4 @@
-import { createEmptyReeSpec, type ReeSpec } from "../../../../core/ree/ReeSpec";
+import { createEmptyReeSpec, type ReeSpec } from "@core/ree/ReeSpec";
 
 export interface ReeIntentState {
   reeSpec: ReeSpec;

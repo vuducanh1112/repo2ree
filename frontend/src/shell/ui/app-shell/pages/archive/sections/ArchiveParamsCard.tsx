@@ -1,6 +1,6 @@
-import type { ArchiveRepo } from "../../../../../../core/ree-assembly/assemblyStepTypes";
-import { lgColors, lgContentCard, lgInput, lgStyles } from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
+import type { ArchiveRepo } from "@core/ree-assembly/assemblyStepTypes";
+import { lgColors, lgContentCard, lgInput, lgStyles } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface ArchiveParamsCardProps {
   repo: ArchiveRepo;

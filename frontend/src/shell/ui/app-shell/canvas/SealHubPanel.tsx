@@ -1,10 +1,10 @@
-import { useEffect, useRef } from "react";
-import type { EvaluationState } from "../../../../core/evaluate/EvaluationState";
-import type { Badges, LogEntry } from "../../../../core/ree/ReeTypes";
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import { Ic } from "../../shared/components/Icon";
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import type { Badges, LogEntry } from "@core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import { useRef } from "react";
 import { C, F } from "../../theme/theme";
 import { CenterSealStrip } from "../pages/overview/components/CenterSealStrip";
+import { HubPanel } from "./HubPanel";
 
 interface SealHubPanelProps {
   ree: ReeEditorViewModel;
@@ -31,63 +31,8 @@ export function SealHubPanel({
 }: SealHubPanelProps) {
   const sealRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
-    <section
-      aria-label="Seal"
-      style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        bottom: 20,
-        margin: "0 auto",
-        zIndex: 20,
-        width: "min(440px, calc(100% - 32px))",
-        maxHeight: "calc(100% - 88px)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 12,
-        overflowY: "auto",
-        padding: "16px 18px 18px",
-        background: "rgba(255,255,255,0.82)",
-        border: `1px solid ${C.border}`,
-        borderRadius: 16,
-        backdropFilter: "blur(8px)",
-        boxShadow: "0 18px 44px rgba(13,17,23,0.16)",
-        animation: "dockIn 0.3s cubic-bezier(0.4,0,0.2,1)",
-      }}
-    >
-      <button
-        type="button"
-        aria-label="Close"
-        onClick={onClose}
-        style={{
-          position: "absolute",
-          top: 10,
-          right: 10,
-          width: 28,
-          height: 28,
-          border: `1px solid ${C.border}`,
-          borderRadius: 8,
-          background: C.surface,
-          color: C.textMuted,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {Ic.x(14)}
-      </button>
-
+    <HubPanel ariaLabel="Seal" onClose={onClose} width={440} align="center">
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: -0.3 }}>
           Seal
@@ -107,6 +52,6 @@ export function SealHubPanel({
         sealLog={sealLog}
         sealRef={sealRef}
       />
-    </section>
+    </HubPanel>
   );
 }

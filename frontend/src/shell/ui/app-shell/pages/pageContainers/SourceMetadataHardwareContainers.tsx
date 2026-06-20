@@ -1,5 +1,4 @@
-import type { SourceUploadCommit } from "../../../../../core/ree/ReeTypes";
-import { useApiRuntime } from "../../../../data/apiRuntime";
+import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useAssemblyStepPageController } from "../../hooks/useAssemblyStepPageController";
 import { PAGE } from "../../state/pages";
 import {
@@ -7,64 +6,18 @@ import {
   PageBuildRuntime,
   PageEvaluate,
   PageExperiments,
-  PageGenerateSBOM,
   PageHardwareBom,
   PageMetadataEntry,
   PageTestActivation,
-  SourceAcquisitionPage,
 } from "../index";
 import { type AppShellPageContainerProps, ContentSection, useAssemblyRunLogEntry } from "./shared";
 
 const ASSEMBLY_PAGE_COMPONENTS: Record<string, (props: AssemblyPageProps) => JSX.Element> = {
   evaluate: (props) => <PageEvaluate {...props} />,
   build: (props) => <PageBuildRuntime {...props} />,
-  sbom: (props) => <PageGenerateSBOM {...props} />,
+  // sbom opens as a compact floating hub panel (SbomHubPanel), not a docked page.
   activation: (props) => <PageTestActivation {...props} />,
 };
-
-export function SourcePageContainer({
-  ree,
-  workspaceRemote,
-  assemblyRun,
-  uiChrome,
-  commands,
-}: AppShellPageContainerProps) {
-  const { reeId } = useApiRuntime();
-  const { page, focusedField, locked, repoMode } = uiChrome;
-  const { badges, actionStates } = assemblyRun;
-  const sourceLog = useAssemblyRunLogEntry({
-    reeId,
-    runId: assemblyRun.activeRunIds.source,
-    fallbackTimestamp: assemblyRun.timestamps.source,
-  });
-
-  if (page !== PAGE.SOURCE) {
-    return null;
-  }
-
-  return (
-    <SourceAcquisitionPage
-      ree={ree}
-      workspaceSourceState={workspaceRemote.workspaceSourceState}
-      sourceRepo={workspaceRemote.sourceRepo}
-      locked={locked}
-      repoMode={repoMode}
-      badges={badges}
-      actionStates={actionStates}
-      log={sourceLog}
-      running={actionStates.source === "loading"}
-      focusedField={focusedField}
-      onWorkspaceSourceStateChange={commands.setWorkspaceSourceState}
-      onRepoModeChange={commands.setRepoMode}
-      onGoAssemblyPage={commands.setPage}
-      onFocusedFieldChange={commands.setFocusedField}
-      onDownloadSource={commands.onDownloadSourceFiles}
-      onCancelSource={() => commands.onCancelAction("source")}
-      onWorkspaceUpload={(payload: SourceUploadCommit) => commands.onWorkspaceUpload(payload)}
-      onRemoveWorkspaceSource={commands.onRemoveWorkspaceSource}
-    />
-  );
-}
 
 export function MetadataPageContainer({
   reeIntent,

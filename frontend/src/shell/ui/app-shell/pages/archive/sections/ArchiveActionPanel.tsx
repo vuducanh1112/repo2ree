@@ -1,13 +1,15 @@
-import type { ExecutionRunLogs } from "../../../../../../core/ree/ReeTypes";
+import type { ExecutionRunLogs } from "@core/ree/ReeTypes";
 import type {
   ArchiveRepo,
   GenericReeAssemblyParams,
   ReeAssemblyRequirement,
-} from "../../../../../../core/ree-assembly/assemblyStepTypes";
-import { Ic } from "../../../../shared/components/Icon";
-import { lgColors, lgStyles } from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
-import { CollapsibleLogCard } from "../../../components/CollapsibleLogCard";
+} from "@core/ree-assembly/assemblyStepTypes";
+import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
+import { RunActionButton } from "@shell/ui/app-shell/components/RunActionButton";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgColors, lgStyles } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
+import { MissingInputsBanner } from "../../runtime-environment/MissingInputsBanner";
 
 interface ArchiveActionPanelProps {
   repo: ArchiveRepo;
@@ -71,64 +73,22 @@ export function ArchiveActionPanel({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {hasMissing && (
-          <div
-            style={{
-              border: `1px solid ${lgColors.dangerBorder}`,
-              background: "rgba(255, 241, 242, 0.7)",
-              borderRadius: 8,
-              padding: 10,
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.info(13)}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: lgColors.danger }}>
-                Required inputs missing
-              </span>
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {missing.map((item) => (
-                <span
-                  key={item.field}
-                  style={{
-                    fontSize: 11,
-                    fontFamily: F.sans,
-                    color: lgColors.danger,
-                    background: "rgba(255,255,255,0.55)",
-                    border: `1px solid ${lgColors.dangerBorder}`,
-                    borderRadius: 4,
-                    padding: "2px 8px",
-                  }}
-                >
-                  {item.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        <MissingInputsBanner missing={missing} />
 
-        <button
-          type="button"
+        <RunActionButton
+          label={buttonLabel}
+          running={running}
           disabled={disabled}
-          onClick={() =>
+          idleIcon={earned ? Ic.check : Ic.upload}
+          style={buttonStyle}
+          onRun={() =>
             canRun &&
             onRun(
               repo.key,
               Object.fromEntries(repo.params.map((p) => [p.key, getParam(repo.key, p.key)])),
             )
           }
-          style={buttonStyle}
-        >
-          <span
-            style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}
-          >
-            {running ? Ic.loader(14) : earned ? Ic.check(14) : Ic.upload(14)}
-          </span>
-          {buttonLabel}
-        </button>
+        />
 
         {!hasMissing && (
           <span style={lgStyles.helper}>

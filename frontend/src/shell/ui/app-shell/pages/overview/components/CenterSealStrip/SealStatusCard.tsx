@@ -1,7 +1,7 @@
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgBackgrounds, lgColors, lgStyles } from "@shell/ui/theme/lightGlassTheme";
+import { F, hoverBrightness, S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
 import type React from "react";
-import { Ic } from "../../../../../shared/components/Icon";
-import { lgBackgrounds, lgColors, lgStyles } from "../../../../../theme/lightGlassTheme";
-import { F, hoverBrightness, S_ACTION_BUTTON_BASE } from "../../../../../theme/theme";
 import type { SealCableItem } from "./helpers";
 import { SealConfirmCopy } from "./SealConfirmCopy";
 import { SealConfirmInclusion } from "./SealConfirmInclusion";

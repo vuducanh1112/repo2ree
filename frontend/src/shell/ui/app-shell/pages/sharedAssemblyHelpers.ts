@@ -1,8 +1,5 @@
-import type { FileTreeNode } from "../../../../core/workspace/FileTree";
-import {
-  findFileByWorkspacePath,
-  listTreeFiles,
-} from "../../../../core/workspace/fileTreeTraversal";
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import { findFileByWorkspacePath, listTreeFiles } from "@core/workspace/fileTreeTraversal";
 
 export function allFilePaths(nodes: FileTreeNode[]): string[] {
   return listTreeFiles(nodes).map((file) => file.path);

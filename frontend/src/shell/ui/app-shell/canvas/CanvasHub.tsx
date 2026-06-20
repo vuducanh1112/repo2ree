@@ -1,9 +1,9 @@
+import { standingMeta } from "@core/evaluate/axes";
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import type { Badges, ReeFile } from "@core/ree/ReeTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { useMemo, useRef, useState } from "react";
-import { standingMeta } from "../../../../core/evaluate/axes";
-import type { EvaluationState } from "../../../../core/evaluate/EvaluationState";
-import type { Badges, ReeFile } from "../../../../core/ree/ReeTypes";
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
 import { C, F } from "../../theme/theme";
 import type { AppShellPage } from "../state/pages";
 import { BenchConsole } from "./BenchConsole";

@@ -1,6 +1,6 @@
+import { lgColors } from "@shell/ui/theme/lightGlassTheme";
+import { F, S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
 import type React from "react";
-import { lgColors } from "../../../theme/lightGlassTheme";
-import { F, S_ACTION_BUTTON_BASE } from "../../../theme/theme";
 
 export const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...S_ACTION_BUTTON_BASE,

@@ -1,27 +1,22 @@
-import type React from "react";
-import type { ArtifactStatus } from "../../../../core/artifact/ArtifactStatus";
-import type { EvaluationState } from "../../../../core/evaluate/EvaluationState";
-import type { ReeSpec } from "../../../../core/ree/ReeSpec";
-import type {
-  ActionStates,
-  Badges,
-  LogEntry,
-  SourceUploadCommit,
-} from "../../../../core/ree/ReeTypes";
+import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
+import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import type { ReeSpec } from "@core/ree/ReeSpec";
+import type { ActionStates, Badges, LogEntry, SourceUploadCommit } from "@core/ree/ReeTypes";
 import type {
   ReeAssemblyBadge,
   ReeAssemblyDefinition,
   ReeAssemblyParamValue,
   ReeAssemblyRequirement,
-} from "../../../../core/ree-assembly/assemblyStepTypes";
+} from "@core/ree-assembly/assemblyStepTypes";
 import type {
   ReeAssemblyOperationKey,
   ReeAssemblyRunParams,
-} from "../../../../core/ree-assembly/assemblyTypes";
-import type { ReeEditorViewModel } from "../../../../core/ree-editor/reeEditorViewModel";
-import type { FileTreeNode } from "../../../../core/workspace/FileTree";
-import type { WorkspaceSourceState } from "../../../../core/workspace/WorkspaceSourceState";
-import type { SourceRepoMetadata } from "../../../../core/workspace/WorkspaceTypes";
+} from "@core/ree-assembly/assemblyTypes";
+import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
+import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import type React from "react";
 import type { AppShellPage } from "../state/pages";
 
 export interface SourceAcquisitionPageProps {

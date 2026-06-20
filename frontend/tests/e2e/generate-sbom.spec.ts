@@ -2,7 +2,6 @@ import { expect, test } from "./helpers/fixtures";
 import {
   buildRuntime,
   generateSbom,
-  main,
   provisionWorkbench,
   pythonHelloWorld,
   startReeCreation,
@@ -22,6 +21,11 @@ test.describe("Generate SBOM page", () => {
 
     await generateSbom(page);
 
-    await expect(main(page).getByText("SBOM ready", { exact: true }).first()).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Generate SBOM" })
+        .getByText("SBOM ready", { exact: true })
+        .first(),
+    ).toBeVisible();
   });
 });

@@ -1,8 +1,8 @@
+import type { FileTreeNode } from "@core/workspace/FileTree";
+import { fileType } from "@shell/ui/shared/formatting";
+import { C } from "@shell/ui/theme/theme";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { FileTreeNode } from "../../../../../core/workspace/FileTree";
-import { fileType } from "../../../shared/formatting";
-import { C } from "../../../theme/theme";
 import { allFilePaths, findFileByPath } from "../../pages/sharedAssemblyHelpers";
 import { FilePickerPreview, FilePickerWarning } from "./FilePickerPreviewSections";
 import { FilePickerDropdown, FilePickerInputRow } from "./FilePickerSections";

@@ -1,35 +1,34 @@
-import { useCallback } from "react";
 import {
   createEmptyReeActivation,
   createEmptyRuntimeEntry,
   type ReeActivation,
   type RuntimeEntry,
   type RuntimeEntryKind,
-} from "../../../../../core/ree/ReeSpec";
+} from "@core/ree/ReeSpec";
 import {
   activationFooterHint,
   activationRunLabel,
   canRunActivation,
-} from "../../../../../core/ree-assembly/activationUiState";
-import type { ReeAssemblyRunParams } from "../../../../../core/ree-assembly/assemblyTypes";
-import { resolvedRuntimePath } from "../../../../../core/ree-assembly/buildRuntimeUiState";
-import { resolvedSbomPath } from "../../../../../core/ree-assembly/sbomUiState";
-import { workspaceFileExists } from "../../../../../core/workspace/fileTreeTraversal";
-import { Ic } from "../../../shared/components/Icon";
+} from "@core/ree-assembly/activationUiState";
+import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
+import { resolvedRuntimePath } from "@core/ree-assembly/buildRuntimeUiState";
+import { resolvedSbomPath } from "@core/ree-assembly/sbomUiState";
+import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
+import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
   lgOutcomeBadge,
   lgPillChip,
-  lgPrimaryActionButton,
   lgStatusBadge,
   lgStyles,
-} from "../../../theme/lightGlassTheme";
-import { C, F } from "../../../theme/theme";
+} from "@shell/ui/theme/lightGlassTheme";
+import { C, F } from "@shell/ui/theme/theme";
+import { useCallback } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
-import { GlassCancelButton } from "../../components/GlassCancelButton";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { LastRunStamp } from "../../components/LastRunStamp";
+import { RunActionButton } from "../../components/RunActionButton";
 import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { ActivationTargetCard } from "./sections";
@@ -167,24 +166,14 @@ function ActivationRunControls({
   onRun: () => void;
   onCancel?: () => void;
 }) {
-  const label = activationRunLabel({ running, runDone });
   return (
-    <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-      <button
-        type="button"
-        onClick={onRun}
-        disabled={disabled}
-        style={lgPrimaryActionButton(disabled)}
-      >
-        <span
-          style={{ display: "flex", animation: running ? "spin 0.9s linear infinite" : "none" }}
-        >
-          {running ? Ic.loader(14) : Ic.play(14)}
-        </span>
-        {label}
-      </button>
-      {running && onCancel && <GlassCancelButton onClick={onCancel} />}
-    </div>
+    <RunActionButton
+      label={activationRunLabel({ running, runDone })}
+      running={running}
+      disabled={disabled}
+      onRun={onRun}
+      onCancel={onCancel}
+    />
   );
 }
 

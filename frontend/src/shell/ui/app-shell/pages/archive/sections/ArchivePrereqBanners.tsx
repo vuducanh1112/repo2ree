@@ -1,6 +1,6 @@
-import { Ic } from "../../../../shared/components/Icon";
-import { lgColors } from "../../../../theme/lightGlassTheme";
-import { F } from "../../../../theme/theme";
+import { Ic } from "@shell/ui/shared/components/Icon";
+import { lgColors } from "@shell/ui/theme/lightGlassTheme";
+import { F } from "@shell/ui/theme/theme";
 
 interface ArchivePrereqBannersProps {
   capstoneReady: boolean;
