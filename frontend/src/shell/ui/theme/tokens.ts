@@ -1,3 +1,8 @@
+// Palette + font primitives for the canvas / app-chrome surfaces — the darker,
+// technical "lab" and "disassembled" views (canvas/*, sourceRuntime, landing,
+// app shell chrome). The glass "pages" surfaces use a deliberately separate
+// palette in ./lightGlassTheme. The two share only the font tokens (F) below;
+// their colors are intentionally distinct, so don't unify the hex values.
 const TOKENS = {
   color: {
     bg: "#f4f6f9",

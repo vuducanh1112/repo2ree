@@ -1,3 +1,8 @@
+// Theme for the glass "pages" surfaces — the bright, frosted page views
+// (archive, build-runtime, evaluate, experiments, files, hardware-bom,
+// metadata, overview/seal, source, runtime-environment). This is intentionally
+// a separate palette from the canvas/chrome tokens in ./tokens (C): the two
+// share only the font primitives (F) imported below. Keep the colors distinct.
 import type { FileTypeCategory } from "@core/workspace/PathUtils";
 import type React from "react";
 import { S_ACTION_BUTTON_BASE } from "./stylesCore";
