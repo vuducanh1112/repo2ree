@@ -472,7 +472,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await clickDemo(
       page,
       page.getByRole("button", { name: "Decompose" }),
-      "Decompose the pod into its three shells: outer, inner, and core",
+      "Decompose the pod into its three shells: outer, inner, and core — the core carries each experiment as its own panel, cabled in",
     );
     await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
     await page.waitForTimeout(1500);

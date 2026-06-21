@@ -163,18 +163,20 @@ interface ProjectionLayer {
   sub: string;
   /** World-x of the column centre (pod sits here). */
   cx: number;
-  /** Size of the pod + its ring relative to the full pod. */
+  /** Size of the column's POD relative to the full pod — the shrinking
+   *  "magnification levels" look. Panels stay full-size regardless (see
+   *  nodeProjection), so they read the same in every column. */
   scale: number;
 }
 export const EXPLODE_BASE_POD = 760;
 // Must stay above ZOOM_MIN in useCanvasViewport so focusView can reach it.
 export const EXPLODE_ZOOM = 0.42;
 // World-x the camera centres on when decomposed (mid-point of the spread).
-export const EXPLODE_CENTER = 1100;
+export const EXPLODE_CENTER = 1250;
 export const EXPLODE_LAYERS: ProjectionLayer[] = [
   { zone: "outer", label: "Outer shell", sub: "describe · certify · seal", cx: 0, scale: 1 },
   { zone: "inner", label: "Inner shell", sub: "execution substrate", cx: 1400, scale: 0.58 },
-  { zone: "core", label: "Core", sub: "the experiment", cx: 2200, scale: 0.38 },
+  { zone: "core", label: "Core", sub: "the experiment", cx: 2500, scale: 0.38 },
 ];
 const LAYER_BY_ZONE = new Map<NodeZone, ProjectionLayer>(
   EXPLODE_LAYERS.map((layer) => [layer.zone, layer]),
@@ -186,19 +188,18 @@ export interface NodeProjection {
   scale: number;
 }
 
-// Where a node sits in the exploded view: translate it into its shell's column
-// and shrink it to that column's scale. Assembled view is the identity.
+// Where a node sits in the exploded view: its shell's full-size cluster is
+// translated bodily into that shell's column. Panels keep full size (scale 1) so
+// they read identically in every column — only the pod they orbit shrinks. The
+// card's relative spread (node.x/node.y) is preserved; we just shift it so its
+// origin lands on the column centre. Assembled view is the identity.
 // xExploded overrides node.x for the decomposed position only.
 export function nodeProjection(node: CanvasNode, exploded: boolean): NodeProjection {
   const layer = LAYER_BY_ZONE.get(node.zone);
   if (!exploded || !layer) return { dx: 0, dy: 0, scale: 1 };
   const ex = node.xExploded ?? node.x;
-  return {
-    // layer.cx + layer.scale * ex - node.x  (card CSS left is node.x, so subtract it back)
-    dx: layer.cx + (layer.scale - 1) * node.x + layer.scale * (ex - node.x),
-    dy: (layer.scale - 1) * node.y,
-    scale: layer.scale,
-  };
+  // Card CSS left is node.x; shift so its centre lands at layer.cx + ex.
+  return { dx: layer.cx + (ex - node.x), dy: 0, scale: 1 };
 }
 
 const STEP_BY_KEY = new Map(PROCESS_STEPS.map((step) => [step.key, step]));

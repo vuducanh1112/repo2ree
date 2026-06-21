@@ -1,3 +1,4 @@
+import { addExperiment } from "@core/ree/experimentOps";
 import { useState } from "react";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
@@ -151,6 +152,15 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             provisioned={provisioned}
             dimmed={dockOpen}
             onNavigate={openPage}
+            onAddExperiment={() => commands.setReeSpec(addExperiment)}
+            onOpenExperimentsOverview={() => {
+              commands.setFocusedField(null);
+              openPage(PAGE.EXPERIMENTS);
+            }}
+            onOpenExperiment={(index) => {
+              commands.setFocusedField(`experiments[${index}].name`);
+              openPage(PAGE.EXPERIMENTS);
+            }}
             reeFiles={currentReeFiles}
             sourceRepo={workspaceRemote.sourceRepo}
             filesConsoleOpen={uiChrome.filesConsoleOpen}

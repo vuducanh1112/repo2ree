@@ -12,18 +12,21 @@ import {
   lgStatusBadge,
   lgStyles,
 } from "@shell/ui/theme/lightGlassTheme";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { PAGE } from "../../state/pages";
 import type { PageExperimentsProps } from "../sharedAssemblyUi";
 import {
   ExperimentCardList,
   ExperimentDetail,
+  ExperimentHeaderActions,
   type ExperimentSuggestion,
   ExperimentsAboutAside,
   ExperimentsCoverageAside,
   ExperimentsSuggestionsAside,
 } from "./ExperimentsPageSections";
+import { experimentIndexFromField, experimentValidation } from "./experimentsPageHelpers";
+import { useExperimentRun } from "./useExperimentRun";
 
 // ================================================
 // Page component
@@ -38,9 +41,19 @@ export function PageExperiments({
   onFocusedFieldChange,
   onSnapshotComplete,
   onBeforeRun,
-  focusedField: _focusedField,
+  focusedField,
 }: PageExperimentsProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  // The canvas deep-links into a specific experiment by setting focusedField
+  // (e.g. when a satellite in the decompose view is clicked). Apply it only when
+  // it changes, so manual card selection on this page isn't clobbered.
+  const appliedField = useRef<string | null>(null);
+  useEffect(() => {
+    if (focusedField === appliedField.current) return;
+    appliedField.current = focusedField;
+    setSelectedIndex(experimentIndexFromField(focusedField));
+  }, [focusedField]);
 
   // ================================================
   // Derived state
@@ -85,6 +98,27 @@ export function PageExperiments({
   };
 
   const selectedExperiment = selectedIndex !== null ? (experiments[selectedIndex] ?? null) : null;
+
+  const otherNames =
+    selectedIndex === null
+      ? []
+      : experiments
+          .filter((_, i) => i !== selectedIndex)
+          .map((e) => e.name.trim())
+          .filter(Boolean);
+
+  // Run/snapshot lives here (not in the detail body) so its controls can sit in
+  // the page header's top-right, while the detail body still shows the result.
+  const run = useExperimentRun({
+    reeId,
+    experimentName: selectedExperiment?.name ?? null,
+    onSnapshotComplete,
+    onBeforeRun,
+  });
+  const canRun = selectedExperiment
+    ? experimentValidation(selectedExperiment, otherNames).canRun
+    : false;
+  const canSnapshot = canRun && !locked;
 
   // ================================================
   // Coverage stats
@@ -131,27 +165,34 @@ export function PageExperiments({
           title="Experiments"
           subtitle="Reproducibility verification commands recorded in the REE."
           badges={headerBadges}
+          right={
+            selectedExperiment !== null && selectedIndex !== null ? (
+              <ExperimentHeaderActions
+                locked={locked}
+                canRun={canRun}
+                canSnapshot={canSnapshot}
+                isRunning={run.isRunning}
+                onRun={() => run.startRun("verify")}
+                onSnapshot={() => run.startRun("snapshot")}
+                onRemove={() => removeExperiment(selectedIndex)}
+              />
+            ) : undefined
+          }
         />
 
         <div style={lgStyles.mainGrid}>
           {selectedExperiment !== null && selectedIndex !== null ? (
             <ExperimentDetail
-              reeId={reeId}
               experiment={selectedExperiment}
               index={selectedIndex}
-              otherNames={experiments
-                .filter((_, i) => i !== selectedIndex)
-                .map((e) => e.name.trim())
-                .filter(Boolean)}
+              otherNames={otherNames}
               locked={locked}
               onUpdate={(patch) => updateExperiment(selectedIndex, patch)}
               onBack={() => {
                 setSelectedIndex(null);
                 onFocusedFieldChange(null);
               }}
-              onRemove={() => removeExperiment(selectedIndex)}
-              onSnapshotComplete={onSnapshotComplete}
-              onBeforeRun={onBeforeRun}
+              runState={run.runState}
             />
           ) : (
             <section style={{ ...lgStyles.panel, overflow: "hidden" }}>

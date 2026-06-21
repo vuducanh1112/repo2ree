@@ -1,5 +1,4 @@
-import type { ExecutionRunStatus } from "@core/execution/ExecutionRunStatus";
-import type { ExperimentOutputResult, ExperimentRunOutputs } from "@core/execution/ExperimentRun";
+import type { ExperimentOutputResult } from "@core/execution/ExperimentRun";
 import type {
   ExpectedOutput,
   ExperimentResourceEstimates,
@@ -7,9 +6,7 @@ import type {
   OutputSource,
   ReeExperiment,
 } from "@core/ree/ReeSpec";
-import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
-import { useApiRuntime } from "@shell/data/apiRuntime";
-import { useExecutionRunsClient } from "@shell/data/execution-runs/client";
+import type { LogEntry } from "@core/ree/ReeTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgActionButton,
@@ -21,10 +18,10 @@ import {
 } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { LogPanel } from "../../components/logPanel";
 import { RunActionButton } from "../../components/RunActionButton";
-import { expId, isValidExperimentName } from "./experimentsPageHelpers";
+import { experimentValidation, expId } from "./experimentsPageHelpers";
+import { type RunState, TERMINAL_STATUSES } from "./useExperimentRun";
 
 // The experiments page is composed from three modules; re-exported here so the
 // page keeps a single import surface.
@@ -40,179 +37,31 @@ export {
 // Detail view
 // ================================================
 
-type RunState = {
-  reeId: string;
-  runId: string;
-  mode: "verify" | "snapshot";
-  status: ExecutionRunStatus;
-  outputs: ExperimentRunOutputs | null;
-  error: string | null;
-  startedAt: string;
-  logLines: LogLine[];
-  logCursor: string | undefined;
-};
-
-const MAX_RUN_LOG_LINES = 2000;
-
-function appendCappedLogLines(existing: LogLine[], incoming: LogLine[]): LogLine[] {
-  if (incoming.length === 0) return existing;
-  const merged = existing.concat(incoming);
-  if (merged.length <= MAX_RUN_LOG_LINES) return merged;
-  return merged.slice(merged.length - MAX_RUN_LOG_LINES);
-}
-
-const TERMINAL_STATUSES: ExecutionRunStatus[] = ["succeeded", "failed", "canceled"];
-
 export function ExperimentDetail({
-  reeId,
   experiment,
   index,
   otherNames,
   locked,
   onUpdate,
   onBack,
-  onRemove,
-  onSnapshotComplete,
-  onBeforeRun,
+  runState,
 }: {
-  reeId: string;
   experiment: ReeExperiment;
   index: number;
   otherNames: string[];
   locked: boolean;
   onUpdate: (patch: Partial<ReeExperiment>) => void;
   onBack: () => void;
-  onRemove: () => void;
-  onSnapshotComplete: () => Promise<void>;
-  onBeforeRun: () => Promise<void>;
+  runState: RunState | null;
 }) {
-  const { runsApi, ensureReeId } = useApiRuntime();
-  const executionRunsClient = useExecutionRunsClient();
-  const [runState, setRunState] = useState<RunState | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current !== null) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
-
-  const fetchLogsOnce = useCallback(
-    async (reeId: string, runId: string, cursor: string | undefined) => {
-      let nextCursor = cursor;
-      const collected: LogLine[] = [];
-      for (let page = 0; page < 20; page += 1) {
-        const chunk = await executionRunsClient.getExecutionRunLogs(reeId, runId, nextCursor);
-        collected.push(...chunk.lines);
-        nextCursor = chunk.nextCursor || nextCursor;
-        if (!chunk.hasMore) break;
-        if (!chunk.nextCursor) break;
-      }
-      return { lines: collected, cursor: nextCursor };
-    },
-    [executionRunsClient],
+  const { trimmedName, isDuplicateName, isInvalidName, canRun } = experimentValidation(
+    experiment,
+    otherNames,
   );
-
-  useEffect(() => {
-    if (!runState || TERMINAL_STATUSES.includes(runState.status)) return;
-    stopPolling();
-    pollRef.current = setInterval(async () => {
-      try {
-        const [run, logChunk] = await Promise.all([
-          runsApi.getRun(runState.reeId, runState.runId),
-          fetchLogsOnce(runState.reeId, runState.runId, runState.logCursor),
-        ]);
-        const isTerminal = TERMINAL_STATUSES.includes(run.status);
-        const outputs = isTerminal
-          ? ((run.outputs as unknown as ExperimentRunOutputs | null) ?? null)
-          : null;
-        setRunState((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: run.status,
-                outputs: outputs ?? prev.outputs,
-                logLines: appendCappedLogLines(prev.logLines, logChunk.lines),
-                logCursor: logChunk.cursor ?? prev.logCursor,
-              }
-            : prev,
-        );
-        if (isTerminal) {
-          stopPolling();
-          if (outputs?.snapshotApplied) {
-            await onSnapshotComplete();
-          }
-        }
-      } catch {
-        stopPolling();
-        setRunState((prev) => (prev ? { ...prev, error: "Failed to poll run status" } : prev));
-      }
-    }, 1500);
-    return stopPolling;
-  }, [runState, runsApi, stopPolling, onSnapshotComplete, fetchLogsOnce]);
-
-  const startRun = useCallback(
-    async (mode: "verify" | "snapshot") => {
-      setRunState(null);
-      try {
-        // Flush any pending debounced draft edits (e.g. the command the user
-        // just typed) before running — the backend validates the run against
-        // the persisted draft, so a stale draft would 400 the run.
-        await onBeforeRun();
-        const resolvedReeId = await ensureReeId(reeId);
-        const run = await runsApi.createExperimentRun(resolvedReeId, experiment.name, {
-          mode,
-        });
-        setRunState({
-          reeId: resolvedReeId,
-          runId: run.runId,
-          mode,
-          status: run.status,
-          outputs: null,
-          error: null,
-          startedAt: run.startedAt || run.createdAt || new Date().toISOString(),
-          logLines: [],
-          logCursor: undefined,
-        });
-      } catch {
-        setRunState({
-          reeId,
-          runId: "",
-          mode,
-          status: "failed",
-          outputs: null,
-          error: "Failed to start run",
-          startedAt: new Date().toISOString(),
-          logLines: [],
-          logCursor: undefined,
-        });
-      }
-    },
-    [ensureReeId, reeId, experiment.name, runsApi, onBeforeRun],
-  );
-
-  const trimmedName = experiment.name.trim();
-  const isDuplicateName = trimmedName !== "" && otherNames.includes(trimmedName);
-  const isInvalidName = !isValidExperimentName(experiment.name);
-  const canRun =
-    trimmedName !== "" && !isDuplicateName && !isInvalidName && experiment.command.trim() !== "";
-  const canSnapshot = canRun && !locked;
-  const isRunning = runState !== null && !TERMINAL_STATUSES.includes(runState.status);
 
   return (
     <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-      <DetailBreadcrumb
-        index={index}
-        locked={locked}
-        canRun={canRun}
-        canSnapshot={canSnapshot}
-        isRunning={isRunning}
-        onBack={onBack}
-        onRemove={onRemove}
-        onRun={() => void startRun("verify")}
-        onSnapshot={() => void startRun("snapshot")}
-      />
+      <DetailBreadcrumb index={index} onBack={onBack} />
 
       <div style={{ ...lgStyles.sectionBody, display: "flex", flexDirection: "column", gap: 18 }}>
         <DetailField label="Name" required>
@@ -315,35 +164,7 @@ export function ExperimentDetail({
   );
 }
 
-function DetailBreadcrumb({
-  index,
-  locked,
-  canRun,
-  canSnapshot,
-  isRunning,
-  onBack,
-  onRemove,
-  onRun,
-  onSnapshot,
-}: {
-  index: number;
-  locked: boolean;
-  canRun: boolean;
-  canSnapshot: boolean;
-  isRunning: boolean;
-  onBack: () => void;
-  onRemove: () => void;
-  onRun: () => void;
-  onSnapshot: () => void;
-}) {
-  const runTitle = canRun
-    ? "Verify outputs against recorded expectations"
-    : "Add a unique name and command before running";
-  const snapshotTitle = locked
-    ? "Unlock the draft to update baselines"
-    : canRun
-      ? "Run command and capture outputs as sha256 baselines"
-      : "Add a unique name and command before snapshotting";
+function DetailBreadcrumb({ index, onBack }: { index: number; onBack: () => void }) {
   return (
     <div
       style={{
@@ -353,7 +174,6 @@ function DetailBreadcrumb({
         padding: "12px 18px",
         borderBottom: "1px solid rgba(125, 211, 252, 0.4)",
         background: "rgba(255, 255, 255, 0.55)",
-        flexWrap: "wrap",
       }}
     >
       <button
@@ -386,7 +206,40 @@ function DetailBreadcrumb({
       >
         {expId(index)}
       </span>
-      <span style={{ flex: 1 }} />
+    </div>
+  );
+}
+
+// The selected experiment's Run / Snapshot / Delete controls, rendered in the
+// page header's top-right (like the Build Runtime page's run controls) rather
+// than inside the detail panel.
+export function ExperimentHeaderActions({
+  locked,
+  canRun,
+  canSnapshot,
+  isRunning,
+  onRun,
+  onSnapshot,
+  onRemove,
+}: {
+  locked: boolean;
+  canRun: boolean;
+  canSnapshot: boolean;
+  isRunning: boolean;
+  onRun: () => void;
+  onSnapshot: () => void;
+  onRemove: () => void;
+}) {
+  const runTitle = canRun
+    ? "Verify outputs against recorded expectations"
+    : "Add a unique name and command before running";
+  const snapshotTitle = locked
+    ? "Unlock the draft to update baselines"
+    : canRun
+      ? "Run command and capture outputs as sha256 baselines"
+      : "Add a unique name and command before snapshotting";
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
       <RunActionButton
         label={isRunning ? "Running…" : "Run"}
         running={isRunning}

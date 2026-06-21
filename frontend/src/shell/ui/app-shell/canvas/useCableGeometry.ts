@@ -214,6 +214,10 @@ export function useCableGeometry({
 
     for (const node of CANVAS_NODES) {
       if (exploded && CHAIN_KEYS.has(node.key)) continue;
+      // Decomposed, the core column is taken over by per-experiment satellites
+      // (CoreExperiments), each with its own cable — so the lone Experiments
+      // node and its membership cable step aside.
+      if (exploded && node.key === PAGE.EXPERIMENTS) continue;
       const rect = rectOf(node.key);
       if (!rect) continue;
       const pod = podForZone(node.zone);

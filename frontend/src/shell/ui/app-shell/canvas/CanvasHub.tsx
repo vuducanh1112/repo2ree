@@ -6,11 +6,14 @@ import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { useMemo, useRef, useState } from "react";
 import { C, F } from "../../theme/theme";
 import type { AppShellPage } from "../state/pages";
+import { PAGE } from "../state/pages";
 import { BenchConsole } from "./BenchConsole";
 import { CableOverlaySvg } from "./CableOverlay";
 import { CanvasControls } from "./CanvasControls";
+import { CoreExperiments, experimentCableTargets } from "./CoreExperiments";
 import {
   CANVAS_NODES,
+  EXPLODE_BASE_POD,
   EXPLODE_CENTER,
   EXPLODE_LAYERS,
   EXPLODE_ZOOM,
@@ -22,11 +25,22 @@ import {
   nodeSummary,
 } from "./canvasNodes";
 import { ExplodeScaffold, ExplodeToggle, ProjectionPod } from "./ExplodeView";
+import { satellitePositions } from "./experimentRing";
 import { FileTreeConsole } from "./FileTreeConsole";
 import { LabBackdrop } from "./LabBackdrop";
 import { NodeCard } from "./NodeCard";
 import { useCableGeometry } from "./useCableGeometry";
 import { type Transform, useCanvasViewport } from "./useCanvasViewport";
+import { useExperimentCables } from "./useExperimentCables";
+
+// The core column (rightmost decomposed shell) hosts the experiment satellites.
+const CORE_LAYER = EXPLODE_LAYERS[EXPLODE_LAYERS.length - 1];
+const CORE_CENTER = { x: CORE_LAYER.cx, y: 0 };
+const CORE_POD_DIAMETER = EXPLODE_BASE_POD * CORE_LAYER.scale;
+// Satellites render full-size: the exploded world is already scaled to
+// EXPLODE_ZOOM, so any extra shrink here makes the panels unreadable. The ring
+// radius (experimentRing) keeps them clear of the core pod.
+const CORE_SAT_SCALE = 1;
 
 interface CanvasHubProps {
   page: AppShellPage;
@@ -36,6 +50,11 @@ interface CanvasHubProps {
   provisioned: boolean;
   dimmed: boolean;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
+  onAddExperiment: () => void;
+  /** Core pod → the experiment catalog overview (clears any deep-link). */
+  onOpenExperimentsOverview: () => void;
+  /** Open one experiment's editor (satellite click in the decompose view). */
+  onOpenExperiment: (index: number) => void;
   reeFiles: ReeFile[];
   sourceRepo: SourceRepoMetadata | undefined;
   filesConsoleOpen: boolean;
@@ -50,6 +69,9 @@ export function CanvasHub({
   provisioned,
   dimmed,
   onNavigate,
+  onAddExperiment,
+  onOpenExperimentsOverview,
+  onOpenExperiment,
   reeFiles,
   sourceRepo,
   filesConsoleOpen,
@@ -61,6 +83,7 @@ export function CanvasHub({
   const innerPodRef = useRef<SVGSVGElement>(null);
   const corePodRef = useRef<SVGSVGElement>(null);
   const nodeEls = useRef<Record<string, HTMLButtonElement | null>>({});
+  const satEls = useRef<Record<string, HTMLElement | null>>({});
 
   const {
     tf,
@@ -76,6 +99,8 @@ export function CanvasHub({
   } = useCanvasViewport(stageRef);
 
   const [exploded, setExploded] = useState(false);
+  // Hover over the core pod (the experiment-catalog affordance) makes it shine.
+  const [coreHovered, setCoreHovered] = useState(false);
   // The pan/zoom the user had before decomposing, restored when they reassemble.
   const preExplodeTf = useRef<Transform | null>(null);
 
@@ -106,6 +131,30 @@ export function CanvasHub({
     animate,
     exploded,
     projectionPods,
+  });
+
+  // Decomposed, the core column becomes the experiment space: one satellite per
+  // experiment cabled to the core pod, plus an add-ghost slot.
+  const experiments = ree.experiments ?? [];
+  // Once sealed the REE is frozen, so the ring drops its add-ghost slot.
+  const withAddSlot = !ree.sealedAt;
+  const satellitePos = useMemo(
+    () => satellitePositions(experiments.length, withAddSlot),
+    [experiments.length, withAddSlot],
+  );
+  const expTargets = useMemo(
+    () => (exploded ? experimentCableTargets(experiments, withAddSlot) : []),
+    [exploded, experiments, withAddSlot],
+  );
+  const expGeo = useExperimentCables({
+    stageRef,
+    coreSvgRef: corePodRef,
+    worldRef,
+    satEls,
+    targets: expTargets,
+    tf,
+    nodeOffsets,
+    animate,
   });
 
   const { completed, total } = lifecycleProgress(ree, badges);
@@ -140,6 +189,8 @@ export function CanvasHub({
       <LabBackdrop />
 
       {geo && <CableOverlaySvg geo={geo} levelMeta={levelMeta} />}
+
+      {exploded && expGeo && <CableOverlaySvg geo={expGeo} levelMeta={levelMeta} />}
 
       <div
         ref={worldRef}
@@ -189,10 +240,14 @@ export function CanvasHub({
           svgRef={corePodRef}
           layer={EXPLODE_LAYERS[2]}
           exploded={exploded}
+          glow={exploded && coreHovered}
         />
 
         <nav aria-label="Workspace pages">
           {CANVAS_NODES.map((node) => {
+            // Decomposed, the core column is taken over by the experiment
+            // satellites, so the lone Experiments node steps aside.
+            if (exploded && node.key === PAGE.EXPERIMENTS) return null;
             const off = nodeOffsets[node.key] ?? { x: 0, y: 0 };
             return (
               <NodeCard
@@ -215,6 +270,25 @@ export function CanvasHub({
             );
           })}
         </nav>
+
+        {exploded && (
+          <CoreExperiments
+            experiments={experiments}
+            locked={!withAddSlot}
+            center={CORE_CENTER}
+            podDiameter={CORE_POD_DIAMETER}
+            positions={satellitePos}
+            scale={CORE_SAT_SCALE}
+            satEls={satEls}
+            nodeOffsets={nodeOffsets}
+            onStartDrag={startNodeDrag}
+            wasNodeDragged={wasNodeDragged}
+            onCoreHoverChange={setCoreHovered}
+            onOpenOverview={onOpenExperimentsOverview}
+            onOpenExperiment={onOpenExperiment}
+            onAddExperiment={onAddExperiment}
+          />
+        )}
       </div>
 
       <div

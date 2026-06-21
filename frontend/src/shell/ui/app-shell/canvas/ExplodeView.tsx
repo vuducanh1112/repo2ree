@@ -21,11 +21,14 @@ export function ProjectionPod({
   svgRef,
   layer,
   exploded = true,
+  glow = false,
 }: {
   evaluation: EvaluationState;
   svgRef: React.RefObject<SVGSVGElement>;
   layer: (typeof EXPLODE_LAYERS)[number];
   exploded?: boolean;
+  /** Make the pod itself shine — used as the core's clickable hover cue. */
+  glow?: boolean;
 }) {
   const isMain = layer.zone === "outer";
   // Assembled: always show the full three-layer pod. Decomposed: each column shows its layer.
@@ -36,9 +39,12 @@ export function ProjectionPod({
         position: "absolute",
         left: layer.cx,
         top: 0,
-        transform: "translate(-50%,-50%)",
+        transform: `translate(-50%,-50%) scale(${glow ? 1.04 : 1})`,
         opacity: isMain || exploded ? 1 : 0,
-        transition: "opacity 0.4s",
+        filter: glow
+          ? "drop-shadow(0 0 26px rgba(99,102,241,0.85)) drop-shadow(0 0 60px rgba(79,70,229,0.55)) brightness(1.08)"
+          : undefined,
+        transition: "opacity 0.4s, filter 0.2s, transform 0.2s",
         pointerEvents: "none",
       }}
     >
