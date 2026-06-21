@@ -362,6 +362,25 @@ test("upload source archive into workspace", async ({ page }) => {
     );
     await page.waitForTimeout(5000);
     await expect(main.getByRole("button", { name: /Re-build/ })).toBeVisible({ timeout: 90000 });
+  });
+
+  await demoStep(page, "Configure runtime environment", async () => {
+    // The produced runtime artifact and its substrate now live on the inner
+    // shell — the Runtime Environment page — reached by decomposing the pod and
+    // clicking the inner-shell pod.
+    await page.keyboard.press("Escape").catch(() => {});
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: "Decompose" }),
+      "Decompose the pod into its three shells — the inner shell is the runtime",
+    );
+    await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: "Open runtime environment" }),
+      "Open the inner shell: the runtime the whole REE executes on",
+    );
+    await expect(main.getByText("Runtime Environment", { exact: true })).toBeVisible();
     await clickDemo(
       page,
       page.getByPlaceholder("runtime.tar.gz").locator("..").getByTitle("Browse repository files"),
@@ -375,6 +394,19 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("button", { name: "python_hello_world/runtime.tar" }),
       "Select produced runtime file",
     );
+    await showcasePanel(
+      page,
+      main.getByText("Runtime Substrate", { exact: true }),
+      "Choose how the workbench enters the runtime — shared by activation and every experiment",
+    );
+    // Reassemble before continuing the rest of the flow from the constellation.
+    await page.keyboard.press("Escape").catch(() => {});
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: "Reassemble" }),
+      "Reassemble the pod and continue",
+    );
+    await expect(page.getByRole("button", { name: "Decompose" })).toBeVisible();
   });
 
   await demoStep(page, "Generate SBOM", async () => {

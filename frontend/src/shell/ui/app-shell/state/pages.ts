@@ -7,6 +7,8 @@ export const PAGE = {
   METADATA: "metadata",
   EXPERIMENTS: "experiments",
   HBOM: "hbom",
+  // The inner shell: the execution substrate (runtime artifact + entry kind).
+  RUNTIME: "runtime",
   OVERVIEW: "overview",
   SEAL: "seal",
   ARCHIVE: "archive",

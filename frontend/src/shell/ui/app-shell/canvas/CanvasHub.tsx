@@ -27,6 +27,7 @@ import {
 import { ExplodeScaffold, ExplodeToggle, ProjectionPod } from "./ExplodeView";
 import { satellitePositions } from "./experimentRing";
 import { FileTreeConsole } from "./FileTreeConsole";
+import { InnerShellButton } from "./InnerShellButton";
 import { LabBackdrop } from "./LabBackdrop";
 import { NodeCard } from "./NodeCard";
 import { useCableGeometry } from "./useCableGeometry";
@@ -37,6 +38,10 @@ import { useExperimentCables } from "./useExperimentCables";
 const CORE_LAYER = EXPLODE_LAYERS[EXPLODE_LAYERS.length - 1];
 const CORE_CENTER = { x: CORE_LAYER.cx, y: 0 };
 const CORE_POD_DIAMETER = EXPLODE_BASE_POD * CORE_LAYER.scale;
+// The inner column (middle shell) is the runtime — its pod opens the Runtime page.
+const INNER_LAYER = EXPLODE_LAYERS[1];
+const INNER_CENTER = { x: INNER_LAYER.cx, y: 0 };
+const INNER_POD_DIAMETER = EXPLODE_BASE_POD * INNER_LAYER.scale;
 // Satellites render full-size: the exploded world is already scaled to
 // EXPLODE_ZOOM, so any extra shrink here makes the panels unreadable. The ring
 // radius (experimentRing) keeps them clear of the core pod.
@@ -55,6 +60,8 @@ interface CanvasHubProps {
   onOpenExperimentsOverview: () => void;
   /** Open one experiment's editor (satellite click in the decompose view). */
   onOpenExperiment: (index: number) => void;
+  /** Inner-shell pod → the runtime environment page. */
+  onOpenRuntime: () => void;
   reeFiles: ReeFile[];
   sourceRepo: SourceRepoMetadata | undefined;
   filesConsoleOpen: boolean;
@@ -72,6 +79,7 @@ export function CanvasHub({
   onAddExperiment,
   onOpenExperimentsOverview,
   onOpenExperiment,
+  onOpenRuntime,
   reeFiles,
   sourceRepo,
   filesConsoleOpen,
@@ -101,6 +109,8 @@ export function CanvasHub({
   const [exploded, setExploded] = useState(false);
   // Hover over the core pod (the experiment-catalog affordance) makes it shine.
   const [coreHovered, setCoreHovered] = useState(false);
+  // Same for the inner pod, which opens the runtime environment page.
+  const [innerHovered, setInnerHovered] = useState(false);
   // The pan/zoom the user had before decomposing, restored when they reassemble.
   const preExplodeTf = useRef<Transform | null>(null);
 
@@ -234,6 +244,7 @@ export function CanvasHub({
           svgRef={innerPodRef}
           layer={EXPLODE_LAYERS[1]}
           exploded={exploded}
+          glow={exploded && innerHovered}
         />
         <ProjectionPod
           evaluation={evaluation}
@@ -242,6 +253,18 @@ export function CanvasHub({
           exploded={exploded}
           glow={exploded && coreHovered}
         />
+
+        {/* The inner pod opens the runtime page. Rendered before the nav so the
+            inner-shell node cards keep painting (and clicking) on top of it. */}
+        {exploded && (
+          <InnerShellButton
+            center={INNER_CENTER}
+            podDiameter={INNER_POD_DIAMETER}
+            wasNodeDragged={wasNodeDragged}
+            onHoverChange={setInnerHovered}
+            onOpenRuntime={onOpenRuntime}
+          />
+        )}
 
         <nav aria-label="Workspace pages">
           {CANVAS_NODES.map((node) => {

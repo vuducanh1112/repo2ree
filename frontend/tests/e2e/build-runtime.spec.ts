@@ -2,6 +2,7 @@ import { expect, test } from "./helpers/fixtures";
 import {
   buildRuntime,
   main,
+  openPort,
   provisionWorkbench,
   pythonHelloWorld,
   startReeCreation,
@@ -20,6 +21,9 @@ test.describe("Build Runtime page", () => {
       "python_hello_world/runtime.tar",
     );
 
+    // buildRuntime ends back on the assembled constellation; re-open the Build
+    // node to confirm the build persisted as a completed (re-buildable) run.
+    await openPort(page, "Build");
     await expect(main(page).getByRole("button", { name: /Re-build/ })).toBeVisible();
   });
 });

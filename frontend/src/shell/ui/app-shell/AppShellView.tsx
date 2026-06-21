@@ -161,6 +161,10 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
               commands.setFocusedField(`experiments[${index}].name`);
               openPage(PAGE.EXPERIMENTS);
             }}
+            onOpenRuntime={() => {
+              commands.setFocusedField(null);
+              openPage(PAGE.RUNTIME);
+            }}
             reeFiles={currentReeFiles}
             sourceRepo={workspaceRemote.sourceRepo}
             filesConsoleOpen={uiChrome.filesConsoleOpen}

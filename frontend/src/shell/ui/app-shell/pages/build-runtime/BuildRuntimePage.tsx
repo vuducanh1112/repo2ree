@@ -3,10 +3,8 @@ import type { BuildScriptSource } from "@core/ree-assembly/buildRuntimeUiState";
 import {
   buildFooterHint,
   buildRunStatusLabel,
-  deriveRuntimeFileSize,
   resolvedRuntimePath,
 } from "@core/ree-assembly/buildRuntimeUiState";
-import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
@@ -25,7 +23,7 @@ import { RunActionButton } from "../../components/RunActionButton";
 import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
 import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
-import { BuildLogCard, BuildScriptCard, RuntimeArtifactCard } from "./sections";
+import { BuildLogCard, BuildScriptCard } from "./sections";
 
 const BUILD_PAGE_COLOR = lgPageColors.runtimeEnv;
 
@@ -88,11 +86,6 @@ export function PageBuildRuntime({
     build_runtime_script_path: scriptPath,
   };
 
-  const handleRuntimeChange = useCallback(
-    (path: string) => onReeSpecChange?.((current) => ({ ...current, runtime: path })),
-    [onReeSpecChange],
-  );
-
   const handleCommitScript = useCallback(
     (path: string, content: string) => {
       const previousPath = scriptPath || undefined;
@@ -106,16 +99,9 @@ export function PageBuildRuntime({
     onReeSpecChange?.((current) => ({ ...current, build_runtime_script: "" }));
   }, [onReeSpecChange]);
 
+  // The runtime artifact path now lives on the Runtime Environment page; here we
+  // only need the resolved path as a hint for the build-script generator.
   const finalRuntime = resolvedRuntimePath(ree.runtime);
-  const runtimePathExists = finalRuntime ? workspaceFileExists(files, finalRuntime) : false;
-  const finalRuntimeFile = useMemo(
-    () => (finalRuntime ? findFileByPath(files, finalRuntime) : null),
-    [files, finalRuntime],
-  );
-  const finalRuntimeSize = useMemo(
-    () => deriveRuntimeFileSize(finalRuntimeFile),
-    [finalRuntimeFile],
-  );
 
   const hasScript = !!scriptPath;
   const hasMissing = missing.length > 0;
@@ -181,23 +167,6 @@ export function PageBuildRuntime({
               onClear={handleClearScript}
               onSourceChange={setScriptSource}
             />
-
-            <div style={{ marginTop: 22 }}>
-              <GlassSectionHeader
-                icon={Ic.archive(19)}
-                color={BUILD_PAGE_COLOR}
-                title="Runtime Artifact"
-                subtitle="The file produced by your build, consumed by SBOM and activation."
-              />
-
-              <RuntimeArtifactCard
-                runtimePath={finalRuntime}
-                runtimeSize={finalRuntimeSize}
-                runtimePathExists={runtimePathExists}
-                files={files}
-                onRuntimeChange={handleRuntimeChange}
-              />
-            </div>
 
             <BuildLogCard log={log} running={running} ts={ts} />
           </div>

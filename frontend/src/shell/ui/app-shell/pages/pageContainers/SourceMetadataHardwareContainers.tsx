@@ -8,6 +8,7 @@ import {
   PageExperiments,
   PageHardwareBom,
   PageMetadataEntry,
+  PageRuntimeEnvironment,
   PageTestActivation,
 } from "../index";
 import { type AppShellPageContainerProps, ContentSection, useAssemblyRunLogEntry } from "./shared";
@@ -84,6 +85,29 @@ export function ExperimentsPageContainer({
       onSnapshotComplete={handleSnapshotComplete}
       onBeforeRun={commands.flushReeIntent}
     />
+  );
+}
+
+export function RuntimeEnvironmentPageContainer({
+  ree,
+  workspaceRemote,
+  uiChrome,
+  commands,
+}: AppShellPageContainerProps) {
+  const { page } = uiChrome;
+
+  if (page !== PAGE.RUNTIME) {
+    return null;
+  }
+
+  return (
+    <ContentSection>
+      <PageRuntimeEnvironment
+        ree={ree}
+        workspaceFiles={workspaceRemote.workspaceFiles}
+        onReeSpecChange={commands.setReeSpec}
+      />
+    </ContentSection>
   );
 }
 

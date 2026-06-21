@@ -43,7 +43,7 @@ function nav(page: Page) {
  * covers the constellation, so fly back out (Escape) before picking the next
  * node — the same "close, then choose" motion a user performs.
  */
-async function openPort(page: Page, label: string) {
+export async function openPort(page: Page, label: string) {
   await page.keyboard.press("Escape").catch(() => {});
   await nav(page).getByRole("button", { name: label, exact: true }).click();
 }
@@ -122,9 +122,10 @@ export async function runEvaluate(page: Page) {
 }
 
 /**
- * Build the runtime artifact and select the produced file. The Runtime node
- * reads as done once the artifact is selected; whether it is bundled into the
- * REE is chosen later in the hub's seal panel, not here.
+ * Build the runtime artifact and select the produced file. Building runs on the
+ * Build page; selecting the produced artifact now lives on the Runtime
+ * Environment page (the inner shell), reached by decomposing the pod — see
+ * {@link selectRuntimeArtifact}.
  */
 export async function buildRuntime(
   page: Page,
@@ -144,7 +145,36 @@ export async function buildRuntime(
     timeout: 90000,
   });
 
-  // Select the produced runtime artifact via the repository file picker.
+  await selectRuntimeArtifact(page, producedRuntimePath);
+  await stepShot(page, "build-runtime", "after");
+}
+
+/** Decompose the pod into its three shells; resolves once exploded. */
+async function decomposePod(page: Page) {
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.getByRole("button", { name: "Decompose" }).click();
+  await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
+}
+
+/** Reassemble the pod; resolves back on the assembled constellation. */
+async function reassemblePod(page: Page) {
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.getByRole("button", { name: "Reassemble" }).click();
+  await expect(page.getByRole("button", { name: "Decompose" })).toBeVisible();
+}
+
+/**
+ * Pick the produced runtime artifact on the Runtime Environment page. That page
+ * (the inner shell — runtime artifact + substrate) only opens from the
+ * decomposed view, so this decomposes the pod, clicks the inner-shell pod, picks
+ * the file via the repository file picker, then reassembles so the rest of the
+ * flow continues from the constellation.
+ */
+async function selectRuntimeArtifact(page: Page, producedRuntimePath: string) {
+  await decomposePod(page);
+  await page.getByRole("button", { name: "Open runtime environment" }).click();
+  await expect(main(page).getByText("Runtime Environment", { exact: true })).toBeVisible();
+
   await page
     .getByPlaceholder("runtime.tar.gz")
     .locator("..")
@@ -153,7 +183,8 @@ export async function buildRuntime(
   const producedRuntime = page.getByRole("button", { name: producedRuntimePath });
   await expect(producedRuntime).toBeVisible({ timeout: 20000 });
   await producedRuntime.click();
-  await stepShot(page, "build-runtime", "after");
+
+  await reassemblePod(page);
 }
 
 /** Add a hardware BOM entry (a CPU component with a device model). */
