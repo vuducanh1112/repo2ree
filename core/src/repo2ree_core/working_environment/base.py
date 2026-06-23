@@ -42,6 +42,8 @@ class WorkingEnvironmentSpec:
     is_canceled: CancelCheck | None = None
     image: str | None = None  # docker base image; None → implementation default
     activate: str = ""  # native substrate: command sourced before each run
+    engine: str = "docker"  # container engine binary (docker|podman|apptainer)
+    enter_script: str = ""  # custom substrate: path to phased driver script
 
 
 @dataclass(frozen=True)

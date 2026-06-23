@@ -2,8 +2,14 @@ import { scanDependencies } from "@core/ree-assembly/assemblyDependencyAnalysis"
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import { lgColors, lgOutcomeBadge, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
-import type React from "react";
+import {
+  lgColors,
+  lgOutcomeBadge,
+  lgPageRoot,
+  lgStatusBadge,
+  lgStyles,
+  pageIconTint,
+} from "@shell/ui/theme/lightGlassTheme";
 import { useEffect } from "react";
 import { assemblyStepIcon } from "../../assemblyStepIcons";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
@@ -59,14 +65,10 @@ export function PageEvaluate({
   return (
     // Single column sitting directly on the focus dock — no right rail. The Run
     // action lives in the header; the evaluation result folds into the column.
-    <div style={pageRoot}>
+    <div style={lgPageRoot}>
       <GlassPageHeader
         icon={IC(24)}
-        iconTint={{
-          color: "#7c3aed",
-          border: "rgba(124, 58, 237, 0.32)",
-          shadow: "rgba(124, 58, 237, 0.14)",
-        }}
+        iconTint={pageIconTint("#7c3aed")}
         title={assemblyStep.label}
         subtitle={assemblyStep.desc}
         badges={
@@ -143,13 +145,3 @@ export function PageEvaluate({
     </div>
   );
 }
-
-// Transparent page so the dock surface reads through; generous top padding
-// clears the dock's stage label and close button.
-const pageRoot: React.CSSProperties = {
-  height: "100%",
-  minHeight: 0,
-  overflow: "auto",
-  padding: "46px 36px 32px",
-  color: lgColors.text,
-};

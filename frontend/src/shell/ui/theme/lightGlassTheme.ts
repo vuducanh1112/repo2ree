@@ -478,6 +478,27 @@ export function lgActionButton(tone: ActionTone, disabled = false): React.CSSPro
   };
 }
 
+export const lgMutedBadge: React.CSSProperties = {
+  fontSize: 11,
+  color: lgColors.textMuted,
+  background: "rgba(248,250,252,0.85)",
+  border: "1px solid rgba(148,163,184,0.34)",
+  borderRadius: 99,
+  padding: "3px 9px",
+};
+
+export function pageIconTint(color: string): { color: string; border: string; shadow: string } {
+  return { color, border: `${color}55`, shadow: `${color}28` };
+}
+
+export const lgPageRoot: React.CSSProperties = {
+  height: "100%",
+  minHeight: 0,
+  overflow: "auto",
+  padding: "46px 36px 32px",
+  color: lgColors.text,
+};
+
 export function lgStatusBadge(ready: boolean): React.CSSProperties {
   return {
     border: ready ? lgBorders.successStrong : lgBorders.warning,

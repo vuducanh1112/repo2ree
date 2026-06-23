@@ -13,7 +13,7 @@ from pydantic import (
     model_validator,
 )
 
-from repo2ree_core.domain.env_entry import DockerEntry, EnvEntry
+from repo2ree_core.domain.env_entry import ContainerEntry, EnvEntry
 from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.experiment import Activation, Experiment
 
@@ -116,7 +116,7 @@ class ReeIntent(BaseModel):
     origin_url: str = ""
     source_type: SourceType = ""
     runtime: NormalizedPath = None
-    runtime_entry: EnvEntry = Field(default_factory=DockerEntry)
+    runtime_entry: EnvEntry = Field(default_factory=ContainerEntry)
     build_runtime_script: NormalizedPath = None
     activation: Activation = Field(default_factory=Activation)
     sbom: NormalizedPath = None

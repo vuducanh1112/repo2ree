@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from repo2ree_core.domain.env_entry import DockerEntry
+from repo2ree_core.domain.env_entry import ContainerEntry
 from repo2ree_core.experiment.evaluate import (
     CaptureBundle,
     evaluate_match,
@@ -509,7 +509,7 @@ def test_run_experiment_marks_verify_mismatch_as_failed(tmp_path, monkeypatch):
         runnable=experiment,
         label=experiment.name,
         mode="verify",
-        entry=DockerEntry(),
+        entry=ContainerEntry(),
         runtime_archive_path=tmp_path / "runtime.tar.gz",
         run_id="run-123",
         log=lambda *_: None,
@@ -560,7 +560,7 @@ def test_run_experiment_canceled_skips_output_evaluation(tmp_path, monkeypatch):
         runnable=experiment,
         label=experiment.name,
         mode="verify",
-        entry=DockerEntry(),
+        entry=ContainerEntry(),
         runtime_archive_path=tmp_path / "runtime.tar.gz",
         run_id="run-123",
         log=lambda *_: None,
@@ -598,7 +598,7 @@ def test_run_experiment_returns_canceled_when_provisioning_is_canceled(tmp_path,
         runnable=experiment,
         label=experiment.name,
         mode="verify",
-        entry=DockerEntry(),
+        entry=ContainerEntry(),
         runtime_archive_path=tmp_path / "runtime.tar.gz",
         run_id="run-123",
         log=lambda *_: None,
@@ -652,7 +652,7 @@ def test_run_experiment_ignores_cleanup_unlink_errors(tmp_path, monkeypatch):
         runnable=experiment,
         label=experiment.name,
         mode="verify",
-        entry=DockerEntry(),
+        entry=ContainerEntry(),
         runtime_archive_path=tmp_path / "runtime.tar.gz",
         run_id="run-123",
         log=lambda *_: None,

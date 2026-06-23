@@ -3,6 +3,7 @@ import type { EvaluationState } from "../evaluate/EvaluationState";
 import { normalizeHBOM } from "../hbom/HbomSummary";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import {
+  type ContainerEngine,
   createEmptyExperimentResourceEstimates,
   createEmptyReeActivation,
   createEmptyReeCatalogMetadata,
@@ -16,6 +17,7 @@ import {
   type ReeSpec,
   type RuntimeEntry,
 } from "./ReeSpec";
+import { CONTAINER_ENGINES } from "./runtimeEntryLabels";
 
 // ================================================
 // Types
@@ -95,15 +97,64 @@ function mapRawActivation(value: unknown): ReeActivation {
   };
 }
 
+// Wire values are untrusted: validate rather than cast, so a malformed engine,
+// non-object env, or non-numeric cpu can't masquerade as a well-typed entry.
+function asContainerEngine(value: unknown): ContainerEngine {
+  return CONTAINER_ENGINES.includes(value as ContainerEngine)
+    ? (value as ContainerEngine)
+    : "docker";
+}
+
+function asStringMap(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object") return {};
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    out[k] = String(v ?? "");
+  }
+  return out;
+}
+
+function asPositiveInt(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
 function mapRawRuntimeEntry(value: unknown): RuntimeEntry {
   const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   switch (raw.kind) {
-    case "native":
-      return { kind: "native", activate: String(raw.activate ?? "") };
-    case "singularity":
-      return { kind: "singularity", sif: String(raw.sif ?? "") };
+    case "container":
+      return {
+        kind: "container",
+        engine: asContainerEngine(raw.engine),
+        workdir: String(raw.workdir ?? "/workspace"),
+        env: asStringMap(raw.env),
+        gpus: Boolean(raw.gpus ?? false),
+        activate: String(raw.activate ?? ""),
+        enter_script: String(raw.enter_script ?? ""),
+      };
+    case "local":
+      return {
+        kind: "local",
+        activate: String(raw.activate ?? ""),
+        enter_script: String(raw.enter_script ?? ""),
+      };
     case "vm":
-      return { kind: "vm", host: String(raw.host ?? "") };
+      return {
+        kind: "vm",
+        cpu: asPositiveInt(raw.cpu, 1),
+        memory: String(raw.memory ?? "4G"),
+        ssh_host: String(raw.ssh_host ?? ""),
+        ssh_user: String(raw.ssh_user ?? ""),
+        ssh_key: String(raw.ssh_key ?? ""),
+        activate: String(raw.activate ?? ""),
+        enter_script: String(raw.enter_script ?? ""),
+      };
+    case "custom":
+      return {
+        kind: "custom",
+        enter_script: String(raw.enter_script ?? ""),
+        activate: String(raw.activate ?? ""),
+      };
     default:
       return createEmptyRuntimeEntry();
   }

@@ -10,7 +10,7 @@ experiments — activation and experiments cannot drift because they share it.
 from __future__ import annotations
 
 from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.env_entry import DockerEntry
+from repo2ree_core.domain.env_entry import ContainerEntry, VmEntry
 from repo2ree_core.envelope.handlers._common import (
     patch_ree_intent,
     resolve_workspace_path,
@@ -52,7 +52,7 @@ def handle_activation_test(
     entry = ree.runtime_entry
     runtime_path = ree.runtime
     runtime_abs = None
-    if isinstance(entry, DockerEntry):
+    if isinstance(entry, ContainerEntry | VmEntry):
         if not runtime_path:
             log("system", "error", "Runtime artifact is required before activation")
             return ActionResult(status="failed", exit_code=1)

@@ -5,74 +5,10 @@ import {
   buildRunStatusLabel,
   buildSummaryStatusLabel,
   deriveRuntimeFileSize,
-  modeForSource,
-  provenanceLabel,
   runtimeArtifactStatus,
   runtimeArtifactStatusLabel,
   runtimeSummaryStatusLabel,
-  sourceAfterGenerate,
-  sourceAfterSave,
 } from "./buildRuntimeUiState";
-
-describe("modeForSource", () => {
-  it("defaults to pick when no source", () => {
-    expect(modeForSource(null)).toBe("pick");
-  });
-  it("maps generated -> generate", () => {
-    expect(modeForSource({ kind: "generated", base: "x" })).toBe("generate");
-  });
-  it("maps manual -> write", () => {
-    expect(modeForSource({ kind: "manual" })).toBe("write");
-  });
-  it("maps picked -> pick", () => {
-    expect(modeForSource({ kind: "picked" })).toBe("pick");
-  });
-});
-
-describe("provenanceLabel", () => {
-  it("describes empty state", () => {
-    expect(provenanceLabel(null)).toBe("No script yet");
-  });
-  it("describes picked", () => {
-    expect(provenanceLabel({ kind: "picked" })).toBe("Picked from workspace");
-  });
-  it("describes manual", () => {
-    expect(provenanceLabel({ kind: "manual" })).toBe("Hand-written");
-  });
-  it("describes generated with base", () => {
-    expect(provenanceLabel({ kind: "generated", base: "docker-export" })).toBe(
-      "Generated · docker-export",
-    );
-  });
-  it("flags edited generated", () => {
-    expect(provenanceLabel({ kind: "generated", base: "docker-export", edited: true })).toBe(
-      "Generated · docker-export · edited",
-    );
-  });
-});
-
-describe("source transitions", () => {
-  it("sourceAfterGenerate marks not edited", () => {
-    expect(sourceAfterGenerate("nix-docker")).toEqual({
-      kind: "generated",
-      base: "nix-docker",
-      edited: false,
-    });
-  });
-  it("sourceAfterSave forks generated into edited", () => {
-    expect(sourceAfterSave({ kind: "generated", base: "x", edited: false })).toEqual({
-      kind: "generated",
-      base: "x",
-      edited: true,
-    });
-  });
-  it("sourceAfterSave from null is manual", () => {
-    expect(sourceAfterSave(null)).toEqual({ kind: "manual" });
-  });
-  it("sourceAfterSave from picked is manual", () => {
-    expect(sourceAfterSave({ kind: "picked" })).toEqual({ kind: "manual" });
-  });
-});
 
 describe("buildRunStatusLabel", () => {
   it("running wins", () => {

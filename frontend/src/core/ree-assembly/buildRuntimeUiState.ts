@@ -4,39 +4,6 @@ export function resolvedRuntimePath(raw: string | null | undefined): string {
   return raw && raw !== SKIPPED_SENTINEL ? raw : "";
 }
 
-export type BuildScriptSourceKind = "picked" | "manual" | "generated";
-
-export interface BuildScriptSource {
-  kind: BuildScriptSourceKind;
-  base?: string;
-  edited?: boolean;
-}
-
-export type BuildScriptMode = "pick" | "write" | "generate";
-
-export function modeForSource(source: BuildScriptSource | null): BuildScriptMode {
-  if (source?.kind === "generated") return "generate";
-  if (source?.kind === "manual") return "write";
-  return "pick";
-}
-
-export function provenanceLabel(source: BuildScriptSource | null): string {
-  if (!source) return "No script yet";
-  if (source.kind === "picked") return "Picked from workspace";
-  if (source.kind === "manual") return "Hand-written";
-  const baseLabel = source.base ? ` · ${source.base}` : "";
-  return `Generated${baseLabel}${source.edited ? " · edited" : ""}`;
-}
-
-export function sourceAfterGenerate(base: string): BuildScriptSource {
-  return { kind: "generated", base, edited: false };
-}
-
-export function sourceAfterSave(previous: BuildScriptSource | null): BuildScriptSource {
-  if (previous?.kind === "generated") return { ...previous, edited: true };
-  return { kind: "manual" };
-}
-
 type BuildRunStatusLabel = "Building" | "Built" | "Ready" | "Empty";
 
 export function buildRunStatusLabel(input: {

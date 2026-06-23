@@ -4,10 +4,12 @@ import {
   patchExperiment,
 } from "@core/ree/experimentOps";
 import type { ReeExperiment, ReeSpec } from "@core/ree/ReeSpec";
+import { substrateLabel } from "@core/ree/runtimeEntryLabels";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
   lgGlassButton,
+  lgMutedBadge,
   lgNextButton,
   lgStatusBadge,
   lgStyles,
@@ -138,6 +140,7 @@ export function PageExperiments({
   // Render
   // ================================================
 
+  const runtimeEntry = reeSpec.runtime_entry;
   const headerBadges = (
     <>
       <span
@@ -154,6 +157,7 @@ export function PageExperiments({
         {total} {total === 1 ? "experiment" : "experiments"}
       </span>
       <span style={lgStatusBadge(total > 0)}>{total > 0 ? "Defined" : "Empty"}</span>
+      <span style={lgMutedBadge}>Runs on: {substrateLabel(runtimeEntry)}</span>
     </>
   );
 

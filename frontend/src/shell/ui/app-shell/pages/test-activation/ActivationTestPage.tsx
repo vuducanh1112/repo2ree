@@ -1,4 +1,5 @@
 import { createEmptyReeActivation, type ReeActivation } from "@core/ree/ReeSpec";
+import { substrateLabel } from "@core/ree/runtimeEntryLabels";
 import {
   activationFooterHint,
   activationRunLabel,
@@ -11,10 +12,13 @@ import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
+  lgMutedBadge,
   lgOutcomeBadge,
+  lgPageRoot,
   lgPillChip,
   lgStatusBadge,
   lgStyles,
+  pageIconTint,
 } from "@shell/ui/theme/lightGlassTheme";
 import { C, F } from "@shell/ui/theme/theme";
 import { useCallback } from "react";
@@ -72,6 +76,7 @@ export function PageTestActivation({
   const files = workspaceFiles || [];
 
   const activation: ReeActivation = ree.activation ?? createEmptyReeActivation();
+  const runtimeEntry = ree.runtime_entry;
 
   const runtimePath = resolvedRuntimePath(ree.runtime);
   const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
@@ -105,14 +110,10 @@ export function PageTestActivation({
     : null;
 
   return (
-    <div style={pageRoot}>
+    <div style={lgPageRoot}>
       <GlassPageHeader
         icon={Ic.shield(24)}
-        iconTint={{
-          color: ACTIVATION_PAGE_COLOR,
-          border: `${ACTIVATION_PAGE_COLOR}55`,
-          shadow: `${ACTIVATION_PAGE_COLOR}28`,
-        }}
+        iconTint={pageIconTint(ACTIVATION_PAGE_COLOR)}
         title="Test Activation"
         subtitle="Verify the packaged runtime actually starts and activates."
         badges={
@@ -123,6 +124,7 @@ export function PageTestActivation({
             <span style={lgStatusBadge(activationReady)}>
               {activationReady ? "Activation ready" : "Activation pending"}
             </span>
+            <span style={lgMutedBadge}>Runs on: {substrateLabel(runtimeEntry)}</span>
             {runDone && badge && (
               <span style={lgOutcomeBadge(badge.color, badge.bg)}>
                 {Ic.check(11)} {badge.label}
@@ -211,11 +213,3 @@ export function PageTestActivation({
     </div>
   );
 }
-
-const pageRoot: React.CSSProperties = {
-  height: "100%",
-  minHeight: 0,
-  overflow: "auto",
-  padding: "46px 36px 32px",
-  color: lgColors.text,
-};

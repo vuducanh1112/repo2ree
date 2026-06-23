@@ -14,8 +14,8 @@ Both parameters are intentional hooks for future machine/kind selection.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from repo2ree_core.domain.env_entry import EnvEntry, NativeEntry
 from repo2ree_core.working_environment.base import (
     CancelCheck,
     LogSink,
@@ -27,6 +27,12 @@ from repo2ree_core.working_environment.base import (
 )
 from repo2ree_core.working_environment.machine import LocalMachine
 
+# Deferred to runtime: importing domain.env_entry at module load pulls in
+# domain → experiment → run → working_environment, a cycle when this package is
+# imported first. Only ``acquire`` needs the concrete class, at call time.
+if TYPE_CHECKING:
+    from repo2ree_core.domain.env_entry import EnvEntry
+
 # ================================================
 # Public API
 # ================================================
@@ -36,10 +42,14 @@ from repo2ree_core.working_environment.machine import LocalMachine
 # knows how to provision. Adding a substrate is: a new EnvEntry, an entry
 # here, and a Machine branch.
 _ENTRY_KIND_TO_ENV_KIND = {
+    "container": "container",
+    "local": "native",
+    "custom": "custom",
+    "vm": "vm",
+    # legacy v1 kinds kept for any stale in-memory objects
     "docker": "container",
     "native": "native",
     "singularity": "singularity",
-    "vm": "vm",
 }
 
 
@@ -75,9 +85,13 @@ def acquire(
     """
     if machine != "local":
         raise ValueError(f"Machine {machine!r} is not supported yet; only 'local' is available")
+    from repo2ree_core.domain.env_entry import ContainerEntry
+
     if kind is None:
         kind = _ENTRY_KIND_TO_ENV_KIND.get(entry.kind, "container") if entry is not None else "container"
-    activate = entry.activate if isinstance(entry, NativeEntry) else ""
+    activate = entry.activate if entry is not None and hasattr(entry, "activate") else ""
+    engine = entry.engine if isinstance(entry, ContainerEntry) else "docker"
+    enter_script = getattr(entry, "enter_script", "")
     spec = WorkingEnvironmentSpec(
         workspace_path=workspace_path,
         run_id=run_id,
@@ -85,6 +99,8 @@ def acquire(
         is_canceled=is_canceled,
         image=image,
         activate=activate,
+        engine=engine,
+        enter_script=enter_script,
     )
     we = LocalMachine().create_working_environment(spec, kind=kind)
     return we

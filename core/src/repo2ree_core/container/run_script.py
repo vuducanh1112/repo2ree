@@ -14,9 +14,90 @@ from repo2ree_protocol.log import LogSink  # noqa: F401
 
 CONTAINER_WORKSPACE = Path("/workspace")
 
+# The Docker socket is mounted so a runtime may itself drive Docker.
+DOCKER_SOCK_MOUNT = "/var/run/docker.sock:/var/run/docker.sock"
+
+
+# ================================================
+# Naming conventions (run-scoped)
+# ================================================
+
+
+def container_name(run_id: str) -> str:
+    """Name of the per-run working-environment container."""
+    return f"repo2ree-we-{run_id}"
+
+
+def runtime_image_tag(run_id: str) -> str:
+    """Run-scoped tag applied to the loaded runtime image."""
+    return f"repo2ree-runtime-{run_id}"
+
+
+def experiment_script_rel(run_id: str) -> str:
+    """Workspace-relative path of the command script a run executes."""
+    return f".workspace/exp_{run_id}.sh"
+
+
+# ================================================
+# Canonical Docker argv builders
+# ================================================
+# These are the single source of truth for the exact Docker commands the
+# working_environment executes; the lifecycle projection (command_plan) renders
+# the very same argv so display cannot drift from execution.
+
+
+def docker_load_argv(docker: str, artifact: str) -> list[str]:
+    return [docker, "load", "-i", artifact]
+
+
+def docker_tag_argv(docker: str, loaded_ref: str, image: str) -> list[str]:
+    return [docker, "tag", loaded_ref, image]
+
+
+def docker_create_argv(docker: str, *, container: str, image: str, sock_mount: bool = True) -> list[str]:
+    sock = ["-v", DOCKER_SOCK_MOUNT] if sock_mount else []
+    return [docker, "create", "--name", container, *sock, image, "sleep", "infinity"]
+
+
+def docker_cp_in_argv(docker: str, *, workspace: str, container: str) -> list[str]:
+    return [docker, "cp", f"{workspace}/.", f"{container}:{CONTAINER_WORKSPACE}"]
+
+
+def docker_start_argv(docker: str, container: str) -> list[str]:
+    return [docker, "start", container]
+
+
+def docker_exec_argv(
+    docker: str,
+    *,
+    container: str,
+    exec_command: str,
+    login_shell: bool,
+    interactive: bool = False,
+) -> list[str]:
+    sh_flag = "-lc" if login_shell else "-c"
+    return [docker, "exec", *(["-i"] if interactive else []), container, "sh", sh_flag, exec_command]
+
+
+def docker_cp_out_argv(docker: str, *, container: str, workspace: str) -> list[str]:
+    return [docker, "cp", f"{container}:{CONTAINER_WORKSPACE}/.", workspace]
+
+
+def docker_rm_argv(docker: str, container: str) -> list[str]:
+    return [docker, "rm", "-f", container]
+
+
+def docker_rmi_argv(docker: str, *, image: str, loaded_ref: str) -> list[str]:
+    return [docker, "rmi", "-f", image, loaded_ref]
+
+
+def format_argv(argv: list[str]) -> str:
+    """Render an argv list as a single, copy-pasteable shell line."""
+    return " ".join(shlex.quote(t) for t in argv)
+
 
 def format_command(command: list[str]) -> str:
-    return "$ " + " ".join(shlex.quote(t) for t in command)
+    return "$ " + format_argv(command)
 
 
 def stream_output(log: LogSink, result: subprocess.CompletedProcess[str]) -> None:

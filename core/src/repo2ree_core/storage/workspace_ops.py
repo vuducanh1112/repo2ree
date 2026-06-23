@@ -163,6 +163,10 @@ def _iter_workspace_files(store: ReeStore):
 def _workspace_files_with_content(storage_root: Path, ree_id: str) -> list[dict[str, Any]]:
     store = _store(storage_root, ree_id)
     root = store.layout.workspace
+    # Provenance: files present in overlay/ are user-added or tool-generated
+    # recipe files; everything else came from the immutable upstream source.
+    # The merged workspace flattens both, so we recover the origin here.
+    overlay_rels = {rel.as_posix() for rel in store.overlay.iter_files()}
     entries: list[dict[str, Any]] = []
     for fp in _iter_workspace_files(store):
         rel = fp.relative_to(root).as_posix()
@@ -170,7 +174,7 @@ def _workspace_files_with_content(storage_root: Path, ree_id: str) -> list[dict[
         entries.append(
             {
                 "path": rel,
-                "kind": classify_file_kind(rel),
+                "kind": "generated" if rel in overlay_rels else classify_file_kind(rel),
                 "size": size,
                 "content": (_read_text_if_possible(fp) if should_inline_file_content(rel, size) else None),
             }

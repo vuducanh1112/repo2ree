@@ -12,7 +12,6 @@ so the runner is identical across substrates.
 
 from __future__ import annotations
 
-import shlex
 import subprocess
 from pathlib import Path
 
@@ -24,6 +23,7 @@ from repo2ree_core.working_environment.base import (
     StepOutcome,
     WorkingEnvironmentSpec,
 )
+from repo2ree_core.working_environment.command_plan import native_exec_argv, native_shell_command
 
 
 class NativeWorkingEnvironment:
@@ -77,16 +77,14 @@ class NativeWorkingEnvironment:
         else:
             working_dir = self._resolve(step.working_dir_rel)
 
-        segments = ["set -e"]
-        if self._activate:
-            segments.append(self._activate)
-        segments.append(f"cd {shlex.quote(str(working_dir))}")
-        if step.echo_label is not None:
-            segments.append(f"echo '--- {step.echo_label} ({shlex.quote(step.script_rel_path)}) ---'")
-        segments.append(f"source {shlex.quote(str(script_abs))}")
-        shell_command = "; ".join(segments)
-
-        cmd = ["bash", "--login", "-c", shell_command] if step.login_shell else ["bash", "-c", shell_command]
+        shell_command = native_shell_command(
+            activate=self._activate,
+            working_dir=str(working_dir),
+            script_abs=str(script_abs),
+            echo_label=step.echo_label,
+            script_rel=step.script_rel_path,
+        )
+        cmd = native_exec_argv(shell_command, login_shell=step.login_shell)
         log("system", "info", format_command(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True, input=step.stdin_text)
         stream_output(log, result)

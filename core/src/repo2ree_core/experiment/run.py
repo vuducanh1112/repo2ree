@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from repo2ree_core.container.runtime_image import loaded_runtime_image
-from repo2ree_core.domain.env_entry import DockerEntry, EnvEntry
+from repo2ree_core.domain.env_entry import ContainerEntry, EnvEntry
 from repo2ree_core.experiment.evaluate import (
     CaptureBundle,
     ExperimentRunResult,
@@ -223,9 +223,9 @@ def _entered_environment(
     Docker is the only substrate that materializes the runtime artifact (loading
     the image tarball); the others enter the runtime in place.
     """
-    if isinstance(entry, DockerEntry):
+    if isinstance(entry, ContainerEntry):
         if runtime_archive_path is None:
-            raise ValueError("Docker entry requires a built runtime artifact")
+            raise ValueError("Container entry requires a built runtime artifact")
         with loaded_runtime_image(runtime_archive_path, run_id=run_id, log=log) as runtime_image:
             with acquire(
                 workspace,

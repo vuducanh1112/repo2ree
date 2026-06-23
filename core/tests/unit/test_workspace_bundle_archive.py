@@ -11,6 +11,7 @@ from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.storage.workspace_ops import (
     build_workspace_ree_archive,
+    get_workspace,
     seal_workspace_ree,
 )
 
@@ -220,6 +221,24 @@ def test_build_archive_raises_before_seal(tmp_path):
 
     with pytest.raises(RuntimeError, match="not sealed"):
         build_workspace_ree_archive(storage_root, ree_id)
+
+
+def test_get_workspace_tags_overlay_files_as_generated(tmp_path):
+    storage_root = tmp_path / "storage"
+    ree_id, layout = _make_ree(storage_root, "provenance")
+
+    # An upstream source file and an overlay recipe file both surface in the
+    # merged workspace; only the overlay one is "generated".
+    (layout.upstream / "main.py").write_text("print('hi')", encoding="utf-8")
+    (layout.overlay / "build_runtime.sh").write_text("docker build .", encoding="utf-8")
+    # Materialize the merged workspace the way the workbench would.
+    (layout.workspace / "main.py").write_text("print('hi')", encoding="utf-8")
+    (layout.workspace / "build_runtime.sh").write_text("docker build .", encoding="utf-8")
+
+    files = {f["path"]: f["kind"] for f in get_workspace(storage_root, ree_id)["files"]}
+
+    assert files["build_runtime.sh"] == "generated"
+    assert files["main.py"] == "source"
 
 
 def test_build_archive_returns_stored_bytes_after_seal(tmp_path):

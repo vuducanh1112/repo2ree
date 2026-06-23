@@ -1,4 +1,6 @@
+import type { CommandPlan } from "@core/execution/RuntimeCommandPlan";
 import type { ReeId } from "@core/ree/ReeId";
+import type { RuntimeEntry } from "@core/ree/ReeSpec";
 import type { ApiClient } from "./ApiClient";
 import type {
   ApiListResponse,
@@ -58,6 +60,15 @@ export class ReeApi {
     return this.client.request<ReeDetailDto>(endpoints.rees(), {
       method: "POST",
       body: JSON.stringify(payload),
+    });
+  }
+
+  // Project a runtime substrate into the exact commands it runs. Stateless —
+  // no REE id needed; the plan is a pure function of the entry.
+  async getRuntimeCommandPlan(entry: RuntimeEntry): Promise<CommandPlan> {
+    return this.client.request<CommandPlan>(endpoints.runtimeCommandPlan(), {
+      method: "POST",
+      body: JSON.stringify(entry),
     });
   }
 

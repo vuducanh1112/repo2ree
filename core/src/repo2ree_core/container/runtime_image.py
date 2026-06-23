@@ -8,7 +8,15 @@ from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from pathlib import Path
 
-from repo2ree_core.container.run_script import LogSink, format_command, stream_output
+from repo2ree_core.container.run_script import (
+    LogSink,
+    docker_load_argv,
+    docker_rmi_argv,
+    docker_tag_argv,
+    format_command,
+    runtime_image_tag,
+    stream_output,
+)
 
 
 def _loaded_image_ref(load_result: subprocess.CompletedProcess[str]) -> str | None:
@@ -29,9 +37,9 @@ def loaded_runtime_image(
 ) -> Iterator[str]:
     """Load a runtime tarball and expose a run-scoped image tag."""
     docker_bin = shutil.which("docker") or "docker"
-    run_image = f"repo2ree-runtime-{run_id}"
+    run_image = runtime_image_tag(run_id)
 
-    load_cmd = [docker_bin, "load", "-i", str(runtime_archive_path)]
+    load_cmd = docker_load_argv(docker_bin, str(runtime_archive_path))
     log("system", "info", format_command(load_cmd))
     load_result = subprocess.run(load_cmd, capture_output=True, text=True)
     stream_output(log, load_result)
@@ -42,7 +50,7 @@ def loaded_runtime_image(
     if not loaded_ref:
         raise RuntimeError("Docker did not report a loaded runtime image")
 
-    tag_cmd = [docker_bin, "tag", loaded_ref, run_image]
+    tag_cmd = docker_tag_argv(docker_bin, loaded_ref, run_image)
     log("system", "info", format_command(tag_cmd))
     tag_result = subprocess.run(tag_cmd, capture_output=True, text=True)
     stream_output(log, tag_result)
@@ -54,7 +62,7 @@ def loaded_runtime_image(
     finally:
         with suppress(Exception):
             subprocess.run(
-                [docker_bin, "rmi", "-f", run_image, loaded_ref],
+                docker_rmi_argv(docker_bin, image=run_image, loaded_ref=loaded_ref),
                 capture_output=True,
                 text=True,
             )

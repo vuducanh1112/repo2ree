@@ -135,7 +135,10 @@ export async function buildRuntime(
   await stepShot(page, "build-runtime", "before");
   await openPort(page, "Build");
   await expect(main(page).getByText("Build Runtime", { exact: true })).toBeVisible();
-  await page.getByPlaceholder("build_runtime.sh").fill(buildScriptPath);
+  // Select the active build script via the "Active build script" picker. (The
+  // "build_runtime.sh" placeholder now belongs to the create-new-script editor,
+  // which only seeds the overlay and does not set the active script.)
+  await page.getByPlaceholder("Pick a .sh file from the workspace").fill(buildScriptPath);
   await main(page)
     .getByRole("button", { name: /Run build/ })
     .click();

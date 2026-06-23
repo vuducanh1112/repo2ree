@@ -16,6 +16,7 @@ import {
   lgCorrespondingBadge,
   lgGlassButton,
   lgInput,
+  lgPageRoot,
   lgStatusBadge,
   lgStyles,
   lgSuggestionButton,
@@ -167,7 +168,7 @@ export function PageMetadataEntry({
     // Minimal form sitting directly on the focus dock — no nested frame/panel
     // layers. The dock supplies the floating surface over the canvas; the page
     // only paints its own content.
-    <div style={pageRoot}>
+    <div style={lgPageRoot}>
       <GlassPageHeader
         icon={Ic.grid(24)}
         title="Metadata"
@@ -554,16 +555,6 @@ export function PageMetadataEntry({
     </div>
   );
 }
-
-// The page is transparent so the dock surface reads through; generous top
-// padding clears the dock's stage label and close button.
-const pageRoot: React.CSSProperties = {
-  height: "100%",
-  minHeight: 0,
-  overflow: "auto",
-  padding: "46px 36px 32px",
-  color: lgColors.text,
-};
 
 const sectionDivider: React.CSSProperties = {
   borderTop: "1px solid rgba(125, 211, 252, 0.28)",

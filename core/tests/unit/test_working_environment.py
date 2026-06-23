@@ -402,3 +402,23 @@ def test_run_workspace_script_returns_canceled_when_provisioning_is_canceled(tmp
 
     assert outcome.status == "canceled"
     assert outcome.exit_code is None
+
+
+# ================================================
+# Machine dispatch gating
+# ================================================
+
+
+def test_localmachine_rejects_apptainer_container_engine(workspace):
+    # DockerWorkingEnvironment speaks Docker-CLI verbs Apptainer does not support;
+    # the container branch must refuse apptainer rather than emit broken commands.
+    from repo2ree_core.working_environment.machine import LocalMachine
+
+    spec = WorkingEnvironmentSpec(
+        workspace_path=workspace,
+        run_id="test-run",
+        log=lambda *_: None,
+        engine="apptainer",
+    )
+    with pytest.raises(NotImplementedError, match="Apptainer"):
+        LocalMachine().create_working_environment(spec, kind="container")

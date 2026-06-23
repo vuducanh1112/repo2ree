@@ -154,3 +154,30 @@ def test_session_has_no_apply_patch():
 
     assert not hasattr(ReeSession, "apply_patch")
     assert not hasattr(ReeSession, "with_downloadables")
+
+
+# ================================================
+# runtime_entry parsing & defaults
+# ================================================
+
+
+def _entry_for(payload: dict) -> object:
+    intent = ReeIntent.model_validate({"name": "x", "runtime_entry": payload})
+    return intent.runtime_entry
+
+
+def test_new_container_entry_round_trips():
+    from repo2ree_core.domain.env_entry import ContainerEntry
+
+    entry = _entry_for({"kind": "container", "engine": "podman", "gpus": True})
+    assert isinstance(entry, ContainerEntry)
+    assert entry.engine == "podman"
+    assert entry.gpus is True
+
+
+def test_default_runtime_entry_is_container_docker():
+    from repo2ree_core.domain.env_entry import ContainerEntry
+
+    intent = ReeIntent(name="x")
+    assert isinstance(intent.runtime_entry, ContainerEntry)
+    assert intent.runtime_entry.engine == "docker"

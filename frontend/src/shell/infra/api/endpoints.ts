@@ -37,4 +37,5 @@ export const endpoints = {
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs/${encodeURIComponent(runId)}:cancel`,
   reeRunLogs: (reeId: string, runId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs/${encodeURIComponent(runId)}/logs`,
+  runtimeCommandPlan: () => `${API_V1_BASE}/runtime/command-plan`,
 };

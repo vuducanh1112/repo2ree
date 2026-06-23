@@ -51,7 +51,8 @@ def test_activation_and_runtime_entry_in_manifest():
     manifest = build_manifest_payload(_intent(), _session(), ree_id="abc")
     # Activation is a required singleton; the runtime entry defaults to docker.
     assert manifest["activation"] == ReeIntent().activation.model_dump()
-    assert manifest["runtime_entry"] == {"kind": "docker"}
+    assert manifest["runtime_entry"]["kind"] == "container"
+    assert manifest["runtime_entry"]["engine"] == "docker"
 
 
 def test_pure_no_filesystem_dependency(tmp_path, monkeypatch):

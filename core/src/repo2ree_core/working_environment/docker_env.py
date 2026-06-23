@@ -21,6 +21,13 @@ from pathlib import Path
 from repo2ree_core.container.run_script import (
     CONTAINER_WORKSPACE,
     build_exec_command,
+    container_name,
+    docker_cp_in_argv,
+    docker_cp_out_argv,
+    docker_create_argv,
+    docker_exec_argv,
+    docker_rm_argv,
+    docker_start_argv,
     format_command,
     stream_output,
 )
@@ -59,10 +66,14 @@ class DockerWorkingEnvironment:
     def __init__(self, spec: WorkingEnvironmentSpec) -> None:
         self._workspace = spec.workspace_path.resolve()
         self._image = spec.image or _DEFAULT_IMAGE
-        self._name = f"repo2ree-we-{spec.run_id}"
+        self._name = container_name(spec.run_id)
         self._log = spec.log
         self._is_canceled = spec.is_canceled
-        self._docker = shutil.which("docker") or "docker"
+        engine_bin = spec.engine if spec.engine else "docker"
+        self._docker = shutil.which(engine_bin) or engine_bin
+        # Docker requires the socket mount so a runtime can itself drive Docker.
+        # Podman and Apptainer use rootless namespaces; no host socket needed.
+        self._sock_mount = spec.engine in ("docker", "")
         self._created = False
 
     # ================================================
@@ -128,16 +139,13 @@ class DockerWorkingEnvironment:
             step.echo_label,
             working_dir,
         )
-        sh_flag = "-lc" if step.login_shell else "-c"
-        cmd = [
+        cmd = docker_exec_argv(
             self._docker,
-            "exec",
-            *([] if step.stdin_text is None else ["-i"]),
-            self._name,
-            "sh",
-            sh_flag,
-            exec_command,
-        ]
+            container=self._name,
+            exec_command=exec_command,
+            login_shell=step.login_shell,
+            interactive=step.stdin_text is not None,
+        )
         log("system", "info", format_command(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True, input=step.stdin_text)
         stream_output(log, result)
@@ -192,12 +200,7 @@ class DockerWorkingEnvironment:
 
         Returns True on success, False on failure (error is logged).
         """
-        cmd = [
-            self._docker,
-            "cp",
-            f"{self._name}:{CONTAINER_WORKSPACE}/.",
-            str(self._workspace),
-        ]
+        cmd = docker_cp_out_argv(self._docker, container=self._name, workspace=str(self._workspace))
         log("system", "info", "Syncing container workspace to host")
         log("system", "info", format_command(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -215,17 +218,7 @@ class DockerWorkingEnvironment:
     # ================================================
 
     def _create(self) -> None:
-        cmd = [
-            self._docker,
-            "create",
-            "--name",
-            self._name,
-            "-v",
-            "/var/run/docker.sock:/var/run/docker.sock",
-            self._image,
-            "sleep",
-            "infinity",
-        ]
+        cmd = docker_create_argv(self._docker, container=self._name, image=self._image, sock_mount=self._sock_mount)
         self._log("system", "info", format_command(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True)
         stream_output(self._log, result)
@@ -234,12 +227,7 @@ class DockerWorkingEnvironment:
         self._created = True
 
     def _cp_in(self) -> None:
-        cmd = [
-            self._docker,
-            "cp",
-            f"{self._workspace}/.",
-            f"{self._name}:{CONTAINER_WORKSPACE}",
-        ]
+        cmd = docker_cp_in_argv(self._docker, workspace=str(self._workspace), container=self._name)
         self._log("system", "info", format_command(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True)
         stream_output(self._log, result)
@@ -248,7 +236,7 @@ class DockerWorkingEnvironment:
             raise RuntimeError(f"docker cp (in) failed (exit {result.returncode}): {result.stderr.strip()}")
 
     def _start(self) -> None:
-        cmd = [self._docker, "start", self._name]
+        cmd = docker_start_argv(self._docker, self._name)
         self._log("system", "info", format_command(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True)
         stream_output(self._log, result)
@@ -261,7 +249,7 @@ class DockerWorkingEnvironment:
             return
         try:
             subprocess.run(
-                [self._docker, "rm", "-f", self._name],
+                docker_rm_argv(self._docker, self._name),
                 capture_output=True,
                 text=True,
             )

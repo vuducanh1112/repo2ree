@@ -97,11 +97,30 @@ export type ReeActivation = ReeRunnable;
 
 // How to enter the built runtime artifact — a property of the runtime, shared
 // by activation and every experiment. Mirrors the backend EnvEntry union.
+export type ContainerEngine = "docker" | "podman" | "apptainer";
+
 export type RuntimeEntry =
-  | { kind: "docker" }
-  | { kind: "native"; activate: string }
-  | { kind: "singularity"; sif: string }
-  | { kind: "vm"; host: string };
+  | {
+      kind: "container";
+      engine: ContainerEngine;
+      workdir: string;
+      env: Record<string, string>;
+      gpus: boolean;
+      activate: string;
+      enter_script: string;
+    }
+  | { kind: "local"; activate: string; enter_script: string }
+  | {
+      kind: "vm";
+      cpu: number;
+      memory: string;
+      ssh_host: string;
+      ssh_user: string;
+      ssh_key: string;
+      activate: string;
+      enter_script: string;
+    }
+  | { kind: "custom"; enter_script: string; activate: string };
 
 export type RuntimeEntryKind = RuntimeEntry["kind"];
 
@@ -195,8 +214,45 @@ export function createEmptyReeActivation(): ReeActivation {
   };
 }
 
+export function createDefaultRuntimeEntry(
+  kind: RuntimeEntryKind,
+  prev?: RuntimeEntry,
+): RuntimeEntry {
+  switch (kind) {
+    case "container":
+      return {
+        kind: "container",
+        engine: prev?.kind === "container" ? prev.engine : "docker",
+        workdir: "/workspace",
+        env: {},
+        gpus: false,
+        activate: "",
+        enter_script: "",
+      };
+    case "local":
+      return {
+        kind: "local",
+        activate: prev?.kind === "local" ? prev.activate : "",
+        enter_script: "",
+      };
+    case "vm":
+      return {
+        kind: "vm",
+        cpu: 1,
+        memory: "4G",
+        ssh_host: "",
+        ssh_user: "",
+        ssh_key: "",
+        activate: "",
+        enter_script: "",
+      };
+    case "custom":
+      return { kind: "custom", enter_script: "", activate: "" };
+  }
+}
+
 export function createEmptyRuntimeEntry(): RuntimeEntry {
-  return { kind: "docker" };
+  return createDefaultRuntimeEntry("container");
 }
 
 export function createEmptyReeSpec(): ReeSpec {

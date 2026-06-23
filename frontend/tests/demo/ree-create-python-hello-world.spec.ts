@@ -348,9 +348,9 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(main.getByText("Build Runtime", { exact: true })).toBeVisible();
     await fillDemo(
       page,
-      page.getByPlaceholder("build_runtime.sh"),
+      page.getByPlaceholder("Pick a .sh file from the workspace"),
       "python_hello_world/build_runtime.sh",
-      "Provide build script path",
+      "Select the active build script",
     );
     await clickDemo(page, main.getByRole("button", { name: /Run build/ }), "Run runtime build");
     // Dwell on the build log while it streams live (the cold DinD build runs

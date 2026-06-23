@@ -1,25 +1,24 @@
+import type { RuntimeEntry } from "@core/ree/ReeSpec";
 import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
-import type { BuildScriptSource } from "@core/ree-assembly/buildRuntimeUiState";
-import {
-  buildFooterHint,
-  buildRunStatusLabel,
-  resolvedRuntimePath,
-} from "@core/ree-assembly/buildRuntimeUiState";
+import { buildFooterHint, buildRunStatusLabel } from "@core/ree-assembly/buildRuntimeUiState";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
   lgOutcomeBadge,
   lgPageColors,
+  lgPageRoot,
   lgPillChip,
   lgStatusBadge,
   lgStyles,
+  pageIconTint,
 } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { LastRunStamp } from "../../components/LastRunStamp";
 import { RunActionButton } from "../../components/RunActionButton";
+import { SubstratePicker } from "../../components/SubstratePicker";
 import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
 import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
@@ -77,47 +76,49 @@ export function PageBuildRuntime({
   );
   const scriptContent = scriptFile?.content || "";
 
-  const [scriptSource, setScriptSource] = useState<BuildScriptSource | null>(
-    scriptPath ? { kind: "picked" } : null,
-  );
-
   const buildParams: ReeAssemblyRunParams<"build"> = {
     ...(params as ReeAssemblyRunParams<"build">),
     build_runtime_script_path: scriptPath,
   };
 
-  const handleCommitScript = useCallback(
-    (path: string, content: string) => {
-      const previousPath = scriptPath || undefined;
-      onReeSpecChange?.((current) => ({ ...current, build_runtime_script: path }));
+  // Save a file to the overlay — does not change the selected build script.
+  const handleSaveFile = useCallback(
+    (previousPath: string | undefined, path: string, content: string) => {
       void onPersistWorkspaceFile?.(previousPath, path, content);
     },
-    [onPersistWorkspaceFile, onReeSpecChange, scriptPath],
+    [onPersistWorkspaceFile],
+  );
+
+  // Explicitly select an existing workspace file as the active build script.
+  const handleSelectScript = useCallback(
+    (path: string) => {
+      onReeSpecChange?.((current) => ({ ...current, build_runtime_script: path }));
+    },
+    [onReeSpecChange],
   );
 
   const handleClearScript = useCallback(() => {
     onReeSpecChange?.((current) => ({ ...current, build_runtime_script: "" }));
   }, [onReeSpecChange]);
 
-  // The runtime artifact path now lives on the Runtime Environment page; here we
-  // only need the resolved path as a hint for the build-script generator.
-  const finalRuntime = resolvedRuntimePath(ree.runtime);
+  const runtimeEntry = ree.runtime_entry;
+
+  const handleEntryChange = useCallback(
+    (entry: RuntimeEntry) => onReeSpecChange?.((current) => ({ ...current, runtime_entry: entry })),
+    [onReeSpecChange],
+  );
 
   const hasScript = !!scriptPath;
   const hasMissing = missing.length > 0;
   const statusLabel = buildRunStatusLabel({ running, runDone, hasScript });
 
   return (
-    <div style={pageRoot}>
+    <div style={lgPageRoot}>
       <GlassPageHeader
         icon={Ic.cpu(24)}
-        iconTint={{
-          color: BUILD_PAGE_COLOR,
-          border: `${BUILD_PAGE_COLOR}55`,
-          shadow: `${BUILD_PAGE_COLOR}28`,
-        }}
+        iconTint={pageIconTint(BUILD_PAGE_COLOR)}
         title="Build Runtime"
-        subtitle="Write or pick the build script that produces the runtime artifact."
+        subtitle="Select the substrate, declare the artifact, and run the build script."
         badges={
           <>
             {scriptPath && (
@@ -151,22 +152,47 @@ export function PageBuildRuntime({
         <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
           <div style={lgStyles.sectionBody}>
             <GlassSectionHeader
+              icon={Ic.cpu(19)}
+              color={BUILD_PAGE_COLOR}
+              title="Substrate"
+              subtitle="Pick how the workbench enters the runtime. The same choice drives which build script applies below."
+            />
+            <div style={{ marginTop: 10, marginBottom: 22 }}>
+              {/* Compact selector only — the build script gets its own full-width
+                  section below rather than being nested inside the substrate row. */}
+              <SubstratePicker
+                entry={runtimeEntry}
+                accent={BUILD_PAGE_COLOR}
+                onChange={handleEntryChange}
+                renderDetail={() => null}
+              />
+            </div>
+
+            <GlassSectionHeader
               icon={Ic.terminal(19)}
               color={BUILD_PAGE_COLOR}
               title="Build Script"
-              subtitle="One script — pick existing, write your own, or generate from a base."
+              subtitle="Produces the runtime artifact. Start from a substrate-matched template or pick any .sh — edits save to the overlay, leaving upstream sources immutable."
             />
-
-            <BuildScriptCard
-              scriptPath={scriptPath}
-              scriptContent={scriptContent}
-              source={scriptSource}
-              runtimeHint={finalRuntime}
-              files={files}
-              onCommit={handleCommitScript}
-              onClear={handleClearScript}
-              onSourceChange={setScriptSource}
-            />
+            <div
+              style={{
+                marginTop: 10,
+                marginBottom: 22,
+                display: "flex",
+                flexDirection: "column",
+                gap: 14,
+              }}
+            >
+              <BuildScriptCard
+                scriptPath={scriptPath}
+                scriptContent={scriptContent}
+                runtimeEntry={runtimeEntry}
+                files={files}
+                onSaveFile={handleSaveFile}
+                onSelectScript={handleSelectScript}
+                onClearScript={handleClearScript}
+              />
+            </div>
 
             <BuildLogCard log={log} running={running} ts={ts} />
           </div>
@@ -181,11 +207,3 @@ export function PageBuildRuntime({
     </div>
   );
 }
-
-const pageRoot: React.CSSProperties = {
-  height: "100%",
-  minHeight: 0,
-  overflow: "auto",
-  padding: "46px 36px 32px",
-  color: lgColors.text,
-};
