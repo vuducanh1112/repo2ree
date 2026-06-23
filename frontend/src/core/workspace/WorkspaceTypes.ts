@@ -18,10 +18,13 @@ export interface SourceRepoMetadata {
   sizeLabel: string | null;
 }
 
+export type DraftManifest = Record<string, unknown>;
+
 export interface ReeProject<TFile = unknown, TRee = unknown> {
   id: string;
   files: TFile[];
   reeFiles?: ReeFile[];
   ree?: TRee;
+  draftManifest?: DraftManifest;
   sourceRepo?: SourceRepoMetadata;
 }

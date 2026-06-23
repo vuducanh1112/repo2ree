@@ -69,6 +69,21 @@ def _build_manifest_payload(
     return build_manifest_payload(intent, session, ree_id=ree_id)
 
 
+def _build_draft_manifest_payload(
+    metadata: dict[str, Any],
+    *,
+    workspace_files: list[dict[str, Any]],
+    ree_files: list[dict[str, Any]],
+) -> dict[str, Any]:
+    from repo2ree_core.workspace.manifest import build_draft_manifest_payload
+
+    return build_draft_manifest_payload(
+        metadata,
+        workspace_files=workspace_files,
+        ree_files=ree_files,
+    )
+
+
 # ================================================
 # Internal Helpers
 # ================================================
@@ -238,8 +253,14 @@ def get_workspace(storage_root: Path, ree_id: str) -> dict[str, Any]:
     metadata = _read_metadata(storage_root, ree_id)
     detail = dict(metadata)
     files = _workspace_files_with_content(storage_root, ree_id)
+    ree_files = _workspace_ree_files_with_content(storage_root, ree_id)
     detail["files"] = files
-    detail["reeFiles"] = _workspace_ree_files_with_content(storage_root, ree_id)
+    detail["reeFiles"] = ree_files
+    detail["draftManifest"] = _build_draft_manifest_payload(
+        metadata,
+        workspace_files=files,
+        ree_files=ree_files,
+    )
     detail["sourceRepo"] = derive_source_repo_metadata(
         ReeIntent.from_metadata(metadata),
         ReeSession.from_metadata(metadata),

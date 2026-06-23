@@ -126,7 +126,7 @@ export function ExplodeToggle({ exploded, onToggle }: { exploded: boolean; onTog
       title={exploded ? "Reassemble the pod" : "Decompose the pod into its shells"}
       style={{
         position: "absolute",
-        top: 14,
+        bottom: 128,
         right: 16,
         display: "flex",
         alignItems: "center",

@@ -12,7 +12,7 @@ interface HudConsoleProps {
   icon: React.ReactNode;
   iconColor?: string;
   title: string;
-  subtitle: React.ReactNode;
+  subtitle?: React.ReactNode;
   /** Drives the StatusDot. */
   on: boolean;
   expandLabel: string;
@@ -125,18 +125,20 @@ export function HudConsole({
           }}
         >
           <span style={{ fontSize: 12, fontWeight: 650, color: C.text }}>{title}</span>
-          <span
-            style={{
-              fontFamily: F.mono,
-              fontSize: 9.5,
-              color: C.textMuted,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {subtitle}
-          </span>
+          {subtitle ? (
+            <span
+              style={{
+                fontFamily: F.mono,
+                fontSize: 9.5,
+                color: C.textMuted,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {subtitle}
+            </span>
+          ) : null}
         </div>
         <StatusDot on={on} />
         <span

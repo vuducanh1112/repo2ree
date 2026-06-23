@@ -1,6 +1,6 @@
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.workspace.manifest import build_manifest_payload
+from repo2ree_core.workspace.manifest import build_draft_manifest_payload, build_manifest_payload
 
 
 def _intent(**overrides) -> ReeIntent:
@@ -82,3 +82,61 @@ def test_session_fields_reflected_in_manifest():
     assert manifest["environment_level"] == 2
     assert manifest["source_available"] is True
     assert manifest["source_acquired_by"] == "download"
+
+
+def test_draft_manifest_adds_workspace_context_without_file_content():
+    metadata = {
+        "reeId": "abc123",
+        "name": "demo",
+        "status": "ready",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+        "reeIntent": _intent(runtime="runtime.tar.gz").model_dump(exclude_none=True),
+        "reeSession": _session(source_available=True).model_dump(exclude_none=True),
+    }
+
+    manifest = build_draft_manifest_payload(
+        metadata,
+        workspace_files=[
+            {
+                "path": "main.py",
+                "kind": "source",
+                "size": 12,
+                "content": "print('hi')",
+            }
+        ],
+        ree_files=[
+            {
+                "path": "overlay/build.sh",
+                "kind": "ree",
+                "tag": "Overlay",
+                "size": 8,
+            },
+            {
+                "path": "artifacts/runtime.tar.gz",
+                "kind": "ree",
+                "tag": "Artifact",
+                "size": 99,
+                "content": None,
+            },
+        ],
+    )
+
+    assert manifest["manifest_state"] == "draft"
+    assert manifest["ree_id"] == "abc123"
+    assert manifest["status"] == "ready"
+    assert manifest["updated_at"] == "2026-01-02T00:00:00Z"
+    assert manifest["runtime"] == "runtime.tar.gz"
+    assert manifest["source_available"] is True
+    assert manifest["file_inventory"] == {
+        "workspace": [{"path": "main.py", "kind": "source", "size": 12}],
+        "overlay": [{"path": "overlay/build.sh", "kind": "ree", "tag": "Overlay", "size": 8}],
+        "artifacts": [
+            {
+                "path": "artifacts/runtime.tar.gz",
+                "kind": "ree",
+                "tag": "Artifact",
+                "size": 99,
+            }
+        ],
+    }

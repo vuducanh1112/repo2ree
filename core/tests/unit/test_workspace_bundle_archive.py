@@ -241,6 +241,29 @@ def test_get_workspace_tags_overlay_files_as_generated(tmp_path):
     assert files["main.py"] == "source"
 
 
+def test_get_workspace_includes_draft_manifest_projection(tmp_path):
+    storage_root = tmp_path / "storage"
+    ree_id, layout = _make_ree(storage_root, "draft-view")
+
+    (layout.overlay / "build.sh").write_text("echo build", encoding="utf-8")
+    (layout.artifacts / "runtime.tar.gz").write_bytes(b"runtime")
+    (layout.workspace / "main.py").write_text("print('hi')", encoding="utf-8")
+
+    workspace = get_workspace(storage_root, ree_id)
+    draft = workspace["draftManifest"]
+
+    assert draft["manifest_state"] == "draft"
+    assert draft["ree_id"] == ree_id
+    assert draft["name"] == "draft-view"
+    assert draft["file_inventory"]["workspace"] == [{"path": "main.py", "kind": "source", "size": len("print('hi')")}]
+    assert draft["file_inventory"]["overlay"] == [
+        {"path": "overlay/build.sh", "kind": "ree", "tag": "Overlay", "size": len("echo build")}
+    ]
+    assert draft["file_inventory"]["artifacts"] == [
+        {"path": "artifacts/runtime.tar.gz", "kind": "ree", "tag": "Archive", "size": len(b"runtime")}
+    ]
+
+
 def test_build_archive_returns_stored_bytes_after_seal(tmp_path):
     storage_root = tmp_path / "storage"
     ree_id, layout = _make_ree(storage_root, "sealed-download")

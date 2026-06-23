@@ -88,6 +88,7 @@ export interface ReeDetailDto extends ReeSummaryDto {
   reeSession?: Partial<ReeSessionDto>;
   files?: ReeFileDto[];
   reeFiles?: ReeArtifactFileDto[];
+  draftManifest?: Record<string, unknown>;
   // The backend emits this already camelCased and the frontend renders it
   // untouched, so the wire shape and the domain type are one and the same.
   sourceRepo?: SourceRepoMetadata;

@@ -2,7 +2,7 @@ import { standingMeta } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
-import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import type { DraftManifest, SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { useMemo, useRef, useState } from "react";
 import { C, F } from "../../theme/theme";
 import type { AppShellPage } from "../state/pages";
@@ -30,6 +30,7 @@ import { FileTreeConsole } from "./FileTreeConsole";
 import { InnerShellButton } from "./InnerShellButton";
 import { LabBackdrop } from "./LabBackdrop";
 import { NodeCard } from "./NodeCard";
+import { ReeStateConsole } from "./ReeStateConsole";
 import { useCableGeometry } from "./useCableGeometry";
 import { type Transform, useCanvasViewport } from "./useCanvasViewport";
 import { useExperimentCables } from "./useExperimentCables";
@@ -63,6 +64,7 @@ interface CanvasHubProps {
   /** Inner-shell pod → the runtime environment page. */
   onOpenRuntime: () => void;
   reeFiles: ReeFile[];
+  draftManifest: DraftManifest | undefined;
   sourceRepo: SourceRepoMetadata | undefined;
   filesConsoleOpen: boolean;
   onFilesConsoleOpenChange: (open: boolean) => void;
@@ -81,6 +83,7 @@ export function CanvasHub({
   onOpenExperiment,
   onOpenRuntime,
   reeFiles,
+  draftManifest,
   sourceRepo,
   filesConsoleOpen,
   onFilesConsoleOpenChange,
@@ -345,6 +348,8 @@ export function CanvasHub({
         open={filesConsoleOpen}
         onOpenChange={onFilesConsoleOpenChange}
       />
+
+      <ReeStateConsole draftManifest={draftManifest} />
 
       <BenchConsole provisioned={provisioned} reeName={ree.name} />
 
