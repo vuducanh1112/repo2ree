@@ -23,6 +23,7 @@ import {
 import { C, F } from "@shell/ui/theme/theme";
 import { useCallback } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
+import { CommandPlanView } from "../../components/CommandPlanView";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { LastRunStamp } from "../../components/LastRunStamp";
@@ -109,6 +110,13 @@ export function PageTestActivation({
       : activation.command
     : null;
 
+  // The substrate plan only references the run script by placeholder; the inner
+  // command is what gets written into it, so show the resolved activation
+  // command (or the built-in probe fallback) to make the preview the full thing.
+  const innerCommand = activation.command?.trim()
+    ? activation.command.trim()
+    : "# built-in liveness probe (no activation command set)";
+
   return (
     <div style={lgPageRoot}>
       <GlassPageHeader
@@ -191,6 +199,22 @@ export function PageTestActivation({
                 runtimePathExists={runtimePathExists}
                 sbomPath={sbomPath}
                 sbomPathExists={sbomPathExists}
+              />
+            </div>
+
+            <div style={{ marginTop: 22 }}>
+              <GlassSectionHeader
+                icon={Ic.terminal(19)}
+                color={ACTIVATION_PAGE_COLOR}
+                title="What actually runs"
+                subtitle={`On ${substrateLabel(runtimeEntry)} — the exact substrate commands (projected from the runner), wrapping the activation command above.`}
+              />
+              <CommandPlanView
+                entry={runtimeEntry}
+                innerCommand={{
+                  label: "Command — .workspace/exp_RUN_ID.sh",
+                  value: innerCommand,
+                }}
               />
             </div>
 
