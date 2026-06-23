@@ -196,11 +196,19 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("button", { name: /Provision workbench/i }),
       "Provision the workbench",
     );
-    // Provisioning lands on the canvas hub; navigate into Source to continue the demo.
+    // Provisioning lands on the canvas hub; decompose before source acquisition
+    // so the whole authoring walkthrough happens against the shell view.
     await expect(
       page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }),
     ).toBeVisible();
     await page.keyboard.press("Escape").catch(() => {});
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: "Decompose" }),
+      "Decompose the pod before adding source, so each shell stays visible while authoring",
+    );
+    await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
+    await page.waitForTimeout(800);
     await page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }).click();
     await expect(
       page.getByRole("region", { name: "Source Acquisition" }).getByText("Source Acquisition", {
@@ -366,14 +374,9 @@ test("upload source archive into workspace", async ({ page }) => {
 
   await demoStep(page, "Configure runtime environment", async () => {
     // The produced runtime artifact and its substrate now live on the inner
-    // shell — the Runtime Environment page — reached by decomposing the pod and
-    // clicking the inner-shell pod.
+    // shell — the Runtime Environment page — reached from the already
+    // decomposed pod by clicking the inner-shell pod.
     await page.keyboard.press("Escape").catch(() => {});
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: "Decompose" }),
-      "Decompose the pod into its three shells — the inner shell is the runtime",
-    );
     await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
     await clickDemo(
       page,
@@ -399,14 +402,6 @@ test("upload source archive into workspace", async ({ page }) => {
       main.getByText("Runtime Substrate", { exact: true }),
       "Choose how the workbench enters the runtime — shared by activation and every experiment",
     );
-    // Reassemble before continuing the rest of the flow from the constellation.
-    await page.keyboard.press("Escape").catch(() => {});
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: "Reassemble" }),
-      "Reassemble the pod and continue",
-    );
-    await expect(page.getByRole("button", { name: "Decompose" })).toBeVisible();
   });
 
   await demoStep(page, "Generate SBOM", async () => {
@@ -456,8 +451,8 @@ test("upload source archive into workspace", async ({ page }) => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Experiments", exact: true }),
-      "Open experiments page",
+      page.getByRole("button", { name: "Open experiments" }),
+      "Open the core experiment catalog from the decomposed view",
     );
     await expect(main.getByRole("heading", { name: "Experiments", exact: true })).toBeVisible();
     await clickDemo(
@@ -499,14 +494,14 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
   });
 
-  await demoStep(page, "Decompose pod", async () => {
+  await demoStep(page, "Review decomposed experiment view", async () => {
     await page.keyboard.press("Escape").catch(() => {});
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: "Decompose" }),
-      "Decompose the pod into its three shells: outer, inner, and core — the core carries each experiment as its own panel, cabled in",
-    );
     await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
+    await showcasePanel(
+      page,
+      page.getByRole("button", { name: "echo-hello" }),
+      "The core shell now carries the experiment as its own cabled panel",
+    );
     await page.waitForTimeout(1500);
   });
 
