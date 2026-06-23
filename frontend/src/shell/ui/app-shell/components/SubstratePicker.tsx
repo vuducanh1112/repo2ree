@@ -51,13 +51,34 @@ export function SubstratePicker({
   renderDetail?: (entry: RuntimeEntry) => React.ReactNode;
 }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div
+      role="radiogroup"
+      aria-label="Runtime substrate"
+      style={{ display: "flex", flexDirection: "column", gap: 8 }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: lgColors.textMuted,
+          fontFamily: F.sans,
+          textTransform: "uppercase",
+          letterSpacing: 0.4,
+          marginBottom: 2,
+        }}
+      >
+        Choose one substrate
+      </div>
       {ENTRY_KINDS.map(({ kind, label, desc, soon }) => {
         const active = entry.kind === kind;
         return (
           <div key={kind} style={{ display: "flex", flexDirection: "column" }}>
+            {/* biome-ignore lint/a11y/useSemanticElements: a native radio cannot host
+                this rich label/description layout; we expose radiogroup semantics manually. */}
             <button
               type="button"
+              role="radio"
+              aria-checked={active}
               disabled={!!soon}
               onClick={() => {
                 // No-op when already selected: re-defaulting would silently wipe
@@ -69,33 +90,53 @@ export function SubstratePicker({
               style={{
                 display: "flex",
                 alignItems: "flex-start",
-                gap: 10,
-                padding: "10px 12px",
+                gap: 11,
+                padding: "11px 13px",
                 borderRadius: 8,
-                border: `1.5px solid ${active ? accent : "rgba(148, 163, 184, 0.34)"}`,
-                background: active ? `${accent}10` : lgColors.white,
+                // Active substrate gets a heavier accent border + tint and a soft
+                // glow so exactly one option reads as chosen; the rest recede to a
+                // flat, muted row that clearly looks unselected (not a checklist).
+                border: active ? `2px solid ${accent}` : "1px solid rgba(148, 163, 184, 0.3)",
+                background: active ? `${accent}12` : "rgba(248, 250, 252, 0.6)",
+                boxShadow: active ? `0 4px 14px ${accent}1f` : "none",
                 cursor: soon ? "not-allowed" : "pointer",
                 opacity: soon ? 0.5 : 1,
                 textAlign: "left",
               }}
             >
+              {/* Classic radio dial: hollow ring when unselected, ring + filled
+                  inner dot when selected — a single-choice affordance. */}
               <div
                 style={{
-                  width: 14,
-                  height: 14,
+                  width: 16,
+                  height: 16,
                   borderRadius: "50%",
-                  border: `2px solid ${active ? accent : "rgba(148, 163, 184, 0.5)"}`,
-                  background: active ? accent : "transparent",
-                  marginTop: 2,
+                  border: `2px solid ${active ? accent : "rgba(148, 163, 184, 0.55)"}`,
+                  background: lgColors.white,
+                  marginTop: 1,
                   flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
-              />
+              >
+                {active && (
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: accent,
+                    }}
+                  />
+                )}
+              </div>
               <div>
                 <div
                   style={{
                     fontSize: 13,
-                    fontWeight: 600,
-                    color: lgColors.text,
+                    fontWeight: active ? 700 : 500,
+                    color: active ? lgColors.text : lgColors.textMid,
                     fontFamily: F.sans,
                   }}
                 >
@@ -116,7 +157,7 @@ export function SubstratePicker({
                 <div
                   style={{
                     fontSize: 11,
-                    color: lgColors.textMid,
+                    color: lgColors.textMuted,
                     fontFamily: F.sans,
                     marginTop: 2,
                   }}

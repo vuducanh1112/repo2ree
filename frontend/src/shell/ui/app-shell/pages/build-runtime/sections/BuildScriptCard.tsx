@@ -4,13 +4,13 @@ import { FilePicker } from "@shell/ui/app-shell/components/scriptAndFile";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
-  lgContentCard,
   lgInput,
   lgPrimaryActionButton,
   lgStyles,
 } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import { useState } from "react";
+import { GlassSubPanel } from "../../../components/GlassSubPanel";
 import { findFileByPath } from "../../sharedAssemblyHelpers";
 import { filterBuildTemplates } from "./buildScriptTemplates";
 import { BaseChip, ClearScriptButton, ScriptOriginChip } from "./buildScriptUiPrimitives";
@@ -37,7 +37,7 @@ export function BuildScriptCard(props: BuildScriptCardProps) {
   const selectedIsOverlay = selectedFile?.tag === "generated";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <>
       <CreateSection key={substrateKey(props.runtimeEntry)} {...props} />
 
       {hasScript && <EditSection key={scriptPath} {...props} />}
@@ -50,7 +50,7 @@ export function BuildScriptCard(props: BuildScriptCardProps) {
         onSelectScript={props.onSelectScript}
         onClearScript={props.onClearScript}
       />
-    </div>
+    </>
   );
 }
 
@@ -102,63 +102,61 @@ function CreateSection({ runtimeEntry, onSaveFile }: BuildScriptCardProps) {
   };
 
   return (
-    <div>
-      <div style={{ ...lgStyles.label, marginBottom: 8 }}>
+    <GlassSubPanel>
+      <div style={{ ...lgStyles.label, marginBottom: 12 }}>
         Create new script{" "}
         <span style={{ color: lgColors.textMuted, fontWeight: 400 }}>(optional)</span>
       </div>
-      <div style={lgContentCard(0)}>
-        {templates.length > 1 && (
-          <>
-            <div style={{ ...lgStyles.label, marginBottom: 6 }}>Template</div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: 8,
-                marginBottom: 14,
-              }}
-            >
-              {templates.map((template) => (
-                <BaseChip
-                  key={template.key}
-                  active={activeTemplate === template.key}
-                  label={template.label}
-                  hint={template.hint}
-                  onClick={() => seedFrom(template.key)}
-                />
-              ))}
-            </div>
-          </>
-        )}
-
-        <input
-          value={editorPath}
-          onChange={(e) => setEditorPath(e.target.value)}
-          placeholder="build_runtime.sh"
-          style={{ ...lgInput(false), minHeight: 38, marginBottom: 10 }}
-        />
-        <textarea
-          value={editorContent}
-          onChange={(e) => setEditorContent(e.target.value)}
-          spellCheck={false}
-          style={scriptTextareaStyle}
-        />
-        <div style={saveRowStyle}>
-          <span style={lgStyles.helper}>
-            Saves to the overlay layer — then pick it below to use as the build script.
-          </span>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!dirty}
-            style={lgPrimaryActionButton(!dirty)}
+      {templates.length > 1 && (
+        <>
+          <div style={{ ...lgStyles.label, marginBottom: 6 }}>Template</div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gap: 8,
+              marginBottom: 14,
+            }}
           >
-            {Ic.check(13)} Save to overlay
-          </button>
-        </div>
+            {templates.map((template) => (
+              <BaseChip
+                key={template.key}
+                active={activeTemplate === template.key}
+                label={template.label}
+                hint={template.hint}
+                onClick={() => seedFrom(template.key)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      <input
+        value={editorPath}
+        onChange={(e) => setEditorPath(e.target.value)}
+        placeholder="build_runtime.sh"
+        style={{ ...lgInput(false), minHeight: 38, marginBottom: 10 }}
+      />
+      <textarea
+        value={editorContent}
+        onChange={(e) => setEditorContent(e.target.value)}
+        spellCheck={false}
+        style={scriptTextareaStyle}
+      />
+      <div style={saveRowStyle}>
+        <span style={lgStyles.helper}>
+          Saves to the overlay layer — then pick it below to use as the build script.
+        </span>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!dirty}
+          style={lgPrimaryActionButton(!dirty)}
+        >
+          {Ic.check(13)} Save to overlay
+        </button>
       </div>
-    </div>
+    </GlassSubPanel>
   );
 }
 
@@ -176,52 +174,50 @@ function EditSection({ scriptPath, scriptContent, onSaveFile }: BuildScriptCardP
   };
 
   return (
-    <div>
-      <div style={{ ...lgStyles.label, marginBottom: 8 }}>Edit selected script</div>
-      <div style={lgContentCard(0)}>
-        <div
+    <GlassSubPanel>
+      <div style={{ ...lgStyles.label, marginBottom: 12 }}>Edit selected script</div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 10,
+          padding: "7px 10px",
+          borderRadius: 7,
+          background: "rgba(241, 245, 249, 0.8)",
+          border: "1px solid rgba(148, 163, 184, 0.3)",
+        }}
+      >
+        <span style={{ color: lgColors.textMuted, display: "flex" }}>{Ic.file(13)}</span>
+        <span style={{ fontSize: 12, fontFamily: F.mono, color: lgColors.textMid }}>
+          {scriptPath}
+        </span>
+      </div>
+      <textarea
+        value={editorContent}
+        onChange={(e) => setEditorContent(e.target.value)}
+        spellCheck={false}
+        style={scriptTextareaStyle}
+      />
+      <div style={saveRowStyle}>
+        <span
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginBottom: 10,
-            padding: "7px 10px",
-            borderRadius: 7,
-            background: "rgba(241, 245, 249, 0.8)",
-            border: "1px solid rgba(148, 163, 184, 0.3)",
+            ...lgStyles.helper,
+            color: dirty ? lgColors.warning : lgColors.textMuted,
           }}
         >
-          <span style={{ color: lgColors.textMuted, display: "flex" }}>{Ic.file(13)}</span>
-          <span style={{ fontSize: 12, fontFamily: F.mono, color: lgColors.textMid }}>
-            {scriptPath}
-          </span>
-        </div>
-        <textarea
-          value={editorContent}
-          onChange={(e) => setEditorContent(e.target.value)}
-          spellCheck={false}
-          style={scriptTextareaStyle}
-        />
-        <div style={saveRowStyle}>
-          <span
-            style={{
-              ...lgStyles.helper,
-              color: dirty ? lgColors.warning : lgColors.textMuted,
-            }}
-          >
-            {dirty ? "Unsaved changes" : "In sync with overlay"}
-          </span>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!dirty}
-            style={lgPrimaryActionButton(!dirty)}
-          >
-            {Ic.check(13)} Save changes
-          </button>
-        </div>
+          {dirty ? "Unsaved changes" : "In sync with overlay"}
+        </span>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!dirty}
+          style={lgPrimaryActionButton(!dirty)}
+        >
+          {Ic.check(13)} Save changes
+        </button>
       </div>
-    </div>
+    </GlassSubPanel>
   );
 }
 
@@ -252,54 +248,52 @@ function PickSection({
   };
 
   return (
-    <div>
-      <div style={{ ...lgStyles.label, marginBottom: 8 }}>Active build script</div>
-      <div style={lgContentCard(0)}>
-        <FilePicker
-          value={scriptPath}
-          onChange={handle}
-          files={files}
-          placeholder="Pick a .sh file from the workspace…"
-          filterFn={(path) => /\.sh$/i.test(path)}
-        />
+    <GlassSubPanel>
+      <div style={{ ...lgStyles.label, marginBottom: 12 }}>Active build script</div>
+      <FilePicker
+        value={scriptPath}
+        onChange={handle}
+        files={files}
+        placeholder="Pick a .sh file from the workspace…"
+        filterFn={(path) => /\.sh$/i.test(path)}
+      />
 
-        {hasScript && (
-          <div
+      {hasScript && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            marginTop: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <span style={{ color: lgColors.primaryDeep, display: "flex" }}>{Ic.check(14)}</span>
+          <span
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginTop: 12,
-              flexWrap: "wrap",
+              fontSize: 12,
+              fontFamily: F.mono,
+              color: lgColors.primaryDeep,
+              fontWeight: 600,
+              flex: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
-            <span style={{ color: lgColors.primaryDeep, display: "flex" }}>{Ic.check(14)}</span>
-            <span
-              style={{
-                fontSize: 12,
-                fontFamily: F.mono,
-                color: lgColors.primaryDeep,
-                fontWeight: 600,
-                flex: 1,
-                minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {scriptPath}
-            </span>
-            <ScriptOriginChip overlay={selectedIsOverlay} />
-            <ClearScriptButton onClear={onClearScript} />
-          </div>
-        )}
+            {scriptPath}
+          </span>
+          <ScriptOriginChip overlay={selectedIsOverlay} />
+          <ClearScriptButton onClear={onClearScript} />
+        </div>
+      )}
 
-        {!hasScript && (
-          <div style={{ ...lgStyles.helper, marginTop: 8 }}>
-            Pick any <code>.sh</code> in the workspace as the build script.
-          </div>
-        )}
-      </div>
-    </div>
+      {!hasScript && (
+        <div style={{ ...lgStyles.helper, marginTop: 8 }}>
+          Pick any <code>.sh</code> in the workspace as the build script.
+        </div>
+      )}
+    </GlassSubPanel>
   );
 }

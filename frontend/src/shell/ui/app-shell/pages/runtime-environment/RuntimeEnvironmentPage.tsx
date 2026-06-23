@@ -8,13 +8,13 @@ import {
   lgPageColors,
   lgPageRoot,
   lgPillChip,
-  lgStyles,
   pageIconTint,
 } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import { useCallback, useMemo } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
+import { GlassSubPanel } from "../../components/GlassSubPanel";
 import { SubstratePicker } from "../../components/SubstratePicker";
 import { RuntimeArtifactCard } from "../build-runtime/sections";
 import { findFileByPath } from "../sharedAssemblyHelpers";
@@ -74,41 +74,39 @@ export function PageRuntimeEnvironment({
         }
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-        <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-          <div style={lgStyles.sectionBody}>
-            <GlassSectionHeader
-              icon={Ic.archive(19)}
-              color={RUNTIME_PAGE_COLOR}
-              title="Runtime Artifact"
-              subtitle="The file the build produced, consumed by SBOM, activation and experiments."
-            />
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <GlassSubPanel>
+          <GlassSectionHeader
+            icon={Ic.archive(19)}
+            color={RUNTIME_PAGE_COLOR}
+            title="Runtime Artifact"
+            subtitle="The file the build produced, consumed by SBOM, activation and experiments."
+          />
 
-            <RuntimeArtifactCard
-              runtimePath={finalRuntime}
-              runtimeSize={finalRuntimeSize}
-              runtimePathExists={runtimePathExists}
-              files={files}
-              onRuntimeChange={handleRuntimeChange}
-            />
+          <RuntimeArtifactCard
+            runtimePath={finalRuntime}
+            runtimeSize={finalRuntimeSize}
+            runtimePathExists={runtimePathExists}
+            files={files}
+            onRuntimeChange={handleRuntimeChange}
+          />
+        </GlassSubPanel>
 
-            <div style={{ marginTop: 22 }}>
-              <GlassSectionHeader
-                icon={Ic.cpu(19)}
-                color={RUNTIME_PAGE_COLOR}
-                title="Runtime Substrate"
-                subtitle="How the workbench enters the runtime. Shared by activation and all experiments."
-              />
-              <div style={{ marginTop: 10 }}>
-                <SubstratePicker
-                  entry={runtimeEntry}
-                  accent={RUNTIME_PAGE_COLOR}
-                  onChange={handleEntryChange}
-                />
-              </div>
-            </div>
+        <GlassSubPanel>
+          <GlassSectionHeader
+            icon={Ic.cpu(19)}
+            color={RUNTIME_PAGE_COLOR}
+            title="Runtime Substrate"
+            subtitle="How the workbench enters the runtime. Shared by activation and all experiments."
+          />
+          <div style={{ marginTop: 10 }}>
+            <SubstratePicker
+              entry={runtimeEntry}
+              accent={RUNTIME_PAGE_COLOR}
+              onChange={handleEntryChange}
+            />
           </div>
-        </section>
+        </GlassSubPanel>
       </div>
     </div>
   );

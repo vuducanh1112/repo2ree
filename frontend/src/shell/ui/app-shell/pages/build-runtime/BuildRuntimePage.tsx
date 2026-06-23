@@ -3,19 +3,19 @@ import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
 import { buildFooterHint, buildRunStatusLabel } from "@core/ree-assembly/buildRuntimeUiState";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
-  lgColors,
   lgOutcomeBadge,
   lgPageColors,
   lgPageRoot,
   lgPillChip,
   lgStatusBadge,
-  lgStyles,
   pageIconTint,
 } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import { useCallback, useMemo } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
+import { GlassSubPanel } from "../../components/GlassSubPanel";
 import { LastRunStamp } from "../../components/LastRunStamp";
 import { RunActionButton } from "../../components/RunActionButton";
 import { SubstratePicker } from "../../components/SubstratePicker";
@@ -146,63 +146,45 @@ export function PageBuildRuntime({
         }
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <MissingInputsBanner missing={missing} onGoFields={onGoFields} />
 
-        <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-          <div style={lgStyles.sectionBody}>
-            <GlassSectionHeader
-              icon={Ic.cpu(19)}
-              color={BUILD_PAGE_COLOR}
-              title="Substrate"
-              subtitle="Pick how the workbench enters the runtime. The same choice drives which build script applies below."
+        <GlassSubPanel>
+          <GlassSectionHeader
+            icon={Ic.cpu(19)}
+            color={BUILD_PAGE_COLOR}
+            title="Substrate"
+            subtitle="Pick how the workbench enters the runtime. The same choice drives which build script applies below."
+          />
+          <div style={{ marginTop: 10 }}>
+            {/* Compact selector only — the build script gets its own subpanel
+                below rather than being nested inside the substrate row. */}
+            <SubstratePicker
+              entry={runtimeEntry}
+              accent={BUILD_PAGE_COLOR}
+              onChange={handleEntryChange}
+              renderDetail={() => null}
             />
-            <div style={{ marginTop: 10, marginBottom: 22 }}>
-              {/* Compact selector only — the build script gets its own full-width
-                  section below rather than being nested inside the substrate row. */}
-              <SubstratePicker
-                entry={runtimeEntry}
-                accent={BUILD_PAGE_COLOR}
-                onChange={handleEntryChange}
-                renderDetail={() => null}
-              />
-            </div>
-
-            <GlassSectionHeader
-              icon={Ic.terminal(19)}
-              color={BUILD_PAGE_COLOR}
-              title="Build Script"
-              subtitle="Produces the runtime artifact. Start from a substrate-matched template or pick any .sh — edits save to the overlay, leaving upstream sources immutable."
-            />
-            <div
-              style={{
-                marginTop: 10,
-                marginBottom: 22,
-                display: "flex",
-                flexDirection: "column",
-                gap: 14,
-              }}
-            >
-              <BuildScriptCard
-                scriptPath={scriptPath}
-                scriptContent={scriptContent}
-                runtimeEntry={runtimeEntry}
-                files={files}
-                onSaveFile={handleSaveFile}
-                onSelectScript={handleSelectScript}
-                onClearScript={handleClearScript}
-              />
-            </div>
-
-            <BuildLogCard log={log} running={running} ts={ts} />
           </div>
+        </GlassSubPanel>
 
-          <div style={lgStyles.footer}>
-            <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
-              {buildFooterHint({ runDone, hasScript })}
-            </span>
-          </div>
-        </section>
+        {/* The build script's Create / Edit / Active sections each render as their
+            own subpanel, sitting as siblings alongside Substrate and Build Log. */}
+        <BuildScriptCard
+          scriptPath={scriptPath}
+          scriptContent={scriptContent}
+          runtimeEntry={runtimeEntry}
+          files={files}
+          onSaveFile={handleSaveFile}
+          onSelectScript={handleSelectScript}
+          onClearScript={handleClearScript}
+        />
+
+        <GlassSubPanel>
+          <BuildLogCard log={log} running={running} ts={ts} />
+        </GlassSubPanel>
+
+        <GlassPanelFooter bar>{buildFooterHint({ runDone, hasScript })}</GlassPanelFooter>
       </div>
     </div>
   );

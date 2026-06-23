@@ -11,13 +11,11 @@ import { resolvedSbomPath } from "@core/ree-assembly/sbomUiState";
 import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
-  lgColors,
   lgMutedBadge,
   lgOutcomeBadge,
   lgPageRoot,
   lgPillChip,
   lgStatusBadge,
-  lgStyles,
   pageIconTint,
 } from "@shell/ui/theme/lightGlassTheme";
 import { C, F } from "@shell/ui/theme/theme";
@@ -25,7 +23,9 @@ import { useCallback } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { CommandPlanView } from "../../components/CommandPlanView";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
+import { GlassSubPanel } from "../../components/GlassSubPanel";
 import { LastRunStamp } from "../../components/LastRunStamp";
 import { RunActionButton } from "../../components/RunActionButton";
 import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
@@ -154,85 +154,79 @@ export function PageTestActivation({
         }
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <MissingInputsBanner missing={missing} onGoFields={onGoFields} />
 
-        <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
-          <div style={lgStyles.sectionBody}>
-            <GlassSectionHeader
-              icon={Ic.shield(19)}
-              color={ACTIVATION_PAGE_COLOR}
-              title="Activation Command"
-              subtitle="The command run inside the runtime to verify it starts. Leave empty to use the built-in liveness probe."
-            />
+        <GlassSubPanel>
+          <GlassSectionHeader
+            icon={Ic.shield(19)}
+            color={ACTIVATION_PAGE_COLOR}
+            title="Activation Command"
+            subtitle="The command run inside the runtime to verify it starts. Leave empty to use the built-in liveness probe."
+          />
 
-            <textarea
-              value={activation.command}
-              onChange={(e) => handleCommandChange(e.target.value)}
-              placeholder="e.g. python -c 'import numpy; print(ok)'"
-              rows={3}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                fontSize: 12,
-                fontFamily: F.mono,
-                border: `1px solid ${C.border}`,
-                borderRadius: 8,
-                background: C.surface,
-                color: C.text,
-                resize: "vertical",
-                marginTop: 10,
-                boxSizing: "border-box",
-              }}
-            />
+          <textarea
+            value={activation.command}
+            onChange={(e) => handleCommandChange(e.target.value)}
+            placeholder="e.g. python -c 'import numpy; print(ok)'"
+            rows={3}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              fontSize: 12,
+              fontFamily: F.mono,
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              background: C.surface,
+              color: C.text,
+              resize: "vertical",
+              marginTop: 10,
+              boxSizing: "border-box",
+            }}
+          />
+        </GlassSubPanel>
 
-            <div style={{ marginTop: 22 }}>
-              <GlassSectionHeader
-                icon={Ic.cpu(19)}
-                color={ACTIVATION_PAGE_COLOR}
-                title="Runtime Under Test"
-                subtitle="Activation reuses the runtime artifact from Build Runtime and the inventory context from Generate SBOM."
-              />
+        <GlassSubPanel>
+          <GlassSectionHeader
+            icon={Ic.cpu(19)}
+            color={ACTIVATION_PAGE_COLOR}
+            title="Runtime Under Test"
+            subtitle="Activation reuses the runtime artifact from Build Runtime and the inventory context from Generate SBOM."
+          />
 
-              <ActivationTargetCard
-                runtimePath={runtimePath}
-                runtimePathExists={runtimePathExists}
-                sbomPath={sbomPath}
-                sbomPathExists={sbomPathExists}
-              />
-            </div>
+          <ActivationTargetCard
+            runtimePath={runtimePath}
+            runtimePathExists={runtimePathExists}
+            sbomPath={sbomPath}
+            sbomPathExists={sbomPathExists}
+          />
+        </GlassSubPanel>
 
-            <div style={{ marginTop: 22 }}>
-              <GlassSectionHeader
-                icon={Ic.terminal(19)}
-                color={ACTIVATION_PAGE_COLOR}
-                title="What actually runs"
-                subtitle={`On ${substrateLabel(runtimeEntry)} — the exact substrate commands (projected from the runner), wrapping the activation command above.`}
-              />
-              <CommandPlanView
-                entry={runtimeEntry}
-                innerCommand={{
-                  label: "Command — .workspace/exp_RUN_ID.sh",
-                  value: innerCommand,
-                }}
-              />
-            </div>
+        <GlassSubPanel>
+          <GlassSectionHeader
+            icon={Ic.terminal(19)}
+            color={ACTIVATION_PAGE_COLOR}
+            title="What actually runs"
+            subtitle={`On ${substrateLabel(runtimeEntry)} — the exact substrate commands (projected from the runner), wrapping the activation command above.`}
+          />
+          <CommandPlanView
+            entry={runtimeEntry}
+            innerCommand={{
+              label: "Command — .workspace/exp_RUN_ID.sh",
+              value: innerCommand,
+            }}
+          />
+        </GlassSubPanel>
 
-            <div style={{ marginTop: 22 }}>
-              <CollapsibleLogCard
-                log={log}
-                running={running}
-                title={ts ? "Activation log" : "Activation logs"}
-              />
-            </div>
-          </div>
+        <GlassSubPanel>
+          <CollapsibleLogCard
+            log={log}
+            running={running}
+            title={ts ? "Activation log" : "Activation logs"}
+          />
+        </GlassSubPanel>
 
-          <div style={lgStyles.footer}>
-            <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
-              {activationFooterHint({ runDone })}
-            </span>
-          </div>
-        </section>
+        <GlassPanelFooter bar>{activationFooterHint({ runDone })}</GlassPanelFooter>
       </div>
     </div>
   );

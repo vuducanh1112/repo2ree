@@ -15,10 +15,11 @@ import {
   lgStatusBadge,
   lgStyles,
 } from "@shell/ui/theme/lightGlassTheme";
-import { F, S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
+import { S_ACTION_BUTTON_BASE } from "@shell/ui/theme/theme";
 import { useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { RunActionButton } from "../../components/RunActionButton";
 import { useHardwareBomDraft } from "../../hooks/useHardwareBomDraft";
 import type { PageHardwareBomProps } from "../sharedAssemblyUi";
@@ -358,13 +359,11 @@ export function PageHardwareBom({
             />
           </div>
 
-          <div style={lgStyles.footer}>
-            <span style={{ color: lgColors.textMuted, fontSize: 12, fontFamily: F.sans }}>
-              {totalRows === 0
-                ? "Run Profile This Machine to prefill the tables, then adjust as needed."
-                : `${totalRows} ${totalRows === 1 ? "device" : "devices"} across ${categoriesWithRows} of 5 categories.`}
-            </span>
-          </div>
+          <GlassPanelFooter>
+            {totalRows === 0
+              ? "Run Profile This Machine to prefill the tables, then adjust as needed."
+              : `${totalRows} ${totalRows === 1 ? "device" : "devices"} across ${categoriesWithRows} of 5 categories.`}
+          </GlassPanelFooter>
         </section>
       </div>
     </div>

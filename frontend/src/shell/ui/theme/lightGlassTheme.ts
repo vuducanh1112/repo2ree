@@ -91,6 +91,17 @@ export const lgBackgrounds = {
 // rather than widened to string), while T keeps the specific keys for safety.
 const styleSheet = <T extends Record<string, React.CSSProperties>>(s: T): T => s;
 
+// Shared layout/background for the `footer` and `footerBar` styles below; only
+// their border/padding differ.
+const S_FOOTER_BASE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  justifyContent: "space-between",
+  background: lgBackgrounds.footer,
+  flexWrap: "wrap",
+};
+
 export const lgStyles = styleSheet({
   panel: {
     border: lgBorders.panel,
@@ -209,6 +220,16 @@ export const lgStyles = styleSheet({
     color: lgColors.textMuted,
     fontSize: 12,
   },
+  // An inset card for a single section, raised slightly off the main glass panel
+  // so each major section reads as its own bounded subpanel rather than blending
+  // into one continuous surface.
+  subPanel: {
+    border: lgBorders.section,
+    borderRadius: 10,
+    background: lgBackgrounds.glassStrong,
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
+    padding: 18,
+  },
   fieldsGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
@@ -267,15 +288,19 @@ export const lgStyles = styleSheet({
     flexWrap: "wrap",
     gap: 8,
   },
+  // `footer` welds to the bottom of a single panel (top border only); `footerBar`
+  // is the standalone variant for pages split into separate subpanels (fully
+  // bordered, rounded bar). Both share the same layout/background base.
   footer: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    justifyContent: "space-between",
+    ...S_FOOTER_BASE,
     borderTop: "1px solid rgba(125, 211, 252, 0.38)",
     padding: "14px 22px",
-    background: lgBackgrounds.footer,
-    flexWrap: "wrap",
+  },
+  footerBar: {
+    ...S_FOOTER_BASE,
+    border: lgBorders.section,
+    borderRadius: 10,
+    padding: "12px 18px",
   },
   aside: {
     display: "flex",

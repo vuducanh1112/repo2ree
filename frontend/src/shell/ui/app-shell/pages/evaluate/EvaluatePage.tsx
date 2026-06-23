@@ -3,7 +3,6 @@ import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
-  lgColors,
   lgOutcomeBadge,
   lgPageRoot,
   lgStatusBadge,
@@ -13,6 +12,7 @@ import {
 import { useEffect } from "react";
 import { assemblyStepIcon } from "../../assemblyStepIcons";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
+import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { countContainerAndNixFiles } from "./EvaluatePageHelpers";
 import {
@@ -123,13 +123,11 @@ export function PageEvaluate({
             />
           </div>
 
-          <div style={lgStyles.footer}>
-            <span style={{ color: lgColors.textMuted, fontSize: 12 }}>
-              {hasScoreOutput
-                ? "Evaluate output is current."
-                : "Run Evaluate to compute a reproducibility score."}
-            </span>
-          </div>
+          <GlassPanelFooter>
+            {hasScoreOutput
+              ? "Evaluate output is current."
+              : "Run Evaluate to compute a reproducibility score."}
+          </GlassPanelFooter>
         </section>
 
         <EvaluateWorkspaceAside
