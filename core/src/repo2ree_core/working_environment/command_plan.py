@@ -32,6 +32,7 @@ from repo2ree_core.container.run_script import (
     docker_rmi_argv,
     docker_start_argv,
     docker_tag_argv,
+    env_export_segments,
     experiment_script_rel,
     format_argv,
     runtime_image_tag,
@@ -41,7 +42,12 @@ from repo2ree_core.container.run_script import (
 # load would pull domain → experiment → run → working_environment, a cycle when
 # this package is imported first. describe_plan needs the classes at call time.
 if TYPE_CHECKING:
-    from repo2ree_core.domain.env_entry import ContainerEntry, EnvEntry, LocalEntry
+    from repo2ree_core.domain.env_entry import (
+        ContainerEntry,
+        EnvEntry,
+        LocalEntry,
+        PhaseOverrides,
+    )
 
 
 # ================================================
@@ -56,9 +62,10 @@ def native_shell_command(
     script_abs: str,
     echo_label: str | None = None,
     script_rel: str | None = None,
+    env: dict[str, str] | None = None,
 ) -> str:
     """The ``set -e; …`` snippet a native run feeds to ``bash -c``."""
-    segments = ["set -e"]
+    segments = ["set -e", *env_export_segments(env)]
     activate = activate.strip()
     if activate:
         segments.append(activate)
@@ -125,6 +132,60 @@ def _cmd(argv: list[str], note: str = "") -> PlannedCommand:
     return PlannedCommand(display=format_argv(argv), note=note)
 
 
+# A substrate is a *preset*: it generates the default phase commands, and the
+# author may layer overrides onto them. The plan is where the two meet — defaults
+# synthesized below, overrides spliced in by _apply_overrides — so both the UI
+# preview and the executor read one projection.
+#
+# The override semantics mirror run.run_runnable exactly:
+#   provision  — runs in-substrate after the preset's setup    → appended to "pre"
+#   exec       — dispatches the per-run command in its place    → replaces "exec"
+#   teardown   — runs in-substrate before the preset's teardown → prepended to "post"
+# Author scripts are rendered by path (like the custom driver), not expanded to
+# the exact in-substrate argv.
+
+
+def _exec_override_command(script: str) -> PlannedCommand:
+    return PlannedCommand(
+        display=f"sh {shlex.quote(script)}",
+        note="exec override: dispatches the per-run command (R2R_COMMAND / R2R_RUN_ID in env)",
+    )
+
+
+def _hook_command(script: str, phase_label: str) -> PlannedCommand:
+    return PlannedCommand(
+        display=f"sh {shlex.quote(script)}",
+        note=f"{phase_label} override: runs inside the substrate",
+    )
+
+
+def _apply_overrides(plan: CommandPlan, overrides: PhaseOverrides) -> CommandPlan:
+    """Layer the author's phase overrides onto a preset's default plan.
+
+    Empty overrides leave the plan untouched, so a substrate with no overrides
+    renders exactly the preset default.
+    """
+    if not overrides.any_set():
+        return plan
+    provision, exec_, teardown = (
+        overrides.provision.strip(),
+        overrides.exec.strip(),
+        overrides.teardown.strip(),
+    )
+    new_phases = []
+    for phase in plan.phases:
+        if phase.id == "exec" and exec_:
+            commands = [_exec_override_command(exec_)]
+        elif phase.id == "pre" and provision:
+            commands = [*phase.commands, _hook_command(provision, "provision")]
+        elif phase.id == "post" and teardown:
+            commands = [_hook_command(teardown, "teardown"), *phase.commands]
+        else:
+            commands = phase.commands
+        new_phases.append(CommandPhase(id=phase.id, label=phase.label, commands=commands))
+    return plan.model_copy(update={"phases": new_phases})
+
+
 def _container_plan(entry: ContainerEntry) -> CommandPlan:
     engine = entry.engine
     # The plan renders Docker-compatible verbs (load/create/start/cp/exec/rm).
@@ -155,7 +216,15 @@ def _container_plan(entry: ContainerEntry) -> CommandPlan:
                 commands=[
                     _cmd(docker_load_argv(engine, _ARTIFACT)),
                     _cmd(docker_tag_argv(engine, _LOADED_REF, image)),
-                    _cmd(docker_create_argv(engine, container=container, image=image, sock_mount=engine == "docker")),
+                    _cmd(
+                        docker_create_argv(
+                            engine,
+                            container=container,
+                            image=image,
+                            sock_mount=engine == "docker",
+                            extra_args=entry.create_args or None,
+                        )
+                    ),
                     _cmd(docker_cp_in_argv(engine, workspace=_WORKSPACE, container=container)),
                     _cmd(docker_start_argv(engine, container)),
                 ],
@@ -255,10 +324,11 @@ def describe_plan(entry: EnvEntry) -> CommandPlan:
     from repo2ree_core.domain.env_entry import ContainerEntry, CustomEntry, LocalEntry
 
     if isinstance(entry, ContainerEntry):
-        return _container_plan(entry)
+        return _apply_overrides(_container_plan(entry), entry.overrides)
     if isinstance(entry, LocalEntry):
-        return _local_plan(entry)
+        return _apply_overrides(_local_plan(entry), entry.overrides)
     if isinstance(entry, CustomEntry):
+        # custom is already the all-overridden case; its driver *is* the phases.
         return _custom_plan(entry.enter_script)
     # VM substrate is not implemented yet.
     return CommandPlan(kind=entry.kind, note="This substrate is not implemented yet.")

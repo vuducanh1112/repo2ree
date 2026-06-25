@@ -14,7 +14,7 @@
 	image-archives images load-image-archives \
 	push-dockerhub-archives push-ghcr-archives \
 	push-ghcr push-ghcr-local push-dockerhub push-dockerhub-local push-registries \
-	e2e-tests e2e-demo e2e-coverage
+	e2e-tests e2e-demo e2e-demo-code-ocean e2e-coverage
 
 # ================================================
 # Frontend — checks and tests
@@ -198,6 +198,9 @@ e2e-tests:
 
 e2e-demo:
 	$(call e2e_run,demo)
+
+e2e-demo-code-ocean:
+	$(call e2e_run,code-ocean)
 
 # Full-stack e2e coverage: browser (frontend) + server (backend) in one run.
 #

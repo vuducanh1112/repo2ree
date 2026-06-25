@@ -7,6 +7,7 @@ import pytest
 
 import repo2ree_core.working_environment.docker_env as docker_mod
 import repo2ree_core.working_environment.manager as manager_mod
+from repo2ree_core.container.run_script import StreamingProcessResult
 from repo2ree_core.working_environment.base import (
     ProvisioningCanceledError,
     ScriptStep,
@@ -41,6 +42,20 @@ class FakeDocker:
             return subprocess.CompletedProcess(command, self._fail_rc, self._fail_stdout, self._fail_stderr)
         return subprocess.CompletedProcess(command, 0, "", "")
 
+    def run_streaming(self, command, *, log, stdin_text=None, is_canceled=lambda: False, env=None):
+        self.calls.append(list(command))
+        if is_canceled():
+            return StreamingProcessResult(None, "", "", canceled=True)
+        if command[1] == self._fail_on:
+            if self._fail_stdout:
+                for line in self._fail_stdout.splitlines():
+                    log("stdout", "info", line)
+            if self._fail_stderr:
+                for line in self._fail_stderr.splitlines():
+                    log("stderr", "warn", line)
+            return StreamingProcessResult(self._fail_rc, self._fail_stdout, self._fail_stderr)
+        return StreamingProcessResult(0, "", "")
+
     def subcommands(self) -> list[str]:
         return [c[1] for c in self.calls]
 
@@ -54,6 +69,7 @@ def workspace(tmp_path: Path) -> Path:
 
 def _install(monkeypatch, fake: FakeDocker) -> None:
     monkeypatch.setattr(docker_mod.subprocess, "run", fake.run)
+    monkeypatch.setattr(docker_mod, "run_streaming_process", fake.run_streaming)
     monkeypatch.setattr(docker_mod.shutil, "which", lambda _: "docker")
 
 

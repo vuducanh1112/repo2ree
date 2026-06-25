@@ -22,10 +22,9 @@ Lifecycle:
 from __future__ import annotations
 
 import os
-import subprocess
 from pathlib import Path
 
-from repo2ree_core.container.run_script import format_command, stream_output
+from repo2ree_core.container.run_script import format_command, run_streaming_process
 from repo2ree_core.working_environment.base import (
     CancelCheck,
     LogSink,
@@ -126,7 +125,11 @@ class ScriptedWorkingEnvironment:
             "R2R_COMMAND": command_rel,
         }
         log("system", "info", f"[custom/{phase}] {format_command(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, env=env)
-        stream_output(log, result)
+        result = run_streaming_process(
+            cmd,
+            log=log,
+            env=env,
+            is_canceled=self._is_canceled or (lambda: False),
+        )
         status = "succeeded" if result.returncode == 0 else "failed"
         return StepOutcome(status, result.returncode, result.stdout or "", result.stderr or "")

@@ -29,6 +29,7 @@ from repo2ree_core.container.run_script import (
     docker_rm_argv,
     docker_start_argv,
     format_command,
+    run_streaming_process,
     stream_output,
 )
 from repo2ree_core.working_environment.base import (
@@ -74,6 +75,7 @@ class DockerWorkingEnvironment:
         # Docker requires the socket mount so a runtime can itself drive Docker.
         # Podman and Apptainer use rootless namespaces; no host socket needed.
         self._sock_mount = spec.engine in ("docker", "")
+        self._create_args = list(spec.create_args)
         self._created = False
 
     # ================================================
@@ -138,6 +140,7 @@ class DockerWorkingEnvironment:
             step.script_rel_path,
             step.echo_label,
             working_dir,
+            env=step.env,
         )
         cmd = docker_exec_argv(
             self._docker,
@@ -147,10 +150,14 @@ class DockerWorkingEnvironment:
             interactive=step.stdin_text is not None,
         )
         log("system", "info", format_command(cmd))
-        result = subprocess.run(cmd, capture_output=True, text=True, input=step.stdin_text)
-        stream_output(log, result)
+        result = run_streaming_process(
+            cmd,
+            log=log,
+            stdin_text=step.stdin_text,
+            is_canceled=is_canceled,
+        )
 
-        if is_canceled():
+        if result.canceled or is_canceled():
             outcome = StepOutcome("canceled", result.returncode, result.stdout or "", result.stderr or "")
         else:
             status = "succeeded" if result.returncode == 0 else "failed"
@@ -218,7 +225,13 @@ class DockerWorkingEnvironment:
     # ================================================
 
     def _create(self) -> None:
-        cmd = docker_create_argv(self._docker, container=self._name, image=self._image, sock_mount=self._sock_mount)
+        cmd = docker_create_argv(
+            self._docker,
+            container=self._name,
+            image=self._image,
+            sock_mount=self._sock_mount,
+            extra_args=self._create_args or None,
+        )
         self._log("system", "info", format_command(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True)
         stream_output(self._log, result)

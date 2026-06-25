@@ -10,6 +10,7 @@ import {
   createEmptyReeExperiment,
   createEmptyRuntimeEntry,
   type ExpectedOutput,
+  type PhaseOverrides,
   type ReeActivation,
   type ReeCatalogMetadata,
   type ReeContributor,
@@ -119,24 +120,35 @@ function asPositiveInt(value: unknown, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
 
+// Legacy manifests carry no `overrides` key; default each phase to empty so they
+// load unchanged (mirrors the backend's backward-compatible PhaseOverrides).
+function asPhaseOverrides(value: unknown): PhaseOverrides {
+  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  return {
+    provision: String(raw.provision ?? ""),
+    exec: String(raw.exec ?? ""),
+    teardown: String(raw.teardown ?? ""),
+  };
+}
+
 function mapRawRuntimeEntry(value: unknown): RuntimeEntry {
   const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const overrides = asPhaseOverrides(raw.overrides);
   switch (raw.kind) {
     case "container":
       return {
         kind: "container",
         engine: asContainerEngine(raw.engine),
-        workdir: String(raw.workdir ?? "/workspace"),
         env: asStringMap(raw.env),
-        gpus: Boolean(raw.gpus ?? false),
+        create_args: Array.isArray(raw.create_args) ? raw.create_args.map(String) : [],
         activate: String(raw.activate ?? ""),
-        enter_script: String(raw.enter_script ?? ""),
+        overrides,
       };
     case "local":
       return {
         kind: "local",
         activate: String(raw.activate ?? ""),
-        enter_script: String(raw.enter_script ?? ""),
+        overrides,
       };
     case "vm":
       return {
@@ -147,13 +159,14 @@ function mapRawRuntimeEntry(value: unknown): RuntimeEntry {
         ssh_user: String(raw.ssh_user ?? ""),
         ssh_key: String(raw.ssh_key ?? ""),
         activate: String(raw.activate ?? ""),
-        enter_script: String(raw.enter_script ?? ""),
+        overrides,
       };
     case "custom":
       return {
         kind: "custom",
         enter_script: String(raw.enter_script ?? ""),
         activate: String(raw.activate ?? ""),
+        overrides,
       };
     default:
       return createEmptyRuntimeEntry();

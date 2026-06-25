@@ -66,6 +66,32 @@ describe("mapRawReeIntentToSlices", () => {
     ]);
   });
 
+  it("maps container runtime_entry with phase overrides", () => {
+    const mapped = mapRawReeIntentToSlices({
+      reeIntent: {
+        runtime_entry: { kind: "container", engine: "podman", overrides: { exec: "code/run" } },
+      },
+      fallbackName: "demo",
+    });
+
+    const entry = mapped.reeSpec.runtime_entry;
+    expect(entry.kind).toBe("container");
+    expect(entry.overrides).toEqual({ provision: "", exec: "code/run", teardown: "" });
+  });
+
+  it("defaults overrides to empty for legacy runtime_entry without the key", () => {
+    const mapped = mapRawReeIntentToSlices({
+      reeIntent: { runtime_entry: { kind: "container", engine: "docker" } },
+      fallbackName: "demo",
+    });
+
+    expect(mapped.reeSpec.runtime_entry.overrides).toEqual({
+      provision: "",
+      exec: "",
+      teardown: "",
+    });
+  });
+
   it("reads source_included and runtime_included from session", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: {},

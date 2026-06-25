@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from repo2ree_core.container.run_script import build_exec_command
+from repo2ree_core.container.run_script import (
+    build_exec_command,
+    env_export_segments,
+    run_streaming_process,
+)
 
 
 def test_exec_command_without_label_does_not_echo_script():
@@ -37,3 +41,40 @@ def test_exec_command_quotes_paths_with_spaces():
 
     assert "cd '/workspace/a b'" in payload
     assert "sh '/workspace/a b/run.sh'" in payload
+
+
+def test_env_export_segments_quote_values():
+    segments = env_export_segments({"R2R_COMMAND": ".workspace/exp.sh", "X": "a b"})
+    assert segments == ["export R2R_COMMAND=.workspace/exp.sh", "export X='a b'"]
+
+
+def test_env_export_segments_empty():
+    assert env_export_segments(None) == []
+    assert env_export_segments({}) == []
+
+
+def test_exec_command_bakes_env_after_set_e():
+    payload = build_exec_command(
+        Path("/workspace/code/run"),
+        "code/run",
+        echo_label=None,
+        working_dir=Path("/workspace"),
+        env={"R2R_COMMAND": ".workspace/exp.sh"},
+    )
+    # The export sits between `set -e` and `cd`, so the dispatched script sees it.
+    assert payload == "set -e; export R2R_COMMAND=.workspace/exp.sh; cd /workspace; sh /workspace/code/run"
+
+
+def test_run_streaming_process_logs_and_captures_stdout_stderr():
+    logged: list[tuple[str, str, str]] = []
+
+    result = run_streaming_process(
+        ["sh", "-c", "printf 'out\\n'; printf 'err\\n' >&2"],
+        log=lambda stream, level, msg: logged.append((stream, level, msg)),
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == "out\n"
+    assert result.stderr == "err\n"
+    assert ("stdout", "info", "out") in logged
+    assert ("stderr", "warn", "err") in logged

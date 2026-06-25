@@ -92,6 +92,7 @@ def acquire(
     activate = entry.activate if entry is not None and hasattr(entry, "activate") else ""
     engine = entry.engine if isinstance(entry, ContainerEntry) else "docker"
     enter_script = getattr(entry, "enter_script", "")
+    create_args = tuple(entry.create_args) if isinstance(entry, ContainerEntry) else ()
     spec = WorkingEnvironmentSpec(
         workspace_path=workspace_path,
         run_id=run_id,
@@ -101,6 +102,7 @@ def acquire(
         activate=activate,
         engine=engine,
         enter_script=enter_script,
+        create_args=create_args,
     )
     we = LocalMachine().create_working_environment(spec, kind=kind)
     return we

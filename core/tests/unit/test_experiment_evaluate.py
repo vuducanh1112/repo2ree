@@ -32,6 +32,8 @@ from repo2ree_core.experiment.experiment import (
 )
 from repo2ree_core.experiment.run import (
     _evaluate_custom_match,
+    _evaluate_file_output_in_container,
+    _snapshot_file_outputs_in_container,
     build_capture_bundle,
     run_runnable,
 )
@@ -295,14 +297,10 @@ def test_snapshot_outputs_preserves_numeric_matcher():
     assert result[0].match.mode == "numeric"
 
 
-def test_snapshot_outputs_drops_missing_sha256_file():
+def test_snapshot_outputs_drops_missing_sha256_stdout():
     outputs = [
         ExpectedOutput(
             source=StdoutSource(kind="stdout"),
-            match=Sha256Match(mode="sha256", value="a" * 64),
-        ),
-        ExpectedOutput(
-            source=FileSource(kind="file", path="missing.txt"),
             match=Sha256Match(mode="sha256", value="a" * 64),
         ),
     ]
@@ -312,8 +310,7 @@ def test_snapshot_outputs_drops_missing_sha256_file():
     assert result[0].source.kind == "stdout"
 
 
-def test_snapshot_outputs_all_sha256_sources():
-    raw = b"data"
+def test_snapshot_outputs_all_stream_sha256_sources():
     outputs = [
         ExpectedOutput(
             source=StdoutSource(kind="stdout"),
@@ -323,62 +320,22 @@ def test_snapshot_outputs_all_sha256_sources():
             source=StderrSource(kind="stderr"),
             match=Sha256Match(mode="sha256", value="a" * 64),
         ),
-        ExpectedOutput(
-            source=FileSource(kind="file", path="out.bin"),
-            match=Sha256Match(mode="sha256", value="a" * 64),
-        ),
     ]
-    captures = CaptureBundle(stdout="out", stderr="err", files={"out.bin": raw})
+    captures = CaptureBundle(stdout="out", stderr="err")
     result = snapshot_outputs(outputs, captures)
-    assert len(result) == 3
+    assert len(result) == 2
     assert all(o.match.mode == "sha256" for o in result)
 
 
 # ================================================
-# build_capture_bundle — file collection & path safety
+# build_capture_bundle
 # ================================================
 
 
-def _file_output(path: str) -> ExpectedOutput:
-    return ExpectedOutput(
-        source=FileSource(kind="file", path=path),
-        match=Sha256Match(mode="sha256", value="a" * 64),
-    )
-
-
-def test_build_capture_bundle_reads_workspace_file(tmp_path):
-    (tmp_path / "result.txt").write_bytes(b"hello")
-    bundle = build_capture_bundle("out", "err", [_file_output("result.txt")], tmp_path)
+def test_build_capture_bundle_collects_stdout_stderr():
+    bundle = build_capture_bundle("out", "err")
     assert bundle.stdout == "out"
     assert bundle.stderr == "err"
-    assert bundle.files == {"result.txt": b"hello"}
-
-
-def test_build_capture_bundle_reads_nested_file(tmp_path):
-    nested = tmp_path / "sub"
-    nested.mkdir()
-    (nested / "out.bin").write_bytes(b"\x00\x01")
-    bundle = build_capture_bundle("", "", [_file_output("sub/out.bin")], tmp_path)
-    assert bundle.files == {"sub/out.bin": b"\x00\x01"}
-
-
-def test_build_capture_bundle_skips_missing_file(tmp_path):
-    bundle = build_capture_bundle("", "", [_file_output("missing.txt")], tmp_path)
-    assert bundle.files == {}
-
-
-def test_build_capture_bundle_refuses_absolute_path(tmp_path, tmp_path_factory):
-    secret = tmp_path_factory.mktemp("outside") / "secret.txt"
-    secret.write_bytes(b"top secret")
-    bundle = build_capture_bundle("", "", [_file_output(str(secret))], tmp_path)
-    assert bundle.files == {}
-
-
-def test_build_capture_bundle_refuses_parent_traversal(tmp_path):
-    workspace = tmp_path / "ws"
-    workspace.mkdir()
-    (tmp_path / "secret.txt").write_bytes(b"top secret")
-    bundle = build_capture_bundle("", "", [_file_output("../secret.txt")], workspace)
     assert bundle.files == {}
 
 
@@ -452,6 +409,148 @@ def test_custom_match_fails_on_nonzero_runtime_exit(tmp_path):
 
     assert not passed
     assert detail == "custom script exited 7"
+
+
+# ================================================
+# _evaluate_file_output_in_container
+# ================================================
+
+
+def test_evaluate_file_in_container_sha256_match():
+    expected_hash = "a" * 64
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout=f"{expected_hash}  output.bin\n"))
+
+    exp = ExpectedOutput(
+        source=FileSource(kind="file", path="output.bin"),
+        match=Sha256Match(mode="sha256", value=expected_hash),
+    )
+    result = _evaluate_file_output_in_container(
+        exp, we=fake_we, run_id="run-1", output_index=0, log=lambda *_: None, is_canceled=lambda: False
+    )
+
+    assert result.passed
+    assert result.source_key == "file:output.bin"
+    assert len(fake_we.put_calls) == 1
+    assert "sha256sum" in fake_we.put_calls[0][1]
+
+
+def test_evaluate_file_in_container_sha256_mismatch():
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout=f"{'b' * 64}  output.bin\n"))
+
+    exp = ExpectedOutput(
+        source=FileSource(kind="file", path="output.bin"),
+        match=Sha256Match(mode="sha256", value="a" * 64),
+    )
+    result = _evaluate_file_output_in_container(
+        exp, we=fake_we, run_id="run-1", output_index=0, log=lambda *_: None, is_canceled=lambda: False
+    )
+
+    assert not result.passed
+    assert "mismatch" in result.detail
+
+
+def test_evaluate_file_in_container_file_not_found():
+    fake_we = _FakeWE(StepOutcome("failed", exit_code=1))
+
+    exp = ExpectedOutput(
+        source=FileSource(kind="file", path="/results/missing.png"),
+        match=Sha256Match(mode="sha256", value="a" * 64),
+    )
+    result = _evaluate_file_output_in_container(
+        exp, we=fake_we, run_id="run-1", output_index=0, log=lambda *_: None, is_canceled=lambda: False
+    )
+
+    assert not result.passed
+    assert "not found" in result.detail
+
+
+def test_evaluate_file_in_container_contains_match():
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="accuracy: 0.95\n"))
+
+    exp = ExpectedOutput(
+        source=FileSource(kind="file", path="/results/summary.txt"),
+        match=ContainsMatch(mode="contains", value="accuracy"),
+    )
+    result = _evaluate_file_output_in_container(
+        exp, we=fake_we, run_id="run-1", output_index=0, log=lambda *_: None, is_canceled=lambda: False
+    )
+
+    assert result.passed
+    assert len(fake_we.put_calls) == 1
+    assert "cat" in fake_we.put_calls[0][1]
+
+
+def test_evaluate_file_in_container_absolute_path_passed_to_script():
+    digest = "a" * 64
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout=f"{digest}  /results/foo.png\n"))
+
+    exp = ExpectedOutput(
+        source=FileSource(kind="file", path="/results/foo.png"),
+        match=Sha256Match(mode="sha256", value=digest),
+    )
+    _evaluate_file_output_in_container(
+        exp, we=fake_we, run_id="run-1", output_index=0, log=lambda *_: None, is_canceled=lambda: False
+    )
+
+    # The script content must reference the absolute path so the runtime can find it.
+    assert "/results/foo.png" in fake_we.put_calls[0][1]
+
+
+# ================================================
+# _snapshot_file_outputs_in_container
+# ================================================
+
+
+def test_snapshot_file_in_container_records_hash():
+    digest = "a" * 64
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout=f"{digest}  output.bin\n"))
+
+    file_outputs = [
+        ExpectedOutput(
+            source=FileSource(kind="file", path="output.bin"),
+            match=Sha256Match(mode="sha256", value="old" * 20 + "xxxx"),
+        )
+    ]
+    result = _snapshot_file_outputs_in_container(
+        file_outputs, we=fake_we, run_id="run-1", log=lambda *_: None, is_canceled=lambda: False
+    )
+
+    assert len(result) == 1
+    assert result[0].match.value == digest
+
+
+def test_snapshot_file_in_container_preserves_non_sha256():
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0))
+
+    file_outputs = [
+        ExpectedOutput(
+            source=FileSource(kind="file", path="out.txt"),
+            match=ContainsMatch(mode="contains", value="ok"),
+        )
+    ]
+    result = _snapshot_file_outputs_in_container(
+        file_outputs, we=fake_we, run_id="run-1", log=lambda *_: None, is_canceled=lambda: False
+    )
+
+    assert len(result) == 1
+    assert result[0].match.mode == "contains"
+    assert len(fake_we.put_calls) == 0
+
+
+def test_snapshot_file_in_container_drops_missing():
+    fake_we = _FakeWE(StepOutcome("failed", exit_code=1))
+
+    file_outputs = [
+        ExpectedOutput(
+            source=FileSource(kind="file", path="/results/missing.png"),
+            match=Sha256Match(mode="sha256", value="a" * 64),
+        )
+    ]
+    result = _snapshot_file_outputs_in_container(
+        file_outputs, we=fake_we, run_id="run-1", log=lambda *_: None, is_canceled=lambda: False
+    )
+
+    assert result == []
 
 
 # ================================================
@@ -610,6 +709,139 @@ def test_run_experiment_returns_canceled_when_provisioning_is_canceled(tmp_path,
     # environment context manager, so the record reports no runtime image.
     assert result.run_outputs["substrate"] is None
     assert result.run_outputs["exitCode"] is None
+
+
+def _patch_env(monkeypatch, fake_we):
+    @contextmanager
+    def fake_loaded_runtime_image(*args, **kwargs):
+        yield "runtime:test"
+
+    @contextmanager
+    def fake_acquire(workspace, run_id, *, log, image=None, **kwargs):
+        yield fake_we
+
+    monkeypatch.setattr("repo2ree_core.experiment.run.acquire", fake_acquire)
+    monkeypatch.setattr("repo2ree_core.experiment.run.loaded_runtime_image", fake_loaded_runtime_image)
+
+
+def test_exec_override_dispatches_command_with_abi_env(tmp_path, monkeypatch):
+    from repo2ree_core.domain.env_entry import ContainerEntry, PhaseOverrides
+
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="ok\n"))
+    _patch_env(monkeypatch, fake_we)
+
+    experiment = Experiment(name="smoke", command="echo ok", outputs=[])
+    result = run_runnable(
+        workspace=tmp_path,
+        runnable=experiment,
+        label=experiment.name,
+        mode="verify",
+        entry=ContainerEntry(overrides=PhaseOverrides(exec="code/run")),
+        runtime_archive_path=tmp_path / "runtime.tar.gz",
+        run_id="run-123",
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+
+    assert result.status == "succeeded"
+    # The command step targets the override script, handed the dispatch ABI.
+    assert len(fake_we.exec_calls) == 1
+    step = fake_we.exec_calls[0]
+    assert step.script_rel_path == "code/run"
+    assert step.env == {"R2R_COMMAND": ".workspace/exp_run-123.sh", "R2R_RUN_ID": "run-123"}
+
+
+def test_no_override_runs_command_script_directly(tmp_path, monkeypatch):
+    from repo2ree_core.domain.env_entry import ContainerEntry
+
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="ok\n"))
+    _patch_env(monkeypatch, fake_we)
+
+    experiment = Experiment(name="smoke", command="echo ok", outputs=[])
+    run_runnable(
+        workspace=tmp_path,
+        runnable=experiment,
+        label=experiment.name,
+        mode="verify",
+        entry=ContainerEntry(),
+        runtime_archive_path=tmp_path / "runtime.tar.gz",
+        run_id="run-123",
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+
+    step = fake_we.exec_calls[0]
+    assert step.script_rel_path == ".workspace/exp_run-123.sh"
+    assert step.env == {}
+
+
+def test_provision_hook_runs_before_command(tmp_path, monkeypatch):
+    from repo2ree_core.domain.env_entry import ContainerEntry, PhaseOverrides
+
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="ok\n"))
+    _patch_env(monkeypatch, fake_we)
+
+    experiment = Experiment(name="smoke", command="echo ok", outputs=[])
+    run_runnable(
+        workspace=tmp_path,
+        runnable=experiment,
+        label=experiment.name,
+        mode="verify",
+        entry=ContainerEntry(overrides=PhaseOverrides(provision="scripts/up")),
+        runtime_archive_path=tmp_path / "runtime.tar.gz",
+        run_id="run-123",
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+
+    assert [s.script_rel_path for s in fake_we.exec_calls] == ["scripts/up", ".workspace/exp_run-123.sh"]
+
+
+def test_failed_provision_hook_aborts_run_before_command(tmp_path, monkeypatch):
+    from repo2ree_core.domain.env_entry import ContainerEntry, PhaseOverrides
+
+    fake_we = _FakeWE(StepOutcome("failed", exit_code=3))
+    _patch_env(monkeypatch, fake_we)
+
+    experiment = Experiment(name="smoke", command="echo ok", outputs=[])
+    result = run_runnable(
+        workspace=tmp_path,
+        runnable=experiment,
+        label=experiment.name,
+        mode="verify",
+        entry=ContainerEntry(overrides=PhaseOverrides(provision="scripts/up")),
+        runtime_archive_path=tmp_path / "runtime.tar.gz",
+        run_id="run-123",
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+
+    assert result.status == "failed"
+    # Only the provision hook ran; the command was never dispatched.
+    assert [s.script_rel_path for s in fake_we.exec_calls] == ["scripts/up"]
+
+
+def test_teardown_hook_runs_after_command(tmp_path, monkeypatch):
+    from repo2ree_core.domain.env_entry import ContainerEntry, PhaseOverrides
+
+    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="ok\n"))
+    _patch_env(monkeypatch, fake_we)
+
+    experiment = Experiment(name="smoke", command="echo ok", outputs=[])
+    run_runnable(
+        workspace=tmp_path,
+        runnable=experiment,
+        label=experiment.name,
+        mode="verify",
+        entry=ContainerEntry(overrides=PhaseOverrides(teardown="scripts/down")),
+        runtime_archive_path=tmp_path / "runtime.tar.gz",
+        run_id="run-123",
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+
+    # Teardown runs in the finally, after the command step.
+    assert [s.script_rel_path for s in fake_we.exec_calls] == [".workspace/exp_run-123.sh", "scripts/down"]
 
 
 def test_run_experiment_ignores_cleanup_unlink_errors(tmp_path, monkeypatch):

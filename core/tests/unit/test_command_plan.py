@@ -24,6 +24,7 @@ from repo2ree_core.domain.env_entry import (
     ContainerEntry,
     CustomEntry,
     LocalEntry,
+    PhaseOverrides,
     VmEntry,
 )
 from repo2ree_core.working_environment.command_plan import (
@@ -117,6 +118,59 @@ def test_vm_has_note_and_no_phases() -> None:
     plan = describe_plan(VmEntry())
     assert plan.phases == []
     assert plan.note
+
+
+# ================================================
+# Preset overrides — the reframe's core: any phase can be replaced, the rest
+# stay at the preset default.
+# ================================================
+
+
+def test_no_overrides_renders_pure_preset_default() -> None:
+    # A substrate with empty overrides must be byte-identical to the bare preset.
+    plain = describe_plan(ContainerEntry(engine="docker"))
+    with_empty = describe_plan(ContainerEntry(engine="docker", overrides=PhaseOverrides()))
+    assert plain.phases == with_empty.phases
+
+
+def test_container_exec_override_replaces_only_exec_phase() -> None:
+    entry = ContainerEntry(engine="docker", overrides=PhaseOverrides(exec="code/run"))
+    plan = describe_plan(entry)
+
+    # exec phase is now the author's script…
+    assert _displays(plan, "exec") == ["sh code/run"]
+    # …while provision/teardown keep the Docker preset defaults (the Code Ocean case).
+    default = describe_plan(ContainerEntry(engine="docker"))
+    assert _displays(plan, "pre") == _displays(default, "pre")
+    assert _displays(plan, "post") == _displays(default, "post")
+
+
+def test_container_provision_hook_appended_after_preset_setup() -> None:
+    entry = ContainerEntry(engine="docker", overrides=PhaseOverrides(provision="scripts/up"))
+    plan = describe_plan(entry)
+    default_pre = _displays(describe_plan(ContainerEntry(engine="docker")), "pre")
+    # The preset's setup is preserved; the provision hook runs in-substrate after it.
+    assert _displays(plan, "pre") == [*default_pre, "sh scripts/up"]
+    # exec untouched → still the default docker exec.
+    assert _displays(plan, "exec") == _displays(describe_plan(ContainerEntry(engine="docker")), "exec")
+
+
+def test_container_teardown_hook_prepended_before_preset_teardown() -> None:
+    entry = ContainerEntry(engine="docker", overrides=PhaseOverrides(teardown="scripts/down"))
+    plan = describe_plan(entry)
+    default_post = _displays(describe_plan(ContainerEntry(engine="docker")), "post")
+    # The teardown hook runs in-substrate before the preset tears the runtime down.
+    assert _displays(plan, "post") == ["sh scripts/down", *default_post]
+
+
+def test_local_exec_override_replaces_exec() -> None:
+    plan = describe_plan(LocalEntry(overrides=PhaseOverrides(exec="run.sh")))
+    assert _displays(plan, "exec") == ["sh run.sh"]
+
+
+def test_override_command_paths_are_shell_quoted() -> None:
+    plan = describe_plan(ContainerEntry(overrides=PhaseOverrides(exec="my scripts/run me")))
+    assert _displays(plan, "exec") == ["sh 'my scripts/run me'"]
 
 
 def _quote(text: str) -> str:

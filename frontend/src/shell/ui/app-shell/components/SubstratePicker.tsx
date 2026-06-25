@@ -1,4 +1,4 @@
-import type { RuntimeEntry, RuntimeEntryKind } from "@core/ree/ReeSpec";
+import type { PhaseOverrides, RuntimeEntry, RuntimeEntryKind } from "@core/ree/ReeSpec";
 import { createDefaultRuntimeEntry } from "@core/ree/ReeSpec";
 import { CONTAINER_ENGINES, ENGINE_LABELS } from "@core/ree/runtimeEntryLabels";
 import { lgColors, lgInput } from "@shell/ui/theme/lightGlassTheme";
@@ -82,8 +82,8 @@ export function SubstratePicker({
               disabled={!!soon}
               onClick={() => {
                 // No-op when already selected: re-defaulting would silently wipe
-                // fields this compact UI does not expose (workdir/env/gpus, VM
-                // SSH config, custom driver path). Engine has its own button row.
+                // fields this compact UI does not expose (env/create_args,
+                // VM SSH config, custom driver path). Engine has its own button row.
                 if (soon || active) return;
                 onChange(createDefaultRuntimeEntry(kind, entry));
               }}
@@ -218,6 +218,65 @@ export function SubstratePicker({
   );
 }
 
+// Editable list of raw `<engine> create` flags (passthrough args).
+// Each pair of tokens is a separate flag+value, but users may also provide
+// combined tokens like `--mac-address=12:34:56:78:9a:bc`. The list is split
+// on spaces so a single textarea line maps to one or more argv tokens.
+function CreateArgsEditor({
+  args,
+  onChange,
+}: {
+  args: string[];
+  onChange: (next: string[]) => void;
+}) {
+  // Display as one flag per line; a blank textarea means empty list.
+  const text = args.join(" ");
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: lgColors.textMid,
+          fontFamily: F.sans,
+          marginBottom: 4,
+        }}
+      >
+        Entry flags{" "}
+        <span style={{ fontWeight: 400, color: lgColors.textMuted }}>
+          (passed to <code>{"<engine>"} create</code>)
+        </span>
+      </div>
+      <textarea
+        value={text}
+        placeholder={
+          "--volume /data:/data --volume /results:/results\n--mac-address 12:34:56:78:9a:bc\n--platform linux/amd64"
+        }
+        rows={3}
+        onChange={(e) => {
+          const raw = e.target.value.trim();
+          onChange(raw ? raw.split(/\s+/) : []);
+        }}
+        style={{
+          width: "100%",
+          padding: "6px 10px",
+          fontSize: 11,
+          fontFamily: F.mono,
+          border: "1px solid rgba(148, 163, 184, 0.34)",
+          borderRadius: 6,
+          background: lgColors.white,
+          color: lgColors.text,
+          resize: "vertical",
+          boxSizing: "border-box",
+        }}
+      />
+      <div style={{ fontSize: 10, color: lgColors.textMuted, fontFamily: F.sans, marginTop: 3 }}>
+        Space-separated tokens — disclosed in the command plan and sealed into the manifest.
+      </div>
+    </div>
+  );
+}
+
 // The default detail slot: how the workbench *enters* the runtime — the editable
 // enter-config (local activate / custom driver path) plus the read-only command
 // plan. Replaced wholesale by `renderDetail` on the Build Runtime page, which
@@ -269,8 +328,90 @@ function DefaultSubstrateDetail({
         </div>
       )}
 
+      {entry.kind === "container" && (
+        <div style={{ marginTop: 8 }}>
+          <CreateArgsEditor
+            args={entry.create_args}
+            onChange={(args) => onChange({ ...entry, create_args: args })}
+          />
+        </div>
+      )}
+
+      {(entry.kind === "container" || entry.kind === "local") && (
+        <OverridesEditor
+          overrides={entry.overrides}
+          onChange={(overrides) => onChange({ ...entry, overrides })}
+        />
+      )}
+
       <CommandPlanView entry={entry} />
     </>
+  );
+}
+
+// Per-phase override scripts layered onto the substrate preset's defaults. These
+// are the escape hatch from the generated lifecycle: keep Docker's create/start/
+// rm, but run an author script for a phase. `exec` is the common one (it
+// dispatches the per-run command its own way — the Code Ocean entrypoint case);
+// `provision`/`teardown` run in-substrate around it. Empty = use the default.
+const OVERRIDE_FIELDS: { key: keyof PhaseOverrides; label: string; hint: string }[] = [
+  { key: "provision", label: "Provision", hint: "runs in the substrate after it is up" },
+  { key: "exec", label: "Exec", hint: "dispatches the per-run command ($R2R_COMMAND)" },
+  { key: "teardown", label: "Teardown", hint: "runs in the substrate before teardown" },
+];
+
+function OverridesEditor({
+  overrides,
+  onChange,
+}: {
+  overrides: PhaseOverrides;
+  onChange: (next: PhaseOverrides) => void;
+}) {
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: lgColors.textMid,
+          fontFamily: F.sans,
+          marginBottom: 4,
+        }}
+      >
+        Phase overrides{" "}
+        <span style={{ fontWeight: 400, color: lgColors.textMuted }}>
+          (optional — replace a preset phase with a workspace script)
+        </span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {OVERRIDE_FIELDS.map(({ key, label, hint }) => (
+          <div key={key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span
+              style={{
+                width: 72,
+                flexShrink: 0,
+                fontSize: 11,
+                fontWeight: 600,
+                color: lgColors.textMid,
+                fontFamily: F.sans,
+              }}
+            >
+              {label}
+            </span>
+            <input
+              type="text"
+              value={overrides[key]}
+              placeholder={hint}
+              onChange={(e) => onChange({ ...overrides, [key]: e.target.value })}
+              style={{ ...enterConfigInput, marginTop: 0, flex: 1 }}
+            />
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 10, color: lgColors.textMuted, fontFamily: F.sans, marginTop: 4 }}>
+        Workspace-relative paths. Shown in the command plan and sealed into the manifest.
+      </div>
+    </div>
   );
 }
 

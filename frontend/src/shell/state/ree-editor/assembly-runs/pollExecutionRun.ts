@@ -32,12 +32,11 @@ export async function pollExecutionRun(
   options: PollExecutionRunOptions,
 ): Promise<PollExecutionRunResult> {
   void options.clock;
-  void options.sleep;
   return observeExecutionRun(queryClient, executionRunsClient, {
     reeId: options.reeId,
     runId: options.runId,
     onUpdate: options.onUpdate,
-    timeoutMs: (options.maxIterations || 90) * 1500,
+    timeoutMs: options.maxIterations ? options.maxIterations * 1500 : undefined,
     sleep: options.sleep,
   });
 }

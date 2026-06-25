@@ -53,6 +53,7 @@ def test_activation_and_runtime_entry_in_manifest():
     assert manifest["activation"] == ReeIntent().activation.model_dump()
     assert manifest["runtime_entry"]["kind"] == "container"
     assert manifest["runtime_entry"]["engine"] == "docker"
+    assert "workdir" not in manifest["runtime_entry"]
 
 
 def test_pure_no_filesystem_dependency(tmp_path, monkeypatch):

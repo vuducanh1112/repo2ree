@@ -53,8 +53,23 @@ export default defineConfig({
       // videos never collide with the e2e suite.
       name: "demo",
       testDir: "./tests/demo",
+      testIgnore: ["**/code-ocean/**"],
       outputDir: "./test-artifacts/playwright/demo",
       timeout: 300 * 1000,
+      expect: { timeout: 10 * 1000 },
+      use: {
+        ...baseUse,
+        video: { mode: "on", size: { width: 1920, height: 1080 } },
+        screenshot: "only-on-failure",
+      },
+    },
+    {
+      // Long-running, external-image demos. Kept out of `make e2e-demo` so the
+      // ordinary narrated demo remains quick and self-contained.
+      name: "code-ocean",
+      testDir: "./tests/demo/code-ocean",
+      outputDir: "./test-artifacts/playwright/code-ocean",
+      timeout: 900 * 1000,
       expect: { timeout: 10 * 1000 },
       use: {
         ...baseUse,

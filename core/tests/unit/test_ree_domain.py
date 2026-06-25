@@ -169,10 +169,16 @@ def _entry_for(payload: dict) -> object:
 def test_new_container_entry_round_trips():
     from repo2ree_core.domain.env_entry import ContainerEntry
 
-    entry = _entry_for({"kind": "container", "engine": "podman", "gpus": True})
+    entry = _entry_for(
+        {
+            "kind": "container",
+            "engine": "podman",
+            "create_args": ["--volume", "/data:/data", "--mac-address", "12:34:56:78:9a:bc"],
+        }
+    )
     assert isinstance(entry, ContainerEntry)
     assert entry.engine == "podman"
-    assert entry.gpus is True
+    assert entry.create_args == ["--volume", "/data:/data", "--mac-address", "12:34:56:78:9a:bc"]
 
 
 def test_default_runtime_entry_is_container_docker():
@@ -181,3 +187,66 @@ def test_default_runtime_entry_is_container_docker():
     intent = ReeIntent(name="x")
     assert isinstance(intent.runtime_entry, ContainerEntry)
     assert intent.runtime_entry.engine == "docker"
+
+
+# ================================================
+# Preset + overrides reframe
+# ================================================
+
+
+def test_entry_defaults_to_empty_overrides():
+    from repo2ree_core.domain.env_entry import ContainerEntry
+
+    entry = _entry_for({"kind": "container"})
+    assert isinstance(entry, ContainerEntry)
+    assert entry.overrides.provision == ""
+    assert entry.overrides.exec == ""
+    assert entry.overrides.teardown == ""
+    assert entry.overrides.any_set() is False
+
+
+def test_legacy_container_entry_without_overrides_still_loads():
+    # Manifests written before the reframe carry no `overrides` key.
+    from repo2ree_core.domain.env_entry import ContainerEntry
+
+    entry = _entry_for(
+        {
+            "kind": "container",
+            "engine": "podman",
+            "env": {"FOO": "bar"},
+            "create_args": ["--volume", "/data:/data"],
+            "activate": "source .venv/bin/activate",
+        }
+    )
+    assert isinstance(entry, ContainerEntry)
+    assert entry.engine == "podman"
+    assert entry.activate == "source .venv/bin/activate"
+    assert entry.overrides.any_set() is False
+
+
+def test_container_entry_round_trips_overrides():
+    from repo2ree_core.domain.env_entry import ContainerEntry
+
+    entry = _entry_for(
+        {
+            "kind": "container",
+            "overrides": {"exec": "code/run"},
+        }
+    )
+    assert isinstance(entry, ContainerEntry)
+    assert entry.overrides.exec == "code/run"
+    assert entry.overrides.any_set() is True
+    # round-trips through serialization unchanged
+    reparsed = _entry_for(entry.model_dump())
+    assert reparsed.overrides.exec == "code/run"
+
+
+def test_custom_entry_still_requires_enter_script():
+    from repo2ree_core.domain.env_entry import CustomEntry
+
+    entry = _entry_for({"kind": "custom", "enter_script": "scripts/driver"})
+    assert isinstance(entry, CustomEntry)
+    assert entry.enter_script == "scripts/driver"
+
+    with pytest.raises(ValidationError, match="enter_script is required"):
+        _entry_for({"kind": "custom", "enter_script": ""})

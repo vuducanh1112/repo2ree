@@ -96,7 +96,7 @@ function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClien
       });
       return {
         lines: mapRunLogsToLegacy(logs.entries),
-        nextCursor: logs.nextCursor,
+        nextCursor: nextRunLogCursor(logs.nextCursor, logs.entries, cursor),
         hasMore: logs.hasMore,
       };
     },
@@ -106,6 +106,16 @@ function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClien
       return mapStatus(response.status);
     },
   };
+}
+
+export function nextRunLogCursor(
+  nextCursor: string | undefined,
+  entries: Array<{ seq: number }>,
+  currentCursor?: string,
+): string | undefined {
+  if (nextCursor) return nextCursor;
+  const lastEntry = entries.at(-1);
+  return lastEntry ? String(lastEntry.seq) : currentCursor;
 }
 
 export function useExecutionRunsClient(): ExecutionRunsClient {

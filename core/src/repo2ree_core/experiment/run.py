@@ -9,10 +9,17 @@ run-store logging and cancellation are injected as callbacks.
 One WorkingEnvironment is provisioned per run and shared across the command
 execution and all custom-validator steps.  This means a single docker cp in
 and out rather than one container per script invocation.
+
+File outputs are asserted and snapshotted inside the running environment via
+``exec_script`` (``sha256sum`` / ``cat``), so the container filesystem is never
+synced back to the host solely for verification.  Absolute paths (e.g.
+``/results/foo.png``) and workspace-relative paths both work because the shell
+changes to the workspace directory before each script is sourced.
 """
 
 from __future__ import annotations
 
+import shlex
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -20,11 +27,12 @@ from pathlib import Path
 from typing import Any, Literal
 
 from repo2ree_core.container.runtime_image import loaded_runtime_image
-from repo2ree_core.domain.env_entry import ContainerEntry, EnvEntry
+from repo2ree_core.domain.env_entry import ContainerEntry, EnvEntry, LocalEntry
 from repo2ree_core.experiment.evaluate import (
     CaptureBundle,
     ExperimentRunResult,
     OutputResult,
+    evaluate_match,
     evaluate_output,
     make_run_result,
     snapshot_outputs,
@@ -35,6 +43,7 @@ from repo2ree_core.experiment.experiment import (
     ExpectedOutput,
     FileSource,
     Runnable,
+    Sha256Match,
 )
 from repo2ree_core.working_environment import (
     CancelCheck,
@@ -75,32 +84,144 @@ class ExperimentRunOutcome:
 def build_capture_bundle(
     captured_stdout: str,
     captured_stderr: str,
-    outputs: list[ExpectedOutput],
-    workspace: Path,
 ) -> CaptureBundle:
-    """Collect stdout, stderr, and any declared file outputs into a bundle.
+    """Collect stdout and stderr into a bundle.
 
-    File sources whose resolved path escapes *workspace* (absolute paths,
-    ``..`` traversal) are refused — only files inside the workspace are read.
+    File outputs are evaluated directly inside the running environment via
+    ``exec_script``, so no host filesystem read is needed here.
     """
-    workspace = workspace.resolve()
-    files: dict[str, bytes] = {}
-    for exp_output in outputs:
-        src = exp_output.source
+    return CaptureBundle(stdout=captured_stdout, stderr=captured_stderr)
+
+
+# ================================================
+# In-runtime file evaluation
+# ================================================
+
+
+def _file_check_script(path: str, mode: str) -> str:
+    """Shell one-liner that projects *path* inside the running environment.
+
+    sha256 mode: emits ``<hex>  <path>`` via ``sha256sum``.
+    All other modes: emits the raw file bytes via ``cat``.
+
+    The scripts run from the workspace directory (WorkingEnvironment sets
+    ``working_dir_rel=""``), so relative paths resolve against the workspace;
+    absolute paths like ``/results/foo.png`` are used as-is.
+    """
+    quoted = shlex.quote(path)
+    if mode == "sha256":
+        return f"sha256sum {quoted}"
+    return f"cat {quoted}"
+
+
+def _evaluate_file_output_in_container(
+    expected: ExpectedOutput,
+    *,
+    we: WorkingEnvironment,
+    run_id: str,
+    output_index: int,
+    log: LogSink,
+    is_canceled: CancelCheck,
+) -> OutputResult:
+    """Evaluate *expected* (a FileSource output) inside the running environment.
+
+    The file is read at its declared path — workspace-relative or absolute
+    container path — without syncing the container filesystem to the host.
+    For ``sha256`` mode only ``sha256sum`` output (64 hex chars) is captured,
+    so large binary files are never transferred through the capture pipe.
+    """
+    src = expected.source
+    if not isinstance(src, FileSource):
+        return OutputResult(
+            source_key=source_key(src), mode=expected.match.mode, passed=False, detail="not a file source"
+        )
+    key = source_key(src)
+    mode = expected.match.mode
+    script_rel = f".workspace/chk_{run_id}_{output_index}.sh"
+
+    try:
+        we.put_file(script_rel, _file_check_script(src.path, mode))
+    except Exception as exc:
+        return OutputResult(source_key=key, mode=mode, passed=False, detail=f"setup error: {exc}")
+
+    outcome = we.exec_script(
+        ScriptStep(script_rel_path=script_rel, working_dir_rel="", login_shell=False),
+        log=log,
+        is_canceled=is_canceled,
+    )
+    if outcome.status != "succeeded":
+        return OutputResult(source_key=key, mode=mode, passed=False, detail=f"file not found: {src.path!r}")
+
+    if mode == "sha256":
+        # sha256sum output: "<hex>  <filename>" — take just the digest.
+        actual_hash = outcome.captured_stdout.split()[0] if outcome.captured_stdout.strip() else ""
+        expected_hash = expected.match.value  # type: ignore[union-attr]
+        if actual_hash == expected_hash:
+            return OutputResult(source_key=key, mode=mode, passed=True, detail=f"sha256 matched ({actual_hash[:12]}…)")
+        return OutputResult(
+            source_key=key,
+            mode=mode,
+            passed=False,
+            detail=f"sha256 mismatch: got {actual_hash[:12]}…, expected {expected_hash[:12]}…",
+        )
+
+    text = outcome.captured_stdout
+
+    if isinstance(expected.match, CustomMatch):
+        passed, detail = _evaluate_custom_match(
+            match=expected.match,
+            text=text,
+            we=we,
+            run_id=run_id,
+            output_index=output_index,
+            log=log,
+            is_canceled=is_canceled,
+        )
+        return OutputResult(source_key=key, mode=mode, passed=passed, detail=detail)
+
+    passed, detail = evaluate_match(expected.match, text, None)
+    return OutputResult(source_key=key, mode=mode, passed=passed, detail=detail)
+
+
+def _snapshot_file_outputs_in_container(
+    file_outputs: list[ExpectedOutput],
+    *,
+    we: WorkingEnvironment,
+    run_id: str,
+    log: LogSink,
+    is_canceled: CancelCheck,
+) -> list[ExpectedOutput]:
+    """Record sha256 baselines for file outputs by hashing inside the running environment.
+
+    Non-sha256 file outputs are preserved unchanged.  File outputs whose source
+    cannot be read (exec fails) are dropped — cannot snapshot what isn't there.
+    """
+    result: list[ExpectedOutput] = []
+    for idx, expected in enumerate(file_outputs):
+        if expected.match.mode != "sha256":
+            result.append(expected)
+            continue
+        src = expected.source
         if not isinstance(src, FileSource):
             continue
-        candidate = (workspace / src.path).resolve()
+        script_rel = f".workspace/snap_{run_id}_{idx}.sh"
         try:
-            candidate.relative_to(workspace)
-        except ValueError:
+            we.put_file(script_rel, _file_check_script(src.path, "sha256"))
+        except Exception as exc:
+            log("system", "warn", f"snapshot: could not inject check script for {src.path!r}: {exc}")
             continue
-        if candidate.is_file():
-            try:
-                files[src.path] = candidate.read_bytes()
-            except OSError:
-                pass
-
-    return CaptureBundle(stdout=captured_stdout, stderr=captured_stderr, files=files)
+        outcome = we.exec_script(
+            ScriptStep(script_rel_path=script_rel, working_dir_rel="", login_shell=False),
+            log=log,
+            is_canceled=is_canceled,
+        )
+        if outcome.status != "succeeded":
+            continue
+        actual_hash = outcome.captured_stdout.split()[0] if outcome.captured_stdout.strip() else ""
+        if not actual_hash:
+            continue
+        result.append(ExpectedOutput(source=src, match=Sha256Match(mode="sha256", value=actual_hash)))
+    return result
 
 
 # ================================================
@@ -163,17 +284,30 @@ def _evaluate_all_outputs(
     """Evaluate all declared outputs, dispatching custom matches to the WE."""
     output_results: list[OutputResult] = []
     for output_index, expected in enumerate(outputs):
-        if isinstance(expected.match, CustomMatch):
+        if isinstance(expected.source, FileSource):
+            # File outputs are evaluated inside the running environment so they
+            # work for both workspace-relative and absolute container paths
+            # (e.g. /results/foo.png) without a sync_out round-trip.
+            output_results.append(
+                _evaluate_file_output_in_container(
+                    expected,
+                    we=we,
+                    run_id=run_id,
+                    output_index=output_index,
+                    log=log,
+                    is_canceled=is_canceled,
+                )
+            )
+        elif isinstance(expected.match, CustomMatch):
             key = source_key(expected.source)
             text = captures.text_for(expected.source)
             if text is None:
-                path = expected.source.path if isinstance(expected.source, FileSource) else "?"
                 output_results.append(
                     OutputResult(
                         source_key=key,
                         mode="custom",
                         passed=False,
-                        detail=f"file not found: {path!r}",
+                        detail="source not found",
                     )
                 )
             else:
@@ -247,6 +381,150 @@ def _entered_environment(
             yield we, entry.kind
 
 
+def _builtin_overrides(entry: EnvEntry) -> tuple[str, str, str]:
+    """``(provision, exec, teardown)`` override script paths for a built-in preset.
+
+    Only ``container``/``local`` presets layer overrides onto preset-provided
+    infrastructure (create/start/rm, native shell). ``custom`` expresses its
+    phases through its own driver (``ScriptedWorkingEnvironment``); ``vm`` is not
+    implemented. For those, no overrides apply here.
+    """
+    if not isinstance(entry, ContainerEntry | LocalEntry):
+        return "", "", ""
+    ov = entry.overrides
+    return ov.provision.strip(), ov.exec.strip(), ov.teardown.strip()
+
+
+def _run_in_environment(
+    we: WorkingEnvironment,
+    runtime_image: str,
+    *,
+    runnable: Runnable,
+    label: str,
+    mode: Literal["verify", "snapshot"],
+    script_rel: str,
+    run_id: str,
+    overrides: tuple[str, str, str],
+    log: LogSink,
+    is_canceled: CancelCheck,
+) -> ExperimentRunOutcome:
+    """Run provision-hook → command → evaluate/snapshot inside a live environment.
+
+    ``overrides`` is ``(provision, exec, teardown)``. The provision hook runs
+    in-substrate before the command; the exec override dispatches the per-run
+    command (handed the ``R2R_COMMAND`` / ``R2R_RUN_ID`` ABI) in place of the
+    default invocation; the teardown hook runs in-substrate in a ``finally`` so
+    it executes before the environment is torn down, even on early return.
+    """
+    provision_override, exec_override, teardown_override = overrides
+    base_outputs: dict[str, Any] = {
+        "subjectName": label,
+        "mode": mode,
+        "substrate": runtime_image,
+    }
+    try:
+        # Provision override: in-substrate setup after the runtime is up. A
+        # failure aborts the run (the command would run against a half-set-up
+        # substrate); teardown still runs via the finally below.
+        if provision_override:
+            with tracer.start_as_current_span("experiment.provision_override"):
+                prov = we.exec_script(
+                    ScriptStep(script_rel_path=provision_override, working_dir_rel="", login_shell=False),
+                    log=log,
+                    is_canceled=is_canceled,
+                )
+            if prov.status != "succeeded":
+                log("system", "error", f"Provision override {prov.status} (exit {prov.exit_code})")
+                status = "canceled" if prov.status == "canceled" else "failed"
+                return ExperimentRunOutcome(status=status, run_outputs={**base_outputs, "exitCode": prov.exit_code})
+
+        if exec_override:
+            # The override is a dispatcher: it runs $R2R_COMMAND its own way.
+            command_step = ScriptStep(
+                script_rel_path=exec_override,
+                working_dir_rel="",
+                login_shell=False,
+                env={"R2R_COMMAND": script_rel, "R2R_RUN_ID": run_id},
+            )
+        else:
+            command_step = ScriptStep(script_rel_path=script_rel, working_dir_rel="", login_shell=False)
+
+        with tracer.start_as_current_span("experiment.exec_command"):
+            cmd_outcome = we.exec_script(command_step, log=log, is_canceled=is_canceled)
+
+        log(
+            "system",
+            "info" if cmd_outcome.status == "succeeded" else "error",
+            f"Environment {cmd_outcome.status} (exit code {cmd_outcome.exit_code})",
+        )
+
+        captures = build_capture_bundle(cmd_outcome.captured_stdout, cmd_outcome.captured_stderr)
+        run_outputs: dict[str, Any] = {**base_outputs, "exitCode": cmd_outcome.exit_code}
+
+        if mode == "verify":
+            if cmd_outcome.status == "canceled":
+                return ExperimentRunOutcome(status="canceled", run_outputs=run_outputs)
+            with tracer.start_as_current_span("experiment.evaluate"):
+                result = _evaluate_all_outputs(
+                    runnable.outputs,
+                    cmd_outcome.exit_code,
+                    captures,
+                    we=we,
+                    run_id=run_id,
+                    log=log,
+                    is_canceled=is_canceled,
+                )
+            run_outputs["verdict"] = result.verdict
+            run_outputs["outputResults"] = [
+                {"sourceKey": r.source_key, "mode": r.mode, "passed": r.passed, "detail": r.detail}
+                for r in result.output_results
+            ]
+            log(
+                "system",
+                "info" if result.verdict == "pass" else "error",
+                f"Verdict: {result.verdict.upper()}",
+            )
+            status = cmd_outcome.status
+            if status == "succeeded" and result.verdict == "fail":
+                status = "failed"
+            return ExperimentRunOutcome(status=status, run_outputs=run_outputs)
+
+        # snapshot: only record baselines when the command succeeded.
+        if cmd_outcome.status != "succeeded":
+            run_outputs["snapshotApplied"] = False
+            log("system", "warn", "Snapshot skipped — command did not exit 0")
+            return ExperimentRunOutcome(status=cmd_outcome.status, run_outputs=run_outputs)
+
+        # Snapshot stream outputs (stdout/stderr) via the pure function; snapshot
+        # file outputs via in-runtime sha256sum so absolute container paths
+        # (e.g. /results/*.png) are captured correctly.
+        stream_outputs = [o for o in runnable.outputs if not isinstance(o.source, FileSource)]
+        file_outputs = [o for o in runnable.outputs if isinstance(o.source, FileSource)]
+        new_outputs = snapshot_outputs(stream_outputs, captures)
+        new_outputs.extend(
+            _snapshot_file_outputs_in_container(file_outputs, we=we, run_id=run_id, log=log, is_canceled=is_canceled)
+        )
+        run_outputs["snapshotCount"] = len(new_outputs)
+        log("system", "info", f"Snapshot captured: {len(new_outputs)} baseline(s) ready")
+        return ExperimentRunOutcome(
+            status=cmd_outcome.status,
+            run_outputs=run_outputs,
+            snapshot_to_persist=new_outputs,
+        )
+    finally:
+        # Teardown override: in-substrate cleanup before the environment is torn
+        # down. Best-effort and uncancelable so it runs even on failure/cancel.
+        if teardown_override:
+            with tracer.start_as_current_span("experiment.teardown_override"):
+                td = we.exec_script(
+                    ScriptStep(script_rel_path=teardown_override, working_dir_rel="", login_shell=False),
+                    log=log,
+                    is_canceled=lambda: False,
+                )
+            if td.status != "succeeded":
+                log("system", "warn", f"Teardown override exited {td.exit_code}")
+
+
 def run_runnable(
     *,
     workspace: Path,
@@ -264,8 +542,12 @@ def run_runnable(
     Shared by experiments and activation — both are :class:`Runnable`, both
     enter the runtime through the same :class:`EnvEntry`. One environment is
     provisioned for the full run: workspace is copied in once, the command
-    executes, file outputs are optionally synced back, and all custom
-    validators share the same running environment before teardown.
+    executes, all declared outputs are verified or snapshotted inside the
+    running environment, and the environment is torn down.
+
+    File outputs (including those at absolute container paths such as
+    ``/results/foo.png``) are asserted via in-runtime ``exec_script`` calls;
+    no ``sync_out`` is needed for verification or snapshotting.
     """
     workspace = workspace.resolve()
 
@@ -278,8 +560,6 @@ def run_runnable(
     script_path = control_dir / script_name
     script_path.write_text(runnable.command, encoding="utf-8")
     script_rel = f".workspace/{script_name}"
-
-    has_file_outputs = any(isinstance(o.source, FileSource) for o in runnable.outputs)
 
     log("system", "info", f"Starting run {run_id}")
     log("system", "info", f"Subject: {label!r}")
@@ -297,104 +577,17 @@ def run_runnable(
                 log=log,
                 is_canceled=is_canceled,
             ) as (we, runtime_image):
-                with tracer.start_as_current_span("experiment.exec_command"):
-                    cmd_outcome = we.exec_script(
-                        ScriptStep(
-                            script_rel_path=script_rel,
-                            working_dir_rel="",
-                            login_shell=False,
-                        ),
-                        log=log,
-                        is_canceled=is_canceled,
-                    )
-
-                log(
-                    "system",
-                    "info" if cmd_outcome.status == "succeeded" else "error",
-                    f"Environment {cmd_outcome.status} (exit code {cmd_outcome.exit_code})",
-                )
-
-                # Sync file outputs back to host so build_capture_bundle can read them.
-                if has_file_outputs and cmd_outcome.status == "succeeded":
-                    if not we.sync_out(log=log):
-                        return ExperimentRunOutcome(
-                            status="failed",
-                            run_outputs={
-                                "subjectName": label,
-                                "mode": mode,
-                                "exitCode": cmd_outcome.exit_code,
-                                "substrate": runtime_image,
-                            },
-                        )
-
-                captures = build_capture_bundle(
-                    cmd_outcome.captured_stdout,
-                    cmd_outcome.captured_stderr,
-                    runnable.outputs,
-                    workspace,
-                )
-
-                run_outputs: dict[str, Any] = {
-                    "subjectName": label,
-                    "mode": mode,
-                    "exitCode": cmd_outcome.exit_code,
-                    "substrate": runtime_image,
-                }
-
-                if mode == "verify":
-                    if cmd_outcome.status == "canceled":
-                        return ExperimentRunOutcome(status="canceled", run_outputs=run_outputs)
-                    with tracer.start_as_current_span("experiment.evaluate"):
-                        result = _evaluate_all_outputs(
-                            runnable.outputs,
-                            cmd_outcome.exit_code,
-                            captures,
-                            we=we,
-                            run_id=run_id,
-                            log=log,
-                            is_canceled=is_canceled,
-                        )
-                    run_outputs["verdict"] = result.verdict
-                    run_outputs["outputResults"] = [
-                        {
-                            "sourceKey": r.source_key,
-                            "mode": r.mode,
-                            "passed": r.passed,
-                            "detail": r.detail,
-                        }
-                        for r in result.output_results
-                    ]
-                    log(
-                        "system",
-                        "info" if result.verdict == "pass" else "error",
-                        f"Verdict: {result.verdict.upper()}",
-                    )
-                    status = cmd_outcome.status
-                    if status == "succeeded" and result.verdict == "fail":
-                        status = "failed"
-                    return ExperimentRunOutcome(status=status, run_outputs=run_outputs)
-
-                # snapshot: only record baselines when the command succeeded.
-                if cmd_outcome.status != "succeeded":
-                    run_outputs["snapshotApplied"] = False
-                    log(
-                        "system",
-                        "warn",
-                        "Snapshot skipped — command did not exit 0",
-                    )
-                    return ExperimentRunOutcome(status=cmd_outcome.status, run_outputs=run_outputs)
-
-                new_outputs = snapshot_outputs(runnable.outputs, captures)
-                run_outputs["snapshotCount"] = len(new_outputs)
-                log(
-                    "system",
-                    "info",
-                    f"Snapshot captured: {len(new_outputs)} baseline(s) ready",
-                )
-                return ExperimentRunOutcome(
-                    status=cmd_outcome.status,
-                    run_outputs=run_outputs,
-                    snapshot_to_persist=new_outputs,
+                return _run_in_environment(
+                    we,
+                    runtime_image,
+                    runnable=runnable,
+                    label=label,
+                    mode=mode,
+                    script_rel=script_rel,
+                    run_id=run_id,
+                    overrides=_builtin_overrides(entry),
+                    log=log,
+                    is_canceled=is_canceled,
                 )
         except ProvisioningCanceledError:
             return ExperimentRunOutcome(

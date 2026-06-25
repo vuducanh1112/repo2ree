@@ -8,7 +8,11 @@ from __future__ import annotations
 
 import shlex
 import subprocess
+import threading
+import time
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from repo2ree_protocol.log import LogSink  # noqa: F401
 
@@ -54,9 +58,17 @@ def docker_tag_argv(docker: str, loaded_ref: str, image: str) -> list[str]:
     return [docker, "tag", loaded_ref, image]
 
 
-def docker_create_argv(docker: str, *, container: str, image: str, sock_mount: bool = True) -> list[str]:
+def docker_create_argv(
+    docker: str,
+    *,
+    container: str,
+    image: str,
+    sock_mount: bool = True,
+    extra_args: list[str] | None = None,
+) -> list[str]:
     sock = ["-v", DOCKER_SOCK_MOUNT] if sock_mount else []
-    return [docker, "create", "--name", container, *sock, image, "sleep", "infinity"]
+    # extra_args go after fixed flags, before IMAGE — `create [OPTIONS] IMAGE [CMD]`.
+    return [docker, "create", "--name", container, *sock, *(extra_args or []), image, "sleep", "infinity"]
 
 
 def docker_cp_in_argv(docker: str, *, workspace: str, container: str) -> list[str]:
@@ -109,14 +121,112 @@ def stream_output(log: LogSink, result: subprocess.CompletedProcess[str]) -> Non
             log("stderr", "warn", line)
 
 
+@dataclass(frozen=True)
+class StreamingProcessResult:
+    returncode: int | None
+    stdout: str
+    stderr: str
+    canceled: bool = False
+
+
+def run_streaming_process(
+    cmd: list[str],
+    *,
+    log: LogSink,
+    stdin_text: str | None = None,
+    env: dict[str, str] | None = None,
+    is_canceled=lambda: False,
+) -> StreamingProcessResult:
+    """Run *cmd*, streaming child output while preserving captured streams."""
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE if stdin_text is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+    )
+
+    stdout_lines: list[str] = []
+    stderr_lines: list[str] = []
+
+    def _reader(
+        pipe,
+        stream: Literal["stdout", "stderr"],
+        level: Literal["info", "warn"],
+        sink: list[str],
+    ) -> None:
+        if pipe is None:
+            return
+        for line in pipe:
+            sink.append(line)
+            message = line.rstrip()
+            if message:
+                log(stream, level, message)
+
+    stdout_reader = threading.Thread(
+        target=_reader,
+        args=(proc.stdout, "stdout", "info", stdout_lines),
+        daemon=True,
+    )
+    stderr_reader = threading.Thread(
+        target=_reader,
+        args=(proc.stderr, "stderr", "warn", stderr_lines),
+        daemon=True,
+    )
+    stdout_reader.start()
+    stderr_reader.start()
+
+    if stdin_text is not None and proc.stdin is not None:
+        try:
+            proc.stdin.write(stdin_text)
+            proc.stdin.close()
+        except BrokenPipeError:
+            pass
+
+    canceled = False
+    while proc.poll() is None:
+        if is_canceled():
+            canceled = True
+            proc.terminate()
+            break
+        time.sleep(0.1)
+
+    try:
+        returncode = proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        returncode = proc.wait()
+
+    stdout_reader.join(timeout=5)
+    stderr_reader.join(timeout=5)
+
+    return StreamingProcessResult(
+        returncode=returncode,
+        stdout="".join(stdout_lines),
+        stderr="".join(stderr_lines),
+        canceled=canceled,
+    )
+
+
+def env_export_segments(env: dict[str, str] | None) -> list[str]:
+    """Shell ``export K=V`` segments for *env*, quote-safe and order-stable.
+
+    Baked directly into the ``sh -c`` / ``bash -c`` string so the same prefix
+    works in-container and native without engine-specific ``-e`` plumbing.
+    """
+    return [f"export {k}={shlex.quote(v)}" for k, v in (env or {}).items()]
+
+
 def build_exec_command(
     script_in_container: Path,
     script_rel_path: str,
     echo_label: str | None,
     working_dir: Path | None = None,
+    env: dict[str, str] | None = None,
 ) -> str:
     command_working_dir = working_dir or script_in_container.parent
-    segments = ["set -e", f"cd {shlex.quote(str(command_working_dir))}"]
+    segments = ["set -e", *env_export_segments(env), f"cd {shlex.quote(str(command_working_dir))}"]
     if echo_label is not None:
         segments.append(f"echo '--- {echo_label} ({shlex.quote(script_rel_path)}) ---'")
         segments.append(f"cat {shlex.quote(str(script_in_container))}")

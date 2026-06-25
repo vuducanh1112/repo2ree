@@ -12,10 +12,9 @@ so the runner is identical across substrates.
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
-from repo2ree_core.container.run_script import format_command, stream_output
+from repo2ree_core.container.run_script import format_command, run_streaming_process
 from repo2ree_core.working_environment.base import (
     CancelCheck,
     LogSink,
@@ -83,15 +82,20 @@ class NativeWorkingEnvironment:
             script_abs=str(script_abs),
             echo_label=step.echo_label,
             script_rel=step.script_rel_path,
+            env=step.env,
         )
         cmd = native_exec_argv(shell_command, login_shell=step.login_shell)
         log("system", "info", format_command(cmd))
-        result = subprocess.run(cmd, capture_output=True, text=True, input=step.stdin_text)
-        stream_output(log, result)
+        result = run_streaming_process(
+            cmd,
+            log=log,
+            stdin_text=step.stdin_text,
+            is_canceled=is_canceled,
+        )
 
         stdout = result.stdout or ""
         stderr = result.stderr or ""
-        if is_canceled():
+        if result.canceled or is_canceled():
             return StepOutcome("canceled", result.returncode, stdout, stderr)
         status = "succeeded" if result.returncode == 0 else "failed"
         return StepOutcome(status, result.returncode, stdout, stderr)

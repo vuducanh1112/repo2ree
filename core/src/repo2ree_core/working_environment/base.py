@@ -12,7 +12,7 @@ Callers obtain instances through :func:`working_environment.manager.acquire`.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
@@ -44,6 +44,7 @@ class WorkingEnvironmentSpec:
     activate: str = ""  # native substrate: command sourced before each run
     engine: str = "docker"  # container engine binary (docker|podman|apptainer)
     enter_script: str = ""  # custom substrate: path to phased driver script
+    create_args: tuple[str, ...] = ()  # passthrough flags for `<engine> create`
 
 
 @dataclass(frozen=True)
@@ -53,6 +54,11 @@ class ScriptStep:
     ``script_rel_path`` is relative to the workspace root.
     ``working_dir_rel`` is also relative to the workspace root inside the
     environment (e.g. ``""`` = workspace root, ``None`` = script's directory).
+
+    ``env`` is exported before the script runs — the substrate bakes it into the
+    shell command so it works uniformly in-container and native. It carries the
+    override ABI (``R2R_COMMAND`` / ``R2R_RUN_ID``) when an exec-override script
+    dispatches the per-run command.
     """
 
     script_rel_path: str
@@ -60,6 +66,7 @@ class ScriptStep:
     working_dir_rel: str | None = None
     stdin_text: str | None = None
     login_shell: bool = True
+    env: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

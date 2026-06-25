@@ -99,17 +99,27 @@ export type ReeActivation = ReeRunnable;
 // by activation and every experiment. Mirrors the backend EnvEntry union.
 export type ContainerEngine = "docker" | "podman" | "apptainer";
 
+// Per-phase override scripts layered onto a substrate preset's defaults. Each is
+// a workspace-relative path; empty means "use the preset default". `provision`
+// runs in-substrate after setup, `exec` dispatches the per-run command in place
+// of the default invocation, `teardown` runs in-substrate before teardown.
+// Mirrors the backend PhaseOverrides.
+export interface PhaseOverrides {
+  provision: string;
+  exec: string;
+  teardown: string;
+}
+
 export type RuntimeEntry =
   | {
       kind: "container";
       engine: ContainerEngine;
-      workdir: string;
       env: Record<string, string>;
-      gpus: boolean;
+      create_args: string[];
       activate: string;
-      enter_script: string;
+      overrides: PhaseOverrides;
     }
-  | { kind: "local"; activate: string; enter_script: string }
+  | { kind: "local"; activate: string; overrides: PhaseOverrides }
   | {
       kind: "vm";
       cpu: number;
@@ -118,9 +128,9 @@ export type RuntimeEntry =
       ssh_user: string;
       ssh_key: string;
       activate: string;
-      enter_script: string;
+      overrides: PhaseOverrides;
     }
-  | { kind: "custom"; enter_script: string; activate: string };
+  | { kind: "custom"; enter_script: string; activate: string; overrides: PhaseOverrides };
 
 export type RuntimeEntryKind = RuntimeEntry["kind"];
 
@@ -214,26 +224,32 @@ export function createEmptyReeActivation(): ReeActivation {
   };
 }
 
+function createEmptyPhaseOverrides(): PhaseOverrides {
+  return { provision: "", exec: "", teardown: "" };
+}
+
 export function createDefaultRuntimeEntry(
   kind: RuntimeEntryKind,
   prev?: RuntimeEntry,
 ): RuntimeEntry {
+  // Carry overrides across substrate switches — they are cross-cutting and the
+  // user shouldn't lose authored phase scripts by flipping the engine.
+  const overrides = prev?.overrides ? { ...prev.overrides } : createEmptyPhaseOverrides();
   switch (kind) {
     case "container":
       return {
         kind: "container",
         engine: prev?.kind === "container" ? prev.engine : "docker",
-        workdir: "/workspace",
         env: {},
-        gpus: false,
+        create_args: [],
         activate: "",
-        enter_script: "",
+        overrides,
       };
     case "local":
       return {
         kind: "local",
         activate: prev?.kind === "local" ? prev.activate : "",
-        enter_script: "",
+        overrides,
       };
     case "vm":
       return {
@@ -244,10 +260,10 @@ export function createDefaultRuntimeEntry(
         ssh_user: "",
         ssh_key: "",
         activate: "",
-        enter_script: "",
+        overrides,
       };
     case "custom":
-      return { kind: "custom", enter_script: "", activate: "" };
+      return { kind: "custom", enter_script: "", activate: "", overrides };
   }
 }
 
