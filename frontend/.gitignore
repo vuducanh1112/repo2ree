@@ -4,3 +4,5 @@ dist/
 
 # All test output (playwright runs, e2e coverage, raw captures) under one root.
 test-artifacts/
+
+*.tsbuildinfo
