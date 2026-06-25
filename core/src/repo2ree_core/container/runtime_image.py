@@ -34,8 +34,14 @@ def loaded_runtime_image(
     *,
     run_id: str,
     log: LogSink,
+    preserve_base_image: bool = False,
 ) -> Iterator[str]:
-    """Load a runtime tarball and expose a run-scoped image tag."""
+    """Load a runtime tarball and expose a run-scoped image tag.
+
+    When ``preserve_base_image`` is set, cleanup drops only the run-scoped tag
+    and leaves the loaded base image in place — used when the runtime daemon's
+    image cache is shared across runs and the base should survive for reuse.
+    """
     docker_bin = shutil.which("docker") or "docker"
     run_image = runtime_image_tag(run_id)
 
@@ -61,8 +67,9 @@ def loaded_runtime_image(
         yield run_image
     finally:
         with suppress(Exception):
+            loaded_ref_cleanup = None if preserve_base_image else loaded_ref
             subprocess.run(
-                docker_rmi_argv(docker_bin, image=run_image, loaded_ref=loaded_ref),
+                docker_rmi_argv(docker_bin, image=run_image, loaded_ref=loaded_ref_cleanup),
                 capture_output=True,
                 text=True,
             )

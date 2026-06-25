@@ -99,8 +99,8 @@ def docker_rm_argv(docker: str, container: str) -> list[str]:
     return [docker, "rm", "-f", container]
 
 
-def docker_rmi_argv(docker: str, *, image: str, loaded_ref: str) -> list[str]:
-    return [docker, "rmi", "-f", image, loaded_ref]
+def docker_rmi_argv(docker: str, *, image: str, loaded_ref: str | None) -> list[str]:
+    return [docker, "rmi", "-f", image, *([loaded_ref] if loaded_ref else [])]
 
 
 def format_argv(argv: list[str]) -> str:

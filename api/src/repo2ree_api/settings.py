@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     UPLOAD_STAGING_DIR: Path = Path(".repo2ree/upload-staging")
     WORKBENCH_REGISTRY_FILE: Path = Path(".repo2ree/workbench-registry.json")
     WORKBENCH_IMAGE: str = "repo2ree-workbench:latest"
+    WORKBENCH_DOCKER_MODE: str = "dind"
     OTLP_ENDPOINT: str | None = None
 
 

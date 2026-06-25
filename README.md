@@ -76,6 +76,18 @@ Full contributor setup lives in
 uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+For faster local iteration when starting the API manually, you can share the
+host Docker daemon with workbenches:
+
+```bash
+WORKBENCH_DOCKER_MODE=host-socket \
+uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+This reuses the host Docker image cache, but it weakens workbench isolation and
+is intended for trusted local development only. The default `dind` mode keeps a
+separate Docker daemon per workbench.
+
 2. Install frontend dependencies:
 
 ```bash

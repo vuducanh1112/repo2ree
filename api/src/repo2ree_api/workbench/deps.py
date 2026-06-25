@@ -12,4 +12,5 @@ workbench_manager = WorkbenchManager(
     registry=_registry,
     workbench_image=service_settings.WORKBENCH_IMAGE,
     span_sink=build_span_sink(service_settings.OTLP_ENDPOINT, console_fallback=True),
+    workbench_docker_mode=service_settings.WORKBENCH_DOCKER_MODE,
 )

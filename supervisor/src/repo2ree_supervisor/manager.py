@@ -72,6 +72,8 @@ _lock_wait_duration = _meter.create_histogram(
 # 137 = killed by SIGKILL (container OOM-killed or being removed)
 # 126 = OCI runtime exec failed (container shutting down, broken init pipe)
 _CONTAINER_GONE_EXIT_CODES = frozenset({126, 137})
+_WORKBENCH_DOCKER_MODES = frozenset({"dind", "host-socket"})
+_HOST_DOCKER_SOCK_MOUNT = "/var/run/docker.sock:/var/run/docker.sock"
 
 
 # ================================================
@@ -109,10 +111,15 @@ class WorkbenchManager:
         registry: WorkbenchRegistry,
         workbench_image: str,
         span_sink: SpanSink | None = None,
+        workbench_docker_mode: str = "dind",
     ):
+        if workbench_docker_mode not in _WORKBENCH_DOCKER_MODES:
+            modes = ", ".join(sorted(_WORKBENCH_DOCKER_MODES))
+            raise ValueError(f"unknown workbench docker mode {workbench_docker_mode!r}; expected one of: {modes}")
         self._registry = registry
         self._image = workbench_image
         self._span_sink = span_sink
+        self._docker_mode = workbench_docker_mode
         self._ree_locks: dict[str, threading.Lock] = {}
         self._ree_locks_lock = threading.Lock()
 
@@ -135,30 +142,10 @@ class WorkbenchManager:
             container_name = f"repo2ree-wb-{ree_id}"
 
             _docker("volume", "create", volume_name)
-            _docker("volume", "create", dind_volume_name)
+            if self._docker_mode == "dind":
+                _docker("volume", "create", dind_volume_name)
 
-            # No host docker.sock mount: the workbench runs its own in-container
-            # daemon (docker-in-docker) for full per-REE isolation. /var/lib/docker
-            # is volume-backed so the nested daemon uses overlay2, not vfs.
-            _docker(
-                "run",
-                "-d",
-                "--privileged",
-                "--name",
-                container_name,
-                "--restart",
-                "unless-stopped",
-                "-e",
-                "DOCKER_DRIVER=overlay2",
-                "-v",
-                f"{volume_name}:/ree",
-                "-v",
-                f"{dind_volume_name}:/var/lib/docker",
-                self._image,
-                "sleep",
-                "infinity",
-                timeout=120,
-            )
+            self._run_workbench_container(container_name, ree_id, volume_name)
 
             _docker_exec(
                 container_name,
@@ -187,25 +174,7 @@ class WorkbenchManager:
             if entry is None:
                 raise KeyError(f"no workbench registered for {ree_id}")
             _docker_silent("rm", "-f", entry.container_name)
-            _docker(
-                "run",
-                "-d",
-                "--privileged",
-                "--name",
-                entry.container_name,
-                "--restart",
-                "unless-stopped",
-                "-e",
-                "DOCKER_DRIVER=overlay2",
-                "-v",
-                f"{entry.volume_name}:/ree",
-                "-v",
-                f"{_dind_volume_name(entry.ree_id)}:/var/lib/docker",
-                self._image,
-                "sleep",
-                "infinity",
-                timeout=120,
-            )
+            self._run_workbench_container(entry.container_name, entry.ree_id, entry.volume_name)
             return WorkbenchHandle.from_entry(entry)
 
     def teardown(self, handle: WorkbenchHandle) -> None:
@@ -214,8 +183,47 @@ class WorkbenchManager:
             record_ree_id(span, handle.ree_id)
             _docker_silent("rm", "-f", handle.container_name)
             _docker_silent("volume", "rm", handle.volume_name)
-            _docker_silent("volume", "rm", _dind_volume_name(handle.ree_id))
+            if self._docker_mode == "dind":
+                _docker_silent("volume", "rm", _dind_volume_name(handle.ree_id))
             self._registry.unregister(handle.ree_id)
+
+    def _run_workbench_container(self, container_name: str, ree_id: str, volume_name: str) -> None:
+        _docker(
+            "run",
+            "-d",
+            *self._docker_backend_args(ree_id),
+            "--name",
+            container_name,
+            "--restart",
+            "unless-stopped",
+            "-v",
+            f"{volume_name}:/ree",
+            self._image,
+            "sleep",
+            "infinity",
+            timeout=120,
+        )
+
+    def _docker_backend_args(self, ree_id: str) -> list[str]:
+        if self._docker_mode == "dind":
+            # No host docker.sock mount: the workbench runs its own in-container
+            # daemon for per-REE isolation. /var/lib/docker is volume-backed so
+            # the nested daemon uses overlay2, not vfs.
+            return [
+                "--privileged",
+                "-e",
+                "DOCKER_DRIVER=overlay2",
+                "-v",
+                f"{_dind_volume_name(ree_id)}:/var/lib/docker",
+            ]
+        return [
+            "-v",
+            _HOST_DOCKER_SOCK_MOUNT,
+            "-e",
+            "DOCKER_HOST=unix:///var/run/docker.sock",
+            "-e",
+            "WORKBENCH_DOCKER_MODE=host-socket",
+        ]
 
     def is_registered(self, ree_id: str) -> bool:
         """True if a workbench is registered for ree_id (regardless of run state)."""

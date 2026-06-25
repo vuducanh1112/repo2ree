@@ -19,6 +19,7 @@ changes to the workspace directory before each script is sourced.
 
 from __future__ import annotations
 
+import os
 import shlex
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -339,6 +340,17 @@ def _evaluate_all_outputs(
 # ================================================
 
 
+def _workbench_shares_image_cache() -> bool:
+    """True when the workbench talks to a Docker daemon whose image cache is
+    shared across runs (host-socket mode), so a loaded base image should be
+    preserved for reuse rather than removed after the run.
+
+    The workbench's substrate mode is propagated into the container as an env
+    var by the supervisor; this is the boundary where it is read.
+    """
+    return os.environ.get("WORKBENCH_DOCKER_MODE") == "host-socket"
+
+
 @contextmanager
 def _entered_environment(
     entry: EnvEntry,
@@ -360,7 +372,12 @@ def _entered_environment(
     if isinstance(entry, ContainerEntry):
         if runtime_archive_path is None:
             raise ValueError("Container entry requires a built runtime artifact")
-        with loaded_runtime_image(runtime_archive_path, run_id=run_id, log=log) as runtime_image:
+        with loaded_runtime_image(
+            runtime_archive_path,
+            run_id=run_id,
+            log=log,
+            preserve_base_image=_workbench_shares_image_cache(),
+        ) as runtime_image:
             with acquire(
                 workspace,
                 run_id,
