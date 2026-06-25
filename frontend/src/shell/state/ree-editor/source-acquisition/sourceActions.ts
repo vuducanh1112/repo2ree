@@ -147,11 +147,18 @@ export function createSourceActions({
 }
 
 async function fileToBase64(file: File): Promise<string> {
-  const rawBuffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(rawBuffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 1) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Upload reader returned non-text data"));
+      }
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read upload archive"));
+    reader.readAsDataURL(file);
+  });
+  const [, base64 = ""] = dataUrl.split(",", 2);
+  return base64;
 }
