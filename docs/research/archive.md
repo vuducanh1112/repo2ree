@@ -612,7 +612,7 @@ excluded" is a useful archival result.
   legally ambiguous?
 - Should base images be preserved as OCI layers, reconstructed from Dockerfiles,
   or both?
-- When runtime images are huge, should dependency closures be cheaper than
+- When runtime images are large, should dependency closures be cheaper than
   Replay, more expensive, or offered as a separate institutional preservation
   decision?
 - How should private dependencies be escrowed for reviewers without making them

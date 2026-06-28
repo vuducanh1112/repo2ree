@@ -26,6 +26,9 @@ pkgs.mkShell {
     # graphviz for generating graphs with dependency cruiser
     graphviz
 
+    # vale lints prose in docs/ (config in ./.vale.ini)
+    vale
+
     # playwright browser drivers, because using nix and using playwright via npm does not work, since playwright
     # looks at default locations
     # fonts are important for the browsers to render properly

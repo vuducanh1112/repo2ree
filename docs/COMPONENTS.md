@@ -101,7 +101,7 @@ agent/user ─► repo2ree ──┘   (library)     (transport)   (in workbench
         ▲ both call supervisor as a Python library, in-process ▲
 ```
 
-There are two hops that *look* alike but are fundamentally different — only one
+Two hops *look* alike but are fundamentally different — only one
 crosses a process/isolation boundary:
 
 | hop | kind | why |

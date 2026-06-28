@@ -1,4 +1,5 @@
 .PHONY: \
+	docs-lint \
 	fe-checks fe-tests \
 	be-checks protocol-checks core-checks supervisor-checks api-checks executor-checks \
 	be-tests be-unit-tests be-integration-tests \
@@ -15,6 +16,16 @@
 	push-dockerhub-archives push-ghcr-archives \
 	push-ghcr push-ghcr-local push-dockerhub push-dockerhub-local push-registries \
 	e2e-tests e2e-demo e2e-demo-code-ocean e2e-coverage
+
+# ================================================
+# Docs — prose linting
+# ================================================
+
+docs-lint:
+	@echo "Linting docs with Vale..."
+	vale sync
+	vale docs README.md
+
 
 # ================================================
 # Frontend — checks and tests
