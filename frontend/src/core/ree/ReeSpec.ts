@@ -80,10 +80,11 @@ export interface ExperimentResourceEstimates {
 }
 
 // A Runnable is anything executed inside the runtime: an experiment or the
-// REE's activation. They share the executable contract; activation has no name.
+// REE's activation. Each owns a run script — a workspace-relative shell script
+// that fully defines how it executes (e.g. its own `docker run …`).
 export interface ReeRunnable {
   description: string;
-  command: string;
+  run_script: string;
   runtime_estimate: string;
   resource_estimates: ExperimentResourceEstimates;
   outputs?: ExpectedOutput[];
@@ -95,44 +96,21 @@ export interface ReeExperiment extends ReeRunnable {
 
 export type ReeActivation = ReeRunnable;
 
-// How to enter the built runtime artifact — a property of the runtime, shared
-// by activation and every experiment. Mirrors the backend EnvEntry union.
-export type ContainerEngine = "docker" | "podman" | "apptainer";
+// REE-owned scripts live under a dedicated ree/ directory so their common names
+// never clash with a project's own same-named source files in the merged
+// workspace. Mirror of RESERVED_* in core reserved_paths.
+const SCRIPT_DIR = "ree";
+export const RESERVED_BUILD_SCRIPT = `${SCRIPT_DIR}/build_script.sh`;
+export const RESERVED_ACTIVATION_SCRIPT = `${SCRIPT_DIR}/activation.sh`;
+const EXPERIMENT_SCRIPT_DIR = `${SCRIPT_DIR}/experiments`;
 
-// Per-phase override scripts layered onto a substrate preset's defaults. Each is
-// a workspace-relative path; empty means "use the preset default". `provision`
-// runs in-substrate after setup, `exec` dispatches the per-run command in place
-// of the default invocation, `teardown` runs in-substrate before teardown.
-// Mirrors the backend PhaseOverrides.
-export interface PhaseOverrides {
-  provision: string;
-  exec: string;
-  teardown: string;
+// Derive the reserved per-experiment run-script path from its name. Names are
+// already constrained to path-safe characters; spaces become hyphens so the
+// path stays tidy.
+export function experimentScriptPath(name: string): string {
+  const slug = name.trim().replace(/\s+/g, "-") || "experiment";
+  return `${EXPERIMENT_SCRIPT_DIR}/${slug}.sh`;
 }
-
-export type RuntimeEntry =
-  | {
-      kind: "container";
-      engine: ContainerEngine;
-      env: Record<string, string>;
-      create_args: string[];
-      activate: string;
-      overrides: PhaseOverrides;
-    }
-  | { kind: "local"; activate: string; overrides: PhaseOverrides }
-  | {
-      kind: "vm";
-      cpu: number;
-      memory: string;
-      ssh_host: string;
-      ssh_user: string;
-      ssh_key: string;
-      activate: string;
-      overrides: PhaseOverrides;
-    }
-  | { kind: "custom"; enter_script: string; activate: string; overrides: PhaseOverrides };
-
-export type RuntimeEntryKind = RuntimeEntry["kind"];
 
 // ================================================
 // REE types
@@ -169,8 +147,6 @@ export interface ReeSpec {
   origin_url: string;
   source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
   runtime: string;
-  runtime_entry: RuntimeEntry;
-  build_runtime_script: string;
   activation: ReeActivation;
   sbom: string;
   swhid: string;
@@ -209,7 +185,7 @@ export function createEmptyReeExperiment(): ReeExperiment {
   return {
     name: "",
     description: "",
-    command: "",
+    run_script: "",
     runtime_estimate: "",
     resource_estimates: createEmptyExperimentResourceEstimates(),
   };
@@ -218,57 +194,10 @@ export function createEmptyReeExperiment(): ReeExperiment {
 export function createEmptyReeActivation(): ReeActivation {
   return {
     description: "",
-    command: "",
+    run_script: RESERVED_ACTIVATION_SCRIPT,
     runtime_estimate: "",
     resource_estimates: createEmptyExperimentResourceEstimates(),
   };
-}
-
-function createEmptyPhaseOverrides(): PhaseOverrides {
-  return { provision: "", exec: "", teardown: "" };
-}
-
-export function createDefaultRuntimeEntry(
-  kind: RuntimeEntryKind,
-  prev?: RuntimeEntry,
-): RuntimeEntry {
-  // Carry overrides across substrate switches — they are cross-cutting and the
-  // user shouldn't lose authored phase scripts by flipping the engine.
-  const overrides = prev?.overrides ? { ...prev.overrides } : createEmptyPhaseOverrides();
-  switch (kind) {
-    case "container":
-      return {
-        kind: "container",
-        engine: prev?.kind === "container" ? prev.engine : "docker",
-        env: {},
-        create_args: [],
-        activate: "",
-        overrides,
-      };
-    case "local":
-      return {
-        kind: "local",
-        activate: prev?.kind === "local" ? prev.activate : "",
-        overrides,
-      };
-    case "vm":
-      return {
-        kind: "vm",
-        cpu: 1,
-        memory: "4G",
-        ssh_host: "",
-        ssh_user: "",
-        ssh_key: "",
-        activate: "",
-        overrides,
-      };
-    case "custom":
-      return { kind: "custom", enter_script: "", activate: "", overrides };
-  }
-}
-
-export function createEmptyRuntimeEntry(): RuntimeEntry {
-  return createDefaultRuntimeEntry("container");
 }
 
 export function createEmptyReeSpec(): ReeSpec {
@@ -278,8 +207,6 @@ export function createEmptyReeSpec(): ReeSpec {
     origin_url: "",
     source_type: "",
     runtime: "",
-    runtime_entry: createEmptyRuntimeEntry(),
-    build_runtime_script: "",
     activation: createEmptyReeActivation(),
     sbom: "",
     swhid: "",

@@ -10,17 +10,17 @@ import {
 } from "./helpers/flow";
 
 test.describe("Test Activation page", () => {
-  test("running the activation script completes the activation step", async ({ page }) => {
+  test("running the activation command completes the activation step", async ({ page }) => {
     await startReeCreation(page);
     await provisionWorkbench(page);
     await uploadSource(page, pythonHelloWorld());
-    await buildRuntime(
+    await buildRuntime(page, "python_hello_world", "python_hello_world/runtime.tar");
+
+    await testActivation(
       page,
-      "python_hello_world/build_runtime.sh",
+      "python -c \"import pandas; print('activation ok')\"",
       "python_hello_world/runtime.tar",
     );
-
-    await testActivation(page, "python_hello_world/activate_runtime.sh");
 
     await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible();
   });

@@ -8,7 +8,6 @@ import {
   PageExperiments,
   PageHardwareBom,
   PageMetadataEntry,
-  PageRuntimeEnvironment,
   PageTestActivation,
 } from "../index";
 import { type AppShellPageContainerProps, ContentSection, useAssemblyRunLogEntry } from "./shared";
@@ -53,11 +52,13 @@ export function ExperimentsPageContainer({
   assemblyRun,
   uiChrome,
   commands,
+  workspaceRemote,
 }: AppShellPageContainerProps) {
   const { reeId, reeApi } = useApiRuntime();
   const { page, focusedField, locked } = uiChrome;
   const { reeSpec } = reeIntent;
   const { badges } = assemblyRun;
+  const { workspaceFiles } = workspaceRemote;
 
   if (page !== PAGE.EXPERIMENTS) {
     return null;
@@ -79,35 +80,14 @@ export function ExperimentsPageContainer({
       locked={locked}
       badges={badges}
       focusedField={focusedField}
+      workspaceFiles={workspaceFiles}
       onReeChange={commands.setReeSpec}
       onGoAssemblyPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
       onSnapshotComplete={handleSnapshotComplete}
       onBeforeRun={commands.flushReeIntent}
+      onPersistWorkspaceFile={commands.onPersistWorkspaceFile}
     />
-  );
-}
-
-export function RuntimeEnvironmentPageContainer({
-  ree,
-  workspaceRemote,
-  uiChrome,
-  commands,
-}: AppShellPageContainerProps) {
-  const { page } = uiChrome;
-
-  if (page !== PAGE.RUNTIME) {
-    return null;
-  }
-
-  return (
-    <ContentSection>
-      <PageRuntimeEnvironment
-        ree={ree}
-        workspaceFiles={workspaceRemote.workspaceFiles}
-        onReeSpecChange={commands.setReeSpec}
-      />
-    </ContentSection>
   );
 }
 

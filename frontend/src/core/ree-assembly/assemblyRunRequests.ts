@@ -2,7 +2,7 @@ import type { ReeSpec } from "../ree/ReeSpec";
 import type { GenericReeAssemblyParams } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey, ReeAssemblyRunParamsByKey } from "./assemblyTypes";
 
-type AssemblyRee = Pick<ReeSpec, "build_runtime_script" | "runtime">;
+type AssemblyRee = Pick<ReeSpec, "runtime">;
 
 type AssemblyRequestParamValue = string | boolean | number | null | undefined;
 
@@ -17,7 +17,6 @@ interface ReeAssemblyRunRequestByKey {
   build: {
     scriptKey: "build";
     params: {
-      build_runtime_script_path: string;
       idempotencyKey?: string;
     };
   };
@@ -58,16 +57,13 @@ export function buildEvaluateAssemblyRunRequest(
 }
 
 export function buildBuildAssemblyRunRequest(
-  params: ReeAssemblyRunParamsByKey["build"],
-  ree: AssemblyRee,
+  _params: ReeAssemblyRunParamsByKey["build"],
+  _ree: AssemblyRee,
 ): ReeAssemblyRunRequestByKey["build"] {
+  // The build always runs the reserved build script; there is nothing to send.
   return {
     scriptKey: "build",
-    params: {
-      build_runtime_script_path: String(
-        params.build_runtime_script_path ?? ree.build_runtime_script ?? "",
-      ),
-    },
+    params: {},
   };
 }
 
@@ -141,21 +137,22 @@ export function buildAssemblyRunParams(
   params: GenericReeAssemblyParams,
   ree: AssemblyRee,
 ): Record<string, AssemblyRequestParamValue> {
-  if (key === "evaluate") {
-    return buildEvaluateAssemblyRunRequest(params as ReeAssemblyRunParamsByKey["evaluate"]).params;
+  // Delegate to the single typed dispatcher so the per-key request shapes are
+  // defined in exactly one place; keys outside the known set pass through.
+  if (!isReeAssemblyOperationKey(key)) {
+    return params;
   }
-  if (key === "build") {
-    return buildBuildAssemblyRunRequest(params as ReeAssemblyRunParamsByKey["build"], ree).params;
-  }
-  if (key === "hbom") {
-    return buildHbomAssemblyRunRequest(params as ReeAssemblyRunParamsByKey["hbom"]).params;
-  }
-  if (key === "sbom") {
-    return buildSbomAssemblyRunRequest(params as ReeAssemblyRunParamsByKey["sbom"], ree).params;
-  }
-  if (key === "activation") {
-    return buildActivationAssemblyRunRequest(params as ReeAssemblyRunParamsByKey["activation"], ree)
-      .params;
-  }
-  return params;
+  return buildAssemblyRunRequest(key, params as ReeAssemblyRunParamsByKey[typeof key], ree).params;
+}
+
+const REE_ASSEMBLY_OPERATION_KEYS: readonly ReeAssemblyOperationKey[] = [
+  "evaluate",
+  "build",
+  "hbom",
+  "sbom",
+  "activation",
+];
+
+function isReeAssemblyOperationKey(key: string): key is ReeAssemblyOperationKey {
+  return (REE_ASSEMBLY_OPERATION_KEYS as readonly string[]).includes(key);
 }

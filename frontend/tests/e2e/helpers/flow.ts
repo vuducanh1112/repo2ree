@@ -1,5 +1,5 @@
 import path from "node:path";
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { stepShot } from "../../screenshot";
 
 /**
@@ -24,13 +24,39 @@ export function pythonHelloWorld(): string {
   return path.join(RESOURCES_DIR, "examples/python-hello-world.tar.gz");
 }
 
+/**
+ * A self-contained run script for a runnable (activation or experiment). In the
+ * new model each runnable owns its full execution: load the built runtime image
+ * if it isn't already present, then enter it with its own `docker run`,
+ * bind-mounting the workspace so declared file outputs surface on the host.
+ */
+function dockerRunScript(command: string, runtimePath: string): string {
+  return `#!/usr/bin/env sh
+set -eu
+
+IMAGE_NAME="pandas-hello"
+TAG="latest"
+RUNTIME_FILE=${JSON.stringify(runtimePath)}
+
+if ! docker image inspect "$IMAGE_NAME:$TAG" >/dev/null 2>&1; then
+  docker load < "$RUNTIME_FILE"
+fi
+
+docker run --rm \\
+  -v "$(pwd):/workspace" \\
+  -w /workspace \\
+  "$IMAGE_NAME:$TAG" \\
+  ${command}
+`;
+}
+
 export function main(page: Page) {
   return page.getByRole("main");
 }
 
 /**
  * The canvas hub. Navigation lives here as pod "nodes" (Source, Metadata,
- * Reproducibility Readiness, Runtime, Hardware, Experiments, Archive, Seal) floating around
+ * Reproducibility Readiness, Build, Hardware, Experiments, Archive, Seal) floating around
  * the specimen pod — scope clicks here so short node labels don't collide with
  * same-named main buttons.
  */
@@ -122,23 +148,29 @@ export async function runEvaluate(page: Page) {
 }
 
 /**
- * Build the runtime artifact and select the produced file. Building runs on the
- * Build page; selecting the produced artifact now lives on the Runtime
- * Environment page (the inner shell), reached by decomposing the pod — see
+ * Build the runtime artifact and select the produced file. Both building and
+ * picking the produced artifact now live on the single Build Runtime page — see
  * {@link selectRuntimeArtifact}.
  */
-export async function buildRuntime(
-  page: Page,
-  buildScriptPath: string,
-  producedRuntimePath: string,
-) {
+export async function buildRuntime(page: Page, projectDir: string, producedRuntimePath: string) {
   await stepShot(page, "build-runtime", "before");
   await openPort(page, "Build");
   await expect(main(page).getByText("Build Runtime", { exact: true })).toBeVisible();
-  // Select the active build script via the "Active build script" picker. (The
-  // "build_runtime.sh" placeholder now belongs to the create-new-script editor,
-  // which only seeds the overlay and does not set the active script.)
-  await page.getByPlaceholder("Pick a .sh file from the workspace").fill(buildScriptPath);
+  // REE owns one reserved build script — author the whole build in it directly
+  // (build the image from the project Dockerfile, save it to the workspace).
+  await page.getByLabel("Build script").fill(`#!/usr/bin/env sh
+set -eu
+
+IMAGE_NAME="pandas-hello"
+TAG="latest"
+PROJECT_DIR=${JSON.stringify(projectDir)}
+RUNTIME_FILE=${JSON.stringify(producedRuntimePath)}
+
+docker build -t "$IMAGE_NAME:$TAG" "$PROJECT_DIR"
+docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
+`);
+  await main(page).getByRole("button", { name: "Save build script" }).click();
+
   await main(page)
     .getByRole("button", { name: /Run build/ })
     .click();
@@ -152,32 +184,23 @@ export async function buildRuntime(
   await stepShot(page, "build-runtime", "after");
 }
 
-/** Decompose the pod into its three shells; resolves once exploded. */
-async function decomposePod(page: Page) {
-  await page.keyboard.press("Escape").catch(() => {});
-  await page.getByRole("button", { name: "Decompose" }).click();
-  await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
-}
-
-/** Reassemble the pod; resolves back on the assembled constellation. */
-async function reassemblePod(page: Page) {
-  await page.keyboard.press("Escape").catch(() => {});
-  await page.getByRole("button", { name: "Reassemble" }).click();
-  await expect(page.getByRole("button", { name: "Decompose" })).toBeVisible();
+/**
+ * Author a runnable's run script: fill the RunScriptCard textarea, then click
+ * its "Save run script" button (shared by the activation and experiment
+ * editors).
+ */
+async function saveRunScript(page: Page, editor: Locator, content: string) {
+  await editor.fill(content);
+  await main(page).getByRole("button", { name: "Save run script", exact: true }).first().click();
 }
 
 /**
- * Pick the produced runtime artifact on the Runtime Environment page. That page
- * (the inner shell — runtime artifact + substrate) only opens from the
- * decomposed view, so this decomposes the pod, clicks the inner-shell pod, picks
- * the file via the repository file picker, then reassembles so the rest of the
- * flow continues from the constellation.
+ * Pick the produced runtime artifact. The runtime artifact card now lives on the
+ * Build Runtime page itself (section "1. Build or acquire the runtime"), so this
+ * just picks the produced file via the repository file picker right where the
+ * build ran — no pod decomposition needed.
  */
 async function selectRuntimeArtifact(page: Page, producedRuntimePath: string) {
-  await decomposePod(page);
-  await page.getByRole("button", { name: "Open runtime environment" }).click();
-  await expect(main(page).getByText("Runtime Environment", { exact: true })).toBeVisible();
-
   await page
     .getByPlaceholder("runtime.tar.gz")
     .locator("..")
@@ -186,8 +209,6 @@ async function selectRuntimeArtifact(page: Page, producedRuntimePath: string) {
   const producedRuntime = page.getByRole("button", { name: producedRuntimePath });
   await expect(producedRuntime).toBeVisible({ timeout: 20000 });
   await producedRuntime.click();
-
-  await reassemblePod(page);
 }
 
 /** Add a hardware BOM entry (a CPU component with a device model). */
@@ -203,8 +224,7 @@ export async function provideHbom(page: Page, cpuModel: string) {
 }
 
 /**
- * Generate the SBOM. Navigates to the SBOM canvas node (now a standalone page,
- * no longer a tab on the Runtime Environment page).
+ * Generate the SBOM. Navigates to the SBOM canvas node (a standalone page).
  */
 export async function generateSbom(page: Page) {
   await stepShot(page, "generate-sbom", "before");
@@ -222,14 +242,19 @@ export async function generateSbom(page: Page) {
 }
 
 /**
- * Run the runtime activation test from the given script path. Navigates to
- * the Activation canvas node (now a standalone page, not a tab).
+ * Author and run the activation. Navigates to the Activation canvas node (a
+ * standalone page) and authors a self-contained run script that loads the built
+ * image and enters it with `docker run` to prove it starts.
  */
-export async function testActivation(page: Page, activationScriptPath: string) {
+export async function testActivation(page: Page, command: string, runtimePath: string) {
   await stepShot(page, "test-activation", "before");
   await openPort(page, "Activation");
-  await expect(main(page).getByText("Activation Script", { exact: true })).toBeVisible();
-  await main(page).getByPlaceholder("activation_test.sh").first().fill(activationScriptPath);
+  await expect(main(page).getByText("Activation Run Script", { exact: true })).toBeVisible();
+  await saveRunScript(
+    page,
+    main(page).getByRole("textbox", { name: "Activation run script", exact: true }),
+    dockerRunScript(command, runtimePath),
+  );
   await main(page)
     .getByRole("button", { name: /Run activation/ })
     .click();
@@ -238,10 +263,14 @@ export async function testActivation(page: Page, activationScriptPath: string) {
   await stepShot(page, "test-activation", "after");
 }
 
-/** Define a single experiment, run it, and wait for it to pass. */
+/**
+ * Define a single experiment, author its run script, run it, and wait for it to
+ * pass. Like activation, the experiment owns its full run: load the image and
+ * `docker run` the command in the bind-mounted workspace.
+ */
 export async function runExperiment(
   page: Page,
-  experiment: { name: string; command: string; expectedStdout: string },
+  experiment: { name: string; command: string; expectedStdout: string; runtimePath: string },
 ) {
   await stepShot(page, "run-experiment", "before");
   await openPort(page, "Experiments");
@@ -251,7 +280,11 @@ export async function runExperiment(
     .first()
     .click();
   await main(page).getByPlaceholder("smoke-test").fill(experiment.name);
-  await main(page).getByPlaceholder("pytest tests/smoke -q").fill(experiment.command);
+  await saveRunScript(
+    page,
+    main(page).getByRole("textbox", { name: "Experiment run script", exact: true }),
+    dockerRunScript(experiment.command, experiment.runtimePath),
+  );
   const outputsCard = main(page)
     .locator("div")
     .filter({ hasText: /^Expected outputs/ })

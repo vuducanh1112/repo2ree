@@ -3,13 +3,12 @@ import {
   removeExperiment as coreRemoveExperiment,
   patchExperiment,
 } from "@core/ree/experimentOps";
-import type { ReeExperiment, ReeSpec } from "@core/ree/ReeSpec";
-import { substrateLabel } from "@core/ree/runtimeEntryLabels";
+import { experimentScriptPath, type ReeExperiment, type ReeSpec } from "@core/ree/ReeSpec";
+import { findFileByWorkspacePath } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
   lgGlassButton,
-  lgMutedBadge,
   lgNextButton,
   lgStatusBadge,
   lgStyles,
@@ -30,6 +29,16 @@ import {
 import { experimentIndexFromField, experimentValidation } from "./experimentsPageHelpers";
 import { useExperimentRun } from "./useExperimentRun";
 
+// A starter run script seeded from a quick-add suggestion's sample command.
+function suggestionTemplate(command: string): string {
+  return `#!/usr/bin/env sh
+set -eu
+
+# Adapt this so it runs inside your built runtime (e.g. wrap it in docker run).
+${command}
+`;
+}
+
 // ================================================
 // Page component
 // ================================================
@@ -44,6 +53,8 @@ export function PageExperiments({
   onSnapshotComplete,
   onBeforeRun,
   focusedField,
+  workspaceFiles,
+  onPersistWorkspaceFile,
 }: PageExperimentsProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -79,13 +90,17 @@ export function PageExperiments({
   const addFromSuggestion = (suggestion: ExperimentSuggestion) => {
     if (locked) return;
     const newIndex = experiments.length;
+    const scriptPath = experimentScriptPath(suggestion.name);
     onReeChange((current: ReeSpec) =>
       patchExperiment(coreAddExperiment(current), newIndex, {
         name: suggestion.name,
         description: suggestion.description,
-        command: suggestion.command,
+        run_script: scriptPath,
       }),
     );
+    // Seed the script with the suggested command as a starting point; the author
+    // adapts it to enter their runtime (e.g. wrapping it in `docker run …`).
+    void onPersistWorkspaceFile(undefined, scriptPath, suggestionTemplate(suggestion.command));
     setSelectedIndex(newIndex);
     onFocusedFieldChange(`experiments[${newIndex}].name`);
   };
@@ -128,7 +143,7 @@ export function PageExperiments({
 
   const total = experiments.length;
   const withName = experiments.filter((e) => e.name.trim() !== "").length;
-  const withCommand = experiments.filter((e) => e.command.trim() !== "").length;
+  const withCommand = experiments.filter((e) => e.run_script.trim() !== "").length;
   const withDescription = experiments.filter((e) => e.description.trim() !== "").length;
   const withOutputs = experiments.filter((e) => (e.outputs?.length ?? 0) > 0).length;
   const withRuntimeEstimate = experiments.filter((e) => e.runtime_estimate.trim() !== "").length;
@@ -140,7 +155,6 @@ export function PageExperiments({
   // Render
   // ================================================
 
-  const runtimeEntry = reeSpec.runtime_entry;
   const headerBadges = (
     <>
       <span
@@ -157,7 +171,6 @@ export function PageExperiments({
         {total} {total === 1 ? "experiment" : "experiments"}
       </span>
       <span style={lgStatusBadge(total > 0)}>{total > 0 ? "Defined" : "Empty"}</span>
-      <span style={lgMutedBadge}>Runs on: {substrateLabel(runtimeEntry)}</span>
     </>
   );
 
@@ -191,7 +204,17 @@ export function PageExperiments({
               index={selectedIndex}
               otherNames={otherNames}
               locked={locked}
+              scriptContent={
+                findFileByWorkspacePath(workspaceFiles, selectedExperiment.run_script)?.content ??
+                ""
+              }
               onUpdate={(patch) => updateExperiment(selectedIndex, patch)}
+              onSaveScript={(path, content) => {
+                void onPersistWorkspaceFile(undefined, path, content);
+                if (path !== selectedExperiment.run_script) {
+                  updateExperiment(selectedIndex, { run_script: path });
+                }
+              }}
               onBack={() => {
                 setSelectedIndex(null);
                 onFocusedFieldChange(null);

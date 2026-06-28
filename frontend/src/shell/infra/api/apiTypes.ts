@@ -56,9 +56,8 @@ export interface ReeIntentDto {
   origin_url: string;
   source_type: string;
   runtime: string;
-  runtime_entry?: Record<string, unknown>;
+  lifecycle?: Record<string, unknown>;
   sbom: string;
-  build_runtime_script: string;
   activation?: Record<string, unknown>;
   swhid: string;
   zenodo_doi: string;
@@ -150,7 +149,6 @@ export type WorkflowRunStatusDto =
   | "canceled";
 
 export interface CreateBuildRuntimeRunRequestDto {
-  build_runtime_script_path: string;
   idempotencyKey?: string;
 }
 

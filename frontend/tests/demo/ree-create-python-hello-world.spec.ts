@@ -5,6 +5,30 @@ import { stepShot } from "../screenshot";
 
 const DEMO_STEP_DELAY_MS = 350;
 const DEMO_NARRATION_DELAY_MS = 900;
+const PYTHON_RUNTIME_PATH = "python_hello_world/runtime.tar";
+
+// Each runnable (activation, experiment) now owns a self-contained run script:
+// it loads the built image if needed and enters it with its own `docker run`.
+// Outputs are checked against the mounted workspace on the host afterward.
+function dockerRunScript(command: string): string {
+  return `#!/usr/bin/env sh
+set -eu
+
+IMAGE_NAME="pandas-hello"
+TAG="latest"
+RUNTIME_FILE=${JSON.stringify(PYTHON_RUNTIME_PATH)}
+
+if ! docker image inspect "$IMAGE_NAME:$TAG" >/dev/null 2>&1; then
+  docker load < "$RUNTIME_FILE"
+fi
+
+docker run --rm \\
+  -v "$(pwd):/workspace" \\
+  -w /workspace \\
+  "$IMAGE_NAME:$TAG" \\
+  ${command}
+`;
+}
 
 /**
  * A demo step: runs the body inside a named `test.step` (so the trace/report
@@ -146,6 +170,16 @@ async function fillDemo(page: Page, locator: Locator, value: string, narration?:
   await page.waitForTimeout(DEMO_STEP_DELAY_MS);
   await locator.fill(value);
   await page.waitForTimeout(DEMO_STEP_DELAY_MS);
+}
+
+// Save a runnable's run script: fill the RunScriptCard textarea, then click its
+// "Save run script" button (shared by activation and experiment editors).
+async function saveRunScript(page: Page, locator: Locator, value: string, narration?: string) {
+  await fillDemo(page, locator, value, narration);
+  await clickDemo(
+    page,
+    page.getByRole("main").getByRole("button", { name: "Save run script", exact: true }).first(),
+  );
 }
 
 async function showcaseScroll(page: Page, deltaY = 700) {
@@ -347,19 +381,39 @@ test("upload source archive into workspace", async ({ page }) => {
   });
 
   await demoStep(page, "Build runtime", async () => {
+    // Decomposed, the inner shell itself is the build runtime — click it to open
+    // the Build Runtime page (there is no separate Build panel in this view).
     await page.keyboard.press("Escape").catch(() => {});
+    await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
     await clickDemo(
       page,
-      page.getByRole("navigation").getByRole("button", { name: "Build", exact: true }),
-      "Build runtime artifact",
+      page.getByRole("button", { name: "Open build runtime" }),
+      "Open the inner shell: the build runtime the whole REE executes on",
     );
     await expect(main.getByText("Build Runtime", { exact: true })).toBeVisible();
     await fillDemo(
       page,
-      page.getByPlaceholder("Pick a .sh file from the workspace"),
-      "python_hello_world/build_runtime.sh",
-      "Select the active build script",
+      main.getByLabel("Build script"),
+      `#!/usr/bin/env sh
+set -eu
+
+IMAGE_NAME="pandas-hello"
+TAG="latest"
+PROJECT_DIR="python_hello_world"
+RUNTIME_FILE="$PROJECT_DIR/runtime.tar"
+
+echo "Building $IMAGE_NAME:$TAG from $PROJECT_DIR..."
+docker build -t "$IMAGE_NAME:$TAG" "$PROJECT_DIR"
+
+echo "Exporting image to $RUNTIME_FILE..."
+docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
+`,
+      "Author the whole runtime build directly in REE’s canonical build script — build the image from the project Dockerfile and save it to the workspace",
     );
+    await clickDemo(page, main.getByRole("button", { name: "Save build script" }));
+
+    // There is no longer a shared execution lifecycle on the build page — each
+    // experiment and the activation own their own run script (authored later).
     await clickDemo(page, main.getByRole("button", { name: /Run build/ }), "Run runtime build");
     // Dwell on the build log while it streams live (the cold DinD build runs
     // for ~30s, so there is plenty to show). The panel tails new lines itself.
@@ -370,20 +424,10 @@ test("upload source archive into workspace", async ({ page }) => {
     );
     await page.waitForTimeout(5000);
     await expect(main.getByRole("button", { name: /Re-build/ })).toBeVisible({ timeout: 90000 });
-  });
 
-  await demoStep(page, "Configure runtime environment", async () => {
-    // The produced runtime artifact and its substrate now live on the inner
-    // shell — the Runtime Environment page — reached from the already
-    // decomposed pod by clicking the inner-shell pod.
-    await page.keyboard.press("Escape").catch(() => {});
-    await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
-    await clickDemo(
-      page,
-      page.getByRole("button", { name: "Open runtime environment" }),
-      "Open the inner shell: the runtime the whole REE executes on",
-    );
-    await expect(main.getByText("Runtime Environment", { exact: true })).toBeVisible();
+    // The produced artifact is selected right here on the Build Runtime page —
+    // its runtime-artifact card (section 1) names the substrate the whole REE
+    // runs on, shared by activation and every experiment.
     await clickDemo(
       page,
       page.getByPlaceholder("runtime.tar.gz").locator("..").getByTitle("Browse repository files"),
@@ -394,13 +438,8 @@ test("upload source archive into workspace", async ({ page }) => {
     });
     await clickDemo(
       page,
-      page.getByRole("button", { name: "python_hello_world/runtime.tar" }),
-      "Select produced runtime file",
-    );
-    await showcasePanel(
-      page,
-      main.getByText("Runtime Substrate", { exact: true }),
-      "Choose how the workbench enters the runtime — shared by activation and every experiment",
+      page.getByRole("button", { name: PYTHON_RUNTIME_PATH }),
+      "Select the produced runtime artifact — shared by activation and every experiment",
     );
   });
 
@@ -431,12 +470,12 @@ test("upload source archive into workspace", async ({ page }) => {
       page.getByRole("navigation").getByRole("button", { name: "Activation", exact: true }),
       "Open activation test",
     );
-    await expect(main.getByText("Activation Command", { exact: true })).toBeVisible();
-    await fillDemo(
+    await expect(main.getByText("Activation Run Script", { exact: true })).toBeVisible();
+    await saveRunScript(
       page,
-      main.getByPlaceholder(/e\.g\. python/).first(),
-      "python -c \"import sys; print('ok')\"",
-      "Enter activation command",
+      main.getByRole("textbox", { name: "Activation run script", exact: true }),
+      dockerRunScript("python -c \"import sys; print('ok')\""),
+      "Author the activation as a self-contained docker run that proves the image starts",
     );
     await clickDemo(
       page,
@@ -460,12 +499,17 @@ test("upload source archive into workspace", async ({ page }) => {
       main.getByRole("button", { name: /Add experiment/i }).first(),
       "Add a new experiment",
     );
-    await fillDemo(page, main.getByPlaceholder("smoke-test"), "echo-hello", "Name the experiment");
     await fillDemo(
       page,
-      main.getByPlaceholder("pytest tests/smoke -q"),
-      "echo hello",
-      "Set the command to echo hello",
+      main.getByPlaceholder("smoke-test"),
+      "python-hello",
+      "Name the experiment",
+    );
+    await saveRunScript(
+      page,
+      main.getByRole("textbox", { name: "Experiment run script", exact: true }),
+      dockerRunScript("python python_hello_world/main.py"),
+      "The experiment owns its full run: load the image and docker run the script in the mounted workspace",
     );
     const outputsCard = main
       .locator("div")
@@ -479,8 +523,8 @@ test("upload source archive into workspace", async ({ page }) => {
     await fillDemo(
       page,
       main.getByPlaceholder("PASSED").first(),
-      "hello",
-      "Require stdout to contain 'hello'",
+      "Pandas Hello World",
+      "Require stdout to contain the Python program banner",
     );
     await clickDemo(page, main.getByRole("button", { name: /^Run$/ }), "Run the experiment");
     await page.waitForTimeout(5000);
@@ -499,7 +543,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
     await showcasePanel(
       page,
-      page.getByRole("button", { name: "echo-hello" }),
+      page.getByRole("button", { name: "python-hello" }),
       "The core shell now carries the experiment as its own cabled panel",
     );
     await page.waitForTimeout(1500);

@@ -11,11 +11,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from repo2ree_core.container.run_script import LogSink, format_command, stream_output
+from repo2ree_core.container.run_script import CancelCheck, LogSink, format_command, stream_output
 from repo2ree_core.storage.extract import safe_extract_tar, safe_extract_zip
 from repo2ree_core.storage.fetch import download_or_copy
 from repo2ree_core.storage.store import SubtreeStore
-from repo2ree_core.working_environment.base import CancelCheck
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.result import ActionResult
 

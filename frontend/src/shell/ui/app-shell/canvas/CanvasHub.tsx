@@ -257,8 +257,8 @@ export function CanvasHub({
           glow={exploded && coreHovered}
         />
 
-        {/* The inner pod opens the runtime page. Rendered before the nav so the
-            inner-shell node cards keep painting (and clicking) on top of it. */}
+        {/* The inner pod opens the build runtime page. Rendered before the nav so
+            the inner-shell node cards keep painting (and clicking) on top of it. */}
         {exploded && (
           <InnerShellButton
             center={INNER_CENTER}
@@ -274,6 +274,9 @@ export function CanvasHub({
             // Decomposed, the core column is taken over by the experiment
             // satellites, so the lone Experiments node steps aside.
             if (exploded && node.key === PAGE.EXPERIMENTS) return null;
+            // Decomposed, the inner shell itself is the build-runtime entry
+            // point (it's clickable here), so the Build node steps aside.
+            if (exploded && node.key === PAGE.BUILD) return null;
             const off = nodeOffsets[node.key] ?? { x: 0, y: 0 };
             return (
               <NodeCard

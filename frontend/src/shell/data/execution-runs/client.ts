@@ -30,7 +30,8 @@ function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClien
       switch (scriptKey) {
         case "build":
           run = await runtime.runsApi.createBuildRuntimeRun(reeId, {
-            build_runtime_script_path: String(params.build_runtime_script_path ?? ""),
+            idempotencyKey:
+              params.idempotencyKey == null ? undefined : String(params.idempotencyKey),
           });
           break;
         case "hbom":

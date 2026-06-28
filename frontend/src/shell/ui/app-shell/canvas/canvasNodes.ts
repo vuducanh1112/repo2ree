@@ -282,8 +282,10 @@ export function nodeSummary(
         },
       ];
     case PAGE.EXPERIMENTS: {
-      const count = (ree.experiments ?? []).filter((entry) => entry.command.trim() !== "").length;
-      return [{ label: "Commands", value: count > 0 ? `${count} defined` : null }];
+      const count = (ree.experiments ?? []).filter(
+        (entry) => entry.run_script.trim() !== "",
+      ).length;
+      return [{ label: "Run scripts", value: count > 0 ? `${count} defined` : null }];
     }
     case PAGE.EVALUATE:
       // Always surface each axis's standing — level 0 reads as "None", so the
@@ -304,8 +306,8 @@ export function nodeSummary(
     case PAGE.ACTIVATION:
       return [
         {
-          label: "Command",
-          value: ree.activation?.command?.trim() ? "configured" : null,
+          label: "Run script",
+          value: ree.activation?.run_script?.trim() ? "configured" : null,
         },
       ];
     case PAGE.ARCHIVE:

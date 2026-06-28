@@ -191,6 +191,7 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
         return
 
     store.ensure_dirs()
+    store.ensure_reserved_overlay_scripts()
 
     ts = _utc_now()
     ree_name = name or f"workspace-{ree_id[:8]}"

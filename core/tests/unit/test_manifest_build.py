@@ -39,21 +39,18 @@ def test_named_slot_paths_are_normalized():
     intent = _intent(
         runtime="/runtime.tar.gz",
         sbom="  sbom.json  ",
-        build_runtime_script="/scripts/build.sh",
     )
     manifest = build_manifest_payload(intent, _session(), ree_id="abc")
     assert manifest["runtime"] == "runtime.tar.gz"
     assert manifest["sbom"] == "sbom.json"
-    assert manifest["build_runtime_script"] == "scripts/build.sh"
 
 
-def test_activation_and_runtime_entry_in_manifest():
+def test_activation_in_manifest():
     manifest = build_manifest_payload(_intent(), _session(), ree_id="abc")
-    # Activation is a required singleton; the runtime entry defaults to docker.
+    # Activation is a required singleton; it owns a run script defaulting to the
+    # reserved activation path.
     assert manifest["activation"] == ReeIntent().activation.model_dump()
-    assert manifest["runtime_entry"]["kind"] == "container"
-    assert manifest["runtime_entry"]["engine"] == "docker"
-    assert "workdir" not in manifest["runtime_entry"]
+    assert manifest["activation"]["run_script"] == "ree/activation.sh"
 
 
 def test_pure_no_filesystem_dependency(tmp_path, monkeypatch):

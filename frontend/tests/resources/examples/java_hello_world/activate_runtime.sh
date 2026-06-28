@@ -1,6 +1,11 @@
 #!/bin/bash
+set -euo pipefail
 
-INPUT_FILE="runtime.tar.gz"
+# Run from this script's own directory so the runtime artifact resolves
+# relative to the project, not wherever activation was invoked.
+cd "$(dirname "$0")"
+
+INPUT_FILE="runtime.tar"
 IMAGE_NAME="java-hello"
 TAG="latest"
 

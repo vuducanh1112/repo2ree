@@ -1,6 +1,6 @@
 // Theme for the glass "pages" surfaces — the bright, frosted page views
 // (archive, build-runtime, evaluate, experiments, files, hardware-bom,
-// metadata, overview/seal, source, runtime-environment). This is intentionally
+// metadata, overview/seal, source). This is intentionally
 // a separate palette from the canvas/chrome tokens in ./tokens (C): the two
 // share only the font primitives (F) imported below. Keep the colors distinct.
 import type { FileTypeCategory } from "@core/workspace/PathUtils";
@@ -502,15 +502,6 @@ export function lgActionButton(tone: ActionTone, disabled = false): React.CSSPro
     flexShrink: 0,
   };
 }
-
-export const lgMutedBadge: React.CSSProperties = {
-  fontSize: 11,
-  color: lgColors.textMuted,
-  background: "rgba(248,250,252,0.85)",
-  border: "1px solid rgba(148,163,184,0.34)",
-  borderRadius: 99,
-  padding: "3px 9px",
-};
 
 export function pageIconTint(color: string): { color: string; border: string; shadow: string } {
   return { color, border: `${color}55`, shadow: `${color}28` };

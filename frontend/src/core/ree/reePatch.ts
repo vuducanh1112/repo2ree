@@ -1,13 +1,7 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import type {
-  ReeActivation,
-  ReeCatalogMetadata,
-  ReeExperiment,
-  ReeSpec,
-  RuntimeEntry,
-} from "./ReeSpec";
+import type { ReeActivation, ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec";
 
 export interface ReeIntentPatch extends Record<string, unknown> {
   name: string;
@@ -15,8 +9,6 @@ export interface ReeIntentPatch extends Record<string, unknown> {
   origin_url: string;
   source_type: string;
   runtime: string;
-  runtime_entry: RuntimeEntry;
-  build_runtime_script: string;
   activation: ReeActivation;
   sbom: string;
   swhid: string;
@@ -40,8 +32,6 @@ export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatc
     origin_url: reeSpec.origin_url || "",
     source_type: reeSpec.source_type || "",
     runtime: reeSpec.runtime || "",
-    runtime_entry: reeSpec.runtime_entry,
-    build_runtime_script: reeSpec.build_runtime_script || "",
     activation: reeSpec.activation,
     sbom: reeSpec.sbom || "",
     swhid: reeSpec.swhid || "",
@@ -65,8 +55,6 @@ export function toReePatch(
       origin_url: ree.origin_url,
       source_type: ree.source_type,
       runtime: ree.runtime,
-      runtime_entry: ree.runtime_entry,
-      build_runtime_script: ree.build_runtime_script,
       activation: ree.activation,
       sbom: ree.sbom,
       swhid: ree.swhid,

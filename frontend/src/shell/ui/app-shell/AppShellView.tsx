@@ -163,7 +163,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             }}
             onOpenRuntime={() => {
               commands.setFocusedField(null);
-              openPage(PAGE.RUNTIME);
+              openPage(PAGE.BUILD);
             }}
             reeFiles={currentReeFiles}
             draftManifest={workspaceRemote.draftManifest}

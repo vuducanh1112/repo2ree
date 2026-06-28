@@ -156,16 +156,16 @@ class RemoveSourceCommand(BaseModel):
 
 
 class BuildRuntimeArgs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    """No args — the build always runs the reserved, REE-owned build script."""
 
-    build_runtime_script_path: str
+    model_config = ConfigDict(extra="forbid")
 
 
 class BuildRuntimeCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: Literal["build_runtime"] = "build_runtime"
-    args: BuildRuntimeArgs
+    args: BuildRuntimeArgs = BuildRuntimeArgs()
 
 
 class GenerateSbomArgs(BaseModel):

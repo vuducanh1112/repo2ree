@@ -9,7 +9,7 @@ describe("mapRawReeIntentToSlices", () => {
           {
             name: "benchmark",
             description: "Measure throughput",
-            command: "python bench.py",
+            run_script: "ree/experiments/benchmark.sh",
             runtime_estimate: "15-20 min",
             resource_estimates: {
               cpu: "8 vCPU",
@@ -28,7 +28,7 @@ describe("mapRawReeIntentToSlices", () => {
       {
         name: "benchmark",
         description: "Measure throughput",
-        command: "python bench.py",
+        run_script: "ree/experiments/benchmark.sh",
         runtime_estimate: "15-20 min",
         resource_estimates: {
           cpu: "8 vCPU",
@@ -44,7 +44,7 @@ describe("mapRawReeIntentToSlices", () => {
   it("backfills missing experiment estimates with stable defaults", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: {
-        experiments: [{ name: "smoke", command: "pytest -q" }],
+        experiments: [{ name: "smoke", run_script: "ree/experiments/smoke.sh" }],
       },
       fallbackName: "demo",
     });
@@ -53,7 +53,7 @@ describe("mapRawReeIntentToSlices", () => {
       {
         name: "smoke",
         description: "",
-        command: "pytest -q",
+        run_script: "ree/experiments/smoke.sh",
         runtime_estimate: "",
         resource_estimates: {
           cpu: "",
@@ -66,30 +66,21 @@ describe("mapRawReeIntentToSlices", () => {
     ]);
   });
 
-  it("maps container runtime_entry with phase overrides", () => {
+  it("maps the activation run script from persisted intent", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: {
-        runtime_entry: { kind: "container", engine: "podman", overrides: { exec: "code/run" } },
+        activation: { run_script: "ree/custom-activation.sh" },
       },
       fallbackName: "demo",
     });
 
-    const entry = mapped.reeSpec.runtime_entry;
-    expect(entry.kind).toBe("container");
-    expect(entry.overrides).toEqual({ provision: "", exec: "code/run", teardown: "" });
+    expect(mapped.reeSpec.activation.run_script).toBe("ree/custom-activation.sh");
   });
 
-  it("defaults overrides to empty for legacy runtime_entry without the key", () => {
-    const mapped = mapRawReeIntentToSlices({
-      reeIntent: { runtime_entry: { kind: "container", engine: "docker" } },
-      fallbackName: "demo",
-    });
+  it("uses the reserved activation run script when not present in intent", () => {
+    const mapped = mapRawReeIntentToSlices({ reeIntent: {}, fallbackName: "demo" });
 
-    expect(mapped.reeSpec.runtime_entry.overrides).toEqual({
-      provision: "",
-      exec: "",
-      teardown: "",
-    });
+    expect(mapped.reeSpec.activation.run_script).toBe("ree/activation.sh");
   });
 
   it("reads source_included and runtime_included from session", () => {

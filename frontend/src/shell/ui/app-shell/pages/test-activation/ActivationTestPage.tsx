@@ -1,5 +1,8 @@
-import { createEmptyReeActivation, type ReeActivation } from "@core/ree/ReeSpec";
-import { substrateLabel } from "@core/ree/runtimeEntryLabels";
+import {
+  createEmptyReeActivation,
+  RESERVED_ACTIVATION_SCRIPT,
+  type ReeActivation,
+} from "@core/ree/ReeSpec";
 import {
   activationFooterHint,
   activationRunLabel,
@@ -8,27 +11,26 @@ import {
 import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
 import { resolvedRuntimePath } from "@core/ree-assembly/buildRuntimeUiState";
 import { resolvedSbomPath } from "@core/ree-assembly/sbomUiState";
-import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
+import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
-  lgMutedBadge,
   lgOutcomeBadge,
   lgPageRoot,
   lgPillChip,
   lgStatusBadge,
   pageIconTint,
 } from "@shell/ui/theme/lightGlassTheme";
-import { C, F } from "@shell/ui/theme/theme";
+import { F } from "@shell/ui/theme/theme";
 import { useCallback } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
-import { CommandPlanView } from "../../components/CommandPlanView";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { GlassSubPanel } from "../../components/GlassSubPanel";
 import { LastRunStamp } from "../../components/LastRunStamp";
+import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { RunActionButton } from "../../components/RunActionButton";
-import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
+import { RunScriptCard } from "../../components/RunScriptCard";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { ActivationTargetCard } from "./sections";
 
@@ -73,11 +75,14 @@ export function PageTestActivation({
   missing,
   params,
   onReeSpecChange,
+  onPersistWorkspaceFile,
 }: AssemblyPageProps) {
   const files = workspaceFiles || [];
 
   const activation: ReeActivation = ree.activation ?? createEmptyReeActivation();
-  const runtimeEntry = ree.runtime_entry;
+  const activationScriptPath = activation.run_script || RESERVED_ACTIVATION_SCRIPT;
+  const activationScriptContent =
+    findFileByWorkspacePath(files, activationScriptPath)?.content ?? "";
 
   const runtimePath = resolvedRuntimePath(ree.runtime);
   const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
@@ -94,28 +99,20 @@ export function PageTestActivation({
   });
   const activationReady = runDone && canRun;
 
-  const handleCommandChange = useCallback(
-    (command: string) => {
-      onReeSpecChange?.((current) => ({
-        ...current,
-        activation: { ...current.activation, command },
-      }));
+  const handleSaveScript = useCallback(
+    (content: string) => {
+      void onPersistWorkspaceFile?.(undefined, activationScriptPath, content);
+      if (activation.run_script !== activationScriptPath) {
+        onReeSpecChange?.((current) => ({
+          ...current,
+          activation: { ...current.activation, run_script: activationScriptPath },
+        }));
+      }
     },
-    [onReeSpecChange],
+    [onPersistWorkspaceFile, onReeSpecChange, activationScriptPath, activation.run_script],
   );
 
-  const commandLabel = activation.command?.trim()
-    ? activation.command.length > 40
-      ? `${activation.command.slice(0, 40)}…`
-      : activation.command
-    : null;
-
-  // The substrate plan only references the run script by placeholder; the inner
-  // command is what gets written into it, so show the resolved activation
-  // command (or the built-in probe fallback) to make the preview the full thing.
-  const innerCommand = activation.command?.trim()
-    ? activation.command.trim()
-    : "# built-in liveness probe (no activation command set)";
+  const commandLabel = activationScriptPath;
 
   return (
     <div style={lgPageRoot}>
@@ -132,7 +129,6 @@ export function PageTestActivation({
             <span style={lgStatusBadge(activationReady)}>
               {activationReady ? "Activation ready" : "Activation pending"}
             </span>
-            <span style={lgMutedBadge}>Runs on: {substrateLabel(runtimeEntry)}</span>
             {runDone && badge && (
               <span style={lgOutcomeBadge(badge.color, badge.bg)}>
                 {Ic.check(11)} {badge.label}
@@ -161,29 +157,19 @@ export function PageTestActivation({
           <GlassSectionHeader
             icon={Ic.shield(19)}
             color={ACTIVATION_PAGE_COLOR}
-            title="Activation Command"
-            subtitle="The command run inside the runtime to verify it starts. Leave empty to use the built-in liveness probe."
+            title="Activation Run Script"
+            subtitle="Activation owns its run script: it fully defines how the runtime is entered and probed for liveness."
           />
 
-          <textarea
-            value={activation.command}
-            onChange={(e) => handleCommandChange(e.target.value)}
-            placeholder="e.g. python -c 'import numpy; print(ok)'"
-            rows={3}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              fontSize: 12,
-              fontFamily: F.mono,
-              border: `1px solid ${C.border}`,
-              borderRadius: 8,
-              background: C.surface,
-              color: C.text,
-              resize: "vertical",
-              marginTop: 10,
-              boxSizing: "border-box",
-            }}
-          />
+          <div style={{ marginTop: 10 }}>
+            <RunScriptCard
+              scriptPath={activationScriptPath}
+              currentContent={activationScriptContent}
+              label="Activation run script"
+              helper="Saved to the workspace overlay and run from the workspace root."
+              onSave={handleSaveScript}
+            />
+          </div>
         </GlassSubPanel>
 
         <GlassSubPanel>
@@ -199,22 +185,6 @@ export function PageTestActivation({
             runtimePathExists={runtimePathExists}
             sbomPath={sbomPath}
             sbomPathExists={sbomPathExists}
-          />
-        </GlassSubPanel>
-
-        <GlassSubPanel>
-          <GlassSectionHeader
-            icon={Ic.terminal(19)}
-            color={ACTIVATION_PAGE_COLOR}
-            title="What actually runs"
-            subtitle={`On ${substrateLabel(runtimeEntry)} — the exact substrate commands (projected from the runner), wrapping the activation command above.`}
-          />
-          <CommandPlanView
-            entry={runtimeEntry}
-            innerCommand={{
-              label: "Command — .workspace/exp_RUN_ID.sh",
-              value: innerCommand,
-            }}
           />
         </GlassSubPanel>
 

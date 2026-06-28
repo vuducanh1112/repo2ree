@@ -24,7 +24,7 @@ describe("toReePatchFromSlices", () => {
         {
           name: "benchmark",
           description: "Measure throughput",
-          command: "python bench.py",
+          run_script: "ree/experiments/benchmark.sh",
           runtime_estimate: "15-20 min",
           resource_estimates: {
             cpu: "8 vCPU",

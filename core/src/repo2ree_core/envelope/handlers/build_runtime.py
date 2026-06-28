@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.envelope.handlers._common import run_workspace_script_handler
-from repo2ree_core.working_environment import CancelCheck
+from repo2ree_core.container.run_script import CancelCheck, LogSink
+from repo2ree_core.envelope.handlers._common import run_bare_script_handler
+from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_protocol.command import BuildRuntimeArgs
 from repo2ree_protocol.result import ActionResult
 
@@ -14,8 +14,9 @@ def handle_build_runtime(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    return run_workspace_script_handler(
-        args.build_runtime_script_path,
+    # The build script is fixed: always the reserved, REE-owned build script.
+    return run_bare_script_handler(
+        RESERVED_BUILD_SCRIPT,
         operation="build_runtime",
         noun="Build",
         output_key="buildRuntimeScriptPath",

@@ -5,12 +5,12 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_api.api_utils import require_non_empty_path
 from repo2ree_api.run_management import (
     _run_summary,
     _start_single_command_run,
 )
-from repo2ree_protocol.command import BuildRuntimeArgs, BuildRuntimeCommand
+from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_protocol.command import BuildRuntimeCommand
 
 # ================================================
 # Router
@@ -30,7 +30,6 @@ class _StrictRequestModel(BaseModel):
 
 
 class CreateBuildRuntimeRunPayload(_StrictRequestModel):
-    build_runtime_script_path: str
     idempotencyKey: str | None = None
 
 
@@ -54,17 +53,15 @@ def create_build_run_state(
     ree_id: str,
     payload: CreateBuildRuntimeRunPayload,
 ) -> dict[str, Any]:
-    script_path = require_non_empty_path(
-        payload.build_runtime_script_path,
-        "build_runtime_script_path",
-    )
+    # The build always runs the reserved, REE-owned build script.
+    del payload  # no author-configurable inputs
 
     return _start_single_command_run(
         ree_id,
         operation="build",
-        command=BuildRuntimeCommand(args=BuildRuntimeArgs(build_runtime_script_path=script_path)),
+        command=BuildRuntimeCommand(),
         run_id_prefix="build",
-        request_payload={"build_runtime_script_path": script_path},
+        request_payload={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
         canceled_message="Build run canceled",
-        fallback_outputs={"buildRuntimeScriptPath": script_path},
+        fallback_outputs={"buildRuntimeScriptPath": RESERVED_BUILD_SCRIPT},
     )

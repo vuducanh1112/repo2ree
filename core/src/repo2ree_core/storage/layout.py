@@ -26,6 +26,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+# Canonical lexical path checks live in the dependency-free leaf module so the
+# domain and experiment layers can share them without an import cycle. Re-export
+# here for the storage-layer call sites that have always imported them from
+# ``layout``.
+from repo2ree_core.path_safety import normalize_workspace_path, validate_relative_path
+
+__all__ = ["normalize_workspace_path", "validate_relative_path"]
+
 # ================================================
 # Constants
 # ================================================
@@ -44,6 +52,10 @@ OVERLAY_DIRNAME = "overlay"
 ARTIFACTS_DIRNAME = "artifacts"
 WORKSPACE_DIRNAME = "workspace"
 RUNS_DIRNAME = "runs"
+
+# Reserved, REE-owned overlay scripts are defined in the leaf
+# ``repo2ree_core.reserved_paths`` module so domain, experiment, and storage
+# layers can share them without an import cycle.
 
 # Fixed mount point inside every REE workbench container.
 WORKBENCH_ROOT = Path("/ree")
@@ -146,33 +158,6 @@ class ReeLayout:
 # ================================================
 
 
-def validate_relative_path(rel: str | PurePosixPath) -> None:
-    """Reject absolute paths and parent traversals.
-
-    Pure validator intended to run before any path is handed to the shell.
-    """
-    if not isinstance(rel, str | PurePosixPath):
-        raise TypeError(f"relative path must be str or PurePosixPath, got {type(rel).__name__}")
-    text = str(rel)
-    if text == "":
-        raise ValueError("relative path must not be empty")
-    pure = PurePosixPath(text)
-    if pure.is_absolute() or text.startswith("/") or text.startswith("\\"):
-        raise ValueError(f"relative path must not be absolute: {text!r}")
-    if any(part == ".." for part in pure.parts):
-        raise ValueError(f"relative path must not contain '..': {text!r}")
-
-
 def validate_upload_token(token: str) -> None:
     if not token or "/" in token or "\\" in token or token.startswith("."):
         raise ValueError(f"invalid upload token: {token!r}")
-
-
-def normalize_workspace_path(path: str | None) -> str:
-    """Defensive cleanup for user-supplied workspace-relative paths.
-
-    Strips surrounding whitespace and leading slashes. Permissive: returns
-    ``""`` for falsy input and does not raise. Use :func:`validate_relative_path`
-    when stricter checks are required.
-    """
-    return (path or "").lstrip("/").strip()

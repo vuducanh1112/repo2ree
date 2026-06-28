@@ -15,10 +15,7 @@ type ExecutionRunStatus =
 
 const REE_ASSEMBLY_REQUIREMENTS: Record<ReeAssemblyOperationKey, ReeAssemblyRequirement[]> = {
   evaluate: [{ field: "sourceAvailable", label: "Source loaded in workspace" }],
-  build: [
-    { field: "sourceAvailable", label: "Source available" },
-    { field: "build_runtime_script", label: "Build script" },
-  ],
+  build: [{ field: "sourceAvailable", label: "Source available" }],
   hbom: [],
   sbom: [{ field: "runtime", label: "Runtime" }],
   activation: [{ field: "runtime", label: "Runtime" }],

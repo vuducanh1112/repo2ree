@@ -16,11 +16,11 @@ import {
   lgStatusBadge,
 } from "../../theme/lightGlassTheme";
 import { CollapsibleLogCard } from "../components/CollapsibleLogCard";
+import { MissingInputsBanner } from "../components/MissingInputsBanner";
 import { RunActionButton } from "../components/RunActionButton";
 import { useAssemblyStepPageController } from "../hooks/useAssemblyStepPageController";
 import { RuntimeScanTargetCard, SbomOutputCard } from "../pages/generate-sbom/sections";
 import type { AppShellPageContainerProps } from "../pages/pageContainers/shared";
-import { MissingInputsBanner } from "../pages/runtime-environment/MissingInputsBanner";
 import { findFileByPath } from "../pages/sharedAssemblyHelpers";
 import { HubPanel, HubPanelHeader } from "./HubPanel";
 

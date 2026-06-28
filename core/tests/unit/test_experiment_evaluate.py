@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import hashlib
-from contextlib import contextmanager
-from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from repo2ree_core.domain.env_entry import ContainerEntry
 from repo2ree_core.experiment.evaluate import (
     CaptureBundle,
     evaluate_match,
@@ -20,7 +17,6 @@ from repo2ree_core.experiment.evaluate import (
 )
 from repo2ree_core.experiment.experiment import (
     ContainsMatch,
-    CustomMatch,
     ExpectedOutput,
     Experiment,
     FileSource,
@@ -30,26 +26,16 @@ from repo2ree_core.experiment.experiment import (
     StderrSource,
     StdoutSource,
 )
-from repo2ree_core.experiment.run import (
-    _evaluate_custom_match,
-    _evaluate_file_output_in_container,
-    _snapshot_file_outputs_in_container,
-    build_capture_bundle,
-    run_runnable,
-)
-from repo2ree_core.working_environment import (
-    ProvisioningCanceledError,
-    ScriptStep,
-    StepOutcome,
-)
-
-# ================================================
-# evaluate_match — sha256
-# ================================================
+from repo2ree_core.experiment.run import build_capture_bundle
 
 
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+# ================================================
+# evaluate_match — sha256
+# ================================================
 
 
 def test_sha256_match_passes_on_correct_hash():
@@ -332,225 +318,24 @@ def test_snapshot_outputs_all_stream_sha256_sources():
 # ================================================
 
 
-def test_build_capture_bundle_collects_stdout_stderr():
-    bundle = build_capture_bundle("out", "err")
+def test_build_capture_bundle_collects_stdout_stderr(tmp_path):
+    bundle = build_capture_bundle("out", "err", workspace=tmp_path, outputs=[])
     assert bundle.stdout == "out"
     assert bundle.stderr == "err"
     assert bundle.files == {}
 
 
-# ================================================
-# _evaluate_custom_match
-# ================================================
-
-
-class _FakeWE:
-    """Minimal WorkingEnvironment fake for unit tests."""
-
-    def __init__(self, exec_outcome: StepOutcome) -> None:
-        self._outcome = exec_outcome
-        self.put_calls: list[tuple[str, str]] = []
-        self.exec_calls: list[ScriptStep] = []
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_):
-        pass
-
-    def exec_script(self, step: ScriptStep, *, log, is_canceled) -> StepOutcome:
-        self.exec_calls.append(step)
-        return self._outcome
-
-    def put_file(self, rel_path: str, content: str) -> None:
-        self.put_calls.append((rel_path, content))
-
-    def sync_out(self, *, log) -> bool:
-        return True
-
-
-def test_custom_match_runs_validator_inside_runtime(tmp_path):
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0))
-
-    match = CustomMatch(mode="custom", value="grep -q NEEDLE")
-    passed, detail = _evaluate_custom_match(
-        match=match,
-        text="line1\nNEEDLE\n",
-        we=fake_we,
-        run_id="run-123",
-        output_index=0,
-        log=lambda *_: None,
-        is_canceled=lambda: False,
-    )
-
-    assert passed
-    assert detail == "custom script exited 0"
-    assert len(fake_we.put_calls) == 1
-    assert fake_we.put_calls[0][1] == "grep -q NEEDLE"
-    assert len(fake_we.exec_calls) == 1
-    step = fake_we.exec_calls[0]
-    assert step.stdin_text == "line1\nNEEDLE\n"
-    assert step.working_dir_rel == ""
-
-
-def test_custom_match_fails_on_nonzero_runtime_exit(tmp_path):
-    fake_we = _FakeWE(StepOutcome("failed", exit_code=7))
-
-    match = CustomMatch(mode="custom", value="grep -q NEEDLE")
-    passed, detail = _evaluate_custom_match(
-        match=match,
-        text="no match",
-        we=fake_we,
-        run_id="run-123",
-        output_index=0,
-        log=lambda *_: None,
-        is_canceled=lambda: False,
-    )
-
-    assert not passed
-    assert detail == "custom script exited 7"
-
-
-# ================================================
-# _evaluate_file_output_in_container
-# ================================================
-
-
-def test_evaluate_file_in_container_sha256_match():
-    expected_hash = "a" * 64
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout=f"{expected_hash}  output.bin\n"))
-
-    exp = ExpectedOutput(
-        source=FileSource(kind="file", path="output.bin"),
-        match=Sha256Match(mode="sha256", value=expected_hash),
-    )
-    result = _evaluate_file_output_in_container(
-        exp, we=fake_we, run_id="run-1", output_index=0, log=lambda *_: None, is_canceled=lambda: False
-    )
-
-    assert result.passed
-    assert result.source_key == "file:output.bin"
-    assert len(fake_we.put_calls) == 1
-    assert "sha256sum" in fake_we.put_calls[0][1]
-
-
-def test_evaluate_file_in_container_sha256_mismatch():
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout=f"{'b' * 64}  output.bin\n"))
-
-    exp = ExpectedOutput(
-        source=FileSource(kind="file", path="output.bin"),
-        match=Sha256Match(mode="sha256", value="a" * 64),
-    )
-    result = _evaluate_file_output_in_container(
-        exp, we=fake_we, run_id="run-1", output_index=0, log=lambda *_: None, is_canceled=lambda: False
-    )
-
-    assert not result.passed
-    assert "mismatch" in result.detail
-
-
-def test_evaluate_file_in_container_file_not_found():
-    fake_we = _FakeWE(StepOutcome("failed", exit_code=1))
-
-    exp = ExpectedOutput(
-        source=FileSource(kind="file", path="/results/missing.png"),
-        match=Sha256Match(mode="sha256", value="a" * 64),
-    )
-    result = _evaluate_file_output_in_container(
-        exp, we=fake_we, run_id="run-1", output_index=0, log=lambda *_: None, is_canceled=lambda: False
-    )
-
-    assert not result.passed
-    assert "not found" in result.detail
-
-
-def test_evaluate_file_in_container_contains_match():
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="accuracy: 0.95\n"))
-
-    exp = ExpectedOutput(
-        source=FileSource(kind="file", path="/results/summary.txt"),
-        match=ContainsMatch(mode="contains", value="accuracy"),
-    )
-    result = _evaluate_file_output_in_container(
-        exp, we=fake_we, run_id="run-1", output_index=0, log=lambda *_: None, is_canceled=lambda: False
-    )
-
-    assert result.passed
-    assert len(fake_we.put_calls) == 1
-    assert "cat" in fake_we.put_calls[0][1]
-
-
-def test_evaluate_file_in_container_absolute_path_passed_to_script():
-    digest = "a" * 64
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout=f"{digest}  /results/foo.png\n"))
-
-    exp = ExpectedOutput(
-        source=FileSource(kind="file", path="/results/foo.png"),
-        match=Sha256Match(mode="sha256", value=digest),
-    )
-    _evaluate_file_output_in_container(
-        exp, we=fake_we, run_id="run-1", output_index=0, log=lambda *_: None, is_canceled=lambda: False
-    )
-
-    # The script content must reference the absolute path so the runtime can find it.
-    assert "/results/foo.png" in fake_we.put_calls[0][1]
-
-
-# ================================================
-# _snapshot_file_outputs_in_container
-# ================================================
-
-
-def test_snapshot_file_in_container_records_hash():
-    digest = "a" * 64
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout=f"{digest}  output.bin\n"))
-
-    file_outputs = [
+def test_build_capture_bundle_reads_file_outputs(tmp_path):
+    (tmp_path / "results").mkdir()
+    (tmp_path / "results" / "out.txt").write_text("data")
+    outputs = [
         ExpectedOutput(
-            source=FileSource(kind="file", path="output.bin"),
-            match=Sha256Match(mode="sha256", value="old" * 20 + "xxxx"),
+            source=FileSource(kind="file", path="results/out.txt"),
+            match=ContainsMatch(mode="contains", value="data"),
         )
     ]
-    result = _snapshot_file_outputs_in_container(
-        file_outputs, we=fake_we, run_id="run-1", log=lambda *_: None, is_canceled=lambda: False
-    )
-
-    assert len(result) == 1
-    assert result[0].match.value == digest
-
-
-def test_snapshot_file_in_container_preserves_non_sha256():
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0))
-
-    file_outputs = [
-        ExpectedOutput(
-            source=FileSource(kind="file", path="out.txt"),
-            match=ContainsMatch(mode="contains", value="ok"),
-        )
-    ]
-    result = _snapshot_file_outputs_in_container(
-        file_outputs, we=fake_we, run_id="run-1", log=lambda *_: None, is_canceled=lambda: False
-    )
-
-    assert len(result) == 1
-    assert result[0].match.mode == "contains"
-    assert len(fake_we.put_calls) == 0
-
-
-def test_snapshot_file_in_container_drops_missing():
-    fake_we = _FakeWE(StepOutcome("failed", exit_code=1))
-
-    file_outputs = [
-        ExpectedOutput(
-            source=FileSource(kind="file", path="/results/missing.png"),
-            match=Sha256Match(mode="sha256", value="a" * 64),
-        )
-    ]
-    result = _snapshot_file_outputs_in_container(
-        file_outputs, we=fake_we, run_id="run-1", log=lambda *_: None, is_canceled=lambda: False
-    )
-
-    assert result == []
+    bundle = build_capture_bundle("", "", workspace=tmp_path, outputs=outputs)
+    assert bundle.files == {"results/out.txt": b"data"}
 
 
 # ================================================
@@ -567,329 +352,3 @@ def test_experiment_name_accepts_path_safe_names(name):
 def test_experiment_name_rejects_path_unsafe_names(name):
     with pytest.raises(ValidationError):
         Experiment(name=name)
-
-
-# ================================================
-# run_experiment semantics
-# ================================================
-
-
-def test_run_experiment_marks_verify_mismatch_as_failed(tmp_path, monkeypatch):
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="FAILED\n"))
-
-    @contextmanager
-    def fake_loaded_runtime_image(*args, **kwargs):
-        yield "runtime:test"
-
-    @contextmanager
-    def fake_acquire(workspace, run_id, *, log, image=None, **kwargs):
-        assert image == "runtime:test"
-        yield fake_we
-
-    monkeypatch.setattr("repo2ree_core.experiment.run.acquire", fake_acquire)
-    monkeypatch.setattr(
-        "repo2ree_core.experiment.run.loaded_runtime_image",
-        fake_loaded_runtime_image,
-    )
-
-    experiment = Experiment(
-        name="smoke",
-        command="echo FAILED",
-        outputs=[
-            ExpectedOutput(
-                source=StdoutSource(kind="stdout"),
-                match=ContainsMatch(mode="contains", value="PASSED"),
-            )
-        ],
-    )
-
-    result = run_runnable(
-        workspace=tmp_path,
-        runnable=experiment,
-        label=experiment.name,
-        mode="verify",
-        entry=ContainerEntry(),
-        runtime_archive_path=tmp_path / "runtime.tar.gz",
-        run_id="run-123",
-        log=lambda *_: None,
-        is_canceled=lambda: False,
-    )
-
-    assert result.status == "failed"
-    assert result.run_outputs["verdict"] == "fail"
-    assert len(fake_we.exec_calls) == 1
-    assert fake_we.exec_calls[0].working_dir_rel == ""
-
-
-def test_run_experiment_canceled_skips_output_evaluation(tmp_path, monkeypatch):
-    evaluated = []
-    fake_we = _FakeWE(StepOutcome("canceled", exit_code=None))
-
-    @contextmanager
-    def fake_loaded_runtime_image(*args, **kwargs):
-        yield "runtime:test"
-
-    @contextmanager
-    def fake_acquire(workspace, run_id, *, log, image=None, **kwargs):
-        yield fake_we
-
-    monkeypatch.setattr("repo2ree_core.experiment.run.acquire", fake_acquire)
-    monkeypatch.setattr(
-        "repo2ree_core.experiment.run.loaded_runtime_image",
-        fake_loaded_runtime_image,
-    )
-    monkeypatch.setattr(
-        "repo2ree_core.experiment.run.evaluate_output",
-        lambda *a, **kw: evaluated.append(a) or None,
-    )
-
-    experiment = Experiment(
-        name="smoke",
-        command="echo ok",
-        outputs=[
-            ExpectedOutput(
-                source=StdoutSource(kind="stdout"),
-                match=ContainsMatch(mode="contains", value="ok"),
-            )
-        ],
-    )
-
-    result = run_runnable(
-        workspace=tmp_path,
-        runnable=experiment,
-        label=experiment.name,
-        mode="verify",
-        entry=ContainerEntry(),
-        runtime_archive_path=tmp_path / "runtime.tar.gz",
-        run_id="run-123",
-        log=lambda *_: None,
-        is_canceled=lambda: False,
-    )
-
-    assert result.status == "canceled"
-    assert evaluated == []
-
-
-def test_run_experiment_returns_canceled_when_provisioning_is_canceled(tmp_path, monkeypatch):
-    @contextmanager
-    def fake_loaded_runtime_image(*args, **kwargs):
-        yield "runtime:test"
-
-    @contextmanager
-    def fake_acquire(workspace, run_id, *, log, image=None, **kwargs):
-        raise ProvisioningCanceledError("Run canceled during provisioning")
-        yield
-
-    monkeypatch.setattr("repo2ree_core.experiment.run.acquire", fake_acquire)
-    monkeypatch.setattr(
-        "repo2ree_core.experiment.run.loaded_runtime_image",
-        fake_loaded_runtime_image,
-    )
-
-    experiment = Experiment(
-        name="smoke",
-        command="echo ok",
-        outputs=[],
-    )
-
-    result = run_runnable(
-        workspace=tmp_path,
-        runnable=experiment,
-        label=experiment.name,
-        mode="verify",
-        entry=ContainerEntry(),
-        runtime_archive_path=tmp_path / "runtime.tar.gz",
-        run_id="run-123",
-        log=lambda *_: None,
-        is_canceled=lambda: True,
-    )
-
-    assert result.status == "canceled"
-    # Canceled during provisioning: the image tag only lives inside the
-    # environment context manager, so the record reports no runtime image.
-    assert result.run_outputs["substrate"] is None
-    assert result.run_outputs["exitCode"] is None
-
-
-def _patch_env(monkeypatch, fake_we):
-    @contextmanager
-    def fake_loaded_runtime_image(*args, **kwargs):
-        yield "runtime:test"
-
-    @contextmanager
-    def fake_acquire(workspace, run_id, *, log, image=None, **kwargs):
-        yield fake_we
-
-    monkeypatch.setattr("repo2ree_core.experiment.run.acquire", fake_acquire)
-    monkeypatch.setattr("repo2ree_core.experiment.run.loaded_runtime_image", fake_loaded_runtime_image)
-
-
-def test_exec_override_dispatches_command_with_abi_env(tmp_path, monkeypatch):
-    from repo2ree_core.domain.env_entry import ContainerEntry, PhaseOverrides
-
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="ok\n"))
-    _patch_env(monkeypatch, fake_we)
-
-    experiment = Experiment(name="smoke", command="echo ok", outputs=[])
-    result = run_runnable(
-        workspace=tmp_path,
-        runnable=experiment,
-        label=experiment.name,
-        mode="verify",
-        entry=ContainerEntry(overrides=PhaseOverrides(exec="code/run")),
-        runtime_archive_path=tmp_path / "runtime.tar.gz",
-        run_id="run-123",
-        log=lambda *_: None,
-        is_canceled=lambda: False,
-    )
-
-    assert result.status == "succeeded"
-    # The command step targets the override script, handed the dispatch ABI.
-    assert len(fake_we.exec_calls) == 1
-    step = fake_we.exec_calls[0]
-    assert step.script_rel_path == "code/run"
-    assert step.env == {"R2R_COMMAND": ".workspace/exp_run-123.sh", "R2R_RUN_ID": "run-123"}
-
-
-def test_no_override_runs_command_script_directly(tmp_path, monkeypatch):
-    from repo2ree_core.domain.env_entry import ContainerEntry
-
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="ok\n"))
-    _patch_env(monkeypatch, fake_we)
-
-    experiment = Experiment(name="smoke", command="echo ok", outputs=[])
-    run_runnable(
-        workspace=tmp_path,
-        runnable=experiment,
-        label=experiment.name,
-        mode="verify",
-        entry=ContainerEntry(),
-        runtime_archive_path=tmp_path / "runtime.tar.gz",
-        run_id="run-123",
-        log=lambda *_: None,
-        is_canceled=lambda: False,
-    )
-
-    step = fake_we.exec_calls[0]
-    assert step.script_rel_path == ".workspace/exp_run-123.sh"
-    assert step.env == {}
-
-
-def test_provision_hook_runs_before_command(tmp_path, monkeypatch):
-    from repo2ree_core.domain.env_entry import ContainerEntry, PhaseOverrides
-
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="ok\n"))
-    _patch_env(monkeypatch, fake_we)
-
-    experiment = Experiment(name="smoke", command="echo ok", outputs=[])
-    run_runnable(
-        workspace=tmp_path,
-        runnable=experiment,
-        label=experiment.name,
-        mode="verify",
-        entry=ContainerEntry(overrides=PhaseOverrides(provision="scripts/up")),
-        runtime_archive_path=tmp_path / "runtime.tar.gz",
-        run_id="run-123",
-        log=lambda *_: None,
-        is_canceled=lambda: False,
-    )
-
-    assert [s.script_rel_path for s in fake_we.exec_calls] == ["scripts/up", ".workspace/exp_run-123.sh"]
-
-
-def test_failed_provision_hook_aborts_run_before_command(tmp_path, monkeypatch):
-    from repo2ree_core.domain.env_entry import ContainerEntry, PhaseOverrides
-
-    fake_we = _FakeWE(StepOutcome("failed", exit_code=3))
-    _patch_env(monkeypatch, fake_we)
-
-    experiment = Experiment(name="smoke", command="echo ok", outputs=[])
-    result = run_runnable(
-        workspace=tmp_path,
-        runnable=experiment,
-        label=experiment.name,
-        mode="verify",
-        entry=ContainerEntry(overrides=PhaseOverrides(provision="scripts/up")),
-        runtime_archive_path=tmp_path / "runtime.tar.gz",
-        run_id="run-123",
-        log=lambda *_: None,
-        is_canceled=lambda: False,
-    )
-
-    assert result.status == "failed"
-    # Only the provision hook ran; the command was never dispatched.
-    assert [s.script_rel_path for s in fake_we.exec_calls] == ["scripts/up"]
-
-
-def test_teardown_hook_runs_after_command(tmp_path, monkeypatch):
-    from repo2ree_core.domain.env_entry import ContainerEntry, PhaseOverrides
-
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="ok\n"))
-    _patch_env(monkeypatch, fake_we)
-
-    experiment = Experiment(name="smoke", command="echo ok", outputs=[])
-    run_runnable(
-        workspace=tmp_path,
-        runnable=experiment,
-        label=experiment.name,
-        mode="verify",
-        entry=ContainerEntry(overrides=PhaseOverrides(teardown="scripts/down")),
-        runtime_archive_path=tmp_path / "runtime.tar.gz",
-        run_id="run-123",
-        log=lambda *_: None,
-        is_canceled=lambda: False,
-    )
-
-    # Teardown runs in the finally, after the command step.
-    assert [s.script_rel_path for s in fake_we.exec_calls] == [".workspace/exp_run-123.sh", "scripts/down"]
-
-
-def test_run_experiment_ignores_cleanup_unlink_errors(tmp_path, monkeypatch):
-    fake_we = _FakeWE(StepOutcome("succeeded", exit_code=0, captured_stdout="ok\n"))
-    original_unlink = Path.unlink
-
-    @contextmanager
-    def fake_loaded_runtime_image(*args, **kwargs):
-        yield "runtime:test"
-
-    @contextmanager
-    def fake_acquire(workspace, run_id, *, log, image=None, **kwargs):
-        yield fake_we
-
-    def flaky_unlink(path: Path, *args, **kwargs):
-        if path.name == "exp_run-123.sh":
-            raise OSError("cleanup failed")
-        return original_unlink(path, *args, **kwargs)
-
-    monkeypatch.setattr("repo2ree_core.experiment.run.acquire", fake_acquire)
-    monkeypatch.setattr(
-        "repo2ree_core.experiment.run.loaded_runtime_image",
-        fake_loaded_runtime_image,
-    )
-    monkeypatch.setattr("pathlib.Path.unlink", flaky_unlink)
-
-    experiment = Experiment(
-        name="smoke",
-        command="echo ok",
-        outputs=[
-            ExpectedOutput(
-                source=StdoutSource(kind="stdout"),
-                match=ContainsMatch(mode="contains", value="ok"),
-            )
-        ],
-    )
-
-    result = run_runnable(
-        workspace=tmp_path,
-        runnable=experiment,
-        label=experiment.name,
-        mode="verify",
-        entry=ContainerEntry(),
-        runtime_archive_path=tmp_path / "runtime.tar.gz",
-        run_id="run-123",
-        log=lambda *_: None,
-        is_canceled=lambda: False,
-    )
-
-    assert result.status == "succeeded"
-    assert result.run_outputs["verdict"] == "pass"

@@ -18,7 +18,6 @@ describe("assemblyPolicies", () => {
   it("keeps assembly prerequisites separate from catalog metadata", () => {
     expect(getReeAssemblyRequirements("build")).toEqual([
       { field: "sourceAvailable", label: "Source available" },
-      { field: "build_runtime_script", label: "Build script" },
     ]);
   });
 
@@ -28,9 +27,7 @@ describe("assemblyPolicies", () => {
       sourceAvailable: true,
     };
 
-    expect(missingReeAssemblyRequirements("build", ree)).toEqual([
-      { field: "build_runtime_script", label: "Build script" },
-    ]);
+    expect(missingReeAssemblyRequirements("build", ree)).toEqual([]);
   });
 
   it("requires only runtime for activation", () => {

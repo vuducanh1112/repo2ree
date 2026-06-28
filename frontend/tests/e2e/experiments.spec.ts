@@ -14,16 +14,13 @@ test.describe("Experiments page", () => {
     await startReeCreation(page);
     await provisionWorkbench(page);
     await uploadSource(page, pythonHelloWorld());
-    await buildRuntime(
-      page,
-      "python_hello_world/build_runtime.sh",
-      "python_hello_world/runtime.tar",
-    );
+    await buildRuntime(page, "python_hello_world", "python_hello_world/runtime.tar");
 
     await runExperiment(page, {
-      name: "echo-hello",
-      command: "echo hello",
-      expectedStdout: "hello",
+      name: "python-hello",
+      command: "python python_hello_world/main.py",
+      expectedStdout: "Pandas Hello World",
+      runtimePath: "python_hello_world/runtime.tar",
     });
 
     const runResult = main(page)

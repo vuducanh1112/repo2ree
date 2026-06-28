@@ -6,7 +6,6 @@ function buildReeDraft() {
     origin_url: "https://example.org/repo.git",
     source_type: "git",
     runtime: "runtime.tar.gz",
-    build_runtime_script: "build_runtime.sh",
     activation_script: "activate_runtime.sh",
     sbom: "sbom.json",
     swhid: "swh:1:dir:test",

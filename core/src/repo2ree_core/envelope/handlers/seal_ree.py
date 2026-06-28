@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.envelope.handlers._common import utc_now
+from repo2ree_core.container.run_script import CancelCheck, LogSink
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.workspace_ops import seal_workspace_ree
-from repo2ree_core.working_environment.base import CancelCheck
+from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.command import SealReeArgs
 from repo2ree_protocol.result import ActionResult
 

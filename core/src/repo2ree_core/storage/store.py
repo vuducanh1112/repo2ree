@@ -18,6 +18,7 @@ from typing import Any
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
 from repo2ree_core.time_utils import utc_now
 from repo2ree_core.workspace.model import WorkspaceMetadata
@@ -159,6 +160,19 @@ class ReeStore:
             subtree.ensure_root()
         self.layout.upload_staging.mkdir(parents=True, exist_ok=True)
         self.layout.runs.mkdir(parents=True, exist_ok=True)
+
+    def ensure_reserved_overlay_scripts(self) -> None:
+        """Create empty REE-owned scripts without touching authored content.
+
+        The overlay is the source of truth, while workspace is its materialized
+        execution view. This method is intentionally separate from
+        :meth:`ensure_dirs`: only REE creation should introduce these files.
+        """
+        for path in RESERVED_OVERLAY_SCRIPTS:
+            if not self.overlay.exists(path):
+                self.overlay.write_text(path, "")
+            if not self.workspace.exists(path):
+                self.workspace.write_text(path, self.overlay.read_text(path))
 
     def remove(self) -> None:
         """Delete the entire REE directory tree. No-op if absent."""

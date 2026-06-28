@@ -11,9 +11,8 @@ import type {
 
 export interface ReeAssemblyRunParamsByKey {
   evaluate: ReeAssemblyOperationParamsByKey["evaluate"];
-  build: {
-    build_runtime_script_path?: string;
-  };
+  // The build always runs the reserved build script; it takes no parameters.
+  build: Record<string, never>;
   hbom: ReeAssemblyOperationParamsByKey["hbom"];
   sbom: ReeAssemblyOperationParamsByKey["sbom"] & {
     produced_runtime_path?: string;

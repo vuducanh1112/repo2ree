@@ -1,4 +1,9 @@
 #!/bin/bash
+set -euo pipefail
+
+# Run from this script's own directory so the Dockerfile and the produced
+# artifact resolve relative to the project, not wherever the build was invoked.
+cd "$(dirname "$0")"
 
 IMAGE_NAME="java-hello"
 TAG="latest"

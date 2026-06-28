@@ -12,7 +12,6 @@ import {
   ExperimentsPageContainer,
   HardwareBomPageContainer,
   MetadataPageContainer,
-  RuntimeEnvironmentPageContainer,
 } from "./pages/AppShellPageSwitch";
 import type { AppShellPageContainerProps } from "./pages/pageContainers/shared";
 
@@ -28,7 +27,6 @@ export function AppShellContent(props: AppShellPageContainerProps) {
         <MetadataPageContainer {...props} />
         <ExperimentsPageContainer {...props} />
         <HardwareBomPageContainer {...props} />
-        <RuntimeEnvironmentPageContainer {...props} />
         <AssemblyPageContainer {...props} />
         <ArchivePageContainer {...props} />
       </div>

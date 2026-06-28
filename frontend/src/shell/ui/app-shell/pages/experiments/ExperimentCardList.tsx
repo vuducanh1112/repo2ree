@@ -61,7 +61,7 @@ function ExperimentCard({
 }) {
   const [hovered, setHovered] = useState(false);
   const name = experiment.name.trim();
-  const command = experiment.command.trim();
+  const command = experiment.run_script.trim();
   const description = experiment.description.trim();
   const outputCount = experiment.outputs?.length ?? 0;
   const runtimeEstimate = experiment.runtime_estimate.trim();

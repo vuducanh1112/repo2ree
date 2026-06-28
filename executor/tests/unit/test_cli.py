@@ -17,6 +17,7 @@ import pytest
 from click.testing import CliRunner
 
 import repo2ree_core.storage.layout as layout_mod
+from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_executor.cli import cli
 from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand
@@ -65,6 +66,11 @@ def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
     assert metadata["reeId"] == "abc123"
     assert metadata["name"] == "demo"
     assert metadata["status"] == "draft"
+    # The build script is no longer carried on the intent; it is seeded as a
+    # reserved, REE-owned overlay script (mirrored into the workspace).
+    assert "build_runtime_script" not in metadata["reeIntent"]
+    assert layout.overlay_file(RESERVED_BUILD_SCRIPT).is_file()
+    assert layout.workspace_file(RESERVED_BUILD_SCRIPT).is_file()
 
 
 def test_init_ree_is_idempotent(initialized_ree: Path) -> None:

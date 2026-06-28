@@ -13,11 +13,7 @@ test.describe("Generate SBOM page", () => {
     await startReeCreation(page);
     await provisionWorkbench(page);
     await uploadSource(page, pythonHelloWorld());
-    await buildRuntime(
-      page,
-      "python_hello_world/build_runtime.sh",
-      "python_hello_world/runtime.tar",
-    );
+    await buildRuntime(page, "python_hello_world", "python_hello_world/runtime.tar");
 
     await generateSbom(page);
 

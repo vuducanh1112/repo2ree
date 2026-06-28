@@ -124,7 +124,7 @@ export function useCableGeometry({
     // Dependency chain spine, drawn only when decomposed (pushed first so they
     // render under member cables). Traces the actual data flow through specific
     // panels rather than connecting pods directly: outer shell → source panel →
-    // build runtime panel → inner shell → test activation panel → core.
+    // inner shell (the build runtime itself) → test activation panel → core.
     const cables: Cable[] = [];
 
     if (exploded) {
@@ -173,10 +173,11 @@ export function useCableGeometry({
       const activationDone = isNodeDone(activationNode, ree, badges);
 
       const source = rectAnchor(rectOf(PAGE.SOURCE));
-      const build = rectAnchor(rectOf(PAGE.BUILD));
       const activation = rectAnchor(rectOf(PAGE.ACTIVATION));
 
-      // outer shell → source → build runtime → inner shell → activation → core
+      // outer shell → source → inner shell (build runtime) → activation → core.
+      // The inner shell stands in for the build runtime here, so the chain wires
+      // straight from the source panel into it — no separate build panel.
       link(
         "chain-outer-source",
         podAnchor(mainPod),
@@ -185,10 +186,9 @@ export function useCableGeometry({
         sourceNode.color,
         sourceNode.shadow,
       );
-      link("chain-source-build", source, build, buildDone, buildNode.color, buildNode.shadow);
       link(
-        "chain-build-inner",
-        build,
+        "chain-source-inner",
+        source,
         podAnchor(innerPod),
         buildDone,
         buildNode.color,

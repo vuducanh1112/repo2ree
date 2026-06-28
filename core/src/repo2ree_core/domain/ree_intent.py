@@ -13,9 +13,9 @@ from pydantic import (
     model_validator,
 )
 
-from repo2ree_core.domain.env_entry import ContainerEntry, EnvEntry
 from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.experiment import Activation, Experiment
+from repo2ree_core.path_safety import normalize_workspace_path
 
 # ================================================
 # Types
@@ -23,7 +23,7 @@ from repo2ree_core.experiment import Activation, Experiment
 
 SourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]
 
-NormalizedPath = Annotated[str | None, BeforeValidator(lambda v: (v or "").lstrip("/").strip() or None)]
+NormalizedPath = Annotated[str | None, BeforeValidator(lambda v: normalize_workspace_path(v) or None)]
 
 REE_MANIFEST_VERSION = 1  # bump on any breaking schema change
 
@@ -116,8 +116,6 @@ class ReeIntent(BaseModel):
     origin_url: str = ""
     source_type: SourceType = ""
     runtime: NormalizedPath = None
-    runtime_entry: EnvEntry = Field(default_factory=ContainerEntry)
-    build_runtime_script: NormalizedPath = None
     activation: Activation = Field(default_factory=Activation)
     sbom: NormalizedPath = None
     swhid: str = ""

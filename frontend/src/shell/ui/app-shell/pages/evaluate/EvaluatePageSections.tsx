@@ -8,9 +8,9 @@ import { lgColors, lgContentCard, lgStatusBadge, lgStyles } from "@shell/ui/them
 import { F } from "@shell/ui/theme/theme";
 import { DependencyPanel } from "../../components/assemblyRunPanels";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
+import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { RunActionButton } from "../../components/RunActionButton";
 import { SummaryLine } from "../../components/SummaryLine";
-import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
 import { CardHeader } from "./EvaluateCardHeader";
 import { EXPECTED_DEP_FILES } from "./EvaluatePageHelpers";
 

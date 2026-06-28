@@ -1,14 +1,30 @@
 from __future__ import annotations
 
 import re
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from repo2ree_core.path_safety import validate_relative_path
+from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT
 
 # Experiment names are used as a path segment when running an experiment
 # (".../experiments/{name}:run"), so they must stay free of characters that
 # break URL routing — chiefly "/" (and the "." / ".." path segments).
 EXPERIMENT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9 ._-]+$")
+
+
+def validate_runnable_script_path(value: Any) -> str:
+    """Normalize and validate a workspace-relative run-script path.
+
+    Empty is allowed (an in-progress draft may not have authored its script
+    yet); a non-empty path must be workspace-relative.
+    """
+    text = str(value or "").strip()
+    if text == "":
+        return ""
+    validate_relative_path(text)
+    return text
 
 
 class FileSource(BaseModel):
@@ -89,18 +105,24 @@ class ResourceEstimates(BaseModel):
 class Runnable(BaseModel):
     """The executable contract shared by experiments and activation.
 
-    Something that runs a *command* inside the runtime environment and checks
-    its declared *outputs*. Activation and experiments differ in identity and
-    role, not in how they execute — that lives here.
+    Something that owns a *run script* — a workspace-relative shell script that
+    fully defines how it executes (e.g. its own ``docker run …``) — and checks
+    its declared *outputs* against the workspace afterward. Activation and
+    experiments differ in identity and role, not in how they execute.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     description: str = ""
-    command: str = ""
+    run_script: str = ""
     outputs: list[ExpectedOutput] = Field(default_factory=list)
     runtime_estimate: str = ""
     resource_estimates: ResourceEstimates = Field(default_factory=ResourceEstimates)
+
+    @field_validator("run_script", mode="before")
+    @classmethod
+    def _validate_run_script(cls, value: Any) -> str:
+        return validate_runnable_script_path(value)
 
 
 class Experiment(Runnable):
@@ -121,8 +143,9 @@ class Experiment(Runnable):
 class Activation(Runnable):
     """The REE's required activation — a singleton sibling of experiments.
 
-    Activation proves the runtime is inhabitable through its declared
-    :class:`~repo2ree_core.domain.env_entry.EnvEntry`, and every experiment
-    runs through that same entry. There is exactly one per REE, so it is
-    unnamed. An empty activation still runs a generic liveness probe.
+    Activation proves the built runtime is inhabitable by running its own
+    script. There is exactly one per REE, so it is unnamed. Its run script
+    defaults to the reserved activation path.
     """
+
+    run_script: str = RESERVED_ACTIVATION_SCRIPT

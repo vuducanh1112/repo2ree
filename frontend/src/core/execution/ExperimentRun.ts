@@ -16,6 +16,4 @@ export interface ExperimentRunOutputs {
   snapshotCount?: number;
   snapshotMessage?: string;
   runtimePath?: string;
-  // The substrate that hosted the run: a Docker image tag, or the entry kind.
-  substrate?: string;
 }

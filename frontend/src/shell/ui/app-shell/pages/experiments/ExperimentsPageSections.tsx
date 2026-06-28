@@ -1,10 +1,11 @@
 import type { ExperimentOutputResult } from "@core/execution/ExperimentRun";
-import type {
-  ExpectedOutput,
-  ExperimentResourceEstimates,
-  OutputMatch,
-  OutputSource,
-  ReeExperiment,
+import {
+  type ExpectedOutput,
+  type ExperimentResourceEstimates,
+  experimentScriptPath,
+  type OutputMatch,
+  type OutputSource,
+  type ReeExperiment,
 } from "@core/ree/ReeSpec";
 import type { LogEntry } from "@core/ree/ReeTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
@@ -20,6 +21,7 @@ import { F } from "@shell/ui/theme/theme";
 import type React from "react";
 import { LogPanel } from "../../components/logPanel";
 import { RunActionButton } from "../../components/RunActionButton";
+import { RunScriptCard } from "../../components/RunScriptCard";
 import { experimentValidation, expId } from "./experimentsPageHelpers";
 import { type RunState, TERMINAL_STATUSES } from "./useExperimentRun";
 
@@ -42,7 +44,9 @@ export function ExperimentDetail({
   index,
   otherNames,
   locked,
+  scriptContent,
   onUpdate,
+  onSaveScript,
   onBack,
   runState,
 }: {
@@ -50,7 +54,9 @@ export function ExperimentDetail({
   index: number;
   otherNames: string[];
   locked: boolean;
+  scriptContent: string;
   onUpdate: (patch: Partial<ReeExperiment>) => void;
+  onSaveScript: (path: string, content: string) => void;
   onBack: () => void;
   runState: RunState | null;
 }) {
@@ -58,6 +64,11 @@ export function ExperimentDetail({
     experiment,
     otherNames,
   );
+
+  // The experiment owns a run script. Default its path from the name until the
+  // author has set one, so a freshly named experiment has somewhere to save to.
+  const scriptPath =
+    experiment.run_script || experimentScriptPath(experiment.name || `experiment-${index + 1}`);
 
   return (
     <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
@@ -100,13 +111,17 @@ export function ExperimentDetail({
           />
         </DetailField>
 
-        <DetailField label="Command" help="Executed inside the assembled runtime.">
-          <input
+        <DetailField
+          label="Run script"
+          help="This experiment owns its run script: it fully defines how it executes, including entering the built runtime (e.g. its own docker run). Outputs are checked against the workspace afterward."
+        >
+          <RunScriptCard
+            scriptPath={scriptPath}
+            currentContent={scriptContent}
             disabled={locked}
-            value={experiment.command}
-            onChange={(e) => onUpdate({ command: e.target.value })}
-            placeholder="pytest tests/smoke -q"
-            style={{ ...lgInput(locked), fontFamily: F.mono, fontSize: 13 }}
+            label="Experiment run script"
+            helper="Saved to the workspace overlay and run from the workspace root."
+            onSave={(content) => onSaveScript(scriptPath, content)}
           />
         </DetailField>
 

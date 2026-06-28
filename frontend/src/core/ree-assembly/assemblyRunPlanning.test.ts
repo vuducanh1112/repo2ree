@@ -24,9 +24,7 @@ describe("assemblyRunPlanning", () => {
     expect(buildAssemblyRunParams("activation", { mode: "verify" }, ree)).toEqual({
       mode: "verify",
     });
-    expect(buildAssemblyRunParams("build", {}, ree)).toEqual({
-      build_runtime_script_path: "",
-    });
+    expect(buildAssemblyRunParams("build", {}, ree)).toEqual({});
   });
 
   it("flags failure terminal statuses", () => {

@@ -111,10 +111,7 @@ function summarizeDraftManifest(draftManifest: DraftManifest | undefined) {
     stringValue(draftManifest.origin_url) ||
     stringValue(draftManifest.source_acquired_by) ||
     (draftManifest.source_available ? "available" : "not acquired");
-  const runtime =
-    stringValue(draftManifest.runtime) ||
-    runtimeKind(draftManifest.runtime_entry) ||
-    "not declared";
+  const runtime = stringValue(draftManifest.runtime) || "not declared";
   const sealHash = stringValue(draftManifest.seal_hash);
 
   return {
@@ -136,11 +133,6 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function stringValue(value: unknown): string {
   return typeof value === "string" && value.trim() ? value.trim() : "";
-}
-
-function runtimeKind(value: unknown): string {
-  const record = asRecord(value);
-  return stringValue(record.kind);
 }
 
 function Fact({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {

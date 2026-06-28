@@ -1,7 +1,8 @@
-"""Low-level Docker CLI helpers for in-container script execution.
+"""Generic streaming subprocess runner and the workspace-script execution path.
 
-Only the command-builder and workspace constant are kept here; the full
-container lifecycle is now owned by the working_environment package.
+The full container lifecycle now lives in author-owned overlay scripts driven
+by the lifecycle runner (``experiment/run.py``); only the generic
+process-streaming utilities used across handlers remain here.
 """
 
 from __future__ import annotations
@@ -10,97 +11,33 @@ import shlex
 import subprocess
 import threading
 import time
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from repo2ree_core.path_safety import resolve_within
 from repo2ree_protocol.log import LogSink  # noqa: F401
+from repo2ree_protocol.tracing import get_tracer
 
-CONTAINER_WORKSPACE = Path("/workspace")
+tracer = get_tracer(__name__)
 
-# The Docker socket is mounted so a runtime may itself drive Docker.
-DOCKER_SOCK_MOUNT = "/var/run/docker.sock:/var/run/docker.sock"
-
-
-# ================================================
-# Naming conventions (run-scoped)
-# ================================================
+CancelCheck = Callable[[], bool]  # True once a cancel has been requested
 
 
-def container_name(run_id: str) -> str:
-    """Name of the per-run working-environment container."""
-    return f"repo2ree-we-{run_id}"
+@dataclass(frozen=True)
+class StepOutcome:
+    """Result of a single lifecycle-script execution."""
 
-
-def runtime_image_tag(run_id: str) -> str:
-    """Run-scoped tag applied to the loaded runtime image."""
-    return f"repo2ree-runtime-{run_id}"
-
-
-def experiment_script_rel(run_id: str) -> str:
-    """Workspace-relative path of the command script a run executes."""
-    return f".workspace/exp_{run_id}.sh"
+    status: str  # "succeeded" | "failed" | "canceled"
+    exit_code: int | None = None
+    captured_stdout: str = field(default="")
+    captured_stderr: str = field(default="")
 
 
 # ================================================
-# Canonical Docker argv builders
+# Command formatting and output streaming
 # ================================================
-# These are the single source of truth for the exact Docker commands the
-# working_environment executes; the lifecycle projection (command_plan) renders
-# the very same argv so display cannot drift from execution.
-
-
-def docker_load_argv(docker: str, artifact: str) -> list[str]:
-    return [docker, "load", "-i", artifact]
-
-
-def docker_tag_argv(docker: str, loaded_ref: str, image: str) -> list[str]:
-    return [docker, "tag", loaded_ref, image]
-
-
-def docker_create_argv(
-    docker: str,
-    *,
-    container: str,
-    image: str,
-    sock_mount: bool = True,
-    extra_args: list[str] | None = None,
-) -> list[str]:
-    sock = ["-v", DOCKER_SOCK_MOUNT] if sock_mount else []
-    # extra_args go after fixed flags, before IMAGE — `create [OPTIONS] IMAGE [CMD]`.
-    return [docker, "create", "--name", container, *sock, *(extra_args or []), image, "sleep", "infinity"]
-
-
-def docker_cp_in_argv(docker: str, *, workspace: str, container: str) -> list[str]:
-    return [docker, "cp", f"{workspace}/.", f"{container}:{CONTAINER_WORKSPACE}"]
-
-
-def docker_start_argv(docker: str, container: str) -> list[str]:
-    return [docker, "start", container]
-
-
-def docker_exec_argv(
-    docker: str,
-    *,
-    container: str,
-    exec_command: str,
-    login_shell: bool,
-    interactive: bool = False,
-) -> list[str]:
-    sh_flag = "-lc" if login_shell else "-c"
-    return [docker, "exec", *(["-i"] if interactive else []), container, "sh", sh_flag, exec_command]
-
-
-def docker_cp_out_argv(docker: str, *, container: str, workspace: str) -> list[str]:
-    return [docker, "cp", f"{container}:{CONTAINER_WORKSPACE}/.", workspace]
-
-
-def docker_rm_argv(docker: str, container: str) -> list[str]:
-    return [docker, "rm", "-f", container]
-
-
-def docker_rmi_argv(docker: str, *, image: str, loaded_ref: str | None) -> list[str]:
-    return [docker, "rmi", "-f", image, *([loaded_ref] if loaded_ref else [])]
 
 
 def format_argv(argv: list[str]) -> str:
@@ -135,6 +72,7 @@ def run_streaming_process(
     log: LogSink,
     stdin_text: str | None = None,
     env: dict[str, str] | None = None,
+    cwd: Path | str | None = None,
     is_canceled=lambda: False,
 ) -> StreamingProcessResult:
     """Run *cmd*, streaming child output while preserving captured streams."""
@@ -145,6 +83,7 @@ def run_streaming_process(
         stderr=subprocess.PIPE,
         text=True,
         env=env,
+        cwd=cwd,
     )
 
     stdout_lines: list[str] = []
@@ -209,30 +148,40 @@ def run_streaming_process(
     )
 
 
-def env_export_segments(env: dict[str, str] | None) -> list[str]:
-    """Shell ``export K=V`` segments for *env*, quote-safe and order-stable.
+def run_workspace_script(
+    workspace: Path,
+    script_rel: str,
+    *,
+    log: LogSink,
+    is_canceled: CancelCheck = lambda: False,
+) -> StepOutcome:
+    """Run a workspace-relative script under ``sh`` from the workspace root.
 
-    Baked directly into the ``sh -c`` / ``bash -c`` string so the same prefix
-    works in-container and native without engine-specific ``-e`` plumbing.
+    The single execution path shared by the lifecycle runner
+    (``experiment/run.py``) and the build/activation handlers: the workbench IS
+    the isolated environment, so the script runs as a native subprocess with no
+    nested container. Running from the workspace root lets authors reference
+    project files by their workspace-relative paths regardless of where REE keeps
+    its own scripts; wrapper scripts are POSIX ``sh`` while project scripts that
+    need bash or their own directory (e.g. ``docker build .``) invoke it
+    explicitly. Scripts that resolve outside the workspace are rejected.
     """
-    return [f"export {k}={shlex.quote(v)}" for k, v in (env or {}).items()]
+    workspace = workspace.resolve()
+    script_abs = resolve_within(workspace, script_rel)
+    if script_abs is None:
+        log("system", "error", f"script escapes workspace: {script_rel}")
+        return StepOutcome("failed", 1)
+    if not script_abs.is_file():
+        log("system", "error", f"script not found: {script_rel}")
+        return StepOutcome("failed", 1)
 
+    cmd = ["sh", script_rel]
+    log("system", "info", f"$ {format_argv(cmd)}")
 
-def build_exec_command(
-    script_in_container: Path,
-    script_rel_path: str,
-    echo_label: str | None,
-    working_dir: Path | None = None,
-    env: dict[str, str] | None = None,
-) -> str:
-    command_working_dir = working_dir or script_in_container.parent
-    segments = ["set -e", *env_export_segments(env), f"cd {shlex.quote(str(command_working_dir))}"]
-    if echo_label is not None:
-        segments.append(f"echo '--- {echo_label} ({shlex.quote(script_rel_path)}) ---'")
-        segments.append(f"cat {shlex.quote(str(script_in_container))}")
-        segments.append(f"echo '--- end {echo_label} ---'")
-    segments.append(f"sh {shlex.quote(str(script_in_container))}")
+    with tracer.start_as_current_span("workbench.run_script"):
+        result = run_streaming_process(cmd, log=log, cwd=workspace, is_canceled=is_canceled)
 
-    result = "; ".join(segments)
-
-    return result
+    if result.canceled or is_canceled():
+        return StepOutcome("canceled", result.returncode, result.stdout, result.stderr)
+    status = "succeeded" if result.returncode == 0 else "failed"
+    return StepOutcome(status, result.returncode, result.stdout, result.stderr)

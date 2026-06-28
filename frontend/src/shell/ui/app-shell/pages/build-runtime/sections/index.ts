@@ -1,3 +1,3 @@
 export { BuildLogCard } from "./BuildLogCard";
-export { BuildScriptCard } from "./BuildScriptCard";
+export { ReservedBuildScriptCard } from "./ReservedBuildScriptCard";
 export { RuntimeArtifactCard } from "./RuntimeArtifactCard";

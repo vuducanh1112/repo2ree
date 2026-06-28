@@ -20,8 +20,8 @@ describe("buildRunStatusLabel", () => {
   it("hasScript -> Ready", () => {
     expect(buildRunStatusLabel({ running: false, runDone: false, hasScript: true })).toBe("Ready");
   });
-  it("nothing -> Empty", () => {
-    expect(buildRunStatusLabel({ running: false, runDone: false, hasScript: false })).toBe("Empty");
+  it("reserved script means idle build is ready", () => {
+    expect(buildRunStatusLabel({ running: false, runDone: false, hasScript: false })).toBe("Ready");
   });
 });
 
@@ -45,8 +45,8 @@ describe("runtimeArtifactStatus", () => {
 });
 
 describe("buildFooterHint / summary", () => {
-  it("urges add when no script", () => {
-    expect(buildFooterHint({ runDone: false, hasScript: false })).toContain("Add a build script");
+  it("does not expose an add-script state", () => {
+    expect(buildFooterHint({ runDone: false, hasScript: false })).toContain("Script ready");
   });
   it("invites run when script ready", () => {
     expect(buildFooterHint({ runDone: false, hasScript: true })).toContain("Script ready");
@@ -57,7 +57,7 @@ describe("buildFooterHint / summary", () => {
   it("summary label tracks state", () => {
     expect(buildSummaryStatusLabel({ runDone: true, hasScript: true })).toBe("Built");
     expect(buildSummaryStatusLabel({ runDone: false, hasScript: true })).toBe("Ready");
-    expect(buildSummaryStatusLabel({ runDone: false, hasScript: false })).toBe("Empty");
+    expect(buildSummaryStatusLabel({ runDone: false, hasScript: false })).toBe("Ready");
   });
 });
 

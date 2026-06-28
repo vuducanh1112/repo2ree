@@ -12,7 +12,7 @@ def _intent_with_experiments(*names: str) -> ReeIntent:
     return ReeIntent.model_validate(
         {
             "name": "demo",
-            "experiments": [{"name": n, "command": "pytest"} for n in names],
+            "experiments": [{"name": n, "run_script": "ree/exp.sh"} for n in names],
         }
     )
 
@@ -46,7 +46,7 @@ def test_experiment_estimates_default_to_empty_strings():
     intent = ReeIntent.model_validate(
         {
             "name": "demo",
-            "experiments": [{"name": "smoke", "command": "pytest -q"}],
+            "experiments": [{"name": "smoke", "run_script": "ree/exp.sh"}],
         }
     )
 
@@ -68,7 +68,7 @@ def test_experiment_estimates_accept_runtime_and_resource_hints():
             "experiments": [
                 {
                     "name": "benchmark",
-                    "command": "python bench.py",
+                    "run_script": "ree/bench.sh",
                     "runtime_estimate": "15-20 min",
                     "resource_estimates": {
                         "cpu": "8 vCPU",
@@ -157,96 +157,31 @@ def test_session_has_no_apply_patch():
 
 
 # ================================================
-# runtime_entry parsing & defaults
+# run-script defaults and validation
 # ================================================
 
 
-def _entry_for(payload: dict) -> object:
-    intent = ReeIntent.model_validate({"name": "x", "runtime_entry": payload})
-    return intent.runtime_entry
-
-
-def test_new_container_entry_round_trips():
-    from repo2ree_core.domain.env_entry import ContainerEntry
-
-    entry = _entry_for(
-        {
-            "kind": "container",
-            "engine": "podman",
-            "create_args": ["--volume", "/data:/data", "--mac-address", "12:34:56:78:9a:bc"],
-        }
-    )
-    assert isinstance(entry, ContainerEntry)
-    assert entry.engine == "podman"
-    assert entry.create_args == ["--volume", "/data:/data", "--mac-address", "12:34:56:78:9a:bc"]
-
-
-def test_default_runtime_entry_is_container_docker():
-    from repo2ree_core.domain.env_entry import ContainerEntry
-
+def test_default_activation_run_script_is_reserved():
     intent = ReeIntent(name="x")
-    assert isinstance(intent.runtime_entry, ContainerEntry)
-    assert intent.runtime_entry.engine == "docker"
+    assert intent.activation.run_script == "ree/activation.sh"
 
 
-# ================================================
-# Preset + overrides reframe
-# ================================================
-
-
-def test_entry_defaults_to_empty_overrides():
-    from repo2ree_core.domain.env_entry import ContainerEntry
-
-    entry = _entry_for({"kind": "container"})
-    assert isinstance(entry, ContainerEntry)
-    assert entry.overrides.provision == ""
-    assert entry.overrides.exec == ""
-    assert entry.overrides.teardown == ""
-    assert entry.overrides.any_set() is False
-
-
-def test_legacy_container_entry_without_overrides_still_loads():
-    # Manifests written before the reframe carry no `overrides` key.
-    from repo2ree_core.domain.env_entry import ContainerEntry
-
-    entry = _entry_for(
+def test_experiment_run_script_round_trips():
+    intent = ReeIntent.model_validate(
         {
-            "kind": "container",
-            "engine": "podman",
-            "env": {"FOO": "bar"},
-            "create_args": ["--volume", "/data:/data"],
-            "activate": "source .venv/bin/activate",
+            "name": "x",
+            "experiments": [{"name": "smoke", "run_script": "ree/experiments/smoke.sh"}],
         }
     )
-    assert isinstance(entry, ContainerEntry)
-    assert entry.engine == "podman"
-    assert entry.activate == "source .venv/bin/activate"
-    assert entry.overrides.any_set() is False
+    assert intent.experiments[0].run_script == "ree/experiments/smoke.sh"
 
 
-def test_container_entry_round_trips_overrides():
-    from repo2ree_core.domain.env_entry import ContainerEntry
-
-    entry = _entry_for(
-        {
-            "kind": "container",
-            "overrides": {"exec": "code/run"},
-        }
-    )
-    assert isinstance(entry, ContainerEntry)
-    assert entry.overrides.exec == "code/run"
-    assert entry.overrides.any_set() is True
-    # round-trips through serialization unchanged
-    reparsed = _entry_for(entry.model_dump())
-    assert reparsed.overrides.exec == "code/run"
-
-
-def test_custom_entry_still_requires_enter_script():
-    from repo2ree_core.domain.env_entry import CustomEntry
-
-    entry = _entry_for({"kind": "custom", "enter_script": "scripts/driver"})
-    assert isinstance(entry, CustomEntry)
-    assert entry.enter_script == "scripts/driver"
-
-    with pytest.raises(ValidationError, match="enter_script is required"):
-        _entry_for({"kind": "custom", "enter_script": ""})
+@pytest.mark.parametrize("path", ["/setup.sh", "../setup.sh", "scripts/../setup.sh"])
+def test_run_script_rejects_unsafe_paths(path):
+    with pytest.raises(ValidationError):
+        ReeIntent.model_validate(
+            {
+                "name": "x",
+                "experiments": [{"name": "smoke", "run_script": path}],
+            }
+        )

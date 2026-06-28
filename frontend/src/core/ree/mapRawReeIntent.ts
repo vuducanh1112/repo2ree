@@ -3,22 +3,17 @@ import type { EvaluationState } from "../evaluate/EvaluationState";
 import { normalizeHBOM } from "../hbom/HbomSummary";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import {
-  type ContainerEngine,
   createEmptyExperimentResourceEstimates,
   createEmptyReeActivation,
   createEmptyReeCatalogMetadata,
   createEmptyReeExperiment,
-  createEmptyRuntimeEntry,
   type ExpectedOutput,
-  type PhaseOverrides,
   type ReeActivation,
   type ReeCatalogMetadata,
   type ReeContributor,
   type ReeExperiment,
   type ReeSpec,
-  type RuntimeEntry,
 } from "./ReeSpec";
-import { CONTAINER_ENGINES } from "./runtimeEntryLabels";
 
 // ================================================
 // Types
@@ -84,12 +79,16 @@ function mapRawResourceEstimates(value: unknown): ReeExperiment["resource_estima
   };
 }
 
-function mapRawActivation(value: unknown): ReeActivation {
-  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+// Map the shared Runnable fields (description / run_script / estimates / outputs)
+// common to experiments and activation. run_script falls back to defaultRunScript
+// when absent, so activation can default to its reserved path.
+function mapRawRunnable(
+  raw: Record<string, unknown>,
+  defaultRunScript = "",
+): Omit<ReeExperiment, "name"> {
   return {
-    ...createEmptyReeActivation(),
     description: String(raw.description ?? ""),
-    command: String(raw.command ?? ""),
+    run_script: raw.run_script ? String(raw.run_script) : defaultRunScript,
     runtime_estimate: String(raw.runtime_estimate ?? ""),
     resource_estimates: mapRawResourceEstimates(raw.resource_estimates),
     ...(Array.isArray(raw.outputs) && raw.outputs.length > 0
@@ -98,79 +97,13 @@ function mapRawActivation(value: unknown): ReeActivation {
   };
 }
 
-// Wire values are untrusted: validate rather than cast, so a malformed engine,
-// non-object env, or non-numeric cpu can't masquerade as a well-typed entry.
-function asContainerEngine(value: unknown): ContainerEngine {
-  return CONTAINER_ENGINES.includes(value as ContainerEngine)
-    ? (value as ContainerEngine)
-    : "docker";
-}
-
-function asStringMap(value: unknown): Record<string, string> {
-  if (!value || typeof value !== "object") return {};
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-    out[k] = String(v ?? "");
-  }
-  return out;
-}
-
-function asPositiveInt(value: unknown, fallback: number): number {
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
-}
-
-// Legacy manifests carry no `overrides` key; default each phase to empty so they
-// load unchanged (mirrors the backend's backward-compatible PhaseOverrides).
-function asPhaseOverrides(value: unknown): PhaseOverrides {
+function mapRawActivation(value: unknown): ReeActivation {
   const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const activation = createEmptyReeActivation();
   return {
-    provision: String(raw.provision ?? ""),
-    exec: String(raw.exec ?? ""),
-    teardown: String(raw.teardown ?? ""),
+    ...activation,
+    ...mapRawRunnable(raw, activation.run_script),
   };
-}
-
-function mapRawRuntimeEntry(value: unknown): RuntimeEntry {
-  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-  const overrides = asPhaseOverrides(raw.overrides);
-  switch (raw.kind) {
-    case "container":
-      return {
-        kind: "container",
-        engine: asContainerEngine(raw.engine),
-        env: asStringMap(raw.env),
-        create_args: Array.isArray(raw.create_args) ? raw.create_args.map(String) : [],
-        activate: String(raw.activate ?? ""),
-        overrides,
-      };
-    case "local":
-      return {
-        kind: "local",
-        activate: String(raw.activate ?? ""),
-        overrides,
-      };
-    case "vm":
-      return {
-        kind: "vm",
-        cpu: asPositiveInt(raw.cpu, 1),
-        memory: String(raw.memory ?? "4G"),
-        ssh_host: String(raw.ssh_host ?? ""),
-        ssh_user: String(raw.ssh_user ?? ""),
-        ssh_key: String(raw.ssh_key ?? ""),
-        activate: String(raw.activate ?? ""),
-        overrides,
-      };
-    case "custom":
-      return {
-        kind: "custom",
-        enter_script: String(raw.enter_script ?? ""),
-        activate: String(raw.activate ?? ""),
-        overrides,
-      };
-    default:
-      return createEmptyRuntimeEntry();
-  }
 }
 
 // ================================================
@@ -192,13 +125,7 @@ export function mapRawReeIntentToSlices({
         return {
           ...createEmptyReeExperiment(),
           name: String(item.name ?? ""),
-          description: String(item.description ?? ""),
-          command: String(item.command ?? ""),
-          runtime_estimate: String(item.runtime_estimate ?? ""),
-          resource_estimates: mapRawResourceEstimates(item.resource_estimates),
-          ...(Array.isArray(item.outputs) && item.outputs.length > 0
-            ? { outputs: item.outputs as ExpectedOutput[] }
-            : {}),
+          ...mapRawRunnable(item),
         };
       })
     : [];
@@ -210,8 +137,6 @@ export function mapRawReeIntentToSlices({
       origin_url: String(intent.origin_url ?? fallbackOriginUrl ?? ""),
       source_type: (intent.source_type as ReeSpec["source_type"]) || "",
       runtime: String(intent.runtime ?? ""),
-      runtime_entry: mapRawRuntimeEntry(intent.runtime_entry),
-      build_runtime_script: String(intent.build_runtime_script ?? ""),
       activation: mapRawActivation(intent.activation),
       sbom: String(intent.sbom ?? ""),
       swhid: String(intent.swhid ?? ""),

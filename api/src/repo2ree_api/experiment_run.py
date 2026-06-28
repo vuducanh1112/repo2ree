@@ -57,7 +57,7 @@ def create_experiment_run(
 
 
 def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
-    """Validate the experiment exists and has a command before starting a run."""
+    """Validate the experiment exists and has a run script before starting a run."""
     handle = workbench_manager.lookup(ree_id)
     if handle is None:
         raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
@@ -84,8 +84,8 @@ def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
             status_code=404,
             detail=f"Experiment {experiment_name!r} not found",
         )
-    if not experiment.command.strip():
-        raise HTTPException(status_code=400, detail="Experiment has no command to run")
+    if not experiment.run_script.strip():
+        raise HTTPException(status_code=400, detail="Experiment has no run script")
 
 
 def _create_experiment_run_state(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from repo2ree_core.container.run_script import LogSink
+from repo2ree_core.container.run_script import CancelCheck, LogSink
 from repo2ree_core.envelope.handlers.acquire_source import handle_acquire_source
 from repo2ree_core.envelope.handlers.activation_test import handle_activation_test
 from repo2ree_core.envelope.handlers.build_runtime import handle_build_runtime
@@ -23,7 +23,6 @@ from repo2ree_core.envelope.handlers.update_source_metadata import (
     handle_update_source_metadata,
 )
 from repo2ree_core.envelope.handlers.write_file import handle_write_file
-from repo2ree_core.working_environment.base import CancelCheck
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,

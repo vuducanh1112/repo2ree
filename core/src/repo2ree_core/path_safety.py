@@ -1,0 +1,73 @@
+"""Canonical lexical checks for user-supplied workspace-relative paths.
+
+Leaf module: it imports nothing from ``repo2ree_core`` so the storage, domain,
+and experiment layers can all share one definition of "is this a safe relative
+path" without closing an import cycle (the same reason
+``repo2ree_core.reserved_paths`` exists).
+
+Two layers, used at different trust boundaries:
+
+- :func:`validate_relative_path` is a *lexical* check — it rejects absolute
+  paths and ``..`` traversal. The storage layer (``ReeLayout``, ``SubtreeStore``)
+  relies on this alone: its subtrees hold REE-controlled content, so a lexical
+  guard is sufficient there.
+- :func:`resolve_within` layers the resolved
+  (``Path.resolve().relative_to(...)``) escape check on top, which also catches
+  symlink escapes. It is the guard for paths that come from author-supplied run
+  scripts and declared outputs before they are handed to the shell or read back
+  (see ``experiment/run.py``, ``container/run_script.py``,
+  ``envelope/handlers/_common.py``).
+"""
+
+from __future__ import annotations
+
+from pathlib import Path, PurePosixPath
+
+
+def resolve_within(base: Path, rel: str | PurePosixPath) -> Path | None:
+    """Resolve *rel* under *base* and confirm it stays inside.
+
+    The single, shared escape check: it runs the lexical
+    :func:`validate_relative_path` guard, then resolves both paths (following
+    symlinks) and confirms the candidate is still contained by *base*. Returns
+    the resolved absolute path, or ``None`` when *rel* is unsafe or escapes —
+    callers map ``None`` onto their own idiom (raise, skip, or fail the step).
+    """
+    try:
+        validate_relative_path(rel)
+    except (TypeError, ValueError):
+        return None
+    base_resolved = base.resolve()
+    candidate = (base_resolved / Path(str(rel))).resolve()
+    try:
+        candidate.relative_to(base_resolved)
+    except ValueError:
+        return None
+    return candidate
+
+
+def validate_relative_path(rel: str | PurePosixPath) -> None:
+    """Reject absolute paths and parent traversals.
+
+    Pure validator intended to run before any path is handed to the shell.
+    """
+    if not isinstance(rel, str | PurePosixPath):
+        raise TypeError(f"relative path must be str or PurePosixPath, got {type(rel).__name__}")
+    text = str(rel)
+    if text == "":
+        raise ValueError("relative path must not be empty")
+    pure = PurePosixPath(text)
+    if pure.is_absolute() or text.startswith("/") or text.startswith("\\"):
+        raise ValueError(f"relative path must not be absolute: {text!r}")
+    if any(part == ".." for part in pure.parts):
+        raise ValueError(f"relative path must not contain '..': {text!r}")
+
+
+def normalize_workspace_path(path: str | None) -> str:
+    """Defensive cleanup for user-supplied workspace-relative paths.
+
+    Strips surrounding whitespace and leading slashes. Permissive: returns
+    ``""`` for falsy input and does not raise. Use :func:`validate_relative_path`
+    when stricter checks are required.
+    """
+    return (path or "").lstrip("/").strip()

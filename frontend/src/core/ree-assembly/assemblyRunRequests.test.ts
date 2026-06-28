@@ -13,7 +13,6 @@ function buildRee(): ReeEditorViewModel {
     ...createEmptyReeSpec(),
     name: "demo",
     runtime: "runtime.tar.gz",
-    build_runtime_script: "scripts/build.sh",
   };
 }
 
@@ -27,12 +26,10 @@ describe("assemblyRunRequests", () => {
     });
   });
 
-  it("maps build inputs into backend request fields", () => {
+  it("builds a parameterless build request (reserved script is fixed)", () => {
     expect(buildBuildAssemblyRunRequest({}, buildRee())).toEqual({
       scriptKey: "build",
-      params: {
-        build_runtime_script_path: "scripts/build.sh",
-      },
+      params: {},
     });
   });
 

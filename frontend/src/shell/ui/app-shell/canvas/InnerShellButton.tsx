@@ -7,9 +7,9 @@ const RUNTIME_COLOR = "#0891b2";
 const RUNTIME_SHADOW = "#164e63";
 
 // Mirrors CoreExperiments' CoreOverviewButton: the inner-shell pod is just a
-// graphic, so this is a transparent hit area over it that opens the Runtime
-// environment page. Hovering it reports up so the parent can make the pod shine
-// and pops a label.
+// graphic, so this is a transparent hit area over it that opens the Build
+// Runtime page (the inner shell is the build runtime). Hovering it reports up so
+// the parent can make the pod shine and pops a label.
 export function InnerShellButton({
   center,
   podDiameter,
@@ -37,8 +37,8 @@ export function InnerShellButton({
     <button
       type="button"
       data-canvas-node
-      aria-label="Open runtime environment"
-      title="Open the runtime environment"
+      aria-label="Open build runtime"
+      title="Open the build runtime"
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onFocus={() => setHover(true)}
@@ -83,7 +83,7 @@ export function InnerShellButton({
           pointerEvents: "none",
         }}
       >
-        {Ic.cpu(label)} Open runtime
+        {Ic.cpu(label)} Open build runtime
       </span>
     </button>
   );

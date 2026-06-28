@@ -7,8 +7,6 @@ export const PAGE = {
   METADATA: "metadata",
   EXPERIMENTS: "experiments",
   HBOM: "hbom",
-  // The inner shell: the execution substrate (runtime artifact + entry kind).
-  RUNTIME: "runtime",
   OVERVIEW: "overview",
   SEAL: "seal",
   ARCHIVE: "archive",
@@ -40,7 +38,6 @@ const FIELD_TO_PAGE: Partial<Record<keyof ReeEditorViewModel, AppShellPage>> = {
   sourceAcquiredBy: PAGE.SOURCE,
   hardware_description: PAGE.HBOM,
   runtime: PAGE.BUILD,
-  build_runtime_script: PAGE.BUILD,
   activation: PAGE.ACTIVATION,
   sbom: PAGE.SBOM,
   swhid: PAGE.ARCHIVE,

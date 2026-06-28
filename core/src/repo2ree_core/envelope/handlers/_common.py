@@ -1,97 +1,35 @@
 from __future__ import annotations
 
-import shlex
-import subprocess
-import threading
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Literal
 
-from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
+from repo2ree_core.container.run_script import CancelCheck, LogSink, run_workspace_script
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.experiment.experiment import ExpectedOutput, Runnable
+from repo2ree_core.experiment.run import run_runnable
+from repo2ree_core.path_safety import resolve_within
+from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.time_utils import utc_now  # noqa: F401  (re-exported)
-from repo2ree_core.working_environment.base import CancelCheck, StepOutcome
 from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.tracing import get_tracer
-
-tracer = get_tracer(__name__)
 
 WORKSPACE_CONTROL_PREFIXES = (".workspace", ".upload.")
 
 
 def resolve_workspace_path(layout: ReeLayout, rel_path: str) -> Path:
     path = rel_path.strip()
-    validate_relative_path(path)
+    candidate = resolve_within(layout.workspace, path)
+    if candidate is None:
+        raise ValueError("Invalid workspace path")
+    # Only the leaf segment is guarded: the reserved control prefixes name files
+    # (".workspace*", ".upload.*"), never directories, so a parent segment can
+    # never collide with them.
     if PurePosixPath(path).name.startswith(WORKSPACE_CONTROL_PREFIXES):
         raise ValueError("Invalid workspace path")
-    candidate = (layout.workspace / path).resolve()
-    candidate.relative_to(layout.workspace.resolve())
     return candidate
 
 
-def run_script_directly(
-    *,
-    workspace: Path,
-    script_rel_path: str,
-    log: LogSink,
-    is_canceled: CancelCheck,
-) -> StepOutcome:
-    """Run a script as a native subprocess inside the workbench.
-
-    The workbench IS the isolated execution environment, so no nested
-    Docker container is needed. The script runs in the script's own directory
-    so that relative paths (e.g. `docker build .`) resolve correctly.
-    """
-    script_abs = (workspace / script_rel_path).resolve()
-    if not script_abs.is_file():
-        log("system", "error", f"script not found: {script_rel_path}")
-        return StepOutcome("failed", 1)
-
-    script_dir = str(script_abs.parent)
-
-    log(
-        "system",
-        "info",
-        f"$ bash --login -c 'set -e; cd {shlex.quote(script_dir)}; source {shlex.quote(str(script_abs))}'",
-    )
-
-    with tracer.start_as_current_span("workbench.run_script"):
-        proc = subprocess.Popen(
-            [
-                "bash",
-                "--login",
-                "-c",
-                f"set -e; cd {shlex.quote(script_dir)}; source {shlex.quote(str(script_abs))}",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            cwd=script_dir,
-        )
-
-        if proc.stdout is None:
-            raise RuntimeError("stdout pipe unavailable after Popen")
-
-        def _stream() -> None:
-            for line in proc.stdout:  # type: ignore[union-attr]
-                log("stdout", "info", line.rstrip())
-
-        reader = threading.Thread(target=_stream, daemon=True)
-        reader.start()
-
-        while proc.poll() is None:
-            if is_canceled():
-                proc.terminate()
-                reader.join(timeout=5)
-                return StepOutcome("canceled")
-
-        reader.join()
-        exit_code = proc.returncode
-        status = "succeeded" if exit_code == 0 else "failed"
-        return StepOutcome(status, exit_code)
-
-
-def run_workspace_script_handler(
+def run_bare_script_handler(
     script_path: str,
     *,
     operation: str,
@@ -101,11 +39,12 @@ def run_workspace_script_handler(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    """Validate and run a workspace script directly inside the workbench.
+    """Run a single workspace script directly inside the workbench, unevaluated.
 
-    Shared by the build_runtime and activation_test handlers, which differ only
-    in their labels (``operation``/``noun``) and the output key. ``noun`` is the
-    capitalised run name (e.g. "Build", "Activation").
+    The "bare" counterpart to :func:`run_runnable_handler`: it runs one script
+    and reports its exit status, with no declared outputs to capture or evaluate.
+    Used by the build_runtime handler. ``noun`` is the capitalised run name
+    (e.g. "Build") used in log lines.
     """
     if is_canceled():
         log("system", "warn", f"{operation} canceled before start")
@@ -121,9 +60,9 @@ def run_workspace_script_handler(
 
     log("system", "info", f"Starting {noun.lower()} run {run_id}")
     log("system", "info", f"{noun} script: {script_path}")
-    outcome = run_script_directly(
-        workspace=layout.workspace.resolve(),
-        script_rel_path=script_path,
+    outcome = run_workspace_script(
+        layout.workspace.resolve(),
+        script_path,
         log=log,
         is_canceled=is_canceled,
     )
@@ -138,9 +77,79 @@ def run_workspace_script_handler(
         outputs["containerExitCode"] = outcome.exit_code
     return ActionResult(
         status=outcome.status,
-        exit_code=outcome.exit_code or 0,
+        exit_code=outcome.exit_code if outcome.exit_code is not None else 0,
         outputs=outputs,
     )
+
+
+RunnableSelector = Callable[[ReeIntent, "LogSink"], tuple[Runnable, str] | None]
+SnapshotPersist = Callable[[ReeStore, ReeIntent, list[ExpectedOutput]], None]
+
+
+def run_runnable_handler(
+    *,
+    operation: str,
+    mode: Literal["verify", "snapshot"],
+    select: RunnableSelector,
+    persist: SnapshotPersist,
+    snapshot_target: str,
+    run_id: str,
+    log: LogSink,
+    is_canceled: CancelCheck,
+) -> ActionResult:
+    """Run a selected :class:`Runnable` and persist any captured snapshot.
+
+    Shared by the run_experiment and activation_test handlers, which differ only
+    in *select* (which runnable to run, plus its label) and *persist* (how the
+    snapshot is written back into the intent). *select* logs and returns ``None``
+    when the runnable can't be resolved; *snapshot_target* names the destination
+    for the success message (e.g. "the intent", "the activation").
+    """
+    if is_canceled():
+        log("system", "warn", f"{operation} canceled before start")
+        return ActionResult(status="canceled")
+
+    layout = ReeLayout.in_workbench()
+    store = ReeStore(layout)
+    if not store.metadata_exists():
+        log("system", "error", "metadata not found")
+        return ActionResult(status="failed", exit_code=1)
+
+    try:
+        ree = store.read_intent()
+    except Exception as exc:
+        log("system", "error", f"Invalid REE intent: {exc}")
+        return ActionResult(status="failed", exit_code=1)
+
+    selected = select(ree, log)
+    if selected is None:
+        return ActionResult(status="failed", exit_code=1)
+    runnable, label = selected
+
+    outcome = run_runnable(
+        workspace=layout.workspace.resolve(),
+        runnable=runnable,
+        label=label,
+        mode=mode,
+        run_id=run_id,
+        log=log,
+        is_canceled=is_canceled,
+    )
+    outputs = dict(outcome.run_outputs)
+    outputs["runtimePath"] = ree.runtime or ""
+
+    if outcome.snapshot_to_persist is not None:
+        try:
+            persist(store, ree, outcome.snapshot_to_persist)
+            outputs["snapshotApplied"] = True
+            outputs["snapshotMessage"] = f"Saved {len(outcome.snapshot_to_persist)} baseline(s) to {snapshot_target}."
+        except Exception as exc:
+            log("system", "error", f"failed to persist snapshot: {exc}")
+            outputs["snapshotApplied"] = False
+            outputs["snapshotMessage"] = "Snapshot was not saved."
+            return ActionResult(status="failed", exit_code=1, outputs=outputs)
+
+    return ActionResult(status=outcome.status, exit_code=0, outputs=outputs)
 
 
 def patch_ree_intent(store: ReeStore, patch: dict[str, Any]) -> None:

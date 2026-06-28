@@ -57,13 +57,20 @@ export interface PageExperimentsProps {
   locked: boolean;
   badges: Badges;
   focusedField: string | null;
+  workspaceFiles: FileTreeNode[];
   onReeChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
   onGoAssemblyPage: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
   onSnapshotComplete: () => Promise<void>;
   // Persist pending draft edits before an experiment run, so the backend
-  // validates against the just-typed command rather than a stale draft.
+  // validates against the just-typed script rather than a stale draft.
   onBeforeRun: () => Promise<void>;
+  // Each experiment owns a run script stored in the workspace overlay.
+  onPersistWorkspaceFile: (
+    previousPath: string | undefined,
+    path: string,
+    content: string,
+  ) => Promise<void>;
 }
 
 export interface PageHardwareBomProps {

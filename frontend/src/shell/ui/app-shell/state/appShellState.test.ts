@@ -37,8 +37,6 @@ function toInitialSlices(ree: ReeEditorViewModel) {
       origin_url: ree.origin_url,
       source_type: ree.source_type,
       runtime: ree.runtime,
-      runtime_entry: ree.runtime_entry,
-      build_runtime_script: ree.build_runtime_script,
       activation: ree.activation,
       sbom: ree.sbom,
       swhid: ree.swhid,

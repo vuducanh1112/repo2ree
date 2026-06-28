@@ -9,7 +9,7 @@ import { RunActionButton } from "@shell/ui/app-shell/components/RunActionButton"
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
-import { MissingInputsBanner } from "../../runtime-environment/MissingInputsBanner";
+import { MissingInputsBanner } from "../../../components/MissingInputsBanner";
 
 interface ArchiveActionPanelProps {
   repo: ArchiveRepo;

@@ -12,7 +12,6 @@ describe("reeEditorViewModel", () => {
         origin_url: "https://example.org/repo.git",
         source_type: "git",
         runtime: "runtime.tar.gz",
-        build_runtime_script: "build_runtime.sh",
         sbom: "sbom.spdx.json",
         swhid: "swh:1:dir:abc",
       },

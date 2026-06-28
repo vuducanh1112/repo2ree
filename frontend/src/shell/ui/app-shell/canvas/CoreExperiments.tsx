@@ -14,11 +14,11 @@ function satelliteKey(index: number): string {
   return `exp-${String(index)}`;
 }
 
-// An experiment is "wired" once it has a command — the minimum that makes its
-// panel a runnable check. Drives whether its cable reads lit or dim. (Run /
-// reproduce status will refine this later; for now it's the command's presence.)
+// An experiment is "wired" once it has a run script — the minimum that makes
+// its panel a runnable check. Drives whether its cable reads lit or dim. (Run /
+// reproduce status will refine this later; for now it's the script's presence.)
 function isExperimentWired(exp: ReeExperiment): boolean {
-  return exp.command.trim() !== "";
+  return exp.run_script.trim() !== "";
 }
 
 // The cable identities for the core column: one per experiment, plus a dim one
@@ -236,7 +236,7 @@ function ExperimentSatellite({
   wasNodeDragged: React.RefObject<boolean>;
 }) {
   const name = experiment.name.trim();
-  const command = experiment.command.trim();
+  const command = experiment.run_script.trim();
   const wired = isExperimentWired(experiment);
   return (
     <button

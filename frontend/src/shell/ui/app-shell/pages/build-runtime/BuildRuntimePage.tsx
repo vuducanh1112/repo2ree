@@ -1,6 +1,11 @@
-import type { RuntimeEntry } from "@core/ree/ReeSpec";
-import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
-import { buildFooterHint, buildRunStatusLabel } from "@core/ree-assembly/buildRuntimeUiState";
+import { RESERVED_BUILD_SCRIPT } from "@core/ree/ReeSpec";
+import {
+  buildFooterHint,
+  buildRunStatusLabel,
+  deriveRuntimeFileSize,
+  resolvedRuntimePath,
+} from "@core/ree-assembly/buildRuntimeUiState";
+import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgOutcomeBadge,
@@ -17,12 +22,11 @@ import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { GlassSubPanel } from "../../components/GlassSubPanel";
 import { LastRunStamp } from "../../components/LastRunStamp";
+import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { RunActionButton } from "../../components/RunActionButton";
-import { SubstratePicker } from "../../components/SubstratePicker";
-import { MissingInputsBanner } from "../runtime-environment/MissingInputsBanner";
 import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
-import { BuildLogCard, BuildScriptCard } from "./sections";
+import { BuildLogCard, ReservedBuildScriptCard, RuntimeArtifactCard } from "./sections";
 
 const BUILD_PAGE_COLOR = lgPageColors.runtimeEnv;
 
@@ -69,17 +73,9 @@ export function PageBuildRuntime({
 }: AssemblyPageProps) {
   const files = workspaceFiles || [];
 
-  const scriptPath = ree.build_runtime_script || "";
-  const scriptFile = useMemo(
-    () => (scriptPath ? findFileByPath(files, scriptPath) : null),
-    [files, scriptPath],
-  );
+  const scriptPath = RESERVED_BUILD_SCRIPT;
+  const scriptFile = useMemo(() => findFileByPath(files, RESERVED_BUILD_SCRIPT), [files]);
   const scriptContent = scriptFile?.content || "";
-
-  const buildParams: ReeAssemblyRunParams<"build"> = {
-    ...(params as ReeAssemblyRunParams<"build">),
-    build_runtime_script_path: scriptPath,
-  };
 
   // Save a file to the overlay — does not change the selected build script.
   const handleSaveFile = useCallback(
@@ -89,26 +85,29 @@ export function PageBuildRuntime({
     [onPersistWorkspaceFile],
   );
 
-  // Explicitly select an existing workspace file as the active build script.
-  const handleSelectScript = useCallback(
-    (path: string) => {
-      onReeSpecChange?.((current) => ({ ...current, build_runtime_script: path }));
+  const handleSaveReservedBuildScript = useCallback(
+    (content: string) => {
+      handleSaveFile(undefined, RESERVED_BUILD_SCRIPT, content);
     },
+    [handleSaveFile],
+  );
+
+  const runtimePath = resolvedRuntimePath(ree.runtime);
+  const runtimeFile = useMemo(
+    () => (runtimePath ? findFileByPath(files, runtimePath) : null),
+    [files, runtimePath],
+  );
+  const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
+  const runtimeSize = useMemo(() => deriveRuntimeFileSize(runtimeFile), [runtimeFile]);
+
+  const handleRuntimeChange = useCallback(
+    (path: string) => onReeSpecChange?.((current) => ({ ...current, runtime: path })),
     [onReeSpecChange],
   );
 
-  const handleClearScript = useCallback(() => {
-    onReeSpecChange?.((current) => ({ ...current, build_runtime_script: "" }));
-  }, [onReeSpecChange]);
-
-  const runtimeEntry = ree.runtime_entry;
-
-  const handleEntryChange = useCallback(
-    (entry: RuntimeEntry) => onReeSpecChange?.((current) => ({ ...current, runtime_entry: entry })),
-    [onReeSpecChange],
-  );
-
-  const hasScript = !!scriptPath;
+  // The reserved build script is seeded empty; an authored (non-empty) script
+  // is what makes the build runnable.
+  const hasScript = scriptContent.trim().length > 0;
   const hasMissing = missing.length > 0;
   const statusLabel = buildRunStatusLabel({ running, runDone, hasScript });
 
@@ -118,7 +117,7 @@ export function PageBuildRuntime({
         icon={Ic.cpu(24)}
         iconTint={pageIconTint(BUILD_PAGE_COLOR)}
         title="Build Runtime"
-        subtitle="Select the substrate, declare the artifact, and run the build script."
+        subtitle="Build or acquire an environment, connect the workspace, then give experiments a reusable run target."
         badges={
           <>
             {scriptPath && (
@@ -138,8 +137,8 @@ export function PageBuildRuntime({
             <BuildRunControls
               running={running}
               runDone={runDone}
-              disabled={running || hasMissing}
-              onRun={() => onRun(assemblyStep.key, buildParams)}
+              disabled={running || hasMissing || !hasScript}
+              onRun={() => onRun(assemblyStep.key, params)}
               onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
             />
           </div>
@@ -151,34 +150,36 @@ export function PageBuildRuntime({
 
         <GlassSubPanel>
           <GlassSectionHeader
-            icon={Ic.cpu(19)}
+            icon={Ic.archive(19)}
             color={BUILD_PAGE_COLOR}
-            title="Substrate"
-            subtitle="Pick how the workbench enters the runtime. The same choice drives which build script applies below."
+            title="1. Build or acquire the runtime"
+            subtitle="Choose the artifact that will execute this REE. Build from the workspace now, or select an artifact obtained elsewhere."
           />
           <div style={{ marginTop: 10 }}>
-            {/* Compact selector only — the build script gets its own subpanel
-                below rather than being nested inside the substrate row. */}
-            <SubstratePicker
-              entry={runtimeEntry}
-              accent={BUILD_PAGE_COLOR}
-              onChange={handleEntryChange}
-              renderDetail={() => null}
+            <RuntimeArtifactCard
+              runtimePath={runtimePath}
+              runtimeSize={runtimeSize}
+              runtimePathExists={runtimePathExists}
+              files={files}
+              onRuntimeChange={handleRuntimeChange}
             />
           </div>
         </GlassSubPanel>
 
-        {/* The build script's Create / Edit / Active sections each render as their
-            own subpanel, sitting as siblings alongside Substrate and Build Log. */}
-        <BuildScriptCard
-          scriptPath={scriptPath}
-          scriptContent={scriptContent}
-          runtimeEntry={runtimeEntry}
-          files={files}
-          onSaveFile={handleSaveFile}
-          onSelectScript={handleSelectScript}
-          onClearScript={handleClearScript}
-        />
+        <GlassSubPanel>
+          <GlassSectionHeader
+            icon={Ic.file(19)}
+            color={BUILD_PAGE_COLOR}
+            title="Build recipe"
+            subtitle="Edit REE’s reserved build program. It can call any build scripts already supplied by the project."
+          />
+          <div style={{ marginTop: 10 }}>
+            <ReservedBuildScriptCard
+              currentContent={scriptContent}
+              onSave={handleSaveReservedBuildScript}
+            />
+          </div>
+        </GlassSubPanel>
 
         <GlassSubPanel>
           <BuildLogCard log={log} running={running} ts={ts} />

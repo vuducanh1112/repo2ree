@@ -10,7 +10,7 @@ describe("addExperiment", () => {
       {
         name: "",
         description: "",
-        command: "",
+        run_script: "",
         runtime_estimate: "",
         resource_estimates: {
           cpu: "",

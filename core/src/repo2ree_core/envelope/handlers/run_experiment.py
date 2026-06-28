@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from repo2ree_core.container.run_script import LogSink
-from repo2ree_core.domain.env_entry import ContainerEntry, VmEntry
+from repo2ree_core.container.run_script import CancelCheck, LogSink
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.envelope.handlers._common import (
     patch_ree_intent,
-    resolve_workspace_path,
+    run_runnable_handler,
 )
-from repo2ree_core.experiment.run import run_runnable
-from repo2ree_core.storage.layout import ReeLayout
+from repo2ree_core.experiment.experiment import ExpectedOutput, Runnable
 from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.working_environment import CancelCheck
 from repo2ree_protocol.command import RunExperimentArgs
 from repo2ree_protocol.result import ActionResult
 
@@ -21,82 +19,31 @@ def handle_run_experiment(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "run_experiment canceled before start")
-        return ActionResult(status="canceled")
+    def select(ree: ReeIntent, log: LogSink) -> tuple[Runnable, str] | None:
+        experiment = next((exp for exp in ree.experiments if exp.name == args.experiment_name), None)
+        if experiment is None:
+            log("system", "error", f"Experiment {args.experiment_name!r} not found")
+            return None
+        if not experiment.run_script.strip():
+            log("system", "error", "Experiment has no run script")
+            return None
+        return experiment, experiment.name
 
-    layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
-    if not store.metadata_exists():
-        log("system", "error", "metadata not found")
-        return ActionResult(status="failed", exit_code=1)
+    def persist(store: ReeStore, ree: ReeIntent, snapshot: list[ExpectedOutput]) -> None:
+        raw_experiments = [e.model_dump() for e in ree.experiments]
+        for raw_exp in raw_experiments:
+            if raw_exp.get("name") == args.experiment_name:
+                raw_exp["outputs"] = [o.model_dump() for o in snapshot]
+                break
+        patch_ree_intent(store, {"experiments": raw_experiments})
 
-    try:
-        ree = store.read_intent()
-    except Exception as exc:
-        log("system", "error", f"Invalid REE intent: {exc}")
-        return ActionResult(status="failed", exit_code=1)
-
-    entry = ree.runtime_entry
-    runtime_path = ree.runtime
-    runtime_abs = None
-    if isinstance(entry, ContainerEntry | VmEntry):
-        # Only container/VM substrates require a built artifact; local and
-        # custom substrates enter the runtime in place.
-        if not runtime_path:
-            log("system", "error", "Runtime artifact is required before running experiments")
-            return ActionResult(status="failed", exit_code=1)
-        try:
-            runtime_abs = resolve_workspace_path(layout, runtime_path)
-        except Exception as exc:
-            log("system", "error", f"invalid runtime path: {exc}")
-            return ActionResult(status="failed", exit_code=1)
-        if not runtime_abs.is_file():
-            log("system", "error", f"Runtime artifact not found: {runtime_path}")
-            return ActionResult(status="failed", exit_code=1)
-
-    experiment = next((exp for exp in ree.experiments if exp.name == args.experiment_name), None)
-    if experiment is None:
-        log("system", "error", f"Experiment {args.experiment_name!r} not found")
-        return ActionResult(status="failed", exit_code=1)
-    if not experiment.command.strip():
-        log("system", "error", "Experiment has no command to run")
-        return ActionResult(status="failed", exit_code=1)
-
-    outcome = run_runnable(
-        workspace=layout.workspace.resolve(),
-        runnable=experiment,
-        label=experiment.name,
+    return run_runnable_handler(
+        operation="run_experiment",
         mode=args.mode,
-        entry=entry,
-        runtime_archive_path=runtime_abs,
+        select=select,
+        persist=persist,
+        snapshot_target="the intent",
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,
     )
-    outputs = dict(outcome.run_outputs)
-    outputs["runtimePath"] = runtime_path or ""
-
-    if outcome.snapshot_to_persist is not None:
-        raw_experiments = [e.model_dump() for e in ree.experiments]
-        updated = False
-        for i, raw_exp in enumerate(raw_experiments):
-            if raw_exp.get("name") == args.experiment_name:
-                raw_experiments[i] = {
-                    **raw_exp,
-                    "outputs": [o.model_dump() for o in outcome.snapshot_to_persist],
-                }
-                updated = True
-                break
-        if updated:
-            try:
-                patch_ree_intent(store, {"experiments": raw_experiments})
-                outputs["snapshotApplied"] = True
-                outputs["snapshotMessage"] = f"Saved {len(outcome.snapshot_to_persist)} baseline(s) to the intent."
-            except Exception as exc:
-                log("system", "error", f"failed to persist snapshot: {exc}")
-                outputs["snapshotApplied"] = False
-                outputs["snapshotMessage"] = "Snapshot was not saved."
-                return ActionResult(status="failed", exit_code=1, outputs=outputs)
-
-    return ActionResult(status=outcome.status, exit_code=0, outputs=outputs)

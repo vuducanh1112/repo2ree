@@ -55,7 +55,7 @@ interface ExecutionRunRunner {
 interface ExecuteAssemblyRunArgs {
   key: string;
   params: GenericReeAssemblyParams;
-  ree: Pick<ReeSpec, "build_runtime_script" | "runtime">;
+  ree: Pick<ReeSpec, "runtime">;
   workspaceFiles: FileTreeNode[];
   executionRunner: ExecutionRunRunner;
   assemblyCommandPlanners: AssemblyCommandPlannerMap;

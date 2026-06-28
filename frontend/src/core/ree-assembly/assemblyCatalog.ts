@@ -31,7 +31,7 @@ export const REE_ASSEMBLY_STEPS: ReeAssemblyCatalogEntry[] = [
     iconKey: "cpu",
     color: "#0891b2",
     badge: { label: "Built", color: "#0891b2", bg: "#ecfeff" },
-    desc: "Run build_runtime_script and refresh the workspace after a successful build.",
+    desc: "Run the reserved build script and refresh the workspace after a successful build.",
     params: [],
   },
   {

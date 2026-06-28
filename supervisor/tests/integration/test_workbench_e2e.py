@@ -30,7 +30,6 @@ from uuid import uuid4
 import pytest
 
 from repo2ree_protocol.command import (
-    BuildRuntimeArgs,
     BuildRuntimeCommand,
     SealReeCommand,
     WriteFileArgs,
@@ -133,23 +132,26 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     assert metadata["status"] == "draft"
 
     # --- write_file: dispatched over real `docker exec` ----------------
+    # The build always runs the reserved, REE-owned build script, so author the
+    # recipe there.
+    build_script = "ree/build_script.sh"
     result = manager.dispatch_action(
         handle,
-        WriteFileCommand(args=WriteFileArgs(path="build.sh", content="echo building runtime\n")),
+        WriteFileCommand(args=WriteFileArgs(path=build_script, content="echo building runtime\n")),
         "write",
         log,
     )
     assert result.status == "succeeded"
 
     # read it back through the real read-file query — full round-trip
-    assert manager.read_file_bytes(handle, "build.sh") == b"echo building runtime\n"
+    assert manager.read_file_bytes(handle, build_script) == b"echo building runtime\n"
     workspace = manager.get_workspace(handle)
-    assert any(f.get("path") == "build.sh" for f in workspace["files"])
+    assert any(f.get("path") == build_script for f in workspace["files"])
 
     # --- build_runtime: real script execution inside the workbench -----
     result = manager.dispatch_action(
         handle,
-        BuildRuntimeCommand(args=BuildRuntimeArgs(build_runtime_script_path="build.sh")),
+        BuildRuntimeCommand(),
         "build",
         log,
     )

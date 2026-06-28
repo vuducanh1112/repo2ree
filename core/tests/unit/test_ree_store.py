@@ -4,6 +4,7 @@ import pytest
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.workspace.model import WorkspaceMetadata
@@ -39,6 +40,17 @@ def test_ensure_dirs_creates_root_and_workspace(tmp_path):
     store.ensure_dirs()
     assert store.layout.root.is_dir()
     assert store.layout.workspace.is_dir()
+
+
+def test_creation_scripts_are_empty_overlay_files_and_materialized_to_workspace(tmp_path):
+    store = _store(tmp_path)
+    store.ensure_dirs()
+    store.ensure_reserved_overlay_scripts()
+
+    assert {path.as_posix() for path in store.overlay.iter_files()} == set(RESERVED_OVERLAY_SCRIPTS)
+    for path in RESERVED_OVERLAY_SCRIPTS:
+        assert store.overlay.read_text(path) == ""
+        assert store.workspace.read_text(path) == ""
     assert store.exists() is True
 
 
