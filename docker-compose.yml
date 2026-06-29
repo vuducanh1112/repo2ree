@@ -1,8 +1,6 @@
 services:
   backend:
     image: ${REPO2REE_BACKEND_IMAGE:-docker.io/vuducanh1112/repo2ree-backend:edge}
-    environment:
-      WORKBENCH_IMAGE: ${REPO2REE_WORKBENCH_IMAGE:-docker.io/vuducanh1112/repo2ree-workbench:edge}
     ports:
       - "8000:8000"
     volumes:

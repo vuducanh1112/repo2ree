@@ -14,7 +14,7 @@ from repo2ree_protocol.command import Command
 # ================================================
 
 
-RunOperation = Literal["build", "sbom", "hbom", "activation", "source", "evaluate", "experiment"]
+RunOperation = Literal["provision", "build", "sbom", "hbom", "activation", "source", "evaluate", "experiment"]
 
 
 # ================================================
@@ -23,8 +23,13 @@ RunOperation = Literal["build", "sbom", "hbom", "activation", "source", "evaluat
 
 
 def _require_workspace(ree_id: str) -> None:
-    if workbench_manager.lookup(ree_id) is None:
-        raise HTTPException(status_code=404, detail="Workspace not found")
+    if workbench_manager.lookup(ree_id) is not None:
+        return
+    # The workbench may not exist yet during a provisioning run; accept the REE
+    # while that run is on record so its logs/status stay readable as it streams.
+    if _registry.has_runs(ree_id):
+        return
+    raise HTTPException(status_code=404, detail="Workspace not found")
 
 
 _registry = RunRegistry("reeId", _require_workspace, include_id_in_summary=True)
@@ -45,6 +50,26 @@ def _start_background_run(
     runner: Callable[[str, str], tuple[str, dict[str, Any]]],
 ) -> dict[str, Any]:
     return _registry.start_background(ree_id, operation, request_payload, run_id_prefix, runner)
+
+
+def _start_provisioning_run(
+    ree_id: str,
+    request_payload: dict[str, Any],
+    runner: Callable[[str, str], tuple[str, dict[str, Any]]],
+) -> dict[str, Any]:
+    """Start the background run that provisions a brand-new workbench.
+
+    Unlike other runs, this one creates its own entity, so it skips the
+    workbench-existence check that would otherwise 404 the not-yet-built REE.
+    """
+    return _registry.start_background(
+        ree_id,
+        "provision",
+        request_payload,
+        "provision",
+        runner,
+        require_entity_exists=False,
+    )
 
 
 def _start_single_command_run(

@@ -18,6 +18,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,11 @@ TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "tra
 _state_dir = Path(tempfile.mkdtemp(prefix="repo2ree-api-itest-"))
 os.environ["UPLOAD_STAGING_DIR"] = str(_state_dir / "upload-staging")
 os.environ["WORKBENCH_REGISTRY_FILE"] = str(_state_dir / "workbench-registry.json")
+# Pin provisioning to the locally-built image this tier gates on (see
+# test_api_workbench_flow.WORKBENCH_IMAGE) rather than the published edge
+# default in settings — the suite must drive the image it just built, never
+# pull one from a registry.
+os.environ.setdefault("WORKBENCH_IMAGE", "repo2ree-workbench:latest")
 # OpenTelemetry's set_tracer_provider is honored once per process, so two API
 # tiers in one pytest run share a single provider baked to whichever tier booted
 # first — the other's spans silently flow to the wrong file. make runs the tiers
@@ -92,13 +98,31 @@ def ree(client: TestClient, request: pytest.FixtureRequest) -> Iterator[dict[str
     """
     resp = client.post("/api/v1/rees", json={"sourceMode": "upload", "name": "api-itest"})
     assert resp.status_code == 200, resp.text
-    workspace = resp.json()
-    ree_id = workspace["reeId"]
+    run = resp.json()
+    ree_id = run["reeId"]
     try:
+        # Provisioning is a background run now (so the image pull streams live);
+        # wait for it before yielding the fully-provisioned workspace.
+        assert _wait_for_provision(client, ree_id, run["runId"]) == "succeeded"
+        workspace = client.get(f"/api/v1/rees/{ree_id}").json()
         yield workspace
     finally:
         _dump_workbench_logs(ree_id, request.node.name)
         client.delete(f"/api/v1/rees/{ree_id}")
+
+
+def _wait_for_provision(client: TestClient, ree_id: str, run_id: str, timeout_seconds: int = 180) -> str:
+    """Poll the provisioning run until it reaches a terminal status."""
+    terminal = frozenset({"succeeded", "failed", "canceled"})
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        resp = client.get(f"/api/v1/rees/{ree_id}/runs/{run_id}")
+        assert resp.status_code == 200, resp.text
+        status = resp.json()["status"]
+        if status in terminal:
+            return status
+        time.sleep(1.0)
+    raise AssertionError(f"provisioning run {run_id} did not finish within {timeout_seconds}s")
 
 
 # ================================================

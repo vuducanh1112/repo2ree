@@ -8,6 +8,15 @@ import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { ensureReeId } from "../client";
 
 export interface ExecutionRunsClient {
+  /**
+   * Provision a brand-new workbench. Returns the freshly-minted reeId and the
+   * background provisioning run, whose log feed streams the image pull live —
+   * poll {@link getExecutionRunLogs} / {@link getExecutionRun} until terminal.
+   *
+   * ``image`` overrides the workbench base image; omitted/blank uses the server
+   * default.
+   */
+  createWorkspace(name?: string, image?: string): Promise<{ reeId: string; run: ExecutionRun }>;
   startExecutionRun(
     id: ReeId | string,
     scriptKey: string,
@@ -24,6 +33,14 @@ export interface ExecutionRunsClient {
 
 function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClient {
   return {
+    async createWorkspace(name = "REE", image) {
+      const run = await runtime.reeApi.createRee({
+        sourceMode: "upload",
+        name,
+        workbenchImage: image?.trim() || undefined,
+      });
+      return { reeId: run.reeId, run: mapRun(run) };
+    },
     async startExecutionRun(id, scriptKey, params = {}) {
       const reeId = await ensureReeId(runtime, id);
       let run: WorkflowRunDto;

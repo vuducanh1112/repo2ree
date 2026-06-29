@@ -11,7 +11,11 @@ class Settings(BaseSettings):
     # of truth for REE state.
     UPLOAD_STAGING_DIR: Path = Path(".repo2ree/upload-staging")
     WORKBENCH_REGISTRY_FILE: Path = Path(".repo2ree/workbench-registry.json")
-    WORKBENCH_IMAGE: str = "repo2ree-workbench:latest"
+    # Optional override for the default workbench image. When unset, the default
+    # comes from the workbench image catalog (workbench/catalog.py). Set this to
+    # provision from a locally-built image (e.g. `repo2ree-workbench:latest` from
+    # `make workbench-image`) without touching the catalog.
+    WORKBENCH_IMAGE: str | None = None
     WORKBENCH_DOCKER_MODE: str = "dind"
     OTLP_ENDPOINT: str | None = None
 

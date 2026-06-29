@@ -90,6 +90,7 @@ class WorkbenchHandle:
     ree_id: str
     container_name: str
     volume_name: str
+    image: str = ""
 
     @classmethod
     def from_entry(cls, entry: WorkbenchEntry) -> WorkbenchHandle:
@@ -97,6 +98,7 @@ class WorkbenchHandle:
             ree_id=entry.ree_id,
             container_name=entry.container_name,
             volume_name=entry.volume_name,
+            image=entry.image,
         )
 
 
@@ -133,19 +135,30 @@ class WorkbenchManager:
     # Lifecycle
     # ------------------------------------------------
 
-    def provision(self, ree_id: str, name: str) -> WorkbenchHandle:
-        """Create volume + container, initialise the REE, register handle."""
+    def provision(
+        self,
+        ree_id: str,
+        name: str,
+        log: LogSink | None = None,
+        image: str | None = None,
+    ) -> WorkbenchHandle:
+        """Create volume + container, initialise the REE, register handle.
+
+        ``image`` overrides the manager's default workbench image for this REE.
+        """
         with tracer.start_as_current_span("workbench.provision") as span:
             record_ree_id(span, ree_id)
             volume_name = f"repo2ree-ree-{ree_id}"
             dind_volume_name = _dind_volume_name(ree_id)
             container_name = f"repo2ree-wb-{ree_id}"
 
+            resolved_image = image or self._image
+
             _docker("volume", "create", volume_name)
             if self._docker_mode == "dind":
                 _docker("volume", "create", dind_volume_name)
 
-            self._run_workbench_container(container_name, ree_id, volume_name)
+            self._run_workbench_container(container_name, ree_id, volume_name, log=log, image=resolved_image)
 
             _docker_exec(
                 container_name,
@@ -161,12 +174,13 @@ class WorkbenchManager:
                 ree_id=ree_id,
                 container_name=container_name,
                 volume_name=volume_name,
+                image=resolved_image,
             )
             self._registry.register(entry)
             return WorkbenchHandle.from_entry(entry)
 
-    def reprovision(self, ree_id: str) -> WorkbenchHandle:
-        """Replace the container with a fresh one from the current image, keeping the volume."""
+    def reprovision(self, ree_id: str, log: LogSink | None = None) -> WorkbenchHandle:
+        """Replace the container with a fresh one from the same image, keeping the volume."""
         _reprovision_counter.add(1)
         with tracer.start_as_current_span("workbench.reprovision") as span:
             record_ree_id(span, ree_id)
@@ -174,7 +188,12 @@ class WorkbenchManager:
             if entry is None:
                 raise KeyError(f"no workbench registered for {ree_id}")
             _docker_silent("rm", "-f", entry.container_name)
-            self._run_workbench_container(entry.container_name, entry.ree_id, entry.volume_name)
+            # Reprovision from the REE's own image, not the manager default —
+            # ``entry.image`` is empty only for pre-image-tracking entries, where
+            # falling back to the default is the best we can do.
+            self._run_workbench_container(
+                entry.container_name, entry.ree_id, entry.volume_name, log=log, image=entry.image or None
+            )
             return WorkbenchHandle.from_entry(entry)
 
     def teardown(self, handle: WorkbenchHandle) -> None:
@@ -187,7 +206,35 @@ class WorkbenchManager:
                 _docker_silent("volume", "rm", _dind_volume_name(handle.ree_id))
             self._registry.unregister(handle.ree_id)
 
-    def _run_workbench_container(self, container_name: str, ree_id: str, volume_name: str) -> None:
+    def _run_workbench_container(
+        self,
+        container_name: str,
+        ree_id: str,
+        volume_name: str,
+        log: LogSink | None = None,
+        image: str | None = None,
+    ) -> None:
+        image = image or self._image
+        # Always pull up front so a moving tag (e.g. ``:edge``) picks up newer
+        # builds instead of being pinned to whatever was first cached — and pull
+        # explicitly (not via ``docker run``'s implicit pull) so the progress
+        # streams live rather than being buffered and dropped under
+        # capture_output. ``docker pull`` is incremental: it only transfers
+        # changed layers and is cheap when already current.
+        #
+        # Offline / local-only fallback: if the pull fails but the image is
+        # already present locally (no network, or a locally-built image with no
+        # registry origin like the e2e test image), warn and provision from the
+        # cached copy instead of failing.
+        try:
+            _docker_stream("pull", image, log=log, timeout=600)
+        except RuntimeError as exc:
+            if not _image_present(image):
+                raise
+            message = f"pull failed ({exc}); using cached image {image}"
+            logger.warning(message)
+            if log is not None:
+                log("system", "warn", message)
         _docker(
             "run",
             "-d",
@@ -198,7 +245,7 @@ class WorkbenchManager:
             "unless-stopped",
             "-v",
             f"{volume_name}:/ree",
-            self._image,
+            image,
             "sleep",
             "infinity",
             timeout=120,
@@ -405,6 +452,10 @@ class WorkbenchManager:
         raw = self.dispatch_query(handle, "get-workspace")
         return json.loads(raw)
 
+    def image_for(self, handle: WorkbenchHandle) -> str:
+        """The image this REE's workbench runs, falling back to the manager default."""
+        return handle.image or self._image
+
     def read_file_bytes(self, handle: WorkbenchHandle, path: str) -> bytes:
         return self.dispatch_query(handle, "read-file", "--path", path)
 
@@ -456,6 +507,51 @@ def _docker(*args: str, timeout: int = 60) -> None:
     result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
     if result.returncode != 0:
         raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
+
+
+def _image_present(image: str) -> bool:
+    """True if the image already exists locally (no registry round-trip)."""
+    return subprocess.run(["docker", "image", "inspect", image], capture_output=True, timeout=30).returncode == 0
+
+
+def _docker_stream(*args: str, log: LogSink | None = None, timeout: int = 600) -> None:
+    """Run a docker command, streaming its output live instead of buffering it.
+
+    Docker writes progress (pull layers, etc.) to stderr and only renders the
+    animated bars when attached to a TTY — here it's a pipe, so we get plain
+    line-by-line progress, which is what belongs in a log. Lines go to ``log``
+    when a sink is provided, otherwise to the supervisor logger.
+    """
+    proc = subprocess.Popen(
+        ["docker", *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    if proc.stdout is None:
+        raise RuntimeError("Popen stdout unavailable")
+    try:
+        for raw_line in proc.stdout:
+            line = raw_line.rstrip()
+            if not line:
+                continue
+            if log is not None:
+                log("system", "info", line)
+            else:
+                logger.info("docker %s: %s", args[0], line)
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            # Don't leave the pull running; normalise to RuntimeError so callers
+            # handle a hang the same as any other pull failure.
+            proc.kill()
+            proc.wait()
+            raise RuntimeError(f"docker {args[0]} timed out after {timeout}s") from exc
+    finally:
+        proc.stdout.close()
+    if proc.returncode != 0:
+        raise RuntimeError(f"docker {args[0]} failed (exit {proc.returncode})")
 
 
 def _docker_silent(*args: str) -> None:

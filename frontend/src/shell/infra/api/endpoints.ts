@@ -1,6 +1,7 @@
 const API_V1_BASE = "/api/v1";
 
 export const endpoints = {
+  workbenchImages: () => `${API_V1_BASE}/workbench/images`,
   rees: () => `${API_V1_BASE}/rees`,
   ree: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}`,
   reeIntent: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/intent`,

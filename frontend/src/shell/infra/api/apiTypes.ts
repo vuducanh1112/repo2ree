@@ -91,6 +91,8 @@ export interface ReeDetailDto extends ReeSummaryDto {
   // The backend emits this already camelCased and the frontend renders it
   // untouched, so the wire shape and the domain type are one and the same.
   sourceRepo?: SourceRepoMetadata;
+  /** The image this REE's workbench was provisioned from. */
+  workbenchImage?: string;
 }
 
 export interface CreateReeRequestDto {
@@ -98,6 +100,22 @@ export interface CreateReeRequestDto {
   originUrl?: string;
   sourceType?: "git" | "tarball" | "zip";
   name?: string;
+  /** Image to provision the workbench from; omitted falls back to the server default. */
+  workbenchImage?: string;
+}
+
+/** A base image offered for workbench provisioning (GET /workbench/images). */
+export interface WorkbenchImageDto {
+  id: string;
+  ref: string;
+  label: string;
+  description: string;
+}
+
+export interface WorkbenchImageCatalogDto {
+  images: WorkbenchImageDto[];
+  /** Id of the image used when a provisioning request omits one. */
+  defaultId: string;
 }
 
 export interface PatchReeRequestDto {
@@ -123,6 +141,7 @@ export interface UploadInitResponseDto {
 }
 
 export type WorkflowOperationDto =
+  | "provision"
   | "evaluate"
   | "build"
   | "hbom"

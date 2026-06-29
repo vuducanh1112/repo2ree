@@ -1,7 +1,10 @@
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { appendLine } from "@core/ree/logEntry";
-import type { LogEntry } from "@core/ree/ReeTypes";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
+import { useExecutionRunsClient } from "@shell/data/execution-runs/client";
+import { observeExecutionRun } from "@shell/data/execution-runs/queries";
+import { useWorkbenchImageCatalog } from "@shell/data/workbench/images";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Ic } from "../../shared/components/Icon";
@@ -17,10 +20,12 @@ import { C, F } from "../../theme/theme";
 import { CollapsibleLogCard } from "../components/CollapsibleLogCard";
 import { PodWidget } from "../pages/overview/PodWidget";
 import {
-  ImageCard,
+  DEFAULT_WORKBENCH_IMAGE_SELECTION,
   LocationOption,
-  STANDARD_IMAGE,
+  resolveWorkbenchImage,
   WORKBENCH_COLOR,
+  type WorkbenchImageSelection,
+  WorkbenchImageSelector,
 } from "../pages/workbench/WorkbenchPageSections";
 import { APP_ROUTE } from "../state/pages";
 
@@ -43,28 +48,52 @@ interface WorkbenchLabProps {
 // this view for the live CanvasHub.
 export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
   const navigate = useNavigate();
-  const { reeApi } = useApiRuntime();
+  const runsClient = useExecutionRunsClient();
+  const queryClient = useQueryClient();
+  const { data: imageCatalog } = useWorkbenchImageCatalog();
+  const images = imageCatalog?.images ?? [];
+  const defaultImageId = imageCatalog?.defaultId ?? "";
   const [location, setLocation] = useState<LocationType>("local");
   const [ssh, setSsh] = useState<SshDetails>({ host: "", user: "", port: "22" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<LogEntry | null>(null);
+  const [imageSelection, setImageSelection] = useState<WorkbenchImageSelection>(
+    DEFAULT_WORKBENCH_IMAGE_SELECTION,
+  );
 
   const provisionLabel = location === "remote" && ssh.host ? ssh.host : "this machine";
   const canProvision = location === "local" || ssh.host.trim().length > 0;
 
   async function handleProvision() {
+    const image = resolveWorkbenchImage(imageSelection, images);
     setLoading(true);
     setError(null);
-    setLog(appendLine(null, "info", "Powering up the workbench…"));
-    setLog((l) => appendLine(l, "out", `Image: ${STANDARD_IMAGE.ref}`));
-    setLog((l) => appendLine(l, "out", `Location: ${provisionLabel}`));
+    const startedTs = new Date().toISOString();
+    // Preamble lines we own locally; the run's streamed log lines are appended
+    // after these on every poll update.
+    const preamble: LogLine[] = [
+      { type: "info", msg: "Powering up the workbench…", ts: startedTs },
+      { type: "out", msg: `Image: ${image ?? "server default"}`, ts: startedTs },
+      { type: "out", msg: `Location: ${provisionLabel}`, ts: startedTs },
+    ];
+    setLog({ lines: preamble, ts: startedTs });
     try {
       // The REE's display name is owned by the Metadata page; provision with a
-      // neutral default and let the user rename it there.
-      const created = await reeApi.createRee({ sourceMode: "upload", name: "REE" });
+      // neutral default and let the user rename it there. Provisioning runs in
+      // the background so the image pull streams live — observeExecutionRun
+      // tails the run's log feed into the bench console until it finishes.
+      const { reeId, run } = await runsClient.createWorkspace("REE", image);
+      const result = await observeExecutionRun(queryClient, runsClient, {
+        reeId,
+        runId: run.runId,
+        onUpdate: ({ lines, ts }) => setLog({ lines: [...preamble, ...lines], ts }),
+      });
+      if (result.status !== "succeeded") {
+        throw new Error(`Provisioning ${result.status}`);
+      }
       setLog((l) => appendLine(l, "ok", "Lab online — seating the specimen"));
-      navigate(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(created.reeId)}`);
+      navigate(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(reeId)}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Provisioning failed";
       setError(msg);
@@ -163,7 +192,13 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
           )}
 
           <SectionLabel icon={Ic.layers(14)}>Image</SectionLabel>
-          <ImageCard image={STANDARD_IMAGE} />
+          <WorkbenchImageSelector
+            images={images}
+            defaultId={defaultImageId}
+            selection={imageSelection}
+            onChange={setImageSelection}
+            disabled={loading}
+          />
 
           {error && (
             <div style={lgInfoBanner("danger")}>

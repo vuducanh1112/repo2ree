@@ -18,6 +18,7 @@ function buildArgs(queryClient: QueryClient) {
       resetWorkspaceRequest: vi.fn(async () => {}),
     },
     executionRunsClient: {
+      createWorkspace: vi.fn(),
       startExecutionRun: vi.fn(),
       getExecutionRun: vi.fn(),
       getExecutionRunLogs: vi.fn(),

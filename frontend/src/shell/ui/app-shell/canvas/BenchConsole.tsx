@@ -1,11 +1,12 @@
 import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
 import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeQuery } from "@shell/data/ree/queries";
+import { defaultImageRef, useWorkbenchImageCatalog } from "@shell/data/workbench/images";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
-import { STANDARD_IMAGE } from "../pages/workbench/WorkbenchPageSections";
 import { APP_ROUTE } from "../state/pages";
 import { HudConsole } from "./HudConsole";
 
@@ -29,6 +30,11 @@ interface BenchConsoleProps {
 // reprovision, with a terminal-style readout.
 export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
   const { reeId, reeApi } = useApiRuntime();
+  const { data: reeProject } = useReeQuery();
+  const { data: imageCatalog } = useWorkbenchImageCatalog();
+  // The REE's actual provisioned image, falling back to the catalog default
+  // until the REE detail has loaded.
+  const imageRef = reeProject?.workbenchImage ?? defaultImageRef(imageCatalog);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [reprovisioning, setReprovisioning] = useState(false);
@@ -44,7 +50,9 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
   async function handleReprovision() {
     setReprovisioning(true);
     setLog(appendLine(null, "info", "Reprovisioning workbench…"));
-    setLog((l) => appendLine(l, "out", `Replacing container from ${STANDARD_IMAGE.ref}`));
+    setLog((l) =>
+      appendLine(l, "out", `Replacing container from ${imageRef ?? "the current image"}`),
+    );
     setLog((l) => appendLine(l, "out", "Preserving /ree workspace volume"));
     try {
       await reeApi.reprovisionWorkbench(reeId);
@@ -67,14 +75,14 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
       icon={Ic.package(16)}
       iconColor="#64748b"
       title="Workbench"
-      subtitle={open ? `The lab hosting ${reeName || "this REE"}` : STANDARD_IMAGE.ref}
+      subtitle={open ? `The lab hosting ${reeName || "this REE"}` : (imageRef ?? "Workbench")}
       on={provisioned}
       expandLabel="Expand workbench console"
       collapseLabel="Collapse workbench console"
       bodyMaxHeight={420}
     >
       <div style={{ height: 6 }} />
-      <StatRow label="Image" value={STANDARD_IMAGE.ref} mono />
+      <StatRow label="Image" value={imageRef ?? "—"} mono />
       <StatRow label="Location" value="Local" />
       <StatRow label="Isolation" value="Docker-in-docker sandbox" />
 

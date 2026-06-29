@@ -27,4 +27,6 @@ export interface ReeProject<TFile = unknown, TRee = unknown> {
   ree?: TRee;
   draftManifest?: DraftManifest;
   sourceRepo?: SourceRepoMetadata;
+  /** The image this REE's workbench was provisioned from. */
+  workbenchImage?: string;
 }

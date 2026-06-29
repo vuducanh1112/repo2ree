@@ -9,6 +9,7 @@ import type {
   SourceAcquireRequestDto,
   UploadInitRequestDto,
   UploadInitResponseDto,
+  WorkbenchImageCatalogDto,
   WorkflowRunDto,
 } from "./apiTypes";
 import { endpoints } from "./endpoints";
@@ -44,6 +45,13 @@ function parseContentDispositionFilename(contentDisposition: string | null): str
 export class ReeApi {
   constructor(private readonly client: ApiClient) {}
 
+  /** The base images the backend offers at provision time. */
+  async listWorkbenchImages(): Promise<WorkbenchImageCatalogDto> {
+    return this.client.request<WorkbenchImageCatalogDto>(endpoints.workbenchImages(), {
+      method: "GET",
+    });
+  }
+
   async uploadSourceBytes(uploadUrl: string, data: ArrayBuffer): Promise<void> {
     await this.client.request<Record<string, unknown>>(uploadUrl, {
       method: "PUT",
@@ -54,8 +62,14 @@ export class ReeApi {
     });
   }
 
-  async createRee(payload: CreateReeRequestDto): Promise<ReeDetailDto> {
-    return this.client.request<ReeDetailDto>(endpoints.rees(), {
+  /**
+   * Provisioning runs in the background so the workbench image pull streams its
+   * progress live — the response is the provisioning run (carrying reeId +
+   * runId), not the finished workspace. Poll the run / its log feed and fetch
+   * the workspace with {@link getRee} once it reaches "succeeded".
+   */
+  async createRee(payload: CreateReeRequestDto): Promise<WorkflowRunDto> {
+    return this.client.request<WorkflowRunDto>(endpoints.rees(), {
       method: "POST",
       body: JSON.stringify(payload),
     });

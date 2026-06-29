@@ -4,6 +4,7 @@ import time
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
@@ -14,6 +15,7 @@ from repo2ree_api.run_management import (
     _is_cancel_requested,
     _run_summary,
     _start_background_run,
+    _start_provisioning_run,
     _update_run_outputs,
 )
 from repo2ree_api.schemas import (
@@ -57,6 +59,7 @@ from repo2ree_protocol.command import (
     UpdateSourceMetadataArgs,
     WriteFileArgs,
 )
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     command_metric_attrs,
@@ -189,12 +192,15 @@ def _run_workbench_acquire_pipeline(
     *,
     origin_url: str,
     source_type: str,
+    log: LogSink | None = None,
 ) -> None:
     """Run the acquire → snapshot → materialize → update-metadata pipeline in the workbench.
 
     Non-fatal: logs warnings and stops the pipeline on first failure so the
-    caller's response is not affected.
+    caller's response is not affected. When ``log`` is given, each command's
+    output is streamed to it (e.g. into a provisioning run's log stream).
     """
+    sink: LogSink = log if log is not None else (lambda *_: None)
     pipeline = _source_pipeline(
         AcquireSourceCommand(
             args=AcquireSourceArgs(
@@ -207,7 +213,7 @@ def _run_workbench_acquire_pipeline(
     )
     for cmd in pipeline:
         try:
-            result = workbench_manager.dispatch_action(handle, cmd, f"init-{cmd.operation}", lambda *_: None)
+            result = workbench_manager.dispatch_action(handle, cmd, f"init-{cmd.operation}", sink)
         except Exception as exc:
             _log.warning(
                 "workbench acquire pipeline %s failed for %s: %s",
@@ -246,24 +252,53 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
 
     ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
+    # Blank/omitted image falls back to the server default in the manager.
+    image = (payload.workbenchImage or "").strip() or None
 
-    with _ree_command_span("create", ree_id):
+    # Provision in the background so the cold-machine image pull streams its
+    # progress live into the run's log stream (GET .../runs/{run_id}/logs)
+    # instead of blocking the request with no visible output. The reeId is
+    # minted up front, so the response carries it immediately.
+    def _runner(rid: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        def _log(stream: str, level: str, message: str) -> None:
+            _append_run_log(rid, run_id, stream, level, message)
+
+        if _is_cancel_requested(rid, run_id):
+            _log("system", "warn", "Provisioning canceled before it started")
+            return "canceled", {}
+
+        # Note: cancel is only honoured at the phase boundaries below — the image
+        # pull and container start inside provision() run to completion once
+        # begun, so a cancel mid-pull only takes effect afterwards.
         try:
-            handle = workbench_manager.provision(ree_id, name)
+            handle = workbench_manager.provision(rid, name, log=_log, image=image)
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Workbench provisioning failed: {exc}") from exc
+            _log("system", "error", f"Workbench provisioning failed: {exc}")
+            return "failed", {}
 
-        # For url mode, acquire the source synchronously into the workbench volume
-        # so the response reflects acquired state.
+        if _is_cancel_requested(rid, run_id):
+            _log("system", "warn", "Provisioning canceled before source acquisition")
+            return "canceled", {"workspace": workbench_manager.get_workspace(handle)}
+
+        # For url mode, acquire the source into the workbench volume so the
+        # workspace reflects acquired state once provisioning finishes.
         if payload.sourceMode == "url" and payload.originUrl:
             _run_workbench_acquire_pipeline(
                 handle,
-                ree_id,
+                rid,
                 origin_url=payload.originUrl,
                 source_type=payload.sourceType or "git",
+                log=_log,
             )
 
-        return workbench_manager.get_workspace(handle)
+        return "succeeded", {"workspace": workbench_manager.get_workspace(handle)}
+
+    run_state = _start_provisioning_run(
+        ree_id=ree_id,
+        request_payload=payload.model_dump(),
+        runner=_runner,
+    )
+    return _run_summary(run_state)
 
 
 @manage_ree_router.get("/api/v1/rees")
@@ -282,7 +317,11 @@ def list_workspaces_route(
 @manage_ree_router.get("/api/v1/rees/{ree_id}")
 def get_workspace_route(ree_id: str):
     handle = _require_handle(ree_id)
-    return workbench_manager.get_workspace(handle)
+    workspace = workbench_manager.get_workspace(handle)
+    # get-workspace runs inside the container and can't know the image, so the
+    # manager (which owns the registry) supplies it.
+    workspace["workbenchImage"] = workbench_manager.image_for(handle)
+    return workspace
 
 
 @manage_ree_router.patch("/api/v1/rees/{ree_id}/intent")

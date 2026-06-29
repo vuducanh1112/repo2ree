@@ -18,6 +18,9 @@ class WorkbenchEntry:
     ree_id: str
     container_name: str
     volume_name: str
+    # The image this workbench was provisioned from. Empty for entries written
+    # before image tracking existed; consumers fall back to the manager default.
+    image: str = ""
 
 
 class WorkbenchRegistry:
@@ -29,6 +32,7 @@ class WorkbenchRegistry:
         data[entry.ree_id] = {
             "container_name": entry.container_name,
             "volume_name": entry.volume_name,
+            "image": entry.image,
         }
         self._write(data)
 
@@ -37,22 +41,21 @@ class WorkbenchRegistry:
         record = data.get(ree_id)
         if record is None:
             return None
+        return self._entry_from_record(ree_id, record)
+
+    def list_all(self) -> list[WorkbenchEntry]:
+        data = self._read()
+        return [self._entry_from_record(ree_id, record) for ree_id, record in data.items()]
+
+    @staticmethod
+    def _entry_from_record(ree_id: str, record: dict[str, str]) -> WorkbenchEntry:
         return WorkbenchEntry(
             ree_id=ree_id,
             container_name=record["container_name"],
             volume_name=record["volume_name"],
+            # Absent for entries written before image tracking.
+            image=record.get("image", ""),
         )
-
-    def list_all(self) -> list[WorkbenchEntry]:
-        data = self._read()
-        return [
-            WorkbenchEntry(
-                ree_id=ree_id,
-                container_name=record["container_name"],
-                volume_name=record["volume_name"],
-            )
-            for ree_id, record in data.items()
-        ]
 
     def unregister(self, ree_id: str) -> None:
         data = self._read()

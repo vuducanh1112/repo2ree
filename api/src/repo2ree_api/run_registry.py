@@ -185,8 +185,12 @@ class RunRegistry:
         request_payload: dict[str, Any],
         run_id_prefix: str,
         runner: Callable[[str, str], tuple[str, dict[str, Any]]],
+        require_entity_exists: bool = True,
     ) -> dict[str, Any]:
-        self._require_entity(entity_id)
+        # A provisioning run *creates* its entity, so it can't require the entity
+        # to already exist; every other run runs against a live entity.
+        if require_entity_exists:
+            self._require_entity(entity_id)
         created_at = utc_now()
         run_id = f"{run_id_prefix}-{uuid4().hex}"
         run_state = self._create_run_state(
@@ -251,6 +255,16 @@ class RunRegistry:
         if self._include_id_in_summary:
             keys.insert(1, self._id_field)
         return {key: run_state[key] for key in keys}
+
+    def has_runs(self, entity_id: str) -> bool:
+        """True if any run is recorded for entity_id (even before it fully exists).
+
+        Lets the entity-existence check accept an entity that is still being
+        created by an in-flight run (e.g. a provisioning run that owns the
+        workbench's creation), so its logs are readable while it provisions.
+        """
+        with self._lock:
+            return bool(self._run_store.get(entity_id))
 
     def get_run_state(self, entity_id: str, run_id: str) -> dict[str, Any]:
         self._require_entity(entity_id)

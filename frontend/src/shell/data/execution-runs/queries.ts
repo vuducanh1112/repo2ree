@@ -1,5 +1,6 @@
 import type { ExecutionRun, ExecutionRunLogChunk } from "@core/execution/ExecutionRun";
 import type { ExecutionRunStatus } from "@core/execution/ExecutionRunStatus";
+import { isTerminalExecutionRunStatus } from "@core/execution/ExecutionRunStatus";
 import type { LogLine } from "@core/ree/ReeTypes";
 import { type QueryClient, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiRuntime } from "../apiRuntime";
@@ -8,7 +9,6 @@ import { queryKeys } from "../queryKeys";
 import type { ExecutionRunsClient } from "./client";
 import { useExecutionRunsClient } from "./client";
 
-const TERMINAL_STATUSES = new Set<ExecutionRunStatus>(["succeeded", "failed", "canceled"]);
 const MAX_LOG_LINES = 2000;
 const MAX_LOG_MESSAGE_CHARS = 4000;
 const MAX_LOG_PAGES = 20;
@@ -32,10 +32,6 @@ function mergeCappedLines(existing: LogLine[], incoming: LogLine[]): LogLine[] {
     return merged;
   }
   return merged.slice(merged.length - MAX_LOG_LINES);
-}
-
-function isTerminalExecutionRunStatus(status?: ExecutionRunStatus): boolean {
-  return status ? TERMINAL_STATUSES.has(status) : false;
 }
 
 function resolveRunTimestamp(run: ExecutionRun | undefined, fallback: string): string {

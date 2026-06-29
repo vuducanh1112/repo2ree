@@ -22,6 +22,9 @@ class WorkspaceCreatePayload(BaseModel):
     originUrl: str | None = None
     sourceType: Literal["git", "tarball", "zip"] | None = None
     name: str | None = None
+    # Image to provision the workbench from. Omitted (or blank) falls back to the
+    # server default (the workbench image catalog default; see workbench/catalog.py).
+    workbenchImage: str | None = None
 
 
 class ReeIntentPatchPayload(BaseModel):
