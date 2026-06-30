@@ -1,12 +1,15 @@
 """Pure helpers for the downloadable REE bundle ZIP.
 
-The bundle mirrors the on-disk REE layout under a ``ree/`` prefix:
+The bundle mirrors the on-disk REE layout under a ``ree/`` prefix, plus two
+top-level files that make the download self-reproducing without repo2ree:
 
+    run.sh                one-click reproducer (see ``workspace.reproducer``)
+    REPRODUCING.md        human instructions for the reproducer
     ree/ree.json          manifest
     ree/snapshot.tar.gz   frozen source archive (when available)
     ree/overlay/...       user recipe files (empty dir entry if none)
     ree/artifacts/...     build outputs (runtime, sbom, ...)
-    ree/workspace/        empty placeholder — derived view, rebuilt on import
+    ree/workspace/        empty placeholder — materialized by run.sh on extract
 
 ``upstream/`` is intentionally omitted: its contents are already in
 ``snapshot.tar.gz``. This module is the functional core for the bundle —
@@ -73,15 +76,29 @@ def build_zip_bytes(entries: Iterable[tuple[str, bytes]]) -> bytes:
     entry whose ``archive_path`` ends with ``/`` is written as an empty
     directory. Entries receive a fixed epoch timestamp so the output is
     byte-identical for identical inputs (enabling content-addressed seal hashes).
-    Pure given its inputs: no filesystem access.
+    Shell scripts (``*.sh``) are marked executable so the materialized workspace
+    and the bundled ``run.sh`` are directly runnable after extraction. Pure
+    given its inputs: no filesystem access.
     """
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
         for archive_path, content in entries:
             info = zipfile.ZipInfo(filename=archive_path, date_time=_EPOCH_DATE_TIME)
             info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = _unix_mode_attr(archive_path)
             archive.writestr(info, content)
     return buffer.getvalue()
+
+
+def _unix_mode_attr(archive_path: str) -> int:
+    """Unix permission bits for a ZIP entry, as the high 16 bits of external_attr."""
+    if archive_path.endswith("/"):
+        mode = 0o40755  # directory
+    elif archive_path.endswith(".sh"):
+        mode = 0o100755  # executable script
+    else:
+        mode = 0o100644  # regular file
+    return mode << 16
 
 
 @dataclass(frozen=True)

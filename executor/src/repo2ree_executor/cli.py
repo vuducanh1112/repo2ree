@@ -4,13 +4,20 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import TextIO
+from typing import Any, TextIO
 
 import click
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.run_command import run_command
+from repo2ree_core.reproduction import (
+    ACQUIRE_SOURCE,
+    BUILD_RUNTIME,
+    EXPERIMENT,
+    MATERIALIZE_WORKSPACE,
+    TEST_ACTIVATION,
+)
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.storage.workspace_ops import (
@@ -20,7 +27,16 @@ from repo2ree_core.storage.workspace_ops import get_workspace as _get_workspace
 from repo2ree_core.storage.workspace_ops import read_file_bytes as _read_file_bytes
 from repo2ree_core.time_utils import utc_now as _utc_now
 from repo2ree_protocol import ActionResult, command_adapter
-from repo2ree_protocol.command import AcquireSourceArgs, AcquireSourceCommand
+from repo2ree_protocol.command import (
+    AcquireSourceArgs,
+    AcquireSourceCommand,
+    ActivationTestArgs,
+    ActivationTestCommand,
+    BuildRuntimeCommand,
+    MaterializeWorkspaceCommand,
+    RunExperimentArgs,
+    RunExperimentCommand,
+)
 from repo2ree_protocol.log import configure_logging as _configure_logging
 from repo2ree_protocol.tracing import (
     attach_remote_context,
@@ -117,6 +133,17 @@ def execute_cmd(action_source: str, run_id: str | None) -> None:
         )
         sys.exit(2)
 
+    _run_command_envelope(cmd, run_id)
+
+
+def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
+    """Run a validated Command envelope, streaming NDJSON and emitting the result.
+
+    Shared by ``execute`` (the machine path, host → workbench) and the
+    first-class reproduction subcommands (``build-runtime``, ``test-activation``,
+    ``experiment``, ``materialize-workspace``) so they all log, persist, and
+    signal failure identically. Exits non-zero on failure or cancellation.
+    """
     run_log: TextIO | None = None
     if run_id is not None:
         layout = ReeLayout.in_workbench()
@@ -144,7 +171,47 @@ def execute_cmd(action_source: str, run_id: str | None) -> None:
         sys.exit(1)
 
 
-@cli.command("acquire-source")
+# ================================================
+# Reproduction commands
+# ================================================
+#
+# First-class verbs that mirror the bundle's run.sh (see
+# repo2ree_core.reproduction). Each is sugar over an `execute` envelope so the
+# human/CI surface and the machine surface (host → workbench) share one path.
+# `acquire-source` lives below with its authoring-shaped arguments.
+
+
+@cli.command(MATERIALIZE_WORKSPACE.name, help=MATERIALIZE_WORKSPACE.summary)
+@click.option("--run-id", default=None, help="If set, append NDJSON events to /ree/runs/<run-id>.ndjson.")
+def materialize_workspace_cmd(run_id: str | None) -> None:
+    _run_command_envelope(MaterializeWorkspaceCommand(), run_id)
+
+
+@cli.command(BUILD_RUNTIME.name, help=BUILD_RUNTIME.summary)
+@click.option("--run-id", default=None, help="If set, append NDJSON events to /ree/runs/<run-id>.ndjson.")
+def build_runtime_cmd(run_id: str | None) -> None:
+    _run_command_envelope(BuildRuntimeCommand(), run_id)
+
+
+@cli.command(TEST_ACTIVATION.name, help=TEST_ACTIVATION.summary)
+@click.option("--mode", type=click.Choice(["verify", "snapshot"]), default="verify")
+@click.option("--run-id", default=None, help="If set, append NDJSON events to /ree/runs/<run-id>.ndjson.")
+def test_activation_cmd(mode: str, run_id: str | None) -> None:
+    _run_command_envelope(ActivationTestCommand(args=ActivationTestArgs(mode=mode)), run_id)  # type: ignore[arg-type]
+
+
+@cli.command(EXPERIMENT.name, help=EXPERIMENT.summary)
+@click.argument("name")
+@click.option("--mode", type=click.Choice(["verify", "snapshot"]), default="verify")
+@click.option("--run-id", default=None, help="If set, append NDJSON events to /ree/runs/<run-id>.ndjson.")
+def experiment_cmd(name: str, mode: str, run_id: str | None) -> None:
+    _run_command_envelope(
+        RunExperimentCommand(args=RunExperimentArgs(experiment_name=name, mode=mode)),  # type: ignore[arg-type]
+        run_id,
+    )
+
+
+@cli.command(ACQUIRE_SOURCE.name, help=ACQUIRE_SOURCE.summary)
 @click.argument("origin_url")
 @click.option(
     "--source-type",

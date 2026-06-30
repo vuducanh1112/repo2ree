@@ -590,6 +590,15 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       ),
     ]);
     expect(download.suggestedFilename()).toMatch(/\.zip$/i);
+
+    // Persist the sealed bundle so the demo leaves a real, runnable artifact
+    // (run.sh + ree/...) under the test output dir, and attach it to the report.
+    const bundlePath = test.info().outputPath(download.suggestedFilename());
+    await download.saveAs(bundlePath);
+    await test.info().attach("sealed-ree-bundle", {
+      path: bundlePath,
+      contentType: "application/zip",
+    });
   });
 
   await demoStep(page, "Release workbench", async () => {

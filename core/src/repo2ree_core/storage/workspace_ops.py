@@ -55,6 +55,10 @@ from repo2ree_core.workspace.inventory import (
     is_reserved_workspace_filename,
     should_inline_file_content,
 )
+from repo2ree_core.workspace.reproducer import (
+    reproducer_entries,
+    runtime_artifact_basename_from_remap,
+)
 
 
 # Deferred import to break the storage → workspace_ops → manifest → storage cycle.
@@ -132,15 +136,30 @@ def _build_artifact_plan(layout: ReeLayout, intent: Any, *, include_runtime: boo
     )
 
 
+def _reproducer_entries(intent: Any, artifact_plan: ArtifactPlan) -> list[tuple[str, bytes]]:
+    """Top-level ``run.sh`` + ``REPRODUCING.md`` derived from author intent."""
+    return reproducer_entries(
+        activation_script=intent.activation.run_script,
+        experiments=[(e.name, e.run_script) for e in intent.experiments],
+        runtime_workspace_path=intent.runtime,
+        runtime_artifact_basename=runtime_artifact_basename_from_remap(intent.runtime, artifact_plan.manifest_remap),
+        origin_url=intent.origin_url or "",
+        source_type=intent.source_type or "",
+        swhid=intent.swhid or "",
+    )
+
+
 def _bundle_entry_bytes(
     layout: ReeLayout,
     artifact_plan: ArtifactPlan,
+    intent: Any,
     *,
     include_snapshot: bool,
     manifest_bytes: bytes,
 ) -> list[tuple[str, bytes]]:
     """Read bytes for every entry included in the bundle (shell)."""
-    entries: list[tuple[str, bytes]] = [(REE_MANIFEST_ENTRY_PATH, manifest_bytes)]
+    entries: list[tuple[str, bytes]] = list(_reproducer_entries(intent, artifact_plan))
+    entries.append((REE_MANIFEST_ENTRY_PATH, manifest_bytes))
     if include_snapshot and layout.snapshot_archive.exists():
         entries.append((REE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive.read_bytes()))
     entries.append((REE_OVERLAY_PREFIX, b""))
@@ -301,6 +320,7 @@ def _assemble_bundle(
     entries = _bundle_entry_bytes(
         layout,
         artifact_plan,
+        intent,
         include_snapshot=include_snapshot,
         manifest_bytes=manifest_bytes,
     )
