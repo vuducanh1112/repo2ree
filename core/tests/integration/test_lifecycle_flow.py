@@ -46,9 +46,14 @@ from repo2ree_protocol.command import (
     AcquireSourceArgs,
     AcquireSourceCommand,
     EvaluateDependencyScoreCommand,
+    ExtractUploadArgs,
+    ExtractUploadCommand,
     MaterializeWorkspaceCommand,
+    ResetForSourceChangeCommand,
     SealReeCommand,
     SnapshotUpstreamCommand,
+    UpdateSourceMetadataArgs,
+    UpdateSourceMetadataCommand,
     WriteFileArgs,
     WriteFileCommand,
 )
@@ -84,14 +89,24 @@ class Ree:
         return ReeSession.from_metadata(ReeStore(self.layout).read_metadata_json())
 
 
-def _make_source_repo(root: Path) -> Path:
+def _make_source_repo(
+    root: Path,
+    *,
+    name: str = "source-repo",
+    app_text: str = "print('hello')\n",
+    extra_files: dict[str, str] | None = None,
+) -> Path:
     """Create a small local git repo to stand in for an upstream source."""
-    repo = root / "source-repo"
+    repo = root / name
     repo.mkdir()
     (repo / "README.md").write_text("# demo project\n")
     (repo / "requirements.txt").write_text("requests==2.31.0\n")
     (repo / "Dockerfile").write_text("FROM python:3.13-slim\n")
-    (repo / "app.py").write_text("print('hello')\n")
+    (repo / "app.py").write_text(app_text)
+    for rel, content in (extra_files or {}).items():
+        target = repo / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content)
 
     def _git(*args: str) -> None:
         subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
@@ -164,9 +179,7 @@ def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
 
     # --- acquire_source: clone upstream into upstream/ ------------------
     result = run_command(
-        AcquireSourceCommand(
-            args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git", dest=layout.upstream)
-        ),
+        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git")),
         log=log,
         run_id="acquire",
     )
@@ -175,6 +188,11 @@ def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
     assert (layout.upstream / "app.py").is_file()
     # the resolved commit is the source's reproducibility receipt
     assert result.outputs["resolved_commit"]
+    # the fetch was driven by a persisted, REE-owned acquire script (the same
+    # file run.sh will eventually call), not a throwaway temp
+    assert layout.acquire_script.is_file()
+    assert "git clone" in layout.acquire_script.read_text()
+    assert str(source_repo) in layout.acquire_script.read_text()
 
     # --- snapshot_upstream: freeze upstream into snapshot.tar.gz --------
     result = run_command(SnapshotUpstreamCommand(), log=log, run_id="snapshot")
@@ -218,19 +236,182 @@ def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
     assert log.events
 
 
+def test_upload_pipeline_extract_then_acquire(ree: Ree, tmp_path: Path) -> None:
+    """Upload path: extract_upload builds the snapshot, then acquire extracts it.
+
+    Mirrors the API's _upload_pipeline (extract_upload -> acquire -> materialize),
+    proving an origin-less source is populated through the same unified acquire.
+    """
+    layout = ree.layout
+    log = ree.log
+
+    # Stage an uploaded tarball at /ree/upload-staging/<token>.bin
+    src = tmp_path / "proj"
+    src.mkdir()
+    (src / "main.py").write_text("print('uploaded')\n")
+    (src / "data.txt").write_text("payload\n")
+    token = "tok123"  # noqa: S105 — not a secret, just an upload-staging id
+    layout.upload_staging.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["tar", "-czf", str(layout.upload_staging_file(token)), "-C", str(src), "."],
+        check=True,
+    )
+
+    # extract_upload turns the staged bytes into the snapshot (not upstream)
+    result = run_command(
+        ExtractUploadCommand(args=ExtractUploadArgs(upload_token=token, archive_name="proj.tar.gz")),
+        log=log,
+        run_id="extract-upload",
+    )
+    assert result.status == "succeeded"
+    assert layout.snapshot_archive.is_file()
+    assert not layout.upstream.exists() or not any(layout.upstream.iterdir())
+
+    # acquire (no origin/type) extracts the snapshot into upstream
+    result = run_command(
+        AcquireSourceCommand(args=AcquireSourceArgs()),
+        log=log,
+        run_id="acquire-upload",
+    )
+    assert result.status == "succeeded"
+    assert (layout.upstream / "main.py").read_text() == "print('uploaded')\n"
+    assert (layout.upstream / "data.txt").is_file()
+
+    # and it flows on into the workspace
+    result = run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize-upload")
+    assert result.status == "succeeded"
+    assert (layout.workspace / "main.py").is_file()
+
+
+def test_source_replacement_resets_derived_state_before_download(ree: Ree, source_repo: Path, tmp_path: Path) -> None:
+    layout = ree.layout
+    log = ree.log
+    replacement_repo = _make_source_repo(
+        tmp_path,
+        name="replacement-repo",
+        app_text="print('replacement')\n",
+        extra_files={"replacement-only.txt": "new\n"},
+    )
+
+    # Seed a complete old source/runtime/seal state.
+    run_command(
+        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git")),
+        log=log,
+        run_id="acquire-old",
+    )
+    run_command(SnapshotUpstreamCommand(), log=log, run_id="snapshot-old")
+    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize-old")
+    run_command(
+        WriteFileCommand(args=WriteFileArgs(path="old-overlay.sh", content="echo stale\n")),
+        log=log,
+        run_id="write-old",
+    )
+    (layout.artifacts / "runtime.tar.gz").write_text("old runtime\n")
+    run_command(SealReeCommand(), log=log, run_id="seal-old")
+    assert layout.snapshot_archive.is_file()
+    assert layout.sealed_archive.is_file()
+
+    # Simulate the API download pipeline for a replacement source.
+    result = run_command(ResetForSourceChangeCommand(), log=log, run_id="reset-source")
+    assert result.status == "succeeded"
+    result = run_command(
+        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(replacement_repo), source_type="git")),
+        log=log,
+        run_id="acquire-new",
+    )
+    assert result.status == "succeeded"
+    run_command(SnapshotUpstreamCommand(), log=log, run_id="snapshot-new")
+    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize-new")
+    run_command(
+        UpdateSourceMetadataCommand(
+            args=UpdateSourceMetadataArgs(
+                origin_url=str(replacement_repo),
+                source_type="git",
+                resolved_commit=result.outputs["resolved_commit"],
+            )
+        ),
+        log=log,
+        run_id="metadata-new",
+    )
+
+    assert (layout.upstream / "app.py").read_text() == "print('replacement')\n"
+    assert (layout.workspace / "replacement-only.txt").read_text() == "new\n"
+    assert not (layout.workspace / "old-overlay.sh").exists()
+    assert not (layout.artifacts / "runtime.tar.gz").exists()
+    assert not layout.sealed_archive.exists()
+    assert not layout.manifest.exists()
+    assert str(replacement_repo) in layout.acquire_script.read_text()
+
+    metadata = ReeStore(layout).read_metadata()
+    assert metadata.status == "ready"
+    assert metadata.ree_intent.origin_url == str(replacement_repo)
+    assert metadata.ree_session.source_acquired_by == "download"
+
+
+def test_source_replacement_resets_derived_state_before_upload(ree: Ree, source_repo: Path, tmp_path: Path) -> None:
+    layout = ree.layout
+    log = ree.log
+
+    run_command(
+        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git")),
+        log=log,
+        run_id="acquire-old-upload",
+    )
+    run_command(SnapshotUpstreamCommand(), log=log, run_id="snapshot-old-upload")
+    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize-old-upload")
+    (layout.workspace / "stale-workspace.txt").write_text("stale\n")
+
+    src = tmp_path / "uploaded-replacement"
+    src.mkdir()
+    (src / "main.py").write_text("print('uploaded replacement')\n")
+    token = "tok456"  # noqa: S105 — not a secret, just an upload-staging id
+    layout.upload_staging.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["tar", "-czf", str(layout.upload_staging_file(token)), "-C", str(src), "."],
+        check=True,
+    )
+
+    # Simulate the API upload pipeline for a replacement source. Reset must not
+    # remove upload staging, because extract_upload consumes it next.
+    result = run_command(ResetForSourceChangeCommand(), log=log, run_id="reset-upload")
+    assert result.status == "succeeded"
+    assert layout.upload_staging_file(token).is_file()
+    result = run_command(
+        ExtractUploadCommand(args=ExtractUploadArgs(upload_token=token, archive_name="replacement.tar.gz")),
+        log=log,
+        run_id="extract-upload-replacement",
+    )
+    assert result.status == "succeeded"
+    result = run_command(AcquireSourceCommand(args=AcquireSourceArgs()), log=log, run_id="acquire-upload-new")
+    assert result.status == "succeeded"
+    run_command(MaterializeWorkspaceCommand(), log=log, run_id="materialize-upload-new")
+    run_command(
+        UpdateSourceMetadataCommand(args=UpdateSourceMetadataArgs(mode="upload", archive_name="replacement.tar.gz")),
+        log=log,
+        run_id="metadata-upload-new",
+    )
+
+    assert (layout.upstream / "main.py").read_text() == "print('uploaded replacement')\n"
+    assert (layout.workspace / "main.py").is_file()
+    assert not (layout.workspace / "stale-workspace.txt").exists()
+    assert not (layout.workspace / "requirements.txt").exists()
+
+    metadata = ReeStore(layout).read_metadata()
+    assert metadata.status == "ready"
+    assert metadata.ree_intent.origin_url == ""
+    assert metadata.ree_session.source_acquired_by == "upload"
+
+
 def test_seal_is_deterministic_for_unchanged_content(ree: Ree, source_repo: Path) -> None:
     """Re-sealing unchanged content reproduces the same digest.
 
     This is the content-addressing property the receipt/verify story rests on:
     the seal hash names the bundle's content, not the moment it was sealed.
     """
-    layout = ree.layout
     log = ree.log
 
     run_command(
-        AcquireSourceCommand(
-            args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git", dest=layout.upstream)
-        ),
+        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git")),
         log=log,
         run_id="acquire",
     )
@@ -262,9 +443,7 @@ def test_evaluate_dependency_score_real(ree: Ree, source_repo: Path) -> None:
     log = ree.log
 
     run_command(
-        AcquireSourceCommand(
-            args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git", dest=layout.upstream)
-        ),
+        AcquireSourceCommand(args=AcquireSourceArgs(origin_url=str(source_repo), source_type="git")),
         log=log,
         run_id="acquire",
     )

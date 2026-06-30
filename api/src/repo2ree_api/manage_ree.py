@@ -34,7 +34,6 @@ from repo2ree_api.storage.upload_staging import (
     staged_upload_path,
 )
 from repo2ree_api.workbench.deps import workbench_manager
-from repo2ree_core.storage.layout import WORKBENCH_ROOT
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol import (
     AcquireSourceCommand,
@@ -44,6 +43,7 @@ from repo2ree_protocol import (
     MaterializeWorkspaceCommand,
     PatchReeIntentCommand,
     RemoveSourceCommand,
+    ResetForSourceChangeCommand,
     SealReeCommand,
     SnapshotUpstreamCommand,
     UpdateSourceMetadataCommand,
@@ -155,11 +155,32 @@ def _dispatch_or_500(handle: WorkbenchHandle, cmd: Command, run_id: str, error_d
     return result
 
 
-def _source_pipeline(lead: Command, metadata_args: UpdateSourceMetadataArgs) -> list[Command]:
-    """Build the standard source pipeline: <lead> → snapshot → materialize → update-metadata."""
+def _download_pipeline(lead: AcquireSourceCommand, metadata_args: UpdateSourceMetadataArgs) -> list[Command]:
+    """Download: acquire (fetch into upstream) → snapshot → materialize → update-metadata.
+
+    A downloaded source is *fetched then frozen*: acquire populates upstream, then
+    snapshot captures it.
+    """
     return [
+        ResetForSourceChangeCommand(),
         lead,
         SnapshotUpstreamCommand(),
+        MaterializeWorkspaceCommand(),
+        UpdateSourceMetadataCommand(args=metadata_args),
+    ]
+
+
+def _upload_pipeline(lead: ExtractUploadCommand, metadata_args: UpdateSourceMetadataArgs) -> list[Command]:
+    """Upload: extract-upload (→ snapshot) → acquire (extract) → materialize → update-metadata.
+
+    An upload has no origin, so it is *born frozen*: the upload ingest produces
+    the snapshot, then the unified acquire extracts it into upstream — the same
+    extract arm a reproducer uses. No separate snapshot step.
+    """
+    return [
+        ResetForSourceChangeCommand(),
+        lead,
+        AcquireSourceCommand(args=AcquireSourceArgs()),
         MaterializeWorkspaceCommand(),
         UpdateSourceMetadataCommand(args=metadata_args),
     ]
@@ -201,12 +222,11 @@ def _run_workbench_acquire_pipeline(
     output is streamed to it (e.g. into a provisioning run's log stream).
     """
     sink: LogSink = log if log is not None else (lambda *_: None)
-    pipeline = _source_pipeline(
+    pipeline = _download_pipeline(
         AcquireSourceCommand(
             args=AcquireSourceArgs(
                 origin_url=origin_url,
                 source_type=source_type,  # type: ignore[arg-type]
-                dest=WORKBENCH_ROOT / "upstream",
             )
         ),
         UpdateSourceMetadataArgs(origin_url=origin_url, source_type=source_type),
@@ -374,12 +394,11 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
             _log_run("system", "warn", "Source acquisition canceled")
             return "canceled", request_payload
 
-        pipeline = _source_pipeline(
+        pipeline = _download_pipeline(
             AcquireSourceCommand(
                 args=AcquireSourceArgs(
                     origin_url=payload.originUrl,
                     source_type=payload.sourceType,  # type: ignore[arg-type]
-                    dest=WORKBENCH_ROOT / "upstream",
                 )
             ),
             UpdateSourceMetadataArgs(
@@ -462,7 +481,7 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
             _log_run("system", "error", f"docker cp to workbench failed: {exc}")
             return "failed", request_payload
 
-        pipeline = _source_pipeline(
+        pipeline = _upload_pipeline(
             ExtractUploadCommand(
                 args=ExtractUploadArgs(
                     upload_token=payload.uploadToken,

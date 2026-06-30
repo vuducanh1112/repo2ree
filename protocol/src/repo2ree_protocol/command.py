@@ -13,7 +13,6 @@ Add new operations by:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
@@ -22,9 +21,13 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 class AcquireSourceArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    origin_url: str
-    source_type: Literal["git", "tarball", "zip"]
-    dest: Path
+    # Origin/type are absent for an upload-acquired source: it has no origin and
+    # is populated from the snapshot the upload ingest produced.
+    origin_url: str = ""
+    source_type: Literal["git", "tarball", "zip"] | None = None
+    # Force a fresh pull from origin even when a snapshot is present (origin
+    # sources only; an upload has nothing to re-fetch).
+    refetch: bool = False
 
 
 class AcquireSourceCommand(BaseModel):
@@ -155,6 +158,19 @@ class RemoveSourceCommand(BaseModel):
     args: RemoveSourceArgs = RemoveSourceArgs()
 
 
+class ResetForSourceChangeArgs(BaseModel):
+    """Clear source-derived state before acquiring a replacement source."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ResetForSourceChangeCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["reset_for_source_change"] = "reset_for_source_change"
+    args: ResetForSourceChangeArgs = ResetForSourceChangeArgs()
+
+
 class BuildRuntimeArgs(BaseModel):
     """No args — the build always runs the reserved, REE-owned build script."""
 
@@ -262,6 +278,7 @@ Command = Annotated[
     | DeleteFileCommand
     | PatchReeIntentCommand
     | RemoveSourceCommand
+    | ResetForSourceChangeCommand
     | BuildRuntimeCommand
     | GenerateSbomCommand
     | EvaluateDependencyScoreCommand

@@ -31,6 +31,10 @@ from typing import Any
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.ree_scripts.reproducer import (
+    reproducer_entries,
+    runtime_artifact_basename_from_remap,
+)
 from repo2ree_core.source_repo import derive_source_repo_metadata
 from repo2ree_core.storage.layout import (
     ReeLayout,
@@ -54,10 +58,6 @@ from repo2ree_core.workspace.inventory import (
     classify_file_kind,
     is_reserved_workspace_filename,
     should_inline_file_content,
-)
-from repo2ree_core.workspace.reproducer import (
-    reproducer_entries,
-    runtime_artifact_basename_from_remap,
 )
 
 

@@ -141,7 +141,6 @@ def test_execute_failing_command_exits_1_with_failed_result(initialized_ree: Pat
             "args": {
                 "origin_url": str(initialized_ree / "does-not-exist"),
                 "source_type": "git",
-                "dest": str(ReeLayout.in_workbench().upstream),
             },
         }
     )

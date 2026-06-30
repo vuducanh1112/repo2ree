@@ -121,6 +121,14 @@ pkgs.dockerTools.buildLayeredImage {
     pkgs.renovate  # evaluate_dependency_score shells out to renovate
     pkgs.syft      # generate_sbom handler calls syft natively
 
+    # Source acquisition: acquire_source.sh extracts the snapshot (tar/gzip) or
+    # fetches an origin archive (curl + tar/unzip). The same script runs in a
+    # downloaded bundle, so these mirror the reproducer's prerequisites.
+    pkgs.gnutar
+    pkgs.gzip
+    pkgs.curl
+    pkgs.unzip
+
     # Standard userland: sleep (entrypoint), mkdir, mv, etc.
     pkgs.coreutils
     pkgs.bash

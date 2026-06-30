@@ -3,7 +3,7 @@
 The bundle mirrors the on-disk REE layout under a ``ree/`` prefix, plus two
 top-level files that make the download self-reproducing without repo2ree:
 
-    run.sh                one-click reproducer (see ``workspace.reproducer``)
+    run.sh                one-click reproducer (see ``ree_scripts.reproducer``)
     REPRODUCING.md        human instructions for the reproducer
     ree/ree.json          manifest
     ree/snapshot.tar.gz   frozen source archive (when available)

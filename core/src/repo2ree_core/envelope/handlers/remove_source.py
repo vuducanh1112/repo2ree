@@ -1,17 +1,11 @@
-"""Handler for the remove_source operation.
-
-Clears upstream/, overlay/, workspace/ and snapshot.tar.gz, then resets
-source fields in /ree/.workspace.json back to draft state.
-"""
+"""Handler for the remove_source operation."""
 
 from __future__ import annotations
 
 from repo2ree_core.container.run_script import CancelCheck, LogSink
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.envelope.handlers.source_reset import reset_source_state
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.result import ActionResult
 
 
@@ -33,31 +27,7 @@ def handle_remove_source(
 
     log("system", "info", "remove_source: clearing content and resetting metadata")
     try:
-        for subtree in (store.upstream, store.overlay, store.workspace):
-            subtree.clear()
-            subtree.ensure_root()
-        store.ensure_reserved_overlay_scripts()
-        if layout.snapshot_archive.exists():
-            layout.snapshot_archive.unlink()
-
-        meta = store.read_metadata()
-        # Removing the source removes the basis for everything derived from it,
-        # so reset intent to a blank slate — keeping only author metadata
-        # (name and catalog_metadata) — and discard all session state.
-        cleared_intent = ReeIntent(
-            name=meta.ree_intent.name,
-            catalog_metadata=meta.ree_intent.catalog_metadata,
-        )
-        updated = meta.model_copy(
-            update={
-                "ree_intent": cleared_intent,
-                "ree_session": ReeSession(),
-                "status": "draft",
-                "updated_at": utc_now(),
-                "external_ref": None,
-            }
-        )
-        store.write_metadata(updated)
+        reset_source_state(layout=layout, store=store)
     except Exception as exc:
         log("system", "error", f"remove_source failed: {exc}")
         return ActionResult(status="failed", exit_code=1)

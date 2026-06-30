@@ -43,10 +43,15 @@ _METADATA_FILENAME = ".workspace.json"
 _MANIFEST_FILENAME = "manifest.json"
 _SEALED_ARCHIVE_FILENAME = "sealed.zip"
 _UPLOAD_STAGING_DIRNAME = "upload-staging"
-_UPSTREAM_DIRNAME = "upstream"
+
+# Public name: shared with the bundle layout (run.sh calls the same script).
+# REE-owned infra that runs *before* the workspace exists, so it sits at the
+# root alongside manifest/snapshot rather than in the overlay.
+ACQUIRE_SCRIPT_FILENAME = "acquire_source.sh"
 
 # Public names: shared with the bundle layout so the published REE mirrors
 # the on-disk tree. Import these (rather than redefining) to avoid drift.
+UPSTREAM_DIRNAME = "upstream"
 SNAPSHOT_FILENAME = "snapshot.tar.gz"
 OVERLAY_DIRNAME = "overlay"
 ARTIFACTS_DIRNAME = "artifacts"
@@ -98,6 +103,10 @@ class ReeLayout:
         return self.root / _SEALED_ARCHIVE_FILENAME
 
     @property
+    def acquire_script(self) -> Path:
+        return self.root / ACQUIRE_SCRIPT_FILENAME
+
+    @property
     def snapshot_archive(self) -> Path:
         return self.root / SNAPSHOT_FILENAME
 
@@ -107,7 +116,7 @@ class ReeLayout:
 
     @property
     def upstream(self) -> Path:
-        return self.root / _UPSTREAM_DIRNAME
+        return self.root / UPSTREAM_DIRNAME
 
     @property
     def overlay(self) -> Path:

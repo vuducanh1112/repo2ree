@@ -219,22 +219,21 @@ def experiment_cmd(name: str, mode: str, run_id: str | None) -> None:
     required=True,
 )
 @click.option(
-    "--dest",
-    type=click.Path(),
-    required=True,
-    help="Destination directory for the acquired source.",
+    "--refetch",
+    is_flag=True,
+    help="Force a fresh pull from origin even when a snapshot is present.",
 )
-def acquire_source_cmd(origin_url: str, source_type: str, dest: str) -> None:
-    """Acquire source into DEST.
+def acquire_source_cmd(origin_url: str, source_type: str, refetch: bool) -> None:
+    """Acquire source into the REE's canonical upstream directory.
 
-    Clones a git repo or extracts a tarball/zip into the destination directory.
-    Writes ActionResult JSON to stdout; exits non-zero on failure.
+    Clones a git repo or extracts a tarball/zip into /ree/upstream. Writes
+    ActionResult JSON to stdout; exits non-zero on failure.
     """
     cmd = AcquireSourceCommand(
         args=AcquireSourceArgs(
             origin_url=origin_url,
             source_type=source_type,  # type: ignore[arg-type]
-            dest=Path(dest),
+            refetch=refetch,
         )
     )
     result = run_command(cmd, log=_make_log_sink(None))

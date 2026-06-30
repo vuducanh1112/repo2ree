@@ -12,7 +12,7 @@ outside this registry. The bundle ``run.sh`` exposes exactly these verbs plus a
 couple of orchestration helpers (``all``, ``list``).
 
 Leaf module: it imports nothing from ``repo2ree_core`` so both the run.sh
-generator (``workspace.reproducer``) and the executor CLI can depend on it
+generator (``ree_scripts.reproducer``) and the executor CLI can depend on it
 without an import cycle.
 """
 

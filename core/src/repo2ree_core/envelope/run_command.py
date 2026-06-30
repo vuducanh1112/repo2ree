@@ -19,6 +19,7 @@ from repo2ree_core.envelope.handlers.remove_source import handle_remove_source
 from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
 from repo2ree_core.envelope.handlers.seal_ree import handle_seal_ree
 from repo2ree_core.envelope.handlers.snapshot_upstream import handle_snapshot_upstream
+from repo2ree_core.envelope.handlers.source_reset import handle_reset_for_source_change
 from repo2ree_core.envelope.handlers.update_source_metadata import (
     handle_update_source_metadata,
 )
@@ -36,6 +37,7 @@ from repo2ree_protocol.command import (
     MaterializeWorkspaceCommand,
     PatchReeIntentCommand,
     RemoveSourceCommand,
+    ResetForSourceChangeCommand,
     RunExperimentCommand,
     SealReeCommand,
     SnapshotUpstreamCommand,
@@ -89,6 +91,8 @@ def _dispatch(
         return handle_patch_ree_intent(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, RemoveSourceCommand):
         return handle_remove_source(log=log, is_canceled=cancel)
+    if isinstance(cmd, ResetForSourceChangeCommand):
+        return handle_reset_for_source_change(log=log, is_canceled=cancel)
     if isinstance(cmd, BuildRuntimeCommand):
         return handle_build_runtime(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, EvaluateDependencyScoreCommand):
