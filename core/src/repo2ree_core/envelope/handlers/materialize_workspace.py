@@ -1,16 +1,37 @@
 """Handler for the materialize_workspace operation.
 
-Rebuilds /ree/workspace as the merge of /ree/upstream and /ree/overlay,
-with overlay winning on conflict. Idempotent — workspace is cleared first.
+Rebuilds /ree/workspace as the merge of /ree/upstream and /ree/overlay (overlay
+wins on conflict) by running the generated ``materialize_workspace.sh`` — the
+single, shared merge muscle also shipped in the bundle and called by run.sh.
+Idempotent: the script clears the workspace first.
 """
 
 from __future__ import annotations
 
-from repo2ree_core.container.run_script import CancelCheck, LogSink
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.storage.tree import copy_tree_contents
+from pathlib import Path
+
+from repo2ree_core.container.run_script import (
+    CancelCheck,
+    LogSink,
+    format_command,
+    run_streaming_process,
+)
+from repo2ree_core.ree_scripts.materialize_workspace import build_materialize_sh
+from repo2ree_core.storage.layout import MATERIALIZE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_protocol.result import ActionResult
+
+
+def _write_materialize_script(*, log: LogSink, layout: ReeLayout) -> Path:
+    """Persist ``materialize_workspace.sh`` in the REE.
+
+    Written to the reserved root path so it is sealed into the bundle and run.sh
+    can call the very same file. Materialize only ever runs inside a workbench
+    REE, so the REE root is always present. The script takes no per-source inputs
+    — it merges whatever is on disk under the fixed layout dirs.
+    """
+    layout.materialize_script.write_bytes(build_materialize_sh())
+    log("system", "info", f"wrote materialize script → {MATERIALIZE_SCRIPT_FILENAME}")
+    return layout.materialize_script
 
 
 def handle_materialize_workspace(
@@ -23,19 +44,20 @@ def handle_materialize_workspace(
         return ActionResult(status="canceled")
 
     layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
-
     log("system", "info", f"materializing {layout.workspace}")
-    try:
-        store.workspace.clear()
-        store.workspace.ensure_root()
-        if layout.upstream.is_dir():
-            copy_tree_contents(layout.upstream, layout.workspace)
-        if layout.overlay.is_dir():
-            copy_tree_contents(layout.overlay, layout.workspace)
-    except Exception as exc:
-        log("system", "error", f"materialize failed: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+
+    # The script owns the fixed REE layout paths and the clear-and-merge; the
+    # handler only writes it and drives it.
+    script = _write_materialize_script(log=log, layout=layout)
+    cmd = ["sh", str(script)]
+    log("system", "info", format_command(cmd))
+    result = run_streaming_process(cmd, log=log, is_canceled=is_canceled)
+
+    if result.canceled or is_canceled():
+        log("system", "warn", "materialize_workspace canceled")
+        return ActionResult(status="canceled")
+    if result.returncode != 0:
+        return ActionResult(status="failed", exit_code=result.returncode or 1)
 
     log("system", "info", "materialize_workspace succeeded")
     return ActionResult(status="succeeded", exit_code=0)

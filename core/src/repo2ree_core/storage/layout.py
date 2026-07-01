@@ -44,10 +44,11 @@ _MANIFEST_FILENAME = "manifest.json"
 _SEALED_ARCHIVE_FILENAME = "sealed.zip"
 _UPLOAD_STAGING_DIRNAME = "upload-staging"
 
-# Public name: shared with the bundle layout (run.sh calls the same script).
-# REE-owned infra that runs *before* the workspace exists, so it sits at the
+# Public names: shared with the bundle layout (run.sh calls the same scripts).
+# REE-owned infra that runs *before* / to build the workspace, so they sit at the
 # root alongside manifest/snapshot rather than in the overlay.
 ACQUIRE_SCRIPT_FILENAME = "acquire_source.sh"
+MATERIALIZE_SCRIPT_FILENAME = "materialize_workspace.sh"
 
 # Public names: shared with the bundle layout so the published REE mirrors
 # the on-disk tree. Import these (rather than redefining) to avoid drift.
@@ -105,6 +106,10 @@ class ReeLayout:
     @property
     def acquire_script(self) -> Path:
         return self.root / ACQUIRE_SCRIPT_FILENAME
+
+    @property
+    def materialize_script(self) -> Path:
+        return self.root / MATERIALIZE_SCRIPT_FILENAME
 
     @property
     def snapshot_archive(self) -> Path:

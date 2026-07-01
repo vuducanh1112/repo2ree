@@ -25,6 +25,7 @@ def reset_source_state(*, layout: ReeLayout, store: ReeStore) -> None:
     for path in (
         layout.snapshot_archive,
         layout.acquire_script,
+        layout.materialize_script,
         layout.manifest,
         layout.sealed_archive,
     ):

@@ -37,6 +37,7 @@ from collections.abc import Sequence
 from pathlib import PurePosixPath
 
 from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
+from repo2ree_core.ree_scripts.materialize_workspace import build_materialize_sh
 from repo2ree_core.ree_scripts.shell import assert_no_placeholders, shell_single_quote, shell_text
 from repo2ree_core.reproduction import (
     ACQUIRE_SOURCE,
@@ -50,6 +51,7 @@ from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BU
 from repo2ree_core.storage.layout import (
     ACQUIRE_SCRIPT_FILENAME,
     ARTIFACTS_DIRNAME,
+    MATERIALIZE_SCRIPT_FILENAME,
     OVERLAY_DIRNAME,
     SNAPSHOT_FILENAME,
     UPSTREAM_DIRNAME,
@@ -64,9 +66,10 @@ from repo2ree_core.storage.layout import (
 # Top-level bundle entries (siblings of ``ree/``).
 REPRODUCER_SCRIPT_ENTRY_PATH = "run.sh"
 REPRODUCER_README_ENTRY_PATH = "REPRODUCING.md"
-# The shared acquire muscle lives under ``ree/`` and is called by run.sh — the
-# very same script the workbench runs at authoring time.
+# The shared acquire and materialize muscles live under ``ree/`` and are called
+# by run.sh — the very same scripts the workbench runs at authoring time.
 REPRODUCER_ACQUIRE_ENTRY_PATH = f"ree/{ACQUIRE_SCRIPT_FILENAME}"
+REPRODUCER_MATERIALIZE_ENTRY_PATH = f"ree/{MATERIALIZE_SCRIPT_FILENAME}"
 
 # The reproducer registry is tab-delimited. Experiment names are constrained by
 # EXPERIMENT_NAME_PATTERN (letters, digits, space, '.', '_', '-') so they can
@@ -109,6 +112,7 @@ def _replace_layout_tokens(text: str) -> str:
     """Render REE layout constants into generated bundle text."""
     return (
         text.replace("@@ACQUIRE_SCRIPT_FILENAME@@", ACQUIRE_SCRIPT_FILENAME)
+        .replace("@@MATERIALIZE_SCRIPT_FILENAME@@", MATERIALIZE_SCRIPT_FILENAME)
         .replace("@@ARTIFACTS_DIRNAME@@", ARTIFACTS_DIRNAME)
         .replace("@@OVERLAY_DIRNAME@@", OVERLAY_DIRNAME)
         .replace("@@SNAPSHOT_FILENAME@@", SNAPSHOT_FILENAME)
@@ -136,7 +140,9 @@ def build_reproducer_sh(
     arguments are non-empty together only when a built runtime was sealed into
     ``ree/artifacts/``; when either is missing the script builds instead of
     reusing. Source acquisition (snapshot-extract or origin-fetch + SWHID verify)
-    is delegated to the bundled ``ree/acquire_source.sh``.
+    is delegated to the bundled ``ree/acquire_source.sh`` and the clear-and-merge
+    to the bundled ``ree/materialize_workspace.sh`` — the very same scripts the
+    workbench runs at authoring time, so the two surfaces cannot drift.
     """
     experiment_lines = "".join(
         f"{name}{_FIELD_SEP}{run_script}\n" for name, run_script in experiments if name and run_script
@@ -188,11 +194,13 @@ def reproducer_entries(
         runtime_artifact_basename=runtime_artifact_basename,
     )
     acquire_sh = build_acquire_sh(origin_url=origin_url, source_type=source_type, revision=revision, swhid=swhid)
+    materialize_sh = build_materialize_sh()
     reproducing_md = _replace_layout_tokens(_REPRODUCING_MD)
     reproducing_md = assert_no_placeholders(reproducing_md, artifact=REPRODUCER_README_ENTRY_PATH)
     return [
         (REPRODUCER_SCRIPT_ENTRY_PATH, run_sh),
         (REPRODUCER_ACQUIRE_ENTRY_PATH, acquire_sh),
+        (REPRODUCER_MATERIALIZE_ENTRY_PATH, materialize_sh),
         (REPRODUCER_README_ENTRY_PATH, reproducing_md.encode("utf-8")),
     ]
 
@@ -241,7 +249,6 @@ _RUN_SH_TEMPLATE = shell_text("""
 
     HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
     REE="$HERE/ree"
-    UPSTREAM="$REE/@@UPSTREAM_DIRNAME@@"
     WS="$REE/@@WORKSPACE_DIRNAME@@"
 
     # --- generated registry -----------------------------------------------------
@@ -277,18 +284,13 @@ _RUN_SH_TEMPLATE = shell_text("""
     }
 
     # Assemble a clean workspace = upstream + overlay (overlay wins), then re-restore
-    # the sealed runtime. Resets state so each run starts from a deterministic slate.
+    # the sealed runtime. The clear-and-merge is delegated to the bundled materialize
+    # script — the very same one the workbench ran at authoring time — so the two
+    # cannot drift. Acquire and the runtime restore stay here as orchestration.
     do_materialize() {
       do_acquire
-      rm -rf "$WS"; mkdir -p "$WS"
-      if [ -n "$(ls -A "$UPSTREAM" 2>/dev/null)" ]; then
-        ( cd "$UPSTREAM" && tar -cf - . ) | ( cd "$WS" && tar -xf - )
-      fi
-      if [ -d "$REE/@@OVERLAY_DIRNAME@@" ]; then
-        ( cd "$REE/@@OVERLAY_DIRNAME@@" && tar -cf - . ) | ( cd "$WS" && tar -xf - )
-      fi
+      sh "$REE/@@MATERIALIZE_SCRIPT_FILENAME@@"
       restore_runtime || true
-      say "Materialized clean workspace at ree/@@WORKSPACE_DIRNAME@@/"
     }
 
     # Set up the workspace only if it is not already materialized (non-destructive),

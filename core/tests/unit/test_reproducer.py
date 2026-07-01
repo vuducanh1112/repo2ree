@@ -5,8 +5,10 @@ import tarfile
 from pathlib import Path
 
 from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
+from repo2ree_core.ree_scripts.materialize_workspace import build_materialize_sh
 from repo2ree_core.ree_scripts.reproducer import (
     REPRODUCER_ACQUIRE_ENTRY_PATH,
+    REPRODUCER_MATERIALIZE_ENTRY_PATH,
     REPRODUCER_README_ENTRY_PATH,
     REPRODUCER_SCRIPT_ENTRY_PATH,
     build_reproducer_sh,
@@ -18,25 +20,30 @@ from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BU
 from repo2ree_core.storage.layout import (
     ACQUIRE_SCRIPT_FILENAME,
     ARTIFACTS_DIRNAME,
+    MATERIALIZE_SCRIPT_FILENAME,
     OVERLAY_DIRNAME,
     SNAPSHOT_FILENAME,
     WORKSPACE_DIRNAME,
 )
 
 
-def test_reproducer_entries_are_run_sh_acquire_and_readme():
+def test_reproducer_entries_are_run_sh_scripts_and_readme():
     entries = dict(reproducer_entries())
     assert set(entries) == {
         REPRODUCER_SCRIPT_ENTRY_PATH,
         REPRODUCER_ACQUIRE_ENTRY_PATH,
+        REPRODUCER_MATERIALIZE_ENTRY_PATH,
         REPRODUCER_README_ENTRY_PATH,
     }
     assert REPRODUCER_SCRIPT_ENTRY_PATH == "run.sh"
     assert REPRODUCER_ACQUIRE_ENTRY_PATH == f"ree/{ACQUIRE_SCRIPT_FILENAME}"
+    assert REPRODUCER_MATERIALIZE_ENTRY_PATH == f"ree/{MATERIALIZE_SCRIPT_FILENAME}"
     assert entries["run.sh"].startswith(b"#!/bin/sh")
-    # run.sh delegates acquisition to the bundled acquire script.
+    # run.sh delegates acquisition and the clear-and-merge to the bundled scripts.
     assert ACQUIRE_SCRIPT_FILENAME.encode() in entries["run.sh"]
+    assert MATERIALIZE_SCRIPT_FILENAME.encode() in entries["run.sh"]
     assert entries[REPRODUCER_ACQUIRE_ENTRY_PATH].startswith(b"#!/bin/sh")
+    assert entries[REPRODUCER_MATERIALIZE_ENTRY_PATH].startswith(b"#!/bin/sh")
     assert b"@@" not in entries["run.sh"]
     assert b"@@" not in entries[REPRODUCER_README_ENTRY_PATH]
     # Defaults fall back to the reserved script paths.
@@ -115,8 +122,9 @@ def _seed_extracted_bundle(
     )
     (root / "run.sh").write_bytes(run_sh)
     # run.sh delegates acquisition to this bundled script (no origin baked in,
-    # so it extracts the snapshot).
+    # so it extracts the snapshot) and the clear-and-merge to the materialize script.
     (ree / ACQUIRE_SCRIPT_FILENAME).write_bytes(build_acquire_sh())
+    (ree / MATERIALIZE_SCRIPT_FILENAME).write_bytes(build_materialize_sh())
     return root
 
 
