@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from repo2ree_core.container.run_script import CancelCheck, LogSink
-from repo2ree_core.source_repo import directory_swhid
+from repo2ree_core.source_repo import directory_swhid, resolved_git_head
 from repo2ree_core.storage.layout import SNAPSHOT_FILENAME, ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.time_utils import utc_now
@@ -60,14 +60,26 @@ def handle_update_source_metadata(
             log("system", "info", f"source swhid: {swhid}")
 
         if args.mode == "download":
+            # Settle the concrete commit onto the intent (like swhid) so the seal
+            # can pin a re-fetch; only meaningful for git sources. Read HEAD from
+            # the acquired tree — empty when it carries no git history.
+            revision = resolved_git_head(layout.upstream) if args.source_type == "git" else ""
+            revision_update = {"revision": revision} if revision else {}
+            if revision:
+                log("system", "info", f"source revision: {revision}")
             intent = meta.ree_intent.model_copy(
-                update={"origin_url": args.origin_url, "source_type": args.source_type, **swhid_update}
+                update={
+                    "origin_url": args.origin_url,
+                    "source_type": args.source_type,
+                    **revision_update,
+                    **swhid_update,
+                }
             )
             session = meta.ree_session.with_source(
                 acquired_by="download",
                 snapshot_archive=SNAPSHOT_FILENAME,
                 snapshot_captured_at=ts,
-                resolved_commit=args.resolved_commit or None,
+                resolved_commit=revision or None,
             )
         else:
             intent = meta.ree_intent.model_copy(update=swhid_update)

@@ -186,8 +186,6 @@ def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
     assert result.status == "succeeded"
     assert (layout.upstream / "requirements.txt").is_file()
     assert (layout.upstream / "app.py").is_file()
-    # the resolved commit is the source's reproducibility receipt
-    assert result.outputs["resolved_commit"]
     # the fetch was driven by a persisted, REE-owned acquire script (the same
     # file run.sh will eventually call), not a throwaway temp
     assert layout.acquire_script.is_file()
@@ -327,7 +325,6 @@ def test_source_replacement_resets_derived_state_before_download(ree: Ree, sourc
             args=UpdateSourceMetadataArgs(
                 origin_url=str(replacement_repo),
                 source_type="git",
-                resolved_commit=result.outputs["resolved_commit"],
             )
         ),
         log=log,

@@ -145,6 +145,7 @@ def _reproducer_entries(intent: Any, artifact_plan: ArtifactPlan) -> list[tuple[
         runtime_artifact_basename=runtime_artifact_basename_from_remap(intent.runtime, artifact_plan.manifest_remap),
         origin_url=intent.origin_url or "",
         source_type=intent.source_type or "",
+        revision=intent.revision or "",
         swhid=intent.swhid or "",
     )
 

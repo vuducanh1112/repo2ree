@@ -1,5 +1,6 @@
 """Source-repository metadata derived from intent, session and file inventory."""
 
+from .git import resolved_git_head
 from .metadata import (
     SourceRepoMetadata,
     derive_source_repo_metadata,
@@ -16,5 +17,6 @@ __all__ = [
     "directory_swhid",
     "format_source_size",
     "repo_name_from_origin_url",
+    "resolved_git_head",
     "total_source_size",
 ]

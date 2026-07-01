@@ -25,6 +25,12 @@ class AcquireSourceArgs(BaseModel):
     # is populated from the snapshot the upload ingest produced.
     origin_url: str = ""
     source_type: Literal["git", "tarball", "zip"] | None = None
+    # The git ref to fetch: a user-supplied commit, branch, or tag during
+    # authoring; the resolved concrete commit once acquisition has settled it and
+    # a re-fetch is being pinned (e.g. in a sealed bundle). Empty means the
+    # origin's default branch HEAD; the resolved commit is recorded afterward
+    # either way. See ``ReeIntent.revision`` for the same value once persisted.
+    revision: str = ""
     # Force a fresh pull from origin even when a snapshot is present (origin
     # sources only; an upload has nothing to re-fetch).
     refetch: bool = False
@@ -70,7 +76,6 @@ class UpdateSourceMetadataArgs(BaseModel):
     # download fields
     origin_url: str = ""
     source_type: str = ""
-    resolved_commit: str = ""
     # upload fields
     archive_name: str = ""
     upload_token: str = ""

@@ -52,6 +52,52 @@ describe("createSourceUseCase", () => {
     });
   });
 
+  it("passes a trimmed git revision through to the source execution run", async () => {
+    const executeCommands = vi.fn();
+    const runSourceAction = vi.fn(async () => ({ status: "succeeded" as const }));
+
+    const useCase = createSourceUseCase({
+      ree: buildRee(),
+      executeCommands,
+      sourceChanged: vi.fn(),
+      runSourceAction,
+      refreshWorkspaceFiles: vi.fn(async () => workspaceFiles),
+      clearWorkspace: vi.fn(),
+      nowIso: () => "2026-01-01T00:00:00Z",
+    });
+
+    await useCase.downloadSource("git", "https://example.org/repo.git", "  v1.2.3  ");
+
+    const request = {
+      mode: "download",
+      source: "https://example.org/repo.git",
+      sourceType: "git",
+      revision: "v1.2.3",
+    };
+    expect(runSourceAction).toHaveBeenCalledWith(request, request);
+  });
+
+  it("omits the revision for non-git sources", async () => {
+    const runSourceAction = vi.fn(async (_request: unknown, _reset: unknown) => ({
+      status: "succeeded" as const,
+    }));
+
+    const useCase = createSourceUseCase({
+      ree: buildRee(),
+      executeCommands: vi.fn(),
+      sourceChanged: vi.fn(),
+      runSourceAction,
+      refreshWorkspaceFiles: vi.fn(async () => workspaceFiles),
+      clearWorkspace: vi.fn(),
+      nowIso: () => "2026-01-01T00:00:00Z",
+    });
+
+    await useCase.downloadSource("tarball", "https://example.org/s.tgz", "v1.2.3");
+
+    const [resetRequest] = runSourceAction.mock.calls[0];
+    expect(resetRequest).not.toHaveProperty("revision");
+  });
+
   it("reports download validation errors without starting the source execution run", async () => {
     const executeCommands = vi.fn();
     const sourceChanged = vi.fn();

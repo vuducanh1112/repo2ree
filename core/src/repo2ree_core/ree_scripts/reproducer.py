@@ -169,14 +169,16 @@ def reproducer_entries(
     runtime_artifact_basename: str | None = None,
     origin_url: str = "",
     source_type: str = "",
+    revision: str = "",
     swhid: str = "",
 ) -> list[tuple[str, bytes]]:
     """Return the ``(path, bytes)`` bundle entries for the reproducer.
 
-    ``origin_url``/``source_type``/``swhid`` are baked into the bundled
-    ``ree/acquire_source.sh`` — the same acquire muscle the workbench runs — so a
-    sourceless bundle can re-fetch and best-effort verify its source. Seal is the
-    point the SWHID is known, so the bundled copy is the one with it baked in.
+    ``origin_url``/``source_type``/``revision``/``swhid`` are baked into the
+    bundled ``ree/acquire_source.sh`` — the same acquire muscle the workbench runs
+    — so a sourceless bundle can re-fetch the recorded commit and best-effort
+    verify its source. Seal is the point the resolved commit and SWHID are known,
+    so the bundled copy is the one with them baked in.
     """
     run_sh = build_reproducer_sh(
         build_script=build_script or RESERVED_BUILD_SCRIPT,
@@ -185,7 +187,7 @@ def reproducer_entries(
         runtime_workspace_path=runtime_workspace_path,
         runtime_artifact_basename=runtime_artifact_basename,
     )
-    acquire_sh = build_acquire_sh(origin_url=origin_url, source_type=source_type, swhid=swhid)
+    acquire_sh = build_acquire_sh(origin_url=origin_url, source_type=source_type, revision=revision, swhid=swhid)
     reproducing_md = _replace_layout_tokens(_REPRODUCING_MD)
     reproducing_md = assert_no_placeholders(reproducing_md, artifact=REPRODUCER_README_ENTRY_PATH)
     return [

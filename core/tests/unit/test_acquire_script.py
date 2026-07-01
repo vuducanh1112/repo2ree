@@ -52,6 +52,36 @@ def test_bakes_origin_swhid_and_only_the_relevant_fetch_command():
     assert "unzip -q" not in script
 
 
+def test_bakes_git_revision_and_pins_the_fetch():
+    script = build_acquire_sh(origin_url="https://e/r.git", source_type="git", revision="deadbeef").decode()
+    assert "rev='deadbeef'" in script
+    # The pinned variant fetches the specific commit instead of cloning HEAD.
+    assert "fetch -q --depth 1 origin" in script
+    assert "git clone --depth 1" not in script
+
+
+def test_fetches_recorded_git_revision_when_snapshot_missing(tmp_path):
+    if shutil.which("git") is None:
+        pytest.skip("git is required to exercise the generated git fetch command")
+
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    git = ["git", "-C", str(origin), "-c", "user.name=t", "-c", "user.email=t@e"]
+    subprocess.run(["git", "init", "-q", str(origin)], check=True)
+    (origin / "v.txt").write_text("first\n")
+    subprocess.run([*git, "add", "."], check=True)
+    subprocess.run([*git, "commit", "-q", "-m", "first"], check=True)
+    pinned = subprocess.run([*git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+    # Advance the branch so an unpinned clone of HEAD would get the wrong tree.
+    (origin / "v.txt").write_text("second\n")
+    subprocess.run([*git, "commit", "-qa", "-m", "second"], check=True)
+
+    upstream = tmp_path / UPSTREAM_DIRNAME
+    result = _run(build_acquire_sh(origin_url=str(origin), source_type="git", revision=pinned), tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert (upstream / "v.txt").read_text() == "first\n"
+
+
 def test_extracts_snapshot_when_present(tmp_path):
     # Build a snapshot tar.gz with one file, then acquire from it (no origin).
     src = tmp_path / "src"

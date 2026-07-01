@@ -21,6 +21,9 @@ class WorkspaceCreatePayload(BaseModel):
     sourceMode: Literal["url", "upload"]
     originUrl: str | None = None
     sourceType: Literal["git", "tarball", "zip"] | None = None
+    # Git revision (commit, branch, or tag) to pin the fetch to. Blank/omitted
+    # means the origin's default branch HEAD. Ignored for non-git sources.
+    revision: str | None = None
     name: str | None = None
     # Image to provision the workbench from. Omitted (or blank) falls back to the
     # server default (the workbench image catalog default; see workbench/catalog.py).
@@ -35,6 +38,9 @@ class ReeIntentPatchPayload(BaseModel):
 class SourceAcquirePayload(BaseModel):
     originUrl: str
     sourceType: Literal["git", "tarball", "zip"]
+    # Git revision (commit, branch, or tag) to pin the fetch to. Blank/omitted
+    # means the origin's default branch HEAD. Ignored for non-git sources.
+    revision: str | None = None
 
 
 class UploadInitPayload(BaseModel):

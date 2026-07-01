@@ -136,6 +136,7 @@ export function mapRawReeIntentToSlices({
       catalog_metadata: mapRawCatalogMetadata(intent.catalog_metadata),
       origin_url: String(intent.origin_url ?? fallbackOriginUrl ?? ""),
       source_type: (intent.source_type as ReeSpec["source_type"]) || "",
+      resolvedRevision: String(intent.revision ?? ""),
       runtime: String(intent.runtime ?? ""),
       activation: mapRawActivation(intent.activation),
       sbom: String(intent.sbom ?? ""),

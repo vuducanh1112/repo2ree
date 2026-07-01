@@ -2,7 +2,11 @@ import type { ExecutionRun, ExecutionRunLogChunk } from "@core/execution/Executi
 import type { ExecutionRunStatus } from "@core/execution/ExecutionRunStatus";
 import type { ReeId } from "@core/ree/ReeId";
 import { useMemo } from "react";
-import type { WorkflowRunDto, WorkflowRunStatusDto } from "../../infra/api/apiTypes";
+import {
+  toSourceAcquireRequest,
+  type WorkflowRunDto,
+  type WorkflowRunStatusDto,
+} from "../../infra/api/apiTypes";
 import { mapRunLogsToLegacy } from "../../infra/api/ExecutionRunsApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { ensureReeId } from "../client";
@@ -75,10 +79,14 @@ function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClien
         case "source": {
           const mode = String(params.mode || "");
           if (mode === "download") {
-            run = await runtime.reeApi.acquireSource(reeId, {
-              originUrl: String(params.source ?? ""),
-              sourceType: String(params.sourceType ?? "git") as "git" | "tarball" | "zip",
-            });
+            run = await runtime.reeApi.acquireSource(
+              reeId,
+              toSourceAcquireRequest({
+                originUrl: params.source,
+                sourceType: params.sourceType,
+                revision: params.revision,
+              }),
+            );
             break;
           }
           if (mode === "upload") {

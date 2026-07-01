@@ -1,6 +1,10 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import { type EvaluationState, emptyEvaluationState } from "../evaluate/EvaluationState";
-import { createEmptyReeActivation, type ReeSpec } from "../ree/ReeSpec";
+import {
+  clearedSourceIdentityReeSpec,
+  createEmptyReeActivation,
+  type ReeSpec,
+} from "../ree/ReeSpec";
 import type { ActionStates, Badges, ReeAssemblyOperationParams, Timestamps } from "../ree/ReeTypes";
 import type { WorkspaceSourceState } from "./WorkspaceSourceState";
 
@@ -31,12 +35,13 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
   return {
     reeSpec: {
       ...input.reeSpec,
-      origin_url: "",
+      ...clearedSourceIdentityReeSpec(),
       runtime: "",
       activation: createEmptyReeActivation(),
       sbom: "",
       swhid: "",
       zenodo_doi: "",
+      dataverse_doi: "",
     },
     workspaceSourceState: {
       ...input.workspaceSourceState,

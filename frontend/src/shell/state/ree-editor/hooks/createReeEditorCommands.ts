@@ -50,6 +50,7 @@ interface CreateReeEditorCommandsArgs {
   handleDownloadSourceFiles: (
     originType: ReeIntentState["reeSpec"]["source_type"],
     sourceUrl: string,
+    revision?: string,
   ) => Promise<void>;
   handleWorkspaceUpload: (payload: SourceUploadCommit) => void;
   handleRemoveWorkspaceSource: () => void;

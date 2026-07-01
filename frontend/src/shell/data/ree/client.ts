@@ -4,7 +4,7 @@ import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { WorkspaceResetPayload } from "@core/workspace/WorkspaceReset";
 import type { ReeProject, WorkspaceBinaryDownload } from "@core/workspace/WorkspaceTypes";
 import { useMemo } from "react";
-import type { ReeDetailDto } from "../../infra/api/apiTypes";
+import { type ReeDetailDto, toSourceAcquireRequest } from "../../infra/api/apiTypes";
 import type { ReeApi } from "../../infra/api/ReeApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { ensureReeId } from "../client";
@@ -66,10 +66,14 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
         return;
       }
       if (mode === "download") {
-        await runtime.reeApi.acquireSource(reeId, {
-          originUrl: String(request.source ?? ""),
-          sourceType: String(request.sourceType ?? "git") as "git" | "tarball" | "zip",
-        });
+        await runtime.reeApi.acquireSource(
+          reeId,
+          toSourceAcquireRequest({
+            originUrl: request.source,
+            sourceType: request.sourceType,
+            revision: request.revision,
+          }),
+        );
         return;
       }
       if (mode === "upload") {

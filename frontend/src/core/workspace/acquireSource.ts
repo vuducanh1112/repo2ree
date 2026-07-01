@@ -117,8 +117,12 @@ export function createSourceUseCase({
   };
 
   return {
-    async downloadSource(originType: ReeSpec["source_type"], sourceUrl: string): Promise<void> {
-      const plan = planSourceDownloadAction(ree, originType, sourceUrl);
+    async downloadSource(
+      originType: ReeSpec["source_type"],
+      sourceUrl: string,
+      revision?: string,
+    ): Promise<void> {
+      const plan = planSourceDownloadAction(ree, originType, sourceUrl, revision);
       if (!plan.ok) {
         executeCommands([{ type: "toast", message: plan.error, toastType: "error" }]);
         return;

@@ -36,6 +36,7 @@ function toInitialSlices(ree: ReeEditorViewModel) {
       catalog_metadata: ree.catalog_metadata,
       origin_url: ree.origin_url,
       source_type: ree.source_type,
+      resolvedRevision: ree.resolvedRevision,
       runtime: ree.runtime,
       activation: ree.activation,
       sbom: ree.sbom,

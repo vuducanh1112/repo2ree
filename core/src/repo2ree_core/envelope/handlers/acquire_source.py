@@ -2,14 +2,13 @@
 
 Populates the upstream directory with the canonical source by running the
 generated ``acquire_source.sh`` (the single, shared acquire muscle): it extracts
-the frozen snapshot when present, otherwise fetches the recorded origin. For git
-sources the resolved HEAD commit is recorded in ActionResult.outputs as
-``resolved_commit`` — the reproducibility receipt for the source.
+the frozen snapshot when present, otherwise fetches the recorded origin. The
+resolved-commit receipt is settled downstream by ``update_source_metadata``,
+which reads HEAD off the acquired tree and persists it onto the intent.
 """
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
 from repo2ree_core.container.run_script import (
@@ -33,7 +32,9 @@ def _write_acquire_script(args: AcquireSourceArgs, *, log: LogSink, layout: ReeL
     (it is computed after acquisition); seal regenerates the script with it baked
     in for the bundle.
     """
-    layout.acquire_script.write_bytes(build_acquire_sh(origin_url=args.origin_url, source_type=args.source_type or ""))
+    layout.acquire_script.write_bytes(
+        build_acquire_sh(origin_url=args.origin_url, source_type=args.source_type or "", revision=args.revision)
+    )
     log("system", "info", f"wrote acquire script → {ACQUIRE_SCRIPT_FILENAME}")
     return layout.acquire_script
 
@@ -73,21 +74,5 @@ def handle_acquire_source(
     return ActionResult(
         status="succeeded",
         exit_code=0,
-        outputs={"resolved_commit": _resolved_commit(args, dest=layout.upstream), "origin_url": args.origin_url},
+        outputs={"origin_url": args.origin_url},
     )
-
-
-def _resolved_commit(args: AcquireSourceArgs, *, dest: Path) -> str:
-    """The HEAD commit of a freshly acquired git source — its identity receipt.
-
-    Empty for non-git sources, or when the acquired tree carries no git history
-    (e.g. extracted from a snapshot that did not preserve ``.git``).
-    """
-    if args.source_type != "git":
-        return ""
-    rev = subprocess.run(
-        ["git", "-C", str(dest), "rev-parse", "HEAD"],
-        capture_output=True,
-        text=True,
-    )
-    return rev.stdout.strip() if rev.returncode == 0 else ""

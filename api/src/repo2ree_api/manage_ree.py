@@ -213,6 +213,7 @@ def _run_workbench_acquire_pipeline(
     *,
     origin_url: str,
     source_type: str,
+    revision: str = "",
     log: LogSink | None = None,
 ) -> None:
     """Run the acquire → snapshot → materialize → update-metadata pipeline in the workbench.
@@ -227,6 +228,7 @@ def _run_workbench_acquire_pipeline(
             args=AcquireSourceArgs(
                 origin_url=origin_url,
                 source_type=source_type,  # type: ignore[arg-type]
+                revision=revision,
             )
         ),
         UpdateSourceMetadataArgs(origin_url=origin_url, source_type=source_type),
@@ -308,6 +310,7 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
                 rid,
                 origin_url=payload.originUrl,
                 source_type=payload.sourceType or "git",
+                revision=(payload.revision or "").strip(),
                 log=_log,
             )
 
@@ -379,6 +382,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
         "mode": "download",
         "originUrl": payload.originUrl,
         "sourceType": payload.sourceType,
+        "revision": payload.revision,
     }
 
     def _runner(ws_id: str, run_id: str):
@@ -399,6 +403,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
                 args=AcquireSourceArgs(
                     origin_url=payload.originUrl,
                     source_type=payload.sourceType,  # type: ignore[arg-type]
+                    revision=(payload.revision or "").strip(),
                 )
             ),
             UpdateSourceMetadataArgs(

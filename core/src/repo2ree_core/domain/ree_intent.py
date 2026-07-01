@@ -115,6 +115,12 @@ class ReeIntent(BaseModel):
     catalog_metadata: ReeCatalogMetadata = Field(default_factory=ReeCatalogMetadata)
     origin_url: str = ""
     source_type: SourceType = ""
+    # The git ref for the source, narrowed over its lifecycle: a user-supplied
+    # commit/branch/tag while authoring, then the concrete commit it resolved to
+    # once acquisition settles it (empty for non-git or upload sources). Settled
+    # after the fetch — like ``swhid`` — and fed back as the fetch ref at seal, so
+    # a sourceless bundle re-fetches this exact commit rather than the moving HEAD.
+    revision: str = ""
     runtime: NormalizedPath = None
     activation: Activation = Field(default_factory=Activation)
     sbom: NormalizedPath = None

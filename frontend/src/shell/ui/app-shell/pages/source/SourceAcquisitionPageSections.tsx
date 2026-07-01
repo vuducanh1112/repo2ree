@@ -15,6 +15,8 @@ interface SourceAcquisitionCardProps {
   focusedField: string | null;
   originUrlDraft: string;
   originTypeDraft: SourceTypeOption | "";
+  revisionDraft: string;
+  resolvedRevision: string;
   originInputLocked: boolean;
   priorOriginUrl: string;
   canDownload: boolean;
@@ -27,7 +29,12 @@ interface SourceAcquisitionCardProps {
   onRepoModeChange: (mode: "url" | "upload") => void;
   setOriginUrlDraft: (value: string) => void;
   setOriginTypeDraft: (value: SourceTypeOption | "") => void;
-  onDownloadSource: (originType: SourceTypeOption | "", originUrl: string) => void;
+  setRevisionDraft: (value: string) => void;
+  onDownloadSource: (
+    originType: SourceTypeOption | "",
+    originUrl: string,
+    revision: string,
+  ) => void;
   onCancelSource: () => void;
   onWorkspaceUpload: SourceAcquisitionPageProps["onWorkspaceUpload"];
 }
@@ -154,6 +161,30 @@ export function SourceAcquisitionCard(props: SourceAcquisitionCardProps) {
                 Origin URL is locked after source is loaded. Clear workspace source to change.
               </div>
             )}
+            {props.originTypeDraft === "git" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <input
+                  type="text"
+                  disabled={props.originInputLocked}
+                  value={props.revisionDraft}
+                  placeholder="Revision (commit, branch, or tag) — defaults to HEAD"
+                  onChange={(e) => props.setRevisionDraft(e.target.value)}
+                  onFocus={() => props.focus("revision")}
+                  style={lgInput(props.originInputLocked)}
+                />
+                {!props.sourceConfigLocked && (
+                  <div style={lgStyles.helper}>
+                    Leave blank to fetch the default branch's latest commit (HEAD).
+                  </div>
+                )}
+                {props.sourceConfigLocked && props.resolvedRevision && (
+                  <div style={lgStyles.helper}>
+                    Resolved to commit <code>{props.resolvedRevision}</code> — the exact commit a
+                    sealed bundle re-fetches.
+                  </div>
+                )}
+              </div>
+            )}
             <div
               style={{
                 display: "flex",
@@ -182,7 +213,13 @@ export function SourceAcquisitionCard(props: SourceAcquisitionCardProps) {
               <button
                 type="button"
                 disabled={props.locked || !props.canDownload || props.downloadRunning}
-                onClick={() => props.onDownloadSource(props.originTypeDraft, props.originUrlDraft)}
+                onClick={() =>
+                  props.onDownloadSource(
+                    props.originTypeDraft,
+                    props.originUrlDraft,
+                    props.revisionDraft,
+                  )
+                }
                 style={downloadButtonStyle(props.downloadDone, props.locked || !props.canDownload)}
               >
                 {props.downloadRunning ? Ic.loader(13) : Ic.download(13)}

@@ -25,6 +25,12 @@ interface ReePatchSlices {
   evaluationState: EvaluationState;
 }
 
+// The autosave patch intentionally omits `resolvedRevision` (the resolved
+// commit). It is a backend-owned receipt: acquisition settles it server-side and
+// source reset clears it, and no UI flow ever authors it. Serializing it would
+// let a stale/blank local copy clobber the backend's on the next autosave, since
+// apply_patch merges by key. (`swhid` stays below — unlike revision it has a real
+// client writer, the Software Heritage archival step, so it must round-trip.)
 export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatch {
   return {
     name: reeSpec.name || "",
@@ -54,6 +60,7 @@ export function toReePatch(
       catalog_metadata: ree.catalog_metadata,
       origin_url: ree.origin_url,
       source_type: ree.source_type,
+      resolvedRevision: ree.resolvedRevision,
       runtime: ree.runtime,
       activation: ree.activation,
       sbom: ree.sbom,

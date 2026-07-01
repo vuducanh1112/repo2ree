@@ -86,3 +86,38 @@ class TestSwhidStamping:
 
         assert result.status == "succeeded"
         assert workbench.read_metadata().ree_intent.swhid == ""
+
+
+class TestRevisionStamping:
+    def test_git_download_records_head_commit_as_revision(self, workbench: ReeStore) -> None:
+        import subprocess
+
+        upstream = workbench.layout.upstream
+        git = ["git", "-C", str(upstream), "-c", "user.name=t", "-c", "user.email=t@e"]
+        subprocess.run(["git", "init", "-q", str(upstream)], check=True)
+        (upstream / "a.txt").write_bytes(b"hello\n")
+        subprocess.run([*git, "add", "."], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "first"], check=True)
+        head = subprocess.run([*git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+
+        result = handler.handle_update_source_metadata(
+            UpdateSourceMetadataArgs(mode="download", origin_url="https://x/y.git", source_type="git"),
+            log=_silent_log,
+            is_canceled=_never_canceled,
+        )
+
+        assert result.status == "succeeded"
+        meta = workbench.read_metadata()
+        # The resolved commit is settled onto the intent (for seal pinning) and the session.
+        assert meta.ree_intent.revision == head
+        assert meta.ree_session.source_resolved_commit == head
+
+    def test_non_git_download_leaves_revision_empty(self, workbench: ReeStore) -> None:
+        result = handler.handle_update_source_metadata(
+            UpdateSourceMetadataArgs(mode="download", origin_url="https://x/y.tgz", source_type="tarball"),
+            log=_silent_log,
+            is_canceled=_never_canceled,
+        )
+
+        assert result.status == "succeeded"
+        assert workbench.read_metadata().ree_intent.revision == ""

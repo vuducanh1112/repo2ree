@@ -99,6 +99,8 @@ export interface CreateReeRequestDto {
   sourceMode: "url" | "upload";
   originUrl?: string;
   sourceType?: "git" | "tarball" | "zip";
+  /** Git revision (commit, branch, or tag) to pin the fetch to; blank means default-branch HEAD. */
+  revision?: string;
   name?: string;
   /** Image to provision the workbench from; omitted falls back to the server default. */
   workbenchImage?: string;
@@ -126,6 +128,28 @@ export interface PatchReeRequestDto {
 export interface SourceAcquireRequestDto {
   originUrl: string;
   sourceType: "git" | "tarball" | "zip";
+  /** Git revision (commit, branch, or tag) to pin the fetch to; blank means default-branch HEAD. */
+  revision?: string;
+}
+
+/**
+ * Shape an {@link SourceAcquireRequestDto} from loosely-typed download inputs,
+ * applying the one normalization rule both acquire call sites (source execution
+ * and workspace-reset fallback) must agree on: trim the revision and omit it
+ * when blank, so the backend sees no revision rather than an empty string. Kept
+ * here, next to the DTO, so the two paths cannot drift.
+ */
+export function toSourceAcquireRequest(input: {
+  originUrl?: unknown;
+  sourceType?: unknown;
+  revision?: unknown;
+}): SourceAcquireRequestDto {
+  const revision = typeof input.revision === "string" ? input.revision.trim() : "";
+  return {
+    originUrl: String(input.originUrl ?? ""),
+    sourceType: String(input.sourceType ?? "git") as "git" | "tarball" | "zip",
+    ...(revision ? { revision } : {}),
+  };
 }
 
 export interface UploadInitRequestDto {

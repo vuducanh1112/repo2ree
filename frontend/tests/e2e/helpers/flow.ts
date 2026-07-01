@@ -119,6 +119,32 @@ export async function uploadSource(page: Page, archivePath: string) {
   return clearSource;
 }
 
+/**
+ * Fetch a source from an origin URL (the "Use origin URL" path) and wait for the
+ * snapshot to settle. Selects the source type first so the git-only revision
+ * field renders before it is filled; leave `revision` blank to fetch HEAD.
+ */
+export async function downloadSource(
+  page: Page,
+  origin: { url: string; sourceType?: "git" | "tarball" | "zip"; revision?: string },
+) {
+  await stepShot(page, "download-source", "before");
+  const region = page.getByRole("region", { name: "Source Acquisition" });
+  await region.getByRole("button", { name: "Use origin URL", exact: true }).click();
+  await page.getByPlaceholder("https://github.com/org/repo").fill(origin.url);
+  await region.getByRole("combobox").selectOption(origin.sourceType ?? "git");
+  if (origin.revision) {
+    await page.getByPlaceholder(/Revision \(commit, branch, or tag\)/).fill(origin.revision);
+  }
+  await region.getByRole("button", { name: /Download source to workspace/i }).click();
+
+  // A real git fetch against a remote (cold, no cache) — allow a generous budget.
+  const clearSource = region.getByRole("button", { name: /Clear source/i });
+  await expect(clearSource).toBeVisible({ timeout: 90000 });
+  await stepShot(page, "download-source", "after");
+  return clearSource;
+}
+
 /** Fill in project identity metadata. */
 export async function provideMetadata(
   page: Page,

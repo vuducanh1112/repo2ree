@@ -53,15 +53,19 @@ describe("toReePatchFromSlices", () => {
       dependencyLevel: 3,
     };
 
-    expect(
-      toReePatchFromSlices({
-        reeSpec,
-        workspaceSourceState,
-        artifactStatus,
-        evaluationState,
-      }),
-    ).toEqual({
+    const patch = toReePatchFromSlices({
+      reeSpec,
+      workspaceSourceState,
+      artifactStatus,
+      evaluationState,
+    });
+
+    // The resolved commit is backend-owned, so it is never serialized into the
+    // patch — a stale/blank local copy must not clobber what acquisition recorded.
+    expect(patch).not.toHaveProperty("revision");
+    expect(patch).toEqual({
       ...reeSpec,
+      resolvedRevision: undefined,
       zenodo_doi: "",
       dataverse_doi: "",
     });

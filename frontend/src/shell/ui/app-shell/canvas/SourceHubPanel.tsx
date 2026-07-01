@@ -46,6 +46,10 @@ export function SourceHubPanel({
     ree.source_type || "",
   );
   const [originUrlDraft, setOriginUrlDraft] = useState(ree.origin_url || "");
+  // The requested revision — an acquisition input that pins the git fetch. It is
+  // not persisted intent (that is ReeSpec.resolvedRevision, the commit it settles
+  // to); it starts blank (HEAD) and is recorded afterward as the resolved commit.
+  const [revisionDraft, setRevisionDraft] = useState("");
 
   useEffect(() => {
     setOriginTypeDraft(ree.source_type || "");
@@ -53,6 +57,11 @@ export function SourceHubPanel({
   useEffect(() => {
     setOriginUrlDraft(ree.origin_url || "");
   }, [ree.origin_url]);
+  // The revision draft has no persisted backing, so clear it when the source
+  // leaves the workspace — otherwise a stale pin lingers into the next acquire.
+  useEffect(() => {
+    if (!workspaceSourceState.sourceAvailable) setRevisionDraft("");
+  }, [workspaceSourceState.sourceAvailable]);
 
   useFocusScroll(focusedField);
 
@@ -140,6 +149,8 @@ export function SourceHubPanel({
         focusedField={focusedField}
         originUrlDraft={originUrlDraft}
         originTypeDraft={originTypeDraft}
+        revisionDraft={revisionDraft}
+        resolvedRevision={ree.resolvedRevision || ""}
         originInputLocked={originInputLocked}
         priorOriginUrl={ree.origin_url || ""}
         canDownload={canDownload}
@@ -152,6 +163,7 @@ export function SourceHubPanel({
         onRepoModeChange={commands.setRepoMode}
         setOriginUrlDraft={setOriginUrlDraft}
         setOriginTypeDraft={setOriginTypeDraft}
+        setRevisionDraft={setRevisionDraft}
         onDownloadSource={commands.onDownloadSourceFiles}
         onCancelSource={() => commands.onCancelAction("source")}
         onWorkspaceUpload={(payload: SourceUploadCommit) => commands.onWorkspaceUpload(payload)}

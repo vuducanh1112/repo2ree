@@ -1,4 +1,4 @@
-import type { ReeSpec } from "../../core/ree/ReeSpec";
+import { clearedSourceIdentityReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
 import type { FileTreeNode } from "../../core/workspace/FileTree";
 import { normalizeSnapshotArchiveName } from "../../core/workspace/PathUtils";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
@@ -162,8 +162,7 @@ function buildUploadedSourceSuccess(args: {
     snapshotArchiveName,
     sourceAvailable,
     reeSpecPatch: {
-      origin_url: "",
-      source_type: "",
+      ...clearedSourceIdentityReeSpec(),
     },
     workspaceSourceStatePatch: {
       sourceIncluded: true,
@@ -181,6 +180,7 @@ export function planSourceDownloadAction(
   ree: WorkspaceSourceState,
   originType: ReeSpec["source_type"],
   sourceUrl: string,
+  revision?: string,
 ): SourceActionPlanResult<
   SourceExecutionRequestPlan & {
     normalizedSourceUrl: string;
@@ -191,6 +191,11 @@ export function planSourceDownloadAction(
     return plan;
   }
 
+  // Revision pins a git fetch to a commit/branch/tag; blank means default-branch
+  // HEAD, and it is irrelevant to tarball/zip sources, so it is omitted entirely
+  // unless a git revision was given.
+  const normalizedRevision = originType === "git" ? revision?.trim() : undefined;
+
   return {
     ok: true,
     value: {
@@ -199,6 +204,7 @@ export function planSourceDownloadAction(
         mode: "download",
         source: plan.value.normalizedSourceUrl,
         sourceType: originType,
+        ...(normalizedRevision ? { revision: normalizedRevision } : {}),
       }),
     },
   };
@@ -280,7 +286,7 @@ export function planUploadedSourceState(args: {
 export function planClearedSourceStateResult(): ClearedSourceStatePlan {
   return {
     reeSpecPatch: {
-      origin_url: "",
+      ...clearedSourceIdentityReeSpec(),
     },
     workspaceSourceStatePatch: {
       sourceAvailable: false,

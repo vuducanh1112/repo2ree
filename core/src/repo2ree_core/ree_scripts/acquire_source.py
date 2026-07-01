@@ -102,15 +102,46 @@ _TEMPLATE = shell_text("""
 """)
 
 
-def _fetch_source_function(source_type: str) -> str:
-    """Render the one fetch implementation needed for this source type."""
+def _fetch_source_function(source_type: str, revision: str) -> str:
+    """Render the one fetch implementation needed for this source type.
+
+    For git, the pinned-vs-HEAD choice is settled here at generation time rather
+    than branched at runtime. ``revision`` is whatever ref is known at generation:
+    a user-supplied commit/branch/tag when authoring pins one, empty when it does
+    not (then just clone HEAD and let Python record the commit it resolved to). At
+    seal the recorded concrete commit is baked in so the bundled script re-fetches
+    exactly it.
+    """
     if source_type == "git":
+        if revision:
+            # Pin to the recorded commit so a re-fetch reproduces the authored
+            # tree, not whatever the default branch points at now. Prefer a
+            # shallow fetch of just that commit; fall back to a full clone for
+            # servers that disallow fetching an arbitrary SHA.
+            return shell_text("""
+                fetch_source() {
+                  dest=$1
+                  rev=@@REVISION@@
+                  [ -n "$ORIGIN_URL" ] || die "no origin recorded; cannot fetch"
+                  command -v git >/dev/null 2>&1 || die "git is required to fetch this source"
+                  say "Fetching source from $ORIGIN_URL (git, pinned to $rev)"
+                  git init -q "$dest"
+                  git -C "$dest" remote add origin "$ORIGIN_URL"
+                  if git -C "$dest" fetch -q --depth 1 origin "$rev" 2>/dev/null; then
+                    git -C "$dest" checkout -q FETCH_HEAD
+                  else
+                    say "shallow fetch of $rev rejected; falling back to full clone"
+                    git -C "$dest" fetch -q origin
+                    git -C "$dest" checkout -q "$rev"
+                  fi
+                }
+            """).replace("@@REVISION@@", shell_single_quote(revision))
         return shell_text("""
             fetch_source() {
               dest=$1
               [ -n "$ORIGIN_URL" ] || die "no origin recorded; cannot fetch"
-              say "Fetching source from $ORIGIN_URL (git)"
               command -v git >/dev/null 2>&1 || die "git is required to fetch this source"
+              say "Fetching source from $ORIGIN_URL (git)"
               git clone --depth 1 "$ORIGIN_URL" "$dest"
             }
         """)
@@ -168,19 +199,20 @@ def _fetch_source_function(source_type: str) -> str:
     """).replace("@@MESSAGE@@", shell_single_quote(message))
 
 
-def build_acquire_sh(*, origin_url: str = "", source_type: str = "", swhid: str = "") -> bytes:
+def build_acquire_sh(*, origin_url: str = "", source_type: str = "", revision: str = "", swhid: str = "") -> bytes:
     """Render the self-contained ``acquire_source.sh`` for a source.
 
     All inputs are optional: an upload-acquired source has no origin or type and
-    relies entirely on the snapshot-extract arm. Paths are fixed by REE layout;
-    the script accepts only optional ``--refetch``.
+    relies entirely on the snapshot-extract arm. ``revision`` pins a git fetch to
+    the recorded commit (known only after acquisition, so baked in at seal). Paths
+    are fixed by REE layout; the script accepts only optional ``--refetch``.
     """
     script = (
         _TEMPLATE.replace("@@ORIGIN_URL@@", shell_single_quote(origin_url))
         .replace("@@SWHID@@", shell_single_quote(swhid))
         .replace("@@UPSTREAM_DIRNAME@@", shell_single_quote(UPSTREAM_DIRNAME))
         .replace("@@SNAPSHOT_FILENAME@@", shell_single_quote(SNAPSHOT_FILENAME))
-        .replace("@@FETCH_SOURCE@@", _fetch_source_function(source_type).rstrip())
+        .replace("@@FETCH_SOURCE@@", _fetch_source_function(source_type, revision).rstrip())
     )
     script = assert_no_placeholders(script, artifact="acquire_source.sh")
     return script.encode("utf-8")

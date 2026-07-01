@@ -106,7 +106,8 @@ export function createSourceActions({
   const handleDownloadSourceFiles = async (
     originType: ReeEditorViewModel["source_type"],
     sourceUrl: string,
-  ) => sourceAcquisition.downloadSource(originType, sourceUrl);
+    revision?: string,
+  ) => sourceAcquisition.downloadSource(originType, sourceUrl, revision);
 
   const handleWorkspaceUpload = (payload: SourceUploadCommit) => {
     const archiveName = payload.archiveName || "source.tar.gz";

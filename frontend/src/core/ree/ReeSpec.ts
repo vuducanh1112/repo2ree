@@ -146,6 +146,11 @@ export interface ReeSpec {
   catalog_metadata: ReeCatalogMetadata;
   origin_url: string;
   source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
+  /** The concrete commit acquisition resolved the git source to — its reproducibility
+   *  receipt, persisted onto the intent and re-fetched at seal. Distinct from the
+   *  acquisition *input* ref (the requested commit/branch/tag), which is a transient
+   *  form field, not persisted intent. Empty for non-git/upload sources. */
+  resolvedRevision: string;
   runtime: string;
   activation: ReeActivation;
   sbom: string;
@@ -200,12 +205,28 @@ export function createEmptyReeActivation(): ReeActivation {
   };
 }
 
+/** The source-identity ReeSpec fields, zeroed — one definition every
+ *  clear/switch path spreads in, so a newly added identity field can't be
+ *  cleared in one path and forgotten in another.
+ *
+ *  Deliberately excludes `swhid`: unlike these, it is still serialized in the
+ *  autosave patch and has a client-side author (the Software Heritage archival
+ *  step), so zeroing it locally would clobber a backend-computed value. It is
+ *  cleared by the backend on source reset and must be handled there, not here. */
+export function clearedSourceIdentityReeSpec(): Pick<
+  ReeSpec,
+  "origin_url" | "source_type" | "resolvedRevision"
+> {
+  return { origin_url: "", source_type: "", resolvedRevision: "" };
+}
+
 export function createEmptyReeSpec(): ReeSpec {
   return {
     name: "",
     catalog_metadata: createEmptyReeCatalogMetadata(),
     origin_url: "",
     source_type: "",
+    resolvedRevision: "",
     runtime: "",
     activation: createEmptyReeActivation(),
     sbom: "",
