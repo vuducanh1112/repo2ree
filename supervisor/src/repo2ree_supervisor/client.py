@@ -14,7 +14,7 @@ reports the backend is gone.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Protocol, runtime_checkable
+from typing import Protocol
 
 from repo2ree_protocol.agent import AgentFrame, ErrorFrame, UnavailableFrame, WorkbenchLocation
 
@@ -36,7 +36,6 @@ def raise_for_terminal_error(frame: AgentFrame) -> None:
         raise RuntimeError(frame.detail)
 
 
-@runtime_checkable
 class AgentClient(Protocol):
     """The verbs the control plane needs to place and drive a workbench.
 
@@ -69,6 +68,10 @@ class AgentClient(Protocol):
 
     def exec_query(self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30) -> bytes: ...
 
+    def exec_query_stream(
+        self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30
+    ) -> Iterator[bytes]: ...
+
     def exec_action(
         self, agent_id: str, container_name: str, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]: ...
@@ -76,7 +79,6 @@ class AgentClient(Protocol):
     def copy_in(self, agent_id: str, container_name: str, source_path: str, container_path: str) -> None:
         """Stream a control-plane-local file into the container at ``container_path``.
 
-        ``source_path`` is read here and streamed to the agent in bounded chunks;
-        it need only exist on the control plane, and neither side buffers the
-        whole file."""
+        ``source_path`` need only exist on the control plane; the bytes travel
+        as a chunked transfer (see ``repo2ree_protocol.agent``)."""
         ...

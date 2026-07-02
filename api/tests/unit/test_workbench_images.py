@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from repo2ree_api.workbench.catalog import WORKBENCH_IMAGE_CATALOG, default_workbench_image
+from repo2ree_api.workbench_images import WORKBENCH_IMAGE_CATALOG, default_workbench_image
 
 
 def test_list_workbench_images_returns_catalog(client: TestClient) -> None:

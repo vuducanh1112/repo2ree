@@ -1,10 +1,9 @@
 """Agent-side reassembly of a chunked byte transfer (the copy-in path).
 
-The control plane streams a file to the agent in bounded chunks over the
-multiplexed socket, so neither side holds the whole payload in memory and no
-single frame approaches the transport's size cap. Each open transfer is a temp
-file on the agent host that chunks append to; on ``deliver`` the agent hands the
-finished file to a sink (the runtime's ``copy_in``) and deletes it.
+The control plane streams a file to the agent in bounded chunks (see the wire
+notes in ``repo2ree_protocol.agent``). Each open transfer is a temp file on the
+agent host that chunks append to; on ``deliver`` the agent hands the finished
+file to a sink (the runtime's ``copy_in``) and deletes it.
 
 A ``TransferStore`` is scoped to one connection. If the connection drops with
 transfers still open, ``abort_all`` discards their partial files — nothing leaks
@@ -18,7 +17,7 @@ import tempfile
 import threading
 from collections.abc import Callable
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import BinaryIO
 from uuid import uuid4
@@ -34,6 +33,9 @@ class _Transfer:
     container_path: str
     path: str
     handle: BinaryIO
+    # Chunk requests are handled concurrently, so seek+write must be atomic
+    # per transfer.
+    write_lock: threading.Lock = field(default_factory=threading.Lock)
 
 
 class TransferStore:
@@ -57,9 +59,13 @@ class TransferStore:
             self._transfers[transfer_id] = transfer
         return transfer_id
 
-    def write(self, transfer_id: str, data: bytes) -> None:
-        """Append one chunk to an open transfer."""
-        self._require(transfer_id).handle.write(data)
+    def write(self, transfer_id: str, offset: int, data: bytes) -> None:
+        """Write one chunk at ``offset``. The control plane pipelines chunks and
+        they apply out of order, so writes are positioned, not appended."""
+        transfer = self._require(transfer_id)
+        with transfer.write_lock:
+            transfer.handle.seek(offset)
+            transfer.handle.write(data)
 
     def deliver(self, transfer_id: str, sink: Callable[[str, str, str], None]) -> None:
         """Close the assembled file, hand it to ``sink(container_name, path,

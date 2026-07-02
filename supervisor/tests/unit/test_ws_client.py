@@ -11,13 +11,17 @@ from __future__ import annotations
 
 import base64
 import threading
+from collections.abc import Iterator
+from typing import Protocol, cast
 
 import pytest
 
 from repo2ree_protocol.agent import (
     BytesChunkFrame,
+    CopyChunkRequest,
     DoneFrame,
     ErrorFrame,
+    IsRunningRequest,
     LocationFrame,
     LogFrame,
     ResultFrame,
@@ -31,6 +35,10 @@ from repo2ree_protocol.agent import (
 )
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import AgentConnection, AgentConnectionRegistry, WorkbenchUnavailableError, WsAgentClient
+
+
+class _ClosableIterator(Iterator[bytes], Protocol):
+    def close(self) -> None: ...
 
 
 class FakeSocket:
@@ -94,7 +102,7 @@ def test_exec_query_returns_decoded_bytes() -> None:
 
     join = _run_in_thread(lambda: client.exec_query("a1", "wb", ["get-ree"]))
     req = socket.wait_for_request()
-    assert req.op == "exec_query"
+    assert req.request.op == "exec_query"
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b'{"ok": true}').decode()))
     socket.respond(DoneFrame())
 
@@ -177,25 +185,87 @@ def test_copy_in_streams_open_chunks_then_close(tmp_path) -> None:
 
     join = _run_in_thread(lambda: client.copy_in("a1", "wb", str(source), "/ree/dest.bin"))
 
-    open_req = socket.wait_for_nth_request(1)
+    open_req = socket.wait_for_nth_request(1).request
     assert open_req.op == "copy_open"
-    assert open_req.args == {"container_name": "wb", "container_path": "/ree/dest.bin"}
+    assert open_req.container_name == "wb"
+    assert open_req.container_path == "/ree/dest.bin"
     socket.respond_to(0, TransferFrame(transfer_id="t1"))
 
     # Payload is smaller than one chunk, so a single copy_chunk carries it all.
-    chunk_req = socket.wait_for_nth_request(2)
+    chunk_req = socket.wait_for_nth_request(2).request
     assert chunk_req.op == "copy_chunk"
-    assert chunk_req.args["transfer_id"] == "t1"
-    assert base64.b64decode(chunk_req.args["data_b64"]) == b"streamed-archive-bytes"
+    assert chunk_req.transfer_id == "t1"
+    assert chunk_req.offset == 0
+    assert base64.b64decode(chunk_req.data_b64) == b"streamed-archive-bytes"
     socket.respond_to(1, DoneFrame())
 
-    close_req = socket.wait_for_nth_request(3)
+    close_req = socket.wait_for_nth_request(3).request
     assert close_req.op == "copy_close"
-    assert close_req.args == {"transfer_id": "t1"}
+    assert close_req.transfer_id == "t1"
     socket.respond_to(2, DoneFrame())
 
     join()
-    assert [req.op for req in socket.sent] == ["copy_open", "copy_chunk", "copy_close"]
+    assert [req.request.op for req in socket.sent] == ["copy_open", "copy_chunk", "copy_close"]
+
+
+def test_copy_in_pipelines_chunks_within_the_window(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Every chunk of a windowed transfer rides the wire before the first ack
+    # comes back — throughput must not be one round trip per chunk. Offsets
+    # address the writes so the agent can apply them in any order.
+    import repo2ree_supervisor.ws as ws_module
+
+    monkeypatch.setattr(ws_module, "COPY_CHUNK_BYTES", 4)
+    socket = FakeSocket()
+    registry = AgentConnectionRegistry()
+    registry.register("a1", socket.connection)
+    client = WsAgentClient(registry)
+
+    source = tmp_path / "archive.bin"
+    source.write_bytes(b"0123456789")  # 3 chunks: 4 + 4 + 2 bytes
+
+    join = _run_in_thread(lambda: client.copy_in("a1", "wb", str(source), "/ree/dest.bin"))
+    socket.wait_for_nth_request(1)
+    socket.respond_to(0, TransferFrame(transfer_id="t1"))
+
+    # All three chunks arrive with no ack sent yet (window is larger than 3).
+    socket.wait_for_nth_request(4)
+    raw_chunk_reqs = [req.request for req in socket.sent[1:4]]
+    assert [req.op for req in raw_chunk_reqs] == ["copy_chunk"] * 3
+    assert all(isinstance(req, CopyChunkRequest) for req in raw_chunk_reqs)
+    chunk_reqs = cast("list[CopyChunkRequest]", raw_chunk_reqs)
+    assert [req.offset for req in chunk_reqs] == [0, 4, 8]
+    assert b"".join(base64.b64decode(req.data_b64) for req in chunk_reqs) == b"0123456789"
+
+    for index in (1, 2, 3):
+        socket.respond_to(index, DoneFrame())
+    close_req = socket.wait_for_nth_request(5).request
+    assert close_req.op == "copy_close"
+    socket.respond_to(4, DoneFrame())
+    join()
+
+
+def test_abandoned_stream_sends_cancel_to_the_agent() -> None:
+    # A consumer that walks away mid-stream (a client dropping a download) must
+    # tell the agent to stop producing, or the workbench keeps doing the work
+    # for no one.
+    socket = FakeSocket()
+    registry = AgentConnectionRegistry()
+    registry.register("a1", socket.connection)
+    client = WsAgentClient(registry)
+
+    def call() -> None:
+        stream = cast(_ClosableIterator, client.exec_query_stream("a1", "wb", ["build-archive"]))
+        next(stream)
+        stream.close()
+
+    join = _run_in_thread(call)
+    query_req = socket.wait_for_request()
+    socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b"first").decode()))
+    join()
+
+    cancel_req = socket.wait_for_nth_request(2)
+    assert cancel_req.request.op == "cancel"
+    assert cancel_req.request.request_id == query_req.id
 
 
 def test_copy_in_aborts_transfer_on_chunk_error(tmp_path) -> None:
@@ -215,9 +285,9 @@ def test_copy_in_aborts_transfer_on_chunk_error(tmp_path) -> None:
     # The agent rejects a chunk: the client must abort the transfer and re-raise.
     socket.respond_to(1, ErrorFrame(detail="disk full"))
 
-    abort_req = socket.wait_for_nth_request(3)
+    abort_req = socket.wait_for_nth_request(3).request
     assert abort_req.op == "copy_abort"
-    assert abort_req.args == {"transfer_id": "t9"}
+    assert abort_req.transfer_id == "t9"
     socket.respond_to(2, DoneFrame())
 
     with pytest.raises(RuntimeError, match="disk full"):
@@ -267,7 +337,7 @@ def test_request_times_out_when_agent_goes_silent() -> None:
     registry.register("a1", socket.connection)
 
     def call() -> None:
-        for _ in socket.connection.request("is_running", {"container_name": "wb"}, frame_gap_timeout=0.1):
+        for _ in socket.connection.request(IsRunningRequest(container_name="wb"), frame_gap_timeout=0.1):
             pass
 
     join = _run_in_thread(call)

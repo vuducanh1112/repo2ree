@@ -66,8 +66,8 @@ if "TRACE_FILE" not in os.environ:
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from repo2ree_api.deps import workbench_manager  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
-from repo2ree_api.workbench.deps import workbench_manager  # noqa: E402
 from repo2ree_supervisor import WorkbenchHandle  # noqa: E402
 
 # ================================================

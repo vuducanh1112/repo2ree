@@ -2,6 +2,7 @@
 name = "repo2ree-agent"
 version = "0.1.0"
 dependencies = [
+    "anyio~=4.12",
     "repo2ree-protocol",
     "websockets~=15.0",
 ]

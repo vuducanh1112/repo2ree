@@ -38,7 +38,7 @@ from uuid import uuid4
 import pytest
 from websockets.asyncio.server import ServerConnection, serve
 
-from repo2ree_agent.ws_client import run_agent
+from repo2ree_agent.control_link import run_agent
 from repo2ree_protocol.command import (
     BuildRuntimeCommand,
     SealReeCommand,

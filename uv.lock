@@ -1964,12 +1964,14 @@ name = "repo2ree-agent"
 version = "0.1.0"
 source = { editable = "agent" }
 dependencies = [
+    { name = "anyio" },
     { name = "repo2ree-protocol" },
     { name = "websockets" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", specifier = "~=4.12" },
     { name = "repo2ree-protocol", editable = "protocol" },
     { name = "websockets", specifier = "~=15.0" },
 ]

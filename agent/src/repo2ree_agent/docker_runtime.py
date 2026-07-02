@@ -12,10 +12,17 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import selectors
 import subprocess
+import tempfile
+import threading
+import time
 from collections.abc import Iterator
+from contextlib import suppress
 
 from repo2ree_protocol.agent import (
+    COPY_CHUNK_BYTES,
     AgentFrame,
     DoneFrame,
     ErrorFrame,
@@ -36,6 +43,7 @@ logger = logging.getLogger(__name__)
 _CONTAINER_GONE_EXIT_CODES = frozenset({126, 137})
 _WORKBENCH_DOCKER_MODES = frozenset({"dind", "host-socket"})
 _HOST_DOCKER_SOCK_MOUNT = "/var/run/docker.sock:/var/run/docker.sock"
+_FAILURE_OUTPUT_TAIL_BYTES = 16 * 1024
 
 
 class WorkbenchGone(RuntimeError):
@@ -176,8 +184,8 @@ class DockerRuntime:
     def exec_simple(self, container_name: str, argv: list[str], timeout: int = 60) -> None:
         self._exec(container_name, argv, timeout, what=f"docker exec {argv[0]}")
 
-    def exec_query(self, container_name: str, argv: list[str], timeout: int = 30) -> bytes:
-        return self._exec(container_name, argv, timeout, what=f"query {argv!r}")
+    def exec_query_stream(self, container_name: str, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
+        yield from _stream_exec(["docker", "exec", container_name, *argv], timeout, what=f"query {argv!r}")
 
     @staticmethod
     def _exec(container_name: str, argv: list[str], timeout: int, what: str) -> bytes:
@@ -191,8 +199,8 @@ class DockerRuntime:
             timeout=timeout,
         )
         if result.returncode != 0:
-            stderr = result.stderr.decode(errors="replace").strip()
-            stdout = result.stdout.decode(errors="replace").strip()
+            stderr = _tail_text(result.stderr)
+            stdout = _tail_text(result.stdout)
             detail = stderr or stdout or "(no output on stdout/stderr)"
             message = f"{what} failed (exit {result.returncode}): {detail}"
             if result.returncode in _CONTAINER_GONE_EXIT_CODES or "No such container" in detail:
@@ -249,6 +257,15 @@ class DockerRuntime:
         proc.stdin.write(cmd_json)
         proc.stdin.close()
 
+        # Drain stdout concurrently while stderr streams below. Reading stdout
+        # only after stderr closes would deadlock the moment the executor writes
+        # more than the pipe buffer (~64 KiB) to stdout: the child blocks on the
+        # full stdout pipe and never closes stderr.
+        stdout_pipe = proc.stdout
+        stdout_parts: list[str] = []
+        stdout_reader = threading.Thread(target=lambda: stdout_parts.append(stdout_pipe.read()), daemon=True)
+        stdout_reader.start()
+
         # The executor emits NDJSON log/span events on stderr; forward each as a
         # typed frame the moment it arrives (a hung/killed command still ships the
         # frames it emitted before stalling — the case a trace is most useful).
@@ -260,7 +277,8 @@ class DockerRuntime:
             if frame is not None:
                 yield frame
 
-        stdout = proc.stdout.read().strip()
+        stdout_reader.join()
+        stdout = "".join(stdout_parts).strip()
         proc.wait()
 
         if proc.returncode in _CONTAINER_GONE_EXIT_CODES:
@@ -273,6 +291,94 @@ class DockerRuntime:
 # ================================================
 # Helpers
 # ================================================
+
+
+def _tail_text(output: bytes) -> str:
+    """Decode command output for an error message, keeping only the last
+    ``_FAILURE_OUTPUT_TAIL_BYTES`` so a chatty failure cannot balloon the frame."""
+    return output[-_FAILURE_OUTPUT_TAIL_BYTES:].decode(errors="replace").strip()
+
+
+def _stream_exec(cmd: list[str], timeout: int, what: str) -> Iterator[bytes]:
+    """Run ``cmd`` and yield its stdout in bounded chunks.
+
+    ``timeout`` bounds *silence from the process* — the gap between resuming
+    the consumer and the next stdout chunk (or exit) — not total stream time.
+    A large result trickling to a slow consumer must not be killed mid-transfer;
+    a process that stops producing while the consumer waits must be.
+    """
+    deadline = time.monotonic() + timeout
+    stdout_tail = bytearray()
+    completed = False
+
+    with tempfile.TemporaryFile() as stderr:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=stderr)
+        if proc.stdout is None:
+            raise RuntimeError("Popen stdout pipe unavailable")
+
+        selector = selectors.DefaultSelector()
+        selector.register(proc.stdout, selectors.EVENT_READ)
+
+        try:
+            stdout_open = True
+            while stdout_open:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    _kill_process(proc)
+                    raise subprocess.TimeoutExpired(cmd, timeout)
+
+                events = selector.select(timeout=min(remaining, 0.1))
+                if not events:
+                    continue
+
+                for _, _ in events:
+                    chunk = os.read(proc.stdout.fileno(), COPY_CHUNK_BYTES)
+                    if not chunk:
+                        stdout_open = False
+                        break
+                    _append_tail(stdout_tail, chunk)
+                    yield chunk
+                    # The consumer just asked for more: restart the silence
+                    # clock, excluding however long it sat on the last chunk.
+                    deadline = time.monotonic() + timeout
+
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                _kill_process(proc)
+                raise subprocess.TimeoutExpired(cmd, timeout)
+            returncode = proc.wait(timeout=remaining)
+            completed = True
+        except subprocess.TimeoutExpired:
+            _kill_process(proc)
+            raise
+        finally:
+            selector.close()
+            proc.stdout.close()
+            if not completed and proc.poll() is None:
+                _kill_process(proc)
+
+        if returncode != 0:
+            stderr.seek(0)
+            stderr_text = _tail_text(stderr.read())
+            stdout_text = _tail_text(bytes(stdout_tail))
+            detail = stderr_text or stdout_text or "(no output on stdout/stderr)"
+            message = f"{what} failed (exit {returncode}): {detail}"
+            if returncode in _CONTAINER_GONE_EXIT_CODES or "No such container" in detail:
+                raise WorkbenchGone(message)
+            raise RuntimeError(message)
+
+
+def _append_tail(tail: bytearray, chunk: bytes) -> None:
+    tail.extend(chunk)
+    if len(tail) > _FAILURE_OUTPUT_TAIL_BYTES:
+        del tail[: len(tail) - _FAILURE_OUTPUT_TAIL_BYTES]
+
+
+def _kill_process(proc: subprocess.Popen[bytes]) -> None:
+    if proc.poll() is None:
+        proc.kill()
+    with suppress(Exception):
+        proc.wait(timeout=5)
 
 
 def _executor_line_to_frame(line: str) -> AgentFrame | None:

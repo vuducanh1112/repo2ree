@@ -1,7 +1,9 @@
 """Persistent mapping of ree_id → workbench container + volume names.
 
-Stored as a JSON file on the host. All reads and writes are atomic
-(write-to-temp + os.replace) so concurrent API workers cannot corrupt it.
+Stored as a JSON file on the host. Writes are atomic (write-to-temp +
+os.replace), so a torn write cannot corrupt the file — but read-modify-write
+cycles are not serialized across processes (last writer wins), which is fine
+for the single-process deployments this backs.
 """
 
 from __future__ import annotations
@@ -58,9 +60,7 @@ class WorkbenchRegistry:
             ree_id=ree_id,
             container_name=record["container_name"],
             volume_name=record["volume_name"],
-            # Absent for entries written before image tracking.
             image=record.get("image", ""),
-            # Absent for entries written before placement affinity.
             agent_id=record.get("agent_id", ""),
         )
 

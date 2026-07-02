@@ -7,13 +7,13 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
     _run_summary,
     _start_background_run,
 )
-from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_protocol.command import RunExperimentArgs, RunExperimentCommand
 

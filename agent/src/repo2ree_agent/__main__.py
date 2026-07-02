@@ -21,8 +21,8 @@ import asyncio
 import os
 from pathlib import Path
 
+from repo2ree_agent.control_link import run_agent
 from repo2ree_agent.identity import load_or_create_agent_id
-from repo2ree_agent.ws_client import run_agent
 
 
 def _resolve_agent_id() -> str:

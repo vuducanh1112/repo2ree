@@ -1,4 +1,4 @@
-"""Catalog of base images offered for workbench provisioning.
+"""Catalog of base images offered for workbench provisioning, and its route.
 
 Single source of truth for which images the UI can pick from and which one a
 provisioning request defaults to when it omits an image. A deployment may still
@@ -9,6 +9,7 @@ list.
 
 from __future__ import annotations
 
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 
@@ -33,3 +34,20 @@ WORKBENCH_IMAGE_CATALOG: tuple[WorkbenchImage, ...] = (
 def default_workbench_image() -> WorkbenchImage:
     """The image used when a provisioning request doesn't specify one."""
     return WORKBENCH_IMAGE_CATALOG[0]
+
+
+workbench_images_router = APIRouter()
+
+
+class WorkbenchImageCatalog(BaseModel):
+    images: list[WorkbenchImage]
+    defaultId: str
+
+
+@workbench_images_router.get("/api/v1/workbench/images")
+def list_workbench_images() -> WorkbenchImageCatalog:
+    """The base images the frontend offers at provision time."""
+    return WorkbenchImageCatalog(
+        images=list(WORKBENCH_IMAGE_CATALOG),
+        defaultId=default_workbench_image().id,
+    )

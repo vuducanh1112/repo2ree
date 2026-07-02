@@ -126,9 +126,6 @@ class WorkbenchManager:
         agent: AgentClient,
         span_sink: SpanSink | None = None,
     ):
-        # ``agent`` is the runtime seam: every touch of a container runtime goes
-        # through it (an HTTP client to a co-located or remote agent). The manager
-        # itself never speaks to Docker.
         self._registry = registry
         self._image = workbench_image
         self._span_sink = span_sink
@@ -158,15 +155,12 @@ class WorkbenchManager:
 
         ``image`` overrides the manager's default workbench image for this REE.
         ``agent_id`` places the workbench on a specific agent; empty means "any
-        connected agent". Either way we resolve it to the concrete agent the
-        workbench lands on and pin the REE to *that*, so later ops route back to
-        the same agent even once others join (an empty token could not).
+        connected agent", resolved up front to a concrete id and pinned (see
+        ``AgentClient.resolve_agent``).
         """
         with tracer.start_as_current_span("workbench.provision") as span:
             record_ree_id(span, ree_id)
             resolved_image = image or self._image
-            # Resolve placement up front so the whole provision — and every later
-            # op — targets one concrete agent rather than re-picking "any" each time.
             resolved_agent_id = self._agent.resolve_agent(agent_id)
 
             location = self._consume_lifecycle(self._agent.provision(resolved_agent_id, ree_id, resolved_image), log)
@@ -211,6 +205,11 @@ class WorkbenchManager:
             record_ree_id(span, handle.ree_id)
             self._agent.remove(handle.agent_id, handle.ree_id, handle.location)
             self._registry.unregister(handle.ree_id)
+            # Drop the per-REE lock with the REE, or the map grows for the
+            # process lifetime. A dispatch still holding it keeps its reference;
+            # the workbench it guards is gone either way.
+            with self._ree_locks_lock:
+                self._ree_locks.pop(handle.ree_id, None)
 
     def _consume_lifecycle(self, frames: Iterator[AgentFrame], log: LogSink | None) -> WorkbenchLocation | None:
         """Drain a provision/reprovision stream: forward logs, return the location.
@@ -347,6 +346,23 @@ class WorkbenchManager:
                 return self._agent.exec_query(handle.agent_id, handle.container_name, exec_argv, timeout=timeout)
         return self._agent.exec_query(handle.agent_id, handle.container_name, exec_argv, timeout=timeout)
 
+    def dispatch_query_stream(
+        self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30
+    ) -> Iterator[bytes]:
+        """Run a read-only CLI subcommand and stream stdout bytes."""
+        exec_argv = ["repo2ree-exec", *argv]
+
+        def stream() -> Iterator[bytes]:
+            if locked:
+                with self._ree_lock(handle.ree_id):
+                    yield from self._agent.exec_query_stream(
+                        handle.agent_id, handle.container_name, exec_argv, timeout=timeout
+                    )
+                return
+            yield from self._agent.exec_query_stream(handle.agent_id, handle.container_name, exec_argv, timeout=timeout)
+
+        return stream()
+
     def get_ree_metadata(self, handle: WorkbenchHandle) -> dict[str, Any]:
         raw = self.dispatch_query(handle, "get-ree")
         return json.loads(raw)
@@ -367,9 +383,12 @@ class WorkbenchManager:
         return self.dispatch_query(handle, "read-artifact", "--path", path, timeout=120)
 
     def build_archive(self, handle: WorkbenchHandle) -> bytes:
-        # Zipping a sealed REE scales with its size; 30s is too tight for real
-        # projects with data alongside the code.
-        return self.dispatch_query(handle, "build-archive", locked=True, timeout=180)
+        return b"".join(self.build_archive_stream(handle))
+
+    def build_archive_stream(self, handle: WorkbenchHandle) -> Iterator[bytes]:
+        # Zipping a sealed REE scales with its size, hence the generous timeout;
+        # the per-REE lock stays held until the caller finishes consuming.
+        return self.dispatch_query_stream(handle, "build-archive", locked=True, timeout=180)
 
     def list_all_metadata(self) -> list[dict[str, Any]]:
         """Return metadata for every registered workbench, skipping unreachable ones."""
@@ -384,9 +403,8 @@ class WorkbenchManager:
         return results
 
     def copy_to_workbench(self, handle: WorkbenchHandle, host_path: str, container_path: str) -> None:
-        """Copy a local file into the workbench container.
+        """Copy a control-plane-local file into the workbench container.
 
-        ``host_path`` need only exist on the control plane: the agent (which may
-        be on a host that shares no filesystem with us) receives the bytes streamed
-        in bounded chunks, so neither side buffers the whole file (see WsAgentClient)."""
+        ``host_path`` need only exist here; the agent may share no filesystem
+        with us (see ``AgentClient.copy_in``)."""
         self._agent.copy_in(handle.agent_id, handle.container_name, host_path, container_path)

@@ -6,13 +6,13 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
     _run_summary,
     _start_background_run,
 )
-from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_protocol.command import (
     EvaluateDependencyScoreArgs,
     EvaluateDependencyScoreCommand,

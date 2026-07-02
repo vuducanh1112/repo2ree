@@ -98,7 +98,7 @@ def test_failed_run_log_feed_carries_the_failure(
     logs = resp.json()
     assert logs["runStatus"] == "failed"
     messages = [entry["message"] for entry in logs["entries"]]
-    assert "Staged upload not found" in messages
+    assert "Staged upload not found, empty, or expired" in messages
     assert logs["hasMore"] is False
     assert logs["nextCursor"] is None
 

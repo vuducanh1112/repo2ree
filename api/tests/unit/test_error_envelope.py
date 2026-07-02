@@ -18,12 +18,12 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
+from repo2ree_api.deps import workbench_manager
 from repo2ree_api.main import (
     http_exception_handler,
     unhandled_exception_handler,
     workbench_unavailable_handler,
 )
-from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_supervisor import WorkbenchHandle, WorkbenchUnavailableError
 
 # ================================================

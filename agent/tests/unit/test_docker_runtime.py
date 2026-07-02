@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import subprocess
+import time
+
 import pytest
 
 import repo2ree_agent.docker_runtime as rt_mod
@@ -104,6 +107,23 @@ def test_provision_emits_error_frame_when_pull_fails_and_image_absent(monkeypatc
 def test_invalid_docker_mode_fails_early() -> None:
     with pytest.raises(ValueError, match="unknown workbench docker mode"):
         DockerRuntime(docker_mode="sideways")
+
+
+def test_stream_exec_timeout_bounds_silence_not_total_time() -> None:
+    # Three chunks 0.6s apart under a 1s timeout: total runtime (~1.8s) exceeds
+    # the timeout, but no single silent gap does — the stream must survive.
+    script = "for i in 1 2 3; do printf 'chunk%s' \"$i\"; sleep 0.6; done"
+    chunks = list(rt_mod._stream_exec(["sh", "-c", script], timeout=1, what="test"))
+    assert b"".join(chunks) == b"chunk1chunk2chunk3"
+
+
+def test_stream_exec_times_out_when_process_goes_silent() -> None:
+    # A process that produced output and then hangs must be killed after one
+    # silent timeout window, not after timeout-since-start semantics.
+    t0 = time.monotonic()
+    with pytest.raises(subprocess.TimeoutExpired):
+        list(rt_mod._stream_exec(["sh", "-c", "printf started; sleep 30"], timeout=1, what="test"))
+    assert time.monotonic() - t0 < 5.0
 
 
 def _location(ree_id: str) -> WorkbenchLocation:

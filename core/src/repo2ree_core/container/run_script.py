@@ -18,6 +18,7 @@ from typing import Literal
 
 from repo2ree_core.path_safety import resolve_within
 from repo2ree_protocol.log import LogSink  # noqa: F401
+from repo2ree_protocol.result import ActionStatus
 from repo2ree_protocol.tracing import get_tracer
 
 tracer = get_tracer(__name__)
@@ -29,7 +30,7 @@ CancelCheck = Callable[[], bool]  # True once a cancel has been requested
 class StepOutcome:
     """Result of a single lifecycle-script execution."""
 
-    status: str  # "succeeded" | "failed" | "canceled"
+    status: ActionStatus
     exit_code: int | None = None
     captured_stdout: str = field(default="")
     captured_stderr: str = field(default="")
@@ -183,5 +184,5 @@ def run_workspace_script(
 
     if result.canceled or is_canceled():
         return StepOutcome("canceled", result.returncode, result.stdout, result.stderr)
-    status = "succeeded" if result.returncode == 0 else "failed"
+    status: ActionStatus = "succeeded" if result.returncode == 0 else "failed"
     return StepOutcome(status, result.returncode, result.stdout, result.stderr)

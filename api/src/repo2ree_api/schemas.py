@@ -26,7 +26,7 @@ class WorkspaceCreatePayload(BaseModel):
     revision: str | None = None
     name: str | None = None
     # Image to provision the workbench from. Omitted (or blank) falls back to the
-    # server default (the workbench image catalog default; see workbench/catalog.py).
+    # server default (the workbench image catalog default; see workbench_images.py).
     workbenchImage: str | None = None
     # Agent to place the workbench on (from GET /api/v1/agents). Omitted/blank
     # means "any connected agent" — the single-agent path.

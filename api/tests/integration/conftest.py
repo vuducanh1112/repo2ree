@@ -71,9 +71,9 @@ if "TRACE_FILE" not in os.environ:
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from repo2ree_agent.ws_client import run_agent  # noqa: E402
+from repo2ree_agent.control_link import run_agent  # noqa: E402
+from repo2ree_api.deps import agent_registry  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
-from repo2ree_api.workbench.deps import agent_registry  # noqa: E402
 from repo2ree_protocol.agent import ws_hello_adapter  # noqa: E402
 from repo2ree_supervisor import AgentConnection, WorkbenchUnavailableError  # noqa: E402
 

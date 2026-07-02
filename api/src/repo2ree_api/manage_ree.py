@@ -1,16 +1,19 @@
 import asyncio
 import logging
 import re
+import tempfile
 import time
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any
+from typing import IO, Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi.responses import StreamingResponse
 
 from repo2ree_api.api_utils import paginate
+from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
@@ -29,12 +32,16 @@ from repo2ree_api.schemas import (
     WorkspaceFileContentPayload,
 )
 from repo2ree_api.storage.upload_staging import (
+    InvalidUploadTokenError,
+    UnknownUploadTokenError,
+    UploadStagingFullError,
+    UploadTooLargeError,
+    discard_expired_uploads,
     discard_staged_upload,
     new_upload_token,
-    stage_upload_bytes,
+    stage_upload_stream,
     staged_upload_path,
 )
-from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol import (
     AcquireSourceCommand,
@@ -443,16 +450,23 @@ def upload_init_route(ree_id: str, payload: UploadInitPayload):
 
 @manage_ree_router.put("/api/v1/rees/{ree_id}/source:upload/{upload_token}")
 async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Request):
-    # This route is async only to stream the request body. It runs on the event
-    # loop, so the blocking calls must hop to a thread: ``_require_handle`` does
-    # a synchronous round-trip to the workbench agent over the multiplexed
-    # WebSocket that *this same loop* pumps — calling it inline deadlocks the
-    # loop against its own reply (frozen API, agent keepalive death) rather
-    # than merely stalling. Sync routes don't share the hazard: FastAPI runs
-    # them in the threadpool.
+    # This route is async to consume the HTTP request body incrementally. It runs
+    # on the event loop, so blocking control-plane calls must hop to a thread:
+    # ``_require_handle`` does a synchronous round-trip to the workbench agent
+    # over the multiplexed WebSocket that *this same loop* pumps — calling it
+    # inline deadlocks the loop against its own reply (frozen API, agent
+    # keepalive death) rather than merely stalling.
     await asyncio.to_thread(_require_handle, ree_id)
-    data = await request.body()
-    await asyncio.to_thread(stage_upload_bytes, upload_token, data)
+    try:
+        await stage_upload_stream(upload_token, request.stream())
+    except InvalidUploadTokenError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except UnknownUploadTokenError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except UploadTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
+    except UploadStagingFullError as exc:
+        raise HTTPException(status_code=507, detail=str(exc)) from exc
     return {
         "uploadToken": upload_token,
         "storedAt": utc_now(),
@@ -467,7 +481,10 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
         "uploadToken": payload.uploadToken,
         "archiveName": payload.archiveName,
     }
-    staged_host = staged_upload_path(payload.uploadToken)
+    try:
+        staged_host = staged_upload_path(payload.uploadToken)
+    except InvalidUploadTokenError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     def _runner(ws_id: str, run_id: str):
         def _log_run(stream: str, level: str, message: str) -> None:
@@ -482,8 +499,11 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
             _log_run("system", "warn", "Source upload canceled")
             return "canceled", request_payload
 
-        if not staged_host.exists():
-            _log_run("system", "error", "Staged upload not found")
+        # Sweep first so a staged file past its TTL reads as expired, not found.
+        # Size zero means the token was minted but the bytes never PUT.
+        discard_expired_uploads()
+        if not staged_host.exists() or staged_host.stat().st_size == 0:
+            _log_run("system", "error", "Staged upload not found, empty, or expired")
             return "failed", request_payload
 
         size = staged_host.stat().st_size
@@ -601,24 +621,42 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload):
 @manage_ree_router.get("/api/v1/rees/{ree_id}/ree-archive")
 def download_workspace_ree_archive_route(ree_id: str):
     handle = _require_handle(ree_id)
-    with _ree_command_span("ree-archive", ree_id):
-        try:
-            archive_bytes = workbench_manager.build_archive(handle)
-        except RuntimeError as exc:
-            detail = str(exc)
-            if "not sealed" in detail.lower():
-                raise HTTPException(status_code=409, detail=detail) from exc
-            raise HTTPException(status_code=400, detail=detail) from exc
-        archive_filename = _archive_download_filename(handle)
-        return Response(
-            content=archive_bytes,
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": (
-                    f"attachment; filename=\"{archive_filename}\"; filename*=UTF-8''{quote(archive_filename)}"
-                )
-            },
-        )
+    archive_filename = _archive_download_filename(handle)
+    # Spool the archive to a control-plane temp file before responding. The
+    # per-REE lock (and the agent's exec) is held only while the workbench
+    # streams to us — never for as long as the client takes to download — so a
+    # slow client cannot block other operations on the REE.
+    spool = tempfile.TemporaryFile()
+    try:
+        with _ree_command_span("ree-archive", ree_id):
+            for chunk in workbench_manager.build_archive_stream(handle):
+                spool.write(chunk)
+            if spool.tell() == 0:
+                raise HTTPException(status_code=502, detail="workbench returned an empty archive")
+        size = spool.tell()
+        spool.seek(0)
+    except HTTPException:
+        spool.close()
+        raise
+    except RuntimeError as exc:
+        spool.close()
+        detail = str(exc)
+        if "not sealed" in detail.lower():
+            raise HTTPException(status_code=409, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=detail) from exc
+    except BaseException:
+        spool.close()
+        raise
+    return StreamingResponse(
+        _spool_chunks(spool),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=\"{archive_filename}\"; filename*=UTF-8''{quote(archive_filename)}"
+            ),
+            "Content-Length": str(size),
+        },
+    )
 
 
 # ================================================
@@ -633,3 +671,11 @@ def _archive_download_filename(handle: WorkbenchHandle) -> str:
     if not safe_stem:
         safe_stem = "ree"
     return f"{safe_stem}.zip"
+
+
+def _spool_chunks(spool: IO[bytes]) -> Iterator[bytes]:
+    try:
+        while chunk := spool.read(64 * 1024):
+            yield chunk
+    finally:
+        spool.close()

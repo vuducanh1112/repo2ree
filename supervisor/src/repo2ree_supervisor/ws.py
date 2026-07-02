@@ -26,10 +26,10 @@ import logging
 import queue
 import threading
 import time
+from collections import deque
 from collections.abc import Callable, Iterator
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import Any
 from uuid import uuid4
 
 from repo2ree_protocol.agent import (
@@ -37,7 +37,9 @@ from repo2ree_protocol.agent import (
     TERMINAL_FRAME_TYPES,
     AgentFrame,
     AgentHello,
+    AgentRequest,
     BytesChunkFrame,
+    CancelRequest,
     CopyAbortRequest,
     CopyChunkRequest,
     CopyCloseRequest,
@@ -72,6 +74,11 @@ DEFAULT_FRAME_GAP_TIMEOUT = 900.0
 # agent answers these in milliseconds when healthy, so a short bound turns a
 # wedged agent into a fast, visible failure instead of a blocked worker thread.
 QUICK_OP_TIMEOUT = 30.0
+
+# Copy chunks in flight before the oldest ack is drained: enough to hide the
+# per-chunk round trip on a remote agent (throughput would otherwise be one
+# chunk per RTT) while bounding what queues in the socket's send path.
+COPY_IN_WINDOW = 8
 
 
 @dataclass(frozen=True)
@@ -108,7 +115,7 @@ class AgentConnection:
             q.put(message.frame)
 
     def request(
-        self, op: str, args: dict[str, Any], *, frame_gap_timeout: float = DEFAULT_FRAME_GAP_TIMEOUT
+        self, request: AgentRequest, *, frame_gap_timeout: float = DEFAULT_FRAME_GAP_TIMEOUT
     ) -> Iterator[AgentFrame]:
         """Issue a request and yield its response frames until a terminal one.
 
@@ -121,6 +128,14 @@ class AgentConnection:
         network with the TCP socket still up) raises ``WorkbenchUnavailableError``
         instead of blocking the caller's thread forever.
         """
+        yield from self.start(request).frames(frame_gap_timeout=frame_gap_timeout)
+
+    def start(self, request: AgentRequest) -> PendingReply:
+        """Send ``request`` without waiting for its reply.
+
+        The reply arrives on the returned handle; issuing several requests
+        before draining the first lets a caller pipeline (see ``copy_in``).
+        """
         req_id = uuid4().hex
         q: queue.Queue[AgentFrame] = queue.Queue()
         with self._lock:
@@ -128,20 +143,24 @@ class AgentConnection:
                 raise WorkbenchUnavailableError("agent connection closed")
             self._pending[req_id] = q
         try:
-            self._send_text(WsRequest(id=req_id, op=op, args=args).model_dump_json())
-            while True:
-                try:
-                    frame = q.get(timeout=frame_gap_timeout)
-                except queue.Empty:
-                    raise WorkbenchUnavailableError(
-                        f"agent stopped responding: no frame for {frame_gap_timeout:.0f}s (op {op!r})"
-                    ) from None
-                yield frame
-                if frame.type in TERMINAL_FRAME_TYPES:
-                    return
-        finally:
-            with self._lock:
-                self._pending.pop(req_id, None)
+            self._send_text(WsRequest(id=req_id, request=request).model_dump_json())
+        except BaseException:
+            self._discard(req_id)
+            raise
+        return PendingReply(self, req_id, q, request.op)
+
+    def _discard(self, req_id: str) -> None:
+        with self._lock:
+            self._pending.pop(req_id, None)
+
+    def _cancel(self, req_id: str) -> None:
+        """Fire-and-forget: tell the agent the caller for ``req_id`` is gone,
+        so it can stop the work instead of streaming frames to no one."""
+        with self._lock:
+            if self._closed:
+                return
+        with suppress(Exception):
+            self._send_text(WsRequest(id=uuid4().hex, request=CancelRequest(request_id=req_id)).model_dump_json())
 
     def close(self) -> None:
         """Mark the connection dead and unblock every waiting caller."""
@@ -151,6 +170,46 @@ class AgentConnection:
             self._pending.clear()
         for q in pending:
             q.put(UnavailableFrame(detail="agent connection closed"))
+
+
+class PendingReply:
+    """An issued request whose response frames have not been consumed yet."""
+
+    def __init__(self, connection: AgentConnection, req_id: str, q: queue.Queue[AgentFrame], op: str):
+        self._connection = connection
+        self._req_id = req_id
+        self._queue = q
+        self._op = op
+
+    def frames(self, *, frame_gap_timeout: float = DEFAULT_FRAME_GAP_TIMEOUT) -> Iterator[AgentFrame]:
+        """Yield the response frames until a terminal one (see ``request``).
+
+        Leaving before the terminal frame — an abandoned stream, or the
+        frame-gap timeout firing — sends the agent a best-effort cancel so it
+        stops working for a caller that is gone."""
+        terminated = False
+        try:
+            while True:
+                try:
+                    frame = self._queue.get(timeout=frame_gap_timeout)
+                except queue.Empty:
+                    raise WorkbenchUnavailableError(
+                        f"agent stopped responding: no frame for {frame_gap_timeout:.0f}s (op {self._op!r})"
+                    ) from None
+                if frame.type in TERMINAL_FRAME_TYPES:
+                    terminated = True
+                yield frame
+                if terminated:
+                    return
+        finally:
+            self._connection._discard(self._req_id)
+            if not terminated:
+                self._connection._cancel(self._req_id)
+
+    def discard(self) -> None:
+        """Stop waiting for this reply without consuming it (error-path cleanup
+        for pipelined requests that will never be drained)."""
+        self._connection._discard(self._req_id)
 
 
 class AgentConnectionRegistry:
@@ -213,11 +272,8 @@ class AgentConnectionRegistry:
             return self._agents[self._resolve_locked(agent_id)]
 
     def resolve(self, agent_id: str | None = None) -> str:
-        """Resolve a placement request to the concrete agent id that will serve it.
-
-        The id twin of ``pick``: provision calls this to pin the REE to the agent
-        it actually lands on, rather than to an empty "any agent" token that later
-        ops (routed via a specific id) could not honour once a second agent joins."""
+        """The id twin of ``pick``: resolve a placement request to a concrete
+        agent id. See ``AgentClient.resolve_agent`` for why provision pins."""
         with self._lock:
             return self._resolve_locked(agent_id)
 
@@ -262,21 +318,16 @@ class WsAgentClient:
     # ------------------------------------------------
 
     def provision(self, agent_id: str, ree_id: str, image: str) -> Iterator[AgentFrame]:
-        return self._registry.pick(agent_id).request(
-            "provision", ProvisionRequest(ree_id=ree_id, image=image).model_dump()
-        )
+        return self._registry.pick(agent_id).request(ProvisionRequest(ree_id=ree_id, image=image))
 
     def reprovision(self, agent_id: str, ree_id: str, location: WorkbenchLocation, image: str) -> Iterator[AgentFrame]:
-        return self._registry.pick(agent_id).request(
-            "reprovision", ReprovisionRequest(ree_id=ree_id, location=location, image=image).model_dump()
-        )
+        return self._registry.pick(agent_id).request(ReprovisionRequest(ree_id=ree_id, location=location, image=image))
 
     def exec_action(
         self, agent_id: str, container_name: str, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]:
         return self._registry.pick(agent_id).request(
-            "exec_action",
-            ExecActionRequest(container_name=container_name, cmd_json=cmd_json, run_id=run_id, env=env).model_dump(),
+            ExecActionRequest(container_name=container_name, cmd_json=cmd_json, run_id=run_id, env=env)
         )
 
     # ------------------------------------------------
@@ -291,11 +342,7 @@ class WsAgentClient:
             return
         try:
             self._drain_void(
-                conn.request(
-                    "remove",
-                    RemoveRequest(ree_id=ree_id, location=location).model_dump(),
-                    frame_gap_timeout=QUICK_OP_TIMEOUT,
-                )
+                conn.request(RemoveRequest(ree_id=ree_id, location=location), frame_gap_timeout=QUICK_OP_TIMEOUT)
             )
         except (WorkbenchUnavailableError, RuntimeError):
             pass
@@ -307,8 +354,7 @@ class WsAgentClient:
             return False
         try:
             frames = conn.request(
-                "is_running",
-                IsRunningRequest(container_name=container_name).model_dump(),
+                IsRunningRequest(container_name=container_name),
                 frame_gap_timeout=QUICK_OP_TIMEOUT,
             )
             for frame in frames:
@@ -325,65 +371,72 @@ class WsAgentClient:
         req = ExecSimpleRequest(container_name=container_name, argv=argv, timeout=timeout)
         # The agent enforces ``timeout`` on the exec itself; the frame gap only
         # needs to cover it plus transport slack.
-        self._drain_void(conn.request("exec_simple", req.model_dump(), frame_gap_timeout=timeout + QUICK_OP_TIMEOUT))
+        self._drain_void(conn.request(req, frame_gap_timeout=timeout + QUICK_OP_TIMEOUT))
 
     def exec_query(self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30) -> bytes:
-        # The result arrives as a stream of bounded chunks ending in ``done``
-        # (one frame could exceed the transport's receive cap); reassemble here.
+        return b"".join(self.exec_query_stream(agent_id, container_name, argv, timeout))
+
+    def exec_query_stream(
+        self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30
+    ) -> Iterator[bytes]:
+        # The result arrives as bounded chunks ending in ``done``; yield each
+        # decoded chunk so large archives do not materialise in control-plane RAM.
         conn = self._registry.pick(agent_id)
-        chunks: list[bytes] = []
         for frame in conn.request(
-            "exec_query",
-            ExecQueryRequest(container_name=container_name, argv=argv, timeout=timeout).model_dump(),
+            ExecQueryRequest(container_name=container_name, argv=argv, timeout=timeout),
             frame_gap_timeout=timeout + QUICK_OP_TIMEOUT,
         ):
             if isinstance(frame, BytesChunkFrame):
-                chunks.append(base64.b64decode(frame.data_b64))
+                yield base64.b64decode(frame.data_b64)
             elif isinstance(frame, DoneFrame):
-                return b"".join(chunks)
+                return
             else:
                 raise_for_terminal_error(frame)
         raise RuntimeError("agent exec_query ended without a result")
 
     def copy_in(self, agent_id: str, container_name: str, source_path: str, container_path: str) -> None:
-        # Stream the file to the agent in bounded chunks read straight from disk,
-        # so neither end holds the whole payload and no frame nears the transport
-        # size cap. On any failure, tell the agent to drop its partial temp file.
+        # Chunked copy-in (see repo2ree_protocol.agent), read straight from disk.
+        # Chunks are pipelined: up to COPY_IN_WINDOW ride the wire before the
+        # oldest ack is drained, so throughput is bound by bandwidth, not by one
+        # round trip per chunk. Each chunk carries its offset, so the agent can
+        # apply them in whatever order they land.
+        # On any failure, tell the agent to drop its partial temp file.
         conn = self._registry.pick(agent_id)
         transfer_id = self._open_transfer(conn, container_name, container_path)
+        in_flight: deque[PendingReply] = deque()
         try:
             with open(source_path, "rb") as source:
+                offset = 0
                 while chunk := source.read(COPY_CHUNK_BYTES):
-                    self._drain_void(
-                        conn.request(
-                            "copy_chunk",
+                    in_flight.append(
+                        conn.start(
                             CopyChunkRequest(
-                                transfer_id=transfer_id, data_b64=base64.b64encode(chunk).decode()
-                            ).model_dump(),
-                            frame_gap_timeout=QUICK_OP_TIMEOUT,
+                                transfer_id=transfer_id,
+                                offset=offset,
+                                data_b64=base64.b64encode(chunk).decode(),
+                            )
                         )
                     )
+                    offset += len(chunk)
+                    if len(in_flight) >= COPY_IN_WINDOW:
+                        self._drain_void(in_flight.popleft().frames(frame_gap_timeout=QUICK_OP_TIMEOUT))
+            while in_flight:
+                self._drain_void(in_flight.popleft().frames(frame_gap_timeout=QUICK_OP_TIMEOUT))
             # copy_close runs `docker cp` of the assembled file on the agent;
             # give it more room than the per-chunk acks.
-            self._drain_void(
-                conn.request(
-                    "copy_close", CopyCloseRequest(transfer_id=transfer_id).model_dump(), frame_gap_timeout=180.0
-                )
-            )
+            self._drain_void(conn.request(CopyCloseRequest(transfer_id=transfer_id), frame_gap_timeout=180.0))
         except BaseException:
+            while in_flight:
+                in_flight.popleft().discard()
             with suppress(Exception):
                 self._drain_void(
-                    conn.request(
-                        "copy_abort",
-                        CopyAbortRequest(transfer_id=transfer_id).model_dump(),
-                        frame_gap_timeout=QUICK_OP_TIMEOUT,
-                    )
+                    conn.request(CopyAbortRequest(transfer_id=transfer_id), frame_gap_timeout=QUICK_OP_TIMEOUT)
                 )
             raise
 
     def _open_transfer(self, conn: AgentConnection, container_name: str, container_path: str) -> str:
         req = CopyOpenRequest(container_name=container_name, container_path=container_path)
-        for frame in conn.request("copy_open", req.model_dump(), frame_gap_timeout=QUICK_OP_TIMEOUT):
+        for frame in conn.request(req, frame_gap_timeout=QUICK_OP_TIMEOUT):
             if isinstance(frame, TransferFrame):
                 return frame.transfer_id
             raise_for_terminal_error(frame)

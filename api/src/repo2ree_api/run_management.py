@@ -5,8 +5,8 @@ from typing import Any, Literal
 
 from fastapi import HTTPException
 
+from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_registry import RunRegistry
-from repo2ree_api.workbench.deps import workbench_manager
 from repo2ree_protocol.command import Command
 
 # ================================================

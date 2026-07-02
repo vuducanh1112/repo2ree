@@ -66,6 +66,12 @@ class FakeAgent:
         self.routed_agent_ids.append(agent_id)
         return self.query_returns
 
+    def exec_query_stream(
+        self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30
+    ) -> Iterator[bytes]:
+        self.routed_agent_ids.append(agent_id)
+        yield self.query_returns
+
     def exec_action(
         self, agent_id: str, container_name: str, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]:

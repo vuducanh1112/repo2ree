@@ -25,7 +25,7 @@ way, no frame approaches the transport's size cap.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
@@ -57,6 +57,7 @@ class WorkbenchLocation(BaseModel):
 class ProvisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["provision"] = "provision"
     ree_id: str
     # Always a fully-resolved concrete image reference; the agent never applies
     # image defaults (that is control-plane policy).
@@ -66,6 +67,7 @@ class ProvisionRequest(BaseModel):
 class ReprovisionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["reprovision"] = "reprovision"
     ree_id: str
     location: WorkbenchLocation
     image: str
@@ -74,6 +76,7 @@ class ReprovisionRequest(BaseModel):
 class RemoveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["remove"] = "remove"
     ree_id: str
     location: WorkbenchLocation
 
@@ -81,12 +84,14 @@ class RemoveRequest(BaseModel):
 class IsRunningRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["is_running"] = "is_running"
     container_name: str
 
 
 class ExecSimpleRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["exec_simple"] = "exec_simple"
     container_name: str
     argv: list[str]
     timeout: int = 60
@@ -95,6 +100,7 @@ class ExecSimpleRequest(BaseModel):
 class ExecQueryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["exec_query"] = "exec_query"
     container_name: str
     argv: list[str]
     timeout: int = 30
@@ -103,6 +109,7 @@ class ExecQueryRequest(BaseModel):
 class ExecActionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["exec_action"] = "exec_action"
     container_name: str
     cmd_json: str
     run_id: str
@@ -122,16 +129,25 @@ class CopyOpenRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["copy_open"] = "copy_open"
     container_name: str
     container_path: str
 
 
 class CopyChunkRequest(BaseModel):
-    """Append one bounded, base64-encoded slice of the file to an open transfer."""
+    """Write one bounded, base64-encoded slice of the file to an open transfer.
+
+    ``offset`` is the slice's byte position in the assembled file. The control
+    plane pipelines chunks (several in flight before the first ack), and the
+    agent handles each request concurrently — so chunks may *apply* out of
+    order; the offset makes the write position explicit rather than relying on
+    arrival order."""
 
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["copy_chunk"] = "copy_chunk"
     transfer_id: str
+    offset: int
     data_b64: str
 
 
@@ -140,6 +156,7 @@ class CopyCloseRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["copy_close"] = "copy_close"
     transfer_id: str
 
 
@@ -149,7 +166,42 @@ class CopyAbortRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    op: Literal["copy_abort"] = "copy_abort"
     transfer_id: str
+
+
+class CancelRequest(BaseModel):
+    """Stop the in-flight request ``request_id``: its caller is gone (abandoned
+    stream, frame-gap timeout), so any work still running for it is wasted.
+    Best-effort and idempotent — answered with ``done`` whether or not the
+    target is still running; the cancelled request itself sends no further
+    frames."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    op: Literal["cancel"] = "cancel"
+    request_id: str
+
+
+# Tagged union discriminated on 'op': every call the control plane can push
+# down the agent's socket. The op literal lives on the request model itself,
+# so both sides share one definition and a mistyped op cannot compile into a
+# well-formed request.
+AgentRequest = Annotated[
+    ProvisionRequest
+    | ReprovisionRequest
+    | RemoveRequest
+    | IsRunningRequest
+    | ExecSimpleRequest
+    | ExecQueryRequest
+    | ExecActionRequest
+    | CopyOpenRequest
+    | CopyChunkRequest
+    | CopyCloseRequest
+    | CopyAbortRequest
+    | CancelRequest,
+    Field(discriminator="op"),
+]
 
 
 # ================================================
@@ -230,10 +282,8 @@ class RunningFrame(BaseModel):
 class BytesChunkFrame(BaseModel):
     """One bounded slice of a byte-returning query's result (exec_query).
 
-    Incremental, like ``log``: the agent slices the payload into
-    ``COPY_CHUNK_BYTES``-sized chunks so no frame nears the transport's receive
-    cap (a sealed archive can be far larger than uvicorn's 16 MiB limit), and a
-    terminal ``done`` ends the stream. The read twin of the chunked copy-in."""
+    Incremental, like ``log``; a terminal ``done`` ends the stream. The read
+    twin of the chunked copy-in (see the module docstring)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -279,8 +329,8 @@ TERMINAL_FRAME_TYPES = frozenset({"location", "result", "done", "unavailable", "
 # When the agent dials the control plane and holds one connection, a single
 # socket multiplexes every call. Each request carries a correlation id; each
 # response frame echoes it so the control plane can route frames back to the
-# blocked caller. The op names map 1:1 to AgentClient verbs; the agent's request
-# dispatcher is the single source of truth for which ops it serves.
+# blocked caller. The ops map 1:1 to AgentClient verbs; the ``AgentRequest``
+# union above is the single source of truth for which ops exist.
 
 
 class AgentHello(BaseModel):
@@ -309,8 +359,7 @@ class WsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
-    op: str
-    args: dict[str, Any] = {}
+    request: AgentRequest
 
 
 class WsMessage(BaseModel):

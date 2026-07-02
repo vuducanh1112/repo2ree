@@ -42,6 +42,7 @@ from repo2ree_core.experiment.experiment import (
     validate_runnable_script_path,
 )
 from repo2ree_core.path_safety import resolve_within
+from repo2ree_protocol.result import ActionStatus
 from repo2ree_protocol.tracing import get_tracer
 
 tracer = get_tracer(__name__)
@@ -61,7 +62,7 @@ class ExperimentRunOutcome:
     and holds the baselines the caller must write back into the REE draft.
     """
 
-    status: str
+    status: ActionStatus
     run_outputs: dict[str, Any]
     snapshot_to_persist: list[ExpectedOutput] | None = field(default=None)
 
