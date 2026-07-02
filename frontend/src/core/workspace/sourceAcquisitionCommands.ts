@@ -7,6 +7,7 @@ import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceS
 import { initialReeAssemblyOperationParams } from "../ree-assembly/assemblyCatalog";
 
 export interface SourceOutcomeCommandPayload {
+  runId?: string;
   reeSpecPatch?: Partial<ReeSpec>;
   workspaceSourceStatePatch?: Partial<WorkspaceSourceState>;
   sourceSnapshotArchiveName: string;
@@ -49,11 +50,12 @@ export function sourceChangeResetCommands(options: { silent?: boolean } = {}): S
   return commands;
 }
 
-export function sourceFailureCommands(args: { message: string }): SourceCommand[] {
+export function sourceFailureCommands(args: { message: string; runId?: string }): SourceCommand[] {
   return [
     {
       type: "applySourceOutcome",
       outcome: {
+        runId: args.runId,
         reeSpecPatch: {},
         sourceSnapshotArchiveName: "",
         actionState: "done",

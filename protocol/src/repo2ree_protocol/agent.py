@@ -117,6 +117,14 @@ class ExecActionRequest(BaseModel):
     env: dict[str, str] = {}
 
 
+class CancelRunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    op: Literal["cancel_run"] = "cancel_run"
+    container_name: str
+    run_id: str
+
+
 # Raw bytes per copy chunk. Base64 inflates the payload ~4/3, so a chunk frame
 # stays well under the transport's default receive cap (websockets: 1 MiB) while
 # the agent holds at most one chunk in memory at a time.
@@ -195,6 +203,7 @@ AgentRequest = Annotated[
     | ExecSimpleRequest
     | ExecQueryRequest
     | ExecActionRequest
+    | CancelRunRequest
     | CopyOpenRequest
     | CopyChunkRequest
     | CopyCloseRequest

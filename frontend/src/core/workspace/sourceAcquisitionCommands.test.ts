@@ -22,9 +22,18 @@ describe("sourceAcquisitionCommands", () => {
   });
 
   it("plans source failure outcome before error toast", () => {
-    const commands = sourceFailureCommands({ message: "Source failed" });
+    const commands = sourceFailureCommands({ message: "Source failed", runId: "run-1" });
 
     expect(commands.map((command) => command.type)).toEqual(["applySourceOutcome", "toast"]);
+    expect(commands[0]).toEqual({
+      type: "applySourceOutcome",
+      outcome: {
+        runId: "run-1",
+        reeSpecPatch: {},
+        sourceSnapshotArchiveName: "",
+        actionState: "done",
+      },
+    });
     expect(commands[1]).toEqual({
       type: "toast",
       message: "Source failed",

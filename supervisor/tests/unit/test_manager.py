@@ -34,6 +34,7 @@ class FakeAgent:
         self.query_returns: bytes = b"{}"
         self.action_frames: list[AgentFrame] = []
         self.running: bool = True
+        self.cancel_run_calls: list[tuple[str, str]] = []
         # Records the agent_id each call was routed to, for placement assertions.
         self.routed_agent_ids: list[str] = []
 
@@ -77,6 +78,10 @@ class FakeAgent:
     ) -> Iterator[AgentFrame]:
         self.routed_agent_ids.append(agent_id)
         yield from self.action_frames
+
+    def cancel_run(self, agent_id: str, container_name: str, run_id: str) -> None:
+        self.routed_agent_ids.append(agent_id)
+        self.cancel_run_calls.append((container_name, run_id))
 
     def copy_in(self, agent_id: str, container_name: str, source_path: str, container_path: str) -> None:
         self.routed_agent_ids.append(agent_id)
@@ -188,6 +193,18 @@ def test_dispatch_action_without_result_frame_is_failure(tmp_path) -> None:
         lambda *_: None,
     )
     assert result.status == "failed"
+
+
+def test_cancel_run_routes_to_pinned_agent(tmp_path) -> None:
+    agent = FakeAgent()
+    manager = _manager(tmp_path, agent)
+    handle = manager.provision("ree1", name="My REE", agent_id="worker-2")
+
+    agent.routed_agent_ids.clear()
+    manager.cancel_run(handle, "run-7")
+
+    assert agent.cancel_run_calls == [("repo2ree-wb-ree1", "run-7")]
+    assert agent.routed_agent_ids == ["worker-2"]
 
 
 def test_lookup_returns_none_when_not_running(tmp_path) -> None:

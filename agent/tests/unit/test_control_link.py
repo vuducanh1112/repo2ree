@@ -16,6 +16,7 @@ from repo2ree_agent.control_link import _serve
 from repo2ree_protocol.agent import (
     COPY_CHUNK_BYTES,
     CancelRequest,
+    CancelRunRequest,
     ExecQueryRequest,
     IsRunningRequest,
     WsRequest,
@@ -44,6 +45,7 @@ class FakeSocket:
 
 class FakeRuntime:
     query_result: bytes = b""
+    canceled_runs: list[tuple[str, str]] = []
 
     def is_running(self, container_name: str) -> bool:
         return container_name == "wb-up"
@@ -51,6 +53,9 @@ class FakeRuntime:
     def exec_query_stream(self, container_name: str, argv: list[str], timeout: int = 30):
         for offset in range(0, len(self.query_result), COPY_CHUNK_BYTES):
             yield self.query_result[offset : offset + COPY_CHUNK_BYTES]
+
+    def cancel_run(self, container_name: str, run_id: str) -> None:
+        self.canceled_runs.append((container_name, run_id))
 
 
 async def _serve_and_settle(ws: FakeSocket) -> None:
@@ -132,6 +137,18 @@ def test_cancel_for_unknown_request_still_answers_done() -> None:
     messages = _frames(ws)
     assert [m.id for m in messages] == ["c1"]
     assert messages[0].frame.type == "done"
+
+
+def test_cancel_run_marks_run_in_workbench() -> None:
+    FakeRuntime.canceled_runs = []
+    ws = FakeSocket(
+        [WsRequest(id="c1", request=CancelRunRequest(container_name="wb", run_id="run-7")).model_dump_json()]
+    )
+    asyncio.run(_serve_and_settle(ws))
+
+    messages = _frames(ws)
+    assert messages[0].frame.type == "done"
+    assert FakeRuntime.canceled_runs == [("wb", "run-7")]
 
 
 def test_cancel_stops_an_inflight_request() -> None:

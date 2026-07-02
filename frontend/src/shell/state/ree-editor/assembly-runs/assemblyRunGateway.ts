@@ -8,23 +8,20 @@ import type {
   ReeAssemblyOperationKey,
   ReeAssemblyRunParams,
 } from "@core/ree-assembly/assemblyTypes";
+import {
+  cancelFailureMessage,
+  cancelSuccessMessage,
+  planCancelRequest,
+} from "@core/ree-assembly/cancelPlan";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { AppShellRuntimePorts } from "@shell/app/bootstrap/ports";
 import type { ExecutionRunsClient } from "@shell/data/execution-runs/client";
+import { cancelAssemblyRun } from "@shell/ui/app-shell/state/actions";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ShowToast } from "../types";
 import type { ReeEditorDispatch } from "./assemblyActionEffects";
 import { executeAssemblyRunAction } from "./executeAssemblyRunAction";
-
-interface RunSessionPort {
-  noteRunStarted: (key: string, runId: string) => void;
-  noteRunFinished: (key: string) => void;
-  cancelTrackedRun: (args: {
-    key: string;
-    cancelRun?: (runId: string) => Promise<unknown>;
-  }) => Promise<{ ok: boolean; message?: string }>;
-}
 
 interface CreateAssemblyRunGatewayArgs {
   ree: ReeEditorViewModel;
@@ -48,7 +45,7 @@ interface CreateAssemblyRunGatewayArgs {
     reeArtifactFiles: ReeFile[];
     ree?: RawReeIntentSlices;
   }>;
-  runSession: RunSessionPort;
+  getActiveRunId: (key: string) => string | undefined;
 }
 
 export function createAssemblyRunGateway({
@@ -66,7 +63,7 @@ export function createAssemblyRunGateway({
   cancelExecutionRun,
   ports,
   refreshWorkspace,
-  runSession,
+  getActiveRunId,
 }: CreateAssemblyRunGatewayArgs) {
   const executeAction = async (
     key: string,
@@ -87,8 +84,6 @@ export function createAssemblyRunGateway({
       startExecutionRun,
       ports,
       refreshWorkspace,
-      onRunStarted: runSession.noteRunStarted,
-      onRunFinished: runSession.noteRunFinished,
     });
 
   const runAction = async (key: string, params: GenericReeAssemblyParams = {}) => {
@@ -106,12 +101,16 @@ export function createAssemblyRunGateway({
   };
 
   const cancelAction = async (key: string) => {
-    const result = await runSession.cancelTrackedRun({
-      key,
-      cancelRun: cancelExecutionRun,
-    });
-    if (result.message) {
-      showToast(result.message, result.ok ? "info" : "error");
+    const plan = planCancelRequest(getActiveRunId(key));
+    if (!plan || !cancelExecutionRun) {
+      return;
+    }
+    try {
+      await cancelExecutionRun(plan.runId);
+      showToast(cancelSuccessMessage(key), "info");
+      dispatch(cancelAssemblyRun(key, plan.runId));
+    } catch (error) {
+      showToast(cancelFailureMessage(key, error), "error");
     }
   };
 

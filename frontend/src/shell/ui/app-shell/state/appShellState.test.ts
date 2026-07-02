@@ -5,9 +5,11 @@ import {
 } from "@core/ree-editor/reeEditorViewModel";
 import { describe, expect, it } from "vitest";
 import {
+  cancelAssemblyRun,
   clearToast,
   completeAssemblyRun,
   resetAssemblyAfterSourceChange,
+  setActiveRunId,
   setArtifactStatus,
   setAssemblyRunLoading,
   setEvaluationState,
@@ -199,6 +201,67 @@ describe("appShellState", () => {
     const initial = createInitialState(toInitialSlices(buildRee()));
     const next = appShellReducer(initial, setAssemblyRunLoading("build"));
     expect(next.assemblyRun.actionStates.build).toBe("loading");
+  });
+
+  it("clears loading and active run id when a cancel request is accepted", () => {
+    const initial = appShellReducer(
+      appShellReducer(
+        createInitialState(toInitialSlices(buildRee())),
+        setAssemblyRunLoading("build"),
+      ),
+      setActiveRunId("build", "run-1"),
+    );
+
+    const next = appShellReducer(initial, cancelAssemblyRun("build", "run-1"));
+
+    expect(next.assemblyRun.actionStates.build).toBeUndefined();
+    expect(next.assemblyRun.activeRunIds.build).toBeUndefined();
+  });
+
+  it("ignores stale assembly completion for a run that is no longer active", () => {
+    const initial = appShellReducer(
+      appShellReducer(
+        createInitialState(toInitialSlices(buildRee())),
+        setAssemblyRunLoading("build"),
+      ),
+      setActiveRunId("build", "run-2"),
+    );
+
+    const next = appShellReducer(
+      initial,
+      completeAssemblyRun({
+        key: "build",
+        runId: "run-1",
+        actionState: "done",
+        badge: true,
+        timestamp: "2026-01-01T00:00:00Z",
+      }),
+    );
+
+    expect(next).toBe(initial);
+  });
+
+  it("ignores stale source outcome for a run that is no longer active", () => {
+    const initial = appShellReducer(
+      appShellReducer(
+        createInitialState(toInitialSlices(buildRee())),
+        setAssemblyRunLoading("source"),
+      ),
+      setActiveRunId("source", "run-2"),
+    );
+
+    const next = appShellReducer(initial, {
+      type: "applySourceOutcome",
+      outcome: {
+        runId: "run-1",
+        sourceSnapshotArchiveName: "repo.tar.gz",
+        actionState: "done",
+        badge: true,
+        timestamp: "2026-01-01T00:00:00Z",
+      },
+    });
+
+    expect(next).toBe(initial);
   });
 
   it("shows and clears toast via named transitions", () => {

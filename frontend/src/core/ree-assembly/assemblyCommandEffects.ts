@@ -19,6 +19,7 @@ export type WorkspaceStateCommand =
       type: "completeAssemblyRun";
       completion: {
         key: string;
+        runId?: string;
         actionState: "done";
         badge: boolean;
         timestamp: string;
@@ -96,6 +97,7 @@ export function mapAssemblyCommandsToEffects(commands: AssemblyCommand[]): Assem
           type: "completeAssemblyRun",
           completion: {
             key: command.completion.key,
+            runId: command.completion.runId,
             actionState: command.completion.actionState,
             badge: command.completion.badge,
             timestamp: command.completion.timestamp,

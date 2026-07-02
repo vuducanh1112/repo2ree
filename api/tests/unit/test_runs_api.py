@@ -10,11 +10,14 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from threading import Event
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
+from repo2ree_api.deps import workbench_manager
+from repo2ree_api.run_management import _start_background_run
 from repo2ree_supervisor import WorkbenchHandle
 
 # ================================================
@@ -147,6 +150,41 @@ def test_cancel_of_terminal_run_returns_status_unchanged(
     # a no-op cancel appends no "Cancel requested" log entry
     logs_after = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}/logs").json()
     assert len(logs_after["entries"]) == len(logs_before["entries"])
+
+
+def test_cancel_of_active_run_signals_workbench(
+    client: TestClient,
+    online_ree: WorkbenchHandle,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    canceled = Event()
+    calls: list[tuple[WorkbenchHandle, str]] = []
+
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        canceled.wait(timeout=2.0)
+        return "canceled", {}
+
+    def _cancel_run(handle: WorkbenchHandle, run_id: str) -> None:
+        calls.append((handle, run_id))
+        canceled.set()
+
+    monkeypatch.setattr(workbench_manager, "cancel_run", _cancel_run)
+    run = _start_background_run(
+        ree_id=online_ree.ree_id,
+        operation="build",
+        request_payload={},
+        run_id_prefix="build",
+        runner=_runner,
+    )
+
+    resp = client.post(f"/api/v1/rees/{online_ree.ree_id}/runs/{run['runId']}:cancel")
+
+    assert resp.status_code == 200
+    assert calls == [(online_ree, run["runId"])]
+    assert resp.json()["status"] in {"canceling", "canceled"}
+    logs = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run['runId']}/logs").json()
+    assert any(entry["message"] == "Cancel requested by user" for entry in logs["entries"])
+    assert _wait_for_run(client, online_ree.ree_id, run["runId"]) == "canceled"
 
 
 def test_cancel_of_unknown_run_is_404(client: TestClient, online_ree: WorkbenchHandle) -> None:

@@ -37,6 +37,7 @@ from repo2ree_protocol.agent import (
     AgentRequest,
     BytesChunkFrame,
     CancelRequest,
+    CancelRunRequest,
     CopyAbortRequest,
     CopyChunkRequest,
     CopyCloseRequest,
@@ -167,6 +168,9 @@ async def _handle(
             await _pump(ws, req_id, lambda: runtime.reprovision(req.ree_id, req.location, req.image))
         elif isinstance(req, ExecActionRequest):
             await _pump(ws, req_id, lambda: runtime.exec_action(req.container_name, req.cmd_json, req.run_id, req.env))
+        elif isinstance(req, CancelRunRequest):
+            await asyncio.to_thread(runtime.cancel_run, req.container_name, req.run_id)
+            await _send(ws, req_id, DoneFrame())
         elif isinstance(req, IsRunningRequest):
             running = await asyncio.to_thread(runtime.is_running, req.container_name)
             await _send(ws, req_id, RunningFrame(running=running))

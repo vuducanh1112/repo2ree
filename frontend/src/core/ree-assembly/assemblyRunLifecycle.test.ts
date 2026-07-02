@@ -30,7 +30,8 @@ describe("runExecutionLifecycle", () => {
 
     expect(onRunStarted).toHaveBeenCalledWith("build", "run-1");
     expect(onUpdateLogs).toHaveBeenCalled();
-    expect(onRunFinished).toHaveBeenCalledWith("build");
+    expect(onRunFinished).toHaveBeenCalledWith("build", "run-1");
+    expect(result.runId).toBe("run-1");
     expect(result.status).toBe("succeeded");
   });
 });

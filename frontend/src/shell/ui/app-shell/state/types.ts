@@ -43,6 +43,7 @@ export type AppShellAction =
   | { type: "setEvaluationState"; value: Updater<EvaluationState> }
   | { type: "setAssemblyOperationParams"; value: Updater<ReeAssemblyOperationParams> }
   | { type: "setActiveRunId"; key: string; runId: string }
+  | { type: "cancelAssemblyRun"; key: string; runId?: string }
   | { type: "setLocked"; locked: boolean }
   | { type: "setRepoMode"; repoMode: "url" | "upload" }
   | { type: "setAssemblyRunLoading"; key: string }

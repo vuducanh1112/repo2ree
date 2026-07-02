@@ -76,6 +76,8 @@ class AgentClient(Protocol):
         self, agent_id: str, container_name: str, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]: ...
 
+    def cancel_run(self, agent_id: str, container_name: str, run_id: str) -> None: ...
+
     def copy_in(self, agent_id: str, container_name: str, source_path: str, container_path: str) -> None:
         """Stream a control-plane-local file into the container at ``container_path``.
 

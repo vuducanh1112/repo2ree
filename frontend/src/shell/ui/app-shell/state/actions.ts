@@ -62,6 +62,12 @@ export const setActiveRunId = (key: string, runId: string): AppShellAction => ({
   runId,
 });
 
+export const cancelAssemblyRun = (key: string, runId?: string): AppShellAction => ({
+  type: "cancelAssemblyRun",
+  key,
+  runId,
+});
+
 export const setLocked = (locked: boolean): AppShellAction => ({
   type: "setLocked",
   locked,

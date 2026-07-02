@@ -150,6 +150,37 @@ def test_execute_failing_command_exits_1_with_failed_result(initialized_ree: Pat
     assert action_result.status == "failed"
 
 
+def test_cancel_run_writes_cancel_marker(initialized_ree: Path) -> None:
+    result = runner.invoke(cli, ["cancel-run", "--run-id", "run-1"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == {"status": "cancel_requested", "runId": "run-1"}
+    assert ReeLayout.in_workbench().run_cancel_marker("run-1").is_file()
+
+
+def test_execute_observes_existing_cancel_marker(initialized_ree: Path) -> None:
+    layout = ReeLayout.in_workbench()
+    layout.run_cancel_marker("run-1").touch()
+    cmd = WriteFileCommand(args=WriteFileArgs(path="build.sh", content="echo build\n"))
+
+    result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
+
+    assert result.exit_code == 1
+    action_result = ActionResult.model_validate_json(result.stdout.strip())
+    assert action_result.status == "canceled"
+
+
+def test_execute_clears_cancel_marker_after_run(initialized_ree: Path) -> None:
+    layout = ReeLayout.in_workbench()
+    layout.run_cancel_marker("run-1").touch()
+    cmd = WriteFileCommand(args=WriteFileArgs(path="build.sh", content="echo build\n"))
+
+    runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
+
+    # The marker is self-contained: once the run it belongs to is done, a run
+    # that later reuses the id must not be canceled by its leftover.
+    assert not layout.run_cancel_marker("run-1").exists()
+
+
 # ================================================
 # Read-side queries
 # ================================================

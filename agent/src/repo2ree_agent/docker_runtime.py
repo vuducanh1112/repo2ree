@@ -184,6 +184,9 @@ class DockerRuntime:
     def exec_simple(self, container_name: str, argv: list[str], timeout: int = 60) -> None:
         self._exec(container_name, argv, timeout, what=f"docker exec {argv[0]}")
 
+    def cancel_run(self, container_name: str, run_id: str) -> None:
+        self.exec_simple(container_name, ["repo2ree-exec", "cancel-run", "--run-id", run_id], timeout=10)
+
     def exec_query_stream(self, container_name: str, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
         yield from _stream_exec(["docker", "exec", container_name, *argv], timeout, what=f"query {argv!r}")
 

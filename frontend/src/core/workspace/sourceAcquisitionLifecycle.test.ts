@@ -47,7 +47,8 @@ describe("runSourceWorkspaceAction", () => {
 
     expect(onRunStarted).toHaveBeenCalledWith("source", "run-1");
     expect(onUpdateLogs).toHaveBeenCalled();
-    expect(onRunFinished).toHaveBeenCalledWith("source");
+    expect(onRunFinished).toHaveBeenCalledWith("source", "run-1");
+    expect(result.runId).toBe("run-1");
     expect(result.status).toBe("succeeded");
   });
 });

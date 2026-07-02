@@ -1,6 +1,5 @@
 import { DEFAULT_REE_ID } from "@core/ree/ReeId";
 import type { ReeFile } from "@core/ree/ReeTypes";
-import { createAssemblyRunSession } from "@core/ree-assembly/assemblyRunSession";
 import {
   createReeEditorStateFromModel,
   type ReeEditorState,
@@ -84,8 +83,14 @@ export function useReeEditor({
     showToast,
   });
 
-  const runSessionRef = useRef(createAssemblyRunSession());
-  const runSession = runSessionRef.current;
+  // Imperative shell adapter: mirror the reducer's active run ids into a ref so
+  // the cancel handler (an event callback) reads the current run id without a
+  // stale closure. The reducer stays the single source of truth; this is only a
+  // live read handle, matching the ref pattern used elsewhere in the shell.
+  const activeRunIdsRef = useRef(assemblyRun.activeRunIds);
+  activeRunIdsRef.current = assemblyRun.activeRunIds;
+  const getActiveRunId = useCallback((key: string) => activeRunIdsRef.current[key], []);
+
   const { runAction, runAssemblyStep, cancelAction } = useReeAssemblyRuns({
     dispatch,
     ree,
@@ -93,7 +98,7 @@ export function useReeEditor({
     persistWorkspaceFile,
     refreshWorkspace,
     showToast,
-    runSession,
+    getActiveRunId,
   });
   const { handleDownloadSourceFiles, handleWorkspaceUpload, handleRemoveWorkspaceSource } =
     useSourceAcquisition({
@@ -101,8 +106,6 @@ export function useReeEditor({
       ree,
       refreshWorkspaceFiles,
       showToast,
-      onRunStarted: runSession.noteRunStarted,
-      onRunFinished: runSession.noteRunFinished,
     });
   const { downloadWorkspaceFile, handleDownloadRee } = useReeDownloads({
     getReeName: () => ree.name || "",

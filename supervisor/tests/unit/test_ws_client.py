@@ -174,6 +174,21 @@ def test_exec_action_streams_logs_then_result() -> None:
     assert frames[-1].result.status == "succeeded"
 
 
+def test_cancel_run_sends_cancel_run_request() -> None:
+    socket = FakeSocket()
+    registry = AgentConnectionRegistry()
+    registry.register("a1", socket.connection)
+    client = WsAgentClient(registry)
+
+    join = _run_in_thread(lambda: client.cancel_run("a1", "wb", "run-7"))
+    req = socket.wait_for_request()
+    assert req.request.op == "cancel_run"
+    assert req.request.container_name == "wb"
+    assert req.request.run_id == "run-7"
+    socket.respond(DoneFrame())
+    join()
+
+
 def test_copy_in_streams_open_chunks_then_close(tmp_path) -> None:
     socket = FakeSocket()
     registry = AgentConnectionRegistry()

@@ -20,10 +20,14 @@ interface ExecutionRunUpdate {
   ts: string;
 }
 
-interface ExecutionRunResult {
+interface ExecutionRunPollResult {
   status: ExecutionRunStatus;
   lines: LogLine[];
   ts: string;
+}
+
+interface ExecutionRunResult extends ExecutionRunPollResult {
+  runId: string;
 }
 
 interface RunExecutionLifecycleArgs {
@@ -39,9 +43,9 @@ interface RunExecutionLifecycleArgs {
   pollRun: (
     runId: string,
     onUpdate?: (update: ExecutionRunUpdate) => void,
-  ) => Promise<ExecutionRunResult>;
+  ) => Promise<ExecutionRunPollResult>;
   onRunStarted?: (key: string, runId: string) => void;
-  onRunFinished?: (key: string) => void;
+  onRunFinished?: (key: string, runId: string) => void;
   onUpdateLogs?: (update: ExecutionRunUpdate) => void;
 }
 
@@ -58,10 +62,11 @@ export async function runExecutionLifecycle({
     const run = await startExecutionRun(request.scriptKey, request.params);
     runId = run.runId;
     onRunStarted?.(request.key, run.runId);
-    return await pollRun(run.runId, onUpdateLogs);
+    const result = await pollRun(run.runId, onUpdateLogs);
+    return { ...result, runId: run.runId };
   } finally {
     if (runId) {
-      onRunFinished?.(request.key);
+      onRunFinished?.(request.key, runId);
     }
   }
 }

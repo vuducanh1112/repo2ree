@@ -40,6 +40,7 @@ from repo2ree_protocol.agent import (
     AgentRequest,
     BytesChunkFrame,
     CancelRequest,
+    CancelRunRequest,
     CopyAbortRequest,
     CopyChunkRequest,
     CopyCloseRequest,
@@ -328,6 +329,15 @@ class WsAgentClient:
     ) -> Iterator[AgentFrame]:
         return self._registry.pick(agent_id).request(
             ExecActionRequest(container_name=container_name, cmd_json=cmd_json, run_id=run_id, env=env)
+        )
+
+    def cancel_run(self, agent_id: str, container_name: str, run_id: str) -> None:
+        conn = self._registry.pick(agent_id)
+        self._drain_void(
+            conn.request(
+                CancelRunRequest(container_name=container_name, run_id=run_id),
+                frame_gap_timeout=QUICK_OP_TIMEOUT,
+            )
         )
 
     # ------------------------------------------------

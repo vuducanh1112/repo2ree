@@ -145,17 +145,25 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
     signal failure identically. Exits non-zero on failure or cancellation.
     """
     run_log: TextIO | None = None
+    cancel_marker: Path | None = None
     if run_id is not None:
         layout = ReeLayout.in_workbench()
         layout.runs.mkdir(parents=True, exist_ok=True)
         run_log = layout.run_log(run_id).open("a", encoding="utf-8")
+        cancel_marker = layout.run_cancel_marker(run_id)
+    is_canceled = (lambda marker=cancel_marker: marker.exists()) if cancel_marker is not None else None
 
     # Attach the dispatcher's trace context (forwarded via TRACEPARENT) so the
     # command span hangs under the host-side dispatch span.
     ctx_token = attach_remote_context(os.environ.get("TRACEPARENT"))
     try:
         log = _make_log_sink(run_log)
-        result = run_command(cmd, log=log, run_id=run_id or "manual")
+        result = run_command(
+            cmd,
+            log=log,
+            run_id=run_id or "manual",
+            is_canceled=is_canceled,
+        )
         result_line = result.model_dump_json()
         click.echo(result_line)
         if run_log is not None:
@@ -166,9 +174,24 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
         detach_context(ctx_token)
         if run_log is not None:
             run_log.close()
+        # Each run clears its own marker so cancellation correctness never
+        # depends on run ids being globally unique: a stale marker left behind
+        # would otherwise cancel a later run that happened to reuse the id.
+        if cancel_marker is not None:
+            cancel_marker.unlink(missing_ok=True)
 
     if result.status != "succeeded":
         sys.exit(1)
+
+
+@cli.command("cancel-run")
+@click.option("--run-id", required=True, help="The action run id to cancel.")
+def cancel_run_cmd(run_id: str) -> None:
+    """Mark a running command envelope as canceled inside the workbench."""
+    layout = ReeLayout.in_workbench()
+    layout.runs.mkdir(parents=True, exist_ok=True)
+    layout.run_cancel_marker(run_id).touch()
+    click.echo(json.dumps({"status": "cancel_requested", "runId": run_id}))
 
 
 # ================================================

@@ -17,7 +17,7 @@ describe("createSourceUseCase", () => {
   it("downloads source and applies the planned source outcome", async () => {
     const executeCommands = vi.fn();
     const sourceChanged = vi.fn();
-    const runSourceAction = vi.fn(async () => ({ status: "succeeded" as const }));
+    const runSourceAction = vi.fn(async () => ({ status: "succeeded" as const, runId: "run-1" }));
 
     const useCase = createSourceUseCase({
       ree: buildRee(),
@@ -45,6 +45,13 @@ describe("createSourceUseCase", () => {
       },
     );
     expect(executedCommands(executeCommands)).toContainEqual({ type: "setSourceLoading" });
+    expect(executedCommands(executeCommands)).toContainEqual({
+      type: "applySourceOutcome",
+      outcome: expect.objectContaining({
+        runId: "run-1",
+        actionState: "done",
+      }),
+    });
     expect(executedCommands(executeCommands)).toContainEqual({
       type: "toast",
       message: "Source files downloaded into workspace",

@@ -39,7 +39,7 @@ interface ExecuteAssemblyRunActionArgs {
     ree?: RawReeIntentSlices;
   }>;
   onRunStarted?: (key: string, runId: string) => void;
-  onRunFinished?: (key: string) => void;
+  onRunFinished?: (key: string, runId: string) => void;
 }
 
 export async function executeAssemblyRunAction({

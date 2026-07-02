@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import logging
-import shutil
-import subprocess
 
 from fastapi import APIRouter, Query
 
 from repo2ree_api.api_utils import paginate
+from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
     _append_run_log,
     _get_run_state,
@@ -70,49 +69,27 @@ def cancel_workspace_run(ree_id: str, run_id: str):
         "Cancel requested by user",
     )
 
-    operation = run_state.get("operation")
-    docker_bin = shutil.which("docker") or "docker"
-    if operation == "build":
-        container_name = f"repo2ree-build-{run_id}"
+    handle = workbench_manager.lookup(ree_id)
+    if handle is not None:
         try:
-            subprocess.run(
-                [docker_bin, "rm", "-f", container_name],
-                capture_output=True,
-                text=True,
-            )
+            workbench_manager.cancel_run(handle, run_id)
         except Exception:
-            logger.warning("failed to kill build container %s", container_name, exc_info=True)
-    elif operation == "activation":
-        container_name = f"repo2ree-activation-{run_id}"
-        try:
-            subprocess.run(
-                [docker_bin, "rm", "-f", container_name],
-                capture_output=True,
-                text=True,
+            logger.warning("failed to signal cancellation for %s", run_id, exc_info=True)
+            _append_run_log(
+                ree_id,
+                run_id,
+                "system",
+                "warn",
+                "Cancellation signal could not reach the workbench",
             )
-        except Exception:
-            logger.warning("failed to kill activation container %s", container_name, exc_info=True)
-    elif operation == "experiment":
-        # Remove the main container AND any validator containers spawned for
-        # custom-match evaluation (named repo2ree-experiment-validator-{run_id}-*).
-        # Docker's --filter name= does a substring match, so the shared prefix
-        # covers both container types.
-        name_prefix = f"repo2ree-experiment-{run_id}"
-        try:
-            ps_result = subprocess.run(
-                [docker_bin, "ps", "-aq", "--filter", f"name={name_prefix}"],
-                capture_output=True,
-                text=True,
-            )
-            ids = ps_result.stdout.split()
-            if ids:
-                subprocess.run(
-                    [docker_bin, "rm", "-f", *ids],
-                    capture_output=True,
-                    text=True,
-                )
-        except Exception:
-            logger.warning("failed to kill experiment containers for %s", run_id, exc_info=True)
+    else:
+        _append_run_log(
+            ree_id,
+            run_id,
+            "system",
+            "warn",
+            "Cancellation signal deferred: workbench is not currently reachable",
+        )
 
     refreshed = _get_run_state(ree_id, run_id)
     return {"status": refreshed["status"]}

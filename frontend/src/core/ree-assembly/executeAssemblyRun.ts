@@ -29,7 +29,7 @@ type ExecutionRunStatus =
   | "canceling"
   | "canceled";
 
-interface ExecutionRunResult {
+interface ExecutionRunPollResult {
   status: ExecutionRunStatus;
   lines: LogLine[];
   ts: string;
@@ -48,8 +48,8 @@ interface ExecutionRunRunner {
   ) => Promise<{ runId: string }>;
   pollRun: (
     runId: string,
-    onUpdate?: (update: ExecutionRunResult) => void,
-  ) => Promise<ExecutionRunResult>;
+    onUpdate?: (update: ExecutionRunPollResult) => void,
+  ) => Promise<ExecutionRunPollResult>;
 }
 
 interface ExecuteAssemblyRunArgs {
@@ -67,7 +67,7 @@ interface ExecuteAssemblyRunArgs {
   executeCommands: (commands: AssemblyCommand[]) => void;
   refreshWorkspace: () => Promise<WorkspaceSnapshot>;
   onRunStarted?: (key: string, runId: string) => void;
-  onRunFinished?: (key: string) => void;
+  onRunFinished?: (key: string, runId: string) => void;
 }
 
 interface ExecuteAssemblyRunResult {
@@ -117,6 +117,7 @@ export async function executeAssemblyRun({
       type: "completeAssemblyRun",
       completion: {
         key,
+        runId: result.runId,
         assemblyRunLog: { lines, ts },
         actionState: completionPlan.actionState,
         badge: completionPlan.badge,

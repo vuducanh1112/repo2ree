@@ -15,8 +15,6 @@ interface UseSourceAcquisitionArgs {
   ree: ReeEditorViewModel;
   refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
   showToast: ShowToast;
-  onRunStarted?: (key: string, runId: string) => void;
-  onRunFinished?: (key: string) => void;
 }
 
 export function useSourceAcquisition({
@@ -24,8 +22,6 @@ export function useSourceAcquisition({
   ree,
   refreshWorkspaceFiles,
   showToast,
-  onRunStarted,
-  onRunFinished,
 }: UseSourceAcquisitionArgs) {
   const { reeId } = useApiRuntime();
   const queryClient = useQueryClient();
@@ -43,7 +39,5 @@ export function useSourceAcquisition({
     showToast,
     clock: appShellPorts.clock,
     sleep: appShellPorts.sleep,
-    onRunStarted,
-    onRunFinished,
   });
 }

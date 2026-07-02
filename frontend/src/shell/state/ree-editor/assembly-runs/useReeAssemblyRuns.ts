@@ -1,6 +1,8 @@
-import { initialReeAssemblyOperationParams } from "@core/ree-assembly/assemblyCatalog";
+import {
+  initialReeAssemblyOperationParams,
+  mergeAssemblyOperationParams,
+} from "@core/ree-assembly/assemblyCatalog";
 import { createAssemblyCommandPlanners } from "@core/ree-assembly/assemblyCommands";
-import type { createAssemblyRunSession } from "@core/ree-assembly/assemblyRunSession";
 import type { GenericReeAssemblyParams } from "@core/ree-assembly/assemblyStepTypes";
 import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
@@ -31,7 +33,7 @@ interface UseReeAssemblyRunsArgs {
   ) => Promise<void>;
   refreshWorkspace: () => Promise<HydratedWorkspaceSnapshot>;
   showToast: ShowToast;
-  runSession: ReturnType<typeof createAssemblyRunSession>;
+  getActiveRunId: (key: string) => string | undefined;
 }
 
 export function useReeAssemblyRuns({
@@ -41,7 +43,7 @@ export function useReeAssemblyRuns({
   persistWorkspaceFile,
   refreshWorkspace,
   showToast,
-  runSession,
+  getActiveRunId,
 }: UseReeAssemblyRunsArgs) {
   const { reeId } = useApiRuntime();
   const queryClient = useQueryClient();
@@ -65,7 +67,7 @@ export function useReeAssemblyRuns({
     persistAssemblyParams: (key, params) => {
       dispatch(
         setAssemblyOperationParams((prev) =>
-          runSession.mergeAssemblyOperationParams(
+          mergeAssemblyOperationParams(
             prev ?? initialReeAssemblyOperationParams(),
             key,
             params as ReeAssemblyRunParams<typeof key>,
@@ -86,6 +88,6 @@ export function useReeAssemblyRuns({
     cancelExecutionRun: (runId) => cancelExecutionRunMutation.mutateAsync({ runId }),
     ports: appShellPorts,
     refreshWorkspace,
-    runSession,
+    getActiveRunId,
   });
 }

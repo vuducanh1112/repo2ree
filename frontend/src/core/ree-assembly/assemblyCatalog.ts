@@ -3,6 +3,7 @@ import type {
   ReeAssemblyOperationKey,
   ReeAssemblyOperationParams,
   ReeAssemblyOperationParamsByKey,
+  ReeAssemblyRunParams,
 } from "./assemblyTypes";
 
 type ReeAssemblyCatalogEntry = ReeAssemblyDefinition & { key: ReeAssemblyOperationKey };
@@ -102,5 +103,16 @@ export function initialReeAssemblyOperationParams(): ReeAssemblyOperationParams 
     hbom: { ...DEFAULT_REE_ASSEMBLY_OPERATION_PARAMS.hbom },
     sbom: { ...DEFAULT_REE_ASSEMBLY_OPERATION_PARAMS.sbom },
     activation: { ...DEFAULT_REE_ASSEMBLY_OPERATION_PARAMS.activation },
+  };
+}
+
+export function mergeAssemblyOperationParams<K extends ReeAssemblyOperationKey>(
+  stepParams: ReeAssemblyOperationParams,
+  key: K,
+  params: ReeAssemblyRunParams<K>,
+): ReeAssemblyOperationParams {
+  return {
+    ...stepParams,
+    [key]: { ...stepParams[key], ...params },
   };
 }

@@ -22,6 +22,7 @@ interface CreateAssemblyCommandPlannersArgs {
 
 export interface AssemblyRunCompletionCommandPayload {
   key: string;
+  runId?: string;
   assemblyRunLog: {
     lines: LogLine[];
     ts: string;

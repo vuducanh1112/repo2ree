@@ -40,8 +40,6 @@ interface CreateSourceActionsArgs {
   showToast: ShowToast;
   clock: AppShellClock;
   sleep: (ms: number) => Promise<void>;
-  onRunStarted?: (key: string, runId: string) => void;
-  onRunFinished?: (key: string) => void;
 }
 
 export function createSourceActions({
@@ -55,8 +53,6 @@ export function createSourceActions({
   showToast,
   clock,
   sleep,
-  onRunStarted,
-  onRunFinished,
 }: CreateSourceActionsArgs) {
   const runCommands = (commands: SourceCommand[]) =>
     executeSourceCommands(commands, { dispatch, showToast });
@@ -85,9 +81,7 @@ export function createSourceActions({
         }),
       onRunStarted: (key, runId) => {
         runCommands([{ type: "setActiveRunId", key, runId }]);
-        onRunStarted?.(key, runId);
       },
-      onRunFinished,
       onUpdateLogs: (update) => {
         runCommands([{ type: "setSourceLog", lines: update.lines, ts: update.ts }]);
       },

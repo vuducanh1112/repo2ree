@@ -30,6 +30,7 @@ interface AppShellState {
 }
 
 export interface SourceOutcomePayload {
+  runId?: string;
   reeSpecPatch?: Partial<ReeSpec>;
   workspaceSourceStatePatch?: Partial<WorkspaceSourceState>;
   sourceSnapshotArchiveName: string;
@@ -40,6 +41,7 @@ export interface SourceOutcomePayload {
 
 export interface AssemblyRunCompletionPayload {
   key: string;
+  runId?: string;
   actionState: "done";
   badge: boolean;
   timestamp: string;

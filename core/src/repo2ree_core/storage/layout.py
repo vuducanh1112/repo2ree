@@ -141,9 +141,17 @@ class ReeLayout:
 
     def run_log(self, run_id: str) -> Path:
         """Path to the NDJSON log file for a single action run."""
+        return self.runs / f"{self._validate_run_id(run_id)}.ndjson"
+
+    def run_cancel_marker(self, run_id: str) -> Path:
+        """Path whose existence means the action run should stop cooperatively."""
+        return self.runs / f"{self._validate_run_id(run_id)}.cancel"
+
+    @staticmethod
+    def _validate_run_id(run_id: str) -> str:
         if not run_id or "/" in run_id or "\\" in run_id or run_id.startswith("."):
             raise ValueError(f"invalid run_id: {run_id!r}")
-        return self.runs / f"{run_id}.ndjson"
+        return run_id
 
     def upstream_file(self, rel: str | PurePosixPath) -> Path:
         return self._resolve_under(self.upstream, rel)

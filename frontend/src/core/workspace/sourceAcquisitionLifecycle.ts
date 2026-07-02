@@ -22,6 +22,7 @@ interface SourceExecutionUpdate {
 }
 
 interface SourceExecutionResult {
+  runId?: string;
   status: SourceExecutionStatus;
 }
 
@@ -49,7 +50,7 @@ interface RunSourceWorkspaceActionArgs {
     onUpdate?: (update: SourceExecutionUpdate) => void,
   ) => Promise<SourceExecutionResult>;
   onRunStarted?: (key: string, runId: string) => void;
-  onRunFinished?: (key: string) => void;
+  onRunFinished?: (key: string, runId: string) => void;
   onUpdateLogs?: (update: SourceExecutionUpdate) => void;
 }
 
@@ -72,8 +73,9 @@ export async function runSourceWorkspaceAction({
   const run = await executionRunClient.startExecutionRun(reeId, "source", runParams);
   onRunStarted?.("source", run.runId);
   try {
-    return await pollRun(reeId, run.runId, onUpdateLogs);
+    const result = await pollRun(reeId, run.runId, onUpdateLogs);
+    return { ...result, runId: run.runId };
   } finally {
-    onRunFinished?.("source");
+    onRunFinished?.("source", run.runId);
   }
 }

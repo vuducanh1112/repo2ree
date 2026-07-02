@@ -280,6 +280,14 @@ class WorkbenchManager:
             record_command_status(span, result.status)
             return result
 
+    def cancel_run(self, handle: WorkbenchHandle, run_id: str) -> None:
+        """Ask the workbench executor to stop a running action.
+
+        This deliberately does not take the per-REE dispatch lock: the command we
+        are canceling is usually the one holding that lock.
+        """
+        self._agent.cancel_run(handle.agent_id, handle.container_name, run_id)
+
     def _dispatch_action_locked(
         self,
         handle: WorkbenchHandle,

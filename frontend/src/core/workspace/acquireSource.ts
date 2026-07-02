@@ -24,6 +24,7 @@ type SourceExecutionStatus =
 type SourceExecutionRequest = Record<string, string | boolean | number | null | undefined>;
 
 interface SourceExecutionResult {
+  runId?: string;
   status: SourceExecutionStatus;
 }
 
@@ -63,38 +64,40 @@ export function createSourceUseCase({
   clearWorkspace,
   nowIso,
 }: SourceUseCaseArgs) {
-  const failSourceAction = (message: string) => {
-    executeCommands(sourceFailureCommands({ message }));
+  const failSourceAction = (message: string, runId?: string) => {
+    executeCommands(sourceFailureCommands({ message, runId }));
   };
 
   const runSourceExecutionAndHandleFailure = async (
     resetRequest: SourceExecutionRequest,
     runParams: SourceExecutionRequest,
-  ): Promise<boolean> => {
+  ): Promise<{ ok: boolean; runId?: string }> => {
     sourceChanged({ silent: true });
     executeCommands([{ type: "setSourceLoading" }]);
     const result = await runSourceAction(resetRequest, runParams);
     if (isTerminalSourceExecutionFailure(result.status)) {
-      failSourceAction(planSourceExecutionFailure(result.status).error);
-      return false;
+      failSourceAction(planSourceExecutionFailure(result.status).error, result.runId);
+      return { ok: false, runId: result.runId };
     }
-    return true;
+    return { ok: true, runId: result.runId };
   };
 
   const runSourceMutationAction = async (args: {
     resetRequest: SourceExecutionRequest;
     runParams: SourceExecutionRequest;
-    onSuccess: () => Promise<void>;
+    onSuccess: (runId?: string) => Promise<void>;
   }) => {
-    if (!(await runSourceExecutionAndHandleFailure(args.resetRequest, args.runParams))) {
+    const result = await runSourceExecutionAndHandleFailure(args.resetRequest, args.runParams);
+    if (!result.ok) {
       return;
     }
-    await args.onSuccess();
+    await args.onSuccess(result.runId);
   };
 
   const completeDownload = async (args: {
     originType: ReeSpec["source_type"];
     normalizedSourceUrl: string;
+    runId?: string;
   }) => {
     const workspaceFiles = await refreshWorkspaceFiles();
     const successPlan = planDownloadedSourceState({
@@ -103,17 +106,17 @@ export function createSourceUseCase({
       workspaceFiles,
       timestamp: nowIso(),
     });
-    executeCommands(sourceSuccessCommands(successPlan));
+    executeCommands(sourceSuccessCommands(successPlan, args.runId));
   };
 
-  const completeUpload = async (archiveName: string) => {
+  const completeUpload = async (archiveName: string, runId?: string) => {
     const workspaceFiles = await refreshWorkspaceFiles();
     const successPlan = planUploadedSourceState({
       archiveName,
       workspaceFiles,
       timestamp: nowIso(),
     });
-    executeCommands(sourceSuccessCommands(successPlan));
+    executeCommands(sourceSuccessCommands(successPlan, runId));
   };
 
   return {
@@ -131,10 +134,11 @@ export function createSourceUseCase({
       await runSourceMutationAction({
         resetRequest: plan.value.resetRequest,
         runParams: plan.value.runParams,
-        onSuccess: async () =>
+        onSuccess: async (runId) =>
           completeDownload({
             originType,
             normalizedSourceUrl: plan.value.normalizedSourceUrl,
+            runId,
           }),
       });
     },
@@ -150,7 +154,7 @@ export function createSourceUseCase({
         await runSourceMutationAction({
           resetRequest: plan.value.resetRequest,
           runParams: plan.value.runParams,
-          onSuccess: async () => completeUpload(archiveName),
+          onSuccess: async (runId) => completeUpload(archiveName, runId),
         });
       } catch (error) {
         failSourceAction(
@@ -196,20 +200,24 @@ export function createSourceUseCase({
   };
 }
 
-function sourceSuccessCommands(plan: {
-  reeSpecPatch: Partial<ReeSpec>;
-  workspaceSourceStatePatch: Partial<WorkspaceSourceState>;
-  snapshotFiles: FileTreeNode[];
-  snapshotArchiveName: string;
-  actionState: "done";
-  badge: true;
-  timestamp: string;
-  successMessage: string;
-}): SourceCommand[] {
+function sourceSuccessCommands(
+  plan: {
+    reeSpecPatch: Partial<ReeSpec>;
+    workspaceSourceStatePatch: Partial<WorkspaceSourceState>;
+    snapshotFiles: FileTreeNode[];
+    snapshotArchiveName: string;
+    actionState: "done";
+    badge: true;
+    timestamp: string;
+    successMessage: string;
+  },
+  runId?: string,
+): SourceCommand[] {
   return [
     {
       type: "applySourceOutcome",
       outcome: {
+        runId,
         reeSpecPatch: plan.reeSpecPatch,
         workspaceSourceStatePatch: plan.workspaceSourceStatePatch,
         sourceSnapshotArchiveName: plan.snapshotArchiveName,

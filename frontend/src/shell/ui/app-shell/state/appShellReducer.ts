@@ -77,6 +77,12 @@ function applySourceOutcome(
   outcome: SourceOutcomePayload,
 ): AppShellContextState {
   const { reeIntent, reeSession, assemblyRun } = state;
+  if (outcome.runId && assemblyRun.activeRunIds.source !== outcome.runId) {
+    return state;
+  }
+  // Keep the active run id after a successful source outcome so the source log
+  // panel keeps rendering this run's logs; it is cleared on cancel and replaced
+  // when the next run starts.
   return {
     ...state,
     reeIntent: {
@@ -192,6 +198,28 @@ function setActiveRunId(
   };
 }
 
+function cancelAssemblyRun(
+  state: AppShellContextState,
+  action: Extract<AppShellAction, { type: "cancelAssemblyRun" }>,
+): AppShellContextState {
+  const activeRunId = state.assemblyRun.activeRunIds[action.key];
+  if (action.runId && activeRunId && activeRunId !== action.runId) {
+    return state;
+  }
+  const actionStates = { ...state.assemblyRun.actionStates };
+  const activeRunIds = { ...state.assemblyRun.activeRunIds };
+  delete actionStates[action.key];
+  delete activeRunIds[action.key];
+  return {
+    ...state,
+    assemblyRun: {
+      ...state.assemblyRun,
+      actionStates,
+      activeRunIds,
+    },
+  };
+}
+
 function setLocked(state: AppShellContextState, locked: boolean): AppShellContextState {
   return {
     ...state,
@@ -224,6 +252,13 @@ function completeAssemblyRun(
   completion: AssemblyRunCompletionPayload,
 ): AppShellContextState {
   const { assemblyRun } = state;
+  if (completion.runId && assemblyRun.activeRunIds[completion.key] !== completion.runId) {
+    return state;
+  }
+  // Keep the active run id after a successful completion: the log panels read
+  // it to know which run's logs to render, and clearing it here empties the
+  // panel the moment the run finishes. It is cleared on cancel and replaced
+  // when the next run starts.
   return {
     ...state,
     assemblyRun: {
@@ -292,6 +327,8 @@ export function appShellReducer(
       return setAssemblyOperationParams(state, action.value);
     case "setActiveRunId":
       return setActiveRunId(state, action);
+    case "cancelAssemblyRun":
+      return cancelAssemblyRun(state, action);
     case "setLocked":
       return setLocked(state, action.locked);
     case "setRepoMode":
