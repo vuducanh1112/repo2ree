@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     # provision from a locally-built image (e.g. `repo2ree-workbench:latest` from
     # `make workbench-image`) without touching the catalog.
     WORKBENCH_IMAGE: str | None = None
-    WORKBENCH_DOCKER_MODE: str = "dind"
+    # The workbench agent owns the container runtime (WORKBENCH_DOCKER_MODE is its
+    # concern, not consumed here). It dials this API outbound and holds a WebSocket
+    # at /agent/connect — there is no inbound agent endpoint to configure.
     OTLP_ENDPOINT: str | None = None
 
 

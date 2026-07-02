@@ -18,9 +18,14 @@ export interface ExecutionRunsClient {
    * poll {@link getExecutionRunLogs} / {@link getExecutionRun} until terminal.
    *
    * ``image`` overrides the workbench base image; omitted/blank uses the server
-   * default.
+   * default. ``agentId`` places the workbench on a specific agent (from GET
+   * /agents); omitted/blank means "any connected agent".
    */
-  createWorkspace(name?: string, image?: string): Promise<{ reeId: string; run: ExecutionRun }>;
+  createWorkspace(
+    name?: string,
+    image?: string,
+    agentId?: string,
+  ): Promise<{ reeId: string; run: ExecutionRun }>;
   startExecutionRun(
     id: ReeId | string,
     scriptKey: string,
@@ -37,11 +42,12 @@ export interface ExecutionRunsClient {
 
 function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClient {
   return {
-    async createWorkspace(name = "REE", image) {
+    async createWorkspace(name = "REE", image, agentId) {
       const run = await runtime.reeApi.createRee({
         sourceMode: "upload",
         name,
         workbenchImage: image?.trim() || undefined,
+        agentId: agentId?.trim() || undefined,
       });
       return { reeId: run.reeId, run: mapRun(run) };
     },

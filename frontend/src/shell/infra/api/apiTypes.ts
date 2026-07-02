@@ -104,6 +104,8 @@ export interface CreateReeRequestDto {
   name?: string;
   /** Image to provision the workbench from; omitted falls back to the server default. */
   workbenchImage?: string;
+  /** Agent to place the workbench on (GET /agents); omitted means "any connected agent". */
+  agentId?: string;
 }
 
 /** A base image offered for workbench provisioning (GET /workbench/images). */
@@ -118,6 +120,21 @@ export interface WorkbenchImageCatalogDto {
   images: WorkbenchImageDto[];
   /** Id of the image used when a provisioning request omits one. */
   defaultId: string;
+}
+
+/** A workbench agent connected to the control plane (GET /agents). */
+export interface AgentSummaryDto {
+  agentId: string;
+  hostname: string;
+  version: string;
+  dockerMode: string;
+  /** ISO 8601 UTC timestamp of when the agent dialed in. */
+  connectedAt: string;
+  status: string;
+}
+
+export interface AgentListDto {
+  agents: AgentSummaryDto[];
 }
 
 export interface PatchReeRequestDto {

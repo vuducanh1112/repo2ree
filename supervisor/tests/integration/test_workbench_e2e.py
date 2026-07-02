@@ -1,17 +1,19 @@
 """Real end-to-end test of a workbench, with no stubs.
 
-This is the highest-fidelity tier: it provisions an actual workbench
-container from the built ``repo2ree-workbench:latest`` image and drives the
-REE lifecycle through the real ``WorkbenchManager`` — real ``docker run`` /
-``docker exec`` transport, the real ``repo2ree-exec`` executor inside the
-container, real core handlers operating on a real ``/ree`` volume, the real
-NDJSON log relay over stderr, and the real ``ActionResult`` over stdout.
+This is the highest-fidelity tier: it provisions an actual workbench container
+from the built ``repo2ree-workbench:latest`` image and drives the REE lifecycle
+through the real ``WorkbenchManager`` over the production transport — the real
+``repo2ree_agent`` dials an in-test control-plane WebSocket, holds it open, and
+``WsAgentClient`` drives it. Real ``docker run`` / ``docker exec`` inside the
+agent, the real ``repo2ree-exec`` executor inside the container, real core
+handlers on a real ``/ree`` volume, the real ``AgentFrame`` stream over the
+socket, and the real ``ActionResult``.
 
 Nothing is mocked or redirected. The cost is that it needs Docker and the
 workbench image, so the whole module is skipped (never faked) when either is
 absent. Build the image with ``make workbench-image``.
 
-Flow exercised over the real transport:
+Flow exercised over the real agent:
     provision -> get-ree -> write_file -> read-file round-trip
         -> build_runtime (real script run inside the workbench)
         -> seal_ree -> build-archive -> teardown
@@ -19,23 +21,39 @@ Flow exercised over the real transport:
 
 from __future__ import annotations
 
+import asyncio
+import json
 import shutil
+import socket
 import subprocess
+import threading
+import time
 import zipfile
 from collections.abc import Iterator
+from contextlib import suppress
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from websockets.asyncio.server import ServerConnection, serve
 
+from repo2ree_agent.ws_client import run_agent
 from repo2ree_protocol.command import (
     BuildRuntimeCommand,
     SealReeCommand,
     WriteFileArgs,
     WriteFileCommand,
 )
-from repo2ree_supervisor import WorkbenchHandle, WorkbenchManager, WorkbenchRegistry
+from repo2ree_supervisor import (
+    AgentConnection,
+    AgentConnectionRegistry,
+    WorkbenchHandle,
+    WorkbenchManager,
+    WorkbenchRegistry,
+    WorkbenchUnavailableError,
+    WsAgentClient,
+)
 
 # ================================================
 # Constants
@@ -74,7 +92,65 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.fixture
-def workbench(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[tuple[WorkbenchManager, WorkbenchHandle]]:
+def agent_registry() -> Iterator[AgentConnectionRegistry]:
+    """Run the real outbound agent dialing an in-test control-plane socket.
+
+    Mirrors production: the agent dials ``/agent/connect``, holds one WebSocket,
+    and the manager drives it through ``WsAgentClient``. A raw ``websockets``
+    server stands in for the API's route (same bridge: ``send_text`` schedules on
+    the loop, inbound frames feed ``on_message``), so the test needs no HTTP app.
+    The event loop runs in a background thread while the synchronous manager
+    blocks on it from the test thread.
+    """
+    port = _free_port()
+    registry = AgentConnectionRegistry()
+    loop = asyncio.new_event_loop()
+
+    async def handler(ws: ServerConnection) -> None:
+        def send_text(text: str) -> None:
+            asyncio.run_coroutine_threadsafe(ws.send(text), loop)
+
+        hello = json.loads(await ws.recv())
+        agent_id = hello.get("agent_id", "default")
+        connection = AgentConnection(send_text=send_text)
+        registry.register(agent_id, connection)
+        try:
+            async for message in ws:
+                connection.on_message(message if isinstance(message, str) else message.decode())
+        finally:
+            connection.close()
+            registry.unregister(agent_id, connection)
+
+    async def serve_and_dial() -> None:
+        async with serve(handler, "127.0.0.1", port):
+            await run_agent(f"ws://127.0.0.1:{port}/agent/connect", "dind", "e2e-agent")
+
+    task_holder: list[asyncio.Task[None]] = []
+
+    def run_loop() -> None:
+        asyncio.set_event_loop(loop)
+        task = loop.create_task(serve_and_dial())
+        task_holder.append(task)
+        with suppress(asyncio.CancelledError):
+            loop.run_until_complete(task)
+        loop.close()
+
+    thread = threading.Thread(target=run_loop, daemon=True)
+    thread.start()
+    _wait_until_agent_connected(registry)
+    try:
+        yield registry
+    finally:
+        # Cancel the server/agent task so the loop drains cleanly (closes the
+        # WebSocket, stops the server) instead of being killed mid-flight.
+        loop.call_soon_threadsafe(task_holder[0].cancel)
+        thread.join(timeout=10)
+
+
+@pytest.fixture
+def workbench(
+    tmp_path: Path, agent_registry: AgentConnectionRegistry, request: pytest.FixtureRequest
+) -> Iterator[tuple[WorkbenchManager, WorkbenchHandle]]:
     """Provision a real workbench container; tear it down unconditionally.
 
     Before teardown, the container's logs are snapshotted into
@@ -82,7 +158,7 @@ def workbench(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[tuple[
     still be inspected after the container is gone.
     """
     registry = WorkbenchRegistry(tmp_path / "registry.json")
-    manager = WorkbenchManager(registry=registry, workbench_image=WORKBENCH_IMAGE)
+    manager = WorkbenchManager(registry=registry, workbench_image=WORKBENCH_IMAGE, agent=WsAgentClient(agent_registry))
     ree_id = uuid4().hex[:12]
     handle = manager.provision(ree_id, name="e2e-test")
     try:
@@ -90,6 +166,23 @@ def workbench(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[tuple[
     finally:
         _dump_workbench_logs(handle.container_name, request.node.name)
         manager.teardown(handle)
+
+
+def _free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def _wait_until_agent_connected(registry: AgentConnectionRegistry, timeout: float = 10.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            registry.pick()
+            return
+        except WorkbenchUnavailableError:
+            time.sleep(0.05)
+    raise RuntimeError(f"agent did not dial in within {timeout}s")
 
 
 def _dump_workbench_logs(container_name: str, test_name: str) -> None:

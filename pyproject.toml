@@ -8,7 +8,7 @@ requires-python = "~=3.13.0"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["protocol", "core", "supervisor", "api", "executor"]
+members = ["protocol", "core", "supervisor", "api", "executor", "agent"]
 
 [dependency-groups]
 dev = [
@@ -53,6 +53,7 @@ source = [
     "supervisor/src/repo2ree_supervisor",
     "api/src/repo2ree_api",
     "executor/src/repo2ree_executor",
+    "agent/src/repo2ree_agent",
 ]
 omit = [
     "*/__main__.py",  # trivial `python -m` entrypoints
@@ -64,7 +65,7 @@ show_missing = true
 skip_covered = false
 
 [tool.ruff]
-src = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src"]
+src = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src", "agent/src"]
 line-length = 120
 
 [tool.ruff.lint]
@@ -85,7 +86,7 @@ extend-ignore = [
 ]
 
 [tool.mypy]
-mypy_path = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src"]
+mypy_path = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src", "agent/src"]
 # Test dirs ship no __init__.py, so module names must come from file paths —
 # otherwise the per-tier conftest.py files (unit/ and integration/) collide.
 explicit_package_bases = true

@@ -20,11 +20,16 @@ export const PAGE = {
 export const APP_ROUTE = {
   ROOT: "/",
   WORKSPACE: "/workspace",
+  AGENTS: "/agents",
+  // Lab-location picker: the first step of REE creation, where the user chooses
+  // which agent hosts the workbench before the workbench/image page.
+  LAB_LOCATION: "/lab-location",
 } as const;
 
 export type AppLoadRoutePath =
   | typeof APP_ROUTE.WORKSPACE
-  | `${typeof APP_ROUTE.WORKSPACE}?${string}`;
+  | `${typeof APP_ROUTE.WORKSPACE}?${string}`
+  | typeof APP_ROUTE.LAB_LOCATION;
 
 export type AppShellPage = (typeof PAGE)[keyof typeof PAGE];
 const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as AppShellPage[];

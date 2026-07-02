@@ -1,11 +1,11 @@
 .PHONY: \
 	docs-lint \
 	fe-checks fe-tests \
-	be-checks protocol-checks core-checks supervisor-checks api-checks executor-checks \
+	be-checks protocol-checks core-checks supervisor-checks api-checks executor-checks agent-checks \
 	be-tests be-unit-tests be-integration-tests \
 	core-tests core-unit-tests core-integration-tests \
 	supervisor-tests supervisor-integration-tests \
-	api-tests api-unit-tests api-integration-tests executor-tests \
+	api-tests api-unit-tests api-integration-tests executor-tests agent-tests \
 	be-coverage be-coverage-unit be-coverage-context \
 	test-checks \
 	image-archive-dir stage-nix-sources \
@@ -83,7 +83,13 @@ executor-checks:
 	ruff format executor/src executor/tests
 	mypy executor/src executor/tests
 
-be-checks: protocol-checks core-checks supervisor-checks api-checks executor-checks
+agent-checks:
+	@echo "Running agent checks..."
+	ruff check agent/src agent/tests
+	ruff format agent/src agent/tests
+	mypy agent/src agent/tests
+
+be-checks: protocol-checks core-checks supervisor-checks api-checks executor-checks agent-checks
 
 # ================================================
 # Backend - tests
@@ -99,7 +105,10 @@ api-unit-tests:
 executor-tests:
 	pytest executor/tests
 
-be-unit-tests: core-unit-tests api-unit-tests executor-tests
+agent-tests:
+	pytest agent/tests
+
+be-unit-tests: core-unit-tests api-unit-tests executor-tests agent-tests
 
 # Integration tests — flows spanning multiple components.
 core-integration-tests:
@@ -179,26 +188,47 @@ be-coverage-context:
 # Backend API server log for plain e2e runs (without coverage). Overwritten
 # on each run; use test-artifacts/coverage/e2e/backend.log for coverage runs.
 E2E_API_LOG = $(CURDIR)/test-artifacts/api-server.log
+E2E_AGENT_LOG = $(CURDIR)/test-artifacts/agent.log
+E2E_AGENT_STATE_DIR = $(CURDIR)/test-artifacts/e2e-agent-state
+E2E_WORKBENCH_DOCKER_MODE ?= dind
 
 define e2e_run  # $(1) = playwright --project name
 	@mkdir -p test-artifacts
-	@rm -f $(E2E_API_LOG)
+	@rm -f $(E2E_API_LOG) $(E2E_AGENT_LOG)
 	@set -e; \
 	echo ">> starting backend on :8000 (log: $(E2E_API_LOG))"; \
 	uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
 		> $(E2E_API_LOG) 2>&1 & \
 	api_pid=$$!; \
-	trap 'kill -TERM $$api_pid 2>/dev/null || true; wait $$api_pid 2>/dev/null || true' EXIT; \
+	agent_pid=; \
+	trap 'if [ -n "$$agent_pid" ]; then kill -TERM $$agent_pid 2>/dev/null || true; wait $$agent_pid 2>/dev/null || true; fi; kill -TERM $$api_pid 2>/dev/null || true; wait $$api_pid 2>/dev/null || true' EXIT; \
+	api_ready=0; \
 	for i in $$(seq 1 30); do \
-		curl -sf http://127.0.0.1:8000/ >/dev/null 2>&1 && break; \
+		if curl -sf http://127.0.0.1:8000/ >/dev/null 2>&1; then api_ready=1; break; fi; \
 		echo "  waiting for backend... ($$i/30)"; sleep 1; \
 	done; \
+	if [ "$$api_ready" -ne 1 ]; then echo "backend did not become ready"; exit 1; fi; \
+	echo ">> starting workbench agent (log: $(E2E_AGENT_LOG))"; \
+	WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
+	WORKBENCH_DOCKER_MODE=$(E2E_WORKBENCH_DOCKER_MODE) \
+	WORKBENCH_AGENT_STATE_DIR=$(E2E_AGENT_STATE_DIR) \
+	uv run --package repo2ree-agent python -m repo2ree_agent \
+		> $(E2E_AGENT_LOG) 2>&1 & \
+	agent_pid=$$!; \
+	agent_ready=0; \
+	for i in $$(seq 1 30); do \
+		if curl -sf http://127.0.0.1:8000/api/v1/agents | grep -q '"agents":\[{'; then agent_ready=1; break; fi; \
+		echo "  waiting for workbench agent... ($$i/30)"; sleep 1; \
+	done; \
+	if [ "$$agent_ready" -ne 1 ]; then echo "workbench agent did not connect"; exit 1; fi; \
 	echo ">> backend ready — running playwright project=$(1)"; \
 	( cd frontend && npm exec -- playwright test \
 		-c playwright.config.ts --project=$(1) ); \
 	status=$$?; \
 	trap - EXIT; \
-	echo ">> stopping backend"; \
+	echo ">> stopping workbench agent and backend"; \
+	kill -TERM $$agent_pid 2>/dev/null || true; \
+	wait $$agent_pid 2>/dev/null || true; \
 	kill -TERM $$api_pid 2>/dev/null || true; \
 	wait $$api_pid 2>/dev/null || true; \
 	exit $$status
@@ -228,7 +258,7 @@ E2E_COVERAGE_FILE = $(CURDIR)/test-artifacts/coverage/data/.coverage.e2e
 
 e2e-coverage:
 	@echo ">> starting backend under coverage on :8000"
-	@rm -f $(E2E_COVERAGE_FILE) $(E2E_COVERAGE_FILE).*
+	@rm -f $(E2E_COVERAGE_FILE) $(E2E_COVERAGE_FILE).* test-artifacts/coverage/e2e/agent.log
 	@rm -rf frontend/test-artifacts/coverage-raw
 	@mkdir -p test-artifacts/coverage/e2e
 	@set -e; \
@@ -236,14 +266,31 @@ e2e-coverage:
 		-m uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
 		> test-artifacts/coverage/e2e/backend.log 2>&1 & \
 	api_pid=$$!; \
-	trap 'kill -TERM $$api_pid 2>/dev/null || true' EXIT; \
+	agent_pid=; \
+	trap 'if [ -n "$$agent_pid" ]; then kill -TERM $$agent_pid 2>/dev/null || true; wait $$agent_pid 2>/dev/null || true; fi; kill -TERM $$api_pid 2>/dev/null || true' EXIT; \
+	api_ready=0; \
 	for i in $$(seq 1 30); do \
-		curl -sf http://127.0.0.1:8000/ >/dev/null 2>&1 && break; sleep 1; \
+		if curl -sf http://127.0.0.1:8000/ >/dev/null 2>&1; then api_ready=1; break; fi; sleep 1; \
 	done; \
+	if [ "$$api_ready" -ne 1 ]; then echo "backend did not become ready"; exit 1; fi; \
+	echo ">> starting workbench agent"; \
+	WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
+	WORKBENCH_DOCKER_MODE=$(E2E_WORKBENCH_DOCKER_MODE) \
+	WORKBENCH_AGENT_STATE_DIR=$(E2E_AGENT_STATE_DIR) \
+	uv run --package repo2ree-agent python -m repo2ree_agent \
+		> test-artifacts/coverage/e2e/agent.log 2>&1 & \
+	agent_pid=$$!; \
+	agent_ready=0; \
+	for i in $$(seq 1 30); do \
+		if curl -sf http://127.0.0.1:8000/api/v1/agents | grep -q '"agents":\[{'; then agent_ready=1; break; fi; sleep 1; \
+	done; \
+	if [ "$$agent_ready" -ne 1 ]; then echo "workbench agent did not connect"; exit 1; fi; \
 	status=0; \
 	( cd frontend && E2E_COVERAGE=1 npm exec -- playwright test \
 		-c playwright.config.ts --project=e2e ) || status=$$?; \
-	echo ">> stopping backend (SIGTERM) so coverage flushes"; \
+	echo ">> stopping workbench agent and backend (SIGTERM) so coverage flushes"; \
+	kill -TERM $$agent_pid 2>/dev/null || true; \
+	wait $$agent_pid 2>/dev/null || true; \
 	kill -TERM $$api_pid 2>/dev/null || true; \
 	wait $$api_pid 2>/dev/null || true; \
 	trap - EXIT; \

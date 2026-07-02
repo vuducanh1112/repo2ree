@@ -17,6 +17,8 @@ from repo2ree_api.manage_ree import manage_ree_router
 from repo2ree_api.runs import runs_router
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.init_storage import create_upload_staging_if_not_exists
+from repo2ree_api.workbench.agent_ws import agent_ws_router
+from repo2ree_api.workbench.agents import agents_router
 from repo2ree_api.workbench.routes import workbench_router
 from repo2ree_protocol.log import configure_logging
 from repo2ree_protocol.tracing import setup_metrics, setup_tracing
@@ -58,6 +60,8 @@ app.include_router(evaluate_router)
 app.include_router(runs_router)
 app.include_router(manage_ree_router)
 app.include_router(workbench_router)
+app.include_router(agent_ws_router)
+app.include_router(agents_router)
 
 
 # ================================================

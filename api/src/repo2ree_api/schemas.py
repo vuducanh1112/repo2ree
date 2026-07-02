@@ -28,6 +28,9 @@ class WorkspaceCreatePayload(BaseModel):
     # Image to provision the workbench from. Omitted (or blank) falls back to the
     # server default (the workbench image catalog default; see workbench/catalog.py).
     workbenchImage: str | None = None
+    # Agent to place the workbench on (from GET /api/v1/agents). Omitted/blank
+    # means "any connected agent" — the single-agent path.
+    agentId: str | None = None
 
 
 class ReeIntentPatchPayload(BaseModel):

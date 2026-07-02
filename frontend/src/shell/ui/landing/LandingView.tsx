@@ -6,6 +6,7 @@ import { C, F, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
 
 interface LandingViewProps {
   onLoad: (path: AppLoadRoutePath) => void;
+  onViewAgents: () => void;
 }
 
 const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
@@ -13,10 +14,10 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
   ...extra,
 });
 
-export function LandingView({ onLoad }: LandingViewProps) {
+export function LandingView({ onLoad, onViewAgents }: LandingViewProps) {
   const createRee = () => {
-    // Provisioning is deferred to the Workbench step inside the editor.
-    onLoad(APP_ROUTE.WORKSPACE);
+    // First pick a lab location (agent); the workbench/image step follows there.
+    onLoad(APP_ROUTE.LAB_LOCATION);
   };
 
   return (
@@ -112,6 +113,29 @@ export function LandingView({ onLoad }: LandingViewProps) {
           >
             <span style={{ display: "flex" }}>{Ic.play()}</span>
             <span style={{ fontSize: 14, fontWeight: 600 }}>Create REE</span>
+          </button>
+          <button
+            type="button"
+            onClick={onViewAgents}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              width: "100%",
+              borderRadius: 10,
+              padding: "9px 16px",
+              background: "transparent",
+              border: `1px solid ${C.border}`,
+              color: C.textMid,
+              fontSize: 13,
+              fontWeight: 500,
+              fontFamily: F.sans,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ display: "flex" }}>{Ic.cpu(15)}</span>
+            View Agents
           </button>
         </div>
         <div

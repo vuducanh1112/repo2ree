@@ -109,13 +109,7 @@ interface LocationOptionProps {
   onSelect: () => void;
 }
 
-export function LocationOption({
-  selected,
-  icon,
-  label,
-  description,
-  onSelect,
-}: LocationOptionProps) {
+function LocationOption({ selected, icon, label, description, onSelect }: LocationOptionProps) {
   return (
     <button
       type="button"

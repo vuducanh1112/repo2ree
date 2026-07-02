@@ -74,11 +74,20 @@ export async function openPort(page: Page, label: string) {
   await nav(page).getByRole("button", { name: label, exact: true }).click();
 }
 
-/** Land on the workbench lab (first screen of REE creation) from the landing view. */
+/**
+ * Land on the workbench lab from the landing view. REE creation now opens with
+ * the lab-location step: pick the (connected) agent that will host the
+ * workbench, which carries its id into the workbench/image page.
+ */
 export async function startReeCreation(page: Page) {
   await page.goto("/");
   await stepShot(page, "start-ree-creation", "before");
   await page.getByRole("button", { name: "Create REE" }).click();
+  await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
+  await page
+    .getByRole("button", { name: /connected/ })
+    .first()
+    .click();
   await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
   await stepShot(page, "start-ree-creation", "after");
 }

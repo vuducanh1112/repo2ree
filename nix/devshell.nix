@@ -17,6 +17,7 @@ pkgs.mkShell {
     less
     vim
     docker-client
+    ps
 
     # Project
     nodejs_25

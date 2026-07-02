@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiClientProvider } from "../../data/apiRuntime";
+import { AgentsView } from "../agents/AgentsView";
+import { LabLocationView } from "../agents/LabLocationView";
 import { AppShellView } from "../app-shell/AppShellView";
 import { APP_ROUTE } from "../app-shell/state/pages";
 import { LandingView } from "../landing/LandingView";
@@ -20,11 +22,37 @@ export function AppRoutes() {
 
   return (
     <Routes>
-      <Route path={APP_ROUTE.ROOT} element={<LandingView onLoad={(path) => navigate(path)} />} />
+      <Route
+        path={APP_ROUTE.ROOT}
+        element={
+          <LandingView
+            onLoad={(path) => navigate(path)}
+            onViewAgents={() => navigate(APP_ROUTE.AGENTS)}
+          />
+        }
+      />
       <Route path="/explorer" element={<Navigate to={APP_ROUTE.WORKSPACE} replace />} />
+      <Route
+        path={APP_ROUTE.LAB_LOCATION}
+        element={
+          // Agent selection is global (pre-REE); the provider just supplies reeApi.
+          <ApiClientProvider>
+            <LabLocationView onBack={() => navigate(APP_ROUTE.ROOT)} />
+          </ApiClientProvider>
+        }
+      />
       <Route
         path={APP_ROUTE.WORKSPACE}
         element={<WorkspaceRoute onBack={() => navigate(APP_ROUTE.ROOT)} />}
+      />
+      <Route
+        path={APP_ROUTE.AGENTS}
+        element={
+          // Agents are global, not REE-scoped; the provider just supplies reeApi.
+          <ApiClientProvider>
+            <AgentsView onBack={() => navigate(APP_ROUTE.ROOT)} />
+          </ApiClientProvider>
+        }
       />
       <Route path="*" element={<Navigate to={APP_ROUTE.ROOT} replace />} />
     </Routes>

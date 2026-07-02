@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 import time
@@ -276,6 +277,8 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
     name = payload.name or ree_id[:8]
     # Blank/omitted image falls back to the server default in the manager.
     image = (payload.workbenchImage or "").strip() or None
+    # Blank/omitted agent means "any connected agent" (single-agent path).
+    agent_id = (payload.agentId or "").strip()
 
     # Provision in the background so the cold-machine image pull streams its
     # progress live into the run's log stream (GET .../runs/{run_id}/logs)
@@ -293,7 +296,7 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
         # pull and container start inside provision() run to completion once
         # begun, so a cancel mid-pull only takes effect afterwards.
         try:
-            handle = workbench_manager.provision(rid, name, log=_log, image=image)
+            handle = workbench_manager.provision(rid, name, log=_log, image=image, agent_id=agent_id)
         except Exception as exc:
             _log("system", "error", f"Workbench provisioning failed: {exc}")
             return "failed", {}
@@ -440,9 +443,16 @@ def upload_init_route(ree_id: str, payload: UploadInitPayload):
 
 @manage_ree_router.put("/api/v1/rees/{ree_id}/source:upload/{upload_token}")
 async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Request):
-    _require_handle(ree_id)
+    # This route is async only to stream the request body. It runs on the event
+    # loop, so the blocking calls must hop to a thread: ``_require_handle`` does
+    # a synchronous round-trip to the workbench agent over the multiplexed
+    # WebSocket that *this same loop* pumps — calling it inline deadlocks the
+    # loop against its own reply (frozen API, agent keepalive death) rather
+    # than merely stalling. Sync routes don't share the hazard: FastAPI runs
+    # them in the threadpool.
+    await asyncio.to_thread(_require_handle, ree_id)
     data = await request.body()
-    stage_upload_bytes(upload_token, data)
+    await asyncio.to_thread(stage_upload_bytes, upload_token, data)
     return {
         "uploadToken": upload_token,
         "storedAt": utc_now(),
@@ -476,6 +486,8 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
             _log_run("system", "error", "Staged upload not found")
             return "failed", request_payload
 
+        size = staged_host.stat().st_size
+        _log_run("system", "info", f"Copying staged archive into the workbench ({size} bytes)")
         try:
             workbench_manager.copy_to_workbench(
                 handle,
@@ -483,8 +495,9 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
                 f"/ree/upload-staging/{payload.uploadToken}.bin",
             )
         except Exception as exc:
-            _log_run("system", "error", f"docker cp to workbench failed: {exc}")
+            _log_run("system", "error", f"Copy to workbench failed: {exc}")
             return "failed", request_payload
+        _log_run("system", "info", "Archive copied; extracting into the workspace")
 
         pipeline = _upload_pipeline(
             ExtractUploadCommand(

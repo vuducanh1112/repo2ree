@@ -1,6 +1,7 @@
 import type { ReeId } from "@core/ree/ReeId";
 import type { ApiClient } from "./ApiClient";
 import type {
+  AgentListDto,
   ApiListResponse,
   CreateReeRequestDto,
   PatchReeRequestDto,
@@ -50,6 +51,11 @@ export class ReeApi {
     return this.client.request<WorkbenchImageCatalogDto>(endpoints.workbenchImages(), {
       method: "GET",
     });
+  }
+
+  /** Workbench agents currently dialed into the control plane. */
+  async listAgents(): Promise<AgentListDto> {
+    return this.client.request<AgentListDto>(endpoints.agents(), { method: "GET" });
   }
 
   async uploadSourceBytes(uploadUrl: string, data: ArrayBuffer): Promise<void> {

@@ -249,6 +249,12 @@ test("author Code Ocean capsule 7784598 inputs", async ({ page }) => {
   await demoStep(page, "Open REE creation flow", async () => {
     await page.goto("/");
     await clickDemo(page, page.getByRole("button", { name: "Create REE" }), "Start REE creation");
+    await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
+    await clickDemo(
+      page,
+      page.getByRole("button", { name: /connected/ }).first(),
+      "Choose the lab location — the agent that will host this REE's workbench",
+    );
     await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
   });
 

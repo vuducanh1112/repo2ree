@@ -58,8 +58,10 @@ REPO2REE_WORKBENCH_IMAGE=repo2ree-workbench:latest \
 docker compose up
 ```
 
-This starts the frontend on port `3000` and the API on port `8000`.
-The backend container mounts `/var/run/docker.sock` because several repo2ree API flows shell out to Docker. In the demo compose setup, the backend stays rootless and stores its persistent data under `/app/.repo2ree`.
+This starts the frontend on port `3000`, the API on port `8000`, and a
+workbench agent that dials the API. The agent container mounts
+`/var/run/docker.sock` because it owns workbench container lifecycle; the API
+container stores its persistent data under `/app/.repo2ree`.
 
 For more detail, see
 [docs/engineering/deployment.md](docs/engineering/deployment.md).
@@ -76,25 +78,31 @@ Full contributor setup lives in
 uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-For faster local iteration when starting the API manually, you can share the
-host Docker daemon with workbenches:
+2. Start the workbench agent, which dials the API and owns the container
+   runtime (workbenches only provision while it is connected):
 
 ```bash
-WORKBENCH_DOCKER_MODE=host-socket \
-uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
+uv run --package repo2ree-agent python -m repo2ree_agent
+```
+
+For faster local iteration, you can share the host Docker daemon with
+workbenches:
+
+```bash
+WORKBENCH_DOCKER_MODE=host-socket uv run --package repo2ree-agent python -m repo2ree_agent
 ```
 
 This reuses the host Docker image cache, but it weakens workbench isolation and
 is intended for trusted local development only. The default `dind` mode keeps a
 separate Docker daemon per workbench.
 
-2. Install frontend dependencies:
+3. Install frontend dependencies:
 
 ```bash
 npm --prefix frontend ci
 ```
 
-3. Start the frontend dev server:
+4. Start the frontend dev server:
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8000 npm --prefix frontend run dev -- --host

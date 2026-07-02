@@ -1,0 +1,108 @@
+"""Agent-side reassembly of a chunked byte transfer (the copy-in path).
+
+The control plane streams a file to the agent in bounded chunks over the
+multiplexed socket, so neither side holds the whole payload in memory and no
+single frame approaches the transport's size cap. Each open transfer is a temp
+file on the agent host that chunks append to; on ``deliver`` the agent hands the
+finished file to a sink (the runtime's ``copy_in``) and deletes it.
+
+A ``TransferStore`` is scoped to one connection. If the connection drops with
+transfers still open, ``abort_all`` discards their partial files — nothing leaks
+past the life of the socket that created it.
+"""
+
+from __future__ import annotations
+
+import os
+import tempfile
+import threading
+from collections.abc import Callable
+from contextlib import suppress
+from dataclasses import dataclass
+from pathlib import Path
+from typing import BinaryIO
+from uuid import uuid4
+
+# ================================================
+# Transfer store
+# ================================================
+
+
+@dataclass
+class _Transfer:
+    container_name: str
+    container_path: str
+    path: str
+    handle: BinaryIO
+
+
+class TransferStore:
+    """The transfers currently open on one agent connection."""
+
+    def __init__(self) -> None:
+        self._transfers: dict[str, _Transfer] = {}
+        self._lock = threading.Lock()
+
+    def open(self, container_name: str, container_path: str) -> str:
+        """Start a transfer landing in ``container_path``; return its handle id."""
+        fd, path = tempfile.mkstemp(prefix="repo2ree-copy-", suffix=".part")
+        transfer = _Transfer(
+            container_name=container_name,
+            container_path=container_path,
+            path=path,
+            handle=os.fdopen(fd, "wb"),
+        )
+        transfer_id = uuid4().hex
+        with self._lock:
+            self._transfers[transfer_id] = transfer
+        return transfer_id
+
+    def write(self, transfer_id: str, data: bytes) -> None:
+        """Append one chunk to an open transfer."""
+        self._require(transfer_id).handle.write(data)
+
+    def deliver(self, transfer_id: str, sink: Callable[[str, str, str], None]) -> None:
+        """Close the assembled file, hand it to ``sink(container_name, path,
+        container_path)``, then delete the temp file — even if the sink raises."""
+        with self._lock:
+            transfer = self._transfers.pop(transfer_id, None)
+        if transfer is None:
+            raise KeyError(f"unknown transfer {transfer_id!r}")
+        transfer.handle.close()
+        try:
+            sink(transfer.container_name, transfer.path, transfer.container_path)
+        finally:
+            Path(transfer.path).unlink(missing_ok=True)
+
+    def abort(self, transfer_id: str) -> None:
+        """Drop a transfer and its partial file (a no-op if already gone)."""
+        with self._lock:
+            transfer = self._transfers.pop(transfer_id, None)
+        if transfer is not None:
+            _discard(transfer)
+
+    def abort_all(self) -> None:
+        """Discard every still-open transfer — called when the connection drops."""
+        with self._lock:
+            transfers = list(self._transfers.values())
+            self._transfers.clear()
+        for transfer in transfers:
+            _discard(transfer)
+
+    def _require(self, transfer_id: str) -> _Transfer:
+        with self._lock:
+            transfer = self._transfers.get(transfer_id)
+        if transfer is None:
+            raise KeyError(f"unknown transfer {transfer_id!r}")
+        return transfer
+
+
+# ================================================
+# Helpers
+# ================================================
+
+
+def _discard(transfer: _Transfer) -> None:
+    with suppress(Exception):
+        transfer.handle.close()
+    Path(transfer.path).unlink(missing_ok=True)

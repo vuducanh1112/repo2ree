@@ -3,6 +3,7 @@ name = "repo2ree-supervisor"
 version = "0.1.0"
 dependencies = [
     "repo2ree-protocol",
+    "httpx~=0.28.1",
 ]
 
 [tool.uv.sources]

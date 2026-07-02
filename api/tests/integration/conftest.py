@@ -14,16 +14,21 @@ and with it the workbench-manager singleton — is imported, so a developer's
 
 from __future__ import annotations
 
+import asyncio
 import os
 import shutil
+import socket
 import subprocess
 import tempfile
+import threading
 import time
 from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any
 
 import pytest
+from websockets.asyncio.server import ServerConnection, serve
 
 TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "traces" / "api-integration"
 
@@ -66,7 +71,11 @@ if "TRACE_FILE" not in os.environ:
 
 from fastapi.testclient import TestClient  # noqa: E402
 
+from repo2ree_agent.ws_client import run_agent  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
+from repo2ree_api.workbench.deps import agent_registry  # noqa: E402
+from repo2ree_protocol.agent import ws_hello_adapter  # noqa: E402
+from repo2ree_supervisor import AgentConnection, WorkbenchUnavailableError  # noqa: E402
 
 # ================================================
 # Fixtures
@@ -84,7 +93,8 @@ def client() -> Iterator[TestClient]:
     leaves an inspectable trace record.
     """
     with TestClient(app) as client:
-        yield client
+        with _connected_agent():
+            yield client
 
 
 @pytest.fixture
@@ -128,6 +138,75 @@ def _wait_for_provision(client: TestClient, ree_id: str, run_id: str, timeout_se
 # ================================================
 # Helpers
 # ================================================
+
+
+@contextmanager
+def _connected_agent() -> Iterator[None]:
+    """Run the real outbound agent against the app's module-level registry.
+
+    TestClient does not expose a TCP WebSocket endpoint, so this fixture mirrors
+    the production /agent/connect bridge with a tiny in-test socket server: the
+    real agent dials out, the server registers an AgentConnection into the same
+    registry the API's WorkbenchManager uses, and HTTP requests exercise the
+    normal manager/client path.
+    """
+    port = _free_port()
+    loop = asyncio.new_event_loop()
+    task_holder: list[asyncio.Task[None]] = []
+
+    async def handler(ws: ServerConnection) -> None:
+        def send_text(text: str) -> None:
+            asyncio.run_coroutine_threadsafe(ws.send(text), loop)
+
+        raw_hello = await ws.recv()
+        hello = ws_hello_adapter.validate_json(raw_hello if isinstance(raw_hello, str) else raw_hello.decode())
+        connection = AgentConnection(send_text=send_text, hello=hello)
+        agent_registry.register(hello.agent_id, connection)
+        try:
+            async for message in ws:
+                connection.on_message(message if isinstance(message, str) else message.decode())
+        finally:
+            connection.close()
+            agent_registry.unregister(hello.agent_id, connection)
+
+    async def serve_and_dial() -> None:
+        async with serve(handler, "127.0.0.1", port):
+            await run_agent(f"ws://127.0.0.1:{port}/agent/connect", "dind", "api-itest-agent")
+
+    def run_loop() -> None:
+        asyncio.set_event_loop(loop)
+        task = loop.create_task(serve_and_dial())
+        task_holder.append(task)
+        with suppress(asyncio.CancelledError):
+            loop.run_until_complete(task)
+        loop.close()
+
+    thread = threading.Thread(target=run_loop, daemon=True)
+    thread.start()
+    _wait_until_agent_connected("api-itest-agent")
+    try:
+        yield
+    finally:
+        if task_holder:
+            loop.call_soon_threadsafe(task_holder[0].cancel)
+        thread.join(timeout=10)
+
+
+def _free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def _wait_until_agent_connected(agent_id: str, timeout: float = 10.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            agent_registry.pick(agent_id)
+            return
+        except WorkbenchUnavailableError:
+            time.sleep(0.05)
+    raise RuntimeError(f"agent {agent_id!r} did not dial in within {timeout}s")
 
 
 def _dump_workbench_logs(ree_id: str, test_name: str) -> None:

@@ -1,41 +1,26 @@
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
+import { useAgents } from "@shell/data/agents/agents";
 import { useExecutionRunsClient } from "@shell/data/execution-runs/client";
 import { observeExecutionRun } from "@shell/data/execution-runs/queries";
 import { useWorkbenchImageCatalog } from "@shell/data/workbench/images";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Ic } from "../../shared/components/Icon";
-import {
-  lgColors,
-  lgContentCard,
-  lgInfoBanner,
-  lgInput,
-  lgPrimaryActionButton,
-  lgStyles,
-} from "../../theme/lightGlassTheme";
+import { lgColors, lgInfoBanner, lgPrimaryActionButton } from "../../theme/lightGlassTheme";
 import { C, F } from "../../theme/theme";
 import { CollapsibleLogCard } from "../components/CollapsibleLogCard";
 import { PodWidget } from "../pages/overview/PodWidget";
 import {
   DEFAULT_WORKBENCH_IMAGE_SELECTION,
-  LocationOption,
   resolveWorkbenchImage,
   WORKBENCH_COLOR,
   type WorkbenchImageSelection,
   WorkbenchImageSelector,
 } from "../pages/workbench/WorkbenchPageSections";
 import { APP_ROUTE } from "../state/pages";
-
-type LocationType = "local" | "remote";
-
-interface SshDetails {
-  host: string;
-  user: string;
-  port: string;
-}
 
 interface WorkbenchLabProps {
   evaluation: EvaluationState;
@@ -48,13 +33,13 @@ interface WorkbenchLabProps {
 // this view for the live CanvasHub.
 export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const runsClient = useExecutionRunsClient();
   const queryClient = useQueryClient();
   const { data: imageCatalog } = useWorkbenchImageCatalog();
+  const { data: agents } = useAgents();
   const images = imageCatalog?.images ?? [];
   const defaultImageId = imageCatalog?.defaultId ?? "";
-  const [location, setLocation] = useState<LocationType>("local");
-  const [ssh, setSsh] = useState<SshDetails>({ host: "", user: "", port: "22" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<LogEntry | null>(null);
@@ -62,8 +47,11 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
     DEFAULT_WORKBENCH_IMAGE_SELECTION,
   );
 
-  const provisionLabel = location === "remote" && ssh.host ? ssh.host : "this machine";
-  const canProvision = location === "local" || ssh.host.trim().length > 0;
+  // The lab location (agent) was chosen on the previous step and carried here as
+  // ?agentId=…. Empty means "any available agent" (single-agent setups).
+  const agentId = searchParams.get("agentId") ?? "";
+  const selectedAgent = agents?.find((a) => a.id === agentId);
+  const provisionLabel = selectedAgent?.hostname || (agentId ? agentId : "any available agent");
 
   async function handleProvision() {
     const image = resolveWorkbenchImage(imageSelection, images);
@@ -83,7 +71,7 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
       // neutral default and let the user rename it there. Provisioning runs in
       // the background so the image pull streams live — observeExecutionRun
       // tails the run's log feed into the bench console until it finishes.
-      const { reeId, run } = await runsClient.createWorkspace("REE", image);
+      const { reeId, run } = await runsClient.createWorkspace("REE", image, agentId);
       const result = await observeExecutionRun(queryClient, runsClient, {
         reeId,
         runId: run.runId,
@@ -109,7 +97,7 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
       <div style={benchTray} />
 
       <div style={labLayout}>
-        <DormantSpecimen evaluation={evaluation} ready={canProvision} />
+        <DormantSpecimen evaluation={evaluation} ready />
 
         <section style={consolePanel}>
           <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 4 }}>
@@ -126,70 +114,62 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
             </div>
           </div>
 
-          <SectionLabel icon={Ic.cpu(14)}>Location</SectionLabel>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <LocationOption
-              selected={location === "local"}
-              icon={Ic.cpu(16)}
-              label="Local"
-              description="Run on this machine"
-              onSelect={() => setLocation("local")}
-            />
-            <LocationOption
-              selected={location === "remote"}
-              icon={Ic.globe(16)}
-              label="Remote"
-              description="Connect via SSH"
-              onSelect={() => setLocation("remote")}
-            />
-          </div>
-
-          {location === "remote" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={lgContentCard(0)}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={lgStyles.fieldFrame}>
-                    <span style={lgStyles.label}>Host</span>
-                    <input
-                      type="text"
-                      value={ssh.host}
-                      onChange={(e) => setSsh((s) => ({ ...s, host: e.target.value }))}
-                      placeholder="user@hostname or IP"
-                      style={lgInput(false)}
-                    />
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 10 }}>
-                    <div style={lgStyles.fieldFrame}>
-                      <span style={lgStyles.label}>User</span>
-                      <input
-                        type="text"
-                        value={ssh.user}
-                        onChange={(e) => setSsh((s) => ({ ...s, user: e.target.value }))}
-                        placeholder="ubuntu"
-                        style={lgInput(false)}
-                      />
-                    </div>
-                    <div style={lgStyles.fieldFrame}>
-                      <span style={lgStyles.label}>Port</span>
-                      <input
-                        type="text"
-                        value={ssh.port}
-                        onChange={(e) => setSsh((s) => ({ ...s, port: e.target.value }))}
-                        placeholder="22"
-                        style={lgInput(false)}
-                      />
-                    </div>
-                  </div>
-                </div>
+          <SectionLabel icon={Ic.cpu(14)}>Lab location</SectionLabel>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "12px 14px",
+              borderRadius: 9,
+              border: `1.5px solid ${C.border}`,
+              background: C.surface,
+            }}
+          >
+            <span
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 9,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: WORKBENCH_COLOR,
+                background: C.accentBg,
+                border: `1px solid ${C.accentBorder}`,
+              }}
+            >
+              {Ic.cpu(16)}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: lgColors.text }}>
+                {provisionLabel}
               </div>
-              <div style={{ ...lgInfoBanner("muted"), fontSize: 12 }}>
-                <span style={{ color: lgColors.cyan, display: "flex" }}>{Ic.info(14)}</span>
-                <span style={{ color: lgColors.textMid }}>
-                  Remote provisioning is not yet supported. The workbench will be created locally.
-                </span>
+              <div style={{ fontSize: 12, color: lgColors.textMuted, marginTop: 1 }}>
+                {selectedAgent
+                  ? `${selectedAgent.dockerMode} · ${selectedAgent.id}`
+                  : "No specific agent selected"}
               </div>
             </div>
-          )}
+            <button
+              type="button"
+              onClick={() => navigate(APP_ROUTE.LAB_LOCATION)}
+              style={{
+                background: "transparent",
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: "6px 10px",
+                color: lgColors.textMid,
+                fontSize: 12,
+                cursor: "pointer",
+                fontFamily: F.sans,
+                flexShrink: 0,
+              }}
+            >
+              Change
+            </button>
+          </div>
 
           <SectionLabel icon={Ic.layers(14)}>Image</SectionLabel>
           <WorkbenchImageSelector
@@ -212,16 +192,14 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
           <button
             type="button"
             onClick={handleProvision}
-            disabled={loading || !canProvision}
-            style={{ ...lgPrimaryActionButton(loading || !canProvision), justifyContent: "center" }}
+            disabled={loading}
+            style={{ ...lgPrimaryActionButton(loading), justifyContent: "center" }}
           >
             {loading ? Ic.loader(15) : Ic.package(15)}
             <span>{loading ? "Powering up…" : "Provision workbench"}</span>
           </button>
           <span style={{ fontSize: 11.5, color: lgColors.textMuted, textAlign: "center" }}>
-            {canProvision
-              ? "Brings the lab online — this can take a moment on first run."
-              : "Enter a remote host to continue."}
+            Brings the lab online — this can take a moment on first run.
           </span>
         </section>
       </div>
