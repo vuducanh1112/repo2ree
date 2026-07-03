@@ -8,6 +8,12 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http~=1.42.1",
 ]
 
+[dependency-groups]
+# Type stubs for protocol's runtime dependencies (used by mypy only).
+dev = [
+    "types-requests~=2.32.0",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

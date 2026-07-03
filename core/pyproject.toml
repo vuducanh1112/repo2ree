@@ -3,28 +3,14 @@ name = "repo2ree-core"
 version = "0.1.0"
 dependencies = [
     "repo2ree-protocol",
-    "docker~=7.1.0",
-    "dockerfile-parse~=2.0.1",
-    "GitPython~=3.1.45",
-    "kubernetes~=35.0.0",
-    "packaging~=25.0",
     "pydantic~=2.11.7",
-    "pydantic-settings~=2.12.0",
-    "python-debian~=1.0.1",
-    "PyYaml~=6.0.3",
-    "requests~=2.32.5",
-    "sqlmodel~=0.0.31",
-    "swh.model~=8.4.1",
-    "tomli~=2.2.1",
-    "tomli-w~=1.2.0",
 ]
 
 [dependency-groups]
-# Type stubs for core's runtime dependencies (used by mypy only).
+# Test-only: the official Software Heritage CLI, used by test_swhid.py to
+# cross-check our SWHID reimplementation. The test skips when absent.
 dev = [
-    "types-requests~=2.32.0",
-    "types-PyYAML~=6.0.0",
-    "types-dockerfile-parse~=2.0.0",
+    "swh.model~=8.4.1",
 ]
 
 [tool.uv.sources]
