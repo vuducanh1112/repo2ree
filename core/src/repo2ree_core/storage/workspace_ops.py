@@ -150,34 +150,64 @@ def _reproducer_entries(intent: Any, artifact_plan: ArtifactPlan) -> list[tuple[
     )
 
 
-def _bundle_entry_bytes(
+def _bundle_entry_partition(
     layout: ReeLayout,
     artifact_plan: ArtifactPlan,
     intent: Any,
     *,
     include_snapshot: bool,
-    manifest_bytes: bytes,
-) -> list[tuple[str, bytes]]:
-    """Read bytes for every entry included in the bundle (shell)."""
-    entries: list[tuple[str, bytes]] = list(_reproducer_entries(intent, artifact_plan))
-    entries.append((REE_MANIFEST_ENTRY_PATH, manifest_bytes))
+) -> tuple[list[tuple[str, bytes]], list[tuple[str, bytes]]]:
+    """Read the file-heavy bundle entries, split around the manifest slot (shell).
+
+    Returns ``(head, tail)`` — the entries that precede and follow the manifest
+    entry, respectively. The manifest is the only entry that differs between the
+    pre-seal digest pass and the final sealed bundle, so callers that build both
+    can read every file once here and re-stamp only the manifest between them.
+    """
+    head: list[tuple[str, bytes]] = list(_reproducer_entries(intent, artifact_plan))
+    tail: list[tuple[str, bytes]] = []
     if include_snapshot and layout.snapshot_archive.exists():
-        entries.append((REE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive.read_bytes()))
-    entries.append((REE_OVERLAY_PREFIX, b""))
+        tail.append((REE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive.read_bytes()))
+    tail.append((REE_OVERLAY_PREFIX, b""))
     for rel in _list_tree_relpaths(layout.overlay):
-        entries.append((f"{REE_OVERLAY_PREFIX}{rel}", (layout.overlay / rel).read_bytes()))
-    entries.append((REE_ARTIFACTS_PREFIX, b""))
+        tail.append((f"{REE_OVERLAY_PREFIX}{rel}", (layout.overlay / rel).read_bytes()))
+    tail.append((REE_ARTIFACTS_PREFIX, b""))
     for rel in artifact_plan.on_disk_relpaths:
-        entries.append((f"{REE_ARTIFACTS_PREFIX}{rel}", (layout.artifacts / rel).read_bytes()))
+        tail.append((f"{REE_ARTIFACTS_PREFIX}{rel}", (layout.artifacts / rel).read_bytes()))
     for ws_rel, archive_name in sorted(artifact_plan.workspace_pulls.items()):
-        entries.append(
+        tail.append(
             (
                 f"{REE_ARTIFACTS_PREFIX}{archive_name}",
                 (layout.workspace / ws_rel).read_bytes(),
             )
         )
-    entries.append((REE_WORKSPACE_DIR_ENTRY, b""))
-    return entries
+    tail.append((REE_WORKSPACE_DIR_ENTRY, b""))
+    return head, tail
+
+
+def _entries_with_manifest(
+    head: list[tuple[str, bytes]],
+    tail: list[tuple[str, bytes]],
+    manifest_bytes: bytes,
+) -> list[tuple[str, bytes]]:
+    """Splice the manifest entry into its fixed slot between head and tail."""
+    return [*head, (REE_MANIFEST_ENTRY_PATH, manifest_bytes), *tail]
+
+
+def _entries_digest(entries: list[tuple[str, bytes]]) -> str:
+    """Content digest over the bundle entry list (paths + bytes), unbuilt.
+
+    Hashing the entries directly gives a stable content address without paying to
+    deflate a throwaway ZIP. Path and length are folded in with delimiters so no
+    two distinct entry lists can collide by concatenation.
+    """
+    hasher = hashlib.sha256()
+    for archive_path, content in entries:
+        hasher.update(archive_path.encode("utf-8"))
+        hasher.update(b"\0")
+        hasher.update(len(content).to_bytes(8, "big"))
+        hasher.update(content)
+    return hasher.hexdigest()
 
 
 def _read_text_if_possible(path: Path) -> str | None:
@@ -310,22 +340,33 @@ def _assemble_bundle(
     (and sealed_at/seal_hash when building the final sealed bundle).
     Returns ``(zip_bytes, sidecar_manifest)``.
     """
-    sidecar_manifest = _build_manifest_payload(intent, session, ree_id=ree_id)
     artifact_plan = _build_artifact_plan(layout, intent, include_runtime=session.runtime_included)
     include_snapshot = should_include_snapshot(
         source_included=session.source_included,
         source_snapshot_archive=session.source_snapshot_archive,
     )
+    sidecar_manifest, manifest_bytes = _manifest_entry_bytes(intent, session, artifact_plan, ree_id=ree_id)
+    head, tail = _bundle_entry_partition(layout, artifact_plan, intent, include_snapshot=include_snapshot)
+    entries = _entries_with_manifest(head, tail, manifest_bytes)
+    return build_zip_bytes(entries), sidecar_manifest
+
+
+def _manifest_entry_bytes(
+    intent: Any,
+    session: Any,
+    artifact_plan: ArtifactPlan,
+    *,
+    ree_id: str,
+) -> tuple[dict[str, Any], bytes]:
+    """Build the sidecar manifest and its bundle-remapped, serialized bytes.
+
+    Returns ``(sidecar_manifest, manifest_bytes)``. The sidecar is what gets
+    persisted alongside the archive; the bytes are what get embedded in it.
+    """
+    sidecar_manifest = _build_manifest_payload(intent, session, ree_id=ree_id)
     bundle_manifest = rewrite_manifest_for_bundle(sidecar_manifest, artifact_plan.manifest_remap)
     manifest_bytes = json.dumps(bundle_manifest, indent=2, sort_keys=True).encode("utf-8")
-    entries = _bundle_entry_bytes(
-        layout,
-        artifact_plan,
-        intent,
-        include_snapshot=include_snapshot,
-        manifest_bytes=manifest_bytes,
-    )
-    return build_zip_bytes(entries), sidecar_manifest
+    return sidecar_manifest, manifest_bytes
 
 
 def seal_workspace_ree(
@@ -338,8 +379,9 @@ def seal_workspace_ree(
 ) -> dict[str, Any]:
     """Build, hash, and persist the sealed REE archive.
 
-    1. Assembles the bundle without seal stamps to compute a content digest.
-    2. Re-assembles with the real seal_hash embedded in the manifest.
+    1. Reads every bundle entry once; hashes the entry list (with seal stamps
+       stripped from the manifest) to obtain a stable content digest.
+    2. Re-stamps only the manifest with the real seal_hash and builds the ZIP once.
     3. Writes sealed.zip, manifest.json, and updates reeSession in metadata.
 
     Returns the settled seal facts.
@@ -354,13 +396,23 @@ def seal_workspace_ree(
         runtime_included=runtime_included,
     )
 
-    # Pre-pass: assemble without seal stamps to obtain a stable content digest.
+    # The artifact plan and all file-heavy entries are identical across the
+    # pre-seal digest and the final bundle — only the manifest differs — so read
+    # every file exactly once here.
+    artifact_plan = _build_artifact_plan(layout, intent, include_runtime=session.runtime_included)
+    include_snapshot = should_include_snapshot(
+        source_included=session.source_included,
+        source_snapshot_archive=session.source_snapshot_archive,
+    )
+    head, tail = _bundle_entry_partition(layout, artifact_plan, intent, include_snapshot=include_snapshot)
+
+    # Pre-pass digest: hash the entry list directly (no throwaway ZIP build).
     # Strip any previously persisted seal stamps so re-sealing produces the
     # same digest when content hasn't changed.
     preseal_session = session.model_copy(update={"sealed_at": None, "seal_hash": None})
-    preseal_bytes, _ = _assemble_bundle(layout, intent, preseal_session, ree_id=ree_id)
-    digest = hashlib.sha256(preseal_bytes).hexdigest()
-    seal_hash = f"sha256:{digest}"
+    _, preseal_manifest_bytes = _manifest_entry_bytes(intent, preseal_session, artifact_plan, ree_id=ree_id)
+    preseal_entries = _entries_with_manifest(head, tail, preseal_manifest_bytes)
+    seal_hash = f"sha256:{_entries_digest(preseal_entries)}"
 
     # Settle all four seal facts into the session.
     session = session.with_seal(
@@ -370,8 +422,9 @@ def seal_workspace_ree(
         runtime_included=runtime_included,
     )
 
-    # Final assembly with the real seal_hash in the manifest.
-    zip_bytes, sidecar_manifest = _assemble_bundle(layout, intent, session, ree_id=ree_id)
+    # Final assembly with the real seal_hash in the manifest; ZIP built once.
+    sidecar_manifest, manifest_bytes = _manifest_entry_bytes(intent, session, artifact_plan, ree_id=ree_id)
+    zip_bytes = build_zip_bytes(_entries_with_manifest(head, tail, manifest_bytes))
 
     # Persist everything atomically within the workbench lock (held by caller).
     layout.sealed_archive.write_bytes(zip_bytes)
