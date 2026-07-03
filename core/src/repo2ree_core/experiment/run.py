@@ -18,13 +18,6 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, Literal
 
-from repo2ree_core.container.run_script import (
-    CancelCheck,
-    LogSink,
-    StepOutcome,
-    run_streaming_process,
-    run_workspace_script,
-)
 from repo2ree_core.experiment.evaluate import (
     CaptureBundle,
     ExperimentRunResult,
@@ -42,6 +35,13 @@ from repo2ree_core.experiment.experiment import (
     validate_runnable_script_path,
 )
 from repo2ree_core.path_safety import resolve_within
+from repo2ree_core.run_script import (
+    CancelCheck,
+    StepOutcome,
+    run_streaming_process,
+    run_workspace_script,
+)
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionStatus
 from repo2ree_protocol.tracing import get_tracer
 

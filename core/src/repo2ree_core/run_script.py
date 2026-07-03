@@ -1,8 +1,9 @@
 """Generic streaming subprocess runner and the workspace-script execution path.
 
-The full container lifecycle now lives in author-owned overlay scripts driven
-by the lifecycle runner (``experiment/run.py``); only the generic
-process-streaming utilities used across handlers remain here.
+Containers are the author's concern, not this module's: each runnable owns an
+overlay script that enters its runtime itself (e.g. its own ``docker run``),
+and this module just executes such scripts as plain subprocesses with streamed
+logs and cooperative cancellation.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from pathlib import Path
 from typing import Literal
 
 from repo2ree_core.path_safety import resolve_within
-from repo2ree_protocol.log import LogSink  # noqa: F401
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionStatus
 from repo2ree_protocol.tracing import get_tracer
 

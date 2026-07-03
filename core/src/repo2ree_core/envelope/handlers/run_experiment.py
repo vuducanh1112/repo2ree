@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from repo2ree_core.container.run_script import CancelCheck, LogSink
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.envelope.handlers._common import (
     patch_ree_intent,
     run_runnable_handler,
 )
 from repo2ree_core.experiment.experiment import ExpectedOutput, Runnable
+from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_protocol.command import RunExperimentArgs
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
 

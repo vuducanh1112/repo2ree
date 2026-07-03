@@ -4,14 +4,15 @@ import json
 import subprocess
 from typing import Any
 
-from repo2ree_core.container.run_script import CancelCheck, LogSink
 from repo2ree_core.envelope.handlers._common import (
     patch_ree_intent,
     resolve_workspace_path,
 )
+from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_protocol.command import GenerateSbomArgs
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
 

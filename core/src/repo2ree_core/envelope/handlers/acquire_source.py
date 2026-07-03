@@ -11,15 +11,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_core.container.run_script import (
+from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
+from repo2ree_core.run_script import (
     CancelCheck,
-    LogSink,
     format_command,
     run_streaming_process,
 )
-from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
 from repo2ree_core.storage.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_protocol.command import AcquireSourceArgs
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
 

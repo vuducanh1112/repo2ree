@@ -1,4 +1,4 @@
-from repo2ree_core.container.run_script import run_streaming_process
+from repo2ree_core.run_script import run_streaming_process
 
 
 def test_run_streaming_process_logs_and_captures_stdout_stderr():

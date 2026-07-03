@@ -59,7 +59,7 @@ def test_displacement_by_same_instance_logs_reconnect_not_warning(caplog: pytest
     registry = AgentConnectionRegistry()
     nonce = "abc123"
     registry.register("a1", _connection(AgentHello(agent_id="a1", nonce=nonce)))
-    with caplog.at_level("INFO", logger="repo2ree_supervisor.ws"):
+    with caplog.at_level("INFO", logger="repo2ree_supervisor.agent_link"):
         registry.register("a1", _connection(AgentHello(agent_id="a1", nonce=nonce)))
 
     (record,) = caplog.records
@@ -70,7 +70,7 @@ def test_displacement_by_same_instance_logs_reconnect_not_warning(caplog: pytest
 def test_displacement_by_different_instance_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
     registry = AgentConnectionRegistry()
     registry.register("a1", _connection(AgentHello(agent_id="a1", nonce="instance-one")))
-    with caplog.at_level("INFO", logger="repo2ree_supervisor.ws"):
+    with caplog.at_level("INFO", logger="repo2ree_supervisor.agent_link"):
         registry.register("a1", _connection(AgentHello(agent_id="a1", nonce="instance-two")))
 
     (record,) = caplog.records
@@ -83,7 +83,7 @@ def test_displacement_without_nonces_logs_warning(caplog: pytest.LogCaptureFixtu
     # registry stays loud rather than assuming a routine reconnect.
     registry = AgentConnectionRegistry()
     registry.register("a1", _connection(None))
-    with caplog.at_level("INFO", logger="repo2ree_supervisor.ws"):
+    with caplog.at_level("INFO", logger="repo2ree_supervisor.agent_link"):
         registry.register("a1", _connection(None))
 
     (record,) = caplog.records

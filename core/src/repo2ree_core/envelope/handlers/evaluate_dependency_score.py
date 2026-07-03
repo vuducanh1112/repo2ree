@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 
-from repo2ree_core.container.run_script import CancelCheck, LogSink
 from repo2ree_core.repo_profiler.profiler import AnalysisError, analyze_repo
+from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_protocol.command import EvaluateDependencyScoreArgs
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
 _REPORT_FILENAME = "reproducibility-report.json"

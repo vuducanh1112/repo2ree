@@ -1,7 +1,7 @@
 """The control plane's client for a workbench agent.
 
 ``AgentClient`` is the seam the manager depends on. The sole production
-implementation is ``WsAgentClient`` (see ``ws.py``), which drives an agent that
+implementation is ``WsAgentClient`` (see ``agent_link.py``), which drives an agent that
 dialed the control plane and holds one outbound WebSocket — the agent never
 listens, so it works from inside clusters and NATed networks that only permit
 egress. The manager is transport-agnostic behind this Protocol.

@@ -227,9 +227,9 @@ def test_copy_in_pipelines_chunks_within_the_window(tmp_path, monkeypatch: pytes
     # Every chunk of a windowed transfer rides the wire before the first ack
     # comes back — throughput must not be one round trip per chunk. Offsets
     # address the writes so the agent can apply them in any order.
-    import repo2ree_supervisor.ws as ws_module
+    import repo2ree_supervisor.agent_link as agent_link_module
 
-    monkeypatch.setattr(ws_module, "COPY_CHUNK_BYTES", 4)
+    monkeypatch.setattr(agent_link_module, "COPY_CHUNK_BYTES", 4)
     socket = FakeSocket()
     registry = AgentConnectionRegistry()
     registry.register("a1", socket.connection)
@@ -364,9 +364,9 @@ def test_request_times_out_when_agent_goes_silent() -> None:
 def test_is_running_returns_false_when_agent_goes_silent(monkeypatch: pytest.MonkeyPatch) -> None:
     # The client-level wrapper maps the silence timeout to a plain False, the
     # same answer an absent agent gets.
-    import repo2ree_supervisor.ws as ws_module
+    import repo2ree_supervisor.agent_link as agent_link_module
 
-    monkeypatch.setattr(ws_module, "QUICK_OP_TIMEOUT", 0.1)
+    monkeypatch.setattr(agent_link_module, "QUICK_OP_TIMEOUT", 0.1)
     socket = FakeSocket()
     registry = AgentConnectionRegistry()
     registry.register("a1", socket.connection)

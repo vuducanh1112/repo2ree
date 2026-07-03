@@ -10,14 +10,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_core.container.run_script import (
+from repo2ree_core.ree_scripts.materialize_workspace import build_materialize_sh
+from repo2ree_core.run_script import (
     CancelCheck,
-    LogSink,
     format_command,
     run_streaming_process,
 )
-from repo2ree_core.ree_scripts.materialize_workspace import build_materialize_sh
 from repo2ree_core.storage.layout import MATERIALIZE_SCRIPT_FILENAME, ReeLayout
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
 

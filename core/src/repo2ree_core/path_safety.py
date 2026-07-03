@@ -15,7 +15,7 @@ Two layers, used at different trust boundaries:
   (``Path.resolve().relative_to(...)``) escape check on top, which also catches
   symlink escapes. It is the guard for paths that come from author-supplied run
   scripts and declared outputs before they are handed to the shell or read back
-  (see ``experiment/run.py``, ``container/run_script.py``,
+  (see ``experiment/run.py``, ``run_script.py``,
   ``envelope/handlers/_common.py``).
 """
 

@@ -1,7 +1,8 @@
-"""Control-plane side of the agent-dialed WebSocket transport (Step 1).
+"""Control-plane side of the agent-dialed WebSocket transport.
 
-The agent dials the API and holds one connection; the API pushes commands down
-it. This module is the control-plane half:
+Each agent dials the API and holds one connection; the API pushes commands down
+it. This module is the control-plane half (the agent half is
+``repo2ree_agent.control_link``):
 
 * ``AgentConnection`` bridges the async socket to the *synchronous* manager. It
   is transport-agnostic — the API's WebSocket route feeds it inbound frames via
@@ -9,14 +10,12 @@ it. This module is the control-plane half:
   loop. A synchronous caller (the manager, running in a worker thread) blocks on
   a per-request queue while the loop pumps frames into it. One socket multiplexes
   many concurrent requests via correlation ids.
-* ``AgentConnectionRegistry`` holds the connected agents.
+* ``AgentConnectionRegistry`` holds the connected agents and resolves placement:
+  a request may name the specific agent an REE is pinned to, or fall back to any
+  connected agent.
 * ``WsAgentClient`` is an ``AgentClient`` that drives ops over the picked
   connection, returning frame streams for the streaming verbs and materialised
   values for the request/response ones.
-
-Step 1 scope: a single agent. ``pick()`` returns the one connected agent;
-multi-agent placement (recording which agent owns which REE) comes with the
-broker step.
 """
 
 from __future__ import annotations
@@ -65,6 +64,10 @@ from repo2ree_supervisor.client import WorkbenchUnavailableError, raise_for_term
 
 logger = logging.getLogger(__name__)
 
+# ================================================
+# Tuning constants
+# ================================================
+
 # Bound on the silence *between* response frames before a request gives up on
 # the agent (see AgentConnection.request). Streaming verbs use this generous
 # default — a provision or command can legitimately be quiet for a while between
@@ -82,6 +85,11 @@ QUICK_OP_TIMEOUT = 30.0
 COPY_IN_WINDOW = 8
 
 
+# ================================================
+# Fleet view
+# ================================================
+
+
 @dataclass(frozen=True)
 class AgentInfo:
     """A connected agent as the control plane sees it: what the agent reported
@@ -93,6 +101,11 @@ class AgentInfo:
     version: str
     docker_mode: str
     connected_at: float  # epoch seconds (UTC)
+
+
+# ================================================
+# Connection bridge (async socket ↔ sync callers)
+# ================================================
 
 
 class AgentConnection:
@@ -213,8 +226,13 @@ class PendingReply:
         self._connection._discard(self._req_id)
 
 
+# ================================================
+# Agent registry
+# ================================================
+
+
 class AgentConnectionRegistry:
-    """Tracks connected agents. Step 1: one is expected; ``pick`` returns it."""
+    """Tracks connected agents and resolves placement requests to one of them."""
 
     def __init__(self) -> None:
         self._agents: dict[str, AgentConnection] = {}
@@ -303,6 +321,11 @@ class AgentConnectionRegistry:
             ]
         infos.sort(key=lambda info: (info.hostname, info.agent_id))
         return infos
+
+
+# ================================================
+# WebSocket AgentClient
+# ================================================
 
 
 class WsAgentClient:
