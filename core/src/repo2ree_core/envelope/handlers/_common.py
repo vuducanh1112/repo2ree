@@ -7,14 +7,12 @@ from typing import Any, Literal
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.experiment.experiment import ExpectedOutput, Runnable
 from repo2ree_core.experiment.run import run_runnable
-from repo2ree_core.path_safety import resolve_within
+from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
 from repo2ree_core.run_script import CancelCheck, run_workspace_script
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
-
-WORKSPACE_CONTROL_PREFIXES = (".workspace", ".upload.")
 
 
 def resolve_workspace_path(layout: ReeLayout, rel_path: str) -> Path:

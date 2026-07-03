@@ -10,11 +10,11 @@ from fastapi import HTTPException
 
 from repo2ree_api.api_utils import (
     WORKSPACE_CONTROL_PREFIXES,
-    append_completed_process_output,
     paginate,
     require_non_empty_path,
     resolve_relative_path,
 )
+from repo2ree_core.run_script import stream_output
 
 # ================================================
 # paginate
@@ -123,16 +123,16 @@ def test_resolve_relative_path_blocks_workspace_control_files(tmp_path: Path):
 
 
 # ================================================
-# append_completed_process_output
+# stream_output
 # ================================================
 
 
-def test_append_completed_process_output_maps_streams_and_skips_blanks():
+def test_stream_output_maps_streams_and_skips_blanks():
     result = subprocess.CompletedProcess(
         args=["tool"], returncode=0, stdout="line one\n\n  \nline two\n", stderr="warn line\n"
     )
     captured: list[tuple[str, str, str]] = []
-    append_completed_process_output(result, lambda s, lvl, msg: captured.append((s, lvl, msg)))
+    stream_output(lambda s, lvl, msg: captured.append((s, lvl, msg)), result)
     assert captured == [
         ("stdout", "info", "line one"),
         ("stdout", "info", "line two"),

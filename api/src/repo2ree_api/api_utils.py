@@ -1,18 +1,19 @@
 from __future__ import annotations
 
-import subprocess
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
 
-# ================================================
-# Constants
-# ================================================
+from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
 
-
-WORKSPACE_CONTROL_PREFIXES = (".workspace", ".upload.")
+__all__ = [
+    "WORKSPACE_CONTROL_PREFIXES",
+    "paginate",
+    "require_non_empty_path",
+    "resolve_relative_path",
+]
 
 
 # ================================================
@@ -60,15 +61,3 @@ def resolve_relative_path(
     if blocked_prefixes and candidate.name.startswith(blocked_prefixes):
         raise HTTPException(status_code=400, detail=invalid_detail)
     return candidate
-
-
-def append_completed_process_output(
-    result: subprocess.CompletedProcess[str],
-    append_log: Callable[[str, str, str], None],
-) -> None:
-    for line in (result.stdout or "").splitlines():
-        if line.strip():
-            append_log("stdout", "info", line)
-    for line in (result.stderr or "").splitlines():
-        if line.strip():
-            append_log("stderr", "warn", line)

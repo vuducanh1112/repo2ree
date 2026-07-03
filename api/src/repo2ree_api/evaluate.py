@@ -8,10 +8,8 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
-    _append_run_log,
-    _is_cancel_requested,
     _run_summary,
-    _start_background_run,
+    _start_single_command_run,
 )
 from repo2ree_protocol.command import (
     EvaluateDependencyScoreArgs,
@@ -76,33 +74,11 @@ def create_evaluate_run_state(
     ree_id: str,
     payload: CreateEvaluateRunPayload,
 ) -> dict[str, Any]:
-    request_payload = {"strict": bool(payload.strict)}
-
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
-        def _log(stream: str, level: str, message: str) -> None:
-            _append_run_log(ree_id, run_id, stream, level, message)
-
-        if _is_cancel_requested(ree_id, run_id):
-            _log("system", "warn", "Evaluate run canceled")
-            return "canceled", {}
-
-        handle = workbench_manager.lookup(ree_id)
-        if handle is None:
-            _log("system", "error", "No workbench available for evaluate")
-            return "failed", {}
-
-        result = workbench_manager.dispatch_action(
-            handle,
-            EvaluateDependencyScoreCommand(args=EvaluateDependencyScoreArgs(strict=payload.strict)),
-            run_id,
-            _log,
-        )
-        return result.status, result.outputs or {}
-
-    return _start_background_run(
-        ree_id=ree_id,
+    return _start_single_command_run(
+        ree_id,
         operation="evaluate",
-        request_payload=request_payload,
+        command=EvaluateDependencyScoreCommand(args=EvaluateDependencyScoreArgs(strict=payload.strict)),
         run_id_prefix="evaluate",
-        runner=_runner,
+        request_payload={"strict": bool(payload.strict)},
+        canceled_message="Evaluate run canceled",
     )

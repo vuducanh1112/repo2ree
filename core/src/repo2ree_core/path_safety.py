@@ -23,6 +23,11 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 
+# Leaf-file basename prefixes reserved for workspace control files
+# (".workspace*", ".upload.*"). They name files, never directories, so callers
+# guard only the leaf segment of a candidate path against them.
+WORKSPACE_CONTROL_PREFIXES = (".workspace", ".upload.")
+
 
 def resolve_within(base: Path, rel: str | PurePosixPath) -> Path | None:
     """Resolve *rel* under *base* and confirm it stays inside.
