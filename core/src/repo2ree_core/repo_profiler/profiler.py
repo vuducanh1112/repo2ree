@@ -1,8 +1,15 @@
 """Repo profiler — impure orchestration layer.
 
-Coordinates dependency analysis tool(s) and file-signal collection, then
-delegates to the pure ``build_report`` function.  This is the single entry
-point for the API layer; the API has no knowledge of which tools are run.
+Collects file signals and delegates to the pure ``build_report`` function.
+This is the single entry point for the API layer; the API has no knowledge of
+which tools are run.
+
+Dependency *extraction* is currently retired: the renovate flow was dropped
+(node-runtime weight, freshness coupling — see ``sources/renovate.py``, kept
+as a dormant parser for the future extraction-adapter comparison), and its
+successor (a syft-backed inventory source) is not built yet. Until it is, the
+report scores on file signals alone (manifest/lockfile/Dockerfile/nix/VM
+presence — pure filesystem checks) with an empty dependency inventory.
 """
 
 from __future__ import annotations
@@ -18,7 +25,6 @@ from .reproducibility_report import (
     is_manifest_filename,
     is_vm_artifact_filename,
 )
-from .sources.renovate import run_extract
 
 # ================================================
 # Types
@@ -33,7 +39,7 @@ LogFn = Callable[[str, str, str], None]  # (stream, level, message)
 
 
 class AnalysisError(RuntimeError):
-    """Raised when strict=True and no dependency data could be extracted."""
+    """Raised when strict=True and no dependency data is available."""
 
 
 # ================================================
@@ -46,20 +52,24 @@ def analyze_repo(
     log: LogFn | None = None,
     strict: bool = False,
 ) -> ReproducibilityReport:
-    """Run dependency analysis and build the reproducibility report.
+    """Build the reproducibility report from file signals.
 
-    Raises ``AnalysisError`` when ``strict=True`` and no dependency data could
-    be extracted from any tool.
+    Raises ``AnalysisError`` when ``strict=True`` — with extraction retired
+    there is never per-dependency data, which is exactly what strict demands.
     """
     if not repo_path.is_dir():
         raise ValueError(f"repo_path must be an existing directory: {repo_path}")
 
     _log: LogFn = log or (lambda *_: None)
+    _log(
+        "system",
+        "info",
+        "dependency extraction is retired pending the next analyzer; scoring on file signals only",
+    )
     file_signals = _collect_file_signals(repo_path)
-    inventory = run_extract(repo_path, log=_log)
-    if strict and inventory is None:
-        raise AnalysisError("Dependency analysis produced no extractable output")
-    return build_report(inventory, file_signals)
+    if strict:
+        raise AnalysisError("strict evaluation requires dependency extraction, which is currently retired")
+    return build_report(None, file_signals)
 
 
 # ================================================

@@ -1,8 +1,13 @@
-"""Renovate adapter.
+"""Renovate adapter — retired from the profiler flow, kept as a dormant parser.
 
 Parses ``renovate --platform=local --dry-run=extract`` stdout and produces a
 ``DependencyInventory``.  All Renovate-specific knowledge — CLI flags, env
 vars, payload shapes — is confined to this module.
+
+Nothing calls ``run_extract`` anymore (renovate's node closure and freshness
+coupling priced it out of the bench). The module and its fixture-driven parse
+tests stay as the reference corpus for the planned syft-backed inventory
+source: build the successor, run both parsers over the fixtures, compare.
 """
 
 from __future__ import annotations
@@ -14,6 +19,8 @@ import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+from repo2ree_core.tooling import resolve_tool
 
 from ..dependency_inventory import Dependency, DependencyInventory
 
@@ -46,7 +53,7 @@ def run_extract(workspace_path: Path, log: LogFn) -> DependencyInventory | None:
     if not workspace_path.is_dir():
         raise ValueError(f"workspace_path must be an existing directory: {workspace_path}")
 
-    command = ["renovate", "--platform=local", "--dry-run=extract"]
+    command = [resolve_tool("renovate"), "--platform=local", "--dry-run=extract"]
     log("system", "info", "$ " + " ".join(shlex.quote(c) for c in command))
 
     env = os.environ.copy()

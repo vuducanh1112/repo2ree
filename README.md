@@ -46,7 +46,7 @@ To build the images locally from this repository:
 ```bash
 make frontend-image
 make backend-image
-make workbench-image
+make agent-image
 ```
 
 Then run compose with the local image tags:
@@ -54,9 +54,13 @@ Then run compose with the local image tags:
 ```bash
 REPO2REE_FRONTEND_IMAGE=repo2ree-frontend:latest \
 REPO2REE_BACKEND_IMAGE=repo2ree-backend:latest \
-REPO2REE_WORKBENCH_IMAGE=repo2ree-workbench:latest \
+REPO2REE_AGENT_IMAGE=repo2ree-agent:latest \
 docker compose up
 ```
+
+The per-REE workbench env image isn't a compose variable: benches provision
+from the backend's image catalog (a pinned upstream `docker:dind` by
+default), with the executor injected by the agent at provision time.
 
 This starts the frontend on port `3000`, the API on port `8000`, and a
 workbench agent that dials the API. The agent container mounts

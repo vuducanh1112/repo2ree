@@ -62,24 +62,29 @@ class AgentClient(Protocol):
 
     def remove(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> None: ...
 
-    def is_running(self, agent_id: str, container_name: str) -> bool: ...
+    def is_running(self, agent_id: str, location: WorkbenchLocation) -> bool: ...
 
-    def exec_simple(self, agent_id: str, container_name: str, argv: list[str], timeout: int = 60) -> None: ...
+    def exec_simple(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 60) -> None:
+        """Run an executor subcommand in the bench, discarding output.
 
-    def exec_query(self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30) -> bytes: ...
+        ``argv`` is the ``repo2ree-exec`` subcommand argv *without* the executor
+        binary — the agent's runtime prepends the bench's entry point."""
+        ...
+
+    def exec_query(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> bytes: ...
 
     def exec_query_stream(
-        self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30
+        self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30
     ) -> Iterator[bytes]: ...
 
     def exec_action(
-        self, agent_id: str, container_name: str, cmd_json: str, run_id: str, env: dict[str, str]
+        self, agent_id: str, location: WorkbenchLocation, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]: ...
 
-    def cancel_run(self, agent_id: str, container_name: str, run_id: str) -> None: ...
+    def cancel_run(self, agent_id: str, location: WorkbenchLocation, run_id: str) -> None: ...
 
-    def copy_in(self, agent_id: str, container_name: str, source_path: str, container_path: str) -> None:
-        """Stream a control-plane-local file into the container at ``container_path``.
+    def copy_in(self, agent_id: str, location: WorkbenchLocation, source_path: str, container_path: str) -> None:
+        """Stream a control-plane-local file into the bench at ``container_path``.
 
         ``source_path`` need only exist on the control plane; the bytes travel
         as a chunked transfer (see ``repo2ree_protocol.agent``)."""

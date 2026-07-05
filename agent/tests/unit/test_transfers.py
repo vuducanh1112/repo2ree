@@ -8,11 +8,14 @@ from pathlib import Path
 import pytest
 
 from repo2ree_agent.transfers import TransferStore
+from repo2ree_protocol.agent import WorkbenchLocation
+
+_WB = WorkbenchLocation(container_name="wb", volume_name="wb-vol")
 
 
 def test_deliver_reassembles_chunks_and_cleans_up() -> None:
     store = TransferStore()
-    transfer_id = store.open("wb", "/ree/dest.bin")
+    transfer_id = store.open(_WB, "/ree/dest.bin")
     # Chunks are pipelined and may apply out of order; each carries its offset.
     store.write(transfer_id, 6, b"world")
     store.write(transfer_id, 0, b"hello ")
@@ -20,8 +23,8 @@ def test_deliver_reassembles_chunks_and_cleans_up() -> None:
     landed: dict[str, str] = {}
     contents: dict[str, bytes] = {}
 
-    def sink(container_name: str, source_path: str, container_path: str) -> None:
-        landed["container_name"] = container_name
+    def sink(location: WorkbenchLocation, source_path: str, container_path: str) -> None:
+        landed["container_name"] = location.container_name
         landed["container_path"] = container_path
         landed["source_path"] = source_path
         contents["data"] = Path(source_path).read_bytes()
@@ -39,12 +42,12 @@ def test_deliver_reassembles_chunks_and_cleans_up() -> None:
 
 def test_deliver_removes_temp_file_even_when_sink_raises() -> None:
     store = TransferStore()
-    transfer_id = store.open("wb", "/ree/dest.bin")
+    transfer_id = store.open(_WB, "/ree/dest.bin")
     store.write(transfer_id, 0, b"data")
 
     captured: dict[str, str] = {}
 
-    def failing_sink(container_name: str, source_path: str, container_path: str) -> None:
+    def failing_sink(location: WorkbenchLocation, source_path: str, container_path: str) -> None:
         captured["source_path"] = source_path
         raise RuntimeError("docker cp failed")
 
@@ -56,9 +59,9 @@ def test_deliver_removes_temp_file_even_when_sink_raises() -> None:
 
 def test_abort_and_abort_all_discard_partial_files() -> None:
     store = TransferStore()
-    aborted = store.open("wb", "/ree/a.bin")
+    aborted = store.open(_WB, "/ree/a.bin")
     store.write(aborted, 0, b"partial")
-    dangling = store.open("wb", "/ree/b.bin")
+    dangling = store.open(_WB, "/ree/b.bin")
 
     store.abort(aborted)
     # Aborting an unknown/already-dropped transfer is a no-op.

@@ -23,14 +23,16 @@ from io import BytesIO
 from typing import Any
 
 import pytest
+
+# The tier's skip gate lives in conftest alongside the `ree` fixture so the
+# two stay in lockstep.
+from conftest import bundles_present
 from fastapi.testclient import TestClient
 
 # ================================================
 # Constants
 # ================================================
 
-
-WORKBENCH_IMAGE = "repo2ree-workbench:latest"
 
 RUN_TIMEOUT_SECONDS = 180
 TERMINAL_RUN_STATUSES = frozenset({"succeeded", "failed", "canceled"})
@@ -47,13 +49,9 @@ def _docker_available() -> bool:
     return subprocess.run(["docker", "version"], capture_output=True).returncode == 0
 
 
-def _image_present(image: str) -> bool:
-    return subprocess.run(["docker", "image", "inspect", image], capture_output=True).returncode == 0
-
-
 pytestmark = pytest.mark.skipif(
-    not _docker_available() or not _image_present(WORKBENCH_IMAGE),
-    reason=f"api integration tier needs docker + the {WORKBENCH_IMAGE} image (run: make workbench-image)",
+    not _docker_available() or not bundles_present(),
+    reason="api integration tier needs docker + the executor/tools bundles (run: make e2e-bundles)",
 )
 
 

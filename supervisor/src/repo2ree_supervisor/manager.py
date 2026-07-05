@@ -97,6 +97,9 @@ class WorkbenchHandle:
     image: str = ""
     # The agent this REE is pinned to; every op on this handle routes to it.
     agent_id: str = ""
+    # The bench's executor entry point, as minted by the agent (see
+    # WorkbenchLocation.exec_path). Carried, never interpreted.
+    exec_path: str = "repo2ree-exec"
 
     @classmethod
     def from_entry(cls, entry: WorkbenchEntry) -> WorkbenchHandle:
@@ -106,11 +109,14 @@ class WorkbenchHandle:
             volume_name=entry.volume_name,
             image=entry.image,
             agent_id=entry.agent_id,
+            exec_path=entry.exec_path,
         )
 
     @property
     def location(self) -> WorkbenchLocation:
-        return WorkbenchLocation(container_name=self.container_name, volume_name=self.volume_name)
+        return WorkbenchLocation(
+            container_name=self.container_name, volume_name=self.volume_name, exec_path=self.exec_path
+        )
 
 
 # ================================================
@@ -168,8 +174,8 @@ class WorkbenchManager:
                 raise RuntimeError(f"agent provision for {ree_id} ended without a location")
             self._agent.exec_simple(
                 resolved_agent_id,
-                location.container_name,
-                ["repo2ree-exec", "init-ree", "--ree-id", ree_id, "--name", name],
+                location,
+                ["init-ree", "--ree-id", ree_id, "--name", name],
             )
 
             entry = WorkbenchEntry(
@@ -178,6 +184,7 @@ class WorkbenchManager:
                 volume_name=location.volume_name,
                 image=resolved_image,
                 agent_id=resolved_agent_id,
+                exec_path=location.exec_path,
             )
             self._registry.register(entry)
             return WorkbenchHandle.from_entry(entry)
@@ -194,9 +201,22 @@ class WorkbenchManager:
             # ``entry.image`` is empty only for pre-image-tracking entries, where
             # falling back to the default is the best we can do.
             handle = WorkbenchHandle.from_entry(entry)
-            self._consume_lifecycle(
+            location = self._consume_lifecycle(
                 self._agent.reprovision(handle.agent_id, ree_id, handle.location, entry.image or self._image), log
             )
+            if location is not None and location != handle.location:
+                # The replacement bench re-decided how it is driven (e.g. its
+                # executor entry point); persist the fresh location.
+                entry = WorkbenchEntry(
+                    ree_id=ree_id,
+                    container_name=location.container_name,
+                    volume_name=location.volume_name,
+                    image=entry.image,
+                    agent_id=entry.agent_id,
+                    exec_path=location.exec_path,
+                )
+                self._registry.register(entry)
+                handle = WorkbenchHandle.from_entry(entry)
             return handle
 
     def teardown(self, handle: WorkbenchHandle) -> None:
@@ -214,8 +234,9 @@ class WorkbenchManager:
     def _consume_lifecycle(self, frames: Iterator[AgentFrame], log: LogSink | None) -> WorkbenchLocation | None:
         """Drain a provision/reprovision stream: forward logs, return the location.
 
-        Raises on a terminal error/unavailable frame. Returns the location for a
-        provision, or None for a reprovision (which ends with a ``done`` frame).
+        Raises on a terminal error/unavailable frame. Both provision and
+        reprovision end with a ``location`` frame; None only if the stream ended
+        without one (an older agent's reprovision, which ends with ``done``).
         """
         location: WorkbenchLocation | None = None
         for frame in frames:
@@ -238,7 +259,7 @@ class WorkbenchManager:
         if entry is None:
             return None
         handle = WorkbenchHandle.from_entry(entry)
-        if not self._agent.is_running(handle.agent_id, handle.container_name):
+        if not self._agent.is_running(handle.agent_id, handle.location):
             logger.warning(
                 "workbench container %s not running for %s — returning None",
                 handle.container_name,
@@ -286,7 +307,7 @@ class WorkbenchManager:
         This deliberately does not take the per-REE dispatch lock: the command we
         are canceling is usually the one holding that lock.
         """
-        self._agent.cancel_run(handle.agent_id, handle.container_name, run_id)
+        self._agent.cancel_run(handle.agent_id, handle.location, run_id)
 
     def _dispatch_action_locked(
         self,
@@ -315,7 +336,7 @@ class WorkbenchManager:
         # is non-blocking (it enqueues for a background forwarder), so export never
         # sits on this loop, the per-REE lock, or the measured execute window.
         result: ActionResult | None = None
-        for frame in self._agent.exec_action(handle.agent_id, handle.container_name, cmd_json, run_id, env):
+        for frame in self._agent.exec_action(handle.agent_id, handle.location, cmd_json, run_id, env):
             if isinstance(frame, LogFrame):
                 log(frame.stream, frame.level, frame.message)
             elif isinstance(frame, SpanFrame):
@@ -341,33 +362,33 @@ class WorkbenchManager:
     def dispatch_query(self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30) -> bytes:
         """Run a read-only CLI subcommand and return its stdout bytes.
 
-        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree``); the executor
-        is prepended here. Set ``locked`` for queries that must observe a
-        consistent snapshot — they take the per-REE lock so no mutating action
-        runs concurrently. Plain reads leave it off and run unsynchronised.
-        ``timeout`` bounds the exec itself; raise it for queries whose output
-        scales with the REE (archives, large artifacts).
+        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree``); the agent's
+        runtime prepends the bench's executor entry point. Set ``locked`` for
+        queries that must observe a consistent snapshot — they take the per-REE
+        lock so no mutating action runs concurrently. Plain reads leave it off
+        and run unsynchronised. ``timeout`` bounds the exec itself; raise it for
+        queries whose output scales with the REE (archives, large artifacts).
         """
-        exec_argv = ["repo2ree-exec", *argv]
+        exec_argv = list(argv)
         if locked:
             with self._ree_lock(handle.ree_id):
-                return self._agent.exec_query(handle.agent_id, handle.container_name, exec_argv, timeout=timeout)
-        return self._agent.exec_query(handle.agent_id, handle.container_name, exec_argv, timeout=timeout)
+                return self._agent.exec_query(handle.agent_id, handle.location, exec_argv, timeout=timeout)
+        return self._agent.exec_query(handle.agent_id, handle.location, exec_argv, timeout=timeout)
 
     def dispatch_query_stream(
         self, handle: WorkbenchHandle, *argv: str, locked: bool = False, timeout: int = 30
     ) -> Iterator[bytes]:
         """Run a read-only CLI subcommand and stream stdout bytes."""
-        exec_argv = ["repo2ree-exec", *argv]
+        exec_argv = list(argv)
 
         def stream() -> Iterator[bytes]:
             if locked:
                 with self._ree_lock(handle.ree_id):
                     yield from self._agent.exec_query_stream(
-                        handle.agent_id, handle.container_name, exec_argv, timeout=timeout
+                        handle.agent_id, handle.location, exec_argv, timeout=timeout
                     )
                 return
-            yield from self._agent.exec_query_stream(handle.agent_id, handle.container_name, exec_argv, timeout=timeout)
+            yield from self._agent.exec_query_stream(handle.agent_id, handle.location, exec_argv, timeout=timeout)
 
         return stream()
 
@@ -403,7 +424,7 @@ class WorkbenchManager:
         results = []
         for entry in self._registry.list_all():
             handle = WorkbenchHandle.from_entry(entry)
-            if not self._agent.is_running(handle.agent_id, handle.container_name):
+            if not self._agent.is_running(handle.agent_id, handle.location):
                 continue
             with suppress(Exception):
                 results.append(self.get_ree_metadata(handle))
@@ -415,4 +436,4 @@ class WorkbenchManager:
 
         ``host_path`` need only exist here; the agent may share no filesystem
         with us (see ``AgentClient.copy_in``)."""
-        self._agent.copy_in(handle.agent_id, handle.container_name, host_path, container_path)
+        self._agent.copy_in(handle.agent_id, handle.location, host_path, container_path)

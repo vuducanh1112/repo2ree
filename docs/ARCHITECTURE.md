@@ -26,12 +26,12 @@ The main REE path now has the intended package seam:
   container.
 
 Current isolation is **Docker-in-Docker inside a privileged workbench**. The
-demo/dev backend still mounts `/var/run/docker.sock` to launch workbenches
-([docker-compose.yml:13](docker-compose.yml#L13),
-[docker-compose.dev.yml:11](docker-compose.dev.yml#L11)), but the workbench
-does not receive the host socket. It runs its own daemon and stores
+backend never touches a container runtime: workbenches are launched by the
+*agent* (its own deployable, holding the docker socket —
+[docker-compose.yml](docker-compose.yml)) over the outbound WebSocket. The
+workbench does not receive the host socket. It runs its own daemon and stores
 `/var/lib/docker` in a per-REE volume
-([manager.py](supervisor/src/repo2ree_supervisor/manager.py)).
+([docker_runtime.py](agent/src/repo2ree_agent/docker_runtime.py)).
 
 The risk has moved: untrusted repo code no longer holds the host Docker socket
 on the main path, but the workbench is still privileged and not VM-backed.
@@ -71,7 +71,7 @@ then hosts the fixed `/ree` layout and the tools that act on it:
 │  owns: durable REE state (host storage), workbench lifecycle,         │
 │  command dispatch. Touches host docker/containerd to launch workbenches.│
 │                                                                       │
-│   on first action:  docker run repo2ree-workbench                     │
+│   on first action:  docker run <env image>                          │
 │        │                                                              │
 │        ▼                                                              │
 │  ┌─ WORKING ENV  (today: privileged dind; target: Kata microVM) ────┐ │
@@ -140,11 +140,25 @@ The workspace↔REE seam must not collapse — this names the tiers carefully:
 The seam: upstream source + overlay definition → materialized workspace →
 artifacts (REE products, incl. the runtime image) → experiment run.
 
-### The workbench image
+### The workbench env image
 
-The working env boots from a repo2ree-controlled base image (not `docker:latest`)
-bundling `dockerd`, the `repo2ree` CLI, git, and build toolchains. Pin and
-version it — the workbench is itself part of reproducibility.
+The working env boots from an *env image* that provides only the substrate —
+the default is upstream `docker:dind`, **pinned by manifest-list digest** in
+the backend's image catalog (`api/src/repo2ree_api/settings.py`); the bench is
+part of reproducibility, so the catalog pins refs and bumps them deliberately.
+The image carries no repo2ree content: at provision time the agent injects its
+**executor bundle** (the `repo2ree-exec` nix closure, mounted read-only at
+`/nix/store` from a content-addressed volume) and its **tools bundle**
+(`syft`, `git`, `curl`, `tar`, … + TLS roots), then verifies the bench
+contract with
+`repo2ree-exec doctor`. Executor and tools therefore version with the agent,
+never with the env image — any image that keeps a process alive and has a
+writable `/ree` can be a bench.
+
+Images that ship their own `/nix` (nix-built env images) can't take the
+`/nix/store` mount; the agent detects them, skips injection, and expects
+`repo2ree-exec` on their PATH — the escape hatch for benches that bake their
+own executor.
 
 ## Control plane / execution plane split
 

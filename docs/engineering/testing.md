@@ -19,14 +19,15 @@
 
 ## Before Docker-Gated Tests
 
-Build and load the workbench image:
+Build the executor/tools bundles the agent injects into benches:
 
 ```bash
-make workbench-image
+make e2e-bundles
 ```
 
-The Docker-gated tiers skip when Docker or `repo2ree-workbench:latest` is
-absent. They do not fake the workbench path.
+The Docker-gated tiers skip when Docker or the bundles are absent. They do
+not fake the workbench path; the first run pulls the pinned `docker:dind`
+bench image.
 
 ## Backend Checks
 

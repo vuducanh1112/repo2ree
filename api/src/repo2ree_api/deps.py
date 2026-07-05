@@ -24,8 +24,8 @@ agent_registry = AgentConnectionRegistry()
 
 workbench_manager = WorkbenchManager(
     registry=_registry,
-    # The catalog default, unless a deployment pins one via WORKBENCH_IMAGE.
-    workbench_image=service_settings.WORKBENCH_IMAGE or default_workbench_image().ref,
+    # The catalog default; per-REE overrides come in on the provision request.
+    workbench_image=default_workbench_image().ref,
     agent=WsAgentClient(agent_registry),
     span_sink=build_span_sink(service_settings.OTLP_ENDPOINT, console_fallback=True),
 )

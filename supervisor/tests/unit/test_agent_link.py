@@ -36,6 +36,8 @@ from repo2ree_protocol.agent import (
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import AgentConnection, AgentConnectionRegistry, WorkbenchUnavailableError, WsAgentClient
 
+_WB = WorkbenchLocation(container_name="wb", volume_name="wb-vol")
+
 
 class _ClosableIterator(Iterator[bytes], Protocol):
     def close(self) -> None: ...
@@ -100,7 +102,7 @@ def test_exec_query_returns_decoded_bytes() -> None:
     registry.register("a1", socket.connection)
     client = WsAgentClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", "wb", ["get-ree"]))
+    join = _run_in_thread(lambda: client.exec_query("a1", _WB, ["get-ree"]))
     req = socket.wait_for_request()
     assert req.request.op == "exec_query"
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b'{"ok": true}').decode()))
@@ -115,7 +117,7 @@ def test_exec_query_raises_on_unavailable() -> None:
     registry.register("a1", socket.connection)
     client = WsAgentClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", "wb", ["get-ree"]))
+    join = _run_in_thread(lambda: client.exec_query("a1", _WB, ["get-ree"]))
     socket.wait_for_request()
     socket.respond(UnavailableFrame(detail="gone"))
 
@@ -147,10 +149,10 @@ def test_is_running_true_and_no_agent_false() -> None:
     client = WsAgentClient(registry)
 
     # No agent connected → False, no raise.
-    assert client.is_running("a1", "wb") is False
+    assert client.is_running("a1", _WB) is False
 
     registry.register("a1", socket.connection)
-    join = _run_in_thread(lambda: client.is_running("a1", "wb"))
+    join = _run_in_thread(lambda: client.is_running("a1", _WB))
     socket.wait_for_request()
     socket.respond(RunningFrame(running=True))
     assert join() is True
@@ -163,7 +165,7 @@ def test_exec_action_streams_logs_then_result() -> None:
     client = WsAgentClient(registry)
 
     frames: list = []
-    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", "wb", "{}", "run1", {})))
+    join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", _WB, "{}", "run1", {})))
     socket.wait_for_request()
     socket.respond(LogFrame(stream="stdout", level="info", message="working"))
     socket.respond(ResultFrame(result=ActionResult(status="succeeded")))
@@ -180,10 +182,10 @@ def test_cancel_run_sends_cancel_run_request() -> None:
     registry.register("a1", socket.connection)
     client = WsAgentClient(registry)
 
-    join = _run_in_thread(lambda: client.cancel_run("a1", "wb", "run-7"))
+    join = _run_in_thread(lambda: client.cancel_run("a1", _WB, "run-7"))
     req = socket.wait_for_request()
     assert req.request.op == "cancel_run"
-    assert req.request.container_name == "wb"
+    assert req.request.location == _WB
     assert req.request.run_id == "run-7"
     socket.respond(DoneFrame())
     join()
@@ -198,11 +200,11 @@ def test_copy_in_streams_open_chunks_then_close(tmp_path) -> None:
     source = tmp_path / "archive.bin"
     source.write_bytes(b"streamed-archive-bytes")
 
-    join = _run_in_thread(lambda: client.copy_in("a1", "wb", str(source), "/ree/dest.bin"))
+    join = _run_in_thread(lambda: client.copy_in("a1", _WB, str(source), "/ree/dest.bin"))
 
     open_req = socket.wait_for_nth_request(1).request
     assert open_req.op == "copy_open"
-    assert open_req.container_name == "wb"
+    assert open_req.location == _WB
     assert open_req.container_path == "/ree/dest.bin"
     socket.respond_to(0, TransferFrame(transfer_id="t1"))
 
@@ -238,7 +240,7 @@ def test_copy_in_pipelines_chunks_within_the_window(tmp_path, monkeypatch: pytes
     source = tmp_path / "archive.bin"
     source.write_bytes(b"0123456789")  # 3 chunks: 4 + 4 + 2 bytes
 
-    join = _run_in_thread(lambda: client.copy_in("a1", "wb", str(source), "/ree/dest.bin"))
+    join = _run_in_thread(lambda: client.copy_in("a1", _WB, str(source), "/ree/dest.bin"))
     socket.wait_for_nth_request(1)
     socket.respond_to(0, TransferFrame(transfer_id="t1"))
 
@@ -269,7 +271,7 @@ def test_abandoned_stream_sends_cancel_to_the_agent() -> None:
     client = WsAgentClient(registry)
 
     def call() -> None:
-        stream = cast(_ClosableIterator, client.exec_query_stream("a1", "wb", ["build-archive"]))
+        stream = cast(_ClosableIterator, client.exec_query_stream("a1", _WB, ["build-archive"]))
         next(stream)
         stream.close()
 
@@ -292,7 +294,7 @@ def test_copy_in_aborts_transfer_on_chunk_error(tmp_path) -> None:
     source = tmp_path / "archive.bin"
     source.write_bytes(b"some-bytes")
 
-    join = _run_in_thread(lambda: client.copy_in("a1", "wb", str(source), "/ree/dest.bin"))
+    join = _run_in_thread(lambda: client.copy_in("a1", _WB, str(source), "/ree/dest.bin"))
 
     socket.wait_for_nth_request(1)
     socket.respond_to(0, TransferFrame(transfer_id="t9"))
@@ -331,7 +333,7 @@ def test_resolve_agent_raises_when_no_agent_connected() -> None:
 def test_pick_raises_when_no_agent_for_exec_query() -> None:
     client = WsAgentClient(AgentConnectionRegistry())
     with pytest.raises(WorkbenchUnavailableError, match="no workbench agent connected"):
-        client.exec_query("", "wb", ["get-ree"])
+        client.exec_query("", _WB, ["get-ree"])
 
 
 def test_pick_raises_when_named_agent_absent() -> None:
@@ -341,7 +343,7 @@ def test_pick_raises_when_named_agent_absent() -> None:
     client = WsAgentClient(registry)
     # A different agent is connected, but the REE is pinned to one that isn't.
     with pytest.raises(WorkbenchUnavailableError, match="agent 'a2' not connected"):
-        client.exec_query("a2", "wb", ["get-ree"])
+        client.exec_query("a2", _WB, ["get-ree"])
 
 
 def test_request_times_out_when_agent_goes_silent() -> None:
@@ -352,7 +354,7 @@ def test_request_times_out_when_agent_goes_silent() -> None:
     registry.register("a1", socket.connection)
 
     def call() -> None:
-        for _ in socket.connection.request(IsRunningRequest(container_name="wb"), frame_gap_timeout=0.1):
+        for _ in socket.connection.request(IsRunningRequest(location=_WB), frame_gap_timeout=0.1):
             pass
 
     join = _run_in_thread(call)
@@ -372,7 +374,7 @@ def test_is_running_returns_false_when_agent_goes_silent(monkeypatch: pytest.Mon
     registry.register("a1", socket.connection)
     client = WsAgentClient(registry)
 
-    join = _run_in_thread(lambda: client.is_running("a1", "wb"))
+    join = _run_in_thread(lambda: client.is_running("a1", _WB))
     socket.wait_for_request()  # sent, but the agent never answers
     assert join() is False
 
@@ -385,7 +387,7 @@ def test_exec_query_reassembles_multiple_chunks() -> None:
     registry.register("a1", socket.connection)
     client = WsAgentClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", "wb", ["build-archive"]))
+    join = _run_in_thread(lambda: client.exec_query("a1", _WB, ["build-archive"]))
     socket.wait_for_request()
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b"part-one-").decode()))
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b"part-two").decode()))

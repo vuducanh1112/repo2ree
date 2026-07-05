@@ -8,6 +8,7 @@ from typing import Any, TextIO
 
 import click
 
+from repo2ree_core.doctor import run_doctor
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.run_command import run_command
@@ -76,6 +77,14 @@ def main() -> None:
     # Plain (unstructured) root logs: the executor's meaningful logs ride the
     # LogSink NDJSON relay, and it has no path to a collector anyway.
     _configure_logging()
+    # On injected benches the agent advertises a symlink farm of handler/
+    # lifecycle tools (git, curl, tar, …). Prepending it here — rather than to
+    # the container env — scopes it to the executor and its subprocesses: user
+    # scripts get pinned nix tools (deterministic over whatever the image
+    # ships), while processes outside the executor keep the image's own PATH.
+    tools_bin = os.environ.get("REPO2REE_TOOLS_BIN")
+    if tools_bin:
+        os.environ["PATH"] = f"{tools_bin}{os.pathsep}{os.environ.get('PATH', '')}"
     # The supervisor sets TRACE_RELAY when it wants spans; they ride the stderr
     # NDJSON stream back to it (this process has no path to the collector).
     if os.environ.get("TRACE_RELAY"):
@@ -303,6 +312,18 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
 # ================================================
 # Inspection commands
 # ================================================
+
+
+@cli.command("doctor")
+def doctor_cmd() -> None:
+    """Probe this bench's capabilities and emit the report as JSON.
+
+    The agent runs this right after provisioning a bench: ``ok`` covers the
+    hard bench contract (writable /ree), the rest is capability inventory
+    (docker substrate, handler tools). Exits non-zero only when the probe
+    itself cannot run — a not-ok report is the agent's call to make.
+    """
+    click.echo(json.dumps(run_doctor()))
 
 
 @cli.command("get-ree")

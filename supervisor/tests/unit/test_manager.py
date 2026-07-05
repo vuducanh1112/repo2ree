@@ -56,34 +56,34 @@ class FakeAgent:
     def remove(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> None:
         self.routed_agent_ids.append(agent_id)
 
-    def is_running(self, agent_id: str, container_name: str) -> bool:
+    def is_running(self, agent_id: str, location: WorkbenchLocation) -> bool:
         return self.running
 
-    def exec_simple(self, agent_id: str, container_name: str, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 60) -> None:
         self.routed_agent_ids.append(agent_id)
-        self.exec_simple_calls.append((container_name, argv))
+        self.exec_simple_calls.append((location.container_name, argv))
 
-    def exec_query(self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30) -> bytes:
+    def exec_query(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> bytes:
         self.routed_agent_ids.append(agent_id)
         return self.query_returns
 
     def exec_query_stream(
-        self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30
+        self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30
     ) -> Iterator[bytes]:
         self.routed_agent_ids.append(agent_id)
         yield self.query_returns
 
     def exec_action(
-        self, agent_id: str, container_name: str, cmd_json: str, run_id: str, env: dict[str, str]
+        self, agent_id: str, location: WorkbenchLocation, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]:
         self.routed_agent_ids.append(agent_id)
         yield from self.action_frames
 
-    def cancel_run(self, agent_id: str, container_name: str, run_id: str) -> None:
+    def cancel_run(self, agent_id: str, location: WorkbenchLocation, run_id: str) -> None:
         self.routed_agent_ids.append(agent_id)
-        self.cancel_run_calls.append((container_name, run_id))
+        self.cancel_run_calls.append((location.container_name, run_id))
 
-    def copy_in(self, agent_id: str, container_name: str, source_path: str, container_path: str) -> None:
+    def copy_in(self, agent_id: str, location: WorkbenchLocation, source_path: str, container_path: str) -> None:
         self.routed_agent_ids.append(agent_id)
 
 
@@ -105,9 +105,7 @@ def test_provision_registers_handle_and_runs_init_ree(tmp_path) -> None:
     assert handle.container_name == "repo2ree-wb-ree1"
     assert handle.image == "default:img"
     # init-ree was issued against the freshly provisioned container.
-    assert agent.exec_simple_calls == [
-        ("repo2ree-wb-ree1", ["repo2ree-exec", "init-ree", "--ree-id", "ree1", "--name", "My REE"])
-    ]
+    assert agent.exec_simple_calls == [("repo2ree-wb-ree1", ["init-ree", "--ree-id", "ree1", "--name", "My REE"])]
     # Provision log frames were forwarded to the sink.
     assert any("pulling default:img" in message for _, _, message in logs)
     # The handle is persisted.

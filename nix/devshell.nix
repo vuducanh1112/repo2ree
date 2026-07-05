@@ -2,8 +2,9 @@
 # Developer shell
 #
 # Tooling for working on repo2ree locally (frontend, CLI, k8s). This
-# is intentionally separate from ./workbench-image.nix: edits here are
-# routine and must never touch the reproducibility-sensitive image.
+# is intentionally separate from the shipped closures (./ree-executor.nix,
+# ./tools.nix): edits here are routine and must never touch the
+# reproducibility-sensitive surfaces.
 #
 # Enter with:   nix develop
 # ----------------------------------------------------------------

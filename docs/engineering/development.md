@@ -4,9 +4,12 @@
 > or operating repo2ree itself. User-facing service guides should live outside
 > `docs/engineering/`.
 
-repo2ree is a Python workspace plus a React/Vite frontend. The backend drives
-Docker workbench containers, so most realistic flows need a reachable Docker
-daemon and the `repo2ree-workbench:latest` image.
+repo2ree is a Python workspace plus a React/Vite frontend. Workbench
+containers are driven by the agent, so most realistic flows need a reachable
+Docker daemon. Every tier — the browser e2e/demo runs and the docker-gated
+integration tiers — provisions the production default bench: upstream
+`docker:dind` with the executor and tools injected by the agent
+(`make e2e-bundles` builds what the agent injects).
 
 ## Recommended Toolchain
 
@@ -76,18 +79,16 @@ The frontend reads `VITE_API_BASE_URL` at build/dev-server time. In local dev,
 point it at the API. In the Docker demo image, the frontend uses same-origin
 `/api` and Caddy proxies API traffic to the backend service.
 
-## Workbench Image
+## Workbench Benches
 
 The implemented execution path provisions one persistent Docker-in-Docker
-workbench per REE. Build and load the workbench image before running Docker-gated
-integration or e2e flows:
+workbench per REE from the pinned upstream `docker:dind` bench, with the
+executor/tools bundles injected by the agent. Build the bundles before running
+Docker-gated integration or e2e flows:
 
 ```bash
-make workbench-image
+make e2e-bundles
 ```
-
-This builds `.#workbench-image` with Nix, loads it into Docker, and tags it as
-`repo2ree-workbench:latest`.
 
 The current workbench is privileged Docker-in-Docker. It does not receive the
 host Docker socket; it runs its own daemon and stores `/var/lib/docker` in a
@@ -118,7 +119,6 @@ The API reads `.env` through `pydantic-settings`. Useful local variables:
 |---|---|---|
 | `UPLOAD_STAGING_DIR` | `.repo2ree/upload-staging` | Temporary HTTP upload landing zone before files enter a workbench. |
 | `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Host-side map from REE id to workbench container/volume. |
-| `WORKBENCH_IMAGE` | `repo2ree-workbench:latest` | Workbench image used by the API/supervisor. |
 | `OTLP_ENDPOINT` | unset | OTLP collector base URL for traces/metrics. |
 | `TRACE_FILE` | unset | Local NDJSON trace sink when no collector is used. |
 | `VITE_API_BASE_URL` | unset | Frontend API origin for local Vite builds/dev server. |
@@ -137,9 +137,10 @@ The Python workspace members are:
 | Package | Role |
 |---|---|
 | `protocol` | Typed command/result/log/tracing contract shared across host and workbench. |
-| `core` | Execution handlers and REE filesystem/domain logic. Runs inside the workbench image. |
-| `executor` | `repo2ree-exec`, the one-shot in-workbench command surface over `core`. |
+| `core` | Execution handlers and REE filesystem/domain logic. Runs inside the bench (injected by the agent). |
+| `executor` | `repo2ree-exec`, the one-shot in-bench command surface over `core`. |
 | `supervisor` | Host-side workbench lifecycle and command dispatch. |
+| `agent` | The deployable that owns the container runtime and injects the executor/tools bundles. |
 | `api` | FastAPI surface over the supervisor and service storage. |
 
 The frontend lives under `frontend/` and is a Vite/React app.
@@ -159,8 +160,8 @@ make fe-checks
 # Backend checks
 make be-checks
 
-# Workbench image
-make workbench-image
+# Executor/tools bundles for Docker-gated tiers
+make e2e-bundles
 ```
 
 For the full test map, see [testing.md](testing.md).

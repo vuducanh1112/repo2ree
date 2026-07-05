@@ -1,10 +1,11 @@
-"""Catalog of base images offered for workbench provisioning, and its route.
+"""The workbench image catalog route.
 
-Single source of truth for which images the UI can pick from and which one a
-provisioning request defaults to when it omits an image. A deployment may still
-override the *default* image via the ``WORKBENCH_IMAGE`` env var (see settings)
-— handy for driving a locally-built image in tests/dev without editing this
-list.
+Which images the UI can pick from — and which one a provisioning request defaults
+to when it omits one — is configured on ``Settings.WORKBENCH_IMAGE_CATALOG`` (see
+settings.py), so a deployment can serve a different set (e.g. a locally-built
+image) via env without touching code. This module reads that catalog and serves
+it. To drive a one-off image, pass it as ``workbenchImage`` on the provision
+request instead.
 """
 
 from __future__ import annotations
@@ -12,23 +13,11 @@ from __future__ import annotations
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from repo2ree_api.settings import WorkbenchImage, service_settings
 
-class WorkbenchImage(BaseModel):
-    id: str
-    ref: str
-    label: str
-    description: str
-
-
-# Ordered; the first entry is the default offered when a request omits an image.
-WORKBENCH_IMAGE_CATALOG: tuple[WorkbenchImage, ...] = (
-    WorkbenchImage(
-        id="standard",
-        ref="docker.io/vuducanh1112/repo2ree-workbench:edge",
-        label="Standard",
-        description="Default workbench toolchain.",
-    ),
-)
+# The configured catalog, resolved once at import. Ordered; the first entry is the
+# default offered when a request omits an image.
+WORKBENCH_IMAGE_CATALOG: tuple[WorkbenchImage, ...] = service_settings.WORKBENCH_IMAGE_CATALOG
 
 
 def default_workbench_image() -> WorkbenchImage:

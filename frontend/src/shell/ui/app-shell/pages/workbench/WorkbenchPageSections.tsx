@@ -92,7 +92,7 @@ export function WorkbenchImageSelector({
           type="text"
           value={selection.customRef}
           onChange={(e) => onChange({ ...selection, customRef: e.target.value })}
-          placeholder="e.g. docker.io/org/repo2ree-workbench:edge"
+          placeholder="e.g. docker.io/library/docker:29-dind"
           disabled={disabled}
           style={{ ...lgInput(disabled), fontFamily: F.mono, fontSize: 12 }}
         />

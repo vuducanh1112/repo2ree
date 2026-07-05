@@ -238,9 +238,12 @@ test("upload source archive into workspace", async ({ page }) => {
     );
     // Provisioning lands on the canvas hub; decompose before source acquisition
     // so the whole authoring walkthrough happens against the shell view.
+    // Generous budget: the lean bench path pulls the image, starts the bench,
+    // and runs the doctor probe (which waits for the in-bench dockerd) —
+    // ~20s warm, longer on a cold registry pull.
     await expect(
       page.getByRole("navigation").getByRole("button", { name: "Source", exact: true }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 120000 });
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,

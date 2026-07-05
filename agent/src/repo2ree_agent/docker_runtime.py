@@ -6,10 +6,29 @@ naming, the pull-with-cache fallback, streaming executor logs, and the
 ``docker exec`` exit codes that mean the container is gone. It emits the
 protocol's ``AgentFrame`` records for streaming calls and raises
 ``WorkbenchGone`` for request/response calls when the backend has vanished.
+
+Executor injection: when the agent ships an executor bundle (the
+``REPO2REE_EXEC_BUNDLE`` dir — see nix/exec-bundle.nix), benches don't need
+``repo2ree-exec`` baked into their image. The runtime populates a
+content-addressed volume with the bundle's nix closure once per host, mounts
+it read-only at ``/nix/store`` in every bench, and drives the executor via
+the manifest's absolute path — carried on the minted ``WorkbenchLocation``
+so later calls use it without re-deciding. Images that carry their own
+``/nix`` (nix-built images, including the legacy workbench image with the
+executor baked in) are detected and left un-injected: mounting over their
+``/nix/store`` would shadow everything they contain, and they provide
+``repo2ree-exec`` on PATH.
+
+The bench's main process is the image's own default command — the env image
+defines the environment, daemons included (docker:dind's entrypoint starts
+``dockerd`` only when dockerd is the command). A pause command (the bundle's
+static sleep, or the image's own) is strictly the rescue for images whose
+default process exits immediately.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -18,13 +37,15 @@ import subprocess
 import tempfile
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
 from contextlib import suppress
+from dataclasses import dataclass
+from pathlib import Path
 
+from repo2ree_agent.workbench_runtime import WorkbenchGone
 from repo2ree_protocol.agent import (
     COPY_CHUNK_BYTES,
     AgentFrame,
-    DoneFrame,
     ErrorFrame,
     LocationFrame,
     LogFrame,
@@ -34,6 +55,8 @@ from repo2ree_protocol.agent import (
     WorkbenchLocation,
 )
 from repo2ree_protocol.result import ActionResult
+
+__all__ = ["DockerRuntime", "WorkbenchGone"]
 
 logger = logging.getLogger(__name__)
 
@@ -45,17 +68,111 @@ _WORKBENCH_DOCKER_MODES = frozenset({"dind", "host-socket"})
 _HOST_DOCKER_SOCK_MOUNT = "/var/run/docker.sock:/var/run/docker.sock"
 _FAILURE_OUTPUT_TAIL_BYTES = 16 * 1024
 
+# Where the injected closure appears inside a bench. The bundle's paths are
+# absolute into /nix/store, so this is not a choice — it is the mount point
+# that makes them resolve.
+_STORE_MOUNT = "/nix/store"
+# Marker file at the store volume's root: present only after a populate
+# finished, so a crash mid-copy is retried rather than trusted.
+_POPULATED_SENTINEL = ".repo2ree-populated"
+# How long a freshly started bench must stay up before it counts as viable.
+# Long enough to catch a default command that exits at once (alpine's detached
+# /bin/sh); daemon *readiness* (dockerd accepting connections) is not gated
+# here — the process staying alive is the contract.
+_STARTUP_GRACE_SECONDS = 2.0
 
-class WorkbenchGone(RuntimeError):
-    """The workbench backend is gone or stopping (a request/response call)."""
+
+@dataclass(frozen=True)
+class _InjectionBundle:
+    """The agent-shipped executor (and optional tools) closure, resolved once.
+
+    ``store_sources`` are agent-host paths handed to ``docker cp`` verbatim:
+    either one ``<dir>/.`` whose contents are the closure (the standalone
+    bundle's ``store/``) or the individual store paths from a ``store-paths``
+    list (the agent image, whose own /nix/store carries them).
+    """
+
+    exec_path: str
+    pause_path: str
+    store_sources: tuple[str, ...]
+    volume_name: str
+    # REPO2REE_TOOL_<NAME> → absolute path, set on the bench container so the
+    # executor (and its core handlers) can find injected tools without PATH.
+    tool_env: dict[str, str]
+
+
+def _load_injection_bundle(exec_bundle_dir: str | None, tools_bundle_dir: str | None) -> _InjectionBundle | None:
+    """Resolve the bundle dirs into an ``_InjectionBundle``; None when unset.
+
+    A *set but unreadable* bundle dir raises: a misconfigured agent must fail
+    at startup, not silently provision PATH-dependent benches.
+    """
+    if not exec_bundle_dir:
+        return None
+
+    def bundle_parts(bundle_dir: str) -> tuple[bytes, list[str]]:
+        root = Path(bundle_dir)
+        manifest_bytes = (root / "manifest.json").read_bytes()
+        store_dir = root / "store"
+        if store_dir.is_dir():
+            return manifest_bytes, [f"{store_dir}/."]
+        paths = [line for line in (root / "store-paths").read_text().splitlines() if line.strip()]
+        return manifest_bytes, paths
+
+    exec_manifest_bytes, sources = bundle_parts(exec_bundle_dir)
+    exec_manifest = json.loads(exec_manifest_bytes)
+    digest = hashlib.sha256(exec_manifest_bytes)
+
+    tool_env: dict[str, str] = {}
+    if tools_bundle_dir:
+        tools_manifest_bytes, tools_sources = bundle_parts(tools_bundle_dir)
+        sources += tools_sources
+        digest.update(tools_manifest_bytes)
+        tools_manifest = json.loads(tools_manifest_bytes)
+        for name, path in tools_manifest.get("tools", {}).items():
+            tool_env[f"REPO2REE_TOOL_{name.upper().replace('-', '_')}"] = path
+        # The symlink farm the executor prepends to its own PATH, so lifecycle
+        # scripts calling bare tool names work on tool-less images. Applied by
+        # the executor, not the container env — overriding the container PATH
+        # would shadow the image's own binaries (dind's docker CLI).
+        bin_dir = tools_manifest.get("binDir")
+        if bin_dir:
+            tool_env["REPO2REE_TOOLS_BIN"] = bin_dir
+        # Verbatim bench env from the manifest (TLS roots for git/curl).
+        tool_env.update(tools_manifest.get("env", {}))
+
+    for source in sources:
+        digest.update(source.encode())
+
+    return _InjectionBundle(
+        exec_path=exec_manifest["execPath"],
+        pause_path=exec_manifest["pausePath"],
+        store_sources=tuple(sources),
+        volume_name=f"repo2ree-store-{digest.hexdigest()[:12]}",
+        tool_env=tool_env,
+    )
 
 
 class DockerRuntime:
-    def __init__(self, docker_mode: str = "dind"):
+    def __init__(
+        self,
+        docker_mode: str = "dind",
+        exec_bundle_dir: str | None = None,
+        tools_bundle_dir: str | None = None,
+    ):
         if docker_mode not in _WORKBENCH_DOCKER_MODES:
             modes = ", ".join(sorted(_WORKBENCH_DOCKER_MODES))
             raise ValueError(f"unknown workbench docker mode {docker_mode!r}; expected one of: {modes}")
         self._docker_mode = docker_mode
+        self._bundle = _load_injection_bundle(
+            exec_bundle_dir if exec_bundle_dir is not None else os.environ.get("REPO2REE_EXEC_BUNDLE") or None,
+            tools_bundle_dir if tools_bundle_dir is not None else os.environ.get("REPO2REE_TOOLS_BUNDLE") or None,
+        )
+        # Populating the store volume is once-per-content-hash; the lock keeps
+        # concurrent provisions from racing the copy, the set makes the common
+        # case (already populated this process) free.
+        self._populate_lock = threading.Lock()
+        self._populated_volumes: set[str] = set()
 
     # ------------------------------------------------
     # Naming — deterministic from ree_id, a local-docker convention.
@@ -89,30 +206,48 @@ class DockerRuntime:
             _docker("volume", "create", volume_name)
             if self._docker_mode == "dind":
                 _docker("volume", "create", self._dind_volume_name(ree_id))
-            yield from self._run_workbench_container(container_name, ree_id, volume_name, image)
+            exec_path = yield from self._run_workbench_container(container_name, ree_id, volume_name, image)
         except RuntimeError as exc:
             yield ErrorFrame(detail=str(exc))
             return
-        yield LocationFrame(location=WorkbenchLocation(container_name=container_name, volume_name=volume_name))
+        yield LocationFrame(
+            location=WorkbenchLocation(container_name=container_name, volume_name=volume_name, exec_path=exec_path)
+        )
 
     def reprovision(self, ree_id: str, location: WorkbenchLocation, image: str) -> Iterator[AgentFrame]:
         try:
             _docker_silent("rm", "-f", location.container_name)
-            yield from self._run_workbench_container(location.container_name, ree_id, location.volume_name, image)
+            exec_path = yield from self._run_workbench_container(
+                location.container_name, ree_id, location.volume_name, image
+            )
         except RuntimeError as exc:
             yield ErrorFrame(detail=str(exc))
             return
-        yield DoneFrame()
+        # A fresh location, not a done: the replacement re-decides injection, so
+        # the exec path may differ from the one the caller handed in.
+        yield LocationFrame(
+            location=WorkbenchLocation(
+                container_name=location.container_name, volume_name=location.volume_name, exec_path=exec_path
+            )
+        )
 
     def remove(self, ree_id: str, location: WorkbenchLocation) -> None:
         _docker_silent("rm", "-f", location.container_name)
         _docker_silent("volume", "rm", location.volume_name)
         if self._docker_mode == "dind":
             _docker_silent("volume", "rm", self._dind_volume_name(ree_id))
+        # The injected store volume is shared across benches and content-
+        # addressed — never removed per REE.
 
     def _run_workbench_container(
         self, container_name: str, ree_id: str, volume_name: str, image: str
-    ) -> Iterator[AgentFrame]:
+    ) -> Generator[AgentFrame, None, str]:
+        """Pull ``image`` and start the bench; returns the executor entry point.
+
+        A generator with a return value: frames stream out, the exec path (the
+        bundle's absolute entry point when injecting, the PATH default when the
+        image carries its own executor) comes back via ``yield from``.
+        """
         # Always pull up front so a moving tag (e.g. ``:edge``) picks up newer
         # builds instead of being pinned to whatever was first cached — and pull
         # explicitly so the progress streams live. ``docker pull`` is
@@ -131,21 +266,107 @@ class DockerRuntime:
             message = f"pull failed ({exc}); using cached image {image}"
             logger.warning(message)
             yield LogFrame(stream="system", level="warn", message=message)
-        _docker(
-            "run",
-            "-d",
+
+        bundle = None
+        if self._bundle is not None:
+            if _image_has_nix(image):
+                yield LogFrame(
+                    stream="system",
+                    level="info",
+                    message=f"image {image} ships its own /nix — skipping executor injection, using PATH",
+                )
+            else:
+                bundle = self._bundle
+
+        injection_args: list[str] = []
+        exec_path = "repo2ree-exec"
+        if bundle is not None:
+            yield from self._ensure_store_volume(image, bundle)
+            injection_args = ["-v", f"{bundle.volume_name}:{_STORE_MOUNT}:ro"]
+            for key, value in sorted(bundle.tool_env.items()):
+                injection_args += ["-e", f"{key}={value}"]
+            exec_path = bundle.exec_path
+
+        run_args = [
             *self._docker_backend_args(ree_id),
+            *injection_args,
             "--name",
             container_name,
-            "--restart",
-            "unless-stopped",
+            # tini as PID 1: whatever keeps the bench alive, docker exec'd
+            # process trees get reaped instead of accumulating zombies.
+            "--init",
             "-v",
             f"{volume_name}:/ree",
-            image,
-            "sleep",
-            "infinity",
-            timeout=120,
-        )
+        ]
+        # The image's own default process is the bench's main process — the env
+        # image defines the environment, including its daemons (docker:dind's
+        # entrypoint only starts dockerd when dockerd *is* the command, so
+        # forcing a keep-alive command of our own would boot it substrate-dead).
+        # A pause command is strictly the rescue for images whose default exits
+        # immediately (alpine's detached /bin/sh, distroless with no CMD).
+        if not self._start_bench(container_name, run_args, image, command=[]):
+            fallback = [bundle.pause_path, "infinity"] if bundle is not None else ["sleep", "infinity"]
+            yield LogFrame(
+                stream="system",
+                level="info",
+                message=f"image {image}'s default process exited immediately;"
+                f" keeping the bench alive with {fallback[0]}",
+            )
+            if not self._start_bench(container_name, run_args, image, command=fallback):
+                raise RuntimeError(
+                    f"bench container from {image} would not stay running (default command and fallback both exited)"
+                )
+        yield from _probe_bench(container_name, exec_path, image)
+        return exec_path
+
+    @staticmethod
+    def _start_bench(container_name: str, run_args: list[str], image: str, command: list[str]) -> bool:
+        """Start the bench and report whether it stayed up past the grace window.
+
+        The restart policy is applied only *after* the container proves viable —
+        starting with ``--restart unless-stopped`` would turn an exits-immediately
+        default command into a silent crash loop instead of a falsifiable check.
+        A failed attempt is removed so the retry can reuse the name.
+        """
+        _docker("run", "-d", *run_args, image, *command, timeout=120)
+        time.sleep(_STARTUP_GRACE_SECONDS)
+        if not _container_running(container_name):
+            _docker_silent("rm", "-f", container_name)
+            return False
+        _docker("update", "--restart", "unless-stopped", container_name)
+        return True
+
+    def _ensure_store_volume(self, image: str, bundle: _InjectionBundle) -> Iterator[AgentFrame]:
+        """Populate the content-addressed store volume, once.
+
+        The copies go through a never-started scratch container from ``image``
+        (just pulled, so no extra fetch) with the volume mounted — ``docker cp``
+        addresses paths inside a container, running or not.
+        """
+        if bundle.volume_name in self._populated_volumes:
+            return
+        with self._populate_lock:
+            if bundle.volume_name in self._populated_volumes:
+                return
+            _docker("volume", "create", bundle.volume_name)
+            scratch = _docker_out("create", "-v", f"{bundle.volume_name}:/bundle-store", image, "/repo2ree-noop")
+            try:
+                if _container_path_exists(scratch, f"/bundle-store/{_POPULATED_SENTINEL}"):
+                    self._populated_volumes.add(bundle.volume_name)
+                    return
+                yield LogFrame(
+                    stream="system",
+                    level="info",
+                    message=f"populating executor volume {bundle.volume_name}"
+                    f" ({len(bundle.store_sources)} closure paths)",
+                )
+                for source in bundle.store_sources:
+                    _docker("cp", source, f"{scratch}:/bundle-store", timeout=600)
+                with tempfile.NamedTemporaryFile(prefix="repo2ree-populated-") as marker:
+                    _docker("cp", marker.name, f"{scratch}:/bundle-store/{_POPULATED_SENTINEL}")
+                self._populated_volumes.add(bundle.volume_name)
+            finally:
+                _docker_silent("rm", "-f", scratch)
 
     def _docker_backend_args(self, ree_id: str) -> list[str]:
         if self._docker_mode == "dind":
@@ -156,6 +377,11 @@ class DockerRuntime:
                 "--privileged",
                 "-e",
                 "DOCKER_DRIVER=overlay2",
+                # Upstream docker:dind entrypoints generate TLS material and
+                # listen on tcp/2376 unless told not to; the bench daemon is
+                # only ever reached over its local unix socket.
+                "-e",
+                "DOCKER_TLS_CERTDIR=",
                 "-v",
                 f"{self._dind_volume_name(ree_id)}:/var/lib/docker",
             ]
@@ -172,23 +398,19 @@ class DockerRuntime:
     # Queries / simple exec (request/response)
     # ------------------------------------------------
 
-    def is_running(self, container_name: str) -> bool:
-        result = subprocess.run(
-            ["docker", "inspect", "--format", "{{.State.Running}}", container_name],
-            capture_output=True,
-            text=True,
-            timeout=10,
+    def is_running(self, location: WorkbenchLocation) -> bool:
+        return _container_running(location.container_name)
+
+    def exec_simple(self, location: WorkbenchLocation, argv: list[str], timeout: int = 60) -> None:
+        self._exec(location.container_name, [location.exec_path, *argv], timeout, what=f"docker exec {argv[0]}")
+
+    def cancel_run(self, location: WorkbenchLocation, run_id: str) -> None:
+        self.exec_simple(location, ["cancel-run", "--run-id", run_id], timeout=10)
+
+    def exec_query_stream(self, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
+        yield from _stream_exec(
+            ["docker", "exec", location.container_name, location.exec_path, *argv], timeout, what=f"query {argv!r}"
         )
-        return result.returncode == 0 and result.stdout.strip() == "true"
-
-    def exec_simple(self, container_name: str, argv: list[str], timeout: int = 60) -> None:
-        self._exec(container_name, argv, timeout, what=f"docker exec {argv[0]}")
-
-    def cancel_run(self, container_name: str, run_id: str) -> None:
-        self.exec_simple(container_name, ["repo2ree-exec", "cancel-run", "--run-id", run_id], timeout=10)
-
-    def exec_query_stream(self, container_name: str, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
-        yield from _stream_exec(["docker", "exec", container_name, *argv], timeout, what=f"query {argv!r}")
 
     @staticmethod
     def _exec(container_name: str, argv: list[str], timeout: int, what: str) -> bytes:
@@ -211,13 +433,13 @@ class DockerRuntime:
             raise RuntimeError(message)
         return result.stdout
 
-    def copy_in(self, container_name: str, source_path: str, container_path: str) -> None:
+    def copy_in(self, location: WorkbenchLocation, source_path: str, container_path: str) -> None:
         # ``source_path`` is a file on *our* host — the control plane streamed the
         # bytes here into a local temp file (see TransferStore), so there is no
         # shared-filesystem assumption with the control plane. ``docker cp``
         # resolves the destination path the same way it always has.
         result = subprocess.run(
-            ["docker", "cp", source_path, f"{container_name}:{container_path}"],
+            ["docker", "cp", source_path, f"{location.container_name}:{container_path}"],
             capture_output=True,
             text=True,
             timeout=120,
@@ -229,7 +451,9 @@ class DockerRuntime:
     # Action dispatch (streaming)
     # ------------------------------------------------
 
-    def exec_action(self, container_name: str, cmd_json: str, run_id: str, env: dict[str, str]) -> Iterator[AgentFrame]:
+    def exec_action(
+        self, location: WorkbenchLocation, cmd_json: str, run_id: str, env: dict[str, str]
+    ) -> Iterator[AgentFrame]:
         env_args: list[str] = []
         for key, value in env.items():
             env_args += ["-e", f"{key}={value}"]
@@ -240,8 +464,8 @@ class DockerRuntime:
                 "exec",
                 "-i",
                 *env_args,
-                container_name,
-                "repo2ree-exec",
+                location.container_name,
+                location.exec_path,
                 "execute",
                 "--action",
                 "-",
@@ -412,9 +636,122 @@ def _docker(*args: str, timeout: int = 60) -> None:
         raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
 
 
+def _docker_out(*args: str, timeout: int = 60) -> str:
+    """Like ``_docker`` but returns stripped stdout (e.g. a created container id)."""
+    result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
+    if result.returncode != 0:
+        raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
+    return result.stdout.strip()
+
+
 def _image_present(image: str) -> bool:
     """True if the image already exists locally (no registry round-trip)."""
     return subprocess.run(["docker", "image", "inspect", image], capture_output=True, timeout=30).returncode == 0
+
+
+def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[AgentFrame]:
+    """Run ``repo2ree-exec doctor`` in the fresh bench and enforce the contract.
+
+    Fail-fast is the point: a bench that can't run the executor at all, or
+    whose ``/ree`` isn't writable, dies here with a specific message instead of
+    hanging on its first build. Missing *capabilities* (docker substrate,
+    handler tools) are reported as logs — whether a docker-less bench is
+    acceptable is the control plane's call, not the agent's.
+    """
+    # The doctor itself polls up to ~15s for a still-starting dockerd; the exec
+    # timeout just needs to comfortably exceed that.
+    result = subprocess.run(
+        ["docker", "exec", container_name, exec_path, "doctor"],
+        capture_output=True,
+        text=True,
+        timeout=90,
+    )
+    if result.returncode != 0:
+        detail = _tail_text(result.stderr.encode()) or _tail_text(result.stdout.encode()) or "(no output)"
+        # A baked executor from before the probe existed is version skew, not a
+        # broken bench: it proved it can run by answering at all, so provision
+        # it like the pre-probe agent would have.
+        if "No such command 'doctor'" in detail:
+            yield LogFrame(
+                stream="system",
+                level="warn",
+                message=f"bench executor in {image} predates the doctor probe — skipping capability check",
+            )
+            return
+        raise RuntimeError(f"bench from {image} failed the executor probe (exit {result.returncode}): {detail}")
+    try:
+        report = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"bench from {image} returned an unparseable doctor report: {exc}") from exc
+
+    if not report.get("ok", False):
+        raise RuntimeError(f"bench from {image} violates the workbench contract: /ree is not writable")
+
+    docker_info = report.get("docker", {})
+    if docker_info.get("available"):
+        docker_summary = f"docker {docker_info.get('serverVersion', '?')}"
+    else:
+        docker_summary = f"no docker substrate ({docker_info.get('detail', 'unknown')})"
+    tools = report.get("tools", {})
+    present = sorted(name for name, path in tools.items() if path)
+    missing = sorted(name for name, path in tools.items() if not path)
+    yield LogFrame(
+        stream="system",
+        level="info",
+        message=f"bench probe: {docker_summary}; tools present: {', '.join(present) or 'none'}"
+        + (f"; missing: {', '.join(missing)}" if missing else ""),
+    )
+    if not docker_info.get("available"):
+        yield LogFrame(
+            stream="system",
+            level="warn",
+            message="bench has no reachable docker daemon — runtime builds and experiment runs will fail here",
+        )
+
+
+def _container_running(container_name: str) -> bool:
+    result = subprocess.run(
+        ["docker", "inspect", "--format", "{{.State.Running}}", container_name],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    return result.returncode == 0 and result.stdout.strip() == "true"
+
+
+def _image_has_nix(image: str) -> bool:
+    """True if ``image`` carries its own /nix tree.
+
+    Probed through a never-started scratch container: ``docker cp`` streams the
+    path as a tar to stdout, so one readable byte proves existence — the
+    process is killed immediately rather than streaming a whole nix store.
+    The scratch command never runs, so it need not exist in the image.
+    """
+    scratch = _docker_out("create", image, "/repo2ree-noop")
+    try:
+        proc = subprocess.Popen(
+            ["docker", "cp", f"{scratch}:/nix", "-"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        if proc.stdout is None:
+            raise RuntimeError("Popen stdout pipe unavailable")
+        first_byte = proc.stdout.read(1)
+        _kill_process(proc)
+        return bool(first_byte)
+    finally:
+        _docker_silent("rm", "-f", scratch)
+
+
+def _container_path_exists(container_id: str, path: str) -> bool:
+    """True if ``path`` exists inside the (possibly never-started) container."""
+    result = subprocess.run(
+        ["docker", "cp", f"{container_id}:{path}", "-"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=30,
+    )
+    return result.returncode == 0
 
 
 def _docker_stream_lines(*args: str, timeout: int = 600) -> Iterator[str]:

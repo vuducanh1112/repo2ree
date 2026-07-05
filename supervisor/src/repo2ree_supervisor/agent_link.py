@@ -348,17 +348,17 @@ class WsAgentClient:
         return self._registry.pick(agent_id).request(ReprovisionRequest(ree_id=ree_id, location=location, image=image))
 
     def exec_action(
-        self, agent_id: str, container_name: str, cmd_json: str, run_id: str, env: dict[str, str]
+        self, agent_id: str, location: WorkbenchLocation, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]:
         return self._registry.pick(agent_id).request(
-            ExecActionRequest(container_name=container_name, cmd_json=cmd_json, run_id=run_id, env=env)
+            ExecActionRequest(location=location, cmd_json=cmd_json, run_id=run_id, env=env)
         )
 
-    def cancel_run(self, agent_id: str, container_name: str, run_id: str) -> None:
+    def cancel_run(self, agent_id: str, location: WorkbenchLocation, run_id: str) -> None:
         conn = self._registry.pick(agent_id)
         self._drain_void(
             conn.request(
-                CancelRunRequest(container_name=container_name, run_id=run_id),
+                CancelRunRequest(location=location, run_id=run_id),
                 frame_gap_timeout=QUICK_OP_TIMEOUT,
             )
         )
@@ -380,14 +380,14 @@ class WsAgentClient:
         except (WorkbenchUnavailableError, RuntimeError):
             pass
 
-    def is_running(self, agent_id: str, container_name: str) -> bool:
+    def is_running(self, agent_id: str, location: WorkbenchLocation) -> bool:
         try:
             conn = self._registry.pick(agent_id)
         except WorkbenchUnavailableError:
             return False
         try:
             frames = conn.request(
-                IsRunningRequest(container_name=container_name),
+                IsRunningRequest(location=location),
                 frame_gap_timeout=QUICK_OP_TIMEOUT,
             )
             for frame in frames:
@@ -399,24 +399,24 @@ class WsAgentClient:
             return False
         return False
 
-    def exec_simple(self, agent_id: str, container_name: str, argv: list[str], timeout: int = 60) -> None:
+    def exec_simple(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 60) -> None:
         conn = self._registry.pick(agent_id)
-        req = ExecSimpleRequest(container_name=container_name, argv=argv, timeout=timeout)
+        req = ExecSimpleRequest(location=location, argv=argv, timeout=timeout)
         # The agent enforces ``timeout`` on the exec itself; the frame gap only
         # needs to cover it plus transport slack.
         self._drain_void(conn.request(req, frame_gap_timeout=timeout + QUICK_OP_TIMEOUT))
 
-    def exec_query(self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30) -> bytes:
-        return b"".join(self.exec_query_stream(agent_id, container_name, argv, timeout))
+    def exec_query(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> bytes:
+        return b"".join(self.exec_query_stream(agent_id, location, argv, timeout))
 
     def exec_query_stream(
-        self, agent_id: str, container_name: str, argv: list[str], timeout: int = 30
+        self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30
     ) -> Iterator[bytes]:
         # The result arrives as bounded chunks ending in ``done``; yield each
         # decoded chunk so large archives do not materialise in control-plane RAM.
         conn = self._registry.pick(agent_id)
         for frame in conn.request(
-            ExecQueryRequest(container_name=container_name, argv=argv, timeout=timeout),
+            ExecQueryRequest(location=location, argv=argv, timeout=timeout),
             frame_gap_timeout=timeout + QUICK_OP_TIMEOUT,
         ):
             if isinstance(frame, BytesChunkFrame):
@@ -427,7 +427,7 @@ class WsAgentClient:
                 raise_for_terminal_error(frame)
         raise RuntimeError("agent exec_query ended without a result")
 
-    def copy_in(self, agent_id: str, container_name: str, source_path: str, container_path: str) -> None:
+    def copy_in(self, agent_id: str, location: WorkbenchLocation, source_path: str, container_path: str) -> None:
         # Chunked copy-in (see repo2ree_protocol.agent), read straight from disk.
         # Chunks are pipelined: up to COPY_IN_WINDOW ride the wire before the
         # oldest ack is drained, so throughput is bound by bandwidth, not by one
@@ -435,7 +435,7 @@ class WsAgentClient:
         # apply them in whatever order they land.
         # On any failure, tell the agent to drop its partial temp file.
         conn = self._registry.pick(agent_id)
-        transfer_id = self._open_transfer(conn, container_name, container_path)
+        transfer_id = self._open_transfer(conn, location, container_path)
         in_flight: deque[PendingReply] = deque()
         try:
             with open(source_path, "rb") as source:
@@ -467,8 +467,8 @@ class WsAgentClient:
                 )
             raise
 
-    def _open_transfer(self, conn: AgentConnection, container_name: str, container_path: str) -> str:
-        req = CopyOpenRequest(container_name=container_name, container_path=container_path)
+    def _open_transfer(self, conn: AgentConnection, location: WorkbenchLocation, container_path: str) -> str:
+        req = CopyOpenRequest(location=location, container_path=container_path)
         for frame in conn.request(req, frame_gap_timeout=QUICK_OP_TIMEOUT):
             if isinstance(frame, TransferFrame):
                 return frame.transfer_id

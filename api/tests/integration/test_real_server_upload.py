@@ -32,12 +32,13 @@ from pathlib import Path
 import httpx
 import pytest
 
+# The tier's workbench image lives in conftest so the skip gate and the
+# provisioning request stay in lockstep.
+from conftest import WORKBENCH_IMAGE, bundles_present
+
 # ================================================
 # Constants
 # ================================================
-
-
-WORKBENCH_IMAGE = "repo2ree-workbench:latest"
 
 TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "traces" / "api-real-server"
 
@@ -61,13 +62,9 @@ def _docker_available() -> bool:
     return subprocess.run(["docker", "version"], capture_output=True).returncode == 0
 
 
-def _image_present(image: str) -> bool:
-    return subprocess.run(["docker", "image", "inspect", image], capture_output=True).returncode == 0
-
-
 pytestmark = pytest.mark.skipif(
-    not _docker_available() or not _image_present(WORKBENCH_IMAGE),
-    reason=f"real-server tier needs docker + the {WORKBENCH_IMAGE} image (run: make workbench-image)",
+    not _docker_available() or not bundles_present(),
+    reason="real-server tier needs docker + the executor/tools bundles (run: make e2e-bundles)",
 )
 
 
@@ -91,7 +88,6 @@ def server(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[str]:
 
     server_env = {
         **os.environ,
-        "WORKBENCH_IMAGE": WORKBENCH_IMAGE,
         "WORKBENCH_REGISTRY_FILE": str(tmp_path / "registry.json"),
         "UPLOAD_STAGING_DIR": str(tmp_path / "upload-staging"),
         "TRACE_FILE": str(out_dir / "traces.ndjson"),
@@ -187,7 +183,12 @@ def _wait_for_run(client: httpx.Client, ree_id: str, run_id: str) -> str:
 def test_upload_over_real_server(server: str) -> None:
     with httpx.Client(base_url=server, timeout=REQUEST_TIMEOUT) as client:
         # --- provision a workbench through the real stack ---------------
-        resp = client.post("/api/v1/rees", json={"sourceMode": "upload", "name": "real-server-itest"})
+        # Drive the locally-built image this tier gates on, passed per-request
+        # like a real client — never pull the published edge default.
+        resp = client.post(
+            "/api/v1/rees",
+            json={"sourceMode": "upload", "name": "real-server-itest", "workbenchImage": WORKBENCH_IMAGE},
+        )
         assert resp.status_code == 200, resp.text
         run = resp.json()
         ree_id = run["reeId"]

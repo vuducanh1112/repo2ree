@@ -11,6 +11,7 @@ from repo2ree_core.envelope.handlers._common import (
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.tooling import resolve_tool
 from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -46,12 +47,13 @@ def handle_generate_sbom(
         return ActionResult(status="failed", exit_code=1)
 
     output_path = layout.workspace / "sbom.json"
+    syft = resolve_tool("syft")
     log("system", "info", f"Runtime input: {runtime_path}")
-    log("system", "info", f"$ syft docker-archive:{runtime_abs} -o json={output_path}")
+    log("system", "info", f"$ {syft} docker-archive:{runtime_abs} -o json={output_path}")
 
     result = subprocess.run(
         [
-            "syft",
+            syft,
             f"docker-archive:{runtime_abs}",
             "-o",
             f"json={output_path}",

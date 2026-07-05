@@ -1,17 +1,18 @@
 """Real end-to-end test of a workbench, with no stubs.
 
 This is the highest-fidelity tier: it provisions an actual workbench container
-from the built ``repo2ree-workbench:latest`` image and drives the REE lifecycle
-through the real ``WorkbenchManager`` over the production transport — the real
-``repo2ree_agent`` dials an in-test control-plane WebSocket, holds it open, and
-``WsAgentClient`` drives it. Real ``docker run`` / ``docker exec`` inside the
-agent, the real ``repo2ree-exec`` executor inside the container, real core
-handlers on a real ``/ree`` volume, the real ``AgentFrame`` stream over the
-socket, and the real ``ActionResult``.
+from the pinned upstream ``docker:dind`` bench — with the executor/tools
+bundles injected by the agent, exactly like production — and drives the REE
+lifecycle through the real ``WorkbenchManager`` over the production transport:
+the real ``repo2ree_agent`` dials an in-test control-plane WebSocket, holds it
+open, and ``WsAgentClient`` drives it. Real ``docker run`` / ``docker exec``
+inside the agent, the real injected ``repo2ree-exec`` executor inside the
+container, real core handlers on a real ``/ree`` volume, the real
+``AgentFrame`` stream over the socket, and the real ``ActionResult``.
 
 Nothing is mocked or redirected. The cost is that it needs Docker and the
-workbench image, so the whole module is skipped (never faked) when either is
-absent. Build the image with ``make workbench-image``.
+bundles, so the whole module is skipped (never faked) when either is absent.
+Build the bundles with ``make e2e-bundles``.
 
 Flow exercised over the real agent:
     provision -> get-ree -> write_file -> read-file round-trip
@@ -23,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 import socket
 import subprocess
@@ -60,7 +62,20 @@ from repo2ree_supervisor import (
 # ================================================
 
 
-WORKBENCH_IMAGE = "repo2ree-workbench:latest"
+# The production bench: upstream dind pinned by digest (keep in sync with the
+# catalog default in api/src/repo2ree_api/settings.py). The in-test agent
+# injects the executor/tools bundles, so this tier drives the exact
+# provisioning path production uses. First run pulls the image.
+WORKBENCH_IMAGE = (
+    "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
+)
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_EXEC_BUNDLE = _REPO_ROOT / "test-artifacts" / "exec-bundle"
+_TOOLS_BUNDLE = _REPO_ROOT / "test-artifacts" / "tools-bundle"
+# Must be set before the agent's DockerRuntime is constructed (fixture below).
+os.environ.setdefault("REPO2REE_EXEC_BUNDLE", str(_EXEC_BUNDLE))
+os.environ.setdefault("REPO2REE_TOOLS_BUNDLE", str(_TOOLS_BUNDLE))
 
 TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "traces" / "supervisor-e2e"
 
@@ -76,13 +91,13 @@ def _docker_available() -> bool:
     return subprocess.run(["docker", "version"], capture_output=True).returncode == 0
 
 
-def _image_present(image: str) -> bool:
-    return subprocess.run(["docker", "image", "inspect", image], capture_output=True).returncode == 0
+def _bundles_present() -> bool:
+    return (_EXEC_BUNDLE / "manifest.json").is_file() and (_TOOLS_BUNDLE / "manifest.json").is_file()
 
 
 pytestmark = pytest.mark.skipif(
-    not _docker_available() or not _image_present(WORKBENCH_IMAGE),
-    reason=f"real workbench e2e needs docker + the {WORKBENCH_IMAGE} image (run: make workbench-image)",
+    not _docker_available() or not _bundles_present(),
+    reason="real workbench e2e needs docker + the executor/tools bundles (run: make e2e-bundles)",
 )
 
 

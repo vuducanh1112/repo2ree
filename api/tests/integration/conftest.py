@@ -32,17 +32,34 @@ from websockets.asyncio.server import ServerConnection, serve
 
 TEST_RESULTS_DIR = Path(__file__).resolve().parents[3] / "test-artifacts" / "traces" / "api-integration"
 
+# The bench this whole tier provisions from: upstream dind pinned by digest
+# (keep in sync with the catalog default in api/src/repo2ree_api/settings.py).
+# The in-test agent injects the executor/tools bundles (built by
+# `make e2e-bundles`), so the tier drives the exact provisioning path
+# production uses. Passed per-request like a real client; change here to point
+# the tier at a different image. First run pulls the image.
+WORKBENCH_IMAGE = (
+    "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
+)
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+EXEC_BUNDLE = _REPO_ROOT / "test-artifacts" / "exec-bundle"
+TOOLS_BUNDLE = _REPO_ROOT / "test-artifacts" / "tools-bundle"
+# Must be set before the in-test agent constructs its DockerRuntime.
+os.environ.setdefault("REPO2REE_EXEC_BUNDLE", str(EXEC_BUNDLE))
+os.environ.setdefault("REPO2REE_TOOLS_BUNDLE", str(TOOLS_BUNDLE))
+
+
+def bundles_present() -> bool:
+    return (EXEC_BUNDLE / "manifest.json").is_file() and (TOOLS_BUNDLE / "manifest.json").is_file()
+
+
 # Env vars take precedence over .env in pydantic-settings, and the settings
 # (plus the registry singleton built from them) are read at import time — so
 # this must run before any repo2ree_api import below.
 _state_dir = Path(tempfile.mkdtemp(prefix="repo2ree-api-itest-"))
 os.environ["UPLOAD_STAGING_DIR"] = str(_state_dir / "upload-staging")
 os.environ["WORKBENCH_REGISTRY_FILE"] = str(_state_dir / "workbench-registry.json")
-# Pin provisioning to the locally-built image this tier gates on (see
-# test_api_workbench_flow.WORKBENCH_IMAGE) rather than the published edge
-# default in settings — the suite must drive the image it just built, never
-# pull one from a registry.
-os.environ.setdefault("WORKBENCH_IMAGE", "repo2ree-workbench:latest")
 # OpenTelemetry's set_tracer_provider is honored once per process, so two API
 # tiers in one pytest run share a single provider baked to whichever tier booted
 # first — the other's spans silently flow to the wrong file. make runs the tiers
@@ -106,7 +123,11 @@ def ree(client: TestClient, request: pytest.FixtureRequest) -> Iterator[dict[str
     the API. The delete is idempotent here: a test that already deleted its
     REE just gets a 404 back.
     """
-    resp = client.post("/api/v1/rees", json={"sourceMode": "upload", "name": "api-itest"})
+    # Drive the image this tier gates on, passed per-request like a real client.
+    resp = client.post(
+        "/api/v1/rees",
+        json={"sourceMode": "upload", "name": "api-itest", "workbenchImage": WORKBENCH_IMAGE},
+    )
     assert resp.status_code == 200, resp.text
     run = resp.json()
     ree_id = run["reeId"]

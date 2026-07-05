@@ -19,9 +19,14 @@ from repo2ree_protocol.agent import (
     CancelRunRequest,
     ExecQueryRequest,
     IsRunningRequest,
+    WorkbenchLocation,
     WsRequest,
     ws_message_adapter,
 )
+
+
+def _loc(container_name: str) -> WorkbenchLocation:
+    return WorkbenchLocation(container_name=container_name, volume_name=f"{container_name}-vol")
 
 
 class FakeSocket:
@@ -47,15 +52,15 @@ class FakeRuntime:
     query_result: bytes = b""
     canceled_runs: list[tuple[str, str]] = []
 
-    def is_running(self, container_name: str) -> bool:
-        return container_name == "wb-up"
+    def is_running(self, location: WorkbenchLocation) -> bool:
+        return location.container_name == "wb-up"
 
-    def exec_query_stream(self, container_name: str, argv: list[str], timeout: int = 30):
+    def exec_query_stream(self, location: WorkbenchLocation, argv: list[str], timeout: int = 30):
         for offset in range(0, len(self.query_result), COPY_CHUNK_BYTES):
             yield self.query_result[offset : offset + COPY_CHUNK_BYTES]
 
-    def cancel_run(self, container_name: str, run_id: str) -> None:
-        self.canceled_runs.append((container_name, run_id))
+    def cancel_run(self, location: WorkbenchLocation, run_id: str) -> None:
+        self.canceled_runs.append((location.container_name, run_id))
 
 
 async def _serve_and_settle(ws: FakeSocket) -> None:
@@ -70,7 +75,7 @@ def test_malformed_request_is_dropped_and_serving_continues() -> None:
     ws = FakeSocket(
         [
             "this is not json",
-            WsRequest(id="r1", request=IsRunningRequest(container_name="wb-up")).model_dump_json(),
+            WsRequest(id="r1", request=IsRunningRequest(location=_loc("wb-up"))).model_dump_json(),
         ]
     )
     asyncio.run(_serve_and_settle(ws))
@@ -97,7 +102,7 @@ def test_invalid_args_answer_error_frame_without_killing_connection() -> None:
     ws = FakeSocket(
         [
             '{"id": "r1", "request": {"op": "is_running", "wrong_field": "x"}}',
-            WsRequest(id="r2", request=IsRunningRequest(container_name="wb-down")).model_dump_json(),
+            WsRequest(id="r2", request=IsRunningRequest(location=_loc("wb-down"))).model_dump_json(),
         ]
     )
     asyncio.run(_serve_and_settle(ws))
@@ -114,7 +119,7 @@ def test_exec_query_result_is_chunked_under_the_frame_cap() -> None:
     payload = bytes(range(256)) * 4 * 1024  # 1 MiB, above one chunk
     FakeRuntime.query_result = payload
     try:
-        req = WsRequest(id="r1", request=ExecQueryRequest(container_name="wb", argv=["build-archive"]))
+        req = WsRequest(id="r1", request=ExecQueryRequest(location=_loc("wb"), argv=["build-archive"]))
         ws = FakeSocket([req.model_dump_json()])
         asyncio.run(_serve_and_settle(ws))
     finally:
@@ -142,7 +147,7 @@ def test_cancel_for_unknown_request_still_answers_done() -> None:
 def test_cancel_run_marks_run_in_workbench() -> None:
     FakeRuntime.canceled_runs = []
     ws = FakeSocket(
-        [WsRequest(id="c1", request=CancelRunRequest(container_name="wb", run_id="run-7")).model_dump_json()]
+        [WsRequest(id="c1", request=CancelRunRequest(location=_loc("wb"), run_id="run-7")).model_dump_json()]
     )
     asyncio.run(_serve_and_settle(ws))
 
@@ -158,13 +163,13 @@ def test_cancel_stops_an_inflight_request() -> None:
     release = threading.Event()
 
     class BlockingRuntime(FakeRuntime):
-        def exec_query_stream(self, container_name: str, argv: list[str], timeout: int = 30):
+        def exec_query_stream(self, location: WorkbenchLocation, argv: list[str], timeout: int = 30):
             release.wait(0.5)
             yield b"too late"
 
     ws = FakeSocket(
         [
-            WsRequest(id="r1", request=ExecQueryRequest(container_name="wb", argv=["build-archive"])).model_dump_json(),
+            WsRequest(id="r1", request=ExecQueryRequest(location=_loc("wb"), argv=["build-archive"])).model_dump_json(),
             WsRequest(id="c1", request=CancelRequest(request_id="r1")).model_dump_json(),
         ]
     )

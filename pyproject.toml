@@ -87,3 +87,10 @@ mypy_path = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/
 # Test dirs ship no __init__.py, so module names must come from file paths —
 # otherwise the per-tier conftest.py files (unit/ and integration/) collide.
 explicit_package_bases = true
+
+# Tests import shared constants from their tier's conftest as a top-level
+# module (`from conftest import …`) — resolvable under pytest, which puts the
+# test dir on sys.path, but not under mypy's file-path-based module naming.
+[[tool.mypy.overrides]]
+module = "conftest"
+ignore_missing_imports = true

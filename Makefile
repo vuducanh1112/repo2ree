@@ -9,13 +9,13 @@
 	be-coverage be-coverage-unit be-coverage-context \
 	test-checks \
 	image-archive-dir stage-nix-sources \
-	workbench-image workbench-image-archive \
+	agent-image agent-image-archive \
 	frontend-image frontend-image-archive frontend-npm-hash \
 	backend-image backend-image-archive \
 	image-archives images load-image-archives \
 	push-dockerhub-archives push-ghcr-archives \
 	push-ghcr push-ghcr-local push-dockerhub push-dockerhub-local push-registries \
-	e2e-tests e2e-demo e2e-demo-code-ocean e2e-coverage
+	e2e-tests e2e-demo e2e-demo-code-ocean e2e-coverage e2e-bundles
 
 # ================================================
 # Docs — prose linting
@@ -115,14 +115,15 @@ core-integration-tests:
 	pytest core/tests/integration
 
 # Real-component API tier: the actual FastAPI app over HTTP against real
-# workbench containers. Skips when docker or the image is absent. Spans land
+# workbench containers (pinned dind + injected bundles). Skips when docker or
+# the bundles are absent (build with `make e2e-bundles`). Spans land
 # in test-results/api-integration/traces.ndjson for post-run inspection.
 api-integration-tests:
 	pytest api/tests/integration
 
-# Real workbench e2e: provisions a container from the workbench image and
-# drives it over the live docker exec transport. Skips when docker or the
-# image is absent (build it with `make workbench-image`).
+# Real workbench e2e: provisions a container from the pinned dind bench with
+# the executor/tools bundles injected, over the live docker exec transport.
+# Skips when docker or the bundles are absent (build with `make e2e-bundles`).
 supervisor-integration-tests:
 	pytest supervisor/tests/integration
 
@@ -154,7 +155,7 @@ be-coverage-unit:
 		--cov --cov-report=term-missing --cov-report=html:test-artifacts/coverage/unit
 
 # Full suite: the honest number, but the integration tiers skip silently
-# without docker + the workbench image (build it with `make workbench-image`).
+# without docker + the executor/tools bundles (build with `make e2e-bundles`).
 #
 # Two invocations, not one: the api unit and integration tiers must run in
 # separate processes (they collide on OpenTelemetry's set-once tracer provider
@@ -192,11 +193,32 @@ E2E_AGENT_LOG = $(CURDIR)/test-artifacts/agent.log
 E2E_AGENT_STATE_DIR = $(CURDIR)/test-artifacts/e2e-agent-state
 E2E_WORKBENCH_DOCKER_MODE ?= dind
 
+# Which bench the e2e backend's catalog offers. Empty (the default) means the
+# backend's own catalog default — the pinned docker:dind digest in
+# api/src/repo2ree_api/settings.py — which every browser tier runs on.
+# Set it to pin the run to a specific image instead.
+E2E_WORKBENCH_IMAGE ?=
+define E2E_WORKBENCH_IMAGE_CATALOG
+[{"id":"pinned","ref":"$(E2E_WORKBENCH_IMAGE)","label":"Pinned bench","description":"Bench image pinned for this e2e run."}]
+endef
+E2E_CATALOG_ENV = $(if $(E2E_WORKBENCH_IMAGE),WORKBENCH_IMAGE_CATALOG='$(E2E_WORKBENCH_IMAGE_CATALOG)')
+
+# The e2e agent always gets the executor/tools bundles: lean env images (the
+# dind default, custom benches) need the injection, and images that ship their
+# own /nix (the full workbench) skip it — so this is safe for every tier.
+E2E_EXEC_BUNDLE = $(CURDIR)/test-artifacts/exec-bundle
+E2E_TOOLS_BUNDLE = $(CURDIR)/test-artifacts/tools-bundle
+
+e2e-bundles: stage-nix-sources
+	nix build .#exec-bundle -o $(E2E_EXEC_BUNDLE)
+	nix build .#tools-bundle -o $(E2E_TOOLS_BUNDLE)
+
 define e2e_run  # $(1) = playwright --project name
 	@mkdir -p test-artifacts
 	@rm -f $(E2E_API_LOG) $(E2E_AGENT_LOG)
 	@set -e; \
 	echo ">> starting backend on :8000 (log: $(E2E_API_LOG))"; \
+	$(E2E_CATALOG_ENV) \
 	uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
 		> $(E2E_API_LOG) 2>&1 & \
 	api_pid=$$!; \
@@ -212,6 +234,8 @@ define e2e_run  # $(1) = playwright --project name
 	WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
 	WORKBENCH_DOCKER_MODE=$(E2E_WORKBENCH_DOCKER_MODE) \
 	WORKBENCH_AGENT_STATE_DIR=$(E2E_AGENT_STATE_DIR) \
+	REPO2REE_EXEC_BUNDLE=$(E2E_EXEC_BUNDLE) \
+	REPO2REE_TOOLS_BUNDLE=$(E2E_TOOLS_BUNDLE) \
 	uv run --package repo2ree-agent python -m repo2ree_agent \
 		> $(E2E_AGENT_LOG) 2>&1 & \
 	agent_pid=$$!; \
@@ -234,13 +258,13 @@ define e2e_run  # $(1) = playwright --project name
 	exit $$status
 endef
 
-e2e-tests:
+e2e-tests: e2e-bundles
 	$(call e2e_run,e2e)
 
-e2e-demo:
+e2e-demo: e2e-bundles
 	$(call e2e_run,demo)
 
-e2e-demo-code-ocean:
+e2e-demo-code-ocean: e2e-bundles
 	$(call e2e_run,code-ocean)
 
 # Full-stack e2e coverage: browser (frontend) + server (backend) in one run.
@@ -256,12 +280,13 @@ e2e-demo-code-ocean:
 # but lives in the same test-artifacts/coverage/data dir.
 E2E_COVERAGE_FILE = $(CURDIR)/test-artifacts/coverage/data/.coverage.e2e
 
-e2e-coverage:
+e2e-coverage: e2e-bundles
 	@echo ">> starting backend under coverage on :8000"
 	@rm -f $(E2E_COVERAGE_FILE) $(E2E_COVERAGE_FILE).* test-artifacts/coverage/e2e/agent.log
 	@rm -rf frontend/test-artifacts/coverage-raw
 	@mkdir -p test-artifacts/coverage/e2e
 	@set -e; \
+	$(E2E_CATALOG_ENV) \
 	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage run --parallel-mode \
 		-m uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
 		> test-artifacts/coverage/e2e/backend.log 2>&1 & \
@@ -277,6 +302,8 @@ e2e-coverage:
 	WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
 	WORKBENCH_DOCKER_MODE=$(E2E_WORKBENCH_DOCKER_MODE) \
 	WORKBENCH_AGENT_STATE_DIR=$(E2E_AGENT_STATE_DIR) \
+	REPO2REE_EXEC_BUNDLE=$(E2E_EXEC_BUNDLE) \
+	REPO2REE_TOOLS_BUNDLE=$(E2E_TOOLS_BUNDLE) \
 	uv run --package repo2ree-agent python -m repo2ree_agent \
 		> test-artifacts/coverage/e2e/agent.log 2>&1 & \
 	agent_pid=$$!; \
@@ -316,16 +343,16 @@ IMAGE_TAG ?= edge
 
 FRONTEND_IMAGE_NAME ?= repo2ree-frontend
 BACKEND_IMAGE_NAME ?= repo2ree-backend
-WORKBENCH_IMAGE_NAME ?= repo2ree-workbench
+AGENT_IMAGE_NAME ?= repo2ree-agent
 
 LOCAL_FRONTEND_IMAGE := $(FRONTEND_IMAGE_NAME):latest
 LOCAL_BACKEND_IMAGE := $(BACKEND_IMAGE_NAME):latest
-LOCAL_WORKBENCH_IMAGE := $(WORKBENCH_IMAGE_NAME):latest
+LOCAL_AGENT_IMAGE := $(AGENT_IMAGE_NAME):latest
 
 IMAGE_ARCHIVE_DIR ?= dist/images
 FRONTEND_IMAGE_ARCHIVE := $(IMAGE_ARCHIVE_DIR)/$(FRONTEND_IMAGE_NAME)-latest.tar
 BACKEND_IMAGE_ARCHIVE := $(IMAGE_ARCHIVE_DIR)/$(BACKEND_IMAGE_NAME)-latest.tar
-WORKBENCH_IMAGE_ARCHIVE := $(IMAGE_ARCHIVE_DIR)/$(WORKBENCH_IMAGE_NAME)-latest.tar
+AGENT_IMAGE_ARCHIVE := $(IMAGE_ARCHIVE_DIR)/$(AGENT_IMAGE_NAME)-latest.tar
 
 GHCR_REGISTRY ?= ghcr.io
 GHCR_NAMESPACE ?= vuducanh1112
@@ -336,20 +363,13 @@ DOCKERHUB_NAMESPACE ?= vuducanh1112
 image-archive-dir:
 	@mkdir -p $(IMAGE_ARCHIVE_DIR)
 
-# Nix only sees files git tracks, so intent-add the untracked executor sources
-# before building the workbench image.
+# Nix only sees files git tracks, so intent-add the untracked python sources
+# before any nix image/bundle build that packages them.
 stage-nix-sources:
-	@git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor 2>/dev/null || true
+	@git add -N protocol/src core/src/repo2ree_core/ executor/src/repo2ree_executor agent/src 2>/dev/null || true
 
 # ---- Normal path: build and load straight into the local Docker. ----
 # These do NOT write tarballs; use the *-image-archive targets for that.
-
-workbench-image: stage-nix-sources
-	@echo "Building workbench image..."
-	nix build .#workbench-image
-	@echo "Loading into docker..."
-	docker load < result
-	@echo "Done: $(LOCAL_WORKBENCH_IMAGE)"
 
 frontend-image:
 	@echo "Building frontend image..."
@@ -366,7 +386,16 @@ backend-image:
 	docker build -f docker/demo/backend.Dockerfile -t $(LOCAL_BACKEND_IMAGE) .
 	@echo "Done: $(LOCAL_BACKEND_IMAGE)"
 
-images: frontend-image backend-image workbench-image
+# The agent image is the self-carrying deployable third parties run: agent
+# process + embedded executor/tools bundles (see nix/agent-image.nix).
+agent-image: stage-nix-sources
+	@echo "Building agent image..."
+	nix build .#agent-image
+	@echo "Loading into docker..."
+	docker load < result
+	@echo "Done: $(LOCAL_AGENT_IMAGE)"
+
+images: frontend-image backend-image agent-image
 
 # Regenerate the pinned npm-deps hash from frontend/package-lock.json. Run this
 # manually after any lockfile change (it is intentionally NOT a build prereq, so
@@ -384,12 +413,6 @@ frontend-npm-hash:
 # `make load-image-archives` + `make push-dockerhub-local` there. Kept off the
 # normal images/push-* path so a plain build/push writes no tarballs.
 
-workbench-image-archive: stage-nix-sources | image-archive-dir
-	@echo "Building workbench image archive..."
-	nix build .#workbench-image
-	cp -fL result $(WORKBENCH_IMAGE_ARCHIVE)
-	@echo "Wrote $(WORKBENCH_IMAGE_ARCHIVE)"
-
 frontend-image-archive: | image-archive-dir
 	@echo "Building frontend image archive..."
 	nix build .#frontend-image
@@ -402,12 +425,18 @@ backend-image-archive: backend-image | image-archive-dir
 	docker save $(LOCAL_BACKEND_IMAGE) -o $(BACKEND_IMAGE_ARCHIVE)
 	@echo "Wrote $(BACKEND_IMAGE_ARCHIVE)"
 
-image-archives: frontend-image-archive backend-image-archive workbench-image-archive
+agent-image-archive: stage-nix-sources | image-archive-dir
+	@echo "Building agent image archive..."
+	nix build .#agent-image
+	cp -fL result $(AGENT_IMAGE_ARCHIVE)
+	@echo "Wrote $(AGENT_IMAGE_ARCHIVE)"
+
+image-archives: frontend-image-archive backend-image-archive agent-image-archive
 
 load-image-archives:
 	docker load -i $(FRONTEND_IMAGE_ARCHIVE)
 	docker load -i $(BACKEND_IMAGE_ARCHIVE)
-	docker load -i $(WORKBENCH_IMAGE_ARCHIVE)
+	docker load -i $(AGENT_IMAGE_ARCHIVE)
 
 # Host-side one-shot: load the archives built in the devcontainer, then push.
 # Lets the devcontainer build credential-free (`make image-archives`) while the
@@ -423,10 +452,10 @@ push-ghcr:
 push-ghcr-local:
 	docker tag $(LOCAL_FRONTEND_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
 	docker tag $(LOCAL_BACKEND_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker tag $(LOCAL_WORKBENCH_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
+	docker tag $(LOCAL_AGENT_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(AGENT_IMAGE_NAME):$(IMAGE_TAG)
 	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
 	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
+	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(AGENT_IMAGE_NAME):$(IMAGE_TAG)
 
 push-dockerhub:
 	$(MAKE) images
@@ -435,10 +464,10 @@ push-dockerhub:
 push-dockerhub-local:
 	docker tag $(LOCAL_FRONTEND_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
 	docker tag $(LOCAL_BACKEND_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker tag $(LOCAL_WORKBENCH_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
+	docker tag $(LOCAL_AGENT_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(AGENT_IMAGE_NAME):$(IMAGE_TAG)
 	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
 	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(WORKBENCH_IMAGE_NAME):$(IMAGE_TAG)
+	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(AGENT_IMAGE_NAME):$(IMAGE_TAG)
 
 push-registries:
 	$(MAKE) images

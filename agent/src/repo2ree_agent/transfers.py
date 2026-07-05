@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import BinaryIO
 from uuid import uuid4
 
+from repo2ree_protocol.agent import WorkbenchLocation
+
 # ================================================
 # Transfer store
 # ================================================
@@ -29,7 +31,7 @@ from uuid import uuid4
 
 @dataclass
 class _Transfer:
-    container_name: str
+    location: WorkbenchLocation
     container_path: str
     path: str
     handle: BinaryIO
@@ -45,11 +47,11 @@ class TransferStore:
         self._transfers: dict[str, _Transfer] = {}
         self._lock = threading.Lock()
 
-    def open(self, container_name: str, container_path: str) -> str:
+    def open(self, location: WorkbenchLocation, container_path: str) -> str:
         """Start a transfer landing in ``container_path``; return its handle id."""
         fd, path = tempfile.mkstemp(prefix="repo2ree-copy-", suffix=".part")
         transfer = _Transfer(
-            container_name=container_name,
+            location=location,
             container_path=container_path,
             path=path,
             handle=os.fdopen(fd, "wb"),
@@ -67,8 +69,8 @@ class TransferStore:
             transfer.handle.seek(offset)
             transfer.handle.write(data)
 
-    def deliver(self, transfer_id: str, sink: Callable[[str, str, str], None]) -> None:
-        """Close the assembled file, hand it to ``sink(container_name, path,
+    def deliver(self, transfer_id: str, sink: Callable[[WorkbenchLocation, str, str], None]) -> None:
+        """Close the assembled file, hand it to ``sink(location, path,
         container_path)``, then delete the temp file — even if the sink raises."""
         with self._lock:
             transfer = self._transfers.pop(transfer_id, None)
@@ -76,7 +78,7 @@ class TransferStore:
             raise KeyError(f"unknown transfer {transfer_id!r}")
         transfer.handle.close()
         try:
-            sink(transfer.container_name, transfer.path, transfer.container_path)
+            sink(transfer.location, transfer.path, transfer.container_path)
         finally:
             Path(transfer.path).unlink(missing_ok=True)
 

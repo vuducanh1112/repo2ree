@@ -9,10 +9,10 @@ rather than in the supervisor because both sides of the wire share it.
 
 Each call returns a stream of ``AgentFrame`` records tagged with the request id.
 Lifecycle/exec calls that produce incremental output (image pulls, live command
-logs) emit ``log``/``span`` frames and end with a terminal frame (``location`` /
-``result`` / ``done``, or ``unavailable`` / ``error``). Request/response calls
-(remove, is-running) emit a single terminal frame (``running`` / ``done``, or
-``unavailable`` / ``error``).
+logs) emit ``log``/``span`` frames and end with a terminal frame (``location``
+for provision/reprovision, ``result`` / ``done``, or ``unavailable`` /
+``error``). Request/response calls (remove, is-running) emit a single terminal
+frame (``running`` / ``done``, or ``unavailable`` / ``error``).
 
 Byte payloads never ride one frame — they are too big for the transport's
 receive caps — so both directions chunk. Reading out (exec_query: a sealed
@@ -41,12 +41,21 @@ class WorkbenchLocation(BaseModel):
 
     The control plane treats this as an opaque address token it records in its
     registry and hands back on later calls — like an ECS task ARN or a pod name.
+    The fields are the agent runtime's own vocabulary: only the runtime that
+    minted a location reads them, and every per-bench request carries the whole
+    token back rather than any single field, so the control plane never learns
+    what a bench *is* (today a docker container; later a pod or a tree on a
+    shared filesystem).
     """
 
     model_config = ConfigDict(extra="forbid")
 
     container_name: str
     volume_name: str
+    # How the runtime invokes the executor inside this bench. Benches with the
+    # executor baked into the image use the PATH default; benches the agent
+    # injected its executor bundle into carry the bundle's absolute entry point.
+    exec_path: str = "repo2ree-exec"
 
 
 # ================================================
@@ -85,23 +94,33 @@ class IsRunningRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["is_running"] = "is_running"
-    container_name: str
+    location: WorkbenchLocation
 
 
 class ExecSimpleRequest(BaseModel):
+    """Run an executor subcommand in the bench, discarding output.
+
+    ``argv`` is the ``repo2ree-exec`` subcommand argv (e.g. ``["init-ree", …]``)
+    — *without* the executor binary. The runtime prepends the bench's entry
+    point (``location.exec_path``); the control plane never names it."""
+
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_simple"] = "exec_simple"
-    container_name: str
+    location: WorkbenchLocation
     argv: list[str]
     timeout: int = 60
 
 
 class ExecQueryRequest(BaseModel):
+    """Run an executor subcommand in the bench, streaming its stdout back.
+
+    ``argv`` is the executor subcommand argv, as in ``ExecSimpleRequest``."""
+
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_query"] = "exec_query"
-    container_name: str
+    location: WorkbenchLocation
     argv: list[str]
     timeout: int = 30
 
@@ -110,7 +129,7 @@ class ExecActionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_action"] = "exec_action"
-    container_name: str
+    location: WorkbenchLocation
     cmd_json: str
     run_id: str
     # Extra environment injected into the executor (trace propagation).
@@ -121,7 +140,7 @@ class CancelRunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["cancel_run"] = "cancel_run"
-    container_name: str
+    location: WorkbenchLocation
     run_id: str
 
 
@@ -138,7 +157,7 @@ class CopyOpenRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["copy_open"] = "copy_open"
-    container_name: str
+    location: WorkbenchLocation
     container_path: str
 
 
@@ -236,7 +255,7 @@ class SpanFrame(BaseModel):
 
 
 class LocationFrame(BaseModel):
-    """Terminal frame of a successful provision."""
+    """Terminal frame of a successful provision or reprovision."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -254,7 +273,7 @@ class ResultFrame(BaseModel):
 
 
 class DoneFrame(BaseModel):
-    """Terminal frame of a streaming call with no payload (reprovision)."""
+    """Terminal frame of a call with no payload (exec_simple, remove, …)."""
 
     model_config = ConfigDict(extra="forbid")
 

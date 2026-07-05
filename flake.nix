@@ -9,7 +9,13 @@
 
   # Concerns live here, each in its own module under ./nix:
   #   - devshell.nix        local developer tooling (changes often)
-  #   - workbench-image.nix the OCI image every REE ships (reproducibility surface)
+  #   - ree-executor.nix    the repo2ree-exec closure (shared, not a package)
+  #   - tools.nix           handler-tools closure, e.g. syft (shared, not a package)
+  #   - exec-bundle.nix     the executor closure as a mountable tree + manifest
+  #   - tools-bundle.nix    the tools closure, same standalone form
+  #   - agent-image.nix     the workbench agent + embedded exec/tools bundles
+  #                         (the reproducibility surface: every bench executes
+  #                         through what it injects)
   #   - frontend-image.nix  the deployed web bundle behind caddy
   # All build against the single pinned nixpkgs below, so the images and
   # the dev env can never drift onto different package revisions.
@@ -20,8 +26,6 @@
           inherit system;
           #config.allowUnfree = true; # Needed for some kubectl plugins/drivers
         };
-
-        workbenchImage = import ./nix/workbench-image.nix { inherit pkgs; };
 
         # VITE_API_BASE_URL is baked into the bundle at build time. Empty
         # string => same-origin "/api", which is what the compose setup uses
@@ -35,10 +39,12 @@
       {
         devShells.default = import ./nix/devshell.nix { inherit pkgs; };
 
-        packages = {
-          workbench-image = workbenchImage;
+        packages = rec {
+          exec-bundle = import ./nix/exec-bundle.nix { inherit pkgs; };
+          tools-bundle = import ./nix/tools-bundle.nix { inherit pkgs; };
+          agent-image = import ./nix/agent-image.nix { inherit pkgs; };
           frontend-image = frontendImage;
-          default = workbenchImage;
+          default = agent-image;
         };
       });
 }

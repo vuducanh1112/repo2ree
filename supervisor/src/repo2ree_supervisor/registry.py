@@ -27,6 +27,11 @@ class WorkbenchEntry:
     # later op must reach the same agent that holds the container. Empty for
     # legacy entries and single-agent setups, where "any connected agent" is fine.
     agent_id: str = ""
+    # How the executor is invoked inside this bench, as minted by the agent at
+    # provision time (see WorkbenchLocation.exec_path). The default covers
+    # entries written before executor injection existed — benches with the
+    # executor baked into the image.
+    exec_path: str = "repo2ree-exec"
 
 
 class WorkbenchRegistry:
@@ -40,6 +45,7 @@ class WorkbenchRegistry:
             "volume_name": entry.volume_name,
             "image": entry.image,
             "agent_id": entry.agent_id,
+            "exec_path": entry.exec_path,
         }
         self._write(data)
 
@@ -62,6 +68,7 @@ class WorkbenchRegistry:
             volume_name=record["volume_name"],
             image=record.get("image", ""),
             agent_id=record.get("agent_id", ""),
+            exec_path=record.get("exec_path", "repo2ree-exec"),
         )
 
     def unregister(self, ree_id: str) -> None:

@@ -20,14 +20,12 @@ rooted at ``tmp_path`` instead of ``/ree``, not a behavior stub.
 
 Steps that require a real external tool are tested for real where that tool
 exists, and skipped (never faked) when it is absent:
-  * ``evaluate_dependency_score`` needs ``renovate`` — see the gated test below.
   * ``build_runtime`` / ``run_experiment`` / ``activation_test`` /
     ``generate_sbom`` need a Docker daemon — their home is the Docker-gated e2e.
 """
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -426,15 +424,12 @@ def test_seal_is_deterministic_for_unchanged_content(ree: Ree, source_repo: Path
 # ================================================
 
 
-@pytest.mark.skipif(
-    shutil.which("renovate") is None,
-    reason="evaluate_dependency_score shells out to renovate; run for real where it exists, never mocked",
-)
 def test_evaluate_dependency_score_real(ree: Ree, source_repo: Path) -> None:
-    """Run dependency scoring against real ``renovate`` on a materialized workspace.
+    """Run the (extraction-retired) scoring on a materialized workspace.
 
-    Skipped (not faked) when renovate is absent — the workbench image ships it,
-    so this runs for real there and in any env that has it on PATH.
+    Dependency extraction is retired pending the next analyzer, so the report
+    scores on file signals alone — the fixture's requirements.txt/Dockerfile
+    still register as manifest/environment signals.
     """
     layout = ree.layout
     log = ree.log
@@ -450,7 +445,9 @@ def test_evaluate_dependency_score_real(ree: Ree, source_repo: Path) -> None:
 
     assert result.status == "succeeded"
     assert (layout.artifacts / "reproducibility-report.json").is_file()
-    # renovate detected the fixture's manifests (requirements.txt, Dockerfile)
+    # File signals still register the fixture's manifests (requirements.txt).
     assert result.outputs["manifestCount"] >= 1
+    # No extractor: per-dependency data is empty by construction.
+    assert result.outputs["dependencyCount"] == 0
     # the evaluation outcome is settled into the durable session metadata
     assert "dependencyLevel" in result.outputs

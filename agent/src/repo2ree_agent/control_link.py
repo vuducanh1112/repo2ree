@@ -5,10 +5,12 @@ messages that arrive over the same connection — the control plane pushes work
 down the agent-initiated socket. Each request is handled concurrently; its
 response frames are tagged with the request id and streamed back.
 
-``DockerRuntime`` is synchronous (blocking subprocess + generators), so blocking
-work runs in a thread (``asyncio.to_thread``) and streaming ops pump their sync
-generator from a worker thread into the event loop through a bounded anyio
-memory stream, forwarding each frame as it arrives.
+The runtime behind the requests is anything satisfying ``WorkbenchRuntime``
+(today: ``DockerRuntime``). Runtimes are synchronous (blocking subprocess +
+generators), so blocking work runs in a thread (``asyncio.to_thread``) and
+streaming ops pump their sync generator from a worker thread into the event
+loop through a bounded anyio memory stream, forwarding each frame as it
+arrives.
 """
 
 from __future__ import annotations
@@ -29,8 +31,9 @@ import websockets
 from pydantic import BaseModel, ConfigDict, ValidationError
 from websockets.asyncio.client import ClientConnection, connect
 
-from repo2ree_agent.docker_runtime import DockerRuntime, WorkbenchGone
+from repo2ree_agent.docker_runtime import DockerRuntime
 from repo2ree_agent.transfers import TransferStore
+from repo2ree_agent.workbench_runtime import WorkbenchGone, WorkbenchRuntime
 from repo2ree_protocol.agent import (
     AgentFrame,
     AgentHello,
@@ -75,7 +78,7 @@ def _agent_version() -> str:
 
 async def run_agent(api_ws_url: str, docker_mode: str, agent_id: str, *, reconnect_delay: float = 3.0) -> None:
     """Dial the control plane and serve requests, reconnecting on drop."""
-    runtime = DockerRuntime(docker_mode)
+    runtime: WorkbenchRuntime = DockerRuntime(docker_mode)
     hello = AgentHello(
         agent_id=agent_id,
         hostname=socket.gethostname(),
@@ -109,7 +112,7 @@ class _RequestId(BaseModel):
     id: str
 
 
-async def _serve(ws: ClientConnection, runtime: DockerRuntime) -> None:
+async def _serve(ws: ClientConnection, runtime: WorkbenchRuntime) -> None:
     # Chunked copy-in transfers are scoped to this connection; if it drops with
     # any still open, their partial temp files are discarded rather than leaked.
     transfers = TransferStore()
@@ -159,7 +162,7 @@ def _forget_inflight(inflight: dict[str, asyncio.Task[None]], req_id: str, _task
 
 
 async def _handle(
-    ws: ClientConnection, runtime: DockerRuntime, transfers: TransferStore, req_id: str, req: AgentRequest
+    ws: ClientConnection, runtime: WorkbenchRuntime, transfers: TransferStore, req_id: str, req: AgentRequest
 ) -> None:
     try:
         if isinstance(req, ProvisionRequest):
@@ -167,20 +170,20 @@ async def _handle(
         elif isinstance(req, ReprovisionRequest):
             await _pump(ws, req_id, lambda: runtime.reprovision(req.ree_id, req.location, req.image))
         elif isinstance(req, ExecActionRequest):
-            await _pump(ws, req_id, lambda: runtime.exec_action(req.container_name, req.cmd_json, req.run_id, req.env))
+            await _pump(ws, req_id, lambda: runtime.exec_action(req.location, req.cmd_json, req.run_id, req.env))
         elif isinstance(req, CancelRunRequest):
-            await asyncio.to_thread(runtime.cancel_run, req.container_name, req.run_id)
+            await asyncio.to_thread(runtime.cancel_run, req.location, req.run_id)
             await _send(ws, req_id, DoneFrame())
         elif isinstance(req, IsRunningRequest):
-            running = await asyncio.to_thread(runtime.is_running, req.container_name)
+            running = await asyncio.to_thread(runtime.is_running, req.location)
             await _send(ws, req_id, RunningFrame(running=running))
         elif isinstance(req, ExecQueryRequest):
-            await _pump_bytes(ws, req_id, lambda: runtime.exec_query_stream(req.container_name, req.argv, req.timeout))
+            await _pump_bytes(ws, req_id, lambda: runtime.exec_query_stream(req.location, req.argv, req.timeout))
         elif isinstance(req, ExecSimpleRequest):
-            await asyncio.to_thread(runtime.exec_simple, req.container_name, req.argv, req.timeout)
+            await asyncio.to_thread(runtime.exec_simple, req.location, req.argv, req.timeout)
             await _send(ws, req_id, DoneFrame())
         elif isinstance(req, CopyOpenRequest):
-            transfer_id = await asyncio.to_thread(transfers.open, req.container_name, req.container_path)
+            transfer_id = await asyncio.to_thread(transfers.open, req.location, req.container_path)
             await _send(ws, req_id, TransferFrame(transfer_id=transfer_id))
         elif isinstance(req, CopyChunkRequest):
             await asyncio.to_thread(transfers.write, req.transfer_id, req.offset, base64.b64decode(req.data_b64))
