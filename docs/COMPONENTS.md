@@ -11,57 +11,72 @@
 repo2ree is a **control plane driving an isolated execution plane over a typed
 command protocol**; see
 [Control plane / execution plane split](ARCHITECTURE.md#control-plane--execution-plane-split).
-Two target invariants shape every package boundary below:
+Three invariants shape every package boundary below:
 
-1. **An REE is built through a workbench.** The main path provisions a per-REE
-   Docker-in-Docker workbench and dispatches typed commands into it. The target
-   is a stronger VM-backed workbench.
-2. **Only the workbench provider/location is configurable**: local Docker,
-   user-local Docker over ssh/context, or a registered runner/controller for
-   cloud, Kubernetes, and institutional environments. Protocol and commands stay
-   the same.
+1. **An REE is built through a workbench (a "bench").** The main path provisions
+   a per-REE Docker-in-Docker bench and dispatches typed commands into it. The
+   target is a stronger VM-backed bench.
+2. **The control plane never touches a container runtime.** A separate
+   deployable — the *agent* — owns the runtime on its host, dials the control
+   plane outbound, and drives the bench on the control plane's behalf. Swapping
+   the substrate (local Docker today; a cloud/Kubernetes/HPC runner later) is a
+   swap of agent, not of protocol or commands.
+3. **The bench image carries no repo2ree content.** The agent injects the
+   executor and its base tools (content-addressed nix closures) into whatever
+   env image the bench boots from, so any image that keeps a process alive and
+   has a writable `/ree` can be a bench — the default is upstream `docker:dind`.
+   See [the env image](ARCHITECTURE.md#the-workbench-env-image).
 
-So the host-side control plane and the in-workbench executor are separate
-deployable units joined by one protocol.
+These are separate deployable units joined by one protocol: the host-side
+control plane, the runtime-owning agent, and the in-bench executor.
 
-## The decomposition: 3 libraries + 3 surfaces
+## The decomposition: 3 libraries + surfaces + the agent
 
 **Libraries do the work. Surfaces are thin adapters that expose a library at a
 boundary.** Surfaces own *no* logic — they translate (argv / HTTP / stdin) into
-a library call and shape the result back.
+a library call and shape the result back. The **agent** is a fourth kind: a
+runtime-owning deployable that sits on the execution-plane host between the
+control plane and the bench.
 
 ```
                        protocol            ← the contract (Command / ActionResult / LogEvent)
-                      /        \
-                  core          supervisor
-                    │           /        \
-            ┌───────┴───┐   ┌───┴───┐  ┌───┴──┐
-            │ executor  │   │repo2ree│  │ api  │   ← surfaces
-            │  (guest)  │   │(future │  │(http,│
-            │           │   │  cli)  │  │ opt.)│
-            └───────────┘   └────────┘  └──────┘
+                    /      |       \
+                core    agent      supervisor
+                  │    (runtime      /       \
+          ┌───────┴──┐   host)   ┌───┴───┐  ┌──┴───┐
+          │ executor │           │repo2ree│  │ api  │   ← surfaces
+          │  (guest) │           │(future │  │(http,│
+          │          │           │  cli)  │  │ opt.)│
+          └──────────┘           └────────┘  └──────┘
 
-  LIBRARIES (logic)            SURFACES (entry points)
-  ─────────────────            ───────────────────────
-  protocol   the wire contract executor  guest, in-image, stdin→core→stdout
-  core       does the work     repo2ree  future host cli — user/agent surface
-  supervisor lifecycle+relay    api       host http — optional hosted UX
+  LIBRARIES (logic)            SURFACES (entry points)         AGENT (runtime host)
+  ─────────────────            ───────────────────────         ────────────────────
+  protocol   the wire contract executor  guest, in-image        owns the container
+  core       does the work     repo2ree  future host cli        runtime; dials the
+  supervisor lifecycle+dispatch api       host http, optional    control plane; injects
+                                                                 the executor into benches
 ```
 
 ### Libraries
 
 | package | responsibility | depends on | deployed |
 |---|---|---|---|
-| **protocol** | the typed `Command` / `ActionResult` / `LogEvent` envelope + (de)serialization (`command_adapter`). The single thing host and guest must agree on. | — | host **and** image |
-| **core** | does the actual work — the command handlers (`build-runtime`, `generate-sbom`, `evaluate`, `run-experiment`, the workspace/REE/`/ree`-tree operations). Pure library; **no CLI framework deps**. | protocol | **image only** |
-| **supervisor** | the control plane: workbench + REE **lifecycle** (provision / reprovision / teardown), the **registry** (`ree_id → workbench`), and the **relay/transport** that dispatches commands into a workbench and streams logs/results back. Never executes a command itself. | protocol | host only |
+| **protocol** | the typed `Command` / `ActionResult` / `LogEvent` envelope + (de)serialization (`command_adapter`), **and** the agent wire schema (`AgentRequest` / `AgentFrame` / `WorkbenchLocation`). The things the sides must agree on. | — | host, agent **and** bench |
+| **core** | does the actual work — the command handlers (`build-runtime`, `generate-sbom`, `evaluate`, `run-experiment`), the `doctor` bench probe, the tool resolver (`tooling.py`), and the workspace/REE/`/ree`-tree operations. Pure library; **no CLI framework deps**. | protocol | **bench only** |
+| **supervisor** | the control plane: workbench + REE **lifecycle** (provision / reprovision / teardown), the **registry** (`ree_id → agent + location`), and the **dispatch** that sends commands to the agent and streams logs/results back. Never executes a command, and never touches a container runtime, itself. | protocol | host only |
+
+### The agent (runtime host)
+
+| package | responsibility | depends on | deployed |
+|---|---|---|---|
+| **agent** (`repo2ree-agent`) | owns the container runtime on its host (`DockerRuntime` behind a `WorkbenchRuntime` protocol). Dials the control plane outbound and serves per-bench verbs over one WebSocket. Injects the executor + tools closures into each bench, mints its opaque `WorkbenchLocation`, runs the `doctor` probe, and ferries frames. A *frame ferry*, not an executor — imports `protocol` only. | protocol | its own host (holds the docker socket) |
 
 ### Surfaces
 
 | surface | over | role | deployed |
 |---|---|---|---|
-| **executor** (`repo2ree-exec`) | core + protocol | one-shot: read a `Command` on stdin, run it via core, stream `LogEvent`s on stderr, emit `ActionResult` on stdout, exit. **No listening server.** | **image only** |
-| **`repo2ree`** (supervisor cli) | supervisor + protocol | **target user/agent surface.** Provision a workbench (local or remote), drive the pipeline, stream logs, pull artifacts, tear down. | host — *not implemented yet* |
+| **executor** (`repo2ree-exec`) | core + protocol | one-shot: read a `Command` on stdin, run it via core, stream `LogEvent`s on stderr, emit `ActionResult` on stdout, exit. **No listening server.** Injected by the agent, so it ships with the agent — not baked into the bench image. | **bench only** |
+| **`repo2ree`** (supervisor cli) | supervisor + protocol | **target user/agent surface.** Drive the pipeline against a bench, stream logs, pull artifacts, tear down. | host — *not implemented yet* |
 | **api** (http) | supervisor + protocol | **optional** hosted UX over the supervisor (what the frontend talks to; remote/multi-user access). | host |
 
 ## Dependency rules (the invariants that keep the seam clean)
@@ -72,58 +87,67 @@ as the migration finishes:
 1. **The host should not import effectful `core`.** `supervisor` and the future
    host CLI depend on `protocol` only. `api` still imports a few `core` domain
    and storage helpers today; keep shrinking that surface until execution logic
-   lives exclusively in the image.
+   lives exclusively in the bench.
 2. **Surfaces import their library, never each other.** `api` and `repo2ree`
    are sibling surfaces over `supervisor`. No `cli -> api` or `api -> cli` edge.
 3. **`protocol` depends on nothing.** It is the seam; it must stay importable by
-   both sides without dragging either side's logic along.
+   every side without dragging any side's logic along.
 4. **`core` carries no CLI/HTTP framework deps.** It is a pure library so it can
    also be imported by the in-process *test* transport (below) without cost.
+5. **The agent imports `protocol` only — never `core`.** It is a frame ferry: it
+   places and drives benches and *injects* the executor closure, but never runs
+   command logic itself. Keeping `core` out of the agent keeps the runtime host
+   small and keeps the execution logic on the far side of the bench boundary.
 
 Resulting DAG (acyclic, and the only cross-boundary edge is the protocol):
 
 ```
-protocol ← core ← executor
-protocol ← supervisor ← { repo2ree(cli), api }
+protocol ← core ← executor              (execution plane, in the bench)
+protocol ← agent                        (runtime host; drives the bench, injects the executor)
+protocol ← supervisor ← { repo2ree(cli), api }   (control plane)
 ```
 
 ## Call graph — what is and isn't a process boundary
 
 A common misread is that the `api` shells out to the supervisor cli. It does
 not. `api` and `repo2ree` are sibling surfaces that both import the
-`supervisor` library in-process.
+`supervisor` library in-process. The runtime lives one hop further out, behind
+the agent: the supervisor speaks the agent wire protocol, and the *agent* is
+what does the `docker exec`.
 
 ```
 frontend ──http──► api ──┐
-                         ├─► supervisor ──docker exec──► executor ─► core
-agent/user ─► repo2ree ──┘   (library)     (transport)   (in workbench)
+                         ├─► supervisor ══ws══► agent ──docker exec──► executor ─► core
+agent/user ─► repo2ree ──┘   (library)  (AgentClient)  (DockerRuntime) (in the bench)
               (sv-cli)
         ▲ both call supervisor as a Python library, in-process ▲
+                              ▲ crosses the network to the runtime host ▲
 ```
 
-Two hops *look* alike but are fundamentally different — only one
-crosses a process/isolation boundary:
+Three hops, only the two outer ones cross a boundary:
 
 | hop | kind | why |
 |---|---|---|
 | `api` / `repo2ree` → `supervisor` | **in-process function call** | same machine, same process — `supervisor.provision(...)`, `supervisor.dispatch(cmd, ...)`. No subprocess. |
-| `supervisor` → `executor` | **subprocess / transport** (`docker exec … repo2ree-exec`, `Command` on stdin) | crosses **into the isolated workbench** (and maybe to another machine via ssh). Can't be an in-process call; needs a wire — this is what the typed envelope is *for*. |
+| `supervisor` → `agent` | **network / wire** (`AgentClient` over one **agent-dialed** WebSocket; typed `AgentRequest` / `AgentFrame`) | crosses **to the runtime-owning host**. The agent dials the control plane, so this works from inside clusters and NATed networks that only allow egress — no inbound agent port. |
+| `agent` → `executor` | **subprocess** (`docker exec … <exec_path> execute`, `Command` on stdin) | crosses **into the isolated bench**. Can't be an in-process call; needs a wire — this is what the typed envelope is *for*. |
 
-The supervisor -> executor hop is the only legitimate "invoke a cli" path
-because it crosses the sandbox. Everything left of `supervisor` is a function
-call. In hosted mode, `api` may pass through the
+The two outer hops are the only "cross a boundary" paths: the supervisor→agent
+hop crosses the network to the runtime host, and the agent→executor hop crosses
+into the sandbox. Everything left of `supervisor` is a function call. In hosted
+mode, `api` may pass through the
 [service tier](#the-service-tier--multi-user-persistence-auth-hosted-only) first,
 still in-process.
 
 ## The two CLIs — why, and how to name them
 
-There are **two** command-line tools because there are two execution contexts,
+repo2ree has **two** command-line tools because it has two execution contexts,
 and conflating them is the mistake to avoid:
 
 | | runs | reads | job | user-facing? |
 |---|---|---|---|---|
 | **`repo2ree`** (supervisor cli) | on the host | argv | drive workbenches | **yes — this is what `pip install` gives you** |
-| **`repo2ree-exec`** (executor) | inside the workbench image | a `Command` on **stdin** | execute one command, exit | no — image-internal |
+| **`repo2ree-exec`** (executor) | inside the bench (agent-injected) | a `Command` on **stdin** | execute one command, exit | no — bench-internal |
 
 The friendly name `repo2ree` belongs to the future host cli. The implemented
 guest piece is the stdin-driven `repo2ree-exec`: invoked per command via
@@ -132,62 +156,72 @@ guest piece is the stdin-driven `repo2ree-exec`: invoked per command via
 
 ## Always isolated, location configurable
 
-Isolation is fixed; the docker endpoint is the knob. Because docker has native
-remote support, the single-user CLI can treat "local vs remote" mostly as a
-connection setting, not a second transport to write:
+Isolation is fixed; *which agent owns the substrate* is the knob. The control
+plane never holds a docker socket — it addresses a bench through the agent that
+provisioned it, so "local vs remote" is a matter of *where the agent runs*, not
+a second transport to write:
 
-```
-repo2ree create ./src -o ree.tar.gz                     # workbench on local daemon
-repo2ree create ./src -o ree.tar.gz --host ssh://build  # workbench on a remote box
-```
+- **The agent owns the runtime; the control plane owns intent.** An agent runs
+  next to the docker host (or cloud/HPC substrate), dials the control plane
+  outbound, and reports its identity. Provision pins the REE to the concrete
+  agent it lands on (`AgentClient.resolve_agent`), and every later op routes to
+  that same agent.
+- **Handle resolution goes through the agent, not `docker inspect`.** Because
+  the control plane has no socket, it cannot inspect containers directly: it
+  records `ree_id → (agent_id, WorkbenchLocation)` in a persisted registry
+  (`WORKBENCH_REGISTRY_FILE`) and asks the agent for run-state (`is_running`).
+  The bench's container name is still deterministic *on the agent's host*
+  (`repo2ree-wb-{ree_id}`), but that name is the agent's private vocabulary,
+  carried inside the opaque `WorkbenchLocation` — the control plane never
+  interprets it.
+- **The iterate loop stays fast despite always-isolated.** The bench is
+  persistent: provision once (the image's own default process keeps it alive —
+  `dockerd` on dind — with a pause command only as the rescue for images whose
+  default exits immediately; `restart unless-stopped` is applied *after* the
+  bench proves viable), then `docker exec` per command via the agent, tear down
+  at the end.
+- **A reachable agent is the hard requirement.** An environment with no
+  connected agent (and thus no runtime) cannot run the product.
 
-- The supervisor targets a configurable Docker endpoint (`DOCKER_HOST`, docker
-  context, `-H ssh://...`). Same cli, same commands.
-- **Handle resolution needs no registry daemon.** The container name is
-  deterministic (`repo2ree-wb-{ree_id}`), so existence/run-state is a
-  `docker inspect` — *docker itself is the registry* for the cli flow. The
-  stateful registry is only needed by the multi-user `api`.
-- **The iterate loop stays fast despite always-isolated.** The workbench is
-  persistent (`sleep infinity`, `restart unless-stopped`): provision once,
-  `docker exec` per command, tear down at the end.
-- **Docker must be local or reachable.** An environment with no Docker and no
-  remote cannot run the product.
-
-This SSH/context form is the **user-controlled CLI case**: the user's local
-machine may use its own SSH agent or Docker context to reach a remote Docker
-host. In hosted mode, repo2ree should not receive SSH passwords, private keys,
-cloud admin credentials, or kubeconfigs. Cloud and university resources should
-be reached through a registered runner/controller inside the user's boundary;
-see [Remote execution clients](ARCHITECTURE.md#remote-execution-clients-user-owned-runners).
+The remote case is a **registered agent inside the user's boundary**, reached
+outbound-only — not the control plane holding SSH keys or a kubeconfig. In
+hosted mode repo2ree should not receive SSH passwords, private keys, cloud admin
+credentials, or kubeconfigs; cloud and university resources are reached through
+a registered runner/agent inside the user's boundary. See
+[Remote execution clients](ARCHITECTURE.md#remote-execution-clients-user-owned-runners).
 
 ## What runs continuously — deployment modes
 
-The supervisor is a **library, not a daemon.** Whether anything "runs
-continuously" is a property of the *surface that hosts it*, not of the
-supervisor itself — because the supervisor owns no state that must outlive a
-call. It is **stateless** and derives everything from docker each time:
+The supervisor is a **library, not a daemon** — whether anything "runs
+continuously" is a property of the *surface that hosts it*. But note where the
+always-on process moved: because the control plane has no docker socket, the
+long-running runtime host is now the **agent**, and the control plane keeps a
+small **persisted registry** (it cannot reconstruct bench state from `docker
+inspect` the way a socket-holding supervisor could):
 
 | state | owned by |
 |---|---|
-| the workbench fleet (containers + volumes) | **docker** — already a long-running daemon (`restart unless-stopped`) |
-| the registry (`ree_id → workbench`) | **derived** — container name is deterministic, so `docker inspect` reconstructs it |
-| long-running jobs (a build is minutes) | **the workbench itself** — run detached, write logs/result to `/ree`, clients attach to tail. Each workbench is already a per-REE continuous process. |
+| the bench fleet (containers + volumes) | **docker on the agent's host** — a long-running daemon (`restart unless-stopped`, applied once a bench is viable) |
+| the runtime host that drives the fleet | **the agent** — a continuously-running process holding the socket and one outbound WebSocket to the control plane |
+| the registry (`ree_id → agent_id + WorkbenchLocation`) | **persisted by the control plane** (`WORKBENCH_REGISTRY_FILE`) — the opaque location is minted by the agent and cannot be re-derived host-side |
+| long-running jobs (a build is minutes) | **the bench itself** — run inside the bench, write logs/result to `/ree`, stream frames back through the agent. Each bench is a per-REE continuous process. |
 | the versioned manifest (optimistic concurrency) | the **service tier's DB** (below); moot in single-client cli mode |
 
-So the continuously-running things you'd reach for **already exist** (docker +
-the workbench containers). Two modes follow:
+Two modes follow:
 
-| mode | the continuous process | supervisor |
+| mode | the continuous processes | supervisor |
 |---|---|---|
-| **cli / single agent** | docker + workbench containers | ephemeral library, in-process per command, stateless — *no service to run* |
-| **hosted / multi-user** | **the `api`** (a long-lived server) | same library, hosted in-process by the api → effectively continuous; fleet background work (idle-TTL GC, health, orphan cleanup) is a background task *inside the api process* |
+| **cli / single agent** | docker + benches + one agent | ephemeral library, in-process per command — *no control-plane service to run, but an agent must be up* |
+| **hosted / multi-user** | **the `api`** (a long-lived server) **+ one or more agents** | same library, hosted in-process by the api → effectively continuous; fleet background work (idle-TTL GC, health, orphan cleanup) is a background task *inside the api process* |
 
-A **separate** supervisor daemon is the wrong default: it breaks the
-zero-service cli flow, is redundant with docker, and adds an IPC hop the api
-gains nothing from. Only introduce a standalone long-lived process if
-fleet-wide background work must be decoupled from the request lifecycle (global
-quotas, cross-host draining) — and even then it's an *optional worker that
-imports the supervisor library*, never a reimplementation.
+A **separate** supervisor daemon is still the wrong default: it breaks the
+zero-service cli flow and adds an IPC hop the api gains nothing from. The agent
+is *not* that daemon — it lives on the execution-plane host and owns the
+substrate, which is exactly the concern the control plane must not hold. Only
+introduce a standalone control-plane worker if fleet-wide background work must
+be decoupled from the request lifecycle (global quotas, cross-host draining) —
+and even then it's an *optional worker that imports the supervisor library*,
+never a reimplementation.
 
 ## The service tier — multi-user, persistence, auth (hosted only)
 
@@ -230,9 +264,10 @@ Two judgment calls baked in:
    (verify token → identity, OIDC/SSO-friendly) with a default impl — don't
    hand-roll a user/password store deployments can't swap.
 2. **Tenancy stays out of the supervisor.** Enforce it in the service ACL layer;
-   keep `ree_id`s globally-unique opaque ids and container naming flat
-   (`repo2ree-wb-{ree_id}`). If the supervisor learns about tenants it stops
-   being reusable by the cli.
+   keep `ree_id`s globally-unique opaque ids (the agent derives its own flat
+   container name, `repo2ree-wb-{ree_id}`, from that id inside the opaque
+   `WorkbenchLocation`). If the supervisor learns about tenants it stops being
+   reusable by the cli.
 
 DAG rule extends cleanly: `service → supervisor → protocol`, and **`service`
 never imports `core`.** Packaging is non-dogmatic — a well-bounded `service`
@@ -242,37 +277,49 @@ for the cli/local flow or a first single-tenant deployment.
 
 ## Distribution
 
+The executor no longer ships as a bench image. It is a nix closure carried by
+the **agent** and injected at provision time, so the units to distribute are the
+control plane, the agent, and an env image that carries *no* repo2ree content.
+
 | audience | installs / pulls |
 |---|---|
-| user / agent (future cli) | `repo2ree` (supervisor cli) + `protocol`; **+ a workbench image** (carries `core` + `executor`) |
-| hosted deployment | the above + `api` (and the frontend it serves) |
-| workbench image | `protocol` + `core` + `executor` — *never* `supervisor` / `api` / cli |
+| control-plane host | `api` (and the frontend it serves) + `supervisor` + `protocol` |
+| runtime host | the **agent image** (`repo2ree-agent`): the agent process + the executor and tools closures it injects (`protocol` + `core` + `executor`, bundled — never `supervisor` / `api`) |
+| env image (the bench) | any image that keeps a process alive with a writable `/ree`; **zero repo2ree content** — the default is upstream `docker:dind`, pinned by digest in the catalog |
 
-The workbench **image is versioned and is part of the reproducibility anchor**
-(`Command.workbench_image: digest` — see
-[the wire form](ARCHITECTURE.md#the-wire-form-a-typed-action-envelope)). Pinning
-the image pins what produced the REE.
+Because the executor and tools **version with the agent, not the env image**,
+there is no separately-installed executor to skew against: pull a newer agent
+image and every bench it provisions runs the matching executor.
+
+Two things pin what produced an REE, and both are content addresses: the env
+image (`Command.workbench_image: digest` — see
+[the wire form](ARCHITECTURE.md#the-wire-form-a-typed-action-envelope)) *and* the
+injected executor/tools closures (content-hashed nix store paths). Pinning both
+pins the environment that produced the REE. See
+[the env image](ARCHITECTURE.md#the-workbench-env-image).
 
 ## Target test layout
 
-The transport is an interface (`WorkbenchClient`) with **three**
-implementations in the target design — but only two are user-facing:
+Two seams need faking, not one. The control plane depends on `AgentClient`
+(supervisor → agent); the agent depends on `WorkbenchRuntime` (agent →
+substrate). Each has one production impl and a test fake:
 
-| transport | use | docker? |
-|---|---|---|
-| `docker-local` | shipped | yes |
-| `docker-remote` (ssh / context) | shipped | yes (remote) |
-| `in-process` (run `core` directly on a temp `/ree`) | **test only** | no |
+| seam | production | test | docker? |
+|---|---|---|---|
+| `AgentClient` (control plane → agent) | `WsAgentClient` (one outbound WebSocket) | in-memory fake client | no |
+| `WorkbenchRuntime` (agent → substrate) | `DockerRuntime` (local docker socket) | — | yes (real) |
+| `in-process` (run `core` directly on a temp `/ree`) | — | test transport | no |
 
 That keeps "full e2e per surface" affordable: the **real docker path is
-exercised end-to-end once**, while each surface is tested against the
-in-process transport — fast, deterministic, daemon-free.
+exercised end-to-end once** (through a real agent + `DockerRuntime`), while each
+surface is tested against faked seams — fast, deterministic, daemon-free.
 
 ```
-protocol/tests/      unit: envelope (de)serialization round-trips
-core/tests/          unit: command handlers, /ree ops          (existing)
-supervisor/tests/    unit: registry; lifecycle/relay w/ docker mocked
-                     integration: against in-process transport
+protocol/tests/      unit: envelope + agent-frame (de)serialization round-trips
+core/tests/          unit: command handlers, /ree ops, doctor, tooling   (existing)
+agent/tests/         unit: DockerRuntime injection/probe logic; control_link; transfers
+supervisor/tests/    unit: registry; manager/dispatch w/ AgentClient faked
+                     integration: against a fake agent / in-process transport
 cli/tests/e2e/       future repo2ree cli: provision → acquire → build → run → seal → teardown
 api/tests/e2e/       same flow over httpx against the FastAPI app
 frontend/tests/e2e/  existing UI e2e
@@ -285,21 +332,29 @@ when the host CLI exists, it should reuse the same flow.
 
 ## Relationship to today's code
 
-The package split is now partly real:
+The package split is now largely real:
 
-- **Done:** `protocol/` holds the typed command/result/log/tracing contract.
-- **Done:** `supervisor/` holds `WorkbenchManager` and the workbench registry.
-- **Done:** `executor/` provides `repo2ree-exec`, the image-internal command
-  runner.
+- **Done:** `protocol/` holds the typed command/result/log/tracing contract
+  **and** the agent wire schema (`AgentRequest` / `AgentFrame` /
+  `WorkbenchLocation`).
+- **Done:** `supervisor/` holds `WorkbenchManager`, the persisted registry, and
+  the `AgentClient` seam — it dispatches over the wire and touches no runtime.
+- **Done:** `agent/` holds the runtime host: the `WorkbenchRuntime` protocol,
+  its sole `DockerRuntime` impl (provisioning, executor injection, the `doctor`
+  probe), and the `control_link` WebSocket server.
+- **Done:** `executor/` provides `repo2ree-exec`, the in-bench command runner,
+  now injected by the agent rather than baked into a bench image.
+- **Done (interface):** the transport is now an interface with one impl each —
+  `AgentClient` → `WsAgentClient`, `WorkbenchRuntime` → `DockerRuntime` — not a
+  single hardcoded local-Docker path. Additional runtimes (cloud/HPC) are the
+  intended next impls.
 - **Still rough:** `api` still imports some `core` domain/storage helpers and
   owns hosted UX concerns directly.
-- **Still rough:** `WorkbenchManager` has one local-Docker transport, not a
-  `WorkbenchClient` interface with local/remote/in-process implementations.
 - **Missing:** the user-facing host `repo2ree` supervisor CLI does not exist yet.
 
 ## Future surfaces — what the seams enable (optional, driver-gated)
 
-> Not roadmap. This records what the existing seams *keep possible for free*, so
+> Not roadmap. This records what the existing seams *already make possible*, so
 > a future driver doesn't trigger a redesign. **Don't build any of this without a
 > concrete driver** (YAGNI). A good architecture makes new surfaces cheap; the
 > test is that each item below drops onto an interface that already exists and
@@ -311,7 +366,7 @@ a different existing seam, each separately optional:
 | axis | meaning | seam it reuses | verdict |
 |---|---|---|---|
 | **distribution** | fetch finished REEs from any peer | the artifact / CAS store interface | commodity — hermetic + content-addressing already suffices |
-| **execution** | run a build on a peer's workbench | the `WorkbenchClient` transport | the *differentiated* one — enabled by reproducibility |
+| **execution** | run a build on a peer's bench | the `AgentClient` / `WorkbenchRuntime` seams | the *differentiated* one — enabled by reproducibility |
 | **discovery / identity** | DHT + keys instead of the central `service`/DB | an alternative to the service tier | heaviest; usually unnecessary |
 
 The hosted-client version of this is the registered runner described in
@@ -340,7 +395,7 @@ result). This collapses "distribution" and "execution" into one mechanism:
 - "P2P" concretely = **a distributed action cache** (a DHT/gossip front over the
   same content-addressed store), optionally backed by **rebuilders**.
 
-So the build pipeline gains one lookup before it provisions a workbench: *ask the
+The build pipeline therefore gains one lookup before it provisions a bench: *ask the
 network whether `command_digest` is already satisfied.* Hit → fetch + verify,
 skip the build. Miss → build locally, publish the new entry. Same `Command`, same
 `ActionResult`; the network is just a cache tier in front of the supervisor.
@@ -363,9 +418,10 @@ command in *your own* workbench) *and* verifiable (re-run, compare digests).
 
 - **distribution** → an impl of the artifact/CAS store interface (in the
   `service` tier / CAS layer). No change to core, supervisor, or protocol.
-- **execution** → another `WorkbenchClient` transport (a *peer* endpoint
-  alongside `docker-local` / `docker-remote`) **+** a verification step that
-  re-runs via `core` and digest-compares. The transport interface is the seam.
+- **execution** → another `WorkbenchRuntime` impl (a *peer* substrate alongside
+  `DockerRuntime`), or a peer `AgentClient`, **+** a verification step that
+  re-runs via `core` and digest-compares. The runtime/agent seams are what make
+  this free.
 - **discovery / identity** → an alternative realization of the `service` tier
   (DHT + cryptographic identity) — only if the *goal itself* is a decentralized
   public network.
@@ -380,14 +436,15 @@ commodity file-sharing and becomes something only this tool can credibly offer.
   `control`. (Doc uses `protocol` / `supervisor`.)
 - **Executor home:** thin separate package vs an entrypoint on `core`. This doc
   recommends *separate*, to keep `core` framework-free.
-- **Sequencing:** extract `supervisor` + introduce `WorkbenchClient` first (this
-  unblocks the cli e2e and fixes the layering smell); `protocol` split and the
-  remote/agent surfaces can follow for free once the shape is in place.
+- **Sequencing:** *(largely resolved)* `supervisor` is extracted and the
+  transport is now the `AgentClient` / `WorkbenchRuntime` seams with the agent as
+  the runtime host. What remains sequenced behind this is the user-facing
+  `repo2ree` cli and additional `WorkbenchRuntime` impls (cloud/HPC).
 - **Service tier home:** a bounded `service` module inside `api` vs its own
   package. Defer until a second surface needs the same use-cases.
 - **Auth scheme:** the default identity provider behind the pluggable auth seam
   (OIDC? local dev token?). Out of scope until the first multi-user deployment.
 - **P2P / distributed action cache:** explicitly *non-goal* until a concrete
   driver. Tracked only as "preserved option" — the action-cache key
-  (`command_digest`) and the artifact/CAS + `WorkbenchClient` interfaces are the
-  seams that keep it free.
+  (`command_digest`) and the artifact/CAS + `AgentClient`/`WorkbenchRuntime`
+  interfaces are the seams that keep it free.

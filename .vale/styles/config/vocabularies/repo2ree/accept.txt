@@ -53,6 +53,7 @@ kaniko
 buildah
 podman
 dockerd
+dind
 linuxkit
 systemd
 virtualenv
@@ -94,7 +95,8 @@ env
 args
 argv
 proto
-impl
+impls?
+NATed
 params
 hyperparameters
 namespaces?

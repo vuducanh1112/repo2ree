@@ -338,7 +338,7 @@ policy, with what verdict.
 7. Optionally sign the verification receipt as reviewer, executor, venue, or
    institution evidence.
 
-There is no special reviewer mode. Authors and reviewers use the same machinery.
+No special reviewer mode exists. Authors and reviewers use the same machinery.
 The difference is the signed claim attached to the receipt.
 
 ### Data and restricted inputs

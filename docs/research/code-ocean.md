@@ -73,7 +73,7 @@ runnable, not a verifiable claim.
 ### 5.1 Verification semantics
 
 The Reproducible Run badge answers exactly one question: did it execute.
-There are no output contracts, no numeric tolerances, no statistical reruns,
+It has no output contracts, no numeric tolerances, no statistical reruns,
 no claim-level predicates, and no reviewer receipt that points back at the
 author's run.
 
@@ -150,7 +150,7 @@ The importer pattern generalizes:
 | Prior format | Maps to |
 |---|---|
 | Code Ocean capsule | Source + Overlay + baseline outputs |
-| Whole Tale tale | Source + Overlay + data pointers |
+| Tale (Whole Tale) | Source + Overlay + data pointers |
 | Binder / repo2docker config | Overlay build recipe |
 | RO-Crate | Declaration + metadata + data pointers |
 

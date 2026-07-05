@@ -30,7 +30,7 @@ PID/IAM base services, and Artifact Evaluation pilots.
 Research code has two structural failures:
 
 - **Reproducibility is unobservable.** A repo either builds for you or it
-  doesn't. There is no *measurement* of how reproducible it is, what
+  doesn't. Nothing *measures* how reproducible it is, what
   makes it fragile, or what would improve it — no signal for reviewers,
   future maintainers, or the author's own future self.
 - **A "run" of code is not a thing.** Papers report numbers; repos
@@ -218,8 +218,8 @@ Verify is the *composition* of the two primitives that gives reviewers
    Receipt set, depositable as the reviewer's own contribution
 ```
 
-Author and reviewer use the **same machinery, symmetrically**. There is
-no special "review mode"; the reviewer just produces their own Receipts
+Author and reviewer use the **same machinery, symmetrically**. No
+special "review mode" exists; the reviewer just produces their own Receipts
 and publishes the predecessor links.
 
 ---

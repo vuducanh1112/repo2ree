@@ -134,7 +134,7 @@ pip install old-package==1.2.3
 # no matching distribution found
 ```
 
-But there are several different things that may have vanished:
+Several different things may have vanished, though:
 
 | Missing thing | Why it matters |
 |---|---|
@@ -215,7 +215,7 @@ wheels. The manifest records which is which.
 
 ## Closure capture strategies
 
-There are two complementary ways to capture dependencies.
+Two complementary ways to capture dependencies exist.
 
 ### 1. Substrate-native capture
 
@@ -265,7 +265,7 @@ flake.lock + derivations + store paths + narinfo/NAR closure
 Replay shape: restore the store closure, disable upstream fetches, build or
 substitute exact inputs.
 
-But Nix does not erase ecosystem semantics. Translating `pyproject.toml`,
+Nix does not, however, erase ecosystem semantics. Translating `pyproject.toml`,
 `package-lock.json`, `environment.yml`, or Dockerfiles still requires the
 original resolver, artifacts, native extensions, scripts, platform tags, and
 index metadata.

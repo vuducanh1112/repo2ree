@@ -124,8 +124,8 @@ The reviewer's one-click moment. Composes the two primitives:
 5. Diffs are surfaced; the reviewer's Receipt set is itself depositable
    via [Archive](#archive) as a citable verification artifact.
 
-Author and reviewer use the same machinery. There is no special "review
-mode."
+Author and reviewer use the same machinery. No special "review mode"
+exists.
 
 ### Seal
 
