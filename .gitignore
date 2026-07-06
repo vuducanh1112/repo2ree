@@ -26,3 +26,10 @@ result-*
 .coverage
 .coverage.*
 coverage.xml
+
+examples/
+fastapi.log
+.env.example
+.dockerignore
+.vale/styles/proselint/
+.vale/styles/write-good/
