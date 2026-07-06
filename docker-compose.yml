@@ -1,3 +1,6 @@
+# Control plane only: frontend + backend. Workbench agents run separately
+# (anywhere with a container runtime) and dial the backend over an outbound
+# WebSocket — see docs/engineering/deployment.md for how to start one.
 services:
   backend:
     image: ${REPO2REE_BACKEND_IMAGE:-docker.io/vuducanh1112/repo2ree-backend:edge}
@@ -6,24 +9,8 @@ services:
     volumes:
       - repo2ree-demo-data:/app/.repo2ree
     # No docker.sock here: the backend is pure control plane — every touch of
-    # a container runtime goes through the agent below over its outbound
+    # a container runtime goes through a connected agent over its outbound
     # WebSocket.
-
-  # The workbench agent: owns the container runtime, dials the backend, and
-  # injects its embedded executor/tools bundles into each bench at provision
-  # time. The same image a third party runs to contribute benches.
-  agent:
-    image: ${REPO2REE_AGENT_IMAGE:-docker.io/vuducanh1112/repo2ree-agent:edge}
-    depends_on:
-      - backend
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      # Keeps the agent id stable across container replacements; without it
-      # the id — and the reachability of the REEs pinned to it — resets.
-      - repo2ree-agent-state:/var/lib/repo2ree-agent
-    environment:
-      WORKBENCH_API_WS_URL: ws://backend:8000/agent/connect
-      WORKBENCH_DOCKER_MODE: dind
 
   frontend:
     image: ${REPO2REE_FRONTEND_IMAGE:-docker.io/vuducanh1112/repo2ree-frontend:edge}
@@ -36,4 +23,3 @@ services:
 
 volumes:
   repo2ree-demo-data:
-  repo2ree-agent-state:

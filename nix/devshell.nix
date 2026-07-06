@@ -31,6 +31,9 @@ pkgs.mkShell {
     # vale lints prose in docs/ (config in ./.vale.ini)
     vale
 
+    # static analyser for shell scripts
+    shellcheck
+
     # playwright browser drivers, because using nix and using playwright via npm does not work, since playwright
     # looks at default locations
     # fonts are important for the browsers to render properly

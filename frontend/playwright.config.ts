@@ -1,7 +1,12 @@
 import { defineConfig } from "@playwright/test";
 
+// When E2E_BASE_URL is set, the tests run against an externally provided
+// frontend (e.g. the compose image stack on :3000) and no vite dev server is
+// started. Default: playwright starts its own dev server on :4173.
+const externalBaseURL = process.env.E2E_BASE_URL;
+
 const baseUse = {
-  baseURL: "http://127.0.0.1:4173",
+  baseURL: externalBaseURL ?? "http://127.0.0.1:4173",
   browserName: "chromium" as const,
   launchOptions: {
     executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
@@ -19,15 +24,17 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: "list",
-  webServer: {
-    command: "npm run dev -- --host 127.0.0.1 --port 4173",
-    url: "http://127.0.0.1:4173",
-    reuseExistingServer: true,
-    timeout: 10 * 1000,
-    env: {
-      VITE_API_BASE_URL: "http://localhost:8000",
-    },
-  },
+  webServer: externalBaseURL
+    ? undefined
+    : {
+        command: "npm run dev -- --host 127.0.0.1 --port 4173",
+        url: "http://127.0.0.1:4173",
+        reuseExistingServer: true,
+        timeout: 10 * 1000,
+        env: {
+          VITE_API_BASE_URL: "http://localhost:8000",
+        },
+      },
   projects: [
     {
       // Lean regression tests: no narration, no artificial delays.

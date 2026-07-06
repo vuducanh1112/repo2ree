@@ -1868,6 +1868,7 @@ dependencies = [
     { name = "repo2ree-supervisor" },
     { name = "requests" },
     { name = "uvicorn" },
+    { name = "websockets" },
 ]
 
 [package.metadata]
@@ -1882,6 +1883,7 @@ requires-dist = [
     { name = "repo2ree-supervisor", editable = "supervisor" },
     { name = "requests", specifier = "~=2.32.5" },
     { name = "uvicorn", specifier = "~=0.40.0" },
+    { name = "websockets", specifier = "~=15.0" },
 ]
 
 [[package]]

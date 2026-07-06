@@ -1,7 +1,7 @@
 .PHONY: \
-	docs-lint \
+	docs-lint scripts-checks \
 	fe-checks fe-tests \
-	be-checks protocol-checks core-checks supervisor-checks api-checks executor-checks agent-checks \
+	be-checks \
 	be-tests be-unit-tests be-integration-tests \
 	core-tests core-unit-tests core-integration-tests \
 	supervisor-tests supervisor-integration-tests \
@@ -13,9 +13,11 @@
 	frontend-image frontend-image-archive frontend-npm-hash \
 	backend-image backend-image-archive \
 	image-archives images load-image-archives \
-	push-dockerhub-archives push-ghcr-archives \
-	push-ghcr push-ghcr-local push-dockerhub push-dockerhub-local push-registries \
-	e2e-tests e2e-demo e2e-demo-code-ocean e2e-coverage e2e-bundles
+	push-archives push-tag push-rev validate-rev promote-edge \
+	e2e-tests e2e-tests-images e2e-tests-stack e2e-tests-stack-published \
+	e2e-demo e2e-demo-images e2e-demo-stack e2e-demo-stack-published \
+	e2e-demo-code-ocean e2e-coverage e2e-bundles \
+	stack-up stack-down commit-gate push-gate
 
 # ================================================
 # Docs — prose linting
@@ -25,6 +27,14 @@ docs-lint:
 	@echo "Linting docs with Vale..."
 	vale sync
 	vale docs README.md
+
+# ================================================
+# Scripts — shell linting
+# ================================================
+
+scripts-checks:
+	@echo "Running shellcheck..."
+	shellcheck scripts/*.sh
 
 
 # ================================================
@@ -53,43 +63,18 @@ fe-tests:
 # Backend - checks
 # ================================================
 
-protocol-checks:
-	@echo "Running protocol checks..."
-	ruff check protocol/src
-	ruff format protocol/src
-	mypy protocol/src
+# Python workspace packages. <pkg>-checks runs ruff + mypy over the package's
+# src (and tests, where the package has them — protocol doesn't).
+PY_PACKAGES = protocol core supervisor api executor agent
 
-core-checks:
-	@echo "Running core checks..."
-	ruff check core/src core/tests
-	ruff format core/src core/tests
-	mypy core/src core/tests
+.PHONY: $(addsuffix -checks,$(PY_PACKAGES))
+$(addsuffix -checks,$(PY_PACKAGES)): %-checks:
+	@echo "Running $* checks..."
+	ruff check $(wildcard $*/src $*/tests)
+	ruff format $(wildcard $*/src $*/tests)
+	mypy $(wildcard $*/src $*/tests)
 
-supervisor-checks:
-	@echo "Running supervisor checks..."
-	ruff check supervisor/src supervisor/tests
-	ruff format supervisor/src supervisor/tests
-	mypy supervisor/src supervisor/tests
-
-api-checks:
-	@echo "Running api checks..."
-	ruff check api/src api/tests
-	ruff format api/src api/tests
-	mypy api/src api/tests
-
-executor-checks:
-	@echo "Running executor checks..."
-	ruff check executor/src executor/tests
-	ruff format executor/src executor/tests
-	mypy executor/src executor/tests
-
-agent-checks:
-	@echo "Running agent checks..."
-	ruff check agent/src agent/tests
-	ruff format agent/src agent/tests
-	mypy agent/src agent/tests
-
-be-checks: protocol-checks core-checks supervisor-checks api-checks executor-checks agent-checks
+be-checks: $(addsuffix -checks,$(PY_PACKAGES))
 
 # ================================================
 # Backend - tests
@@ -186,22 +171,15 @@ be-coverage-context:
 # End-to-end tests
 # ================================================
 
-# Backend API server log for plain e2e runs (without coverage). Overwritten
-# on each run; use test-artifacts/coverage/e2e/backend.log for coverage runs.
-E2E_API_LOG = $(CURDIR)/test-artifacts/api-server.log
-E2E_AGENT_LOG = $(CURDIR)/test-artifacts/agent.log
-E2E_AGENT_STATE_DIR = $(CURDIR)/test-artifacts/e2e-agent-state
-E2E_WORKBENCH_DOCKER_MODE ?= dind
+# Stack orchestration (backend + agent + playwright, readiness polling,
+# teardown, the coverage variant) lives in scripts/e2e-stack.sh.
 
 # Which bench the e2e backend's catalog offers. Empty (the default) means the
 # backend's own catalog default — the pinned docker:dind digest in
 # api/src/repo2ree_api/settings.py — which every browser tier runs on.
 # Set it to pin the run to a specific image instead.
 E2E_WORKBENCH_IMAGE ?=
-define E2E_WORKBENCH_IMAGE_CATALOG
-[{"id":"pinned","ref":"$(E2E_WORKBENCH_IMAGE)","label":"Pinned bench","description":"Bench image pinned for this e2e run."}]
-endef
-E2E_CATALOG_ENV = $(if $(E2E_WORKBENCH_IMAGE),WORKBENCH_IMAGE_CATALOG='$(E2E_WORKBENCH_IMAGE_CATALOG)')
+E2E_WORKBENCH_DOCKER_MODE ?= dind
 
 # The e2e agent always gets the executor/tools bundles: lean env images (the
 # dind default, custom benches) need the injection, and images that ship their
@@ -213,146 +191,122 @@ e2e-bundles: stage-nix-sources
 	nix build .#exec-bundle -o $(E2E_EXEC_BUNDLE)
 	nix build .#tools-bundle -o $(E2E_TOOLS_BUNDLE)
 
-define e2e_run  # $(1) = playwright --project name
-	@mkdir -p test-artifacts
-	@rm -f $(E2E_API_LOG) $(E2E_AGENT_LOG)
-	@set -e; \
-	echo ">> starting backend on :8000 (log: $(E2E_API_LOG))"; \
-	$(E2E_CATALOG_ENV) \
-	uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
-		> $(E2E_API_LOG) 2>&1 & \
-	api_pid=$$!; \
-	agent_pid=; \
-	trap 'if [ -n "$$agent_pid" ]; then kill -TERM $$agent_pid 2>/dev/null || true; wait $$agent_pid 2>/dev/null || true; fi; kill -TERM $$api_pid 2>/dev/null || true; wait $$api_pid 2>/dev/null || true' EXIT; \
-	api_ready=0; \
-	for i in $$(seq 1 30); do \
-		if curl -sf http://127.0.0.1:8000/ >/dev/null 2>&1; then api_ready=1; break; fi; \
-		echo "  waiting for backend... ($$i/30)"; sleep 1; \
-	done; \
-	if [ "$$api_ready" -ne 1 ]; then echo "backend did not become ready"; exit 1; fi; \
-	echo ">> starting workbench agent (log: $(E2E_AGENT_LOG))"; \
-	WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
-	WORKBENCH_DOCKER_MODE=$(E2E_WORKBENCH_DOCKER_MODE) \
-	WORKBENCH_AGENT_STATE_DIR=$(E2E_AGENT_STATE_DIR) \
-	REPO2REE_EXEC_BUNDLE=$(E2E_EXEC_BUNDLE) \
-	REPO2REE_TOOLS_BUNDLE=$(E2E_TOOLS_BUNDLE) \
-	uv run --package repo2ree-agent python -m repo2ree_agent \
-		> $(E2E_AGENT_LOG) 2>&1 & \
-	agent_pid=$$!; \
-	agent_ready=0; \
-	for i in $$(seq 1 30); do \
-		if curl -sf http://127.0.0.1:8000/api/v1/agents | grep -q '"agents":\[{'; then agent_ready=1; break; fi; \
-		echo "  waiting for workbench agent... ($$i/30)"; sleep 1; \
-	done; \
-	if [ "$$agent_ready" -ne 1 ]; then echo "workbench agent did not connect"; exit 1; fi; \
-	echo ">> backend ready — running playwright project=$(1)"; \
-	( cd frontend && npm exec -- playwright test \
-		-c playwright.config.ts --project=$(1) ); \
-	status=$$?; \
-	trap - EXIT; \
-	echo ">> stopping workbench agent and backend"; \
-	kill -TERM $$agent_pid 2>/dev/null || true; \
-	wait $$agent_pid 2>/dev/null || true; \
-	kill -TERM $$api_pid 2>/dev/null || true; \
-	wait $$api_pid 2>/dev/null || true; \
-	exit $$status
-endef
+E2E_STACK = E2E_WORKBENCH_IMAGE='$(E2E_WORKBENCH_IMAGE)' \
+	E2E_WORKBENCH_DOCKER_MODE=$(E2E_WORKBENCH_DOCKER_MODE) \
+	E2E_EXEC_BUNDLE=$(E2E_EXEC_BUNDLE) \
+	E2E_TOOLS_BUNDLE=$(E2E_TOOLS_BUNDLE) \
+	scripts/e2e-stack.sh
 
 e2e-tests: e2e-bundles
-	$(call e2e_run,e2e)
+	$(E2E_STACK) --project e2e
 
 e2e-demo: e2e-bundles
-	$(call e2e_run,demo)
+	$(E2E_STACK) --project demo
+
+# Image-backed demo stack: the compose control plane on :local tags plus the
+# agent container compose deliberately doesn't manage. Expects `make images`
+# to have run; lifecycle lives in scripts/image-stack.sh.
+stack-up:
+	scripts/image-stack.sh up
+
+stack-down:
+	scripts/image-stack.sh down
+
+# Run a playwright project against the already-running image-backed stack:
+# the Caddy-served frontend (its /api reverse proxy included) instead of a
+# vite dev server, and whatever backend + agent images are behind it.
+# Nothing is started or stopped here — `make stack-up` first (or start
+# compose + agent by hand, see README).
+define playwright_against_stack  # $(1) = playwright --project name
+	@scripts/image-stack.sh check
+	cd frontend && E2E_BASE_URL=$$(../scripts/image-stack.sh frontend-url) \
+		npm exec -- playwright test -c playwright.config.ts --project=$(1)
+endef
+
+e2e-tests-images:
+	$(call playwright_against_stack,e2e)
+
+e2e-demo-images:
+	$(call playwright_against_stack,demo)
+
+# One-command flows: build the :local images (or pull the pushed ones),
+# stack-up, run against the stack, and tear it down again (also on failure).
+define run_then_stack_down  # $(1) = target to run against the running stack
+	@status=0; $(MAKE) $(1) || status=$$?; \
+	$(MAKE) stack-down; exit $$status
+endef
+
+# The pushed images default to the Docker Hub set at IMAGE_TAG; use
+# IMAGE_TAG=<rev> to validate a freshly pushed rev before promoting it.
+PUBLISHED_STACK = STACK_IMAGE_REPO=$(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE) \
+	STACK_IMAGE_TAG=$(IMAGE_TAG)
+
+e2e-tests-stack:
+	$(MAKE) images
+	$(MAKE) stack-up
+	$(call run_then_stack_down,e2e-tests-images)
+
+# The commit gate: fast and container-free by design — static checks plus
+# every test tier that runs without docker/nix/browsers, so it's cheap enough
+# to run before each commit. The heavyweight counterpart is push-gate.
+commit-gate:
+	$(MAKE) scripts-checks fe-checks be-checks
+	$(MAKE) fe-tests be-unit-tests core-integration-tests
+
+# The push gate: everything that must be green before publishing images, in
+# one command. Refuses a dirty tree first — images build from the working
+# tree (stage-nix-sources even intent-adds untracked files), so only a
+# committed state gives the pushed images a commit they correspond to.
+# Slow by design: it runs the e2e suite twice, source-run and image-backed.
+# When it passes, the :local images it just built are exactly what push-rev
+# will publish.
+push-gate:
+	@[ -z "$$(git status --porcelain)" ] \
+		|| { echo "working tree dirty — commit first, so pushed images match a commit"; exit 1; }
+	$(MAKE) scripts-checks fe-checks be-checks
+	$(MAKE) e2e-bundles
+	$(MAKE) fe-tests be-tests
+	$(MAKE) e2e-tests
+	$(MAKE) e2e-tests-stack
+	@echo ">> push gate green — publish with: make push-rev"
+
+e2e-tests-stack-published:
+	$(PUBLISHED_STACK) $(MAKE) stack-up
+	$(call run_then_stack_down,e2e-tests-images)
+
+e2e-demo-stack:
+	$(MAKE) images
+	$(MAKE) stack-up
+	$(call run_then_stack_down,e2e-demo-images)
+
+e2e-demo-stack-published:
+	$(PUBLISHED_STACK) $(MAKE) stack-up
+	$(call run_then_stack_down,e2e-demo-images)
 
 e2e-demo-code-ocean: e2e-bundles
-	$(call e2e_run,code-ocean)
+	$(E2E_STACK) --project code-ocean
 
 # Full-stack e2e coverage: browser (frontend) + server (backend) in one run.
-#
-# The backend is started *under* coverage (you can't measure an already-running
-# server), the e2e suite runs with E2E_COVERAGE=1 so the jsCoverage fixture
-# captures browser V8 coverage, then the backend gets a graceful SIGTERM so
-# coverage flushes its data on shutdown. Two reports come out: backend
-# (test-artifacts/coverage/e2e/) and frontend (frontend/test-artifacts/coverage/).
-# Needs docker + the workbench image + browsers, like the e2e suite itself.
-#
-# Backend data uses its own COVERAGE_FILE so it never clobbers be-coverage's,
-# but lives in the same test-artifacts/coverage/data dir.
-E2E_COVERAGE_FILE = $(CURDIR)/test-artifacts/coverage/data/.coverage.e2e
-
+# Reports land in test-artifacts/coverage/e2e/ (backend) and
+# frontend/test-artifacts/coverage/ (browser V8). Needs docker + the workbench
+# image + browsers, like the e2e suite itself.
 e2e-coverage: e2e-bundles
-	@echo ">> starting backend under coverage on :8000"
-	@rm -f $(E2E_COVERAGE_FILE) $(E2E_COVERAGE_FILE).* test-artifacts/coverage/e2e/agent.log
-	@rm -rf frontend/test-artifacts/coverage-raw
-	@mkdir -p test-artifacts/coverage/e2e
-	@set -e; \
-	$(E2E_CATALOG_ENV) \
-	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage run --parallel-mode \
-		-m uvicorn repo2ree_api.main:app --host 127.0.0.1 --port 8000 \
-		> test-artifacts/coverage/e2e/backend.log 2>&1 & \
-	api_pid=$$!; \
-	agent_pid=; \
-	trap 'if [ -n "$$agent_pid" ]; then kill -TERM $$agent_pid 2>/dev/null || true; wait $$agent_pid 2>/dev/null || true; fi; kill -TERM $$api_pid 2>/dev/null || true' EXIT; \
-	api_ready=0; \
-	for i in $$(seq 1 30); do \
-		if curl -sf http://127.0.0.1:8000/ >/dev/null 2>&1; then api_ready=1; break; fi; sleep 1; \
-	done; \
-	if [ "$$api_ready" -ne 1 ]; then echo "backend did not become ready"; exit 1; fi; \
-	echo ">> starting workbench agent"; \
-	WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
-	WORKBENCH_DOCKER_MODE=$(E2E_WORKBENCH_DOCKER_MODE) \
-	WORKBENCH_AGENT_STATE_DIR=$(E2E_AGENT_STATE_DIR) \
-	REPO2REE_EXEC_BUNDLE=$(E2E_EXEC_BUNDLE) \
-	REPO2REE_TOOLS_BUNDLE=$(E2E_TOOLS_BUNDLE) \
-	uv run --package repo2ree-agent python -m repo2ree_agent \
-		> test-artifacts/coverage/e2e/agent.log 2>&1 & \
-	agent_pid=$$!; \
-	agent_ready=0; \
-	for i in $$(seq 1 30); do \
-		if curl -sf http://127.0.0.1:8000/api/v1/agents | grep -q '"agents":\[{'; then agent_ready=1; break; fi; sleep 1; \
-	done; \
-	if [ "$$agent_ready" -ne 1 ]; then echo "workbench agent did not connect"; exit 1; fi; \
-	status=0; \
-	( cd frontend && E2E_COVERAGE=1 npm exec -- playwright test \
-		-c playwright.config.ts --project=e2e ) || status=$$?; \
-	echo ">> stopping workbench agent and backend (SIGTERM) so coverage flushes"; \
-	kill -TERM $$agent_pid 2>/dev/null || true; \
-	wait $$agent_pid 2>/dev/null || true; \
-	kill -TERM $$api_pid 2>/dev/null || true; \
-	wait $$api_pid 2>/dev/null || true; \
-	trap - EXIT; \
-	echo ">> backend coverage"; \
-	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage combine; \
-	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage html -d test-artifacts/coverage/e2e; \
-	COVERAGE_FILE=$(E2E_COVERAGE_FILE) coverage report; \
-	echo ">> frontend coverage"; \
-	( cd frontend && node scripts/gen-frontend-coverage.mjs ); \
-	exit $$status
+	$(E2E_STACK) --project e2e --coverage
 
 # ================================================
 # Build
 # ================================================
 
-# Example:
-#   make push-registries GHCR_NAMESPACE=github-org DOCKERHUB_NAMESPACE=dockerhub-org IMAGE_TAG=demo
-#
 # Image archive targets write loadable tarballs under IMAGE_ARCHIVE_DIR. That
 # makes the build output portable when building inside a dev container and
 # loading/pushing from the host Docker client.
 IMAGE_TAG ?= edge
 
-FRONTEND_IMAGE_NAME ?= repo2ree-frontend
-BACKEND_IMAGE_NAME ?= repo2ree-backend
-AGENT_IMAGE_NAME ?= repo2ree-agent
-
-LOCAL_FRONTEND_IMAGE := $(FRONTEND_IMAGE_NAME):latest
-LOCAL_BACKEND_IMAGE := $(BACKEND_IMAGE_NAME):latest
-LOCAL_AGENT_IMAGE := $(AGENT_IMAGE_NAME):latest
+# Every deployable image, always built/tagged/pushed as a set (the
+# agent↔control-plane protocol requires matching versions).
+IMAGES = repo2ree-frontend repo2ree-backend repo2ree-agent
 
 IMAGE_ARCHIVE_DIR ?= dist/images
-FRONTEND_IMAGE_ARCHIVE := $(IMAGE_ARCHIVE_DIR)/$(FRONTEND_IMAGE_NAME)-latest.tar
-BACKEND_IMAGE_ARCHIVE := $(IMAGE_ARCHIVE_DIR)/$(BACKEND_IMAGE_NAME)-latest.tar
-AGENT_IMAGE_ARCHIVE := $(IMAGE_ARCHIVE_DIR)/$(AGENT_IMAGE_NAME)-latest.tar
 
 GHCR_REGISTRY ?= ghcr.io
 GHCR_NAMESPACE ?= vuducanh1112
@@ -376,15 +330,16 @@ frontend-image:
 	nix build .#frontend-image
 	@echo "Loading into docker..."
 	docker load < result
-	@echo "Done: $(LOCAL_FRONTEND_IMAGE)"
+	@echo "Done: repo2ree-frontend:local"
 
 # Backend is a Dockerfile build (uv sync at image-build time), not a nix image,
-# so `docker build` already loads it into the local Docker. The tag matches what
-# docker-compose expects.
+# so `docker build` already loads it into the local Docker. The :local tag marks
+# never-pushed workbench builds (the compose local-override path uses it);
+# published channels are minted at push time.
 backend-image:
 	@echo "Building backend image..."
-	docker build -f docker/demo/backend.Dockerfile -t $(LOCAL_BACKEND_IMAGE) .
-	@echo "Done: $(LOCAL_BACKEND_IMAGE)"
+	docker build -f docker/demo/backend.Dockerfile -t repo2ree-backend:local .
+	@echo "Done: repo2ree-backend:local"
 
 # The agent image is the self-carrying deployable third parties run: agent
 # process + embedded executor/tools bundles (see nix/agent-image.nix).
@@ -393,7 +348,7 @@ agent-image: stage-nix-sources
 	nix build .#agent-image
 	@echo "Loading into docker..."
 	docker load < result
-	@echo "Done: $(LOCAL_AGENT_IMAGE)"
+	@echo "Done: repo2ree-agent:local"
 
 images: frontend-image backend-image agent-image
 
@@ -410,66 +365,82 @@ frontend-npm-hash:
 # ---- Archive path (opt-in): write loadable tarballs under IMAGE_ARCHIVE_DIR. ----
 # For building inside the dev container and loading/pushing from the host Docker
 # client: `make image-archives`, copy dist/images to the host, then
-# `make load-image-archives` + `make push-dockerhub-local` there. Kept off the
-# normal images/push-* path so a plain build/push writes no tarballs.
+# `make push-archives` there. Kept off the normal images/push-* path so a
+# plain build/push writes no tarballs.
 
 frontend-image-archive: | image-archive-dir
 	@echo "Building frontend image archive..."
 	nix build .#frontend-image
-	cp -fL result $(FRONTEND_IMAGE_ARCHIVE)
-	@echo "Wrote $(FRONTEND_IMAGE_ARCHIVE)"
+	cp -fL result $(IMAGE_ARCHIVE_DIR)/repo2ree-frontend-local.tar
+	@echo "Wrote $(IMAGE_ARCHIVE_DIR)/repo2ree-frontend-local.tar"
 
 # Backend reuses the already-built/loaded image, so there's no second build.
 backend-image-archive: backend-image | image-archive-dir
-	@echo "Writing $(BACKEND_IMAGE_ARCHIVE)..."
-	docker save $(LOCAL_BACKEND_IMAGE) -o $(BACKEND_IMAGE_ARCHIVE)
-	@echo "Wrote $(BACKEND_IMAGE_ARCHIVE)"
+	docker save repo2ree-backend:local -o $(IMAGE_ARCHIVE_DIR)/repo2ree-backend-local.tar
+	@echo "Wrote $(IMAGE_ARCHIVE_DIR)/repo2ree-backend-local.tar"
 
 agent-image-archive: stage-nix-sources | image-archive-dir
 	@echo "Building agent image archive..."
 	nix build .#agent-image
-	cp -fL result $(AGENT_IMAGE_ARCHIVE)
-	@echo "Wrote $(AGENT_IMAGE_ARCHIVE)"
+	cp -fL result $(IMAGE_ARCHIVE_DIR)/repo2ree-agent-local.tar
+	@echo "Wrote $(IMAGE_ARCHIVE_DIR)/repo2ree-agent-local.tar"
 
 image-archives: frontend-image-archive backend-image-archive agent-image-archive
 
 load-image-archives:
-	docker load -i $(FRONTEND_IMAGE_ARCHIVE)
-	docker load -i $(BACKEND_IMAGE_ARCHIVE)
-	docker load -i $(AGENT_IMAGE_ARCHIVE)
+	@set -e; for img in $(IMAGES); do \
+		docker load -i $(IMAGE_ARCHIVE_DIR)/$$img-local.tar; \
+	done
 
 # Host-side one-shot: load the archives built in the devcontainer, then push.
 # Lets the devcontainer build credential-free (`make image-archives`) while the
 # host (the only place with registry creds) loads and pushes in a single step.
-push-dockerhub-archives: load-image-archives push-dockerhub-local
+push-archives: load-image-archives push-tag
 
-push-ghcr-archives: load-image-archives push-ghcr-local
+# ---- Publish: push → validate → promote ----
+# Every push goes to all REGISTRIES under one tag; `edge` is only ever moved
+# by promoting a rev that was pushed and validated first:
+#   make push-rev       # immutable :<rev>, clean tree only
+#   make validate-rev   # full e2e suite against the pushed set
+#   make promote-edge   # registry-side retag <rev> -> edge
 
-push-ghcr:
+REGISTRIES ?= $(GHCR_REGISTRY)/$(GHCR_NAMESPACE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)
+GIT_REV = $(shell git describe --always --dirty)
+
+# Plumbing: tag + push the already-built :local images to every registry
+# under IMAGE_TAG. Narrow with REGISTRIES="docker.io/somens" if needed.
+push-tag:
+	@set -e; for reg in $(REGISTRIES); do for img in $(IMAGES); do \
+		docker tag $$img:local $$reg/$$img:$(IMAGE_TAG); \
+		docker push $$reg/$$img:$(IMAGE_TAG); \
+	done; done
+
+# Immutable publish: build from a committed tree, push under the git rev.
+# Never moves `edge`, so it is safe to run at any time.
+push-rev:
+	@case "$(GIT_REV)" in (*-dirty) echo "working tree dirty — commit first," \
+		"so the pushed images match a commit"; exit 1;; esac
 	$(MAKE) images
-	$(MAKE) push-ghcr-local
+	$(MAKE) push-tag IMAGE_TAG=$(GIT_REV)
+	@echo ">> pushed :$(GIT_REV) — next: make validate-rev && make promote-edge"
 
-push-ghcr-local:
-	docker tag $(LOCAL_FRONTEND_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker tag $(LOCAL_BACKEND_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker tag $(LOCAL_AGENT_IMAGE) $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(AGENT_IMAGE_NAME):$(IMAGE_TAG)
-	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker push $(GHCR_REGISTRY)/$(GHCR_NAMESPACE)/$(AGENT_IMAGE_NAME):$(IMAGE_TAG)
+# Validate the pushed rev with the full e2e suite before promoting it.
+# Like promote-edge, REV defaults to the current HEAD's rev — so the whole
+# publish flow runs tag-free from the commit being published.
+validate-rev:
+	@case "$(REV)" in (*-dirty) echo "tree is dirty — name the pushed rev" \
+		"explicitly: make validate-rev REV=<rev>"; exit 1;; esac
+	$(MAKE) e2e-tests-stack-published IMAGE_TAG=$(REV)
 
-push-dockerhub:
-	$(MAKE) images
-	$(MAKE) push-dockerhub-local
+# Promote a validated rev to edge by retagging on the registry — no rebuild,
+# no local images involved, so the promoted digests are exactly the validated
+# ones. REV defaults to the current HEAD's rev.
+REV ?= $(GIT_REV)
 
-push-dockerhub-local:
-	docker tag $(LOCAL_FRONTEND_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker tag $(LOCAL_BACKEND_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker tag $(LOCAL_AGENT_IMAGE) $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(AGENT_IMAGE_NAME):$(IMAGE_TAG)
-	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(FRONTEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(BACKEND_IMAGE_NAME):$(IMAGE_TAG)
-	docker push $(DOCKERHUB_REGISTRY)/$(DOCKERHUB_NAMESPACE)/$(AGENT_IMAGE_NAME):$(IMAGE_TAG)
-
-push-registries:
-	$(MAKE) images
-	$(MAKE) push-ghcr-local
-	$(MAKE) push-dockerhub-local
+promote-edge:
+	@case "$(REV)" in (*-dirty) echo "tree is dirty — name the pushed rev" \
+		"explicitly: make promote-edge REV=<rev>"; exit 1;; esac
+	@set -e; for reg in $(REGISTRIES); do for img in $(IMAGES); do \
+		echo ">> $$reg/$$img: $(REV) -> edge"; \
+		docker buildx imagetools create -t $$reg/$$img:edge $$reg/$$img:$(REV); \
+	done; done

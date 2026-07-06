@@ -119,7 +119,9 @@ let
 in
 pkgs.dockerTools.buildLayeredImage {
   name = "repo2ree-frontend";
-  tag = "latest";
+  # "local" marks never-pushed workbench builds; published channels (edge,
+  # commit shas) are minted at push time in the Makefile.
+  tag = "local";
 
   contents = [
     pkgs.caddy

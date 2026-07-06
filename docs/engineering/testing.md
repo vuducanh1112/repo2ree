@@ -10,11 +10,18 @@
 | `make fe-checks` | Frontend TypeScript, Biome, knip, dependency-cruiser. |
 | `make fe-tests` | Frontend Vitest tests. |
 | `make be-checks` | Ruff, Ruff format, and mypy across Python workspace packages. |
+| `make scripts-checks` | Shellcheck over `scripts/*.sh`. |
 | `make be-unit-tests` | Container-free backend unit tests. |
 | `make be-integration-tests` | Integration tiers, including Docker-gated workbench tests when Docker and the image exist. |
 | `make be-tests` | Backend unit plus integration tests. |
 | `make e2e-tests` | Playwright e2e project against a live API and frontend dev server. |
 | `make e2e-demo` | Playwright demo walkthrough project with video. |
+| `make e2e-tests-images` / `e2e-demo-images` | Suite / demo against an already-running image-backed stack. |
+| `make e2e-tests-stack` / `e2e-demo-stack` | One command: build local images, `stack-up`, run suite / demo, `stack-down`. |
+| `make e2e-tests-stack-published` / `e2e-demo-stack-published` | The same flows against the pushed registry images (nothing built). |
+| `make stack-up` / `stack-down` | Start/stop the image-backed stack (`scripts/image-stack.sh`). |
+| `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. |
+| `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
 | `make e2e-coverage` | Backend coverage plus browser-side frontend coverage for e2e. |
 
 ## Before Docker-Gated Tests
@@ -165,6 +172,41 @@ Run the narrated demo flow:
 ```bash
 make e2e-demo
 ```
+
+Both the e2e suite and the demo can also drive the image-backed stack instead
+of the dev servers — `make e2e-tests-stack` / `make e2e-demo-stack` do the
+whole flow in one command: build the local images, `make stack-up` (compose
+control plane + agent container, via `scripts/image-stack.sh`), run the
+playwright project, `make stack-down`. With a stack already up,
+`make e2e-tests-images` / `make e2e-demo-images` run just the playwright
+part. Playwright is pointed at the Caddy-served frontend (via `E2E_BASE_URL`,
+which also skips the Vite dev server), so the frontend image's `/api` reverse
+proxy and the backend/agent images are what get exercised. The stack is
+addressed as `localhost` from the host or via compose service DNS from the
+devcontainer; `scripts/image-stack.sh` picks automatically.
+
+The `*-stack-published` variants validate the pushed images instead of local
+builds (docker pulls the refs, nothing is built). They default to the Docker
+Hub images the push targets publish; override `DOCKERHUB_NAMESPACE` /
+`IMAGE_TAG` as with those targets. `make e2e-tests-stack-published
+IMAGE_TAG=<tag>` is the full-suite gate for a pushed build.
+
+The source-run `e2e-tests` remains the iteration loop (fast, debuggable,
+coverage-capable); the image-backed variants are the deployment gate before
+pushing or promoting images.
+
+`make commit-gate` is the fast pre-commit companion: static checks plus every
+test tier that needs no docker, nix builds, or browsers (frontend unit,
+backend unit, core integration). It runs in a few minutes on a dirty tree —
+that's the point; commits should stay cheap. The exhaustive counterpart is
+the push gate below.
+
+`make push-gate` bundles the whole pre-publish sequence: it refuses a dirty
+tree (pushed images must correspond to a commit), then runs the static
+checks, builds the executor/tools bundles so the docker-gated test tiers
+don't skip, runs the unit/integration suites, the source-run e2e suite, and
+finally `e2e-tests-stack`. When it passes, the `:local` images it built are
+exactly what the push targets will publish.
 
 Run e2e coverage:
 

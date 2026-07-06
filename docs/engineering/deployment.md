@@ -10,8 +10,10 @@ repo2ree has three deployed surfaces today:
   workbench operations go to whichever agents have dialed in.
 - `agent`: the workbench agent. It holds the docker socket, dials the backend
   over an outbound WebSocket, provisions benches, and injects its embedded
-  executor/tools bundles into them. Anyone can run one to contribute benches;
-  the compose stack runs one next to the backend.
+  executor/tools bundles into them. Anyone can run one to contribute benches.
+  It is deliberately not part of the compose stack — compose is control plane
+  only (frontend + backend); an agent is started separately wherever benches
+  should live.
 - `frontend`: a static Vite bundle served by Caddy. Caddy also reverse-proxies
   `/api/*` to the backend so the browser uses one origin.
 
@@ -20,10 +22,18 @@ Docker volumes for `/ree` state and the nested Docker daemon.
 
 ## Run With Published Images
 
-The public demo path uses Docker Hub images and does not require Nix:
+The public demo path uses Docker Hub images and does not require Nix. Compose
+brings up the control plane; the agent is a separate `docker run` that dials
+the published backend port:
 
 ```bash
-docker compose up
+docker compose up -d
+docker run -d --name repo2ree-agent \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v repo2ree-agent-state:/var/lib/repo2ree-agent \
+  --add-host host.docker.internal:host-gateway \
+  -e WORKBENCH_API_WS_URL=ws://host.docker.internal:8000/agent/connect \
+  docker.io/vuducanh1112/repo2ree-agent:edge
 ```
 
 Then open `http://localhost:3000`.
@@ -34,7 +44,10 @@ Then open `http://localhost:3000`.
 |---|---|---|
 | `REPO2REE_FRONTEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-frontend:edge` | Frontend image served by Caddy. |
 | `REPO2REE_BACKEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-backend:edge` | FastAPI backend image. |
-| `REPO2REE_AGENT_IMAGE` | `docker.io/vuducanh1112/repo2ree-agent:edge` | Workbench agent: holds the docker socket, provisions benches, injects the executor/tools bundles. |
+
+The agent image (`docker.io/vuducanh1112/repo2ree-agent:edge`) is not a
+compose variable — it holds the docker socket, provisions benches, and injects
+the executor/tools bundles, and is always started separately as above.
 
 The per-REE workbench env image is not a deployment variable: it defaults to
 the backend's image catalog (`api/src/repo2ree_api/settings.py` — a pinned
@@ -52,7 +65,7 @@ make frontend-image
 ```
 
 This builds `.#frontend-image` with Nix, serves the static bundle with Caddy,
-and tags the result as `repo2ree-frontend:latest`.
+and tags the result as `repo2ree-frontend:local`.
 
 Build the backend image:
 
@@ -61,7 +74,7 @@ make backend-image
 ```
 
 This runs the Dockerfile build for `docker/demo/backend.Dockerfile` and tags the
-result as `repo2ree-backend:latest`.
+result as `repo2ree-backend:local`.
 
 Build and load the agent image (agent process + embedded executor/tools
 bundles):
@@ -70,36 +83,60 @@ bundles):
 make agent-image
 ```
 
+## Publishing Images
+
+Publishing is push → validate → promote, so `edge` only ever points at a
+validated commit:
+
+```bash
+make push-gate      # clean tree + full check/test/e2e sequence (see testing.md)
+make push-rev       # push all images under the immutable :<git-rev> tag
+make validate-rev   # full e2e suite against the pushed set
+make promote-edge   # retag <rev> -> edge on the registries (no rebuild)
+```
+
+`push-rev` refuses a dirty tree and never moves `edge`, so it is safe at any
+time. `promote-edge` retags registry-side (`docker buildx imagetools
+create`), so the promoted digests are exactly the validated ones.
+`validate-rev` and `promote-edge` default `REV` to the current HEAD, so the
+whole flow runs tag-free from the commit being published. All images always move together — the
+agent↔control-plane protocol requires matching versions. Registries default
+to GHCR + Docker Hub under `vuducanh1112`; override `REGISTRIES`,
+`GHCR_NAMESPACE`, or `DOCKERHUB_NAMESPACE`.
+
 ## Run With Local Images
 
 ```bash
-REPO2REE_FRONTEND_IMAGE=repo2ree-frontend:latest \
-REPO2REE_BACKEND_IMAGE=repo2ree-backend:latest \
+REPO2REE_FRONTEND_IMAGE=repo2ree-frontend:local \
+REPO2REE_BACKEND_IMAGE=repo2ree-backend:local \
 docker compose up
 ```
 
-Then open `http://localhost:3000`.
+Start the agent with the same `docker run` as above, substituting
+`repo2ree-agent:local` for the published image. Then open
+`http://localhost:3000`.
 
 The compose stack publishes:
 
 | Service | Port | Notes |
 |---|---:|---|
 | `frontend` | `3000` | Caddy serves the Vite bundle and proxies `/api/*`. |
-| `backend` | `8000` | FastAPI API. Exposed directly for debugging. |
+| `backend` | `8000` | FastAPI API. Exposed directly for debugging; also the endpoint agents dial. |
 
-The agent service mounts `/var/run/docker.sock` and launches workbench
+The agent container mounts `/var/run/docker.sock` and launches workbench
 containers; the backend has no Docker access at all. The workbench containers
 do not receive the host socket either; they run privileged Docker-in-Docker
 with their own daemon.
 
 ## Compose Storage
 
-`docker-compose.yml` creates two named volumes:
+`docker-compose.yml` creates one named volume; the agent `docker run` creates
+a second:
 
 | Volume | Mounted at | Purpose |
 |---|---|---|
 | `repo2ree-demo-data` | `/app/.repo2ree` in the backend | Backend-local metadata such as upload staging and workbench registry. |
-| `repo2ree-agent-state` | `/var/lib/repo2ree-agent` in the agent | The agent's stable identity across container replacements. |
+| `repo2ree-agent-state` | `/var/lib/repo2ree-agent` in the agent | The agent's stable identity across container replacements (created by the agent `docker run`, not compose). |
 
 REE execution state lives in per-REE Docker volumes created by the supervisor,
 not inside `repo2ree-demo-data`.
