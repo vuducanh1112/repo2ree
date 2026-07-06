@@ -100,7 +100,12 @@ export async function startReeCreation(page: Page) {
 export async function provisionWorkbench(page: Page) {
   await stepShot(page, "provision-workbench", "before");
   await page.getByRole("button", { name: /Provision workbench/i }).click();
-  await expect(nav(page).getByRole("button", { name: "Source", exact: true })).toBeVisible();
+  // A real provision: bench container start, nested dockerd boot, doctor
+  // probe. ~15-20s depending on the agent's environment — well past the
+  // project's default expect timeout.
+  await expect(nav(page).getByRole("button", { name: "Source", exact: true })).toBeVisible({
+    timeout: 90000,
+  });
   await openPort(page, "Source");
   await expect(
     page.getByRole("region", { name: "Source Acquisition" }).getByText("Source Acquisition", {
@@ -331,8 +336,10 @@ export async function runExperiment(
     .locator("div")
     .filter({ hasText: /^Run result/ })
     .first();
-  // DinD: cold runtime-image load + container run on the per-REE daemon.
-  await expect(runResult.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
+  // DinD: cold runtime-image load + container run on the per-REE daemon —
+  // the heaviest wait in the suite, and the first to blow its budget when
+  // the host is under load. Keep it roomier than the other 90s steps.
+  await expect(runResult.getByText("pass", { exact: true })).toBeVisible({ timeout: 180000 });
   await stepShot(page, "run-experiment", "after");
 }
 
