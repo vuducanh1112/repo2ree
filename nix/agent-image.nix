@@ -37,21 +37,26 @@ let
   # out. The agent deliberately depends only on repo2ree_protocol — it
   # is a frame ferry, not an executor — so core's import graph stays out
   # of this image.
-  agentPython = pkgs.python313.withPackages (ps: with ps; [
-    anyio
-    pydantic
-    websockets
-    opentelemetry-api
-    opentelemetry-sdk
-    opentelemetry-exporter-otlp-proto-common
-  ]);
+  agentPython = pkgs.python313.withPackages (
+    ps: with ps; [
+      anyio
+      pydantic
+      websockets
+      opentelemetry-api
+      opentelemetry-sdk
+      opentelemetry-exporter-otlp-proto-common
+    ]
+  );
 
   srcs = {
-    protocol = executor.srcs.protocol;
+    inherit (executor.srcs) protocol;
     agent = pkgs.lib.cleanSourceWith {
       src = ../agent/src;
-      filter = path: type:
-        let base = baseNameOf path; in
+      filter =
+        path: type:
+        let
+          base = baseNameOf path;
+        in
         !(type == "directory" && (base == "__pycache__" || base == ".pytest_cache"))
         && !(pkgs.lib.hasSuffix ".pyc" base);
     };

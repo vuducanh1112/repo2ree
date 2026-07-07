@@ -1,5 +1,5 @@
 .PHONY: \
-	docs-lint scripts-checks \
+	docs-lint scripts-checks nix-checks \
 	fe-checks fe-tests \
 	be-checks \
 	be-tests be-unit-tests be-integration-tests \
@@ -35,6 +35,21 @@ docs-lint:
 scripts-checks:
 	@echo "Running shellcheck..."
 	shellcheck scripts/*.sh
+
+# ================================================
+# Nix — formatting and linting
+# ================================================
+
+# Formats in place (like fe-checks' biome --write), fails on statix or
+# deadnix findings. Mark intentionally unused args with a _ prefix to
+# silence deadnix.
+nix-checks:
+	@echo "Formatting nix files (nixfmt via nix fmt)..."
+	nix fmt
+	@echo "Running statix..."
+	statix check .
+	@echo "Running deadnix..."
+	deadnix --fail .
 
 
 # ================================================

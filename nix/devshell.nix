@@ -34,6 +34,11 @@ pkgs.mkShell {
     # static analyser for shell scripts
     shellcheck
 
+    # nix linting: antipatterns (statix) and unused bindings (deadnix);
+    # formatting goes through `nix fmt` (see formatter in ../flake.nix)
+    statix
+    deadnix
+
     # playwright browser drivers, because using nix and using playwright via npm does not work, since playwright
     # looks at default locations
     # fonts are important for the browsers to render properly

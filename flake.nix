@@ -19,8 +19,14 @@
   #   - frontend-image.nix  the deployed web bundle behind caddy
   # All build against the single pinned nixpkgs below, so the images and
   # the dev env can never drift onto different package revisions.
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      nixpkgs,
+      flake-utils,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs {
           inherit system;
@@ -39,6 +45,8 @@
       {
         devShells.default = import ./nix/devshell.nix { inherit pkgs; };
 
+        formatter = pkgs.nixfmt-tree;
+
         packages = rec {
           exec-bundle = import ./nix/exec-bundle.nix { inherit pkgs; };
           tools-bundle = import ./nix/tools-bundle.nix { inherit pkgs; };
@@ -46,5 +54,6 @@
           frontend-image = frontendImage;
           default = agent-image;
         };
-      });
+      }
+    );
 }

@@ -27,23 +27,41 @@ let
   # REPO2REE_TOOL_<NAME> env vars the agent sets on injected benches.
   toolPkgs = {
     # generate-sbom scans the workspace/runtime image natively.
-    syft = { pkg = pkgs.syft; bin = "syft"; };
+    syft = {
+      pkg = pkgs.syft;
+      bin = "syft";
+    };
     # Source acquisition: acquire_source.sh clones/fetches/extracts.
     # These mirror the reproducer's prerequisites.
     # gitMinimal: no perl/gui/manpage closure — acquisition needs clone/checkout only.
-    git = { pkg = pkgs.gitMinimal; bin = "git"; };
-    curl = { pkg = pkgs.curl; bin = "curl"; };
-    unzip = { pkg = pkgs.unzip; bin = "unzip"; };
-    tar = { pkg = pkgs.gnutar; bin = "tar"; };
-    gzip = { pkg = pkgs.gzip; bin = "gzip"; };
+    git = {
+      pkg = pkgs.gitMinimal;
+      bin = "git";
+    };
+    curl = {
+      pkg = pkgs.curl;
+      bin = "curl";
+    };
+    unzip = {
+      pkg = pkgs.unzip;
+      bin = "unzip";
+    };
+    tar = {
+      pkg = pkgs.gnutar;
+      bin = "tar";
+    };
+    gzip = {
+      pkg = pkgs.gzip;
+      bin = "gzip";
+    };
   };
 
-  bins = pkgs.lib.mapAttrs (name: t: "${t.pkg}/bin/${t.bin}") toolPkgs;
+  bins = pkgs.lib.mapAttrs (_name: t: "${t.pkg}/bin/${t.bin}") toolPkgs;
 
   # One PATH entry covering every tool, for the executor to prepend.
   binDir = pkgs.buildEnv {
     name = "repo2ree-tools-bin";
-    paths = pkgs.lib.mapAttrsToList (name: t: t.pkg) toolPkgs;
+    paths = map (t: t.pkg) (builtins.attrValues toolPkgs);
     pathsToLink = [ "/bin" ];
   };
 
@@ -56,10 +74,14 @@ let
     GIT_SSL_CAINFO = caBundle;
   };
 
-  closure = pkgs.closureInfo { rootPaths = [ binDir pkgs.cacert ]; };
+  closure = pkgs.closureInfo {
+    rootPaths = [
+      binDir
+      pkgs.cacert
+    ];
+  };
 
-  manifest = pkgs.runCommand "repo2ree-tools-manifest.json"
-    { nativeBuildInputs = [ pkgs.jq ]; } ''
+  manifest = pkgs.runCommand "repo2ree-tools-manifest.json" { nativeBuildInputs = [ pkgs.jq ]; } ''
     jq -n \
       --argjson tools '${builtins.toJSON bins}' \
       --arg binDir "${binDir}/bin" \
@@ -69,5 +91,10 @@ let
   '';
 in
 {
-  inherit bins binDir closure manifest;
+  inherit
+    bins
+    binDir
+    closure
+    manifest
+    ;
 }

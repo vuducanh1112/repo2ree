@@ -24,23 +24,30 @@ let
   # forward. The executor never talks to a collector itself, so the OTLP
   # HTTP exporter and `requests` are deliberately absent — those stay
   # behind the host-side functions in repo2ree_protocol.tracing.
-  python = pkgs.python313.withPackages (ps: with ps; [
-    click
-    pydantic
-    opentelemetry-api
-    opentelemetry-sdk
-    opentelemetry-exporter-otlp-proto-common
-  ]);
+  python = pkgs.python313.withPackages (
+    ps: with ps; [
+      click
+      pydantic
+      opentelemetry-api
+      opentelemetry-sdk
+      opentelemetry-exporter-otlp-proto-common
+    ]
+  );
 
   # Filter to just the Python sources so unrelated repo files don't
   # invalidate the closure hash on every edit.
-  cleanPySrc = src: pkgs.lib.cleanSourceWith {
-    inherit src;
-    filter = path: type:
-      let base = baseNameOf path; in
-      !(type == "directory" && (base == "__pycache__" || base == ".pytest_cache"))
-      && !(pkgs.lib.hasSuffix ".pyc" base);
-  };
+  cleanPySrc =
+    src:
+    pkgs.lib.cleanSourceWith {
+      inherit src;
+      filter =
+        path: type:
+        let
+          base = baseNameOf path;
+        in
+        !(type == "directory" && (base == "__pycache__" || base == ".pytest_cache"))
+        && !(pkgs.lib.hasSuffix ".pyc" base);
+    };
 
   srcs = {
     protocol = cleanPySrc ../protocol/src;
@@ -61,12 +68,16 @@ let
 
   # Everything the injected executor needs at runtime, as a store-path
   # list consumers can copy or reference.
-  closure = pkgs.closureInfo { rootPaths = [ bin pause ]; };
+  closure = pkgs.closureInfo {
+    rootPaths = [
+      bin
+      pause
+    ];
+  };
 
   # The agent-facing manifest: absolute in-container paths, so
   # provisioning never assumes anything about the env image's PATH.
-  manifest = pkgs.runCommand "repo2ree-exec-manifest.json"
-    { nativeBuildInputs = [ pkgs.jq ]; } ''
+  manifest = pkgs.runCommand "repo2ree-exec-manifest.json" { nativeBuildInputs = [ pkgs.jq ]; } ''
     jq -n \
       --arg execPath "${bin}/bin/repo2ree-exec" \
       --arg pausePath "${pause}/bin/sleep" \
@@ -75,5 +86,12 @@ let
   '';
 in
 {
-  inherit python srcs bin pause closure manifest;
+  inherit
+    python
+    srcs
+    bin
+    pause
+    closure
+    manifest
+    ;
 }

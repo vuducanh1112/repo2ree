@@ -17,15 +17,21 @@
 #   nix build .#frontend-image --argstr viteApiBaseUrl http://host:8000
 # (wired through flake.nix).
 # ----------------------------------------------------------------
-{ pkgs, viteApiBaseUrl ? "" }:
+{
+  pkgs,
+  viteApiBaseUrl ? "",
+}:
 
 let
   # Filter to the inputs that actually affect the build so unrelated repo
   # edits (tests, docs) don't invalidate the image hash.
   frontendSrc = pkgs.lib.cleanSourceWith {
     src = ../frontend;
-    filter = path: type:
-      let base = baseNameOf path; in
+    filter =
+      path: _type:
+      let
+        base = baseNameOf path;
+      in
       base != "node_modules"
       && base != "dist"
       && base != "tests"
@@ -145,7 +151,9 @@ pkgs.dockerTools.buildLayeredImage {
       "--adapter"
       "caddyfile"
     ];
-    ExposedPorts = { "3000/tcp" = { }; };
+    ExposedPorts = {
+      "3000/tcp" = { };
+    };
     Env = [
       "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       "XDG_CONFIG_HOME=/tmp"
