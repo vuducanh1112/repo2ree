@@ -330,8 +330,21 @@ export async function runExperiment(
     .filter({ hasText: /^Expected outputs/ })
     .first();
   await outputsCard.getByRole("button", { name: /Add/ }).first().click();
+  // Arm the wait before the edit: filling the expected output schedules the
+  // 300ms-debounced draft autosave, and clicking Run inside that window can
+  // silently drop the run (the flush/re-hydration race the demo's narration
+  // pauses happen to paper over). Let the autosave PATCH land first.
+  const draftSaved = page.waitForResponse(
+    (res) => res.url().includes("/intent") && res.request().method() === "PATCH",
+  );
   await main(page).getByPlaceholder("PASSED").first().fill(experiment.expectedStdout);
+  await draftSaved;
   await main(page).getByRole("button", { name: /^Run$/ }).click();
+  // Fail fast with a clear signal if the click was still dropped: a started
+  // run flips the header button to Running…/Re-run within moments.
+  await expect(main(page).getByRole("button", { name: /Running…|Re-run/ })).toBeVisible({
+    timeout: 10000,
+  });
   const runResult = main(page)
     .locator("div")
     .filter({ hasText: /^Run result/ })
@@ -368,7 +381,7 @@ export async function sealRee(page: Page) {
 }
 
 /** Release (tear down) the workbench container; returns to the landing view. */
-async function releaseWorkbench(page: Page) {
+export async function releaseWorkbench(page: Page) {
   await stepShot(page, "release-workbench", "before");
   // The release button lives inside the bench console HUD (bottom-left). Open
   // the console first, then click the button.
