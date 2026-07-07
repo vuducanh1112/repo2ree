@@ -28,10 +28,10 @@ The main REE path now has the intended package seam:
 Current isolation is **Docker-in-Docker inside a privileged workbench**. The
 backend never touches a container runtime: workbenches are launched by the
 *agent* (its own deployable, holding the docker socket —
-[docker-compose.yml](docker-compose.yml)) over the outbound WebSocket. The
+[docker-compose.yml](../docker-compose.yml)) over the outbound WebSocket. The
 workbench does not receive the host socket. It runs its own daemon and stores
 `/var/lib/docker` in a per-REE volume
-([docker_runtime.py](agent/src/repo2ree_agent/docker_runtime.py)).
+([docker_runtime.py](../agent/src/repo2ree_agent/docker_runtime.py)).
 
 The risk has moved: untrusted repo code no longer holds the host Docker socket
 on the main path, but the workbench is still privileged and not VM-backed.
@@ -194,8 +194,8 @@ mistake:
 - **The declarative manifest is control-plane state.** The runtime/experiment
   declarations that populate `/ree/overlay` are small, edited continuously and
   persisted through the REE/workspace API
-  ([useReeIntentSync.ts](frontend/src/shell/ui/ree-editor/workspace-sync/useReeIntentSync.ts),
-  [manage_ree.py](api/src/repo2ree_api/manage_ree.py)),
+  ([useReeIntentSync.ts](../frontend/src/shell/state/ree-editor/workspace-sync/useReeIntentSync.ts),
+  [manage_ree.py](../api/src/repo2ree_api/manage_ree.py)),
   and guarded by optimistic concurrency (`expectedVersion`). That concurrency
   check must stay **single-machine** — keep the manifest in host storage / the
   control-plane DB. Editing a field must never round-trip into a VM.
@@ -695,15 +695,16 @@ explicit SWH save/deposit request.
   The persistent workbench path already lays down `upstream/`, `overlay/`,
   `workspace/`, `artifacts/`, and `runs/`. Keep review/legacy paths converging on
   the same layout.
-- **Remote the existing job model; don't reinvent it.** `_start_background_run` /
-  `_run_summary` / `_is_cancel_requested`
-  ([run_management.py:172](api/src/repo2ree_api/run_management.py#L172)) already
-  give submit→stream→cancel as an async job — exactly the shape the control plane
-  needs. Remoting an operation is mostly swapping the local `Thread` for *dispatch
-  to `repo2ree-exec`* and streaming its logs back. The one piece that does not
-  survive the boundary is cancellation: the flag-file check
-  ([:138](api/src/repo2ree_api/run_management.py#L138)) becomes a remote signal to
-  the executor.
+- **Remote the existing job model; don't reinvent it.** *(Done.)* The
+  submit→stream→cancel async-job shape lives in
+  [`RunRegistry`](../api/src/repo2ree_api/run_registry.py), fronted by
+  `_start_background_run` / `_run_summary` / `_is_cancel_requested`
+  ([run_management.py:45](../api/src/repo2ree_api/run_management.py#L45)).
+  Operations dispatch to `repo2ree-exec` through
+  `WorkbenchManager.dispatch_action` with logs streamed back, and cancellation
+  crosses the boundary as a remote signal to the agent
+  ([manager.py:304](../supervisor/src/repo2ree_supervisor/manager.py#L304))
+  rather than a local flag check.
 - **Keep Docker image construction inside the workbench.** The main build path
   now reaches `core` through `repo2ree-exec` inside the workbench. Any remaining
   direct host-side Docker build paths should be treated as legacy/review code and
@@ -720,10 +721,9 @@ explicit SWH save/deposit request.
 
 - **Runtime-image source for experiment runs.** With one workbench per REE,
   build and runs share the same workbench `dockerd`, so `run-experiment` can use the
-  just-built image directly (fast). Optionally re-`docker load` it from
-  `artifacts/runtime-image.tar` first (the existing
-  [`save_image_to_tar`](core/src/repo2ree_core/dockerfile_utils/build_image.py#L77)
-  helper) to prove the image is self-contained. Once the action cache is in
+  just-built image directly (fast). Optionally re-`docker load` it from the
+  saved runtime tar first — the pattern the author-owned run scripts already
+  use — to prove the image is self-contained. Once the action cache is in
   place ([above](#content-addressed-state-cas-and-the-action-cache)) the
   stronger check is re-executing the build Action and asserting output digests
   match — that tests reproducibility, not just packaging. Recommend fast by

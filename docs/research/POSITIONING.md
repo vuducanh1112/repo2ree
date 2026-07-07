@@ -143,7 +143,7 @@ Generation is a *remediation tactic* inside the Label, not the headline.
 The diagnostic is the product.
 
 The Label is realised today in the
-[Evaluate page](frontend/src/shell/ui/app-shell/pages/evaluate/EvaluatePage.tsx).
+[Evaluate page](../../frontend/src/shell/ui/app-shell/pages/evaluate/EvaluatePage.tsx).
 
 ---
 
@@ -265,7 +265,7 @@ three layers:
 
 - **Environment.** Researchers keep using Docker, Nix, Bazel, conda, or
   none of the above. The
-  [BuildRuntime page](frontend/src/shell/ui/app-shell/pages/build-runtime/BuildRuntimePage.tsx)
+  [BuildRuntime page](../../frontend/src/shell/ui/app-shell/pages/build-runtime/BuildRuntimePage.tsx)
   is script-centric: the user picks, writes, or generates a build
   script that invokes whatever build system the repo brought.
 - **Experiment.** Researchers keep using MLflow, Weights & Biases,
