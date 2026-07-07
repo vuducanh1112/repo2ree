@@ -8,7 +8,7 @@
 	api-tests api-unit-tests api-integration-tests executor-tests agent-tests \
 	be-coverage be-coverage-unit be-coverage-context \
 	test-checks \
-	image-archive-dir stage-nix-sources \
+	image-archive-dir stage-nix-sources archive-clean-tree \
 	agent-image agent-image-archive \
 	frontend-image frontend-image-archive frontend-npm-hash \
 	backend-image backend-image-archive \
@@ -385,17 +385,34 @@ agent-image-archive: stage-nix-sources | image-archive-dir
 	cp -fL result $(IMAGE_ARCHIVE_DIR)/repo2ree-agent-local.tar
 	@echo "Wrote $(IMAGE_ARCHIVE_DIR)/repo2ree-agent-local.tar"
 
-image-archives: frontend-image-archive backend-image-archive agent-image-archive
+# Like push-rev, refuses a dirty tree: the archives are the publish path off
+# the devcontainer, so they must correspond to a commit. The rev is stamped
+# into the archive dir so the host side pushes under exactly this commit's
+# tag — no way to grab a stale IMAGE_TAG by accident.
+image-archives: archive-clean-tree frontend-image-archive backend-image-archive agent-image-archive
+	@git describe --always > $(IMAGE_ARCHIVE_DIR)/REV
+	@echo ">> stamped $(IMAGE_ARCHIVE_DIR)/REV: $$(cat $(IMAGE_ARCHIVE_DIR)/REV)"
+
+archive-clean-tree:
+	@[ -z "$$(git status --porcelain)" ] \
+		|| { echo "working tree dirty — commit first, so archived images match a commit"; exit 1; }
 
 load-image-archives:
 	@set -e; for img in $(IMAGES); do \
 		docker load -i $(IMAGE_ARCHIVE_DIR)/$$img-local.tar; \
 	done
 
-# Host-side one-shot: load the archives built in the devcontainer, then push.
-# Lets the devcontainer build credential-free (`make image-archives`) while the
-# host (the only place with registry creds) loads and pushes in a single step.
-push-archives: load-image-archives push-tag
+# Host-side one-shot: load the archives built in the devcontainer, then push
+# under the rev stamped by image-archives. Lets the devcontainer build
+# credential-free (`make image-archives`) while the host (the only place with
+# registry creds) loads and pushes in a single step. Deliberately ignores
+# IMAGE_TAG: this is the archive-path twin of push-rev, so it only ever
+# publishes an immutable :<rev> — `edge` moves via promote-edge alone.
+push-archives: load-image-archives
+	@[ -s $(IMAGE_ARCHIVE_DIR)/REV ] \
+		|| { echo "no $(IMAGE_ARCHIVE_DIR)/REV stamp — build with 'make image-archives'"; exit 1; }
+	$(MAKE) push-tag IMAGE_TAG="$$(cat $(IMAGE_ARCHIVE_DIR)/REV)"
+	@echo ">> pushed :$$(cat $(IMAGE_ARCHIVE_DIR)/REV) — next: make validate-rev REV=$$(cat $(IMAGE_ARCHIVE_DIR)/REV) && make promote-edge REV=$$(cat $(IMAGE_ARCHIVE_DIR)/REV)"
 
 # ---- Publish: push → validate → promote ----
 # Every push goes to all REGISTRIES under one tag; `edge` is only ever moved

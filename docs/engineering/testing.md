@@ -214,8 +214,15 @@ Run e2e coverage:
 make e2e-coverage
 ```
 
-E2E tests provision real workbench containers. The shared e2e fixture attempts
-to seal and release the workbench after each test, including failures.
+E2E tests provision real workbench containers — the most expensive part of
+any e2e test (bench start, nested dockerd boot, and a cold-cache DinD build
+for anything that builds). The golden path therefore lives in one journey
+spec, `tests/e2e/ree-pipeline.spec.ts`: a single run from provisioning
+through seal and release, with each pipeline page asserted as a named
+`test.step`, so the suite pays for one workbench and one runtime build.
+Separate specs exist only for branches off that path (e.g. the origin-URL
+source fetch). The shared e2e fixture attempts to release the workbench
+after each test, including failures.
 
 ## Artifacts And Logs
 
@@ -256,5 +263,5 @@ For one Playwright spec:
 
 ```bash
 cd frontend
-npm exec -- playwright test -c playwright.config.ts --project=e2e tests/e2e/workbench.spec.ts
+npm exec -- playwright test -c playwright.config.ts --project=e2e tests/e2e/source.spec.ts
 ```

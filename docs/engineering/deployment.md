@@ -96,7 +96,17 @@ make promote-edge   # retag <rev> -> edge on the registries (no rebuild)
 ```
 
 `push-rev` refuses a dirty tree and never moves `edge`, so it is safe at any
-time. `promote-edge` retags registry-side (`docker buildx imagetools
+time.
+
+When builds and registry credentials live on different machines (e.g. nix
+only in the dev container, docker login only on the host), replace
+`push-rev` with the archive pair: `make image-archives` in the dev container
+(same dirty-tree guard; writes loadable tarballs plus a `REV` stamp to
+`dist/images/`), copy `dist/images/` to the host, then `make push-archives`
+there. `push-archives` loads the tarballs and pushes them under the stamped
+rev — it never takes an `IMAGE_TAG`, so like `push-rev` it cannot move
+`edge`. Continue with `validate-rev`/`promote-edge` as above, passing
+`REV=$(cat dist/images/REV)` if the host checkout is not on that commit. `promote-edge` retags registry-side (`docker buildx imagetools
 create`), so the promoted digests are exactly the validated ones.
 `validate-rev` and `promote-edge` default `REV` to the current HEAD, so the
 whole flow runs tag-free from the commit being published. All images always move together — the
