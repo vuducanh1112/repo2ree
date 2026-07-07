@@ -93,10 +93,23 @@ Full contributor setup lives in
 uv run --package repo2ree-api uvicorn repo2ree_api.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-2. Start the workbench agent, which dials the API and owns the container
+2. Build the executor and tools bundles the agent injects into workbenches.
+   The published agent image ships them baked in, but an agent run from
+   source needs them built and pointed at explicitly — without them,
+   provisioning fails its executor probe (`"repo2ree-exec": executable file
+   not found`). Rebuild after changing `core/` or `executor/`, or benches
+   keep running the old executor:
+
+```bash
+make e2e-bundles   # builds test-artifacts/{exec-bundle,tools-bundle} via nix
+```
+
+3. Start the workbench agent, which dials the API and owns the container
    runtime (workbenches only provision while it is connected):
 
 ```bash
+REPO2REE_EXEC_BUNDLE=$PWD/test-artifacts/exec-bundle \
+REPO2REE_TOOLS_BUNDLE=$PWD/test-artifacts/tools-bundle \
 uv run --package repo2ree-agent python -m repo2ree_agent
 ```
 
@@ -104,20 +117,23 @@ For faster local iteration, you can share the host Docker daemon with
 workbenches:
 
 ```bash
-WORKBENCH_DOCKER_MODE=host-socket uv run --package repo2ree-agent python -m repo2ree_agent
+REPO2REE_EXEC_BUNDLE=$PWD/test-artifacts/exec-bundle \
+REPO2REE_TOOLS_BUNDLE=$PWD/test-artifacts/tools-bundle \
+WORKBENCH_DOCKER_MODE=host-socket \
+uv run --package repo2ree-agent python -m repo2ree_agent
 ```
 
 This reuses the host Docker image cache, but it weakens workbench isolation and
 is intended for trusted local development only. The default `dind` mode keeps a
 separate Docker daemon per workbench.
 
-3. Install frontend dependencies:
+4. Install frontend dependencies:
 
 ```bash
 npm --prefix frontend ci
 ```
 
-4. Start the frontend dev server:
+5. Start the frontend dev server:
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8000 npm --prefix frontend run dev -- --host
