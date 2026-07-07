@@ -27,9 +27,12 @@ frontend-image:
 # so `docker build` already loads it into the local Docker. The :local tag marks
 # never-pushed workbench builds (the compose local-override path uses it);
 # published channels are minted at push time.
+# --provenance=false: the default SLSA attestation embeds a per-build
+# invocation id + timestamps into the image index, so without it the image
+# digest changes on every build even when all layers are cache hits.
 backend-image:
 	@echo "Building backend image..."
-	docker build -f docker/demo/backend.Dockerfile -t repo2ree-backend:local .
+	docker build --provenance=false -f docker/demo/backend.Dockerfile -t repo2ree-backend:local .
 	@echo "Done: repo2ree-backend:local"
 
 # The agent image is the self-carrying deployable third parties run: agent
