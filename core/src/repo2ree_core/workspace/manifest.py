@@ -23,14 +23,22 @@ def build_manifest_payload(
     session: ReeSession,
     *,
     ree_id: str,
+    consistency: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build the published manifest from ``intent`` and ``session``."""
-    return {
+    """Build the published manifest from ``intent`` and ``session``.
+
+    ``consistency`` is the seal-time per-step freshness report (recorded
+    receipts vs. the tree being sealed); present only on sealed manifests.
+    """
+    payload = {
         **intent.model_dump(),
         **session.model_dump(exclude=_SESSION_MANIFEST_EXCLUDE),
         "ree_version": REE_MANIFEST_VERSION,
         "name": intent.name or f"workspace-{ree_id[:8]}",
     }
+    if consistency is not None:
+        payload["consistency"] = consistency
+    return payload
 
 
 def build_draft_manifest_payload(

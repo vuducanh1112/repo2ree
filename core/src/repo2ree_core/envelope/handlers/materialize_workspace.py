@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from repo2ree_core.receipts import write_materialize_marker
 from repo2ree_core.ree_scripts.materialize_workspace import build_materialize_sh
 from repo2ree_core.run_script import (
     CancelCheck,
@@ -17,6 +18,7 @@ from repo2ree_core.run_script import (
     run_streaming_process,
 )
 from repo2ree_core.storage.layout import MATERIALIZE_SCRIPT_FILENAME, ReeLayout
+from repo2ree_core.storage.store import ReeStore
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -58,6 +60,10 @@ def handle_materialize_workspace(
         return ActionResult(status="canceled")
     if result.returncode != 0:
         return ActionResult(status="failed", exit_code=result.returncode or 1)
+
+    store = ReeStore(layout)
+    snapshot_digest = store.read_session().source_snapshot_digest if store.metadata_exists() else None
+    write_materialize_marker(layout, snapshot_digest=snapshot_digest, log=log)
 
     log("system", "info", "materialize_workspace succeeded")
     return ActionResult(status="succeeded", exit_code=0)

@@ -31,6 +31,7 @@ from typing import Any
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.receipts import build_consistency_report, published_receipts
 from repo2ree_core.ree_scripts.reproducer import (
     reproducer_entries,
     runtime_artifact_basename_from_remap,
@@ -46,6 +47,7 @@ from repo2ree_core.workspace.bundle import (
     REE_ARTIFACTS_PREFIX,
     REE_MANIFEST_ENTRY_PATH,
     REE_OVERLAY_PREFIX,
+    REE_RECEIPTS_PREFIX,
     REE_SNAPSHOT_ENTRY_PATH,
     REE_WORKSPACE_DIR_ENTRY,
     ArtifactPlan,
@@ -67,10 +69,11 @@ def _build_manifest_payload(
     session: Any,
     *,
     ree_id: str,
+    consistency: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from repo2ree_core.workspace.manifest import build_manifest_payload
 
-    return build_manifest_payload(intent, session, ree_id=ree_id)
+    return build_manifest_payload(intent, session, ree_id=ree_id, consistency=consistency)
 
 
 def _build_draft_manifest_payload(
@@ -181,6 +184,11 @@ def _bundle_entry_partition(
                 (layout.workspace / ws_rel).read_bytes(),
             )
         )
+    tail.append((REE_RECEIPTS_PREFIX, b""))
+    for receipt in published_receipts(layout, intent):
+        receipt_path = layout.run_receipt(receipt.run_id)
+        if receipt_path.is_file():
+            tail.append((f"{REE_RECEIPTS_PREFIX}{receipt_path.name}", receipt_path.read_bytes()))
     tail.append((REE_WORKSPACE_DIR_ENTRY, b""))
     return head, tail
 
@@ -301,6 +309,8 @@ def _workspace_ree_files_with_content(storage_root: Path, ree_id: str) -> list[d
 
 def get_workspace(storage_root: Path, ree_id: str) -> dict[str, Any]:
     metadata = _read_metadata(storage_root, ree_id)
+    intent = ReeIntent.from_metadata(metadata)
+    session = ReeSession.from_metadata(metadata)
     detail = dict(metadata)
     files = _workspace_files_with_content(storage_root, ree_id)
     ree_files = _workspace_ree_files_with_content(storage_root, ree_id)
@@ -311,11 +321,11 @@ def get_workspace(storage_root: Path, ree_id: str) -> dict[str, Any]:
         workspace_files=files,
         ree_files=ree_files,
     )
-    detail["sourceRepo"] = derive_source_repo_metadata(
-        ReeIntent.from_metadata(metadata),
-        ReeSession.from_metadata(metadata),
-        files,
-    ).model_dump(by_alias=True)
+    detail["sourceRepo"] = derive_source_repo_metadata(intent, session, files).model_dump(by_alias=True)
+    # Live per-step staleness (recorded receipts vs. the current tree): saving
+    # a script flips the derived state on the next fetch — no invalidation
+    # events needed.
+    detail["consistency"] = build_consistency_report(_layout(storage_root, ree_id), intent, session)
     return detail
 
 
@@ -357,13 +367,14 @@ def _manifest_entry_bytes(
     artifact_plan: ArtifactPlan,
     *,
     ree_id: str,
+    consistency: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], bytes]:
     """Build the sidecar manifest and its bundle-remapped, serialized bytes.
 
     Returns ``(sidecar_manifest, manifest_bytes)``. The sidecar is what gets
     persisted alongside the archive; the bytes are what get embedded in it.
     """
-    sidecar_manifest = _build_manifest_payload(intent, session, ree_id=ree_id)
+    sidecar_manifest = _build_manifest_payload(intent, session, ree_id=ree_id, consistency=consistency)
     bundle_manifest = rewrite_manifest_for_bundle(sidecar_manifest, artifact_plan.manifest_remap)
     manifest_bytes = json.dumps(bundle_manifest, indent=2, sort_keys=True).encode("utf-8")
     return sidecar_manifest, manifest_bytes
@@ -396,6 +407,11 @@ def seal_workspace_ree(
         runtime_included=runtime_included,
     )
 
+    # Per-step freshness of the recorded run receipts against the tree being
+    # sealed. Sealing over stale results proceeds — the staleness is recorded
+    # in the manifest (and bundled receipts) so it is diagnosable later.
+    consistency = build_consistency_report(layout, intent, session)
+
     # The artifact plan and all file-heavy entries are identical across the
     # pre-seal digest and the final bundle — only the manifest differs — so read
     # every file exactly once here.
@@ -410,7 +426,9 @@ def seal_workspace_ree(
     # Strip any previously persisted seal stamps so re-sealing produces the
     # same digest when content hasn't changed.
     preseal_session = session.model_copy(update={"sealed_at": None, "seal_hash": None})
-    _, preseal_manifest_bytes = _manifest_entry_bytes(intent, preseal_session, artifact_plan, ree_id=ree_id)
+    _, preseal_manifest_bytes = _manifest_entry_bytes(
+        intent, preseal_session, artifact_plan, ree_id=ree_id, consistency=consistency
+    )
     preseal_entries = _entries_with_manifest(head, tail, preseal_manifest_bytes)
     seal_hash = f"sha256:{_entries_digest(preseal_entries)}"
 
@@ -423,7 +441,9 @@ def seal_workspace_ree(
     )
 
     # Final assembly with the real seal_hash in the manifest; ZIP built once.
-    sidecar_manifest, manifest_bytes = _manifest_entry_bytes(intent, session, artifact_plan, ree_id=ree_id)
+    sidecar_manifest, manifest_bytes = _manifest_entry_bytes(
+        intent, session, artifact_plan, ree_id=ree_id, consistency=consistency
+    )
     zip_bytes = build_zip_bytes(_entries_with_manifest(head, tail, manifest_bytes))
 
     # Persist everything atomically within the workbench lock (held by caller).
@@ -436,6 +456,7 @@ def seal_workspace_ree(
         "sealHash": session.seal_hash,
         "sourceIncluded": session.source_included,
         "runtimeIncluded": session.runtime_included,
+        "consistency": consistency,
     }
 
 

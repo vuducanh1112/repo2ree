@@ -75,9 +75,9 @@ def _dispatch(
     cancel: CancelCheck,
 ) -> ActionResult:
     if isinstance(cmd, AcquireSourceCommand):
-        return handle_acquire_source(cmd.args, log=log, is_canceled=cancel)
+        return handle_acquire_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, SnapshotUpstreamCommand):
-        return handle_snapshot_upstream(log=log, is_canceled=cancel)
+        return handle_snapshot_upstream(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, MaterializeWorkspaceCommand):
         return handle_materialize_workspace(log=log, is_canceled=cancel)
     if isinstance(cmd, UpdateSourceMetadataCommand):
@@ -103,7 +103,7 @@ def _dispatch(
     if isinstance(cmd, GenerateHbomCommand):
         return handle_generate_hbom(log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateSbomCommand):
-        return handle_generate_sbom(cmd.args, log=log, is_canceled=cancel)
+        return handle_generate_sbom(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ActivationTestCommand):
         return handle_activation_test(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, SealReeCommand):

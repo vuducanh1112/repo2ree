@@ -49,6 +49,9 @@ REE_SNAPSHOT_ENTRY_PATH = f"{REE_ROOT_PREFIX}{SNAPSHOT_FILENAME}"
 REE_OVERLAY_PREFIX = f"{REE_ROOT_PREFIX}{OVERLAY_DIRNAME}/"
 REE_ARTIFACTS_PREFIX = f"{REE_ROOT_PREFIX}{ARTIFACTS_DIRNAME}/"
 REE_WORKSPACE_DIR_ENTRY = f"{REE_ROOT_PREFIX}{WORKSPACE_DIRNAME}/"
+# Receipts get their own bundle directory (rather than mirroring ``runs/``)
+# because only the receipt record is published — NDJSON logs stay out.
+REE_RECEIPTS_PREFIX = f"{REE_ROOT_PREFIX}receipts/"
 
 _EPOCH_DATE_TIME = (1980, 1, 1, 0, 0, 0)
 

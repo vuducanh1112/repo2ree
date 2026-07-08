@@ -1,11 +1,75 @@
+import type { StaleSealItem } from "@core/ree-assembly/sealConsistency";
 import { lgBackgrounds } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 
 interface SealConfirmWarningProps {
   missing: { key: string; label: string }[];
+  /** Steps whose recorded run no longer matches the tree being sealed. */
+  stale?: StaleSealItem[];
 }
 
-export function SealConfirmWarning({ missing }: SealConfirmWarningProps) {
+function WarningGroup({
+  headline,
+  items,
+}: {
+  headline: string;
+  items: { key: string; text: string }[];
+}) {
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          fontFamily: F.sans,
+          color: "#92400e",
+          marginBottom: 5,
+        }}
+      >
+        {headline}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 3,
+        }}
+      >
+        {items.map((item) => (
+          <div
+            key={item.key}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <div
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: "#f59e0b",
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 10,
+                fontFamily: F.sans,
+                color: "#92400e",
+              }}
+            >
+              {item.text}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function SealConfirmWarning({ missing, stale = [] }: SealConfirmWarningProps) {
   return (
     <div
       style={{
@@ -32,55 +96,25 @@ export function SealConfirmWarning({ missing }: SealConfirmWarningProps) {
         >
           ⚠️
         </span>
-        <div>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              fontFamily: F.sans,
-              color: "#92400e",
-              marginBottom: 5,
-            }}
-          >
-            {missing.length} panel{missing.length !== 1 ? "s" : ""} not connected
-          </div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 3,
-            }}
-          >
-            {missing.map((item) => (
-              <div
-                key={item.key}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <div
-                  style={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    background: "#f59e0b",
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontFamily: F.sans,
-                    color: "#92400e",
-                  }}
-                >
-                  {item.label} — not completed
-                </span>
-              </div>
-            ))}
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {missing.length > 0 && (
+            <WarningGroup
+              headline={`${missing.length} panel${missing.length !== 1 ? "s" : ""} not connected`}
+              items={missing.map((item) => ({
+                key: item.key,
+                text: `${item.label} — not completed`,
+              }))}
+            />
+          )}
+          {stale.length > 0 && (
+            <WarningGroup
+              headline={`${stale.length} result${stale.length !== 1 ? "s" : ""} stale — inputs changed since the recorded run`}
+              items={stale.map((item) => ({
+                key: item.key,
+                text: `${item.label} — ${item.detail}`,
+              }))}
+            />
+          )}
         </div>
       </div>
     </div>

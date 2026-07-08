@@ -161,6 +161,22 @@ test.describe("REE pipeline", () => {
       });
     });
 
+    await test.step("editing the build script flags the recorded build as stale", async () => {
+      // The receipts scenario this feature exists to catch: the build ran with
+      // script A; editing to script B without re-running must surface as a
+      // stale build at the seal gate and be recorded in the sealed manifest.
+      await openPort(page, "Build");
+      const editor = page.getByLabel("Build script");
+      await editor.fill(`${await editor.inputValue()}\n# tweaked after the recorded build\n`);
+      await main(page).getByRole("button", { name: "Save build script" }).click();
+      await page.keyboard.press("Escape");
+
+      await openPort(page, "Seal");
+      await expect(page.getByText(/stale — inputs changed since the recorded run/)).toBeVisible();
+      await expect(page.getByText("Build — build script changed")).toBeVisible();
+      await page.keyboard.press("Escape");
+    });
+
     await test.step("seal and download the REE", async () => {
       await sealRee(page);
 
@@ -168,6 +184,28 @@ test.describe("REE pipeline", () => {
       await expect(downloadButton).toBeEnabled();
       const [download] = await Promise.all([page.waitForEvent("download"), downloadButton.click()]);
       expect(download.suggestedFilename()).toMatch(/\.zip$/i);
+
+      // The bundle's manifest must carry the consistency block naming the
+      // build script as the moved input — sealing warned, proceeded, recorded.
+      const zipPath = await download.path();
+      const manifest = JSON.parse(
+        execFileSync(
+          "python3",
+          [
+            "-c",
+            'import sys,zipfile;sys.stdout.write(zipfile.ZipFile(sys.argv[1]).read("ree/ree.json").decode())',
+            zipPath,
+          ],
+          { encoding: "utf8" },
+        ),
+      ) as {
+        consistency?: {
+          steps: { step: string; status: string; staleInputs?: { input: string }[] }[];
+        };
+      };
+      const buildStep = manifest.consistency?.steps.find((step) => step.step === "build_runtime");
+      expect(buildStep?.status).toBe("stale");
+      expect(buildStep?.staleInputs?.map((entry) => entry.input)).toContain("buildScript");
     });
 
     await test.step("release workbench", async () => {

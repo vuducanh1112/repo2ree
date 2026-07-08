@@ -52,6 +52,7 @@ export function useReeEditor({
   const reeArtifactFiles = reeQuery.data?.reeFiles ?? [];
   const draftManifest = reeQuery.data?.draftManifest;
   const sourceRepo = reeQuery.data?.sourceRepo;
+  const consistency = reeQuery.data?.consistency;
 
   const reeEditorState: ReeEditorState = useMemo(
     () => createReeEditorStateFromModel({ reeIntent, reeSession, uiChrome, assemblyRun }),
@@ -177,6 +178,7 @@ export function useReeEditor({
     reeSession,
     ree,
     workspaceRemote,
+    consistency,
     assemblyRun,
     evaluation: {
       dependencyLevel: ree.dependencyLevel ?? 0,

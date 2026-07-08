@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from repo2ree_core.receipts import AcquireSourceReceipt, receipt_run_id, record_receipt
 from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
 from repo2ree_core.run_script import (
     CancelCheck,
@@ -18,6 +19,7 @@ from repo2ree_core.run_script import (
     run_streaming_process,
 )
 from repo2ree_core.storage.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
+from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -42,6 +44,7 @@ def _write_acquire_script(args: AcquireSourceArgs, *, log: LogSink, layout: ReeL
 def handle_acquire_source(
     args: AcquireSourceArgs,
     *,
+    run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
@@ -71,6 +74,18 @@ def handle_acquire_source(
     if result.returncode != 0:
         return ActionResult(status="failed", exit_code=result.returncode or 1)
 
+    record_receipt(
+        layout,
+        AcquireSourceReceipt(
+            run_id=receipt_run_id(run_id),
+            recorded_at=utc_now(),
+            status="succeeded",
+            origin_url=args.origin_url,
+            source_type=args.source_type or "",
+            revision=args.revision or "",
+        ),
+        log=log,
+    )
     return ActionResult(
         status="succeeded",
         exit_code=0,

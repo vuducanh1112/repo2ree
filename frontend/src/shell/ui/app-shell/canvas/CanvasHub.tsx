@@ -66,6 +66,8 @@ interface CanvasHubProps {
   reeFiles: ReeFile[];
   draftManifest: DraftManifest | undefined;
   sourceRepo: SourceRepoMetadata | undefined;
+  /** Node keys whose recorded run result is stale (see sealConsistency). */
+  staleNodeKeys?: ReadonlySet<string>;
   filesConsoleOpen: boolean;
   onFilesConsoleOpenChange: (open: boolean) => void;
 }
@@ -85,6 +87,7 @@ export function CanvasHub({
   reeFiles,
   draftManifest,
   sourceRepo,
+  staleNodeKeys,
   filesConsoleOpen,
   onFilesConsoleOpenChange,
 }: CanvasHubProps) {
@@ -288,6 +291,7 @@ export function CanvasHub({
                   nodeEls.current[node.key] = el;
                 }}
                 done={isNodeDone(node, ree, badges)}
+                stale={staleNodeKeys?.has(node.key) ?? false}
                 locked={isNodeLocked(node, provisioned)}
                 active={isNodeActive(node, page)}
                 rows={nodeSummary(node, ree, sourceRepo)}

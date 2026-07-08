@@ -13,9 +13,11 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
+from repo2ree_core.receipts import persist_snapshot_digest
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.storage.extract import pack_directory_tar_gz, safe_extract_tar, safe_extract_zip
 from repo2ree_core.storage.layout import ReeLayout
+from repo2ree_core.storage.store import ReeStore
 from repo2ree_protocol.command import ExtractUploadArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -46,11 +48,12 @@ def handle_extract_upload(
                 safe_extract_zip(staged, extract_dir)
             else:
                 safe_extract_tar(staged, extract_dir)
-            pack_directory_tar_gz(extract_dir, layout.snapshot_archive)
+            snapshot_digest = pack_directory_tar_gz(extract_dir, layout.snapshot_archive)
     except Exception as exc:
         log("system", "error", f"upload ingest failed: {exc}")
         return ActionResult(status="failed", exit_code=1)
 
+    persist_snapshot_digest(ReeStore(layout), snapshot_digest, log=log)
     staged.unlink(missing_ok=True)
 
     log("system", "info", "extract_upload succeeded")

@@ -1,4 +1,5 @@
 import type { ReeFile } from "../ree/ReeTypes";
+import type { ConsistencyReport } from "../ree-assembly/sealConsistency";
 
 export interface WorkspaceBinaryDownload {
   bytes: ArrayBuffer;
@@ -27,6 +28,8 @@ export interface ReeProject<TFile = unknown, TRee = unknown> {
   ree?: TRee;
   draftManifest?: DraftManifest;
   sourceRepo?: SourceRepoMetadata;
+  /** Per-step freshness of recorded run receipts vs. the current tree. */
+  consistency?: ConsistencyReport;
   /** The image this REE's workbench was provisioned from. */
   workbenchImage?: string;
 }

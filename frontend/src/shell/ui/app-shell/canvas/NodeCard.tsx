@@ -10,6 +10,8 @@ interface NodeCardProps {
   offsetY: number;
   setRef: (el: HTMLButtonElement | null) => void;
   done: boolean;
+  /** Done, but the recorded run's inputs no longer match the workspace. */
+  stale?: boolean;
   locked: boolean;
   active: boolean;
   rows: SummaryRow[];
@@ -26,6 +28,7 @@ export function NodeCard({
   offsetY,
   setRef,
   done,
+  stale = false,
   locked,
   active,
   rows,
@@ -92,7 +95,7 @@ export function NodeCard({
             {node.label}
           </div>
         </div>
-        <StatusDot on={done} />
+        <StatusDot on={done} stale={stale} />
       </div>
 
       {rows.map((row) => (

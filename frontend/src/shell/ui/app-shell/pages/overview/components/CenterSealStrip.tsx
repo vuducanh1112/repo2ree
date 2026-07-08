@@ -2,6 +2,7 @@ import { standingMeta } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { Badges, LogEntry } from "@core/ree/ReeTypes";
+import { type ConsistencyReport, staleSealItems } from "@core/ree-assembly/sealConsistency";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
 import React from "react";
@@ -14,6 +15,7 @@ interface CenterSealStripProps {
   locked: boolean;
   evaluation: EvaluationState;
   badges: Badges;
+  consistency?: ConsistencyReport;
   onSeal: (inclusionOpts: InclusionOpts) => void;
   sealRunning?: boolean;
   sealLog?: LogEntry | null;
@@ -25,6 +27,7 @@ export function CenterSealStrip({
   locked,
   evaluation,
   badges,
+  consistency,
   onSeal,
   sealRunning = false,
   sealLog = null,
@@ -49,6 +52,7 @@ export function CenterSealStrip({
   const totalCables = cableItems.length;
   const allLive = liveCount === totalCables;
   const missing = cableItems.filter((item) => !item.live);
+  const stale = staleSealItems(consistency);
   const currentLevelMeta = standingMeta(evaluation);
 
   const logPanel = (
@@ -80,6 +84,7 @@ export function CenterSealStrip({
         allLive={allLive}
         totalCables={totalCables}
         missing={missing}
+        stale={stale}
         sealRunning={sealRunning}
         sourceAvailable={sourceAvailable}
         runtimeAvailable={runtimeAvailable}

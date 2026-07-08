@@ -1,5 +1,6 @@
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { Badges, LogEntry } from "@core/ree/ReeTypes";
+import type { ConsistencyReport } from "@core/ree-assembly/sealConsistency";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { useRef } from "react";
 import { C, F } from "../../theme/theme";
@@ -10,6 +11,7 @@ interface SealHubPanelProps {
   ree: ReeEditorViewModel;
   evaluation: EvaluationState;
   badges: Badges;
+  consistency?: ConsistencyReport;
   locked: boolean;
   sealRunning: boolean;
   sealLog: LogEntry | null;
@@ -23,6 +25,7 @@ export function SealHubPanel({
   ree,
   evaluation,
   badges,
+  consistency,
   locked,
   sealRunning,
   sealLog,
@@ -47,6 +50,7 @@ export function SealHubPanel({
         locked={locked}
         evaluation={evaluation}
         badges={badges}
+        consistency={consistency}
         onSeal={onSeal}
         sealRunning={sealRunning}
         sealLog={sealLog}

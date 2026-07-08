@@ -83,6 +83,7 @@ export function mapReeDetailToReeProject(
     ree: reeState,
     draftManifest: ree.draftManifest,
     sourceRepo: ree.sourceRepo,
+    consistency: ree.consistency,
     workbenchImage: ree.workbenchImage,
   };
 }

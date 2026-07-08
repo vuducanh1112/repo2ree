@@ -40,6 +40,8 @@ __all__ = ["normalize_workspace_path", "validate_relative_path"]
 
 
 _METADATA_FILENAME = ".workspace.json"
+_MATERIALIZE_MARKER_FILENAME = ".workspace.materialized.json"
+_DIGEST_CACHE_FILENAME = ".workspace.digest-cache.json"
 _MANIFEST_FILENAME = "manifest.json"
 _SEALED_ARCHIVE_FILENAME = "sealed.zip"
 _UPLOAD_STAGING_DIRNAME = "upload-staging"
@@ -116,6 +118,20 @@ class ReeLayout:
         return self.root / SNAPSHOT_FILENAME
 
     @property
+    def digest_cache(self) -> Path:
+        """Stat-keyed cache of the runtime artifact's digest (see ``receipts``)."""
+        return self.root / _DIGEST_CACHE_FILENAME
+
+    @property
+    def materialize_marker(self) -> Path:
+        """What the workspace was last materialized from (see ``receipts``).
+
+        The ``.workspace`` prefix keeps it under the reserved-control-name
+        umbrella, so file enumeration and path access already skip it.
+        """
+        return self.root / _MATERIALIZE_MARKER_FILENAME
+
+    @property
     def upload_staging(self) -> Path:
         return self.root / _UPLOAD_STAGING_DIRNAME
 
@@ -142,6 +158,10 @@ class ReeLayout:
     def run_log(self, run_id: str) -> Path:
         """Path to the NDJSON log file for a single action run."""
         return self.runs / f"{self._validate_run_id(run_id)}.ndjson"
+
+    def run_receipt(self, run_id: str) -> Path:
+        """Path to the receipt (input/output digests) for a single action run."""
+        return self.runs / f"{self._validate_run_id(run_id)}.receipt.json"
 
     def run_cancel_marker(self, run_id: str) -> Path:
         """Path whose existence means the action run should stop cooperatively."""

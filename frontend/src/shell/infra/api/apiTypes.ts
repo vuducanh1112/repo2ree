@@ -1,3 +1,4 @@
+import type { ConsistencyReport } from "@core/ree-assembly/sealConsistency";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 
 export interface ApiErrorEnvelope {
@@ -91,6 +92,9 @@ export interface ReeDetailDto extends ReeSummaryDto {
   // The backend emits this already camelCased and the frontend renders it
   // untouched, so the wire shape and the domain type are one and the same.
   sourceRepo?: SourceRepoMetadata;
+  // Per-step freshness of recorded run receipts vs. the current tree; emitted
+  // camelCased by the backend and rendered untouched, like sourceRepo.
+  consistency?: ConsistencyReport;
   /** The image this REE's workbench was provisioned from. */
   workbenchImage?: string;
 }

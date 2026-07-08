@@ -36,6 +36,9 @@ class ReeSession(BaseModel):
     uploaded_archive: str | None = None
     source_snapshot_archive: str | None = None
     source_snapshot_captured_at: str | None = None
+    # Content digest of the snapshot archive, recorded while it is written.
+    # The chain root of every step's input slice (see ``repo2ree_core.receipts``).
+    source_snapshot_digest: str | None = None
     # Packaging facts settled at bundle time and recorded in the published
     # manifest. Unset while authoring (inclusion is a download-time choice);
     # populated when reconstructing a session from an uploaded manifest.
@@ -67,6 +70,9 @@ class ReeSession(BaseModel):
                 "source_snapshot_captured_at": snapshot_captured_at or self.source_snapshot_captured_at,
             }
         )
+
+    def with_snapshot_digest(self, digest: str | None) -> ReeSession:
+        return self.model_copy(update={"source_snapshot_digest": digest or None})
 
     def with_evaluation(
         self,

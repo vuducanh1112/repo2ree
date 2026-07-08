@@ -1,4 +1,5 @@
 import { addExperiment } from "@core/ree/experimentOps";
+import { staleAssemblyStepKeys } from "@core/ree-assembly/sealConsistency";
 import { useState } from "react";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
@@ -33,6 +34,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     reeIntent,
     ree,
     workspaceRemote,
+    consistency,
     assemblyRun,
     uiChrome,
     evaluation,
@@ -44,6 +46,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   const { badges } = assemblyRun;
   const { toast } = uiChrome;
   const page = uiChrome.page;
+  const staleNodeKeys = staleAssemblyStepKeys(consistency);
   // The constellation (pod hub) is the home view. Seal and the one-press SBOM
   // step live inside the hub as compact floating panels; every other page docks
   // beside the pod.
@@ -149,6 +152,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             ree={ree}
             evaluation={evaluation}
             badges={badges}
+            staleNodeKeys={staleNodeKeys}
             provisioned={provisioned}
             dimmed={dockOpen}
             onNavigate={openPage}
@@ -222,6 +226,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             ree={ree}
             evaluation={evaluation}
             badges={badges}
+            consistency={consistency}
             locked={uiChrome.locked}
             sealRunning={sealRunning}
             sealLog={sealLog}
