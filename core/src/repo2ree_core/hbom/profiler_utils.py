@@ -10,7 +10,14 @@ _GIB = 1024**3
 def round_gib(value_bytes: int | float) -> float:
     if value_bytes <= 0:
         return 0.0
-    return round(float(value_bytes) / _GIB, 2)
+    gib = round(float(value_bytes) / _GIB, 2)
+
+    # ── postcondition ──
+    # A capacity is never negative; every HBOM definition treats this as a
+    # non-negative quantity (the pydantic fields all carry ``ge=0``).
+    assert gib >= 0.0, f"negative capacity: {gib}"  # noqa: S101
+    # ───────────────────
+    return gib
 
 
 def read_text(path: str | Path) -> str:

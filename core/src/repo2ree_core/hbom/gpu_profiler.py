@@ -5,17 +5,19 @@ from repo2ree_core.hbom.profiler_utils import run_command
 
 
 def profile_gpus() -> dict[str, GPUDefinition]:
-    result: dict[str, GPUDefinition] = {}
-
     nvidia = _run_nvidia_smi()
     if nvidia:
         return nvidia
 
     lspci = run_command("lspci")
     if not lspci or lspci.returncode != 0:
-        return result
+        return {}
+    return _parse_lspci_output(lspci.stdout)
 
-    for line in lspci.stdout.splitlines():
+
+def _parse_lspci_output(stdout: str) -> dict[str, GPUDefinition]:
+    result: dict[str, GPUDefinition] = {}
+    for line in stdout.splitlines():
         lowered = line.lower()
         if "vga compatible controller" not in lowered and "3d controller" not in lowered:
             continue
@@ -41,16 +43,19 @@ def profile_gpus() -> dict[str, GPUDefinition]:
 
 
 def _run_nvidia_smi() -> dict[str, GPUDefinition]:
-    result: dict[str, GPUDefinition] = {}
     completed = run_command(
         "nvidia-smi",
         "--query-gpu=name,memory.total,driver_version,pci.bus_id",
         "--format=csv,noheader,nounits",
     )
     if not completed or completed.returncode != 0:
-        return result
+        return {}
+    return _parse_nvidia_smi_csv(completed.stdout)
 
-    for line in completed.stdout.splitlines():
+
+def _parse_nvidia_smi_csv(stdout: str) -> dict[str, GPUDefinition]:
+    result: dict[str, GPUDefinition] = {}
+    for line in stdout.splitlines():
         parts = [part.strip() for part in line.split(",")]
         if len(parts) < 4:
             continue

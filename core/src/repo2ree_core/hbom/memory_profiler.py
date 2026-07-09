@@ -6,9 +6,8 @@ from repo2ree_core.domain.hbom import MemoryDefinition
 from repo2ree_core.hbom.profiler_utils import round_gib
 
 
-def profile_memory() -> dict[str, MemoryDefinition]:
+def profile_memory(meminfo_path: Path = Path("/proc/meminfo")) -> dict[str, MemoryDefinition]:
     mem_total_kib = 0
-    meminfo_path = Path("/proc/meminfo")
     if meminfo_path.exists():
         for line in meminfo_path.read_text(encoding="utf-8").splitlines():
             if not line.startswith("MemTotal:"):

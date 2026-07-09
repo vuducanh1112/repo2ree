@@ -27,7 +27,6 @@ def _storage_type_for_device(name: str, rotational: str, transport: str, model_n
 
 
 def profile_storage() -> dict[str, StorageDefinition]:
-    result: dict[str, StorageDefinition] = {}
     completed = run_command(
         "lsblk",
         "-b",
@@ -37,14 +36,26 @@ def profile_storage() -> dict[str, StorageDefinition]:
         "NAME,MODEL,VENDOR,SIZE,ROTA,TRAN,TYPE",
     )
     if not completed or completed.returncode != 0 or not completed.stdout.strip():
-        return result
+        return {}
+    return _parse_lsblk_devices(completed.stdout)
 
+
+def _parse_lsblk_devices(stdout: str) -> dict[str, StorageDefinition]:
+    result: dict[str, StorageDefinition] = {}
     try:
-        payload = json.loads(completed.stdout)
+        payload = json.loads(stdout)
     except json.JSONDecodeError:
         return result
 
+    # lsblk always emits a JSON object with a ``blockdevices`` array, but a
+    # truncated or wrong-tool output can be any JSON value; treat anything that
+    # is not the expected shape as "no devices" rather than raising.
+    if not isinstance(payload, dict):
+        return result
+
     for device in payload.get("blockdevices") or []:
+        if not isinstance(device, dict):
+            continue
         if str(device.get("type") or "") != "disk":
             continue
 

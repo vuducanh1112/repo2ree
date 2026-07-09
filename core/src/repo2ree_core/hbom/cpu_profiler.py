@@ -9,14 +9,16 @@ from typing import Any
 from repo2ree_core.domain.hbom import CPUDefinition
 
 
-def _parse_cpuinfo() -> dict[str, Any]:
-    cpuinfo_path = Path("/proc/cpuinfo")
+def _parse_cpuinfo(cpuinfo_path: Path = Path("/proc/cpuinfo")) -> dict[str, Any]:
     if not cpuinfo_path.exists():
         return {}
+    return _parse_cpuinfo_text(cpuinfo_path.read_text(encoding="utf-8"))
 
+
+def _parse_cpuinfo_text(text: str) -> dict[str, Any]:
     processors: list[dict[str, str]] = []
     current: dict[str, str] = {}
-    for line in cpuinfo_path.read_text(encoding="utf-8").splitlines():
+    for line in text.splitlines():
         if not line.strip():
             if current:
                 processors.append(current)
@@ -50,19 +52,35 @@ def _parse_cpuinfo() -> dict[str, Any]:
     except ValueError:
         threads_per_core = 1
 
+    quantity = socket_count
+    cores_per_cpu = max(1, cores_per_socket)
+    threads = max(1, threads_per_core)
+    logical_cpus = len(processors)
+
+    # ── postcondition ──
+    # The topology counts feed ``CPUDefinition`` fields that all carry ``ge=1``;
+    # normalise them so a malformed /proc/cpuinfo can never construct an invalid
+    # definition downstream, and pin ``logical_cpus`` to exactly one entry per
+    # parsed processor block.
+    assert quantity >= 1, quantity  # noqa: S101
+    assert cores_per_cpu >= 1, cores_per_cpu  # noqa: S101
+    assert threads >= 1, threads  # noqa: S101
+    assert logical_cpus == len(processors), logical_cpus  # noqa: S101
+    # ───────────────────
+
     return {
         "model_name": first.get("model name") or first.get("Processor") or "",
         "vendor": first.get("vendor_id") or first.get("Hardware") or "",
-        "quantity": socket_count,
-        "cores_per_cpu": max(1, cores_per_socket),
-        "threads_per_core": max(1, threads_per_core),
+        "quantity": quantity,
+        "cores_per_cpu": cores_per_cpu,
+        "threads_per_core": threads,
         "architecture": platform.machine(),
-        "logical_cpus": len(processors),
+        "logical_cpus": logical_cpus,
     }
 
 
-def profile_cpus() -> dict[str, CPUDefinition]:
-    cpu = _parse_cpuinfo()
+def profile_cpus(cpuinfo_path: Path = Path("/proc/cpuinfo")) -> dict[str, CPUDefinition]:
+    cpu = _parse_cpuinfo(cpuinfo_path)
     model_name = cpu.get("model_name") or platform.processor() or platform.machine()
     return {
         str(model_name): CPUDefinition(

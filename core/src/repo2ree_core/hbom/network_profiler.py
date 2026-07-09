@@ -10,17 +10,16 @@ from repo2ree_core.hbom.profiler_utils import read_optional_int, read_optional_t
 NetworkType = Literal["ethernet", "infiniband", "wifi", "cellular"]
 
 
-def _read_network_driver(interface_name: str) -> str:
-    driver_link = Path(f"/sys/class/net/{interface_name}/device/driver")
+def _read_network_driver(iface_dir: Path) -> str:
+    driver_link = iface_dir / "device" / "driver"
     try:
         return driver_link.resolve().name
     except OSError:
         return ""
 
 
-def profile_network() -> dict[str, NetworkDefinition]:
+def profile_network(net_root: Path = Path("/sys/class/net")) -> dict[str, NetworkDefinition]:
     result: dict[str, NetworkDefinition] = {}
-    net_root = Path("/sys/class/net")
     if not net_root.exists():
         return result
 
@@ -33,7 +32,7 @@ def profile_network() -> dict[str, NetworkDefinition]:
         iface_type = read_optional_text(iface_dir / "type")
         wireless = (iface_dir / "wireless").exists()
         infiniband = (iface_dir / "device" / "infiniband").exists()
-        driver_name = _read_network_driver(interface_name)
+        driver_name = _read_network_driver(iface_dir)
 
         network_type: NetworkType = "ethernet"
         if wireless:
