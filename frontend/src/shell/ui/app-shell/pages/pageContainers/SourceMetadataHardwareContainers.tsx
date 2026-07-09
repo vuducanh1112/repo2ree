@@ -54,7 +54,7 @@ export function ExperimentsPageContainer({
   commands,
   workspaceRemote,
 }: AppShellPageContainerProps) {
-  const { reeId, reeApi } = useApiRuntime();
+  const { reeId } = useApiRuntime();
   const { page, focusedField, locked } = uiChrome;
   const { reeSpec } = reeIntent;
   const { badges } = assemblyRun;
@@ -62,15 +62,6 @@ export function ExperimentsPageContainer({
 
   if (page !== PAGE.EXPERIMENTS) {
     return null;
-  }
-
-  async function handleSnapshotComplete() {
-    const fresh = await reeApi.getRee(reeId);
-    const freshExperiments = (fresh.reeIntent as { experiments?: unknown[] }).experiments ?? [];
-    commands.setReeSpec((prev) => ({
-      ...prev,
-      experiments: freshExperiments as typeof prev.experiments,
-    }));
   }
 
   return (
@@ -84,7 +75,6 @@ export function ExperimentsPageContainer({
       onReeChange={commands.setReeSpec}
       onGoAssemblyPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
-      onSnapshotComplete={handleSnapshotComplete}
       onBeforeRun={commands.flushReeIntent}
       onPersistWorkspaceFile={commands.onPersistWorkspaceFile}
     />

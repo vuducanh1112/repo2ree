@@ -7,11 +7,11 @@ import {
   createEmptyReeActivation,
   createEmptyReeCatalogMetadata,
   createEmptyReeExperiment,
-  type ExpectedOutput,
   type ReeActivation,
   type ReeCatalogMetadata,
   type ReeContributor,
   type ReeExperiment,
+  type ReeRunnable,
   type ReeSpec,
 } from "./ReeSpec";
 
@@ -79,21 +79,20 @@ function mapRawResourceEstimates(value: unknown): ReeExperiment["resource_estima
   };
 }
 
-// Map the shared Runnable fields (description / run_script / estimates / outputs)
-// common to experiments and activation. run_script falls back to defaultRunScript
-// when absent, so activation can default to its reserved path.
-function mapRawRunnable(
-  raw: Record<string, unknown>,
-  defaultRunScript = "",
-): Omit<ReeExperiment, "name"> {
+// Map the shared Runnable fields (description / run_script / verify_script /
+// output_paths / estimates) common to experiments and activation. run_script
+// falls back to defaultRunScript when absent, so activation can default to its
+// reserved path.
+function mapRawRunnable(raw: Record<string, unknown>, defaultRunScript = ""): ReeRunnable {
   return {
     description: String(raw.description ?? ""),
     run_script: raw.run_script ? String(raw.run_script) : defaultRunScript,
+    verify_script: raw.verify_script ? String(raw.verify_script) : "",
+    output_paths: Array.isArray(raw.output_paths)
+      ? raw.output_paths.map((path) => String(path)).filter(Boolean)
+      : [],
     runtime_estimate: String(raw.runtime_estimate ?? ""),
     resource_estimates: mapRawResourceEstimates(raw.resource_estimates),
-    ...(Array.isArray(raw.outputs) && raw.outputs.length > 0
-      ? { outputs: raw.outputs as ExpectedOutput[] }
-      : {}),
   };
 }
 

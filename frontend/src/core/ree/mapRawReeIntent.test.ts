@@ -29,6 +29,8 @@ describe("mapRawReeIntentToSlices", () => {
         name: "benchmark",
         description: "Measure throughput",
         run_script: "ree/experiments/benchmark.sh",
+        verify_script: "",
+        output_paths: [],
         runtime_estimate: "15-20 min",
         resource_estimates: {
           cpu: "8 vCPU",
@@ -54,6 +56,8 @@ describe("mapRawReeIntentToSlices", () => {
         name: "smoke",
         description: "",
         run_script: "ree/experiments/smoke.sh",
+        verify_script: "",
+        output_paths: [],
         runtime_estimate: "",
         resource_estimates: {
           cpu: "",

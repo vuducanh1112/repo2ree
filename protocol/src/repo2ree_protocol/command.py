@@ -219,7 +219,6 @@ class RunExperimentArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     experiment_name: str
-    mode: Literal["verify", "snapshot"] = "verify"
 
 
 class RunExperimentCommand(BaseModel):
@@ -243,12 +242,10 @@ class GenerateHbomCommand(BaseModel):
 
 
 class ActivationTestArgs(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    """No args — activation runs the REE's stored Activation through its
+    runtime entry; there is no per-run script path."""
 
-    # Activation runs the REE's stored Activation through its runtime entry;
-    # there is no per-run script path. ``verify`` checks declared outputs,
-    # ``snapshot`` records baselines.
-    mode: Literal["verify", "snapshot"] = "verify"
+    model_config = ConfigDict(extra="forbid")
 
 
 class ActivationTestCommand(BaseModel):
@@ -263,6 +260,7 @@ class SealReeArgs(BaseModel):
 
     source_included: bool = False
     runtime_included: bool = False
+    results_included: bool = False
 
 
 class SealReeCommand(BaseModel):

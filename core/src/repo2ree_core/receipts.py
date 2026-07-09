@@ -36,11 +36,11 @@ from pydantic.alias_generators import to_camel
 from repo2ree_core.digests import (
     digest_file,
     digest_file_if_exists,
-    digest_json,
+    digest_output_paths,
     digest_tree,
 )
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.experiment.experiment import FileSource, Runnable
+from repo2ree_core.experiment.experiment import Runnable
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
@@ -148,14 +148,17 @@ class _RunnableReceipt(_ReceiptEnvelope):
     """Shared slice for activation and experiments (both are runnables).
 
     ``declared_runtime_digest`` is the declared tier only: it proves the
-    artifact's state at run time, not that the script used it.
+    artifact's state at run time, not that the script used it. A pass verdict
+    is relative to the verify script, so its digest is part of the input
+    slice alongside the run script's.
     """
 
     workspace_drift: WorkspaceDrift | None = None
-    mode: Literal["verify", "snapshot"] = "verify"
     snapshot_digest: str | None = None
     run_script_path: str = ""
     run_script_digest: str | None = None
+    verify_script_path: str = ""
+    verify_script_digest: str | None = None
     runtime_path: str | None = None
     declared_runtime_digest: str | None = None
 
@@ -167,9 +170,11 @@ class ActivationTestReceipt(_RunnableReceipt):
 class RunExperimentReceipt(_RunnableReceipt):
     operation: Literal["run_experiment"] = "run_experiment"
     experiment_name: str = ""
-    # A pass verdict is relative to the expected-output spec, so the spec is
-    # part of the input slice (canonical-JSON digest of the declared outputs).
-    expected_outputs_digest: str | None = None
+    # Produced output: digest of the declared outputs captured after a
+    # successful run. Parallels ``BuildRuntimeReceipt.produced_runtime_digest``;
+    # ``None`` when the experiment declares no outputs or the run did not
+    # succeed. Binds the sealed baseline to the bytes verify actually ran over.
+    produced_output_digest: str | None = None
 
 
 RunReceipt = Annotated[
@@ -249,15 +254,10 @@ def _step_key(receipt: RunReceipt) -> str:
 def latest_successful_receipts(receipts: list[RunReceipt]) -> dict[str, RunReceipt]:
     """Latest successful receipt per step, keyed by operation (per-experiment
     for ``run_experiment``).
-
-    Snapshot-mode runnable receipts are excluded: capturing baselines is not
-    a verification of the spec, so it cannot vouch for a step's freshness.
     """
     latest: dict[str, RunReceipt] = {}
     for receipt in receipts:
         if receipt.status != "succeeded":
-            continue
-        if isinstance(receipt, _RunnableReceipt) and receipt.mode != "verify":
             continue
         key = _step_key(receipt)
         current = latest.get(key)
@@ -349,9 +349,7 @@ def declared_output_paths(intent: ReeIntent) -> set[str]:
         paths.add(intent.sbom)
     runnables: list[Runnable] = [intent.activation, *intent.experiments]
     for runnable in runnables:
-        for expected in runnable.outputs:
-            if isinstance(expected.source, FileSource):
-                paths.add(expected.source.path)
+        paths.update(runnable.output_paths)
     return paths
 
 
@@ -523,6 +521,14 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
             if intent.activation.run_script
             else None,
         )
+        _compare(
+            stale,
+            "verifyScript",
+            activation.verify_script_digest,
+            digest_file_if_exists(layout.workspace / intent.activation.verify_script)
+            if intent.activation.verify_script
+            else None,
+        )
         _compare(stale, "runtimeArtifact", activation.declared_runtime_digest, runtime_digest)
     steps.append(_step_report("activation_test", activation, stale))
 
@@ -540,12 +546,22 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
                 receipt.run_script_digest,
                 digest_file_if_exists(layout.workspace / experiment.run_script) if experiment.run_script else None,
             )
-            _compare(stale, "runtimeArtifact", receipt.declared_runtime_digest, runtime_digest)
             _compare(
                 stale,
-                "expectedOutputs",
-                receipt.expected_outputs_digest,
-                digest_json([output.model_dump() for output in experiment.outputs]),
+                "verifyScript",
+                receipt.verify_script_digest,
+                digest_file_if_exists(layout.workspace / experiment.verify_script)
+                if experiment.verify_script
+                else None,
+            )
+            _compare(stale, "runtimeArtifact", receipt.declared_runtime_digest, runtime_digest)
+            # Mutation gap: the declared outputs verify ran over may have been
+            # rewritten in the shared workspace since this receipt was recorded.
+            _compare(
+                stale,
+                "producedOutput",
+                receipt.produced_output_digest,
+                digest_output_paths(layout.workspace, experiment.output_paths),
             )
         steps.append(_step_report(key, receipt, stale))
 

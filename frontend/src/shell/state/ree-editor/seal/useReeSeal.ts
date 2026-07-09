@@ -40,6 +40,7 @@ export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent 
       const workspaceDto = await reeClient.sealRee(reeId, {
         includeSource: inclusionOpts.includeSource,
         includeRuntime: inclusionOpts.includeRuntime,
+        includeResults: inclusionOpts.includeResults,
       });
       const project = mapReeDetailToReeProject(workspaceDto);
       hydrateWorkspace({

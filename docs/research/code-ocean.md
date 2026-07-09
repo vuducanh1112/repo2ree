@@ -110,9 +110,9 @@ DataLad identifiers, and restricted data with expected digests plus an explicit
 ### 5.5 Provenance depth
 
 Capsules carry no action digests, content-addressed input roots, execution
-attestation, or verification lineage. repo2ree's typed actions, expected-output
-checks, and target receipt layer connect to the Reproducible Builds / SLSA /
-in-toto world.
+attestation, or verification lineage. repo2ree's typed actions, author-provided verify scripts,
+and target receipt layer connect to the Reproducible Builds / SLSA / in-toto
+world.
 
 ### 5.6 Substrate respect
 

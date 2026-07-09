@@ -2,8 +2,8 @@
 
 A feature analysis grounded in the current codebase. repo2ree now has the
 outline of an REE builder: source acquisition, build/runtime scripts, SBOM/HBOM
-generation, dependency evaluation, experiment runs, expected-output checks, and
-sealing. Becoming a true *Reusable Execution Environment* service still requires
+generation, dependency evaluation, experiment runs, author-provided verify scripts,
+and sealing. Becoming a true *Reusable Execution Environment* service still requires
 three pillars: stronger **verification**, a consumer-side **reuse** loop, and
 durable **trust over time**.
 
@@ -11,17 +11,17 @@ durable **trust over time**.
 
 Reproducibility = same inputs + same environment → **same outputs**.
 
-`ReeSpec` (`frontend/src/core/ree/ReeSpec.ts`) now captures expected experiment
-outputs (`sha256`, `contains`, `regex`, `numeric`, `custom`) and the backend can
-run experiments through the typed command envelope
+`ReeSpec` (`frontend/src/core/ree/ReeSpec.ts`) now captures a runnable
+`verify_script` and declared `output_paths`, and the backend can run experiments
+through the typed command envelope
 (`api/src/repo2ree_api/experiment_run.py`,
 `core/src/repo2ree_core/experiment/run.py`). That is the right foundation.
 
 The remaining gap is that an experiment run is still mostly an execution result,
 not a durable **Run Receipt** with content-addressed inputs, output contracts,
 predecessor lineage, archive identity, and reviewer-facing diffs. The product
-can check outputs, but it has not yet turned those checks into the citable claim
-object promised by the concept docs.
+can execute author-owned checks, but it has not yet turned those checks into the
+citable claim object promised by the concept docs.
 
 ## Pillar 1 — Outputs & reproduction verification (keystone)
 
@@ -36,8 +36,9 @@ publication-grade loop.
 - A green/red "this REE reproduced" verdict, distinct from "this REE is
   well-specified."
 
-Frontend-visible today: experiment run/snapshot actions exist, and expected
-outputs can be evaluated. The missing surface is a durable receipt view:
+Frontend-visible today: experiment run actions exist, and verify scripts can
+produce pass/fail verdicts plus named check rows. The missing surface is a
+durable receipt view:
 baseline vs. rerun, predecessor, captured artifacts, and claim-level comparison
 in one object a reviewer can cite.
 
@@ -80,5 +81,5 @@ A service implies REEs that outlive their authors.
 ## Recommendation
 
 Build toward **durable Run Receipts and a reproduction-diff loop** first. The
-expected-output model is now present; the product move is to make each run
+verify-script model is now present; the product move is to make each run
 citable, comparable, and depositable.

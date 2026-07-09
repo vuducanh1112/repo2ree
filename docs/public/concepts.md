@@ -51,12 +51,16 @@ nutrition label, not a single grade.
 
 The target durable record of one execution: command, inputs, parameters,
 runtime, outputs, logs, result, and provenance. The current prototype has the
-execution pieces; the durable receipt object is still being shaped.
+execution pieces; the durable receipt object is still being shaped. An
+experiment run also records a digest of its declared outputs, captured into a
+per-experiment results store — the baseline a reviewer diffs against and the
+signal that flags a result whose bytes drifted before it was sealed.
 
 ## Verify
 
-The reviewer or reader workflow: re-run a declared result, compare it against
-the published expectation, and keep the new evidence as a verification record.
+The reviewer or reader workflow: re-run a declared result, execute the
+author-provided verify script against the new evidence, and keep that evidence
+as a verification record.
 
 ## Seal
 

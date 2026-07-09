@@ -69,16 +69,7 @@ export const REE_ASSEMBLY_STEPS: ReeAssemblyCatalogEntry[] = [
     color: "#7c3aed",
     badge: { label: "Activation passed", color: "#7c3aed", bg: "#f5f3ff" },
     desc: "Check that the packaged environment actually starts and activates. This enters the runtime through its configured entry and runs the activation command, the same way experiments enter the runtime.",
-    params: [
-      {
-        key: "mode",
-        label: "Mode",
-        type: "select",
-        default: "verify",
-        options: ["verify", "snapshot"],
-        hint: "verify checks declared outputs; snapshot records baselines",
-      },
-    ],
+    params: [],
   },
 ];
 
@@ -87,7 +78,7 @@ const DEFAULT_REE_ASSEMBLY_OPERATION_PARAMS: ReeAssemblyOperationParams = {
   build: {},
   hbom: {},
   sbom: { format: "spdx-json" },
-  activation: { mode: "verify" },
+  activation: {},
 };
 
 export function defaultParamsForReeAssemblyOperation<K extends ReeAssemblyOperationKey>(

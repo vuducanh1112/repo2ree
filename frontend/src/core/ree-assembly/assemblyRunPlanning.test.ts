@@ -18,12 +18,10 @@ function buildRee(): ReeEditorViewModel {
 }
 
 describe("assemblyRunPlanning", () => {
-  it("sends mode param for activation runs", () => {
+  it("sends empty params for activation and build runs", () => {
     const ree = buildRee();
 
-    expect(buildAssemblyRunParams("activation", { mode: "verify" }, ree)).toEqual({
-      mode: "verify",
-    });
+    expect(buildAssemblyRunParams("activation", {}, ree)).toEqual({});
     expect(buildAssemblyRunParams("build", {}, ree)).toEqual({});
   });
 

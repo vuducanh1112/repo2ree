@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
@@ -28,7 +28,6 @@ activation_test_router = APIRouter()
 class CreateActivationTestRunPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    mode: Literal["verify", "snapshot"] = "verify"
     idempotencyKey: str | None = None
 
 
@@ -55,9 +54,9 @@ def create_activation_run_state(
     return _start_single_command_run(
         ree_id,
         operation="activation",
-        command=ActivationTestCommand(args=ActivationTestArgs(mode=payload.mode)),
+        command=ActivationTestCommand(args=ActivationTestArgs()),
         run_id_prefix="activation",
-        request_payload={"mode": payload.mode},
+        request_payload={},
         canceled_message="Activation run canceled",
-        fallback_outputs={"mode": payload.mode},
+        fallback_outputs={"subjectName": "activation"},
     )

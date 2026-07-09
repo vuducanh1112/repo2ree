@@ -63,7 +63,7 @@ function ExperimentCard({
   const name = experiment.name.trim();
   const command = experiment.run_script.trim();
   const description = experiment.description.trim();
-  const outputCount = experiment.outputs?.length ?? 0;
+  const hasVerify = experiment.verify_script.trim() !== "";
   const runtimeEstimate = experiment.runtime_estimate.trim();
   const hasResources = hasResourceEstimates(experiment.resource_estimates);
 
@@ -140,7 +140,7 @@ function ExperimentCard({
           >
             {name || "untitled experiment"}
           </h3>
-          {outputCount > 0 && (
+          {hasVerify && (
             <span
               style={{
                 fontSize: 10,
@@ -152,7 +152,7 @@ function ExperimentCard({
                 padding: "2px 7px",
               }}
             >
-              {outputCount} {outputCount === 1 ? "output" : "outputs"}
+              verified
             </span>
           )}
           {runtimeEstimate && (

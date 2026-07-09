@@ -58,6 +58,12 @@ UPSTREAM_DIRNAME = "upstream"
 SNAPSHOT_FILENAME = "snapshot.tar.gz"
 OVERLAY_DIRNAME = "overlay"
 ARTIFACTS_DIRNAME = "artifacts"
+# Produced-results store: per-experiment captured outputs, keyed by name. A
+# sibling of ``artifacts/`` (produced, not authored) rather than a subtree of
+# it, so the sealed bundle exposes the author baseline at ``ree/results/<name>/``
+# for reviewer diffing — deliberately outside ``workspace/`` so a fresh run's
+# output at the declared path never collides with the restored baseline.
+RESULTS_DIRNAME = "results"
 WORKSPACE_DIRNAME = "workspace"
 RUNS_DIRNAME = "runs"
 
@@ -146,6 +152,18 @@ class ReeLayout:
     @property
     def artifacts(self) -> Path:
         return self.root / ARTIFACTS_DIRNAME
+
+    @property
+    def results(self) -> Path:
+        return self.root / RESULTS_DIRNAME
+
+    def results_dir(self, name: str) -> Path:
+        """Produced-results store for a single experiment, keyed by its name.
+
+        Experiment names are already constrained to a safe single path segment
+        (``EXPERIMENT_NAME_PATTERN``); the resolver rejects anything else.
+        """
+        return self._resolve_under(self.results, name)
 
     @property
     def workspace(self) -> Path:

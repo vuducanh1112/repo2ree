@@ -13,7 +13,7 @@ interface ExperimentValidation {
 }
 
 // Single source of truth for an experiment's runnability, shared by the detail
-// body (field validation) and the page header (Run/Snapshot enablement).
+// body (field validation) and the page header (Run enablement).
 export function experimentValidation(
   experiment: ReeExperiment,
   otherNames: string[],

@@ -73,9 +73,7 @@ function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClien
           });
           break;
         case "activation":
-          run = await runtime.runsApi.createActivationTestRun(reeId, {
-            mode: params.mode === "snapshot" ? "snapshot" : "verify",
-          });
+          run = await runtime.runsApi.createActivationTestRun(reeId, {});
           break;
         case "evaluate":
           run = await runtime.runsApi.createEvaluateRun(reeId, {

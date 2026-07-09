@@ -29,6 +29,7 @@ def handle_seal_ree(
             ree_id,
             source_included=args.source_included,
             runtime_included=args.runtime_included,
+            results_included=args.results_included,
             sealed_at=utc_now(),
         )
     except Exception as exc:

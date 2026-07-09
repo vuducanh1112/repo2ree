@@ -143,9 +143,10 @@ def test_session_with_packaging():
     from repo2ree_core.domain.ree_session import ReeSession
 
     session = ReeSession()
-    updated = session.with_packaging(source_included=True, runtime_included=True)
+    updated = session.with_packaging(source_included=True, runtime_included=True, results_included=True)
     assert updated.source_included is True
     assert updated.runtime_included is True
+    assert updated.results_included is True
     assert session.source_included is False
 
 

@@ -16,17 +16,17 @@ adapters.
 - Build a runtime from the declared build script.
 - Generate SBOM and HBOM evidence.
 - Test that a built runtime activates.
-- Run experiment commands and check declared outputs.
+- Run experiment commands and check results with author-provided verify scripts.
 - Seal the current REE state and download a sealed ZIP bundle.
 - Track archive-oriented metadata such as SWHID, Zenodo DOI, and Dataverse DOI.
 
 ## Partially implemented or target design
 
 - Run Receipts are the target public object for one execution. The current code
-  has run records, logs, output checks, and artifacts, but not yet a durable,
-  citable receipt format with predecessor lineage.
+  has run records, logs, verify-script verdicts, and artifacts, but not yet
+  a durable, citable receipt format with predecessor lineage.
 - Verify is the target reviewer/reader workflow. The current app can re-run
-  experiment commands and compare expected outputs; the full verification
+  experiment commands and run their verify scripts; the full verification
   receipt and claim-level diff loop is still future work.
 - Seal currently freezes a downloadable REE bundle. The target design adds a
   canonical Seal Manifest, stable `ree_digest`, detached signatures, timestamp

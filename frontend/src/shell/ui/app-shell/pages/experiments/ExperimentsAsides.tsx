@@ -36,7 +36,7 @@ export function ExperimentsCoverageAside({
   withName,
   withCommand,
   withDescription,
-  withOutputs,
+  withVerify,
   withRuntimeEstimate,
   withResourceEstimates,
 }: {
@@ -44,11 +44,11 @@ export function ExperimentsCoverageAside({
   withName: number;
   withCommand: number;
   withDescription: number;
-  withOutputs: number;
+  withVerify: number;
   withRuntimeEstimate: number;
   withResourceEstimates: number;
 }) {
-  const incomplete = total - Math.min(withName, withCommand, withOutputs);
+  const incomplete = total - Math.min(withName, withCommand, withVerify);
   const allComplete = total > 0 && incomplete === 0;
   return (
     <section style={{ ...lgStyles.panel, padding: 16 }}>
@@ -66,7 +66,7 @@ export function ExperimentsCoverageAside({
           <CoverageRow label="With name" value={withName} total={total} />
           <CoverageRow label="With command" value={withCommand} total={total} />
           <CoverageRow label="With description" value={withDescription} total={total} />
-          <CoverageRow label="With outputs" value={withOutputs} total={total} />
+          <CoverageRow label="With verify script" value={withVerify} total={total} />
           <CoverageRow label="With runtime est." value={withRuntimeEstimate} total={total} />
           <CoverageRow label="With resource est." value={withResourceEstimates} total={total} />
           {!allComplete && (
@@ -85,7 +85,7 @@ export function ExperimentsCoverageAside({
               }}
             >
               <span style={{ display: "flex" }}>{Ic.info(12)}</span>
-              {incomplete} still need the core runnable fields or expected outputs.
+              {incomplete} still need the core runnable fields or a verify script.
             </div>
           )}
           {allComplete && (
@@ -183,8 +183,9 @@ export function ExperimentsAboutAside() {
         <h3 style={{ margin: 0, fontSize: 14, color: lgColors.text }}>About experiments</h3>
       </div>
       <div style={{ fontSize: 12, color: lgColors.textMid, lineHeight: 1.5 }}>
-        Experiments are run inside the assembled REE to confirm it reproduces the expected outputs.
-        Runtime and resource estimates help future users plan how expensive those checks will be.
+        Experiments are run inside the assembled REE, then their verify script checks the claimed
+        results. Runtime and resource estimates help future users plan how expensive those checks
+        will be.
       </div>
     </section>
   );

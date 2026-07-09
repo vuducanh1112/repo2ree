@@ -24,10 +24,13 @@ interface SealStatusCardProps {
   sealRunning?: boolean;
   sourceAvailable: boolean;
   runtimeAvailable: boolean;
+  resultsAvailable: boolean;
   includeSource: boolean;
   includeRuntime: boolean;
+  includeResults: boolean;
   onToggleSource: () => void;
   onToggleRuntime: () => void;
+  onToggleResults: () => void;
   onSeal: () => void;
 }
 
@@ -42,10 +45,13 @@ export function SealStatusCard({
   sealRunning = false,
   sourceAvailable,
   runtimeAvailable,
+  resultsAvailable,
   includeSource,
   includeRuntime,
+  includeResults,
   onToggleSource,
   onToggleRuntime,
+  onToggleResults,
   onSeal,
 }: SealStatusCardProps) {
   const liveCount = cableItems.filter((item) => item.live).length;
@@ -129,10 +135,13 @@ export function SealStatusCard({
       <SealConfirmInclusion
         sourceAvailable={sourceAvailable}
         runtimeAvailable={runtimeAvailable}
+        resultsAvailable={resultsAvailable}
         includeSource={includeSource}
         includeRuntime={includeRuntime}
+        includeResults={includeResults}
         onToggleSource={onToggleSource}
         onToggleRuntime={onToggleRuntime}
+        onToggleResults={onToggleResults}
       />
 
       <div style={{ padding: "12px 14px", display: "flex", justifyContent: "flex-end" }}>

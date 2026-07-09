@@ -1,6 +1,7 @@
 import {
   createEmptyReeActivation,
   RESERVED_ACTIVATION_SCRIPT,
+  RESERVED_ACTIVATION_VERIFY_SCRIPT,
   type ReeActivation,
 } from "@core/ree/ReeSpec";
 import {
@@ -31,6 +32,7 @@ import { LastRunStamp } from "../../components/LastRunStamp";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
+import { DEFAULT_VERIFY_TEMPLATE } from "../experiments/verifyTemplates";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { ActivationTargetCard } from "./sections";
 
@@ -83,6 +85,9 @@ export function PageTestActivation({
   const activationScriptPath = activation.run_script || RESERVED_ACTIVATION_SCRIPT;
   const activationScriptContent =
     findFileByWorkspacePath(files, activationScriptPath)?.content ?? "";
+  const activationVerifyScriptPath = activation.verify_script || RESERVED_ACTIVATION_VERIFY_SCRIPT;
+  const activationVerifyScriptContent =
+    findFileByWorkspacePath(files, activationVerifyScriptPath)?.content ?? "";
 
   const runtimePath = resolvedRuntimePath(ree.runtime);
   const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
@@ -110,6 +115,21 @@ export function PageTestActivation({
       }
     },
     [onPersistWorkspaceFile, onReeSpecChange, activationScriptPath, activation.run_script],
+  );
+
+  // Saving a verify script declares it on the intent; until then activation's
+  // verdict is its run script's exit code alone.
+  const handleSaveVerifyScript = useCallback(
+    (content: string) => {
+      void onPersistWorkspaceFile?.(undefined, activationVerifyScriptPath, content);
+      if (activation.verify_script !== activationVerifyScriptPath) {
+        onReeSpecChange?.((current) => ({
+          ...current,
+          activation: { ...current.activation, verify_script: activationVerifyScriptPath },
+        }));
+      }
+    },
+    [onPersistWorkspaceFile, onReeSpecChange, activationVerifyScriptPath, activation.verify_script],
   );
 
   const commandLabel = activationScriptPath;
@@ -168,6 +188,20 @@ export function PageTestActivation({
               label="Activation run script"
               helper="Saved to the workspace overlay and run from the workspace root."
               onSave={handleSaveScript}
+            />
+          </div>
+
+          <div style={{ marginTop: 10 }}>
+            <RunScriptCard
+              scriptPath={activationVerifyScriptPath}
+              currentContent={activationVerifyScriptContent}
+              label="Activation verify script (optional)"
+              helper="Checks the activation run afterwards — a plain script run from the workspace root, reading outputs straight from the workspace; its exit code is the verdict. Without one, the run script's exit code decides."
+              defaultTemplate={DEFAULT_VERIFY_TEMPLATE}
+              saveButtonContent="Save verify script"
+              savedLabel="Saved verify script"
+              unsavedLabel="Unsaved verify script"
+              onSave={handleSaveVerifyScript}
             />
           </div>
         </GlassSubPanel>

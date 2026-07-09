@@ -198,9 +198,8 @@ export type WorkflowOperationDto =
   | "dataverse"
   | "experiment";
 
-export interface CreateExperimentRunRequestDto {
-  mode: "verify" | "snapshot";
-}
+// No fields yet — kept as the extension point for future run options.
+export type CreateExperimentRunRequestDto = Record<string, never>;
 
 export type WorkflowRunStatusDto =
   | "created"
@@ -226,7 +225,6 @@ export interface CreateGenerateHbomRunRequestDto {
 }
 
 export interface CreateActivationTestRunRequestDto {
-  mode?: "verify" | "snapshot";
   idempotencyKey?: string;
 }
 

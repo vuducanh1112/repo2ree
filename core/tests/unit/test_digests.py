@@ -7,6 +7,7 @@ from repo2ree_core.digests import (
     digest_file,
     digest_file_if_exists,
     digest_json,
+    digest_output_paths,
     digest_tree,
 )
 from repo2ree_core.storage.extract import pack_directory_tar_gz
@@ -48,6 +49,25 @@ def test_digest_tree_depends_on_paths_and_content(tmp_path):
 
 def test_digest_tree_of_absent_dir_is_stable(tmp_path):
     assert digest_tree(tmp_path / "absent") == digest_tree(tmp_path / "also-absent")
+
+
+def test_digest_output_paths_none_when_nothing_declared(tmp_path):
+    assert digest_output_paths(tmp_path, []) is None
+
+
+def test_digest_output_paths_tracks_files_and_dirs(tmp_path):
+    (tmp_path / "results").mkdir()
+    (tmp_path / "results" / "out.txt").write_text("a")
+    (tmp_path / "figures").mkdir()
+    (tmp_path / "figures" / "plot.png").write_bytes(b"img")
+
+    before = digest_output_paths(tmp_path, ["results/out.txt", "figures"])
+    assert before is not None
+    # Order-independent over the declared set.
+    assert digest_output_paths(tmp_path, ["figures", "results/out.txt"]) == before
+    # A change to any declared path moves the digest.
+    (tmp_path / "figures" / "plot.png").write_bytes(b"img2")
+    assert digest_output_paths(tmp_path, ["results/out.txt", "figures"]) != before
 
 
 def test_pack_directory_tar_gz_returns_digest_of_written_archive(tmp_path):

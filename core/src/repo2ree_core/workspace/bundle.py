@@ -9,6 +9,7 @@ top-level files that make the download self-reproducing without repo2ree:
     ree/snapshot.tar.gz   frozen source archive (when available)
     ree/overlay/...       user recipe files (empty dir entry if none)
     ree/artifacts/...     build outputs (runtime, sbom, ...)
+    ree/results/<name>/   author result baselines for sealed experiments (opt-in)
     ree/workspace/        empty placeholder — materialized by run.sh on extract
 
 ``upstream/`` is intentionally omitted: its contents are already in
@@ -29,6 +30,7 @@ from typing import Any
 from repo2ree_core.storage.layout import (
     ARTIFACTS_DIRNAME,
     OVERLAY_DIRNAME,
+    RESULTS_DIRNAME,
     SNAPSHOT_FILENAME,
     WORKSPACE_DIRNAME,
     normalize_workspace_path,
@@ -48,6 +50,10 @@ REE_MANIFEST_ENTRY_PATH = f"{REE_ROOT_PREFIX}{_BUNDLE_MANIFEST_FILENAME}"
 REE_SNAPSHOT_ENTRY_PATH = f"{REE_ROOT_PREFIX}{SNAPSHOT_FILENAME}"
 REE_OVERLAY_PREFIX = f"{REE_ROOT_PREFIX}{OVERLAY_DIRNAME}/"
 REE_ARTIFACTS_PREFIX = f"{REE_ROOT_PREFIX}{ARTIFACTS_DIRNAME}/"
+# Produced-results store: author baselines packaged when the seal opts results
+# into the bundle (``results_included``). Present only when results are included
+# and captured; sits outside ``workspace/`` for reviewer diffing.
+REE_RESULTS_PREFIX = f"{REE_ROOT_PREFIX}{RESULTS_DIRNAME}/"
 REE_WORKSPACE_DIR_ENTRY = f"{REE_ROOT_PREFIX}{WORKSPACE_DIRNAME}/"
 # Receipts get their own bundle directory (rather than mirroring ``runs/``)
 # because only the receipt record is published — NDJSON logs stay out.

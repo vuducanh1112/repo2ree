@@ -14,10 +14,13 @@ interface InclusionRow {
 interface SealConfirmInclusionProps {
   sourceAvailable: boolean;
   runtimeAvailable: boolean;
+  resultsAvailable: boolean;
   includeSource: boolean;
   includeRuntime: boolean;
+  includeResults: boolean;
   onToggleSource: () => void;
   onToggleRuntime: () => void;
+  onToggleResults: () => void;
 }
 
 function Row({ label, available, included, tintLine, tintInk, onToggle }: InclusionRow) {
@@ -59,10 +62,13 @@ function Row({ label, available, included, tintLine, tintInk, onToggle }: Inclus
 export function SealConfirmInclusion({
   sourceAvailable,
   runtimeAvailable,
+  resultsAvailable,
   includeSource,
   includeRuntime,
+  includeResults,
   onToggleSource,
   onToggleRuntime,
+  onToggleResults,
 }: SealConfirmInclusionProps) {
   return (
     <div
@@ -104,6 +110,14 @@ export function SealConfirmInclusion({
         tintLine={lgStage.runtime.line}
         tintInk={lgStage.runtime.ink}
         onToggle={onToggleRuntime}
+      />
+      <Row
+        label="Results"
+        available={resultsAvailable}
+        included={includeResults}
+        tintLine={lgStage.experiments.line}
+        tintInk={lgStage.experiments.ink}
+        onToggle={onToggleResults}
       />
     </div>
   );

@@ -611,6 +611,7 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload):
             args=SealReeArgs(
                 source_included=payload.includeSource,
                 runtime_included=payload.includeRuntime,
+                results_included=payload.includeResults,
             )
         )
         _dispatch_or_500(handle, cmd, "seal", "Workbench seal_ree failed")

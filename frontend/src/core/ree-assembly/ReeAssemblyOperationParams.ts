@@ -9,9 +9,7 @@ export interface ReeAssemblyOperationParamsByKey {
   sbom: {
     format: string;
   };
-  activation: {
-    mode: "verify" | "snapshot";
-  };
+  activation: Record<string, never>;
 }
 
 export type ReeAssemblyOperationParams = {

@@ -48,6 +48,7 @@ from repo2ree_core.workspace.bundle import (
     REE_MANIFEST_ENTRY_PATH,
     REE_OVERLAY_PREFIX,
     REE_RECEIPTS_PREFIX,
+    REE_RESULTS_PREFIX,
     REE_SNAPSHOT_ENTRY_PATH,
     REE_WORKSPACE_DIR_ENTRY,
     ArtifactPlan,
@@ -143,7 +144,8 @@ def _reproducer_entries(intent: Any, artifact_plan: ArtifactPlan) -> list[tuple[
     """Top-level ``run.sh`` + ``REPRODUCING.md`` derived from author intent."""
     return reproducer_entries(
         activation_script=intent.activation.run_script,
-        experiments=[(e.name, e.run_script) for e in intent.experiments],
+        activation_verify_script=intent.activation.verify_script,
+        experiments=[(e.name, e.run_script, e.verify_script) for e in intent.experiments],
         runtime_workspace_path=intent.runtime,
         runtime_artifact_basename=runtime_artifact_basename_from_remap(intent.runtime, artifact_plan.manifest_remap),
         origin_url=intent.origin_url or "",
@@ -159,6 +161,7 @@ def _bundle_entry_partition(
     intent: Any,
     *,
     include_snapshot: bool,
+    results_included: bool,
 ) -> tuple[list[tuple[str, bytes]], list[tuple[str, bytes]]]:
     """Read the file-heavy bundle entries, split around the manifest slot (shell).
 
@@ -189,6 +192,23 @@ def _bundle_entry_partition(
         receipt_path = layout.run_receipt(receipt.run_id)
         if receipt_path.is_file():
             tail.append((f"{REE_RECEIPTS_PREFIX}{receipt_path.name}", receipt_path.read_bytes()))
+    # Produced-results baselines, packaged only when the seal opted results into
+    # the bundle (a seal-time choice, like source/runtime). Emitted only when a
+    # captured store actually has content, so a results-excluded seal — or one
+    # with no captured results — is byte-for-byte unchanged (no empty dir entry).
+    result_entries: list[tuple[str, bytes]] = []
+    if results_included:
+        for experiment in getattr(intent, "experiments", []):
+            if not experiment.name:
+                continue
+            results_dir = layout.results_dir(experiment.name)
+            for rel in _list_tree_relpaths(results_dir):
+                result_entries.append(
+                    (f"{REE_RESULTS_PREFIX}{experiment.name}/{rel}", (results_dir / rel).read_bytes())
+                )
+    if result_entries:
+        tail.append((REE_RESULTS_PREFIX, b""))
+        tail.extend(result_entries)
     tail.append((REE_WORKSPACE_DIR_ENTRY, b""))
     return head, tail
 
@@ -356,7 +376,13 @@ def _assemble_bundle(
         source_snapshot_archive=session.source_snapshot_archive,
     )
     sidecar_manifest, manifest_bytes = _manifest_entry_bytes(intent, session, artifact_plan, ree_id=ree_id)
-    head, tail = _bundle_entry_partition(layout, artifact_plan, intent, include_snapshot=include_snapshot)
+    head, tail = _bundle_entry_partition(
+        layout,
+        artifact_plan,
+        intent,
+        include_snapshot=include_snapshot,
+        results_included=session.results_included,
+    )
     entries = _entries_with_manifest(head, tail, manifest_bytes)
     return build_zip_bytes(entries), sidecar_manifest
 
@@ -386,6 +412,7 @@ def seal_workspace_ree(
     *,
     source_included: bool,
     runtime_included: bool,
+    results_included: bool,
     sealed_at: str,
 ) -> dict[str, Any]:
     """Build, hash, and persist the sealed REE archive.
@@ -405,6 +432,7 @@ def seal_workspace_ree(
     session = store.read_session().with_packaging(
         source_included=source_included,
         runtime_included=runtime_included,
+        results_included=results_included,
     )
 
     # Per-step freshness of the recorded run receipts against the tree being
@@ -420,7 +448,13 @@ def seal_workspace_ree(
         source_included=session.source_included,
         source_snapshot_archive=session.source_snapshot_archive,
     )
-    head, tail = _bundle_entry_partition(layout, artifact_plan, intent, include_snapshot=include_snapshot)
+    head, tail = _bundle_entry_partition(
+        layout,
+        artifact_plan,
+        intent,
+        include_snapshot=include_snapshot,
+        results_included=session.results_included,
+    )
 
     # Pre-pass digest: hash the entry list directly (no throwaway ZIP build).
     # Strip any previously persisted seal stamps so re-sealing produces the
@@ -438,6 +472,7 @@ def seal_workspace_ree(
         seal_hash=seal_hash,
         source_included=source_included,
         runtime_included=runtime_included,
+        results_included=results_included,
     )
 
     # Final assembly with the real seal_hash in the manifest; ZIP built once.

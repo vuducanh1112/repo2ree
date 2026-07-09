@@ -1,23 +1,19 @@
 """Tests for the runnable runner (experiment/run.py).
 
 Each runnable owns a run script that fully defines how it executes; the runner
-runs it from the workspace root, captures stdout/stderr, and evaluates declared
-outputs against the workspace on the host.
+runs it from the workspace root and captures stdout/stderr. When the runnable
+declares a verify script, the runner executes it afterwards — a plain script run
+from the workspace root with nothing injected into its environment, exactly like
+the run script — and its exit code is the verdict. A verify script that wants to
+check the run's stdout reads it from a workspace file the run script wrote.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
-from repo2ree_core.experiment.experiment import (
-    ContainsMatch,
-    CustomMatch,
-    ExpectedOutput,
-    Experiment,
-    FileSource,
-    StdoutSource,
-)
+from repo2ree_core.experiment.experiment import Experiment
 from repo2ree_core.experiment.run import run_runnable
 
 # ================================================
@@ -30,38 +26,40 @@ def _log() -> tuple[list[tuple[str, str, str]], Any]:
     return msgs, lambda stream, level, msg: msgs.append((stream, level, msg))
 
 
+def _write_script(workspace: Path, rel: str, body: str) -> str:
+    script = workspace / rel
+    script.parent.mkdir(parents=True, exist_ok=True)
+    script.write_text(body)
+    return rel
+
+
 def _experiment(
     body: str = "echo hello",
     *,
     workspace: Path,
-    outputs: list[ExpectedOutput] | None = None,
+    verify_body: str | None = None,
     script_rel: str = "ree/experiments/test-exp.sh",
+    verify_rel: str = "ree/experiments/test-exp.verify.sh",
 ) -> Experiment:
-    script = workspace / script_rel
-    script.parent.mkdir(parents=True, exist_ok=True)
-    script.write_text(body)
+    _write_script(workspace, script_rel, body)
+    verify_script = ""
+    if verify_body is not None:
+        verify_script = _write_script(workspace, verify_rel, verify_body)
     return Experiment(
         name="test-exp",
         description="",
         run_script=script_rel,
+        verify_script=verify_script,
         runtime_estimate="",
-        outputs=outputs or [],
     )
 
 
-def _run(
-    workspace: Path,
-    runnable: Experiment,
-    *,
-    mode: Literal["verify", "snapshot"] = "verify",
-    run_id: str = "r1",
-):
+def _run(workspace: Path, runnable: Experiment, *, run_id: str = "r1"):
     msgs, log = _log()
     outcome = run_runnable(
         workspace=workspace,
         runnable=runnable,
         label="test",
-        mode=mode,
         run_id=run_id,
         log=log,
         is_canceled=lambda: False,
@@ -79,6 +77,7 @@ def test_script_runs_and_succeeds(tmp_path):
     exp = _experiment(body=f"echo experiment_ran > {out_file}", workspace=tmp_path)
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "succeeded"
+    assert outcome.run_outputs.get("verdict") == "pass"
     assert out_file.read_text().strip() == "experiment_ran"
 
 
@@ -101,106 +100,97 @@ def test_nonzero_exit_fails(tmp_path):
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
     assert outcome.run_outputs.get("exitCode") == 2
+    assert outcome.run_outputs.get("verdict") == "fail"
 
 
 # ================================================
-# Output evaluation (host-side)
+# Verify script
 # ================================================
 
 
-def test_stdout_output_verify_passes(tmp_path):
+def test_verify_script_runs_from_workspace_root(tmp_path, monkeypatch):
+    monkeypatch.chdir("/")
     exp = _experiment(
         body="echo hello",
         workspace=tmp_path,
-        outputs=[
-            ExpectedOutput(source=StdoutSource(kind="stdout"), match=ContainsMatch(mode="contains", value="hello"))
-        ],
+        verify_body="pwd > verify-cwd.txt",
     )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "succeeded"
     assert outcome.run_outputs.get("verdict") == "pass"
+    assert outcome.run_outputs.get("verifyExitCode") == 0
+    assert (tmp_path / "verify-cwd.txt").read_text().strip() == str(tmp_path.resolve())
 
 
-def test_stdout_output_verify_fails_on_mismatch(tmp_path):
+def test_verify_script_reads_materialized_stdout(tmp_path):
+    # The run script materializes its stdout to a workspace file; the verify
+    # script reads it back — there is no injected variable for the streams.
     exp = _experiment(
-        body="echo hello",
+        body="echo the-claimed-result | tee run.log",
         workspace=tmp_path,
-        outputs=[
-            ExpectedOutput(source=StdoutSource(kind="stdout"), match=ContainsMatch(mode="contains", value="NOTHERE"))
-        ],
+        verify_body="grep -q the-claimed-result run.log",
+    )
+    outcome, _ = _run(tmp_path, exp)
+    assert outcome.status == "succeeded"
+    assert outcome.run_outputs.get("verdict") == "pass"
+    assert outcome.run_outputs.get("verifyExitCode") == 0
+
+
+def test_verify_script_failure_fails_the_run(tmp_path):
+    exp = _experiment(
+        body="echo hello | tee run.log",
+        workspace=tmp_path,
+        verify_body="grep -q NOTHERE run.log",
     )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
     assert outcome.run_outputs.get("verdict") == "fail"
+    assert outcome.run_outputs.get("verifyExitCode") == 1
 
 
-def test_file_output_read_from_workspace(tmp_path):
+def test_verify_script_reads_file_outputs_from_workspace(tmp_path):
     exp = _experiment(
         body="mkdir -p results && echo expected > results/out.txt",
         workspace=tmp_path,
-        outputs=[
-            ExpectedOutput(
-                source=FileSource(kind="file", path="results/out.txt"),
-                match=ContainsMatch(mode="contains", value="expected"),
-            )
-        ],
+        verify_body="grep -q expected results/out.txt",
     )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "succeeded"
     assert outcome.run_outputs.get("verdict") == "pass"
 
 
-def test_file_output_missing_fails(tmp_path):
+def test_no_injected_environment_for_verify_script(tmp_path):
+    # The old contract exported R2R_* variables; nothing is injected now, so a
+    # verify script that relies on them sees empty values and fails.
     exp = _experiment(
-        body="true",
+        body="echo hello",
         workspace=tmp_path,
-        outputs=[
-            ExpectedOutput(
-                source=FileSource(kind="file", path="results/out.txt"),
-                match=ContainsMatch(mode="contains", value="expected"),
-            )
-        ],
+        verify_body='[ -n "${R2R_RUN_STDOUT:-}" ]',
     )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
     assert outcome.run_outputs.get("verdict") == "fail"
 
 
-def test_custom_match_runs_on_host(tmp_path):
+def test_missing_verify_script_fails(tmp_path):
+    exp = _experiment(body="echo hello", workspace=tmp_path)
+    exp = exp.model_copy(update={"verify_script": "ree/experiments/nope.verify.sh"})
+    outcome, _ = _run(tmp_path, exp)
+    assert outcome.status == "failed"
+    assert outcome.run_outputs.get("verdict") == "fail"
+
+
+def test_verify_runs_even_when_run_fails(tmp_path):
+    marker = tmp_path / "verify-ran.txt"
     exp = _experiment(
-        body="echo 42",
+        body="exit 3",
         workspace=tmp_path,
-        outputs=[
-            ExpectedOutput(
-                source=StdoutSource(kind="stdout"),
-                match=CustomMatch(mode="custom", value="grep -q 42"),
-            )
-        ],
+        verify_body=f"touch {marker}",
     )
     outcome, _ = _run(tmp_path, exp)
-    assert outcome.status == "succeeded"
-    assert outcome.run_outputs.get("verdict") == "pass"
-
-
-# ================================================
-# Snapshot mode
-# ================================================
-
-
-def test_snapshot_mode_records_stdout_baseline(tmp_path):
-    exp = _experiment(
-        body="echo baseline-text",
-        workspace=tmp_path,
-        outputs=[ExpectedOutput(source=StdoutSource(kind="stdout"), match=ContainsMatch(mode="contains", value=""))],
-    )
-    outcome, _ = _run(tmp_path, exp, mode="snapshot", run_id="snap1")
-    assert outcome.status == "succeeded"
-    assert outcome.snapshot_to_persist is not None
-    assert len(outcome.snapshot_to_persist) == 1
-
-
-def test_snapshot_skipped_when_command_fails(tmp_path):
-    exp = _experiment(body="exit 1", workspace=tmp_path)
-    outcome, _ = _run(tmp_path, exp, mode="snapshot", run_id="snap2")
-    assert outcome.run_outputs.get("snapshotApplied") is False
-    assert outcome.snapshot_to_persist is None
+    assert outcome.status == "failed"
+    assert outcome.run_outputs.get("verdict") == "fail"
+    # The verify script still runs (it may want to report on a failed run), but
+    # a failed run can never verify to pass.
+    assert outcome.run_outputs.get("verifyExitCode") == 0
+    assert marker.exists()

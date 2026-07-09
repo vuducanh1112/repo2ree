@@ -8,7 +8,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export type RunState = {
   reeId: string;
   runId: string;
-  mode: "verify" | "snapshot";
   status: ExecutionRunStatus;
   outputs: ExperimentRunOutputs | null;
   error: string | null;
@@ -32,24 +31,21 @@ interface UseExperimentRunOptions {
   reeId: string;
   /** The experiment being viewed, or null when none is selected. */
   experimentName: string | null;
-  onSnapshotComplete: () => Promise<void>;
   onBeforeRun: () => Promise<void>;
 }
 
 interface ExperimentRunController {
   runState: RunState | null;
   isRunning: boolean;
-  startRun: (mode: "verify" | "snapshot") => void;
+  startRun: () => void;
 }
 
-// Owns running/snapshotting a single experiment and polling the run to
-// completion. Hoisted out of the detail view so the page header can drive the
-// Run/Snapshot controls while the body still renders the result/log panel from
-// the same runState.
+// Owns running a single experiment and polling the run to completion. Hoisted
+// out of the detail view so the page header can drive the Run control while
+// the body still renders the result/log panel from the same runState.
 export function useExperimentRun({
   reeId,
   experimentName,
-  onSnapshotComplete,
   onBeforeRun,
 }: UseExperimentRunOptions): ExperimentRunController {
   const { runsApi, ensureReeId } = useApiRuntime();
@@ -115,9 +111,6 @@ export function useExperimentRun({
         );
         if (isTerminal) {
           stopPolling();
-          if (outputs?.snapshotApplied) {
-            await onSnapshotComplete();
-          }
         }
       } catch {
         stopPolling();
@@ -125,48 +118,43 @@ export function useExperimentRun({
       }
     }, 1500);
     return stopPolling;
-  }, [runState, runsApi, stopPolling, onSnapshotComplete, fetchLogsOnce]);
+  }, [runState, runsApi, stopPolling, fetchLogsOnce]);
 
-  const startRun = useCallback(
-    (mode: "verify" | "snapshot") => {
-      if (!experimentName) return;
-      setRunState(null);
-      void (async () => {
-        try {
-          // Flush any pending debounced draft edits (e.g. the command the user
-          // just typed) before running — the backend validates the run against
-          // the persisted draft, so a stale draft would 400 the run.
-          await onBeforeRun();
-          const resolvedReeId = await ensureReeId(reeId);
-          const run = await runsApi.createExperimentRun(resolvedReeId, experimentName, { mode });
-          setRunState({
-            reeId: resolvedReeId,
-            runId: run.runId,
-            mode,
-            status: run.status,
-            outputs: null,
-            error: null,
-            startedAt: run.startedAt || run.createdAt || new Date().toISOString(),
-            logLines: [],
-            logCursor: undefined,
-          });
-        } catch {
-          setRunState({
-            reeId,
-            runId: "",
-            mode,
-            status: "failed",
-            outputs: null,
-            error: "Failed to start run",
-            startedAt: new Date().toISOString(),
-            logLines: [],
-            logCursor: undefined,
-          });
-        }
-      })();
-    },
-    [ensureReeId, reeId, experimentName, runsApi, onBeforeRun],
-  );
+  const startRun = useCallback(() => {
+    if (!experimentName) return;
+    setRunState(null);
+    void (async () => {
+      try {
+        // Flush any pending debounced draft edits (e.g. the script the user
+        // just saved) before running — the backend validates the run against
+        // the persisted draft, so a stale draft would 400 the run.
+        await onBeforeRun();
+        const resolvedReeId = await ensureReeId(reeId);
+        const run = await runsApi.createExperimentRun(resolvedReeId, experimentName, {});
+        setRunState({
+          reeId: resolvedReeId,
+          runId: run.runId,
+          status: run.status,
+          outputs: null,
+          error: null,
+          startedAt: run.startedAt || run.createdAt || new Date().toISOString(),
+          logLines: [],
+          logCursor: undefined,
+        });
+      } catch {
+        setRunState({
+          reeId,
+          runId: "",
+          status: "failed",
+          outputs: null,
+          error: "Failed to start run",
+          startedAt: new Date().toISOString(),
+          logLines: [],
+          logCursor: undefined,
+        });
+      }
+    })();
+  }, [ensureReeId, reeId, experimentName, runsApi, onBeforeRun]);
 
   const isRunning = runState !== null && !TERMINAL_STATUSES.includes(runState.status);
 

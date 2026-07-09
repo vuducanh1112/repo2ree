@@ -19,8 +19,10 @@ RESERVED_SCRIPT_DIR = "ree"
 RESERVED_BUILD_SCRIPT = f"{RESERVED_SCRIPT_DIR}/build_script.sh"
 # Activation is the designated runnable that proves the built runtime is
 # inhabitable. Experiments own their own per-experiment scripts under
-# ``ree/experiments/``, created on demand rather than seeded here.
+# ``ree/experiments/``, created on demand rather than seeded here: a run
+# script ``<slug>.sh`` and an optional verify script ``<slug>.verify.sh``.
 RESERVED_ACTIVATION_SCRIPT = f"{RESERVED_SCRIPT_DIR}/activation.sh"
+RESERVED_EXPERIMENT_SCRIPT_DIR = f"{RESERVED_SCRIPT_DIR}/experiments"
 
 # Scripts seeded into a fresh REE's overlay on creation.
 RESERVED_OVERLAY_SCRIPTS = (

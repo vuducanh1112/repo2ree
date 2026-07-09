@@ -71,6 +71,7 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
         ree_id,
         source_included=False,
         runtime_included=False,
+        results_included=False,
         sealed_at="2026-01-01T00:00:00Z",
     )
     archive_bytes = build_workspace_ree_archive(storage_root, ree_id)
@@ -86,6 +87,61 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     assert manifest["sbom"] == "artifacts/sbom.json"
     assert manifest["source_included"] is False
     assert manifest["runtime_included"] is False
+
+
+def _seed_results_experiments(layout):
+    """Two experiments with captured result stores, declared on the intent."""
+    for name in ("exp-a", "exp-b"):
+        (layout.results_dir(name) / "results").mkdir(parents=True)
+        (layout.results_dir(name) / "results" / "out.txt").write_text(name, encoding="utf-8")
+    metadata = _read_metadata(layout)
+    metadata["reeIntent"] = {
+        **(metadata.get("reeIntent") or {}),
+        "experiments": [
+            {"name": "exp-a", "output_paths": ["results/out.txt"]},
+            {"name": "exp-b", "output_paths": ["results/out.txt"]},
+        ],
+    }
+    _write_metadata(layout, metadata)
+
+
+def test_bundle_seals_all_results_when_results_included(tmp_path):
+    storage_root = tmp_path / "storage"
+    ree_id, layout = _make_ree(storage_root, "results-in")
+    _seed_results_experiments(layout)
+
+    seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=False,
+        runtime_included=False,
+        results_included=True,
+        sealed_at="2026-01-01T00:00:00Z",
+    )
+    with zipfile.ZipFile(io.BytesIO(build_workspace_ree_archive(storage_root, ree_id))) as zf:
+        names = zf.namelist()
+
+    assert "ree/results/exp-a/results/out.txt" in names
+    assert "ree/results/exp-b/results/out.txt" in names
+
+
+def test_bundle_omits_results_when_not_included(tmp_path):
+    storage_root = tmp_path / "storage"
+    ree_id, layout = _make_ree(storage_root, "results-out")
+    _seed_results_experiments(layout)
+
+    seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=False,
+        runtime_included=False,
+        results_included=False,
+        sealed_at="2026-01-01T00:00:00Z",
+    )
+    with zipfile.ZipFile(io.BytesIO(build_workspace_ree_archive(storage_root, ree_id))) as zf:
+        names = zf.namelist()
+
+    assert not any(n.startswith("ree/results/") for n in names)
 
 
 def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tmp_path):
@@ -115,6 +171,7 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
         ree_id,
         source_included=True,
         runtime_included=True,
+        results_included=False,
         sealed_at="2026-01-01T00:00:00Z",
     )
     archive_bytes = build_workspace_ree_archive(storage_root, ree_id)
@@ -140,6 +197,7 @@ def test_seal_persists_seal_facts_and_content_hash(tmp_path):
         ree_id,
         source_included=False,
         runtime_included=False,
+        results_included=False,
         sealed_at="2026-06-05T12:00:00Z",
     )
 
@@ -177,6 +235,7 @@ def test_seal_hash_is_stable_with_same_content(tmp_path):
         ree_id,
         source_included=False,
         runtime_included=False,
+        results_included=False,
         sealed_at="2026-06-05T12:00:00Z",
     )
     out2 = seal_workspace_ree(
@@ -184,6 +243,7 @@ def test_seal_hash_is_stable_with_same_content(tmp_path):
         ree_id,
         source_included=False,
         runtime_included=False,
+        results_included=False,
         sealed_at="2026-06-05T12:00:00Z",
     )
     assert out1["sealHash"] == out2["sealHash"]
@@ -200,6 +260,7 @@ def test_seal_hash_changes_with_different_content(tmp_path):
         ree_id,
         source_included=False,
         runtime_included=False,
+        results_included=False,
         sealed_at="2026-06-05T12:00:00Z",
     )
 
@@ -209,6 +270,7 @@ def test_seal_hash_changes_with_different_content(tmp_path):
         ree_id,
         source_included=False,
         runtime_included=False,
+        results_included=False,
         sealed_at="2026-06-05T12:00:00Z",
     )
 
@@ -274,6 +336,7 @@ def test_build_archive_returns_stored_bytes_after_seal(tmp_path):
         ree_id,
         source_included=False,
         runtime_included=False,
+        results_included=False,
         sealed_at="2026-06-05T00:00:00Z",
     )
     bytes1 = build_workspace_ree_archive(storage_root, ree_id)
@@ -324,6 +387,7 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
         ree_id,
         source_included=False,
         runtime_included=False,
+        results_included=False,
         sealed_at="2026-06-05T00:00:00Z",
     )
 

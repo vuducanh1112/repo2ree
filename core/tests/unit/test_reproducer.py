@@ -55,7 +55,7 @@ def test_reproducer_sh_is_deterministic_for_equal_inputs():
     kwargs = dict(
         build_script=RESERVED_BUILD_SCRIPT,
         activation_script=RESERVED_ACTIVATION_SCRIPT,
-        experiments=[("exp one", "ree/experiments/exp one.sh")],
+        experiments=[("exp one", "ree/experiments/exp one.sh", "")],
         runtime_workspace_path="runtime.tar.gz",
         runtime_artifact_basename="runtime.tar.gz",
     )
@@ -76,7 +76,10 @@ def test_generated_run_sh_passes_shellcheck_or_sh_n():
     script = build_reproducer_sh(
         build_script=RESERVED_BUILD_SCRIPT,
         activation_script=RESERVED_ACTIVATION_SCRIPT,
-        experiments=[("demo exp", "ree/experiments/demo exp.sh"), ("two", "ree/experiments/two.sh")],
+        experiments=[
+            ("demo exp", "ree/experiments/demo exp.sh", "ree/experiments/demo exp.verify.sh"),
+            ("two", "ree/experiments/two.sh", ""),
+        ],
         runtime_workspace_path="runtime.tar.gz",
         runtime_artifact_basename="runtime.tar.gz",
     ).decode("utf-8")
@@ -88,7 +91,7 @@ def _seed_extracted_bundle(
     tmp_path: Path,
     *,
     include_runtime: bool,
-    experiments: list[tuple[str, str]],
+    experiments: list[tuple[str, str, str]],
 ) -> Path:
     """Lay out an extracted-bundle tree (run.sh + ree/...) without sealing."""
     root = tmp_path / "download"
@@ -107,8 +110,12 @@ def _seed_extracted_bundle(
     overlay = ree / OVERLAY_DIRNAME / "ree"
     (overlay / "build_script.sh").write_text("#!/bin/sh\necho BUILT > runtime.tar.gz\necho did-build\n")
     (overlay / "activation.sh").write_text("#!/bin/sh\ncat runtime.tar.gz\n")
-    for name, script in experiments:
-        (ree / OVERLAY_DIRNAME / script).write_text(f"#!/bin/sh\necho exp:{name}\n")
+    for name, script, verify in experiments:
+        # The run script materializes its stdout to a workspace file so a verify
+        # script can read it back — there is no injected stdout variable.
+        (ree / OVERLAY_DIRNAME / script).write_text(f"#!/bin/sh\necho exp:{name} | tee run.log\n")
+        if verify:
+            (ree / OVERLAY_DIRNAME / verify).write_text(f'#!/bin/sh\ngrep -q "exp:{name}" run.log\n')
 
     if include_runtime:
         (ree / ARTIFACTS_DIRNAME / "runtime.tar.gz").write_text("SEALED-RUNTIME\n")
@@ -134,7 +141,9 @@ def _run(root: Path, *args: str) -> subprocess.CompletedProcess:
 
 def test_run_sh_materializes_and_reuses_sealed_runtime(tmp_path):
     root = _seed_extracted_bundle(
-        tmp_path, include_runtime=True, experiments=[("demo exp", "ree/experiments/demo exp.sh")]
+        tmp_path,
+        include_runtime=True,
+        experiments=[("demo exp", "ree/experiments/demo exp.sh", "ree/experiments/demo exp.verify.sh")],
     )
 
     listed = _run(root)
@@ -153,13 +162,146 @@ def test_run_sh_materializes_and_reuses_sealed_runtime(tmp_path):
     exp = _run(root, "experiment", "demo exp")
     assert exp.returncode == 0, exp.stderr
     assert "exp:demo exp" in exp.stdout
+    # The bundled verify script read the materialized stdout and passed.
+    assert "VERIFIED: pass" in exp.stdout
+
+
+def test_run_sh_experiment_verify_failure_fails_the_command(tmp_path):
+    root = _seed_extracted_bundle(
+        tmp_path,
+        include_runtime=True,
+        experiments=[("demo", "ree/experiments/demo.sh", "ree/experiments/demo.verify.sh")],
+    )
+    (root / "ree" / OVERLAY_DIRNAME / "ree" / "experiments" / "demo.verify.sh").write_text(
+        "#!/bin/sh\ngrep -q NOT-THE-CLAIMED-RESULT run.log\n"
+    )
+    result = _run(root, "experiment", "demo")
+    assert result.returncode != 0
+    assert "VERIFIED: fail" in result.stdout
+
+
+def test_run_sh_verify_reads_workspace_with_no_injected_env(tmp_path):
+    """The verify script reads outputs straight from the workspace; nothing is injected."""
+    root = _seed_extracted_bundle(
+        tmp_path,
+        include_runtime=True,
+        experiments=[("demo", "ree/experiments/demo.sh", "ree/experiments/demo.verify.sh")],
+    )
+    (root / "ree" / OVERLAY_DIRNAME / "ree" / "experiments" / "demo.sh").write_text(
+        "#!/bin/sh\necho claimed-result | tee run.log\necho ok > out.txt\n"
+    )
+    (root / "ree" / OVERLAY_DIRNAME / "ree" / "experiments" / "demo.verify.sh").write_text(
+        "#!/bin/sh\n"
+        '[ -z "${R2R_RUN_STDOUT:-}" ] || exit 1\n'  # no injected stream variables
+        "grep -q claimed-result run.log || exit 1\n"
+        "grep -q ok out.txt || exit 1\n"
+    )
+    result = _run(root, "experiment", "demo")
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "VERIFIED: pass" in result.stdout
+
+
+def test_run_sh_activation_verify_script_runs(tmp_path):
+    root = _seed_extracted_bundle(tmp_path, include_runtime=True, experiments=[])
+    overlay = root / "ree" / OVERLAY_DIRNAME / "ree"
+    # The verify script reads the reused runtime artifact straight from the workspace.
+    (overlay / "activation.verify.sh").write_text("#!/bin/sh\ngrep -q SEALED-RUNTIME runtime.tar.gz\n")
+    run_sh = build_reproducer_sh(
+        build_script=RESERVED_BUILD_SCRIPT,
+        activation_script=RESERVED_ACTIVATION_SCRIPT,
+        activation_verify_script="ree/activation.verify.sh",
+        experiments=[],
+        runtime_workspace_path="runtime.tar.gz",
+        runtime_artifact_basename="runtime.tar.gz",
+    )
+    (root / "run.sh").write_bytes(run_sh)
+    result = _run(root, "test-activation")
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "VERIFIED: pass" in result.stdout
+
+
+def test_run_sh_verify_only_rechecks_prior_run_without_rerunning(tmp_path):
+    root = _seed_extracted_bundle(
+        tmp_path,
+        include_runtime=True,
+        experiments=[("demo", "ree/experiments/demo.sh", "ree/experiments/demo.verify.sh")],
+    )
+    # Produce the outputs once.
+    first = _run(root, "experiment", "demo")
+    assert first.returncode == 0, first.stderr
+    assert "VERIFIED: pass" in first.stdout
+
+    # Verify-only re-checks the retained outputs without invoking the run script.
+    again = _run(root, "verify", "demo")
+    assert again.returncode == 0, again.stderr + again.stdout
+    assert "== verify: demo ==" in again.stdout
+    assert "VERIFIED: pass" in again.stdout
+    assert "$ sh ree/experiments/demo.sh" not in again.stdout  # run script not re-run
+    assert "exp:demo" not in again.stdout  # no fresh run output
+
+
+def test_run_sh_verify_only_fails_when_outputs_absent(tmp_path):
+    # No prior run, so the materialized workspace has no run.log for the verify
+    # script to read — verifying without producing the outputs first fails.
+    root = _seed_extracted_bundle(
+        tmp_path,
+        include_runtime=True,
+        experiments=[("demo", "ree/experiments/demo.sh", "ree/experiments/demo.verify.sh")],
+    )
+    result = _run(root, "verify", "demo")
+    assert result.returncode != 0
+    assert "VERIFIED: fail" in result.stdout
+
+
+def test_run_sh_verify_only_activation(tmp_path):
+    root = _seed_extracted_bundle(tmp_path, include_runtime=True, experiments=[])
+    overlay = root / "ree" / OVERLAY_DIRNAME / "ree"
+    (overlay / "activation.verify.sh").write_text("#!/bin/sh\ngrep -q SEALED-RUNTIME runtime.tar.gz\n")
+    run_sh = build_reproducer_sh(
+        build_script=RESERVED_BUILD_SCRIPT,
+        activation_script=RESERVED_ACTIVATION_SCRIPT,
+        activation_verify_script="ree/activation.verify.sh",
+        experiments=[],
+        runtime_workspace_path="runtime.tar.gz",
+        runtime_artifact_basename="runtime.tar.gz",
+    )
+    (root / "run.sh").write_bytes(run_sh)
+    result = _run(root, "verify")
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "== verify: activation ==" in result.stdout
+    assert "VERIFIED: pass" in result.stdout
+
+
+def test_run_sh_verify_only_errors_when_no_verify_script_declared(tmp_path):
+    root = _seed_extracted_bundle(
+        tmp_path,
+        include_runtime=True,
+        experiments=[("demo", "ree/experiments/demo.sh", "")],
+    )
+    result = _run(root, "verify", "demo")
+    assert result.returncode != 0
+    assert "no verify script" in (result.stderr + result.stdout)
+
+
+def test_run_sh_verify_only_errors_for_unknown_experiment(tmp_path):
+    root = _seed_extracted_bundle(
+        tmp_path,
+        include_runtime=True,
+        experiments=[("demo", "ree/experiments/demo.sh", "ree/experiments/demo.verify.sh")],
+    )
+    result = _run(root, "verify", "nope")
+    assert result.returncode != 0
+    assert "no experiment named" in (result.stderr + result.stdout)
 
 
 def test_run_sh_all_runs_full_pipeline_end_to_end(tmp_path):
     root = _seed_extracted_bundle(
         tmp_path,
         include_runtime=True,
-        experiments=[("demo exp", "ree/experiments/demo exp.sh"), ("two", "ree/experiments/two.sh")],
+        experiments=[
+            ("demo exp", "ree/experiments/demo exp.sh", "ree/experiments/demo exp.verify.sh"),
+            ("two", "ree/experiments/two.sh", ""),
+        ],
     )
     result = _run(root, "all")
     assert result.returncode == 0, result.stderr
@@ -169,10 +311,12 @@ def test_run_sh_all_runs_full_pipeline_end_to_end(tmp_path):
     assert "did-build" not in out  # reused, not rebuilt
     order = [out.index(m) for m in ("== test-activation ==", "exp:demo exp", "exp:two", "All steps completed.")]
     assert order == sorted(order)
+    # The verified experiment reported its verdict inside the pipeline.
+    assert "VERIFIED: pass" in out
 
 
 def test_run_sh_all_builds_once_then_runs_experiments(tmp_path):
-    root = _seed_extracted_bundle(tmp_path, include_runtime=False, experiments=[("a", "ree/experiments/a.sh")])
+    root = _seed_extracted_bundle(tmp_path, include_runtime=False, experiments=[("a", "ree/experiments/a.sh", "")])
     result = _run(root, "all")
     assert result.returncode == 0, result.stderr
     # No sealed runtime -> build exactly once, ahead of activation and the experiment.
@@ -184,7 +328,7 @@ def test_run_sh_all_aborts_on_failing_experiment(tmp_path):
     root = _seed_extracted_bundle(
         tmp_path,
         include_runtime=True,
-        experiments=[("boom", "ree/experiments/boom.sh"), ("after", "ree/experiments/after.sh")],
+        experiments=[("boom", "ree/experiments/boom.sh", ""), ("after", "ree/experiments/after.sh", "")],
     )
     (root / "ree" / OVERLAY_DIRNAME / "ree" / "experiments" / "boom.sh").write_text("#!/bin/sh\nexit 3\n")
     result = _run(root, "all")

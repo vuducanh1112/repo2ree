@@ -57,20 +57,6 @@ export interface NetworkDefinition {
 // Experiment types
 // ================================================
 
-export type OutputSource = { kind: "file"; path: string } | { kind: "stdout" } | { kind: "stderr" };
-
-export type OutputMatch =
-  | { mode: "sha256"; value: string }
-  | { mode: "contains"; value: string }
-  | { mode: "regex"; value: string }
-  | { mode: "numeric"; value: string; epsilon: number }
-  | { mode: "custom"; value: string };
-
-export interface ExpectedOutput {
-  source: OutputSource;
-  match: OutputMatch;
-}
-
 export interface ExperimentResourceEstimates {
   cpu: string;
   memory: string;
@@ -81,13 +67,21 @@ export interface ExperimentResourceEstimates {
 
 // A Runnable is anything executed inside the runtime: an experiment or the
 // REE's activation. Each owns a run script — a workspace-relative shell script
-// that fully defines how it executes (e.g. its own `docker run …`).
+// that fully defines how it executes (e.g. its own `docker run …`) — and an
+// optional verify script that checks the run's results afterwards: a plain
+// script run from the workspace root after the run script, with nothing
+// injected into its environment, whose exit code is the verdict (0 = pass). It
+// reads whatever it checks straight from the workspace (to check stdout, the
+// run script materializes it to a file). `output_paths` declares the workspace
+// files the run (re)writes — disclosure and drift exclusion, no matcher
+// semantics.
 export interface ReeRunnable {
   description: string;
   run_script: string;
+  verify_script: string;
+  output_paths: string[];
   runtime_estimate: string;
   resource_estimates: ExperimentResourceEstimates;
-  outputs?: ExpectedOutput[];
 }
 
 export interface ReeExperiment extends ReeRunnable {
@@ -102,14 +96,23 @@ export type ReeActivation = ReeRunnable;
 const SCRIPT_DIR = "ree";
 export const RESERVED_BUILD_SCRIPT = `${SCRIPT_DIR}/build_script.sh`;
 export const RESERVED_ACTIVATION_SCRIPT = `${SCRIPT_DIR}/activation.sh`;
+export const RESERVED_ACTIVATION_VERIFY_SCRIPT = `${SCRIPT_DIR}/activation.verify.sh`;
 const EXPERIMENT_SCRIPT_DIR = `${SCRIPT_DIR}/experiments`;
 
 // Derive the reserved per-experiment run-script path from its name. Names are
 // already constrained to path-safe characters; spaces become hyphens so the
 // path stays tidy.
 export function experimentScriptPath(name: string): string {
-  const slug = name.trim().replace(/\s+/g, "-") || "experiment";
-  return `${EXPERIMENT_SCRIPT_DIR}/${slug}.sh`;
+  return `${EXPERIMENT_SCRIPT_DIR}/${experimentSlug(name)}.sh`;
+}
+
+// The verify script lives beside the run script under the reserved dir.
+export function experimentVerifyScriptPath(name: string): string {
+  return `${EXPERIMENT_SCRIPT_DIR}/${experimentSlug(name)}.verify.sh`;
+}
+
+function experimentSlug(name: string): string {
+  return name.trim().replace(/\s+/g, "-") || "experiment";
 }
 
 // ================================================
@@ -191,6 +194,8 @@ export function createEmptyReeExperiment(): ReeExperiment {
     name: "",
     description: "",
     run_script: "",
+    verify_script: "",
+    output_paths: [],
     runtime_estimate: "",
     resource_estimates: createEmptyExperimentResourceEstimates(),
   };
@@ -200,6 +205,8 @@ export function createEmptyReeActivation(): ReeActivation {
   return {
     description: "",
     run_script: RESERVED_ACTIVATION_SCRIPT,
+    verify_script: "",
+    output_paths: [],
     runtime_estimate: "",
     resource_estimates: createEmptyExperimentResourceEstimates(),
   };

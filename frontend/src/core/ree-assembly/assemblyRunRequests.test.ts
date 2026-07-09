@@ -42,11 +42,9 @@ describe("assemblyRunRequests", () => {
         produced_runtime_path: "runtime.tar.gz",
       },
     });
-    expect(buildActivationAssemblyRunRequest({ mode: "verify" }, ree)).toEqual({
+    expect(buildActivationAssemblyRunRequest({}, ree)).toEqual({
       scriptKey: "activation",
-      params: {
-        mode: "verify",
-      },
+      params: {},
     });
   });
 });

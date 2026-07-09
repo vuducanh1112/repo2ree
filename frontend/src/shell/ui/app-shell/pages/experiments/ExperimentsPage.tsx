@@ -50,7 +50,6 @@ export function PageExperiments({
   onReeChange,
   onGoAssemblyPage,
   onFocusedFieldChange,
-  onSnapshotComplete,
   onBeforeRun,
   focusedField,
   workspaceFiles,
@@ -124,18 +123,16 @@ export function PageExperiments({
           .map((e) => e.name.trim())
           .filter(Boolean);
 
-  // Run/snapshot lives here (not in the detail body) so its controls can sit in
-  // the page header's top-right, while the detail body still shows the result.
+  // Run lives here (not in the detail body) so its controls can sit in the
+  // page header's top-right, while the detail body still shows the result.
   const run = useExperimentRun({
     reeId,
     experimentName: selectedExperiment?.name ?? null,
-    onSnapshotComplete,
     onBeforeRun,
   });
   const canRun = selectedExperiment
     ? experimentValidation(selectedExperiment, otherNames).canRun
     : false;
-  const canSnapshot = canRun && !locked;
 
   // ================================================
   // Coverage stats
@@ -145,7 +142,7 @@ export function PageExperiments({
   const withName = experiments.filter((e) => e.name.trim() !== "").length;
   const withCommand = experiments.filter((e) => e.run_script.trim() !== "").length;
   const withDescription = experiments.filter((e) => e.description.trim() !== "").length;
-  const withOutputs = experiments.filter((e) => (e.outputs?.length ?? 0) > 0).length;
+  const withVerify = experiments.filter((e) => e.verify_script.trim() !== "").length;
   const withRuntimeEstimate = experiments.filter((e) => e.runtime_estimate.trim() !== "").length;
   const withResourceEstimates = experiments.filter((e) =>
     Object.values(e.resource_estimates).some((value) => value.trim() !== ""),
@@ -187,10 +184,8 @@ export function PageExperiments({
               <ExperimentHeaderActions
                 locked={locked}
                 canRun={canRun}
-                canSnapshot={canSnapshot}
                 isRunning={run.isRunning}
-                onRun={() => run.startRun("verify")}
-                onSnapshot={() => run.startRun("snapshot")}
+                onRun={() => run.startRun()}
                 onRemove={() => removeExperiment(selectedIndex)}
               />
             ) : undefined
@@ -208,11 +203,21 @@ export function PageExperiments({
                 findFileByWorkspacePath(workspaceFiles, selectedExperiment.run_script)?.content ??
                 ""
               }
+              verifyScriptContent={
+                findFileByWorkspacePath(workspaceFiles, selectedExperiment.verify_script)
+                  ?.content ?? ""
+              }
               onUpdate={(patch) => updateExperiment(selectedIndex, patch)}
               onSaveScript={(path, content) => {
                 void onPersistWorkspaceFile(undefined, path, content);
                 if (path !== selectedExperiment.run_script) {
                   updateExperiment(selectedIndex, { run_script: path });
+                }
+              }}
+              onSaveVerifyScript={(path, content) => {
+                void onPersistWorkspaceFile(undefined, path, content);
+                if (path !== selectedExperiment.verify_script) {
+                  updateExperiment(selectedIndex, { verify_script: path });
                 }
               }}
               onBack={() => {
@@ -283,7 +288,7 @@ export function PageExperiments({
               withName={withName}
               withCommand={withCommand}
               withDescription={withDescription}
-              withOutputs={withOutputs}
+              withVerify={withVerify}
               withRuntimeEstimate={withRuntimeEstimate}
               withResourceEstimates={withResourceEstimates}
             />

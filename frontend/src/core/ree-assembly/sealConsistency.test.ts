@@ -19,7 +19,7 @@ const report: ConsistencyReport = {
       step: "experiment:fig 2",
       status: "stale",
       runId: "run-e",
-      staleInputs: [{ input: "expectedOutputs", recorded: "sha256:dd", current: "sha256:ee" }],
+      staleInputs: [{ input: "verifyScript", recorded: "sha256:dd", current: "sha256:ee" }],
     },
   ],
 };
@@ -35,7 +35,7 @@ describe("staleSealItems", () => {
       {
         key: "experiment:fig 2",
         label: "Experiment “fig 2”",
-        detail: "expected outputs changed",
+        detail: "verify script changed",
       },
     ]);
   });

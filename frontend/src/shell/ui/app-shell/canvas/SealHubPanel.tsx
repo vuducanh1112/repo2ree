@@ -1,4 +1,5 @@
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
+import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { Badges, LogEntry } from "@core/ree/ReeTypes";
 import type { ConsistencyReport } from "@core/ree-assembly/sealConsistency";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
@@ -15,7 +16,7 @@ interface SealHubPanelProps {
   locked: boolean;
   sealRunning: boolean;
   sealLog: LogEntry | null;
-  onSeal: (inclusionOpts: { includeSource: boolean; includeRuntime: boolean }) => void;
+  onSeal: (inclusionOpts: InclusionOpts) => void;
   onClose: () => void;
 }
 

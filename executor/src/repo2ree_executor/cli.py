@@ -226,19 +226,17 @@ def build_runtime_cmd(run_id: str | None) -> None:
 
 
 @cli.command(TEST_ACTIVATION.name, help=TEST_ACTIVATION.summary)
-@click.option("--mode", type=click.Choice(["verify", "snapshot"]), default="verify")
 @click.option("--run-id", default=None, help="If set, append NDJSON events to /ree/runs/<run-id>.ndjson.")
-def test_activation_cmd(mode: str, run_id: str | None) -> None:
-    _run_command_envelope(ActivationTestCommand(args=ActivationTestArgs(mode=mode)), run_id)  # type: ignore[arg-type]
+def test_activation_cmd(run_id: str | None) -> None:
+    _run_command_envelope(ActivationTestCommand(args=ActivationTestArgs()), run_id)
 
 
 @cli.command(EXPERIMENT.name, help=EXPERIMENT.summary)
 @click.argument("name")
-@click.option("--mode", type=click.Choice(["verify", "snapshot"]), default="verify")
 @click.option("--run-id", default=None, help="If set, append NDJSON events to /ree/runs/<run-id>.ndjson.")
-def experiment_cmd(name: str, mode: str, run_id: str | None) -> None:
+def experiment_cmd(name: str, run_id: str | None) -> None:
     _run_command_envelope(
-        RunExperimentCommand(args=RunExperimentArgs(experiment_name=name, mode=mode)),  # type: ignore[arg-type]
+        RunExperimentCommand(args=RunExperimentArgs(experiment_name=name)),
         run_id,
     )
 

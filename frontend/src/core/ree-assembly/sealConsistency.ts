@@ -47,7 +47,8 @@ const INPUT_PHRASES: Record<string, string> = {
   activationScript: "activation script changed",
   experimentScript: "run script changed",
   runtimeArtifact: "runtime artifact changed",
-  expectedOutputs: "expected outputs changed",
+  verifyScript: "verify script changed",
+  producedOutput: "output changed since the recorded run",
 };
 
 function stepLabel(step: string): string {

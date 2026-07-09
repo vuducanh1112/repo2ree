@@ -9,8 +9,10 @@ const PYTHON_RUNTIME_PATH = "python_hello_world/runtime.tar";
 
 // Each runnable (activation, experiment) now owns a self-contained run script:
 // it loads the built image if needed and enters it with its own `docker run`.
-// Outputs are checked against the mounted workspace on the host afterward.
-function dockerRunScript(command: string): string {
+// A verify script checks the result afterward, reading whatever it needs from
+// the workspace — so a run whose stdout is verified tees it to a workspace file.
+function dockerRunScript(command: string, outputFile?: string): string {
+  const capture = outputFile ? ` | tee ${JSON.stringify(outputFile)}` : "";
   return `#!/usr/bin/env sh
 set -eu
 
@@ -26,9 +28,16 @@ docker run --rm \\
   -v "$(pwd):/workspace" \\
   -w /workspace \\
   "$IMAGE_NAME:$TAG" \\
-  ${command}
+  ${command}${capture}
 `;
 }
+
+/**
+ * Workspace file the experiment run script materializes its stdout to. Declared
+ * as the experiment's output and sealed into the bundle as the author baseline
+ * (see the "Run experiment" step).
+ */
+const EXPERIMENT_OUTPUT_FILE = "result.txt";
 
 /**
  * A demo step: runs the body inside a named `test.step` (so the trace/report
@@ -180,6 +189,24 @@ async function saveRunScript(page: Page, locator: Locator, value: string, narrat
     page,
     page.getByRole("main").getByRole("button", { name: "Save run script", exact: true }).first(),
   );
+}
+
+async function saveVerifyScript(page: Page, locator: Locator, value: string, narration?: string) {
+  await fillDemo(page, locator, value, narration);
+  await clickDemo(
+    page,
+    page.getByRole("main").getByRole("button", { name: "Save verify script", exact: true }).first(),
+  );
+}
+
+function stdoutContainsVerifyScript(expectedStdout: string): string {
+  return `#!/usr/bin/env sh
+set -eu
+
+# The run script materialized its stdout to this workspace file; read it back.
+EXPECTED=${JSON.stringify(expectedStdout)}
+grep -Fq "$EXPECTED" ${JSON.stringify(EXPERIMENT_OUTPUT_FILE)}
+`;
 }
 
 async function showcaseScroll(page: Page, deltaY = 700) {
@@ -517,23 +544,20 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await saveRunScript(
       page,
       main.getByRole("textbox", { name: "Experiment run script", exact: true }),
-      dockerRunScript("python python_hello_world/main.py"),
-      "The experiment owns its full run: load the image and docker run the script in the mounted workspace",
+      dockerRunScript("python python_hello_world/main.py", EXPERIMENT_OUTPUT_FILE),
+      "The experiment owns its full run: load the image and docker run the script in the mounted workspace, teeing stdout to a workspace file",
     );
-    const outputsCard = main
-      .locator("div")
-      .filter({ hasText: /^Expected outputs/ })
-      .first();
-    await clickDemo(
+    await saveVerifyScript(
       page,
-      outputsCard.getByRole("button", { name: /Add/ }).first(),
-      "Declare an expected output",
+      main.getByRole("textbox", { name: "Experiment verify script", exact: true }),
+      stdoutContainsVerifyScript("Pandas Hello World"),
+      "Write the verify script: a plain script that reads the run's output file back — its exit code is the verdict",
     );
     await fillDemo(
       page,
-      main.getByPlaceholder("PASSED").first(),
-      "Pandas Hello World",
-      "Require stdout to contain the Python program banner",
+      main.getByRole("textbox", { name: "Output files" }),
+      EXPERIMENT_OUTPUT_FILE,
+      "Declare the result file the run produces — captured after every run and, once opted in on the Seal page, shipped as the author baseline",
     );
     await clickDemo(page, main.getByRole("button", { name: /^Run$/ }), "Run the experiment");
     await page.waitForTimeout(5000);
@@ -545,6 +569,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       .filter({ hasText: /^Run result/ })
       .first();
     await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
+    await expect(runResultPanel.getByText(/claimed result was reproduced/)).toBeVisible();
   });
 
   await demoStep(page, "Review decomposed experiment view", async () => {

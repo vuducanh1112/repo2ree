@@ -29,8 +29,13 @@ export function pythonHelloWorld(): string {
  * new model each runnable owns its full execution: load the built runtime image
  * if it isn't already present, then enter it with its own `docker run`,
  * bind-mounting the workspace so declared file outputs surface on the host.
+ *
+ * When `outputFile` is given the run's stdout is materialized to that
+ * workspace-relative file (via `tee`) so a verify script can read it back —
+ * there are no magic variables handing stdout to verification.
  */
-function dockerRunScript(command: string, runtimePath: string): string {
+function dockerRunScript(command: string, runtimePath: string, outputFile?: string): string {
+  const capture = outputFile ? ` | tee ${JSON.stringify(outputFile)}` : "";
   return `#!/usr/bin/env sh
 set -eu
 
@@ -46,12 +51,26 @@ docker run --rm \\
   -v "$(pwd):/workspace" \\
   -w /workspace \\
   "$IMAGE_NAME:$TAG" \\
-  ${command}
+  ${command}${capture}
 `;
 }
 
+/**
+ * Workspace file the experiment run script materializes its stdout to. Declared
+ * as the experiment's output (see `runExperiment`) so a successful run captures
+ * it into the produced-results store, and sealed into the bundle as the author
+ * baseline a reviewer diffs against.
+ */
+const EXPERIMENT_OUTPUT_FILE = "result.txt";
+
 export function main(page: Page) {
   return page.getByRole("main");
+}
+
+function waitForIntentPatch(page: Page) {
+  return page.waitForResponse(
+    (res) => res.url().includes("/intent") && res.request().method() === "PATCH",
+  );
 }
 
 /**
@@ -234,6 +253,22 @@ async function saveRunScript(page: Page, editor: Locator, content: string) {
   await main(page).getByRole("button", { name: "Save run script", exact: true }).first().click();
 }
 
+/** Author and declare a runnable's verify script. */
+async function saveVerifyScript(page: Page, editor: Locator, content: string) {
+  await editor.fill(content);
+  await main(page).getByRole("button", { name: "Save verify script", exact: true }).first().click();
+}
+
+function stdoutContainsVerifyScript(expectedStdout: string): string {
+  return `#!/usr/bin/env sh
+set -eu
+
+# The run script materialized its stdout to this workspace file; read it back.
+EXPECTED=${JSON.stringify(expectedStdout)}
+grep -Fq "$EXPECTED" ${JSON.stringify(EXPERIMENT_OUTPUT_FILE)}
+`;
+}
+
 /**
  * Pick the produced runtime artifact. The runtime artifact card now lives on the
  * Build Runtime page itself (section "1. Build or acquire the runtime"), so this
@@ -304,9 +339,11 @@ export async function testActivation(page: Page, command: string, runtimePath: s
 }
 
 /**
- * Define a single experiment, author its run script, run it, and wait for it to
- * pass. Like activation, the experiment owns its full run: load the image and
- * `docker run` the command in the bind-mounted workspace.
+ * Define a single experiment, author its run and verify scripts, run it, and
+ * wait for it to pass. Like activation, the experiment owns its full run: load
+ * the image and `docker run` the command in the bind-mounted workspace, teeing
+ * stdout to a workspace file. The verify script owns the claim, reading that
+ * file back — its exit code is the verdict.
  */
 export async function runExperiment(
   page: Page,
@@ -315,30 +352,43 @@ export async function runExperiment(
   await stepShot(page, "run-experiment", "before");
   await openPort(page, "Experiments");
   await expect(main(page).getByRole("heading", { name: "Experiments", exact: true })).toBeVisible();
+  const experimentAdded = waitForIntentPatch(page);
   await main(page)
     .getByRole("button", { name: /Add experiment/i })
     .first()
     .click();
+  await experimentAdded;
+
+  const nameSaved = waitForIntentPatch(page);
   await main(page).getByPlaceholder("smoke-test").fill(experiment.name);
+  await nameSaved;
+
+  const runScriptDeclared = waitForIntentPatch(page);
   await saveRunScript(
     page,
     main(page).getByRole("textbox", { name: "Experiment run script", exact: true }),
-    dockerRunScript(experiment.command, experiment.runtimePath),
+    dockerRunScript(experiment.command, experiment.runtimePath, EXPERIMENT_OUTPUT_FILE),
   );
-  const outputsCard = main(page)
-    .locator("div")
-    .filter({ hasText: /^Expected outputs/ })
-    .first();
-  await outputsCard.getByRole("button", { name: /Add/ }).first().click();
-  // Arm the wait before the edit: filling the expected output schedules the
-  // 300ms-debounced draft autosave, and clicking Run inside that window can
-  // silently drop the run (the flush/re-hydration race the demo's narration
-  // pauses happen to paper over). Let the autosave PATCH land first.
-  const draftSaved = page.waitForResponse(
-    (res) => res.url().includes("/intent") && res.request().method() === "PATCH",
+  await runScriptDeclared;
+
+  // Saving the verify script also declares its fallback reserved path on the
+  // experiment intent. Arm the wait before the save so the run can't race ahead
+  // of the debounced intent PATCH that makes the backend see the verify script.
+  const verifyScriptDeclared = waitForIntentPatch(page);
+  await saveVerifyScript(
+    page,
+    main(page).getByRole("textbox", { name: "Experiment verify script", exact: true }),
+    stdoutContainsVerifyScript(experiment.expectedStdout),
   );
-  await main(page).getByPlaceholder("PASSED").first().fill(experiment.expectedStdout);
-  await draftSaved;
+  await verifyScriptDeclared;
+
+  // Declare the produced result file so a successful run captures it. Including
+  // it in the bundle is a seal-time choice made on the Seal page (defaults on
+  // once an output is declared), so there is nothing to opt into here.
+  const outputDeclared = waitForIntentPatch(page);
+  await main(page).getByRole("textbox", { name: "Output files" }).fill(EXPERIMENT_OUTPUT_FILE);
+  await outputDeclared;
+
   await main(page).getByRole("button", { name: /^Run$/ }).click();
   // Fail fast with a clear signal if the click was still dropped: a started
   // run flips the header button to Running…/Re-run within moments.
@@ -353,6 +403,7 @@ export async function runExperiment(
   // the heaviest wait in the suite, and the first to blow its budget when
   // the host is under load. Keep it roomier than the other 90s steps.
   await expect(runResult.getByText("pass", { exact: true })).toBeVisible({ timeout: 180000 });
+  await expect(runResult.getByText(/claimed result was reproduced/)).toBeVisible();
   await stepShot(page, "run-experiment", "after");
 }
 

@@ -36,7 +36,6 @@ interface ReeAssemblyRunRequestByKey {
   activation: {
     scriptKey: "activation";
     params: {
-      mode: "verify" | "snapshot";
       idempotencyKey?: string;
     };
   };
@@ -89,14 +88,12 @@ export function buildSbomAssemblyRunRequest(
 }
 
 export function buildActivationAssemblyRunRequest(
-  params: ReeAssemblyRunParamsByKey["activation"],
+  _params: ReeAssemblyRunParamsByKey["activation"],
   _ree: AssemblyRee,
 ): ReeAssemblyRunRequestByKey["activation"] {
   return {
     scriptKey: "activation",
-    params: {
-      mode: params.mode === "snapshot" ? "snapshot" : "verify",
-    },
+    params: {},
   };
 }
 

@@ -160,13 +160,14 @@ export class ReeApi {
 
   async sealRee(
     reeId: ReeId,
-    opts: { includeSource: boolean; includeRuntime: boolean },
+    opts: { includeSource: boolean; includeRuntime: boolean; includeResults: boolean },
   ): Promise<ReeDetailDto> {
     return this.client.request<ReeDetailDto>(endpoints.reeSeal(reeId), {
       method: "POST",
       body: JSON.stringify({
         includeSource: opts.includeSource,
         includeRuntime: opts.includeRuntime,
+        includeResults: opts.includeResults,
       }),
     });
   }

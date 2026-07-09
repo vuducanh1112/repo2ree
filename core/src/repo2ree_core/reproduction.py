@@ -52,7 +52,7 @@ TEST_ACTIVATION = ReproductionCommand(
 )
 EXPERIMENT = ReproductionCommand(
     "experiment",
-    "Run a named experiment and check its declared outputs",
+    "Run a named experiment and verify its result",
 )
 
 REPRODUCTION_COMMANDS: tuple[ReproductionCommand, ...] = (

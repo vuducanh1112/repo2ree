@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
@@ -29,9 +29,9 @@ experiment_run_router = APIRouter()
 
 
 class CreateExperimentRunPayload(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    """No fields yet — kept as the extension point for future run options."""
 
-    mode: Literal["verify", "snapshot"] = "verify"
+    model_config = ConfigDict(extra="forbid")
 
 
 # ================================================
@@ -45,7 +45,7 @@ def create_experiment_run(
     experiment_name: str,
     payload: CreateExperimentRunPayload,
 ):
-    run_state = _create_experiment_run_state(ree_id, experiment_name, payload.mode)
+    run_state = _create_experiment_run_state(ree_id, experiment_name)
     return _run_summary(run_state)
 
 
@@ -89,16 +89,15 @@ def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
 def _create_experiment_run_state(
     ree_id: str,
     experiment_name: str,
-    mode: Literal["verify", "snapshot"],
 ) -> dict[str, Any]:
     _resolve_experiment_preflight(ree_id, experiment_name)
 
     return _start_single_command_run(
         ree_id,
         operation="experiment",
-        command=RunExperimentCommand(args=RunExperimentArgs(experiment_name=experiment_name, mode=mode)),
+        command=RunExperimentCommand(args=RunExperimentArgs(experiment_name=experiment_name)),
         run_id_prefix="experiment",
-        request_payload={"experimentName": experiment_name, "mode": mode},
+        request_payload={"experimentName": experiment_name},
         canceled_message="Experiment run canceled",
-        fallback_outputs={"subjectName": experiment_name, "mode": mode},
+        fallback_outputs={"subjectName": experiment_name},
     )

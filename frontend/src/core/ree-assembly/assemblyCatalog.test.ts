@@ -4,15 +4,15 @@ import { initialReeAssemblyOperationParams, mergeAssemblyOperationParams } from 
 describe("mergeAssemblyOperationParams", () => {
   it("merges automation step params into the existing assembly param map", () => {
     expect(
-      mergeAssemblyOperationParams(initialReeAssemblyOperationParams(), "activation", {
-        mode: "snapshot",
+      mergeAssemblyOperationParams(initialReeAssemblyOperationParams(), "evaluate", {
+        strict: true,
       }),
     ).toEqual({
-      evaluate: { strict: false },
+      evaluate: { strict: true },
       build: {},
       hbom: {},
       sbom: { format: "spdx-json" },
-      activation: { mode: "snapshot" },
+      activation: {},
     });
   });
 

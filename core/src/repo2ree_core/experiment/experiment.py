@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Annotated, Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -27,71 +27,6 @@ def validate_runnable_script_path(value: Any) -> str:
     return text
 
 
-class FileSource(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    kind: Literal["file"]
-    path: str
-
-
-class StdoutSource(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    kind: Literal["stdout"]
-
-
-class StderrSource(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    kind: Literal["stderr"]
-
-
-OutputSource = Annotated[
-    FileSource | StdoutSource | StderrSource,
-    Field(discriminator="kind"),
-]
-
-
-class Sha256Match(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    mode: Literal["sha256"]
-    value: str
-
-
-class ContainsMatch(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    mode: Literal["contains"]
-    value: str
-
-
-class RegexMatch(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    mode: Literal["regex"]
-    value: str
-
-
-class NumericMatch(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    mode: Literal["numeric"]
-    value: str  # expected number as a string to avoid JSON float precision loss
-    epsilon: float
-
-
-class CustomMatch(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    mode: Literal["custom"]
-    value: str  # shell command; receives actual output via stdin, exits 0 for match
-
-
-OutputMatch = Annotated[
-    Sha256Match | ContainsMatch | RegexMatch | NumericMatch | CustomMatch,
-    Field(discriminator="mode"),
-]
-
-
-class ExpectedOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    source: OutputSource
-    match: OutputMatch
-
-
 class ResourceEstimates(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -106,27 +41,54 @@ class Runnable(BaseModel):
     """The executable contract shared by experiments and activation.
 
     Something that owns a *run script* — a workspace-relative shell script that
-    fully defines how it executes (e.g. its own ``docker run …``) — and checks
-    its declared *outputs* against the workspace afterward. Activation and
-    experiments differ in identity and role, not in how they execute.
+    fully defines how it executes (e.g. its own ``docker run …``) — and an
+    optional *verify script* that checks the run's results afterwards: it runs
+    from the workspace root with the captured run evidence in its environment
+    (see ``experiment/run.py``) and its exit code is the verdict (0 = pass).
+    ``output_paths`` declares the workspace files the run (re)writes — a pure
+    declaration used for drift exclusion and manifest disclosure, with no
+    matcher semantics. Activation and experiments differ in identity and role,
+    not in how they execute.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     description: str = ""
     run_script: str = ""
-    outputs: list[ExpectedOutput] = Field(default_factory=list)
+    verify_script: str = ""
+    output_paths: list[str] = Field(default_factory=list)
     runtime_estimate: str = ""
     resource_estimates: ResourceEstimates = Field(default_factory=ResourceEstimates)
 
-    @field_validator("run_script", mode="before")
+    @field_validator("run_script", "verify_script", mode="before")
     @classmethod
-    def _validate_run_script(cls, value: Any) -> str:
+    def _validate_script(cls, value: Any) -> str:
         return validate_runnable_script_path(value)
+
+    @field_validator("output_paths", mode="before")
+    @classmethod
+    def _validate_output_paths(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        paths: list[str] = []
+        for entry in value:
+            text = str(entry or "").strip()
+            if text == "":
+                continue
+            validate_relative_path(text)
+            paths.append(text)
+        return paths
 
 
 class Experiment(Runnable):
-    """A named experiment attached to a REE draft. Zero or more per REE."""
+    """A named experiment attached to a REE draft. Zero or more per REE.
+
+    A successful run always captures the experiment's declared ``output_paths``
+    into the produced-results store (``results/<name>/``) for local provenance.
+    Whether those baselines are packaged into the sealed bundle is a seal-time
+    choice (``results_included``), not per-experiment authoring state — so there
+    is no flag here.
+    """
 
     name: str = ""
 

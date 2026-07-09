@@ -71,6 +71,37 @@ def digest_tree(root: Path) -> str:
     return DIGEST_PREFIX + hasher.hexdigest()
 
 
+def digest_output_paths(base: Path, output_paths: list[str]) -> str | None:
+    """Digest of an experiment's declared outputs, resolved under ``base``.
+
+    ``None`` when the experiment declares no outputs (nothing to bind); a
+    declared-but-absent path contributes nothing. Each declared path is folded
+    in under its declared relative form (files directly, directories by their
+    contained files) so the digest is stable regardless of iteration order and
+    directly comparable between capture time (over the workspace) and seal time.
+    """
+    if not output_paths:
+        return None
+    hasher = hashlib.sha256()
+    for rel in sorted(set(output_paths)):
+        target = base / rel
+        if target.is_file():
+            hasher.update(rel.encode("utf-8"))
+            hasher.update(b"\0")
+            hasher.update(digest_file(target).encode("ascii"))
+            hasher.update(b"\0")
+        elif target.is_dir():
+            for path in sorted(target.rglob("*")):
+                if not path.is_file():
+                    continue
+                sub = f"{rel}/{path.relative_to(target).as_posix()}"
+                hasher.update(sub.encode("utf-8"))
+                hasher.update(b"\0")
+                hasher.update(digest_file(path).encode("ascii"))
+                hasher.update(b"\0")
+    return DIGEST_PREFIX + hasher.hexdigest()
+
+
 class HashingWriter:
     """Binary writer wrapper that hashes every byte passing through it.
 

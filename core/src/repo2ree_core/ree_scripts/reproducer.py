@@ -21,7 +21,10 @@ verbs so its ``--help`` mirrors the executor CLI:
   resets state so each run starts from a deterministic slate;
 * ``build-runtime`` / ``test-activation`` / ``experiment <name>`` — run the
   author scripts from the workspace root, reusing the sealed runtime when
-  present and otherwise building it once.
+  present and otherwise building it once. Runnables that declared a verify
+  script get it executed from the workspace root after their run script — a
+  plain author script with nothing injected into its environment, exactly as
+  the workbench runs it; its exit code is the reported verdict.
 
 Plus two bundle-only orchestration helpers: ``all`` (the whole pipeline against
 a single workspace) and ``list``.
@@ -130,27 +133,33 @@ def build_reproducer_sh(
     *,
     build_script: str,
     activation_script: str,
-    experiments: Sequence[tuple[str, str]],
+    activation_verify_script: str = "",
+    experiments: Sequence[tuple[str, str, str]],
     runtime_workspace_path: str | None,
     runtime_artifact_basename: str | None,
 ) -> bytes:
     """Render the self-contained ``run.sh`` for a bundle.
 
-    ``experiments`` is a sequence of ``(name, run_script)`` pairs. The runtime
-    arguments are non-empty together only when a built runtime was sealed into
-    ``ree/artifacts/``; when either is missing the script builds instead of
-    reusing. Source acquisition (snapshot-extract or origin-fetch + SWHID verify)
-    is delegated to the bundled ``ree/acquire_source.sh`` and the clear-and-merge
-    to the bundled ``ree/materialize_workspace.sh`` — the very same scripts the
-    workbench runs at authoring time, so the two surfaces cannot drift.
+    ``experiments`` is a sequence of ``(name, run_script, verify_script)``
+    triples; ``verify_script`` may be empty (run only, exit code is the
+    verdict). The runtime arguments are non-empty together only when a built
+    runtime was sealed into ``ree/artifacts/``; when either is missing the
+    script builds instead of reusing. Source acquisition (snapshot-extract or
+    origin-fetch + SWHID verify) is delegated to the bundled
+    ``ree/acquire_source.sh`` and the clear-and-merge to the bundled
+    ``ree/materialize_workspace.sh`` — the very same scripts the workbench runs
+    at authoring time, so the two surfaces cannot drift.
     """
     experiment_lines = "".join(
-        f"{name}{_FIELD_SEP}{run_script}\n" for name, run_script in experiments if name and run_script
+        f"{name}{_FIELD_SEP}{run_script}{_FIELD_SEP}{verify_script}\n"
+        for name, run_script, verify_script in experiments
+        if name and run_script
     )
     header = "\n".join(
         (
             f"BUILD_SCRIPT={shell_single_quote(build_script)}",
             f"ACTIVATION_SCRIPT={shell_single_quote(activation_script)}",
+            f"ACTIVATION_VERIFY_SCRIPT={shell_single_quote(activation_verify_script)}",
             f"RUNTIME_WS_PATH={shell_single_quote(runtime_workspace_path or '')}",
             f"RUNTIME_ARTIFACT={shell_single_quote(runtime_artifact_basename or '')}",
         )
@@ -170,7 +179,8 @@ def reproducer_entries(
     *,
     build_script: str = RESERVED_BUILD_SCRIPT,
     activation_script: str = RESERVED_ACTIVATION_SCRIPT,
-    experiments: Sequence[tuple[str, str]] = (),
+    activation_verify_script: str = "",
+    experiments: Sequence[tuple[str, str, str]] = (),
     runtime_workspace_path: str | None = None,
     runtime_artifact_basename: str | None = None,
     origin_url: str = "",
@@ -189,6 +199,7 @@ def reproducer_entries(
     run_sh = build_reproducer_sh(
         build_script=build_script or RESERVED_BUILD_SCRIPT,
         activation_script=activation_script or RESERVED_ACTIVATION_SCRIPT,
+        activation_verify_script=activation_verify_script,
         experiments=experiments,
         runtime_workspace_path=runtime_workspace_path,
         runtime_artifact_basename=runtime_artifact_basename,
@@ -317,24 +328,79 @@ _RUN_SH_TEMPLATE = shell_text("""
       ( cd "$WS" && sh "$script" )
     }
 
+    # Run just a verify script from the workspace root (no run script). The
+    # verify script is a plain author script with nothing injected into its
+    # environment; its exit code is the verdict (0 = pass). It reads whatever it
+    # checks straight from the workspace — so this re-checks a claim against the
+    # outputs a previous run left there, without paying to re-run.
+    run_verify_only() {
+      verify=$1
+      [ -f "$WS/$verify" ] || die "verify script not found in workspace: $verify"
+      say "\\$ sh $verify"
+      if ( cd "$WS" && sh "$verify" ); then
+        say "VERIFIED: pass"
+      else
+        vrc=$?
+        say "VERIFIED: fail (verify exit $vrc)"
+        return 1
+      fi
+    }
+
+    # Run a run script, then its verify script (when declared). An author who
+    # wants to check stdout has the run script materialize it to a workspace
+    # file (e.g. `| tee results/run.log`) that the verify script reads back.
+    run_verified() {
+      script=$1; verify=${2:-}
+      run_in_workspace "$script"
+      [ -z "$verify" ] && return 0
+      run_verify_only "$verify"
+    }
+
     do_build() { ensure_workspace; say "== build-runtime =="; run_in_workspace "$BUILD_SCRIPT"; }
 
     do_activate() {
       ensure_workspace; ensure_runtime
       say "== test-activation =="
-      run_in_workspace "$ACTIVATION_SCRIPT"
+      run_verified "$ACTIVATION_SCRIPT" "$ACTIVATION_VERIFY_SCRIPT"
     }
 
     do_experiment() {
       name=${1:-}
       [ -n "$name" ] || die "usage: $0 experiment <name>"
-      script=$(experiments | while IFS='\t' read -r n s; do
-        [ "$n" = "$name" ] && { printf '%s' "$s"; break; }
+      line=$(experiments | while IFS='\t' read -r n s v; do
+        if [ "$n" = "$name" ]; then printf '%s\t%s' "$s" "$v"; break; fi
       done)
-      [ -n "$script" ] || die "no experiment named: $name (try '$0 list')"
+      [ -n "$line" ] || die "no experiment named: $name (try '$0 list')"
+      script=$(printf '%s' "$line" | cut -f1)
+      verify=$(printf '%s' "$line" | cut -f2)
       ensure_workspace; ensure_runtime
       say "== experiment: $name =="
-      run_in_workspace "$script"
+      run_verified "$script" "$verify"
+    }
+
+    # Verify only: re-check a claim against the outputs a previous run left in
+    # the workspace, without re-running. With a name, verifies that experiment;
+    # with no name, verifies activation. Needs the workspace populated but not
+    # the runtime (the verify script only reads workspace files). Fails if the
+    # subject declares no verify script, or if the outputs it expects are absent
+    # (never produced, or the workspace was reset since the run).
+    do_verify() {
+      name=${1:-}
+      ensure_workspace
+      if [ -z "$name" ]; then
+        [ -n "$ACTIVATION_VERIFY_SCRIPT" ] || die "activation declares no verify script — nothing to verify"
+        say "== verify: activation =="
+        run_verify_only "$ACTIVATION_VERIFY_SCRIPT"
+        return
+      fi
+      match=$(experiments | while IFS='\t' read -r n s v; do
+        if [ "$n" = "$name" ]; then printf 'Y\t%s' "$v"; break; fi
+      done)
+      [ -n "$match" ] || die "no experiment named: $name (try '$0 list')"
+      verify=$(printf '%s' "$match" | cut -f2)
+      [ -n "$verify" ] || die "experiment '$name' declares no verify script — nothing to verify"
+      say "== verify: $name =="
+      run_verify_only "$verify"
     }
 
     # One-click: acquire -> materialize -> runtime -> activation -> every experiment.
@@ -344,11 +410,11 @@ _RUN_SH_TEMPLATE = shell_text("""
       do_materialize
       ensure_runtime
       say "== test-activation =="
-      run_in_workspace "$ACTIVATION_SCRIPT"
-      experiments | while IFS='\t' read -r n s; do
+      run_verified "$ACTIVATION_SCRIPT" "$ACTIVATION_VERIFY_SCRIPT"
+      experiments | while IFS='\t' read -r n s v; do
         [ -n "$n" ] || continue
         say "== experiment: $n =="
-        run_in_workspace "$s"
+        run_verified "$s" "$v"
       done
       say ""
       say "All steps completed."
@@ -360,18 +426,25 @@ _RUN_SH_TEMPLATE = shell_text("""
       if experiments | grep -q .; then
         say ""
         say "Experiments:"
-        experiments | while IFS='\t' read -r n s; do
-          [ -n "$n" ] && say "  $n  ->  $s"
+        experiments | while IFS='\t' read -r n s v; do
+          [ -z "$n" ] && continue
+          if [ -n "$v" ]; then
+            say "  $n  ->  $s (verified by $v)"
+          else
+            say "  $n  ->  $s"
+          fi
         done
       fi
       say ""
-      say "Run everything end-to-end:  sh $0 all"
-      say "Or one phase at a time, e.g.: sh $0 experiment <name>"
+      say "Run everything end-to-end:      sh $0 all"
+      say "Or one phase at a time, e.g.:    sh $0 experiment <name>"
+      say "Re-check a claim without re-running: sh $0 verify <name>"
     }
 
     case "${1:-}" in
       "")            do_materialize; say ""; do_list ;;
       all|reproduce) do_all ;;
+      verify)        shift; do_verify "${1:-}" ;;
     @@DISPATCH@@
       list)          ensure_workspace; do_list ;;
       -h|--help|help) do_list ;;
@@ -429,9 +502,29 @@ _REPRODUCING_MD = shell_text("""
     sh run.sh materialize-workspace    # assemble a clean workspace = source + overlay
     sh run.sh build-runtime            # build the runtime from the author's build script
     sh run.sh test-activation          # prove the runtime is inhabitable
-    sh run.sh experiment <name>        # run a named experiment
+    sh run.sh experiment <name>        # run a named experiment and verify its result
+    sh run.sh verify <name>            # verify only, without re-running (activation if <name> omitted)
     sh run.sh list                     # list commands again
     ```
+
+    ## Verification
+
+    An experiment may ship a *verify script* beside its run script (listed by
+    `sh run.sh list`). After the run script finishes, `run.sh` executes the
+    verify script from the workspace root — a plain `sh` script with nothing
+    injected into its environment, just like the run script — and reports
+    `VERIFIED: pass` or `VERIFIED: fail`. Its exit code is the verdict
+    (0 = pass), so the claimed result is checked on your machine, not just
+    re-run. The verify script reads whatever it checks straight from the
+    workspace (a run script that wants its stdout checked materializes it to a
+    workspace file). Verify scripts are plain `sh` in `ree/@@OVERLAY_DIRNAME@@/`
+    — read them to see exactly what is being claimed.
+
+    To re-check a claim without re-running the experiment, use `sh run.sh verify
+    <name>` (or `sh run.sh verify` for activation): it runs only the verify
+    script against the outputs the previous run left in the workspace. It fails
+    if those outputs are absent — because the experiment hasn't run yet, or the
+    workspace was reset since.
 
     `materialize-workspace` assembles `ree/@@WORKSPACE_DIRNAME@@/` from the acquired source with
     the author scripts overlaid on top, so each script runs from the workspace root

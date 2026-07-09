@@ -44,6 +44,7 @@ class ReeSession(BaseModel):
     # populated when reconstructing a session from an uploaded manifest.
     source_included: bool = False
     runtime_included: bool = False
+    results_included: bool = False
 
     @classmethod
     def from_metadata(cls, metadata: Mapping[str, Any]) -> ReeSession:
@@ -95,11 +96,12 @@ class ReeSession(BaseModel):
     def is_sealed(self) -> bool:
         return bool(self.sealed_at and self.seal_hash)
 
-    def with_packaging(self, *, source_included: bool, runtime_included: bool) -> ReeSession:
+    def with_packaging(self, *, source_included: bool, runtime_included: bool, results_included: bool) -> ReeSession:
         return self.model_copy(
             update={
                 "source_included": source_included,
                 "runtime_included": runtime_included,
+                "results_included": results_included,
             }
         )
 
@@ -110,6 +112,7 @@ class ReeSession(BaseModel):
         seal_hash: str,
         source_included: bool,
         runtime_included: bool,
+        results_included: bool,
     ) -> ReeSession:
         return self.model_copy(
             update={
@@ -117,5 +120,6 @@ class ReeSession(BaseModel):
                 "seal_hash": seal_hash,
                 "source_included": source_included,
                 "runtime_included": runtime_included,
+                "results_included": results_included,
             }
         )

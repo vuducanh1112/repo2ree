@@ -28,13 +28,23 @@ the run:
 - SBOM records for software contents;
 - HBOM records for hardware context;
 - activation status;
-- experiment outputs and declared output checks.
+- experiment run evidence and the verify-script verdict.
 
 ## Experiment runs
 
-Experiment commands can be run from the app and checked against declared output
-expectations. This is the foundation for Run Receipts, but the current public
-object is still an execution result rather than a fully citable receipt.
+Experiment commands can be run from the app and checked by an author-provided
+verify script. The verify script runs from the workspace root after the run —
+exactly like the run script, with nothing injected into its environment — and
+its exit code is the verdict; it inspects whatever it needs straight from the
+workspace (a run whose stdout is checked materializes it to a workspace file).
+This is the foundation for Run Receipts, but the current public object is still
+an execution result rather than a fully citable receipt.
+
+A successful experiment run also captures the files it declares as outputs into
+a per-experiment results store and records their digest on the receipt. An
+experiment can opt into sealing those results so the author baseline ships in
+the downloadable bundle for reviewers to diff against (see
+[Verify](verify.md)).
 
 The target receipt will make each run durable: command, inputs, outputs, traces,
-comparison policy, predecessor lineage, and signatures.
+verification policy, predecessor lineage, and signatures.

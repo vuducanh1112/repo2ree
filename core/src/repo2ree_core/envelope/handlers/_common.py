@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+import shutil
 from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any, Literal
+from typing import Any
 
-from repo2ree_core.digests import digest_file_if_exists, digest_json
+from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.experiment.experiment import ExpectedOutput, Runnable
+from repo2ree_core.experiment.experiment import Runnable
 from repo2ree_core.experiment.run import run_runnable
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
 from repo2ree_core.receipts import (
@@ -49,6 +50,7 @@ class _StepInputs:
 
     snapshot_digest: str | None
     script_digest: str | None
+    verify_script_digest: str | None
     runtime_path: str | None
     declared_runtime_digest: str | None
     workspace_drift: WorkspaceDrift
@@ -66,6 +68,7 @@ def _collect_step_inputs(
     store: ReeStore,
     intent: ReeIntent | None,
     script_path: str,
+    verify_script_path: str = "",
 ) -> _StepInputs:
     """Digest the step's inputs as they are at run start.
 
@@ -81,6 +84,9 @@ def _collect_step_inputs(
     return _StepInputs(
         snapshot_digest=snapshot_digest,
         script_digest=digest_file_if_exists(layout.workspace / script_path),
+        verify_script_digest=(
+            digest_file_if_exists(layout.workspace / verify_script_path) if verify_script_path else None
+        ),
         runtime_path=runtime_path,
         declared_runtime_digest=(digest_file_if_exists(layout.workspace / runtime_path) if runtime_path else None),
         workspace_drift=check_workspace_drift(
@@ -169,28 +175,57 @@ def run_bare_script_handler(
     )
 
 
+def _capture_experiment_outputs(
+    layout: ReeLayout,
+    name: str,
+    output_paths: list[str],
+    log: LogSink,
+) -> str | None:
+    """Copy an experiment's declared outputs into its produced-results store.
+
+    Always runs after a successful experiment run (independent of sealing): the
+    store (``results/<name>/``) is the author-side baseline a reviewer later
+    diffs against, and the returned digest binds that baseline into the receipt.
+    Returns ``None`` when the experiment declares no outputs. Copies each
+    declared path preserving its relative structure so the store mirrors the
+    workspace layout; the digest is computed over the live workspace (the source
+    of truth), not the copied bytes.
+    """
+    if not output_paths:
+        return None
+    store = layout.results_dir(name)
+    with suppress(Exception):
+        if store.exists():
+            shutil.rmtree(store)
+    for rel in output_paths:
+        source = resolve_workspace_path(layout, rel)
+        if source.is_dir():
+            shutil.copytree(source, store / rel, dirs_exist_ok=True)
+        elif source.is_file():
+            dest = store / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, dest)
+        else:
+            log("system", "warn", f"declared output not found, skipping capture: {rel}")
+    return digest_output_paths(layout.workspace, output_paths)
+
+
 RunnableSelector = Callable[[ReeIntent, "LogSink"], tuple[Runnable, str] | None]
-SnapshotPersist = Callable[[ReeStore, ReeIntent, list[ExpectedOutput]], None]
 
 
 def run_runnable_handler(
     *,
     operation: str,
-    mode: Literal["verify", "snapshot"],
     select: RunnableSelector,
-    persist: SnapshotPersist,
-    snapshot_target: str,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    """Run a selected :class:`Runnable` and persist any captured snapshot.
+    """Run a selected :class:`Runnable` and record its receipt.
 
-    Shared by the run_experiment and activation_test handlers, which differ only
-    in *select* (which runnable to run, plus its label) and *persist* (how the
-    snapshot is written back into the intent). *select* logs and returns ``None``
-    when the runnable can't be resolved; *snapshot_target* names the destination
-    for the success message (e.g. "the intent", "the activation").
+    Shared by the run_experiment and activation_test handlers, which differ
+    only in *select* (which runnable to run, plus its label). *select* logs and
+    returns ``None`` when the runnable can't be resolved.
     """
     if is_canceled():
         log("system", "warn", f"{operation} canceled before start")
@@ -213,16 +248,12 @@ def run_runnable_handler(
         return ActionResult(status="failed", exit_code=1)
     runnable, label = selected
 
-    inputs = _collect_step_inputs(layout, store, ree, runnable.run_script)
-    # The spec the verdict will be relative to, digested before the run (a
-    # snapshot-mode success rewrites it afterwards).
-    expected_outputs_digest = digest_json([output.model_dump() for output in runnable.outputs])
+    inputs = _collect_step_inputs(layout, store, ree, runnable.run_script, runnable.verify_script)
 
     outcome = run_runnable(
         workspace=layout.workspace.resolve(),
         runnable=runnable,
         label=label,
-        mode=mode,
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,
@@ -231,17 +262,14 @@ def run_runnable_handler(
     outputs["runtimePath"] = ree.runtime or ""
 
     status: ActionStatus = outcome.status
-    exit_code = 0
-    if outcome.snapshot_to_persist is not None:
-        try:
-            persist(store, ree, outcome.snapshot_to_persist)
-            outputs["snapshotApplied"] = True
-            outputs["snapshotMessage"] = f"Saved {len(outcome.snapshot_to_persist)} baseline(s) to {snapshot_target}."
-        except Exception as exc:
-            log("system", "error", f"failed to persist snapshot: {exc}")
-            outputs["snapshotApplied"] = False
-            outputs["snapshotMessage"] = "Snapshot was not saved."
-            status, exit_code = "failed", 1
+
+    # Capture declared outputs after a successful experiment run (activation
+    # produces no sealed result). Always copies to the produced-results store —
+    # whether the store is packaged is an all-or-nothing seal-time choice
+    # (`results_included`) handled at bundle time, not per-experiment state.
+    produced_output_digest: str | None = None
+    if operation == "run_experiment" and status == "succeeded" and runnable.output_paths:
+        produced_output_digest = _capture_experiment_outputs(layout, label, runnable.output_paths, log)
 
     receipt_cls = RunExperimentReceipt if operation == "run_experiment" else ActivationTestReceipt
     receipt: ActivationTestReceipt | RunExperimentReceipt = receipt_cls(
@@ -249,20 +277,21 @@ def run_runnable_handler(
         recorded_at=utc_now(),
         status=status,
         workspace_drift=inputs.workspace_drift,
-        mode=mode,
         snapshot_digest=inputs.snapshot_digest,
         run_script_path=runnable.run_script,
         run_script_digest=inputs.script_digest,
+        verify_script_path=runnable.verify_script,
+        verify_script_digest=inputs.verify_script_digest,
         runtime_path=inputs.runtime_path,
         declared_runtime_digest=inputs.declared_runtime_digest,
     )
     if isinstance(receipt, RunExperimentReceipt):
         receipt.experiment_name = label
-        receipt.expected_outputs_digest = expected_outputs_digest
+        receipt.produced_output_digest = produced_output_digest
     record_receipt(layout, receipt, log=log)
     outputs["receipt"] = receipt.model_dump(by_alias=True)
 
-    return ActionResult(status=status, exit_code=exit_code, outputs=outputs)
+    return ActionResult(status=status, exit_code=0, outputs=outputs)
 
 
 def patch_ree_intent(store: ReeStore, patch: dict[str, Any]) -> None:

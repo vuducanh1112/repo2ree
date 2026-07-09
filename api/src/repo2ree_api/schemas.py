@@ -66,6 +66,7 @@ class WorkspaceFileContentPayload(BaseModel):
 class ReeSealPayload(BaseModel):
     includeSource: bool = False
     includeRuntime: bool = False
+    includeResults: bool = False
 
 
 # ================================================

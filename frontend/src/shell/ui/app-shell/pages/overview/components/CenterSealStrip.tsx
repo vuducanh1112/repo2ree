@@ -35,8 +35,12 @@ export function CenterSealStrip({
 }: CenterSealStripProps) {
   const sourceAvailable = !!ree.sourceAvailable;
   const runtimeAvailable = !!ree.runtime?.trim() && ree.runtime !== "__skipped__";
+  // Results are available to seal once any experiment declares an output — those
+  // are what a successful run captures into the produced-results store.
+  const resultsAvailable = (ree.experiments ?? []).some((e) => e.output_paths.length > 0);
   const [includeSource, setIncludeSource] = React.useState(sourceAvailable);
   const [includeRuntime, setIncludeRuntime] = React.useState(runtimeAvailable);
+  const [includeResults, setIncludeResults] = React.useState(resultsAvailable);
 
   // Default the seal-time choices to whatever is available; the user can opt out
   // inline before sealing. Availability can change while authoring, so keep the
@@ -44,7 +48,8 @@ export function CenterSealStrip({
   React.useEffect(() => {
     setIncludeSource(sourceAvailable);
     setIncludeRuntime(runtimeAvailable);
-  }, [sourceAvailable, runtimeAvailable]);
+    setIncludeResults(resultsAvailable);
+  }, [sourceAvailable, runtimeAvailable, resultsAvailable]);
 
   const sealed = locked && ree.sealedAt;
   const cableItems = buildSealCableItems(ree, badges);
@@ -88,14 +93,18 @@ export function CenterSealStrip({
         sealRunning={sealRunning}
         sourceAvailable={sourceAvailable}
         runtimeAvailable={runtimeAvailable}
+        resultsAvailable={resultsAvailable}
         includeSource={includeSource}
         includeRuntime={includeRuntime}
+        includeResults={includeResults}
         onToggleSource={() => setIncludeSource((v) => !v)}
         onToggleRuntime={() => setIncludeRuntime((v) => !v)}
+        onToggleResults={() => setIncludeResults((v) => !v)}
         onSeal={() =>
           onSeal({
             includeSource: sourceAvailable && includeSource,
             includeRuntime: runtimeAvailable && includeRuntime,
+            includeResults: resultsAvailable && includeResults,
           })
         }
       />

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.digests import digest_bytes, digest_json
+from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.receipts import (
@@ -79,24 +79,23 @@ class TestLatestSelection:
         latest = latest_successful_receipts(receipts)
         assert latest["build_runtime"].run_id == "r2"
 
-    def test_experiments_are_keyed_per_name_and_snapshot_mode_is_excluded(self) -> None:
-        def experiment(run_id: str, name: str, mode: str) -> RunExperimentReceipt:
+    def test_experiments_are_keyed_per_name(self) -> None:
+        def experiment(run_id: str, recorded_at: str, name: str) -> RunExperimentReceipt:
             return RunExperimentReceipt(
                 run_id=run_id,
-                recorded_at="2026-01-01T00:00:00Z",
+                recorded_at=recorded_at,
                 status="succeeded",
-                mode=mode,  # type: ignore[arg-type]
                 experiment_name=name,
             )
 
         latest = latest_successful_receipts(
             [
-                experiment("r1", "exp-a", "verify"),
-                experiment("r2", "exp-b", "verify"),
-                experiment("r3", "exp-a", "snapshot"),
+                experiment("r1", "2026-01-01T00:00:00Z", "exp-a"),
+                experiment("r2", "2026-01-01T00:00:00Z", "exp-b"),
+                experiment("r3", "2026-01-02T00:00:00Z", "exp-a"),
             ]
         )
-        assert latest["experiment:exp-a"].run_id == "r1"
+        assert latest["experiment:exp-a"].run_id == "r3"
         assert latest["experiment:exp-b"].run_id == "r2"
 
 
@@ -207,19 +206,14 @@ class TestConsistencyReport:
             "activation_test": "missing",
         }
 
-    def test_experiment_spec_change_is_stale(self, layout: ReeLayout) -> None:
+    def test_experiment_verify_script_change_is_stale(self, layout: ReeLayout) -> None:
         intent = ReeIntent.model_validate(
             {
                 "experiments": [
                     {
                         "name": "exp-a",
                         "run_script": "ree/experiments/exp-a.sh",
-                        "outputs": [
-                            {
-                                "source": {"kind": "stdout"},
-                                "match": {"mode": "contains", "value": "ok"},
-                            }
-                        ],
+                        "verify_script": "ree/experiments/exp-a.verify.sh",
                     }
                 ]
             }
@@ -229,20 +223,21 @@ class TestConsistencyReport:
         script = layout.workspace / experiment.run_script
         script.parent.mkdir(parents=True, exist_ok=True)
         script.write_text("run it")
+        verify = layout.workspace / experiment.verify_script
+        verify.write_text("check it")
 
-        old_spec_digest = digest_json([o.model_dump() for o in experiment.outputs])
         record_receipt(
             layout,
             RunExperimentReceipt(
                 run_id="run-e",
                 recorded_at="2026-01-01T00:00:00Z",
                 status="succeeded",
-                mode="verify",
                 experiment_name="exp-a",
                 snapshot_digest="sha256:snap",
                 run_script_path=experiment.run_script,
                 run_script_digest=digest_bytes(b"run it"),
-                expected_outputs_digest=old_spec_digest,
+                verify_script_path=experiment.verify_script,
+                verify_script_digest=digest_bytes(b"check it"),
             ),
             log=_silent_log,
         )
@@ -250,24 +245,10 @@ class TestConsistencyReport:
         fresh = self._step(build_consistency_report(layout, intent, session), "experiment:exp-a")
         assert fresh["status"] == "fresh"
 
-        changed = intent.apply_patch(
-            {
-                "experiments": [
-                    {
-                        **intent.experiments[0].model_dump(),
-                        "outputs": [
-                            {
-                                "source": {"kind": "stdout"},
-                                "match": {"mode": "contains", "value": "different"},
-                            }
-                        ],
-                    }
-                ]
-            }
-        )
-        stale = self._step(build_consistency_report(layout, changed, session), "experiment:exp-a")
+        verify.write_text("check something else")
+        stale = self._step(build_consistency_report(layout, intent, session), "experiment:exp-a")
         assert stale["status"] == "stale"
-        assert [entry["input"] for entry in stale["staleInputs"]] == ["expectedOutputs"]
+        assert [entry["input"] for entry in stale["staleInputs"]] == ["verifyScript"]
 
 
 class TestHandlerWiring:
@@ -320,6 +301,83 @@ class TestHandlerWiring:
         assert receipt["producedRuntimeDigest"] == digest_bytes(b"runtime-bytes")
         assert receipt["workspaceDrift"]["status"] == "unknown"  # never materialized
         assert result.outputs["receipt"] == receipt
+
+    def _seed_experiment(self, workbench: ReeStore) -> ReeIntent:
+        from repo2ree_core.workspace.model import WorkspaceMetadata
+
+        layout = workbench.layout
+        intent = ReeIntent.model_validate(
+            {
+                "runtime": "runtime.tar",
+                "experiments": [
+                    {
+                        "name": "exp-a",
+                        "run_script": "ree/experiments/exp-a.sh",
+                        "output_paths": ["results/out.txt"],
+                    }
+                ],
+            }
+        )
+        workbench.write_metadata(
+            WorkspaceMetadata(
+                reeId="ree123",
+                name="demo",
+                createdAt="2026-01-01T00:00:00Z",
+                updatedAt="2026-01-01T00:00:00Z",
+                reeIntent=intent,
+                reeSession=ReeSession(source_snapshot_digest="sha256:snap"),
+            )
+        )
+        script = layout.workspace / "ree" / "experiments" / "exp-a.sh"
+        script.parent.mkdir(parents=True, exist_ok=True)
+        script.write_text("mkdir -p results && printf answer > results/out.txt\n")
+        return intent
+
+    def test_experiment_run_captures_outputs_and_records_digest(self, workbench: ReeStore) -> None:
+        from repo2ree_core.digests import digest_output_paths
+        from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
+        from repo2ree_protocol.command import RunExperimentArgs
+
+        self._seed_experiment(workbench)
+        layout = workbench.layout
+
+        result = handle_run_experiment(
+            RunExperimentArgs(experiment_name="exp-a"),
+            run_id="run-e",
+            log=_silent_log,
+            is_canceled=lambda: False,
+        )
+
+        assert result.status == "succeeded"
+        # Output captured into the produced-results store, keyed by name.
+        assert (layout.results_dir("exp-a") / "results" / "out.txt").read_text() == "answer"
+        receipt = json.loads(layout.run_receipt("run-e").read_text(encoding="utf-8"))
+        assert receipt["producedOutputDigest"] == digest_output_paths(layout.workspace, ["results/out.txt"])
+
+    def test_rewritten_output_makes_experiment_stale(self, workbench: ReeStore) -> None:
+        from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
+        from repo2ree_protocol.command import RunExperimentArgs
+
+        intent = self._seed_experiment(workbench)
+        layout = workbench.layout
+        handle_run_experiment(
+            RunExperimentArgs(experiment_name="exp-a"),
+            run_id="run-e",
+            log=_silent_log,
+            is_canceled=lambda: False,
+        )
+
+        session = workbench.read_session()
+        fresh = build_consistency_report(layout, intent, session)
+        exp = next(s for s in fresh["steps"] if s["step"] == "experiment:exp-a")
+        assert exp["status"] == "fresh"
+
+        # The shared workspace mutated the declared output after the run.
+        (layout.workspace / "results" / "out.txt").write_text("tampered")
+        stale = build_consistency_report(layout, intent, session)
+        exp = next(s for s in stale["steps"] if s["step"] == "experiment:exp-a")
+        assert exp["status"] == "stale"
+        assert "producedOutput" in [entry["input"] for entry in exp["staleInputs"]]
 
     def test_snapshot_upstream_persists_digest_on_session(self, workbench: ReeStore) -> None:
         from repo2ree_core.digests import digest_file
