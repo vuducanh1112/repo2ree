@@ -73,10 +73,12 @@ be-tests: be-unit-tests be-integration-tests
 # The `--cov` source list also lives there, so a bare `--cov` is all pytest needs.
 
 # Container-free tiers in one process: fast and deterministic, runs anywhere.
-# The Docker-gated transport (supervisor manager, hbom profilers) is not
-# exercised, so it reads as uncovered — this number is a floor, not the truth.
+# Includes the agent unit tests (no docker) so the agent tier's own coverage is
+# counted rather than reading 0% on files only its unit tests exercise. The
+# Docker-gated transport (supervisor manager, hbom profilers) is not exercised,
+# so it reads as uncovered — this number is a floor, not the truth.
 be-coverage-unit:
-	pytest core/tests/unit api/tests/unit executor/tests core/tests/integration \
+	pytest core/tests/unit api/tests/unit executor/tests agent/tests core/tests/integration \
 		--cov --cov-report=term-missing --cov-report=html:test-artifacts/coverage/unit
 
 # Full suite: the honest number, but the integration tiers skip silently
@@ -88,7 +90,7 @@ be-coverage-unit:
 # api integration tier and writes .coverage fresh; the second appends the api
 # integration tier and reports the combined total.
 be-coverage:
-	pytest core/tests api/tests/unit supervisor/tests executor/tests \
+	pytest core/tests api/tests/unit supervisor/tests executor/tests agent/tests \
 		--cov --cov-report=
 	pytest api/tests/integration \
 		--cov --cov-append --cov-report=term-missing --cov-report=html:test-artifacts/coverage/full
@@ -100,7 +102,7 @@ be-coverage:
 # test). --show-contexts is kept on this target only, so the plain be-coverage
 # report stays uncluttered.
 be-coverage-context:
-	pytest core/tests api/tests/unit supervisor/tests executor/tests \
+	pytest core/tests api/tests/unit supervisor/tests executor/tests agent/tests \
 		--cov --cov-context=test --cov-report=
 	pytest api/tests/integration \
 		--cov --cov-append --cov-context=test --cov-report=
