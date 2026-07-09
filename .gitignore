@@ -9,6 +9,10 @@ result-*
 /dist/
 
 .pytest_cache/
+# Hypothesis's local example database: replays past failing cases on the next
+# run, but machine-local and ephemeral. Durable regressions are pinned with
+# @example in the test source, so this dir is never committed.
+.hypothesis/
 .venv/
 **/__pycache__/
 

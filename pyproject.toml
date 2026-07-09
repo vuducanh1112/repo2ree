@@ -13,10 +13,14 @@ members = ["protocol", "core", "supervisor", "api", "executor", "agent"]
 [dependency-groups]
 dev = [
     "httpx~=0.28.1",
+    # Property-based testing (the `property`-marked tests). Resolves transitively
+    # today via core's test-only `swh.model` oracle, but declared directly so the
+    # property tests don't hinge on that pin.
+    "hypothesis~=6.155.7",
     "mypy~=1.20.1",
     "pytest~=8.4.1",
     "pytest-cov~=7.1.0",
-    "pre-commit~=4.3.0", 
+    "pre-commit~=4.3.0",
     "ruff~=0.12.11",
     "syrupy~=5.0.0",
 ]
@@ -29,8 +33,20 @@ notebooks = [
 [tool.pytest.ini_options]
 # Show skip reasons in the summary: the docker-gated integration tiers skip
 # (never fake) when docker or the workbench image is absent, and a silent
-# skip is indistinguishable from a pass without this.
-addopts = "-ra"
+# skip is indistinguishable from a pass without this. --strict-markers turns a
+# typo'd or unregistered marker into a collection error rather than a silent
+# no-op, so the vocabulary below stays the single source of truth.
+addopts = "-ra --strict-markers"
+
+# Test-selection markers, orthogonal to the unit/integration directory split
+# (which is about *where* a test can run — no infra vs docker-gated). These tag
+# *what kind* of test it is, so CI can carve profiles: the fast gate runs the
+# default set, heavier profiles select the generative/property tier. Apply at
+# module level (`pytestmark = pytest.mark.property`) when a whole file is one
+# kind. See the accompanying `*_properties.py` files for the pattern.
+markers = [
+    "property: generative/invariant test (hypothesis); slower, randomized inputs",
+]
 
 # Coverage measures the five workspace src trees. Listing them here lets the
 # Makefile pass a bare `--cov` (no per-package paths) and keeps the same
