@@ -58,7 +58,14 @@ class _TreeEntry:
 def _git_object_id(object_type: bytes, payload: bytes) -> bytes:
     """SHA-1 of a git object: ``<type> <len>\\0<payload>`` — the raw 20 bytes."""
     header = object_type + b" " + str(len(payload)).encode() + b"\x00"
-    return hashlib.sha1(header + payload).digest()  # noqa: S324 - git uses SHA-1 by design
+    object_id = hashlib.sha1(header + payload).digest()  # noqa: S324 - git uses SHA-1 by design
+
+    # ── postcondition ──
+    # The raw git object id is always 20 bytes; content_object_id and the tree
+    # hasher hand this straight to callers that .hex() it into a 40-char SWHID.
+    assert len(object_id) == 20, f"git object id must be 20 bytes, got {len(object_id)}"  # noqa: S101
+    # ───────────────────
+    return object_id
 
 
 def content_object_id(data: bytes) -> bytes:
@@ -68,7 +75,12 @@ def content_object_id(data: bytes) -> bytes:
 
 def content_swhid(data: bytes) -> str:
     """``swh:1:cnt:<hash>`` for a file whose bytes are ``data``."""
-    return _SWHID_CNT_PREFIX + content_object_id(data).hex()
+    swhid = _SWHID_CNT_PREFIX + content_object_id(data).hex()
+
+    # ── postcondition ──
+    assert len(swhid) == len(_SWHID_CNT_PREFIX) + 40, f"malformed content SWHID: {swhid}"  # noqa: S101
+    # ───────────────────
+    return swhid
 
 
 def hash_directory_entries(entries: list[_TreeEntry]) -> bytes:
@@ -120,4 +132,9 @@ def directory_swhid(directory: Path | str) -> str:
     root = Path(directory)
     if not root.is_dir():
         raise NotADirectoryError(f"not a directory: {root}")
-    return _SWHID_DIR_PREFIX + _directory_object_id(root).hex()
+    swhid = _SWHID_DIR_PREFIX + _directory_object_id(root).hex()
+
+    # ── postcondition ──
+    assert len(swhid) == len(_SWHID_DIR_PREFIX) + 40, f"malformed directory SWHID: {swhid}"  # noqa: S101
+    # ───────────────────
+    return swhid

@@ -21,8 +21,23 @@ _CHUNK_SIZE = 1024 * 1024
 DIGEST_PREFIX = "sha256:"
 
 
+# A canonical digest is ``sha256:`` followed by 64 lowercase hex chars. The
+# whole receipt/consistency vocabulary relies on this one shape being comparable
+# across recorded and current values, so every producer asserts it on the way out.
+_DIGEST_LEN = len(DIGEST_PREFIX) + 64
+
+
+def _is_canonical_digest(digest: str) -> bool:
+    return digest.startswith(DIGEST_PREFIX) and len(digest) == _DIGEST_LEN
+
+
 def digest_bytes(data: bytes) -> str:
-    return DIGEST_PREFIX + hashlib.sha256(data).hexdigest()
+    digest = DIGEST_PREFIX + hashlib.sha256(data).hexdigest()
+
+    # ── postcondition ──
+    assert _is_canonical_digest(digest), f"non-canonical digest: {digest}"  # noqa: S101
+    # ───────────────────
+    return digest
 
 
 def digest_file(path: Path) -> str:
@@ -30,7 +45,12 @@ def digest_file(path: Path) -> str:
     with path.open("rb") as handle:
         while chunk := handle.read(_CHUNK_SIZE):
             hasher.update(chunk)
-    return DIGEST_PREFIX + hasher.hexdigest()
+    digest = DIGEST_PREFIX + hasher.hexdigest()
+
+    # ── postcondition ──
+    assert _is_canonical_digest(digest), f"non-canonical digest: {digest}"  # noqa: S101
+    # ───────────────────
+    return digest
 
 
 def digest_file_if_exists(path: Path) -> str | None:
@@ -68,7 +88,12 @@ def digest_tree(root: Path) -> str:
             hasher.update(b"\0")
             hasher.update(digest_file(path).encode("ascii"))
             hasher.update(b"\0")
-    return DIGEST_PREFIX + hasher.hexdigest()
+    digest = DIGEST_PREFIX + hasher.hexdigest()
+
+    # ── postcondition ──
+    assert _is_canonical_digest(digest), f"non-canonical digest: {digest}"  # noqa: S101
+    # ───────────────────
+    return digest
 
 
 def digest_output_paths(base: Path, output_paths: list[str]) -> str | None:
@@ -99,7 +124,12 @@ def digest_output_paths(base: Path, output_paths: list[str]) -> str | None:
                 hasher.update(b"\0")
                 hasher.update(digest_file(path).encode("ascii"))
                 hasher.update(b"\0")
-    return DIGEST_PREFIX + hasher.hexdigest()
+    digest = DIGEST_PREFIX + hasher.hexdigest()
+
+    # ── postcondition ──
+    assert _is_canonical_digest(digest), f"non-canonical digest: {digest}"  # noqa: S101
+    # ───────────────────
+    return digest
 
 
 class HashingWriter:
@@ -122,4 +152,9 @@ class HashingWriter:
 
     @property
     def digest(self) -> str:
-        return DIGEST_PREFIX + self._hasher.hexdigest()
+        digest = DIGEST_PREFIX + self._hasher.hexdigest()
+
+        # ── postcondition ──
+        assert _is_canonical_digest(digest), f"non-canonical digest: {digest}"  # noqa: S101
+        # ───────────────────
+        return digest

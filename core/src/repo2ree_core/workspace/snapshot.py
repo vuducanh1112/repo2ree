@@ -33,4 +33,9 @@ def snapshot_archive_name(seed: str | None, fallback: str = "source") -> str:
     """
     base = strip_archive_suffix(safe_filename(seed, fallback)).strip()
     normalized = base or fallback
-    return f"{normalized}-snapshot.tar.gz"
+    name = f"{normalized}-snapshot.tar.gz"
+
+    # ── postcondition ──
+    assert name.endswith("-snapshot.tar.gz"), f"snapshot name must carry the suffix: {name}"  # noqa: S101
+    # ───────────────────
+    return name

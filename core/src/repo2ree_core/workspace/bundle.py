@@ -70,7 +70,14 @@ _EPOCH_DATE_TIME = (1980, 1, 1, 0, 0, 0)
 def safe_filename(name: str | None, default: str) -> str:
     """Reduce ``name`` to a safe single-component filename."""
     candidate = (name or default).strip().replace("\\", "/").split("/")[-1]
-    return candidate or default
+    result = candidate or default
+
+    # ── postcondition ──
+    # Single-component: no path separators survive, so the result can never be
+    # used to traverse out of the directory it names a file in.
+    assert result and "/" not in result and "\\" not in result, f"unsafe filename: {result!r}"  # noqa: S101
+    # ───────────────────
+    return result
 
 
 def should_include_snapshot(*, source_included: bool, source_snapshot_archive: str | None) -> bool:

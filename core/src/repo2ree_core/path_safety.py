@@ -48,6 +48,13 @@ def resolve_within(base: Path, rel: str | PurePosixPath) -> Path | None:
         candidate.relative_to(base_resolved)
     except ValueError:
         return None
+
+    # ── postcondition ──
+    # The security boundary: a non-None result must never escape base. Re-checked
+    # independently of the relative_to above so a future edit to the containment
+    # logic can't silently start returning an escaping path.
+    assert candidate.is_relative_to(base_resolved), f"resolve_within escaped base: {candidate}"  # noqa: S101
+    # ───────────────────
     return candidate
 
 
@@ -75,4 +82,9 @@ def normalize_workspace_path(path: str | None) -> str:
     ``""`` for falsy input and does not raise. Use :func:`validate_relative_path`
     when stricter checks are required.
     """
-    return (path or "").lstrip("/").strip()
+    result = (path or "").lstrip("/").strip()
+
+    # ── postcondition ──
+    assert not result.startswith("/"), f"normalized path must not be absolute: {result!r}"  # noqa: S101
+    # ───────────────────
+    return result
