@@ -159,8 +159,9 @@ Backend variables:
 |---|---|---|
 | `UPLOAD_STAGING_DIR` | `.repo2ree/upload-staging` | Temporary upload landing zone before files enter a workbench. |
 | `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Registry file mapping REE ids to workbench containers and volumes. |
-| `OTLP_ENDPOINT` | unset | OTLP collector base URL. |
-| `TRACE_FILE` | unset | Local NDJSON trace sink when no collector is configured. |
+| `OTLP_ENDPOINT` | unset | OTLP collector base URL for API and agent traces/metrics. |
+| `TRACE_FILE` | unset | Local NDJSON trace sink for API/agent spans when no collector is configured. |
+| `LOG_LEVEL` | `INFO` | Python log level for API, agent, and executor processes. |
 
 Frontend variables:
 

@@ -55,10 +55,26 @@ from repo2ree_protocol.agent import (
     WorkbenchLocation,
 )
 from repo2ree_protocol.result import ActionResult
+from repo2ree_protocol.tracing import command_metric_attrs, get_meter
 
 __all__ = ["DockerRuntime", "WorkbenchGone"]
 
 logger = logging.getLogger(__name__)
+_meter = get_meter(__name__)
+
+_docker_operation_duration = _meter.create_histogram(
+    "agent.docker_operation_duration_seconds",
+    description="Wall-clock duration of Docker CLI operations performed by the agent.",
+    unit="s",
+)
+_docker_operation_counter = _meter.create_counter(
+    "agent.docker_operation",
+    description="Number of Docker CLI operations performed by the agent.",
+)
+_workbench_gone_counter = _meter.create_counter(
+    "agent.workbench_gone",
+    description="Number of Docker operations that found the target workbench gone or stopping.",
+)
 
 # Exit codes from `docker exec` that mean the container is gone / stopping.
 # 137 = killed by SIGKILL (container OOM-killed or being removed)
@@ -200,6 +216,8 @@ class DockerRuntime:
     # ------------------------------------------------
 
     def provision(self, ree_id: str, image: str) -> Iterator[AgentFrame]:
+        started_at = time.monotonic()
+        status = "succeeded"
         container_name = self._container_name(ree_id)
         volume_name = self._volume_name(ree_id)
         try:
@@ -208,36 +226,56 @@ class DockerRuntime:
                 _docker("volume", "create", self._dind_volume_name(ree_id))
             exec_path = yield from self._run_workbench_container(container_name, ree_id, volume_name, image)
         except RuntimeError as exc:
+            status = "failed"
             yield ErrorFrame(detail=str(exc))
+            _record_docker_operation("provision", started_at, status)
             return
-        yield LocationFrame(
-            location=WorkbenchLocation(container_name=container_name, volume_name=volume_name, exec_path=exec_path)
-        )
+        try:
+            yield LocationFrame(
+                location=WorkbenchLocation(container_name=container_name, volume_name=volume_name, exec_path=exec_path)
+            )
+        finally:
+            _record_docker_operation("provision", started_at, status)
 
     def reprovision(self, ree_id: str, location: WorkbenchLocation, image: str) -> Iterator[AgentFrame]:
+        started_at = time.monotonic()
+        status = "succeeded"
         try:
             _docker_silent("rm", "-f", location.container_name)
             exec_path = yield from self._run_workbench_container(
                 location.container_name, ree_id, location.volume_name, image
             )
         except RuntimeError as exc:
+            status = "failed"
             yield ErrorFrame(detail=str(exc))
+            _record_docker_operation("reprovision", started_at, status)
             return
         # A fresh location, not a done: the replacement re-decides injection, so
         # the exec path may differ from the one the caller handed in.
-        yield LocationFrame(
-            location=WorkbenchLocation(
-                container_name=location.container_name, volume_name=location.volume_name, exec_path=exec_path
+        try:
+            yield LocationFrame(
+                location=WorkbenchLocation(
+                    container_name=location.container_name, volume_name=location.volume_name, exec_path=exec_path
+                )
             )
-        )
+        finally:
+            _record_docker_operation("reprovision", started_at, status)
 
     def remove(self, ree_id: str, location: WorkbenchLocation) -> None:
-        _docker_silent("rm", "-f", location.container_name)
-        _docker_silent("volume", "rm", location.volume_name)
-        if self._docker_mode == "dind":
-            _docker_silent("volume", "rm", self._dind_volume_name(ree_id))
-        # The injected store volume is shared across benches and content-
-        # addressed — never removed per REE.
+        started_at = time.monotonic()
+        status = "succeeded"
+        try:
+            _docker_silent("rm", "-f", location.container_name)
+            _docker_silent("volume", "rm", location.volume_name)
+            if self._docker_mode == "dind":
+                _docker_silent("volume", "rm", self._dind_volume_name(ree_id))
+            # The injected store volume is shared across benches and content-
+            # addressed — never removed per REE.
+        except Exception:
+            status = "failed"
+            raise
+        finally:
+            _record_docker_operation("remove", started_at, status)
 
     def _run_workbench_container(
         self, container_name: str, ree_id: str, volume_name: str, image: str
@@ -399,18 +437,44 @@ class DockerRuntime:
     # ------------------------------------------------
 
     def is_running(self, location: WorkbenchLocation) -> bool:
-        return _container_running(location.container_name)
+        started_at = time.monotonic()
+        try:
+            return _container_running(location.container_name)
+        finally:
+            _record_docker_operation("is_running", started_at, "succeeded")
 
     def exec_simple(self, location: WorkbenchLocation, argv: list[str], timeout: int = 60) -> None:
-        self._exec(location.container_name, [location.exec_path, *argv], timeout, what=f"docker exec {argv[0]}")
+        started_at = time.monotonic()
+        status = "succeeded"
+        try:
+            self._exec(location.container_name, [location.exec_path, *argv], timeout, what=f"docker exec {argv[0]}")
+        except WorkbenchGone:
+            status = "unavailable"
+            raise
+        except Exception:
+            status = "failed"
+            raise
+        finally:
+            _record_docker_operation("exec_simple", started_at, status)
 
     def cancel_run(self, location: WorkbenchLocation, run_id: str) -> None:
         self.exec_simple(location, ["cancel-run", "--run-id", run_id], timeout=10)
 
     def exec_query_stream(self, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
-        yield from _stream_exec(
-            ["docker", "exec", location.container_name, location.exec_path, *argv], timeout, what=f"query {argv!r}"
-        )
+        started_at = time.monotonic()
+        status = "succeeded"
+        try:
+            yield from _stream_exec(
+                ["docker", "exec", location.container_name, location.exec_path, *argv], timeout, what=f"query {argv!r}"
+            )
+        except WorkbenchGone:
+            status = "unavailable"
+            raise
+        except Exception:
+            status = "failed"
+            raise
+        finally:
+            _record_docker_operation("exec_query_stream", started_at, status)
 
     @staticmethod
     def _exec(container_name: str, argv: list[str], timeout: int, what: str) -> bytes:
@@ -438,14 +502,23 @@ class DockerRuntime:
         # bytes here into a local temp file (see TransferStore), so there is no
         # shared-filesystem assumption with the control plane. ``docker cp``
         # resolves the destination path the same way it always has.
-        result = subprocess.run(
-            ["docker", "cp", source_path, f"{location.container_name}:{container_path}"],
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"docker cp failed: {result.stderr.strip() or result.stdout.strip()}")
+        started_at = time.monotonic()
+        status = "succeeded"
+        try:
+            result = subprocess.run(
+                ["docker", "cp", source_path, f"{location.container_name}:{container_path}"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if result.returncode != 0:
+                status = "failed"
+                raise RuntimeError(f"docker cp failed: {result.stderr.strip() or result.stdout.strip()}")
+        except Exception:
+            status = "failed"
+            raise
+        finally:
+            _record_docker_operation("copy_in", started_at, status)
 
     # ------------------------------------------------
     # Action dispatch (streaming)
@@ -454,70 +527,106 @@ class DockerRuntime:
     def exec_action(
         self, location: WorkbenchLocation, cmd_json: str, run_id: str, env: dict[str, str]
     ) -> Iterator[AgentFrame]:
+        started_at = time.monotonic()
+        status = "succeeded"
+        recorded = False
+
+        def record_once() -> None:
+            nonlocal recorded
+            if not recorded:
+                _record_docker_operation("exec_action", started_at, status)
+                recorded = True
+
         env_args: list[str] = []
         for key, value in env.items():
             env_args += ["-e", f"{key}={value}"]
 
-        proc = subprocess.Popen(
-            [
-                "docker",
-                "exec",
-                "-i",
-                *env_args,
-                location.container_name,
-                location.exec_path,
-                "execute",
-                "--action",
-                "-",
-                "--run-id",
-                run_id,
-            ],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        try:
+            proc = subprocess.Popen(
+                [
+                    "docker",
+                    "exec",
+                    "-i",
+                    *env_args,
+                    location.container_name,
+                    location.exec_path,
+                    "execute",
+                    "--action",
+                    "-",
+                    "--run-id",
+                    run_id,
+                ],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        except Exception:
+            status = "failed"
+            record_once()
+            raise
 
         if proc.stdin is None or proc.stdout is None or proc.stderr is None:
+            status = "failed"
+            record_once()
             raise RuntimeError("Popen pipes unavailable — stdin/stdout/stderr not opened")
 
-        proc.stdin.write(cmd_json)
-        proc.stdin.close()
+        try:
+            proc.stdin.write(cmd_json)
+            proc.stdin.close()
 
-        # Drain stdout concurrently while stderr streams below. Reading stdout
-        # only after stderr closes would deadlock the moment the executor writes
-        # more than the pipe buffer (~64 KiB) to stdout: the child blocks on the
-        # full stdout pipe and never closes stderr.
-        stdout_pipe = proc.stdout
-        stdout_parts: list[str] = []
-        stdout_reader = threading.Thread(target=lambda: stdout_parts.append(stdout_pipe.read()), daemon=True)
-        stdout_reader.start()
+            # Drain stdout concurrently while stderr streams below. Reading stdout
+            # only after stderr closes would deadlock the moment the executor writes
+            # more than the pipe buffer (~64 KiB) to stdout: the child blocks on the
+            # full stdout pipe and never closes stderr.
+            stdout_pipe = proc.stdout
+            stdout_parts: list[str] = []
+            stdout_reader = threading.Thread(target=lambda: stdout_parts.append(stdout_pipe.read()), daemon=True)
+            stdout_reader.start()
 
-        # The executor emits NDJSON log/span events on stderr; forward each as a
-        # typed frame the moment it arrives (a hung/killed command still ships the
-        # frames it emitted before stalling — the case a trace is most useful).
-        for raw_line in proc.stderr:
-            line = raw_line.rstrip()
-            if not line:
-                continue
-            frame = _executor_line_to_frame(line)
-            if frame is not None:
-                yield frame
+            # The executor emits NDJSON log/span events on stderr; forward each as a
+            # typed frame the moment it arrives (a hung/killed command still ships the
+            # frames it emitted before stalling — the case a trace is most useful).
+            for raw_line in proc.stderr:
+                line = raw_line.rstrip()
+                if not line:
+                    continue
+                frame = _executor_line_to_frame(line)
+                if frame is not None:
+                    yield frame
 
-        stdout_reader.join()
-        stdout = "".join(stdout_parts).strip()
-        proc.wait()
+            stdout_reader.join()
+            stdout = "".join(stdout_parts).strip()
+            proc.wait()
 
-        if proc.returncode in _CONTAINER_GONE_EXIT_CODES:
-            yield UnavailableFrame(detail=f"docker exec exited {proc.returncode} — container gone or stopping")
-            return
+            if proc.returncode in _CONTAINER_GONE_EXIT_CODES:
+                status = "unavailable"
+                yield UnavailableFrame(detail=f"docker exec exited {proc.returncode} — container gone or stopping")
+                record_once()
+                return
 
-        yield ResultFrame(result=_parse_action_result(stdout, proc.returncode or 0))
+            result = _parse_action_result(stdout, proc.returncode or 0)
+            status = result.status
+            yield ResultFrame(result=result)
+        except Exception:
+            if status == "succeeded":
+                status = "failed"
+            raise
+        finally:
+            record_once()
 
 
 # ================================================
 # Helpers
 # ================================================
+
+
+def _record_docker_operation(operation: str, started_at: float, status: str) -> None:
+    attrs = command_metric_attrs(operation, status=status)
+    _docker_operation_counter.add(1, attrs)
+    _docker_operation_duration.record(time.monotonic() - started_at, attrs)
+    if status == "unavailable":
+        _workbench_gone_counter.add(1, command_metric_attrs(operation))
 
 
 def _tail_text(output: bytes) -> str:
@@ -631,22 +740,44 @@ def _parse_action_result(stdout: str, returncode: int) -> ActionResult:
 
 
 def _docker(*args: str, timeout: int = 60) -> None:
-    result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
-    if result.returncode != 0:
-        raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
+    started_at = time.monotonic()
+    status = "succeeded"
+    try:
+        result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
+        if result.returncode != 0:
+            status = "failed"
+            raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
+    except Exception:
+        status = "failed"
+        raise
+    finally:
+        _record_docker_operation(f"docker.{args[0]}", started_at, status)
 
 
 def _docker_out(*args: str, timeout: int = 60) -> str:
     """Like ``_docker`` but returns stripped stdout (e.g. a created container id)."""
-    result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
-    if result.returncode != 0:
-        raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
-    return result.stdout.strip()
+    started_at = time.monotonic()
+    status = "succeeded"
+    try:
+        result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
+        if result.returncode != 0:
+            status = "failed"
+            raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
+        return result.stdout.strip()
+    except Exception:
+        status = "failed"
+        raise
+    finally:
+        _record_docker_operation(f"docker.{args[0]}", started_at, status)
 
 
 def _image_present(image: str) -> bool:
     """True if the image already exists locally (no registry round-trip)."""
-    return subprocess.run(["docker", "image", "inspect", image], capture_output=True, timeout=30).returncode == 0
+    started_at = time.monotonic()
+    try:
+        return subprocess.run(["docker", "image", "inspect", image], capture_output=True, timeout=30).returncode == 0
+    finally:
+        _record_docker_operation("docker.image_inspect", started_at, "succeeded")
 
 
 def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[AgentFrame]:
@@ -660,63 +791,79 @@ def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[Ag
     """
     # The doctor itself polls up to ~15s for a still-starting dockerd; the exec
     # timeout just needs to comfortably exceed that.
-    result = subprocess.run(
-        ["docker", "exec", container_name, exec_path, "doctor"],
-        capture_output=True,
-        text=True,
-        timeout=90,
-    )
-    if result.returncode != 0:
-        detail = _tail_text(result.stderr.encode()) or _tail_text(result.stdout.encode()) or "(no output)"
-        # A baked executor from before the probe existed is version skew, not a
-        # broken bench: it proved it can run by answering at all, so provision
-        # it like the pre-probe agent would have.
-        if "No such command 'doctor'" in detail:
+    started_at = time.monotonic()
+    status = "succeeded"
+    try:
+        result = subprocess.run(
+            ["docker", "exec", container_name, exec_path, "doctor"],
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        if result.returncode != 0:
+            detail = _tail_text(result.stderr.encode()) or _tail_text(result.stdout.encode()) or "(no output)"
+            # A baked executor from before the probe existed is version skew, not a
+            # broken bench: it proved it can run by answering at all, so provision
+            # it like the pre-probe agent would have.
+            if "No such command 'doctor'" in detail:
+                yield LogFrame(
+                    stream="system",
+                    level="warn",
+                    message=f"bench executor in {image} predates the doctor probe — skipping capability check",
+                )
+                return
+            status = "failed"
+            raise RuntimeError(f"bench from {image} failed the executor probe (exit {result.returncode}): {detail}")
+        try:
+            report = json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            status = "failed"
+            raise RuntimeError(f"bench from {image} returned an unparseable doctor report: {exc}") from exc
+
+        if not report.get("ok", False):
+            status = "failed"
+            raise RuntimeError(f"bench from {image} violates the workbench contract: /ree is not writable")
+
+        docker_info = report.get("docker", {})
+        if docker_info.get("available"):
+            docker_summary = f"docker {docker_info.get('serverVersion', '?')}"
+        else:
+            docker_summary = f"no docker substrate ({docker_info.get('detail', 'unknown')})"
+        tools = report.get("tools", {})
+        present = sorted(name for name, path in tools.items() if path)
+        missing = sorted(name for name, path in tools.items() if not path)
+        yield LogFrame(
+            stream="system",
+            level="info",
+            message=f"bench probe: {docker_summary}; tools present: {', '.join(present) or 'none'}"
+            + (f"; missing: {', '.join(missing)}" if missing else ""),
+        )
+        if not docker_info.get("available"):
             yield LogFrame(
                 stream="system",
                 level="warn",
-                message=f"bench executor in {image} predates the doctor probe — skipping capability check",
+                message="bench has no reachable docker daemon — runtime builds and experiment runs will fail here",
             )
-            return
-        raise RuntimeError(f"bench from {image} failed the executor probe (exit {result.returncode}): {detail}")
-    try:
-        report = json.loads(result.stdout)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"bench from {image} returned an unparseable doctor report: {exc}") from exc
-
-    if not report.get("ok", False):
-        raise RuntimeError(f"bench from {image} violates the workbench contract: /ree is not writable")
-
-    docker_info = report.get("docker", {})
-    if docker_info.get("available"):
-        docker_summary = f"docker {docker_info.get('serverVersion', '?')}"
-    else:
-        docker_summary = f"no docker substrate ({docker_info.get('detail', 'unknown')})"
-    tools = report.get("tools", {})
-    present = sorted(name for name, path in tools.items() if path)
-    missing = sorted(name for name, path in tools.items() if not path)
-    yield LogFrame(
-        stream="system",
-        level="info",
-        message=f"bench probe: {docker_summary}; tools present: {', '.join(present) or 'none'}"
-        + (f"; missing: {', '.join(missing)}" if missing else ""),
-    )
-    if not docker_info.get("available"):
-        yield LogFrame(
-            stream="system",
-            level="warn",
-            message="bench has no reachable docker daemon — runtime builds and experiment runs will fail here",
-        )
+    except Exception:
+        if status == "succeeded":
+            status = "failed"
+        raise
+    finally:
+        _record_docker_operation("docker.exec_doctor", started_at, status)
 
 
 def _container_running(container_name: str) -> bool:
-    result = subprocess.run(
-        ["docker", "inspect", "--format", "{{.State.Running}}", container_name],
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-    return result.returncode == 0 and result.stdout.strip() == "true"
+    started_at = time.monotonic()
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "--format", "{{.State.Running}}", container_name],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return result.returncode == 0 and result.stdout.strip() == "true"
+    finally:
+        _record_docker_operation("docker.inspect", started_at, "succeeded")
 
 
 def _image_has_nix(image: str) -> bool:
@@ -727,6 +874,8 @@ def _image_has_nix(image: str) -> bool:
     process is killed immediately rather than streaming a whole nix store.
     The scratch command never runs, so it need not exist in the image.
     """
+    started_at = time.monotonic()
+    status = "succeeded"
     scratch = _docker_out("create", image, "/repo2ree-noop")
     try:
         proc = subprocess.Popen(
@@ -739,19 +888,27 @@ def _image_has_nix(image: str) -> bool:
         first_byte = proc.stdout.read(1)
         _kill_process(proc)
         return bool(first_byte)
+    except Exception:
+        status = "failed"
+        raise
     finally:
         _docker_silent("rm", "-f", scratch)
+        _record_docker_operation("docker.cp_probe_nix", started_at, status)
 
 
 def _container_path_exists(container_id: str, path: str) -> bool:
     """True if ``path`` exists inside the (possibly never-started) container."""
-    result = subprocess.run(
-        ["docker", "cp", f"{container_id}:{path}", "-"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        timeout=30,
-    )
-    return result.returncode == 0
+    started_at = time.monotonic()
+    try:
+        result = subprocess.run(
+            ["docker", "cp", f"{container_id}:{path}", "-"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=30,
+        )
+        return result.returncode == 0
+    finally:
+        _record_docker_operation("docker.cp_probe_path", started_at, "succeeded")
 
 
 def _docker_stream_lines(*args: str, timeout: int = 600) -> Iterator[str]:
@@ -762,16 +919,20 @@ def _docker_stream_lines(*args: str, timeout: int = 600) -> Iterator[str]:
     line-by-line progress, which is what belongs in a log. Raises RuntimeError on
     a non-zero exit or a timeout so callers handle a hang like any other failure.
     """
-    proc = subprocess.Popen(
-        ["docker", *args],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-    )
-    if proc.stdout is None:
-        raise RuntimeError("Popen stdout unavailable")
+    started_at = time.monotonic()
+    status = "succeeded"
+    proc: subprocess.Popen[str] | None = None
     try:
+        proc = subprocess.Popen(
+            ["docker", *args],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        if proc.stdout is None:
+            status = "failed"
+            raise RuntimeError("Popen stdout unavailable")
         for raw_line in proc.stdout:
             line = raw_line.rstrip()
             if line:
@@ -781,16 +942,30 @@ def _docker_stream_lines(*args: str, timeout: int = 600) -> Iterator[str]:
         except subprocess.TimeoutExpired as exc:
             proc.kill()
             proc.wait()
+            status = "failed"
             raise RuntimeError(f"docker {args[0]} timed out after {timeout}s") from exc
+        if proc.returncode != 0:
+            status = "failed"
+            raise RuntimeError(f"docker {args[0]} failed (exit {proc.returncode})")
+    except Exception:
+        if status == "succeeded":
+            status = "failed"
+        raise
     finally:
-        proc.stdout.close()
-    if proc.returncode != 0:
-        raise RuntimeError(f"docker {args[0]} failed (exit {proc.returncode})")
+        if proc is not None and proc.stdout is not None:
+            proc.stdout.close()
+        _record_docker_operation(f"docker.{args[0]}", started_at, status)
 
 
 def _docker_silent(*args: str) -> None:
     """Like _docker but ignores failures (for cleanup paths)."""
+    started_at = time.monotonic()
+    status = "succeeded"
     try:
-        subprocess.run(["docker", *args], capture_output=True, timeout=30)
+        result = subprocess.run(["docker", *args], capture_output=True, timeout=30)
+        if result.returncode != 0:
+            status = "failed_ignored"
     except (subprocess.SubprocessError, OSError):
-        pass
+        status = "failed_ignored"
+    finally:
+        _record_docker_operation(f"docker.{args[0]}", started_at, status)

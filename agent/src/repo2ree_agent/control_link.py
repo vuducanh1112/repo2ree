@@ -20,6 +20,7 @@ import base64
 import importlib.metadata
 import logging
 import socket
+import time
 from collections.abc import Callable, Iterator
 from functools import partial
 from uuid import uuid4
@@ -60,8 +61,65 @@ from repo2ree_protocol.agent import (
     WsMessage,
     ws_request_adapter,
 )
+from repo2ree_protocol.tracing import (
+    CommandSpanAttrs,
+    command_metric_attrs,
+    get_meter,
+    get_tracer,
+    record_command_status,
+)
 
 logger = logging.getLogger(__name__)
+tracer = get_tracer(__name__)
+_meter = get_meter(__name__)
+
+_connection_attempt_counter = _meter.create_counter(
+    "agent.connection_attempt",
+    description="Number of outbound WebSocket connection attempts made by an agent.",
+)
+_connection_connected_counter = _meter.create_counter(
+    "agent.connection_connected",
+    description="Number of successful outbound WebSocket connections made by an agent.",
+)
+_connection_lost_counter = _meter.create_counter(
+    "agent.connection_lost",
+    description="Number of agent WebSocket connections that closed or failed.",
+)
+_invalid_request_counter = _meter.create_counter(
+    "agent.invalid_request",
+    description="Number of control-plane requests rejected before dispatch.",
+)
+_cancel_request_counter = _meter.create_counter(
+    "agent.cancel_request",
+    description="Number of transport-level request cancellation messages handled by an agent.",
+)
+_request_started_counter = _meter.create_counter(
+    "agent.request_started",
+    description="Number of control-plane requests started by operation.",
+)
+_request_duration = _meter.create_histogram(
+    "agent.request_duration_seconds",
+    description="Wall-clock duration of an agent-handled control-plane request.",
+    unit="s",
+)
+_active_requests = _meter.create_up_down_counter(
+    "agent.active_requests",
+    description="Number of in-flight control-plane requests currently handled by the agent.",
+)
+_frame_sent_counter = _meter.create_counter(
+    "agent.frame_sent",
+    description="Number of response frames sent by an agent.",
+)
+_bytes_sent_counter = _meter.create_counter(
+    "agent.bytes_sent",
+    description="Number of payload bytes sent from the agent to the control plane.",
+    unit="By",
+)
+_bytes_received_counter = _meter.create_counter(
+    "agent.bytes_received",
+    description="Number of payload bytes received from the control plane by the agent.",
+    unit="By",
+)
 
 
 # ================================================
@@ -89,12 +147,23 @@ async def run_agent(api_ws_url: str, docker_mode: str, agent_id: str, *, reconne
         nonce=uuid4().hex,
     )
     while True:
+        connection_attrs = {
+            "repo2ree.agent_id": agent_id,
+            "repo2ree.agent.docker_mode": docker_mode,
+        }
+        _connection_attempt_counter.add(1, connection_attrs)
         try:
-            async with connect(api_ws_url) as ws:
-                logger.info("agent %s connected to %s", agent_id, api_ws_url)
-                await ws.send(hello.model_dump_json())
-                await _serve(ws, runtime)
+            with tracer.start_as_current_span("agent.connection") as span:
+                span.set_attribute("repo2ree.agent_id", agent_id)
+                span.set_attribute("repo2ree.agent.docker_mode", docker_mode)
+                async with connect(api_ws_url) as ws:
+                    logger.info("agent %s connected to %s", agent_id, api_ws_url)
+                    _connection_connected_counter.add(1, connection_attrs)
+                    await ws.send(hello.model_dump_json())
+                    await _serve(ws, runtime)
+                span.set_attribute("repo2ree.status", "closed")
         except (OSError, websockets.WebSocketException) as exc:
+            _connection_lost_counter.add(1, {**connection_attrs, "repo2ree.status": "lost"})
             logger.warning("agent connection to %s lost (%s); retrying", api_ws_url, exc)
             await asyncio.sleep(reconnect_delay)
 
@@ -131,6 +200,7 @@ async def _serve(ws: ClientConnection, runtime: WorkbenchRuntime) -> None:
             try:
                 req = ws_request_adapter.validate_json(text)
             except ValidationError as exc:
+                _invalid_request_counter.add(1)
                 logger.warning("invalid request from control plane: %s", exc)
                 try:
                     req_id = _RequestId.model_validate_json(text).id
@@ -142,6 +212,7 @@ async def _serve(ws: ClientConnection, runtime: WorkbenchRuntime) -> None:
             # gone, so stop its work. Idempotent — an already-finished (or
             # never-known) target still answers done.
             if isinstance(req.request, CancelRequest):
+                _cancel_request_counter.add(1)
                 target = inflight.get(req.request.request_id)
                 if target is not None:
                     target.cancel()
@@ -164,45 +235,72 @@ def _forget_inflight(inflight: dict[str, asyncio.Task[None]], req_id: str, _task
 async def _handle(
     ws: ClientConnection, runtime: WorkbenchRuntime, transfers: TransferStore, req_id: str, req: AgentRequest
 ) -> None:
-    try:
-        if isinstance(req, ProvisionRequest):
-            await _pump(ws, req_id, lambda: runtime.provision(req.ree_id, req.image))
-        elif isinstance(req, ReprovisionRequest):
-            await _pump(ws, req_id, lambda: runtime.reprovision(req.ree_id, req.location, req.image))
-        elif isinstance(req, ExecActionRequest):
-            await _pump(ws, req_id, lambda: runtime.exec_action(req.location, req.cmd_json, req.run_id, req.env))
-        elif isinstance(req, CancelRunRequest):
-            await asyncio.to_thread(runtime.cancel_run, req.location, req.run_id)
-            await _send(ws, req_id, DoneFrame())
-        elif isinstance(req, IsRunningRequest):
-            running = await asyncio.to_thread(runtime.is_running, req.location)
-            await _send(ws, req_id, RunningFrame(running=running))
-        elif isinstance(req, ExecQueryRequest):
-            await _pump_bytes(ws, req_id, lambda: runtime.exec_query_stream(req.location, req.argv, req.timeout))
-        elif isinstance(req, ExecSimpleRequest):
-            await asyncio.to_thread(runtime.exec_simple, req.location, req.argv, req.timeout)
-            await _send(ws, req_id, DoneFrame())
-        elif isinstance(req, CopyOpenRequest):
-            transfer_id = await asyncio.to_thread(transfers.open, req.location, req.container_path)
-            await _send(ws, req_id, TransferFrame(transfer_id=transfer_id))
-        elif isinstance(req, CopyChunkRequest):
-            await asyncio.to_thread(transfers.write, req.transfer_id, req.offset, base64.b64decode(req.data_b64))
-            await _send(ws, req_id, DoneFrame())
-        elif isinstance(req, CopyCloseRequest):
-            await asyncio.to_thread(transfers.deliver, req.transfer_id, runtime.copy_in)
-            await _send(ws, req_id, DoneFrame())
-        elif isinstance(req, CopyAbortRequest):
-            await asyncio.to_thread(transfers.abort, req.transfer_id)
-            await _send(ws, req_id, DoneFrame())
-        elif isinstance(req, RemoveRequest):
-            await asyncio.to_thread(runtime.remove, req.ree_id, req.location)
-            await _send(ws, req_id, DoneFrame())
-        else:
-            await _send(ws, req_id, ErrorFrame(detail=f"unhandled op {req.op!r}"))
-    except WorkbenchGone as exc:
-        await _send(ws, req_id, UnavailableFrame(detail=str(exc)))
-    except Exception as exc:  # noqa: BLE001 — any handler failure becomes an error frame
-        await _send(ws, req_id, ErrorFrame(detail=str(exc)))
+    operation = str(req.op)
+    metric_attrs = command_metric_attrs(operation)
+    _active_requests.add(1, metric_attrs)
+    _request_started_counter.add(1, metric_attrs)
+    started_at = time.monotonic()
+    status = "succeeded"
+    with tracer.start_as_current_span("agent.request") as span:
+        CommandSpanAttrs(operation=operation).apply(span)
+        span.set_attribute("repo2ree.agent.request_id", req_id)
+        try:
+            if isinstance(req, ProvisionRequest):
+                await _pump(ws, req_id, lambda: runtime.provision(req.ree_id, req.image))
+            elif isinstance(req, ReprovisionRequest):
+                await _pump(ws, req_id, lambda: runtime.reprovision(req.ree_id, req.location, req.image))
+            elif isinstance(req, ExecActionRequest):
+                span.set_attribute("repo2ree.run_id", req.run_id)
+                await _pump(ws, req_id, lambda: runtime.exec_action(req.location, req.cmd_json, req.run_id, req.env))
+            elif isinstance(req, CancelRunRequest):
+                span.set_attribute("repo2ree.run_id", req.run_id)
+                await asyncio.to_thread(runtime.cancel_run, req.location, req.run_id)
+                await _send(ws, req_id, DoneFrame())
+            elif isinstance(req, IsRunningRequest):
+                running = await asyncio.to_thread(runtime.is_running, req.location)
+                await _send(ws, req_id, RunningFrame(running=running))
+            elif isinstance(req, ExecQueryRequest):
+                await _pump_bytes(ws, req_id, lambda: runtime.exec_query_stream(req.location, req.argv, req.timeout))
+            elif isinstance(req, ExecSimpleRequest):
+                await asyncio.to_thread(runtime.exec_simple, req.location, req.argv, req.timeout)
+                await _send(ws, req_id, DoneFrame())
+            elif isinstance(req, CopyOpenRequest):
+                transfer_id = await asyncio.to_thread(transfers.open, req.location, req.container_path)
+                await _send(ws, req_id, TransferFrame(transfer_id=transfer_id))
+            elif isinstance(req, CopyChunkRequest):
+                chunk = base64.b64decode(req.data_b64)
+                _bytes_received_counter.add(len(chunk), command_metric_attrs(operation))
+                await asyncio.to_thread(transfers.write, req.transfer_id, req.offset, chunk)
+                await _send(ws, req_id, DoneFrame())
+            elif isinstance(req, CopyCloseRequest):
+                await asyncio.to_thread(transfers.deliver, req.transfer_id, runtime.copy_in)
+                await _send(ws, req_id, DoneFrame())
+            elif isinstance(req, CopyAbortRequest):
+                await asyncio.to_thread(transfers.abort, req.transfer_id)
+                await _send(ws, req_id, DoneFrame())
+            elif isinstance(req, RemoveRequest):
+                await asyncio.to_thread(runtime.remove, req.ree_id, req.location)
+                await _send(ws, req_id, DoneFrame())
+            else:
+                status = "failed"
+                await _send(ws, req_id, ErrorFrame(detail=f"unhandled op {req.op!r}"))
+        except WorkbenchGone as exc:
+            status = "unavailable"
+            await _send(ws, req_id, UnavailableFrame(detail=str(exc)))
+        except asyncio.CancelledError:
+            status = "canceled"
+            raise
+        except Exception as exc:  # noqa: BLE001 — any handler failure becomes an error frame
+            status = "failed"
+            span.record_exception(exc)
+            await _send(ws, req_id, ErrorFrame(detail=str(exc)))
+        finally:
+            record_command_status(span, status)
+            _active_requests.add(-1, metric_attrs)
+            _request_duration.record(
+                time.monotonic() - started_at,
+                command_metric_attrs(operation, status=status),
+            )
 
 
 # ================================================
@@ -253,6 +351,7 @@ async def _pump_bytes(ws: ClientConnection, req_id: str, gen_factory: Callable[[
 
     def frames() -> Iterator[AgentFrame]:
         for chunk in gen_factory():
+            _bytes_sent_counter.add(len(chunk))
             yield BytesChunkFrame(data_b64=base64.b64encode(chunk).decode())
         yield DoneFrame()
 
@@ -260,4 +359,5 @@ async def _pump_bytes(ws: ClientConnection, req_id: str, gen_factory: Callable[[
 
 
 async def _send(ws: ClientConnection, req_id: str, frame: AgentFrame) -> None:
+    _frame_sent_counter.add(1, {"repo2ree.agent.frame_type": frame.type})
     await ws.send(WsMessage(id=req_id, frame=frame).model_dump_json())

@@ -119,8 +119,9 @@ The API reads `.env` through `pydantic-settings`. Useful local variables:
 |---|---|---|
 | `UPLOAD_STAGING_DIR` | `.repo2ree/upload-staging` | Temporary HTTP upload landing zone before files enter a workbench. |
 | `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Host-side map from REE id to workbench container/volume. |
-| `OTLP_ENDPOINT` | unset | OTLP collector base URL for traces/metrics. |
-| `TRACE_FILE` | unset | Local NDJSON trace sink when no collector is used. |
+| `OTLP_ENDPOINT` | unset | OTLP collector base URL for API and agent traces/metrics. |
+| `TRACE_FILE` | unset | Local NDJSON trace sink for API/agent spans when no collector is used. |
+| `LOG_LEVEL` | `INFO` | Python log level for API, agent, and executor processes. |
 | `VITE_API_BASE_URL` | unset | Frontend API origin for local Vite builds/dev server. |
 
 Containerized dev/demo runs may also need `DOCKER_GID`, the numeric group id of
