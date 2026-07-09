@@ -3,7 +3,7 @@
 
 .PHONY: fe-tests \
 	be-tests be-unit-tests be-integration-tests \
-	core-tests core-unit-tests core-integration-tests \
+	protocol-tests core-tests core-unit-tests core-integration-tests \
 	supervisor-tests supervisor-integration-tests \
 	api-tests api-unit-tests api-integration-tests executor-tests agent-tests \
 	be-coverage be-coverage-unit be-coverage-context
@@ -21,6 +21,9 @@ fe-tests:
 # ================================================
 
 # Unit tests — single-component, no external infra.
+protocol-tests:
+	pytest protocol/tests
+
 core-unit-tests:
 	pytest core/tests/unit
 
@@ -33,7 +36,7 @@ executor-tests:
 agent-tests:
 	pytest agent/tests
 
-be-unit-tests: core-unit-tests api-unit-tests executor-tests agent-tests
+be-unit-tests: protocol-tests core-unit-tests api-unit-tests executor-tests agent-tests
 
 # Integration tests — flows spanning multiple components.
 core-integration-tests:
@@ -78,7 +81,7 @@ be-tests: be-unit-tests be-integration-tests
 # Docker-gated transport (supervisor manager, hbom profilers) is not exercised,
 # so it reads as uncovered — this number is a floor, not the truth.
 be-coverage-unit:
-	pytest core/tests/unit api/tests/unit executor/tests agent/tests core/tests/integration \
+	pytest protocol/tests core/tests/unit api/tests/unit executor/tests agent/tests core/tests/integration \
 		--cov --cov-report=term-missing --cov-report=html:test-artifacts/coverage/unit
 
 # Full suite: the honest number, but the integration tiers skip silently
@@ -90,7 +93,7 @@ be-coverage-unit:
 # api integration tier and writes .coverage fresh; the second appends the api
 # integration tier and reports the combined total.
 be-coverage:
-	pytest core/tests api/tests/unit supervisor/tests executor/tests agent/tests \
+	pytest protocol/tests core/tests api/tests/unit supervisor/tests executor/tests agent/tests \
 		--cov --cov-report=
 	pytest api/tests/integration \
 		--cov --cov-append --cov-report=term-missing --cov-report=html:test-artifacts/coverage/full
@@ -102,7 +105,7 @@ be-coverage:
 # test). --show-contexts is kept on this target only, so the plain be-coverage
 # report stays uncluttered.
 be-coverage-context:
-	pytest core/tests api/tests/unit supervisor/tests executor/tests agent/tests \
+	pytest protocol/tests core/tests api/tests/unit supervisor/tests executor/tests agent/tests \
 		--cov --cov-context=test --cov-report=
 	pytest api/tests/integration \
 		--cov --cov-append --cov-context=test --cov-report=
