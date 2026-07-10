@@ -14,36 +14,40 @@ provisioned by an agent that runs separately and dials the API:
 
 ```bash
 docker compose up -d
-docker run -d --name repo2ree-agent \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v repo2ree-agent-state:/var/lib/repo2ree-agent \
-  --add-host host.docker.internal:host-gateway \
-  -e WORKBENCH_API_WS_URL=ws://host.docker.internal:8000/agent/connect \
-  docker.io/vuducanh1112/repo2ree-agent:edge
+docker compose -f docker-compose.agent.yml up -d
 ```
 
-Then open `http://localhost:3000`.
+The agent stack is a separate compose file on purpose — the agent dials the
+control plane over an outbound WebSocket and can run anywhere a container
+runtime lives, so its lifecycle stays independent. Then open
+`http://localhost:3000`.
 
 ### Run without cloning the repository
 
-Fetch the compose file straight from the repository and start the stack from
-stdin. The `-p repo2ree` project name gives stable container/volume names and a
-clean teardown later:
+Fetch each compose file straight from the repository and start it from stdin —
+no clone needed. The first line brings up the control plane under the
+`-p repo2ree` project (stable container/volume names, clean teardown later);
+the second brings up the agent, which carries its own `repo2ree-agent` project
+name inside the file, so no `-p` is needed for it:
 
 ```bash
 curl -fsSL https://codeberg.org/vuducanh1112/repo2ree/raw/branch/main/docker-compose.yml \
   | docker compose -p repo2ree -f - up -d
+curl -fsSL https://codeberg.org/vuducanh1112/repo2ree/raw/branch/main/docker-compose.agent.yml \
+  | docker compose -f - up -d
 ```
 
-Then open `http://localhost:3000`.
+The agent dials `host.docker.internal:8000` by default, which resolves to the
+control plane you just started on the same host. Then open
+`http://localhost:3000`.
 
 To stop it — no compose file needed, the project name is enough. The agent
 container lives outside the stack, so stop it separately:
 
 ```bash
-docker compose -p repo2ree down      # stop and remove containers + network
-docker compose -p repo2ree down -v   # also delete the demo-data volume
-docker rm -f repo2ree-agent          # the separately started agent
+docker compose -p repo2ree-agent down   # stop the separate agent stack
+docker compose -p repo2ree down         # stop control plane: containers + network
+docker compose -p repo2ree down -v      # also delete the demo-data volume
 ```
 
 To refresh to the latest published images, append `--pull always` to the `up`
@@ -59,14 +63,16 @@ make backend-image
 make agent-image
 ```
 
-Then run compose with the local image tags, and start the agent from its
-local tag (same `docker run` as above with `repo2ree-agent:local` as the
-image):
+Then run compose with the local image tags, and start the agent stack
+pointed at its local tag:
 
 ```bash
 REPO2REE_FRONTEND_IMAGE=repo2ree-frontend:local \
 REPO2REE_BACKEND_IMAGE=repo2ree-backend:local \
-docker compose up
+docker compose up -d
+
+REPO2REE_AGENT_IMAGE=repo2ree-agent:local \
+docker compose -f docker-compose.agent.yml up -d
 ```
 
 The per-REE workbench env image isn't a compose variable: benches provision

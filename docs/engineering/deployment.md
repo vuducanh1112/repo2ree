@@ -11,9 +11,10 @@ repo2ree has three deployed surfaces today:
 - `agent`: the workbench agent. It holds the docker socket, dials the backend
   over an outbound WebSocket, provisions benches, and injects its embedded
   executor/tools bundles into them. Anyone can run one to contribute benches.
-  It is deliberately not part of the compose stack — compose is control plane
-  only (frontend + backend); an agent is started separately wherever benches
-  should live.
+  It is deliberately not part of the control-plane compose stack — that stack
+  is control plane only (frontend + backend). The agent ships its own compose
+  file (`docker-compose.agent.yml`) so it can be started separately wherever
+  benches should live, with an independent lifecycle.
 - `frontend`: a static Vite bundle served by Caddy. Caddy also reverse-proxies
   `/api/*` to the backend so the browser uses one origin.
 
@@ -23,20 +24,24 @@ Docker volumes for `/ree` state and the nested Docker daemon.
 ## Run With Published Images
 
 The public demo path uses Docker Hub images and does not require Nix. Compose
-brings up the control plane; the agent is a separate `docker run` that dials
-the published backend port:
+brings up the control plane; a second compose file brings up the agent, which
+dials the host-published backend port:
 
 ```bash
 docker compose up -d
-docker run -d --name repo2ree-agent \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v repo2ree-agent-state:/var/lib/repo2ree-agent \
-  --add-host host.docker.internal:host-gateway \
-  -e WORKBENCH_API_WS_URL=ws://host.docker.internal:8000/agent/connect \
-  docker.io/vuducanh1112/repo2ree-agent:edge
+docker compose -f docker-compose.agent.yml up -d
 ```
 
 Then open `http://localhost:3000`.
+
+The agent compose file defaults `WORKBENCH_API_WS_URL` to
+`ws://host.docker.internal:8000/agent/connect` (the control plane on the same
+host). Override it to dial a backend elsewhere:
+
+```bash
+WORKBENCH_API_WS_URL=ws://backend.example:8000/agent/connect \
+  docker compose -f docker-compose.agent.yml up -d
+```
 
 `docker-compose.yml` defaults to the current Docker Hub demo images:
 
@@ -45,9 +50,10 @@ Then open `http://localhost:3000`.
 | `REPO2REE_FRONTEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-frontend:edge` | Frontend image served by Caddy. |
 | `REPO2REE_BACKEND_IMAGE` | `docker.io/vuducanh1112/repo2ree-backend:edge` | FastAPI backend image. |
 
-The agent image (`docker.io/vuducanh1112/repo2ree-agent:edge`) is not a
-compose variable — it holds the docker socket, provisions benches, and injects
-the executor/tools bundles, and is always started separately as above.
+The agent image is set on its own compose file via `REPO2REE_AGENT_IMAGE`
+(default `docker.io/vuducanh1112/repo2ree-agent:edge`) — it holds the docker
+socket, provisions benches, and injects the executor/tools bundles, and is
+always started from `docker-compose.agent.yml` as above.
 
 The per-REE workbench env image is not a deployment variable: it defaults to
 the backend's image catalog (`api/src/repo2ree_api/settings.py` — a pinned
@@ -122,9 +128,13 @@ REPO2REE_BACKEND_IMAGE=repo2ree-backend:local \
 docker compose up
 ```
 
-Start the agent with the same `docker run` as above, substituting
-`repo2ree-agent:local` for the published image. Then open
-`http://localhost:3000`.
+Start the agent stack pointed at the local image, then open
+`http://localhost:3000`:
+
+```bash
+REPO2REE_AGENT_IMAGE=repo2ree-agent:local \
+  docker compose -f docker-compose.agent.yml up -d
+```
 
 The compose stack publishes:
 
@@ -140,13 +150,12 @@ with their own daemon.
 
 ## Compose Storage
 
-`docker-compose.yml` creates one named volume; the agent `docker run` creates
-a second:
+Each compose file creates one named volume:
 
 | Volume | Mounted at | Purpose |
 |---|---|---|
 | `repo2ree-demo-data` | `/app/.repo2ree` in the backend | Backend-local metadata such as upload staging and workbench registry. |
-| `repo2ree-agent-state` | `/var/lib/repo2ree-agent` in the agent | The agent's stable identity across container replacements (created by the agent `docker run`, not compose). |
+| `repo2ree-agent-state` | `/var/lib/repo2ree-agent` in the agent | The agent's stable identity across container replacements (created by `docker-compose.agent.yml`, with a pinned volume name so it survives recreation). |
 
 REE execution state lives in per-REE Docker volumes created by the supervisor,
 not inside `repo2ree-demo-data`.

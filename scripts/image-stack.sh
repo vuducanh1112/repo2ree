@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Bring the image-backed demo stack up or down: the compose control plane
-# (frontend + backend, :local tags) plus the workbench agent container that
-# compose deliberately doesn't manage (see docker-compose.yml).
+# (frontend + backend, :local tags) plus the workbench agent, which the
+# control-plane compose deliberately doesn't manage — it runs from its own
+# docker-compose.agent.yml (see docker-compose.yml).
 #
 #   image-stack.sh up            start compose + agent, wait until ready
 #   image-stack.sh down          remove the agent container and the compose stack
@@ -19,7 +20,7 @@
 # (or override an individual image with STACK_FRONTEND_IMAGE /
 # STACK_BACKEND_IMAGE / STACK_AGENT_IMAGE.)
 #
-# `up` recreates a leftover repo2ree-agent container but reuses the
+# `up` recreates a leftover repo2ree-agent container but reuses the pinned
 # repo2ree-agent-state volume, so the agent id stays stable across runs.
 #
 # The stack is addressed via the host-published ports (localhost:8000/:3000).
@@ -61,6 +62,23 @@ compose_stack() {
         docker compose "$@"
 }
 
+# The agent runs from its own compose file (project name pinned there), so its
+# lifecycle stays independent of the control-plane stack.
+agent_compose() {
+    REPO2REE_AGENT_IMAGE=$agent_image \
+        docker compose -f docker-compose.agent.yml "$@"
+}
+
+# The docker network the control-plane backend is attached to, or empty when
+# the backend isn't a local compose service on this daemon.
+control_plane_network() {
+    # single quotes: the $k/$_ below are Go-template fields, not shell vars.
+    # shellcheck disable=SC2016
+    compose_stack ps -q backend 2>/dev/null | head -n1 \
+        | xargs -r docker inspect -f '{{range $k,$_ := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null \
+        | awk '{print $1}'
+}
+
 # wait_until <description> <command...>: poll for up to 30s.
 wait_until() {
     local what=$1
@@ -91,14 +109,21 @@ up() {
     echo ">> starting compose control plane ($frontend_image, $backend_image)"
     compose_stack up -d
 
-    echo ">> starting workbench agent container ($agent_image)"
-    docker rm -f "$agent_container" >/dev/null 2>&1 || true
-    docker run -d --name "$agent_container" \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        -v repo2ree-agent-state:/var/lib/repo2ree-agent \
-        --add-host host.docker.internal:host-gateway \
-        -e WORKBENCH_API_WS_URL=ws://host.docker.internal:8000/agent/connect \
-        "$agent_image" >/dev/null
+    echo ">> starting workbench agent stack ($agent_image)"
+    # Reaching the backend: when the agent shares this daemon with the control
+    # plane (the usual case, including nested/DinD CI), host-published ports
+    # aren't reliably reachable via the compose file's host.docker.internal
+    # default, so join the control-plane network and dial the backend by
+    # service name. Only a non-local backend (a remote control plane) falls
+    # back to the file's default.
+    local control_plane_net
+    control_plane_net=$(control_plane_network)
+    if [ -n "$control_plane_net" ]; then
+        WORKBENCH_API_WS_URL=ws://backend:8000/agent/connect agent_compose up -d >/dev/null
+        docker network connect "$control_plane_net" "$agent_container" >/dev/null 2>&1 || true
+    else
+        agent_compose up -d >/dev/null
+    fi
 
     # The compose network may not have existed before `compose up`, so the
     # service names only resolve from here on — re-check.
@@ -110,8 +135,8 @@ up() {
 }
 
 down() {
-    echo ">> stopping workbench agent container"
-    docker rm -f "$agent_container" >/dev/null 2>&1 || true
+    echo ">> stopping workbench agent stack"
+    agent_compose down >/dev/null 2>&1 || true
     echo ">> stopping compose control plane"
     compose_stack down
 }

@@ -1,0 +1,32 @@
+# Workbench agent — a deliberately separate stack from the control plane
+# (docker-compose.yml). It holds the docker socket, provisions benches, and
+# dials the backend over an outbound WebSocket, so it can run anywhere a
+# container runtime lives. Kept out of the control-plane compose so the two
+# lifecycles stay independent (see docs/engineering/deployment.md).
+#
+#   docker compose -f docker-compose.agent.yml up -d      # start
+#   docker compose -f docker-compose.agent.yml down       # stop
+#   docker compose -f docker-compose.agent.yml down -v    # also drop agent state
+#
+# Defaults dial a control plane on the same host (host-published :8000).
+# Point it at a different backend by overriding WORKBENCH_API_WS_URL.
+name: repo2ree-agent
+
+services:
+  agent:
+    image: ${REPO2REE_AGENT_IMAGE:-docker.io/vuducanh1112/repo2ree-agent:edge}
+    container_name: repo2ree-agent
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - repo2ree-agent-state:/var/lib/repo2ree-agent
+    environment:
+      WORKBENCH_API_WS_URL: ${WORKBENCH_API_WS_URL:-ws://host.docker.internal:8000/agent/connect}
+
+volumes:
+  repo2ree-agent-state:
+    # Pin the real volume name so the agent's identity survives across the
+    # docker-run and compose paths, and stays matchable by the operational
+    # `docker volume ls --filter name=repo2ree` checks.
+    name: repo2ree-agent-state
