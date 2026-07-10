@@ -271,6 +271,15 @@ export async function buildRuntime(page: Page, buildScript: string, producedRunt
     timeout: 90000,
   });
 
+  // Re-build appears for failed runs too. Assert the handler's terminal log
+  // line so a failed build fails this step with its cause on screen, instead
+  // of surfacing 20s later as an artifact-picker timeout.
+  await expect(
+    main(page)
+      .getByText(/Build run succeeded/)
+      .first(),
+  ).toBeVisible();
+
   await selectRuntimeArtifact(page, producedRuntimePath);
   await stepShot(page, "build-runtime", "after");
 }

@@ -20,18 +20,14 @@ class WorkbenchEntry:
     ree_id: str
     container_name: str
     volume_name: str
-    # The image this workbench was provisioned from. Empty for entries written
-    # before image tracking existed; consumers fall back to the manager default.
-    image: str = ""
+    # The image this workbench was provisioned from.
+    image: str
     # The agent this REE's workbench is pinned to (placement affinity): every
-    # later op must reach the same agent that holds the container. Empty for
-    # legacy entries and single-agent setups, where "any connected agent" is fine.
-    agent_id: str = ""
+    # later op must reach the same agent that holds the container.
+    agent_id: str
     # How the executor is invoked inside this bench, as minted by the agent at
-    # provision time (see WorkbenchLocation.exec_path). The default covers
-    # entries written before executor injection existed — benches with the
-    # executor baked into the image.
-    exec_path: str = "repo2ree-exec"
+    # provision time (see WorkbenchLocation.exec_path).
+    exec_path: str
 
 
 class WorkbenchRegistry:
@@ -66,9 +62,9 @@ class WorkbenchRegistry:
             ree_id=ree_id,
             container_name=record["container_name"],
             volume_name=record["volume_name"],
-            image=record.get("image", ""),
-            agent_id=record.get("agent_id", ""),
-            exec_path=record.get("exec_path", "repo2ree-exec"),
+            image=record["image"],
+            agent_id=record["agent_id"],
+            exec_path=record["exec_path"],
         )
 
     def unregister(self, ree_id: str) -> None:

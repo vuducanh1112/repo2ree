@@ -42,7 +42,7 @@ class AgentClient(Protocol):
     Every verb takes an ``agent_id`` to target a specific agent (placement
     affinity): a workbench is pinned to the agent that provisioned it, so all
     later ops must reach that same agent. An empty ``agent_id`` means "any
-    connected agent" — the single-agent / legacy path.
+    connected agent" — only valid at provision time, before the REE is pinned.
     """
 
     def resolve_agent(self, agent_id: str) -> str:

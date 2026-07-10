@@ -27,12 +27,12 @@ KNOWN_REE = "ree-1"
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
 
 
-def _registry(**kwargs: Any) -> RunRegistry:
+def _registry() -> RunRegistry:
     def require_ree(ree_id: str) -> None:
         if ree_id != KNOWN_REE:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-    return RunRegistry(require_ree, **kwargs)
+    return RunRegistry(require_ree)
 
 
 def _wait_for(registry: RunRegistry, run_id: str, statuses: frozenset[str], timeout: float = 5.0) -> dict[str, Any]:
@@ -80,13 +80,6 @@ def test_run_summary_has_stable_keys():
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ("succeeded", {}))
     summary = registry.run_summary(run_state)
     assert list(summary) == ["runId", "reeId", "operation", "status", "createdAt", "startedAt", "finishedAt", "outputs"]
-    _wait_for(registry, run_state["runId"], TERMINAL)
-
-
-def test_run_summary_can_exclude_ree_id():
-    registry = _registry(include_id_in_summary=False)
-    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ("succeeded", {}))
-    assert "reeId" not in registry.run_summary(run_state)
     _wait_for(registry, run_state["runId"], TERMINAL)
 
 

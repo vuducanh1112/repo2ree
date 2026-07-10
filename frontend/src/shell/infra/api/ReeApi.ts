@@ -143,8 +143,8 @@ export class ReeApi {
     });
   }
 
-  async removeSource(reeId: ReeId): Promise<{ invalidatedSteps: string[] }> {
-    return this.client.request<{ invalidatedSteps: string[] }>(endpoints.reeSource(reeId), {
+  async removeSource(reeId: ReeId): Promise<void> {
+    await this.client.request<unknown>(endpoints.reeSource(reeId), {
       method: "DELETE",
     });
   }

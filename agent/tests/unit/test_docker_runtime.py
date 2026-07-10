@@ -386,12 +386,3 @@ def test_probe_fails_provision_when_executor_cannot_run(monkeypatch: pytest.Monk
 
     with pytest.raises(RuntimeError, match="failed the executor probe"):
         list(_real_probe_bench("wb", "/x/repo2ree-exec", "img"))
-
-
-def test_probe_tolerates_pre_doctor_baked_executor(monkeypatch: pytest.MonkeyPatch) -> None:
-    # An env image with an older baked executor is version skew, not a broken
-    # bench — provision proceeds with a warning instead of failing.
-    _patch_doctor_exec(monkeypatch, _FakeCompleted(2, stderr="Usage: ...\nError: No such command 'doctor'."))
-
-    logs = [f for f in _real_probe_bench("wb", "repo2ree-exec", "img") if isinstance(f, LogFrame)]
-    assert any(f.level == "warn" and "predates the doctor probe" in f.message for f in logs)

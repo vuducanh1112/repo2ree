@@ -7,7 +7,7 @@ import {
   type WorkflowRunDto,
   type WorkflowRunStatusDto,
 } from "../../infra/api/apiTypes";
-import { mapRunLogsToLegacy } from "../../infra/api/ExecutionRunsApi";
+import { mapRunLogsToLines } from "../../infra/api/ExecutionRunsApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { ensureReeId } from "../client";
 
@@ -125,7 +125,7 @@ function createExecutionRunsClient(runtime: ApiRuntimeValue): ExecutionRunsClien
         limit: 200,
       });
       return {
-        lines: mapRunLogsToLegacy(logs.entries),
+        lines: mapRunLogsToLines(logs.entries),
         nextCursor: nextRunLogCursor(logs.nextCursor, logs.entries, cursor),
         hasMore: logs.hasMore,
       };

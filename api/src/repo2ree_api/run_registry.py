@@ -46,14 +46,8 @@ class RunRegistry:
     is not found.
     """
 
-    def __init__(
-        self,
-        require_ree: Callable[[str], None],
-        *,
-        include_id_in_summary: bool = True,
-    ) -> None:
+    def __init__(self, require_ree: Callable[[str], None]) -> None:
         self._require_ree = require_ree
-        self._include_id_in_summary = include_id_in_summary
         self._run_store: dict[str, dict[str, dict[str, Any]]] = {}
         self._run_control: dict[str, dict[str, dict[str, Any]]] = {}
         self._lock = RLock()
@@ -245,6 +239,7 @@ class RunRegistry:
     def run_summary(self, run_state: dict[str, Any]) -> dict[str, Any]:
         keys = [
             "runId",
+            _REE_ID_FIELD,
             "operation",
             "status",
             "createdAt",
@@ -252,8 +247,6 @@ class RunRegistry:
             "finishedAt",
             "outputs",
         ]
-        if self._include_id_in_summary:
-            keys.insert(1, _REE_ID_FIELD)
         return {key: run_state[key] for key in keys}
 
     def has_runs(self, ree_id: str) -> bool:

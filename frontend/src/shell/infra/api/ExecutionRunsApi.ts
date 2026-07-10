@@ -113,7 +113,7 @@ export class ExecutionRunsApi {
   }
 }
 
-export function mapRunLogsToLegacy(
+export function mapRunLogsToLines(
   lines: WorkflowLogEntryDto[],
 ): Array<{ type: "info" | "ok" | "warn" | "err" | "out"; msg: string; ts?: string }> {
   return lines.map((line) => {

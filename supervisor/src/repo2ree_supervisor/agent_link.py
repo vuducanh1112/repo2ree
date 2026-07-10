@@ -293,7 +293,7 @@ class AgentConnectionRegistry:
     def pick(self, agent_id: str | None = None) -> AgentConnection:
         """Resolve a connection. With ``agent_id`` set, return that specific agent
         (placement affinity) or raise if it is not connected. Without it, return
-        any connected agent — the single-agent / legacy path."""
+        any connected agent — the unpinned provision-time path."""
         with self._lock:
             return self._agents[self._resolve_locked(agent_id)]
 

@@ -1,11 +1,11 @@
 """Resolving the external tools core handlers shell out to.
 
-On benches with the tools baked into the image (the legacy workbench image)
-they live on PATH. On benches the agent injected its bundles into, PATH knows
-nothing — the agent advertises each tool's absolute path through a
-``REPO2REE_TOOL_<NAME>`` environment variable set on the bench container
-(see the tools manifest in nix/tools.nix). Handlers resolve through here so
-both worlds work without the handler knowing which one it is in.
+On benches whose image carries the tools itself (e.g. a nix-built image the
+agent left un-injected) they live on PATH. On benches the agent injected its
+bundles into, PATH knows nothing — the agent advertises each tool's absolute
+path through a ``REPO2REE_TOOL_<NAME>`` environment variable set on the bench
+container (see the tools manifest in nix/tools.nix). Handlers resolve through
+here so both worlds work without the handler knowing which one it is in.
 """
 
 from __future__ import annotations

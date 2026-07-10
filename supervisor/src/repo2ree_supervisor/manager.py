@@ -197,12 +197,10 @@ class WorkbenchManager:
             entry = self._registry.lookup(ree_id)
             if entry is None:
                 raise KeyError(f"no workbench registered for {ree_id}")
-            # Reprovision from the REE's own image, not the manager default —
-            # ``entry.image`` is empty only for pre-image-tracking entries, where
-            # falling back to the default is the best we can do.
+            # Reprovision from the REE's own image, not the manager default.
             handle = WorkbenchHandle.from_entry(entry)
             location = self._consume_lifecycle(
-                self._agent.reprovision(handle.agent_id, ree_id, handle.location, entry.image or self._image), log
+                self._agent.reprovision(handle.agent_id, ree_id, handle.location, entry.image), log
             )
             if location is not None and location != handle.location:
                 # The replacement bench re-decided how it is driven (e.g. its

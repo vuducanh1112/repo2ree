@@ -32,7 +32,7 @@ def _require_workspace(ree_id: str) -> None:
     raise HTTPException(status_code=404, detail="Workspace not found")
 
 
-_registry = RunRegistry(_require_workspace, include_id_in_summary=True)
+_registry = RunRegistry(_require_workspace)
 
 _append_run_log = _registry.append_log
 _update_run_outputs = _registry.update_outputs

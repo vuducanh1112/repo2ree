@@ -82,8 +82,8 @@ export function createReeEditorCommands({
     void handleSealRee(inclusionOpts);
   };
 
-  // Phase 8: keep generic patch only for UI-chrome and low-risk editor toggles
-  // (page/nav/focus/review-preview/repo-mode).
+  // Generic patch is reserved for UI-chrome and low-risk editor toggles
+  // (page/nav/focus/repo-mode); everything else goes through typed actions.
   return {
     setPage: (nextPage: AppShellPage) => dispatch(patch("uiChrome", { page: nextPage })),
     setReeSpec: (value: Updater<ReeSpec>) =>

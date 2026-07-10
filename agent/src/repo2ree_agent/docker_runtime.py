@@ -14,10 +14,9 @@ content-addressed volume with the bundle's nix closure once per host, mounts
 it read-only at ``/nix/store`` in every bench, and drives the executor via
 the manifest's absolute path — carried on the minted ``WorkbenchLocation``
 so later calls use it without re-deciding. Images that carry their own
-``/nix`` (nix-built images, including the legacy workbench image with the
-executor baked in) are detected and left un-injected: mounting over their
-``/nix/store`` would shadow everything they contain, and they provide
-``repo2ree-exec`` on PATH.
+``/nix`` (nix-built images) are detected and left un-injected: mounting over
+their ``/nix/store`` would shadow everything they contain, and they must
+provide ``repo2ree-exec`` on PATH themselves.
 
 The bench's main process is the image's own default command — the env image
 defines the environment, daemons included (docker:dind's entrypoint starts
@@ -824,16 +823,6 @@ def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[Ag
         )
         if result.returncode != 0:
             detail = _tail_text(result.stderr.encode()) or _tail_text(result.stdout.encode()) or "(no output)"
-            # A baked executor from before the probe existed is version skew, not a
-            # broken bench: it proved it can run by answering at all, so provision
-            # it like the pre-probe agent would have.
-            if "No such command 'doctor'" in detail:
-                yield LogFrame(
-                    stream="system",
-                    level="warn",
-                    message=f"bench executor in {image} predates the doctor probe — skipping capability check",
-                )
-                return
             status = "failed"
             raise RuntimeError(f"bench from {image} failed the executor probe (exit {result.returncode}): {detail}")
         try:

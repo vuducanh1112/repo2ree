@@ -557,10 +557,7 @@ def remove_source_route(ree_id: str):
     handle = _require_handle(ree_id)
     with _ree_command_span("remove-source", ree_id):
         _dispatch_or_500(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
-        return {
-            "invalidatedSteps": ["source", "evaluate", "workflow"],
-            "workspace": workbench_manager.get_workspace(handle),
-        }
+        return {"workspace": workbench_manager.get_workspace(handle)}
 
 
 @manage_ree_router.get("/api/v1/rees/{ree_id}/files/raw")
