@@ -2,6 +2,9 @@ import { execFileSync } from "node:child_process";
 import { expect, test } from "./helpers/fixtures";
 import {
   buildRuntime,
+  dockerBuildScript,
+  dockerRunScript,
+  EXPERIMENT_OUTPUT_FILE,
   generateSbom,
   main,
   openPort,
@@ -117,7 +120,7 @@ test.describe("REE pipeline", () => {
     });
 
     await test.step("build runtime", async () => {
-      await buildRuntime(page, PROJECT_DIR, RUNTIME_PATH);
+      await buildRuntime(page, dockerBuildScript(PROJECT_DIR, RUNTIME_PATH), RUNTIME_PATH);
 
       // buildRuntime leaves the Build page docked; re-open the Build node to
       // confirm the build persisted as a completed (re-buildable) run.
@@ -145,8 +148,7 @@ test.describe("REE pipeline", () => {
     await test.step("test activation", async () => {
       await testActivation(
         page,
-        "python -c \"import pandas; print('activation ok')\"",
-        RUNTIME_PATH,
+        dockerRunScript("python -c \"import pandas; print('activation ok')\"", RUNTIME_PATH),
       );
       await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible();
     });
@@ -155,9 +157,12 @@ test.describe("REE pipeline", () => {
       // Asserts the run reaches "pass" and renders the verify script check row.
       await runExperiment(page, {
         name: "python-hello",
-        command: "python python_hello_world/main.py",
+        runScript: dockerRunScript(
+          "python python_hello_world/main.py",
+          RUNTIME_PATH,
+          EXPERIMENT_OUTPUT_FILE,
+        ),
         expectedStdout: "Pandas Hello World",
-        runtimePath: RUNTIME_PATH,
       });
     });
 

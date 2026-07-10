@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { stepShot } from "../../screenshot";
@@ -25,6 +27,26 @@ export function pythonHelloWorld(): string {
 }
 
 /**
+ * Absolute path to the pip-based Python hello-world source archive (no
+ * Dockerfile — the workbench itself is the Python runtime). Packed on demand
+ * from the checked-in sources into the gitignored test-artifacts dir, so no
+ * binary blob lives in the repo.
+ */
+export function pythonPipHelloWorld(): string {
+  const artifactsDir = path.join(process.cwd(), "test-artifacts");
+  mkdirSync(artifactsDir, { recursive: true });
+  const archive = path.join(artifactsDir, "python-pip-hello-world.tar.gz");
+  execFileSync("tar", [
+    "-czf",
+    archive,
+    "-C",
+    path.join(RESOURCES_DIR, "examples"),
+    "python_pip_hello_world",
+  ]);
+  return archive;
+}
+
+/**
  * A self-contained run script for a runnable (activation or experiment). In the
  * new model each runnable owns its full execution: load the built runtime image
  * if it isn't already present, then enter it with its own `docker run`,
@@ -34,7 +56,7 @@ export function pythonHelloWorld(): string {
  * workspace-relative file (via `tee`) so a verify script can read it back —
  * there are no magic variables handing stdout to verification.
  */
-function dockerRunScript(command: string, runtimePath: string, outputFile?: string): string {
+export function dockerRunScript(command: string, runtimePath: string, outputFile?: string): string {
   const capture = outputFile ? ` | tee ${JSON.stringify(outputFile)}` : "";
   return `#!/usr/bin/env sh
 set -eu
@@ -61,7 +83,7 @@ docker run --rm \\
  * it into the produced-results store, and sealed into the bundle as the author
  * baseline a reviewer diffs against.
  */
-const EXPERIMENT_OUTPUT_FILE = "result.txt";
+export const EXPERIMENT_OUTPUT_FILE = "result.txt";
 
 export function main(page: Page) {
   return page.getByRole("main");
@@ -116,8 +138,14 @@ export async function startReeCreation(page: Page) {
  * (the live lab), so this resolves there and then dives into the Source node so
  * the rest of the walkthrough continues from a docked page.
  */
-export async function provisionWorkbench(page: Page) {
+export async function provisionWorkbench(page: Page, options?: { imageRef?: string }) {
   await stepShot(page, "provision-workbench", "before");
+  if (options?.imageRef) {
+    // Pick "Custom…" in the image selector and provide the reference — the
+    // catalog default (docker:dind) stays untouched for every other test.
+    await page.getByRole("button", { name: /Custom…/ }).click();
+    await page.getByPlaceholder("e.g. docker.io/library/docker:29-dind").fill(options.imageRef);
+  }
   await page.getByRole("button", { name: /Provision workbench/i }).click();
   // A real provision: bench container start, nested dockerd boot, doctor
   // probe. ~15-20s depending on the agent's environment — well past the
@@ -211,13 +239,8 @@ export async function runEvaluate(page: Page) {
  * picking the produced artifact now live on the single Build Runtime page — see
  * {@link selectRuntimeArtifact}.
  */
-export async function buildRuntime(page: Page, projectDir: string, producedRuntimePath: string) {
-  await stepShot(page, "build-runtime", "before");
-  await openPort(page, "Build");
-  await expect(main(page).getByText("Build Runtime", { exact: true })).toBeVisible();
-  // REE owns one reserved build script — author the whole build in it directly
-  // (build the image from the project Dockerfile, save it to the workspace).
-  await page.getByLabel("Build script").fill(`#!/usr/bin/env sh
+export function dockerBuildScript(projectDir: string, producedRuntimePath: string): string {
+  return `#!/usr/bin/env sh
 set -eu
 
 IMAGE_NAME="pandas-hello"
@@ -227,7 +250,16 @@ RUNTIME_FILE=${JSON.stringify(producedRuntimePath)}
 
 docker build -t "$IMAGE_NAME:$TAG" "$PROJECT_DIR"
 docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
-`);
+`;
+}
+
+export async function buildRuntime(page: Page, buildScript: string, producedRuntimePath: string) {
+  await stepShot(page, "build-runtime", "before");
+  await openPort(page, "Build");
+  await expect(main(page).getByText("Build Runtime", { exact: true })).toBeVisible();
+  // REE owns one reserved build script — author the whole build in it directly
+  // (produce the runtime artifact and land it in the workspace).
+  await page.getByLabel("Build script").fill(buildScript);
   await main(page).getByRole("button", { name: "Save build script" }).click();
 
   await main(page)
@@ -318,17 +350,17 @@ export async function generateSbom(page: Page) {
 
 /**
  * Author and run the activation. Navigates to the Activation canvas node (a
- * standalone page) and authors a self-contained run script that loads the built
- * image and enters it with `docker run` to prove it starts.
+ * standalone page) and authors the given self-contained run script (e.g.
+ * {@link dockerRunScript}) that proves the built runtime starts.
  */
-export async function testActivation(page: Page, command: string, runtimePath: string) {
+export async function testActivation(page: Page, runScript: string) {
   await stepShot(page, "test-activation", "before");
   await openPort(page, "Activation");
   await expect(main(page).getByText("Activation Run Script", { exact: true })).toBeVisible();
   await saveRunScript(
     page,
     main(page).getByRole("textbox", { name: "Activation run script", exact: true }),
-    dockerRunScript(command, runtimePath),
+    runScript,
   );
   await main(page)
     .getByRole("button", { name: /Run activation/ })
@@ -340,14 +372,14 @@ export async function testActivation(page: Page, command: string, runtimePath: s
 
 /**
  * Define a single experiment, author its run and verify scripts, run it, and
- * wait for it to pass. Like activation, the experiment owns its full run: load
- * the image and `docker run` the command in the bind-mounted workspace, teeing
- * stdout to a workspace file. The verify script owns the claim, reading that
- * file back — its exit code is the verdict.
+ * wait for it to pass. Like activation, the experiment owns its full run via
+ * the given script, which must tee its stdout to {@link EXPERIMENT_OUTPUT_FILE}
+ * (e.g. `dockerRunScript(cmd, runtime, EXPERIMENT_OUTPUT_FILE)`). The verify
+ * script owns the claim, reading that file back — its exit code is the verdict.
  */
 export async function runExperiment(
   page: Page,
-  experiment: { name: string; command: string; expectedStdout: string; runtimePath: string },
+  experiment: { name: string; runScript: string; expectedStdout: string },
 ) {
   await stepShot(page, "run-experiment", "before");
   await openPort(page, "Experiments");
@@ -367,7 +399,7 @@ export async function runExperiment(
   await saveRunScript(
     page,
     main(page).getByRole("textbox", { name: "Experiment run script", exact: true }),
-    dockerRunScript(experiment.command, experiment.runtimePath, EXPERIMENT_OUTPUT_FILE),
+    experiment.runScript,
   );
   await runScriptDeclared;
 
