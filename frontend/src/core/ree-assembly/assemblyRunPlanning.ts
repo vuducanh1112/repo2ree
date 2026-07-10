@@ -1,19 +1,13 @@
 import type { ReeSpec } from "../ree/ReeSpec";
 import { planManualArtifactCompletion } from "../workspace/manualArtifactUpdatePlanning";
 import {
+  type AssemblyRunCompletionPlan,
   isTerminalExecutionRunFailure,
   planAssemblyRunCompletion,
   planTerminalExecutionRunFailure,
   shouldRefreshWorkspaceAfterAssemblyStep,
 } from "./assemblyPolicies";
 import { buildAssemblyRunParams } from "./assemblyRunRequests";
-
-interface AssemblyRunCompletionPlan {
-  actionState: "done";
-  badge: true;
-  timestamp: string;
-  shouldRefreshWorkspace: boolean;
-}
 
 interface AssemblyRunSuccessPlan extends AssemblyRunCompletionPlan {
   successMessage?: string;

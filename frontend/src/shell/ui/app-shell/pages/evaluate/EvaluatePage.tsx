@@ -2,17 +2,12 @@ import { scanDependencies } from "@core/ree-assembly/assemblyDependencyAnalysis"
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { Ic } from "@shell/ui/shared/components/Icon";
-import {
-  lgOutcomeBadge,
-  lgPageRoot,
-  lgStatusBadge,
-  lgStyles,
-  pageIconTint,
-} from "@shell/ui/theme/lightGlassTheme";
+import { lgPageRoot, lgStatusBadge, lgStyles, pageIconTint } from "@shell/ui/theme/lightGlassTheme";
 import { useEffect } from "react";
 import { assemblyStepIcon } from "../../assemblyStepIcons";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
+import { OutcomeBadge } from "../../components/OutcomeBadge";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { countContainerAndNixFiles } from "./EvaluatePageHelpers";
 import {
@@ -74,11 +69,7 @@ export function PageEvaluate({
         badges={
           <>
             <span style={lgStatusBadge(statusReady)}>{statusLabel}</span>
-            {hasScoreOutput && badge && (
-              <span style={lgOutcomeBadge(badge.color, badge.bg)}>
-                {Ic.check(11)} {badge.label}
-              </span>
-            )}
+            {hasScoreOutput && badge && <OutcomeBadge badge={badge} />}
           </>
         }
         right={

@@ -111,7 +111,11 @@ export async function executeAssemblyRun({
   });
 
   const { lines, ts } = result;
-  const completionPlan = planAssemblyRunCompletion(key, ts);
+  const completionPlan = planAssemblyRunCompletion(
+    key,
+    ts,
+    isTerminalExecutionRunFailure(result.status) ? result.status : "succeeded",
+  );
   executeCommands([
     {
       type: "completeAssemblyRun",

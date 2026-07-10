@@ -136,6 +136,7 @@ export function AssemblyPageContainer(props: AppShellPageContainerProps) {
     log,
     running,
     runDone,
+    runFailed,
     badge,
     ts,
     missing,
@@ -162,6 +163,7 @@ export function AssemblyPageContainer(props: AppShellPageContainerProps) {
         log={log}
         running={running}
         runDone={runDone}
+        runFailed={runFailed}
         badge={badge}
         ts={ts}
         onRun={commands.onRunAssemblyStep}

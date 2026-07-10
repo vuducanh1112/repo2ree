@@ -40,10 +40,17 @@ describe("canRunActivation", () => {
 
 describe("activationFooterHint", () => {
   it("congratulates on pass", () => {
-    expect(activationFooterHint({ runDone: true })).toContain("Activation passed");
+    expect(activationFooterHint({ runDone: true, runFailed: false })).toContain(
+      "Activation passed",
+    );
+  });
+  it("points at the log on failure", () => {
+    expect(activationFooterHint({ runDone: true, runFailed: true })).toContain("Activation failed");
   });
   it("prompts to run when not done", () => {
-    expect(activationFooterHint({ runDone: false })).toContain("Run the smoke test");
+    expect(activationFooterHint({ runDone: false, runFailed: false })).toContain(
+      "Run the smoke test",
+    );
   });
 });
 

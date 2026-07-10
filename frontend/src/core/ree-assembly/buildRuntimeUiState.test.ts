@@ -11,17 +11,25 @@ import {
 } from "./buildRuntimeUiState";
 
 describe("buildRunStatusLabel", () => {
+  const idle = { running: false, runFailed: false };
   it("running wins", () => {
-    expect(buildRunStatusLabel({ running: true, runDone: true, hasScript: true })).toBe("Building");
+    expect(
+      buildRunStatusLabel({ running: true, runDone: true, runFailed: false, hasScript: true }),
+    ).toBe("Building");
   });
   it("runDone -> Built", () => {
-    expect(buildRunStatusLabel({ running: false, runDone: true, hasScript: false })).toBe("Built");
+    expect(buildRunStatusLabel({ ...idle, runDone: true, hasScript: false })).toBe("Built");
+  });
+  it("failed run -> Build failed, not Built", () => {
+    expect(
+      buildRunStatusLabel({ running: false, runDone: true, runFailed: true, hasScript: true }),
+    ).toBe("Build failed");
   });
   it("hasScript -> Ready", () => {
-    expect(buildRunStatusLabel({ running: false, runDone: false, hasScript: true })).toBe("Ready");
+    expect(buildRunStatusLabel({ ...idle, runDone: false, hasScript: true })).toBe("Ready");
   });
   it("reserved script means idle build is ready", () => {
-    expect(buildRunStatusLabel({ running: false, runDone: false, hasScript: false })).toBe("Ready");
+    expect(buildRunStatusLabel({ ...idle, runDone: false, hasScript: false })).toBe("Ready");
   });
 });
 
@@ -46,13 +54,22 @@ describe("runtimeArtifactStatus", () => {
 
 describe("buildFooterHint / summary", () => {
   it("does not expose an add-script state", () => {
-    expect(buildFooterHint({ runDone: false, hasScript: false })).toContain("Script ready");
+    expect(buildFooterHint({ runDone: false, runFailed: false, hasScript: false })).toContain(
+      "Script ready",
+    );
   });
   it("invites run when script ready", () => {
-    expect(buildFooterHint({ runDone: false, hasScript: true })).toContain("Script ready");
+    expect(buildFooterHint({ runDone: false, runFailed: false, hasScript: true })).toContain(
+      "Script ready",
+    );
   });
   it("invites sbom after build", () => {
-    expect(buildFooterHint({ runDone: true, hasScript: true })).toContain("SBOM");
+    expect(buildFooterHint({ runDone: true, runFailed: false, hasScript: true })).toContain("SBOM");
+  });
+  it("points at the log after a failed build", () => {
+    expect(buildFooterHint({ runDone: true, runFailed: true, hasScript: true })).toContain(
+      "Build failed",
+    );
   });
   it("summary label tracks state", () => {
     expect(buildSummaryStatusLabel({ runDone: true, hasScript: true })).toBe("Built");

@@ -1,4 +1,5 @@
 import type { ExecutionRun } from "@core/execution/ExecutionRun";
+import { isFailedAssemblyOutcome } from "@core/ree/ReeTypes";
 import {
   defaultParamsForReeAssemblyOperation,
   REE_ASSEMBLY_STEPS,
@@ -93,12 +94,17 @@ export function useAssemblyStepPageController({
     return null;
   }
 
+  const badgeEntry = badges[assemblyStep.key];
+  const runFailed = isFailedAssemblyOutcome(badgeEntry);
   return {
     assemblyStep,
     log,
     running: actionStates[assemblyStep.key] === "loading",
-    runDone: !!badges[assemblyStep.key],
-    badge: badges[assemblyStep.key] ? assemblyStep.badge : null,
+    runDone: !!badgeEntry,
+    runFailed,
+    // The catalog badge is an earned marker — a failed run completes the step
+    // (Re-run appears) but earns nothing.
+    badge: badgeEntry && !runFailed ? assemblyStep.badge : null,
     ts: timestamps[assemblyStep.key],
     missing,
     params,

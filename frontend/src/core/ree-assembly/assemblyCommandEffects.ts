@@ -1,6 +1,7 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { ReeSpec } from "../ree/ReeSpec";
+import type { AssemblyRunOutcome } from "../ree/ReeTypes";
 import type { SourceCommand } from "../workspace/sourceAcquisitionCommands";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { AssemblyCommand } from "./assemblyCommands";
@@ -21,7 +22,7 @@ export type WorkspaceStateCommand =
         key: string;
         runId?: string;
         actionState: "done";
-        badge: boolean;
+        badge: AssemblyRunOutcome;
         timestamp: string;
       };
     }

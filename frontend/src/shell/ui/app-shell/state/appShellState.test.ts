@@ -106,13 +106,13 @@ describe("appShellState", () => {
       completeAssemblyRun({
         key: "build",
         actionState: "done",
-        badge: true,
+        badge: "succeeded",
         timestamp: "2026-01-01T00:00:00Z",
       }),
     );
 
     expect(next.assemblyRun.actionStates.build).toBe("done");
-    expect(next.assemblyRun.badges.build).toBe(true);
+    expect(next.assemblyRun.badges.build).toBe("succeeded");
     expect(next.assemblyRun.timestamps.build).toBe("2026-01-01T00:00:00Z");
   });
 
@@ -233,7 +233,7 @@ describe("appShellState", () => {
         key: "build",
         runId: "run-1",
         actionState: "done",
-        badge: true,
+        badge: "succeeded",
         timestamp: "2026-01-01T00:00:00Z",
       }),
     );

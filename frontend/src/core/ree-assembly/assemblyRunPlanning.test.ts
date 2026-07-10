@@ -40,7 +40,7 @@ describe("assemblyRunPlanning", () => {
   it("plans generic assembly run completion state", () => {
     expect(planAssemblyRunCompletion("build", "2026-01-01T00:00:00Z")).toEqual({
       actionState: "done",
-      badge: true,
+      badge: "succeeded",
       timestamp: "2026-01-01T00:00:00Z",
       shouldRefreshWorkspace: true,
     });
@@ -49,7 +49,7 @@ describe("assemblyRunPlanning", () => {
   it("plans terminal failures", () => {
     expect(planTerminalExecutionRunFailure("build", "failed", "2026-01-01T00:00:00Z")).toEqual({
       actionState: "done",
-      badge: true,
+      badge: "failed",
       timestamp: "2026-01-01T00:00:00Z",
       shouldRefreshWorkspace: true,
       errorMessage: "build failed",

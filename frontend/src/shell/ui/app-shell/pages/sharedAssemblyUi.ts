@@ -100,6 +100,8 @@ export interface AssemblyPageProps {
   log: LogEntry | null;
   running: boolean;
   runDone: boolean;
+  /** The last run finished without succeeding (failed or canceled). */
+  runFailed: boolean;
   badge: ReeAssemblyBadge | null;
   ts: string | undefined;
   onRun: <K extends ReeAssemblyOperationKey>(key: K, params: ReeAssemblyRunParams<K>) => void;

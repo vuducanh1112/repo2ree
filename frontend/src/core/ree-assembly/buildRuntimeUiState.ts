@@ -4,14 +4,16 @@ export function resolvedRuntimePath(raw: string | null | undefined): string {
   return raw && raw !== SKIPPED_SENTINEL ? raw : "";
 }
 
-type BuildRunStatusLabel = "Building" | "Built" | "Ready";
+type BuildRunStatusLabel = "Building" | "Built" | "Build failed" | "Ready";
 
 export function buildRunStatusLabel(input: {
   running: boolean;
   runDone: boolean;
+  runFailed: boolean;
   hasScript: boolean;
 }): BuildRunStatusLabel {
   if (input.running) return "Building";
+  if (input.runFailed) return "Build failed";
   if (input.runDone) return "Built";
   return "Ready";
 }
@@ -49,7 +51,12 @@ export function runtimeSummaryStatusLabel(status: RuntimeArtifactStatus): string
   }
 }
 
-export function buildFooterHint(input: { runDone: boolean; hasScript: boolean }): string {
+export function buildFooterHint(input: {
+  runDone: boolean;
+  runFailed: boolean;
+  hasScript: boolean;
+}): string {
+  if (input.runFailed) return "Build failed — check the log, then re-run.";
   if (input.runDone) return "Build complete — continue to SBOM.";
   return "Script ready. Run build when prerequisites are met.";
 }

@@ -12,11 +12,11 @@ import {
   lgAccentActionButton,
   lgColors,
   lgInfoBanner,
-  lgOutcomeBadge,
   lgStatusBadge,
 } from "../../theme/lightGlassTheme";
 import { CollapsibleLogCard } from "../components/CollapsibleLogCard";
 import { MissingInputsBanner } from "../components/MissingInputsBanner";
+import { OutcomeBadge } from "../components/OutcomeBadge";
 import { RunActionButton } from "../components/RunActionButton";
 import { useAssemblyStepPageController } from "../hooks/useAssemblyStepPageController";
 import { RuntimeScanTargetCard, SbomOutputCard } from "../pages/generate-sbom/sections";
@@ -128,7 +128,7 @@ function SbomHubBody({
   sbomFormat: string | null;
   onGoFields: () => void;
 }) {
-  const { log, running, runDone, badge, ts, missing } = controller;
+  const { log, running, badge, ts, missing } = controller;
 
   const buildReady = !!runtimePath && runtimePathExists;
   const sbomReady = !!sbomPath && sbomFilePresent;
@@ -140,11 +140,7 @@ function SbomHubBody({
           {buildReady ? "Build ready" : "Build pending"}
         </span>
         <span style={lgStatusBadge(sbomReady)}>{sbomReady ? "SBOM ready" : "SBOM pending"}</span>
-        {runDone && badge && (
-          <span style={lgOutcomeBadge(badge.color, badge.bg)}>
-            {Ic.check(11)} {badge.label}
-          </span>
-        )}
+        {badge && <OutcomeBadge badge={badge} />}
       </div>
 
       <MissingInputsBanner missing={missing} onGoFields={onGoFields} />

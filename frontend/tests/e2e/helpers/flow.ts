@@ -271,14 +271,11 @@ export async function buildRuntime(page: Page, buildScript: string, producedRunt
     timeout: 90000,
   });
 
-  // Re-build appears for failed runs too. Assert the handler's terminal log
-  // line so a failed build fails this step with its cause on screen, instead
-  // of surfacing 20s later as an artifact-picker timeout.
-  await expect(
-    main(page)
-      .getByText(/Build run succeeded/)
-      .first(),
-  ).toBeVisible();
+  // Re-build appears for failed runs too. The earned-outcome badge
+  // (role="status") renders only for a succeeded run, so a failed build fails
+  // this step with its log on screen instead of surfacing 20s later as an
+  // artifact-picker timeout.
+  await expect(main(page).getByRole("status", { name: "Built" })).toBeVisible();
 
   await selectRuntimeArtifact(page, producedRuntimePath);
   await stepShot(page, "build-runtime", "after");
@@ -376,6 +373,9 @@ export async function testActivation(page: Page, runScript: string) {
     .click();
   // DinD: cold `docker load` of the runtime image + run (no shared cache).
   await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 90000 });
+  // Re-run appears for failed runs too; the earned-outcome badge is
+  // success-only.
+  await expect(main(page).getByRole("status", { name: "Activation passed" })).toBeVisible();
   await stepShot(page, "test-activation", "after");
 }
 

@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { ReeSpec } from "../ree/ReeSpec";
-import type { LogLine, ReeFile } from "../ree/ReeTypes";
+import type { AssemblyRunOutcome, LogLine, ReeFile } from "../ree/ReeTypes";
 import type { FileTreeNode } from "../workspace/FileTree";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import { scanDependencies } from "./assemblyDependencyAnalysis";
@@ -28,7 +28,7 @@ export interface AssemblyRunCompletionCommandPayload {
     ts: string;
   };
   actionState: "done";
-  badge: boolean;
+  badge: AssemblyRunOutcome;
   timestamp: string;
 }
 

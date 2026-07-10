@@ -15,7 +15,6 @@ import { resolvedSbomPath } from "@core/ree-assembly/sbomUiState";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
-  lgOutcomeBadge,
   lgPageRoot,
   lgPillChip,
   lgStatusBadge,
@@ -30,6 +29,7 @@ import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { GlassSubPanel } from "../../components/GlassSubPanel";
 import { LastRunStamp } from "../../components/LastRunStamp";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
+import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
 import { DEFAULT_VERIFY_TEMPLATE } from "../experiments/verifyTemplates";
@@ -69,6 +69,7 @@ export function PageTestActivation({
   log,
   running,
   runDone,
+  runFailed,
   badge,
   ts,
   onRun,
@@ -102,7 +103,7 @@ export function PageTestActivation({
     hasMissing: missing.length > 0,
     runtimePathExists,
   });
-  const activationReady = runDone && canRun;
+  const activationReady = runDone && !runFailed && canRun;
 
   const handleSaveScript = useCallback(
     (content: string) => {
@@ -149,11 +150,7 @@ export function PageTestActivation({
             <span style={lgStatusBadge(activationReady)}>
               {activationReady ? "Activation ready" : "Activation pending"}
             </span>
-            {runDone && badge && (
-              <span style={lgOutcomeBadge(badge.color, badge.bg)}>
-                {Ic.check(11)} {badge.label}
-              </span>
-            )}
+            {badge && <OutcomeBadge badge={badge} />}
           </>
         }
         right={
@@ -230,7 +227,7 @@ export function PageTestActivation({
           />
         </GlassSubPanel>
 
-        <GlassPanelFooter bar>{activationFooterHint({ runDone })}</GlassPanelFooter>
+        <GlassPanelFooter bar>{activationFooterHint({ runDone, runFailed })}</GlassPanelFooter>
       </div>
     </div>
   );

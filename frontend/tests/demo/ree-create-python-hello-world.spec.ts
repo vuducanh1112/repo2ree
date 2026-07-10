@@ -413,6 +413,8 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(main.getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible({
       timeout: 60000,
     });
+    // The earned-outcome badge (role=status) renders only for a succeeded run.
+    await expect(main.getByRole("status", { name: "Evaluated" })).toBeVisible();
     await showcasePanel(page, main.getByText("Run Log").first(), "Review output logs");
   });
 
@@ -460,6 +462,13 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     );
     await page.waitForTimeout(5000);
     await expect(main.getByRole("button", { name: /Re-build/ })).toBeVisible({ timeout: 90000 });
+    // Re-build appears for failed runs too; the "Built" outcome badge is
+    // success-only, so a failed build stops the demo here with its log visible.
+    await showcasePanel(
+      page,
+      main.getByRole("status", { name: "Built" }),
+      "The build succeeded and earned its badge",
+    );
 
     // The produced artifact is selected right here on the Build Runtime page —
     // its runtime-artifact card (section 1) names the substrate the whole REE
@@ -491,7 +500,9 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await expect(sbomPanel.getByRole("button", { name: /^Regenerate$/ })).toBeVisible({
       timeout: 60000,
     });
-    await expect(sbomPanel.getByText("SBOM ready", { exact: true }).first()).toBeVisible({
+    // The status chip and the earned-outcome badge share the "SBOM ready" text;
+    // the role=status badge is the success-only signal.
+    await expect(sbomPanel.getByRole("status", { name: "SBOM ready" })).toBeVisible({
       timeout: 60000,
     });
     await showcasePanel(page, sbomPanel.getByText(/SBOM log/i).first(), "Review SBOM logs");
@@ -519,6 +530,12 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       "Execute activation",
     );
     await expect(main.getByRole("button", { name: /Re-run/ })).toBeVisible({ timeout: 90000 });
+    // Success-only outcome badge — a failed activation stops the demo here.
+    await showcasePanel(
+      page,
+      main.getByRole("status", { name: "Activation passed" }),
+      "The runtime starts — activation earned its badge",
+    );
     await showcasePanel(page, main.getByText(/Activation log/i).first(), "Review activation logs");
   });
 

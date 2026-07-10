@@ -12,7 +12,8 @@ export function canRunActivation(input: {
   return !input.running && !input.hasMissing && input.runtimePathExists;
 }
 
-export function activationFooterHint(input: { runDone: boolean }): string {
+export function activationFooterHint(input: { runDone: boolean; runFailed: boolean }): string {
+  if (input.runFailed) return "Activation failed — check the log, then re-run.";
   if (input.runDone) return "Activation passed for the current runtime artifact.";
   return "Run the smoke test after the runtime artifact and activation script are ready.";
 }

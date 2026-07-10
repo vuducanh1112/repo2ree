@@ -8,7 +8,6 @@ import {
 import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
-  lgOutcomeBadge,
   lgPageColors,
   lgPageRoot,
   lgPillChip,
@@ -23,6 +22,7 @@ import { GlassSectionHeader } from "../../components/GlassSectionHeader";
 import { GlassSubPanel } from "../../components/GlassSubPanel";
 import { LastRunStamp } from "../../components/LastRunStamp";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
+import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
 import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
@@ -61,6 +61,7 @@ export function PageBuildRuntime({
   log,
   running,
   runDone,
+  runFailed,
   badge,
   ts,
   onRun,
@@ -109,7 +110,7 @@ export function PageBuildRuntime({
   // is what makes the build runnable.
   const hasScript = scriptContent.trim().length > 0;
   const hasMissing = missing.length > 0;
-  const statusLabel = buildRunStatusLabel({ running, runDone, hasScript });
+  const statusLabel = buildRunStatusLabel({ running, runDone, runFailed, hasScript });
 
   return (
     <div style={lgPageRoot}>
@@ -123,12 +124,8 @@ export function PageBuildRuntime({
             {scriptPath && (
               <span style={{ ...lgPillChip(true), fontFamily: F.mono }}>{scriptPath}</span>
             )}
-            <span style={lgStatusBadge(runDone)}>{statusLabel}</span>
-            {runDone && badge && (
-              <span style={lgOutcomeBadge(badge.color, badge.bg)}>
-                {Ic.check(11)} {badge.label}
-              </span>
-            )}
+            <span style={lgStatusBadge(runDone && !runFailed)}>{statusLabel}</span>
+            {badge && <OutcomeBadge badge={badge} />}
           </>
         }
         right={
@@ -185,7 +182,9 @@ export function PageBuildRuntime({
           <BuildLogCard log={log} running={running} ts={ts} />
         </GlassSubPanel>
 
-        <GlassPanelFooter bar>{buildFooterHint({ runDone, hasScript })}</GlassPanelFooter>
+        <GlassPanelFooter bar>
+          {buildFooterHint({ runDone, runFailed, hasScript })}
+        </GlassPanelFooter>
       </div>
     </div>
   );

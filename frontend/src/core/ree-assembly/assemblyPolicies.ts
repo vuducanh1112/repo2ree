@@ -1,4 +1,5 @@
 import type { ReeSpec } from "../ree/ReeSpec";
+import type { AssemblyRunOutcome } from "../ree/ReeTypes";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { ReeAssemblyRequirement } from "./assemblyStepTypes";
 import type { ReeAssemblyOperationKey } from "./assemblyTypes";
@@ -59,9 +60,11 @@ export function shouldRefreshWorkspaceAfterAssemblyStep(key: string): boolean {
   return WORKSPACE_REFRESH_ASSEMBLY_STEPS.has(key as ReeAssemblyOperationKey);
 }
 
-interface AssemblyRunCompletionPlan {
+export interface AssemblyRunCompletionPlan {
   actionState: "done";
-  badge: true;
+  // The run's terminal outcome, stored on the badge entry — a failed run is
+  // still "done" (Re-run appears, cables stay lit) but must not read as earned.
+  badge: AssemblyRunOutcome;
   timestamp: string;
   shouldRefreshWorkspace: boolean;
 }
@@ -73,10 +76,11 @@ interface AssemblyRunFailurePlan extends AssemblyRunCompletionPlan {
 export function planAssemblyRunCompletion(
   key: string,
   timestamp: string,
+  outcome: AssemblyRunOutcome = "succeeded",
 ): AssemblyRunCompletionPlan {
   return {
     actionState: "done",
-    badge: true,
+    badge: outcome,
     timestamp,
     shouldRefreshWorkspace: shouldRefreshWorkspaceAfterAssemblyStep(key),
   };
@@ -88,7 +92,7 @@ export function planTerminalExecutionRunFailure(
   timestamp: string,
 ): AssemblyRunFailurePlan {
   return {
-    ...planAssemblyRunCompletion(key, timestamp),
+    ...planAssemblyRunCompletion(key, timestamp, status),
     errorMessage: `${key} ${status}`,
   };
 }

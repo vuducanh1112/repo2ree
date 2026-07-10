@@ -1,6 +1,7 @@
 import type { ReeSpec } from "@core/ree/ReeSpec";
 import type {
   ActionStates,
+  AssemblyRunOutcome,
   Badges,
   ReeAssemblyOperationParams,
   Timestamps,
@@ -43,7 +44,7 @@ export interface AssemblyRunCompletionPayload {
   key: string;
   runId?: string;
   actionState: "done";
-  badge: boolean;
+  badge: AssemblyRunOutcome;
   timestamp: string;
 }
 export function createAppShellState(params: {

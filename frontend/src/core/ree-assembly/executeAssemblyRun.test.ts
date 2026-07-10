@@ -69,7 +69,7 @@ describe("executeAssemblyRun", () => {
           runId: "run-1",
           assemblyRunLog: { lines: [{ type: "ok", msg: "built" }], ts: "2026-01-01T00:00:00Z" },
           actionState: "done",
-          badge: true,
+          badge: "succeeded",
           timestamp: "2026-01-01T00:00:00Z",
         },
       },
