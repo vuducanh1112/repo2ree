@@ -55,11 +55,12 @@ from repo2ree_protocol.agent import (
     WorkbenchLocation,
 )
 from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.tracing import command_metric_attrs, get_meter
+from repo2ree_protocol.tracing import command_metric_attrs, get_meter, get_tracer, record_command_status
 
 __all__ = ["DockerRuntime", "WorkbenchGone"]
 
 logger = logging.getLogger(__name__)
+tracer = get_tracer(__name__)
 _meter = get_meter(__name__)
 
 _docker_operation_duration = _meter.create_histogram(
@@ -627,6 +628,27 @@ def _record_docker_operation(operation: str, started_at: float, status: str) -> 
     _docker_operation_duration.record(time.monotonic() - started_at, attrs)
     if status == "unavailable":
         _workbench_gone_counter.add(1, command_metric_attrs(operation))
+    # Docker CLI calls also become spans, so a slow provision breaks down into
+    # its pulls/copies/runs in the trace. Higher-level operations (provision,
+    # exec_action, …) are excluded — the agent.request span already covers
+    # them, and a duplicate sibling would only clutter the waterfall.
+    if operation.startswith("docker."):
+        _emit_docker_span(operation, started_at, status)
+
+
+def _emit_docker_span(operation: str, started_at: float, status: str) -> None:
+    """Mint a completed span for a docker CLI call, with explicit timestamps.
+
+    The helpers already time themselves for the duration metric, so instead of
+    wrapping every call site (several are generators) the span is created
+    retroactively at completion: started against the current context — nesting
+    under the in-flight ``agent.request`` — and ended at the real boundaries.
+    """
+    end_ns = time.time_ns()
+    start_ns = end_ns - int((time.monotonic() - started_at) * 1_000_000_000)
+    span = tracer.start_span(operation, start_time=start_ns)
+    record_command_status(span, status)
+    span.end(end_time=end_ns)
 
 
 def _tail_text(output: bytes) -> str:

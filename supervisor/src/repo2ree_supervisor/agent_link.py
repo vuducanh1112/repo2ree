@@ -60,6 +60,7 @@ from repo2ree_protocol.agent import (
     WsRequest,
     ws_message_adapter,
 )
+from repo2ree_protocol.tracing import current_traceparent
 from repo2ree_supervisor.client import WorkbenchUnavailableError, raise_for_terminal_error
 
 logger = logging.getLogger(__name__)
@@ -157,7 +158,13 @@ class AgentConnection:
                 raise WorkbenchUnavailableError("agent connection closed")
             self._pending[req_id] = q
         try:
-            self._send_text(WsRequest(id=req_id, request=request).model_dump_json())
+            # exclude_none keeps the wire identical to the pre-traceparent
+            # protocol when tracing is off (see WsRequest).
+            self._send_text(
+                WsRequest(id=req_id, request=request, traceparent=current_traceparent()).model_dump_json(
+                    exclude_none=True
+                )
+            )
         except BaseException:
             self._discard(req_id)
             raise

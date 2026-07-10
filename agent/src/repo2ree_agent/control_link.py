@@ -67,6 +67,7 @@ from repo2ree_protocol.tracing import (
     get_meter,
     get_tracer,
     record_command_status,
+    remote_context,
 )
 
 logger = logging.getLogger(__name__)
@@ -219,7 +220,7 @@ async def _serve(ws: ClientConnection, runtime: WorkbenchRuntime) -> None:
                 await _send(ws, req.id, DoneFrame())
                 continue
             # One task per request so a long build never blocks other calls.
-            task = asyncio.create_task(_handle(ws, runtime, transfers, req.id, req.request))
+            task = asyncio.create_task(_handle(ws, runtime, transfers, req.id, req.request, req.traceparent))
             inflight[req.id] = task
             task.add_done_callback(partial(_forget_inflight, inflight, req.id))
     finally:
@@ -233,7 +234,12 @@ def _forget_inflight(inflight: dict[str, asyncio.Task[None]], req_id: str, _task
 
 
 async def _handle(
-    ws: ClientConnection, runtime: WorkbenchRuntime, transfers: TransferStore, req_id: str, req: AgentRequest
+    ws: ClientConnection,
+    runtime: WorkbenchRuntime,
+    transfers: TransferStore,
+    req_id: str,
+    req: AgentRequest,
+    traceparent: str | None = None,
 ) -> None:
     operation = str(req.op)
     metric_attrs = command_metric_attrs(operation)
@@ -241,7 +247,11 @@ async def _handle(
     _request_started_counter.add(1, metric_attrs)
     started_at = time.monotonic()
     status = "succeeded"
-    with tracer.start_as_current_span("agent.request") as span:
+    # Parent this request under the control plane's dispatching span (carried
+    # on the WsRequest) so the agent's work joins the backend's trace instead
+    # of rooting its own. A None context means "current", so an untraced
+    # request still nests under agent.connection as before.
+    with tracer.start_as_current_span("agent.request", context=remote_context(traceparent)) as span:
         CommandSpanAttrs(operation=operation).apply(span)
         span.set_attribute("repo2ree.agent.request_id", req_id)
         try:

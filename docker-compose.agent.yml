@@ -23,6 +23,10 @@ services:
       - repo2ree-agent-state:/var/lib/repo2ree-agent
     environment:
       WORKBENCH_API_WS_URL: ${WORKBENCH_API_WS_URL:-ws://host.docker.internal:8000/agent/connect}
+      # Optional OTLP collector for the agent's own traces/metrics. Executor
+      # spans don't need this — they relay to the backend over the WebSocket —
+      # but the agent.connection/agent.request spans export from here.
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
 
 volumes:
   repo2ree-agent-state:

@@ -508,6 +508,19 @@ def current_traceparent() -> str | None:
     return carrier.get("traceparent")
 
 
+def remote_context(traceparent: str | None) -> context.Context | None:
+    """Deserialize a W3C traceparent into a Context for explicit span parenting.
+
+    Pass the result as ``context=`` to ``start_as_current_span`` so the new
+    span parents to the remote caller. Returns None when there is nothing to
+    extract — which the tracer treats as "use the current context", so call
+    sites need no branching.
+    """
+    if not traceparent:
+        return None
+    return extract({"traceparent": traceparent})
+
+
 def attach_remote_context(traceparent: str | None) -> object | None:
     """Make the remote traceparent the current context; return a detach token.
 

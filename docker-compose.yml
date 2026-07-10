@@ -8,6 +8,13 @@ services:
       - "8000:8000"
     volumes:
       - repo2ree-demo-data:/app/.repo2ree
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Optional OTLP collector for traces/metrics — pass through from the
+      # host so e.g. `OTLP_ENDPOINT=http://host.docker.internal:4318 make
+      # e2e-demo-stack` lights up tracing. Unset means no collector.
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
     # No docker.sock here: the backend is pure control plane — every touch of
     # a container runtime goes through a connected agent over its outbound
     # WebSocket.

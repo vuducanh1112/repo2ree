@@ -72,6 +72,16 @@ class Settings(BaseSettings):
     # at /agent/connect — there is no inbound agent endpoint to configure.
     OTLP_ENDPOINT: str | None = None
 
+    @field_validator("OTLP_ENDPOINT", mode="before")
+    @classmethod
+    def _blank_endpoint_is_unset(cls, value: object) -> object:
+        # Compose pass-throughs (`OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}`) surface an
+        # unset host var as "" — treat that as no collector, so downstream
+        # `is not None` checks (structured logging) don't trip on it.
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
     # Base images the workbench offers at provision time. Ordered: the first entry
     # is the default a request gets when it omits an image (and the UI's highlighted
     # default). Override with a JSON array in the WORKBENCH_IMAGE_CATALOG env var to

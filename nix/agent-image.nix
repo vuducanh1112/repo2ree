@@ -32,11 +32,12 @@ let
   # The agent's python env: anyio + websockets for the control link,
   # pydantic for the repo2ree_protocol frame models, and the otel trio
   # that repo2ree_protocol.tracing reaches at import time (the package
-  # __init__ pulls it in via .log). The OTLP HTTP exporter and requests
-  # are lazy imports inside tracing's host-side setup functions and stay
-  # out. The agent deliberately depends only on repo2ree_protocol — it
-  # is a frame ferry, not an executor — so core's import graph stays out
-  # of this image.
+  # __init__ pulls it in via .log). The OTLP HTTP exporter backs the
+  # agent's own trace/metric export when OTLP_ENDPOINT is set (executor
+  # spans still relay through the backend without it). The agent
+  # deliberately depends only on repo2ree_protocol — it is a frame
+  # ferry, not an executor — so core's import graph stays out of this
+  # image.
   agentPython = pkgs.python313.withPackages (
     ps: with ps; [
       anyio
@@ -45,6 +46,7 @@ let
       opentelemetry-api
       opentelemetry-sdk
       opentelemetry-exporter-otlp-proto-common
+      opentelemetry-exporter-otlp-proto-http
     ]
   );
 

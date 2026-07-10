@@ -388,6 +388,11 @@ class WsRequest(BaseModel):
 
     id: str
     request: AgentRequest
+    # W3C trace context of the dispatching span, so the agent's request span
+    # joins the control plane's trace instead of rooting its own. Serialized
+    # with exclude_none, so an untraced control plane stays wire-compatible
+    # with agents that predate the field.
+    traceparent: str | None = None
 
 
 class WsMessage(BaseModel):
