@@ -32,7 +32,7 @@ def _require_workspace(ree_id: str) -> None:
     raise HTTPException(status_code=404, detail="Workspace not found")
 
 
-_registry = RunRegistry("reeId", _require_workspace, include_id_in_summary=True)
+_registry = RunRegistry(_require_workspace, include_id_in_summary=True)
 
 _append_run_log = _registry.append_log
 _update_run_outputs = _registry.update_outputs
@@ -59,7 +59,7 @@ def _start_provisioning_run(
 ) -> dict[str, Any]:
     """Start the background run that provisions a brand-new workbench.
 
-    Unlike other runs, this one creates its own entity, so it skips the
+    Unlike other runs, this one creates its own REE, so it skips the
     workbench-existence check that would otherwise 404 the not-yet-built REE.
     """
     return _registry.start_background(
@@ -68,7 +68,7 @@ def _start_provisioning_run(
         request_payload,
         "provision",
         runner,
-        require_entity_exists=False,
+        require_ree_exists=False,
     )
 
 

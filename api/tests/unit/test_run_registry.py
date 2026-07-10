@@ -22,23 +22,23 @@ from repo2ree_api.run_registry import RunRegistry
 # ================================================
 
 
-KNOWN_ENTITY = "ree-1"
+KNOWN_REE = "ree-1"
 
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
 
 
 def _registry(**kwargs: Any) -> RunRegistry:
-    def require_entity(entity_id: str) -> None:
-        if entity_id != KNOWN_ENTITY:
+    def require_ree(ree_id: str) -> None:
+        if ree_id != KNOWN_REE:
             raise HTTPException(status_code=404, detail="Workspace not found")
 
-    return RunRegistry("reeId", require_entity, **kwargs)
+    return RunRegistry(require_ree, **kwargs)
 
 
 def _wait_for(registry: RunRegistry, run_id: str, statuses: frozenset[str], timeout: float = 5.0) -> dict[str, Any]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        state = registry.get_run_state(KNOWN_ENTITY, run_id)
+        state = registry.get_run_state(KNOWN_REE, run_id)
         if state["status"] in statuses:
             return state
         time.sleep(0.01)
@@ -50,7 +50,7 @@ def _wait_for(registry: RunRegistry, run_id: str, statuses: frozenset[str], time
 # ================================================
 
 
-def test_start_background_rejects_unknown_entity():
+def test_start_background_rejects_unknown_ree():
     registry = _registry()
     with pytest.raises(HTTPException) as excinfo:
         registry.start_background("nope", "source", {}, "run", lambda e, r: ("succeeded", {}))
@@ -60,7 +60,7 @@ def test_start_background_rejects_unknown_entity():
 def test_successful_run_reaches_succeeded_with_outputs():
     registry = _registry()
     run_state = registry.start_background(
-        KNOWN_ENTITY, "source", {"mode": "upload"}, "src", lambda e, r: ("succeeded", {"resolved": "abc"})
+        KNOWN_REE, "source", {"mode": "upload"}, "src", lambda e, r: ("succeeded", {"resolved": "abc"})
     )
     # run_state is live — the worker may already have finished by now, so the
     # initial "running" status is asserted in the blocking-runner cancel test
@@ -77,15 +77,15 @@ def test_successful_run_reaches_succeeded_with_outputs():
 
 def test_run_summary_has_stable_keys():
     registry = _registry()
-    run_state = registry.start_background(KNOWN_ENTITY, "source", {}, "src", lambda e, r: ("succeeded", {}))
+    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ("succeeded", {}))
     summary = registry.run_summary(run_state)
     assert list(summary) == ["runId", "reeId", "operation", "status", "createdAt", "startedAt", "finishedAt", "outputs"]
     _wait_for(registry, run_state["runId"], TERMINAL)
 
 
-def test_run_summary_can_exclude_entity_id():
+def test_run_summary_can_exclude_ree_id():
     registry = _registry(include_id_in_summary=False)
-    run_state = registry.start_background(KNOWN_ENTITY, "source", {}, "src", lambda e, r: ("succeeded", {}))
+    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ("succeeded", {}))
     assert "reeId" not in registry.run_summary(run_state)
     _wait_for(registry, run_state["runId"], TERMINAL)
 
@@ -98,10 +98,10 @@ def test_run_summary_can_exclude_entity_id():
 def test_runner_exception_finalizes_as_failed_with_error_log():
     registry = _registry()
 
-    def _runner(entity_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
         raise RuntimeError("docker cp exploded")
 
-    run_state = registry.start_background(KNOWN_ENTITY, "source", {}, "src", _runner)
+    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
     final = _wait_for(registry, run_state["runId"], TERMINAL)
     assert final["status"] == "failed"
     assert final["outputs"] == {}
@@ -113,10 +113,10 @@ def test_runner_exception_finalizes_as_failed_with_error_log():
 def test_runner_http_exception_finalizes_as_failed_with_detail_logged():
     registry = _registry()
 
-    def _runner(entity_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
         raise HTTPException(status_code=409, detail="seal in progress")
 
-    run_state = registry.start_background(KNOWN_ENTITY, "build", {}, "build", _runner)
+    run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
     final = _wait_for(registry, run_state["runId"], TERMINAL)
     assert final["status"] == "failed"
     assert final["logs"][0]["message"] == "seal in progress"
@@ -131,19 +131,19 @@ def test_cancel_of_in_flight_run_transitions_canceling_then_canceled():
     registry = _registry()
     release = Event()
 
-    def _runner(entity_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
         release.wait(timeout=5.0)
         # cooperative cancellation, the way the route runners check the flag
-        if registry.is_cancel_requested(entity_id, run_id):
+        if registry.is_cancel_requested(ree_id, run_id):
             return "canceled", {}
         return "succeeded", {}
 
-    run_state = registry.start_background(KNOWN_ENTITY, "source", {}, "src", _runner)
+    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
     run_id = run_state["runId"]
-    assert registry.get_run_state(KNOWN_ENTITY, run_id)["status"] == "running"
+    assert registry.get_run_state(KNOWN_REE, run_id)["status"] == "running"
 
-    assert registry.mark_cancel_requested(KNOWN_ENTITY, run_id) is True
-    assert registry.get_run_state(KNOWN_ENTITY, run_id)["status"] == "canceling"
+    assert registry.mark_cancel_requested(KNOWN_REE, run_id) is True
+    assert registry.get_run_state(KNOWN_REE, run_id)["status"] == "canceling"
 
     release.set()
     final = _wait_for(registry, run_id, TERMINAL)
@@ -156,12 +156,12 @@ def test_cancel_after_runner_crash_still_reports_canceled():
     registry = _registry()
     release = Event()
 
-    def _runner(entity_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
         release.wait(timeout=5.0)
         raise RuntimeError("interrupted")
 
-    run_state = registry.start_background(KNOWN_ENTITY, "source", {}, "src", _runner)
-    registry.mark_cancel_requested(KNOWN_ENTITY, run_state["runId"])
+    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
+    registry.mark_cancel_requested(KNOWN_REE, run_state["runId"])
     release.set()
     assert _wait_for(registry, run_state["runId"], TERMINAL)["status"] == "canceled"
 
@@ -169,18 +169,18 @@ def test_cancel_after_runner_crash_still_reports_canceled():
 def test_completed_run_is_not_retroactively_canceled():
     """finalize never demotes a result that already succeeded or failed."""
     registry = _registry()
-    run_state = registry.start_background(KNOWN_ENTITY, "source", {}, "src", lambda e, r: ("succeeded", {}))
+    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ("succeeded", {}))
     run_id = run_state["runId"]
     _wait_for(registry, run_id, TERMINAL)
 
-    assert registry.mark_cancel_requested(KNOWN_ENTITY, run_id) is True
-    assert registry.get_run_state(KNOWN_ENTITY, run_id)["status"] == "succeeded"
+    assert registry.mark_cancel_requested(KNOWN_REE, run_id) is True
+    assert registry.get_run_state(KNOWN_REE, run_id)["status"] == "succeeded"
 
 
 def test_cancel_of_unknown_run_returns_false():
     registry = _registry()
-    assert registry.mark_cancel_requested(KNOWN_ENTITY, "no-such-run") is False
-    assert registry.is_cancel_requested(KNOWN_ENTITY, "no-such-run") is False
+    assert registry.mark_cancel_requested(KNOWN_REE, "no-such-run") is False
+    assert registry.is_cancel_requested(KNOWN_REE, "no-such-run") is False
 
 
 # ================================================
@@ -192,14 +192,14 @@ def test_append_log_assigns_monotonic_sequence_numbers():
     registry = _registry()
     release = Event()
 
-    def _runner(entity_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
         release.wait(timeout=5.0)
         return "succeeded", {}
 
-    run_state = registry.start_background(KNOWN_ENTITY, "source", {}, "src", _runner)
+    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
     run_id = run_state["runId"]
-    registry.append_log(KNOWN_ENTITY, run_id, "stdout", "info", "one")
-    registry.append_log(KNOWN_ENTITY, run_id, "stderr", "warn", "two")
+    registry.append_log(KNOWN_REE, run_id, "stdout", "info", "one")
+    registry.append_log(KNOWN_REE, run_id, "stderr", "warn", "two")
     release.set()
 
     final = _wait_for(registry, run_id, TERMINAL)
@@ -209,11 +209,11 @@ def test_append_log_assigns_monotonic_sequence_numbers():
 
 def test_append_log_to_unknown_run_is_a_noop():
     registry = _registry()
-    registry.append_log(KNOWN_ENTITY, "no-such-run", "stdout", "info", "lost")  # must not raise
+    registry.append_log(KNOWN_REE, "no-such-run", "stdout", "info", "lost")  # must not raise
 
 
 def test_get_run_state_for_unknown_run_is_404():
     registry = _registry()
     with pytest.raises(HTTPException) as excinfo:
-        registry.get_run_state(KNOWN_ENTITY, "no-such-run")
+        registry.get_run_state(KNOWN_REE, "no-such-run")
     assert excinfo.value.status_code == 404
