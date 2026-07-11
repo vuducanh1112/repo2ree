@@ -168,7 +168,8 @@ Backend variables:
 |---|---|---|
 | `UPLOAD_STAGING_DIR` | `.repo2ree/upload-staging` | Temporary upload landing zone before files enter a workbench. |
 | `WORKBENCH_REGISTRY_FILE` | `.repo2ree/workbench-registry.json` | Registry file mapping REE ids to workbench containers and volumes. |
-| `OTLP_ENDPOINT` | unset | OTLP collector base URL for API and agent traces/metrics. |
+| `OTLP_ENDPOINT` | unset | OTLP collector base URL for API and agent traces/metrics/logs (see `observability/`). |
+| `OTEL_EXPORTER_OTLP_HEADERS` | unset | Headers for authenticated OTLP ingest (e.g. ClickStack's `authorization=<key>`). |
 | `TRACE_FILE` | unset | Local NDJSON trace sink for API/agent spans when no collector is configured. |
 | `LOG_LEVEL` | `INFO` | Python log level for API, agent, and executor processes. |
 

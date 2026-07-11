@@ -24,7 +24,7 @@ from pathlib import Path
 from repo2ree_agent.control_link import run_agent
 from repo2ree_agent.identity import load_or_create_agent_id
 from repo2ree_protocol.log import configure_logging
-from repo2ree_protocol.tracing import setup_metrics, setup_tracing
+from repo2ree_protocol.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 
 
 def _resolve_agent_id() -> str:
@@ -37,7 +37,11 @@ def _resolve_agent_id() -> str:
 
 def main() -> None:
     otlp_endpoint = os.environ.get("OTLP_ENDPOINT") or None
-    configure_logging(structured=otlp_endpoint is not None)
+    logger_provider = setup_logs("repo2ree-agent", endpoint=otlp_endpoint)
+    configure_logging(
+        structured=otlp_endpoint is not None,
+        otlp_handler=otlp_log_handler(logger_provider) if logger_provider is not None else None,
+    )
     tracer_provider = setup_tracing("repo2ree-agent", endpoint=otlp_endpoint, console_fallback=True)
     meter_provider = setup_metrics("repo2ree-agent", endpoint=otlp_endpoint)
     api_ws_url = os.environ.get("WORKBENCH_API_WS_URL", "ws://localhost:8000/agent/connect")
@@ -49,6 +53,8 @@ def main() -> None:
             tracer_provider.shutdown()
         if meter_provider is not None:
             meter_provider.shutdown()
+        if logger_provider is not None:
+            logger_provider.shutdown()
 
 
 if __name__ == "__main__":

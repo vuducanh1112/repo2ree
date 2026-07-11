@@ -165,6 +165,19 @@ def test_typed_carriers_own_the_key_vocabulary() -> None:
     }
 
 
+def test_otlp_headers_from_env_parses_pairs_and_ignores_junk(monkeypatch) -> None:
+    from repo2ree_protocol.tracing import _otlp_headers_from_env
+
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_HEADERS", raising=False)
+    assert _otlp_headers_from_env() == {}
+
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_HEADERS", "authorization=key-123, x-scope=dev,malformed")
+    assert _otlp_headers_from_env() == {"authorization": "key-123", "x-scope": "dev"}
+
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_HEADERS", "")
+    assert _otlp_headers_from_env() == {}
+
+
 def test_record_exit_code_skips_none() -> None:
     span = _FakeSpan()
 

@@ -94,3 +94,62 @@ def test_configure_logging_falls_back_to_info_for_unknown_level(monkeypatch) -> 
     handler = logging.root.handlers[0]
     assert isinstance(handler.formatter, logging.Formatter)
     assert not isinstance(handler.formatter, log._JsonFormatter)
+
+
+class _CapturingHandler(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__()
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
+
+
+def test_configure_logging_attaches_otlp_handler_but_filters_otel_internals() -> None:
+    otlp = _CapturingHandler()
+
+    log.configure_logging(otlp_handler=otlp)
+
+    assert otlp in logging.root.handlers
+    logging.getLogger("repo2ree.something").info("app record")
+    logging.getLogger("opentelemetry.exporter").warning("export failed")
+    assert [r.getMessage() for r in otlp.records] == ["app record"]
+
+
+def test_emit_run_log_exports_with_attributes_and_mapped_level() -> None:
+    otlp = _CapturingHandler()
+    log.configure_run_log_export(otlp)
+
+    log.emit_run_log("ree-1", "run-1", "stderr", "warn", "boom")
+    log.emit_run_log("ree-1", "run-1", "stdout", "unknown-level", "hello")
+
+    warn, info = otlp.records
+    assert warn.levelno == logging.WARNING
+    assert warn.getMessage() == "boom"
+    assert getattr(warn, "repo2ree.ree_id") == "ree-1"
+    assert getattr(warn, "repo2ree.run_id") == "run-1"
+    assert getattr(warn, "repo2ree.stream") == "stderr"
+    assert info.levelno == logging.INFO
+
+
+def test_run_log_logger_does_not_propagate_to_root() -> None:
+    root_handler = _CapturingHandler()
+    log.configure_logging()
+    logging.root.addHandler(root_handler)
+    log.configure_run_log_export(_CapturingHandler())
+
+    log.emit_run_log("ree-1", "run-1", "stdout", "info", "chatty build line")
+
+    assert root_handler.records == []
+
+
+def test_emit_run_log_without_export_is_a_noop() -> None:
+    log.configure_run_log_export(None)
+
+    log.emit_run_log("ree-1", "run-1", "stdout", "info", "dropped")  # must not raise or print
+
+
+def test_setup_logs_is_noop_without_endpoint() -> None:
+    from repo2ree_protocol.tracing import setup_logs
+
+    assert setup_logs("repo2ree-test") is None

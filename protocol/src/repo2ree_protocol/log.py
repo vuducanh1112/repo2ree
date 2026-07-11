@@ -45,7 +45,7 @@ class _JsonFormatter(logging.Formatter):
 # ================================================
 
 
-def configure_logging(*, structured: bool = False) -> None:
+def configure_logging(*, structured: bool = False, otlp_handler: logging.Handler | None = None) -> None:
     """Configure root logger once.
 
     Emits JSON when ``structured`` is set (for a log aggregator), plain text
@@ -53,6 +53,11 @@ def configure_logging(*, structured: bool = False) -> None:
     collector is configured; the executor leaves it off, since its meaningful
     logs travel as NDJSON through the LogSink relay, not this root handler.
     Log level defaults to INFO; override with the LOG_LEVEL env var.
+
+    ``otlp_handler`` (from ``tracing.otlp_log_handler``) additionally ships
+    every record to the collector, trace-correlated. The OTel SDK's own
+    loggers are excluded from it: an exporter that logs its own failures
+    through the handler that exports would feed itself.
     """
     level_name = os.environ.get("LOG_LEVEL", "INFO").upper()
     level = getattr(logging, level_name, logging.INFO)
@@ -64,6 +69,60 @@ def configure_logging(*, structured: bool = False) -> None:
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
-    logging.root.handlers = []
-    logging.root.addHandler(handler)
+    logging.root.handlers = [handler]
+    if otlp_handler is not None:
+        otlp_handler.addFilter(_not_otel_internals)
+        logging.root.addHandler(otlp_handler)
     logging.root.setLevel(level)
+
+
+def _not_otel_internals(record: logging.LogRecord) -> bool:
+    return not record.name.startswith("opentelemetry")
+
+
+# ================================================
+# Run-log export (the LogSink stream)
+# ================================================
+
+# Dedicated, non-propagating logger for run-stream lines (LogSink frames
+# relayed from the workbench). Kept off the root logger so a chatty build
+# does not spray thousands of lines onto the process's stdout — its only
+# destination is the collector, wired by ``configure_run_log_export``.
+_RUN_LOG_LOGGER = "repo2ree.run"
+
+_LEVELS = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warn": logging.WARNING,
+    "warning": logging.WARNING,
+    "error": logging.ERROR,
+}
+
+
+def configure_run_log_export(otlp_handler: logging.Handler | None) -> None:
+    """Route ``emit_run_log`` lines to the collector (or nowhere when None)."""
+    run_logger = logging.getLogger(_RUN_LOG_LOGGER)
+    run_logger.handlers = [otlp_handler] if otlp_handler is not None else [logging.NullHandler()]
+    run_logger.propagate = False
+    run_logger.setLevel(logging.DEBUG)
+
+
+def emit_run_log(ree_id: str, run_id: str, stream: str, level: str, message: str) -> None:
+    """Export one run-stream log line, correlated to the active span.
+
+    Called wherever the run's LogSink lands host-side (the run registry), so
+    the workbench-internal stream becomes clickable from the trace that
+    dispatched it and survives the container. ``stream`` (stdout/stderr/
+    system) travels as an attribute, not a severity, so a build that merely
+    writes to stderr does not read as failing.
+    """
+    logging.getLogger(_RUN_LOG_LOGGER).log(
+        _LEVELS.get(level, logging.INFO),
+        "%s",
+        message,
+        extra={
+            "repo2ree.ree_id": ree_id,
+            "repo2ree.run_id": run_id,
+            "repo2ree.stream": stream,
+        },
+    )

@@ -1,0 +1,21 @@
+# Grafana OTel-LGTM: collector + Tempo (traces) + Loki (logs) + Mimir (metrics)
+# + Grafana in one container, pre-wired with trace <-> logs correlation.
+# Same OTLP ingest as the other setups here, so OTLP_ENDPOINT is unchanged.
+#
+#   UI:   http://localhost:3000  (admin / admin)
+#   OTLP: http://localhost:4318  (HTTP)  /  4317 (gRPC)
+#
+# Positioned by Grafana as a dev/demo image, not production — which matches
+# what this file is for.
+services:
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    ports:
+      - "3000:3000" # Grafana UI
+      - "4317:4317" # OTLP/gRPC ingest
+      - "4318:4318" # OTLP/HTTP ingest
+    volumes:
+      - lgtm-data:/data # persist telemetry across restarts
+
+volumes:
+  lgtm-data:

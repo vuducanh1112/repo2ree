@@ -8,6 +8,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from repo2ree_core.time_utils import utc_now
+from repo2ree_protocol.log import emit_run_log
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     current_span_link,
@@ -127,6 +128,10 @@ class RunRegistry:
         level: str,
         message: str,
     ) -> None:
+        # Every run-log line passes through here, still inside the span that
+        # produced it — export it to the collector (durable, trace-correlated)
+        # before storing it in the in-memory store that serves the API.
+        emit_run_log(ree_id, run_id, stream, level, message)
         with self._lock:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
             if not run_state:

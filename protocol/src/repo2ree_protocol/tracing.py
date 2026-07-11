@@ -29,6 +29,7 @@ from opentelemetry import context, metrics, trace
 if TYPE_CHECKING:
     from opentelemetry.proto.common.v1.common_pb2 import AnyValue as _PbAnyValue
     from opentelemetry.proto.trace.v1.trace_pb2 import Span as _PbSpan
+    from opentelemetry.sdk._logs import LoggerProvider
     from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.exporter.otlp.proto.common.trace_encoder import encode_spans
 from opentelemetry.metrics import Meter
@@ -213,6 +214,48 @@ def setup_metrics(
 def get_meter(name: str) -> Meter:
     """Return a meter for the given module name (use ``__name__``)."""
     return metrics.get_meter(name)
+
+
+def setup_logs(
+    service_name: str,
+    *,
+    endpoint: str | None = None,
+) -> LoggerProvider | None:
+    """Configure the global LoggerProvider once for this process.
+
+    Exports via OTLP/HTTP to ``endpoint/v1/logs`` when provided; otherwise
+    stays a no-op. Call alongside ``setup_tracing`` from the same process
+    entry point, then attach ``otlp_log_handler(provider)`` to the root
+    logger (``configure_logging`` does this) so standard ``logging`` records
+    ship to the collector — stamped with the active span's trace context by
+    the handler, which is what makes trace → logs navigation work.
+
+    Returns the provider so the caller can shut it down on clean exit,
+    flushing any buffered records. Returns None when logs are a no-op.
+    """
+    if not endpoint:
+        return None
+
+    from opentelemetry._logs import set_logger_provider
+    from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+    from opentelemetry.sdk._logs import LoggerProvider
+    from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+
+    provider = LoggerProvider(resource=_build_resource(service_name))
+    provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{endpoint}/v1/logs")))
+    set_logger_provider(provider)
+    return provider
+
+
+def otlp_log_handler(provider: LoggerProvider) -> logging.Handler:
+    """Return a ``logging.Handler`` that exports records via *provider*.
+
+    Owned here so callers (``log.py``, entry points) never import
+    ``opentelemetry`` directly.
+    """
+    from opentelemetry.sdk._logs import LoggingHandler
+
+    return LoggingHandler(logger_provider=provider)
 
 
 # ================================================
@@ -559,6 +602,22 @@ _relay_drop_counter = get_meter(__name__).create_counter(
 )
 
 
+def _otlp_headers_from_env() -> dict[str, str]:
+    """Parse ``OTEL_EXPORTER_OTLP_HEADERS`` (``k=v,k2=v2``) into a dict.
+
+    The SDK exporters read this env var themselves; this mirrors it for the
+    hand-rolled relay POST so collectors that authenticate ingest (e.g.
+    ClickStack's ingestion API key) accept relayed executor spans too.
+    """
+    raw = os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "")
+    headers: dict[str, str] = {}
+    for pair in raw.split(","):
+        key, sep, value = pair.partition("=")
+        if sep and key.strip():
+            headers[key.strip()] = value.strip()
+    return headers
+
+
 def forward_relayed_spans(payloads: list[str], endpoint: str) -> None:
     """POST relayed span payloads to the OTLP/HTTP collector.
 
@@ -570,12 +629,13 @@ def forward_relayed_spans(payloads: list[str], endpoint: str) -> None:
     import requests
 
     url = f"{endpoint}/v1/traces"
+    headers = {"Content-Type": "application/x-protobuf", **_otlp_headers_from_env()}
     for payload in payloads:
         try:
             resp = requests.post(
                 url,
                 data=base64.b64decode(payload),
-                headers={"Content-Type": "application/x-protobuf"},
+                headers=headers,
                 timeout=5,
             )
             resp.raise_for_status()

@@ -1,0 +1,24 @@
+# ClickStack (ClickHouse's observability stack): ClickHouse + HyperDX UI +
+# OTel collector in one container. Traces, logs, and metrics land in
+# ClickHouse — correlated in the HyperDX UI and queryable with SQL.
+# Same OTLP ingest as the Jaeger/LGTM setups, so OTLP_ENDPOINT is unchanged.
+#
+#   UI:   http://localhost:8080  (HyperDX; first visit creates the account)
+#   OTLP: http://localhost:4318  (HTTP)  /  4317 (gRPC)
+#
+# The all-in-one image is positioned for local/dev use, not production —
+# which matches what this file is for.
+services:
+  clickstack:
+    image: clickhouse/clickstack-all-in-one:latest
+    ports:
+      - "8080:8080" # HyperDX UI
+      - "4317:4317" # OTLP/gRPC ingest
+      - "4318:4318" # OTLP/HTTP ingest
+    volumes:
+      - clickstack-db:/data/db # HyperDX application data
+      - clickstack-ch:/var/lib/clickhouse # ClickHouse data
+
+volumes:
+  clickstack-db:
+  clickstack-ch:

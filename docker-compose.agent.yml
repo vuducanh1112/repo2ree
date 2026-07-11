@@ -23,10 +23,13 @@ services:
       - repo2ree-agent-state:/var/lib/repo2ree-agent
     environment:
       WORKBENCH_API_WS_URL: ${WORKBENCH_API_WS_URL:-ws://host.docker.internal:8000/agent/connect}
-      # Optional OTLP collector for the agent's own traces/metrics. Executor
-      # spans don't need this — they relay to the backend over the WebSocket —
-      # but the agent.connection/agent.request spans export from here.
+      # Optional OTLP collector for the agent's own traces/metrics/logs.
+      # Executor spans don't need this — they relay to the backend over the
+      # WebSocket — but the agent.connection/agent.request spans export from
+      # here. Headers (e.g. ClickStack's ingestion API key) ride the standard
+      # OTLP env var alongside it.
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
 
 volumes:
   repo2ree-agent-state:

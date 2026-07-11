@@ -19,8 +19,8 @@ from repo2ree_api.runs import runs_router
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.init_storage import create_upload_staging_if_not_exists
 from repo2ree_api.workbench_images import workbench_images_router
-from repo2ree_protocol.log import configure_logging
-from repo2ree_protocol.tracing import setup_metrics, setup_tracing
+from repo2ree_protocol.log import configure_logging, configure_run_log_export
+from repo2ree_protocol.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_supervisor import WorkbenchUnavailableError
 
 # ================================================
@@ -30,7 +30,12 @@ from repo2ree_supervisor import WorkbenchUnavailableError
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    configure_logging(structured=service_settings.OTLP_ENDPOINT is not None)
+    logger_provider = setup_logs("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT)
+    log_handler = otlp_log_handler(logger_provider) if logger_provider is not None else None
+    configure_logging(structured=service_settings.OTLP_ENDPOINT is not None, otlp_handler=log_handler)
+    # Run-stream lines (workbench LogSink frames landing in the run registry)
+    # ship to the collector too, trace-correlated — but never to stdout.
+    configure_run_log_export(otlp_log_handler(logger_provider) if logger_provider is not None else None)
     tracer_provider = setup_tracing("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT, console_fallback=True)
     meter_provider = setup_metrics("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT)
     create_upload_staging_if_not_exists()
@@ -39,6 +44,8 @@ async def lifespan(app: FastAPI):
         tracer_provider.shutdown()
     if meter_provider is not None:
         meter_provider.shutdown()
+    if logger_provider is not None:
+        logger_provider.shutdown()
 
 
 app = FastAPI(title="The REE API backend", lifespan=lifespan)
