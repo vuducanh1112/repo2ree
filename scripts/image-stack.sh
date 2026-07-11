@@ -11,8 +11,8 @@
 #
 # Images default to the :local workbench builds (`up` expects them to exist —
 # build with `make images`). To run the same flow against pushed images,
-# point STACK_IMAGE_REPO/STACK_IMAGE_TAG at a registry — refs that aren't
-# local get pulled by docker:
+# point STACK_IMAGE_REPO/STACK_IMAGE_TAG at a registry — registry refs are
+# force-pulled on `up`, so moving tags like :edge always run fresh:
 #
 #   STACK_IMAGE_REPO=docker.io/vuducanh1112 STACK_IMAGE_TAG=edge \
 #     scripts/image-stack.sh up
@@ -99,10 +99,13 @@ agent_connected() {
 up() {
     resolve_urls
     for img in "$frontend_image" "$backend_image" "$agent_image"; do
-        docker image inspect "$img" >/dev/null 2>&1 && continue
         case "$img" in
-            */*) ;; # registry ref — docker pulls it on start
-            *) echo "$img not found — build the local images first: make images" >&2; exit 1 ;;
+            # Registry ref: always pull. Compose alone would reuse a stale
+            # local copy of a moving tag like :edge (its default pull policy
+            # is "missing"), so the run wouldn't test what the registry holds.
+            */*) echo ">> pulling $img"; docker pull "$img" ;;
+            *) docker image inspect "$img" >/dev/null 2>&1 \
+                || { echo "$img not found — build the local images first: make images" >&2; exit 1; } ;;
         esac
     done
 
