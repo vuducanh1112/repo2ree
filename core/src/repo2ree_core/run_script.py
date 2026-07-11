@@ -20,7 +20,14 @@ from typing import Literal
 from repo2ree_core.path_safety import resolve_within
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionStatus
-from repo2ree_protocol.tracing import get_tracer
+from repo2ree_protocol.tracing import (
+    ExecSpanAttrs,
+    ScriptSpanAttrs,
+    get_tracer,
+    record_command_status,
+    record_exec_outcome,
+    record_span_facts,
+)
 
 tracer = get_tracer(__name__)
 
@@ -77,7 +84,34 @@ def run_streaming_process(
     cwd: Path | str | None = None,
     is_canceled=lambda: False,
 ) -> StreamingProcessResult:
-    """Run *cmd*, streaming child output while preserving captured streams."""
+    """Run *cmd*, streaming child output while preserving captured streams.
+
+    Each invocation is one ``workbench.exec`` span carrying the argv, exit
+    code, output sizes, and — on failure — the output tails, so what happened
+    inside the workbench survives the container itself.
+    """
+    with tracer.start_as_current_span("workbench.exec") as span:
+        ExecSpanAttrs(argv=format_argv(cmd), cwd=str(cwd) if cwd is not None else None).apply(span)
+        result = _stream_process(cmd, log=log, stdin_text=stdin_text, env=env, cwd=cwd, is_canceled=is_canceled)
+        record_exec_outcome(
+            span,
+            exit_code=result.returncode,
+            canceled=result.canceled,
+            stdout=result.stdout,
+            stderr=result.stderr,
+        )
+        return result
+
+
+def _stream_process(
+    cmd: list[str],
+    *,
+    log: LogSink,
+    stdin_text: str | None = None,
+    env: dict[str, str] | None = None,
+    cwd: Path | str | None = None,
+    is_canceled=lambda: False,
+) -> StreamingProcessResult:
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE if stdin_text is not None else None,
@@ -169,21 +203,26 @@ def run_workspace_script(
     explicitly. Scripts that resolve outside the workspace are rejected.
     """
     workspace = workspace.resolve()
-    script_abs = resolve_within(workspace, script_rel)
-    if script_abs is None:
-        log("system", "error", f"script escapes workspace: {script_rel}")
-        return StepOutcome("failed", 1)
-    if not script_abs.is_file():
-        log("system", "error", f"script not found: {script_rel}")
-        return StepOutcome("failed", 1)
+    with tracer.start_as_current_span("workbench.run_script") as span:
+        ScriptSpanAttrs(path=script_rel).apply(span)
+        script_abs = resolve_within(workspace, script_rel)
+        if script_abs is None:
+            log("system", "error", f"script escapes workspace: {script_rel}")
+            record_span_facts(span, {"script.error": "escapes workspace"})
+            return StepOutcome("failed", 1)
+        if not script_abs.is_file():
+            log("system", "error", f"script not found: {script_rel}")
+            record_span_facts(span, {"script.error": "not found"})
+            return StepOutcome("failed", 1)
 
-    cmd = ["sh", script_rel]
-    log("system", "info", f"$ {format_argv(cmd)}")
+        cmd = ["sh", script_rel]
+        log("system", "info", f"$ {format_argv(cmd)}")
 
-    with tracer.start_as_current_span("workbench.run_script"):
         result = run_streaming_process(cmd, log=log, cwd=workspace, is_canceled=is_canceled)
 
-    if result.canceled or is_canceled():
-        return StepOutcome("canceled", result.returncode, result.stdout, result.stderr)
-    status: ActionStatus = "succeeded" if result.returncode == 0 else "failed"
-    return StepOutcome(status, result.returncode, result.stdout, result.stderr)
+        if result.canceled or is_canceled():
+            status: ActionStatus = "canceled"
+        else:
+            status = "succeeded" if result.returncode == 0 else "failed"
+        record_command_status(span, status)
+        return StepOutcome(status, result.returncode, result.stdout, result.stderr)

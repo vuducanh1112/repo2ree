@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pydantic import BaseModel
+
 from repo2ree_core.envelope.handlers.acquire_source import handle_acquire_source
 from repo2ree_core.envelope.handlers.activation_test import handle_activation_test
 from repo2ree_core.envelope.handlers.build_runtime import handle_build_runtime
@@ -46,7 +48,13 @@ from repo2ree_protocol.command import (
 )
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.tracing import CommandSpanAttrs, get_tracer, record_command_status
+from repo2ree_protocol.tracing import (
+    CommandSpanAttrs,
+    get_tracer,
+    record_command_status,
+    record_exit_code,
+    record_span_facts,
+)
 
 tracer = get_tracer(__name__)
 
@@ -62,7 +70,16 @@ def run_command(
     cancel: CancelCheck = is_canceled if is_canceled is not None else lambda: False
     with tracer.start_as_current_span(f"command.{cmd.operation}") as span:
         CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id).apply(span)
+        # The command span is the wide event for this unit of work: args go on
+        # before dispatch so a failed or killed command still carries its
+        # inputs; outputs (receipts, verdicts, digests) go on after. Accessed
+        # defensively — observability must not be able to fail a command.
+        args = getattr(cmd, "args", None)
+        if isinstance(args, BaseModel):
+            record_span_facts(span, args.model_dump(), namespace="arg")
         result = _dispatch(cmd, log=log, run_id=run_id, cancel=cancel)
+        record_exit_code(span, result.exit_code)
+        record_span_facts(span, result.outputs, namespace="output")
         record_command_status(span, result.status)
         return result
 

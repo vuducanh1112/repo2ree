@@ -18,6 +18,10 @@ from opentelemetry.trace import (
 
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
+    ExecSpanAttrs,
+    ReceiptInputAttrs,
+    ScriptSpanAttrs,
+    WorkbenchSpanAttrs,
     _anyvalue,
     _format_relayed_span,
     attach_remote_context,
@@ -26,16 +30,19 @@ from repo2ree_protocol.tracing import (
     current_traceparent,
     detach_context,
     record_command_status,
+    record_exec_outcome,
+    record_exit_code,
     record_ree_id,
+    record_span_facts,
 )
 
 
 @dataclass
 class _FakeSpan:
-    attributes: dict[str, str] = field(default_factory=dict)
+    attributes: dict[str, object] = field(default_factory=dict)
     status: Status | None = None
 
-    def set_attribute(self, key: str, value: str) -> None:
+    def set_attribute(self, key: str, value: object) -> None:
         self.attributes[key] = value
 
     def set_status(self, status: StatusCode, description: str | None = None) -> None:
@@ -93,6 +100,110 @@ def test_command_metric_attrs_uses_protocol_attribute_namespace() -> None:
         "repo2ree.status": "cancelled",
     }
     assert command_metric_attrs("run_experiment") == {"repo2ree.operation": "run_experiment"}
+
+
+def test_record_span_facts_flattens_and_shapes_values() -> None:
+    span = _FakeSpan()
+
+    record_span_facts(
+        cast(Span, span),
+        {
+            "origin_url": "https://example.com/repo.git",
+            "refetch": False,
+            "exit_code": 0,
+            "skipped": None,
+            "upload_token": "secret",
+            "content": "x" * 1000,
+            "receipt": {"snapshotDigest": "sha256:abc", "changedPaths": ["a", "b"]},
+        },
+        namespace="arg",
+    )
+
+    assert span.attributes == {
+        "repo2ree.arg.origin_url": "https://example.com/repo.git",
+        "repo2ree.arg.refetch": False,
+        "repo2ree.arg.exit_code": 0,
+        "repo2ree.arg.content.size": 1000,
+        "repo2ree.arg.receipt.snapshotDigest": "sha256:abc",
+        "repo2ree.arg.receipt.changedPaths.count": 2,
+    }
+
+
+def test_record_span_facts_truncates_long_strings_and_caps_attribute_count() -> None:
+    span = _FakeSpan()
+
+    record_span_facts(cast(Span, span), {"long": "y" * 500})
+    long_value = cast(str, span.attributes["repo2ree.long"])
+    assert len(long_value) == 256
+    assert long_value.endswith("…")
+
+    crowded = _FakeSpan()
+    record_span_facts(cast(Span, crowded), {f"k{i}": i for i in range(100)})
+    assert len(crowded.attributes) == 64
+
+
+def test_typed_carriers_own_the_key_vocabulary() -> None:
+    span = _FakeSpan()
+    protocol_span = cast(Span, span)
+
+    ExecSpanAttrs(argv="sh build.sh", cwd="/ree/workspace").apply(protocol_span)
+    ScriptSpanAttrs(path="build.sh").apply(protocol_span)
+    WorkbenchSpanAttrs(container="wb-1", image="repo2ree:dev", agent_id="agent-1").apply(protocol_span)
+    ReceiptInputAttrs(snapshot_digest="sha256:abc", drift_status="clean").apply(protocol_span)
+    record_exit_code(protocol_span, 0)
+
+    assert span.attributes == {
+        "repo2ree.exec.argv": "sh build.sh",
+        "repo2ree.exec.cwd": "/ree/workspace",
+        "repo2ree.script.path": "build.sh",
+        "repo2ree.workbench.container": "wb-1",
+        "repo2ree.workbench.image": "repo2ree:dev",
+        "repo2ree.agent_id": "agent-1",
+        "repo2ree.receipt_input.snapshot_digest": "sha256:abc",
+        "repo2ree.receipt_input.drift.status": "clean",
+        "repo2ree.exit_code": 0,
+    }
+
+
+def test_record_exit_code_skips_none() -> None:
+    span = _FakeSpan()
+
+    record_exit_code(cast(Span, span), None)
+
+    assert span.attributes == {}
+
+
+def test_record_exec_outcome_success_records_sizes_but_no_tails() -> None:
+    span = _FakeSpan()
+
+    record_exec_outcome(cast(Span, span), exit_code=0, canceled=False, stdout="ok\n", stderr="")
+
+    assert span.attributes == {
+        "repo2ree.exit_code": 0,
+        "repo2ree.canceled": False,
+        "repo2ree.exec.stdout_chars": 3,
+        "repo2ree.exec.stderr_chars": 0,
+    }
+    assert span.status is None
+
+
+def test_record_exec_outcome_failure_records_output_tails_and_error_status() -> None:
+    span = _FakeSpan()
+
+    record_exec_outcome(
+        cast(Span, span),
+        exit_code=7,
+        canceled=False,
+        stdout="building...",
+        stderr="e" * 5000,
+    )
+
+    assert span.attributes["repo2ree.exec.stdout_tail"] == "building..."
+    stderr_tail = cast(str, span.attributes["repo2ree.exec.stderr_tail"])
+    assert len(stderr_tail) == 2048
+    assert span.status is not None
+    assert span.status.status_code == StatusCode.ERROR
+    assert span.status.description == "exit 7"
 
 
 def test_current_trace_context_and_traceparent_use_active_span() -> None:

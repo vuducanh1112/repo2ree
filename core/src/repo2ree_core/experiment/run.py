@@ -29,7 +29,12 @@ from repo2ree_core.run_script import (
 )
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionStatus
-from repo2ree_protocol.tracing import get_tracer
+from repo2ree_protocol.tracing import (
+    ScriptSpanAttrs,
+    get_tracer,
+    record_current_span_facts,
+    record_exit_code,
+)
 
 tracer = get_tracer(__name__)
 
@@ -92,9 +97,13 @@ def run_runnable(
     log("system", "info", f"Subject: {label!r}")
     log("system", "info", f"Run script: {runnable.run_script}")
 
+    record_current_span_facts({"runnable.subject": label})
+
     try:
-        with tracer.start_as_current_span("runnable.run"):
+        with tracer.start_as_current_span("runnable.run") as span:
+            ScriptSpanAttrs(path=runnable.run_script).apply(span)
             run_outcome = _run_script(workspace, runnable.run_script, log, is_canceled)
+            record_exit_code(span, run_outcome.exit_code)
     except Exception as exc:
         log("system", "error", f"Run failed: {exc}")
         return ExperimentRunOutcome(
@@ -122,8 +131,10 @@ def run_runnable(
 
     log("system", "info", f"Verify script: {runnable.verify_script}")
     try:
-        with tracer.start_as_current_span("runnable.verify"):
+        with tracer.start_as_current_span("runnable.verify") as span:
+            ScriptSpanAttrs(path=runnable.verify_script).apply(span)
             verify_outcome = _run_script(workspace, runnable.verify_script, log, is_canceled)
+            record_exit_code(span, verify_outcome.exit_code)
     except Exception as exc:
         log("system", "error", f"Verify failed: {exc}")
         run_outputs["verifyExitCode"] = None

@@ -28,6 +28,7 @@ from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
+from repo2ree_protocol.tracing import ReceiptInputAttrs
 
 
 def resolve_workspace_path(layout: ReeLayout, rel_path: str) -> Path:
@@ -96,6 +97,19 @@ def _collect_step_inputs(
     )
 
 
+def _record_step_inputs(inputs: _StepInputs) -> None:
+    """Surface the input slice on the command span as soon as it is known."""
+    ReceiptInputAttrs(
+        snapshot_digest=inputs.snapshot_digest,
+        script_digest=inputs.script_digest,
+        verify_script_digest=inputs.verify_script_digest,
+        runtime_path=inputs.runtime_path,
+        declared_runtime_digest=inputs.declared_runtime_digest,
+        drift_status=inputs.workspace_drift.status,
+        drift_changed_path_count=inputs.workspace_drift.changed_path_count,
+    ).apply_current()
+
+
 def run_bare_script_handler(
     script_path: str,
     *,
@@ -128,6 +142,7 @@ def run_bare_script_handler(
     store = ReeStore(layout)
     intent = _read_intent_or_none(store)
     inputs = _collect_step_inputs(layout, store, intent, script_path)
+    _record_step_inputs(inputs)
 
     log("system", "info", f"Starting {noun.lower()} run {run_id}")
     log("system", "info", f"{noun} script: {script_path}")
@@ -249,6 +264,7 @@ def run_runnable_handler(
     runnable, label = selected
 
     inputs = _collect_step_inputs(layout, store, ree, runnable.run_script, runnable.verify_script)
+    _record_step_inputs(inputs)
 
     outcome = run_runnable(
         workspace=layout.workspace.resolve(),

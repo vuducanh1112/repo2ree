@@ -63,10 +63,12 @@ from repo2ree_protocol.agent import (
 )
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
+    WorkbenchSpanAttrs,
     command_metric_attrs,
     get_meter,
     get_tracer,
     record_command_status,
+    record_ree_id,
     remote_context,
 )
 
@@ -254,6 +256,17 @@ async def _handle(
     with tracer.start_as_current_span("agent.request", context=remote_context(traceparent)) as span:
         CommandSpanAttrs(operation=operation).apply(span)
         span.set_attribute("repo2ree.agent.request_id", req_id)
+        # Workbench identity, wherever the request shape carries it: which
+        # container/image/REE this request touched should be queryable on the
+        # agent's own span, not only host-side.
+        ree_id = getattr(req, "ree_id", None)
+        if ree_id:
+            record_ree_id(span, ree_id)
+        location = getattr(req, "location", None)
+        WorkbenchSpanAttrs(
+            container=location.container_name if location is not None else None,
+            image=getattr(req, "image", None),
+        ).apply(span)
         try:
             if isinstance(req, ProvisionRequest):
                 await _pump(ws, req_id, lambda: runtime.provision(req.ree_id, req.image))

@@ -40,12 +40,15 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     SpanSink,
+    WorkbenchSpanAttrs,
     command_metric_attrs,
     current_traceparent,
     get_meter,
     get_tracer,
     record_command_status,
+    record_exit_code,
     record_ree_id,
+    record_span_facts,
 )
 from repo2ree_supervisor.client import AgentClient, WorkbenchUnavailableError, raise_for_terminal_error
 from repo2ree_supervisor.registry import WorkbenchEntry, WorkbenchRegistry
@@ -168,10 +171,12 @@ class WorkbenchManager:
             record_ree_id(span, ree_id)
             resolved_image = image or self._image
             resolved_agent_id = self._agent.resolve_agent(agent_id)
+            WorkbenchSpanAttrs(image=resolved_image, agent_id=resolved_agent_id).apply(span)
 
             location = self._consume_lifecycle(self._agent.provision(resolved_agent_id, ree_id, resolved_image), log)
             if location is None:
                 raise RuntimeError(f"agent provision for {ree_id} ended without a location")
+            WorkbenchSpanAttrs(container=location.container_name).apply(span)
             self._agent.exec_simple(
                 resolved_agent_id,
                 location,
@@ -199,6 +204,11 @@ class WorkbenchManager:
                 raise KeyError(f"no workbench registered for {ree_id}")
             # Reprovision from the REE's own image, not the manager default.
             handle = WorkbenchHandle.from_entry(entry)
+            WorkbenchSpanAttrs(
+                container=handle.container_name,
+                image=entry.image,
+                agent_id=handle.agent_id,
+            ).apply(span)
             location = self._consume_lifecycle(
                 self._agent.reprovision(handle.agent_id, ree_id, handle.location, entry.image), log
             )
@@ -221,6 +231,7 @@ class WorkbenchManager:
         """Stop + remove the container and its backing storage, unregister."""
         with tracer.start_as_current_span("workbench.teardown") as span:
             record_ree_id(span, handle.ree_id)
+            WorkbenchSpanAttrs(container=handle.container_name, agent_id=handle.agent_id).apply(span)
             self._agent.remove(handle.agent_id, handle.ree_id, handle.location)
             self._registry.unregister(handle.ree_id)
             # Drop the per-REE lock with the REE, or the map grows for the
@@ -280,6 +291,11 @@ class WorkbenchManager:
         """Run a typed Command inside the workbench; stream logs to log."""
         with tracer.start_as_current_span("workbench.dispatch_action") as span:
             CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, ree_id=handle.ree_id).apply(span)
+            WorkbenchSpanAttrs(
+                container=handle.container_name,
+                image=self.image_for(handle),
+                agent_id=handle.agent_id,
+            ).apply(span)
             # Time spent blocked here is per-REE lock contention (another run in
             # progress); record it on acquisition so wait is a first-class metric
             # rather than something inferred from the dispatch/execute span gap.
@@ -296,6 +312,11 @@ class WorkbenchManager:
                         time.monotonic() - _t0,
                         command_metric_attrs(str(cmd.operation), status=result.status),
                     )
+            # Mirror the executor's wide event host-side: the command span's
+            # outputs travel over the best-effort span relay, so this dispatch
+            # span is the copy guaranteed to reach the collector.
+            record_exit_code(span, result.exit_code)
+            record_span_facts(span, result.outputs, namespace="output")
             record_command_status(span, result.status)
             return result
 

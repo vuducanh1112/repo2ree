@@ -13,6 +13,7 @@ from repo2ree_protocol.tracing import (
     current_span_link,
     get_tracer,
     record_command_status,
+    record_span_facts,
 )
 
 tracer = get_tracer(__name__)
@@ -225,6 +226,9 @@ class RunRegistry:
                     self.append_log(ree_id, run_id, "system", "error", str(exc))
                     status = "canceled" if self.is_cancel_requested(ree_id, run_id) else "failed"
                     outputs = {}
+                # The run root is the trace a user finds first; make it a
+                # self-sufficient wide event by recording the outputs here too.
+                record_span_facts(span, outputs, namespace="output")
                 record_command_status(span, status)
                 self.finalize(ree_id, run_id, status, outputs)
 
