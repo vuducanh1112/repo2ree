@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Run the e2e stack: backend + workbench agent + a playwright project, with
-# readiness polling and teardown. Invoked by the Makefile e2e targets.
+# Run the e2e stack: backend + workbench agent(s) + a playwright project,
+# with readiness polling and teardown. Invoked by the Makefile e2e targets.
+# `--agents <n>` sets how many agents connect (default 1). Specs that need
+# more than the stack offers (e.g. the multi-agent spec, which needs 2) skip
+# themselves, so any project runs against any agent count.
 #
-#   e2e-stack.sh --project <playwright-project> [--coverage]
+#   e2e-stack.sh --project <playwright-project> [--agents <n>] [--coverage]
 #
 # With --coverage the backend is started *under* coverage (you can't measure
 # an already-running server), the e2e suite runs with E2E_COVERAGE=1 so the
@@ -19,7 +22,9 @@
 #                              docker:dind digest in api settings — which
 #                              every browser tier runs on
 #   E2E_WORKBENCH_DOCKER_MODE  dind (default) or host-socket
-#   E2E_AGENT_STATE_DIR        agent identity dir (default: test-artifacts/e2e-agent-state)
+#   E2E_AGENT_STATE_DIR        agent identity dir (default: test-artifacts/e2e-agent-state);
+#                              with --agents N, agent i > 1 uses <dir>-<i> so
+#                              each keeps a distinct persistent identity
 #   E2E_EXEC_BUNDLE            executor bundle path (default: test-artifacts/exec-bundle)
 #   E2E_TOOLS_BUNDLE           tools bundle path (default: test-artifacts/tools-bundle)
 #
@@ -29,20 +34,23 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: $0 --project <playwright-project> [--coverage]" >&2
+    echo "usage: $0 --project <playwright-project> [--agents <n>] [--coverage]" >&2
     exit 2
 }
 
 project=
+agents=1
 coverage=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --project) [ $# -ge 2 ] || usage; project=$2; shift 2 ;;
+        --agents) [ $# -ge 2 ] || usage; agents=$2; shift 2 ;;
         --coverage) coverage=1; shift ;;
         *) usage ;;
     esac
 done
 [ -n "$project" ] || usage
+[ "$agents" -ge 1 ] 2>/dev/null || usage
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
@@ -52,31 +60,40 @@ state_dir=${E2E_AGENT_STATE_DIR:-$root/test-artifacts/e2e-agent-state}
 exec_bundle=${E2E_EXEC_BUNDLE:-$root/test-artifacts/exec-bundle}
 tools_bundle=${E2E_TOOLS_BUNDLE:-$root/test-artifacts/tools-bundle}
 
+# agent_log <i>: log path for the i-th agent (agent.log, agent-2.log, ...).
+agent_log() {
+    local suffix=""
+    [ "$1" -gt 1 ] && suffix="-$1"
+    echo "$agent_log_dir/agent$suffix.log"
+}
+
 mkdir -p test-artifacts
 if [ "$coverage" -eq 1 ]; then
     coverage_file=$root/test-artifacts/coverage/data/.coverage.e2e
     backend_log=$root/test-artifacts/coverage/e2e/backend.log
-    agent_log=$root/test-artifacts/coverage/e2e/agent.log
+    agent_log_dir=$root/test-artifacts/coverage/e2e
     mkdir -p test-artifacts/coverage/e2e
-    rm -f "$coverage_file" "$coverage_file".* "$agent_log"
+    rm -f "$coverage_file" "$coverage_file".*
     rm -rf frontend/test-artifacts/coverage-raw
 else
     backend_log=$root/test-artifacts/api-server.log
-    agent_log=$root/test-artifacts/agent.log
-    rm -f "$backend_log" "$agent_log"
+    agent_log_dir=$root/test-artifacts
+    rm -f "$backend_log"
 fi
+for i in $(seq 1 "$agents"); do rm -f "$(agent_log "$i")"; done
 
 if [ -n "${E2E_WORKBENCH_IMAGE:-}" ]; then
     export WORKBENCH_IMAGE_CATALOG='[{"id":"pinned","ref":"'"$E2E_WORKBENCH_IMAGE"'","label":"Pinned bench","description":"Bench image pinned for this e2e run."}]'
 fi
 
 api_pid=
-agent_pid=
+agent_pids=()
 stop_stack() {
-    if [ -n "$agent_pid" ]; then
-        kill -TERM "$agent_pid" 2>/dev/null || true
-        wait "$agent_pid" 2>/dev/null || true
-    fi
+    local pid
+    for pid in "${agent_pids[@]}"; do
+        kill -TERM "$pid" 2>/dev/null || true
+        wait "$pid" 2>/dev/null || true
+    done
     if [ -n "$api_pid" ]; then
         kill -TERM "$api_pid" 2>/dev/null || true
         wait "$api_pid" 2>/dev/null || true
@@ -98,8 +115,9 @@ wait_until() {
 }
 
 # shellcheck disable=SC2329  # invoked indirectly, via wait_until
-agent_connected() {
-    curl -sf http://127.0.0.1:8000/api/v1/agents | grep -q '"agents":\[{'
+agents_connected() {
+    local want=$1
+    [ "$(curl -sf http://127.0.0.1:8000/api/v1/agents | grep -o '"agentId"' | wc -l)" -ge "$want" ]
 }
 
 echo ">> starting backend on :8000 (log: $backend_log)"
@@ -114,16 +132,25 @@ fi
 api_pid=$!
 wait_until "backend" curl -sf http://127.0.0.1:8000/
 
-echo ">> starting workbench agent (log: $agent_log)"
-WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
-WORKBENCH_DOCKER_MODE=$docker_mode \
-WORKBENCH_AGENT_STATE_DIR=$state_dir \
-REPO2REE_EXEC_BUNDLE=$exec_bundle \
-REPO2REE_TOOLS_BUNDLE=$tools_bundle \
-uv run --package repo2ree-agent python -m repo2ree_agent \
-    >"$agent_log" 2>&1 &
-agent_pid=$!
-wait_until "workbench agent" agent_connected
+# start_agent <state-dir> <log>: one workbench agent process, backgrounded.
+start_agent() {
+    WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
+    WORKBENCH_DOCKER_MODE=$docker_mode \
+    WORKBENCH_AGENT_STATE_DIR=$1 \
+    REPO2REE_EXEC_BUNDLE=$exec_bundle \
+    REPO2REE_TOOLS_BUNDLE=$tools_bundle \
+    uv run --package repo2ree-agent python -m repo2ree_agent \
+        >"$2" 2>&1 &
+    agent_pids+=($!)
+}
+
+for i in $(seq 1 "$agents"); do
+    dir=$state_dir
+    [ "$i" -gt 1 ] && dir="${state_dir}-$i"
+    echo ">> starting workbench agent $i/$agents (log: $(agent_log "$i"))"
+    start_agent "$dir" "$(agent_log "$i")"
+done
+wait_until "$agents workbench agent(s)" agents_connected "$agents"
 
 echo ">> stack ready — running playwright project=$project"
 status=0

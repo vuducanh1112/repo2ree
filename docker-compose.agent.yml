@@ -15,7 +15,9 @@ name: repo2ree-agent
 services:
   agent:
     image: ${REPO2REE_AGENT_IMAGE:-docker.io/vuducanh1112/repo2ree-agent:edge}
-    container_name: repo2ree-agent
+    # Overridable so several agent instances can coexist on one host, each as
+    # its own compose project (see scripts/image-stack.sh, STACK_AGENTS).
+    container_name: ${REPO2REE_AGENT_CONTAINER:-repo2ree-agent}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -35,5 +37,7 @@ volumes:
   repo2ree-agent-state:
     # Pin the real volume name so the agent's identity survives across the
     # docker-run and compose paths, and stays matchable by the operational
-    # `docker volume ls --filter name=repo2ree` checks.
-    name: repo2ree-agent-state
+    # `docker volume ls --filter name=repo2ree` checks. Extra agent instances
+    # override this with a volume of their own — a shared state volume would
+    # mean a shared identity.
+    name: ${REPO2REE_AGENT_STATE_VOLUME:-repo2ree-agent-state}

@@ -25,8 +25,13 @@ E2E_STACK = E2E_WORKBENCH_IMAGE='$(E2E_WORKBENCH_IMAGE)' \
 	E2E_TOOLS_BUNDLE=$(E2E_TOOLS_BUNDLE) \
 	scripts/e2e-stack.sh
 
+# Workbench agents the stack connects. The multi-agent specs need >= 2 and
+# skip themselves on smaller stacks; raise it for stress runs
+# (E2E_AGENTS=10 make e2e-tests). Demos stay single-agent — they show one lab.
+E2E_AGENTS ?= 2
+
 e2e-tests: e2e-bundles
-	$(E2E_STACK) --project e2e
+	$(E2E_STACK) --project e2e --agents $(E2E_AGENTS)
 
 e2e-demo: e2e-bundles
 	$(E2E_STACK) --project demo
@@ -39,13 +44,13 @@ e2e-demo-code-ocean: e2e-bundles
 # frontend/test-artifacts/coverage/ (browser V8). Needs docker + the workbench
 # image + browsers, like the e2e suite itself.
 e2e-coverage: e2e-bundles
-	$(E2E_STACK) --project e2e --coverage
+	$(E2E_STACK) --project e2e --agents $(E2E_AGENTS) --coverage
 
 # Image-backed demo stack: the compose control plane on :local tags plus the
 # agent container compose deliberately doesn't manage. Expects `make images`
 # to have run; lifecycle lives in scripts/image-stack.sh.
 stack-up:
-	scripts/image-stack.sh up
+	STACK_AGENTS=$(E2E_AGENTS) scripts/image-stack.sh up
 
 stack-down:
 	scripts/image-stack.sh down

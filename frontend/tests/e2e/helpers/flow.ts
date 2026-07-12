@@ -116,21 +116,44 @@ export async function openPort(page: Page, label: string) {
 }
 
 /**
+ * How many connected agents the lab-location picker offers. Specs that need
+ * more than one agent (multi-agent, stress) call this first and skip when the
+ * stack is smaller — the count is a property of whatever stack the suite runs
+ * against (source, image, or published), not something the tests control.
+ */
+export async function connectedAgentCount(page: Page): Promise<number> {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Create REE" }).click();
+  await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
+  const cards = page.getByRole("button", { name: /connected/ });
+  // The agent list loads async; a suite-worthy stack always has at least one
+  // agent, so waiting for the first card is enough for a settled count.
+  await cards.first().waitFor({ state: "visible" });
+  return cards.count();
+}
+
+/**
  * Land on the workbench lab from the landing view. REE creation now opens with
  * the lab-location step: pick the (connected) agent that will host the
  * workbench, which carries its id into the workbench/image page.
+ *
+ * `agentIndex` picks the nth connected agent (default: the first) — the
+ * multi-agent spec uses it to pin each session to a different agent. Returns
+ * the chosen agent's id, read back from the workspace URL the picker
+ * navigates to.
  */
-export async function startReeCreation(page: Page) {
+export async function startReeCreation(page: Page, options?: { agentIndex?: number }) {
   await page.goto("/");
   await stepShot(page, "start-ree-creation", "before");
   await page.getByRole("button", { name: "Create REE" }).click();
   await expect(page.getByRole("heading", { name: "Choose a lab location" })).toBeVisible();
   await page
     .getByRole("button", { name: /connected/ })
-    .first()
+    .nth(options?.agentIndex ?? 0)
     .click();
   await expect(page.getByRole("heading", { name: "Set up the workbench" })).toBeVisible();
   await stepShot(page, "start-ree-creation", "after");
+  return new URL(page.url()).searchParams.get("agentId") ?? "";
 }
 
 /**

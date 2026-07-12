@@ -20,6 +20,10 @@
 # (or override an individual image with STACK_FRONTEND_IMAGE /
 # STACK_BACKEND_IMAGE / STACK_AGENT_IMAGE.)
 #
+# STACK_AGENTS=<n> runs n agent instances (default 1) — instance i > 1 gets
+# its own compose project, container name, and state volume
+# (repo2ree-agent-<i>), so each keeps a distinct persistent identity.
+#
 # `up` recreates a leftover repo2ree-agent container but reuses the pinned
 # repo2ree-agent-state volume, so the agent id stays stable across runs.
 #
@@ -39,6 +43,11 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 
 agent_container=repo2ree-agent
+# Agent instances to run (default 1). Instance i > 1 becomes its own compose
+# project repo2ree-agent-<i> with its own state volume, so each keeps a
+# distinct persistent identity — the multi-agent e2e specs need >= 2, and a
+# stress run can push it higher.
+stack_agents=${STACK_AGENTS:-1}
 
 image_prefix=${STACK_IMAGE_REPO:+${STACK_IMAGE_REPO}/}
 image_tag=${STACK_IMAGE_TAG:-local}
@@ -62,11 +71,24 @@ compose_stack() {
         docker compose "$@"
 }
 
-# The agent runs from its own compose file (project name pinned there), so its
-# lifecycle stays independent of the control-plane stack.
+# agent_name <i>: container/project name of the i-th agent instance. Instance
+# 1 keeps the bare historical name so single-agent flows stay unchanged.
+agent_name() {
+    local suffix=""
+    [ "$1" -gt 1 ] && suffix="-$1"
+    echo "$agent_container$suffix"
+}
+
+# The agents run from their own compose file, so their lifecycle stays
+# independent of the control-plane stack. Each instance is its own compose
+# project (-p) with its own container name and state volume.
 agent_compose() {
+    local name=$1
+    shift
     REPO2REE_AGENT_IMAGE=$agent_image \
-        docker compose -f docker-compose.agent.yml "$@"
+    REPO2REE_AGENT_CONTAINER=$name \
+    REPO2REE_AGENT_STATE_VOLUME=$name-state \
+        docker compose -p "$name" -f docker-compose.agent.yml "$@"
 }
 
 # The docker network the control-plane backend is attached to, or empty when
@@ -92,8 +114,9 @@ wait_until() {
     return 1
 }
 
-agent_connected() {
-    curl -sf "$api_url/api/v1/agents" | grep -q '"agents":\[{'
+agents_connected() {
+    local want=$1
+    [ "$(curl -sf "$api_url/api/v1/agents" | grep -o '"agentId"' | wc -l)" -ge "$want" ]
 }
 
 up() {
@@ -112,34 +135,44 @@ up() {
     echo ">> starting compose control plane ($frontend_image, $backend_image)"
     compose_stack up -d
 
-    echo ">> starting workbench agent stack ($agent_image)"
+    echo ">> starting $stack_agents workbench agent(s) ($agent_image)"
     # Reaching the backend: when the agent shares this daemon with the control
     # plane (the usual case, including nested/DinD CI), host-published ports
     # aren't reliably reachable via the compose file's host.docker.internal
     # default, so join the control-plane network and dial the backend by
     # service name. Only a non-local backend (a remote control plane) falls
     # back to the file's default.
-    local control_plane_net
+    local control_plane_net i name
     control_plane_net=$(control_plane_network)
-    if [ -n "$control_plane_net" ]; then
-        WORKBENCH_API_WS_URL=ws://backend:8000/agent/connect agent_compose up -d >/dev/null
-        docker network connect "$control_plane_net" "$agent_container" >/dev/null 2>&1 || true
-    else
-        agent_compose up -d >/dev/null
-    fi
+    for i in $(seq 1 "$stack_agents"); do
+        name=$(agent_name "$i")
+        if [ -n "$control_plane_net" ]; then
+            WORKBENCH_API_WS_URL=ws://backend:8000/agent/connect \
+                agent_compose "$name" up -d >/dev/null
+            docker network connect "$control_plane_net" "$name" >/dev/null 2>&1 || true
+        else
+            agent_compose "$name" up -d >/dev/null
+        fi
+    done
 
     # The compose network may not have existed before `compose up`, so the
     # service names only resolve from here on — re-check.
     resolve_urls
     wait_until "backend" curl -sf "$api_url/"
-    wait_until "workbench agent" agent_connected
+    wait_until "$stack_agents workbench agent(s)" agents_connected "$stack_agents"
     wait_until "frontend" curl -sf "$frontend_url/"
     echo ">> stack up — frontend at $frontend_url"
 }
 
 down() {
-    echo ">> stopping workbench agent stack"
-    agent_compose down >/dev/null 2>&1 || true
+    # Tear down every agent instance found on the daemon, not just
+    # $stack_agents of them — a previous `up` may have started more.
+    echo ">> stopping workbench agent stack(s)"
+    local name
+    for name in $(docker ps -a --format '{{.Names}}' \
+        | grep -E "^${agent_container}(-[0-9]+)?$" || true); do
+        agent_compose "$name" down >/dev/null 2>&1 || true
+    done
     echo ">> stopping compose control plane"
     compose_stack down
 }
@@ -148,7 +181,7 @@ check() {
     resolve_urls
     curl -sf "$api_url/" >/dev/null \
         || { echo "backend not reachable at $api_url — start the image stack first (make stack-up)" >&2; exit 1; }
-    agent_connected \
+    agents_connected 1 \
         || { echo "no workbench agent connected — start the agent container (make stack-up)" >&2; exit 1; }
     curl -sf "$frontend_url/" >/dev/null \
         || { echo "frontend not reachable at $frontend_url — start the image stack first (make stack-up)" >&2; exit 1; }
