@@ -36,18 +36,24 @@ def _resolve_agent_id() -> str:
 
 
 def main() -> None:
+    # Identity first: the agent id goes into the OTel resource as
+    # service.instance.id, so several agents dialing one control plane stay
+    # distinguishable in every span, metric, and log this process emits.
+    agent_id = _resolve_agent_id()
     otlp_endpoint = os.environ.get("OTLP_ENDPOINT") or None
-    logger_provider = setup_logs("repo2ree-agent", endpoint=otlp_endpoint)
+    logger_provider = setup_logs("repo2ree-agent", endpoint=otlp_endpoint, instance_id=agent_id)
     configure_logging(
         structured=otlp_endpoint is not None,
         otlp_handler=otlp_log_handler(logger_provider) if logger_provider is not None else None,
     )
-    tracer_provider = setup_tracing("repo2ree-agent", endpoint=otlp_endpoint, console_fallback=True)
-    meter_provider = setup_metrics("repo2ree-agent", endpoint=otlp_endpoint)
+    tracer_provider = setup_tracing(
+        "repo2ree-agent", endpoint=otlp_endpoint, console_fallback=True, instance_id=agent_id
+    )
+    meter_provider = setup_metrics("repo2ree-agent", endpoint=otlp_endpoint, instance_id=agent_id)
     api_ws_url = os.environ.get("WORKBENCH_API_WS_URL", "ws://localhost:8000/agent/connect")
     docker_mode = os.environ.get("WORKBENCH_DOCKER_MODE", "dind")
     try:
-        asyncio.run(run_agent(api_ws_url, docker_mode, _resolve_agent_id()))
+        asyncio.run(run_agent(api_ws_url, docker_mode, agent_id))
     finally:
         if tracer_provider is not None:
             tracer_provider.shutdown()

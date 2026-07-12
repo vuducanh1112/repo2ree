@@ -81,14 +81,21 @@ _DURATION_BUCKETS_SECONDS = (
 )
 
 
-def _build_resource(service_name: str) -> Resource:
+def _build_resource(service_name: str, instance_id: str | None = None) -> Resource:
     """Resource identity shared by every provider in this process.
 
     Beyond ``service.name`` we surface version and environment when present so
     dashboards can slice by deploy. Both are optional env vars — unset in local
     dev, injected in deployed environments.
+
+    ``instance_id`` becomes ``service.instance.id`` (the semconv instance
+    attribute) for services that run as several identical processes — the
+    workbench agent passes its persistent agent id so every span, metric, and
+    log it emits is attributable to one agent without per-callsite plumbing.
     """
     attrs: dict[str, str] = {"service.name": service_name}
+    if instance_id:
+        attrs["service.instance.id"] = instance_id
     if version := os.environ.get("SERVICE_VERSION"):
         attrs["service.version"] = version
     if environment := os.environ.get("DEPLOY_ENV"):
@@ -136,6 +143,7 @@ def setup_tracing(
     *,
     endpoint: str | None = None,
     console_fallback: bool = False,
+    instance_id: str | None = None,
 ) -> TracerProvider | None:
     """Configure the global TracerProvider once for this process.
 
@@ -154,7 +162,7 @@ def setup_tracing(
 
     from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 
-    provider = TracerProvider(resource=_build_resource(service_name))
+    provider = TracerProvider(resource=_build_resource(service_name, instance_id))
     if endpoint:
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
@@ -176,6 +184,7 @@ def setup_metrics(
     service_name: str,
     *,
     endpoint: str | None = None,
+    instance_id: str | None = None,
 ) -> MeterProvider | None:
     """Configure the global MeterProvider once for this process.
 
@@ -203,7 +212,7 @@ def setup_metrics(
         aggregation=ExplicitBucketHistogramAggregation(_DURATION_BUCKETS_SECONDS),
     )
     provider = MeterProvider(
-        resource=_build_resource(service_name),
+        resource=_build_resource(service_name, instance_id),
         metric_readers=[reader],
         views=[duration_view],
     )
@@ -220,6 +229,7 @@ def setup_logs(
     service_name: str,
     *,
     endpoint: str | None = None,
+    instance_id: str | None = None,
 ) -> LoggerProvider | None:
     """Configure the global LoggerProvider once for this process.
 
@@ -241,7 +251,7 @@ def setup_logs(
     from opentelemetry.sdk._logs import LoggerProvider
     from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 
-    provider = LoggerProvider(resource=_build_resource(service_name))
+    provider = LoggerProvider(resource=_build_resource(service_name, instance_id))
     provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{endpoint}/v1/logs")))
     set_logger_provider(provider)
     return provider

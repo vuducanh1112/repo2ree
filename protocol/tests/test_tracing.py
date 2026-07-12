@@ -23,6 +23,7 @@ from repo2ree_protocol.tracing import (
     ScriptSpanAttrs,
     WorkbenchSpanAttrs,
     _anyvalue,
+    _build_resource,
     _format_relayed_span,
     attach_remote_context,
     command_metric_attrs,
@@ -163,6 +164,15 @@ def test_typed_carriers_own_the_key_vocabulary() -> None:
         "repo2ree.receipt_input.drift.status": "clean",
         "repo2ree.exit_code": 0,
     }
+
+
+def test_build_resource_records_instance_id_only_when_given() -> None:
+    plain = _build_resource("repo2ree-agent")
+    assert plain.attributes["service.name"] == "repo2ree-agent"
+    assert "service.instance.id" not in plain.attributes
+
+    instanced = _build_resource("repo2ree-agent", "host-a1b2c3")
+    assert instanced.attributes["service.instance.id"] == "host-a1b2c3"
 
 
 def test_otlp_headers_from_env_parses_pairs_and_ignores_junk(monkeypatch) -> None:
