@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyReeSpec } from "../ree/ReeSpec";
-import {
-  mapAssemblyCommandsToEffects,
-  mapSourceCommandsToEffects,
-} from "./workspaceMutationEffects";
+import { mapAssemblyCommandsToEffects, mapSourceCommandsToEffects } from "./assemblyCommandEffects";
 
 describe("mapAssemblyCommandsToEffects", () => {
   it("maps persist commands into shell persistence effects", () => {
