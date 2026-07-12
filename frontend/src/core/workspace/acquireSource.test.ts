@@ -156,7 +156,7 @@ describe("createSourceUseCase", () => {
     });
   });
 
-  it("reports upload validation errors without resetting assembly state", async () => {
+  it("reports upload validation errors without resetting step state", async () => {
     const executeCommands = vi.fn();
     const sourceChanged = vi.fn();
     const runSourceAction = vi.fn();

@@ -1,4 +1,4 @@
-import type { ConsistencyReport } from "@core/ree-assembly/sealConsistency";
+import type { ConsistencyReport } from "@core/ree-steps/sealConsistency";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 
 export interface ApiErrorEnvelope {
@@ -185,7 +185,7 @@ export interface UploadInitResponseDto {
   expiresAt: string;
 }
 
-export type WorkflowOperationDto =
+export type ReeRunOperationDto =
   | "provision"
   | "evaluate"
   | "build"
@@ -201,7 +201,7 @@ export type WorkflowOperationDto =
 // No fields yet — kept as the extension point for future run options.
 export type CreateExperimentRunRequestDto = Record<string, never>;
 
-export type WorkflowRunStatusDto =
+export type ReeRunStatusDto =
   | "created"
   | "queued"
   | "provisioning"
@@ -233,18 +233,18 @@ export interface CreateEvaluateRunRequestDto {
   idempotencyKey?: string;
 }
 
-export interface WorkflowRunDto {
+export interface ReeRunDto {
   runId: string;
   reeId: string;
-  operation: WorkflowOperationDto;
-  status: WorkflowRunStatusDto;
+  operation: ReeRunOperationDto;
+  status: ReeRunStatusDto;
   createdAt: string;
   startedAt?: string;
   finishedAt?: string;
   outputs?: Record<string, unknown>;
 }
 
-export interface WorkflowLogEntryDto {
+export interface ReeRunLogEntryDto {
   seq: number;
   ts: string;
   stream: "stdout" | "stderr" | "system";
@@ -252,9 +252,9 @@ export interface WorkflowLogEntryDto {
   message: string;
 }
 
-export interface WorkflowLogsDto {
-  entries: WorkflowLogEntryDto[];
+export interface ReeRunLogsDto {
+  entries: ReeRunLogEntryDto[];
   nextCursor?: string;
   hasMore: boolean;
-  runStatus: WorkflowRunStatusDto;
+  runStatus: ReeRunStatusDto;
 }

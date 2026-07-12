@@ -2,8 +2,8 @@ import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
 import { useAgents } from "@shell/data/agents/agents";
-import { useExecutionRunsClient } from "@shell/data/execution-runs/client";
-import { observeExecutionRun } from "@shell/data/execution-runs/queries";
+import { useReeRunsClient } from "@shell/data/runs/client";
+import { observeReeRun } from "@shell/data/runs/queries";
 import { useWorkbenchImageCatalog } from "@shell/data/workbench/images";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -34,7 +34,7 @@ interface WorkbenchLabProps {
 export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const runsClient = useExecutionRunsClient();
+  const runsClient = useReeRunsClient();
   const queryClient = useQueryClient();
   const { data: imageCatalog } = useWorkbenchImageCatalog();
   const { data: agents } = useAgents();
@@ -69,10 +69,10 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
     try {
       // The REE's display name is owned by the Metadata page; provision with a
       // neutral default and let the user rename it there. Provisioning runs in
-      // the background so the image pull streams live — observeExecutionRun
+      // the background so the image pull streams live — observeReeRun
       // tails the run's log feed into the bench console until it finishes.
       const { reeId, run } = await runsClient.createWorkspace("REE", image, agentId);
-      const result = await observeExecutionRun(queryClient, runsClient, {
+      const result = await observeReeRun(queryClient, runsClient, {
         reeId,
         runId: run.runId,
         onUpdate: ({ lines, ts }) => setLog({ lines: [...preamble, ...lines], ts }),

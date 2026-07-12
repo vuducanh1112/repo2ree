@@ -1,5 +1,5 @@
 import type { ReeSpec } from "../../core/ree/ReeSpec";
-import { REE_ASSEMBLY_STEPS } from "../ree-assembly/assemblyCatalog";
+import { REE_STEPS } from "../ree-steps/stepCatalog";
 
 interface ManualArtifactCompletionPlan {
   reeSpecPatch?: Partial<ReeSpec>;
@@ -48,8 +48,8 @@ export function planManualArtifactCompletion({
     };
   }
 
-  const assemblyStep = REE_ASSEMBLY_STEPS.find((assemblyStep) => assemblyStep.key === key);
+  const step = REE_STEPS.find((step) => step.key === key);
   return {
-    successMessage: `${assemblyStep?.label ?? key} completed`,
+    successMessage: `${step?.label ?? key} completed`,
   };
 }

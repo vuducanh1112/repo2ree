@@ -1,4 +1,4 @@
-import type { StaleSealItem } from "@core/ree-assembly/sealConsistency";
+import type { StaleSealItem } from "@core/ree-steps/sealConsistency";
 import { lgBackgrounds } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 

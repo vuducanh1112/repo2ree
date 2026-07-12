@@ -1,16 +1,16 @@
 import { DEPENDENCY_AXIS, ENVIRONMENT_AXIS, MACHINE_AXIS } from "@core/evaluate/axes";
 import type { ReproducibilityReport } from "@core/evaluate/Threat";
 import type { LogEntry } from "@core/ree/ReeTypes";
-import type { DepGroup } from "@core/ree-assembly/assemblyDependencyAnalysis";
-import type { ReeAssemblyRequirement } from "@core/ree-assembly/assemblyStepTypes";
+import type { DepGroup } from "@core/ree-steps/dependencyAnalysis";
+import type { ReeStepRequirement } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgContentCard, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
-import { DependencyPanel } from "../../components/assemblyRunPanels/DependencyPanel";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { RunActionButton } from "../../components/RunActionButton";
 import { SummaryLine } from "../../components/SummaryLine";
+import { DependencyPanel } from "../../components/stepRunPanels/DependencyPanel";
 import { CardHeader } from "./EvaluateCardHeader";
 import { EXPECTED_DEP_FILES } from "./EvaluatePageHelpers";
 
@@ -50,7 +50,7 @@ export function EvaluateMissingInputs({
   missing,
   onGoFields,
 }: {
-  missing: ReeAssemblyRequirement[];
+  missing: ReeStepRequirement[];
   onGoFields?: () => void;
 }) {
   return (

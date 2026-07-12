@@ -4,7 +4,7 @@ import { F } from "@shell/ui/theme/theme";
 import type React from "react";
 import { SourceUploadField } from "../../components/sourceRuntime/SourceUploadField";
 import { SourceUrlField } from "../../components/sourceRuntime/SourceUrlField";
-import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
+import type { SourceAcquisitionPageProps } from "../sharedStepUi";
 import { SOURCE_TYPE_OPTIONS, type SourceTypeOption } from "./SourceAcquisitionPageHelpers";
 
 interface SourceAcquisitionCardProps {

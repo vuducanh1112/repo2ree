@@ -1,9 +1,9 @@
-import type { ExecutionRunLogs } from "@core/ree/ReeTypes";
+import type { ReeRunLogs } from "@core/ree/ReeTypes";
 import type {
   ArchiveRepo,
-  GenericReeAssemblyParams,
-  ReeAssemblyRequirement,
-} from "@core/ree-assembly/assemblyStepTypes";
+  GenericReeStepParams,
+  ReeStepRequirement,
+} from "@core/ree-steps/stepTypes";
 import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
 import { RunActionButton } from "@shell/ui/app-shell/components/RunActionButton";
 import { Ic } from "@shell/ui/shared/components/Icon";
@@ -16,9 +16,9 @@ interface ArchiveActionPanelProps {
   canRun: boolean;
   earned: boolean;
   running: boolean;
-  missing: ReeAssemblyRequirement[];
-  logs: ExecutionRunLogs;
-  onRun: (key: string, params: GenericReeAssemblyParams) => void;
+  missing: ReeStepRequirement[];
+  logs: ReeRunLogs;
+  onRun: (key: string, params: GenericReeStepParams) => void;
   getParam: (repoKey: string, paramKey: string) => string | boolean;
 }
 

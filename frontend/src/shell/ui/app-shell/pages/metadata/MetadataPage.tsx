@@ -24,7 +24,7 @@ import {
 import type React from "react";
 import { useMemo, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
-import type { PageMetadataEntryProps } from "../sharedAssemblyUi";
+import type { PageMetadataEntryProps } from "../sharedStepUi";
 
 function MetadataField({
   label,
@@ -172,7 +172,7 @@ export function PageMetadataEntry({
       <GlassPageHeader
         icon={Ic.grid(24)}
         title="Metadata"
-        subtitle="Provide the identity details that follow this Reusable Execution Environment through the assembly workflow."
+        subtitle="Provide the identity details that follow this Reusable Execution Environment through every step to the seal."
         badges={
           <span style={lgStatusBadge(identityFilled)}>{identityFilled ? "Ready" : "Draft"}</span>
         }

@@ -1,16 +1,16 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
-import { isTerminalExecutionRunStatus } from "../../core/execution/ExecutionRunStatus";
 import { asReeId, DEFAULT_REE_ID, type ReeId } from "../../core/ree/ReeId";
+import { isTerminalReeRunStatus } from "../../core/runs/ReeRunStatus";
 import { ApiClient } from "../infra/api/ApiClient";
-import { ExecutionRunsApi } from "../infra/api/ExecutionRunsApi";
 import { ReeApi } from "../infra/api/ReeApi";
+import { ReeRunsApi } from "../infra/api/ReeRunsApi";
 
 export interface ApiRuntimeValue {
   reeId: ReeId;
   ensureReeId: (requestedId: ReeId | string) => Promise<ReeId>;
   reeApi: ReeApi;
-  runsApi: ExecutionRunsApi;
+  runsApi: ReeRunsApi;
 }
 
 interface ApiClientProviderProps {
@@ -30,18 +30,18 @@ const PROVISION_POLL_INTERVAL_MS = 1500;
 const PROVISION_POLL_TIMEOUT_MS = 10 * 60 * 1000;
 
 // Status-only waiter for the background provisioning run. This sits at the raw
-// ExecutionRunsApi layer (no QueryClient / ExecutionRunsClient), so it can't use
-// observeExecutionRun — that's the log-streaming poller for UI callers. Here we
+// ReeRunsApi layer (no QueryClient / ReeRunsClient), so it can't use
+// observeReeRun — that's the log-streaming poller for UI callers. Here we
 // only need the terminal status to return a ready reeId from ensureReeId.
 async function waitForRunCompletion(
-  runsApi: ExecutionRunsApi,
+  runsApi: ReeRunsApi,
   reeId: string,
   runId: string,
 ): Promise<string> {
   const deadline = Date.now() + PROVISION_POLL_TIMEOUT_MS;
   while (true) {
     const run = await runsApi.getRun(reeId, runId);
-    if (isTerminalExecutionRunStatus(run.status)) {
+    if (isTerminalReeRunStatus(run.status)) {
       return run.status;
     }
     if (Date.now() >= deadline) {
@@ -62,7 +62,7 @@ export function createApiRuntime({
 }): ApiRuntimeValue {
   const client = new ApiClient({ baseUrl });
   const reeApi = new ReeApi(client);
-  const runsApi = new ExecutionRunsApi(client);
+  const runsApi = new ReeRunsApi(client);
   const contextReeId = initialReeId
     ? asReeId(initialReeId)
     : reeId

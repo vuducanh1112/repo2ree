@@ -6,12 +6,12 @@ import type {
   CreateReeRequestDto,
   PatchReeRequestDto,
   ReeDetailDto,
+  ReeRunDto,
   ReeSummaryDto,
   SourceAcquireRequestDto,
   UploadInitRequestDto,
   UploadInitResponseDto,
   WorkbenchImageCatalogDto,
-  WorkflowRunDto,
 } from "./apiTypes";
 import { endpoints } from "./endpoints";
 
@@ -74,8 +74,8 @@ export class ReeApi {
    * runId), not the finished workspace. Poll the run / its log feed and fetch
    * the workspace with {@link getRee} once it reaches "succeeded".
    */
-  async createRee(payload: CreateReeRequestDto): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.rees(), {
+  async createRee(payload: CreateReeRequestDto): Promise<ReeRunDto> {
+    return this.client.request<ReeRunDto>(endpoints.rees(), {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -118,8 +118,8 @@ export class ReeApi {
     });
   }
 
-  async acquireSource(reeId: ReeId, payload: SourceAcquireRequestDto): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.reeSourceAcquire(reeId), {
+  async acquireSource(reeId: ReeId, payload: SourceAcquireRequestDto): Promise<ReeRunDto> {
+    return this.client.request<ReeRunDto>(endpoints.reeSourceAcquire(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -132,12 +132,8 @@ export class ReeApi {
     });
   }
 
-  async completeUpload(
-    reeId: ReeId,
-    uploadToken: string,
-    archiveName: string,
-  ): Promise<WorkflowRunDto> {
-    return this.client.request<WorkflowRunDto>(endpoints.reeSourceUploadComplete(reeId), {
+  async completeUpload(reeId: ReeId, uploadToken: string, archiveName: string): Promise<ReeRunDto> {
+    return this.client.request<ReeRunDto>(endpoints.reeSourceUploadComplete(reeId), {
       method: "POST",
       body: JSON.stringify({ uploadToken, archiveName }),
     });

@@ -1,14 +1,14 @@
-import type { ExecutionRunStatus } from "@core/execution/ExecutionRunStatus";
-import type { ExperimentRunOutputs } from "@core/execution/ExperimentRun";
 import type { LogLine } from "@core/ree/ReeTypes";
+import type { ExperimentRunOutputs } from "@core/runs/ExperimentRun";
+import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
 import { useApiRuntime } from "@shell/data/apiRuntime";
-import { useExecutionRunsClient } from "@shell/data/execution-runs/client";
+import { useReeRunsClient } from "@shell/data/runs/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type RunState = {
   reeId: string;
   runId: string;
-  status: ExecutionRunStatus;
+  status: ReeRunStatus;
   outputs: ExperimentRunOutputs | null;
   error: string | null;
   startedAt: string;
@@ -16,7 +16,7 @@ export type RunState = {
   logCursor: string | undefined;
 };
 
-export const TERMINAL_STATUSES: ExecutionRunStatus[] = ["succeeded", "failed", "canceled"];
+export const TERMINAL_STATUSES: ReeRunStatus[] = ["succeeded", "failed", "canceled"];
 
 const MAX_RUN_LOG_LINES = 2000;
 
@@ -49,7 +49,7 @@ export function useExperimentRun({
   onBeforeRun,
 }: UseExperimentRunOptions): ExperimentRunController {
   const { runsApi, ensureReeId } = useApiRuntime();
-  const executionRunsClient = useExecutionRunsClient();
+  const executionRunsClient = useReeRunsClient();
   const [runState, setRunState] = useState<RunState | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -74,7 +74,7 @@ export function useExperimentRun({
       let nextCursor = cursor;
       const collected: LogLine[] = [];
       for (let page = 0; page < 20; page += 1) {
-        const chunk = await executionRunsClient.getExecutionRunLogs(reeId, runId, nextCursor);
+        const chunk = await executionRunsClient.getReeRunLogs(reeId, runId, nextCursor);
         collected.push(...chunk.lines);
         nextCursor = chunk.nextCursor || nextCursor;
         if (!chunk.hasMore) break;

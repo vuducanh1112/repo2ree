@@ -1,35 +1,35 @@
-import type { ExecutionRunLogs } from "@core/ree/ReeTypes";
+import type { ReeRunLogs } from "@core/ree/ReeTypes";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { PAGE } from "../../state/pages";
 import { PageArchive as ArchivePage } from "../archive/ArchivePage";
-import { type AppShellPageContainerProps, ContentSection, useAssemblyRunLogEntry } from "./shared";
+import { type AppShellPageContainerProps, ContentSection, useStepRunLogEntry } from "./shared";
 
 export function ArchivePageContainer({
   workspaceRemote,
-  assemblyRun,
+  stepRuns,
   uiChrome,
   ree,
   commands,
 }: AppShellPageContainerProps) {
   const { reeId } = useApiRuntime();
   const { page } = uiChrome;
-  const { badges, actionStates } = assemblyRun;
-  const swhLog = useAssemblyRunLogEntry({
+  const { badges, actionStates } = stepRuns;
+  const swhLog = useStepRunLogEntry({
     reeId,
-    runId: assemblyRun.activeRunIds.swh,
-    fallbackTimestamp: assemblyRun.timestamps.swh,
+    runId: stepRuns.activeRunIds.swh,
+    fallbackTimestamp: stepRuns.timestamps.swh,
   });
-  const zenodoLog = useAssemblyRunLogEntry({
+  const zenodoLog = useStepRunLogEntry({
     reeId,
-    runId: assemblyRun.activeRunIds.zenodo,
-    fallbackTimestamp: assemblyRun.timestamps.zenodo,
+    runId: stepRuns.activeRunIds.zenodo,
+    fallbackTimestamp: stepRuns.timestamps.zenodo,
   });
-  const dataverseLog = useAssemblyRunLogEntry({
+  const dataverseLog = useStepRunLogEntry({
     reeId,
-    runId: assemblyRun.activeRunIds.dataverse,
-    fallbackTimestamp: assemblyRun.timestamps.dataverse,
+    runId: stepRuns.activeRunIds.dataverse,
+    fallbackTimestamp: stepRuns.timestamps.dataverse,
   });
-  const logs: ExecutionRunLogs = {};
+  const logs: ReeRunLogs = {};
   if (swhLog) logs.swh = swhLog;
   if (zenodoLog) logs.zenodo = zenodoLog;
   if (dataverseLog) logs.dataverse = dataverseLog;

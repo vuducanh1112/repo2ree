@@ -1,10 +1,10 @@
-import type { ReeAssemblyRequirement } from "@core/ree-assembly/assemblyStepTypes";
+import type { ReeStepRequirement } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgInfoBanner } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 
 interface MissingInputsBannerProps {
-  missing: ReeAssemblyRequirement[];
+  missing: ReeStepRequirement[];
   onGoFields?: () => void;
   /** Label for the jump-back button (when onGoFields is set). */
   goLabel?: string;

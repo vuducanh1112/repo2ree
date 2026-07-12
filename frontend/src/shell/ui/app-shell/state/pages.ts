@@ -11,7 +11,7 @@ export const PAGE = {
   CANVAS: "canvas",
   SEAL: "seal",
   ARCHIVE: "archive",
-  // Assembly pages — keys match assembly operation keys.
+  // Step pages — keys match the runs API's operation keys.
   EVALUATE: "evaluate",
   BUILD: "build",
   SBOM: "sbom",

@@ -3,9 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import {
-  WORKFLOW_LOG_EMPTY_STYLE,
-  WORKFLOW_LOG_PANEL_HEADER_STYLE,
-  WORKFLOW_LOG_PANEL_ROOT_STYLE,
+  RUN_LOG_EMPTY_STYLE,
+  RUN_LOG_PANEL_HEADER_STYLE,
+  RUN_LOG_PANEL_ROOT_STYLE,
 } from "./statusUiStyles";
 
 const MAX_RENDER_LOG_LINES = 800;
@@ -128,15 +128,15 @@ export function LogPanel({ log, running = false }: LogPanelProps) {
   };
 
   return (
-    <div style={WORKFLOW_LOG_PANEL_ROOT_STYLE}>
+    <div style={RUN_LOG_PANEL_ROOT_STYLE}>
       {!log ? (
-        <div style={WORKFLOW_LOG_EMPTY_STYLE}>
+        <div style={RUN_LOG_EMPTY_STYLE}>
           {Ic.terminal()}
           <span style={{ fontSize: 13, fontFamily: F.sans }}>No output yet</span>
         </div>
       ) : (
         <>
-          <div style={WORKFLOW_LOG_PANEL_HEADER_STYLE}>
+          <div style={RUN_LOG_PANEL_HEADER_STYLE}>
             <span>
               Last run:{" "}
               {new Date(log.ts).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}

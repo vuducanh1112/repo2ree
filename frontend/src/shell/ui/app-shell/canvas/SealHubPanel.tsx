@@ -1,8 +1,8 @@
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { Badges, LogEntry } from "@core/ree/ReeTypes";
-import type { ConsistencyReport } from "@core/ree-assembly/sealConsistency";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import type { ConsistencyReport } from "@core/ree-steps/sealConsistency";
 import { useRef } from "react";
 import { C, F } from "../../theme/theme";
 import { CenterSealStrip } from "./CenterSealStrip";

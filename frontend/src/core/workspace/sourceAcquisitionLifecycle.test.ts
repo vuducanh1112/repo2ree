@@ -8,7 +8,7 @@ describe("runSourceWorkspaceAction", () => {
     const result = await runSourceWorkspaceAction({
       reeClient: { resetWorkspaceRequest },
       executionRunClient: {
-        startExecutionRun: vi.fn(async () => ({ runId: "run-1" })),
+        startReeRun: vi.fn(async () => ({ runId: "run-1" })),
       },
       reeId: "active",
       resetPayload: '{"mode":"clear"}',
@@ -34,7 +34,7 @@ describe("runSourceWorkspaceAction", () => {
         resetWorkspaceRequest: vi.fn(async () => {}),
       },
       executionRunClient: {
-        startExecutionRun: vi.fn(async () => ({ runId: "run-1" })),
+        startReeRun: vi.fn(async () => ({ runId: "run-1" })),
       },
       reeId: "active",
       resetPayload: '{"mode":"download"}',

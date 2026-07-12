@@ -10,7 +10,7 @@ export interface ReeEditorUiState {
   sourceSnapshotArchiveName: string;
 }
 
-export interface ReeAssemblyRunsState {
+export interface ReeStepRunsState {
   actionStates: ActionStates;
   badges: Badges;
   timestamps: Timestamps;
@@ -23,7 +23,7 @@ export interface ReeEditorState {
   artifactStatus: ArtifactStatus;
   evaluationState: EvaluationState;
   editorUi: ReeEditorUiState;
-  assemblyRuns: ReeAssemblyRunsState;
+  stepRuns: ReeStepRunsState;
 }
 
 interface CreateReeEditorStateInput {
@@ -32,7 +32,7 @@ interface CreateReeEditorStateInput {
   artifactStatus?: ArtifactStatus;
   evaluationState?: EvaluationState;
   editorUi?: Partial<ReeEditorUiState>;
-  assemblyRuns?: Partial<ReeAssemblyRunsState>;
+  stepRuns?: Partial<ReeStepRunsState>;
 }
 
 export function createReeEditorState(input: CreateReeEditorStateInput = {}): ReeEditorState {
@@ -51,12 +51,12 @@ export function createReeEditorState(input: CreateReeEditorStateInput = {}): Ree
       sourceSnapshotArchiveName: "",
       ...input.editorUi,
     },
-    assemblyRuns: {
+    stepRuns: {
       actionStates: {},
       badges: {},
       timestamps: {},
       activeRunIds: {},
-      ...input.assemblyRuns,
+      ...input.stepRuns,
     },
   };
 }
@@ -65,7 +65,7 @@ export function createReeEditorStateFromModel(args: {
   reeIntent: { reeSpec: ReeSpec };
   reeSession: { workspaceSourceState: WorkspaceSourceState; artifactStatus: ArtifactStatus };
   uiChrome: { locked: boolean; repoMode: "url" | "upload"; sourceSnapshotArchiveName: string };
-  assemblyRun: {
+  stepRuns: {
     evaluationState: EvaluationState;
     actionStates: ActionStates;
     badges: Badges;
@@ -73,25 +73,25 @@ export function createReeEditorStateFromModel(args: {
     activeRunIds: Record<string, string>;
   };
 }): ReeEditorState {
-  const { reeIntent, reeSession, uiChrome, assemblyRun } = args;
+  const { reeIntent, reeSession, uiChrome, stepRuns } = args;
   return createReeEditorState({
     reeSpec: reeIntent.reeSpec,
     workspaceSourceState: reeSession.workspaceSourceState,
     artifactStatus: reeSession.artifactStatus,
-    evaluationState: assemblyRun.evaluationState,
+    evaluationState: stepRuns.evaluationState,
     editorUi: {
       // A sealed session is read-only regardless of transient UI flags, so the
       // lock derives from the session's seal stamps. `uiChrome.locked` still
-      // covers non-seal locking paths (e.g. assembly-driven locks).
+      // covers non-seal locking paths (e.g. step-driven locks).
       locked: uiChrome.locked || isSealed(reeSession.artifactStatus),
       repoMode: uiChrome.repoMode,
       sourceSnapshotArchiveName: uiChrome.sourceSnapshotArchiveName,
     },
-    assemblyRuns: {
-      actionStates: assemblyRun.actionStates,
-      badges: assemblyRun.badges,
-      timestamps: assemblyRun.timestamps,
-      activeRunIds: assemblyRun.activeRunIds,
+    stepRuns: {
+      actionStates: stepRuns.actionStates,
+      badges: stepRuns.badges,
+      timestamps: stepRuns.timestamps,
+      activeRunIds: stepRuns.activeRunIds,
     },
   });
 }

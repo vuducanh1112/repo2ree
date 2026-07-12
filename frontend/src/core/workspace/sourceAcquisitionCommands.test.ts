@@ -6,7 +6,7 @@ describe("sourceAcquisitionCommands", () => {
     const commands = sourceChangeResetCommands();
 
     expect(commands).toHaveLength(2);
-    expect(commands[0].type).toBe("resetAssemblyAfterSourceChange");
+    expect(commands[0].type).toBe("resetStepsAfterSourceChange");
     expect(commands[1]).toEqual({
       type: "toast",
       message: "Source changed — downstream status and scripts reset",
@@ -18,7 +18,7 @@ describe("sourceAcquisitionCommands", () => {
     const commands = sourceChangeResetCommands({ silent: true });
 
     expect(commands).toHaveLength(1);
-    expect(commands[0].type).toBe("resetAssemblyAfterSourceChange");
+    expect(commands[0].type).toBe("resetStepsAfterSourceChange");
   });
 
   it("plans source failure outcome before error toast", () => {

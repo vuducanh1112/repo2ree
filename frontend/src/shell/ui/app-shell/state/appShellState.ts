@@ -1,18 +1,18 @@
 import type { ReeSpec } from "@core/ree/ReeSpec";
 import type {
   ActionStates,
-  AssemblyRunOutcome,
   Badges,
-  ReeAssemblyOperationParams,
+  ReeStepParams,
+  StepRunOutcome,
   Timestamps,
 } from "@core/ree/ReeTypes";
-import type { ToastState } from "@core/ree-assembly/assemblyStepTypes";
+import type { ToastState } from "@core/ree-steps/stepTypes";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
-import type { AssemblyRunState } from "./assemblyRunState";
 import type { AppShellPage } from "./pages";
 import { normalizeAppShellPage } from "./pages";
 import type { ReeIntentState } from "./reeIntent";
 import type { ReeSessionState } from "./reeSession";
+import type { StepRunState } from "./stepRunState";
 import type { UiChromeState } from "./uiChrome";
 
 interface AppShellState {
@@ -21,7 +21,7 @@ interface AppShellState {
   actionStates: ActionStates;
   badges: Badges;
   timestamps: Timestamps;
-  assemblyOperationParams: ReeAssemblyOperationParams;
+  stepParams: ReeStepParams;
   activeRunIds: Record<string, string>;
   toast: ToastState | null;
   page: AppShellPage;
@@ -40,23 +40,23 @@ export interface SourceOutcomePayload {
   timestamp?: string;
 }
 
-export interface AssemblyRunCompletionPayload {
+export interface StepRunCompletionPayload {
   key: string;
   runId?: string;
   actionState: "done";
-  badge: AssemblyRunOutcome;
+  badge: StepRunOutcome;
   timestamp: string;
 }
 export function createAppShellState(params: {
   reeIntent: ReeIntentState;
   reeSession: ReeSessionState;
-  assemblyRun: AssemblyRunState;
+  stepRuns: StepRunState;
   uiChrome: UiChromeState;
 }): AppShellState {
   return {
     ...params.reeIntent,
     ...params.reeSession,
-    ...params.assemblyRun,
+    ...params.stepRuns,
     ...params.uiChrome,
   };
 }

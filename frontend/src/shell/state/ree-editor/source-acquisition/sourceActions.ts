@@ -10,18 +10,15 @@ import {
 import { runSourceWorkspaceAction } from "@core/workspace/sourceAcquisitionLifecycle";
 import { serializeWorkspaceResetPayload } from "@core/workspace/WorkspaceReset";
 import type { AppShellClock } from "@shell/app/bootstrap/ports";
-import type { ExecutionRunsClient } from "@shell/data/execution-runs/client";
 import { queryKeys } from "@shell/data/queryKeys";
 import type { ReeClient } from "@shell/data/ree/client";
+import type { ReeRunsClient } from "@shell/data/runs/client";
 import type { QueryClient } from "@tanstack/react-query";
-import {
-  executeSourceCommands,
-  type ReeEditorDispatch,
-} from "../assembly-runs/assemblyActionEffects";
-import { pollExecutionRun } from "../assembly-runs/pollExecutionRun";
+import { pollReeRun } from "../step-runs/pollReeRun";
+import { executeSourceCommands, type ReeEditorDispatch } from "../step-runs/stepActionEffects";
 import type { ShowToast } from "../types";
 
-function resetAssemblyStateOnSourceChange(
+function resetStepsStateOnSourceChange(
   dispatch: ReeEditorDispatch,
   showToast: ShowToast,
   options: { silent?: boolean } = {},
@@ -32,7 +29,7 @@ function resetAssemblyStateOnSourceChange(
 interface CreateSourceActionsArgs {
   ree: ReeEditorViewModel;
   reeClient: ReeClient<FileTreeNode>;
-  executionRunsClient: ExecutionRunsClient;
+  executionRunsClient: ReeRunsClient;
   reeId: string;
   queryClient: QueryClient;
   dispatch: ReeEditorDispatch;
@@ -57,8 +54,8 @@ export function createSourceActions({
   const runCommands = (commands: SourceCommand[]) =>
     executeSourceCommands(commands, { dispatch, showToast });
 
-  const resetSourceAssemblyState = (options: { silent?: boolean } = {}) => {
-    resetAssemblyStateOnSourceChange(dispatch, showToast, options);
+  const resetSourceStepsState = (options: { silent?: boolean } = {}) => {
+    resetStepsStateOnSourceChange(dispatch, showToast, options);
   };
 
   const runRemoteOrLocalSourceAction = async (
@@ -72,7 +69,7 @@ export function createSourceActions({
       resetPayload: serializeWorkspaceResetPayload(resetRequest),
       runParams,
       pollRun: (nextReeId, runId, onUpdateLogs) =>
-        pollExecutionRun(queryClient, executionRunsClient, {
+        pollReeRun(queryClient, executionRunsClient, {
           reeId: nextReeId,
           runId,
           onUpdate: onUpdateLogs,
@@ -90,7 +87,7 @@ export function createSourceActions({
   const sourceAcquisition = createSourceUseCase({
     ree,
     executeCommands: runCommands,
-    sourceChanged: resetSourceAssemblyState,
+    sourceChanged: resetSourceStepsState,
     runSourceAction: runRemoteOrLocalSourceAction,
     refreshWorkspaceFiles,
     clearWorkspace: () => reeClient.resetWorkspaceRequest(reeId, { mode: "clear" }),
@@ -137,7 +134,7 @@ export function createSourceActions({
     handleDownloadSourceFiles,
     handleWorkspaceUpload,
     handleRemoveWorkspaceSource,
-    resetSourceAssemblyState,
+    resetSourceStepsState,
   };
 }
 

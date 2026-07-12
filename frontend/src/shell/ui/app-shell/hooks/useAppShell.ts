@@ -5,12 +5,12 @@ export function useAppShell() {
   const { state, dispatch } = useAppShellContext();
   const reeIntent = state.reeIntent;
   const reeSession = state.reeSession;
-  const assemblyRun = state.assemblyRun;
+  const stepRuns = state.stepRuns;
   const uiChrome = state.uiChrome;
   const reeEditor = useReeEditor({
     reeIntent,
     reeSession,
-    assemblyRun,
+    stepRuns,
     uiChrome,
     dispatch,
   });

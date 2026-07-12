@@ -1,4 +1,3 @@
-import type { ExperimentRunOutputs } from "@core/execution/ExperimentRun";
 import {
   type ExperimentResourceEstimates,
   experimentScriptPath,
@@ -6,6 +5,7 @@ import {
   type ReeExperiment,
 } from "@core/ree/ReeSpec";
 import type { LogEntry } from "@core/ree/ReeTypes";
+import type { ExperimentRunOutputs } from "@core/runs/ExperimentRun";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgActionButton,

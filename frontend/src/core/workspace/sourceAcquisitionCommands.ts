@@ -1,10 +1,10 @@
 import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
 import type { EvaluationState } from "../../core/evaluate/EvaluationState";
 import type { ReeSpec } from "../../core/ree/ReeSpec";
-import type { LogLine, ReeAssemblyOperationParams, ReeFile } from "../../core/ree/ReeTypes";
+import type { LogLine, ReeFile, ReeStepParams } from "../../core/ree/ReeTypes";
 import type { FileTreeNode } from "../../core/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
-import { initialReeAssemblyOperationParams } from "../ree-assembly/assemblyCatalog";
+import { initialReeStepParams } from "../ree-steps/stepCatalog";
 
 export interface SourceOutcomeCommandPayload {
   runId?: string;
@@ -17,7 +17,7 @@ export interface SourceOutcomeCommandPayload {
 }
 
 export type SourceCommand =
-  | { type: "resetAssemblyAfterSourceChange"; assemblyOperationParams: ReeAssemblyOperationParams }
+  | { type: "resetStepsAfterSourceChange"; stepParams: ReeStepParams }
   | { type: "setSourceLoading" }
   | { type: "setActiveRunId"; key: string; runId: string }
   | {
@@ -36,8 +36,8 @@ export type SourceCommand =
 export function sourceChangeResetCommands(options: { silent?: boolean } = {}): SourceCommand[] {
   const commands: SourceCommand[] = [
     {
-      type: "resetAssemblyAfterSourceChange",
-      assemblyOperationParams: initialReeAssemblyOperationParams(),
+      type: "resetStepsAfterSourceChange",
+      stepParams: initialReeStepParams(),
     },
   ];
   if (!options.silent) {

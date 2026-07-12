@@ -8,10 +8,10 @@ import {
   activationFooterHint,
   activationRunLabel,
   canRunActivation,
-} from "@core/ree-assembly/activationUiState";
-import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
-import { resolvedRuntimePath } from "@core/ree-assembly/buildRuntimeUiState";
-import { resolvedSbomPath } from "@core/ree-assembly/sbomUiState";
+} from "@core/ree-steps/activationUiState";
+import { resolvedRuntimePath } from "@core/ree-steps/buildRuntimeUiState";
+import { resolvedSbomPath } from "@core/ree-steps/sbomUiState";
+import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
@@ -33,7 +33,7 @@ import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
 import { DEFAULT_VERIFY_TEMPLATE } from "../experiments/verifyTemplates";
-import type { AssemblyPageProps } from "../sharedAssemblyUi";
+import type { StepPageProps } from "../sharedStepUi";
 import { ActivationTargetCard } from "./sections";
 
 const ACTIVATION_PAGE_COLOR = "#7c3aed";
@@ -63,7 +63,7 @@ function ActivationRunControls({
 }
 
 export function PageTestActivation({
-  assemblyStep,
+  step,
   ree,
   workspaceFiles,
   log,
@@ -79,7 +79,7 @@ export function PageTestActivation({
   params,
   onReeSpecChange,
   onPersistWorkspaceFile,
-}: AssemblyPageProps) {
+}: StepPageProps) {
   const files = workspaceFiles || [];
 
   const activation: ReeActivation = ree.activation ?? createEmptyReeActivation();
@@ -95,8 +95,7 @@ export function PageTestActivation({
   const sbomPath = resolvedSbomPath(ree.sbom);
   const sbomPathExists = sbomPath ? workspaceFileExists(files, sbomPath) : false;
 
-  const activationParams: ReeAssemblyRunParams<"activation"> =
-    params as ReeAssemblyRunParams<"activation">;
+  const activationParams: ReeStepRunParams<"activation"> = params as ReeStepRunParams<"activation">;
 
   const canRun = canRunActivation({
     running,
@@ -160,8 +159,8 @@ export function PageTestActivation({
               running={running}
               runDone={runDone}
               disabled={!canRun}
-              onRun={() => onRun(assemblyStep.key, activationParams)}
-              onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
+              onRun={() => onRun(step.key, activationParams)}
+              onCancel={onCancel ? () => onCancel(step.key) : undefined}
             />
           </div>
         }

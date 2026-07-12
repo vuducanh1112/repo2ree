@@ -2,8 +2,8 @@ import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useApiRuntime } from "@shell/data/apiRuntime";
-import { useExecutionRunsClient } from "@shell/data/execution-runs/client";
 import { useReeClient } from "@shell/data/ree/client";
+import { useReeRunsClient } from "@shell/data/runs/client";
 import type { AppShellAction } from "@shell/ui/app-shell/state/types";
 import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
@@ -26,7 +26,7 @@ export function useSourceAcquisition({
   const { reeId } = useApiRuntime();
   const queryClient = useQueryClient();
   const reeClient = useReeClient();
-  const executionRunsClient = useExecutionRunsClient();
+  const executionRunsClient = useReeRunsClient();
 
   return createSourceActions({
     ree,

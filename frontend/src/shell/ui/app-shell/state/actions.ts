@@ -1,16 +1,16 @@
 import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { ReeSpec } from "@core/ree/ReeSpec";
-import type { ReeAssemblyOperationParams } from "@core/ree/ReeTypes";
-import type { ToastState } from "@core/ree-assembly/assemblyStepTypes";
+import type { ReeStepParams } from "@core/ree/ReeTypes";
+import type { ToastState } from "@core/ree-steps/stepTypes";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 import type {
   AppShellAction,
-  AssemblyRunCompletionPayload,
   PatchAction,
   SliceName,
   SliceShape,
   SourceOutcomePayload,
+  StepRunCompletionPayload,
   Updater,
 } from "./types";
 
@@ -49,10 +49,8 @@ export const setEvaluationState = (value: Updater<EvaluationState>): AppShellAct
   value,
 });
 
-export const setAssemblyOperationParams = (
-  value: Updater<ReeAssemblyOperationParams>,
-): AppShellAction => ({
-  type: "setAssemblyOperationParams",
+export const setStepParams = (value: Updater<ReeStepParams>): AppShellAction => ({
+  type: "setStepParams",
   value,
 });
 
@@ -62,8 +60,8 @@ export const setActiveRunId = (key: string, runId: string): AppShellAction => ({
   runId,
 });
 
-export const cancelAssemblyRun = (key: string, runId?: string): AppShellAction => ({
-  type: "cancelAssemblyRun",
+export const cancelStepRun = (key: string, runId?: string): AppShellAction => ({
+  type: "cancelStepRun",
   key,
   runId,
 });
@@ -78,21 +76,19 @@ export const setRepoMode = (repoMode: "url" | "upload"): AppShellAction => ({
   repoMode,
 });
 
-export const setAssemblyRunLoading = (key: string): AppShellAction => ({
-  type: "setAssemblyRunLoading",
+export const setStepRunLoading = (key: string): AppShellAction => ({
+  type: "setStepRunLoading",
   key,
 });
 
-export const completeAssemblyRun = (completion: AssemblyRunCompletionPayload): AppShellAction => ({
-  type: "completeAssemblyRun",
+export const completeStepRun = (completion: StepRunCompletionPayload): AppShellAction => ({
+  type: "completeStepRun",
   completion,
 });
 
-export const resetAssemblyAfterSourceChange = (
-  assemblyOperationParams: ReeAssemblyOperationParams,
-): AppShellAction => ({
-  type: "resetAssemblyAfterSourceChange",
-  assemblyOperationParams,
+export const resetStepsAfterSourceChange = (stepParams: ReeStepParams): AppShellAction => ({
+  type: "resetStepsAfterSourceChange",
+  stepParams,
 });
 
 export const showToast = (toast: ToastState): AppShellAction => ({

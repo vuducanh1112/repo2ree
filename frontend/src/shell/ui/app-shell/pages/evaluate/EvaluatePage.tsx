@@ -1,14 +1,14 @@
-import { scanDependencies } from "@core/ree-assembly/assemblyDependencyAnalysis";
+import { scanDependencies } from "@core/ree-steps/dependencyAnalysis";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgPageRoot, lgStatusBadge, lgStyles, pageIconTint } from "@shell/ui/theme/lightGlassTheme";
 import { useEffect } from "react";
-import { assemblyStepIcon } from "../../assemblyStepIcons";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
-import type { AssemblyPageProps } from "../sharedAssemblyUi";
+import { stepIcon } from "../../stepIcons";
+import type { StepPageProps } from "../sharedStepUi";
 import { countContainerAndNixFiles } from "./EvaluatePageHelpers";
 import {
   EvaluateAxesCard,
@@ -21,7 +21,7 @@ import {
 } from "./EvaluatePageSections";
 
 export function PageEvaluate({
-  assemblyStep,
+  step,
   workspaceSourceState,
   workspaceFiles,
   log,
@@ -33,7 +33,7 @@ export function PageEvaluate({
   onGoFields,
   missing,
   params,
-}: AssemblyPageProps) {
+}: StepPageProps) {
   const files = workspaceFiles;
   const depGroups = scanDependencies(files || []);
   const { containerCount, nixCount } = countContainerAndNixFiles(files || []);
@@ -51,7 +51,7 @@ export function PageEvaluate({
   }, [runDone, refetchReport]);
   const hasScoreOutput = !!report;
   const sourceLoadedInWorkspace = !!workspaceSourceState.sourceAvailable;
-  const IC = assemblyStepIcon(assemblyStep.iconKey);
+  const IC = stepIcon(step.iconKey);
   const hasMissing = missing.length > 0;
 
   const statusLabel = running ? "Running" : hasScoreOutput ? "Scored" : "Not run";
@@ -64,8 +64,8 @@ export function PageEvaluate({
       <GlassPageHeader
         icon={IC(24)}
         iconTint={pageIconTint("#7c3aed")}
-        title={assemblyStep.label}
-        subtitle={assemblyStep.desc}
+        title={step.label}
+        subtitle={step.desc}
         badges={
           <>
             <span style={lgStatusBadge(statusReady)}>{statusLabel}</span>
@@ -77,8 +77,8 @@ export function PageEvaluate({
             running={running}
             runDone={runDone}
             disabled={running || !sourceLoadedInWorkspace || hasMissing}
-            onRun={() => onRun(assemblyStep.key, params)}
-            onCancel={() => onCancel?.(assemblyStep.key)}
+            onRun={() => onRun(step.key, params)}
+            onCancel={() => onCancel?.(step.key)}
           />
         }
       />

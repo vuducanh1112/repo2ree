@@ -1,7 +1,7 @@
 import type React from "react";
 import { C, F } from "../../theme/theme";
 
-export const WORKFLOW_LOG_PANEL_ROOT_STYLE: React.CSSProperties = {
+export const RUN_LOG_PANEL_ROOT_STYLE: React.CSSProperties = {
   flex: 1,
   display: "flex",
   flexDirection: "column",
@@ -14,7 +14,7 @@ export const WORKFLOW_LOG_PANEL_ROOT_STYLE: React.CSSProperties = {
   maxHeight: 360,
 };
 
-export const WORKFLOW_LOG_PANEL_HEADER_STYLE: React.CSSProperties = {
+export const RUN_LOG_PANEL_HEADER_STYLE: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
@@ -28,7 +28,7 @@ export const WORKFLOW_LOG_PANEL_HEADER_STYLE: React.CSSProperties = {
   flexShrink: 0,
 };
 
-export const WORKFLOW_LOG_EMPTY_STYLE: React.CSSProperties = {
+export const RUN_LOG_EMPTY_STYLE: React.CSSProperties = {
   flex: 1,
   display: "flex",
   flexDirection: "column",

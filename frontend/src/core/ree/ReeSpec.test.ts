@@ -34,7 +34,7 @@ function buildReeDraft() {
 }
 
 describe("Ree draft shape", () => {
-  it("contains both spec and assembly-derived fields", () => {
+  it("contains both spec and step-derived fields", () => {
     const ree = buildReeDraft();
     expect(ree.name).toBe("demo");
     expect(ree.sourceAvailable).toBe(true);

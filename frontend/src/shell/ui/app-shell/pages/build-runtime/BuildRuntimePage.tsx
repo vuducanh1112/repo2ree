@@ -4,7 +4,7 @@ import {
   buildRunStatusLabel,
   deriveRuntimeFileSize,
   resolvedRuntimePath,
-} from "@core/ree-assembly/buildRuntimeUiState";
+} from "@core/ree-steps/buildRuntimeUiState";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
@@ -24,7 +24,7 @@ import { LastRunStamp } from "../../components/LastRunStamp";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
-import type { AssemblyPageProps } from "../sharedAssemblyUi";
+import type { StepPageProps } from "../sharedStepUi";
 import { BuildLogCard, ReservedBuildScriptCard, RuntimeArtifactCard } from "./sections";
 
 const BUILD_PAGE_COLOR = lgPageColors.runtimeEnv;
@@ -54,7 +54,7 @@ function BuildRunControls({
 }
 
 export function PageBuildRuntime({
-  assemblyStep,
+  step,
   ree,
   workspaceFiles,
   log,
@@ -70,7 +70,7 @@ export function PageBuildRuntime({
   params,
   onReeSpecChange,
   onPersistWorkspaceFile,
-}: AssemblyPageProps) {
+}: StepPageProps) {
   const files = workspaceFiles || [];
 
   const scriptPath = RESERVED_BUILD_SCRIPT;
@@ -134,8 +134,8 @@ export function PageBuildRuntime({
               running={running}
               runDone={runDone}
               disabled={running || hasMissing || !hasScript}
-              onRun={() => onRun(assemblyStep.key, params)}
-              onCancel={onCancel ? () => onCancel(assemblyStep.key) : undefined}
+              onRun={() => onRun(step.key, params)}
+              onCancel={onCancel ? () => onCancel(step.key) : undefined}
             />
           </div>
         }

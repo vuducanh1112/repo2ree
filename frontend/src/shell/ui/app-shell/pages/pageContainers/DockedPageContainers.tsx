@@ -1,18 +1,18 @@
 import { useApiRuntime } from "@shell/data/apiRuntime";
-import { useAssemblyStepPageController } from "../../hooks/useAssemblyStepPageController";
+import { useStepPageController } from "../../hooks/useStepPageController";
 import { PAGE } from "../../state/pages";
 import {
-  type AssemblyPageProps,
   PageBuildRuntime,
   PageEvaluate,
   PageExperiments,
   PageHardwareBom,
   PageMetadataEntry,
   PageTestActivation,
+  type StepPageProps,
 } from "../index";
-import { type AppShellPageContainerProps, ContentSection, useAssemblyRunLogEntry } from "./shared";
+import { type AppShellPageContainerProps, ContentSection, useStepRunLogEntry } from "./shared";
 
-const ASSEMBLY_PAGE_COMPONENTS: Record<string, (props: AssemblyPageProps) => JSX.Element> = {
+const STEP_PAGE_COMPONENTS: Record<string, (props: StepPageProps) => JSX.Element> = {
   evaluate: (props) => <PageEvaluate {...props} />,
   build: (props) => <PageBuildRuntime {...props} />,
   // sbom opens as a compact floating hub panel (SbomHubPanel), not a docked page.
@@ -21,13 +21,13 @@ const ASSEMBLY_PAGE_COMPONENTS: Record<string, (props: AssemblyPageProps) => JSX
 
 export function MetadataPageContainer({
   reeIntent,
-  assemblyRun,
+  stepRuns,
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
   const { page, focusedField, locked } = uiChrome;
   const { reeSpec } = reeIntent;
-  const { badges } = assemblyRun;
+  const { badges } = stepRuns;
 
   if (page !== PAGE.METADATA) {
     return null;
@@ -41,7 +41,7 @@ export function MetadataPageContainer({
       focusedField={focusedField}
       onReeChange={commands.setReeSpec}
       onLockedChange={commands.setLocked}
-      onGoAssemblyPage={commands.setPage}
+      onGoPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
     />
   );
@@ -49,7 +49,7 @@ export function MetadataPageContainer({
 
 export function ExperimentsPageContainer({
   reeIntent,
-  assemblyRun,
+  stepRuns,
   uiChrome,
   commands,
   workspaceRemote,
@@ -57,7 +57,7 @@ export function ExperimentsPageContainer({
   const { reeId } = useApiRuntime();
   const { page, focusedField, locked } = uiChrome;
   const { reeSpec } = reeIntent;
-  const { badges } = assemblyRun;
+  const { badges } = stepRuns;
   const { workspaceFiles } = workspaceRemote;
 
   if (page !== PAGE.EXPERIMENTS) {
@@ -73,7 +73,7 @@ export function ExperimentsPageContainer({
       focusedField={focusedField}
       workspaceFiles={workspaceFiles}
       onReeChange={commands.setReeSpec}
-      onGoAssemblyPage={commands.setPage}
+      onGoPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
       onBeforeRun={commands.flushReeIntent}
       onPersistWorkspaceFile={commands.onPersistWorkspaceFile}
@@ -83,16 +83,16 @@ export function ExperimentsPageContainer({
 
 export function HardwareBomPageContainer({
   ree,
-  assemblyRun,
+  stepRuns,
   uiChrome,
   commands,
 }: AppShellPageContainerProps) {
   const { reeId } = useApiRuntime();
   const { page, focusedField, locked } = uiChrome;
-  const { badges, actionStates, timestamps } = assemblyRun;
-  const hbomLog = useAssemblyRunLogEntry({
+  const { badges, actionStates, timestamps } = stepRuns;
+  const hbomLog = useStepRunLogEntry({
     reeId,
-    runId: assemblyRun.activeRunIds.hbom,
+    runId: stepRuns.activeRunIds.hbom,
     fallbackTimestamp: timestamps.hbom,
   });
 
@@ -112,27 +112,27 @@ export function HardwareBomPageContainer({
       focusedField={focusedField}
       onReeSpecChange={commands.setReeSpec}
       onLockedChange={commands.setLocked}
-      onGoAssemblyPage={commands.setPage}
+      onGoPage={commands.setPage}
       onFocusedFieldChange={commands.setFocusedField}
-      onRun={commands.onRunAssemblyStep}
+      onRun={commands.onRunStep}
       onCancel={commands.onCancelAction}
     />
   );
 }
 
-export function AssemblyPageContainer(props: AppShellPageContainerProps) {
-  const { ree, workspaceRemote, assemblyRun, commands } = props;
-  const { badges } = assemblyRun;
+export function StepPageContainer(props: AppShellPageContainerProps) {
+  const { ree, workspaceRemote, stepRuns, commands } = props;
+  const { badges } = stepRuns;
   const { workspaceFiles, workspaceSourceState, artifactStatus } = workspaceRemote;
 
-  const assemblyPageController = useAssemblyStepPageController(props);
+  const stepPageController = useStepPageController(props);
 
-  if (!assemblyPageController) {
+  if (!stepPageController) {
     return null;
   }
 
   const {
-    assemblyStep,
+    step,
     log,
     running,
     runDone,
@@ -143,30 +143,30 @@ export function AssemblyPageContainer(props: AppShellPageContainerProps) {
     params,
     setParam,
     goToRequirements,
-  } = assemblyPageController;
+  } = stepPageController;
 
-  const AssemblyPageComponent = ASSEMBLY_PAGE_COMPONENTS[assemblyStep.key];
-  if (!AssemblyPageComponent) {
+  const StepPageComponent = STEP_PAGE_COMPONENTS[step.key];
+  if (!StepPageComponent) {
     return null;
   }
 
   return (
     <ContentSection>
-      <AssemblyPageComponent
-        assemblyStep={assemblyStep}
+      <StepPageComponent
+        step={step}
         ree={ree}
         badges={badges}
         workspaceFiles={workspaceFiles}
         workspaceSourceState={workspaceSourceState}
         artifactStatus={artifactStatus}
-        evaluationState={assemblyRun.evaluationState}
+        evaluationState={stepRuns.evaluationState}
         log={log}
         running={running}
         runDone={runDone}
         runFailed={runFailed}
         badge={badge}
         ts={ts}
-        onRun={commands.onRunAssemblyStep}
+        onRun={commands.onRunStep}
         onCancel={commands.onCancelAction}
         onGo={commands.setPage}
         onGoFields={goToRequirements}

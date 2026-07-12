@@ -7,7 +7,7 @@ import { lgColors, lgStatusBadge } from "../../theme/lightGlassTheme";
 import { CollapsibleLogCard } from "../components/CollapsibleLogCard";
 import { isLikelySourceUrl } from "../components/sourceRuntime/SourceUrlField";
 import type { AppShellPageContainerProps } from "../pages/pageContainers/shared";
-import { useAssemblyRunLogEntry } from "../pages/pageContainers/shared";
+import { useStepRunLogEntry } from "../pages/pageContainers/shared";
 import type { SourceTypeOption } from "../pages/source/SourceAcquisitionPageHelpers";
 import { SourceAcquisitionCard } from "../pages/source/SourceAcquisitionPageSections";
 import { SourceStep3Section } from "../pages/source/SourceAcquisitionPageStep3Section";
@@ -15,7 +15,7 @@ import { HubPanel, HubPanelHeader } from "./HubPanel";
 
 type SourceHubPanelProps = Pick<
   AppShellPageContainerProps,
-  "ree" | "workspaceRemote" | "assemblyRun" | "uiChrome" | "commands"
+  "ree" | "workspaceRemote" | "stepRuns" | "uiChrome" | "commands"
 > & {
   onClose: () => void;
 };
@@ -26,20 +26,20 @@ type SourceHubPanelProps = Pick<
 export function SourceHubPanel({
   ree,
   workspaceRemote,
-  assemblyRun,
+  stepRuns,
   uiChrome,
   commands,
   onClose,
 }: SourceHubPanelProps) {
   const { reeId } = useApiRuntime();
   const { focusedField, locked, repoMode } = uiChrome;
-  const { actionStates } = assemblyRun;
+  const { actionStates } = stepRuns;
   const { workspaceSourceState, sourceRepo } = workspaceRemote;
 
-  const sourceLog = useAssemblyRunLogEntry({
+  const sourceLog = useStepRunLogEntry({
     reeId,
-    runId: assemblyRun.activeRunIds.source,
-    fallbackTimestamp: assemblyRun.timestamps.source,
+    runId: stepRuns.activeRunIds.source,
+    fallbackTimestamp: stepRuns.timestamps.source,
   });
 
   const [originTypeDraft, setOriginTypeDraft] = useState<SourceTypeOption | "">(

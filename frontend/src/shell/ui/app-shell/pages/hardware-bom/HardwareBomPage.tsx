@@ -22,7 +22,7 @@ import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { RunActionButton } from "../../components/RunActionButton";
 import { useHardwareBomDraft } from "../../hooks/useHardwareBomDraft";
-import type { PageHardwareBomProps } from "../sharedAssemblyUi";
+import type { PageHardwareBomProps } from "../sharedStepUi";
 import {
   type CategoryDescriptor,
   HardwareCategoryTabs,

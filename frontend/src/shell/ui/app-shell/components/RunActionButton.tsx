@@ -20,7 +20,7 @@ interface RunActionButtonProps {
 }
 
 /**
- * The single "run this assembly step" button used across every page (build,
+ * The single "run this step" button used across every page (build,
  * evaluate, activation, SBOM, experiments, …). Centralising it keeps the
  * loading/spin behaviour consistent and — importantly — marks the icon
  * `aria-hidden` so the icon's <title> ("Play"/"Loading") never leaks into the

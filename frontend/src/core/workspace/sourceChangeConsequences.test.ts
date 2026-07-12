@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyReeSpec } from "../ree/ReeSpec";
-import { initialReeAssemblyOperationParams } from "../ree-assembly/assemblyCatalog";
+import { initialReeStepParams } from "../ree-steps/stepCatalog";
 import type { SourceChangeInput } from "./sourceChangeConsequences";
 import { computeSourceChangeConsequences } from "./sourceChangeConsequences";
 
@@ -29,19 +29,19 @@ function buildWorkspaceState(): SourceChangeInput {
     actionStates: {},
     badges: {},
     timestamps: {},
-    assemblyOperationParams: initialReeAssemblyOperationParams(),
+    stepParams: initialReeStepParams(),
   };
 }
 
 describe("computeSourceChangeConsequences", () => {
-  it("clears assembly artifacts while preserving unrelated workspace state", () => {
+  it("clears step artifacts while preserving unrelated workspace state", () => {
     const workspace = buildWorkspaceState();
-    const nextAssemblyOperationParams = initialReeAssemblyOperationParams();
-    workspace.assemblyOperationParams = nextAssemblyOperationParams;
+    const nextStepParams = initialReeStepParams();
+    workspace.stepParams = nextStepParams;
 
     const reset = computeSourceChangeConsequences(workspace);
 
-    expect(reset.assemblyOperationParams).toEqual(nextAssemblyOperationParams);
+    expect(reset.stepParams).toEqual(nextStepParams);
     expect(reset.badges).toEqual({});
     expect(reset.sourceSnapshotArchiveName).toBe("");
     expect(reset.reeSpec.runtime).toBe("");

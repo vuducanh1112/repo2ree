@@ -1,4 +1,4 @@
-import type { ArchiveRepo } from "@core/ree-assembly/assemblyStepTypes";
+import type { ArchiveRepo } from "@core/ree-steps/stepTypes";
 import { SummaryLine } from "@shell/ui/app-shell/components/SummaryLine";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";

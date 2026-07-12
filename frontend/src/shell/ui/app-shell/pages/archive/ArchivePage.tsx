@@ -1,8 +1,8 @@
 import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
-import type { ActionStates, Badges, ExecutionRunLogs } from "@core/ree/ReeTypes";
-import { ARCHIVE_REPOSITORIES } from "@core/ree-assembly/archiveRepositories";
-import type { GenericReeAssemblyParams } from "@core/ree-assembly/assemblyStepTypes";
+import type { ActionStates, Badges, ReeRunLogs } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import { ARCHIVE_REPOSITORIES } from "@core/ree-steps/archiveRepositories";
+import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgNextButton, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
@@ -21,9 +21,9 @@ interface PageArchiveProps {
   ree: ReeEditorViewModel;
   artifactStatus: ArtifactStatus;
   badges: Badges;
-  logs: ExecutionRunLogs;
+  logs: ReeRunLogs;
   actionStates: ActionStates;
-  onRun: (key: string, params: GenericReeAssemblyParams) => void;
+  onRun: (key: string, params: GenericReeStepParams) => void;
   onGo: (key: AppShellPage) => void;
 }
 

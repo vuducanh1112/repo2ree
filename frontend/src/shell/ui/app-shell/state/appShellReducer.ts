@@ -2,17 +2,17 @@ import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
 import { enforceSourceOriginRules } from "@core/artifact/sourceOriginRules";
 import { type EvaluationState, emptyEvaluationState } from "@core/evaluate/EvaluationState";
 import { createEmptyReeSpec } from "@core/ree/ReeSpec";
-import type { ReeAssemblyOperationParams } from "@core/ree/ReeTypes";
+import type { ReeStepParams } from "@core/ree/ReeTypes";
 import { computeSourceChangeConsequences } from "@core/workspace/sourceChangeConsequences";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 import {
-  type AssemblyRunCompletionPayload,
   normalizeUiChromePage,
   type SourceOutcomePayload,
+  type StepRunCompletionPayload,
 } from "./appShellState";
-import { createInitialAssemblyRunState } from "./assemblyRunState";
 import { createInitialReeIntentState } from "./reeIntent";
 import { createInitialReeSessionState } from "./reeSession";
+import { createInitialStepRunState } from "./stepRunState";
 import type { AppShellAction, AppShellContextState, SliceName, SliceShape } from "./types";
 import { resolveUpdater } from "./types";
 import { createInitialUiChromeState } from "./uiChrome";
@@ -45,8 +45,8 @@ export function createInitialState(
   return {
     reeIntent: createInitialReeIntentState(normalized),
     reeSession: createInitialReeSessionState(normalized),
-    assemblyRun: {
-      ...createInitialAssemblyRunState(),
+    stepRuns: {
+      ...createInitialStepRunState(),
       evaluationState: normalized.evaluationState,
     },
     uiChrome: createInitialUiChromeState(),
@@ -76,8 +76,8 @@ function applySourceOutcome(
   state: AppShellContextState,
   outcome: SourceOutcomePayload,
 ): AppShellContextState {
-  const { reeIntent, reeSession, assemblyRun } = state;
-  if (outcome.runId && assemblyRun.activeRunIds.source !== outcome.runId) {
+  const { reeIntent, reeSession, stepRuns } = state;
+  if (outcome.runId && stepRuns.activeRunIds.source !== outcome.runId) {
     return state;
   }
   // Keep the active run id after a successful source outcome so the source log
@@ -101,18 +101,18 @@ function applySourceOutcome(
       ...state.uiChrome,
       sourceSnapshotArchiveName: outcome.sourceSnapshotArchiveName,
     },
-    assemblyRun: {
-      ...assemblyRun,
+    stepRuns: {
+      ...stepRuns,
       actionStates: outcome.actionState
-        ? { ...assemblyRun.actionStates, source: outcome.actionState }
-        : assemblyRun.actionStates,
+        ? { ...stepRuns.actionStates, source: outcome.actionState }
+        : stepRuns.actionStates,
       badges:
         typeof outcome.badge === "boolean"
-          ? { ...assemblyRun.badges, source: outcome.badge }
-          : assemblyRun.badges,
+          ? { ...stepRuns.badges, source: outcome.badge }
+          : stepRuns.badges,
       timestamps: outcome.timestamp
-        ? { ...assemblyRun.timestamps, source: outcome.timestamp }
-        : assemblyRun.timestamps,
+        ? { ...stepRuns.timestamps, source: outcome.timestamp }
+        : stepRuns.timestamps,
     },
   };
 }
@@ -162,22 +162,22 @@ function setEvaluationState(
 ): AppShellContextState {
   return {
     ...state,
-    assemblyRun: {
-      ...state.assemblyRun,
-      evaluationState: resolveUpdater(state.assemblyRun.evaluationState, updater),
+    stepRuns: {
+      ...state.stepRuns,
+      evaluationState: resolveUpdater(state.stepRuns.evaluationState, updater),
     },
   };
 }
 
-function setAssemblyOperationParams(
+function setStepParams(
   state: AppShellContextState,
-  updater: Extract<AppShellAction, { type: "setAssemblyOperationParams" }>["value"],
+  updater: Extract<AppShellAction, { type: "setStepParams" }>["value"],
 ): AppShellContextState {
   return {
     ...state,
-    assemblyRun: {
-      ...state.assemblyRun,
-      assemblyOperationParams: resolveUpdater(state.assemblyRun.assemblyOperationParams, updater),
+    stepRuns: {
+      ...state.stepRuns,
+      stepParams: resolveUpdater(state.stepRuns.stepParams, updater),
     },
   };
 }
@@ -188,32 +188,32 @@ function setActiveRunId(
 ): AppShellContextState {
   return {
     ...state,
-    assemblyRun: {
-      ...state.assemblyRun,
+    stepRuns: {
+      ...state.stepRuns,
       activeRunIds: {
-        ...state.assemblyRun.activeRunIds,
+        ...state.stepRuns.activeRunIds,
         [action.key]: action.runId,
       },
     },
   };
 }
 
-function cancelAssemblyRun(
+function cancelStepRun(
   state: AppShellContextState,
-  action: Extract<AppShellAction, { type: "cancelAssemblyRun" }>,
+  action: Extract<AppShellAction, { type: "cancelStepRun" }>,
 ): AppShellContextState {
-  const activeRunId = state.assemblyRun.activeRunIds[action.key];
+  const activeRunId = state.stepRuns.activeRunIds[action.key];
   if (action.runId && activeRunId && activeRunId !== action.runId) {
     return state;
   }
-  const actionStates = { ...state.assemblyRun.actionStates };
-  const activeRunIds = { ...state.assemblyRun.activeRunIds };
+  const actionStates = { ...state.stepRuns.actionStates };
+  const activeRunIds = { ...state.stepRuns.activeRunIds };
   delete actionStates[action.key];
   delete activeRunIds[action.key];
   return {
     ...state,
-    assemblyRun: {
-      ...state.assemblyRun,
+    stepRuns: {
+      ...state.stepRuns,
       actionStates,
       activeRunIds,
     },
@@ -237,22 +237,22 @@ function setRepoMode(
   };
 }
 
-function setAssemblyRunLoading(state: AppShellContextState, key: string): AppShellContextState {
+function setStepRunLoading(state: AppShellContextState, key: string): AppShellContextState {
   return {
     ...state,
-    assemblyRun: {
-      ...state.assemblyRun,
-      actionStates: { ...state.assemblyRun.actionStates, [key]: "loading" },
+    stepRuns: {
+      ...state.stepRuns,
+      actionStates: { ...state.stepRuns.actionStates, [key]: "loading" },
     },
   };
 }
 
-function completeAssemblyRun(
+function completeStepRun(
   state: AppShellContextState,
-  completion: AssemblyRunCompletionPayload,
+  completion: StepRunCompletionPayload,
 ): AppShellContextState {
-  const { assemblyRun } = state;
-  if (completion.runId && assemblyRun.activeRunIds[completion.key] !== completion.runId) {
+  const { stepRuns } = state;
+  if (completion.runId && stepRuns.activeRunIds[completion.key] !== completion.runId) {
     return state;
   }
   // Keep the active run id after a successful completion: the log panels read
@@ -261,28 +261,28 @@ function completeAssemblyRun(
   // when the next run starts.
   return {
     ...state,
-    assemblyRun: {
-      ...assemblyRun,
-      actionStates: { ...assemblyRun.actionStates, [completion.key]: completion.actionState },
-      badges: { ...assemblyRun.badges, [completion.key]: completion.badge },
-      timestamps: { ...assemblyRun.timestamps, [completion.key]: completion.timestamp },
+    stepRuns: {
+      ...stepRuns,
+      actionStates: { ...stepRuns.actionStates, [completion.key]: completion.actionState },
+      badges: { ...stepRuns.badges, [completion.key]: completion.badge },
+      timestamps: { ...stepRuns.timestamps, [completion.key]: completion.timestamp },
     },
   };
 }
 
-function resetAssemblyAfterSourceChange(
+function resetStepsAfterSourceChange(
   state: AppShellContextState,
-  assemblyOperationParams: ReeAssemblyOperationParams,
+  stepParams: ReeStepParams,
 ): AppShellContextState {
   const reset = computeSourceChangeConsequences({
     reeSpec: state.reeIntent.reeSpec,
     workspaceSourceState: state.reeSession.workspaceSourceState,
     artifactStatus: state.reeSession.artifactStatus,
-    evaluationState: state.assemblyRun.evaluationState,
-    actionStates: state.assemblyRun.actionStates,
-    badges: state.assemblyRun.badges,
-    timestamps: state.assemblyRun.timestamps,
-    assemblyOperationParams,
+    evaluationState: state.stepRuns.evaluationState,
+    actionStates: state.stepRuns.actionStates,
+    badges: state.stepRuns.badges,
+    timestamps: state.stepRuns.timestamps,
+    stepParams,
   });
   return {
     ...state,
@@ -299,13 +299,13 @@ function resetAssemblyAfterSourceChange(
       ...state.uiChrome,
       sourceSnapshotArchiveName: reset.sourceSnapshotArchiveName,
     },
-    assemblyRun: {
-      ...state.assemblyRun,
+    stepRuns: {
+      ...state.stepRuns,
       evaluationState: reset.evaluationState,
       actionStates: reset.actionStates,
       badges: reset.badges,
       timestamps: reset.timestamps,
-      assemblyOperationParams: reset.assemblyOperationParams,
+      stepParams: reset.stepParams,
     },
   };
 }
@@ -323,22 +323,22 @@ export function appShellReducer(
       return setArtifactStatus(state, action.value);
     case "setEvaluationState":
       return setEvaluationState(state, action.value);
-    case "setAssemblyOperationParams":
-      return setAssemblyOperationParams(state, action.value);
+    case "setStepParams":
+      return setStepParams(state, action.value);
     case "setActiveRunId":
       return setActiveRunId(state, action);
-    case "cancelAssemblyRun":
-      return cancelAssemblyRun(state, action);
+    case "cancelStepRun":
+      return cancelStepRun(state, action);
     case "setLocked":
       return setLocked(state, action.locked);
     case "setRepoMode":
       return setRepoMode(state, action.repoMode);
-    case "setAssemblyRunLoading":
-      return setAssemblyRunLoading(state, action.key);
-    case "completeAssemblyRun":
-      return completeAssemblyRun(state, action.completion);
-    case "resetAssemblyAfterSourceChange":
-      return resetAssemblyAfterSourceChange(state, action.assemblyOperationParams);
+    case "setStepRunLoading":
+      return setStepRunLoading(state, action.key);
+    case "completeStepRun":
+      return completeStepRun(state, action.completion);
+    case "resetStepsAfterSourceChange":
+      return resetStepsAfterSourceChange(state, action.stepParams);
     case "showToast":
       return { ...state, uiChrome: { ...state.uiChrome, toast: action.toast } };
     case "clearToast":

@@ -2,28 +2,25 @@ import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { ReeSpec } from "@core/ree/ReeSpec";
-import type { ReeAssemblyOperationParams, SourceUploadCommit } from "@core/ree/ReeTypes";
-import type { GenericReeAssemblyParams } from "@core/ree-assembly/assemblyStepTypes";
-import type {
-  ReeAssemblyOperationKey,
-  ReeAssemblyRunParams,
-} from "@core/ree-assembly/assemblyTypes";
+import type { ReeStepParams, SourceUploadCommit } from "@core/ree/ReeTypes";
+import type { ReeStepKey, ReeStepRunParams } from "@core/ree-steps/stepRunParams";
+import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 import {
   clearToast,
   patch,
   setArtifactStatus,
-  setAssemblyOperationParams,
   setEvaluationState,
   setLocked,
   setRepoMode,
+  setStepParams,
   setWorkspaceSourceState,
   updateReeSpec,
 } from "@shell/ui/app-shell/state/actions";
-import type { AssemblyRunState } from "@shell/ui/app-shell/state/assemblyRunState";
 import type { AppShellPage } from "@shell/ui/app-shell/state/pages";
 import type { ReeIntentState } from "@shell/ui/app-shell/state/reeIntent";
 import type { ReeSessionState } from "@shell/ui/app-shell/state/reeSession";
+import type { StepRunState } from "@shell/ui/app-shell/state/stepRunState";
 import { type AppShellAction, resolveUpdater, type Updater } from "@shell/ui/app-shell/state/types";
 import type { UiChromeState } from "@shell/ui/app-shell/state/uiChrome";
 import type React from "react";
@@ -31,14 +28,11 @@ import type React from "react";
 interface CreateReeEditorCommandsArgs {
   reeIntent: ReeIntentState;
   reeSession: ReeSessionState;
-  assemblyRun: AssemblyRunState;
+  stepRuns: StepRunState;
   uiChrome: UiChromeState;
   dispatch: React.Dispatch<AppShellAction>;
-  runAction: (key: string, params?: GenericReeAssemblyParams) => Promise<void>;
-  runAssemblyStep: <K extends ReeAssemblyOperationKey>(
-    key: K,
-    params: ReeAssemblyRunParams<K>,
-  ) => Promise<void>;
+  runAction: (key: string, params?: GenericReeStepParams) => Promise<void>;
+  runStep: <K extends ReeStepKey>(key: K, params: ReeStepRunParams<K>) => Promise<void>;
   cancelAction: (key: string) => Promise<void>;
   persistWorkspaceFile: (
     previousPath: string | undefined,
@@ -61,11 +55,11 @@ interface CreateReeEditorCommandsArgs {
 export function createReeEditorCommands({
   reeIntent,
   reeSession,
-  assemblyRun,
+  stepRuns,
   uiChrome,
   dispatch,
   runAction,
-  runAssemblyStep,
+  runStep,
   cancelAction,
   persistWorkspaceFile,
   handleDownloadRee,
@@ -93,7 +87,7 @@ export function createReeEditorCommands({
     setArtifactStatus: (value: Updater<ArtifactStatus>) =>
       dispatch(setArtifactStatus(() => resolveNext(reeSession.artifactStatus, value))),
     setEvaluationState: (value: Updater<EvaluationState>) =>
-      dispatch(setEvaluationState(() => resolveNext(assemblyRun.evaluationState, value))),
+      dispatch(setEvaluationState(() => resolveNext(stepRuns.evaluationState, value))),
     setLocked: (value: boolean | ((current: boolean) => boolean)) =>
       dispatch(setLocked(typeof value === "function" ? value(uiChrome.locked) : value)),
     setRepoMode: (value: "url" | "upload" | ((current: "url" | "upload") => "url" | "upload")) =>
@@ -104,16 +98,8 @@ export function createReeEditorCommands({
           focusedField: typeof value === "function" ? value(uiChrome.focusedField) : value,
         }),
       ),
-    setAssemblyOperationParams: (
-      value:
-        | ReeAssemblyOperationParams
-        | ((current: ReeAssemblyOperationParams) => ReeAssemblyOperationParams),
-    ) =>
-      dispatch(
-        setAssemblyOperationParams((current) =>
-          typeof value === "function" ? value(current) : value,
-        ),
-      ),
+    setStepParams: (value: ReeStepParams | ((current: ReeStepParams) => ReeStepParams)) =>
+      dispatch(setStepParams((current) => (typeof value === "function" ? value(current) : value))),
     setFilesConsoleOpen: (open: boolean) => dispatch(patch("uiChrome", { filesConsoleOpen: open })),
     clearToast: () => dispatch(clearToast()),
     onSeal: handleSeal,
@@ -124,10 +110,7 @@ export function createReeEditorCommands({
     onDownloadWorkspaceFile: downloadWorkspaceFile,
     onRunAction: runAction,
     onCancelAction: cancelAction,
-    onRunAssemblyStep: <K extends ReeAssemblyOperationKey>(
-      key: K,
-      params: ReeAssemblyRunParams<K>,
-    ) => runAssemblyStep(key, params),
+    onRunStep: <K extends ReeStepKey>(key: K, params: ReeStepRunParams<K>) => runStep(key, params),
     onPersistWorkspaceFile: persistWorkspaceFile,
     flushReeIntent,
   };

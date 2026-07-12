@@ -12,7 +12,7 @@ type SourceExecutionStatus =
   | "canceling"
   | "canceled";
 
-interface SourceExecutionRunRecord {
+interface SourceReeRunRecord {
   runId: string;
 }
 
@@ -26,20 +26,20 @@ interface SourceExecutionResult {
   status: SourceExecutionStatus;
 }
 
-interface SourceExecutionRunner {
+interface SourceReeRunner {
   resetWorkspaceRequest: (id: string, payload: WorkspaceResetPayload) => Promise<void>;
 }
 
 interface SourceExecutionPoller {
-  startExecutionRun: (
+  startReeRun: (
     id: string,
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
-  ) => Promise<SourceExecutionRunRecord>;
+  ) => Promise<SourceReeRunRecord>;
 }
 
 interface RunSourceWorkspaceActionArgs {
-  reeClient: SourceExecutionRunner;
+  reeClient: SourceReeRunner;
   executionRunClient: SourceExecutionPoller;
   reeId: string;
   resetPayload: string;
@@ -70,7 +70,7 @@ export async function runSourceWorkspaceAction({
     return { status: "succeeded" };
   }
 
-  const run = await executionRunClient.startExecutionRun(reeId, "source", runParams);
+  const run = await executionRunClient.startReeRun(reeId, "source", runParams);
   onRunStarted?.("source", run.runId);
   try {
     const result = await pollRun(reeId, run.runId, onUpdateLogs);

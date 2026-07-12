@@ -1,0 +1,78 @@
+import { describe, expect, it } from "vitest";
+import { createEmptyReeSpec } from "../ree/ReeSpec";
+import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
+import {
+  planActivationEffect,
+  planBuildEffect,
+  planEvaluateEffect,
+  planHbomEffect,
+  planSbomEffect,
+  planStepServiceEffect,
+} from "./stepOutcomePlanning";
+
+function buildRee(): ReeEditorViewModel {
+  return {
+    ...createEmptyReeSpec(),
+    name: "demo",
+  };
+}
+
+describe("stepOutcomePlanning", () => {
+  it("produces a success message naming the runtime when one is set", () => {
+    const result = planBuildEffect({ ree: { ...buildRee(), runtime: "runtime.tar.gz" } });
+    expect(result.successMessage).toContain("runtime.tar.gz");
+  });
+
+  it("plans HBOM success messaging", () => {
+    const result = planHbomEffect();
+    expect(result.successMessage).toContain("current machine");
+  });
+
+  it("plans SBOM metadata", () => {
+    const result = planSbomEffect();
+
+    expect(result.reeSpecPatch.sbom).toBe("sbom.json");
+  });
+
+  it("plans evaluate metadata", () => {
+    const result = planEvaluateEffect({
+      dependencyCount: 5,
+      manifestCount: 2,
+    });
+
+    expect(result.evaluationStatePatch.detectedDependencies).toContain("5 dependencies");
+    expect(result.successMessage).toContain("5 dependencies");
+  });
+
+  it("plans activation success text", () => {
+    expect(planActivationEffect().successMessage).toContain("Activation test passed");
+  });
+
+  it("builds step effect plans through a single entry point", () => {
+    const result = planStepServiceEffect({
+      key: "build",
+      params: {},
+      ree: buildRee(),
+      timestamp: "2026-01-01T00:00:00Z",
+      namespaceSuffix: "123",
+      dependencyCount: 0,
+      manifestCount: 0,
+    });
+
+    expect(result.successMessage).toContain("Build complete");
+  });
+
+  it("builds evaluate step effect plans through a single entry point", () => {
+    const result = planStepServiceEffect({
+      key: "evaluate",
+      params: {},
+      ree: buildRee(),
+      timestamp: "2026-01-01T00:00:00Z",
+      namespaceSuffix: "123",
+      dependencyCount: 7,
+      manifestCount: 3,
+    });
+
+    expect(result.successMessage).toContain("7 dependencies across 3 manifest files");
+  });
+});

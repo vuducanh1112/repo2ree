@@ -5,14 +5,14 @@ import {
 } from "@core/ree-editor/reeEditorViewModel";
 import { describe, expect, it } from "vitest";
 import {
-  cancelAssemblyRun,
+  cancelStepRun,
   clearToast,
-  completeAssemblyRun,
-  resetAssemblyAfterSourceChange,
+  completeStepRun,
+  resetStepsAfterSourceChange,
   setActiveRunId,
   setArtifactStatus,
-  setAssemblyRunLoading,
   setEvaluationState,
+  setStepRunLoading,
   setWorkspaceSourceState,
   showToast,
   updateReeSpec,
@@ -91,19 +91,19 @@ describe("appShellState", () => {
 
     expect(next.reeIntent.reeSpec.origin_url).toBe("https://example.org/repo.git");
     expect(next.reeSession.workspaceSourceState.sourceAvailable).toBe(true);
-    expect(next.assemblyRun.actionStates.source).toBe("done");
-    expect(next.assemblyRun.badges.source).toBe(true);
-    expect(next.assemblyRun.timestamps.source).toBe("2026-01-01T00:00:00Z");
+    expect(next.stepRuns.actionStates.source).toBe("done");
+    expect(next.stepRuns.badges.source).toBe(true);
+    expect(next.stepRuns.timestamps.source).toBe("2026-01-01T00:00:00Z");
     expect(next.uiChrome.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
     expect(view.sourceSnapshotArchiveName).toBe("repo-original.tar.gz");
   });
 
-  it("records completion metadata for completed assembly runs", () => {
+  it("records completion metadata for completed step runs", () => {
     const initial = createInitialState(toInitialSlices(buildRee()));
 
     const next = appShellReducer(
       initial,
-      completeAssemblyRun({
+      completeStepRun({
         key: "build",
         actionState: "done",
         badge: "succeeded",
@@ -111,30 +111,27 @@ describe("appShellState", () => {
       }),
     );
 
-    expect(next.assemblyRun.actionStates.build).toBe("done");
-    expect(next.assemblyRun.badges.build).toBe("succeeded");
-    expect(next.assemblyRun.timestamps.build).toBe("2026-01-01T00:00:00Z");
+    expect(next.stepRuns.actionStates.build).toBe("done");
+    expect(next.stepRuns.badges.build).toBe("succeeded");
+    expect(next.stepRuns.timestamps.build).toBe("2026-01-01T00:00:00Z");
   });
 
-  it("resets assembly-dependent workspace state on source change", () => {
+  it("resets step-dependent workspace state on source change", () => {
     const initial = {
       ...createInitialState(toInitialSlices(buildRee())),
-      assemblyRun: {
-        ...createInitialState(toInitialSlices(buildRee())).assemblyRun,
+      stepRuns: {
+        ...createInitialState(toInitialSlices(buildRee())).stepRuns,
         actionStates: { build: "done" as const },
         badges: { build: true },
         timestamps: { build: "2026-01-01T00:00:00Z" },
       },
     };
 
-    const next = appShellReducer(
-      initial,
-      resetAssemblyAfterSourceChange(initial.assemblyRun.assemblyOperationParams),
-    );
+    const next = appShellReducer(initial, resetStepsAfterSourceChange(initial.stepRuns.stepParams));
 
-    expect(next.assemblyRun.actionStates).toEqual({});
-    expect(next.assemblyRun.badges).toEqual({});
-    expect(next.assemblyRun.timestamps).toEqual({});
+    expect(next.stepRuns.actionStates).toEqual({});
+    expect(next.stepRuns.badges).toEqual({});
+    expect(next.stepRuns.timestamps).toEqual({});
     expect(next.reeIntent.reeSpec.origin_url).toBe("");
     expect(next.reeSession.workspaceSourceState.sourceAvailable).toBe(false);
   });
@@ -145,7 +142,7 @@ describe("appShellState", () => {
     const view = createAppShellState(state);
 
     expect(view.page).toBe(state.uiChrome.page);
-    expect(view.assemblyOperationParams).toBe(state.assemblyRun.assemblyOperationParams);
+    expect(view.stepParams).toBe(state.stepRuns.stepParams);
     expect(view.locked).toBe(state.uiChrome.locked);
     expect(createEmptyReeEditorViewModel().name).toBe("");
   });
@@ -194,42 +191,36 @@ describe("appShellState", () => {
   it("updates evaluation state via named transition", () => {
     const initial = createInitialState(toInitialSlices(buildRee()));
     const next = appShellReducer(initial, setEvaluationState({ dependencyLevel: 3 }));
-    expect(next.assemblyRun.evaluationState.dependencyLevel).toBe(3);
+    expect(next.stepRuns.evaluationState.dependencyLevel).toBe(3);
   });
 
   it("marks a run key as loading via named transition", () => {
     const initial = createInitialState(toInitialSlices(buildRee()));
-    const next = appShellReducer(initial, setAssemblyRunLoading("build"));
-    expect(next.assemblyRun.actionStates.build).toBe("loading");
+    const next = appShellReducer(initial, setStepRunLoading("build"));
+    expect(next.stepRuns.actionStates.build).toBe("loading");
   });
 
   it("clears loading and active run id when a cancel request is accepted", () => {
     const initial = appShellReducer(
-      appShellReducer(
-        createInitialState(toInitialSlices(buildRee())),
-        setAssemblyRunLoading("build"),
-      ),
+      appShellReducer(createInitialState(toInitialSlices(buildRee())), setStepRunLoading("build")),
       setActiveRunId("build", "run-1"),
     );
 
-    const next = appShellReducer(initial, cancelAssemblyRun("build", "run-1"));
+    const next = appShellReducer(initial, cancelStepRun("build", "run-1"));
 
-    expect(next.assemblyRun.actionStates.build).toBeUndefined();
-    expect(next.assemblyRun.activeRunIds.build).toBeUndefined();
+    expect(next.stepRuns.actionStates.build).toBeUndefined();
+    expect(next.stepRuns.activeRunIds.build).toBeUndefined();
   });
 
-  it("ignores stale assembly completion for a run that is no longer active", () => {
+  it("ignores stale step completion for a run that is no longer active", () => {
     const initial = appShellReducer(
-      appShellReducer(
-        createInitialState(toInitialSlices(buildRee())),
-        setAssemblyRunLoading("build"),
-      ),
+      appShellReducer(createInitialState(toInitialSlices(buildRee())), setStepRunLoading("build")),
       setActiveRunId("build", "run-2"),
     );
 
     const next = appShellReducer(
       initial,
-      completeAssemblyRun({
+      completeStepRun({
         key: "build",
         runId: "run-1",
         actionState: "done",
@@ -243,10 +234,7 @@ describe("appShellState", () => {
 
   it("ignores stale source outcome for a run that is no longer active", () => {
     const initial = appShellReducer(
-      appShellReducer(
-        createInitialState(toInitialSlices(buildRee())),
-        setAssemblyRunLoading("source"),
-      ),
+      appShellReducer(createInitialState(toInitialSlices(buildRee())), setStepRunLoading("source")),
       setActiveRunId("source", "run-2"),
     );
 

@@ -13,17 +13,17 @@ import type { DraftManifest, SourceRepoMetadata } from "@core/workspace/Workspac
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useReeQuery } from "@shell/data/ree/queries";
 import { showToast as enqueueToast } from "@shell/ui/app-shell/state/actions";
-import type { AssemblyRunState } from "@shell/ui/app-shell/state/assemblyRunState";
 import type { ReeIntentState } from "@shell/ui/app-shell/state/reeIntent";
 import type { ReeSessionState } from "@shell/ui/app-shell/state/reeSession";
+import type { StepRunState } from "@shell/ui/app-shell/state/stepRunState";
 import type { AppShellAction } from "@shell/ui/app-shell/state/types";
 import type { UiChromeState } from "@shell/ui/app-shell/state/uiChrome";
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
-import { useReeAssemblyRuns } from "../assembly-runs/useReeAssemblyRuns";
 import { useReeDownloads } from "../downloads/useReeDownloads";
 import { useReeSeal } from "../seal/useReeSeal";
 import { useSourceAcquisition } from "../source-acquisition/useSourceAcquisition";
+import { useReeStepRuns } from "../step-runs/useReeStepRuns";
 import type { ShowToast } from "../types";
 import { useWorkspaceFilePersistence } from "../workspace-files/useWorkspaceFilePersistence";
 import { createHydrateReeWorkspace } from "../workspace-sync/hydrateReeWorkspace";
@@ -33,7 +33,7 @@ import { createReeEditorCommands } from "./createReeEditorCommands";
 interface UseReeEditorArgs {
   reeIntent: ReeIntentState;
   reeSession: ReeSessionState;
-  assemblyRun: AssemblyRunState;
+  stepRuns: StepRunState;
   uiChrome: UiChromeState;
   dispatch: React.Dispatch<AppShellAction>;
 }
@@ -41,7 +41,7 @@ interface UseReeEditorArgs {
 export function useReeEditor({
   reeIntent,
   reeSession,
-  assemblyRun,
+  stepRuns,
   uiChrome,
   dispatch,
 }: UseReeEditorArgs) {
@@ -55,8 +55,8 @@ export function useReeEditor({
   const consistency = reeQuery.data?.consistency;
 
   const reeEditorState: ReeEditorState = useMemo(
-    () => createReeEditorStateFromModel({ reeIntent, reeSession, uiChrome, assemblyRun }),
-    [reeIntent, reeSession, uiChrome, assemblyRun],
+    () => createReeEditorStateFromModel({ reeIntent, reeSession, uiChrome, stepRuns }),
+    [reeIntent, reeSession, uiChrome, stepRuns],
   );
   const ree: ReeEditorViewModel = useMemo(
     () => createReeEditorViewModel(reeEditorState),
@@ -88,11 +88,11 @@ export function useReeEditor({
   // the cancel handler (an event callback) reads the current run id without a
   // stale closure. The reducer stays the single source of truth; this is only a
   // live read handle, matching the ref pattern used elsewhere in the shell.
-  const activeRunIdsRef = useRef(assemblyRun.activeRunIds);
-  activeRunIdsRef.current = assemblyRun.activeRunIds;
+  const activeRunIdsRef = useRef(stepRuns.activeRunIds);
+  activeRunIdsRef.current = stepRuns.activeRunIds;
   const getActiveRunId = useCallback((key: string) => activeRunIdsRef.current[key], []);
 
-  const { runAction, runAssemblyStep, cancelAction } = useReeAssemblyRuns({
+  const { runAction, runStep, cancelAction } = useReeStepRuns({
     dispatch,
     ree,
     workspaceFiles,
@@ -137,11 +137,11 @@ export function useReeEditor({
       createReeEditorCommands({
         reeIntent,
         reeSession,
-        assemblyRun,
+        stepRuns,
         uiChrome,
         dispatch,
         runAction,
-        runAssemblyStep,
+        runStep,
         cancelAction,
         persistWorkspaceFile,
         handleDownloadRee,
@@ -153,7 +153,7 @@ export function useReeEditor({
         flushReeIntent,
       }),
     [
-      assemblyRun,
+      stepRuns,
       cancelAction,
       dispatch,
       downloadWorkspaceFile,
@@ -167,7 +167,7 @@ export function useReeEditor({
       reeIntent,
       reeSession,
       runAction,
-      runAssemblyStep,
+      runStep,
       uiChrome,
     ],
   );
@@ -179,7 +179,7 @@ export function useReeEditor({
     ree,
     workspaceRemote,
     consistency,
-    assemblyRun,
+    stepRuns,
     evaluation: {
       dependencyLevel: ree.dependencyLevel ?? 0,
       environmentLevel: ree.environmentLevel ?? 0,

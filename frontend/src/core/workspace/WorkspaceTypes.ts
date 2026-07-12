@@ -1,5 +1,5 @@
 import type { ReeFile } from "../ree/ReeTypes";
-import type { ConsistencyReport } from "../ree-assembly/sealConsistency";
+import type { ConsistencyReport } from "../ree-steps/sealConsistency";
 
 export interface WorkspaceBinaryDownload {
   bytes: ArrayBuffer;

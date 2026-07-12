@@ -1,5 +1,5 @@
 import type { Badges } from "@core/ree/ReeTypes";
-import type { ArchiveRepo } from "@core/ree-assembly/assemblyStepTypes";
+import type { ArchiveRepo } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgSegmentedTab } from "@shell/ui/theme/lightGlassTheme";
 

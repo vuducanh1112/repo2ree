@@ -1,8 +1,8 @@
 import { hbomHasAnyComponents } from "@core/hbom/HbomSummary";
 import type { Badges } from "@core/ree/ReeTypes";
-import { REE_ASSEMBLY_STEPS } from "@core/ree-assembly/assemblyCatalog";
-import type { ReeAssemblyDefinition } from "@core/ree-assembly/assemblyStepTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import { REE_STEPS } from "@core/ree-steps/stepCatalog";
+import type { ReeStepDefinition } from "@core/ree-steps/stepTypes";
 import { Ic } from "../../shared/components/Icon";
 import { type AppShellPage, PAGE } from "../state/pages";
 
@@ -11,14 +11,14 @@ interface ProcessStep {
   key: AppShellPage;
   label: string;
   IC: (size?: number) => JSX.Element;
-  automation: ReeAssemblyDefinition | null;
+  automation: ReeStepDefinition | null;
   desc: string;
   navCompleted?: (ree: ReeEditorViewModel, badges: Badges) => boolean;
 }
 
-const AUTOMATION_BY_KEY: Record<string, ReeAssemblyDefinition> = Object.fromEntries(
-  REE_ASSEMBLY_STEPS.map((step) => [step.key, step]),
-) as Record<string, ReeAssemblyDefinition>;
+const AUTOMATION_BY_KEY: Record<string, ReeStepDefinition> = Object.fromEntries(
+  REE_STEPS.map((step) => [step.key, step]),
+) as Record<string, ReeStepDefinition>;
 
 // Workbench is intentionally absent: it IS the canvas (the lab), not a ring
 // node. Its lifecycle step is tracked separately via `provisioned`.

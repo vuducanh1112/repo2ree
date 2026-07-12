@@ -1,4 +1,4 @@
-import type { ArchiveRepo } from "@core/ree-assembly/assemblyStepTypes";
+import type { ArchiveRepo } from "@core/ree-steps/stepTypes";
 import { lgColors, lgContentCard, lgInput, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 

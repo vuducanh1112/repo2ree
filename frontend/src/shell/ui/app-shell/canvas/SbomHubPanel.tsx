@@ -1,10 +1,6 @@
-import type { ReeAssemblyRunParams } from "@core/ree-assembly/assemblyTypes";
-import { resolvedRuntimePath } from "@core/ree-assembly/buildRuntimeUiState";
-import {
-  isRuntimeTarballPath,
-  resolvedSbomPath,
-  summarizeSbom,
-} from "@core/ree-assembly/sbomUiState";
+import { resolvedRuntimePath } from "@core/ree-steps/buildRuntimeUiState";
+import { isRuntimeTarballPath, resolvedSbomPath, summarizeSbom } from "@core/ree-steps/sbomUiState";
+import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { useMemo } from "react";
 import { Ic } from "../../shared/components/Icon";
@@ -18,7 +14,7 @@ import { CollapsibleLogCard } from "../components/CollapsibleLogCard";
 import { MissingInputsBanner } from "../components/MissingInputsBanner";
 import { OutcomeBadge } from "../components/OutcomeBadge";
 import { RunActionButton } from "../components/RunActionButton";
-import { useAssemblyStepPageController } from "../hooks/useAssemblyStepPageController";
+import { useStepPageController } from "../hooks/useStepPageController";
 import { RuntimeScanTargetCard, SbomOutputCard } from "../pages/generate-sbom/sections";
 import type { AppShellPageContainerProps } from "../pages/pageContainers/shared";
 import { HubPanel, HubPanelHeader } from "./HubPanel";
@@ -27,7 +23,7 @@ const SBOM_PAGE_COLOR = "#16a34a";
 
 type SbomHubPanelProps = Pick<
   AppShellPageContainerProps,
-  "ree" | "workspaceRemote" | "assemblyRun" | "uiChrome" | "commands"
+  "ree" | "workspaceRemote" | "stepRuns" | "uiChrome" | "commands"
 > & {
   onClose: () => void;
 };
@@ -37,12 +33,12 @@ type SbomHubPanelProps = Pick<
 export function SbomHubPanel({
   ree,
   workspaceRemote,
-  assemblyRun,
+  stepRuns,
   uiChrome,
   commands,
   onClose,
 }: SbomHubPanelProps) {
-  const controller = useAssemblyStepPageController({ ree, assemblyRun, uiChrome, commands });
+  const controller = useStepPageController({ ree, stepRuns, uiChrome, commands });
 
   const files = workspaceRemote.workspaceFiles || [];
   const runtimePath = resolvedRuntimePath(ree.runtime);
@@ -74,12 +70,12 @@ export function SbomHubPanel({
                 controller.running || controller.missing.length > 0 || !runtimePathExists,
               )}
               onRun={() =>
-                commands.onRunAssemblyStep(controller.assemblyStep.key, {
-                  ...(controller.params as ReeAssemblyRunParams<"sbom">),
+                commands.onRunStep(controller.step.key, {
+                  ...(controller.params as ReeStepRunParams<"sbom">),
                   produced_runtime_path: runtimePath,
                 })
               }
-              onCancel={() => commands.onCancelAction(controller.assemblyStep.key)}
+              onCancel={() => commands.onCancelAction(controller.step.key)}
             />
           )
         }
@@ -104,7 +100,7 @@ export function SbomHubPanel({
   );
 }
 
-type Controller = NonNullable<ReturnType<typeof useAssemblyStepPageController>>;
+type Controller = NonNullable<ReturnType<typeof useStepPageController>>;
 
 function SbomHubBody({
   controller,

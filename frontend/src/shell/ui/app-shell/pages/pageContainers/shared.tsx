@@ -1,6 +1,6 @@
-import type { ExecutionRun } from "@core/execution/ExecutionRun";
 import type { LogEntry } from "@core/ree/ReeTypes";
-import { useExecutionRunLogsQuery, useExecutionRunQuery } from "@shell/data/execution-runs/queries";
+import type { ReeRun } from "@core/runs/ReeRun";
+import { useReeRunLogsQuery, useReeRunQuery } from "@shell/data/runs/queries";
 import { type CSSProperties, type ReactNode, useMemo } from "react";
 import type { useAppShell } from "../../hooks/useAppShell";
 
@@ -10,7 +10,7 @@ export interface AppShellPageContainerProps {
   ree: AppShellController["ree"];
   reeIntent: AppShellController["reeIntent"];
   workspaceRemote: AppShellController["workspaceRemote"];
-  assemblyRun: AppShellController["assemblyRun"];
+  stepRuns: AppShellController["stepRuns"];
   uiChrome: AppShellController["uiChrome"];
   evaluation: AppShellController["evaluation"];
   currentReeFiles: AppShellController["currentReeFiles"];
@@ -30,19 +30,19 @@ export function ContentSection({ children }: { children: ReactNode }) {
   return <div style={CONTENT_SECTION_STYLE}>{children}</div>;
 }
 
-export function useAssemblyRunLogEntry(args: {
+export function useStepRunLogEntry(args: {
   reeId: string;
   runId: string | undefined;
   fallbackTimestamp?: string;
 }): LogEntry | null {
-  const runQuery = useExecutionRunQuery(args.reeId, args.runId);
-  const logsQuery = useExecutionRunLogsQuery(args.reeId, args.runId);
+  const runQuery = useReeRunQuery(args.reeId, args.runId);
+  const logsQuery = useReeRunLogsQuery(args.reeId, args.runId);
 
   return useMemo(() => {
     if (!args.runId) {
       return null;
     }
-    const runTimestamp = resolveAssemblyRunTimestamp(runQuery.data, args.fallbackTimestamp);
+    const runTimestamp = resolveStepRunTimestamp(runQuery.data, args.fallbackTimestamp);
     return {
       lines: logsQuery.data?.lines ?? [],
       ts: runTimestamp,
@@ -50,7 +50,7 @@ export function useAssemblyRunLogEntry(args: {
   }, [args.fallbackTimestamp, args.runId, logsQuery.data?.lines, runQuery.data]);
 }
 
-function resolveAssemblyRunTimestamp(run: ExecutionRun | undefined, fallback?: string): string {
+function resolveStepRunTimestamp(run: ReeRun | undefined, fallback?: string): string {
   return (
     run?.finishedAt || run?.startedAt || run?.createdAt || fallback || new Date().toISOString()
   );

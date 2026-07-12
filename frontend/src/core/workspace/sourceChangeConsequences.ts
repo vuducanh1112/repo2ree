@@ -5,7 +5,7 @@ import {
   createEmptyReeActivation,
   type ReeSpec,
 } from "../ree/ReeSpec";
-import type { ActionStates, Badges, ReeAssemblyOperationParams, Timestamps } from "../ree/ReeTypes";
+import type { ActionStates, Badges, ReeStepParams, Timestamps } from "../ree/ReeTypes";
 import type { WorkspaceSourceState } from "./WorkspaceSourceState";
 
 export interface SourceChangeInput {
@@ -16,7 +16,7 @@ export interface SourceChangeInput {
   actionStates: ActionStates;
   badges: Badges;
   timestamps: Timestamps;
-  assemblyOperationParams: ReeAssemblyOperationParams;
+  stepParams: ReeStepParams;
 }
 
 interface SourceChangeOutput {
@@ -27,7 +27,7 @@ interface SourceChangeOutput {
   badges: Badges;
   timestamps: Timestamps;
   actionStates: ActionStates;
-  assemblyOperationParams: ReeAssemblyOperationParams;
+  stepParams: ReeStepParams;
   sourceSnapshotArchiveName: string;
 }
 
@@ -59,7 +59,7 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
     badges: {},
     timestamps: {},
     actionStates: {},
-    assemblyOperationParams: input.assemblyOperationParams,
+    stepParams: input.stepParams,
     sourceSnapshotArchiveName: "",
   };
 }

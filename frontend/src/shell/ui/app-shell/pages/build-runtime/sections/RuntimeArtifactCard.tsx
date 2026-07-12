@@ -1,7 +1,7 @@
 import {
   runtimeArtifactStatus,
   runtimeArtifactStatusLabel,
-} from "@core/ree-assembly/buildRuntimeUiState";
+} from "@core/ree-steps/buildRuntimeUiState";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { FilePicker } from "@shell/ui/app-shell/components/script-and-file/FilePicker";
 import { Ic } from "@shell/ui/shared/components/Icon";

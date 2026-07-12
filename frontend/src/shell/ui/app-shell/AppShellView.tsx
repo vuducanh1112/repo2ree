@@ -1,5 +1,5 @@
 import { addExperiment } from "@core/ree/experimentOps";
-import { staleAssemblyStepKeys } from "@core/ree-assembly/sealConsistency";
+import { staleStepKeys } from "@core/ree-steps/sealConsistency";
 import { useState } from "react";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
@@ -35,7 +35,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     ree,
     workspaceRemote,
     consistency,
-    assemblyRun,
+    stepRuns,
     uiChrome,
     evaluation,
     currentReeFiles,
@@ -43,10 +43,10 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     sealRunning,
     sealLog,
   } = useAppShell();
-  const { badges } = assemblyRun;
+  const { badges } = stepRuns;
   const { toast } = uiChrome;
   const page = uiChrome.page;
-  const staleNodeKeys = staleAssemblyStepKeys(consistency);
+  const staleNodeKeys = staleStepKeys(consistency);
   // The constellation (pod hub) is the home view. Seal and the one-press SBOM
   // step live inside the hub as compact floating panels; every other page docks
   // beside the pod.
@@ -188,7 +188,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
               ree={ree}
               reeIntent={reeIntent}
               workspaceRemote={workspaceRemote}
-              assemblyRun={assemblyRun}
+              stepRuns={stepRuns}
               uiChrome={uiChrome}
               evaluation={evaluation}
               currentReeFiles={currentReeFiles}
@@ -203,7 +203,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
           <SourceHubPanel
             ree={ree}
             workspaceRemote={workspaceRemote}
-            assemblyRun={assemblyRun}
+            stepRuns={stepRuns}
             uiChrome={uiChrome}
             commands={commands}
             onClose={() => commands.setPage(PAGE.CANVAS)}
@@ -214,7 +214,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
           <SbomHubPanel
             ree={ree}
             workspaceRemote={workspaceRemote}
-            assemblyRun={assemblyRun}
+            stepRuns={stepRuns}
             uiChrome={uiChrome}
             commands={commands}
             onClose={() => commands.setPage(PAGE.CANVAS)}

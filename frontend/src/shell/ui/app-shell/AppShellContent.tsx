@@ -8,10 +8,10 @@ import {
 } from "../theme/theme";
 import { ArchivePageContainer } from "./pages/pageContainers/ArchivePageContainer";
 import {
-  AssemblyPageContainer,
   ExperimentsPageContainer,
   HardwareBomPageContainer,
   MetadataPageContainer,
+  StepPageContainer,
 } from "./pages/pageContainers/DockedPageContainers";
 import type { AppShellPageContainerProps } from "./pages/pageContainers/shared";
 
@@ -27,7 +27,7 @@ export function AppShellContent(props: AppShellPageContainerProps) {
         <MetadataPageContainer {...props} />
         <ExperimentsPageContainer {...props} />
         <HardwareBomPageContainer {...props} />
-        <AssemblyPageContainer {...props} />
+        <StepPageContainer {...props} />
         <ArchivePageContainer {...props} />
       </div>
     </main>

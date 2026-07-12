@@ -16,7 +16,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { PAGE } from "../../state/pages";
-import type { PageExperimentsProps } from "../sharedAssemblyUi";
+import type { PageExperimentsProps } from "../sharedStepUi";
 import {
   ExperimentCardList,
   ExperimentDetail,
@@ -48,7 +48,7 @@ export function PageExperiments({
   reeSpec,
   locked,
   onReeChange,
-  onGoAssemblyPage,
+  onGoPage,
   onFocusedFieldChange,
   onBeforeRun,
   focusedField,
@@ -272,7 +272,7 @@ export function PageExperiments({
                   )}
                   <button
                     type="button"
-                    onClick={() => onGoAssemblyPage(PAGE.ARCHIVE)}
+                    onClick={() => onGoPage(PAGE.ARCHIVE)}
                     style={lgNextButton()}
                   >
                     Next: Deposit & Share {Ic.chevR(15)}
