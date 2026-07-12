@@ -1,227 +1,26 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import { expect, type Locator, type Page, test } from "@playwright/test";
-import { stepShot } from "../screenshot";
+import { expect, test } from "@playwright/test";
+import {
+  dockerRunScript,
+  EXPERIMENT_OUTPUT_FILE,
+  stdoutContainsVerifyScript,
+} from "../e2e/helpers/flow";
+import { createDemoKit } from "./helpers/demo";
 
-const DEMO_STEP_DELAY_MS = 350;
-const DEMO_NARRATION_DELAY_MS = 900;
 const PYTHON_RUNTIME_PATH = "python_hello_world/runtime.tar";
 
-// Each runnable (activation, experiment) now owns a self-contained run script:
-// it loads the built image if needed and enters it with its own `docker run`.
-// A verify script checks the result afterward, reading whatever it needs from
-// the workspace — so a run whose stdout is verified tees it to a workspace file.
-function dockerRunScript(command: string, outputFile?: string): string {
-  const capture = outputFile ? ` | tee ${JSON.stringify(outputFile)}` : "";
-  return `#!/usr/bin/env sh
-set -eu
+const {
+  demoStep,
+  clickDemo,
+  fillDemo,
+  saveRunScript,
+  saveVerifyScript,
+  showcaseScroll,
+  showcasePanel,
+} = createDemoKit({ stepDelayMs: 350, narrationDelayMs: 900 });
 
-IMAGE_NAME="pandas-hello"
-TAG="latest"
-RUNTIME_FILE=${JSON.stringify(PYTHON_RUNTIME_PATH)}
-
-if ! docker image inspect "$IMAGE_NAME:$TAG" >/dev/null 2>&1; then
-  docker load < "$RUNTIME_FILE"
-fi
-
-docker run --rm \\
-  -v "$(pwd):/workspace" \\
-  -w /workspace \\
-  "$IMAGE_NAME:$TAG" \\
-  ${command}${capture}
-`;
-}
-
-/**
- * Workspace file the experiment run script materializes its stdout to. Declared
- * as the experiment's output and sealed into the bundle as the author baseline
- * (see the "Run experiment" step).
- */
-const EXPERIMENT_OUTPUT_FILE = "result.txt";
-
-/**
- * A demo step: runs the body inside a named `test.step` (so the trace/report
- * groups its actions) and captures a named, ordered screenshot once the step's
- * UI has settled.
- */
-async function demoStep(page: Page, name: string, body: () => Promise<void>) {
-  await stepShot(page, name, "before");
-  await test.step(name, body);
-  await stepShot(page, name, "after");
-}
-
-async function showDemoFocus(locator: Locator, narration?: string) {
-  await locator.evaluate((el, text) => {
-    const containerId = "__ree_demo_focus_container__";
-    const boxId = "__ree_demo_focus_box__";
-    const pulseId = "__ree_demo_focus_pulse__";
-    const labelId = "__ree_demo_focus_label__";
-
-    let container = document.getElementById(containerId);
-    if (!container) {
-      container = document.createElement("div");
-      container.id = containerId;
-      Object.assign(container.style, {
-        position: "fixed",
-        left: "0",
-        top: "0",
-        width: "100vw",
-        height: "100vh",
-        pointerEvents: "none",
-        zIndex: "2147483647",
-      });
-      document.body.appendChild(container);
-
-      const style = document.createElement("style");
-      style.id = "__ree_demo_focus_style__";
-      style.textContent = `
-				@keyframes reeDemoPulse {
-					0% { transform: scale(1); opacity: 0.55; }
-					70% { transform: scale(1.08); opacity: 0.18; }
-					100% { transform: scale(1.16); opacity: 0; }
-				}
-			`;
-      document.head.appendChild(style);
-    }
-
-    let pulse = document.getElementById(pulseId);
-    if (!pulse) {
-      pulse = document.createElement("div");
-      pulse.id = pulseId;
-      Object.assign(pulse.style, {
-        position: "fixed",
-        border: "2px solid rgba(255, 199, 0, 0.95)",
-        borderRadius: "10px",
-        boxSizing: "border-box",
-        pointerEvents: "none",
-        animation: "reeDemoPulse 1.1s ease-out infinite",
-      });
-      container.appendChild(pulse);
-    }
-
-    let box = document.getElementById(boxId);
-    if (!box) {
-      box = document.createElement("div");
-      box.id = boxId;
-      Object.assign(box.style, {
-        position: "fixed",
-        border: "2px solid #ffc700",
-        borderRadius: "10px",
-        boxShadow: "0 0 0 3px rgba(255, 199, 0, 0.18)",
-        boxSizing: "border-box",
-        pointerEvents: "none",
-      });
-      container.appendChild(box);
-    }
-
-    let label = document.getElementById(labelId);
-    if (!label) {
-      label = document.createElement("div");
-      label.id = labelId;
-      Object.assign(label.style, {
-        position: "fixed",
-        background: "rgba(0, 0, 0, 0.88)",
-        color: "#fff",
-        padding: "6px 9px",
-        borderRadius: "7px",
-        font: "600 12px/1.35 ui-sans-serif, system-ui, sans-serif",
-        boxShadow: "0 6px 20px rgba(0,0,0,0.32)",
-        pointerEvents: "none",
-        maxWidth: "320px",
-        whiteSpace: "normal",
-      });
-      container.appendChild(label);
-    }
-
-    const rect = el.getBoundingClientRect();
-    const pad = 6;
-    const left = Math.max(6, rect.left - pad);
-    const top = Math.max(6, rect.top - pad);
-    const width = Math.max(24, rect.width + pad * 2);
-    const height = Math.max(24, rect.height + pad * 2);
-
-    for (const element of [pulse, box]) {
-      element.style.left = `${left}px`;
-      element.style.top = `${top}px`;
-      element.style.width = `${width}px`;
-      element.style.height = `${height}px`;
-      element.style.display = "block";
-    }
-
-    if (text) {
-      label.textContent = text;
-      label.style.display = "block";
-      label.style.left = `${left}px`;
-      label.style.top = `${Math.max(6, top - 36)}px`;
-    } else {
-      label.style.display = "none";
-    }
-  }, narration);
-}
-
-async function clickDemo(page: Page, locator: Locator, narration?: string) {
-  await locator.scrollIntoViewIfNeeded();
-  await showDemoFocus(locator, narration);
-  if (narration) {
-    await page.waitForTimeout(DEMO_NARRATION_DELAY_MS);
-  }
-  await page.waitForTimeout(DEMO_STEP_DELAY_MS);
-  await locator.click();
-  await page.waitForTimeout(DEMO_STEP_DELAY_MS);
-}
-
-async function fillDemo(page: Page, locator: Locator, value: string, narration?: string) {
-  await locator.scrollIntoViewIfNeeded();
-  await showDemoFocus(locator, narration);
-  if (narration) {
-    await page.waitForTimeout(DEMO_NARRATION_DELAY_MS);
-  }
-  await page.waitForTimeout(DEMO_STEP_DELAY_MS);
-  await locator.fill(value);
-  await page.waitForTimeout(DEMO_STEP_DELAY_MS);
-}
-
-// Save a runnable's run script: fill the RunScriptCard textarea, then click its
-// "Save run script" button (shared by activation and experiment editors).
-async function saveRunScript(page: Page, locator: Locator, value: string, narration?: string) {
-  await fillDemo(page, locator, value, narration);
-  await clickDemo(
-    page,
-    page.getByRole("main").getByRole("button", { name: "Save run script", exact: true }).first(),
-  );
-}
-
-async function saveVerifyScript(page: Page, locator: Locator, value: string, narration?: string) {
-  await fillDemo(page, locator, value, narration);
-  await clickDemo(
-    page,
-    page.getByRole("main").getByRole("button", { name: "Save verify script", exact: true }).first(),
-  );
-}
-
-function stdoutContainsVerifyScript(expectedStdout: string): string {
-  return `#!/usr/bin/env sh
-set -eu
-
-# The run script materialized its stdout to this workspace file; read it back.
-EXPECTED=${JSON.stringify(expectedStdout)}
-grep -Fq "$EXPECTED" ${JSON.stringify(EXPERIMENT_OUTPUT_FILE)}
-`;
-}
-
-async function showcaseScroll(page: Page, deltaY = 700) {
-  await page.mouse.wheel(0, deltaY);
-  await page.waitForTimeout(700);
-}
-
-async function showcasePanel(page: Page, locator: Locator, narration: string) {
-  await expect(locator).toBeVisible({ timeout: 10000 });
-  await locator.scrollIntoViewIfNeeded();
-  await showDemoFocus(locator, narration);
-  await page.waitForTimeout(1200);
-}
-
-test("upload source archive into workspace", async ({ page }) => {
+test("author, seal, and download a Python hello-world REE", async ({ page }) => {
   // DinD: every workbench builds against a cold (empty) image cache, so the
   // build/activation/experiment steps are full cold pulls + installs. Combined
   // with the narration delays this needs a much larger budget than warm runs.
@@ -240,7 +39,7 @@ test("upload source archive into workspace", async ({ page }) => {
     ),
   ];
   const main = page.getByRole("main");
-  // Source acquisition is now a floating hub panel (role=region), not a docked
+  // Source acquisition is a floating hub panel (role=region), not a docked
   // page; its Clear-source action lives in that panel's header.
   const sourcePanel = page.getByRole("region", { name: "Source Acquisition" });
   const clearSourceButton = sourcePanel.getByRole("button", { name: /Clear source/i });
@@ -311,7 +110,7 @@ test("upload source archive into workspace", async ({ page }) => {
     await expect(
       page.getByText("python-hello-world.tar.gz", { exact: true }).first(),
     ).toBeVisible();
-    const snapshot = page.getByText("Workspace Snapshot").locator("..");
+    const snapshot = page.getByRole("region", { name: "Workspace Snapshot" });
     await expect(snapshot.getByText("Upload", { exact: true })).toBeVisible();
   });
 
@@ -450,7 +249,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     );
     await clickDemo(page, main.getByRole("button", { name: "Save build script" }));
 
-    // There is no longer a shared execution lifecycle on the build page — each
+    // The build page has no shared execution lifecycle — each
     // experiment and the activation own their own run script (authored later).
     await clickDemo(page, main.getByRole("button", { name: /Run build/ }), "Run runtime build");
     // Dwell on the build log while it streams live (the cold DinD build runs
@@ -475,7 +274,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     // runs on, shared by activation and every experiment.
     await clickDemo(
       page,
-      page.getByPlaceholder("runtime.tar.gz").locator("..").getByTitle("Browse repository files"),
+      page.getByRole("region", { name: "Runtime artifact" }).getByTitle("Browse repository files"),
       "Open runtime file picker",
     );
     await expect(page.getByRole("button", { name: "python_hello_world/runtime.tar" })).toBeVisible({
@@ -508,8 +307,6 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await showcasePanel(page, sbomPanel.getByText(/SBOM log/i).first(), "Review SBOM logs");
   });
 
-  //console.log("SBOM generated, proceeding to activation test...");
-
   await demoStep(page, "Test activation", async () => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
@@ -521,7 +318,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await saveRunScript(
       page,
       main.getByRole("textbox", { name: "Activation run script", exact: true }),
-      dockerRunScript("python -c \"import sys; print('ok')\""),
+      dockerRunScript("python -c \"import sys; print('ok')\"", PYTHON_RUNTIME_PATH),
       "Author the activation as a self-contained docker run that proves the image starts",
     );
     await clickDemo(
@@ -561,7 +358,11 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await saveRunScript(
       page,
       main.getByRole("textbox", { name: "Experiment run script", exact: true }),
-      dockerRunScript("python python_hello_world/main.py", EXPERIMENT_OUTPUT_FILE),
+      dockerRunScript(
+        "python python_hello_world/main.py",
+        PYTHON_RUNTIME_PATH,
+        EXPERIMENT_OUTPUT_FILE,
+      ),
       "The experiment owns its full run: load the image and docker run the script in the mounted workspace, teeing stdout to a workspace file",
     );
     await saveVerifyScript(
@@ -581,10 +382,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await showcaseScroll(page, 800);
     await showcaseScroll(page, 800);
     await page.waitForTimeout(5000);
-    const runResultPanel = main
-      .locator("div")
-      .filter({ hasText: /^Run result/ })
-      .first();
+    const runResultPanel = main.getByRole("region", { name: "Run result" });
     await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
     await expect(runResultPanel.getByText(/claimed result was reproduced/)).toBeVisible();
   });
@@ -615,7 +413,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     );
     // The seal panel is pinned inside the constellation hub, not the docked main.
     const sealPanel = page.getByRole("region", { name: "Seal" });
-    // The seal panel now shows source/runtime bundle toggles inline before sealing.
+    // The seal panel shows source/runtime bundle toggles inline before sealing.
     await expect(sealPanel.getByText("Bundle contents", { exact: true })).toBeVisible();
 
     await clickDemo(

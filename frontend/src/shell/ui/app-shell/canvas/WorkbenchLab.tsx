@@ -12,7 +12,6 @@ import { Ic } from "../../shared/components/Icon";
 import { lgColors, lgInfoBanner, lgPrimaryActionButton } from "../../theme/lightGlassTheme";
 import { C, F } from "../../theme/theme";
 import { CollapsibleLogCard } from "../components/CollapsibleLogCard";
-import { PodWidget } from "../pages/overview/PodWidget";
 import {
   DEFAULT_WORKBENCH_IMAGE_SELECTION,
   resolveWorkbenchImage,
@@ -21,6 +20,7 @@ import {
   WorkbenchImageSelector,
 } from "../pages/workbench/WorkbenchPageSections";
 import { APP_ROUTE } from "../state/pages";
+import { PodWidget } from "./PodWidget";
 
 interface WorkbenchLabProps {
   evaluation: EvaluationState;

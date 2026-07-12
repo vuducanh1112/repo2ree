@@ -50,8 +50,8 @@ export function ArchiveReadinessAside({
       </div>
 
       <div style={lgStyles.summaryBox}>
-        <div style={lgStyles.overviewHeader}>
-          <span style={lgStyles.overviewLabel}>Prerequisites</span>
+        <div style={lgStyles.asideHeader}>
+          <span style={lgStyles.asideLabel}>Prerequisites</span>
           <span style={lgStatusBadge(capstoneReady)}>{capstoneReady ? "Ready" : "Pending"}</span>
         </div>
 

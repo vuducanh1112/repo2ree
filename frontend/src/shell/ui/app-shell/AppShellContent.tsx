@@ -6,13 +6,13 @@ import {
   S_WORKSPACE_EDITOR_MAIN_CONTENT_INNER,
   S_WORKSPACE_EDITOR_MAIN_CONTENT_ROOT,
 } from "../theme/theme";
+import { ArchivePageContainer } from "./pages/pageContainers/ArchivePageContainer";
 import {
-  ArchivePageContainer,
   AssemblyPageContainer,
   ExperimentsPageContainer,
   HardwareBomPageContainer,
   MetadataPageContainer,
-} from "./pages/AppShellPageSwitch";
+} from "./pages/pageContainers/DockedPageContainers";
 import type { AppShellPageContainerProps } from "./pages/pageContainers/shared";
 
 export function AppShellContent(props: AppShellPageContainerProps) {

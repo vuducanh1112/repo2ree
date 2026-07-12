@@ -2,7 +2,8 @@ import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgInput, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import type React from "react";
-import { SourceUploadField, SourceUrlField } from "../../components/sourceRuntime";
+import { SourceUploadField } from "../../components/sourceRuntime/SourceUploadField";
+import { SourceUrlField } from "../../components/sourceRuntime/SourceUrlField";
 import type { SourceAcquisitionPageProps } from "../sharedAssemblyUi";
 import { SOURCE_TYPE_OPTIONS, type SourceTypeOption } from "./SourceAcquisitionPageHelpers";
 

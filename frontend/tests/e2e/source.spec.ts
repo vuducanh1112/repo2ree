@@ -25,7 +25,7 @@ test.describe("Source acquisition page", () => {
 
     // Workspace Snapshot surfaces the backend-computed source metadata; a git
     // download reports the origin it was fetched from, not "Upload".
-    const snapshot = page.getByText("Workspace Snapshot").locator("..");
+    const snapshot = page.getByRole("region", { name: "Workspace Snapshot" });
     await expect(snapshot.getByText("Origin", { exact: true })).toBeVisible();
     await expect(snapshot.getByText("Type", { exact: true })).toBeVisible();
     await expect(snapshot.getByText("git", { exact: true })).toBeVisible();

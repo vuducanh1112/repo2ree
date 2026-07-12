@@ -5,7 +5,7 @@ import type { ConsistencyReport } from "@core/ree-assembly/sealConsistency";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { useRef } from "react";
 import { C, F } from "../../theme/theme";
-import { CenterSealStrip } from "../pages/overview/components/CenterSealStrip";
+import { CenterSealStrip } from "./CenterSealStrip";
 import { HubPanel } from "./HubPanel";
 
 interface SealHubPanelProps {

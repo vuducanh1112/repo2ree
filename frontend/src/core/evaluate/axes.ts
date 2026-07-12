@@ -1,5 +1,5 @@
 // The three orthogonal reproducibility axes. Single source of truth for their
-// labels, step names and colors — shared by the Evaluate page and the overview pod.
+// labels, step names and colors — shared by the Evaluate page and the pod widget.
 
 import type { EvaluationState } from "./EvaluationState";
 

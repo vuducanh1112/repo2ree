@@ -30,7 +30,7 @@ export function createHydrateReeWorkspace(dispatch: React.Dispatch<AppShellActio
     dispatch(setArtifactStatus((prev) => preserveSeal(prev, ree.artifactStatus)));
     dispatch(setEvaluationState(() => ree.evaluationState));
     // A sealed session is permanently read-only, so reflect it in the shared
-    // lock flag every consumer reads (the overview/source/metadata containers
+    // lock flag every consumer reads (the source/metadata page containers
     // read `uiChrome.locked` directly, not the derived editor view-model). This
     // covers both a fresh load of an already-sealed REE and the post-seal
     // re-hydration. Hydration never unlocks: the reversible "created" lock is

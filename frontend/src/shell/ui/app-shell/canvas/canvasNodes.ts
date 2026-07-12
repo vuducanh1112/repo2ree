@@ -30,9 +30,9 @@ export interface CanvasNode {
   icon: (size?: number) => JSX.Element;
 }
 
-// The Workbench is no longer a cabled node: it IS the canvas — the lab the pod
-// sits in. Its setup lives in WorkbenchLab (pre-provision) and the bench
-// nameplate on the hub (post-provision), so it's absent from the ring here.
+// The Workbench is absent from the ring on purpose: it IS the canvas — the lab
+// the pod sits in. Its setup lives in WorkbenchLab (pre-provision) and the
+// bench nameplate on the hub (post-provision).
 export const CANVAS_NODES: CanvasNode[] = [
   {
     key: PAGE.SOURCE,
@@ -248,7 +248,7 @@ function hostOf(url: string): string {
   }
 }
 
-// Per-node summary, mirroring what the old Overview panels surfaced.
+// Per-node summary: the headline facts a node shows before the user dives in.
 export function nodeSummary(
   node: CanvasNode,
   ree: ReeEditorViewModel,

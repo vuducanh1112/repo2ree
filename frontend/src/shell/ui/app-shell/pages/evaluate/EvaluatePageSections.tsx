@@ -6,7 +6,7 @@ import type { ReeAssemblyRequirement } from "@core/ree-assembly/assemblyStepType
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgContentCard, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
-import { DependencyPanel } from "../../components/assemblyRunPanels";
+import { DependencyPanel } from "../../components/assemblyRunPanels/DependencyPanel";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { RunActionButton } from "../../components/RunActionButton";
@@ -19,7 +19,7 @@ import { EXPECTED_DEP_FILES } from "./EvaluatePageHelpers";
 export { EvaluateThreatsCard } from "./EvaluateThreatsCard";
 
 // Run / Re-run (+ Cancel while running) — lives in the page header's action
-// slot now that the right rail is gone, mirroring the other redesigned pages.
+// slot, mirroring the other pages.
 export function EvaluateRunControls({
   running,
   runDone,

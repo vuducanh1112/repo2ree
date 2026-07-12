@@ -2,9 +2,9 @@ import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type React from "react";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
-import { PodWidget } from "../pages/overview/PodWidget";
-import type { PodShell } from "../pages/overview/podWidget/PodSphere";
 import { EXPLODE_BASE_POD, EXPLODE_LAYERS } from "./canvasNodes";
+import { PodWidget } from "./PodWidget";
+import type { PodShell } from "./podWidget/PodSphere";
 
 // Zone → isolated shell for the decomposed view.
 const ZONE_SHELL: Record<string, PodShell> = {

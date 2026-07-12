@@ -5,7 +5,7 @@ import {
   deriveRuntimeFileSize,
   resolvedRuntimePath,
 } from "@core/ree-assembly/buildRuntimeUiState";
-import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
+import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgPageColors,
@@ -24,7 +24,6 @@ import { LastRunStamp } from "../../components/LastRunStamp";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
-import { findFileByPath } from "../sharedAssemblyHelpers";
 import type { AssemblyPageProps } from "../sharedAssemblyUi";
 import { BuildLogCard, ReservedBuildScriptCard, RuntimeArtifactCard } from "./sections";
 
@@ -75,7 +74,7 @@ export function PageBuildRuntime({
   const files = workspaceFiles || [];
 
   const scriptPath = RESERVED_BUILD_SCRIPT;
-  const scriptFile = useMemo(() => findFileByPath(files, RESERVED_BUILD_SCRIPT), [files]);
+  const scriptFile = useMemo(() => findFileByWorkspacePath(files, RESERVED_BUILD_SCRIPT), [files]);
   const scriptContent = scriptFile?.content || "";
 
   // Save a file to the overlay — does not change the selected build script.
@@ -95,7 +94,7 @@ export function PageBuildRuntime({
 
   const runtimePath = resolvedRuntimePath(ree.runtime);
   const runtimeFile = useMemo(
-    () => (runtimePath ? findFileByPath(files, runtimePath) : null),
+    () => (runtimePath ? findFileByWorkspacePath(files, runtimePath) : null),
     [files, runtimePath],
   );
   const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;

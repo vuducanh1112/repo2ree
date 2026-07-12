@@ -56,7 +56,7 @@ export function SealStatusCard({
 }: SealStatusCardProps) {
   const liveCount = cableItems.filter((item) => item.live).length;
   return (
-    <div ref={sealRef} style={{ ...lgStyles.overviewPanel, width: "100%", maxWidth: 480 }}>
+    <div ref={sealRef} style={{ ...lgStyles.glassPanel, width: "100%", maxWidth: 480 }}>
       <div
         style={{
           padding: "10px 14px",

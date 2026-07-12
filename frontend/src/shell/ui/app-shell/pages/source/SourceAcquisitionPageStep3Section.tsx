@@ -12,7 +12,10 @@ interface Step3Props {
 export function SourceStep3Section(props: Step3Props) {
   const { sourceMeta } = props;
   return (
-    <div style={{ borderTop: "1px solid rgba(125, 211, 252, 0.28)", paddingTop: 20 }}>
+    <section
+      aria-label="Workspace Snapshot"
+      style={{ borderTop: "1px solid rgba(125, 211, 252, 0.28)", paddingTop: 20 }}
+    >
       <div style={{ ...lgStyles.label, marginBottom: 10 }}>Workspace Snapshot</div>
 
       {props.step3Ready && sourceMeta ? (
@@ -49,6 +52,6 @@ export function SourceStep3Section(props: Step3Props) {
           Complete the Source Snapshot step above to configure snapshot behavior.
         </div>
       )}
-    </div>
+    </section>
   );
 }

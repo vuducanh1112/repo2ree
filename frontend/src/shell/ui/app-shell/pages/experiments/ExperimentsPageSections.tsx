@@ -416,7 +416,7 @@ function RunResultPanel({ runState }: { runState: RunState }) {
         : "rgba(248, 250, 252, 0.7)";
 
   return (
-    <div style={lgStyles.fieldFrame}>
+    <section aria-label="Run result" style={lgStyles.fieldFrame}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={lgStyles.label}>Run result</span>
         <span
@@ -464,7 +464,7 @@ function RunResultPanel({ runState }: { runState: RunState }) {
       <div style={{ marginTop: 10, height: 320, display: "flex", flexDirection: "column" }}>
         <LogPanel log={logEntry} running={!isTerminal} />
       </div>
-    </div>
+    </section>
   );
 }
 

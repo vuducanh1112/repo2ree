@@ -1,7 +1,7 @@
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors } from "@shell/ui/theme/lightGlassTheme";
-import { F, S_OVERVIEW_SEALED_META_KEY, S_OVERVIEW_SEALED_META_ROW } from "@shell/ui/theme/theme";
+import { F, S_SEALED_META_KEY, S_SEALED_META_ROW } from "@shell/ui/theme/theme";
 import type React from "react";
 import type { SealCableItem } from "./helpers";
 
@@ -87,8 +87,8 @@ export function SealedSealCard({
         </span>
       </div>
       <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-        <div style={S_OVERVIEW_SEALED_META_ROW}>
-          <span style={S_OVERVIEW_SEALED_META_KEY}>hash</span>
+        <div style={S_SEALED_META_ROW}>
+          <span style={S_SEALED_META_KEY}>hash</span>
           <span
             style={{
               fontFamily: F.mono,
@@ -104,8 +104,8 @@ export function SealedSealCard({
             {ree.sealHash || "—"}
           </span>
         </div>
-        <div style={S_OVERVIEW_SEALED_META_ROW}>
-          <span style={S_OVERVIEW_SEALED_META_KEY}>sealed</span>
+        <div style={S_SEALED_META_ROW}>
+          <span style={S_SEALED_META_KEY}>sealed</span>
           <span style={{ fontFamily: F.mono, fontSize: 10, color: lgColors.textMid }}>
             {sealDate}
           </span>

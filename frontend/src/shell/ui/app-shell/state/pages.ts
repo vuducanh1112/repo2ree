@@ -7,7 +7,8 @@ export const PAGE = {
   METADATA: "metadata",
   EXPERIMENTS: "experiments",
   HBOM: "hbom",
-  OVERVIEW: "overview",
+  // The hub canvas itself: no dock is open, the pod and its nodes fill the view.
+  CANVAS: "canvas",
   SEAL: "seal",
   ARCHIVE: "archive",
   // Assembly pages — keys match assembly operation keys.
@@ -56,7 +57,7 @@ function isValidAppShellPage(value: string): value is AppShellPage {
 
 export function normalizeAppShellPage(
   candidate: string | null | undefined,
-  fallback: AppShellPage = PAGE.OVERVIEW,
+  fallback: AppShellPage = PAGE.CANVAS,
 ): AppShellPage {
   if (candidate && isValidAppShellPage(candidate)) {
     return candidate;

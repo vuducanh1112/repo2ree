@@ -1,9 +1,9 @@
 import type { FileTreeNode } from "@core/workspace/FileTree";
+import { findFileByWorkspacePath, listTreeFiles } from "@core/workspace/fileTreeTraversal";
 import { fileType } from "@shell/ui/shared/formatting";
 import { C } from "@shell/ui/theme/theme";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { allFilePaths, findFileByPath } from "../../pages/sharedAssemblyHelpers";
 import { FilePickerPreview, FilePickerWarning } from "./FilePickerPreviewSections";
 import { FilePickerDropdown, FilePickerInputRow } from "./FilePickerSections";
 import { FILE_TYPE_COLORS, PREVIEW_LINES } from "./shared";
@@ -16,6 +16,8 @@ interface FilePickerProps {
   disabled?: boolean;
   onFocus?: () => void;
   filterFn?: (path: string) => boolean;
+  /** Accessible region name; tests select the picker by this (role=region). */
+  ariaLabel?: string;
 }
 
 export function FilePicker({
@@ -26,6 +28,7 @@ export function FilePicker({
   disabled,
   onFocus,
   filterFn,
+  ariaLabel,
 }: FilePickerProps) {
   const [open, setOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -51,11 +54,11 @@ export function FilePicker({
     setDraft((current) => (current === previous ? value || "" : current));
   }
 
-  const allPaths = allFilePaths(files);
+  const allPaths = listTreeFiles(files).map((file) => file.path);
   const paths = filterFn ? allPaths.filter(filterFn) : allPaths;
 
   const trimmedDraft = draft.trim();
-  const matchedFile = trimmedDraft ? findFileByPath(files, trimmedDraft) : null;
+  const matchedFile = trimmedDraft ? findFileByWorkspacePath(files, trimmedDraft) : null;
   const notFound = trimmedDraft.length > 0 && !matchedFile;
   const wrongFormat = filterFn && trimmedDraft.length > 0 && !filterFn(trimmedDraft);
   const typeStyle = FILE_TYPE_COLORS[fileType(trimmedDraft)] || FILE_TYPE_COLORS.text;
@@ -76,7 +79,7 @@ export function FilePicker({
       onChange("");
       return;
     }
-    const file = findFileByPath(files, trimmed);
+    const file = findFileByWorkspacePath(files, trimmed);
     const passesFormat = !filterFn || filterFn(trimmed);
     onChange(file && passesFormat ? trimmed : "");
   };
@@ -89,7 +92,7 @@ export function FilePicker({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+    <section aria-label={ariaLabel} style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <div ref={containerRef} style={{ position: "relative" }}>
         <FilePickerInputRow
           draft={draft}
@@ -145,6 +148,6 @@ export function FilePicker({
         fileLineCount={fileLineCount}
         onClose={() => setPreviewOpen(false)}
       />
-    </div>
+    </section>
   );
 }

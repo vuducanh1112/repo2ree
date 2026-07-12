@@ -53,7 +53,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   const sealOpen = page === PAGE.SEAL;
   const sbomOpen = page === PAGE.SBOM;
   const sourceOpen = page === PAGE.SOURCE;
-  const dockOpen = page !== PAGE.OVERVIEW && !sealOpen && !sbomOpen && !sourceOpen;
+  const dockOpen = page !== PAGE.CANVAS && !sealOpen && !sbomOpen && !sourceOpen;
 
   // Screen rect of the canvas panel that opened the dock, so the edit view can
   // grow out of the panel the user clicked instead of feeling like a new page.
@@ -182,7 +182,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             node={activeNode(page)}
             originRect={originRect}
             closable={provisioned}
-            onClose={() => commands.setPage(PAGE.OVERVIEW)}
+            onClose={() => commands.setPage(PAGE.CANVAS)}
           >
             <AppShellContent
               ree={ree}
@@ -206,7 +206,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             assemblyRun={assemblyRun}
             uiChrome={uiChrome}
             commands={commands}
-            onClose={() => commands.setPage(PAGE.OVERVIEW)}
+            onClose={() => commands.setPage(PAGE.CANVAS)}
           />
         )}
 
@@ -217,7 +217,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             assemblyRun={assemblyRun}
             uiChrome={uiChrome}
             commands={commands}
-            onClose={() => commands.setPage(PAGE.OVERVIEW)}
+            onClose={() => commands.setPage(PAGE.CANVAS)}
           />
         )}
 
@@ -231,7 +231,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             sealRunning={sealRunning}
             sealLog={sealLog}
             onSeal={commands.onSeal}
-            onClose={() => commands.setPage(PAGE.OVERVIEW)}
+            onClose={() => commands.setPage(PAGE.CANVAS)}
           />
         )}
       </div>

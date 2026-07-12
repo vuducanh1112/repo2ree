@@ -21,13 +21,13 @@ export const S_ACTION_BUTTON_BASE: React.CSSProperties = {
   transition: "all 0.15s",
 };
 
-export const S_OVERVIEW_SEALED_META_ROW: React.CSSProperties = {
+export const S_SEALED_META_ROW: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 8,
 };
 
-export const S_OVERVIEW_SEALED_META_KEY: React.CSSProperties = {
+export const S_SEALED_META_KEY: React.CSSProperties = {
   fontSize: 10,
   fontFamily: F.sans,
   color: C.textMuted,

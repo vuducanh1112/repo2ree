@@ -133,7 +133,7 @@ export async function connectedAgentCount(page: Page): Promise<number> {
 }
 
 /**
- * Land on the workbench lab from the landing view. REE creation now opens with
+ * Land on the workbench lab from the landing view. REE creation opens with
  * the lab-location step: pick the (connected) agent that will host the
  * workbench, which carries its id into the workbench/image page.
  *
@@ -157,7 +157,7 @@ export async function startReeCreation(page: Page, options?: { agentIndex?: numb
 }
 
 /**
- * Provision the workbench container. Provisioning now lands on the hub canvas
+ * Provision the workbench container. Provisioning lands on the hub canvas
  * (the live lab), so this resolves there and then dives into the Source node so
  * the rest of the walkthrough continues from a docked page.
  */
@@ -259,7 +259,7 @@ export async function runEvaluate(page: Page) {
 
 /**
  * Build the runtime artifact and select the produced file. Both building and
- * picking the produced artifact now live on the single Build Runtime page — see
+ * picking the produced artifact live on the single Build Runtime page — see
  * {@link selectRuntimeArtifact}.
  */
 export function dockerBuildScript(projectDir: string, producedRuntimePath: string): string {
@@ -320,7 +320,7 @@ async function saveVerifyScript(page: Page, editor: Locator, content: string) {
   await main(page).getByRole("button", { name: "Save verify script", exact: true }).first().click();
 }
 
-function stdoutContainsVerifyScript(expectedStdout: string): string {
+export function stdoutContainsVerifyScript(expectedStdout: string): string {
   return `#!/usr/bin/env sh
 set -eu
 
@@ -331,15 +331,14 @@ grep -Fq "$EXPECTED" ${JSON.stringify(EXPERIMENT_OUTPUT_FILE)}
 }
 
 /**
- * Pick the produced runtime artifact. The runtime artifact card now lives on the
+ * Pick the produced runtime artifact. The runtime artifact card lives on the
  * Build Runtime page itself (section "1. Build or acquire the runtime"), so this
  * just picks the produced file via the repository file picker right where the
  * build ran — no pod decomposition needed.
  */
 async function selectRuntimeArtifact(page: Page, producedRuntimePath: string) {
   await page
-    .getByPlaceholder("runtime.tar.gz")
-    .locator("..")
+    .getByRole("region", { name: "Runtime artifact" })
     .getByTitle("Browse repository files")
     .click();
   const producedRuntime = page.getByRole("button", { name: producedRuntimePath });
@@ -459,10 +458,7 @@ export async function runExperiment(
   await expect(main(page).getByRole("button", { name: /Running…|Re-run/ })).toBeVisible({
     timeout: 10000,
   });
-  const runResult = main(page)
-    .locator("div")
-    .filter({ hasText: /^Run result/ })
-    .first();
+  const runResult = main(page).getByRole("region", { name: "Run result" });
   // DinD: cold runtime-image load + container run on the per-REE daemon —
   // the heaviest wait in the suite, and the first to blow its budget when
   // the host is under load. Keep it roomier than the other 90s steps.

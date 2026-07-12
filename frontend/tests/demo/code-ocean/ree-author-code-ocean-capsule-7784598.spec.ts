@@ -1,9 +1,12 @@
 import path from "node:path";
-import { expect, type Locator, type Page, test } from "@playwright/test";
-import { stepShot } from "../../screenshot";
+import { expect, type Page, test } from "@playwright/test";
+import { openPort } from "../../e2e/helpers/flow";
+import { createDemoKit } from "../helpers/demo";
 
-const DEMO_STEP_DELAY_MS = 250;
-const DEMO_NARRATION_DELAY_MS = 650;
+const { demoStep, clickDemo, fillDemo, saveRunScript, showDemoFocus } = createDemoKit({
+  stepDelayMs: 250,
+  narrationDelayMs: 650,
+});
 
 const CAPSULE_NAME =
   "A Wireless Bidirectional Neural Interface with Neural-Signal-Dependent Self-Fine-Tuning for Closed-Loop Motor Modulation";
@@ -23,7 +26,7 @@ docker save "$IMAGE" -o "$OUT"
 ls -lh "$OUT"
 `;
 
-// Each runnable now owns its full execution. Code Ocean's absolute /data and
+// Each runnable owns its full execution. Code Ocean's absolute /data and
 // /results are bind-mounted straight off the workspace, so produced results land
 // in the workspace (results/…) where output checks read them on the host.
 function codeOceanRunScript(command: string): string {
@@ -44,142 +47,6 @@ docker run --rm --platform linux/amd64 \\
   "$IMAGE" \\
   sh -c ${JSON.stringify(command)}
 `;
-}
-
-async function demoStep(page: Page, name: string, body: () => Promise<void>) {
-  await stepShot(page, name, "before");
-  await test.step(name, body);
-  await stepShot(page, name, "after");
-}
-
-async function showDemoFocus(locator: Locator, narration?: string) {
-  await locator.evaluate((el, text) => {
-    const containerId = "__ree_demo_focus_container__";
-    const boxId = "__ree_demo_focus_box__";
-    const labelId = "__ree_demo_focus_label__";
-
-    let container = document.getElementById(containerId);
-    if (!container) {
-      container = document.createElement("div");
-      container.id = containerId;
-      Object.assign(container.style, {
-        position: "fixed",
-        left: "0",
-        top: "0",
-        width: "100vw",
-        height: "100vh",
-        pointerEvents: "none",
-        zIndex: "2147483647",
-      });
-      document.body.appendChild(container);
-    }
-
-    let box = document.getElementById(boxId);
-    if (!box) {
-      box = document.createElement("div");
-      box.id = boxId;
-      Object.assign(box.style, {
-        position: "fixed",
-        border: "2px solid #ffc700",
-        borderRadius: "10px",
-        boxShadow: "0 0 0 3px rgba(255, 199, 0, 0.18)",
-        boxSizing: "border-box",
-        pointerEvents: "none",
-      });
-      container.appendChild(box);
-    }
-
-    let label = document.getElementById(labelId);
-    if (!label) {
-      label = document.createElement("div");
-      label.id = labelId;
-      Object.assign(label.style, {
-        position: "fixed",
-        background: "rgba(0, 0, 0, 0.88)",
-        color: "#fff",
-        padding: "6px 9px",
-        borderRadius: "7px",
-        font: "600 12px/1.35 ui-sans-serif, system-ui, sans-serif",
-        boxShadow: "0 6px 20px rgba(0,0,0,0.32)",
-        pointerEvents: "none",
-        maxWidth: "360px",
-        whiteSpace: "normal",
-      });
-      container.appendChild(label);
-    }
-
-    const rect = el.getBoundingClientRect();
-    const pad = 6;
-    const left = Math.max(6, rect.left - pad);
-    const top = Math.max(6, rect.top - pad);
-    const width = Math.max(24, rect.width + pad * 2);
-    const height = Math.max(24, rect.height + pad * 2);
-
-    box.style.left = `${left}px`;
-    box.style.top = `${top}px`;
-    box.style.width = `${width}px`;
-    box.style.height = `${height}px`;
-    box.style.display = "block";
-
-    if (text) {
-      label.textContent = text;
-      label.style.display = "block";
-      label.style.left = `${left}px`;
-      label.style.top = `${Math.max(6, top - 36)}px`;
-    } else {
-      label.style.display = "none";
-    }
-  }, narration);
-}
-
-async function clickDemo(page: Page, locator: Locator, narration?: string) {
-  const target = locator.first();
-  await expect(target).toBeVisible({ timeout: 10000 });
-  await target.scrollIntoViewIfNeeded();
-  await showDemoFocus(target, narration);
-  if (narration) await page.waitForTimeout(DEMO_NARRATION_DELAY_MS);
-  await page.waitForTimeout(DEMO_STEP_DELAY_MS);
-  await target.click();
-  await page.waitForTimeout(DEMO_STEP_DELAY_MS);
-}
-
-async function fillDemo(page: Page, locator: Locator, value: string, narration?: string) {
-  const target = locator.first();
-  await expect(target).toBeVisible({ timeout: 10000 });
-  await target.scrollIntoViewIfNeeded();
-  await showDemoFocus(target, narration);
-  if (narration) await page.waitForTimeout(DEMO_NARRATION_DELAY_MS);
-  await page.waitForTimeout(DEMO_STEP_DELAY_MS);
-  await target.fill(value);
-  await page.waitForTimeout(DEMO_STEP_DELAY_MS);
-}
-
-async function selectDemo(page: Page, locator: Locator, value: string, narration?: string) {
-  const target = locator.first();
-  await expect(target).toBeVisible({ timeout: 10000 });
-  await target.scrollIntoViewIfNeeded();
-  await showDemoFocus(target, narration);
-  if (narration) await page.waitForTimeout(DEMO_NARRATION_DELAY_MS);
-  await target.selectOption(value);
-  await page.waitForTimeout(DEMO_STEP_DELAY_MS);
-}
-
-async function openPort(page: Page, label: string) {
-  await page.keyboard.press("Escape").catch(() => {});
-  await page.getByRole("navigation").getByRole("button", { name: label, exact: true }).click();
-}
-
-// Save a runnable's run script: fill the RunScriptCard textarea, then click its
-// "Save run script" button (shared by activation and experiment editors).
-async function saveRunScript(page: Page, textboxName: string, content: string, narration?: string) {
-  const main = page.getByRole("main");
-  await fillDemo(
-    page,
-    main.getByRole("textbox", { name: textboxName, exact: true }),
-    content,
-    narration,
-  );
-  await clickDemo(page, main.getByRole("button", { name: "Save run script", exact: true }).first());
 }
 
 async function addKeyword(page: Page, keyword: string) {
@@ -205,19 +72,6 @@ async function addContributor(
   await expect(main.getByText(contributor.name, { exact: true })).toBeVisible();
 }
 
-async function addFileShaOutput(page: Page, filePath: string) {
-  const main = page.getByRole("main");
-  const outputsCard = main
-    .locator("div")
-    .filter({ hasText: /^Expected outputs/ })
-    .first();
-  await clickDemo(page, outputsCard.getByRole("button", { name: /Add/ }).first());
-  const outputSelects = outputsCard.locator("select");
-  await selectDemo(page, outputSelects.nth(0), "file", "Capture a result file");
-  await fillDemo(page, main.getByPlaceholder("results/output.txt"), filePath);
-  await selectDemo(page, outputSelects.nth(1), "sha256", "Snapshot will fill the hash");
-}
-
 async function addExperiment(
   page: Page,
   experiment: { name: string; command: string; output: string },
@@ -231,7 +85,12 @@ async function addExperiment(
     codeOceanRunScript(experiment.command),
     "The experiment owns its full docker run — Code Ocean's /data and /results mount straight off the workspace",
   );
-  await addFileShaOutput(page, experiment.output);
+  await fillDemo(
+    page,
+    main.getByRole("textbox", { name: "Output files" }),
+    experiment.output,
+    "Declare the result file the run produces — captured after every run",
+  );
   await clickDemo(page, main.getByRole("button", { name: /Save & back to catalog/ }));
   await expect(main.getByRole("button", { name: experiment.name })).toBeVisible();
 }

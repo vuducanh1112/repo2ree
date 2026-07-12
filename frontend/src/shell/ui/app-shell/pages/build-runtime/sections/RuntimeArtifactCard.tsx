@@ -3,7 +3,7 @@ import {
   runtimeArtifactStatusLabel,
 } from "@core/ree-assembly/buildRuntimeUiState";
 import type { FileTreeNode } from "@core/workspace/FileTree";
-import { FilePicker } from "@shell/ui/app-shell/components/scriptAndFile";
+import { FilePicker } from "@shell/ui/app-shell/components/script-and-file/FilePicker";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
@@ -65,6 +65,7 @@ export function RuntimeArtifactCard({
         onChange={onRuntimeChange}
         files={files}
         placeholder="runtime.tar.gz"
+        ariaLabel="Runtime artifact"
       />
 
       {hasRuntime && (

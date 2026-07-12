@@ -68,7 +68,7 @@ test.describe("REE pipeline", () => {
 
       // Workspace Snapshot surfaces the backend-computed source metadata. An
       // uploaded tarball reports "Upload" as its origin and a known byte size.
-      const snapshot = page.getByText("Workspace Snapshot").locator("..");
+      const snapshot = page.getByRole("region", { name: "Workspace Snapshot" });
       await expect(snapshot.getByText("Origin", { exact: true })).toBeVisible();
       await expect(snapshot.getByText("Upload", { exact: true })).toBeVisible();
       await expect(snapshot.getByText("Size", { exact: true })).toBeVisible();

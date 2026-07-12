@@ -5,7 +5,7 @@ import {
   resolvedSbomPath,
   summarizeSbom,
 } from "@core/ree-assembly/sbomUiState";
-import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
+import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { useMemo } from "react";
 import { Ic } from "../../shared/components/Icon";
 import {
@@ -21,7 +21,6 @@ import { RunActionButton } from "../components/RunActionButton";
 import { useAssemblyStepPageController } from "../hooks/useAssemblyStepPageController";
 import { RuntimeScanTargetCard, SbomOutputCard } from "../pages/generate-sbom/sections";
 import type { AppShellPageContainerProps } from "../pages/pageContainers/shared";
-import { findFileByPath } from "../pages/sharedAssemblyHelpers";
 import { HubPanel, HubPanelHeader } from "./HubPanel";
 
 const SBOM_PAGE_COLOR = "#16a34a";
@@ -51,7 +50,7 @@ export function SbomHubPanel({
   const runtimeIsTarball = !!runtimePath && isRuntimeTarballPath(runtimePath);
 
   const sbomPath = resolvedSbomPath(ree.sbom);
-  const sbomNode = sbomPath ? findFileByPath(files, sbomPath) : null;
+  const sbomNode = sbomPath ? findFileByWorkspacePath(files, sbomPath) : null;
   const sbomSummary = useMemo(() => summarizeSbom(sbomNode), [sbomNode]);
 
   return (

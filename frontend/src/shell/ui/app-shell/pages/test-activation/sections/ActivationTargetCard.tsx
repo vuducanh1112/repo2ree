@@ -33,7 +33,7 @@ export function ActivationTargetCard({
           {Ic.archive(20)}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: lgColors.overview, fontWeight: 800 }}>ree.runtime</div>
+          <div style={{ fontSize: 11, color: lgColors.accent, fontWeight: 800 }}>ree.runtime</div>
           <div
             style={{
               marginTop: 3,

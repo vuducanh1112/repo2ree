@@ -1,6 +1,6 @@
 // Theme for the glass "pages" surfaces — the bright, frosted page views
 // (archive, build-runtime, evaluate, experiments, files, hardware-bom,
-// metadata, overview/seal, source). This is intentionally
+// metadata, seal, source). This is intentionally
 // a separate palette from the canvas/chrome tokens in ./tokens (C): the two
 // share only the font primitives (F) imported below. Keep the colors distinct.
 import type { FileTypeCategory } from "@core/workspace/PathUtils";
@@ -23,7 +23,7 @@ export const lgColors = {
   dangerBorder: "rgba(251, 113, 133, 0.4)",
   success: "#047857",
   warning: "#a16207",
-  overview: "#0369a1",
+  accent: "#0369a1",
   primaryDeep: "#0c4a6e",
   suggestionText: "#3730a3",
   chipText: "#1d4ed8",
@@ -316,13 +316,13 @@ export const lgStyles = styleSheet({
     flexDirection: "column",
     gap: 14,
   },
-  overviewHeader: {
+  asideHeader: {
     display: "flex",
     justifyContent: "space-between",
     gap: 10,
   },
-  overviewLabel: {
-    color: lgColors.overview,
+  asideLabel: {
+    color: lgColors.accent,
     fontSize: 11,
     fontWeight: 800,
     letterSpacing: 0.5,
@@ -400,46 +400,13 @@ export const lgStyles = styleSheet({
     marginTop: 10,
     justifyContent: "flex-end",
   },
-  overviewPanel: {
+  glassPanel: {
     border: lgBorders.panel,
     borderRadius: 10,
     background: lgBackgrounds.glass,
     backdropFilter: "blur(14px)",
     boxShadow: "0 12px 32px rgba(15, 23, 42, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.85)",
     overflow: "hidden",
-  },
-  overviewPanelHeaderRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "9px 12px",
-    borderBottom: lgBorders.row,
-    background: lgBackgrounds.glassStrong,
-  },
-  overviewPanelLabel: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: lgColors.text,
-    fontFamily: F.sans,
-    letterSpacing: 0.2,
-  },
-  overviewPanelFields: {
-    display: "flex",
-    flexDirection: "column",
-  },
-  overviewPanelFooter: {
-    padding: 10,
-    borderTop: lgBorders.row,
-    background: lgBackgrounds.footer,
-    display: "flex",
-    flexDirection: "column",
-    gap: 7,
-  },
-  overviewIncludeRow: {
-    marginLeft: "auto",
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
   },
 });
 
@@ -691,8 +658,8 @@ export function lgSuggestionButton(): React.CSSProperties {
   };
 }
 
-// File-browser surfaces. The tree pane and viewer are translucent glass that
-// float over the page's gradient backdrop rather than the old opaque white.
+// File-browser surfaces. The tree pane and viewer are translucent glass
+// floating over the page's gradient backdrop.
 export const lgTree = {
   pane: {
     background: "rgba(255, 255, 255, 0.55)",
@@ -717,7 +684,7 @@ export const lgTree = {
 export const lgSyntax = {
   lineNumber: "rgba(148, 163, 184, 0.85)",
   comment: "#94a3b8",
-  keyword: lgColors.overview,
+  keyword: lgColors.accent,
   command: "#15803d",
   string: "#b45309",
 } as const;
@@ -734,11 +701,11 @@ export function lgFileTypeColor(category: FileTypeCategory): string {
   }[category];
 }
 
-// ── Overview dashboard ──────────────────────────────────────────────────────
-// The Overview page is a spatial dashboard: small translucent "stage" panels
-// orbit the central specimen pod, each tinted with its stage hue for wayfinding
-// (the same hue carried by its connecting cable). A tint bundles the vivid line
-// colour (dot / cable), a deep ink for text, and translucent glass fills.
+// ── Stage tints ──────────────────────────────────────────────────────────────
+// On the hub canvas, small translucent "stage" panels orbit the central
+// specimen pod, each tinted with its stage hue for wayfinding (the same hue
+// carried by its connecting cable). A tint bundles the vivid line colour
+// (dot / cable), a deep ink for text, and translucent glass fills.
 interface LgStageTint {
   ink: string;
   line: string;
