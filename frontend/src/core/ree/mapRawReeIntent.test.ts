@@ -28,11 +28,11 @@ describe("mapRawReeIntentToSlices", () => {
       {
         name: "benchmark",
         description: "Measure throughput",
-        run_script: "ree/experiments/benchmark.sh",
-        verify_script: "",
-        output_paths: [],
-        runtime_estimate: "15-20 min",
-        resource_estimates: {
+        runScript: "ree/experiments/benchmark.sh",
+        verifyScript: "",
+        outputPaths: [],
+        runtimeEstimate: "15-20 min",
+        resourceEstimates: {
           cpu: "8 vCPU",
           memory: "16 GB",
           gpu: "1x A10",
@@ -55,11 +55,11 @@ describe("mapRawReeIntentToSlices", () => {
       {
         name: "smoke",
         description: "",
-        run_script: "ree/experiments/smoke.sh",
-        verify_script: "",
-        output_paths: [],
-        runtime_estimate: "",
-        resource_estimates: {
+        runScript: "ree/experiments/smoke.sh",
+        verifyScript: "",
+        outputPaths: [],
+        runtimeEstimate: "",
+        resourceEstimates: {
           cpu: "",
           memory: "",
           gpu: "",
@@ -78,13 +78,13 @@ describe("mapRawReeIntentToSlices", () => {
       fallbackName: "demo",
     });
 
-    expect(mapped.reeSpec.activation.run_script).toBe("ree/custom-activation.sh");
+    expect(mapped.reeSpec.activation.runScript).toBe("ree/custom-activation.sh");
   });
 
   it("uses the reserved activation run script when not present in intent", () => {
     const mapped = mapRawReeIntentToSlices({ reeIntent: {}, fallbackName: "demo" });
 
-    expect(mapped.reeSpec.activation.run_script).toBe("ree/activation.sh");
+    expect(mapped.reeSpec.activation.runScript).toBe("ree/activation.sh");
   });
 
   it("reads source_included and runtime_included from session", () => {

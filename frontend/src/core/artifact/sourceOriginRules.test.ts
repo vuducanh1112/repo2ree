@@ -3,11 +3,11 @@ import { createEmptyReeSpec } from "../ree/ReeSpec";
 import { enforceSourceOriginRules } from "./sourceOriginRules";
 
 describe("enforceSourceOriginRules", () => {
-  it("clears origin_url when the source was not acquired by download", () => {
+  it("clears originUrl when the source was not acquired by download", () => {
     const result = enforceSourceOriginRules({
       reeSpec: {
         ...createEmptyReeSpec(),
-        origin_url: "https://example.org/repo.git",
+        originUrl: "https://example.org/repo.git",
       },
       workspaceSourceState: {
         sourceAvailable: true,
@@ -18,13 +18,13 @@ describe("enforceSourceOriginRules", () => {
       evaluationState: { dependencyLevel: 0 },
     });
 
-    expect(result.reeSpec.origin_url).toBe("");
+    expect(result.reeSpec.originUrl).toBe("");
   });
 
   it("preserves identities when no updates are needed", () => {
     const reeSpec = {
       ...createEmptyReeSpec(),
-      origin_url: "https://example.org/repo.git",
+      originUrl: "https://example.org/repo.git",
     };
     const workspaceSourceState = {
       sourceAvailable: true,

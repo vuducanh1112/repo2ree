@@ -12,45 +12,45 @@ export type DeviceModel = string;
 export interface CPUDefinition {
   vendor: string;
   quantity: number;
-  cores_per_cpu: number;
-  threads_per_core: number;
+  coresPerCpu: number;
+  threadsPerCore: number;
   architecture: string;
-  extra_info: Record<string, unknown>;
+  extraInfo: Record<string, unknown>;
 }
 
 export interface GPUDefinition {
   vendor: string;
   quantity: number;
-  memory_gb: number;
+  memoryGb: number;
   interface: string;
-  extra_info: Record<string, unknown>;
+  extraInfo: Record<string, unknown>;
 }
 
 export interface MemoryDefinition {
   vendor: string;
   quantity: number;
-  capacity_gb: number;
-  memory_type: string;
-  speed_mt_s: number;
-  extra_info: Record<string, unknown>;
+  capacityGb: number;
+  memoryType: string;
+  speedMtS: number;
+  extraInfo: Record<string, unknown>;
 }
 
 export interface StorageDefinition {
   vendor: string;
   quantity: number;
-  capacity_gb: number;
-  storage_type: string;
+  capacityGb: number;
+  storageType: string;
   interface: string;
-  extra_info: Record<string, unknown>;
+  extraInfo: Record<string, unknown>;
 }
 
 export interface NetworkDefinition {
   vendor: string;
   quantity: number;
-  bandwidth_gbps: number;
-  network_type: string;
+  bandwidthGbps: number;
+  networkType: string;
   interface: string;
-  extra_info: Record<string, unknown>;
+  extraInfo: Record<string, unknown>;
 }
 
 // ================================================
@@ -72,16 +72,16 @@ export interface ExperimentResourceEstimates {
 // script run from the workspace root after the run script, with nothing
 // injected into its environment, whose exit code is the verdict (0 = pass). It
 // reads whatever it checks straight from the workspace (to check stdout, the
-// run script materializes it to a file). `output_paths` declares the workspace
+// run script materializes it to a file). `outputPaths` declares the workspace
 // files the run (re)writes — disclosure and drift exclusion, no matcher
 // semantics.
 export interface ReeRunnable {
   description: string;
-  run_script: string;
-  verify_script: string;
-  output_paths: string[];
-  runtime_estimate: string;
-  resource_estimates: ExperimentResourceEstimates;
+  runScript: string;
+  verifyScript: string;
+  outputPaths: string[];
+  runtimeEstimate: string;
+  resourceEstimates: ExperimentResourceEstimates;
 }
 
 export interface ReeExperiment extends ReeRunnable {
@@ -122,8 +122,8 @@ function experimentSlug(name: string): string {
 export interface ReeContributor {
   identifier: string;
   name: string;
-  affiliation_name: string;
-  affiliation_identifier: string;
+  affiliationName: string;
+  affiliationIdentifier: string;
 }
 
 export interface ReeCatalogMetadata {
@@ -132,7 +132,7 @@ export interface ReeCatalogMetadata {
   website: string;
   keywords: string[];
   contributors: ReeContributor[];
-  corresponding_author_identifier: string | null;
+  correspondingAuthorIdentifier: string | null;
 }
 
 export interface HBOM {
@@ -141,14 +141,14 @@ export interface HBOM {
   memory: Record<DeviceModel, MemoryDefinition>;
   storage: Record<DeviceModel, StorageDefinition>;
   network: Record<DeviceModel, NetworkDefinition>;
-  extra_info: Record<string, unknown>;
+  extraInfo: Record<string, unknown>;
 }
 
 export interface ReeSpec {
   name: string;
-  catalog_metadata: ReeCatalogMetadata;
-  origin_url: string;
-  source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
+  catalogMetadata: ReeCatalogMetadata;
+  originUrl: string;
+  sourceType: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
   /** The concrete commit acquisition resolved the git source to — its reproducibility
    *  receipt, persisted onto the intent and re-fetched at seal. Distinct from the
    *  acquisition *input* ref (the requested commit/branch/tag), which is a transient
@@ -158,10 +158,10 @@ export interface ReeSpec {
   activation: ReeActivation;
   sbom: string;
   swhid: string;
-  zenodo_doi?: string;
-  dataverse_doi?: string;
+  zenodoDoi?: string;
+  dataverseDoi?: string;
   experiments?: ReeExperiment[];
-  hardware_description: HBOM;
+  hardwareDescription: HBOM;
 }
 
 // ================================================
@@ -175,7 +175,7 @@ export function createEmptyReeCatalogMetadata(): ReeCatalogMetadata {
     website: "",
     keywords: [],
     contributors: [],
-    corresponding_author_identifier: null,
+    correspondingAuthorIdentifier: null,
   };
 }
 
@@ -193,22 +193,22 @@ export function createEmptyReeExperiment(): ReeExperiment {
   return {
     name: "",
     description: "",
-    run_script: "",
-    verify_script: "",
-    output_paths: [],
-    runtime_estimate: "",
-    resource_estimates: createEmptyExperimentResourceEstimates(),
+    runScript: "",
+    verifyScript: "",
+    outputPaths: [],
+    runtimeEstimate: "",
+    resourceEstimates: createEmptyExperimentResourceEstimates(),
   };
 }
 
 export function createEmptyReeActivation(): ReeActivation {
   return {
     description: "",
-    run_script: RESERVED_ACTIVATION_SCRIPT,
-    verify_script: "",
-    output_paths: [],
-    runtime_estimate: "",
-    resource_estimates: createEmptyExperimentResourceEstimates(),
+    runScript: RESERVED_ACTIVATION_SCRIPT,
+    verifyScript: "",
+    outputPaths: [],
+    runtimeEstimate: "",
+    resourceEstimates: createEmptyExperimentResourceEstimates(),
   };
 }
 
@@ -222,30 +222,30 @@ export function createEmptyReeActivation(): ReeActivation {
  *  cleared by the backend on source reset and must be handled there, not here. */
 export function clearedSourceIdentityReeSpec(): Pick<
   ReeSpec,
-  "origin_url" | "source_type" | "resolvedRevision"
+  "originUrl" | "sourceType" | "resolvedRevision"
 > {
-  return { origin_url: "", source_type: "", resolvedRevision: "" };
+  return { originUrl: "", sourceType: "", resolvedRevision: "" };
 }
 
 export function createEmptyReeSpec(): ReeSpec {
   return {
     name: "",
-    catalog_metadata: createEmptyReeCatalogMetadata(),
-    origin_url: "",
-    source_type: "",
+    catalogMetadata: createEmptyReeCatalogMetadata(),
+    originUrl: "",
+    sourceType: "",
     resolvedRevision: "",
     runtime: "",
     activation: createEmptyReeActivation(),
     sbom: "",
     swhid: "",
     experiments: [],
-    hardware_description: {
+    hardwareDescription: {
       cpus: {},
       gpus: {},
       memory: {},
       storage: {},
       network: {},
-      extra_info: {},
+      extraInfo: {},
     },
   };
 }

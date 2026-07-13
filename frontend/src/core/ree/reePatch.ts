@@ -1,20 +1,23 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import type { ReeActivation, ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec";
+import type { HBOM, ReeCatalogMetadata, ReeExperiment, ReeRunnable, ReeSpec } from "./ReeSpec";
 
+// The patch travels in the backend's wire format: the intent payload is a
+// serialized Pydantic model, so its keys are snake_case. Domain types are
+// camelCase; the serializers below own the conversion.
 export interface ReeIntentPatch extends Record<string, unknown> {
   name: string;
-  catalog_metadata: ReeCatalogMetadata;
+  catalog_metadata: Record<string, unknown>;
   origin_url: string;
   source_type: string;
   runtime: string;
-  activation: ReeActivation;
+  activation: Record<string, unknown>;
   sbom: string;
   swhid: string;
   zenodo_doi: string;
   dataverse_doi: string;
-  experiments: ReeExperiment[];
+  experiments: Array<Record<string, unknown>>;
   hardware_description: Record<string, unknown>;
 }
 
@@ -23,6 +26,78 @@ interface ReePatchSlices {
   workspaceSourceState: WorkspaceSourceState;
   artifactStatus: ArtifactStatus;
   evaluationState: EvaluationState;
+}
+
+function serializeCatalogMetadata(metadata: ReeCatalogMetadata): Record<string, unknown> {
+  return {
+    description: metadata.description,
+    version: metadata.version,
+    website: metadata.website,
+    keywords: metadata.keywords,
+    contributors: metadata.contributors.map((contributor) => ({
+      identifier: contributor.identifier,
+      name: contributor.name,
+      affiliation_name: contributor.affiliationName,
+      affiliation_identifier: contributor.affiliationIdentifier,
+    })),
+    corresponding_author_identifier: metadata.correspondingAuthorIdentifier,
+  };
+}
+
+function serializeRunnable(runnable: ReeRunnable): Record<string, unknown> {
+  return {
+    description: runnable.description,
+    run_script: runnable.runScript,
+    verify_script: runnable.verifyScript,
+    output_paths: runnable.outputPaths,
+    runtime_estimate: runnable.runtimeEstimate,
+    resource_estimates: runnable.resourceEstimates,
+  };
+}
+
+function serializeExperiment(experiment: ReeExperiment): Record<string, unknown> {
+  return {
+    name: experiment.name,
+    ...serializeRunnable(experiment),
+  };
+}
+
+function serializeDeviceMap(
+  devices: Record<string, Record<string, unknown>>,
+  fields: Record<string, string>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(devices).map(([model, device]) => [
+      model,
+      Object.fromEntries(Object.entries(device).map(([key, value]) => [fields[key] ?? key, value])),
+    ]),
+  );
+}
+
+const DEVICE_WIRE_FIELDS: Record<string, string> = {
+  coresPerCpu: "cores_per_cpu",
+  threadsPerCore: "threads_per_core",
+  memoryGb: "memory_gb",
+  capacityGb: "capacity_gb",
+  memoryType: "memory_type",
+  speedMtS: "speed_mt_s",
+  storageType: "storage_type",
+  bandwidthGbps: "bandwidth_gbps",
+  networkType: "network_type",
+  extraInfo: "extra_info",
+};
+
+function serializeHbom(hbom: HBOM): Record<string, unknown> {
+  const asDeviceMap = (value: unknown) =>
+    serializeDeviceMap(value as Record<string, Record<string, unknown>>, DEVICE_WIRE_FIELDS);
+  return {
+    cpus: asDeviceMap(hbom.cpus),
+    gpus: asDeviceMap(hbom.gpus),
+    memory: asDeviceMap(hbom.memory),
+    storage: asDeviceMap(hbom.storage),
+    network: asDeviceMap(hbom.network),
+    extra_info: hbom.extraInfo,
+  };
 }
 
 // The autosave patch intentionally omits `resolvedRevision` (the resolved
@@ -34,20 +109,17 @@ interface ReePatchSlices {
 export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatch {
   return {
     name: reeSpec.name || "",
-    catalog_metadata: reeSpec.catalog_metadata,
-    origin_url: reeSpec.origin_url || "",
-    source_type: reeSpec.source_type || "",
+    catalog_metadata: serializeCatalogMetadata(reeSpec.catalogMetadata),
+    origin_url: reeSpec.originUrl || "",
+    source_type: reeSpec.sourceType || "",
     runtime: reeSpec.runtime || "",
-    activation: reeSpec.activation,
+    activation: serializeRunnable(reeSpec.activation),
     sbom: reeSpec.sbom || "",
     swhid: reeSpec.swhid || "",
-    zenodo_doi: reeSpec.zenodo_doi || "",
-    dataverse_doi: reeSpec.dataverse_doi || "",
-    experiments: reeSpec.experiments || [],
-    hardware_description: (reeSpec.hardware_description || {}) as unknown as Record<
-      string,
-      unknown
-    >,
+    zenodo_doi: reeSpec.zenodoDoi || "",
+    dataverse_doi: reeSpec.dataverseDoi || "",
+    experiments: (reeSpec.experiments || []).map(serializeExperiment),
+    hardware_description: serializeHbom(reeSpec.hardwareDescription),
   };
 }
 
@@ -57,18 +129,18 @@ export function toReePatch(
   return toReePatchFromSlices({
     reeSpec: {
       name: ree.name,
-      catalog_metadata: ree.catalog_metadata,
-      origin_url: ree.origin_url,
-      source_type: ree.source_type,
+      catalogMetadata: ree.catalogMetadata,
+      originUrl: ree.originUrl,
+      sourceType: ree.sourceType,
       resolvedRevision: ree.resolvedRevision,
       runtime: ree.runtime,
       activation: ree.activation,
       sbom: ree.sbom,
       swhid: ree.swhid,
-      zenodo_doi: ree.zenodo_doi,
-      dataverse_doi: ree.dataverse_doi,
+      zenodoDoi: ree.zenodoDoi,
+      dataverseDoi: ree.dataverseDoi,
       experiments: ree.experiments || [],
-      hardware_description: ree.hardware_description,
+      hardwareDescription: ree.hardwareDescription,
     },
     workspaceSourceState: {
       sourceAvailable: ree.sourceAvailable,

@@ -61,11 +61,11 @@ function ExperimentCard({
 }) {
   const [hovered, setHovered] = useState(false);
   const name = experiment.name.trim();
-  const command = experiment.run_script.trim();
+  const command = experiment.runScript.trim();
   const description = experiment.description.trim();
-  const hasVerify = experiment.verify_script.trim() !== "";
-  const runtimeEstimate = experiment.runtime_estimate.trim();
-  const hasResources = hasResourceEstimates(experiment.resource_estimates);
+  const hasVerify = experiment.verifyScript.trim() !== "";
+  const runtimeEstimate = experiment.runtimeEstimate.trim();
+  const hasResources = hasResourceEstimates(experiment.resourceEstimates);
 
   return (
     <div

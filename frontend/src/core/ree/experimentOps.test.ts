@@ -10,11 +10,11 @@ describe("addExperiment", () => {
       {
         name: "",
         description: "",
-        run_script: "",
-        verify_script: "",
-        output_paths: [],
-        runtime_estimate: "",
-        resource_estimates: {
+        runScript: "",
+        verifyScript: "",
+        outputPaths: [],
+        runtimeEstimate: "",
+        resourceEstimates: {
           cpu: "",
           memory: "",
           gpu: "",

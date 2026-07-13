@@ -35,18 +35,18 @@ function toInitialSlices(ree: ReeEditorViewModel) {
   return {
     reeSpec: {
       name: ree.name,
-      catalog_metadata: ree.catalog_metadata,
-      origin_url: ree.origin_url,
-      source_type: ree.source_type,
+      catalogMetadata: ree.catalogMetadata,
+      originUrl: ree.originUrl,
+      sourceType: ree.sourceType,
       resolvedRevision: ree.resolvedRevision,
       runtime: ree.runtime,
       activation: ree.activation,
       sbom: ree.sbom,
       swhid: ree.swhid,
-      zenodo_doi: ree.zenodo_doi,
-      dataverse_doi: ree.dataverse_doi,
+      zenodoDoi: ree.zenodoDoi,
+      dataverseDoi: ree.dataverseDoi,
       experiments: ree.experiments,
-      hardware_description: ree.hardware_description,
+      hardwareDescription: ree.hardwareDescription,
     },
     workspaceSourceState: {
       sourceAvailable: ree.sourceAvailable,
@@ -75,7 +75,7 @@ describe("appShellState", () => {
       type: "applySourceOutcome",
       outcome: {
         reeSpecPatch: {
-          origin_url: "https://example.org/repo.git",
+          originUrl: "https://example.org/repo.git",
         },
         workspaceSourceStatePatch: {
           sourceAvailable: true,
@@ -89,7 +89,7 @@ describe("appShellState", () => {
     });
     const view = createAppShellState(next);
 
-    expect(next.reeIntent.reeSpec.origin_url).toBe("https://example.org/repo.git");
+    expect(next.reeIntent.reeSpec.originUrl).toBe("https://example.org/repo.git");
     expect(next.reeSession.workspaceSourceState.sourceAvailable).toBe(true);
     expect(next.stepRuns.actionStates.source).toBe("done");
     expect(next.stepRuns.badges.source).toBe(true);
@@ -132,7 +132,7 @@ describe("appShellState", () => {
     expect(next.stepRuns.actionStates).toEqual({});
     expect(next.stepRuns.badges).toEqual({});
     expect(next.stepRuns.timestamps).toEqual({});
-    expect(next.reeIntent.reeSpec.origin_url).toBe("");
+    expect(next.reeIntent.reeSpec.originUrl).toBe("");
     expect(next.reeSession.workspaceSourceState.sourceAvailable).toBe(false);
   });
 

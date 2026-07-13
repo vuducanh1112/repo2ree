@@ -95,7 +95,7 @@ export function createSourceUseCase({
   };
 
   const completeDownload = async (args: {
-    originType: ReeSpec["source_type"];
+    originType: ReeSpec["sourceType"];
     normalizedSourceUrl: string;
     runId?: string;
   }) => {
@@ -121,7 +121,7 @@ export function createSourceUseCase({
 
   return {
     async downloadSource(
-      originType: ReeSpec["source_type"],
+      originType: ReeSpec["sourceType"],
       sourceUrl: string,
       revision?: string,
     ): Promise<void> {

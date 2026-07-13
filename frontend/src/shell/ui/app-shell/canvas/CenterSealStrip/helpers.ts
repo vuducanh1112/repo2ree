@@ -19,7 +19,7 @@ export function buildSealCableItems(ree: ReeEditorViewModel, badges: Badges): Se
     {
       key: PAGE.HBOM,
       label: "HBOM",
-      live: hbomHasAnyComponents(ree.hardware_description),
+      live: hbomHasAnyComponents(ree.hardwareDescription),
     },
     { key: PAGE.SOURCE, label: "Source", live: !!ree.sourceAvailable },
     {
@@ -33,7 +33,7 @@ export function buildSealCableItems(ree: ReeEditorViewModel, badges: Badges): Se
     {
       key: "archive",
       label: "Archival & DOIs",
-      live: !!(ree.zenodo_doi || ree.dataverse_doi),
+      live: !!(ree.zenodoDoi || ree.dataverseDoi),
     },
     {
       key: "activation",

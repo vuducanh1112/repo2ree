@@ -12,25 +12,25 @@ describe("catalog metadata operations", () => {
     const spec = addCatalogKeyword(createEmptyReeSpec(), " Reproducibility ");
     const duplicate = addCatalogKeyword(spec, "reproducibility");
 
-    expect(duplicate.catalog_metadata.keywords).toEqual(["reproducibility"]);
+    expect(duplicate.catalogMetadata.keywords).toEqual(["reproducibility"]);
   });
 
   it("adds contributors and sets the first as corresponding author", () => {
     const result = addCatalogContributor(createEmptyReeSpec(), {
       identifier: " https://orcid.org/0000-0000-0000-0001 ",
       name: " Ada Lovelace ",
-      affiliation_name: " Analytical Engines Lab ",
-      affiliation_identifier: "",
+      affiliationName: " Analytical Engines Lab ",
+      affiliationIdentifier: "",
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.spec.catalog_metadata.contributors[0]).toMatchObject({
+    expect(result.spec.catalogMetadata.contributors[0]).toMatchObject({
       identifier: "https://orcid.org/0000-0000-0000-0001",
       name: "Ada Lovelace",
-      affiliation_name: "Analytical Engines Lab",
+      affiliationName: "Analytical Engines Lab",
     });
-    expect(result.spec.catalog_metadata.corresponding_author_identifier).toBe(
+    expect(result.spec.catalogMetadata.correspondingAuthorIdentifier).toBe(
       "https://orcid.org/0000-0000-0000-0001",
     );
   });
@@ -39,31 +39,31 @@ describe("catalog metadata operations", () => {
     const first = addCatalogContributor(createEmptyReeSpec(), {
       identifier: "ada",
       name: "Ada",
-      affiliation_name: "",
-      affiliation_identifier: "",
+      affiliationName: "",
+      affiliationIdentifier: "",
     });
     if (!first.ok) throw new Error(first.error);
 
     const second = addCatalogContributor(first.spec, {
       identifier: "grace",
       name: "Grace",
-      affiliation_name: "",
-      affiliation_identifier: "",
+      affiliationName: "",
+      affiliationIdentifier: "",
     });
     if (!second.ok) throw new Error(second.error);
 
     const updated = updateCatalogContributor(second.spec, "ada", {
       identifier: "ada-new",
       name: "Ada",
-      affiliation_name: "",
-      affiliation_identifier: "",
+      affiliationName: "",
+      affiliationIdentifier: "",
     });
     if (!updated.ok) throw new Error(updated.error);
 
-    expect(updated.spec.catalog_metadata.corresponding_author_identifier).toBe("ada-new");
+    expect(updated.spec.catalogMetadata.correspondingAuthorIdentifier).toBe("ada-new");
     expect(
-      removeCatalogContributor(updated.spec, "ada-new").catalog_metadata
-        .corresponding_author_identifier,
+      removeCatalogContributor(updated.spec, "ada-new").catalogMetadata
+        .correspondingAuthorIdentifier,
     ).toBe("grace");
   });
 });

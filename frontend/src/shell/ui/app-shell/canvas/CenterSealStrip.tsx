@@ -37,7 +37,7 @@ export function CenterSealStrip({
   const runtimeAvailable = !!ree.runtime?.trim() && ree.runtime !== "__skipped__";
   // Results are available to seal once any experiment declares an output — those
   // are what a successful run captures into the produced-results store.
-  const resultsAvailable = (ree.experiments ?? []).some((e) => e.output_paths.length > 0);
+  const resultsAvailable = (ree.experiments ?? []).some((e) => e.outputPaths.length > 0);
   const [includeSource, setIncludeSource] = React.useState(sourceAvailable);
   const [includeRuntime, setIncludeRuntime] = React.useState(runtimeAvailable);
   const [includeResults, setIncludeResults] = React.useState(resultsAvailable);

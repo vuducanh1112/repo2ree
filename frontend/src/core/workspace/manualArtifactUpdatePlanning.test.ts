@@ -16,13 +16,13 @@ describe("planManualArtifactCompletion", () => {
     ).toBe("swh:1:dir:abc");
     expect(
       planManualArtifactCompletion({ key: "zenodo", generatedZenodoDoi: "10.5281/zenodo.123" })
-        .reeSpecPatch?.zenodo_doi,
+        .reeSpecPatch?.zenodoDoi,
     ).toBe("10.5281/zenodo.123");
     expect(
       planManualArtifactCompletion({
         key: "dataverse",
         generatedDataverseDoi: "doi:10.5072/DVN/123456",
-      }).reeSpecPatch?.dataverse_doi,
+      }).reeSpecPatch?.dataverseDoi,
     ).toBe("doi:10.5072/DVN/123456");
   });
 

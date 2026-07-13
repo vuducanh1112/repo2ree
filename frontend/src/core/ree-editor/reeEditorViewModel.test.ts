@@ -9,8 +9,8 @@ describe("reeEditorViewModel", () => {
       reeSpec: {
         ...createEmptyReeSpec(),
         name: "demo",
-        origin_url: "https://example.org/repo.git",
-        source_type: "git",
+        originUrl: "https://example.org/repo.git",
+        sourceType: "git",
         runtime: "runtime.tar.gz",
         sbom: "sbom.spdx.json",
         swhid: "swh:1:dir:abc",

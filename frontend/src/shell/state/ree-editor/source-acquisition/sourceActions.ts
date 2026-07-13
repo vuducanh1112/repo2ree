@@ -95,7 +95,7 @@ export function createSourceActions({
   });
 
   const handleDownloadSourceFiles = async (
-    originType: ReeEditorViewModel["source_type"],
+    originType: ReeEditorViewModel["sourceType"],
     sourceUrl: string,
     revision?: string,
   ) => sourceAcquisition.downloadSource(originType, sourceUrl, revision);

@@ -81,7 +81,7 @@ export function buildSbomStepRunRequest(
   return {
     scriptKey: "sbom",
     params: {
-      produced_runtime_path: String(params.produced_runtime_path ?? ree.runtime ?? ""),
+      produced_runtime_path: String(params.producedRuntimePath ?? ree.runtime ?? ""),
     },
   };
 }

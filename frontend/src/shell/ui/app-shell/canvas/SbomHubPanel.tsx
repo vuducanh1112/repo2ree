@@ -72,7 +72,7 @@ export function SbomHubPanel({
               onRun={() =>
                 commands.onRunStep(controller.step.key, {
                   ...(controller.params as ReeStepRunParams<"sbom">),
-                  produced_runtime_path: runtimePath,
+                  producedRuntimePath: runtimePath,
                 })
               }
               onCancel={() => commands.onCancelAction(controller.step.key)}

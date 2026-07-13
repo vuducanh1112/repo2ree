@@ -11,27 +11,27 @@ import { emptyHBOM } from "./HbomSummary";
 export type CPURow = CPUDefinition & {
   id: string;
   model: string;
-  extra_info: Record<string, unknown>;
+  extraInfo: Record<string, unknown>;
 };
 export type GPURow = GPUDefinition & {
   id: string;
   model: string;
-  extra_info: Record<string, unknown>;
+  extraInfo: Record<string, unknown>;
 };
 export type MemoryRow = MemoryDefinition & {
   id: string;
   model: string;
-  extra_info: Record<string, unknown>;
+  extraInfo: Record<string, unknown>;
 };
 export type StorageRow = StorageDefinition & {
   id: string;
   model: string;
-  extra_info: Record<string, unknown>;
+  extraInfo: Record<string, unknown>;
 };
 export type NetworkRow = NetworkDefinition & {
   id: string;
   model: string;
-  extra_info: Record<string, unknown>;
+  extraInfo: Record<string, unknown>;
 };
 
 export interface HardwareBomDraft {
@@ -50,10 +50,10 @@ export function newCpuRow(generateId: GenerateRowId): CPURow {
     model: "",
     vendor: "",
     quantity: 1,
-    cores_per_cpu: 1,
-    threads_per_core: 1,
+    coresPerCpu: 1,
+    threadsPerCore: 1,
     architecture: "",
-    extra_info: {},
+    extraInfo: {},
   };
 }
 
@@ -63,9 +63,9 @@ export function newGpuRow(generateId: GenerateRowId): GPURow {
     model: "",
     vendor: "",
     quantity: 1,
-    memory_gb: 0,
+    memoryGb: 0,
     interface: "",
-    extra_info: {},
+    extraInfo: {},
   };
 }
 
@@ -75,10 +75,10 @@ export function newMemoryRow(generateId: GenerateRowId): MemoryRow {
     model: "",
     vendor: "",
     quantity: 1,
-    capacity_gb: 0,
-    memory_type: "DDR5",
-    speed_mt_s: 1,
-    extra_info: {},
+    capacityGb: 0,
+    memoryType: "DDR5",
+    speedMtS: 1,
+    extraInfo: {},
   };
 }
 
@@ -88,10 +88,10 @@ export function newStorageRow(generateId: GenerateRowId): StorageRow {
     model: "",
     vendor: "",
     quantity: 1,
-    capacity_gb: 0,
-    storage_type: "NVMe",
+    capacityGb: 0,
+    storageType: "NVMe",
     interface: "",
-    extra_info: {},
+    extraInfo: {},
   };
 }
 
@@ -101,10 +101,10 @@ export function newNetworkRow(generateId: GenerateRowId): NetworkRow {
     model: "",
     vendor: "",
     quantity: 1,
-    bandwidth_gbps: 0,
-    network_type: "ethernet",
+    bandwidthGbps: 0,
+    networkType: "ethernet",
     interface: "",
-    extra_info: {},
+    extraInfo: {},
   };
 }
 
@@ -148,7 +148,7 @@ function parsePositiveNumber(value: number): number | null {
 
 export function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: HBOM): HBOM {
   const nextHBOM = emptyHBOM();
-  nextHBOM.extra_info = previousHBOM.extra_info || {};
+  nextHBOM.extraInfo = previousHBOM.extraInfo || {};
 
   for (const row of draft.cpus) {
     const model = row.model.trim();
@@ -156,10 +156,10 @@ export function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: HBOM): HBOM
       nextHBOM.cpus[model] = {
         vendor: row.vendor.trim(),
         quantity: parsePositiveInt(row.quantity) ?? 1,
-        cores_per_cpu: parsePositiveInt(row.cores_per_cpu) ?? 1,
-        threads_per_core: parsePositiveInt(row.threads_per_core) ?? 1,
+        coresPerCpu: parsePositiveInt(row.coresPerCpu) ?? 1,
+        threadsPerCore: parsePositiveInt(row.threadsPerCore) ?? 1,
         architecture: row.architecture.trim(),
-        extra_info: row.extra_info,
+        extraInfo: row.extraInfo,
       };
     }
   }
@@ -170,9 +170,9 @@ export function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: HBOM): HBOM
       nextHBOM.gpus[model] = {
         vendor: row.vendor.trim(),
         quantity: parsePositiveInt(row.quantity) ?? 1,
-        memory_gb: parsePositiveNumber(row.memory_gb) ?? 0,
+        memoryGb: parsePositiveNumber(row.memoryGb) ?? 0,
         interface: row.interface.trim(),
-        extra_info: row.extra_info,
+        extraInfo: row.extraInfo,
       };
     }
   }
@@ -183,10 +183,10 @@ export function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: HBOM): HBOM
       nextHBOM.memory[model] = {
         vendor: row.vendor.trim(),
         quantity: parsePositiveInt(row.quantity) ?? 1,
-        capacity_gb: parsePositiveNumber(row.capacity_gb) ?? 0,
-        memory_type: row.memory_type,
-        speed_mt_s: parsePositiveInt(row.speed_mt_s) ?? 0,
-        extra_info: row.extra_info,
+        capacityGb: parsePositiveNumber(row.capacityGb) ?? 0,
+        memoryType: row.memoryType,
+        speedMtS: parsePositiveInt(row.speedMtS) ?? 0,
+        extraInfo: row.extraInfo,
       };
     }
   }
@@ -197,10 +197,10 @@ export function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: HBOM): HBOM
       nextHBOM.storage[model] = {
         vendor: row.vendor.trim(),
         quantity: parsePositiveInt(row.quantity) ?? 1,
-        capacity_gb: parsePositiveNumber(row.capacity_gb) ?? 0,
-        storage_type: row.storage_type,
+        capacityGb: parsePositiveNumber(row.capacityGb) ?? 0,
+        storageType: row.storageType,
         interface: row.interface.trim(),
-        extra_info: row.extra_info,
+        extraInfo: row.extraInfo,
       };
     }
   }
@@ -211,10 +211,10 @@ export function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: HBOM): HBOM
       nextHBOM.network[model] = {
         vendor: row.vendor.trim(),
         quantity: parsePositiveInt(row.quantity) ?? 1,
-        bandwidth_gbps: parsePositiveNumber(row.bandwidth_gbps) ?? 0,
-        network_type: row.network_type,
+        bandwidthGbps: parsePositiveNumber(row.bandwidthGbps) ?? 0,
+        networkType: row.networkType,
         interface: row.interface.trim(),
-        extra_info: row.extra_info,
+        extraInfo: row.extraInfo,
       };
     }
   }

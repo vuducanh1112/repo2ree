@@ -18,7 +18,7 @@ function satelliteKey(index: number): string {
 // its panel a runnable check. Drives whether its cable reads lit or dim. (Run /
 // reproduce status will refine this later; for now it's the script's presence.)
 function isExperimentWired(exp: ReeExperiment): boolean {
-  return exp.run_script.trim() !== "";
+  return exp.runScript.trim() !== "";
 }
 
 // The cable identities for the core column: one per experiment, plus a dim one
@@ -236,7 +236,7 @@ function ExperimentSatellite({
   wasNodeDragged: React.RefObject<boolean>;
 }) {
   const name = experiment.name.trim();
-  const command = experiment.run_script.trim();
+  const command = experiment.runScript.trim();
   const wired = isExperimentWired(experiment);
   return (
     <button

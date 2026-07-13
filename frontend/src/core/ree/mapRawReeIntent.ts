@@ -46,8 +46,8 @@ function mapRawCatalogMetadata(value: unknown): ReeCatalogMetadata {
         return {
           identifier: String(item.identifier ?? ""),
           name: String(item.name ?? ""),
-          affiliation_name: String(item.affiliation_name ?? ""),
-          affiliation_identifier: String(item.affiliation_identifier ?? ""),
+          affiliationName: String(item.affiliation_name ?? ""),
+          affiliationIdentifier: String(item.affiliation_identifier ?? ""),
         };
       })
     : [];
@@ -61,13 +61,13 @@ function mapRawCatalogMetadata(value: unknown): ReeCatalogMetadata {
       ? metadata.keywords.map((keyword) => String(keyword))
       : [],
     contributors,
-    corresponding_author_identifier: metadata.corresponding_author_identifier
+    correspondingAuthorIdentifier: metadata.corresponding_author_identifier
       ? String(metadata.corresponding_author_identifier)
       : null,
   };
 }
 
-function mapRawResourceEstimates(value: unknown): ReeExperiment["resource_estimates"] {
+function mapRawResourceEstimates(value: unknown): ReeExperiment["resourceEstimates"] {
   const estimates = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   return {
     ...createEmptyExperimentResourceEstimates(),
@@ -79,20 +79,20 @@ function mapRawResourceEstimates(value: unknown): ReeExperiment["resource_estima
   };
 }
 
-// Map the shared Runnable fields (description / run_script / verify_script /
-// output_paths / estimates) common to experiments and activation. run_script
+// Map the shared Runnable fields (description / runScript / verifyScript /
+// outputPaths / estimates) common to experiments and activation. runScript
 // falls back to defaultRunScript when absent, so activation can default to its
 // reserved path.
 function mapRawRunnable(raw: Record<string, unknown>, defaultRunScript = ""): ReeRunnable {
   return {
     description: String(raw.description ?? ""),
-    run_script: raw.run_script ? String(raw.run_script) : defaultRunScript,
-    verify_script: raw.verify_script ? String(raw.verify_script) : "",
-    output_paths: Array.isArray(raw.output_paths)
+    runScript: raw.run_script ? String(raw.run_script) : defaultRunScript,
+    verifyScript: raw.verify_script ? String(raw.verify_script) : "",
+    outputPaths: Array.isArray(raw.output_paths)
       ? raw.output_paths.map((path) => String(path)).filter(Boolean)
       : [],
-    runtime_estimate: String(raw.runtime_estimate ?? ""),
-    resource_estimates: mapRawResourceEstimates(raw.resource_estimates),
+    runtimeEstimate: String(raw.runtime_estimate ?? ""),
+    resourceEstimates: mapRawResourceEstimates(raw.resource_estimates),
   };
 }
 
@@ -101,7 +101,7 @@ function mapRawActivation(value: unknown): ReeActivation {
   const activation = createEmptyReeActivation();
   return {
     ...activation,
-    ...mapRawRunnable(raw, activation.run_script),
+    ...mapRawRunnable(raw, activation.runScript),
   };
 }
 
@@ -132,18 +132,18 @@ export function mapRawReeIntentToSlices({
   return {
     reeSpec: {
       name: String(intent.name ?? fallbackName ?? ""),
-      catalog_metadata: mapRawCatalogMetadata(intent.catalog_metadata),
-      origin_url: String(intent.origin_url ?? fallbackOriginUrl ?? ""),
-      source_type: (intent.source_type as ReeSpec["source_type"]) || "",
+      catalogMetadata: mapRawCatalogMetadata(intent.catalog_metadata),
+      originUrl: String(intent.origin_url ?? fallbackOriginUrl ?? ""),
+      sourceType: (intent.source_type as ReeSpec["sourceType"]) || "",
       resolvedRevision: String(intent.revision ?? ""),
       runtime: String(intent.runtime ?? ""),
       activation: mapRawActivation(intent.activation),
       sbom: String(intent.sbom ?? ""),
       swhid: String(intent.swhid ?? ""),
-      zenodo_doi: intent.zenodo_doi ? String(intent.zenodo_doi) : undefined,
-      dataverse_doi: intent.dataverse_doi ? String(intent.dataverse_doi) : undefined,
+      zenodoDoi: intent.zenodo_doi ? String(intent.zenodo_doi) : undefined,
+      dataverseDoi: intent.dataverse_doi ? String(intent.dataverse_doi) : undefined,
       experiments,
-      hardware_description: normalizeHBOM(intent.hardware_description),
+      hardwareDescription: normalizeHBOM(intent.hardware_description),
     },
     workspaceSourceState: {
       sourceAvailable: Boolean(session.source_available),

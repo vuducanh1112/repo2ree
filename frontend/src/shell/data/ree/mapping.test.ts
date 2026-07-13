@@ -3,7 +3,7 @@ import type { ReeDetailDto } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices } from "./mapping";
 
 describe("shell/data/ree/mapping", () => {
-  it("falls back to workspace external ref when origin_url is absent", () => {
+  it("falls back to workspace external ref when originUrl is absent", () => {
     const ree: ReeDetailDto = {
       reeId: "ree-1",
       name: "workspace-demo",
@@ -19,6 +19,6 @@ describe("shell/data/ree/mapping", () => {
     const mapped = mapReeDetailToReeSlices(ree);
 
     expect(mapped.reeSpec.name).toBe("workspace-demo");
-    expect(mapped.reeSpec.origin_url).toBe("https://example.org/archive.tar.gz");
+    expect(mapped.reeSpec.originUrl).toBe("https://example.org/archive.tar.gz");
   });
 });

@@ -43,20 +43,20 @@ export function SourceHubPanel({
   });
 
   const [originTypeDraft, setOriginTypeDraft] = useState<SourceTypeOption | "">(
-    ree.source_type || "",
+    ree.sourceType || "",
   );
-  const [originUrlDraft, setOriginUrlDraft] = useState(ree.origin_url || "");
+  const [originUrlDraft, setOriginUrlDraft] = useState(ree.originUrl || "");
   // The requested revision — an acquisition input that pins the git fetch. It is
   // not persisted intent (that is ReeSpec.resolvedRevision, the commit it settles
   // to); it starts blank (HEAD) and is recorded afterward as the resolved commit.
   const [revisionDraft, setRevisionDraft] = useState("");
 
   useEffect(() => {
-    setOriginTypeDraft(ree.source_type || "");
-  }, [ree.source_type]);
+    setOriginTypeDraft(ree.sourceType || "");
+  }, [ree.sourceType]);
   useEffect(() => {
-    setOriginUrlDraft(ree.origin_url || "");
-  }, [ree.origin_url]);
+    setOriginUrlDraft(ree.originUrl || "");
+  }, [ree.originUrl]);
   // The revision draft has no persisted backing, so clear it when the source
   // leaves the workspace — otherwise a stale pin lingers into the next acquire.
   useEffect(() => {
@@ -152,7 +152,7 @@ export function SourceHubPanel({
         revisionDraft={revisionDraft}
         resolvedRevision={ree.resolvedRevision || ""}
         originInputLocked={originInputLocked}
-        priorOriginUrl={ree.origin_url || ""}
+        priorOriginUrl={ree.originUrl || ""}
         canDownload={canDownload}
         canUpload={canUpload}
         downloadRunning={downloadRunning}

@@ -83,10 +83,10 @@ export function PageTestActivation({
   const files = workspaceFiles || [];
 
   const activation: ReeActivation = ree.activation ?? createEmptyReeActivation();
-  const activationScriptPath = activation.run_script || RESERVED_ACTIVATION_SCRIPT;
+  const activationScriptPath = activation.runScript || RESERVED_ACTIVATION_SCRIPT;
   const activationScriptContent =
     findFileByWorkspacePath(files, activationScriptPath)?.content ?? "";
-  const activationVerifyScriptPath = activation.verify_script || RESERVED_ACTIVATION_VERIFY_SCRIPT;
+  const activationVerifyScriptPath = activation.verifyScript || RESERVED_ACTIVATION_VERIFY_SCRIPT;
   const activationVerifyScriptContent =
     findFileByWorkspacePath(files, activationVerifyScriptPath)?.content ?? "";
 
@@ -107,14 +107,14 @@ export function PageTestActivation({
   const handleSaveScript = useCallback(
     (content: string) => {
       void onPersistWorkspaceFile?.(undefined, activationScriptPath, content);
-      if (activation.run_script !== activationScriptPath) {
+      if (activation.runScript !== activationScriptPath) {
         onReeSpecChange?.((current) => ({
           ...current,
-          activation: { ...current.activation, run_script: activationScriptPath },
+          activation: { ...current.activation, runScript: activationScriptPath },
         }));
       }
     },
-    [onPersistWorkspaceFile, onReeSpecChange, activationScriptPath, activation.run_script],
+    [onPersistWorkspaceFile, onReeSpecChange, activationScriptPath, activation.runScript],
   );
 
   // Saving a verify script declares it on the intent; until then activation's
@@ -122,14 +122,14 @@ export function PageTestActivation({
   const handleSaveVerifyScript = useCallback(
     (content: string) => {
       void onPersistWorkspaceFile?.(undefined, activationVerifyScriptPath, content);
-      if (activation.verify_script !== activationVerifyScriptPath) {
+      if (activation.verifyScript !== activationVerifyScriptPath) {
         onReeSpecChange?.((current) => ({
           ...current,
-          activation: { ...current.activation, verify_script: activationVerifyScriptPath },
+          activation: { ...current.activation, verifyScript: activationVerifyScriptPath },
         }));
       }
     },
-    [onPersistWorkspaceFile, onReeSpecChange, activationVerifyScriptPath, activation.verify_script],
+    [onPersistWorkspaceFile, onReeSpecChange, activationVerifyScriptPath, activation.verifyScript],
   );
 
   const commandLabel = activationScriptPath;

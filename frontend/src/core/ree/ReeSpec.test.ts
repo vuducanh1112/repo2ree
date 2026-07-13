@@ -3,22 +3,22 @@ import { describe, expect, it } from "vitest";
 function buildReeDraft() {
   return {
     name: "demo",
-    origin_url: "https://example.org/repo.git",
-    source_type: "git",
+    originUrl: "https://example.org/repo.git",
+    sourceType: "git",
     runtime: "runtime.tar.gz",
     activation_script: "activate_runtime.sh",
     sbom: "sbom.json",
     swhid: "swh:1:dir:test",
-    zenodo_doi: "10.1234/example",
-    dataverse_doi: "doi:10.5678/example",
+    zenodoDoi: "10.1234/example",
+    dataverseDoi: "doi:10.5678/example",
     detectedDependencies: "4 dependencies",
-    hardware_description: {
+    hardwareDescription: {
       cpus: {},
       gpus: {},
       memory: {},
       storage: {},
       network: {},
-      extra_info: {},
+      extraInfo: {},
     },
     sourceAvailable: true,
     sourceIncluded: true,

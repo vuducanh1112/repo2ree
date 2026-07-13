@@ -25,8 +25,8 @@ export function enforceSourceOriginRules(
     state.workspaceSourceState.sourceAcquiredBy === "download";
 
   const nextReeSpec =
-    !hasDownloadedSource && state.reeSpec.origin_url
-      ? { ...state.reeSpec, origin_url: "" }
+    !hasDownloadedSource && state.reeSpec.originUrl
+      ? { ...state.reeSpec, originUrl: "" }
       : state.reeSpec;
 
   if (nextReeSpec === state.reeSpec) {

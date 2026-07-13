@@ -10,13 +10,13 @@ type ContributorChangeResult =
   | { ok: false; error: string };
 
 function metadataOf(spec: ReeSpec): ReeCatalogMetadata {
-  return spec.catalog_metadata ?? createEmptyReeCatalogMetadata();
+  return spec.catalogMetadata ?? createEmptyReeCatalogMetadata();
 }
 
 function withCatalogMetadata(spec: ReeSpec, catalogMetadata: ReeCatalogMetadata): ReeSpec {
   return {
     ...spec,
-    catalog_metadata: catalogMetadata,
+    catalogMetadata: catalogMetadata,
   };
 }
 
@@ -56,8 +56,8 @@ function normalizeContributor(contributor: ReeContributor): ReeContributor {
   return {
     identifier: contributor.identifier.trim(),
     name: contributor.name.trim(),
-    affiliation_name: contributor.affiliation_name.trim(),
-    affiliation_identifier: contributor.affiliation_identifier.trim(),
+    affiliationName: contributor.affiliationName.trim(),
+    affiliationIdentifier: contributor.affiliationIdentifier.trim(),
   };
 }
 
@@ -94,8 +94,8 @@ export function addCatalogContributor(
     spec: withCatalogMetadata(spec, {
       ...metadata,
       contributors: [...metadata.contributors, contributor],
-      corresponding_author_identifier:
-        metadata.corresponding_author_identifier || contributor.identifier,
+      correspondingAuthorIdentifier:
+        metadata.correspondingAuthorIdentifier || contributor.identifier,
     }),
   };
 }
@@ -118,10 +118,10 @@ export function updateCatalogContributor(
       contributors: metadata.contributors.map((item) =>
         item.identifier === previousIdentifier ? contributor : item,
       ),
-      corresponding_author_identifier:
-        metadata.corresponding_author_identifier === previousIdentifier
+      correspondingAuthorIdentifier:
+        metadata.correspondingAuthorIdentifier === previousIdentifier
           ? contributor.identifier
-          : metadata.corresponding_author_identifier,
+          : metadata.correspondingAuthorIdentifier,
     }),
   };
 }
@@ -132,10 +132,10 @@ export function removeCatalogContributor(spec: ReeSpec, identifier: string): Ree
   return withCatalogMetadata(spec, {
     ...metadata,
     contributors,
-    corresponding_author_identifier:
-      metadata.corresponding_author_identifier === identifier
+    correspondingAuthorIdentifier:
+      metadata.correspondingAuthorIdentifier === identifier
         ? contributors[0]?.identifier || null
-        : metadata.corresponding_author_identifier,
+        : metadata.correspondingAuthorIdentifier,
   });
 }
 
@@ -144,6 +144,6 @@ export function setCorrespondingCatalogContributor(spec: ReeSpec, identifier: st
   if (!metadata.contributors.some((item) => item.identifier === identifier)) return spec;
   return withCatalogMetadata(spec, {
     ...metadata,
-    corresponding_author_identifier: identifier,
+    correspondingAuthorIdentifier: identifier,
   });
 }

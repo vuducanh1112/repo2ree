@@ -36,14 +36,14 @@ export function planManualArtifactCompletion({
 
   if (key === "zenodo") {
     return {
-      reeSpecPatch: { zenodo_doi: generatedZenodoDoi || "" },
+      reeSpecPatch: { zenodoDoi: generatedZenodoDoi || "" },
       successMessage: "Published on Zenodo — DOI assigned",
     };
   }
 
   if (key === "dataverse") {
     return {
-      reeSpecPatch: { dataverse_doi: generatedDataverseDoi || "" },
+      reeSpecPatch: { dataverseDoi: generatedDataverseDoi || "" },
       successMessage: "Dataset published on Dataverse — DOI assigned",
     };
   }

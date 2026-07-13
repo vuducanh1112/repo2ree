@@ -31,7 +31,7 @@ export interface SourceAcquisitionPageProps {
   onRepoModeChange: React.Dispatch<React.SetStateAction<"url" | "upload">>;
   onGoPage: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
-  onDownloadSource: (originType: ReeEditorViewModel["source_type"], sourceUrl: string) => void;
+  onDownloadSource: (originType: ReeEditorViewModel["sourceType"], sourceUrl: string) => void;
   onCancelSource: () => void;
   onWorkspaceUpload: (payload: SourceUploadCommit) => void;
   onRemoveWorkspaceSource: () => void;

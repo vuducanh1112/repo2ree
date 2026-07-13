@@ -110,7 +110,7 @@ function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel,
   if (stepKey === PAGE.METADATA) return !!ree.name;
   if (stepKey === PAGE.EXPERIMENTS)
     return (ree.experiments || []).some((entry) => !!entry.name.trim());
-  if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.hardware_description);
+  if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.hardwareDescription);
   if (stepKey === PAGE.BUILD) return !!badges?.build;
   if (stepKey === PAGE.SEAL) return !!ree.sealedAt;
   if (stepKey === PAGE.ARCHIVE) return !!badges?.swh || !!badges?.zenodo || !!badges?.dataverse;

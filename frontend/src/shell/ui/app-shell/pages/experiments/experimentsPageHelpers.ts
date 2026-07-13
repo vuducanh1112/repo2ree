@@ -22,7 +22,7 @@ export function experimentValidation(
   const isDuplicateName = trimmedName !== "" && otherNames.includes(trimmedName);
   const isInvalidName = !isValidExperimentName(experiment.name);
   const canRun =
-    trimmedName !== "" && !isDuplicateName && !isInvalidName && experiment.run_script.trim() !== "";
+    trimmedName !== "" && !isDuplicateName && !isInvalidName && experiment.runScript.trim() !== "";
   return { trimmedName, isDuplicateName, isInvalidName, canRun };
 }
 

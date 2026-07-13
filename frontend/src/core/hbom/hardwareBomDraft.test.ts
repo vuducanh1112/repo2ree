@@ -8,12 +8,12 @@ describe("hardwareBomDraft", () => {
     hbom.cpus["Intel Xeon Gold 6348"] = {
       vendor: "Intel",
       quantity: 2,
-      cores_per_cpu: 28,
-      threads_per_core: 2,
+      coresPerCpu: 28,
+      threadsPerCore: 2,
       architecture: "x86_64",
-      extra_info: { stepping: "B1" },
+      extraInfo: { stepping: "B1" },
     };
-    hbom.extra_info = { source: "manual" };
+    hbom.extraInfo = { source: "manual" };
 
     const draft = draftFromHBOM(hbom);
     const rebuilt = hbomFromDraft(draft, hbom);
@@ -25,7 +25,7 @@ describe("hardwareBomDraft", () => {
     const hbom = emptyHBOM();
     const cpu = newCpuRow((prefix) => `${prefix}-test`);
     const draft = {
-      cpus: [{ ...cpu, model: "  ", quantity: 0, cores_per_cpu: Number.NaN, threads_per_core: -1 }],
+      cpus: [{ ...cpu, model: "  ", quantity: 0, coresPerCpu: Number.NaN, threadsPerCore: -1 }],
       gpus: [],
       memory: [],
       storage: [],
@@ -36,12 +36,12 @@ describe("hardwareBomDraft", () => {
     expect(rebuilt.cpus).toEqual({});
   });
 
-  it("preserves hbom extra_info when writing draft back to HBOM", () => {
+  it("preserves hbom extraInfo when writing draft back to HBOM", () => {
     const hbom = emptyHBOM();
-    hbom.extra_info = { note: "keep me" };
+    hbom.extraInfo = { note: "keep me" };
     const draft = draftFromHBOM(hbom);
 
     const rebuilt = hbomFromDraft(draft, hbom);
-    expect(rebuilt.extra_info).toEqual({ note: "keep me" });
+    expect(rebuilt.extraInfo).toEqual({ note: "keep me" });
   });
 });

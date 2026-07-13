@@ -127,7 +127,7 @@ export function PageHardwareBom({
     setRows(key, next);
   };
 
-  const focusHardwareDescription = () => onFocusedFieldChange("hardware_description");
+  const focusHardwareDescription = () => onFocusedFieldChange("hardwareDescription");
 
   const cpuColumns = createCpuColumns({
     locked,

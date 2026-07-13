@@ -264,7 +264,7 @@ export function nodeSummary(
         { label: "Size", value: repo?.sizeLabel ?? null },
         {
           label: "Origin",
-          value: repo ? hostOf(repo.origin) : ree.origin_url ? hostOf(ree.origin_url) : null,
+          value: repo ? hostOf(repo.origin) : ree.originUrl ? hostOf(ree.originUrl) : null,
         },
         { label: "SWHID", value: repo?.swhid || null, title: repo?.swhid },
       ];
@@ -272,19 +272,17 @@ export function nodeSummary(
     case PAGE.METADATA:
       return [
         { label: "Name", value: ree.name || null },
-        { label: "Version", value: ree.catalog_metadata?.version || null },
+        { label: "Version", value: ree.catalogMetadata?.version || null },
       ];
     case PAGE.HBOM:
       return [
         {
           label: "Components",
-          value: hbomHasAnyComponents(ree.hardware_description) ? "described" : null,
+          value: hbomHasAnyComponents(ree.hardwareDescription) ? "described" : null,
         },
       ];
     case PAGE.EXPERIMENTS: {
-      const count = (ree.experiments ?? []).filter(
-        (entry) => entry.run_script.trim() !== "",
-      ).length;
+      const count = (ree.experiments ?? []).filter((entry) => entry.runScript.trim() !== "").length;
       return [{ label: "Run scripts", value: count > 0 ? `${count} defined` : null }];
     }
     case PAGE.EVALUATE:
@@ -307,12 +305,12 @@ export function nodeSummary(
       return [
         {
           label: "Run script",
-          value: ree.activation?.run_script?.trim() ? "configured" : null,
+          value: ree.activation?.runScript?.trim() ? "configured" : null,
         },
       ];
     case PAGE.ARCHIVE:
       return [
-        { label: "DOI", value: ree.zenodo_doi || ree.dataverse_doi || null },
+        { label: "DOI", value: ree.zenodoDoi || ree.dataverseDoi || null },
         { label: "SWHID", value: ree.swhid || null, title: ree.swhid },
       ];
     case PAGE.SEAL:

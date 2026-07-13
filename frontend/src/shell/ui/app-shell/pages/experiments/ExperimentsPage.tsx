@@ -94,7 +94,7 @@ export function PageExperiments({
       patchExperiment(coreAddExperiment(current), newIndex, {
         name: suggestion.name,
         description: suggestion.description,
-        run_script: scriptPath,
+        runScript: scriptPath,
       }),
     );
     // Seed the script with the suggested command as a starting point; the author
@@ -140,12 +140,12 @@ export function PageExperiments({
 
   const total = experiments.length;
   const withName = experiments.filter((e) => e.name.trim() !== "").length;
-  const withCommand = experiments.filter((e) => e.run_script.trim() !== "").length;
+  const withCommand = experiments.filter((e) => e.runScript.trim() !== "").length;
   const withDescription = experiments.filter((e) => e.description.trim() !== "").length;
-  const withVerify = experiments.filter((e) => e.verify_script.trim() !== "").length;
-  const withRuntimeEstimate = experiments.filter((e) => e.runtime_estimate.trim() !== "").length;
+  const withVerify = experiments.filter((e) => e.verifyScript.trim() !== "").length;
+  const withRuntimeEstimate = experiments.filter((e) => e.runtimeEstimate.trim() !== "").length;
   const withResourceEstimates = experiments.filter((e) =>
-    Object.values(e.resource_estimates).some((value) => value.trim() !== ""),
+    Object.values(e.resourceEstimates).some((value) => value.trim() !== ""),
   ).length;
 
   // ================================================
@@ -200,24 +200,23 @@ export function PageExperiments({
               otherNames={otherNames}
               locked={locked}
               scriptContent={
-                findFileByWorkspacePath(workspaceFiles, selectedExperiment.run_script)?.content ??
-                ""
+                findFileByWorkspacePath(workspaceFiles, selectedExperiment.runScript)?.content ?? ""
               }
               verifyScriptContent={
-                findFileByWorkspacePath(workspaceFiles, selectedExperiment.verify_script)
-                  ?.content ?? ""
+                findFileByWorkspacePath(workspaceFiles, selectedExperiment.verifyScript)?.content ??
+                ""
               }
               onUpdate={(patch) => updateExperiment(selectedIndex, patch)}
               onSaveScript={(path, content) => {
                 void onPersistWorkspaceFile(undefined, path, content);
-                if (path !== selectedExperiment.run_script) {
-                  updateExperiment(selectedIndex, { run_script: path });
+                if (path !== selectedExperiment.runScript) {
+                  updateExperiment(selectedIndex, { runScript: path });
                 }
               }}
               onSaveVerifyScript={(path, content) => {
                 void onPersistWorkspaceFile(undefined, path, content);
-                if (path !== selectedExperiment.verify_script) {
-                  updateExperiment(selectedIndex, { verify_script: path });
+                if (path !== selectedExperiment.verifyScript) {
+                  updateExperiment(selectedIndex, { verifyScript: path });
                 }
               }}
               onBack={() => {

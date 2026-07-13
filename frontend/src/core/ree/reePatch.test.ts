@@ -10,13 +10,13 @@ describe("toReePatchFromSlices", () => {
     const reeSpec = {
       ...createEmptyReeSpec(),
       name: "demo",
-      catalog_metadata: {
-        ...createEmptyReeSpec().catalog_metadata,
+      catalogMetadata: {
+        ...createEmptyReeSpec().catalogMetadata,
         description: "Demo REE",
         keywords: ["reproducibility"],
       },
-      origin_url: "https://example.org/repo.git",
-      source_type: "git" as const,
+      originUrl: "https://example.org/repo.git",
+      sourceType: "git" as const,
       runtime: "runtime.tar.gz",
       sbom: "sbom.json",
       swhid: "swh:1:dir:test",
@@ -24,11 +24,11 @@ describe("toReePatchFromSlices", () => {
         {
           name: "benchmark",
           description: "Measure throughput",
-          run_script: "ree/experiments/benchmark.sh",
-          verify_script: "ree/experiments/benchmark.verify.sh",
-          output_paths: ["results/benchmark.json"],
-          runtime_estimate: "15-20 min",
-          resource_estimates: {
+          runScript: "ree/experiments/benchmark.sh",
+          verifyScript: "ree/experiments/benchmark.verify.sh",
+          outputPaths: ["results/benchmark.json"],
+          runtimeEstimate: "15-20 min",
+          resourceEstimates: {
             cpu: "8 vCPU",
             memory: "16 GB",
             gpu: "1x A10",
@@ -65,11 +65,58 @@ describe("toReePatchFromSlices", () => {
     // The resolved commit is backend-owned, so it is never serialized into the
     // patch — a stale/blank local copy must not clobber what acquisition recorded.
     expect(patch).not.toHaveProperty("revision");
+    expect(patch).not.toHaveProperty("resolvedRevision");
+    // The patch is the backend's wire format: snake_case keys, camelCase gone.
     expect(patch).toEqual({
-      ...reeSpec,
-      resolvedRevision: undefined,
+      name: "demo",
+      catalog_metadata: {
+        description: "Demo REE",
+        version: "",
+        website: "",
+        keywords: ["reproducibility"],
+        contributors: [],
+        corresponding_author_identifier: null,
+      },
+      origin_url: "https://example.org/repo.git",
+      source_type: "git",
+      runtime: "runtime.tar.gz",
+      activation: {
+        description: "",
+        run_script: "ree/activation.sh",
+        verify_script: "",
+        output_paths: [],
+        runtime_estimate: "",
+        resource_estimates: { cpu: "", memory: "", gpu: "", storage: "", network: "" },
+      },
+      sbom: "sbom.json",
+      swhid: "swh:1:dir:test",
       zenodo_doi: "",
       dataverse_doi: "",
+      experiments: [
+        {
+          name: "benchmark",
+          description: "Measure throughput",
+          run_script: "ree/experiments/benchmark.sh",
+          verify_script: "ree/experiments/benchmark.verify.sh",
+          output_paths: ["results/benchmark.json"],
+          runtime_estimate: "15-20 min",
+          resource_estimates: {
+            cpu: "8 vCPU",
+            memory: "16 GB",
+            gpu: "1x A10",
+            storage: "5 GB scratch",
+            network: "offline",
+          },
+        },
+      ],
+      hardware_description: {
+        cpus: {},
+        gpus: {},
+        memory: {},
+        storage: {},
+        network: {},
+        extra_info: {},
+      },
     });
   });
 

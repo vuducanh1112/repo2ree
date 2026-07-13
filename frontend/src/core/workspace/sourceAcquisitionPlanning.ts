@@ -77,7 +77,7 @@ function snapshotArchiveNameFromSourceUrl(sourceUrl: string): string {
 
 function validateSourceDownload(
   ree: WorkspaceSourceState,
-  originType: ReeSpec["source_type"],
+  originType: ReeSpec["sourceType"],
   sourceUrl: string,
 ): SourceActionPlanResult<{ normalizedSourceUrl: string }> {
   if (ree.sourceAvailable && ree.sourceAcquiredBy === "upload") {
@@ -121,7 +121,7 @@ function buildSourceExecutionRequestPlan(
 }
 
 function buildDownloadedSourceSuccess(args: {
-  originType: ReeSpec["source_type"];
+  originType: ReeSpec["sourceType"];
   normalizedSourceUrl: string;
   workspaceFiles: FileTreeNode[];
   timestamp: string;
@@ -133,8 +133,8 @@ function buildDownloadedSourceSuccess(args: {
     snapshotArchiveName,
     sourceAvailable,
     reeSpecPatch: {
-      origin_url: args.normalizedSourceUrl,
-      source_type: args.originType,
+      originUrl: args.normalizedSourceUrl,
+      sourceType: args.originType,
     },
     workspaceSourceStatePatch: {
       sourceAvailable,
@@ -178,7 +178,7 @@ function buildUploadedSourceSuccess(args: {
 
 export function planSourceDownloadAction(
   ree: WorkspaceSourceState,
-  originType: ReeSpec["source_type"],
+  originType: ReeSpec["sourceType"],
   sourceUrl: string,
   revision?: string,
 ): SourceActionPlanResult<
@@ -245,7 +245,7 @@ export function planSourceExecutionFailure(status: SourceExecutionStatus): Sourc
 }
 
 export function planDownloadedSourceState(args: {
-  originType: ReeSpec["source_type"];
+  originType: ReeSpec["sourceType"];
   normalizedSourceUrl: string;
   workspaceFiles: FileTreeNode[];
   timestamp: string;

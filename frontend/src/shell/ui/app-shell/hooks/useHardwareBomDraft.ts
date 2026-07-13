@@ -16,26 +16,26 @@ interface UseHardwareBomDraftArgs {
 
 export function useHardwareBomDraft({ ree, onReeSpecChange }: UseHardwareBomDraftArgs) {
   const [draft, setDraft] = useState<HardwareBomDraft>(() =>
-    draftFromHBOM(ree.hardware_description),
+    draftFromHBOM(ree.hardwareDescription),
   );
   const pendingLocalHbomKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const incomingKey = hbomSyncKey(ree.hardware_description);
+    const incomingKey = hbomSyncKey(ree.hardwareDescription);
     if (pendingLocalHbomKeyRef.current === incomingKey) {
       pendingLocalHbomKeyRef.current = null;
       return;
     }
-    setDraft((previous) => draftFromHBOM(ree.hardware_description, previous));
-  }, [ree.hardware_description]);
+    setDraft((previous) => draftFromHBOM(ree.hardwareDescription, previous));
+  }, [ree.hardwareDescription]);
 
   const updateDraft = (nextDraft: HardwareBomDraft) => {
-    const nextHBOM = hbomFromDraft(nextDraft, ree.hardware_description);
+    const nextHBOM = hbomFromDraft(nextDraft, ree.hardwareDescription);
     pendingLocalHbomKeyRef.current = hbomSyncKey(nextHBOM);
     setDraft(nextDraft);
     onReeSpecChange((current) => ({
       ...current,
-      hardware_description: nextHBOM,
+      hardwareDescription: nextHBOM,
     }));
   };
 

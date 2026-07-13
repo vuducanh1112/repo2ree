@@ -42,7 +42,7 @@ interface CreateReeEditorCommandsArgs {
   handleDownloadRee: () => void;
   handleSealRee: (inclusionOpts: InclusionOpts) => Promise<void>;
   handleDownloadSourceFiles: (
-    originType: ReeIntentState["reeSpec"]["source_type"],
+    originType: ReeIntentState["reeSpec"]["sourceType"],
     sourceUrl: string,
     revision?: string,
   ) => Promise<void>;

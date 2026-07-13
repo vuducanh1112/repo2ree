@@ -155,7 +155,7 @@ export function SourceAcquisitionCard(props: SourceAcquisitionCardProps) {
               value={props.originUrlDraft}
               priorValue={props.priorOriginUrl}
               onChange={(v) => props.setOriginUrlDraft(v)}
-              onFocus={() => props.focus("origin_url")}
+              onFocus={() => props.focus("originUrl")}
             />
             {props.sourceConfigLocked && (
               <div style={lgStyles.helper}>
@@ -198,7 +198,7 @@ export function SourceAcquisitionCard(props: SourceAcquisitionCardProps) {
                 disabled={props.locked || props.sourceConfigLocked}
                 value={props.originTypeDraft}
                 onChange={(e) => props.setOriginTypeDraft(e.target.value as SourceTypeOption | "")}
-                onFocus={() => props.focus("source_type")}
+                onFocus={() => props.focus("sourceType")}
                 style={{
                   ...lgInput(props.locked || props.sourceConfigLocked),
                   flex: "1 1 140px",

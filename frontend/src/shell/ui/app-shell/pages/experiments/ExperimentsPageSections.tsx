@@ -73,8 +73,8 @@ export function ExperimentDetail({
   // the author has set them, so a freshly named experiment has somewhere to
   // save to.
   const fallbackName = experiment.name || `experiment-${index + 1}`;
-  const scriptPath = experiment.run_script || experimentScriptPath(fallbackName);
-  const verifyScriptPath = experiment.verify_script || experimentVerifyScriptPath(fallbackName);
+  const scriptPath = experiment.runScript || experimentScriptPath(fallbackName);
+  const verifyScriptPath = experiment.verifyScript || experimentVerifyScriptPath(fallbackName);
 
   return (
     <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
@@ -158,23 +158,23 @@ export function ExperimentDetail({
         >
           <input
             disabled={locked}
-            value={experiment.runtime_estimate}
-            onChange={(e) => onUpdate({ runtime_estimate: e.target.value })}
+            value={experiment.runtimeEstimate}
+            onChange={(e) => onUpdate({ runtimeEstimate: e.target.value })}
             placeholder="5-10 min"
             style={{ ...lgInput(locked), fontFamily: F.mono, fontSize: 13 }}
           />
         </DetailField>
 
         <ResourceEstimatesEditor
-          estimates={experiment.resource_estimates}
+          estimates={experiment.resourceEstimates}
           locked={locked}
-          onChange={(resource_estimates) => onUpdate({ resource_estimates })}
+          onChange={(resourceEstimates) => onUpdate({ resourceEstimates })}
         />
 
         <OutputPathsEditor
-          outputPaths={experiment.output_paths}
+          outputPaths={experiment.outputPaths}
           locked={locked}
-          onChange={(output_paths) => onUpdate({ output_paths })}
+          onChange={(outputPaths) => onUpdate({ outputPaths })}
         />
 
         {runState && <RunResultPanel runState={runState} />}

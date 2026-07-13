@@ -37,18 +37,18 @@ const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as AppShellPage[];
 
 // Maps a draft view-model field key to the app-shell page where it can be edited.
 const FIELD_TO_PAGE: Partial<Record<keyof ReeEditorViewModel, AppShellPage>> = {
-  origin_url: PAGE.SOURCE,
-  source_type: PAGE.SOURCE,
+  originUrl: PAGE.SOURCE,
+  sourceType: PAGE.SOURCE,
   experiments: PAGE.EXPERIMENTS,
   sourceAvailable: PAGE.SOURCE,
   sourceAcquiredBy: PAGE.SOURCE,
-  hardware_description: PAGE.HBOM,
+  hardwareDescription: PAGE.HBOM,
   runtime: PAGE.BUILD,
   activation: PAGE.ACTIVATION,
   sbom: PAGE.SBOM,
   swhid: PAGE.ARCHIVE,
-  zenodo_doi: PAGE.ARCHIVE,
-  dataverse_doi: PAGE.ARCHIVE,
+  zenodoDoi: PAGE.ARCHIVE,
+  dataverseDoi: PAGE.ARCHIVE,
 };
 
 function isValidAppShellPage(value: string): value is AppShellPage {

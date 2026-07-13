@@ -14,7 +14,7 @@ export function emptyHBOM(): HBOM {
     memory: {},
     storage: {},
     network: {},
-    extra_info: {},
+    extraInfo: {},
   };
 }
 
@@ -40,10 +40,10 @@ function normalizeCPUMap(raw: unknown): Record<string, CPUDefinition> {
           {
             vendor: String(item.vendor ?? ""),
             quantity: asNumber(item.quantity, 1),
-            cores_per_cpu: asNumber(item.cores_per_cpu, 1),
-            threads_per_core: asNumber(item.threads_per_core, 1),
+            coresPerCpu: asNumber(item.cores_per_cpu, 1),
+            threadsPerCore: asNumber(item.threads_per_core, 1),
             architecture: String(item.architecture ?? ""),
-            extra_info: asRecord(item.extra_info),
+            extraInfo: asRecord(item.extra_info),
           },
         ];
       }),
@@ -62,9 +62,9 @@ function normalizeGPUMap(raw: unknown): Record<string, GPUDefinition> {
           {
             vendor: String(item.vendor ?? ""),
             quantity: asNumber(item.quantity, 1),
-            memory_gb: asNumber(item.memory_gb, 0),
+            memoryGb: asNumber(item.memory_gb, 0),
             interface: String(item.interface ?? ""),
-            extra_info: asRecord(item.extra_info),
+            extraInfo: asRecord(item.extra_info),
           },
         ];
       }),
@@ -83,10 +83,10 @@ function normalizeMemoryMap(raw: unknown): Record<string, MemoryDefinition> {
           {
             vendor: String(item.vendor ?? ""),
             quantity: asNumber(item.quantity, 1),
-            capacity_gb: asNumber(item.capacity_gb, 0),
-            memory_type: String(item.memory_type ?? "DDR5"),
-            speed_mt_s: asNumber(item.speed_mt_s, 1),
-            extra_info: asRecord(item.extra_info),
+            capacityGb: asNumber(item.capacity_gb, 0),
+            memoryType: String(item.memory_type ?? "DDR5"),
+            speedMtS: asNumber(item.speed_mt_s, 1),
+            extraInfo: asRecord(item.extra_info),
           },
         ];
       }),
@@ -105,10 +105,10 @@ function normalizeStorageMap(raw: unknown): Record<string, StorageDefinition> {
           {
             vendor: String(item.vendor ?? ""),
             quantity: asNumber(item.quantity, 1),
-            capacity_gb: asNumber(item.capacity_gb, 0),
-            storage_type: String(item.storage_type ?? "NVMe"),
+            capacityGb: asNumber(item.capacity_gb, 0),
+            storageType: String(item.storage_type ?? "NVMe"),
             interface: String(item.interface ?? ""),
-            extra_info: asRecord(item.extra_info),
+            extraInfo: asRecord(item.extra_info),
           },
         ];
       }),
@@ -127,10 +127,10 @@ function normalizeNetworkMap(raw: unknown): Record<string, NetworkDefinition> {
           {
             vendor: String(item.vendor ?? ""),
             quantity: asNumber(item.quantity, 1),
-            bandwidth_gbps: asNumber(item.bandwidth_gbps, 0),
-            network_type: String(item.network_type ?? "ethernet"),
+            bandwidthGbps: asNumber(item.bandwidth_gbps, 0),
+            networkType: String(item.network_type ?? "ethernet"),
             interface: String(item.interface ?? ""),
-            extra_info: asRecord(item.extra_info),
+            extraInfo: asRecord(item.extra_info),
           },
         ];
       }),
@@ -145,7 +145,7 @@ export function normalizeHBOM(raw: unknown): HBOM {
   if (!hasStructuredKeys) {
     return {
       ...emptyHBOM(),
-      extra_info: record,
+      extraInfo: record,
     };
   }
   return {
@@ -154,7 +154,7 @@ export function normalizeHBOM(raw: unknown): HBOM {
     memory: normalizeMemoryMap(record.memory),
     storage: normalizeStorageMap(record.storage),
     network: normalizeNetworkMap(record.network),
-    extra_info: asRecord(record.extra_info),
+    extraInfo: asRecord(record.extra_info),
   };
 }
 

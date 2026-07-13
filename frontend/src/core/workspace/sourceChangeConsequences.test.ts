@@ -9,8 +9,8 @@ function buildWorkspaceState(): SourceChangeInput {
     reeSpec: {
       ...createEmptyReeSpec(),
       name: "demo",
-      origin_url: "https://example.org/repo.git",
-      source_type: "git",
+      originUrl: "https://example.org/repo.git",
+      sourceType: "git",
       runtime: "runtime.tar.gz",
       sbom: "sbom.json",
       swhid: "swh:1:dir:abc",
@@ -45,7 +45,7 @@ describe("computeSourceChangeConsequences", () => {
     expect(reset.badges).toEqual({});
     expect(reset.sourceSnapshotArchiveName).toBe("");
     expect(reset.reeSpec.runtime).toBe("");
-    expect(reset.reeSpec.origin_url).toBe("");
+    expect(reset.reeSpec.originUrl).toBe("");
     expect(reset.evaluationState.dependencyLevel).toBe(0);
   });
 });

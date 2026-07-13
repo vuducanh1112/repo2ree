@@ -73,27 +73,27 @@ export function PageMetadataEntry({
   const set = <K extends keyof typeof reeSpec>(k: K, v: (typeof reeSpec)[K]) =>
     onReeChange((current) => ({ ...current, [k]: v }) as typeof reeSpec);
   const focus = (key: string) => onFocusedFieldChange(key);
-  const metadata = reeSpec.catalog_metadata;
+  const metadata = reeSpec.catalogMetadata;
   const [pendingContributor, setPendingContributor] = useState<ReeContributor>({
     identifier: "",
     name: "",
-    affiliation_name: "",
-    affiliation_identifier: "",
+    affiliationName: "",
+    affiliationIdentifier: "",
   });
   const [contributorAddError, setContributorAddError] = useState("");
   const [editingContributorId, setEditingContributorId] = useState<string | null>(null);
   const [contributorDraft, setContributorDraft] = useState<ReeContributor>({
     identifier: "",
     name: "",
-    affiliation_name: "",
-    affiliation_identifier: "",
+    affiliationName: "",
+    affiliationIdentifier: "",
   });
   const [pendingKeyword, setPendingKeyword] = useState("");
 
   useFocusScroll(focusedField);
 
   const { description, version, website, keywords, contributors } = metadata;
-  const correspondingAuthor = metadata.corresponding_author_identifier || "";
+  const correspondingAuthor = metadata.correspondingAuthorIdentifier || "";
   const identityFilled = reeSpec.name.trim().length > 0;
   const availableSuggestions = useMemo(
     () => KEYWORD_SUGGESTIONS.filter((kw) => !keywords.includes(kw)),
@@ -122,8 +122,8 @@ export function PageMetadataEntry({
     setPendingContributor({
       identifier: "",
       name: "",
-      affiliation_name: "",
-      affiliation_identifier: "",
+      affiliationName: "",
+      affiliationIdentifier: "",
     });
     setContributorAddError("");
   };
@@ -159,8 +159,8 @@ export function PageMetadataEntry({
     setContributorDraft({
       identifier: "",
       name: "",
-      affiliation_name: "",
-      affiliation_identifier: "",
+      affiliationName: "",
+      affiliationIdentifier: "",
     });
   };
 
@@ -205,7 +205,7 @@ export function PageMetadataEntry({
                   patchCatalogMetadata(current, { version: event.target.value }),
                 )
               }
-              onFocus={() => focus("catalog_metadata.version")}
+              onFocus={() => focus("catalogMetadata.version")}
               placeholder="1.0.0"
               style={lgInput(locked)}
             />
@@ -223,7 +223,7 @@ export function PageMetadataEntry({
                   patchCatalogMetadata(current, { website: event.target.value }),
                 )
               }
-              onFocus={() => focus("catalog_metadata.website")}
+              onFocus={() => focus("catalogMetadata.website")}
               placeholder="https://example.org/project"
               style={lgInput(locked)}
             />
@@ -241,7 +241,7 @@ export function PageMetadataEntry({
                   patchCatalogMetadata(current, { description: event.target.value }),
                 )
               }
-              onFocus={() => focus("catalog_metadata.description")}
+              onFocus={() => focus("catalogMetadata.description")}
               placeholder="REE for reproducible execution of..."
               style={{
                 ...lgInput(locked, false),
@@ -360,22 +360,22 @@ export function PageMetadataEntry({
                         style={{ ...lgInput(false), minHeight: 38 }}
                       />
                       <input
-                        value={contributorDraft.affiliation_name}
+                        value={contributorDraft.affiliationName}
                         onChange={(event) =>
                           setContributorDraft((prev) => ({
                             ...prev,
-                            affiliation_name: event.target.value,
+                            affiliationName: event.target.value,
                           }))
                         }
                         placeholder="Affiliation name"
                         style={{ ...lgInput(false), minHeight: 38 }}
                       />
                       <input
-                        value={contributorDraft.affiliation_identifier}
+                        value={contributorDraft.affiliationIdentifier}
                         onChange={(event) =>
                           setContributorDraft((prev) => ({
                             ...prev,
-                            affiliation_identifier: event.target.value,
+                            affiliationIdentifier: event.target.value,
                           }))
                         }
                         placeholder="Affiliation identifier"
@@ -393,11 +393,11 @@ export function PageMetadataEntry({
                       </div>
                       <div style={lgStyles.helper}>
                         <strong style={{ color: lgColors.text }}>Affiliation Name:</strong>{" "}
-                        {contributor.affiliation_name || "Not set"}
+                        {contributor.affiliationName || "Not set"}
                       </div>
                       <div style={lgStyles.helper}>
                         <strong style={{ color: lgColors.text }}>Affiliation Identifier:</strong>{" "}
-                        {contributor.affiliation_identifier || "Not set"}
+                        {contributor.affiliationIdentifier || "Not set"}
                       </div>
                     </div>
                   )}
@@ -508,22 +508,22 @@ export function PageMetadataEntry({
                 style={{ ...lgInput(false), minHeight: 38 }}
               />
               <input
-                value={pendingContributor.affiliation_name}
+                value={pendingContributor.affiliationName}
                 onChange={(event) =>
                   setPendingContributor((prev) => ({
                     ...prev,
-                    affiliation_name: event.target.value,
+                    affiliationName: event.target.value,
                   }))
                 }
                 placeholder="Affiliation name"
                 style={{ ...lgInput(false), minHeight: 38 }}
               />
               <input
-                value={pendingContributor.affiliation_identifier}
+                value={pendingContributor.affiliationIdentifier}
                 onChange={(event) =>
                   setPendingContributor((prev) => ({
                     ...prev,
-                    affiliation_identifier: event.target.value,
+                    affiliationIdentifier: event.target.value,
                   }))
                 }
                 onKeyDown={(event) => {

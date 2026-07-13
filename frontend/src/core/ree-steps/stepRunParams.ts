@@ -12,7 +12,7 @@ export interface ReeStepRunParamsByKey {
   build: Record<string, never>;
   hbom: ReeStepParamsByKey["hbom"];
   sbom: ReeStepParamsByKey["sbom"] & {
-    produced_runtime_path?: string;
+    producedRuntimePath?: string;
   };
   activation: ReeStepParamsByKey["activation"];
 }
