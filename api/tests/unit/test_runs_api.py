@@ -78,8 +78,38 @@ def test_failed_run_summary_shape(client: TestClient, online_ree: WorkbenchHandl
 
 
 def test_run_endpoints_for_unknown_ree_are_404(client: TestClient) -> None:
+    assert client.get("/api/v1/rees/nope/runs").status_code == 404
     assert client.get("/api/v1/rees/nope/runs/run-1").status_code == 404
     assert client.get("/api/v1/rees/nope/runs/run-1/logs").status_code == 404
+
+
+# ================================================
+# Run listing
+# ================================================
+
+
+def test_list_runs_is_empty_for_ree_without_runs(client: TestClient, online_ree: WorkbenchHandle) -> None:
+    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs")
+    assert resp.status_code == 200
+    assert resp.json() == {"runs": []}
+
+
+def test_list_runs_returns_summaries_newest_first(
+    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any], staging_dir: Path
+) -> None:
+    second = _start_failing_upload_run(client, online_ree.ree_id)
+    _wait_for_run(client, online_ree.ree_id, second["runId"])
+
+    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs")
+    assert resp.status_code == 200
+    runs = resp.json()["runs"]
+    assert [run["runId"] for run in runs] == [second["runId"], failed_run["runId"]]
+    for summary in runs:
+        assert summary["operation"] == "source"
+        assert summary["status"] == "failed"
+        # summaries carry no log feed or internal bookkeeping
+        assert "logs" not in summary
+        assert "_nextSeq" not in summary
 
 
 def test_unknown_run_for_known_ree_is_404(client: TestClient, online_ree: WorkbenchHandle) -> None:

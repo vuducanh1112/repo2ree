@@ -268,6 +268,15 @@ class RunRegistry:
         with self._lock:
             return bool(self._run_store.get(ree_id))
 
+    def list_runs(self, ree_id: str) -> list[dict[str, Any]]:
+        """Summaries of every recorded run for ree_id, newest first."""
+        self._require_ree(ree_id)
+        with self._lock:
+            run_states = list(self._run_store.get(ree_id, {}).values())
+        summaries = [self.run_summary(run_state) for run_state in run_states]
+        summaries.sort(key=lambda summary: summary["createdAt"], reverse=True)
+        return summaries
+
     def get_run_state(self, ree_id: str, run_id: str) -> dict[str, Any]:
         self._require_ree(ree_id)
         with self._lock:

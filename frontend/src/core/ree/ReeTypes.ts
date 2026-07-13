@@ -22,6 +22,8 @@ export interface LogLine {
   type: "info" | "ok" | "warn" | "err" | "out";
   msg: string;
   ts?: string;
+  /** Originating run stream, when the line came from the runs API. */
+  stream?: "stdout" | "stderr" | "system";
 }
 
 export interface LogEntry {

@@ -40,6 +40,7 @@ _is_cancel_requested = _registry.is_cancel_requested
 _mark_cancel_requested = _registry.mark_cancel_requested
 _run_summary = _registry.run_summary
 _get_run_state = _registry.get_run_state
+_list_runs = _registry.list_runs
 
 
 def _start_background_run(

@@ -244,6 +244,10 @@ export interface ReeRunDto {
   outputs?: Record<string, unknown>;
 }
 
+export interface ReeRunListDto {
+  runs: ReeRunDto[];
+}
+
 export interface ReeRunLogEntryDto {
   seq: number;
   ts: string;

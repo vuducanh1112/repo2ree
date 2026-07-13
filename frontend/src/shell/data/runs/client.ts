@@ -1,5 +1,5 @@
 import type { ReeId } from "@core/ree/ReeId";
-import type { ReeRun, ReeRunLogChunk } from "@core/runs/ReeRun";
+import type { ReeRun, ReeRunLogChunk, ReeRunSummary } from "@core/runs/ReeRun";
 import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
 import { useMemo } from "react";
 import {
@@ -31,6 +31,8 @@ export interface ReeRunsClient {
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
   ): Promise<ReeRun>;
+  /** Every recorded run for the REE, newest first. */
+  listReeRuns(id: ReeId | string): Promise<ReeRunSummary[]>;
   getReeRun(id: ReeId | string, runId: string): Promise<ReeRun>;
   getReeRunLogs(id: ReeId | string, runId: string, cursor?: string): Promise<ReeRunLogChunk>;
   cancelReeRun(id: ReeId | string, runId: string): Promise<ReeRunStatus>;
@@ -109,6 +111,11 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
           throw new Error(`Unsupported execution run operation: ${scriptKey}`);
       }
       return mapRun(run);
+    },
+    async listReeRuns(id) {
+      const reeId = await ensureReeId(runtime, id);
+      const { runs } = await runtime.runsApi.listRuns(reeId);
+      return runs.map((run) => ({ ...mapRun(run), operation: run.operation }));
     },
     async getReeRun(id, runId) {
       const reeId = await ensureReeId(runtime, id);

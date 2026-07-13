@@ -1,5 +1,6 @@
+import { DEFAULT_REE_ID } from "@core/ree/ReeId";
 import type { LogLine } from "@core/ree/ReeTypes";
-import type { ReeRun, ReeRunLogChunk } from "@core/runs/ReeRun";
+import type { ReeRun, ReeRunLogChunk, ReeRunSummary } from "@core/runs/ReeRun";
 import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
 import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
 import { type QueryClient, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -97,6 +98,30 @@ async function fetchReeRunLogs(
   runId: string,
 ) {
   return queryClient.fetchQuery(createReeRunLogsQueryOptions(executionRunsClient, reeId, runId));
+}
+
+// The run listing drives the always-mounted logs HUD: poll briskly while
+// anything is in flight, lazily otherwise (still often enough to notice runs
+// started outside this tab, e.g. by an agent).
+const RUNS_ACTIVE_POLL_MS = 1500;
+const RUNS_IDLE_POLL_MS = 5000;
+
+export function useReeRunsQuery(reeId?: string) {
+  const runtime = useApiRuntime();
+  const executionRunsClient = useReeRunsClient();
+  const resolvedReeId = resolveReeId(runtime, reeId);
+
+  return useQuery({
+    queryKey: queryKeys.reeRuns(resolvedReeId),
+    queryFn: (): Promise<ReeRunSummary[]> => executionRunsClient.listReeRuns(resolvedReeId),
+    // The sentinel id means "no REE yet" — polling through ensureReeId with it
+    // would lazily *create* one, which a passive listing must never do.
+    enabled: !!resolvedReeId && resolvedReeId !== DEFAULT_REE_ID,
+    refetchInterval: (query) => {
+      const anyActive = query.state.data?.some((run) => !isTerminalReeRunStatus(run.status));
+      return anyActive ? RUNS_ACTIVE_POLL_MS : RUNS_IDLE_POLL_MS;
+    },
+  });
 }
 
 export function useReeRunQuery(reeId: string | undefined, runId: string | undefined) {

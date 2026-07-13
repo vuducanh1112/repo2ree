@@ -7,6 +7,7 @@ import type {
   CreateGenerateHbomRunRequestDto,
   CreateGenerateSbomRunRequestDto,
   ReeRunDto,
+  ReeRunListDto,
   ReeRunLogEntryDto,
   ReeRunLogsDto,
   ReeRunStatusDto,
@@ -80,6 +81,12 @@ export class ReeRunsApi {
     });
   }
 
+  async listRuns(reeId: string): Promise<ReeRunListDto> {
+    return this.client.request<ReeRunListDto>(endpoints.reeRuns(reeId), {
+      method: "GET",
+    });
+  }
+
   async getRun(reeId: string, runId: string): Promise<ReeRunDto> {
     return this.client.request<ReeRunDto>(endpoints.reeRun(reeId, runId), {
       method: "GET",
@@ -109,22 +116,25 @@ export class ReeRunsApi {
   }
 }
 
-export function mapRunLogsToLines(
-  lines: ReeRunLogEntryDto[],
-): Array<{ type: "info" | "ok" | "warn" | "err" | "out"; msg: string; ts?: string }> {
+export function mapRunLogsToLines(lines: ReeRunLogEntryDto[]): Array<{
+  type: "info" | "ok" | "warn" | "err" | "out";
+  msg: string;
+  ts?: string;
+  stream?: "stdout" | "stderr" | "system";
+}> {
   return lines.map((line) => {
     if (line.level === "error") {
-      return { type: "err", msg: line.message, ts: line.ts };
+      return { type: "err", msg: line.message, ts: line.ts, stream: line.stream };
     }
     if (line.level === "warn") {
-      return { type: "warn", msg: line.message, ts: line.ts };
+      return { type: "warn", msg: line.message, ts: line.ts, stream: line.stream };
     }
     if (line.stream === "stdout") {
-      return { type: "out", msg: line.message, ts: line.ts };
+      return { type: "out", msg: line.message, ts: line.ts, stream: line.stream };
     }
     if (line.level === "debug") {
-      return { type: "info", msg: line.message, ts: line.ts };
+      return { type: "info", msg: line.message, ts: line.ts, stream: line.stream };
     }
-    return { type: "ok", msg: line.message, ts: line.ts };
+    return { type: "ok", msg: line.message, ts: line.ts, stream: line.stream };
   });
 }

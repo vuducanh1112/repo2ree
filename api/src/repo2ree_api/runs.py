@@ -9,6 +9,7 @@ from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
     _append_run_log,
     _get_run_state,
+    _list_runs,
     _mark_cancel_requested,
     _run_summary,
 )
@@ -27,6 +28,11 @@ runs_router = APIRouter()
 # ================================================
 # Route Handlers
 # ================================================
+
+
+@runs_router.get("/api/v1/rees/{ree_id}/runs")
+def list_workspace_runs(ree_id: str):
+    return {"runs": _list_runs(ree_id)}
 
 
 @runs_router.get("/api/v1/rees/{ree_id}/runs/{run_id}")

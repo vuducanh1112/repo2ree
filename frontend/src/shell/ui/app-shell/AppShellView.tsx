@@ -8,6 +8,7 @@ import { AppShellContent } from "./AppShellContent";
 import { CanvasHub } from "./canvas/CanvasHub";
 import { activeNode } from "./canvas/canvasNodes";
 import { FocusDock } from "./canvas/FocusDock";
+import { RunHud } from "./canvas/RunHud";
 import { SbomHubPanel } from "./canvas/SbomHubPanel";
 import { SealHubPanel } from "./canvas/SealHubPanel";
 import { SourceHubPanel } from "./canvas/SourceHubPanel";
@@ -220,6 +221,9 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
             onClose={() => commands.setPage(PAGE.CANVAS)}
           />
         )}
+
+        {/* Cross-page logs console: every run of this REE, split by step. */}
+        {provisioned && <RunHud />}
 
         {sealOpen && (
           <SealHubPanel
