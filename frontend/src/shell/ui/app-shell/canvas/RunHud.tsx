@@ -15,6 +15,7 @@ import {
 import { useReeRunLogsQuery, useReeRunQuery, useReeRunsQuery } from "@shell/data/runs/queries";
 import { useEffect, useRef, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
+import { useCornerResize } from "../../shared/hooks/useCornerResize";
 import { C, F } from "../../theme/theme";
 import { LogPanel } from "../components/logPanel";
 import { HudConsole } from "./HudConsole";
@@ -53,6 +54,14 @@ export function RunHud() {
   const [tab, setTab] = useState<RunHudTabKey>("source");
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [streams, setStreams] = useState<Set<StreamKey>>(() => new Set(STREAMS));
+  // Logs get arbitrarily long; a top-left grip lets the console grow up/left
+  // from its bottom-right anchor.
+  const { size, resizing, startResize } = useCornerResize({
+    defaultWidth: 480,
+    defaultHeight: 460,
+    minWidth: 480,
+    minHeight: 280,
+  });
 
   const runsQuery = useReeRunsQuery();
   const runs = runsQuery.data ?? [];
@@ -86,10 +95,17 @@ export function RunHud() {
     <HudConsole
       open={open}
       onToggle={() => setOpen((v) => !v)}
-      widthOpen={480}
+      widthOpen={size.width}
       widthCollapsed={264}
       // Docked bottom-right, beside the zoom controls that own the corner.
-      outerStyle={{ right: 60, bottom: 16, zIndex: 40, display: "flex", flexDirection: "column" }}
+      outerStyle={{
+        right: 60,
+        bottom: 16,
+        zIndex: 40,
+        display: "flex",
+        flexDirection: "column",
+        ...(resizing ? { transition: "none" } : null),
+      }}
       icon={Ic.terminal(16)}
       iconColor={activeCount > 0 ? C.accent : "#64748b"}
       title="Logs"
@@ -98,10 +114,47 @@ export function RunHud() {
           ? `${tabLabel(runHudTabForOperation(latest.operation))} · ${latest.status}`
           : "No runs yet"
       }
-      on={activeCount > 0}
+      on={runs.length > 0}
       expandLabel="Expand logs console"
       collapseLabel="Collapse logs console"
-      bodyStyle={{ maxHeight: 460 }}
+      bodyStyle={{ maxHeight: size.height }}
+      resizeGrip={
+        open && (
+          <button
+            type="button"
+            aria-label="Resize logs console"
+            title="Drag to resize"
+            onMouseDown={startResize}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: 18,
+              height: 18,
+              zIndex: 2,
+              border: "none",
+              background: "transparent",
+              cursor: "nwse-resize",
+              padding: 0,
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "flex-start",
+              color: C.borderMid,
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              <title>resize</title>
+              <path
+                d="M2 8V2h6M2 5V2h3"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                fill="none"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )
+      }
     >
       <div
         role="tablist"
@@ -183,6 +236,9 @@ export function RunHud() {
                 run={run}
                 expanded={run.runId === expandedRunId}
                 streams={streams}
+                // Leave headroom for the console header, tab strip, and run
+                // rows so the expanded log scrolls inside the resized body.
+                logMaxHeight={Math.max(260, size.height - 200)}
                 onToggle={() =>
                   setExpandedRunId((current) => (current === run.runId ? null : run.runId))
                 }
@@ -272,11 +328,13 @@ function RunRow({
   run,
   expanded,
   streams,
+  logMaxHeight,
   onToggle,
 }: {
   run: ReeRunSummary;
   expanded: boolean;
   streams: Set<StreamKey>;
+  logMaxHeight: number;
   onToggle: () => void;
 }) {
   const duration = formatRunDuration(run);
@@ -351,14 +409,22 @@ function RunRow({
           {run.status.toUpperCase()}
         </span>
       </button>
-      {expanded && <RunLogView run={run} streams={streams} />}
+      {expanded && <RunLogView run={run} streams={streams} maxHeight={logMaxHeight} />}
     </div>
   );
 }
 
 // Mounted only while its run row is expanded, so only one run's log feed is
 // polled at a time. The run query alongside stops the log poll once terminal.
-function RunLogView({ run, streams }: { run: ReeRunSummary; streams: Set<StreamKey> }) {
+function RunLogView({
+  run,
+  streams,
+  maxHeight,
+}: {
+  run: ReeRunSummary;
+  streams: Set<StreamKey>;
+  maxHeight: number;
+}) {
   const runQuery = useReeRunQuery(undefined, run.runId);
   const logsQuery = useReeRunLogsQuery(undefined, run.runId);
   const status = runQuery.data?.status ?? run.status;
@@ -377,7 +443,7 @@ function RunLogView({ run, streams }: { run: ReeRunSummary; streams: Set<StreamK
         padding: 8,
         display: "flex",
         flexDirection: "column",
-        maxHeight: 260,
+        maxHeight,
       }}
     >
       <LogPanel log={log} running={running} />

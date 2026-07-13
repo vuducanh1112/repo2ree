@@ -1,6 +1,6 @@
-import { type ReactNode, useEffect } from "react";
-import { Ic } from "../../shared/components/Icon";
+import type { ReactNode } from "react";
 import { C, F } from "../../theme/theme";
+import { CanvasWindow } from "./CanvasWindow";
 import type { CanvasNode } from "./canvasNodes";
 
 interface FocusDockProps {
@@ -24,15 +24,6 @@ const SIDE_FRAC = 0.07; // panel inset from each side, as a fraction of viewport
 const SIDE = `${SIDE_FRAC * 100}%`;
 
 export function FocusDock({ node, originRect, closable, onClose, children }: FocusDockProps) {
-  useEffect(() => {
-    if (!closable) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [closable, onClose]);
-
   // Anchor the grow animation on the clicked panel's centre. transform-origin is
   // relative to the panel's own box, so subtract the panel's top-left corner.
   const sidePx = window.innerWidth * SIDE_FRAC;
@@ -57,73 +48,44 @@ export function FocusDock({ node, originRect, closable, onClose, children }: Foc
         }}
       />
 
-      <div
-        style={{
+      <CanvasWindow
+        ariaLabel={node?.label ?? "Step page"}
+        onClose={onClose}
+        closable={closable}
+        escapeToClose
+        header={
+          node && (
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontFamily: F.mono,
+                fontSize: 11,
+                letterSpacing: 0.4,
+                textTransform: "uppercase",
+                color: C.textMuted,
+              }}
+            >
+              <span style={{ display: "flex", color: node.color }}>{node.icon(13)}</span>
+              {node.label}
+            </span>
+          )
+        }
+        outerStyle={{
           position: "fixed",
           top: TOP,
           left: SIDE,
           right: SIDE,
           bottom: BOTTOM,
-          display: "flex",
-          minWidth: 0,
-          background: C.surface,
-          border: `1px solid ${C.border}`,
           borderRadius: 16,
-          overflow: "hidden",
           boxShadow: "0 24px 60px rgba(13,17,23,0.22)",
           transformOrigin,
           animation: "growIn 0.4s cubic-bezier(0.34,1.1,0.5,1)",
         }}
       >
-        {node && (
-          <div
-            style={{
-              position: "absolute",
-              top: 14,
-              left: 18,
-              zIndex: 2,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              fontFamily: F.mono,
-              fontSize: 11,
-              letterSpacing: 0.4,
-              textTransform: "uppercase",
-              color: C.textMuted,
-              pointerEvents: "none",
-            }}
-          >
-            <span style={{ display: "flex", color: node.color }}>{node.icon(13)}</span>
-            {node.label}
-          </div>
-        )}
-        {closable && (
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            style={{
-              position: "absolute",
-              top: 12,
-              right: 12,
-              zIndex: 2,
-              width: 30,
-              height: 30,
-              border: `1px solid ${C.border}`,
-              borderRadius: 8,
-              background: C.surface,
-              color: C.textMuted,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {Ic.x(15)}
-          </button>
-        )}
         {children}
-      </div>
+      </CanvasWindow>
     </div>
   );
 }

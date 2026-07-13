@@ -2,7 +2,7 @@ import { resolvedRuntimePath } from "@core/ree-steps/buildRuntimeUiState";
 import { isRuntimeTarballPath, resolvedSbomPath, summarizeSbom } from "@core/ree-steps/sbomUiState";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Ic } from "../../shared/components/Icon";
 import {
   lgAccentActionButton,
@@ -17,7 +17,8 @@ import { RunActionButton } from "../components/RunActionButton";
 import { useStepPageController } from "../hooks/useStepPageController";
 import { RuntimeScanTargetCard, SbomOutputCard } from "../pages/generate-sbom/sections";
 import type { AppShellPageContainerProps } from "../pages/pageContainers/shared";
-import { HubPanel, HubPanelHeader } from "./HubPanel";
+import { CanvasWindowTitle } from "./CanvasWindow";
+import { HubPanel } from "./HubPanel";
 
 const SBOM_PAGE_COLOR = "#16a34a";
 
@@ -50,14 +51,24 @@ export function SbomHubPanel({
   const sbomSummary = useMemo(() => summarizeSbom(sbomNode), [sbomNode]);
 
   return (
-    <HubPanel ariaLabel="Generate SBOM" onClose={onClose} width={460}>
-      <HubPanelHeader
-        icon={Ic.package(18)}
-        iconColor={SBOM_PAGE_COLOR}
-        title="Generate SBOM"
-        subtitle="scan the runtime into a software inventory"
-        right={
-          controller && (
+    <HubPanel
+      ariaLabel="Generate SBOM"
+      onClose={onClose}
+      width={460}
+      header={
+        <CanvasWindowTitle
+          icon={Ic.package(16)}
+          iconColor={SBOM_PAGE_COLOR}
+          title="Generate SBOM"
+          subtitle="scan the runtime into a software inventory"
+        />
+      }
+    >
+      {!controller ? (
+        <div style={{ fontSize: 12, color: lgColors.textMuted }}>SBOM step unavailable.</div>
+      ) : (
+        <SbomHubBody
+          action={
             <RunActionButton
               label={
                 controller.running ? "Generating…" : controller.runDone ? "Regenerate" : "Generate"
@@ -77,14 +88,7 @@ export function SbomHubPanel({
               }
               onCancel={() => commands.onCancelAction(controller.step.key)}
             />
-          )
-        }
-      />
-
-      {!controller ? (
-        <div style={{ fontSize: 12, color: lgColors.textMuted }}>SBOM step unavailable.</div>
-      ) : (
-        <SbomHubBody
+          }
           controller={controller}
           runtimePath={runtimePath}
           runtimePathExists={runtimePathExists}
@@ -103,6 +107,7 @@ export function SbomHubPanel({
 type Controller = NonNullable<ReturnType<typeof useStepPageController>>;
 
 function SbomHubBody({
+  action,
   controller,
   runtimePath,
   runtimePathExists,
@@ -113,6 +118,8 @@ function SbomHubBody({
   sbomFormat,
   onGoFields,
 }: {
+  /** The Generate/Regenerate run button, rendered on the status row. */
+  action: ReactNode;
   controller: Controller;
   runtimePath: string;
   runtimePathExists: boolean;
@@ -130,12 +137,14 @@ function SbomHubBody({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
         <span style={lgStatusBadge(buildReady)}>
           {buildReady ? "Build ready" : "Build pending"}
         </span>
         <span style={lgStatusBadge(sbomReady)}>{sbomReady ? "SBOM ready" : "SBOM pending"}</span>
         {badge && <OutcomeBadge badge={badge} />}
+        <div style={{ flex: 1 }} />
+        {action}
       </div>
 
       <MissingInputsBanner missing={missing} onGoFields={onGoFields} />

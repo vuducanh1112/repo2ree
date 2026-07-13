@@ -30,6 +30,9 @@ export function FileTreeConsole({ reeFiles, open, onOpenChange }: FileTreeConsol
   const [query, setQuery] = useState("");
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Header X hides the viewer window without forgetting the open tabs;
+  // picking any file in the tree brings it back.
+  const [viewerDismissed, setViewerDismissed] = useState(false);
 
   const { tree, entryById } = useReeFileTree(reeFiles);
   const filtering = query.trim().length > 0;
@@ -73,6 +76,7 @@ export function FileTreeConsole({ reeFiles, open, onOpenChange }: FileTreeConsol
   const openFile = (id: string) => {
     setOpenTabs((tabs) => (tabs.includes(id) ? tabs : [...tabs, id]));
     setActiveId(id);
+    setViewerDismissed(false);
   };
   const closeTab = (id: string) => {
     const idx = openTabs.indexOf(id);
@@ -147,7 +151,7 @@ export function FileTreeConsole({ reeFiles, open, onOpenChange }: FileTreeConsol
         </div>
       </HudConsole>
 
-      {open && activeEntry && (
+      {open && !viewerDismissed && activeEntry && (
         <FileTabsPanel
           openEntries={openEntries}
           activeEntry={activeEntry}
@@ -155,6 +159,7 @@ export function FileTreeConsole({ reeFiles, open, onOpenChange }: FileTreeConsol
           top={HUD_TOP}
           onActivate={setActiveId}
           onClose={closeTab}
+          onDismiss={() => setViewerDismissed(true)}
         />
       )}
     </>

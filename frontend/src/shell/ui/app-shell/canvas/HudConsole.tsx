@@ -21,6 +21,8 @@ interface HudConsoleProps {
   bodyMaxHeight?: number;
   /** Extra style on the body content wrapper (e.g. flex/minHeight for scrollable layouts). */
   bodyStyle?: React.CSSProperties;
+  /** Optional resize grip, absolutely positioned by the caller (e.g. the logs console's top-left corner). */
+  resizeGrip?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -41,6 +43,7 @@ export function HudConsole({
   collapseLabel,
   bodyMaxHeight,
   bodyStyle,
+  resizeGrip,
   children,
 }: HudConsoleProps) {
   const body =
@@ -96,6 +99,7 @@ export function HudConsole({
         ...outerStyle,
       }}
     >
+      {resizeGrip}
       <button
         type="button"
         aria-expanded={open}

@@ -4,7 +4,7 @@ import type { Badges, LogEntry } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { ConsistencyReport } from "@core/ree-steps/sealConsistency";
 import { useRef } from "react";
-import { C, F } from "../../theme/theme";
+import { CanvasWindowTitle } from "./CanvasWindow";
 import { CenterSealStrip } from "./CenterSealStrip";
 import { HubPanel } from "./HubPanel";
 
@@ -36,16 +36,15 @@ export function SealHubPanel({
   const sealRef = useRef<HTMLDivElement>(null);
 
   return (
-    <HubPanel ariaLabel="Seal" onClose={onClose} width={440} align="center">
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: -0.3 }}>
-          Seal
-        </div>
-        <div style={{ fontSize: 11.5, fontFamily: F.mono, color: C.textMuted, marginTop: 2 }}>
-          freeze the specimen into an archivable REE
-        </div>
-      </div>
-
+    <HubPanel
+      ariaLabel="Seal"
+      onClose={onClose}
+      width={440}
+      align="center"
+      header={
+        <CanvasWindowTitle title="Seal" subtitle="freeze the specimen into an archivable REE" />
+      }
+    >
       <CenterSealStrip
         ree={ree}
         locked={locked}

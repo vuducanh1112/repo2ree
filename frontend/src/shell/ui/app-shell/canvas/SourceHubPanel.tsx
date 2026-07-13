@@ -11,7 +11,8 @@ import { useStepRunLogEntry } from "../pages/pageContainers/shared";
 import type { SourceTypeOption } from "../pages/source/SourceAcquisitionPageHelpers";
 import { SourceAcquisitionCard } from "../pages/source/SourceAcquisitionPageSections";
 import { SourceStep3Section } from "../pages/source/SourceAcquisitionPageStep3Section";
-import { HubPanel, HubPanelHeader } from "./HubPanel";
+import { CanvasWindowTitle } from "./CanvasWindow";
+import { HubPanel } from "./HubPanel";
 
 type SourceHubPanelProps = Pick<
   AppShellPageContainerProps,
@@ -101,44 +102,49 @@ export function SourceHubPanel({
   const statusLabel = running ? "Acquiring" : sourceInWorkspace ? "Ready" : "Empty";
 
   return (
-    <HubPanel ariaLabel="Source Acquisition" onClose={onClose} width={520}>
-      <HubPanelHeader
-        icon={Ic.globe(18)}
-        iconColor="#f59e0b"
-        title="Source Acquisition"
-        subtitle="fetch or upload the source snapshot"
-        right={
-          <>
-            <span style={lgStatusBadge(sourceInWorkspace)}>{statusLabel}</span>
-            {sourceInWorkspace && (
-              <button
-                type="button"
-                disabled={locked}
-                onClick={() => {
-                  focus("sourceAvailable");
-                  commands.onRemoveWorkspaceSource();
-                }}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                  padding: "6px 10px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  border: "1px solid rgba(251, 113, 133, 0.4)",
-                  background: locked ? "rgba(241, 245, 249, 0.72)" : "rgba(255, 241, 242, 0.82)",
-                  color: locked ? lgColors.textMuted : lgColors.danger,
-                  cursor: locked ? "not-allowed" : "pointer",
-                  flexShrink: 0,
-                }}
-              >
-                {Ic.x(12)} Clear source
-              </button>
-            )}
-          </>
-        }
-      />
+    <HubPanel
+      ariaLabel="Source Acquisition"
+      onClose={onClose}
+      width={520}
+      header={
+        <CanvasWindowTitle
+          icon={Ic.globe(16)}
+          iconColor="#f59e0b"
+          title="Source Acquisition"
+          subtitle="fetch or upload the source snapshot"
+        />
+      }
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={lgStatusBadge(sourceInWorkspace)}>{statusLabel}</span>
+        <div style={{ flex: 1 }} />
+        {sourceInWorkspace && (
+          <button
+            type="button"
+            disabled={locked}
+            onClick={() => {
+              focus("sourceAvailable");
+              commands.onRemoveWorkspaceSource();
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "5px 9px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 700,
+              border: "1px solid rgba(251, 113, 133, 0.4)",
+              background: locked ? "rgba(241, 245, 249, 0.72)" : "rgba(255, 241, 242, 0.82)",
+              color: locked ? lgColors.textMuted : lgColors.danger,
+              cursor: locked ? "not-allowed" : "pointer",
+              flexShrink: 0,
+            }}
+          >
+            {Ic.x(12)} Clear source
+          </button>
+        )}
+      </div>
 
       <SourceAcquisitionCard
         repoMode={repoMode}
