@@ -29,6 +29,32 @@ export interface DependencySummary {
   locked: number;
 }
 
+// Single source for the ecosystem members: the type union, the runtime parse
+// guard, and presentation tables all derive from this tuple, so adding an
+// ecosystem is one edit (plus the backend Literal in domain/dependency.py).
+export const DEPENDENCY_ECOSYSTEMS = ["pypi", "conda", "npm", "apt", "oci", "other"] as const;
+export type DependencyEcosystem = (typeof DEPENDENCY_ECOSYSTEMS)[number];
+
+// Per-row reproducibility rung, computed by the backend's single classifier
+// (reproducibility_report._dependency_status) — never re-derived client-side.
+export const DEPENDENCY_STATUSES = ["locked", "pinned", "ranged", "unpinned"] as const;
+export type DependencyStatus = (typeof DEPENDENCY_STATUSES)[number];
+
+/** A normalized row emitted by the backend manifest scan. */
+export interface EvaluatedDependency {
+  ecosystem: DependencyEcosystem;
+  name: string;
+  nameAsWritten: string | null;
+  scope: string | null;
+  direct: boolean;
+  declaredConstraint: string | null;
+  declaredIn: string | null;
+  lockedVersion: string | null;
+  lockedHashes: string[];
+  lockedIn: string | null;
+  status: DependencyStatus;
+}
+
 export interface ReproducibilityReport {
   dependencyLevel: number;
   dependencyLevelLabel: string;
@@ -37,6 +63,7 @@ export interface ReproducibilityReport {
   machineLevel: number;
   machineLevelLabel: string;
   dependencySummary: DependencySummary;
+  dependencies: EvaluatedDependency[];
   threats: Threat[];
 }
 
@@ -84,6 +111,33 @@ function parseDependencySummary(value: unknown): DependencySummary {
   };
 }
 
+function parseDependency(value: unknown): EvaluatedDependency | null {
+  const raw = asRecord(value);
+  if (!raw || typeof raw.name !== "string" || typeof raw.ecosystem !== "string") return null;
+  if (!DEPENDENCY_ECOSYSTEMS.includes(raw.ecosystem as DependencyEcosystem)) return null;
+  // A row without a valid backend-computed status is unusable (pre-status
+  // reports regenerate on the next evaluate run) — drop it rather than guess.
+  if (!DEPENDENCY_STATUSES.includes(raw.status as DependencyStatus)) return null;
+  return {
+    ecosystem: raw.ecosystem as DependencyEcosystem,
+    name: raw.name,
+    // Dependency is a core-domain model (snake_case); the report envelope is
+    // camelCase. Normalize that embedded shape at the frontend boundary.
+    nameAsWritten: typeof raw.name_as_written === "string" ? raw.name_as_written : null,
+    scope: typeof raw.scope === "string" ? raw.scope : null,
+    direct: raw.direct !== false,
+    declaredConstraint:
+      typeof raw.declared_constraint === "string" ? raw.declared_constraint : null,
+    declaredIn: typeof raw.declared_in === "string" ? raw.declared_in : null,
+    lockedVersion: typeof raw.locked_version === "string" ? raw.locked_version : null,
+    lockedHashes: Array.isArray(raw.locked_hashes)
+      ? raw.locked_hashes.filter((hash): hash is string => typeof hash === "string")
+      : [],
+    lockedIn: typeof raw.locked_in === "string" ? raw.locked_in : null,
+    status: raw.status as DependencyStatus,
+  };
+}
+
 /**
  * Defensively parse a raw report payload (e.g. from the API) into a typed report.
  * Returns null when the payload is not a usable report. Pure.
@@ -101,6 +155,11 @@ export function parseReproducibilityReport(value: unknown): ReproducibilityRepor
   const threats = Array.isArray(raw.threats)
     ? raw.threats.map(parseThreat).filter((t): t is Threat => t !== null)
     : [];
+  const dependencies = Array.isArray(raw.dependencies)
+    ? raw.dependencies
+        .map(parseDependency)
+        .filter((dependency): dependency is EvaluatedDependency => dependency !== null)
+    : [];
   return {
     dependencyLevel: asInt(raw.dependencyLevel),
     dependencyLevelLabel:
@@ -111,6 +170,7 @@ export function parseReproducibilityReport(value: unknown): ReproducibilityRepor
     machineLevel: asInt(raw.machineLevel),
     machineLevelLabel: typeof raw.machineLevelLabel === "string" ? raw.machineLevelLabel : "",
     dependencySummary: parseDependencySummary(raw.dependencySummary),
+    dependencies,
     threats,
   };
 }

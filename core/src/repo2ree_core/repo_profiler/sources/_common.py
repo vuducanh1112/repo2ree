@@ -17,14 +17,37 @@ def make_dependency(
     *,
     declared_constraint: str | None,
     declared_in: str,
+    scope: str | None = None,
 ) -> Dependency:
     name = normalize_package_name(ecosystem, raw_name)
     return Dependency(
         ecosystem=ecosystem,
         name=name,
         name_as_written=raw_name if raw_name != name else None,
+        scope=scope,
         declared_constraint=declared_constraint,
         declared_in=declared_in,
+    )
+
+
+def make_locked_dependency(
+    ecosystem: Ecosystem,
+    raw_name: str,
+    *,
+    locked_version: object,
+    locked_hashes: list[str],
+    locked_in: str,
+) -> Dependency:
+    """A ``direct=False`` closure row from a lockfile entry."""
+    name = normalize_package_name(ecosystem, raw_name)
+    return Dependency(
+        ecosystem=ecosystem,
+        name=name,
+        name_as_written=raw_name if raw_name != name else None,
+        direct=False,
+        locked_version=str(locked_version) if locked_version else None,
+        locked_hashes=locked_hashes,
+        locked_in=locked_in,
     )
 
 

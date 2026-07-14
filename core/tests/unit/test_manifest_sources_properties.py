@@ -22,14 +22,19 @@ from hypothesis import strategies as st
 from repo2ree_core.domain.dependency import Dependency, normalize_package_name
 from repo2ree_core.repo_profiler.sources.conda import parse_environment_yml
 from repo2ree_core.repo_profiler.sources.manifests import _REGISTRY, merge_locked
+from repo2ree_core.repo_profiler.sources.npm import parse_package_json, parse_package_lock
 from repo2ree_core.repo_profiler.sources.oci import parse_dockerfile
-from repo2ree_core.repo_profiler.sources.pypi import parse_requirements_txt, parse_uv_lock
+from repo2ree_core.repo_profiler.sources.pypi import (
+    parse_poetry_lock,
+    parse_pyproject,
+    parse_requirements_txt,
+    parse_uv_lock,
+)
 
 pytestmark = pytest.mark.property
 
 # Sweep the actual scan registry so a newly added ecosystem module is covered
 # without touching this file.
-_PARSERS = [parser.parse for parser in _REGISTRY]
 _PARSER_IDS = [parser.format_id for parser in _REGISTRY]
 
 
@@ -43,15 +48,41 @@ def _assert_row_invariants(deps: list[Dependency]) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# totality: arbitrary text never raises
+# totality: hostile input never raises
 # --------------------------------------------------------------------------- #
+
+# Arbitrary JSON documents: raw text almost never parses as JSON, so the
+# structured strategy is what actually exercises the JSON parsers' interior
+# (wrong-typed values, blank keys, deep nesting).
+_JSON = st.recursive(
+    st.none() | st.booleans() | st.integers() | st.text(max_size=8),
+    lambda children: st.lists(children, max_size=3) | st.dictionaries(st.text(max_size=8), children, max_size=3),
+    max_leaves=12,
+)
 
 
 class TestTotality:
     @given(st.text(max_size=300))
-    @pytest.mark.parametrize("parse", _PARSERS, ids=_PARSER_IDS)
-    def test_arbitrary_text_never_raises(self, parse, text: str) -> None:
-        _assert_row_invariants(parse(text, "some/path"))
+    @pytest.mark.parametrize("parser", _REGISTRY, ids=_PARSER_IDS)
+    def test_arbitrary_text_never_raises(self, parser, text: str) -> None:
+        rows = parser.parse(text, "some/path")
+        _assert_row_invariants(rows)
+        # The side obligation from base.py, checked per parser.
+        for row in rows:
+            if parser.side == "declared":
+                assert row.direct and row.declared_in == "some/path"
+            else:
+                assert not row.direct
+
+    @given(_JSON)
+    def test_structured_json_never_raises(self, value: object) -> None:
+        import json
+
+        payloads = (value, {"dependencies": value}, {"packages": value}, {"dependencies": {"": value}})
+        for payload in payloads:
+            text = json.dumps(payload)
+            _assert_row_invariants(parse_package_json(text, "package.json"))
+            _assert_row_invariants(parse_package_lock(text, "package-lock.json"))
 
 
 # --------------------------------------------------------------------------- #
@@ -118,6 +149,8 @@ class TestMergeLocked:
 # --------------------------------------------------------------------------- #
 
 _PKG_NAME = st.from_regex(r"[A-Za-z0-9][A-Za-z0-9._-]{0,12}", fullmatch=True)
+# npm names include the scoped form; the scan must round-trip both.
+_NPM_NAME = st.one_of(_PKG_NAME, st.builds(lambda scope, name: f"@{scope}/{name}", _PKG_NAME, _PKG_NAME))
 _CONSTRAINT = st.sampled_from(["==1.2.0", ">=1.0", "~=2.1", "<3", ""])
 _PAD = st.sampled_from(["", " ", "  ", "\t"])
 
@@ -188,6 +221,69 @@ class TestRoundTrips:
         ]
         assert [(d.name, d.declared_constraint, d.locked_hashes) for d in deps] == expected
 
+    @given(st.dictionaries(_NPM_NAME, st.sampled_from(["1.2.3", "^2.0.0", "", "workspace:*"]), max_size=6))
+    def test_package_json(self, entries: dict[str, str]) -> None:
+        import json
+
+        deps = parse_package_json(json.dumps({"dependencies": entries}), "package.json")
+        assert [(d.name, d.declared_constraint) for d in deps] == [
+            (normalize_package_name("npm", name), constraint or None) for name, constraint in entries.items()
+        ]
+
+    @given(st.dictionaries(_NPM_NAME, st.sampled_from(["1.2.3", "2.0.0"]), max_size=6))
+    def test_package_lock_v3(self, entries: dict[str, str]) -> None:
+        import json
+
+        packages: dict[str, object] = {"": {}}
+        packages.update({f"node_modules/{name}": {"version": version} for name, version in entries.items()})
+        deps = parse_package_lock(json.dumps({"lockfileVersion": 3, "packages": packages}), "package-lock.json")
+        assert sorted((d.name, d.locked_version, d.direct) for d in deps) == sorted(
+            (normalize_package_name("npm", name), version, False) for name, version in entries.items()
+        )
+
+    @given(st.dictionaries(_NPM_NAME, st.sampled_from(["1.2.3", "2.0.0"]), min_size=1, max_size=4))
+    def test_package_lock_v1_repeats_collapse(self, entries: dict[str, str]) -> None:
+        """v1 locks list the same resolution once per parent; the parser must
+        emit each (name, version) resolution exactly once."""
+        import json
+
+        dep_map = {name: {"version": version} for name, version in entries.items()}
+        doc = {"dependencies": {**dep_map, "host-pkg": {"version": "0.1", "dependencies": dep_map}}}
+        deps = parse_package_lock(json.dumps(doc), "package-lock.json")
+        resolutions = [(d.name, d.locked_version) for d in deps]
+        assert len(resolutions) == len(set(resolutions))
+        assert set(resolutions) >= {(normalize_package_name("npm", name), version) for name, version in entries.items()}
+
+    @given(st.lists(st.tuples(_PKG_NAME, _CONSTRAINT), max_size=6))
+    def test_pyproject_pep621(self, entries: list[tuple[str, str]]) -> None:
+        text = "[project]\ndependencies = [\n" + "".join(f'    "{n}{c}",\n' for n, c in entries) + "]\n"
+        deps = parse_pyproject(text, "pyproject.toml")
+        assert [(d.name, d.declared_constraint) for d in deps] == [
+            (normalize_package_name("pypi", n), c or None) for n, c in entries
+        ]
+
+    @given(
+        st.lists(
+            st.tuples(
+                _PKG_NAME,
+                st.sampled_from(["1.0.0", "2.3.4"]),
+                st.lists(st.sampled_from(["sha256:a", "sha256:b"]), max_size=2, unique=True),
+            ),
+            max_size=5,
+        )
+    )
+    def test_poetry_lock(self, packages: list[tuple[str, str, list[str]]]) -> None:
+        text = "".join(
+            f'[[package]]\nname = "{n}"\nversion = "{v}"\nfiles = [\n'
+            + "".join(f'    {{file = "f", hash = "{h}"}},\n' for h in hashes)
+            + "]\n\n"
+            for n, v, hashes in packages
+        )
+        deps = parse_poetry_lock(text, "poetry.lock")
+        assert [(d.name, d.locked_version, d.locked_hashes, d.direct) for d in deps] == [
+            (normalize_package_name("pypi", n), v, hashes, False) for n, v, hashes in packages
+        ]
+
 
 # --------------------------------------------------------------------------- #
 # metamorphic relations
@@ -255,3 +351,30 @@ class TestMetamorphic:
             assert set(row_a.locked_hashes) == set(row_b.locked_hashes)
             assert (row_a.locked_version is None) == (row_b.locked_version is None)
         assert {(d.ecosystem, d.name) for d in first} == {(d.ecosystem, d.name) for d in second}
+
+    @given(st.dictionaries(_PKG_NAME, st.sampled_from(["1.2.3", "^2.0.0"]), max_size=6))
+    def test_npm_declaration_section_changes_only_the_scope(self, entries: dict[str, str]) -> None:
+        """Which package.json section records a dependency determines its
+        scope and nothing else — identity and constraint are section-blind."""
+        import json
+
+        first = parse_package_json(json.dumps({"dependencies": entries}), "package.json")
+        second = parse_package_json(json.dumps({"devDependencies": entries}), "package.json")
+        assert [row.model_copy(update={"scope": None}) for row in second] == first
+        assert all(row.scope is None for row in first)
+        assert all(row.scope == "dev" for row in second)
+
+    @given(
+        st.dictionaries(_PKG_NAME, st.sampled_from(["1.2.3", "^2.0.0"]), min_size=1, max_size=4),
+        st.sampled_from(["devDependencies", "optionalDependencies", "peerDependencies"]),
+    )
+    def test_npm_duplicate_sections_collapse_to_the_first(self, entries: dict[str, str], other_section: str) -> None:
+        """A package named in several sections is one dependency; the most
+        runtime-relevant section provides the row."""
+        import json
+
+        text = json.dumps({"dependencies": entries, other_section: {name: "*" for name in entries}})
+        rows = parse_package_json(text, "package.json")
+        assert [(r.name, r.declared_constraint, r.scope) for r in rows] == [
+            (normalize_package_name("npm", name), constraint, None) for name, constraint in entries.items()
+        ]

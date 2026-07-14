@@ -1,7 +1,7 @@
 import { DEPENDENCY_AXIS, ENVIRONMENT_AXIS, MACHINE_AXIS } from "@core/evaluate/axes";
+import type { DependencyGroup } from "@core/evaluate/dependencyPresentation";
 import type { ReproducibilityReport } from "@core/evaluate/Threat";
 import type { LogEntry } from "@core/ree/ReeTypes";
-import type { DepGroup } from "@core/ree-steps/dependencyAnalysis";
 import type { ReeStepRequirement } from "@core/ree-steps/stepTypes";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgContentCard, lgStatusBadge, lgStyles } from "@shell/ui/theme/lightGlassTheme";
@@ -196,7 +196,7 @@ export function EvaluateDependenciesCard({
   nixCount,
 }: {
   hasRun: boolean;
-  depGroups: DepGroup[];
+  depGroups: DependencyGroup[];
   containerCount: number;
   nixCount: number;
 }) {

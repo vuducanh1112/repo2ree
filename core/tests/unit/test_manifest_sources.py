@@ -14,6 +14,7 @@ import pytest
 from repo2ree_core.repo_profiler.profiler import AnalysisError, analyze_repo
 from repo2ree_core.repo_profiler.sources.conda import parse_environment_yml
 from repo2ree_core.repo_profiler.sources.manifests import merge_locked, scan_manifest_files
+from repo2ree_core.repo_profiler.sources.npm import parse_package_json, parse_package_lock
 from repo2ree_core.repo_profiler.sources.oci import parse_dockerfile
 from repo2ree_core.repo_profiler.sources.pypi import (
     parse_poetry_lock,
@@ -119,6 +120,82 @@ class TestEnvironmentYml:
 
     def test_invalid_yaml_is_empty(self) -> None:
         assert parse_environment_yml(":\n  - {", "environment.yml") == []
+
+
+# --------------------------------------------------------------------------- #
+# package.json + npm locks
+# --------------------------------------------------------------------------- #
+
+
+class TestNpm:
+    def test_package_json_collects_direct_declaration_sections(self) -> None:
+        text = """{
+          "dependencies": {"react": "^18.3.0", "@scope/lib": "1.2.3"},
+          "devDependencies": {"vitest": "~2.0.0"},
+          "optionalDependencies": {"fsevents": "2.3.3"},
+          "peerDependencies": {"react-dom": ">=18"}
+        }"""
+        deps = parse_package_json(text, "package.json")
+        assert [(d.name, d.declared_constraint, d.scope) for d in deps] == [
+            ("react", "^18.3.0", None),
+            ("@scope/lib", "1.2.3", None),
+            ("vitest", "~2.0.0", "dev"),
+            ("fsevents", "2.3.3", "optional"),
+            ("react-dom", ">=18", "peer"),
+        ]
+        assert all(d.ecosystem == "npm" and d.direct and d.declared_in == "package.json" for d in deps)
+
+    def test_package_json_repeated_and_blank_names(self) -> None:
+        """A package named in several sections is one row (first section wins);
+        a blank key is not a package and must not crash the parser."""
+        text = """{
+          "dependencies": {"react": "^18.3.0", "": "1.0"},
+          "peerDependencies": {"react": ">=18"}
+        }"""
+        deps = parse_package_json(text, "package.json")
+        assert [(d.name, d.declared_constraint, d.scope) for d in deps] == [("react", "^18.3.0", None)]
+
+    def test_package_lock_repeated_resolutions_collapse(self) -> None:
+        """v1 locks nest the same resolution under several parents; it is one
+        closure row with the union of hashes. Blank keys are skipped."""
+        v1 = """{"dependencies": {
+          "a": {"version": "1.0", "dependencies": {"left-pad": {"version": "1.3.0", "integrity": "sha512-x"}}},
+          "b": {"version": "1.0", "dependencies": {"left-pad": {"version": "1.3.0", "integrity": "sha512-y"}}},
+          "": {"version": "9.9"}
+        }}"""
+        deps = parse_package_lock(v1, "package-lock.json")
+        pads = [d for d in deps if d.name == "left-pad"]
+        assert [(d.locked_version, sorted(d.locked_hashes)) for d in pads] == [("1.3.0", ["sha512-x", "sha512-y"])]
+        assert {d.name for d in deps} == {"a", "b", "left-pad"}
+
+    def test_package_lock_v3_and_v1_produce_closure_rows(self) -> None:
+        v3 = """{"lockfileVersion": 3, "packages": {
+          "": {"name": "app"},
+          "node_modules/react": {"version": "18.3.1", "integrity": "sha512-react"},
+          "node_modules/@scope/lib": {"version": "1.2.3", "integrity": "sha512-lib"}
+        }}"""
+        v1 = """{"dependencies": {"left-pad": {"version": "1.3.0", "integrity": "sha512-pad",
+          "dependencies": {"repeat-string": {"version": "1.6.1"}}}}}"""
+        assert [(d.name, d.locked_version, d.locked_hashes) for d in parse_package_lock(v3, "package-lock.json")] == [
+            ("react", "18.3.1", ["sha512-react"]),
+            ("@scope/lib", "1.2.3", ["sha512-lib"]),
+        ]
+        assert [(d.name, d.locked_version) for d in parse_package_lock(v1, "package-lock.json")] == [
+            ("left-pad", "1.3.0"),
+            ("repeat-string", "1.6.1"),
+        ]
+        assert all(
+            not d.direct and d.locked_in == "package-lock.json" for d in parse_package_lock(v3, "package-lock.json")
+        )
+
+    def test_package_json_and_lock_merge_to_locked_score(self, tmp_path: Path) -> None:
+        (tmp_path / "package.json").write_text('{"dependencies": {"react": "^18.0.0"}}')
+        (tmp_path / "package-lock.json").write_text(
+            '{"lockfileVersion": 3, "packages": {"": {}, "node_modules/react": {"version": "18.3.1"}}}'
+        )
+        report = analyze_repo(tmp_path)
+        assert report.dependency_level == 3
+        assert [(d.ecosystem, d.name, d.locked_version) for d in report.dependencies] == [("npm", "react", "18.3.1")]
 
 
 # --------------------------------------------------------------------------- #

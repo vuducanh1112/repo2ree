@@ -35,13 +35,10 @@ describe("stepOutcomePlanning", () => {
   });
 
   it("plans evaluate metadata", () => {
-    const result = planEvaluateEffect({
-      dependencyCount: 5,
-      manifestCount: 2,
-    });
+    const result = planEvaluateEffect();
 
-    expect(result.evaluationStatePatch.detectedDependencies).toContain("5 dependencies");
-    expect(result.successMessage).toContain("5 dependencies");
+    expect(result.evaluationStatePatch).toEqual({});
+    expect(result.successMessage).toBe("Evaluate complete");
   });
 
   it("plans activation success text", () => {
@@ -55,8 +52,6 @@ describe("stepOutcomePlanning", () => {
       ree: buildRee(),
       timestamp: "2026-01-01T00:00:00Z",
       namespaceSuffix: "123",
-      dependencyCount: 0,
-      manifestCount: 0,
     });
 
     expect(result.successMessage).toContain("Build complete");
@@ -69,10 +64,8 @@ describe("stepOutcomePlanning", () => {
       ree: buildRee(),
       timestamp: "2026-01-01T00:00:00Z",
       namespaceSuffix: "123",
-      dependencyCount: 7,
-      manifestCount: 3,
     });
 
-    expect(result.successMessage).toContain("7 dependencies across 3 manifest files");
+    expect(result.successMessage).toBe("Evaluate complete");
   });
 });

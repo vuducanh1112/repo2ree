@@ -1,9 +1,9 @@
-import { scanDependencies } from "@core/ree-steps/dependencyAnalysis";
+import { groupEvaluatedDependencies } from "@core/evaluate/dependencyPresentation";
 import { useApiRuntime } from "@shell/data/apiRuntime";
 import { useEvaluateReportQuery } from "@shell/data/evaluate/queries";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgPageRoot, lgStatusBadge, lgStyles, pageIconTint } from "@shell/ui/theme/lightGlassTheme";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
@@ -35,20 +35,22 @@ export function PageEvaluate({
   params,
 }: StepPageProps) {
   const files = workspaceFiles;
-  const depGroups = scanDependencies(files || []);
   const { containerCount, nixCount } = countContainerAndNixFiles(files || []);
-  const hasRun = !!log;
   const { reeId } = useApiRuntime();
   // The report is a persisted artifact, so fetch it whenever we have an REE — this
   // keeps the page populated across reloads/navigation (runDone is transient).
   const reportQuery = useEvaluateReportQuery({ reeId, enabled: !!reeId });
   const { refetch: refetchReport } = reportQuery;
   const report = reportQuery.data ?? null;
+  // The closure can be large (full lockfile contents); group once per report.
+  const depGroups = useMemo(() => groupEvaluatedDependencies(report?.dependencies ?? []), [report]);
   const threats = report?.threats ?? [];
-  // Refresh the report when a run finishes while the page is open.
+  // Refresh on each terminal transition. `runDone` stays true after the first
+  // successful run, so watching it alone leaves a re-run showing the old
+  // persisted report.
   useEffect(() => {
-    if (runDone) void refetchReport();
-  }, [runDone, refetchReport]);
+    if (!running && runDone) void refetchReport();
+  }, [running, runDone, refetchReport]);
   const hasScoreOutput = !!report;
   const sourceLoadedInWorkspace = !!workspaceSourceState.sourceAvailable;
   const IC = stepIcon(step.iconKey);
@@ -107,7 +109,7 @@ export function PageEvaluate({
             />
 
             <EvaluateDependenciesCard
-              hasRun={hasRun}
+              hasRun={hasScoreOutput}
               depGroups={depGroups}
               containerCount={containerCount}
               nixCount={nixCount}

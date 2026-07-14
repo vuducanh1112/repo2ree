@@ -10,9 +10,9 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator
 
-from repo2ree_core.domain.dependency import Dependency, normalize_package_name
+from repo2ree_core.domain.dependency import Dependency
 
-from ._common import dependency_from_pep508, load_toml, make_dependency
+from ._common import dependency_from_pep508, load_toml, make_dependency, make_locked_dependency
 from .base import SourceParser
 
 _REQUIREMENTS_RE = re.compile(r"^requirements([-_].+)?\.txt$")
@@ -108,7 +108,15 @@ def parse_uv_lock(text: str, path: str) -> list[Dependency]:
         for wheel in package.get("wheels") or []:
             if isinstance(wheel, dict) and wheel.get("hash"):
                 hashes.append(str(wheel["hash"]))
-        deps.append(_locked_dependency(str(package["name"]), package.get("version"), hashes, path))
+        deps.append(
+            make_locked_dependency(
+                "pypi",
+                str(package["name"]),
+                locked_version=package.get("version"),
+                locked_hashes=hashes,
+                locked_in=path,
+            )
+        )
     return deps
 
 
@@ -123,7 +131,15 @@ def parse_poetry_lock(text: str, path: str) -> list[Dependency]:
         hashes = [
             str(entry["hash"]) for entry in package.get("files") or [] if isinstance(entry, dict) and entry.get("hash")
         ]
-        deps.append(_locked_dependency(str(package["name"]), package.get("version"), hashes, path))
+        deps.append(
+            make_locked_dependency(
+                "pypi",
+                str(package["name"]),
+                locked_version=package.get("version"),
+                locked_hashes=hashes,
+                locked_in=path,
+            )
+        )
     return deps
 
 
@@ -140,19 +156,6 @@ def _logical_lines(text: str) -> Iterator[str]:
         line = raw.split("#", 1)[0].strip()
         if line:
             yield line
-
-
-def _locked_dependency(raw_name: str, version: object, hashes: list[str], path: str) -> Dependency:
-    name = normalize_package_name("pypi", raw_name)
-    return Dependency(
-        ecosystem="pypi",
-        name=name,
-        name_as_written=raw_name if raw_name != name else None,
-        direct=False,
-        locked_version=str(version) if version else None,
-        locked_hashes=hashes,
-        locked_in=path,
-    )
 
 
 # ================================================

@@ -47,7 +47,6 @@ export function useReeStepRuns({
 
   const stepCommandPlanners = createStepCommandPlanners({
     ree,
-    workspaceFiles,
     clock: appShellPorts.clock,
   });
 

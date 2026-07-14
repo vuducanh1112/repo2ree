@@ -1,10 +1,13 @@
-import type { DepGroup } from "@core/ree-steps/dependencyAnalysis";
-import { PIN_META } from "@core/ree-steps/dependencyAnalysis";
+import {
+  type DependencyGroup,
+  STATUS_META,
+  tallyByStatus,
+} from "@core/evaluate/dependencyPresentation";
 import { C, hoverBg, hoverBorderColor, hoverIf } from "@shell/ui/theme/theme";
 import { actionBtn } from "./shared";
 
 interface DependencySummaryFiltersProps {
-  depGroups: DepGroup[];
+  depGroups: DependencyGroup[];
   filter: string;
   onFilter: (next: string) => void;
 }
@@ -14,33 +17,22 @@ export function DependencySummaryFilters({
   filter,
   onFilter,
 }: DependencySummaryFiltersProps) {
-  const totalPkgs = depGroups.reduce((sum, group) => sum + group.packages.length, 0);
-  const pinnedCount = depGroups.reduce(
-    (sum, group) => sum + group.packages.filter((pkg) => pkg.pinned === "exact").length,
-    0,
-  );
-  const rangeCount = depGroups.reduce(
-    (sum, group) => sum + group.packages.filter((pkg) => pkg.pinned === "range").length,
-    0,
-  );
-  const noneCount = depGroups.reduce(
-    (sum, group) => sum + group.packages.filter((pkg) => pkg.pinned === "none").length,
-    0,
-  );
+  const tally = tallyByStatus(depGroups.flatMap((group) => group.packages));
 
   return (
     <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
       {[
         {
           key: "all",
-          label: `${totalPkgs} total`,
+          label: `${tally.total} total`,
           color: C.textMid,
           bg: C.surfaceAlt,
           border: C.border,
         },
-        { key: "exact", ...PIN_META.exact, label: `${pinnedCount} pinned` },
-        { key: "range", ...PIN_META.range, label: `${rangeCount} range` },
-        { key: "none", ...PIN_META.none, label: `${noneCount} unpinned` },
+        { key: "locked", ...STATUS_META.locked, label: `${tally.locked} locked` },
+        { key: "pinned", ...STATUS_META.pinned, label: `${tally.pinned} pinned` },
+        { key: "ranged", ...STATUS_META.ranged, label: `${tally.ranged} range` },
+        { key: "unpinned", ...STATUS_META.unpinned, label: `${tally.unpinned} unpinned` },
       ].map((summaryFilter) => (
         <button
           type="button"

@@ -28,6 +28,7 @@ let
     ps: with ps; [
       click
       pydantic
+      pyyaml
       opentelemetry-api
       opentelemetry-sdk
       opentelemetry-exporter-otlp-proto-common

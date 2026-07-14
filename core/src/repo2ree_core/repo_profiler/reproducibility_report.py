@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from pydantic.alias_generators import to_camel
@@ -106,6 +106,21 @@ class DependencySummary(_CamelModel):
     locked: int = 0
 
 
+# Per-dependency reproducibility rung. ``locked`` means a lockfile resolved it;
+# the other three classify the declared constraint.
+DependencyStatus = Literal["locked", "pinned", "ranged", "unpinned"]
+
+
+class EvaluatedDependency(Dependency):
+    """A ``Dependency`` row plus the report's classification of it.
+
+    The status is computed here — the single classifier that also feeds the
+    summary buckets — so presentation layers never re-derive it.
+    """
+
+    status: DependencyStatus
+
+
 class ReproducibilityReport(_CamelModel):
     # Three orthogonal axes — the model evaluate actually reasons about. The levels
     # are int-enums, so they serialize to their integer value on the wire.
@@ -113,6 +128,10 @@ class ReproducibilityReport(_CamelModel):
     environment_level: EnvironmentLevel
     machine_level: MachineLevel
     dependency_summary: DependencySummary
+    # The normalized backend inventory is the sole data source for dependency
+    # presentation.  It includes lock-only closure rows and OCI images so later
+    # report consumers can choose their own view without re-parsing manifests.
+    dependencies: list[EvaluatedDependency] = Field(default_factory=list)
     threats: list[Threat]
 
     # Labels are derived from their level, never set independently, so they can
@@ -161,6 +180,9 @@ class FileSignals(BaseModel):
 # Filename classifiers and other pure helpers
 # ================================================
 
+# Only formats the scan registry actually parses may count as manifests: a
+# name here without a parser would score DECLARED while showing no data and
+# suppressing the no-manifest threat (Pipfile used to do exactly that).
 _MANIFEST_NAMES: frozenset[str] = frozenset(
     {
         "requirements.txt",
@@ -168,7 +190,6 @@ _MANIFEST_NAMES: frozenset[str] = frozenset(
         "environment.yml",
         "environment.yaml",
         "package.json",
-        "pipfile",
     }
 )
 
@@ -304,18 +325,37 @@ _MACHINE_GATE: dict[MachineLevel, tuple[str, ...]] = {
 
 _RANGE_TOKENS = ("<", ">", "~", "^", "*", "||", ",")
 
+# A wildcard version component (1.x, 2.7.X, ==1.*) floats no matter how
+# pin-shaped the rest of the string looks.
+_WILDCARD_COMPONENT_RE = re.compile(r"(?:^|\.)[xX*](?:\.|$)")
 
-def _classify(version: str | None) -> str:
+_EXACT_VERSION_RE = re.compile(r"^[0-9][A-Za-z0-9._+\-]*$")
+
+
+def _classify(version: str | None) -> DependencyStatus:
     """Classify a declared version string: pinned | ranged | unpinned."""
     if not version or not version.strip():
         return "unpinned"
     normalized = version.strip()
-    if normalized.startswith("==") or (
-        not any(token in normalized for token in _RANGE_TOKENS)
-        and bool(re.match(r"^[0-9][A-Za-z0-9._+\-]*$", normalized))
+    if normalized.startswith("=="):
+        # PEP 440 exact — unless the version body carries a wildcard (==1.*).
+        return "ranged" if _WILDCARD_COMPONENT_RE.search(normalized[2:]) else "pinned"
+    # conda (`numpy=1.21.0`) and npm (`=1.2.3`) spell exact pins with one `=`.
+    body = normalized[1:].strip() if normalized.startswith("=") else normalized
+    if (
+        not any(token in body for token in _RANGE_TOKENS)
+        and _EXACT_VERSION_RE.match(body)
+        and not _WILDCARD_COMPONENT_RE.search(body)
     ):
         return "pinned"
     return "ranged"
+
+
+def _dependency_status(dep: Dependency) -> DependencyStatus:
+    """The single classification rule: a lockfile resolution wins, otherwise
+    the declared constraint decides. Feeds both the summary buckets and the
+    per-row status on the wire, so the two can never disagree."""
+    return "locked" if dep.locked_version else _classify(dep.declared_constraint)
 
 
 def _dep_label(dep: Dependency) -> str:
@@ -342,13 +382,12 @@ def _summarize_dependencies(inventory: DependencyInventory) -> DependencySummary
     summary = DependencySummary(manifests=len(manifests))
     for dep in library_deps:
         summary.total += 1
-        if dep.locked_version:
+        status = _dependency_status(dep)
+        if status == "locked":
             summary.locked += 1
-            continue
-        kind = _classify(dep.declared_constraint)
-        if kind == "pinned":
+        elif status == "pinned":
             summary.pinned += 1
-        elif kind == "ranged":
+        elif status == "ranged":
             summary.ranged += 1
         else:
             summary.unpinned += 1
@@ -413,14 +452,8 @@ def _detect_threats(
     if summary.manifests == 0 and summary.total == 0:
         threats.append(_make_threat("no-manifest"))
     else:
-        unpinned = [
-            _dep_label(d)
-            for d in library_deps
-            if not d.locked_version and _classify(d.declared_constraint) == "unpinned"
-        ]
-        ranged = [
-            _dep_label(d) for d in library_deps if not d.locked_version and _classify(d.declared_constraint) == "ranged"
-        ]
+        unpinned = [_dep_label(d) for d in library_deps if _dependency_status(d) == "unpinned"]
+        ranged = [_dep_label(d) for d in library_deps if _dependency_status(d) == "ranged"]
         if unpinned:
             threats.append(_make_threat("unpinned-deps", unpinned))
         if ranged:
@@ -521,6 +554,9 @@ def build_report(
         environment_level=environment_level,
         machine_level=machine_level,
         dependency_summary=summary,
+        dependencies=[
+            EvaluatedDependency(**dep.model_dump(), status=_dependency_status(dep)) for dep in inventory.dependencies
+        ],
         threats=threats,
     )
 

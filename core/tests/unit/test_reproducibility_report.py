@@ -93,6 +93,13 @@ def test_classify_buckets():
     assert _classify("^1.2") == "ranged"
     assert _classify(None) == "unpinned"
     assert _classify("") == "unpinned"
+    # conda (`=1.21.0`) and npm (`=1.2.3`) spell exact pins with one `=`.
+    assert _classify("=1.21.0") == "pinned"
+    # Wildcard components float, however pin-shaped the rest looks.
+    assert _classify("1.x") == "ranged"
+    assert _classify("2.7.X") == "ranged"
+    assert _classify("==1.*") == "ranged"
+    assert _classify("=>1.0") == "ranged"
 
 
 def test_apt_heuristic():
@@ -128,6 +135,23 @@ def test_mixed_sample_threats_and_summary():
     assert any("flask" in entry for entry in unpinned.affected)
     assert unpinned.category is ThreatCategory.DEPENDENCY
     assert unpinned.severity is Severity.HIGH
+
+
+def test_report_rows_carry_the_summary_classification():
+    """Every dependency row ships the same status the summary bucketed it
+    into — one classifier, observable per row on the wire."""
+    from collections import Counter
+
+    report = build_report(_mixed_inventory(), FileSignals(has_dockerfile=True))
+    library = [d for d in report.dependencies if d.ecosystem != "oci" and d.direct]
+    counts = Counter(d.status for d in library)
+    summary = report.dependency_summary
+    assert counts.get("pinned", 0) == summary.pinned
+    assert counts.get("ranged", 0) == summary.ranged
+    assert counts.get("unpinned", 0) == summary.unpinned
+    assert counts.get("locked", 0) == summary.locked
+    serialized = report.model_dump(by_alias=True)
+    assert all("status" in row for row in serialized["dependencies"])
 
 
 def test_mixed_sample_axes_are_independent():

@@ -1,10 +1,10 @@
-import type { DepGroup } from "@core/ree-steps/dependencyAnalysis";
+import type { DependencyGroup } from "@core/evaluate/dependencyPresentation";
 import { useState } from "react";
 import { DependencyGroupCard } from "./DependencyGroupCard";
 import { DependencySummaryFilters } from "./DependencySummaryFilters";
 
 interface DependencyPanelProps {
-  depGroups: DepGroup[];
+  depGroups: DependencyGroup[];
 }
 export function DependencyPanel({ depGroups }: DependencyPanelProps) {
   const [openGroups, setOpenGroups] = useState(() =>

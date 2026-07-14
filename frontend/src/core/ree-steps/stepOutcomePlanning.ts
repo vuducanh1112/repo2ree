@@ -66,15 +66,10 @@ export function planSbomEffect(): SbomEffectPlan {
   };
 }
 
-export function planEvaluateEffect(args: {
-  dependencyCount: number;
-  manifestCount: number;
-}): EvaluateEffectPlan {
-  const depSummary = `${args.dependencyCount} dependenc${args.dependencyCount === 1 ? "y" : "ies"} across ${args.manifestCount} manifest file${args.manifestCount === 1 ? "" : "s"}`;
-
+export function planEvaluateEffect(): EvaluateEffectPlan {
   return {
-    evaluationStatePatch: { detectedDependencies: depSummary },
-    successMessage: depSummary,
+    evaluationStatePatch: {},
+    successMessage: "Evaluate complete",
   };
 }
 
@@ -90,8 +85,6 @@ export function planStepServiceEffect(args: {
   ree: Pick<ReeSpec, "runtime">;
   timestamp: string;
   namespaceSuffix: string;
-  dependencyCount: number;
-  manifestCount: number;
 }): StepServiceEffectPlan {
   if (args.key === "build") {
     return planBuildEffect({ ree: args.ree });
@@ -109,8 +102,5 @@ export function planStepServiceEffect(args: {
     return planActivationEffect();
   }
 
-  return planEvaluateEffect({
-    dependencyCount: args.dependencyCount,
-    manifestCount: args.manifestCount,
-  });
+  return planEvaluateEffect();
 }

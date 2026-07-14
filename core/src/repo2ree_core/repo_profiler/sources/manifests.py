@@ -25,14 +25,14 @@ from repo2ree_core.domain.dependency import (
     normalize_package_name,
 )
 
-from . import conda, oci, pypi
+from . import conda, npm, oci, pypi
 from .base import SourceParser
 
 # ================================================
 # Registry
 # ================================================
 
-_REGISTRY: tuple[SourceParser, ...] = (*pypi.PARSERS, *conda.PARSERS, *oci.PARSERS)
+_REGISTRY: tuple[SourceParser, ...] = (*pypi.PARSERS, *conda.PARSERS, *npm.PARSERS, *oci.PARSERS)
 
 if len({parser.format_id for parser in _REGISTRY}) != len(_REGISTRY):
     raise AssertionError("registry format_ids must be unique")
@@ -62,6 +62,14 @@ def scan_manifest_files(repo_path: Path) -> DependencyInventory:
         if text is None:
             continue
         rows = parser.parse(text, relative)
+        # The side obligation from base.py, enforced per parse: declared-side
+        # rows are direct declarations citing the parsed file; locked-side
+        # rows are closure facts.
+        for row in rows:
+            if parser.side == "declared" and (not row.direct or row.declared_in != relative):
+                raise AssertionError(f"{parser.format_id}: declared rows must be direct and cite {relative!r}")
+            if parser.side == "locked" and row.direct:
+                raise AssertionError(f"{parser.format_id}: lock rows are closure facts and must be direct=False")
         (declared if parser.side == "declared" else locked).extend(rows)
 
     merged = merge_locked(declared, locked)

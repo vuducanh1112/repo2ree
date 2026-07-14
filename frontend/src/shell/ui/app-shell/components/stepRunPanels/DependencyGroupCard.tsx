@@ -1,10 +1,14 @@
-import type { DepGroup } from "@core/ree-steps/dependencyAnalysis";
-import { ECO_META, PIN_META } from "@core/ree-steps/dependencyAnalysis";
+import {
+  type DependencyGroup,
+  ECO_META,
+  STATUS_META,
+  tallyByStatus,
+} from "@core/evaluate/dependencyPresentation";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { C, F, hoverBg, S_SECTION_LABEL } from "@shell/ui/theme/theme";
 
 interface DependencyGroupCardProps {
-  group: DepGroup;
+  group: DependencyGroup;
   filter: string;
   isOpen: boolean;
   onToggle: () => void;
@@ -12,11 +16,14 @@ interface DependencyGroupCardProps {
 
 export function DependencyGroupCard({ group, filter, isOpen, onToggle }: DependencyGroupCardProps) {
   const visiblePkgs =
-    filter === "all" ? group.packages : group.packages.filter((p) => p.pinned === filter);
+    filter === "all" ? group.packages : group.packages.filter((p) => p.status === filter);
   if (visiblePkgs.length === 0 && filter !== "all") return null;
-  const ecoMeta = ECO_META[group.ecosystem] || ECO_META.pip;
-  const groupPinned = group.packages.filter((p) => p.pinned === "exact").length;
-  const groupUnpinned = group.packages.filter((p) => p.pinned === "none").length;
+  const ecoMeta = ECO_META[group.ecosystem];
+  const tally = tallyByStatus(group.packages);
+  // ✓ = resolved (locked + pinned); ✗ = unpinned — the same buckets the
+  // filter bar shows, so the two readouts always reconcile by addition.
+  const groupResolved = tally.locked + tally.pinned;
+  const groupUnpinned = tally.unpinned;
 
   return (
     <div
@@ -90,7 +97,7 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
             marginLeft: 4,
           }}
         >
-          {groupPinned}✓
+          {groupResolved}✓
         </span>
         {groupUnpinned > 0 && (
           <span style={{ fontSize: 10, color: "#dc2626", fontFamily: F.mono, flexShrink: 0 }}>
@@ -128,10 +135,10 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
             ))}
           </div>
           {(filter === "all" ? group.packages : visiblePkgs).map((pkg, i) => {
-            const pm = PIN_META[pkg.pinned] || PIN_META.none;
+            const pm = STATUS_META[pkg.status];
             return (
               <div
-                key={`${pkg.name}:${pkg.version ?? ""}:${pkg.raw}`}
+                key={`${pkg.name}:${pkg.version ?? ""}:${pkg.status}`}
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 130px 80px",
@@ -142,40 +149,6 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-                  {pkg.dev && (
-                    <span
-                      style={{
-                        fontSize: 9,
-                        color: ECO_META.dev.color,
-                        background: ECO_META.dev.bg,
-                        border: `1px solid ${ECO_META.dev.color}40`,
-                        borderRadius: 3,
-                        padding: "0 3px",
-                        fontFamily: F.sans,
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}
-                    >
-                      dev
-                    </span>
-                  )}
-                  {pkg.ecosystem === "pip" && (
-                    <span
-                      style={{
-                        fontSize: 9,
-                        color: ECO_META.pip.color,
-                        background: ECO_META.pip.bg,
-                        border: `1px solid ${ECO_META.pip.color}40`,
-                        borderRadius: 3,
-                        padding: "0 3px",
-                        fontFamily: F.sans,
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}
-                    >
-                      pip
-                    </span>
-                  )}
                   <span
                     style={{
                       fontSize: 12,
@@ -188,6 +161,22 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
                   >
                     {pkg.name}
                   </span>
+                  {pkg.scope && (
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: 0.4,
+                        color: C.textMuted,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: 99,
+                        padding: "0 5px",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {pkg.scope}
+                    </span>
+                  )}
                 </div>
                 <span
                   style={{

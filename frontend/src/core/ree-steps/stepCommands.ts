@@ -4,7 +4,6 @@ import type { ReeSpec } from "../ree/ReeSpec";
 import type { LogLine, ReeFile, StepRunOutcome } from "../ree/ReeTypes";
 import type { FileTreeNode } from "../workspace/FileTree";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import { scanDependencies } from "./dependencyAnalysis";
 import { planStepServiceEffect } from "./stepOutcomePlanning";
 import type { ReeStepKey, ReeStepRunParamsByKey } from "./stepRunParams";
 import type { GenericReeStepParams } from "./stepTypes";
@@ -16,7 +15,6 @@ interface Clock {
 
 interface CreateStepCommandPlannersArgs {
   ree: Pick<ReeSpec, "runtime">;
-  workspaceFiles: FileTreeNode[];
   clock: Clock;
 }
 
@@ -59,7 +57,6 @@ export type StepCommandPlannerMap = {
 
 export function createStepCommandPlanners({
   ree,
-  workspaceFiles,
   clock,
 }: CreateStepCommandPlannersArgs): StepCommandPlannerMap {
   return {
@@ -71,8 +68,6 @@ export function createStepCommandPlanners({
           ree,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
-          dependencyCount: 0,
-          manifestCount: 0,
         }),
       ),
     hbom: (runParams) =>
@@ -83,8 +78,6 @@ export function createStepCommandPlanners({
           ree,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
-          dependencyCount: 0,
-          manifestCount: 0,
         }),
       ),
     sbom: (runParams) =>
@@ -95,8 +88,6 @@ export function createStepCommandPlanners({
           ree,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
-          dependencyCount: 0,
-          manifestCount: 0,
         }),
       ),
     activation: (runParams) =>
@@ -107,25 +98,18 @@ export function createStepCommandPlanners({
           ree,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
-          dependencyCount: 0,
-          manifestCount: 0,
         }),
       ),
-    evaluate: (runParams) => {
-      const groups = scanDependencies(workspaceFiles || []);
-      const dependencyCount = groups.reduce((sum, group) => sum + group.packages.length, 0);
-      return stepEffectPlanToCommands(
+    evaluate: (runParams) =>
+      stepEffectPlanToCommands(
         planStepServiceEffect({
           key: "evaluate",
           params: runParams as GenericReeStepParams,
           ree,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
-          dependencyCount,
-          manifestCount: groups.length,
         }),
-      );
-    },
+      ),
   };
 }
 
