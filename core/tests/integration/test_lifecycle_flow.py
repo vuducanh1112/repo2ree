@@ -425,11 +425,11 @@ def test_seal_is_deterministic_for_unchanged_content(ree: Ree, source_repo: Path
 
 
 def test_evaluate_dependency_score_real(ree: Ree, source_repo: Path) -> None:
-    """Run the (extraction-retired) scoring on a materialized workspace.
+    """Run the scoring on a materialized workspace.
 
-    Dependency extraction is retired pending the next analyzer, so the report
-    scores on file signals alone — the fixture's requirements.txt/Dockerfile
-    still register as manifest/environment signals.
+    The manifest scan extracts the fixture's real dependency data: a pinned
+    ``requests==2.31.0`` in requirements.txt (no lockfile → Pinned, level 2)
+    and a tag-only base image in the Dockerfile.
     """
     layout = ree.layout
     log = ree.log
@@ -445,9 +445,9 @@ def test_evaluate_dependency_score_real(ree: Ree, source_repo: Path) -> None:
 
     assert result.status == "succeeded"
     assert (layout.artifacts / "reproducibility-report.json").is_file()
-    # File signals still register the fixture's manifests (requirements.txt).
-    assert result.outputs["manifestCount"] >= 1
-    # No extractor: per-dependency data is empty by construction.
-    assert result.outputs["dependencyCount"] == 0
-    # the evaluation outcome is settled into the durable session metadata
-    assert "dependencyLevel" in result.outputs
+    assert result.outputs["manifestCount"] == 1  # requirements.txt (the Dockerfile is the env axis)
+    assert result.outputs["dependencyCount"] == 1  # requests==2.31.0
+    assert result.outputs["dependencyLevel"] == 2  # pinned, but no lockfile
+    # The floating base image is reported as a threat, not counted as a dependency.
+    threat_ids = {threat["id"] for threat in result.outputs["report"]["threats"]}
+    assert "floating-base-image" in threat_ids

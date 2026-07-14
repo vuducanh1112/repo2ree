@@ -4,6 +4,8 @@ version = "0.1.0"
 dependencies = [
     "repo2ree-protocol",
     "pydantic~=2.11.7",
+    # environment.yml parsing in repo_profiler.sources.manifests.
+    "pyyaml~=6.0",
 ]
 
 [dependency-groups]
@@ -11,6 +13,8 @@ dependencies = [
 # cross-check our SWHID reimplementation. The test skips when absent.
 dev = [
     "swh.model~=8.4.1",
+    # mypy stubs for the pyyaml runtime dependency.
+    "types-pyyaml~=6.0",
 ]
 
 [tool.uv.sources]

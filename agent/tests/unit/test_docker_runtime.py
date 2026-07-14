@@ -356,7 +356,7 @@ def test_probe_reports_capabilities(monkeypatch: pytest.MonkeyPatch) -> None:
     report = {
         "ok": True,
         "docker": {"available": True, "serverVersion": "29.0"},
-        "tools": {"syft": "/nix/store/x/bin/syft", "renovate": None, "git": None},
+        "tools": {"syft": "/nix/store/x/bin/syft", "curl": None, "git": None},
     }
     _patch_doctor_exec(monkeypatch, _FakeCompleted(0, stdout=json.dumps(report)))
 

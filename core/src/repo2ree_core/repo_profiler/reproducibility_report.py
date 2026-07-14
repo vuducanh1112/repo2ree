@@ -21,7 +21,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from pydantic.alias_generators import to_camel
 
-from .dependency_inventory import Dependency, DependencyInventory
+from repo2ree_core.domain.dependency import Dependency, DependencyInventory
 
 # ================================================
 # Data models
@@ -319,7 +319,7 @@ def _classify(version: str | None) -> str:
 
 
 def _dep_label(dep: Dependency) -> str:
-    return f"{dep.name} {dep.declared_version}".strip() if dep.declared_version else dep.name
+    return f"{dep.name} {dep.declared_constraint}".strip() if dep.declared_constraint else dep.name
 
 
 def _apt_install_is_unpinned(dockerfile_text: str) -> bool:
@@ -334,16 +334,18 @@ def _apt_install_is_unpinned(dockerfile_text: str) -> bool:
 
 
 def _summarize_dependencies(inventory: DependencyInventory) -> DependencySummary:
-    """Per-dependency inventory, excluding container image references."""
-    library_deps = [d for d in inventory.dependencies if d.kind == "library"]
-    manifests = {d.manifest_path for d in library_deps if d.manifest_path}
+    """Per-dependency inventory over the *direct* library dependencies —
+    transitive lockfile closure rows and container image references are the
+    other axes' business."""
+    library_deps = [d for d in inventory.dependencies if d.ecosystem != "oci" and d.direct]
+    manifests = {d.declared_in for d in library_deps if d.declared_in}
     summary = DependencySummary(manifests=len(manifests))
     for dep in library_deps:
         summary.total += 1
         if dep.locked_version:
             summary.locked += 1
             continue
-        kind = _classify(dep.declared_version)
+        kind = _classify(dep.declared_constraint)
         if kind == "pinned":
             summary.pinned += 1
         elif kind == "ranged":
@@ -404,18 +406,20 @@ def _detect_threats(
     file_signals: FileSignals,
 ) -> list[Threat]:
     threats: list[Threat] = []
-    library_deps = [d for d in inventory.dependencies if d.kind == "library"]
-    container_deps = [d for d in inventory.dependencies if d.kind == "container_image"]
+    library_deps = [d for d in inventory.dependencies if d.ecosystem != "oci" and d.direct]
+    container_deps = [d for d in inventory.dependencies if d.ecosystem == "oci"]
 
     # --- Dependency category ---
     if summary.manifests == 0 and summary.total == 0:
         threats.append(_make_threat("no-manifest"))
     else:
         unpinned = [
-            _dep_label(d) for d in library_deps if not d.locked_version and _classify(d.declared_version) == "unpinned"
+            _dep_label(d)
+            for d in library_deps
+            if not d.locked_version and _classify(d.declared_constraint) == "unpinned"
         ]
         ranged = [
-            _dep_label(d) for d in library_deps if not d.locked_version and _classify(d.declared_version) == "ranged"
+            _dep_label(d) for d in library_deps if not d.locked_version and _classify(d.declared_constraint) == "ranged"
         ]
         if unpinned:
             threats.append(_make_threat("unpinned-deps", unpinned))
@@ -428,7 +432,7 @@ def _detect_threats(
     if not file_signals.has_dockerfile and not file_signals.has_nix_file:
         threats.append(_make_threat("no-container"))
     else:
-        floating = [_dep_label(d) for d in container_deps if d.digest is None]
+        floating = [_dep_label(d) for d in container_deps if not d.locked_hashes]
         if floating:
             threats.append(_make_threat("floating-base-image", floating))
         if any(_apt_install_is_unpinned(text) for text in file_signals.dockerfile_texts):

@@ -1,7 +1,4 @@
-import json
-from pathlib import Path
-from typing import Any
-
+from repo2ree_core.domain.dependency import Dependency, DependencyInventory
 from repo2ree_core.repo_profiler.reproducibility_report import (
     FileSignals,
     Severity,
@@ -10,32 +7,78 @@ from repo2ree_core.repo_profiler.reproducibility_report import (
     _classify,
     build_report,
 )
-from repo2ree_core.repo_profiler.sources.renovate import (
-    _inventory_from_payload,
-    _package_files,
-)
 
-FIXTURES = Path(__file__).parent.parent / "fixtures" / "renovate"
+# --------------------------------------------------------------------------- #
+# inventory builders
+# --------------------------------------------------------------------------- #
 
 
-def _load(name: str) -> dict:
-    return json.loads((FIXTURES / name).read_text())
+def _dep(
+    name: str,
+    constraint: str | None = None,
+    *,
+    manifest: str = "requirements.txt",
+    locked: str | None = None,
+) -> Dependency:
+    return Dependency(
+        ecosystem="pypi",
+        name=name,
+        declared_constraint=constraint,
+        declared_in=manifest,
+        locked_version=locked,
+        locked_in="uv.lock" if locked else None,
+    )
 
 
-def _from_renovate(payload: dict[str, Any] | None):
-    """Convert a raw Renovate payload (or None) to a DependencyInventory for tests."""
-    if payload is None:
-        return None
-    return _inventory_from_payload(payload)
+def _image(name: str, tag: str | None, digest: str | None = None) -> Dependency:
+    return Dependency(
+        ecosystem="oci",
+        name=name,
+        declared_constraint=tag,
+        declared_in="Dockerfile",
+        locked_hashes=[digest] if digest else [],
+    )
+
+
+def _mixed_inventory() -> DependencyInventory:
+    """One unpinned, two pinned, two ranged deps across two manifests, plus a
+    floating base image."""
+    return DependencyInventory(
+        dependencies=[
+            _dep("flask"),
+            _dep("requests", "==2.31.0"),
+            _dep("numpy", ">=1.20"),
+            _dep("pandas", "==2.1.0", manifest="pyproject.toml"),
+            _dep("rich", ">=13", manifest="pyproject.toml"),
+            _image("python", "3.11"),
+        ]
+    )
+
+
+def _pinned_no_lock_inventory() -> DependencyInventory:
+    return DependencyInventory(
+        dependencies=[
+            _dep("requests", "==2.31.0"),
+            _dep("pandas", "==2.1.0"),
+        ]
+    )
+
+
+def _locked_inventory() -> DependencyInventory:
+    return DependencyInventory(
+        dependencies=[
+            _dep("requests", ">=2", locked="2.31.0"),
+            _dep("numpy", ">=1.20", locked="1.26.4"),
+        ]
+    )
 
 
 def _threat_ids(report) -> set[str]:
     return {threat.id for threat in report.threats}
 
 
-def _blocking(report):
-    blocking = [threat for threat in report.threats if threat.blocking]
-    return blocking[0] if blocking else None
+def _blocking_ids(report) -> set[str]:
+    return {threat.id for threat in report.threats if threat.blocking}
 
 
 # --------------------------------------------------------------------------- #
@@ -52,14 +95,6 @@ def test_classify_buckets():
     assert _classify("") == "unpinned"
 
 
-def test_package_files_accepts_both_shapes():
-    bare = {"pip_requirements": [{"deps": []}]}
-    wrapped = {"packageFiles": bare}
-    assert _package_files(bare) == bare
-    assert _package_files(wrapped) == bare
-    assert _package_files(None) == {}
-
-
 def test_apt_heuristic():
     assert _apt_install_is_unpinned("RUN apt-get install -y curl") is True
     assert _apt_install_is_unpinned("RUN apt-get install -y curl=7.88.1-10") is False
@@ -67,15 +102,12 @@ def test_apt_heuristic():
 
 
 # --------------------------------------------------------------------------- #
-# build_report over fixtures
+# build_report
 # --------------------------------------------------------------------------- #
 
 
 def test_mixed_sample_threats_and_summary():
-    report = build_report(
-        _from_renovate(_load("mixed_sample.json")),
-        FileSignals(has_dockerfile=True),
-    )
+    report = build_report(_mixed_inventory(), FileSignals(has_dockerfile=True))
     summary = report.dependency_summary
     assert (summary.total, summary.pinned, summary.ranged, summary.unpinned) == (
         5,
@@ -88,7 +120,7 @@ def test_mixed_sample_threats_and_summary():
 
     ids = _threat_ids(report)
     assert {"unpinned-deps", "range-pins", "no-lockfile", "floating-base-image"} <= ids
-    # container present (dockerfile, no nix) -> no-nix; not no-container (nothing locked)
+    # container present (dockerfile, no nix) -> no-nix; not no-container
     assert "no-nix" in ids
     assert "no-container" not in ids
 
@@ -98,15 +130,8 @@ def test_mixed_sample_threats_and_summary():
     assert unpinned.severity is Severity.HIGH
 
 
-def _blocking_ids(report) -> set[str]:
-    return {threat.id for threat in report.threats if threat.blocking}
-
-
 def test_mixed_sample_axes_are_independent():
-    report = build_report(
-        _from_renovate(_load("mixed_sample.json")),
-        FileSignals(has_dockerfile=True),
-    )
+    report = build_report(_mixed_inventory(), FileSignals(has_dockerfile=True))
     # Dependency axis: exact pins but no lockfile -> Pinned (2).
     assert report.dependency_level == 2
     # Environment axis: a container, but not declarative -> Container (1).
@@ -122,10 +147,7 @@ def test_mixed_sample_axes_are_independent():
 
 
 def test_pinned_no_lock_pins_deps_but_has_no_environment():
-    report = build_report(
-        _from_renovate(_load("pinned_no_lock.json")),
-        FileSignals(),
-    )
+    report = build_report(_pinned_no_lock_inventory(), FileSignals())
     assert report.dependency_level == 2  # Pinned
     assert report.environment_level == 0  # None
     assert report.machine_level == 0  # None
@@ -135,10 +157,7 @@ def test_pinned_no_lock_pins_deps_but_has_no_environment():
 
 
 def test_locked_deps_reach_locked_axis_but_no_environment():
-    report = build_report(
-        _from_renovate(_load("locked_uv.json")),
-        FileSignals(),
-    )
+    report = build_report(_locked_inventory(), FileSignals())
     s = report.dependency_summary
     assert (s.total, s.locked) == (2, 2)
     assert report.dependency_level == 3  # Locked
@@ -148,34 +167,41 @@ def test_locked_deps_reach_locked_axis_but_no_environment():
 
 
 def test_partially_locked_deps_do_not_reach_locked_axis():
-    payload = {
-        "pip_requirements": [
-            {
-                "packageFile": "requirements.txt",
-                "deps": [
-                    {
-                        "depName": "locked",
-                        "datasource": "pypi",
-                        "lockedVersion": "1.0.0",
-                    },
-                    {
-                        "depName": "floating",
-                        "datasource": "pypi",
-                        "currentValue": ">=2.0",
-                    },
-                ],
-            }
+    inventory = DependencyInventory(
+        dependencies=[
+            _dep("locked", locked="1.0.0"),
+            _dep("floating", ">=2.0"),
         ]
-    }
+    )
 
-    report = build_report(_from_renovate(payload), FileSignals())
+    report = build_report(inventory, FileSignals())
 
     assert report.dependency_level == 2
     assert "range-pins" in _threat_ids(report)
     assert "no-lockfile" not in _threat_ids(report)
 
 
-def test_manifest_signal_without_renovate_deps_scores_declared():
+def test_transitive_closure_rows_do_not_count():
+    """direct=False lock rows (the lockfile's transitive closure) stay out of
+    the summary and the threat lists."""
+    inventory = DependencyInventory(
+        dependencies=[
+            _dep("requests", ">=2", locked="2.31.0"),
+            Dependency(
+                ecosystem="pypi",
+                name="urllib3",
+                direct=False,
+                locked_version="2.2.1",
+                locked_in="uv.lock",
+            ),
+        ]
+    )
+    report = build_report(inventory, FileSignals())
+    assert report.dependency_summary.total == 1
+    assert report.dependency_level == 3  # Locked — the closure row is not a gap
+
+
+def test_manifest_signal_without_parsed_deps_scores_declared():
     report = build_report(None, FileSignals(has_manifest=True))
 
     assert report.dependency_level == 1
@@ -185,7 +211,7 @@ def test_manifest_signal_without_renovate_deps_scores_declared():
 
 def test_vm_present_satisfies_machine_axis():
     report = build_report(
-        _from_renovate(_load("locked_uv.json")),
+        _locked_inventory(),
         FileSignals(has_nix_file=True, has_vm=True),
     )
     # Locked deps, declarative env, and a VM -> the ideal, no threats at all.
@@ -195,8 +221,8 @@ def test_vm_present_satisfies_machine_axis():
     assert _threat_ids(report) == set()
 
 
-def test_empty_payload_yields_no_manifest_and_no_environment():
-    report = build_report(_from_renovate(_load("empty.json")), FileSignals())
+def test_empty_inventory_yields_no_manifest_and_no_environment():
+    report = build_report(DependencyInventory(), FileSignals())
     assert (
         report.dependency_level,
         report.environment_level,
@@ -210,9 +236,15 @@ def test_empty_payload_yields_no_manifest_and_no_environment():
     assert report.dependency_summary.total == 0
 
 
+def test_pinned_base_image_is_not_floating():
+    inventory = DependencyInventory(dependencies=[_image("python", "3.11", digest="sha256:abc")])
+    report = build_report(inventory, FileSignals(has_manifest=True, has_dockerfile=True))
+    assert "floating-base-image" not in _threat_ids(report)
+
+
 def test_unpinned_apt_detected_from_dockerfile_text():
     report = build_report(
-        _from_renovate(_load("pinned_no_lock.json")),
+        _pinned_no_lock_inventory(),
         FileSignals(
             has_manifest=True,
             has_dockerfile=True,
@@ -223,7 +255,7 @@ def test_unpinned_apt_detected_from_dockerfile_text():
 
 
 def test_report_serializes_camel_case():
-    report = build_report(_from_renovate(_load("pinned_no_lock.json")), FileSignals())
+    report = build_report(_pinned_no_lock_inventory(), FileSignals())
     dumped = report.model_dump(by_alias=True)
     assert {"dependencyLevel", "environmentLevel", "machineLevel"} <= set(dumped)
     assert "ladderLevel" not in dumped

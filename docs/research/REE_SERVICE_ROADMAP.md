@@ -61,9 +61,10 @@ A service implies REEs that outlive their authors.
 - **Sealed identity**: promote sealing from a UI action into a durable Seal
   Manifest with `ree_digest`, detached signatures, timestamp evidence, and
   archive-binding metadata.
-- **Drift detection**: dependencies rot. Dependencies are already extracted via
-  Renovate — the natural extension is *scheduled re-build + re-run* with an alert
-  when a previously-reproducing REE stops. A background/scheduled job fits here.
+- **Drift detection**: dependencies rot. Dependencies are already extracted by
+  the first-party manifest parsers — the natural extension is *scheduled
+  re-build + re-run* with an alert when a previously-reproducing REE stops. A
+  background/scheduled job fits here.
 - **Shareable trust artifact**: a consumer-facing "reproducibility report card" /
   badge that can be relied on without re-running. The evaluate report and
   experiment verdicts are the seed, but they are still inward-facing.
