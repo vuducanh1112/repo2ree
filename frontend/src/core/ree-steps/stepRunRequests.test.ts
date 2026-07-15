@@ -36,7 +36,7 @@ describe("stepRunRequests", () => {
   it("maps sbom and activation inputs into backend request fields", () => {
     const ree = buildRee();
 
-    expect(buildSbomStepRunRequest({ format: "spdx-json" }, ree)).toEqual({
+    expect(buildSbomStepRunRequest({}, ree)).toEqual({
       scriptKey: "sbom",
       params: {
         produced_runtime_path: "runtime.tar.gz",

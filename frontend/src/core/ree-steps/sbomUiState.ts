@@ -26,6 +26,13 @@ interface SbomSummary {
 export function summarizeSbom(file: SbomFileLike | null): SbomSummary {
   const parsed = parseSbomJson(file);
   if (!parsed) return { format: null, pkgCount: null };
+  if (parsed.bomFormat === "CycloneDX") {
+    const version = parsed.specVersion ? ` ${String(parsed.specVersion)}` : "";
+    return {
+      format: `CycloneDX${version}`,
+      pkgCount: Array.isArray(parsed.components) ? parsed.components.length : null,
+    };
+  }
   const format = parsed.spdxVersion
     ? String(parsed.spdxVersion)
     : parsed.bomFormat
@@ -40,6 +47,8 @@ interface ParsedSbom {
   packages?: unknown[];
   spdxVersion?: string;
   bomFormat?: string;
+  specVersion?: string;
+  components?: unknown[];
   artifacts?: unknown;
 }
 

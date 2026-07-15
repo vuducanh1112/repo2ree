@@ -224,6 +224,10 @@ export interface CreateGenerateHbomRunRequestDto {
   idempotencyKey?: string;
 }
 
+export interface CreateCrossCheckSbomRunRequestDto {
+  idempotencyKey?: string;
+}
+
 export interface CreateActivationTestRunRequestDto {
   idempotencyKey?: string;
 }

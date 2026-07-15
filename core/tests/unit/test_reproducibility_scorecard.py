@@ -8,6 +8,7 @@ from repo2ree_core.experiment import Experiment
 from repo2ree_core.receipts import (
     ActivationTestReceipt,
     BuildRuntimeReceipt,
+    CrossCheckSbomReceipt,
     GenerateSbomReceipt,
     RunExperimentReceipt,
     RunReceipt,
@@ -40,6 +41,20 @@ def _sbom_receipt(*, declared: str | None = _RUNTIME_DIGEST) -> GenerateSbomRece
         status="succeeded",
         declared_runtime_digest=declared,
         sbom_digest="sha256:" + "d" * 64,
+    )
+
+
+_SBOM_DIGEST = "sha256:" + "d" * 64
+
+
+def _crosscheck_receipt(*, sbom_digest: str | None = _SBOM_DIGEST) -> CrossCheckSbomReceipt:
+    return CrossCheckSbomReceipt(
+        run_id="crosscheck-1",
+        recorded_at="2026-01-01T01:30:00Z",
+        status="succeeded",
+        sbom_digest=sbom_digest,
+        declared_direct_total=4,
+        observed_matched=3,
     )
 
 
@@ -249,6 +264,46 @@ class TestCategories:
         session = ReeSession(uploaded_archive="paper.tar.gz")
         card = build_scorecard(intent, session, [])
         assert _rung(card, "source", "linked").reached
+
+
+class TestCrossCheckRung:
+    def test_cross_check_reaches_with_matching_sbom_digest(self) -> None:
+        receipts: list[RunReceipt] = [_build_receipt(), _sbom_receipt(), _crosscheck_receipt()]
+        card = build_scorecard(_intent(), _session(), receipts)
+        rung = _rung(card, "runtime", "crossChecked")
+        assert rung.reached
+        assert (rung.done, rung.total) == (3, 4)
+
+    def test_cross_check_against_stale_sbom_does_not_count(self) -> None:
+        # The receipt cites a different SBOM than the one in evidence.
+        receipts: list[RunReceipt] = [
+            _build_receipt(),
+            _sbom_receipt(),
+            _crosscheck_receipt(sbom_digest="sha256:" + "f" * 64),
+        ]
+        card = build_scorecard(_intent(), _session(), receipts)
+        assert not _rung(card, "runtime", "crossChecked").reached
+
+    def test_cross_check_requires_an_inventoried_runtime(self) -> None:
+        # SBOM from an older build: inventoried fails, so cross-checked must too.
+        receipts: list[RunReceipt] = [
+            _build_receipt(),
+            _sbom_receipt(declared=_OTHER_DIGEST),
+            _crosscheck_receipt(),
+        ]
+        card = build_scorecard(_intent(), _session(), receipts)
+        assert not _rung(card, "runtime", "crossChecked").reached
+
+    def test_missing_cross_check_leaves_fraction_unset(self) -> None:
+        card = build_scorecard(_intent(), _session(), [_build_receipt(), _sbom_receipt()])
+        rung = _rung(card, "runtime", "crossChecked")
+        assert not rung.reached
+        assert (rung.done, rung.total) == (None, None)
+
+    def test_rung_is_non_gating(self) -> None:
+        # R5 holds with everything else in place and no cross-check at all.
+        card = build_scorecard(_intent(), _sealed_session(), _full_receipts())
+        assert card.level == 5
 
 
 class TestWireContract:

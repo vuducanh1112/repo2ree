@@ -54,7 +54,12 @@ def handle_generate_sbom(
     # artifact, digested before syft consumes it.
     declared_runtime_digest = digest_file(runtime_abs)
 
-    def receipt(status: ActionStatus, *, sbom_digest: str | None = None) -> GenerateSbomReceipt:
+    def receipt(
+        status: ActionStatus,
+        *,
+        sbom_digest: str | None = None,
+        tool_version: str | None = None,
+    ) -> GenerateSbomReceipt:
         built = GenerateSbomReceipt(
             run_id=receipt_run_id(run_id),
             recorded_at=utc_now(),
@@ -63,6 +68,8 @@ def handle_generate_sbom(
             declared_runtime_digest=declared_runtime_digest,
             sbom_path="sbom.json" if sbom_digest else None,
             sbom_digest=sbom_digest,
+            sbom_format="cyclonedx-json" if sbom_digest else None,
+            tool_version=tool_version,
         )
         record_receipt(layout, built, log=log)
         return built
@@ -70,15 +77,20 @@ def handle_generate_sbom(
     output_path = layout.workspace / "sbom.json"
     syft = resolve_tool("syft")
     log("system", "info", f"Runtime input: {runtime_path}")
-    log("system", "info", f"$ {syft} docker-archive:{runtime_abs} -o json={output_path}")
+    # --scope squashed pinned explicitly: "observed in the runtime" must mean
+    # the squashed filesystem, and syft defaults must not drift underneath us.
+    argv = [
+        syft,
+        f"docker-archive:{runtime_abs}",
+        "--scope",
+        "squashed",
+        "-o",
+        f"cyclonedx-json={output_path}",
+    ]
+    log("system", "info", f"$ {' '.join(argv)}")
 
     result = subprocess.run(
-        [
-            syft,
-            f"docker-archive:{runtime_abs}",
-            "-o",
-            f"json={output_path}",
-        ],
+        argv,
         capture_output=True,
         text=True,
     )
@@ -94,8 +106,7 @@ def handle_generate_sbom(
 
     try:
         sbom_data = json.loads(output_path.read_text())
-        with open(layout.workspace / "sbom_readable.json", "w") as f:
-            json.dump(sbom_data, f, indent=2)
+        tool_version = _syft_version(sbom_data)
         patch_ree_intent(ReeStore(layout), {"sbom": "sbom.json"})
     except Exception as exc:
         log("system", "error", f"post-processing SBOM failed: {exc}")
@@ -103,11 +114,34 @@ def handle_generate_sbom(
         return ActionResult(status="failed", exit_code=1)
 
     log("system", "info", "SBOM run succeeded")
-    recorded = receipt("succeeded", sbom_digest=digest_file(output_path))
+    recorded = receipt(
+        "succeeded",
+        sbom_digest=digest_file(output_path),
+        tool_version=tool_version,
+    )
     outputs: dict[str, Any] = {
         "sbomRelativePath": "sbom.json",
         "runtimeRelativePath": runtime_path,
-        "format": "spdx-json",
+        "format": "cyclonedx-json",
         "receipt": recorded.model_dump(by_alias=True),
     }
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs)
+
+
+def _syft_version(sbom_data: Any) -> str | None:
+    """The generating syft version out of the CycloneDX metadata.
+
+    ``metadata.tools`` is a ``{"components": [...]}`` object on CycloneDX >= 1.5
+    and a bare list of tool objects on 1.4; absence is not an error.
+    """
+    if not isinstance(sbom_data, dict):
+        return None
+    tools = (sbom_data.get("metadata") or {}).get("tools")
+    entries = tools.get("components") if isinstance(tools, dict) else tools
+    if not isinstance(entries, list):
+        return None
+    for entry in entries:
+        if isinstance(entry, dict) and entry.get("name") == "syft":
+            version = entry.get("version")
+            return version if isinstance(version, str) else None
+    return None

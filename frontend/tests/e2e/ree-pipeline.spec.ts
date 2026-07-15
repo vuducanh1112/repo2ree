@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { expect, test } from "./helpers/fixtures";
 import {
   buildRuntime,
+  crossCheckSbom,
   dockerBuildScript,
   dockerRunScript,
   EXPERIMENT_OUTPUT_FILE,
@@ -137,12 +138,11 @@ test.describe("REE pipeline", () => {
 
     await test.step("generate SBOM", async () => {
       await generateSbom(page);
-      await expect(
-        page
-          .getByRole("region", { name: "Generate SBOM" })
-          .getByText("SBOM ready", { exact: true })
-          .first(),
-      ).toBeVisible();
+      await expect(main(page).getByText("SBOM ready", { exact: true }).first()).toBeVisible();
+    });
+
+    await test.step("cross-check SBOM against the scanned dependencies", async () => {
+      await crossCheckSbom(page);
     });
 
     await test.step("test activation", async () => {

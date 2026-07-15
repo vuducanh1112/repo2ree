@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from repo2ree_core.envelope.handlers.acquire_source import handle_acquire_source
 from repo2ree_core.envelope.handlers.activation_test import handle_activation_test
 from repo2ree_core.envelope.handlers.build_runtime import handle_build_runtime
+from repo2ree_core.envelope.handlers.cross_check_sbom import handle_cross_check_sbom
 from repo2ree_core.envelope.handlers.delete_file import handle_delete_file
 from repo2ree_core.envelope.handlers.evaluate_dependency_score import (
     handle_evaluate_dependency_score,
@@ -31,6 +32,7 @@ from repo2ree_protocol.command import (
     ActivationTestCommand,
     BuildRuntimeCommand,
     Command,
+    CrossCheckSbomCommand,
     DeleteFileCommand,
     EvaluateDependencyScoreCommand,
     ExtractUploadCommand,
@@ -121,6 +123,8 @@ def _dispatch(
         return handle_generate_hbom(log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateSbomCommand):
         return handle_generate_sbom(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, CrossCheckSbomCommand):
+        return handle_cross_check_sbom(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ActivationTestCommand):
         return handle_activation_test(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, SealReeCommand):

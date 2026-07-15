@@ -54,9 +54,9 @@ RECEIPT_SCHEMA_VERSION: Literal[1] = 1
 # cannot balloon the receipt; the status alone carries the verdict.
 _DRIFT_PATHS_CAP = 20
 
-# generate_sbom writes these into the workspace at fixed names (the sbom path
-# is also declared on the intent, but the readable companion is not).
-_SBOM_TOOL_OUTPUTS = ("sbom.json", "sbom_readable.json")
+# generate_sbom writes this into the workspace at a fixed name (the sbom path
+# is also declared on the intent).
+_SBOM_TOOL_OUTPUTS = ("sbom.json",)
 
 
 class _ReceiptModel(BaseModel):
@@ -142,6 +142,29 @@ class GenerateSbomReceipt(_ReceiptEnvelope):
     # Produced output
     sbom_path: str | None = None
     sbom_digest: str | None = None
+    # Provenance of the scan itself — what "observed" means depends on both.
+    sbom_format: str | None = None
+    tool_version: str | None = None
+
+
+class CrossCheckSbomReceipt(_ReceiptEnvelope):
+    """Aggregates of the SBOM ↔ declared-inventory cross-check.
+
+    Carries only counts plus the digest of the SBOM it consumed: the digest
+    chain (this → ``GenerateSbomReceipt.sbom_digest`` → build receipt) ties
+    the verdict to the built runtime; per-dependency detail stays in the
+    report artifact.
+    """
+
+    operation: Literal["cross_check_sbom"] = "cross_check_sbom"
+    # Input slice
+    sbom_digest: str | None = None
+    # Aggregates
+    declared_direct_total: int = 0
+    observed_matched: int = 0
+    version_mismatches: int = 0
+    undeclared_same_ecosystem: int = 0
+    observed_total: int = 0
 
 
 class _RunnableReceipt(_ReceiptEnvelope):
@@ -182,6 +205,7 @@ RunReceipt = Annotated[
     | SnapshotUpstreamReceipt
     | BuildRuntimeReceipt
     | GenerateSbomReceipt
+    | CrossCheckSbomReceipt
     | ActivationTestReceipt
     | RunExperimentReceipt,
     Field(discriminator="operation"),
@@ -281,6 +305,7 @@ def published_receipts(layout: ReeLayout, intent: ReeIntent) -> list[RunReceipt]
         "snapshot_upstream",
         "build_runtime",
         "generate_sbom",
+        "cross_check_sbom",
         "activation_test",
         *(f"experiment:{experiment.name}" for experiment in intent.experiments if experiment.name),
     ]

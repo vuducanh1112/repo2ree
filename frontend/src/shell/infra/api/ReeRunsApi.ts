@@ -2,6 +2,7 @@ import type { ApiClient } from "./ApiClient";
 import type {
   CreateActivationTestRunRequestDto,
   CreateBuildRuntimeRunRequestDto,
+  CreateCrossCheckSbomRunRequestDto,
   CreateEvaluateRunRequestDto,
   CreateExperimentRunRequestDto,
   CreateGenerateHbomRunRequestDto,
@@ -38,6 +39,16 @@ export class ReeRunsApi {
     payload: CreateGenerateSbomRunRequestDto,
   ): Promise<ReeRunDto> {
     return this.client.request<ReeRunDto>(endpoints.reeGenerateSbom(reeId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async createCrossCheckSbomRun(
+    reeId: string,
+    payload: CreateCrossCheckSbomRunRequestDto = {},
+  ): Promise<ReeRunDto> {
+    return this.client.request<ReeRunDto>(endpoints.reeCrossCheckSbom(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });

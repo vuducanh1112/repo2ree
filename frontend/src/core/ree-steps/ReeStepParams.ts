@@ -6,9 +6,7 @@ export interface ReeStepParamsByKey {
   };
   build: Record<string, never>;
   hbom: Record<string, never>;
-  sbom: {
-    format: string;
-  };
+  sbom: Record<string, never>;
   activation: Record<string, never>;
 }
 

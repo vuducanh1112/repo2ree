@@ -15,6 +15,7 @@ export type ReeRunOperation =
   | "source"
   | "build"
   | "sbom"
+  | "crosscheck"
   | "hbom"
   | "activation"
   | "evaluate"

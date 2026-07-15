@@ -70,6 +70,9 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
             produced_runtime_path: String(params.produced_runtime_path ?? ""),
           });
           break;
+        case "crosscheck":
+          run = await runtime.runsApi.createCrossCheckSbomRun(reeId, {});
+          break;
         case "activation":
           run = await runtime.runsApi.createActivationTestRun(reeId, {});
           break;

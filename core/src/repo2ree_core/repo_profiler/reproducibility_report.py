@@ -107,18 +107,54 @@ class DependencySummary(_CamelModel):
 
 
 # Per-dependency reproducibility rung. ``locked`` means a lockfile resolved it;
-# the other three classify the declared constraint.
-DependencyStatus = Literal["locked", "pinned", "ranged", "unpinned"]
+# ``pinned``/``ranged``/``unpinned`` classify the declared constraint;
+# ``undeclared`` marks an SBOM-only row the cross-check found in the runtime
+# with no manifest declaring it (always ``direct=False``, so it stays out of
+# the declaration summary buckets).
+DependencyStatus = Literal["locked", "pinned", "ranged", "unpinned", "undeclared"]
+
+# Verdict of the runtime-SBOM cross-check for a declared row. ``None`` until a
+# cross-check ran. ``not-observed`` is not a defect: dev- and build-only
+# dependencies legitimately never reach the runtime.
+RuntimePresence = Literal["observed", "version-mismatch", "not-observed"]
 
 
 class EvaluatedDependency(Dependency):
     """A ``Dependency`` row plus the report's classification of it.
 
     The status is computed here — the single classifier that also feeds the
-    summary buckets — so presentation layers never re-derive it.
+    summary buckets — so presentation layers never re-derive it. The same
+    holds for ``runtime_presence``, filled by the SBOM cross-check step.
     """
 
     status: DependencyStatus
+    runtime_presence: RuntimePresence | None = None
+
+
+class UndeclaredPackage(_CamelModel):
+    """One runtime package no manifest declared (same-ecosystem only)."""
+
+    ecosystem: str
+    name: str
+    version: str | None = None
+
+
+class SbomCrossCheckSummary(_CamelModel):
+    """Aggregates of the runtime-SBOM cross-check, mirrored into the receipt.
+
+    ``undeclared`` is capped (the counts carry the truth) and holds only
+    ecosystems the declared inventory uses — base-image OS packages are
+    counted in ``observed_total`` but never listed.
+    """
+
+    sbom_digest: str | None = None
+    checked_at: str = ""
+    declared_direct_total: int = 0
+    observed_matched: int = 0
+    version_mismatches: int = 0
+    undeclared_same_ecosystem: int = 0
+    observed_total: int = 0
+    undeclared: list[UndeclaredPackage] = Field(default_factory=list)
 
 
 class ReproducibilityReport(_CamelModel):
@@ -132,6 +168,9 @@ class ReproducibilityReport(_CamelModel):
     # presentation.  It includes lock-only closure rows and OCI images so later
     # report consumers can choose their own view without re-parsing manifests.
     dependencies: list[EvaluatedDependency] = Field(default_factory=list)
+    # Filled by the cross_check_sbom step, which rewrites the report artifact;
+    # ``None`` until a cross-check ran (and again after evaluate re-runs).
+    sbom_cross_check: SbomCrossCheckSummary | None = None
     threats: list[Threat]
 
     # Labels are derived from their level, never set independently, so they can

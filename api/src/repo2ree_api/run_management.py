@@ -14,7 +14,9 @@ from repo2ree_protocol.command import Command
 # ================================================
 
 
-RunOperation = Literal["provision", "build", "sbom", "hbom", "activation", "source", "evaluate", "experiment"]
+RunOperation = Literal[
+    "provision", "build", "sbom", "crosscheck", "hbom", "activation", "source", "evaluate", "experiment"
+]
 
 
 # ================================================

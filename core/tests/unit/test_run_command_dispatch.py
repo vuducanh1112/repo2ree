@@ -21,6 +21,7 @@ from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
     BuildRuntimeCommand,
+    CrossCheckSbomCommand,
     DeleteFileCommand,
     EvaluateDependencyScoreCommand,
     ExtractUploadCommand,
@@ -56,6 +57,7 @@ _ROUTES: list[tuple[type[BaseModel], str]] = [
     (RunExperimentCommand, "handle_run_experiment"),
     (GenerateHbomCommand, "handle_generate_hbom"),
     (GenerateSbomCommand, "handle_generate_sbom"),
+    (CrossCheckSbomCommand, "handle_cross_check_sbom"),
     (ActivationTestCommand, "handle_activation_test"),
     (SealReeCommand, "handle_seal_ree"),
 ]

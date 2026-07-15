@@ -1,6 +1,7 @@
 import {
   type DependencyGroup,
   ECO_META,
+  PRESENCE_META,
   STATUS_META,
   tallyByStatus,
 } from "@core/evaluate/dependencyPresentation";
@@ -192,7 +193,7 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
                 >
                   {pkg.version || "—"}
                 </span>
-                <span style={{ alignSelf: "center" }}>
+                <span style={{ alignSelf: "center", display: "flex", gap: 4, flexWrap: "wrap" }}>
                   <span
                     style={{
                       fontSize: 10,
@@ -208,6 +209,28 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
                   >
                     {pm.label}
                   </span>
+                  {pkg.runtimePresence && (
+                    <span
+                      title={
+                        pkg.runtimePresence === "version-mismatch" && pkg.observedVersion
+                          ? `runtime has ${pkg.observedVersion}`
+                          : undefined
+                      }
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: PRESENCE_META[pkg.runtimePresence].color,
+                        background: PRESENCE_META[pkg.runtimePresence].bg,
+                        border: `1px solid ${PRESENCE_META[pkg.runtimePresence].border}`,
+                        borderRadius: 99,
+                        padding: "1px 6px",
+                        fontFamily: F.sans,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {PRESENCE_META[pkg.runtimePresence].label}
+                    </span>
+                  )}
                 </span>
               </div>
             );

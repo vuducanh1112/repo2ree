@@ -38,6 +38,7 @@ from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.receipts import (
     ActivationTestReceipt,
     BuildRuntimeReceipt,
+    CrossCheckSbomReceipt,
     GenerateSbomReceipt,
     RunExperimentReceipt,
     RunReceipt,
@@ -159,9 +160,11 @@ class _Evidence:
         latest = latest_successful_receipts(receipts)
         build = latest.get("build_runtime")
         sbom = latest.get("generate_sbom")
+        crosscheck = latest.get("cross_check_sbom")
         activation = latest.get("activation_test")
         self.build = build if isinstance(build, BuildRuntimeReceipt) else None
         self.sbom = sbom if isinstance(sbom, GenerateSbomReceipt) else None
+        self.crosscheck = crosscheck if isinstance(crosscheck, CrossCheckSbomReceipt) else None
         self.activation = activation if isinstance(activation, ActivationTestReceipt) else None
         self.experiments: dict[str, RunExperimentReceipt] = {}
         for experiment in intent.experiments:
@@ -183,6 +186,17 @@ class _Evidence:
             self.build is not None
             and self.sbom is not None
             and _digests_consistent(self.sbom.declared_runtime_digest, self.runtime_digest)
+        )
+
+    def sbom_cross_checked(self) -> bool:
+        """The cross-check counts only against the SBOM currently in evidence:
+        the digest chain (crosscheck → sbom → build) ties it to the runtime."""
+        return (
+            self.sbom_inventoried()
+            and self.sbom is not None
+            and self.crosscheck is not None
+            and self.crosscheck.sbom_digest is not None
+            and self.crosscheck.sbom_digest == self.sbom.sbom_digest
         )
 
     def activation_passed(self) -> bool:
@@ -257,6 +271,16 @@ def _runtime_category(intent: ReeIntent, session: ReeSession, evidence: _Evidenc
                 label="SBOM",
                 reached=evidence.sbom_inventoried(),
                 detail=_short_digest(evidence.sbom.sbom_digest) if evidence.sbom else "",
+            ),
+            # Non-gating evidence: the fraction of declared direct deps
+            # observed in the runtime. Deliberately not part of the R-level —
+            # dev/build-only deps legitimately never reach the runtime.
+            ScoreCardRung(
+                key="crossChecked",
+                label="Cross-checked",
+                reached=evidence.sbom_cross_checked(),
+                done=evidence.crosscheck.observed_matched if evidence.crosscheck else None,
+                total=evidence.crosscheck.declared_direct_total if evidence.crosscheck else None,
             ),
             ScoreCardRung(key="included", label="Included", reached=session.runtime_included),
         ],

@@ -10,7 +10,6 @@ import { CanvasHub } from "./canvas/CanvasHub";
 import { activeNode } from "./canvas/canvasNodes";
 import { FocusDock } from "./canvas/FocusDock";
 import { RunHud } from "./canvas/RunHud";
-import { SbomHubPanel } from "./canvas/SbomHubPanel";
 import { SealHubPanel } from "./canvas/SealHubPanel";
 import { SourceHubPanel } from "./canvas/SourceHubPanel";
 import { WorkbenchLab } from "./canvas/WorkbenchLab";
@@ -52,13 +51,12 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   useScorecardRunSync();
   const page = uiChrome.page;
   const staleNodeKeys = staleStepKeys(consistency);
-  // The constellation (pod hub) is the home view. Seal and the one-press SBOM
-  // step live inside the hub as compact floating panels; every other page docks
+  // The constellation (pod hub) is the home view. Seal and source acquisition
+  // live inside the hub as compact floating panels; every other page docks
   // beside the pod.
   const sealOpen = page === PAGE.SEAL;
-  const sbomOpen = page === PAGE.SBOM;
   const sourceOpen = page === PAGE.SOURCE;
-  const dockOpen = page !== PAGE.CANVAS && !sealOpen && !sbomOpen && !sourceOpen;
+  const dockOpen = page !== PAGE.CANVAS && !sealOpen && !sourceOpen;
 
   // Screen rect of the canvas panel that opened the dock, so the edit view can
   // grow out of the panel the user clicked instead of feeling like a new page.
@@ -206,17 +204,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
 
         {sourceOpen && (
           <SourceHubPanel
-            ree={ree}
-            workspaceRemote={workspaceRemote}
-            stepRuns={stepRuns}
-            uiChrome={uiChrome}
-            commands={commands}
-            onClose={() => commands.setPage(PAGE.CANVAS)}
-          />
-        )}
-
-        {sbomOpen && (
-          <SbomHubPanel
             ree={ree}
             workspaceRemote={workspaceRemote}
             stepRuns={stepRuns}

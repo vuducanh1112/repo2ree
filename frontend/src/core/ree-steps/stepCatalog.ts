@@ -50,17 +50,8 @@ export const REE_STEPS: ReeStep[] = [
     iconKey: "package",
     color: "#16a34a",
     badge: { label: "SBOM ready", color: "#16a34a", bg: "#f0fdf4" },
-    desc: "Generate a complete list of all software in your environment. This runs a dedicated sbom tool on the built runtime tarball and outputs an SPDX 2.3 SBOM.",
-    params: [
-      {
-        key: "format",
-        label: "Output format",
-        type: "select",
-        default: "spdx-json",
-        options: ["spdx-json", "cyclonedx-json", "syft-json"],
-        hint: "SBOM serialisation format",
-      },
-    ],
+    desc: "Generate a complete list of all software in your environment. This runs syft on the built runtime tarball (squashed scope) and outputs a CycloneDX JSON SBOM, which the cross-check joins against the scanned dependency inventory.",
+    params: [],
   },
   {
     key: "activation",
@@ -77,7 +68,7 @@ const DEFAULT_REE_STEP_PARAMS: ReeStepParams = {
   evaluate: { strict: false },
   build: {},
   hbom: {},
-  sbom: { format: "spdx-json" },
+  sbom: {},
   activation: {},
 };
 

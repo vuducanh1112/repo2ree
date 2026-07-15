@@ -1,10 +1,18 @@
-import type { DependencyEcosystem, DependencyStatus, EvaluatedDependency } from "./Threat";
+import type {
+  DependencyEcosystem,
+  DependencyStatus,
+  EvaluatedDependency,
+  RuntimePresence,
+} from "./Threat";
 
 export interface DisplayDependency {
   name: string;
   version: string | null;
   status: DependencyStatus;
   scope: string | null;
+  /** SBOM cross-check verdict; null until a cross-check ran. */
+  runtimePresence: RuntimePresence | null;
+  observedVersion: string | null;
 }
 
 export interface DependencyGroup {
@@ -42,6 +50,20 @@ export const STATUS_META: Record<DependencyStatus, StatusMeta> = {
   pinned: { label: "pinned", color: "#16a34a", bg: "#dcfce7", border: "#86efac" },
   ranged: { label: "range", color: "#d97706", bg: "#fef3c7", border: "#fcd34d" },
   unpinned: { label: "unpinned", color: "#dc2626", bg: "#fef2f2", border: "#fca5a5" },
+  undeclared: { label: "undeclared", color: "#9333ea", bg: "#faf5ff", border: "#d8b4fe" },
+};
+
+// Presence is evidence, not a defect scale: "not-observed" stays muted because
+// dev/build-only dependencies legitimately never reach the runtime.
+export const PRESENCE_META: Record<RuntimePresence, StatusMeta> = {
+  observed: { label: "in runtime", color: "#16a34a", bg: "#dcfce7", border: "#86efac" },
+  "version-mismatch": {
+    label: "version mismatch",
+    color: "#d97706",
+    bg: "#fef3c7",
+    border: "#fcd34d",
+  },
+  "not-observed": { label: "not in runtime", color: "#64748b", bg: "#f8fafc", border: "#e2e8f0" },
 };
 
 /**
@@ -63,6 +85,8 @@ export function groupEvaluatedDependencies(dependencies: EvaluatedDependency[]):
       version: dependency.lockedVersion ?? dependency.declaredConstraint,
       status: dependency.status,
       scope: dependency.scope,
+      runtimePresence: dependency.runtimePresence,
+      observedVersion: dependency.observedVersion,
     });
     groups.set(key, group);
   }
@@ -71,7 +95,14 @@ export function groupEvaluatedDependencies(dependencies: EvaluatedDependency[]):
 
 /** One pass over the packages; the single definition of every status count. */
 export function tallyByStatus(packages: Iterable<DisplayDependency>): StatusTally {
-  const tally: StatusTally = { locked: 0, pinned: 0, ranged: 0, unpinned: 0, total: 0 };
+  const tally: StatusTally = {
+    locked: 0,
+    pinned: 0,
+    ranged: 0,
+    unpinned: 0,
+    undeclared: 0,
+    total: 0,
+  };
   for (const pkg of packages) {
     tally[pkg.status] += 1;
     tally.total += 1;

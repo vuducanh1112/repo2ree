@@ -18,6 +18,16 @@ describe("summarizeSbom", () => {
     };
     expect(summarizeSbom(file)).toEqual({ format: "SPDX-2.3", pkgCount: 3 });
   });
+  it("summarizes CycloneDX with spec version and component count", () => {
+    const file = {
+      content: JSON.stringify({
+        bomFormat: "CycloneDX",
+        specVersion: "1.6",
+        components: [{}, {}],
+      }),
+    };
+    expect(summarizeSbom(file)).toEqual({ format: "CycloneDX 1.6", pkgCount: 2 });
+  });
   it("recognises CycloneDX and Syft", () => {
     expect(summarizeSbom({ content: JSON.stringify({ bomFormat: "CycloneDX" }) })).toEqual({
       format: "CycloneDX",

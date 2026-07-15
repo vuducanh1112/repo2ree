@@ -359,21 +359,44 @@ export async function provideHbom(page: Page, cpuModel: string) {
 }
 
 /**
- * Generate the SBOM. Navigates to the SBOM canvas node (a standalone page).
+ * Generate the SBOM. Navigates to the SBOM canvas node (a docked page, like
+ * Build Runtime).
  */
 export async function generateSbom(page: Page) {
   await stepShot(page, "generate-sbom", "before");
   await openPort(page, "SBOM");
-  const panel = page.getByRole("region", { name: "Generate SBOM" });
-  await expect(panel.getByRole("button", { name: /^Generate$/ })).toBeVisible();
-  await panel.getByRole("button", { name: /^Generate$/ }).click();
-  await expect(panel.getByRole("button", { name: /^Regenerate$/ })).toBeVisible({
+  const content = main(page);
+  await expect(content.getByRole("button", { name: /^Generate$/ })).toBeVisible();
+  await content.getByRole("button", { name: /^Generate$/ }).click();
+  await expect(content.getByRole("button", { name: /^Regenerate$/ })).toBeVisible({
     timeout: 20000,
   });
-  await expect(panel.getByText("SBOM ready", { exact: true }).first()).toBeVisible({
+  await expect(content.getByText("SBOM ready", { exact: true }).first()).toBeVisible({
     timeout: 20000,
   });
   await stepShot(page, "generate-sbom", "after");
+}
+
+/**
+ * Cross-check the generated SBOM against the scanned dependency inventory,
+ * from the same docked SBOM page. Requires evaluate and generate-sbom to have
+ * run first — the cross-check joins the report with the SBOM.
+ */
+export async function crossCheckSbom(page: Page) {
+  await stepShot(page, "cross-check-sbom", "before");
+  await openPort(page, "SBOM");
+  const content = main(page);
+  await expect(content.getByRole("button", { name: /^Cross-check$/ })).toBeEnabled({
+    timeout: 20000,
+  });
+  await content.getByRole("button", { name: /^Cross-check$/ }).click();
+  // The card flips to Re-check once the run lands and the report refreshes.
+  await expect(content.getByRole("button", { name: /^Re-check$/ })).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(content.getByText("Cross-checked", { exact: true })).toBeVisible();
+  await expect(content.getByText(/declared deps in runtime/)).toBeVisible();
+  await stepShot(page, "cross-check-sbom", "after");
 }
 
 /**

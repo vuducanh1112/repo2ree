@@ -11,7 +11,9 @@ export interface ReeStepRunParamsByKey {
   // The build always runs the reserved build script; it takes no parameters.
   build: Record<string, never>;
   hbom: ReeStepParamsByKey["hbom"];
-  sbom: ReeStepParamsByKey["sbom"] & {
+  // The catalog declares no authored sbom params; the runtime path is wired
+  // in by the page from the selected build artifact.
+  sbom: {
     producedRuntimePath?: string;
   };
   activation: ReeStepParamsByKey["activation"];

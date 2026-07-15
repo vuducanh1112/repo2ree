@@ -11,6 +11,7 @@ from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.receipts import (
     BuildRuntimeReceipt,
+    CrossCheckSbomReceipt,
     RunExperimentReceipt,
     RunReceipt,
     build_consistency_report,
@@ -67,6 +68,22 @@ class TestPersistence:
         assert receipt_run_id("real-id") == "real-id"
         assert receipt_run_id("manual") != receipt_run_id("manual")
         assert receipt_run_id("manual").startswith("manual-")
+
+    def test_cross_check_receipt_roundtrips_with_aggregates(self, layout: ReeLayout) -> None:
+        receipt = CrossCheckSbomReceipt(
+            run_id="crosscheck-1",
+            recorded_at="2026-01-01T00:00:00Z",
+            status="succeeded",
+            sbom_digest=digest_bytes(b"sbom"),
+            declared_direct_total=4,
+            observed_matched=3,
+            version_mismatches=1,
+            undeclared_same_ecosystem=2,
+            observed_total=120,
+        )
+        record_receipt(layout, receipt, log=_silent_log)
+        assert load_receipts(layout) == [receipt]
+        assert latest_successful_receipts([receipt])["cross_check_sbom"] is receipt
 
 
 class TestLatestSelection:

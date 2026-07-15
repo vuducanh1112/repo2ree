@@ -26,6 +26,8 @@ export const endpoints = {
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/generate-hbom`,
   reeGenerateSbom: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/generate-sbom`,
+  reeCrossCheckSbom: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/cross-check-sbom`,
   reeActivationTest: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/activation-test`,
   reeEvaluate: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/evaluate`,

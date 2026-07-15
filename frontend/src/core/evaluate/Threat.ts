@@ -37,8 +37,21 @@ export type DependencyEcosystem = (typeof DEPENDENCY_ECOSYSTEMS)[number];
 
 // Per-row reproducibility rung, computed by the backend's single classifier
 // (reproducibility_report._dependency_status) — never re-derived client-side.
-export const DEPENDENCY_STATUSES = ["locked", "pinned", "ranged", "unpinned"] as const;
+// "undeclared" rows come from the SBOM cross-check: present in the runtime,
+// declared by no manifest.
+export const DEPENDENCY_STATUSES = [
+  "locked",
+  "pinned",
+  "ranged",
+  "unpinned",
+  "undeclared",
+] as const;
 export type DependencyStatus = (typeof DEPENDENCY_STATUSES)[number];
+
+// Verdict of the runtime-SBOM cross-check for a declared row; null until a
+// cross-check ran. "not-observed" is informational, not a defect.
+export const RUNTIME_PRESENCES = ["observed", "version-mismatch", "not-observed"] as const;
+export type RuntimePresence = (typeof RUNTIME_PRESENCES)[number];
 
 /** A normalized row emitted by the backend manifest scan. */
 export interface EvaluatedDependency {
@@ -52,7 +65,27 @@ export interface EvaluatedDependency {
   lockedVersion: string | null;
   lockedHashes: string[];
   lockedIn: string | null;
+  observedVersion: string | null;
   status: DependencyStatus;
+  runtimePresence: RuntimePresence | null;
+}
+
+export interface UndeclaredPackage {
+  ecosystem: string;
+  name: string;
+  version: string | null;
+}
+
+/** Aggregates of the runtime-SBOM cross-check step. */
+export interface SbomCrossCheckSummary {
+  sbomDigest: string | null;
+  checkedAt: string;
+  declaredDirectTotal: number;
+  observedMatched: number;
+  versionMismatches: number;
+  undeclaredSameEcosystem: number;
+  observedTotal: number;
+  undeclared: UndeclaredPackage[];
 }
 
 export interface ReproducibilityReport {
@@ -64,6 +97,7 @@ export interface ReproducibilityReport {
   machineLevelLabel: string;
   dependencySummary: DependencySummary;
   dependencies: EvaluatedDependency[];
+  sbomCrossCheck: SbomCrossCheckSummary | null;
   threats: Threat[];
 }
 
@@ -134,7 +168,40 @@ function parseDependency(value: unknown): EvaluatedDependency | null {
       ? raw.locked_hashes.filter((hash): hash is string => typeof hash === "string")
       : [],
     lockedIn: typeof raw.locked_in === "string" ? raw.locked_in : null,
+    observedVersion: typeof raw.observed_version === "string" ? raw.observed_version : null,
     status: raw.status as DependencyStatus,
+    runtimePresence: RUNTIME_PRESENCES.includes(raw.runtime_presence as RuntimePresence)
+      ? (raw.runtime_presence as RuntimePresence)
+      : null,
+  };
+}
+
+function parseUndeclaredPackage(value: unknown): UndeclaredPackage | null {
+  const raw = asRecord(value);
+  if (!raw || typeof raw.name !== "string" || typeof raw.ecosystem !== "string") return null;
+  return {
+    ecosystem: raw.ecosystem,
+    name: raw.name,
+    version: typeof raw.version === "string" ? raw.version : null,
+  };
+}
+
+function parseSbomCrossCheck(value: unknown): SbomCrossCheckSummary | null {
+  const raw = asRecord(value);
+  if (!raw) return null;
+  return {
+    sbomDigest: typeof raw.sbomDigest === "string" ? raw.sbomDigest : null,
+    checkedAt: typeof raw.checkedAt === "string" ? raw.checkedAt : "",
+    declaredDirectTotal: asInt(raw.declaredDirectTotal),
+    observedMatched: asInt(raw.observedMatched),
+    versionMismatches: asInt(raw.versionMismatches),
+    undeclaredSameEcosystem: asInt(raw.undeclaredSameEcosystem),
+    observedTotal: asInt(raw.observedTotal),
+    undeclared: Array.isArray(raw.undeclared)
+      ? raw.undeclared
+          .map(parseUndeclaredPackage)
+          .filter((pkg): pkg is UndeclaredPackage => pkg !== null)
+      : [],
   };
 }
 
@@ -171,6 +238,7 @@ export function parseReproducibilityReport(value: unknown): ReproducibilityRepor
     machineLevelLabel: typeof raw.machineLevelLabel === "string" ? raw.machineLevelLabel : "",
     dependencySummary: parseDependencySummary(raw.dependencySummary),
     dependencies,
+    sbomCrossCheck: parseSbomCrossCheck(raw.sbomCrossCheck),
     threats,
   };
 }

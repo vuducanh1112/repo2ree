@@ -202,6 +202,17 @@ class GenerateSbomCommand(BaseModel):
     args: GenerateSbomArgs
 
 
+class CrossCheckSbomArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class CrossCheckSbomCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["cross_check_sbom"] = "cross_check_sbom"
+    args: CrossCheckSbomArgs = CrossCheckSbomArgs()
+
+
 class EvaluateDependencyScoreArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -284,6 +295,7 @@ Command = Annotated[
     | ResetForSourceChangeCommand
     | BuildRuntimeCommand
     | GenerateSbomCommand
+    | CrossCheckSbomCommand
     | EvaluateDependencyScoreCommand
     | RunExperimentCommand
     | GenerateHbomCommand

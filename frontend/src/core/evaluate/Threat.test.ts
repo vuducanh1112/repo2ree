@@ -78,5 +78,64 @@ describe("parseReproducibilityReport", () => {
       machineLevel: 0,
     });
     expect(report?.threats).toEqual([]);
+    expect(report?.sbomCrossCheck).toBeNull();
+  });
+
+  it("parses cross-check enrichment: presence, undeclared rows, and the summary", () => {
+    const report = parseReproducibilityReport({
+      dependencyLevel: 3,
+      environmentLevel: 0,
+      machineLevel: 0,
+      dependencies: [
+        {
+          ecosystem: "pypi",
+          name: "requests",
+          direct: true,
+          declared_in: "requirements.txt",
+          locked_version: "2.31.0",
+          observed_version: "2.31.0",
+          status: "locked",
+          runtime_presence: "observed",
+        },
+        {
+          ecosystem: "pypi",
+          name: "certifi",
+          direct: false,
+          observed_version: "2024.2.2",
+          status: "undeclared",
+          // An unknown presence value degrades to null, not a dropped row.
+          runtime_presence: "shiny",
+        },
+      ],
+      sbomCrossCheck: {
+        sbomDigest: "sha256:abc",
+        checkedAt: "2026-07-15T00:00:00Z",
+        declaredDirectTotal: 1,
+        observedMatched: 1,
+        versionMismatches: 0,
+        undeclaredSameEcosystem: 1,
+        observedTotal: 42,
+        undeclared: [{ ecosystem: "pypi", name: "certifi", version: "2024.2.2" }, { bad: true }],
+      },
+      threats: [],
+    });
+
+    expect(report?.dependencies).toEqual([
+      expect.objectContaining({
+        name: "requests",
+        observedVersion: "2.31.0",
+        runtimePresence: "observed",
+      }),
+      expect.objectContaining({ name: "certifi", status: "undeclared", runtimePresence: null }),
+    ]);
+    expect(report?.sbomCrossCheck).toEqual(
+      expect.objectContaining({
+        declaredDirectTotal: 1,
+        observedMatched: 1,
+        undeclaredSameEcosystem: 1,
+        observedTotal: 42,
+        undeclared: [{ ecosystem: "pypi", name: "certifi", version: "2024.2.2" }],
+      }),
+    );
   });
 });

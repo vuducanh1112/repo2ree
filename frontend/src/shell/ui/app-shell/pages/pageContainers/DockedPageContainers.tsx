@@ -4,6 +4,7 @@ import { PAGE } from "../../state/pages";
 import {
   PageBuildRuntime,
   PageExperiments,
+  PageGenerateSbom,
   PageHardwareBom,
   PageMetadataEntry,
   PageRepoAnalysis,
@@ -15,7 +16,7 @@ import { type AppShellPageContainerProps, ContentSection, useStepRunLogEntry } f
 const STEP_PAGE_COMPONENTS: Record<string, (props: StepPageProps) => JSX.Element> = {
   evaluate: (props) => <PageRepoAnalysis {...props} />,
   build: (props) => <PageBuildRuntime {...props} />,
-  // sbom opens as a compact floating hub panel (SbomHubPanel), not a docked page.
+  sbom: (props) => <PageGenerateSbom {...props} />,
   activation: (props) => <PageTestActivation {...props} />,
 };
 

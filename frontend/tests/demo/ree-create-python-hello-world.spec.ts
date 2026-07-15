@@ -292,19 +292,41 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await clickDemo(
       page,
       page.getByRole("navigation").getByRole("button", { name: "SBOM", exact: true }),
-      "Open SBOM page",
+      "Open the SBOM page — a full step page like Build Runtime",
     );
-    const sbomPanel = page.getByRole("region", { name: "Generate SBOM" });
-    await clickDemo(page, sbomPanel.getByRole("button", { name: /^Generate$/ }), "Run SBOM scan");
-    await expect(sbomPanel.getByRole("button", { name: /^Regenerate$/ })).toBeVisible({
+    await clickDemo(page, main.getByRole("button", { name: /^Generate$/ }), "Run SBOM scan");
+    await expect(main.getByRole("button", { name: /^Regenerate$/ })).toBeVisible({
       timeout: 60000,
     });
     // The status chip and the earned-outcome badge share the "SBOM ready" text;
     // the role=status badge is the success-only signal.
-    await expect(sbomPanel.getByRole("status", { name: "SBOM ready" })).toBeVisible({
+    await expect(main.getByRole("status", { name: "SBOM ready" })).toBeVisible({
       timeout: 60000,
     });
-    await showcasePanel(page, sbomPanel.getByText(/SBOM log/i).first(), "Review SBOM logs");
+    await showcasePanel(page, main.getByText(/SBOM log/i).first(), "Review SBOM logs");
+  });
+
+  await demoStep(page, "Cross-check SBOM against declared dependencies", async () => {
+    // The cross-check joins the runtime SBOM with the dependency inventory the
+    // Evaluate step scanned: which declared deps actually made it into the
+    // built runtime, and what runs in it that no manifest declared.
+    const crossCheckButton = main.getByRole("button", { name: /^Cross-check$/ });
+    await expect(crossCheckButton).toBeEnabled({ timeout: 30000 });
+    await clickDemo(
+      page,
+      crossCheckButton,
+      "Cross-check the SBOM against the scanned dependency inventory",
+    );
+    await expect(main.getByRole("button", { name: /^Re-check$/ })).toBeVisible({
+      timeout: 60000,
+    });
+    // pandas==2.2.1 is the only declared dep and it is in the runtime; its
+    // transitive installs (numpy, pytz, ...) surface as undeclared packages.
+    await showcasePanel(
+      page,
+      main.getByText(/declared deps in runtime/),
+      "The verdicts: declared deps observed in the runtime, plus what the runtime carries undeclared",
+    );
   });
 
   await demoStep(page, "Test activation", async () => {

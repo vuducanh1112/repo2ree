@@ -11,16 +11,14 @@ describe("mergeStepParams", () => {
       evaluate: { strict: true },
       build: {},
       hbom: {},
-      sbom: { format: "spdx-json" },
+      sbom: {},
       activation: {},
     });
   });
 
   it("leaves other steps untouched", () => {
-    const merged = mergeStepParams(initialReeStepParams(), "sbom", {
-      format: "cyclonedx-json",
-    });
-    expect(merged.sbom).toEqual({ format: "cyclonedx-json" });
-    expect(merged.evaluate).toEqual({ strict: false });
+    const merged = mergeStepParams(initialReeStepParams(), "evaluate", { strict: true });
+    expect(merged.sbom).toEqual({});
+    expect(merged.evaluate).toEqual({ strict: true });
   });
 });
