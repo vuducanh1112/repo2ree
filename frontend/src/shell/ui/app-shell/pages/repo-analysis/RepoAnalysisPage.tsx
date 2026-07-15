@@ -9,18 +9,18 @@ import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { stepIcon } from "../../stepIcons";
 import type { StepPageProps } from "../sharedStepUi";
-import { countContainerAndNixFiles } from "./EvaluatePageHelpers";
+import { countContainerAndNixFiles } from "./RepoAnalysisPageHelpers";
 import {
-  EvaluateAxesCard,
-  EvaluateDependenciesCard,
-  EvaluateLogCard,
-  EvaluateMissingInputs,
-  EvaluateRunControls,
-  EvaluateThreatsCard,
-  EvaluateWorkspaceAside,
-} from "./EvaluatePageSections";
+  RepoAnalysisAxesCard,
+  RepoAnalysisDependenciesCard,
+  RepoAnalysisLogCard,
+  RepoAnalysisMissingInputs,
+  RepoAnalysisRunControls,
+  RepoAnalysisThreatsCard,
+  RepoAnalysisWorkspaceAside,
+} from "./RepoAnalysisPageSections";
 
-export function PageEvaluate({
+export function PageRepoAnalysis({
   step,
   workspaceSourceState,
   workspaceFiles,
@@ -51,13 +51,13 @@ export function PageEvaluate({
   useEffect(() => {
     if (!running && runDone) void refetchReport();
   }, [running, runDone, refetchReport]);
-  const hasScoreOutput = !!report;
+  const hasReport = !!report;
   const sourceLoadedInWorkspace = !!workspaceSourceState.sourceAvailable;
   const IC = stepIcon(step.iconKey);
   const hasMissing = missing.length > 0;
 
-  const statusLabel = running ? "Running" : hasScoreOutput ? "Scored" : "Not run";
-  const statusReady = hasScoreOutput && !hasMissing;
+  const statusLabel = running ? "Running" : hasReport ? "Analyzed" : "Not run";
+  const statusReady = hasReport && !hasMissing;
 
   return (
     // Single column sitting directly on the focus dock — no right rail. The Run
@@ -71,11 +71,11 @@ export function PageEvaluate({
         badges={
           <>
             <span style={lgStatusBadge(statusReady)}>{statusLabel}</span>
-            {hasScoreOutput && badge && <OutcomeBadge badge={badge} />}
+            {hasReport && badge && <OutcomeBadge badge={badge} />}
           </>
         }
         right={
-          <EvaluateRunControls
+          <RepoAnalysisRunControls
             running={running}
             runDone={runDone}
             disabled={running || !sourceLoadedInWorkspace || hasMissing}
@@ -86,30 +86,31 @@ export function PageEvaluate({
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-        <EvaluateMissingInputs missing={missing} onGoFields={onGoFields} />
+        <RepoAnalysisMissingInputs missing={missing} onGoFields={onGoFields} />
 
         <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
           <div style={lgStyles.sectionBody}>
             <div style={lgStyles.sectionHeader}>
               <div style={lgStyles.sectionIcon}>{Ic.layers(19)}</div>
               <div>
-                <h2 style={lgStyles.sectionTitle}>Reproducibility Analysis</h2>
+                <h2 style={lgStyles.sectionTitle}>Source Repository Analysis</h2>
                 <div style={lgStyles.sectionSubtitle}>
-                  Dependency declaration and environment capture, scored as independent axes.
+                  What the repository gives anyone who clones it: dependency declaration,
+                  environment capture, and machine capture as independent axes.
                 </div>
               </div>
             </div>
 
-            <EvaluateAxesCard hasScoreOutput={hasScoreOutput} report={report} />
+            <RepoAnalysisAxesCard hasReport={hasReport} report={report} />
 
-            <EvaluateThreatsCard
-              hasScoreOutput={hasScoreOutput}
+            <RepoAnalysisThreatsCard
+              hasReport={hasReport}
               threats={threats}
               loading={reportQuery.isLoading}
             />
 
-            <EvaluateDependenciesCard
-              hasRun={hasScoreOutput}
+            <RepoAnalysisDependenciesCard
+              hasRun={hasReport}
               depGroups={depGroups}
               containerCount={containerCount}
               nixCount={nixCount}
@@ -117,13 +118,13 @@ export function PageEvaluate({
           </div>
 
           <GlassPanelFooter>
-            {hasScoreOutput
+            {hasReport
               ? "Evaluate output is current."
-              : "Run Evaluate to compute a reproducibility score."}
+              : "Run Evaluate to analyze the source repository."}
           </GlassPanelFooter>
         </section>
 
-        <EvaluateWorkspaceAside
+        <RepoAnalysisWorkspaceAside
           sourceLoadedInWorkspace={sourceLoadedInWorkspace}
           containerCount={containerCount}
           nixCount={nixCount}
@@ -131,7 +132,7 @@ export function PageEvaluate({
           fileCount={files?.length ?? 0}
         />
 
-        <EvaluateLogCard log={log} running={running} />
+        <RepoAnalysisLogCard log={log} running={running} />
       </div>
     </div>
   );

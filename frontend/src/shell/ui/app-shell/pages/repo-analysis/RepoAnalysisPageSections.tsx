@@ -11,16 +11,16 @@ import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { RunActionButton } from "../../components/RunActionButton";
 import { SummaryLine } from "../../components/SummaryLine";
 import { DependencyPanel } from "../../components/stepRunPanels/DependencyPanel";
-import { CardHeader } from "./EvaluateCardHeader";
-import { EXPECTED_DEP_FILES } from "./EvaluatePageHelpers";
+import { CardHeader } from "./RepoAnalysisCardHeader";
+import { EXPECTED_DEP_FILES } from "./RepoAnalysisPageHelpers";
 
-// EvaluateThreatsCard lives in its own module; re-exported so the page keeps a
+// RepoAnalysisThreatsCard lives in its own module; re-exported so the page keeps a
 // single import surface.
-export { EvaluateThreatsCard } from "./EvaluateThreatsCard";
+export { RepoAnalysisThreatsCard } from "./RepoAnalysisThreatsCard";
 
 // Run / Re-run (+ Cancel while running) — lives in the page header's action
 // slot, mirroring the other pages.
-export function EvaluateRunControls({
+export function RepoAnalysisRunControls({
   running,
   runDone,
   disabled,
@@ -46,7 +46,7 @@ export function EvaluateRunControls({
 
 // Surfaced inline in the column (the rail that used to host it is gone) so a
 // missing prerequisite still blocks the run with a clear way back.
-export function EvaluateMissingInputs({
+export function RepoAnalysisMissingInputs({
   missing,
   onGoFields,
 }: {
@@ -132,21 +132,21 @@ function AxisTrack({
   );
 }
 
-export function EvaluateAxesCard({
-  hasScoreOutput,
+export function RepoAnalysisAxesCard({
+  hasReport,
   report,
 }: {
-  hasScoreOutput: boolean;
+  hasReport: boolean;
   report: ReproducibilityReport | null;
 }) {
   return (
     <div style={lgContentCard()}>
       <CardHeader
-        label="Reproducibility Axes"
-        hint={hasScoreOutput ? "Two independent dimensions" : "Awaiting run"}
+        label="Repository Axes"
+        hint={hasReport ? "Three independent axes" : "Awaiting run"}
       />
 
-      {hasScoreOutput && report ? (
+      {hasReport && report ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <AxisTrack
             label="Dependency declaration"
@@ -182,14 +182,15 @@ export function EvaluateAxesCard({
             fontSize: 12,
           }}
         >
-          No Evaluate output yet. Run the evaluator to score the dependency and environment axes.
+          No Evaluate output yet. Run the evaluator to analyze the repository&apos;s dependency,
+          environment, and machine axes.
         </div>
       )}
     </div>
   );
 }
 
-export function EvaluateDependenciesCard({
+export function RepoAnalysisDependenciesCard({
   hasRun,
   depGroups,
   containerCount,
@@ -280,11 +281,11 @@ export function EvaluateDependenciesCard({
   );
 }
 
-export function EvaluateLogCard({ log, running }: { log: LogEntry | null; running: boolean }) {
+export function RepoAnalysisLogCard({ log, running }: { log: LogEntry | null; running: boolean }) {
   return <CollapsibleLogCard log={log} running={running} title="Run Log" maxHeight={280} />;
 }
 
-export function EvaluateWorkspaceAside({
+export function RepoAnalysisWorkspaceAside({
   sourceLoadedInWorkspace,
   containerCount,
   nixCount,

@@ -15,7 +15,7 @@ export const REE_STEPS: ReeStep[] = [
     iconKey: "star",
     color: "#7c3aed",
     badge: { label: "Evaluated", color: "#7c3aed", bg: "#f5f3ff" },
-    desc: "Get a quick reproducibility score for this repository. This scans the repository contents to assign a level.",
+    desc: "Analyze the source repository as anyone would clone it: dependency declaration, environment capture, and the concrete threats to reproducing it.",
     params: [
       {
         key: "strict",

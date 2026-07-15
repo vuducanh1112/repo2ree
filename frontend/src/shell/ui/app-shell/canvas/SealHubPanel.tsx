@@ -1,4 +1,3 @@
-import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { Badges, LogEntry } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
@@ -10,7 +9,6 @@ import { HubPanel } from "./HubPanel";
 
 interface SealHubPanelProps {
   ree: ReeEditorViewModel;
-  evaluation: EvaluationState;
   badges: Badges;
   consistency?: ConsistencyReport;
   locked: boolean;
@@ -24,7 +22,6 @@ interface SealHubPanelProps {
 // scrim — so the surrounding pod and nodes stay visible while sealing.
 export function SealHubPanel({
   ree,
-  evaluation,
   badges,
   consistency,
   locked,
@@ -48,7 +45,6 @@ export function SealHubPanel({
       <CenterSealStrip
         ree={ree}
         locked={locked}
-        evaluation={evaluation}
         badges={badges}
         consistency={consistency}
         onSeal={onSeal}

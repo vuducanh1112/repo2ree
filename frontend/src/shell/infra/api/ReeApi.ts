@@ -105,6 +105,12 @@ export class ReeApi {
     });
   }
 
+  async getScorecard(reeId: ReeId): Promise<unknown> {
+    return this.client.request<unknown>(endpoints.reeScorecard(reeId), {
+      method: "GET",
+    });
+  }
+
   async patchReeIntent(reeId: ReeId, payload: PatchReeRequestDto): Promise<ReeDetailDto> {
     return this.client.request<ReeDetailDto>(endpoints.reeIntent(reeId), {
       method: "PATCH",

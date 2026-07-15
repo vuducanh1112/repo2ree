@@ -3,17 +3,17 @@ import { useStepPageController } from "../../hooks/useStepPageController";
 import { PAGE } from "../../state/pages";
 import {
   PageBuildRuntime,
-  PageEvaluate,
   PageExperiments,
   PageHardwareBom,
   PageMetadataEntry,
+  PageRepoAnalysis,
   PageTestActivation,
   type StepPageProps,
 } from "../index";
 import { type AppShellPageContainerProps, ContentSection, useStepRunLogEntry } from "./shared";
 
 const STEP_PAGE_COMPONENTS: Record<string, (props: StepPageProps) => JSX.Element> = {
-  evaluate: (props) => <PageEvaluate {...props} />,
+  evaluate: (props) => <PageRepoAnalysis {...props} />,
   build: (props) => <PageBuildRuntime {...props} />,
   // sbom opens as a compact floating hub panel (SbomHubPanel), not a docked page.
   activation: (props) => <PageTestActivation {...props} />,

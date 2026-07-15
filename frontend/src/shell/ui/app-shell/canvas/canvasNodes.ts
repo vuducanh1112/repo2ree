@@ -224,15 +224,6 @@ export function activeNode(page: AppShellPage): CanvasNode | undefined {
   return CANVAS_NODES.find((node) => isNodeActive(node, page));
 }
 
-// Readiness = how many lifecycle steps are complete, for the hub readout.
-export function lifecycleProgress(
-  ree: ReeEditorViewModel,
-  badges: Badges,
-): { completed: number; total: number } {
-  const completed = PROCESS_STEPS.filter((step) => resolveNavCompleted(step, ree, badges)).length;
-  return { completed, total: PROCESS_STEPS.length };
-}
-
 export interface SummaryRow {
   label: string;
   value: string | null;

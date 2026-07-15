@@ -1,9 +1,9 @@
-import { standingMeta } from "@core/evaluate/axes";
-import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { Badges, LogEntry } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { type ConsistencyReport, staleSealItems } from "@core/ree-steps/sealConsistency";
+import { scoreCardStanding } from "@core/scorecard/ReproducibilityScoreCard";
+import { useReproducibilityScoreCard } from "@shell/data/scorecard/queries";
 import { CollapsibleLogCard } from "@shell/ui/app-shell/components/CollapsibleLogCard";
 import React from "react";
 import { buildSealCableItems } from "./CenterSealStrip/helpers";
@@ -13,7 +13,6 @@ import { SealStatusCard } from "./CenterSealStrip/SealStatusCard";
 interface CenterSealStripProps {
   ree: ReeEditorViewModel;
   locked: boolean;
-  evaluation: EvaluationState;
   badges: Badges;
   consistency?: ConsistencyReport;
   onSeal: (inclusionOpts: InclusionOpts) => void;
@@ -25,7 +24,6 @@ interface CenterSealStripProps {
 export function CenterSealStrip({
   ree,
   locked,
-  evaluation,
   badges,
   consistency,
   onSeal,
@@ -58,7 +56,10 @@ export function CenterSealStrip({
   const allLive = liveCount === totalCables;
   const missing = cableItems.filter((item) => !item.live);
   const stale = staleSealItems(consistency);
-  const currentLevelMeta = standingMeta(evaluation);
+  // The seal freezes the REE at its scorecard level — the artifact's own
+  // standing, not the source repo's static axes.
+  const scorecard = useReproducibilityScoreCard();
+  const currentLevelMeta = scoreCardStanding(scorecard.data ?? null);
 
   const logPanel = (
     <div style={{ width: "100%", maxWidth: 480 }}>

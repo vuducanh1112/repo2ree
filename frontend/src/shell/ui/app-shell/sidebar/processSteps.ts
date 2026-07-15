@@ -53,7 +53,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
     label: "Reproducibility Readiness",
     IC: Ic.star,
     automation: AUTOMATION_BY_KEY[PAGE.EVALUATE],
-    desc: "Score reproducibility level",
+    desc: "Analyze the source repository",
   },
   {
     n: 5,

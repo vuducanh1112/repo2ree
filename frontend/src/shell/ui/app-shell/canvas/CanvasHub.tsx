@@ -1,10 +1,11 @@
-import { standingMeta } from "@core/evaluate/axes";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
+import { scoreCardStanding } from "@core/scorecard/ReproducibilityScoreCard";
 import type { DraftManifest, SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import { useReproducibilityScoreCard } from "@shell/data/scorecard/queries";
 import { useMemo, useRef, useState } from "react";
-import { C, F } from "../../theme/theme";
+import { C } from "../../theme/theme";
 import type { AppShellPage } from "../state/pages";
 import { PAGE } from "../state/pages";
 import { BenchConsole } from "./BenchConsole";
@@ -20,7 +21,6 @@ import {
   isNodeActive,
   isNodeDone,
   isNodeLocked,
-  lifecycleProgress,
   nodeProjection,
   nodeSummary,
 } from "./canvasNodes";
@@ -31,6 +31,7 @@ import { InnerShellButton } from "./InnerShellButton";
 import { LabBackdrop } from "./LabBackdrop";
 import { NodeCard } from "./NodeCard";
 import { ReeStateConsole } from "./ReeStateConsole";
+import { ReproducibilityScoreCardConsole } from "./ReproducibilityScoreCardConsole";
 import { useCableGeometry } from "./useCableGeometry";
 import { type Transform, useCanvasViewport } from "./useCanvasViewport";
 import { useExperimentCables } from "./useExperimentCables";
@@ -173,9 +174,10 @@ export function CanvasHub({
     animate,
   });
 
-  const { completed, total } = lifecycleProgress(ree, badges);
-  const ready = completed >= total;
-  const levelMeta = standingMeta(evaluation);
+  // Cables tint by the REE's own standing (the scorecard), not the source
+  // repo's static axes — a verified REE must not read as its upstream repo.
+  const scorecard = useReproducibilityScoreCard({ enabled: provisioned });
+  const levelMeta = scoreCardStanding(scorecard.data ?? null);
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: pannable canvas surface; nodes inside are buttons
@@ -324,31 +326,7 @@ export function CanvasHub({
         )}
       </div>
 
-      <div
-        style={{
-          position: "absolute",
-          top: 16,
-          left: "50%",
-          transform: "translateX(-50%)",
-          fontFamily: F.mono,
-          fontSize: 11.5,
-          color: ready ? C.done : C.textMid,
-          background: "rgba(255,255,255,0.8)",
-          border: `1px solid ${C.border}`,
-          borderRadius: 99,
-          padding: "6px 14px",
-          backdropFilter: "blur(4px)",
-        }}
-      >
-        {ready ? (
-          <b style={{ color: C.done }}>● archive-ready</b>
-        ) : (
-          <>
-            <b style={{ color: C.text }}>{completed}</b>
-            <span style={{ color: C.textMuted }}> / {total} stages connected</span>
-          </>
-        )}
-      </div>
+      <ReproducibilityScoreCardConsole provisioned={provisioned} />
 
       <FileTreeConsole
         reeFiles={reeFiles}

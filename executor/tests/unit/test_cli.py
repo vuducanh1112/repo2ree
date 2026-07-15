@@ -95,6 +95,26 @@ def test_get_ree_emits_metadata(initialized_ree: Path) -> None:
     assert json.loads(result.output)["reeId"] == "abc123"
 
 
+def test_get_scorecard_before_init_exits_nonzero(ree_root: Path) -> None:
+    result = runner.invoke(cli, ["get-scorecard"])
+    assert result.exit_code == 1
+    assert json.loads(result.stderr) == {"error": "not initialised"}
+
+
+def test_get_scorecard_emits_camel_case_card(initialized_ree: Path) -> None:
+    result = runner.invoke(cli, ["get-scorecard"])
+    assert result.exit_code == 0
+    card = json.loads(result.output)
+    assert card["levelCode"] == "R0"
+    assert [category["key"] for category in card["categories"]] == [
+        "source",
+        "runtime",
+        "activation",
+        "experiments",
+        "results",
+    ]
+
+
 # ================================================
 # execute — the supervisor's dispatch contract
 # ================================================

@@ -2,7 +2,7 @@ import type { Threat, ThreatCategory, ThreatSeverity } from "@core/evaluate/Thre
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgContentCard } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
-import { CardHeader } from "./EvaluateCardHeader";
+import { CardHeader } from "./RepoAnalysisCardHeader";
 
 const THREAT_DIMENSIONS: { category: ThreatCategory; label: string }[] = [
   { category: "dependency", label: "Dependency declaration" },
@@ -118,12 +118,12 @@ function ThreatRow({ threat }: { threat: Threat }) {
   );
 }
 
-export function EvaluateThreatsCard({
-  hasScoreOutput,
+export function RepoAnalysisThreatsCard({
+  hasReport,
   threats,
   loading,
 }: {
-  hasScoreOutput: boolean;
+  hasReport: boolean;
   threats: Threat[];
   loading: boolean;
 }) {
@@ -134,7 +134,7 @@ export function EvaluateThreatsCard({
       <CardHeader
         label="Reproducibility Threats"
         hint={
-          !hasScoreOutput
+          !hasReport
             ? "Awaiting run"
             : loading
               ? "Loading…"
@@ -144,7 +144,7 @@ export function EvaluateThreatsCard({
         }
       />
 
-      {!hasScoreOutput ? (
+      {!hasReport ? (
         <div
           style={{
             border: "1px dashed rgba(148, 163, 184, 0.5)",

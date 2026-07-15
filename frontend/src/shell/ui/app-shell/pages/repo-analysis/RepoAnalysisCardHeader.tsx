@@ -1,6 +1,6 @@
 import { lgStyles } from "@shell/ui/theme/lightGlassTheme";
 
-/** Shared label/hint header row used by the Evaluate result cards. */
+/** Shared label/hint header row used by the repo-analysis result cards. */
 export function CardHeader({ label, hint }: { label: string; hint?: string }) {
   return (
     <div

@@ -1,5 +1,6 @@
 import { addExperiment } from "@core/ree/experimentOps";
 import { staleStepKeys } from "@core/ree-steps/sealConsistency";
+import { useScorecardRunSync } from "@shell/data/scorecard/queries";
 import { useState } from "react";
 import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
@@ -46,6 +47,9 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   } = useAppShell();
   const { badges } = stepRuns;
   const { toast } = uiChrome;
+  // Refresh the scorecard whenever a run lands, from the shell's single
+  // always-mounted vantage point (see the hook's contract).
+  useScorecardRunSync();
   const page = uiChrome.page;
   const staleNodeKeys = staleStepKeys(consistency);
   // The constellation (pod hub) is the home view. Seal and the one-press SBOM
@@ -228,7 +232,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
         {sealOpen && (
           <SealHubPanel
             ree={ree}
-            evaluation={evaluation}
             badges={badges}
             consistency={consistency}
             locked={uiChrome.locked}

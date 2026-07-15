@@ -79,33 +79,13 @@ export function axisStandings(evaluation: EvaluationState): AxisStanding[] {
   ];
 }
 
-/** The least-complete axis — the current reproducibility bottleneck. Used to tint
- * chrome that has room for only one accent color (not shown as a numeric score). */
+/** The least-complete axis of the *source repo* analysis — used only by the
+ * pod's axis visualization. REE-level chrome (cables, seal card) tints from
+ * the scorecard standing instead (see @core/scorecard). */
 export function bottleneckAxis(evaluation: EvaluationState): AxisStanding {
   return axisStandings(evaluation).reduce((weakest, standing) =>
     axisFraction(standing.axis, standing.level) < axisFraction(weakest.axis, weakest.level)
       ? standing
       : weakest,
   );
-}
-
-interface StandingMeta {
-  color: string;
-  bg: string;
-  ink: string;
-  short: string;
-  label: string;
-}
-
-/** A single {color,label,...} descriptor for chrome that has room for only one
- * accent — the current bottleneck axis. Not a numeric ladder score. */
-export function standingMeta(evaluation: EvaluationState): StandingMeta {
-  const { axis, level } = bottleneckAxis(evaluation);
-  return {
-    color: axis.color,
-    bg: axis.bg,
-    ink: axis.ink,
-    short: axis.short,
-    label: `${axis.label}: ${axisStepLabel(axis, level)}`,
-  };
 }

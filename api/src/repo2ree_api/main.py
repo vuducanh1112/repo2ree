@@ -16,6 +16,7 @@ from repo2ree_api.generate_hbom import generate_hbom_router
 from repo2ree_api.generate_sbom import generate_sbom_router
 from repo2ree_api.manage_ree import manage_ree_router
 from repo2ree_api.runs import runs_router
+from repo2ree_api.scorecard import scorecard_router
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.init_storage import create_upload_staging_if_not_exists
 from repo2ree_api.workbench_images import workbench_images_router
@@ -63,6 +64,7 @@ app.include_router(generate_hbom_router)
 app.include_router(generate_sbom_router)
 app.include_router(activation_test_router)
 app.include_router(evaluate_router)
+app.include_router(scorecard_router)
 app.include_router(runs_router)
 app.include_router(manage_ree_router)
 app.include_router(workbench_images_router)

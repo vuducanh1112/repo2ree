@@ -12,6 +12,8 @@ from repo2ree_core.doctor import run_doctor
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.run_command import run_command
+from repo2ree_core.receipts import load_receipts
+from repo2ree_core.reproducibility_scorecard import build_scorecard
 from repo2ree_core.reproduction import (
     ACQUIRE_SOURCE,
     BUILD_RUNTIME,
@@ -359,6 +361,30 @@ def get_workspace_cmd() -> None:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
     click.echo(json.dumps(result))
+
+
+@cli.command("get-scorecard")
+def get_scorecard_cmd() -> None:
+    """Emit the reproducibility scorecard as JSON.
+
+    Computed purely from the persisted record (intent + session + run
+    receipts), so the same scorecard is recomputable from a sealed bundle.
+    Exits non-zero if not initialised.
+    """
+    layout = ReeLayout.in_workbench()
+    store = ReeStore(layout)
+
+    if not store.metadata_exists():
+        click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
+        sys.exit(1)
+
+    metadata = store.read_metadata_json()
+    card = build_scorecard(
+        ReeIntent.from_metadata(metadata),
+        ReeSession.from_metadata(metadata),
+        load_receipts(layout),
+    )
+    click.echo(card.model_dump_json(by_alias=True))
 
 
 @cli.command("build-archive")
