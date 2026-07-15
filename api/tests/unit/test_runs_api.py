@@ -17,7 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
-from repo2ree_api.run_management import _start_background_run
+from repo2ree_api.run_management import start_background_run
 from repo2ree_supervisor import WorkbenchHandle
 
 # ================================================
@@ -91,7 +91,7 @@ def test_run_endpoints_for_unknown_ree_are_404(client: TestClient) -> None:
 def test_list_runs_is_empty_for_ree_without_runs(client: TestClient, online_ree: WorkbenchHandle) -> None:
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs")
     assert resp.status_code == 200
-    assert resp.json() == {"runs": []}
+    assert resp.json() == {"runs": [], "nextCursor": None}
 
 
 def test_list_runs_returns_summaries_newest_first(
@@ -110,6 +110,30 @@ def test_list_runs_returns_summaries_newest_first(
         # summaries carry no log feed or internal bookkeeping
         assert "logs" not in summary
         assert "_nextSeq" not in summary
+
+
+def test_list_runs_pagination_walks_newest_to_oldest(
+    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any], staging_dir: Path
+) -> None:
+    second = _start_failing_upload_run(client, online_ree.ree_id)
+    _wait_for_run(client, online_ree.ree_id, second["runId"])
+    base = f"/api/v1/rees/{online_ree.ree_id}/runs"
+
+    first_page = client.get(base, params={"limit": 1}).json()
+    assert [run["runId"] for run in first_page["runs"]] == [second["runId"]]
+    assert first_page["nextCursor"] is not None
+
+    second_page = client.get(base, params={"limit": 1, "cursor": first_page["nextCursor"]}).json()
+    assert [run["runId"] for run in second_page["runs"]] == [failed_run["runId"]]
+    assert second_page["nextCursor"] is None
+
+
+def test_list_runs_rejects_malformed_cursor(
+    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+) -> None:
+    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs", params={"cursor": "no-separator"})
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "invalid_cursor"
 
 
 def test_unknown_run_for_known_ree_is_404(client: TestClient, online_ree: WorkbenchHandle) -> None:
@@ -220,7 +244,7 @@ def test_cancel_of_active_run_signals_workbench(
         canceled.set()
 
     monkeypatch.setattr(workbench_manager, "cancel_run", _cancel_run)
-    run = _start_background_run(
+    run = start_background_run(
         ree_id=online_ree.ree_id,
         operation="build",
         request_payload={},

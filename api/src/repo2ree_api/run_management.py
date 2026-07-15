@@ -36,17 +36,17 @@ def _require_workspace(ree_id: str) -> None:
 
 _registry = RunRegistry(_require_workspace)
 
-_append_run_log = _registry.append_log
-_update_run_outputs = _registry.update_outputs
-_is_cancel_requested = _registry.is_cancel_requested
-_mark_cancel_requested = _registry.mark_cancel_requested
-_run_summary = _registry.run_summary
-_get_run_state = _registry.get_run_state
-_list_runs = _registry.list_runs
-_observe_run = _registry.observe
+append_run_log = _registry.append_log
+update_run_outputs = _registry.update_outputs
+is_cancel_requested = _registry.is_cancel_requested
+mark_cancel_requested = _registry.mark_cancel_requested
+run_summary = _registry.run_summary
+get_run_state = _registry.get_run_state
+list_runs = _registry.list_runs
+observe_run = _registry.observe
 
 
-def _start_background_run(
+def start_background_run(
     ree_id: str,
     operation: RunOperation,
     request_payload: dict[str, Any],
@@ -64,7 +64,7 @@ def _start_background_run(
     )
 
 
-def _start_provisioning_run(
+def start_provisioning_run(
     ree_id: str,
     request_payload: dict[str, Any],
     runner: Callable[[str, str], tuple[str, dict[str, Any]]],
@@ -84,7 +84,7 @@ def _start_provisioning_run(
     )
 
 
-def _start_single_command_run(
+def start_single_command_run(
     ree_id: str,
     *,
     operation: RunOperation,
@@ -105,9 +105,9 @@ def _start_single_command_run(
 
     def _runner(rid: str, run_id: str) -> tuple[str, dict[str, Any]]:
         def _log(stream: str, level: str, message: str) -> None:
-            _append_run_log(rid, run_id, stream, level, message)
+            append_run_log(rid, run_id, stream, level, message)
 
-        if _is_cancel_requested(rid, run_id):
+        if is_cancel_requested(rid, run_id):
             _log("system", "warn", canceled_message)
             return "canceled", outputs
 
@@ -119,7 +119,7 @@ def _start_single_command_run(
         result = workbench_manager.dispatch_action(handle, command, run_id, _log)
         return result.status, result.outputs or outputs
 
-    return _start_background_run(
+    return start_background_run(
         ree_id=ree_id,
         operation=operation,
         request_payload=request_payload,

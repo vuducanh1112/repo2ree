@@ -26,10 +26,9 @@ tracer = get_tracer(__name__)
 # ================================================
 
 RunStatus = Literal[
-    "running",
     "queued",
-    "created",
     "provisioning",
+    "running",
     "canceling",
     "succeeded",
     "failed",
@@ -37,7 +36,7 @@ RunStatus = Literal[
 ]
 
 TERMINAL_STATUSES: frozenset[str] = frozenset({"succeeded", "failed", "canceled"})
-ACTIVE_STATUSES: frozenset[str] = frozenset({"running", "queued", "created", "provisioning"})
+ACTIVE_STATUSES: frozenset[str] = frozenset({"running", "queued", "provisioning"})
 
 # JSON field name for the REE id in run state and summaries.
 _REE_ID_FIELD = "reeId"
@@ -93,9 +92,9 @@ class RunRegistry:
             "runId": run_id,
             _REE_ID_FIELD: ree_id,
             "operation": operation,
-            "status": "running",
+            "status": "queued",
             "createdAt": created_at,
-            "startedAt": created_at,
+            "startedAt": None,
             "finishedAt": None,
             "outputs": {},
             "logs": [],
@@ -110,6 +109,22 @@ class RunRegistry:
                 "operation": operation,
             }
         return run_state
+
+    def _begin_run(self, ree_id: str, run_id: str, operation: str) -> None:
+        """Mark the worker as started: stamp startedAt and advance out of 'queued'.
+
+        A provisioning run's working state is "provisioning"; every other run's
+        is "running". A cancel that landed while queued set "canceling" — leave
+        that in place so the runner's cancel check settles it.
+        """
+        with self._lock:
+            run_state = self._run_store.get(ree_id, {}).get(run_id)
+            if not run_state:
+                return
+            run_state["startedAt"] = utc_now()
+            if run_state["status"] == "queued":
+                run_state["status"] = "provisioning" if operation == "provision" else "running"
+                self._changed.notify_all()
 
     def _set_status(self, ree_id: str, run_id: str, status: str) -> None:
         with self._lock:
@@ -253,6 +268,7 @@ class RunRegistry:
             links = [request_link] if request_link is not None else None
             with tracer.start_as_current_span(f"run.{operation}", links=links) as span:
                 CommandSpanAttrs(operation=operation, run_id=run_id, ree_id=ree_id).apply(span)
+                self._begin_run(ree_id, run_id, operation)
                 try:
                     status, outputs = runner(ree_id, run_id)
                 except HTTPException as exc:
@@ -313,7 +329,7 @@ class RunRegistry:
         with self._lock:
             run_states = list(self._run_store.get(ree_id, {}).values())
         summaries = [self.run_summary(run_state) for run_state in run_states]
-        summaries.sort(key=lambda summary: summary["createdAt"], reverse=True)
+        summaries.sort(key=lambda summary: (summary["createdAt"], summary["runId"]), reverse=True)
         return summaries
 
     def get_run_state(self, ree_id: str, run_id: str) -> dict[str, Any]:

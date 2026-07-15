@@ -111,6 +111,11 @@ class WriteFileArgs(BaseModel):
 
     path: str
     content: str
+    # Optimistic-concurrency guard: "sha256:<hex>" of the workspace file the
+    # caller last read. The handler verifies it against the current bytes right
+    # before writing — inside the per-REE dispatch serialization — so the
+    # compare-and-write is atomic. Empty/omitted skips the check.
+    expected_etag: str = ""
 
 
 class WriteFileCommand(BaseModel):
@@ -126,6 +131,8 @@ class DeleteFileArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     path: str
+    # Same optimistic-concurrency guard as WriteFileArgs.expected_etag.
+    expected_etag: str = ""
 
 
 class DeleteFileCommand(BaseModel):

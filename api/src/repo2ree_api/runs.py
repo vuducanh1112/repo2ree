@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
+from repo2ree_api.api_utils import keyset_paginate
 from repo2ree_api.contracts import (
     ERROR_RESPONSES,
     CancelRunResponse,
@@ -15,12 +16,12 @@ from repo2ree_api.contracts import (
 )
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
-    _append_run_log,
-    _get_run_state,
-    _list_runs,
-    _mark_cancel_requested,
-    _observe_run,
-    _run_summary,
+    append_run_log,
+    get_run_state,
+    list_runs,
+    mark_cancel_requested,
+    observe_run,
+    run_summary,
 )
 from repo2ree_api.run_registry import TERMINAL_STATUSES
 
@@ -45,8 +46,19 @@ runs_router = APIRouter(tags=["runs"])
     response_model=RunList,
     responses=ERROR_RESPONSES,
 )
-def list_workspace_runs(ree_id: str):
-    return {"runs": _list_runs(ree_id)}
+def list_workspace_runs(
+    ree_id: str,
+    cursor: str | None = Query(None),
+    limit: Annotated[int | None, Query(ge=1, le=500)] = None,
+):
+    runs = list_runs(ree_id)
+    page, next_cursor, _has_more = keyset_paginate(
+        runs,
+        cursor=cursor,
+        limit=limit,
+        key=lambda run: (run["createdAt"], run["runId"]),
+    )
+    return {"runs": page, "nextCursor": next_cursor}
 
 
 @runs_router.get(
@@ -56,8 +68,8 @@ def list_workspace_runs(ree_id: str):
     responses=ERROR_RESPONSES,
 )
 def get_workspace_run(ree_id: str, run_id: str):
-    run_state = _get_run_state(ree_id, run_id)
-    return _run_summary(run_state)
+    run_state = get_run_state(ree_id, run_id)
+    return run_summary(run_state)
 
 
 @runs_router.get(
@@ -72,7 +84,7 @@ def get_workspace_run_logs(
     cursor: Annotated[int | None, Query(ge=0)] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ):
-    run_state = _get_run_state(ree_id, run_id)
+    run_state = get_run_state(ree_id, run_id)
     after_seq = cursor or 0
     remaining = [entry for entry in run_state.get("logs", []) if int(entry["seq"]) > after_seq]
     page = remaining[:limit]
@@ -98,7 +110,7 @@ def observe_workspace_run(
     wait_seconds: Annotated[float, Query(alias="waitSeconds", ge=0, le=30)] = 25,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ):
-    run, entries, next_cursor, changed = _observe_run(
+    run, entries, next_cursor, changed = observe_run(
         ree_id,
         run_id,
         after_seq=cursor or 0,
@@ -115,13 +127,13 @@ def observe_workspace_run(
     responses=ERROR_RESPONSES,
 )
 def cancel_workspace_run(ree_id: str, run_id: str):
-    run_state = _get_run_state(ree_id, run_id)
+    run_state = get_run_state(ree_id, run_id)
     current_status = run_state.get("status")
     if current_status in TERMINAL_STATUSES:
         return {"status": current_status}
 
-    _mark_cancel_requested(ree_id, run_id)
-    _append_run_log(
+    mark_cancel_requested(ree_id, run_id)
+    append_run_log(
         ree_id,
         run_id,
         "system",
@@ -135,7 +147,7 @@ def cancel_workspace_run(ree_id: str, run_id: str):
             workbench_manager.cancel_run(handle, run_id)
         except Exception:
             logger.warning("failed to signal cancellation for %s", run_id, exc_info=True)
-            _append_run_log(
+            append_run_log(
                 ree_id,
                 run_id,
                 "system",
@@ -143,7 +155,7 @@ def cancel_workspace_run(ree_id: str, run_id: str):
                 "Cancellation signal could not reach the workbench",
             )
     else:
-        _append_run_log(
+        append_run_log(
             ree_id,
             run_id,
             "system",
@@ -151,5 +163,5 @@ def cancel_workspace_run(ree_id: str, run_id: str):
             "Cancellation signal deferred: workbench is not currently reachable",
         )
 
-    refreshed = _get_run_state(ree_id, run_id)
+    refreshed = get_run_state(ree_id, run_id)
     return {"status": refreshed["status"]}

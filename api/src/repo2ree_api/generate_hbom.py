@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.run_management import (
-    _run_summary,
-    _start_single_command_run,
+    run_summary,
+    start_single_command_run,
 )
 from repo2ree_protocol import GenerateHbomCommand
 
@@ -44,7 +44,7 @@ class CreateGenerateHbomRunPayload(BaseModel):
 )
 def create_workspace_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload):
     run_state = create_generate_hbom_run_state(ree_id, payload)
-    return _run_summary(run_state)
+    return run_summary(run_state)
 
 
 # ================================================
@@ -56,7 +56,7 @@ def create_generate_hbom_run_state(
     ree_id: str,
     payload: CreateGenerateHbomRunPayload,
 ) -> dict[str, Any]:
-    return _start_single_command_run(
+    return start_single_command_run(
         ree_id,
         operation="hbom",
         command=GenerateHbomCommand(),

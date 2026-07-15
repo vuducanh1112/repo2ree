@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +10,7 @@ from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
 
 __all__ = [
     "WORKSPACE_CONTROL_PREFIXES",
-    "paginate",
+    "keyset_paginate",
     "require_non_empty_path",
     "resolve_relative_path",
 ]
@@ -21,21 +21,41 @@ __all__ = [
 # ================================================
 
 
-def paginate(
-    items: Sequence[dict[str, Any]], cursor: str | None, limit: int | None
+_KEYSET_SEP = "~"
+
+
+def keyset_paginate(
+    items: Sequence[dict[str, Any]],
+    *,
+    cursor: str | None,
+    limit: int | None,
+    key: Callable[[dict[str, Any]], tuple[str, str]],
 ) -> tuple[list[dict[str, Any]], str | None, bool]:
-    start = 0
-    if cursor:
-        try:
-            start = max(int(cursor), 0)
-        except ValueError:
-            start = 0
-    end = len(items)
-    if limit is not None and limit >= 0:
-        end = min(start + limit, len(items))
-    page = list(items[start:end])
-    has_more = end < len(items)
-    next_cursor = str(end) if has_more else None
+    """Paginate a sequence sorted descending by ``key`` with a keyset cursor.
+
+    ``key`` returns a (sort value, unique tiebreak) string pair; the cursor
+    encodes the last returned item's key. Unlike an offset cursor, items
+    created or deleted between pages cannot shift page boundaries — the next
+    page is simply "everything strictly after the cursor key". Neither key
+    component may contain the separator character.
+    """
+    if cursor is not None:
+        sort_value, sep, tiebreak = cursor.partition(_KEYSET_SEP)
+        if not sep:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "invalid_cursor",
+                    "message": "Malformed pagination cursor",
+                    "details": {"cursor": cursor},
+                    "retryable": False,
+                },
+            )
+        boundary = (sort_value, tiebreak)
+        items = [item for item in items if key(item) < boundary]
+    page = list(items if limit is None else items[: max(limit, 0)])
+    has_more = len(page) < len(items)
+    next_cursor = _KEYSET_SEP.join(key(page[-1])) if page and has_more else None
     return page, next_cursor, has_more
 
 

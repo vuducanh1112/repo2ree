@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import shutil
 from collections.abc import Callable
 from contextlib import suppress
@@ -308,6 +309,38 @@ def run_runnable_handler(
     outputs["receipt"] = receipt.model_dump(by_alias=True)
 
     return ActionResult(status=status, exit_code=0, outputs=outputs)
+
+
+def workspace_content_etag(store: ReeStore, path: str) -> str | None:
+    """Current "sha256:<hex>" etag of a workspace file, or None if it is absent."""
+    if not store.workspace.is_file(path):
+        return None
+    return f"sha256:{hashlib.sha256(store.workspace.read_bytes(path)).hexdigest()}"
+
+
+def check_expected_etag(store: ReeStore, path: str, expected: str, *, log: LogSink) -> ActionResult | None:
+    """Verify an optimistic-concurrency etag; return the conflict result on mismatch.
+
+    Runs inside the per-REE dispatch serialization, so a passed check cannot be
+    invalidated before the mutation that follows it. Empty ``expected`` skips
+    the check.
+    """
+    if not expected:
+        return None
+    actual = workspace_content_etag(store, path)
+    if expected == actual:
+        return None
+    log("system", "error", f"etag mismatch for {path}: expected {expected}, actual {actual}")
+    return ActionResult(
+        status="failed",
+        exit_code=1,
+        outputs={
+            "errorCode": "version_conflict",
+            "path": path,
+            "expectedVersion": expected,
+            "actualVersion": actual,
+        },
+    )
 
 
 def patch_ree_intent(store: ReeStore, patch: dict[str, Any]) -> None:

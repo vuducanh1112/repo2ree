@@ -6,6 +6,7 @@ Mirrors the host-side write_file_content behaviour exactly.
 
 from __future__ import annotations
 
+from repo2ree_core.envelope.handlers._common import check_expected_etag
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
 from repo2ree_core.storage.store import ReeStore
@@ -32,6 +33,10 @@ def handle_write_file(
 
     layout = ReeLayout.in_workbench()
     store = ReeStore(layout)
+
+    conflict = check_expected_etag(store, args.path, args.expected_etag, log=log)
+    if conflict is not None:
+        return conflict
 
     log("system", "info", f"write_file: {args.path}")
     try:

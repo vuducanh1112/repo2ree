@@ -10,8 +10,8 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
-    _run_summary,
-    _start_single_command_run,
+    run_summary,
+    start_single_command_run,
 )
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_protocol.command import RunExperimentArgs, RunExperimentCommand
@@ -54,7 +54,7 @@ def create_experiment_run(
     payload: CreateExperimentRunPayload,
 ):
     run_state = _create_experiment_run_state(ree_id, experiment_name, payload.idempotencyKey)
-    return _run_summary(run_state)
+    return run_summary(run_state)
 
 
 # ================================================
@@ -101,7 +101,7 @@ def _create_experiment_run_state(
 ) -> dict[str, Any]:
     _resolve_experiment_preflight(ree_id, experiment_name)
 
-    return _start_single_command_run(
+    return start_single_command_run(
         ree_id,
         operation="experiment",
         command=RunExperimentCommand(args=RunExperimentArgs(experiment_name=experiment_name)),

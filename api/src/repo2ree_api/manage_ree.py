@@ -13,7 +13,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 
-from repo2ree_api.api_utils import paginate
+from repo2ree_api.api_utils import keyset_paginate
 from repo2ree_api.contracts import (
     ERROR_RESPONSES,
     DeleteReeResponse,
@@ -21,7 +21,6 @@ from repo2ree_api.contracts import (
     ReeDocument,
     ReeList,
     ReeState,
-    RemoveSourceResponse,
     ReprovisionResponse,
     RunSummary,
     UploadInitResponse,
@@ -29,13 +28,13 @@ from repo2ree_api.contracts import (
 )
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
-    _append_run_log,
-    _is_cancel_requested,
-    _list_runs,
-    _run_summary,
-    _start_background_run,
-    _start_provisioning_run,
-    _update_run_outputs,
+    append_run_log,
+    is_cancel_requested,
+    list_runs,
+    run_summary,
+    start_background_run,
+    start_provisioning_run,
+    update_run_outputs,
 )
 from repo2ree_api.run_registry import ACTIVE_STATUSES
 from repo2ree_api.schemas import (
@@ -93,7 +92,7 @@ from repo2ree_protocol.tracing import (
     get_tracer,
     record_command_status,
 )
-from repo2ree_supervisor import WorkbenchHandle, WorkbenchUnavailableError
+from repo2ree_supervisor import WorkbenchHandle
 
 # ================================================
 # Logging
@@ -173,39 +172,46 @@ def _require_handle(ree_id: str) -> WorkbenchHandle:
     raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
 
 
-def _dispatch_or_500(handle: WorkbenchHandle, cmd: Command, run_id: str, error_detail: str) -> ActionResult:
-    """Dispatch a single workbench command, raising HTTP 500 unless it succeeds."""
+def _dispatch_or_fail(handle: WorkbenchHandle, cmd: Command, run_id: str, error_message: str) -> ActionResult:
+    """Dispatch a single workbench command, translating failure into the error envelope.
+
+    A handler-reported version conflict maps to 409 (retryable after re-reading);
+    any other reported failure is an input or REE-state problem and maps to 400
+    with the command's outputs attached so the caller can see what the workbench
+    said. Transport-level failures raise WorkbenchUnavailableError instead and
+    map to 503 in the app-level handler.
+    """
     result = workbench_manager.dispatch_action(handle, cmd, run_id, lambda *_: None)
-    if result.status != "succeeded":
-        raise HTTPException(status_code=500, detail=error_detail)
-    return result
-
-
-def _content_etag(content: bytes) -> str:
-    return f"sha256:{hashlib.sha256(content).hexdigest()}"
-
-
-def _require_file_match(handle: WorkbenchHandle, path: str, expected: str | None) -> str | None:
-    """Validate an optional file content token and return the current token."""
-    if not expected:
-        return None
-    try:
-        actual = _content_etag(workbench_manager.read_file_bytes(handle, path))
-    except WorkbenchUnavailableError:
-        raise
-    except RuntimeError:
-        actual = None
-    if expected != actual:
+    if result.status == "succeeded":
+        return result
+    outputs = result.outputs or {}
+    if outputs.get("errorCode") == "version_conflict":
         raise HTTPException(
             status_code=409,
             detail={
                 "code": "version_conflict",
                 "message": "Workspace file changed since it was read",
-                "details": {"path": path, "expectedVersion": expected, "actualVersion": actual},
+                "details": {
+                    "path": outputs.get("path"),
+                    "expectedVersion": outputs.get("expectedVersion"),
+                    "actualVersion": outputs.get("actualVersion"),
+                },
                 "retryable": True,
             },
         )
-    return actual
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "code": f"{cmd.operation}_failed",
+            "message": error_message,
+            "details": {"operation": cmd.operation, "exitCode": result.exit_code, "outputs": outputs or None},
+            "retryable": False,
+        },
+    )
+
+
+def _content_etag(content: bytes) -> str:
+    return f"sha256:{hashlib.sha256(content).hexdigest()}"
 
 
 def _download_pipeline(lead: AcquireSourceCommand, metadata_args: UpdateSourceMetadataArgs) -> list[Command]:
@@ -253,7 +259,7 @@ def _run_source_pipeline(
     for cmd in pipeline:
         result = workbench_manager.dispatch_action(handle, cmd, run_id, log_run)
         if result.outputs:
-            _update_run_outputs(ws_id, run_id, result.outputs)
+            update_run_outputs(ws_id, run_id, result.outputs)
         if result.status != "succeeded":
             log_run("system", "error", f"Workbench step {cmd.operation} {result.status}")
             return result.status
@@ -293,9 +299,9 @@ def create_workspace_route(payload: ReeCreatePayload):
     # minted up front, so the response carries it immediately.
     def _runner(rid: str, run_id: str) -> tuple[str, dict[str, Any]]:
         def _log(stream: str, level: str, message: str) -> None:
-            _append_run_log(rid, run_id, stream, level, message)
+            append_run_log(rid, run_id, stream, level, message)
 
-        if _is_cancel_requested(rid, run_id):
+        if is_cancel_requested(rid, run_id):
             _log("system", "warn", "Provisioning canceled before it started")
             return "canceled", {}
 
@@ -308,18 +314,18 @@ def create_workspace_route(payload: ReeCreatePayload):
             _log("system", "error", f"Workbench provisioning failed: {exc}")
             return "failed", {}
 
-        if _is_cancel_requested(rid, run_id):
+        if is_cancel_requested(rid, run_id):
             _log("system", "warn", "Provisioning canceled after workbench startup")
             return "canceled", {"workspace": workbench_manager.get_workspace(handle)}
 
         return "succeeded", {"workspace": workbench_manager.get_workspace(handle)}
 
-    run_state = _start_provisioning_run(
+    run_state = start_provisioning_run(
         ree_id=ree_id,
         request_payload=payload.model_dump(),
         runner=_runner,
     )
-    return _run_summary(run_state)
+    return run_summary(run_state)
 
 
 @manage_ree_router.get(
@@ -330,14 +336,22 @@ def create_workspace_route(payload: ReeCreatePayload):
 )
 def list_workspaces_route(
     cursor: str | None = Query(None),
-    limit: int | None = Query(None),
+    limit: int | None = Query(None, ge=1),
     status: str | None = Query(None),
 ):
     items = workbench_manager.list_all_metadata()
     if status:
         items = [m for m in items if m.get("status") == status]
-    page, next_cursor, _has_more = paginate(items, cursor=cursor, limit=limit)
+    # Keyset pagination needs an immutable sort key: createdAt (with reeId as
+    # the unique tiebreak), not the manager's updatedAt ordering, which shifts
+    # whenever an REE is touched mid-pagination.
+    items.sort(key=_ree_page_key, reverse=True)
+    page, next_cursor, _has_more = keyset_paginate(items, cursor=cursor, limit=limit, key=_ree_page_key)
     return {"items": page, "nextCursor": next_cursor}
+
+
+def _ree_page_key(metadata: dict[str, Any]) -> tuple[str, str]:
+    return str(metadata.get("createdAt", "")), str(metadata.get("reeId", ""))
 
 
 @manage_ree_router.get(
@@ -365,7 +379,7 @@ def get_workspace_state_route(ree_id: str):
     """Compact automation view: durable state and file metadata, never contents."""
     handle = _require_handle(ree_id)
     workspace = workbench_manager.get_workspace_state(handle)
-    active_runs = [run for run in _list_runs(ree_id) if run.get("status") in ACTIVE_STATUSES]
+    active_runs = [run for run in list_runs(ree_id) if run.get("status") in ACTIVE_STATUSES]
     state = {
         "reeId": workspace["reeId"],
         "name": workspace["name"],
@@ -413,7 +427,7 @@ def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
             )
 
         cmd = PatchReeIntentCommand(args=PatchReeIntentArgs(patch=dict(payload.reeIntentPatch or {})))
-        _dispatch_or_500(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
+        _dispatch_or_fail(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
         return workbench_manager.get_workspace(handle)
 
 
@@ -424,7 +438,13 @@ def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
     responses=ERROR_RESPONSES,
 )
 def replace_ree_intent_route(ree_id: str, payload: ReeIntentReplacePayload):
-    """Atomically replace the complete typed authoring intent."""
+    """Atomically replace the complete typed authoring intent.
+
+    Delegating to the patch route is a true replace only because model_dump()
+    emits every ReeIntent field (defaults included) and apply_patch merges at
+    the top level, so each key gets overwritten. Guarded by
+    test_replace_intent_resets_fields_omitted_from_the_new_intent.
+    """
     return patch_ree_intent_route(
         ree_id,
         ReeIntentPatchPayload(
@@ -472,14 +492,14 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
 
     def _runner(ws_id: str, run_id: str):
         def _log_run(stream: str, level: str, message: str) -> None:
-            _append_run_log(ws_id, run_id, stream, level, message)
+            append_run_log(ws_id, run_id, stream, level, message)
 
         _log_run(
             "system",
             "info",
             f"Starting source acquisition from {payload.originUrl}",
         )
-        if _is_cancel_requested(ws_id, run_id):
+        if is_cancel_requested(ws_id, run_id):
             _log_run("system", "warn", "Source acquisition canceled")
             return "canceled", request_payload
 
@@ -503,7 +523,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
         _log_run("system", "info", "Source acquisition succeeded")
         return "succeeded", request_payload
 
-    run_state = _start_background_run(
+    run_state = start_background_run(
         ree_id=ree_id,
         operation="source",
         request_payload=request_payload,
@@ -512,7 +532,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
         idempotency_key=payload.idempotencyKey,
     )
 
-    return _run_summary(run_state)
+    return run_summary(run_state)
 
 
 @manage_ree_router.post(
@@ -600,14 +620,14 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
 
     def _runner(ws_id: str, run_id: str):
         def _log_run(stream: str, level: str, message: str) -> None:
-            _append_run_log(ws_id, run_id, stream, level, message)
+            append_run_log(ws_id, run_id, stream, level, message)
 
         _log_run(
             "system",
             "info",
             f"Starting source upload extraction for {payload.archiveName}",
         )
-        if _is_cancel_requested(ws_id, run_id):
+        if is_cancel_requested(ws_id, run_id):
             _log_run("system", "warn", "Source upload canceled")
             return "canceled", request_payload
 
@@ -653,7 +673,7 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
             _log_run("system", "info", "Source upload extraction succeeded")
         return status, request_payload
 
-    run_state = _start_background_run(
+    run_state = start_background_run(
         ree_id=ree_id,
         operation="source",
         request_payload=request_payload,
@@ -662,21 +682,21 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
         idempotency_key=payload.idempotencyKey,
     )
 
-    return _run_summary(run_state)
+    return run_summary(run_state)
 
 
 @manage_ree_router.delete(
     "/api/v1/rees/{ree_id}/source",
     tags=["sources"],
     operation_id="removeSource",
-    response_model=RemoveSourceResponse,
+    response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )
 def remove_source_route(ree_id: str):
     handle = _require_handle(ree_id)
     with _ree_command_span("remove-source", ree_id):
-        _dispatch_or_500(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
-        return {"workspace": workbench_manager.get_workspace(handle)}
+        _dispatch_or_fail(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
+        return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.get(
@@ -711,9 +731,13 @@ def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)):
 def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload):
     handle = _require_handle(ree_id)
     with _ree_command_span("write-file", ree_id):
-        _require_file_match(handle, payload.path, payload.ifMatch)
-        cmd = WriteFileCommand(args=WriteFileArgs(path=payload.path, content=payload.content))
-        wb_result = _dispatch_or_500(handle, cmd, "write-file", "Workbench write_file failed")
+        # The ifMatch check rides inside the command so the workbench verifies
+        # it under the same per-REE serialization as the write — an API-side
+        # pre-read could pass and still lose to a concurrent writer.
+        cmd = WriteFileCommand(
+            args=WriteFileArgs(path=payload.path, content=payload.content, expected_etag=payload.ifMatch or "")
+        )
+        wb_result = _dispatch_or_fail(handle, cmd, "write-file", "Workbench write_file failed")
         result = dict(wb_result.outputs or {})
         result["etag"] = _content_etag(payload.content.encode())
         result.setdefault("updatedAt", None)
@@ -734,9 +758,8 @@ def delete_workspace_file_content_route(
 ):
     handle = _require_handle(ree_id)
     with _ree_command_span("delete-file", ree_id):
-        _require_file_match(handle, path, if_match)
-        cmd = DeleteFileCommand(args=DeleteFileArgs(path=path))
-        wb_result = _dispatch_or_500(handle, cmd, "delete-file", "Workbench delete_file failed")
+        cmd = DeleteFileCommand(args=DeleteFileArgs(path=path, expected_etag=if_match or ""))
+        wb_result = _dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed")
         return wb_result.outputs or {"deletedAt": None}
 
 
@@ -753,7 +776,17 @@ def reprovision_workbench_route(ree_id: str):
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "reprovision_failed",
+                "message": f"Workbench reprovision failed: {exc}",
+                "details": None,
+                # A fresh container start can fail transiently (image pull,
+                # agent hiccup); retrying the reprovision is safe.
+                "retryable": True,
+            },
+        ) from exc
     return {"status": "reprovisioned", "reeId": ree_id}
 
 
@@ -773,7 +806,7 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload):
                 results_included=payload.includeResults,
             )
         )
-        _dispatch_or_500(handle, cmd, "seal", "Workbench seal_ree failed")
+        _dispatch_or_fail(handle, cmd, "seal", "Workbench seal_ree failed")
         # Return the post-seal workspace so the client sees the sealed state.
         return workbench_manager.get_workspace(handle)
 

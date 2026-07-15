@@ -63,7 +63,7 @@ def test_successful_run_reaches_succeeded_with_outputs():
         KNOWN_REE, "source", {"mode": "upload"}, "src", lambda e, r: ("succeeded", {"resolved": "abc"})
     )
     # run_state is live — the worker may already have finished by now, so the
-    # initial "running" status is asserted in the blocking-runner cancel test
+    # queued → running transition is asserted in the blocking-runner lifecycle test
     assert run_state["runId"].startswith("src-")
     assert run_state["request"] == {"mode": "upload"}
 
@@ -144,6 +144,46 @@ def test_idempotency_key_rejects_different_request_payload():
 
 
 # ================================================
+# Status lifecycle
+# ================================================
+
+
+def test_run_starts_queued_then_running_with_started_at_stamped():
+    registry = _registry()
+    release = Event()
+
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        release.wait(timeout=5.0)
+        return "succeeded", {}
+
+    run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    # Created queued with no start time; the worker stamps both when it begins.
+    assert run_state["createdAt"] is not None
+
+    running = _wait_for(registry, run_state["runId"], frozenset({"running"}))
+    assert running["startedAt"] is not None
+    assert running["startedAt"] >= running["createdAt"]
+    assert running["finishedAt"] is None
+
+    release.set()
+    _wait_for(registry, run_state["runId"], TERMINAL)
+
+
+def test_provision_run_reports_provisioning_while_working():
+    registry = _registry()
+    release = Event()
+
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        release.wait(timeout=5.0)
+        return "succeeded", {}
+
+    run_state = registry.start_background(KNOWN_REE, "provision", {}, "provision", _runner, require_ree_exists=False)
+    _wait_for(registry, run_state["runId"], frozenset({"provisioning"}))
+    release.set()
+    assert _wait_for(registry, run_state["runId"], TERMINAL)["status"] == "succeeded"
+
+
+# ================================================
 # Failure paths
 # ================================================
 
@@ -193,7 +233,7 @@ def test_cancel_of_in_flight_run_transitions_canceling_then_canceled():
 
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
     run_id = run_state["runId"]
-    assert registry.get_run_state(KNOWN_REE, run_id)["status"] == "running"
+    _wait_for(registry, run_id, frozenset({"running"}))
 
     assert registry.mark_cancel_requested(KNOWN_REE, run_id) is True
     assert registry.get_run_state(KNOWN_REE, run_id)["status"] == "canceling"
@@ -274,6 +314,7 @@ def test_observe_returns_only_logs_after_sequence_cursor():
         return "succeeded", {}
 
     run = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    _wait_for(registry, run["runId"], frozenset({"running"}))
     registry.append_log(KNOWN_REE, run["runId"], "stdout", "info", "one")
     registry.append_log(KNOWN_REE, run["runId"], "stdout", "info", "two")
 
@@ -303,6 +344,7 @@ def test_observe_timeout_returns_unchanged_active_run():
         "build",
         lambda e, r: (release.wait(timeout=5.0) and "succeeded" or "failed", {}),
     )
+    _wait_for(registry, run["runId"], frozenset({"running"}))
 
     summary, entries, cursor, changed = registry.observe(
         KNOWN_REE,

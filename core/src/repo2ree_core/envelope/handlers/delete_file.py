@@ -7,6 +7,7 @@ Mirrors the host-side delete_file_content behaviour exactly.
 
 from __future__ import annotations
 
+from repo2ree_core.envelope.handlers._common import check_expected_etag
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.storage.layout import ReeLayout, validate_relative_path
 from repo2ree_core.storage.store import ReeStore
@@ -37,6 +38,10 @@ def handle_delete_file(
     if not store.workspace.is_file(args.path):
         log("system", "error", f"file not found in workspace: {args.path}")
         return ActionResult(status="failed", exit_code=1)
+
+    conflict = check_expected_etag(store, args.path, args.expected_etag, log=log)
+    if conflict is not None:
+        return conflict
 
     log("system", "info", f"delete_file: {args.path}")
     try:

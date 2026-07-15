@@ -10,64 +10,72 @@ from fastapi import HTTPException
 
 from repo2ree_api.api_utils import (
     WORKSPACE_CONTROL_PREFIXES,
-    paginate,
+    keyset_paginate,
     require_non_empty_path,
     resolve_relative_path,
 )
 from repo2ree_core.run_script import stream_output
 
 # ================================================
-# paginate
+# keyset_paginate
 # ================================================
 
 
-ITEMS = [{"i": i} for i in range(5)]
+# Sorted descending by (createdAt, id), the order the routes hand in.
+ITEMS = [
+    {"createdAt": "t5", "id": "e"},
+    {"createdAt": "t4", "id": "d"},
+    {"createdAt": "t3", "id": "c"},
+    {"createdAt": "t2", "id": "b"},
+    {"createdAt": "t1", "id": "a"},
+]
 
 
-def test_paginate_no_cursor_no_limit_returns_everything():
-    page, next_cursor, has_more = paginate(ITEMS, cursor=None, limit=None)
+def _key(item: dict[str, str]) -> tuple[str, str]:
+    return item["createdAt"], item["id"]
+
+
+def test_keyset_no_cursor_no_limit_returns_everything():
+    page, next_cursor, has_more = keyset_paginate(ITEMS, cursor=None, limit=None, key=_key)
     assert page == ITEMS
     assert next_cursor is None
     assert has_more is False
 
 
-def test_paginate_limit_slices_and_reports_more():
-    page, next_cursor, has_more = paginate(ITEMS, cursor=None, limit=2)
+def test_keyset_limit_slices_and_encodes_last_key_as_cursor():
+    page, next_cursor, has_more = keyset_paginate(ITEMS, cursor=None, limit=2, key=_key)
     assert page == ITEMS[:2]
-    assert next_cursor == "2"
+    assert next_cursor == "t4~d"
     assert has_more is True
 
 
-def test_paginate_cursor_continues_where_the_last_page_ended():
-    page, next_cursor, has_more = paginate(ITEMS, cursor="2", limit=2)
+def test_keyset_cursor_continues_strictly_after_the_cursor_key():
+    page, next_cursor, has_more = keyset_paginate(ITEMS, cursor="t4~d", limit=2, key=_key)
     assert page == ITEMS[2:4]
-    assert next_cursor == "4"
+    assert next_cursor == "t2~b"
     assert has_more is True
 
 
-def test_paginate_last_page_has_no_next_cursor():
-    page, next_cursor, has_more = paginate(ITEMS, cursor="4", limit=10)
+def test_keyset_last_page_has_no_next_cursor():
+    page, next_cursor, has_more = keyset_paginate(ITEMS, cursor="t2~b", limit=10, key=_key)
     assert page == ITEMS[4:]
     assert next_cursor is None
     assert has_more is False
 
 
-def test_paginate_garbage_or_negative_cursor_starts_at_zero():
-    assert paginate(ITEMS, cursor="garbage", limit=1)[0] == ITEMS[:1]
-    assert paginate(ITEMS, cursor="-3", limit=1)[0] == ITEMS[:1]
+def test_keyset_items_created_between_pages_do_not_shift_the_boundary():
+    # A new item at the head (newest) must not push earlier items into the
+    # next page — the failure mode of offset cursors.
+    grown = [{"createdAt": "t6", "id": "f"}, *ITEMS]
+    page, _, _ = keyset_paginate(grown, cursor="t4~d", limit=2, key=_key)
+    assert page == ITEMS[2:4]
 
 
-def test_paginate_negative_limit_is_ignored():
-    page, _, has_more = paginate(ITEMS, cursor=None, limit=-1)
-    assert page == ITEMS
-    assert has_more is False
-
-
-def test_paginate_zero_limit_returns_empty_page():
-    page, next_cursor, has_more = paginate(ITEMS, cursor=None, limit=0)
-    assert page == []
-    assert next_cursor == "0"
-    assert has_more is True
+def test_keyset_malformed_cursor_is_a_400_invalid_cursor():
+    with pytest.raises(HTTPException) as excinfo:
+        keyset_paginate(ITEMS, cursor="no-separator", limit=2, key=_key)
+    assert excinfo.value.status_code == 400
+    assert excinfo.value.detail["code"] == "invalid_cursor"
 
 
 # ================================================

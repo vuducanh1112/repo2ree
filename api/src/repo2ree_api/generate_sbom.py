@@ -9,8 +9,8 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
 from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.run_management import (
-    _run_summary,
-    _start_single_command_run,
+    run_summary,
+    start_single_command_run,
 )
 from repo2ree_protocol.command import GenerateSbomArgs, GenerateSbomCommand
 
@@ -47,7 +47,7 @@ class CreateGenerateSbomRunPayload(BaseModel):
 )
 def create_workspace_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload):
     run_state = create_generate_sbom_run_state(ree_id, payload)
-    return _run_summary(run_state)
+    return run_summary(run_state)
 
 
 # ================================================
@@ -82,7 +82,7 @@ def create_generate_sbom_run_state(
 ) -> dict[str, Any]:
     runtime_path = _resolve_sbom_runtime_path(ree_id, payload.produced_runtime_path)
 
-    return _start_single_command_run(
+    return start_single_command_run(
         ree_id,
         operation="sbom",
         command=GenerateSbomCommand(args=GenerateSbomArgs(produced_runtime_path=runtime_path)),

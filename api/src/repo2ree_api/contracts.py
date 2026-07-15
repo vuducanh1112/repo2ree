@@ -13,7 +13,6 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 RunStatus = Literal[
-    "created",
     "queued",
     "provisioning",
     "running",
@@ -80,6 +79,7 @@ class RunList(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     runs: list[RunSummary]
+    nextCursor: str | None = None
 
 
 class RunLogEntry(BaseModel):
@@ -197,12 +197,6 @@ class ReprovisionResponse(BaseModel):
 
     status: Literal["reprovisioned"]
     reeId: str
-
-
-class RemoveSourceResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    workspace: ReeDocument
 
 
 class HealthResponse(BaseModel):

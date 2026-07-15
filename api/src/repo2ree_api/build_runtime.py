@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.run_management import (
-    _run_summary,
-    _start_single_command_run,
+    run_summary,
+    start_single_command_run,
 )
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_protocol.command import BuildRuntimeCommand
@@ -47,7 +47,7 @@ class CreateBuildRuntimeRunPayload(_StrictRequestModel):
 )
 def create_workspace_build_runtime_run(ree_id: str, payload: CreateBuildRuntimeRunPayload):
     run_state = create_build_run_state(ree_id, payload)
-    return _run_summary(run_state)
+    return run_summary(run_state)
 
 
 # ================================================
@@ -59,7 +59,7 @@ def create_build_run_state(
     ree_id: str,
     payload: CreateBuildRuntimeRunPayload,
 ) -> dict[str, Any]:
-    return _start_single_command_run(
+    return start_single_command_run(
         ree_id,
         operation="build",
         command=BuildRuntimeCommand(),

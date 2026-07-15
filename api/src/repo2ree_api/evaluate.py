@@ -9,8 +9,8 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
-    _run_summary,
-    _start_single_command_run,
+    run_summary,
+    start_single_command_run,
 )
 from repo2ree_protocol.command import (
     EvaluateDependencyScoreArgs,
@@ -50,7 +50,7 @@ class CreateEvaluateRunPayload(BaseModel):
 )
 def create_workspace_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload):
     run_state = create_evaluate_run_state(ree_id, payload)
-    return _run_summary(run_state)
+    return run_summary(run_state)
 
 
 _REPORT_FILENAME = "reproducibility-report.json"
@@ -85,7 +85,7 @@ def create_evaluate_run_state(
     ree_id: str,
     payload: CreateEvaluateRunPayload,
 ) -> dict[str, Any]:
-    return _start_single_command_run(
+    return start_single_command_run(
         ree_id,
         operation="evaluate",
         command=EvaluateDependencyScoreCommand(args=EvaluateDependencyScoreArgs(strict=payload.strict)),
