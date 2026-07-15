@@ -43,6 +43,7 @@ _mark_cancel_requested = _registry.mark_cancel_requested
 _run_summary = _registry.run_summary
 _get_run_state = _registry.get_run_state
 _list_runs = _registry.list_runs
+_observe_run = _registry.observe
 
 
 def _start_background_run(
@@ -51,8 +52,16 @@ def _start_background_run(
     request_payload: dict[str, Any],
     run_id_prefix: str,
     runner: Callable[[str, str], tuple[str, dict[str, Any]]],
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
-    return _registry.start_background(ree_id, operation, request_payload, run_id_prefix, runner)
+    return _registry.start_background(
+        ree_id,
+        operation,
+        request_payload,
+        run_id_prefix,
+        runner,
+        idempotency_key=idempotency_key,
+    )
 
 
 def _start_provisioning_run(
@@ -84,6 +93,7 @@ def _start_single_command_run(
     request_payload: dict[str, Any],
     canceled_message: str,
     fallback_outputs: dict[str, Any] | None = None,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     """Start a background run that dispatches a single workbench command.
 
@@ -115,4 +125,5 @@ def _start_single_command_run(
         request_payload=request_payload,
         run_id_prefix=run_id_prefix,
         runner=_runner,
+        idempotency_key=idempotency_key,
     )

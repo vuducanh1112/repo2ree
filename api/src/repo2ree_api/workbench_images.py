@@ -13,6 +13,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.settings import WorkbenchImage, service_settings
 
 # The configured catalog, resolved once at import. Ordered; the first entry is the
@@ -25,7 +26,7 @@ def default_workbench_image() -> WorkbenchImage:
     return WORKBENCH_IMAGE_CATALOG[0]
 
 
-workbench_images_router = APIRouter()
+workbench_images_router = APIRouter(tags=["fleet"])
 
 
 class WorkbenchImageCatalog(BaseModel):
@@ -33,7 +34,12 @@ class WorkbenchImageCatalog(BaseModel):
     defaultId: str
 
 
-@workbench_images_router.get("/api/v1/workbench/images")
+@workbench_images_router.get(
+    "/api/v1/workbench/images",
+    operation_id="listWorkbenchImages",
+    response_model=WorkbenchImageCatalog,
+    responses=ERROR_RESPONSES,
+)
 def list_workbench_images() -> WorkbenchImageCatalog:
     """The base images the frontend offers at provision time."""
     return WorkbenchImageCatalog(

@@ -187,7 +187,7 @@ def test_upload_over_real_server(server: str) -> None:
         # like a real client — never pull the published edge default.
         resp = client.post(
             "/api/v1/rees",
-            json={"sourceMode": "upload", "name": "real-server-itest", "workbenchImage": WORKBENCH_IMAGE},
+            json={"name": "real-server-itest", "workbenchImage": WORKBENCH_IMAGE},
         )
         assert resp.status_code == 200, resp.text
         run = resp.json()

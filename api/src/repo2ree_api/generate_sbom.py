@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
+from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.run_management import (
     _run_summary,
     _start_single_command_run,
@@ -18,7 +19,7 @@ from repo2ree_protocol.command import GenerateSbomArgs, GenerateSbomCommand
 # ================================================
 
 
-generate_sbom_router = APIRouter()
+generate_sbom_router = APIRouter(tags=["runs"])
 
 
 # ================================================
@@ -38,7 +39,12 @@ class CreateGenerateSbomRunPayload(BaseModel):
 # ================================================
 
 
-@generate_sbom_router.post("/api/v1/rees/{ree_id}/generate-sbom")
+@generate_sbom_router.post(
+    "/api/v1/rees/{ree_id}/generate-sbom",
+    operation_id="startSbomGeneration",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
 def create_workspace_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload):
     run_state = create_generate_sbom_run_state(ree_id, payload)
     return _run_summary(run_state)
@@ -84,4 +90,5 @@ def create_generate_sbom_run_state(
         request_payload={"produced_runtime_path": runtime_path},
         canceled_message="SBOM run canceled",
         fallback_outputs={"runtimeRelativePath": runtime_path},
+        idempotency_key=payload.idempotencyKey,
     )

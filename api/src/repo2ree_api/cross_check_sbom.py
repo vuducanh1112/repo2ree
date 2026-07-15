@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.run_management import (
     _run_summary,
     _start_single_command_run,
@@ -16,7 +17,7 @@ from repo2ree_protocol.command import CrossCheckSbomArgs, CrossCheckSbomCommand
 # ================================================
 
 
-cross_check_sbom_router = APIRouter()
+cross_check_sbom_router = APIRouter(tags=["runs"])
 
 
 # ================================================
@@ -35,7 +36,12 @@ class CreateCrossCheckSbomRunPayload(BaseModel):
 # ================================================
 
 
-@cross_check_sbom_router.post("/api/v1/rees/{ree_id}/cross-check-sbom")
+@cross_check_sbom_router.post(
+    "/api/v1/rees/{ree_id}/cross-check-sbom",
+    operation_id="startSbomCrossCheck",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
 def create_workspace_cross_check_sbom_run(ree_id: str, payload: CreateCrossCheckSbomRunPayload):
     run_state = create_cross_check_sbom_run_state(ree_id, payload)
     return _run_summary(run_state)
@@ -57,4 +63,5 @@ def create_cross_check_sbom_run_state(
         run_id_prefix="crosscheck",
         request_payload={},
         canceled_message="SBOM cross-check run canceled",
+        idempotency_key=payload.idempotencyKey,
     )

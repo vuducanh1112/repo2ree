@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import logging
 import re
 import tempfile
@@ -13,27 +14,45 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 
 from repo2ree_api.api_utils import paginate
+from repo2ree_api.contracts import (
+    ERROR_RESPONSES,
+    DeleteReeResponse,
+    FileMutationResponse,
+    ReeDocument,
+    ReeList,
+    ReeState,
+    RemoveSourceResponse,
+    ReprovisionResponse,
+    RunSummary,
+    UploadInitResponse,
+    UploadStoredResponse,
+)
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
     _append_run_log,
     _is_cancel_requested,
+    _list_runs,
     _run_summary,
     _start_background_run,
     _start_provisioning_run,
     _update_run_outputs,
 )
+from repo2ree_api.run_registry import ACTIVE_STATUSES
 from repo2ree_api.schemas import (
+    ReeCreatePayload,
     ReeIntentPatchPayload,
+    ReeIntentReplacePayload,
     ReeSealPayload,
     SourceAcquirePayload,
     SourceUploadCompletePayload,
     UploadInitPayload,
-    WorkspaceCreatePayload,
     WorkspaceFileContentPayload,
 )
+from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.upload_staging import (
     InvalidUploadTokenError,
     UnknownUploadTokenError,
+    UploadSizeMismatchError,
     UploadStagingFullError,
     UploadTooLargeError,
     discard_expired_uploads,
@@ -67,7 +86,6 @@ from repo2ree_protocol.command import (
     UpdateSourceMetadataArgs,
     WriteFileArgs,
 )
-from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     command_metric_attrs,
@@ -75,7 +93,7 @@ from repo2ree_protocol.tracing import (
     get_tracer,
     record_command_status,
 )
-from repo2ree_supervisor import WorkbenchHandle
+from repo2ree_supervisor import WorkbenchHandle, WorkbenchUnavailableError
 
 # ================================================
 # Logging
@@ -163,6 +181,33 @@ def _dispatch_or_500(handle: WorkbenchHandle, cmd: Command, run_id: str, error_d
     return result
 
 
+def _content_etag(content: bytes) -> str:
+    return f"sha256:{hashlib.sha256(content).hexdigest()}"
+
+
+def _require_file_match(handle: WorkbenchHandle, path: str, expected: str | None) -> str | None:
+    """Validate an optional file content token and return the current token."""
+    if not expected:
+        return None
+    try:
+        actual = _content_etag(workbench_manager.read_file_bytes(handle, path))
+    except WorkbenchUnavailableError:
+        raise
+    except RuntimeError:
+        actual = None
+    if expected != actual:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "version_conflict",
+                "message": "Workspace file changed since it was read",
+                "details": {"path": path, "expectedVersion": expected, "actualVersion": actual},
+                "retryable": True,
+            },
+        )
+    return actual
+
+
 def _download_pipeline(lead: AcquireSourceCommand, metadata_args: UpdateSourceMetadataArgs) -> list[Command]:
     """Download: acquire (fetch into upstream) → snapshot → materialize → update-metadata.
 
@@ -215,59 +260,12 @@ def _run_source_pipeline(
     return "succeeded"
 
 
-def _run_workbench_acquire_pipeline(
-    handle: WorkbenchHandle,
-    ree_id: str,
-    *,
-    origin_url: str,
-    source_type: str,
-    revision: str = "",
-    log: LogSink | None = None,
-) -> None:
-    """Run the acquire → snapshot → materialize → update-metadata pipeline in the workbench.
-
-    Non-fatal: logs warnings and stops the pipeline on first failure so the
-    caller's response is not affected. When ``log`` is given, each command's
-    output is streamed to it (e.g. into a provisioning run's log stream).
-    """
-    sink: LogSink = log if log is not None else (lambda *_: None)
-    pipeline = _download_pipeline(
-        AcquireSourceCommand(
-            args=AcquireSourceArgs(
-                origin_url=origin_url,
-                source_type=source_type,  # type: ignore[arg-type]
-                revision=revision,
-            )
-        ),
-        UpdateSourceMetadataArgs(origin_url=origin_url, source_type=source_type),
-    )
-    for cmd in pipeline:
-        try:
-            result = workbench_manager.dispatch_action(handle, cmd, f"init-{cmd.operation}", sink)
-        except Exception as exc:
-            _log.warning(
-                "workbench acquire pipeline %s failed for %s: %s",
-                cmd.operation,
-                ree_id,
-                exc,
-            )
-            break
-        if result.status != "succeeded":
-            _log.warning(
-                "workbench acquire pipeline %s %s for %s",
-                cmd.operation,
-                result.status,
-                ree_id,
-            )
-            break
-
-
 # ================================================
 # Router
 # ================================================
 
 
-manage_ree_router = APIRouter()
+manage_ree_router = APIRouter(tags=["rees"])
 
 
 # ================================================
@@ -275,11 +273,13 @@ manage_ree_router = APIRouter()
 # ================================================
 
 
-@manage_ree_router.post("/api/v1/rees")
-def create_workspace_route(payload: WorkspaceCreatePayload):
-    if payload.sourceMode == "url" and not payload.originUrl:
-        raise HTTPException(status_code=400, detail="originUrl is required for url source mode")
-
+@manage_ree_router.post(
+    "/api/v1/rees",
+    operation_id="createRee",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
+def create_workspace_route(payload: ReeCreatePayload):
     ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
     # Blank/omitted image falls back to the server default in the manager.
@@ -309,20 +309,8 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
             return "failed", {}
 
         if _is_cancel_requested(rid, run_id):
-            _log("system", "warn", "Provisioning canceled before source acquisition")
+            _log("system", "warn", "Provisioning canceled after workbench startup")
             return "canceled", {"workspace": workbench_manager.get_workspace(handle)}
-
-        # For url mode, acquire the source into the workbench volume so the
-        # workspace reflects acquired state once provisioning finishes.
-        if payload.sourceMode == "url" and payload.originUrl:
-            _run_workbench_acquire_pipeline(
-                handle,
-                rid,
-                origin_url=payload.originUrl,
-                source_type=payload.sourceType or "git",
-                revision=(payload.revision or "").strip(),
-                log=_log,
-            )
 
         return "succeeded", {"workspace": workbench_manager.get_workspace(handle)}
 
@@ -334,7 +322,12 @@ def create_workspace_route(payload: WorkspaceCreatePayload):
     return _run_summary(run_state)
 
 
-@manage_ree_router.get("/api/v1/rees")
+@manage_ree_router.get(
+    "/api/v1/rees",
+    operation_id="listRees",
+    response_model=ReeList,
+    responses=ERROR_RESPONSES,
+)
 def list_workspaces_route(
     cursor: str | None = Query(None),
     limit: int | None = Query(None),
@@ -347,7 +340,12 @@ def list_workspaces_route(
     return {"items": page, "nextCursor": next_cursor}
 
 
-@manage_ree_router.get("/api/v1/rees/{ree_id}")
+@manage_ree_router.get(
+    "/api/v1/rees/{ree_id}",
+    operation_id="getRee",
+    response_model=ReeDocument,
+    responses=ERROR_RESPONSES,
+)
 def get_workspace_route(ree_id: str):
     handle = _require_handle(ree_id)
     workspace = workbench_manager.get_workspace(handle)
@@ -357,20 +355,91 @@ def get_workspace_route(ree_id: str):
     return workspace
 
 
-@manage_ree_router.patch("/api/v1/rees/{ree_id}/intent")
+@manage_ree_router.get(
+    "/api/v1/rees/{ree_id}/state",
+    operation_id="getReeState",
+    response_model=ReeState,
+    responses=ERROR_RESPONSES,
+)
+def get_workspace_state_route(ree_id: str):
+    """Compact automation view: durable state and file metadata, never contents."""
+    handle = _require_handle(ree_id)
+    workspace = workbench_manager.get_workspace_state(handle)
+    active_runs = [run for run in _list_runs(ree_id) if run.get("status") in ACTIVE_STATUSES]
+    state = {
+        "reeId": workspace["reeId"],
+        "name": workspace["name"],
+        "status": workspace["status"],
+        "updatedAt": workspace["updatedAt"],
+        "workbench": {
+            "status": "available",
+            "agentId": handle.agent_id,
+            "image": workbench_manager.image_for(handle),
+        },
+        "reeIntent": workspace.get("reeIntent", {}),
+        "reeSession": workspace.get("reeSession", {}),
+        "consistency": workspace.get("consistency", {}),
+        "files": workspace.get("files", []),
+        "activeRuns": active_runs,
+    }
+    for key in ("source", "sourceRepo"):
+        if key in workspace:
+            state[key] = workspace[key]
+    return state
+
+
+@manage_ree_router.patch(
+    "/api/v1/rees/{ree_id}/intent",
+    operation_id="patchReeIntent",
+    response_model=ReeDocument,
+    responses=ERROR_RESPONSES,
+)
 def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
     handle = _require_handle(ree_id)
     with _ree_command_span("patch-intent", ree_id):
         current = workbench_manager.get_ree_metadata(handle)
         if payload.expectedVersion and payload.expectedVersion != current.get("updatedAt"):
-            raise HTTPException(status_code=409, detail="Workspace version conflict")
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "version_conflict",
+                    "message": "REE intent changed since it was read",
+                    "details": {
+                        "expectedVersion": payload.expectedVersion,
+                        "actualVersion": current.get("updatedAt"),
+                    },
+                    "retryable": True,
+                },
+            )
 
         cmd = PatchReeIntentCommand(args=PatchReeIntentArgs(patch=dict(payload.reeIntentPatch or {})))
         _dispatch_or_500(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
         return workbench_manager.get_workspace(handle)
 
 
-@manage_ree_router.delete("/api/v1/rees/{ree_id}")
+@manage_ree_router.put(
+    "/api/v1/rees/{ree_id}/intent",
+    operation_id="replaceReeIntent",
+    response_model=ReeDocument,
+    responses=ERROR_RESPONSES,
+)
+def replace_ree_intent_route(ree_id: str, payload: ReeIntentReplacePayload):
+    """Atomically replace the complete typed authoring intent."""
+    return patch_ree_intent_route(
+        ree_id,
+        ReeIntentPatchPayload(
+            reeIntentPatch=payload.reeIntent.model_dump(mode="json"),
+            expectedVersion=payload.expectedVersion,
+        ),
+    )
+
+
+@manage_ree_router.delete(
+    "/api/v1/rees/{ree_id}",
+    operation_id="deleteRee",
+    response_model=DeleteReeResponse,
+    responses=ERROR_RESPONSES,
+)
 def delete_workspace_route(ree_id: str):
     handle = _require_handle(ree_id)
     with _ree_command_span("delete", ree_id):
@@ -385,7 +454,13 @@ def delete_workspace_route(ree_id: str):
         }
 
 
-@manage_ree_router.post("/api/v1/rees/{ree_id}/source:acquire")
+@manage_ree_router.post(
+    "/api/v1/rees/{ree_id}/source:acquire",
+    tags=["sources"],
+    operation_id="startSourceAcquisition",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
 def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
     handle = _require_handle(ree_id)
     request_payload = {
@@ -434,21 +509,47 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
         request_payload=request_payload,
         run_id_prefix="source",
         runner=_runner,
+        idempotency_key=payload.idempotencyKey,
     )
 
     return _run_summary(run_state)
 
 
-@manage_ree_router.post("/api/v1/rees/{ree_id}/source:upload-init")
+@manage_ree_router.post(
+    "/api/v1/rees/{ree_id}/source:upload-init",
+    tags=["sources"],
+    operation_id="initializeSourceUpload",
+    response_model=UploadInitResponse,
+    responses=ERROR_RESPONSES,
+)
 def upload_init_route(ree_id: str, payload: UploadInitPayload):
     _require_handle(ree_id)
-    result = new_upload_token()
+    if payload.size > service_settings.UPLOAD_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail={
+                "code": "upload_too_large",
+                "message": f"Upload exceeds the {service_settings.UPLOAD_MAX_BYTES}-byte limit",
+                "details": {"declaredSize": payload.size, "maxBytes": service_settings.UPLOAD_MAX_BYTES},
+            },
+        )
+    result = new_upload_token(
+        file_name=payload.fileName,
+        expected_size=payload.size,
+        content_type=payload.contentType,
+    )
     token = result["uploadToken"]
     result["uploadUrl"] = f"/api/v1/rees/{ree_id}/source:upload/{token}"
     return result
 
 
-@manage_ree_router.put("/api/v1/rees/{ree_id}/source:upload/{upload_token}")
+@manage_ree_router.put(
+    "/api/v1/rees/{ree_id}/source:upload/{upload_token}",
+    tags=["sources"],
+    operation_id="uploadSourceBytes",
+    response_model=UploadStoredResponse,
+    responses=ERROR_RESPONSES,
+)
 async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Request):
     # This route is async to consume the HTTP request body incrementally. It runs
     # on the event loop, so blocking control-plane calls must hop to a thread:
@@ -467,13 +568,24 @@ async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Requ
         raise HTTPException(status_code=413, detail=str(exc)) from exc
     except UploadStagingFullError as exc:
         raise HTTPException(status_code=507, detail=str(exc)) from exc
+    except UploadSizeMismatchError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "upload_size_mismatch", "message": str(exc), "details": None},
+        ) from exc
     return {
         "uploadToken": upload_token,
         "storedAt": utc_now(),
     }
 
 
-@manage_ree_router.post("/api/v1/rees/{ree_id}/source:upload-complete")
+@manage_ree_router.post(
+    "/api/v1/rees/{ree_id}/source:upload-complete",
+    tags=["sources"],
+    operation_id="completeSourceUpload",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
 def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
     handle = _require_handle(ree_id)
     request_payload = {
@@ -547,12 +659,19 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
         request_payload=request_payload,
         run_id_prefix="source",
         runner=_runner,
+        idempotency_key=payload.idempotencyKey,
     )
 
     return _run_summary(run_state)
 
 
-@manage_ree_router.delete("/api/v1/rees/{ree_id}/source")
+@manage_ree_router.delete(
+    "/api/v1/rees/{ree_id}/source",
+    tags=["sources"],
+    operation_id="removeSource",
+    response_model=RemoveSourceResponse,
+    responses=ERROR_RESPONSES,
+)
 def remove_source_route(ree_id: str):
     handle = _require_handle(ree_id)
     with _ree_command_span("remove-source", ree_id):
@@ -560,7 +679,19 @@ def remove_source_route(ree_id: str):
         return {"workspace": workbench_manager.get_workspace(handle)}
 
 
-@manage_ree_router.get("/api/v1/rees/{ree_id}/files/raw")
+@manage_ree_router.get(
+    "/api/v1/rees/{ree_id}/files/raw",
+    tags=["files"],
+    operation_id="readReeFile",
+    response_class=Response,
+    responses={
+        **ERROR_RESPONSES,
+        200: {
+            "description": "Raw workspace file bytes",
+            "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}},
+        },
+    },
+)
 def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)):
     handle = _require_handle(ree_id)
     try:
@@ -570,25 +701,51 @@ def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)):
     return Response(content=content, media_type="application/octet-stream")
 
 
-@manage_ree_router.put("/api/v1/rees/{ree_id}/files/content")
+@manage_ree_router.put(
+    "/api/v1/rees/{ree_id}/files/content",
+    tags=["files"],
+    operation_id="writeReeFile",
+    response_model=FileMutationResponse,
+    responses=ERROR_RESPONSES,
+)
 def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload):
     handle = _require_handle(ree_id)
     with _ree_command_span("write-file", ree_id):
+        _require_file_match(handle, payload.path, payload.ifMatch)
         cmd = WriteFileCommand(args=WriteFileArgs(path=payload.path, content=payload.content))
         wb_result = _dispatch_or_500(handle, cmd, "write-file", "Workbench write_file failed")
-        return wb_result.outputs or {"updatedAt": None}
+        result = dict(wb_result.outputs or {})
+        result["etag"] = _content_etag(payload.content.encode())
+        result.setdefault("updatedAt", None)
+        return result
 
 
-@manage_ree_router.delete("/api/v1/rees/{ree_id}/files/content")
-def delete_workspace_file_content_route(ree_id: str, path: str = Query(...)):
+@manage_ree_router.delete(
+    "/api/v1/rees/{ree_id}/files/content",
+    tags=["files"],
+    operation_id="deleteReeFile",
+    response_model=FileMutationResponse,
+    responses=ERROR_RESPONSES,
+)
+def delete_workspace_file_content_route(
+    ree_id: str,
+    path: str = Query(...),
+    if_match: str | None = Query(None, alias="ifMatch"),
+):
     handle = _require_handle(ree_id)
     with _ree_command_span("delete-file", ree_id):
+        _require_file_match(handle, path, if_match)
         cmd = DeleteFileCommand(args=DeleteFileArgs(path=path))
         wb_result = _dispatch_or_500(handle, cmd, "delete-file", "Workbench delete_file failed")
         return wb_result.outputs or {"deletedAt": None}
 
 
-@manage_ree_router.post("/api/v1/rees/{ree_id}/workbench/reprovision")
+@manage_ree_router.post(
+    "/api/v1/rees/{ree_id}/workbench/reprovision",
+    operation_id="reprovisionWorkbench",
+    response_model=ReprovisionResponse,
+    responses=ERROR_RESPONSES,
+)
 def reprovision_workbench_route(ree_id: str):
     """Replace the workbench container from the current image, keeping REE volume data."""
     try:
@@ -600,7 +757,12 @@ def reprovision_workbench_route(ree_id: str):
     return {"status": "reprovisioned", "reeId": ree_id}
 
 
-@manage_ree_router.post("/api/v1/rees/{ree_id}/ree:seal")
+@manage_ree_router.post(
+    "/api/v1/rees/{ree_id}/ree:seal",
+    operation_id="sealRee",
+    response_model=ReeDocument,
+    responses=ERROR_RESPONSES,
+)
 def seal_ree_route(ree_id: str, payload: ReeSealPayload):
     handle = _require_handle(ree_id)
     with _ree_command_span("seal", ree_id):
@@ -616,7 +778,18 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload):
         return workbench_manager.get_workspace(handle)
 
 
-@manage_ree_router.get("/api/v1/rees/{ree_id}/ree-archive")
+@manage_ree_router.get(
+    "/api/v1/rees/{ree_id}/ree-archive",
+    operation_id="downloadReeArchive",
+    response_class=StreamingResponse,
+    responses={
+        **ERROR_RESPONSES,
+        200: {
+            "description": "Sealed REE ZIP archive",
+            "content": {"application/zip": {"schema": {"type": "string", "format": "binary"}}},
+        },
+    },
+)
 def download_workspace_ree_archive_route(ree_id: str):
     handle = _require_handle(ree_id)
     archive_filename = _archive_download_filename(handle)

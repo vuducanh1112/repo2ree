@@ -10,20 +10,26 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+from repo2ree_core.domain.ree_intent import ReeIntent
 
 # ================================================
 # Request / response payload models
 # ================================================
 
 
-class WorkspaceCreatePayload(BaseModel):
-    sourceMode: Literal["url", "upload"]
-    originUrl: str | None = None
-    sourceType: Literal["git", "tarball", "zip"] | None = None
-    # Git revision (commit, branch, or tag) to pin the fetch to. Blank/omitted
-    # means the origin's default branch HEAD. Ignored for non-git sources.
-    revision: str | None = None
+class _StrictRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ReeCreatePayload(_StrictRequestModel):
+    """Provision a new empty REE workbench.
+
+    Source acquisition is intentionally a separate lifecycle operation through
+    ``source:acquire`` or the upload-init/upload/complete sequence.
+    """
+
     name: str | None = None
     # Image to provision the workbench from. Omitted (or blank) falls back to the
     # server default (the workbench image catalog default; see workbench_images.py).
@@ -33,37 +39,44 @@ class WorkspaceCreatePayload(BaseModel):
     agentId: str | None = None
 
 
-class ReeIntentPatchPayload(BaseModel):
+class ReeIntentPatchPayload(_StrictRequestModel):
     reeIntentPatch: dict[str, Any] = Field(default_factory=dict)
     expectedVersion: str | None = None
 
 
-class SourceAcquirePayload(BaseModel):
+class ReeIntentReplacePayload(_StrictRequestModel):
+    reeIntent: ReeIntent
+    expectedVersion: str | None = None
+
+
+class SourceAcquirePayload(_StrictRequestModel):
     originUrl: str
     sourceType: Literal["git", "tarball", "zip"]
     # Git revision (commit, branch, or tag) to pin the fetch to. Blank/omitted
     # means the origin's default branch HEAD. Ignored for non-git sources.
     revision: str | None = None
+    idempotencyKey: str | None = None
 
 
-class UploadInitPayload(BaseModel):
+class UploadInitPayload(_StrictRequestModel):
     fileName: str
-    size: int
+    size: int = Field(ge=0)
     contentType: str
 
 
-class SourceUploadCompletePayload(BaseModel):
+class SourceUploadCompletePayload(_StrictRequestModel):
     uploadToken: str
     archiveName: str
+    idempotencyKey: str | None = None
 
 
-class WorkspaceFileContentPayload(BaseModel):
+class WorkspaceFileContentPayload(_StrictRequestModel):
     path: str
     content: str
     ifMatch: str | None = None
 
 
-class ReeSealPayload(BaseModel):
+class ReeSealPayload(_StrictRequestModel):
     includeSource: bool = False
     includeRuntime: bool = False
     includeResults: bool = False

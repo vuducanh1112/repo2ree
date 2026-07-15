@@ -84,6 +84,38 @@ def test_put_bytes_lands_in_staging(client: TestClient, online_ree: WorkbenchHan
     assert staged_upload_path(token).read_bytes() == data
 
 
+def test_put_rejects_declared_size_mismatch(client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path) -> None:
+    init = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
+        json={"fileName": "project.zip", "size": 10, "contentType": "application/zip"},
+    )
+    token = init.json()["uploadToken"]
+
+    resp = client.put(f"/api/v1/rees/{online_ree.ree_id}/source:upload/{token}", content=b"short")
+
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "upload_size_mismatch"
+    assert staged_upload_path(token).read_bytes() == b""
+
+
+def test_upload_init_rejects_declared_size_over_limit(
+    client: TestClient,
+    online_ree: WorkbenchHandle,
+    staging_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from repo2ree_api.settings import service_settings
+
+    monkeypatch.setattr(service_settings, "UPLOAD_MAX_BYTES", 8)
+    resp = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
+        json={"fileName": "project.zip", "size": 9, "contentType": "application/zip"},
+    )
+
+    assert resp.status_code == 413
+    assert resp.json()["error"]["code"] == "upload_too_large"
+
+
 def test_put_bytes_for_unknown_ree_is_404(client: TestClient, staging_dir: Path) -> None:
     resp = client.put("/api/v1/rees/nope/source:upload/tok-1", content=b"data")
     assert resp.status_code == 404

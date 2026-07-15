@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
     _run_summary,
@@ -20,7 +21,7 @@ from repo2ree_protocol.command import RunExperimentArgs, RunExperimentCommand
 # ================================================
 
 
-experiment_run_router = APIRouter()
+experiment_run_router = APIRouter(tags=["runs"])
 
 
 # ================================================
@@ -33,19 +34,26 @@ class CreateExperimentRunPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    idempotencyKey: str | None = None
+
 
 # ================================================
 # Route handler
 # ================================================
 
 
-@experiment_run_router.post("/api/v1/rees/{ree_id}/experiments/{experiment_name}:run")
+@experiment_run_router.post(
+    "/api/v1/rees/{ree_id}/experiments/{experiment_name}:run",
+    operation_id="startExperiment",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
 def create_experiment_run(
     ree_id: str,
     experiment_name: str,
     payload: CreateExperimentRunPayload,
 ):
-    run_state = _create_experiment_run_state(ree_id, experiment_name)
+    run_state = _create_experiment_run_state(ree_id, experiment_name, payload.idempotencyKey)
     return _run_summary(run_state)
 
 
@@ -89,6 +97,7 @@ def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
 def _create_experiment_run_state(
     ree_id: str,
     experiment_name: str,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     _resolve_experiment_preflight(ree_id, experiment_name)
 
@@ -100,4 +109,5 @@ def _create_experiment_run_state(
         request_payload={"experimentName": experiment_name},
         canceled_message="Experiment run canceled",
         fallback_outputs={"subjectName": experiment_name},
+        idempotency_key=idempotency_key,
     )

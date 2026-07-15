@@ -42,7 +42,6 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
   return {
     async createWorkspace(name = "REE", image, agentId) {
       const run = await runtime.reeApi.createRee({
-        sourceMode: "upload",
         name,
         workbenchImage: image?.trim() || undefined,
         agentId: agentId?.trim() || undefined,

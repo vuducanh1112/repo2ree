@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.run_management import (
     _run_summary,
     _start_single_command_run,
@@ -17,7 +18,7 @@ from repo2ree_protocol.command import ActivationTestArgs
 # ================================================
 
 
-activation_test_router = APIRouter()
+activation_test_router = APIRouter(tags=["runs"])
 
 
 # ================================================
@@ -36,7 +37,12 @@ class CreateActivationTestRunPayload(BaseModel):
 # ================================================
 
 
-@activation_test_router.post("/api/v1/rees/{ree_id}/activation-test")
+@activation_test_router.post(
+    "/api/v1/rees/{ree_id}/activation-test",
+    operation_id="startActivationTest",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
 def create_workspace_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayload):
     run_state = create_activation_run_state(ree_id, payload)
     return _run_summary(run_state)
@@ -59,4 +65,5 @@ def create_activation_run_state(
         request_payload={},
         canceled_message="Activation run canceled",
         fallback_outputs={"subjectName": "activation"},
+        idempotency_key=payload.idempotencyKey,
     )

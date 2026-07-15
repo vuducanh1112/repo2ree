@@ -78,7 +78,6 @@ export function createApiRuntime({
       return resolvedReeId;
     }
     const run = await reeApi.createRee({
-      sourceMode: "upload",
       name: "REE Workspace",
     });
     // Provisioning is a background run (the image pull streams live); wait for

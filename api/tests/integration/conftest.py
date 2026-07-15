@@ -126,7 +126,7 @@ def ree(client: TestClient, request: pytest.FixtureRequest) -> Iterator[dict[str
     # Drive the image this tier gates on, passed per-request like a real client.
     resp = client.post(
         "/api/v1/rees",
-        json={"sourceMode": "upload", "name": "api-itest", "workbenchImage": WORKBENCH_IMAGE},
+        json={"name": "api-itest", "workbenchImage": WORKBENCH_IMAGE},
     )
     assert resp.status_code == 200, resp.text
     run = resp.json()

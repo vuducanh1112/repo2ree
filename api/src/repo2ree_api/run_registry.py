@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
+import time
 from collections.abc import Callable
-from threading import RLock, Thread
+from threading import Condition, RLock, Thread
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -52,7 +54,9 @@ class RunRegistry:
         self._require_ree = require_ree
         self._run_store: dict[str, dict[str, dict[str, Any]]] = {}
         self._run_control: dict[str, dict[str, dict[str, Any]]] = {}
+        self._idempotency_store: dict[tuple[str, str, str], tuple[str, str]] = {}
         self._lock = RLock()
+        self._changed = Condition(self._lock)
 
     # ================================================
     # Internal helpers
@@ -115,6 +119,7 @@ class RunRegistry:
             run_state["status"] = status
             if status in TERMINAL_STATUSES:
                 run_state["finishedAt"] = utc_now()
+            self._changed.notify_all()
 
     # ================================================
     # Public API
@@ -139,6 +144,7 @@ class RunRegistry:
             next_seq = int(run_state.get("_nextSeq", 1))
             logs = run_state.setdefault("logs", [])
             run_state["_nextSeq"] = self._append_log_entry(logs, next_seq, stream, level, message)
+            self._changed.notify_all()
 
     def update_outputs(self, ree_id: str, run_id: str, outputs: dict[str, Any]) -> None:
         with self._lock:
@@ -160,6 +166,7 @@ class RunRegistry:
             control["cancelRequested"] = True
             if run_state.get("status") in ACTIVE_STATUSES:
                 run_state["status"] = "canceling"
+                self._changed.notify_all()
             return True
 
     def finalize(
@@ -186,20 +193,52 @@ class RunRegistry:
         run_id_prefix: str,
         runner: Callable[[str, str], tuple[str, dict[str, Any]]],
         require_ree_exists: bool = True,
+        idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         # A provisioning run *creates* its REE, so it can't require the REE
         # to already exist; every other run runs against a live REE.
         if require_ree_exists:
             self._require_ree(ree_id)
-        created_at = utc_now()
-        run_id = f"{run_id_prefix}-{uuid4().hex}"
-        run_state = self._create_run_state(
-            ree_id=ree_id,
-            run_id=run_id,
-            operation=operation,
-            created_at=created_at,
-            request_payload=request_payload,
-        )
+        normalized_key = (idempotency_key or "").strip()
+        fingerprint = json.dumps(request_payload, sort_keys=True, separators=(",", ":"), default=str)
+        idempotency_slot = (ree_id, operation, normalized_key)
+
+        # Check and reserve the idempotency slot under the same lock as run
+        # creation. A caller retrying after an uncertain HTTP outcome receives
+        # the original run; two simultaneous requests cannot both create work.
+        with self._lock:
+            if normalized_key:
+                existing = self._idempotency_store.get(idempotency_slot)
+                if existing is not None:
+                    existing_run_id, existing_fingerprint = existing
+                    if existing_fingerprint != fingerprint:
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "code": "idempotency_conflict",
+                                "message": "Idempotency key was already used with a different request",
+                                "details": {
+                                    "operation": operation,
+                                    "idempotencyKey": normalized_key,
+                                    "runId": existing_run_id,
+                                },
+                            },
+                        )
+                    existing_state = self._run_store.get(ree_id, {}).get(existing_run_id)
+                    if existing_state is not None:
+                        return existing_state
+
+            created_at = utc_now()
+            run_id = f"{run_id_prefix}-{uuid4().hex}"
+            run_state = self._create_run_state(
+                ree_id=ree_id,
+                run_id=run_id,
+                operation=operation,
+                created_at=created_at,
+                request_payload=request_payload,
+            )
+            if normalized_key:
+                self._idempotency_store[idempotency_slot] = (run_id, fingerprint)
 
         # Capture the originating request span here, on the request thread,
         # before we hand off to the worker — by the time the worker runs the
@@ -284,3 +323,33 @@ class RunRegistry:
         if not run_state:
             raise HTTPException(status_code=404, detail="Run not found")
         return run_state
+
+    def observe(
+        self,
+        ree_id: str,
+        run_id: str,
+        *,
+        after_seq: int,
+        wait_seconds: float,
+        limit: int,
+    ) -> tuple[dict[str, Any], list[dict[str, Any]], str | None, bool]:
+        """Wait boundedly for new log entries or terminal run state."""
+        self._require_ree(ree_id)
+        deadline = time.monotonic() + wait_seconds
+        with self._changed:
+            while True:
+                run_state = self._run_store.get(ree_id, {}).get(run_id)
+                if run_state is None:
+                    raise HTTPException(status_code=404, detail="Run not found")
+                available = [entry for entry in run_state.get("logs", []) if int(entry["seq"]) > after_seq]
+                terminal = run_state.get("status") in TERMINAL_STATUSES
+                if available or terminal:
+                    break
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                self._changed.wait(timeout=remaining)
+
+            entries = available[:limit]
+            next_cursor = str(entries[-1]["seq"]) if entries else (str(after_seq) if after_seq else None)
+            return self.run_summary(run_state), entries, next_cursor, bool(entries or terminal)

@@ -253,7 +253,12 @@ def _iter_workspace_files(store: ReeStore):
     yield from (p for p in sorted(root.rglob("*")) if p.is_file())
 
 
-def _workspace_files_with_content(storage_root: Path, ree_id: str) -> list[dict[str, Any]]:
+def _workspace_files_with_content(
+    storage_root: Path,
+    ree_id: str,
+    *,
+    include_content: bool = True,
+) -> list[dict[str, Any]]:
     store = _store(storage_root, ree_id)
     root = store.layout.workspace
     # Provenance: files present in overlay/ are user-added or tool-generated
@@ -264,14 +269,14 @@ def _workspace_files_with_content(storage_root: Path, ree_id: str) -> list[dict[
     for fp in _iter_workspace_files(store):
         rel = fp.relative_to(root).as_posix()
         size = fp.stat().st_size
-        entries.append(
-            {
-                "path": rel,
-                "kind": "generated" if rel in overlay_rels else classify_file_kind(rel),
-                "size": size,
-                "content": (_read_text_if_possible(fp) if should_inline_file_content(rel, size) else None),
-            }
-        )
+        entry: dict[str, Any] = {
+            "path": rel,
+            "kind": "generated" if rel in overlay_rels else classify_file_kind(rel),
+            "size": size,
+        }
+        if include_content:
+            entry["content"] = _read_text_if_possible(fp) if should_inline_file_content(rel, size) else None
+        entries.append(entry)
     return entries
 
 
@@ -292,7 +297,12 @@ def _ree_file_tag(rel: str) -> str:
     return _REE_SUBTREE_TAGS.get(top, "REE")
 
 
-def _workspace_ree_files_with_content(storage_root: Path, ree_id: str) -> list[dict[str, Any]]:
+def _workspace_ree_files_with_content(
+    storage_root: Path,
+    ree_id: str,
+    *,
+    include_content: bool = True,
+) -> list[dict[str, Any]]:
     """Enumerate every file under the REE root, mirroring the on-disk layout."""
     layout = _layout(storage_root, ree_id)
     ree_root = layout.root
@@ -309,16 +319,15 @@ def _workspace_ree_files_with_content(storage_root: Path, ree_id: str) -> list[d
             continue
         rel = rel_path.as_posix()
         size = fp.stat().st_size
-        content = _read_text_if_possible(fp) if should_inline_file_content(rel, size) else None
-        ree_files.append(
-            {
-                "path": rel,
-                "kind": "ree",
-                "tag": _ree_file_tag(rel),
-                "size": size,
-                "content": content,
-            }
-        )
+        entry: dict[str, Any] = {
+            "path": rel,
+            "kind": "ree",
+            "tag": _ree_file_tag(rel),
+            "size": size,
+        }
+        if include_content:
+            entry["content"] = _read_text_if_possible(fp) if should_inline_file_content(rel, size) else None
+        ree_files.append(entry)
     return ree_files
 
 
@@ -327,13 +336,13 @@ def _workspace_ree_files_with_content(storage_root: Path, ree_id: str) -> list[d
 # ================================================
 
 
-def get_workspace(storage_root: Path, ree_id: str) -> dict[str, Any]:
+def get_workspace(storage_root: Path, ree_id: str, *, include_content: bool = True) -> dict[str, Any]:
     metadata = _read_metadata(storage_root, ree_id)
     intent = ReeIntent.from_metadata(metadata)
     session = ReeSession.from_metadata(metadata)
     detail = dict(metadata)
-    files = _workspace_files_with_content(storage_root, ree_id)
-    ree_files = _workspace_ree_files_with_content(storage_root, ree_id)
+    files = _workspace_files_with_content(storage_root, ree_id, include_content=include_content)
+    ree_files = _workspace_ree_files_with_content(storage_root, ree_id, include_content=include_content)
     detail["files"] = files
     detail["reeFiles"] = ree_files
     detail["draftManifest"] = _build_draft_manifest_payload(

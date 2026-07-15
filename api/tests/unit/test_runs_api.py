@@ -133,7 +133,7 @@ def test_failed_run_log_feed_carries_the_failure(
     messages = [entry["message"] for entry in logs["entries"]]
     assert "Staged upload not found, empty, or expired" in messages
     assert logs["hasMore"] is False
-    assert logs["nextCursor"] is None
+    assert logs["nextCursor"] == str(logs["entries"][-1]["seq"])
 
 
 def test_log_pagination_walks_the_feed(
@@ -153,13 +153,34 @@ def test_log_pagination_walks_the_feed(
     )
 
 
-def test_log_pagination_tolerates_garbage_cursor(
+def test_log_pagination_rejects_garbage_cursor(
     client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
 ) -> None:
     base = f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['runId']}/logs"
     resp = client.get(base, params={"cursor": "not-a-number"})
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "request_validation_failed"
+
+
+def test_observe_terminal_run_returns_status_and_logs_after_cursor(
+    client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
+) -> None:
+    run_id = failed_run["runId"]
+    first_log = client.get(
+        f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}/logs",
+        params={"limit": 1},
+    ).json()
+
+    resp = client.get(
+        f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}/observe",
+        params={"cursor": first_log["nextCursor"], "waitSeconds": 0},
+    )
+
     assert resp.status_code == 200
-    assert resp.json()["entries"]  # falls back to the start, not a 500
+    observation = resp.json()
+    assert observation["run"]["status"] == "failed"
+    assert all(entry["seq"] > int(first_log["nextCursor"]) for entry in observation["entries"])
+    assert observation["changed"] is True
 
 
 # ================================================

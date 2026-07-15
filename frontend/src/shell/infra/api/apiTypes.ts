@@ -100,11 +100,6 @@ export interface ReeDetailDto extends ReeSummaryDto {
 }
 
 export interface CreateReeRequestDto {
-  sourceMode: "url" | "upload";
-  originUrl?: string;
-  sourceType?: "git" | "tarball" | "zip";
-  /** Git revision (commit, branch, or tag) to pin the fetch to; blank means default-branch HEAD. */
-  revision?: string;
   name?: string;
   /** Image to provision the workbench from; omitted falls back to the server default. */
   workbenchImage?: string;

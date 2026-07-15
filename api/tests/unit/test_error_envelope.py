@@ -49,7 +49,9 @@ def test_string_detail_becomes_envelope():
     exc = HTTPException(status_code=404, detail="REE x not found")
     response = asyncio.run(http_exception_handler(_request(), exc))
     assert response.status_code == 404
-    assert _body(response) == {"error": {"code": "http_404", "message": "REE x not found", "details": None}}
+    assert _body(response) == {
+        "error": {"code": "http_404", "message": "REE x not found", "details": None, "retryable": False}
+    }
 
 
 def test_dict_detail_maps_code_message_details():
@@ -60,7 +62,12 @@ def test_dict_detail_maps_code_message_details():
     response = asyncio.run(http_exception_handler(_request(), exc))
     assert response.status_code == 409
     assert _body(response) == {
-        "error": {"code": "version_conflict", "message": "stale version", "details": {"expected": "v2"}}
+        "error": {
+            "code": "version_conflict",
+            "message": "stale version",
+            "details": {"expected": "v2"},
+            "retryable": False,
+        }
     }
 
 
@@ -76,19 +83,30 @@ def test_pre_shaped_envelope_passes_through_unchanged():
     exc = HTTPException(status_code=422, detail=detail)
     response = asyncio.run(http_exception_handler(_request(), exc))
     assert response.status_code == 422
-    assert _body(response) == detail
+    assert _body(response) == {
+        "error": {
+            "code": "custom",
+            "message": "already shaped",
+            "details": {"k": 1},
+            "retryable": False,
+        }
+    }
 
 
 def test_workbench_unavailable_maps_to_503():
     response = asyncio.run(workbench_unavailable_handler(_request(), WorkbenchUnavailableError("gone")))
     assert response.status_code == 503
     assert _body(response)["error"]["code"] == "workbench_unavailable"
+    assert _body(response)["error"]["retryable"] is True
 
 
 def test_unhandled_exception_maps_to_500_internal_error():
     response = asyncio.run(unhandled_exception_handler(_request(), RuntimeError("boom")))
     assert response.status_code == 500
-    assert _body(response) == {"error": {"code": "internal_error", "message": "boom", "details": None}}
+    body = _body(response)
+    assert body["error"]["code"] == "internal_error"
+    assert body["error"]["message"] == "An internal error occurred"
+    assert body["error"]["retryable"] is False
 
 
 # ================================================
@@ -105,12 +123,13 @@ def test_unknown_ree_yields_404_envelope(client: TestClient):
     assert "not found" in body["error"]["message"]
 
 
-def test_create_url_mode_without_origin_url_is_400(client: TestClient):
-    resp = client.post("/api/v1/rees", json={"sourceMode": "url"})
-    assert resp.status_code == 400
+def test_request_validation_uses_error_envelope(client: TestClient):
+    resp = client.post("/api/v1/rees", json={"originUrl": "https://example.org/repo.git"})
+    assert resp.status_code == 422
     body = resp.json()
-    assert body["error"]["code"] == "http_400"
-    assert "originUrl" in body["error"]["message"]
+    assert body["error"]["code"] == "request_validation_failed"
+    assert body["error"]["message"] == "Request validation failed"
+    assert body["error"]["details"]["violations"]
 
 
 def test_registered_but_unreachable_ree_yields_503(client: TestClient, monkeypatch: pytest.MonkeyPatch):

@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.run_management import (
     _run_summary,
     _start_single_command_run,
@@ -16,7 +17,7 @@ from repo2ree_protocol import GenerateHbomCommand
 # ================================================
 
 
-generate_hbom_router = APIRouter()
+generate_hbom_router = APIRouter(tags=["runs"])
 
 
 # ================================================
@@ -35,7 +36,12 @@ class CreateGenerateHbomRunPayload(BaseModel):
 # ================================================
 
 
-@generate_hbom_router.post("/api/v1/rees/{ree_id}/generate-hbom")
+@generate_hbom_router.post(
+    "/api/v1/rees/{ree_id}/generate-hbom",
+    operation_id="startHbomGeneration",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
 def create_workspace_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload):
     run_state = create_generate_hbom_run_state(ree_id, payload)
     return _run_summary(run_state)
@@ -55,6 +61,7 @@ def create_generate_hbom_run_state(
         operation="hbom",
         command=GenerateHbomCommand(),
         run_id_prefix="hbom",
-        request_payload={"idempotencyKey": payload.idempotencyKey},
+        request_payload={},
         canceled_message="HBOM run canceled",
+        idempotency_key=payload.idempotencyKey,
     )

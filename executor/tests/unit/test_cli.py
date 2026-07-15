@@ -232,6 +232,19 @@ def test_get_workspace_reflects_workspace_files(initialized_ree: Path) -> None:
     assert any(f.get("path") == "app.py" for f in workspace["files"])
 
 
+def test_get_workspace_summary_omits_inline_file_content(initialized_ree: Path) -> None:
+    cmd = WriteFileCommand(args=WriteFileArgs(path="app.py", content="print('hi')\n"))
+    assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
+
+    result = runner.invoke(cli, ["get-workspace", "--summary"])
+
+    assert result.exit_code == 0
+    workspace = json.loads(result.output)
+    assert workspace["files"]
+    assert all("content" not in file for file in workspace["files"])
+    assert all("content" not in file for file in workspace["reeFiles"])
+
+
 def test_build_archive_before_seal_exits_nonzero(initialized_ree: Path) -> None:
     result = runner.invoke(cli, ["build-archive"])
     assert result.exit_code == 1

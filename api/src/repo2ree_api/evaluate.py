@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
     _run_summary,
@@ -21,7 +22,7 @@ from repo2ree_protocol.command import (
 # ================================================
 
 
-evaluate_router = APIRouter()
+evaluate_router = APIRouter(tags=["runs"])
 
 
 # ================================================
@@ -41,7 +42,12 @@ class CreateEvaluateRunPayload(BaseModel):
 # ================================================
 
 
-@evaluate_router.post("/api/v1/rees/{ree_id}/evaluate")
+@evaluate_router.post(
+    "/api/v1/rees/{ree_id}/evaluate",
+    operation_id="startEvaluate",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
 def create_workspace_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload):
     run_state = create_evaluate_run_state(ree_id, payload)
     return _run_summary(run_state)
@@ -50,7 +56,12 @@ def create_workspace_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload
 _REPORT_FILENAME = "reproducibility-report.json"
 
 
-@evaluate_router.get("/api/v1/rees/{ree_id}/evaluate/report")
+@evaluate_router.get(
+    "/api/v1/rees/{ree_id}/evaluate/report",
+    operation_id="getEvaluateReport",
+    response_model=dict[str, Any],
+    responses=ERROR_RESPONSES,
+)
 def get_workspace_evaluate_report(ree_id: str) -> dict[str, Any]:
     handle = workbench_manager.lookup(ree_id)
     if handle is not None:
@@ -81,4 +92,5 @@ def create_evaluate_run_state(
         run_id_prefix="evaluate",
         request_payload={"strict": bool(payload.strict)},
         canceled_message="Evaluate run canceled",
+        idempotency_key=payload.idempotencyKey,
     )

@@ -419,6 +419,11 @@ class WorkbenchManager:
         raw = self.dispatch_query(handle, "get-workspace")
         return json.loads(raw)
 
+    def get_workspace_state(self, handle: WorkbenchHandle) -> dict[str, Any]:
+        """Return workspace state without embedding text file contents."""
+        raw = self.dispatch_query(handle, "get-workspace", "--summary")
+        return json.loads(raw)
+
     def get_scorecard(self, handle: WorkbenchHandle) -> dict[str, Any]:
         raw = self.dispatch_query(handle, "get-scorecard")
         return json.loads(raw)

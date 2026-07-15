@@ -18,6 +18,7 @@ opportunistically.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import time
 import uuid
@@ -49,6 +50,10 @@ class UploadStagingFullError(RuntimeError):
     """The staging dir has no room left under ``UPLOAD_STAGING_MAX_BYTES``."""
 
 
+class UploadSizeMismatchError(RuntimeError):
+    """The received byte count differs from the positive declared size."""
+
+
 def _staging_root() -> Path:
     return service_settings.UPLOAD_STAGING_DIR
 
@@ -63,7 +68,17 @@ def staged_upload_path(token: str) -> Path:
     return _staging_root() / f"{token}.bin"
 
 
-def new_upload_token() -> dict[str, str]:
+def _upload_metadata_path(token: str) -> Path:
+    staged_upload_path(token)  # validates the token
+    return _staging_root() / f"{token}.json"
+
+
+def new_upload_token(
+    *,
+    file_name: str | None = None,
+    expected_size: int | None = None,
+    content_type: str | None = None,
+) -> dict[str, str]:
     """Allocate an upload token and its expiry, minting its (empty) staged file.
 
     The empty file is the token's proof of mint: the PUT refuses tokens without
@@ -75,6 +90,16 @@ def new_upload_token() -> dict[str, str]:
     ensure_staging_root()
     token = uuid.uuid4().hex
     staged_upload_path(token).touch()
+    _upload_metadata_path(token).write_text(
+        json.dumps(
+            {
+                "fileName": file_name,
+                "expectedSize": expected_size,
+                "contentType": content_type,
+            }
+        ),
+        encoding="utf-8",
+    )
     ttl = timedelta(seconds=service_settings.UPLOAD_TTL_SECONDS)
     expires_at = (datetime.now(UTC) + ttl).isoformat().replace("+00:00", "Z")
     return {"uploadToken": token, "expiresAt": expires_at}
@@ -103,6 +128,10 @@ async def stage_upload_stream(token: str, chunks: AsyncIterable[bytes]) -> Path:
                         f"upload staging is out of space (budget {service_settings.UPLOAD_STAGING_MAX_BYTES} bytes)"
                     )
                 await asyncio.to_thread(f.write, chunk)
+        metadata = _read_upload_metadata(token)
+        expected_size = metadata.get("expectedSize")
+        if isinstance(expected_size, int) and expected_size > 0 and total != expected_size:
+            raise UploadSizeMismatchError(f"upload size {total} does not match declared size {expected_size}")
     except BaseException:
         # Reset to the minted marker rather than deleting: the token stays
         # valid for a retry PUT until its TTL.
@@ -124,6 +153,18 @@ def _staging_allowance(current: Path) -> int:
 
 def discard_staged_upload(token: str) -> None:
     staged_upload_path(token).unlink(missing_ok=True)
+    _upload_metadata_path(token).unlink(missing_ok=True)
+
+
+def _read_upload_metadata(token: str) -> dict[str, object]:
+    path = _upload_metadata_path(token)
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def discard_expired_uploads() -> None:
@@ -136,4 +177,5 @@ def discard_expired_uploads() -> None:
         # A concurrent upload-complete may legitimately race the sweep.
         with suppress(OSError):
             if staged.stat().st_mtime < cutoff:
-                staged.unlink(missing_ok=True)
+                token = staged.name.removesuffix(".bin")
+                discard_staged_upload(token)

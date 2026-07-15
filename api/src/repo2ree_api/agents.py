@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
+from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import agent_registry
 from repo2ree_protocol.agent import ws_hello_adapter
 from repo2ree_supervisor import AgentConnection
@@ -35,10 +36,10 @@ logger = logging.getLogger(__name__)
 # ================================================
 
 
-agent_ws_router = APIRouter()
+agent_ws_router = APIRouter(tags=["fleet"])
 
 
-@agent_ws_router.websocket("/agent/connect")
+@agent_ws_router.websocket("/agent/connect", name="connectRuntimeAgent")
 async def agent_connect(websocket: WebSocket) -> None:
     await websocket.accept()
     loop = asyncio.get_running_loop()
@@ -79,7 +80,7 @@ async def agent_connect(websocket: WebSocket) -> None:
 # ================================================
 
 
-agents_router = APIRouter()
+agents_router = APIRouter(tags=["fleet"])
 
 
 class AgentSummary(BaseModel):
@@ -96,7 +97,12 @@ class AgentList(BaseModel):
     agents: list[AgentSummary]
 
 
-@agents_router.get("/api/v1/agents")
+@agents_router.get(
+    "/api/v1/agents",
+    operation_id="listAgents",
+    response_model=AgentList,
+    responses=ERROR_RESPONSES,
+)
 def list_agents() -> AgentList:
     """Every workbench agent currently connected to this control plane."""
     agents = [

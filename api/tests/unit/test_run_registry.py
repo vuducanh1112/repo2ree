@@ -83,6 +83,66 @@ def test_run_summary_has_stable_keys():
     _wait_for(registry, run_state["runId"], TERMINAL)
 
 
+def test_idempotency_key_returns_original_run_without_duplicate_work():
+    registry = _registry()
+    release = Event()
+    calls: list[str] = []
+
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        calls.append(run_id)
+        release.wait(timeout=5.0)
+        return "succeeded", {}
+
+    first = registry.start_background(
+        KNOWN_REE,
+        "build",
+        {"script": "ree/build_script.sh"},
+        "build",
+        _runner,
+        idempotency_key="request-1",
+    )
+    second = registry.start_background(
+        KNOWN_REE,
+        "build",
+        {"script": "ree/build_script.sh"},
+        "build",
+        _runner,
+        idempotency_key="request-1",
+    )
+
+    assert second["runId"] == first["runId"]
+    release.set()
+    _wait_for(registry, first["runId"], TERMINAL)
+    assert calls == [first["runId"]]
+
+
+def test_idempotency_key_rejects_different_request_payload():
+    registry = _registry()
+    first = registry.start_background(
+        KNOWN_REE,
+        "evaluate",
+        {"strict": False},
+        "evaluate",
+        lambda e, r: ("succeeded", {}),
+        idempotency_key="request-1",
+    )
+
+    with pytest.raises(HTTPException) as excinfo:
+        registry.start_background(
+            KNOWN_REE,
+            "evaluate",
+            {"strict": True},
+            "evaluate",
+            lambda e, r: ("succeeded", {}),
+            idempotency_key="request-1",
+        )
+
+    assert excinfo.value.status_code == 409
+    assert excinfo.value.detail["code"] == "idempotency_conflict"
+    assert excinfo.value.detail["details"]["runId"] == first["runId"]
+    _wait_for(registry, first["runId"], TERMINAL)
+
+
 # ================================================
 # Failure paths
 # ================================================
@@ -203,6 +263,61 @@ def test_append_log_assigns_monotonic_sequence_numbers():
 def test_append_log_to_unknown_run_is_a_noop():
     registry = _registry()
     registry.append_log(KNOWN_REE, "no-such-run", "stdout", "info", "lost")  # must not raise
+
+
+def test_observe_returns_only_logs_after_sequence_cursor():
+    registry = _registry()
+    release = Event()
+
+    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+        release.wait(timeout=5.0)
+        return "succeeded", {}
+
+    run = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    registry.append_log(KNOWN_REE, run["runId"], "stdout", "info", "one")
+    registry.append_log(KNOWN_REE, run["runId"], "stdout", "info", "two")
+
+    summary, entries, cursor, changed = registry.observe(
+        KNOWN_REE,
+        run["runId"],
+        after_seq=1,
+        wait_seconds=0,
+        limit=200,
+    )
+
+    assert summary["status"] == "running"
+    assert [entry["message"] for entry in entries] == ["two"]
+    assert cursor == "2"
+    assert changed is True
+    release.set()
+    _wait_for(registry, run["runId"], TERMINAL)
+
+
+def test_observe_timeout_returns_unchanged_active_run():
+    registry = _registry()
+    release = Event()
+    run = registry.start_background(
+        KNOWN_REE,
+        "build",
+        {},
+        "build",
+        lambda e, r: (release.wait(timeout=5.0) and "succeeded" or "failed", {}),
+    )
+
+    summary, entries, cursor, changed = registry.observe(
+        KNOWN_REE,
+        run["runId"],
+        after_seq=0,
+        wait_seconds=0,
+        limit=200,
+    )
+
+    assert summary["status"] == "running"
+    assert entries == []
+    assert cursor is None
+    assert changed is False
+    release.set()
+    _wait_for(registry, run["runId"], TERMINAL)
 
 
 def test_get_run_state_for_unknown_run_is_404():

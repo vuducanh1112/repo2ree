@@ -344,7 +344,8 @@ def get_ree_cmd() -> None:
 
 
 @cli.command("get-workspace")
-def get_workspace_cmd() -> None:
+@click.option("--summary", is_flag=True, help="Omit inline file content from the workspace document.")
+def get_workspace_cmd(summary: bool) -> None:
     """Emit full workspace state (metadata + file listings) as JSON.
 
     Equivalent to the host-side get_workspace() but executed inside the
@@ -356,7 +357,7 @@ def get_workspace_cmd() -> None:
     storage_root = layout.root.parent
     ree_id = layout.root.name
     try:
-        result = _get_workspace(storage_root, ree_id)
+        result = _get_workspace(storage_root, ree_id, include_content=not summary)
     except FileNotFoundError as exc:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
