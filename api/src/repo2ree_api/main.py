@@ -56,6 +56,41 @@ async def lifespan(app: FastAPI):
 
 _log = logging.getLogger(__name__)
 
+# The app description lands in the OpenAPI document (`info.description`), so it
+# reaches every doc surface at once: Swagger UI (/docs), ReDoc (/redoc), the live
+# /openapi.json, and the committed api/openapi.json contract. It documents the
+# cross-endpoint *sequencing* that no single operation's docstring can carry —
+# per-endpoint payload details stay in the operation schemas.
+_DESCRIPTION = """\
+Author and execute reusable execution environments (REEs) through connected
+runtime agents.
+
+## Authoring lifecycle
+
+Operations that mutate a workbench are asynchronous: they return a `runId`, and
+clients await completion by long-polling `observeRun` until the run reaches a
+terminal status (`succeeded`, `failed`, `canceled`). A REE is authored end to
+end in this order:
+
+1. `createRee` — provision a workbench; await the returned provisioning run.
+2. Bring in source, either by reference (`startSourceAcquisition`) or by upload —
+   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned
+   upload URL), then `completeSourceUpload`; await the extraction run.
+3. `getReeState` — compact durable state plus file metadata, never inline
+   contents; read file bytes via `readReeFile`.
+4. Author the workspace: `writeReeFile` / `deleteReeFile`, and record catalog
+   metadata via `patchReeIntent`.
+5. Optionally build and assess: `startBuild`, `startActivationTest`,
+   `startEvaluate` / `getEvaluateReport`, `getScorecard`.
+6. `sealRee` — freeze the REE (returns its `seal_hash`), then download the
+   sealed archive via `downloadReeArchive`.
+7. `deleteRee` — tear the workbench down.
+
+A complete, CI-asserted walkthrough of this sequence as real `curl` calls lives
+in `api/tests/e2e/api_agent_walkthrough.py` (see the external documentation
+link).
+"""
+
 _OPENAPI_TAGS = [
     {"name": "rees", "description": "Create, inspect, author, seal, and release REEs."},
     {"name": "runs", "description": "Start and observe asynchronous workbench operations."},
@@ -68,8 +103,15 @@ _OPENAPI_TAGS = [
 app = FastAPI(
     title="repo2ree Control API",
     version="0.1.0",
-    description="Author and execute reusable execution environments through connected runtime agents.",
+    description=_DESCRIPTION,
     openapi_tags=_OPENAPI_TAGS,
+    # externalDocs must be an absolute URL — the document is consumed away from
+    # the repo (fetched from a live server), so a repo-relative path would
+    # dangle. Points at the public Codeberg mirror's walkthrough.
+    openapi_external_docs={
+        "description": "End-to-end API authoring walkthrough (real curl session, CI-asserted)",
+        "url": "https://codeberg.org/vuducanh1112/repo2ree/src/branch/main/api/tests/e2e/README.md",
+    },
     lifespan=lifespan,
 )
 FastAPIInstrumentor.instrument_app(app)

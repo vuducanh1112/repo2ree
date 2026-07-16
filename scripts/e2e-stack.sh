@@ -6,6 +6,11 @@
 # themselves, so any project runs against any agent count.
 #
 #   e2e-stack.sh --project <playwright-project> [--agents <n>] [--coverage]
+#   e2e-stack.sh --script <path> [--agents <n>] [--record <cast>]
+#
+# The --script mode runs an arbitrary client against the same live stack instead
+# of a playwright project — used by the pure-API agent walkthrough. With
+# --record the run is captured via asciinema into a .cast terminal recording.
 #
 # With --coverage the backend is started *under* coverage (you can't measure
 # an already-running server), the e2e suite runs with E2E_COVERAGE=1 so the
@@ -34,22 +39,32 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: $0 --project <playwright-project> [--agents <n>] [--coverage]" >&2
+    echo "usage: $0 (--project <playwright-project> | --script <path>) [--agents <n>] [--coverage] [--record <cast>]" >&2
     exit 2
 }
 
+# The stack can drive either a playwright project (browser e2e/demo) or an
+# arbitrary --script against the same live backend+agent — that second mode is
+# how the pure-API agent walkthrough runs. --record wraps a --script run in
+# asciinema so the terminal session becomes a .cast artifact.
 project=
+script=
+record=
 agents=1
 coverage=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --project) [ $# -ge 2 ] || usage; project=$2; shift 2 ;;
+        --script) [ $# -ge 2 ] || usage; script=$2; shift 2 ;;
+        --record) [ $# -ge 2 ] || usage; record=$2; shift 2 ;;
         --agents) [ $# -ge 2 ] || usage; agents=$2; shift 2 ;;
         --coverage) coverage=1; shift ;;
         *) usage ;;
     esac
 done
-[ -n "$project" ] || usage
+# Exactly one runner: a playwright project or a script.
+if { [ -n "$project" ] && [ -n "$script" ]; } || { [ -z "$project" ] && [ -z "$script" ]; }; then usage; fi
+[ -z "$record" ] || [ -n "$script" ] || usage  # --record only applies to --script
 [ "$agents" -ge 1 ] 2>/dev/null || usage
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -152,14 +167,37 @@ for i in $(seq 1 "$agents"); do
 done
 wait_until "$agents workbench agent(s)" agents_connected "$agents"
 
-echo ">> stack ready — running playwright project=$project"
 status=0
-if [ "$coverage" -eq 1 ]; then
-    (cd frontend && E2E_COVERAGE=1 npm exec -- playwright test \
-        -c playwright.config.ts --project="$project") || status=$?
+if [ -n "$script" ]; then
+    echo ">> stack ready — running script=$script"
+    # The script drives the live backend over HTTP; hand it the base URL the
+    # stack just brought up. --record wraps the run in asciinema so the terminal
+    # session is captured as a .cast, the pure-API counterpart of a demo video.
+    if [ -n "$record" ]; then
+        mkdir -p "$(dirname "$record")"
+        # asciinema does NOT propagate the recorded command's exit code — it
+        # returns 0 even when the command fails. So the walkthrough writes its
+        # real status to a sentinel file that we read back; otherwise a failing
+        # run would record cleanly and still report success, defeating the CI
+        # check. Env exported before asciinema is inherited by the command.
+        rc_file=$(mktemp)
+        API_BASE_URL=http://127.0.0.1:8000 \
+            asciinema rec --overwrite -c "'$script'; echo \$? > '$rc_file'" "$record" || true
+        status=$(cat "$rc_file" 2>/dev/null || echo 1)
+        rm -f "$rc_file"
+        echo ">> recorded terminal session: $record (walkthrough exit $status)"
+    else
+        API_BASE_URL=http://127.0.0.1:8000 "$script" || status=$?
+    fi
 else
-    (cd frontend && npm exec -- playwright test \
-        -c playwright.config.ts --project="$project") || status=$?
+    echo ">> stack ready — running playwright project=$project"
+    if [ "$coverage" -eq 1 ]; then
+        (cd frontend && E2E_COVERAGE=1 npm exec -- playwright test \
+            -c playwright.config.ts --project="$project") || status=$?
+    else
+        (cd frontend && npm exec -- playwright test \
+            -c playwright.config.ts --project="$project") || status=$?
+    fi
 fi
 
 echo ">> stopping workbench agent and backend (SIGTERM so coverage can flush)"
@@ -175,4 +213,4 @@ if [ "$coverage" -eq 1 ]; then
     (cd frontend && node scripts/gen-frontend-coverage.mjs)
 fi
 
-exit $status
+exit "$status"

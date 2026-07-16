@@ -1,6 +1,6 @@
 # Static checks: prose, shell scripts, nix, frontend, python.
 
-.PHONY: docs-lint scripts-checks nix-checks fe-checks be-checks
+.PHONY: docs-lint scripts-checks nix-checks fe-checks be-checks api-openapi
 
 # ================================================
 # Docs — prose linting
@@ -68,3 +68,9 @@ $(addsuffix -checks,$(PY_PACKAGES)): %-checks:
 	mypy $(wildcard $*/src $*/tests)
 
 be-checks: $(addsuffix -checks,$(PY_PACKAGES))
+
+# Regenerates the committed OpenAPI contract (contracts/openapi.json) from the
+# app. The api unit tests fail when the app drifts from the committed file, so
+# run this after any intentional API change and review the diff.
+api-openapi:
+	python -m repo2ree_api.export_openapi

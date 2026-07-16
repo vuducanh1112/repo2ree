@@ -8,6 +8,7 @@
 #   image-stack.sh down          remove the agent container and the compose stack
 #   image-stack.sh check         verify backend, connected agent, and frontend
 #   image-stack.sh frontend-url  print the frontend base URL for this context
+#   image-stack.sh api-url       print the backend base URL for this context
 #
 # Images default to the :local workbench builds (`up` expects them to exist —
 # build with `make images`). To run the same flow against pushed images,
@@ -35,7 +36,7 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: $0 up|down|check|frontend-url" >&2
+    echo "usage: $0 up|down|check|frontend-url|api-url" >&2
     exit 2
 }
 
@@ -192,5 +193,6 @@ case "${1:-}" in
     down) down ;;
     check) check ;;
     frontend-url) resolve_urls; echo "$frontend_url" ;;
+    api-url) resolve_urls; echo "$api_url" ;;
     *) usage ;;
 esac

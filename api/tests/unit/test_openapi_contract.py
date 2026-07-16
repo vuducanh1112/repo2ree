@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
+from repo2ree_api.export_openapi import CONTRACT_PATH, openapi_document
 from repo2ree_api.main import app
 
 HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
@@ -14,6 +16,18 @@ def _operations(schema: dict[str, Any]):
         for method, operation in path_item.items():
             if method in HTTP_METHODS:
                 yield path, method, operation
+
+
+def test_generated_document_matches_committed_contract() -> None:
+    """The committed api/openapi.json is the frozen contract; the app is one
+    implementation of it. On intentional API changes regenerate with
+    `make api-openapi` so the contract change is a reviewable diff."""
+    committed = CONTRACT_PATH.read_text()
+
+    # Compare parsed documents first for a readable pytest diff, then the exact
+    # serialization so formatting drift can't creep into the committed file.
+    assert json.loads(committed) == app.openapi(), "regenerate with `make api-openapi`"
+    assert committed == openapi_document(), "regenerate with `make api-openapi`"
 
 
 def test_public_operations_have_stable_unique_ids_and_tags() -> None:
