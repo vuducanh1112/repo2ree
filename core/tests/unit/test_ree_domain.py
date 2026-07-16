@@ -164,17 +164,37 @@ def test_session_has_no_apply_patch():
 
 def test_default_activation_run_script_is_reserved():
     intent = ReeIntent(name="x")
-    assert intent.activation.run_script == "ree/activation.sh"
+    assert intent.activation.run_script == "ree-scripts/activation.sh"
+
+
+def test_empty_activation_run_script_normalizes_to_reserved():
+    # A client zeroing the activation (e.g. on source reset) must not strand
+    # the intent without a run-script path.
+    intent = ReeIntent.model_validate({"name": "x", "activation": {"run_script": ""}})
+    assert intent.activation.run_script == "ree-scripts/activation.sh"
+
+
+def test_naming_an_experiment_settles_its_reserved_run_script():
+    intent = ReeIntent.model_validate({"name": "x", "experiments": [{"name": "smoke test"}]})
+    experiment = intent.experiments[0]
+    assert experiment.run_script == "ree-scripts/experiments/smoke-test.sh"
+    # Verify stays an explicit authoring act: declared means "must exist and pass".
+    assert experiment.verify_script == ""
+
+
+def test_unnamed_experiment_keeps_empty_run_script():
+    intent = ReeIntent.model_validate({"name": "x", "experiments": [{"name": ""}]})
+    assert intent.experiments[0].run_script == ""
 
 
 def test_experiment_run_script_round_trips():
     intent = ReeIntent.model_validate(
         {
             "name": "x",
-            "experiments": [{"name": "smoke", "run_script": "ree/experiments/smoke.sh"}],
+            "experiments": [{"name": "smoke", "run_script": "ree-scripts/experiments/smoke.sh"}],
         }
     )
-    assert intent.experiments[0].run_script == "ree/experiments/smoke.sh"
+    assert intent.experiments[0].run_script == "ree-scripts/experiments/smoke.sh"
 
 
 @pytest.mark.parametrize("path", ["/setup.sh", "../setup.sh", "scripts/../setup.sh"])

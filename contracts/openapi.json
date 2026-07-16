@@ -4291,6 +4291,118 @@
         }
       }
     },
+    "/api/v1/script-templates": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "List Script Templates",
+        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. ``build`` and ``activation`` are the same content a\nfresh REE is seeded with; the experiment templates are for scripts created\non demand under the reserved experiments directory. The first verify\ntemplate is the default.",
+        "operationId": "listScriptTemplates",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScriptTemplateCatalog"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workbench/images": {
       "get": {
         "tags": [
@@ -4559,7 +4671,7 @@
           "run_script": {
             "type": "string",
             "title": "Run Script",
-            "default": "ree/activation.sh"
+            "default": "ree-scripts/activation.sh"
           },
           "verify_script": {
             "type": "string",
@@ -4585,7 +4697,31 @@
         "additionalProperties": false,
         "type": "object",
         "title": "Activation",
-        "description": "The REE's required activation \u2014 a singleton sibling of experiments.\n\nActivation proves the built runtime is inhabitable by running its own\nscript. There is exactly one per REE, so it is unnamed. Its run script\ndefaults to the reserved activation path."
+        "description": "The REE's required activation \u2014 a singleton sibling of experiments.\n\nActivation proves the built runtime is inhabitable by running its own\nscript. There is exactly one per REE, so it is unnamed. Its run script\nis always the reserved activation path unless declared otherwise \u2014 an\nempty declaration (e.g. from a client zeroing the activation on source\nreset) normalizes back to the reserved path rather than sticking."
+      },
+      "ActivationScriptTemplates": {
+        "properties": {
+          "runScriptPath": {
+            "type": "string",
+            "title": "Runscriptpath"
+          },
+          "verifyScriptPath": {
+            "type": "string",
+            "title": "Verifyscriptpath"
+          },
+          "runScript": {
+            "type": "string",
+            "title": "Runscript"
+          }
+        },
+        "type": "object",
+        "required": [
+          "runScriptPath",
+          "verifyScriptPath",
+          "runScript"
+        ],
+        "title": "ActivationScriptTemplates",
+        "description": "The activation run-script template and both reserved activation paths.\n\n``verifyScriptPath`` is where an activation verify script belongs when the\nauthor writes one; declaring it on the intent is an explicit act (a\ndeclared verify script must exist and pass)."
       },
       "AgentList": {
         "properties": {
@@ -4994,6 +5130,30 @@
         "type": "object",
         "title": "Experiment",
         "description": "A named experiment attached to a REE draft. Zero or more per REE.\n\nA successful run always captures the experiment's declared ``output_paths``\ninto the produced-results store (``results/<name>/``) for local provenance.\nWhether those baselines are packaged into the sealed bundle is a seal-time\nchoice (``results_included``), not per-experiment authoring state \u2014 so there\nis no flag here."
+      },
+      "ExperimentScriptTemplates": {
+        "properties": {
+          "runScriptPathPattern": {
+            "type": "string",
+            "title": "Runscriptpathpattern"
+          },
+          "verifyScriptPathPattern": {
+            "type": "string",
+            "title": "Verifyscriptpathpattern"
+          },
+          "runScript": {
+            "type": "string",
+            "title": "Runscript"
+          }
+        },
+        "type": "object",
+        "required": [
+          "runScriptPathPattern",
+          "verifyScriptPathPattern",
+          "runScript"
+        ],
+        "title": "ExperimentScriptTemplates",
+        "description": "Templates for per-experiment scripts, plus the path convention they follow.\n\nThe path patterns carry a ``{slug}`` placeholder: the experiment name with\nwhitespace collapsed to hyphens. Naming an experiment on the intent settles\nits ``run_script`` to this convention server-side; the patterns are\npublished so clients can show the destination before the intent round-trips."
       },
       "FileMutationResponse": {
         "properties": {
@@ -5977,6 +6137,53 @@
         ],
         "title": "RunSummary"
       },
+      "ScriptTemplate": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "body"
+        ],
+        "title": "ScriptTemplate",
+        "description": "A starter template together with the workspace-relative path it belongs at."
+      },
+      "ScriptTemplateCatalog": {
+        "properties": {
+          "build": {
+            "$ref": "#/components/schemas/ScriptTemplate"
+          },
+          "activation": {
+            "$ref": "#/components/schemas/ActivationScriptTemplates"
+          },
+          "experiment": {
+            "$ref": "#/components/schemas/ExperimentScriptTemplates"
+          },
+          "verify": {
+            "items": {
+              "$ref": "#/components/schemas/VerifyTemplateEntry"
+            },
+            "type": "array",
+            "title": "Verify"
+          }
+        },
+        "type": "object",
+        "required": [
+          "build",
+          "activation",
+          "experiment",
+          "verify"
+        ],
+        "title": "ScriptTemplateCatalog"
+      },
       "SourceAcquirePayload": {
         "properties": {
           "originUrl": {
@@ -6172,6 +6379,35 @@
           "storedAt"
         ],
         "title": "UploadStoredResponse"
+      },
+      "VerifyTemplateEntry": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "description",
+          "body"
+        ],
+        "title": "VerifyTemplateEntry",
+        "description": "One prefilled verify-script template for a standard verification case."
       },
       "WorkbenchImage": {
         "properties": {

@@ -358,7 +358,7 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
 
     storage_root = tmp_path / "storage"
     ree_id, layout = _make_ree(storage_root, "receipts-test")
-    script = layout.workspace / "ree" / "build_script.sh"
+    script = layout.workspace / "ree-scripts" / "build_script.sh"
     script.parent.mkdir(parents=True)
     script.write_text("make all", encoding="utf-8")
 
@@ -369,7 +369,7 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
                 run_id=run_id,
                 recorded_at=recorded_at,
                 status=status,
-                build_script_path="ree/build_script.sh",
+                build_script_path="ree-scripts/build_script.sh",
                 build_script_digest=digest_bytes(b"make all"),
             ),
             log=lambda *_: None,
@@ -418,7 +418,7 @@ def test_get_workspace_includes_live_consistency_report(tmp_path):
 
     storage_root = tmp_path / "storage"
     ree_id, layout = _make_ree(storage_root, "live-consistency")
-    script = layout.workspace / "ree" / "build_script.sh"
+    script = layout.workspace / "ree-scripts" / "build_script.sh"
     script.parent.mkdir(parents=True)
     script.write_text("make all", encoding="utf-8")
     record_receipt(
@@ -427,7 +427,7 @@ def test_get_workspace_includes_live_consistency_report(tmp_path):
             run_id="run-b",
             recorded_at="2026-01-01T00:00:00Z",
             status="succeeded",
-            build_script_path="ree/build_script.sh",
+            build_script_path="ree-scripts/build_script.sh",
             build_script_digest=digest_bytes(b"make all"),
         ),
         log=lambda *_: None,

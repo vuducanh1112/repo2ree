@@ -96,7 +96,7 @@ def test_idempotency_key_returns_original_run_without_duplicate_work():
     first = registry.start_background(
         KNOWN_REE,
         "build",
-        {"script": "ree/build_script.sh"},
+        {"script": "ree-scripts/build_script.sh"},
         "build",
         _runner,
         idempotency_key="request-1",
@@ -104,7 +104,7 @@ def test_idempotency_key_returns_original_run_without_duplicate_work():
     second = registry.start_background(
         KNOWN_REE,
         "build",
-        {"script": "ree/build_script.sh"},
+        {"script": "ree-scripts/build_script.sh"},
         "build",
         _runner,
         idempotency_key="request-1",

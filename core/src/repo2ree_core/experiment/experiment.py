@@ -3,10 +3,10 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from repo2ree_core.path_safety import validate_relative_path
-from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT
+from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, experiment_run_script_path
 
 # Experiment names are used as a path segment when running an experiment
 # (".../experiments/{name}:run"), so they must stay free of characters that
@@ -101,13 +101,32 @@ class Experiment(Runnable):
             raise ValueError("experiment name may only contain letters, digits, spaces, '.', '_' and '-'")
         return value
 
+    @model_validator(mode="after")
+    def _settle_run_script(self) -> Experiment:
+        # The run-script path convention is owned here, not by clients: naming
+        # an experiment settles its reserved run-script path unless the author
+        # declared one explicitly. The verify script is NOT settled — declaring
+        # it means "run it and let its exit code decide", so it stays an
+        # explicit authoring act.
+        if self.name and not self.run_script:
+            self.run_script = experiment_run_script_path(self.name)
+        return self
+
 
 class Activation(Runnable):
     """The REE's required activation — a singleton sibling of experiments.
 
     Activation proves the built runtime is inhabitable by running its own
     script. There is exactly one per REE, so it is unnamed. Its run script
-    defaults to the reserved activation path.
+    is always the reserved activation path unless declared otherwise — an
+    empty declaration (e.g. from a client zeroing the activation on source
+    reset) normalizes back to the reserved path rather than sticking.
     """
 
     run_script: str = RESERVED_ACTIVATION_SCRIPT
+
+    @model_validator(mode="after")
+    def _settle_run_script(self) -> Activation:
+        if not self.run_script:
+            self.run_script = RESERVED_ACTIVATION_SCRIPT
+        return self

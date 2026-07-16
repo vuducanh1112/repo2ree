@@ -242,7 +242,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     # --- write_file: dispatched over real `docker exec` ----------------
     # The build always runs the reserved, REE-owned build script, so author the
     # recipe there.
-    build_script = "ree/build_script.sh"
+    build_script = "ree-scripts/build_script.sh"
     result = manager.dispatch_action(
         handle,
         WriteFileCommand(args=WriteFileArgs(path=build_script, content="echo building runtime\n")),

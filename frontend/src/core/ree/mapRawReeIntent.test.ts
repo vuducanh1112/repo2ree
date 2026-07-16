@@ -9,7 +9,7 @@ describe("mapRawReeIntentToSlices", () => {
           {
             name: "benchmark",
             description: "Measure throughput",
-            run_script: "ree/experiments/benchmark.sh",
+            run_script: "ree-scripts/experiments/benchmark.sh",
             runtime_estimate: "15-20 min",
             resource_estimates: {
               cpu: "8 vCPU",
@@ -28,7 +28,7 @@ describe("mapRawReeIntentToSlices", () => {
       {
         name: "benchmark",
         description: "Measure throughput",
-        runScript: "ree/experiments/benchmark.sh",
+        runScript: "ree-scripts/experiments/benchmark.sh",
         verifyScript: "",
         outputPaths: [],
         runtimeEstimate: "15-20 min",
@@ -46,7 +46,7 @@ describe("mapRawReeIntentToSlices", () => {
   it("backfills missing experiment estimates with stable defaults", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: {
-        experiments: [{ name: "smoke", run_script: "ree/experiments/smoke.sh" }],
+        experiments: [{ name: "smoke", run_script: "ree-scripts/experiments/smoke.sh" }],
       },
       fallbackName: "demo",
     });
@@ -55,7 +55,7 @@ describe("mapRawReeIntentToSlices", () => {
       {
         name: "smoke",
         description: "",
-        runScript: "ree/experiments/smoke.sh",
+        runScript: "ree-scripts/experiments/smoke.sh",
         verifyScript: "",
         outputPaths: [],
         runtimeEstimate: "",
@@ -81,10 +81,12 @@ describe("mapRawReeIntentToSlices", () => {
     expect(mapped.reeSpec.activation.runScript).toBe("ree/custom-activation.sh");
   });
 
-  it("uses the reserved activation run script when not present in intent", () => {
+  it("keeps the activation run script empty when not present in intent", () => {
+    // The reserved path is backend-owned: intents arrive with it settled, and
+    // an empty local value is normalized server-side on the next patch.
     const mapped = mapRawReeIntentToSlices({ reeIntent: {}, fallbackName: "demo" });
 
-    expect(mapped.reeSpec.activation.runScript).toBe("ree/activation.sh");
+    expect(mapped.reeSpec.activation.runScript).toBe("");
   });
 
   it("reads source_included and runtime_included from session", () => {

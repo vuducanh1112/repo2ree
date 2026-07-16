@@ -6,7 +6,7 @@ import {
   lgStyles,
 } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface RunScriptCardProps {
   // Workspace-relative path the script is stored at. When set, it is shown as a
@@ -28,26 +28,19 @@ interface RunScriptCardProps {
   unsavedLabel?: string;
 }
 
-const DEFAULT_TEMPLATE = `#!/usr/bin/env sh
-set -eu
-
-# This script fully defines how this runnable executes — it owns entering the
-# runtime. For a Docker runtime, for example:
-#
-# docker run --rm -v "$(pwd):/workspace" -w /workspace my-runtime:latest \\
-#   python main.py
-`;
-
 // A self-contained editor for a runnable's run script — used by activation, each
 // experiment, and (via props) the reserved build script. The script lives in
-// the workspace overlay; this card edits and persists it.
+// the workspace overlay; this card edits and persists it. Starter templates are
+// backend-owned (GET /script-templates): seeded scripts arrive prefilled as file
+// content, and scripts that don't exist yet get their template via
+// `defaultTemplate` from `useScriptTemplates`.
 export function RunScriptCard({
   scriptPath,
   currentContent,
   onSave,
   label = "Run script",
   helper = "This runnable owns its run script: it fully defines how it executes, including entering the runtime.",
-  defaultTemplate = DEFAULT_TEMPLATE,
+  defaultTemplate = "",
   disabled = false,
   icon,
   saveButtonContent = "Save run script",
@@ -56,13 +49,19 @@ export function RunScriptCard({
 }: RunScriptCardProps) {
   const [content, setContent] = useState(currentContent || defaultTemplate);
   const [savedContent, setSavedContent] = useState(currentContent);
+  // What the editor was last synced to — the baseline for "has the user
+  // diverged". Distinct from savedContent, which tracks persistence for the
+  // dirty flag.
+  const syncedRef = useRef(currentContent || defaultTemplate);
 
-  // Resets when the persisted content changes (e.g. after a save round-trips).
-  // defaultTemplate is a dependency, so callers MUST pass a stable reference (a
-  // module-level constant) — an inline-constructed template would re-run this on
-  // every render and clobber the user's unsaved edits.
+  // Syncs when the persisted content changes (e.g. after a save round-trips,
+  // or when the seeded script / starter template arrives from a background
+  // fetch) — but never over the user's unsaved edits: content the user has
+  // diverged from the last synced baseline stays put.
   useEffect(() => {
-    setContent(currentContent || defaultTemplate);
+    const next = currentContent || defaultTemplate;
+    setContent((prev) => (prev === syncedRef.current ? next : prev));
+    syncedRef.current = next;
     setSavedContent(currentContent);
   }, [currentContent, defaultTemplate]);
 

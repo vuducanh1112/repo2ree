@@ -1,11 +1,11 @@
-import {
-  type ExperimentResourceEstimates,
-  experimentScriptPath,
-  experimentVerifyScriptPath,
-  type ReeExperiment,
-} from "@core/ree/ReeSpec";
+import type { ExperimentResourceEstimates, ReeExperiment } from "@core/ree/ReeSpec";
 import type { LogEntry } from "@core/ree/ReeTypes";
 import type { ExperimentRunOutputs } from "@core/runs/ExperimentRun";
+import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
+import {
+  experimentRunScriptPath,
+  experimentVerifyScriptPath,
+} from "@shell/data/scriptTemplates/paths";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgActionButton,
@@ -23,7 +23,6 @@ import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
 import { experimentValidation, expId } from "./experimentsPageHelpers";
 import { type RunState, TERMINAL_STATUSES } from "./useExperimentRun";
-import { DEFAULT_VERIFY_TEMPLATE, VERIFY_TEMPLATES } from "./verifyTemplates";
 
 // The experiments page is composed from three modules; re-exported here so the
 // page keeps a single import surface.
@@ -68,13 +67,20 @@ export function ExperimentDetail({
     experiment,
     otherNames,
   );
+  // Backend-owned starter templates and path conventions; prefill the editors
+  // until a script exists.
+  const { data: templates } = useScriptTemplates();
 
-  // The experiment owns its scripts. Default their paths from the name until
-  // the author has set them, so a freshly named experiment has somewhere to
-  // save to.
+  // The experiment owns its scripts. The backend settles the run-script path
+  // when the experiment is named; until that (and for the verify script, which
+  // is only declared once authored) derive the same destination from the
+  // catalog's published patterns so there is somewhere to save to.
   const fallbackName = experiment.name || `experiment-${index + 1}`;
-  const scriptPath = experiment.runScript || experimentScriptPath(fallbackName);
-  const verifyScriptPath = experiment.verifyScript || experimentVerifyScriptPath(fallbackName);
+  const scriptPath =
+    experiment.runScript || (templates ? experimentRunScriptPath(templates, fallbackName) : "");
+  const verifyScriptPath =
+    experiment.verifyScript ||
+    (templates ? experimentVerifyScriptPath(templates, fallbackName) : "");
 
   return (
     <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
@@ -124,9 +130,10 @@ export function ExperimentDetail({
           <RunScriptCard
             scriptPath={scriptPath}
             currentContent={scriptContent}
-            disabled={locked}
+            disabled={locked || !scriptPath}
             label="Experiment run script"
             helper="Saved to the workspace overlay and run from the workspace root."
+            defaultTemplate={templates?.experiment.runScript ?? ""}
             onSave={(content) => onSaveScript(scriptPath, content)}
           />
         </DetailField>
@@ -141,10 +148,10 @@ export function ExperimentDetail({
           <RunScriptCard
             scriptPath={verifyScriptPath}
             currentContent={verifyScriptContent}
-            disabled={locked}
+            disabled={locked || !verifyScriptPath}
             label="Experiment verify script"
             helper="Runs from the workspace root after the run script; its exit code is the verdict (0 = pass). Reads outputs straight from the workspace — no injected variables."
-            defaultTemplate={DEFAULT_VERIFY_TEMPLATE}
+            defaultTemplate={templates?.verify[0]?.body ?? ""}
             saveButtonContent="Save verify script"
             savedLabel="Saved verify script"
             unsavedLabel="Unsaved verify script"
@@ -257,8 +264,10 @@ function DetailBreadcrumb({ index, onBack }: { index: number; onBack: () => void
 // ================================================
 
 // Inserting a template saves it to the verify script slot, replacing whatever
-// is there — the card below then shows it for editing.
+// is there — the card below then shows it for editing. The templates are
+// backend-owned; until they load, the picker renders just its caption.
 function VerifyTemplatePicker({ onInsert }: { onInsert: (body: string) => void }) {
+  const { data: templates } = useScriptTemplates();
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
       <span
@@ -266,7 +275,7 @@ function VerifyTemplatePicker({ onInsert }: { onInsert: (body: string) => void }
       >
         Templates:
       </span>
-      {VERIFY_TEMPLATES.map((template) => (
+      {(templates?.verify ?? []).map((template) => (
         <button
           key={template.key}
           type="button"

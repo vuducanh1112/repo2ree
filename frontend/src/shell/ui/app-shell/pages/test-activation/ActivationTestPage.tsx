@@ -1,9 +1,4 @@
-import {
-  createEmptyReeActivation,
-  RESERVED_ACTIVATION_SCRIPT,
-  RESERVED_ACTIVATION_VERIFY_SCRIPT,
-  type ReeActivation,
-} from "@core/ree/ReeSpec";
+import { createEmptyReeActivation, type ReeActivation } from "@core/ree/ReeSpec";
 import {
   activationFooterHint,
   activationRunLabel,
@@ -13,6 +8,7 @@ import { resolvedRuntimePath } from "@core/ree-steps/buildRuntimeUiState";
 import { resolvedSbomPath } from "@core/ree-steps/sbomUiState";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
+import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgPageRoot,
@@ -32,7 +28,6 @@ import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
-import { DEFAULT_VERIFY_TEMPLATE } from "../experiments/verifyTemplates";
 import type { StepPageProps } from "../sharedStepUi";
 import { ActivationTargetCard } from "./sections";
 
@@ -81,12 +76,19 @@ export function PageTestActivation({
   onPersistWorkspaceFile,
 }: StepPageProps) {
   const files = workspaceFiles || [];
+  // Backend-owned starter templates; the verify editor prefills from the
+  // default verify template until a script exists.
+  const { data: templates } = useScriptTemplates();
 
   const activation: ReeActivation = ree.activation ?? createEmptyReeActivation();
-  const activationScriptPath = activation.runScript || RESERVED_ACTIVATION_SCRIPT;
+  // The backend settles the activation run-script path on the intent; the
+  // catalog covers the moment before that lands and the not-yet-declared
+  // verify script.
+  const activationScriptPath = activation.runScript || (templates?.activation.runScriptPath ?? "");
   const activationScriptContent =
     findFileByWorkspacePath(files, activationScriptPath)?.content ?? "";
-  const activationVerifyScriptPath = activation.verifyScript || RESERVED_ACTIVATION_VERIFY_SCRIPT;
+  const activationVerifyScriptPath =
+    activation.verifyScript || (templates?.activation.verifyScriptPath ?? "");
   const activationVerifyScriptContent =
     findFileByWorkspacePath(files, activationVerifyScriptPath)?.content ?? "";
 
@@ -106,6 +108,7 @@ export function PageTestActivation({
 
   const handleSaveScript = useCallback(
     (content: string) => {
+      if (!activationScriptPath) return;
       void onPersistWorkspaceFile?.(undefined, activationScriptPath, content);
       if (activation.runScript !== activationScriptPath) {
         onReeSpecChange?.((current) => ({
@@ -121,6 +124,7 @@ export function PageTestActivation({
   // verdict is its run script's exit code alone.
   const handleSaveVerifyScript = useCallback(
     (content: string) => {
+      if (!activationVerifyScriptPath) return;
       void onPersistWorkspaceFile?.(undefined, activationVerifyScriptPath, content);
       if (activation.verifyScript !== activationVerifyScriptPath) {
         onReeSpecChange?.((current) => ({
@@ -181,6 +185,7 @@ export function PageTestActivation({
             <RunScriptCard
               scriptPath={activationScriptPath}
               currentContent={activationScriptContent}
+              disabled={!activationScriptPath}
               label="Activation run script"
               helper="Saved to the workspace overlay and run from the workspace root."
               onSave={handleSaveScript}
@@ -191,9 +196,10 @@ export function PageTestActivation({
             <RunScriptCard
               scriptPath={activationVerifyScriptPath}
               currentContent={activationVerifyScriptContent}
+              disabled={!activationVerifyScriptPath}
               label="Activation verify script (optional)"
               helper="Checks the activation run afterwards — a plain script run from the workspace root, reading outputs straight from the workspace; its exit code is the verdict. Without one, the run script's exit code decides."
-              defaultTemplate={DEFAULT_VERIFY_TEMPLATE}
+              defaultTemplate={templates?.verify[0]?.body ?? ""}
               saveButtonContent="Save verify script"
               savedLabel="Saved verify script"
               unsavedLabel="Unsaved verify script"

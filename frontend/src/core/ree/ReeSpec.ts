@@ -90,30 +90,10 @@ export interface ReeExperiment extends ReeRunnable {
 
 export type ReeActivation = ReeRunnable;
 
-// REE-owned scripts live under a dedicated ree/ directory so their common names
-// never clash with a project's own same-named source files in the merged
-// workspace. Mirror of RESERVED_* in core reserved_paths.
-const SCRIPT_DIR = "ree";
-export const RESERVED_BUILD_SCRIPT = `${SCRIPT_DIR}/build_script.sh`;
-export const RESERVED_ACTIVATION_SCRIPT = `${SCRIPT_DIR}/activation.sh`;
-export const RESERVED_ACTIVATION_VERIFY_SCRIPT = `${SCRIPT_DIR}/activation.verify.sh`;
-const EXPERIMENT_SCRIPT_DIR = `${SCRIPT_DIR}/experiments`;
-
-// Derive the reserved per-experiment run-script path from its name. Names are
-// already constrained to path-safe characters; spaces become hyphens so the
-// path stays tidy.
-export function experimentScriptPath(name: string): string {
-  return `${EXPERIMENT_SCRIPT_DIR}/${experimentSlug(name)}.sh`;
-}
-
-// The verify script lives beside the run script under the reserved dir.
-export function experimentVerifyScriptPath(name: string): string {
-  return `${EXPERIMENT_SCRIPT_DIR}/${experimentSlug(name)}.verify.sh`;
-}
-
-function experimentSlug(name: string): string {
-  return name.trim().replace(/\s+/g, "-") || "experiment";
-}
+// Reserved script paths are backend-owned: the intent arrives with activation
+// and experiment run-script paths already settled by the backend, and the
+// remaining paths (build script, activation verify, unsaved experiment
+// scripts) come from GET /script-templates — see shell/data/scriptTemplates.
 
 // ================================================
 // REE types
@@ -204,7 +184,9 @@ export function createEmptyReeExperiment(): ReeExperiment {
 export function createEmptyReeActivation(): ReeActivation {
   return {
     description: "",
-    runScript: RESERVED_ACTIVATION_SCRIPT,
+    // Empty is safe to send: the backend normalizes an empty activation
+    // run script back to its reserved path.
+    runScript: "",
     verifyScript: "",
     outputPaths: [],
     runtimeEstimate: "",

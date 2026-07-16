@@ -24,8 +24,8 @@ describe("toReePatchFromSlices", () => {
         {
           name: "benchmark",
           description: "Measure throughput",
-          runScript: "ree/experiments/benchmark.sh",
-          verifyScript: "ree/experiments/benchmark.verify.sh",
+          runScript: "ree-scripts/experiments/benchmark.sh",
+          verifyScript: "ree-scripts/experiments/benchmark.verify.sh",
           outputPaths: ["results/benchmark.json"],
           runtimeEstimate: "15-20 min",
           resourceEstimates: {
@@ -82,7 +82,9 @@ describe("toReePatchFromSlices", () => {
       runtime: "runtime.tar.gz",
       activation: {
         description: "",
-        run_script: "ree/activation.sh",
+        // Empty is safe on the wire: the backend normalizes it back to the
+        // reserved activation path.
+        run_script: "",
         verify_script: "",
         output_paths: [],
         runtime_estimate: "",
@@ -96,8 +98,8 @@ describe("toReePatchFromSlices", () => {
         {
           name: "benchmark",
           description: "Measure throughput",
-          run_script: "ree/experiments/benchmark.sh",
-          verify_script: "ree/experiments/benchmark.verify.sh",
+          run_script: "ree-scripts/experiments/benchmark.sh",
+          verify_script: "ree-scripts/experiments/benchmark.verify.sh",
           output_paths: ["results/benchmark.json"],
           runtime_estimate: "15-20 min",
           resource_estimates: {

@@ -42,7 +42,7 @@ def _build_receipt(run_id: str, recorded_at: str, status: str = "succeeded") -> 
         run_id=run_id,
         recorded_at=recorded_at,
         status=status,  # type: ignore[arg-type]
-        build_script_path="ree/build_script.sh",
+        build_script_path="ree-scripts/build_script.sh",
         build_script_digest=digest_bytes(b"script"),
     )
 
@@ -137,10 +137,10 @@ class TestWorkspaceDrift:
         self._materialize(layout, {"main.py": "print(1)"})
         # write_file semantics: content lands in overlay AND workspace, so a
         # re-materialization reproduces it — not drift.
-        (layout.overlay / "ree").mkdir(parents=True)
-        (layout.overlay / "ree" / "build_script.sh").write_text("make all")
-        (layout.workspace / "ree").mkdir(parents=True)
-        (layout.workspace / "ree" / "build_script.sh").write_text("make all")
+        (layout.overlay / "ree-scripts").mkdir(parents=True)
+        (layout.overlay / "ree-scripts" / "build_script.sh").write_text("make all")
+        (layout.workspace / "ree-scripts").mkdir(parents=True)
+        (layout.workspace / "ree-scripts" / "build_script.sh").write_text("make all")
         assert check_workspace_drift(layout, excluded_paths=set()).status == "clean"
 
     def test_hand_patched_upstream_file_is_drift(self, layout: ReeLayout) -> None:
@@ -174,7 +174,7 @@ class TestWorkspaceDrift:
 class TestConsistencyReport:
     def _seed(self, layout: ReeLayout, intent: ReeIntent) -> tuple[ReeIntent, ReeSession]:
         session = ReeSession(source_snapshot_digest="sha256:snap")
-        script = layout.workspace / "ree" / "build_script.sh"
+        script = layout.workspace / "ree-scripts" / "build_script.sh"
         script.parent.mkdir(parents=True, exist_ok=True)
         script.write_text("make all")
         return intent, session
@@ -187,7 +187,7 @@ class TestConsistencyReport:
                 recorded_at="2026-01-01T00:00:00Z",
                 status="succeeded",
                 snapshot_digest="sha256:snap",
-                build_script_path="ree/build_script.sh",
+                build_script_path="ree-scripts/build_script.sh",
                 build_script_digest=digest_bytes(b"make all"),
             ),
             log=_silent_log,
@@ -206,7 +206,7 @@ class TestConsistencyReport:
     def test_edited_build_script_names_the_moved_input(self, layout: ReeLayout) -> None:
         intent, session = self._seed(layout, ReeIntent())
         self._record_build(layout)
-        (layout.workspace / "ree" / "build_script.sh").write_text("make other")
+        (layout.workspace / "ree-scripts" / "build_script.sh").write_text("make other")
 
         step = self._step(build_consistency_report(layout, intent, session), "build_runtime")
         assert step["status"] == "stale"
@@ -229,8 +229,8 @@ class TestConsistencyReport:
                 "experiments": [
                     {
                         "name": "exp-a",
-                        "run_script": "ree/experiments/exp-a.sh",
-                        "verify_script": "ree/experiments/exp-a.verify.sh",
+                        "run_script": "ree-scripts/experiments/exp-a.sh",
+                        "verify_script": "ree-scripts/experiments/exp-a.verify.sh",
                     }
                 ]
             }
@@ -295,12 +295,12 @@ class TestHandlerWiring:
         from repo2ree_core.envelope.handlers._common import run_bare_script_handler
 
         layout = workbench.layout
-        script = layout.workspace / "ree" / "build_script.sh"
+        script = layout.workspace / "ree-scripts" / "build_script.sh"
         script.parent.mkdir(parents=True)
         script.write_text("printf runtime-bytes > runtime.tar\n")
 
         result = run_bare_script_handler(
-            "ree/build_script.sh",
+            "ree-scripts/build_script.sh",
             operation="build_runtime",
             noun="Build",
             output_key="buildRuntimeScriptPath",
@@ -329,7 +329,7 @@ class TestHandlerWiring:
                 "experiments": [
                     {
                         "name": "exp-a",
-                        "run_script": "ree/experiments/exp-a.sh",
+                        "run_script": "ree-scripts/experiments/exp-a.sh",
                         "output_paths": ["results/out.txt"],
                     }
                 ],
@@ -345,7 +345,7 @@ class TestHandlerWiring:
                 reeSession=ReeSession(source_snapshot_digest="sha256:snap"),
             )
         )
-        script = layout.workspace / "ree" / "experiments" / "exp-a.sh"
+        script = layout.workspace / "ree-scripts" / "experiments" / "exp-a.sh"
         script.parent.mkdir(parents=True, exist_ok=True)
         script.write_text("mkdir -p results && printf answer > results/out.txt\n")
         return intent

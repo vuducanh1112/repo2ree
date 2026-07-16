@@ -8,6 +8,7 @@ import type {
   ReeDetailDto,
   ReeRunDto,
   ReeSummaryDto,
+  ScriptTemplateCatalogDto,
   SourceAcquireRequestDto,
   UploadInitRequestDto,
   UploadInitResponseDto,
@@ -49,6 +50,13 @@ export class ReeApi {
   /** The base images the backend offers at provision time. */
   async listWorkbenchImages(): Promise<WorkbenchImageCatalogDto> {
     return this.client.request<WorkbenchImageCatalogDto>(endpoints.workbenchImages(), {
+      method: "GET",
+    });
+  }
+
+  /** Backend-owned starter templates for the REE-owned scripts. */
+  async listScriptTemplates(): Promise<ScriptTemplateCatalogDto> {
+    return this.client.request<ScriptTemplateCatalogDto>(endpoints.scriptTemplates(), {
       method: "GET",
     });
   }

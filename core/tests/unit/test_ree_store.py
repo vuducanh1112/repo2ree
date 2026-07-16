@@ -5,6 +5,7 @@ import pytest
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
+from repo2ree_core.reserved_templates import reserved_script_template
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.workspace.model import WorkspaceMetadata
@@ -42,16 +43,33 @@ def test_ensure_dirs_creates_root_and_workspace(tmp_path):
     assert store.layout.workspace.is_dir()
 
 
-def test_creation_scripts_are_empty_overlay_files_and_materialized_to_workspace(tmp_path):
+def test_creation_scripts_are_seeded_from_templates_and_materialized_to_workspace(tmp_path):
     store = _store(tmp_path)
     store.ensure_dirs()
     store.ensure_reserved_overlay_scripts()
 
     assert {path.as_posix() for path in store.overlay.iter_files()} == set(RESERVED_OVERLAY_SCRIPTS)
     for path in RESERVED_OVERLAY_SCRIPTS:
-        assert store.overlay.read_text(path) == ""
-        assert store.workspace.read_text(path) == ""
+        template = reserved_script_template(path)
+        assert template.startswith("#!/usr/bin/env sh")
+        assert store.overlay.read_text(path) == template
+        assert store.workspace.read_text(path) == template
     assert store.exists() is True
+
+
+def test_seeding_never_touches_authored_content(tmp_path):
+    store = _store(tmp_path)
+    store.ensure_dirs()
+    store.ensure_reserved_overlay_scripts()
+    authored = "echo authored build\n"
+    build_script = RESERVED_OVERLAY_SCRIPTS[0]
+    store.overlay.write_text(build_script, authored)
+    store.workspace.write_text(build_script, authored)
+
+    store.ensure_reserved_overlay_scripts()
+
+    assert store.overlay.read_text(build_script) == authored
+    assert store.workspace.read_text(build_script) == authored
 
 
 def test_ensure_dirs_is_idempotent(tmp_path):

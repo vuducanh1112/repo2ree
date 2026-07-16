@@ -50,7 +50,7 @@ def test_activation_in_manifest():
     # Activation is a required singleton; it owns a run script defaulting to the
     # reserved activation path.
     assert manifest["activation"] == ReeIntent().activation.model_dump()
-    assert manifest["activation"]["run_script"] == "ree/activation.sh"
+    assert manifest["activation"]["run_script"] == "ree-scripts/activation.sh"
 
 
 def test_pure_no_filesystem_dependency(tmp_path, monkeypatch):

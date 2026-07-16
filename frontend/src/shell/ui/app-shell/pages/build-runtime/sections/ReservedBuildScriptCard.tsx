@@ -3,31 +3,27 @@ import { Ic } from "@shell/ui/shared/components/Icon";
 
 interface ReservedBuildScriptCardProps {
   currentContent: string;
+  disabled?: boolean;
   onSave: (content: string) => void;
 }
 
-const DEFAULT_TEMPLATE = `#!/usr/bin/env sh
-set -eu
-
-# Build or acquire the runtime artifact and write it to the workspace.
-# You can call an existing project script here, for example:
-# ./build_runtime.sh
-
-# docker build -t my-runtime:latest .
-# docker save my-runtime:latest -o runtime.tar.gz
-`;
-
 // The REE-owned build script editor — a thin specialization of RunScriptCard
-// that speaks in build terms.
-export function ReservedBuildScriptCard({ currentContent, onSave }: ReservedBuildScriptCardProps) {
+// that speaks in build terms. No default template: the build script is seeded
+// with the backend-owned starter template at REE creation, so the content the
+// card receives is already prefilled.
+export function ReservedBuildScriptCard({
+  currentContent,
+  disabled = false,
+  onSave,
+}: ReservedBuildScriptCardProps) {
   return (
     <RunScriptCard
       currentContent={currentContent}
+      disabled={disabled}
       onSave={onSave}
       icon={Ic.file(15)}
       label="Build script"
       helper="REE owns this overlay build script. Call project-owned scripts from here when you have them."
-      defaultTemplate={DEFAULT_TEMPLATE}
       saveButtonContent={<>{Ic.check(13)} Save build script</>}
       savedLabel="Saved as the reserved build script"
       unsavedLabel="Unsaved build script"

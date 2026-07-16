@@ -38,8 +38,8 @@ def _experiment(
     *,
     workspace: Path,
     verify_body: str | None = None,
-    script_rel: str = "ree/experiments/test-exp.sh",
-    verify_rel: str = "ree/experiments/test-exp.verify.sh",
+    script_rel: str = "ree-scripts/experiments/test-exp.sh",
+    verify_rel: str = "ree-scripts/experiments/test-exp.verify.sh",
 ) -> Experiment:
     _write_script(workspace, script_rel, body)
     verify_script = ""
@@ -82,7 +82,7 @@ def test_script_runs_and_succeeds(tmp_path):
 
 
 def test_missing_script_fails(tmp_path):
-    exp = Experiment(name="x", run_script="ree/experiments/nope.sh")
+    exp = Experiment(name="x", run_script="ree-scripts/experiments/nope.sh")
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
 
@@ -174,7 +174,7 @@ def test_no_injected_environment_for_verify_script(tmp_path):
 
 def test_missing_verify_script_fails(tmp_path):
     exp = _experiment(body="echo hello", workspace=tmp_path)
-    exp = exp.model_copy(update={"verify_script": "ree/experiments/nope.verify.sh"})
+    exp = exp.model_copy(update={"verify_script": "ree-scripts/experiments/nope.verify.sh"})
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
     assert outcome.run_outputs.get("verdict") == "fail"

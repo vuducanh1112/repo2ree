@@ -3,8 +3,10 @@ import {
   removeExperiment as coreRemoveExperiment,
   patchExperiment,
 } from "@core/ree/experimentOps";
-import { experimentScriptPath, type ReeExperiment, type ReeSpec } from "@core/ree/ReeSpec";
+import type { ReeExperiment, ReeSpec } from "@core/ree/ReeSpec";
 import { findFileByWorkspacePath } from "@core/workspace/fileTreeTraversal";
+import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
+import { experimentRunScriptPath } from "@shell/data/scriptTemplates/paths";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgColors,
@@ -56,6 +58,8 @@ export function PageExperiments({
   onPersistWorkspaceFile,
 }: PageExperimentsProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  // Backend-owned path conventions, needed to seed a suggestion's run script.
+  const { data: templates } = useScriptTemplates();
 
   // The canvas deep-links into a specific experiment by setting focusedField
   // (e.g. when a satellite in the decompose view is clicked). Apply it only when
@@ -87,9 +91,11 @@ export function PageExperiments({
   };
 
   const addFromSuggestion = (suggestion: ExperimentSuggestion) => {
-    if (locked) return;
+    // The catalog is fetched once per session; a click before it lands would
+    // have no path to seed the script at, so treat it like locked.
+    if (locked || !templates) return;
     const newIndex = experiments.length;
-    const scriptPath = experimentScriptPath(suggestion.name);
+    const scriptPath = experimentRunScriptPath(templates, suggestion.name);
     onReeChange((current: ReeSpec) =>
       patchExperiment(coreAddExperiment(current), newIndex, {
         name: suggestion.name,

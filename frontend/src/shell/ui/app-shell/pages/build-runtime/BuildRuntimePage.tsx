@@ -1,4 +1,3 @@
-import { RESERVED_BUILD_SCRIPT } from "@core/ree/ReeSpec";
 import {
   buildFooterHint,
   buildRunStatusLabel,
@@ -6,6 +5,7 @@ import {
   resolvedRuntimePath,
 } from "@core/ree-steps/buildRuntimeUiState";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
+import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
   lgPageColors,
@@ -73,8 +73,13 @@ export function PageBuildRuntime({
 }: StepPageProps) {
   const files = workspaceFiles || [];
 
-  const scriptPath = RESERVED_BUILD_SCRIPT;
-  const scriptFile = useMemo(() => findFileByWorkspacePath(files, RESERVED_BUILD_SCRIPT), [files]);
+  // The reserved build-script path is backend-owned; the file itself arrives
+  // seeded, so only the path comes from the catalog.
+  const scriptPath = useScriptTemplates().data?.build.path ?? "";
+  const scriptFile = useMemo(
+    () => (scriptPath ? findFileByWorkspacePath(files, scriptPath) : null),
+    [files, scriptPath],
+  );
   const scriptContent = scriptFile?.content || "";
 
   // Save a file to the overlay — does not change the selected build script.
@@ -87,9 +92,10 @@ export function PageBuildRuntime({
 
   const handleSaveReservedBuildScript = useCallback(
     (content: string) => {
-      handleSaveFile(undefined, RESERVED_BUILD_SCRIPT, content);
+      if (!scriptPath) return;
+      handleSaveFile(undefined, scriptPath, content);
     },
-    [handleSaveFile],
+    [handleSaveFile, scriptPath],
   );
 
   const runtimePath = resolvedRuntimePath(ree.runtime);
@@ -105,8 +111,9 @@ export function PageBuildRuntime({
     [onReeSpecChange],
   );
 
-  // The reserved build script is seeded empty; an authored (non-empty) script
-  // is what makes the build runnable.
+  // The reserved build script arrives seeded with the starter template, so
+  // this gate only blocks running before the workspace files have loaded (or
+  // if the author blanked the script).
   const hasScript = scriptContent.trim().length > 0;
   const hasMissing = missing.length > 0;
   const statusLabel = buildRunStatusLabel({ running, runDone, runFailed, hasScript });
@@ -172,6 +179,10 @@ export function PageBuildRuntime({
           <div style={{ marginTop: 10 }}>
             <ReservedBuildScriptCard
               currentContent={scriptContent}
+              // Disabled until the catalog delivers the reserved path: an
+              // enabled editor without a save destination would let edits
+              // race the fetch (and silently drop the save).
+              disabled={!scriptPath}
               onSave={handleSaveReservedBuildScript}
             />
           </div>
