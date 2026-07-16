@@ -121,14 +121,8 @@ export interface WorkbenchImageCatalogDto {
   defaultId: string;
 }
 
-/** A starter template with the workspace-relative path it belongs at. */
-export interface ScriptTemplateDto {
-  path: string;
-  body: string;
-}
-
-/** One prefilled verify-script template for a standard verification case. */
-export interface VerifyTemplateDto {
+/** One named starter-template variant for an REE-owned script; the first entry of a list is the default. */
+export interface ScriptTemplateEntryDto {
   key: string;
   label: string;
   description: string;
@@ -137,21 +131,25 @@ export interface VerifyTemplateDto {
 
 /** Backend-owned starter templates for the REE-owned scripts (GET /script-templates). */
 export interface ScriptTemplateCatalogDto {
-  build: ScriptTemplateDto;
+  build: {
+    path: string;
+    /** Named variants (currently only `docker`); the first is the default a fresh REE is seeded with. */
+    templates: ScriptTemplateEntryDto[];
+  };
   activation: {
     runScriptPath: string;
     /** Where an activation verify script belongs; declaring one is an explicit act. */
     verifyScriptPath: string;
-    runScript: string;
+    templates: ScriptTemplateEntryDto[];
   };
   experiment: {
     /** Path conventions with a `{slug}` placeholder (experiment name, whitespace → hyphens). */
     runScriptPathPattern: string;
     verifyScriptPathPattern: string;
-    runScript: string;
+    templates: ScriptTemplateEntryDto[];
   };
   /** Verify templates shared across runnables; the first entry is the default. */
-  verify: VerifyTemplateDto[];
+  verify: ScriptTemplateEntryDto[];
 }
 
 /** A workbench agent connected to the control plane (GET /agents). */

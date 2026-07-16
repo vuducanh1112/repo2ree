@@ -4297,7 +4297,7 @@
           "files"
         ],
         "summary": "List Script Templates",
-        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. ``build`` and ``activation`` are the same content a\nfresh REE is seeded with; the experiment templates are for scripts created\non demand under the reserved experiments directory. The first verify\ntemplate is the default.",
+        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. The default (first) build and activation templates\nare the same content a fresh REE is seeded with; the experiment templates\nare for scripts created on demand under the reserved experiments\ndirectory. The first verify template is the default.",
         "operationId": "listScriptTemplates",
         "responses": {
           "200": {
@@ -4709,19 +4709,22 @@
             "type": "string",
             "title": "Verifyscriptpath"
           },
-          "runScript": {
-            "type": "string",
-            "title": "Runscript"
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptTemplateEntry"
+            },
+            "type": "array",
+            "title": "Templates"
           }
         },
         "type": "object",
         "required": [
           "runScriptPath",
           "verifyScriptPath",
-          "runScript"
+          "templates"
         ],
         "title": "ActivationScriptTemplates",
-        "description": "The activation run-script template and both reserved activation paths.\n\n``verifyScriptPath`` is where an activation verify script belongs when the\nauthor writes one; declaring it on the intent is an explicit act (a\ndeclared verify script must exist and pass)."
+        "description": "The activation run-script templates and both reserved activation paths.\n\nThe first template is the default and is the content a fresh REE's\nactivation script is seeded with. ``verifyScriptPath`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
       },
       "AgentList": {
         "properties": {
@@ -4776,6 +4779,28 @@
           "connectedAt"
         ],
         "title": "AgentSummary"
+      },
+      "BuildScriptTemplates": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptTemplateEntry"
+            },
+            "type": "array",
+            "title": "Templates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "templates"
+        ],
+        "title": "BuildScriptTemplates",
+        "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the first is the\ndefault and is the content a fresh REE's build script is seeded with."
       },
       "CPUDefinition": {
         "properties": {
@@ -5141,19 +5166,22 @@
             "type": "string",
             "title": "Verifyscriptpathpattern"
           },
-          "runScript": {
-            "type": "string",
-            "title": "Runscript"
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptTemplateEntry"
+            },
+            "type": "array",
+            "title": "Templates"
           }
         },
         "type": "object",
         "required": [
           "runScriptPathPattern",
           "verifyScriptPathPattern",
-          "runScript"
+          "templates"
         ],
         "title": "ExperimentScriptTemplates",
-        "description": "Templates for per-experiment scripts, plus the path convention they follow.\n\nThe path patterns carry a ``{slug}`` placeholder: the experiment name with\nwhitespace collapsed to hyphens. Naming an experiment on the intent settles\nits ``run_script`` to this convention server-side; the patterns are\npublished so clients can show the destination before the intent round-trips."
+        "description": "Templates for per-experiment run scripts, plus the path convention they follow.\n\nThe path patterns carry a ``{slug}`` placeholder: the experiment name with\nwhitespace collapsed to hyphens. Naming an experiment on the intent settles\nits ``run_script`` to this convention server-side; the patterns are\npublished so clients can show the destination before the intent round-trips."
       },
       "FileMutationResponse": {
         "properties": {
@@ -6137,29 +6165,10 @@
         ],
         "title": "RunSummary"
       },
-      "ScriptTemplate": {
-        "properties": {
-          "path": {
-            "type": "string",
-            "title": "Path"
-          },
-          "body": {
-            "type": "string",
-            "title": "Body"
-          }
-        },
-        "type": "object",
-        "required": [
-          "path",
-          "body"
-        ],
-        "title": "ScriptTemplate",
-        "description": "A starter template together with the workspace-relative path it belongs at."
-      },
       "ScriptTemplateCatalog": {
         "properties": {
           "build": {
-            "$ref": "#/components/schemas/ScriptTemplate"
+            "$ref": "#/components/schemas/BuildScriptTemplates"
           },
           "activation": {
             "$ref": "#/components/schemas/ActivationScriptTemplates"
@@ -6169,7 +6178,7 @@
           },
           "verify": {
             "items": {
-              "$ref": "#/components/schemas/VerifyTemplateEntry"
+              "$ref": "#/components/schemas/ScriptTemplateEntry"
             },
             "type": "array",
             "title": "Verify"
@@ -6183,6 +6192,35 @@
           "verify"
         ],
         "title": "ScriptTemplateCatalog"
+      },
+      "ScriptTemplateEntry": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "description",
+          "body"
+        ],
+        "title": "ScriptTemplateEntry",
+        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; within a section the first entry is the\ndefault. The run-script sections currently carry a single ``docker``\nvariant each; the keys exist so further strategies can be added without\nchanging the catalog shape."
       },
       "SourceAcquirePayload": {
         "properties": {
@@ -6379,35 +6417,6 @@
           "storedAt"
         ],
         "title": "UploadStoredResponse"
-      },
-      "VerifyTemplateEntry": {
-        "properties": {
-          "key": {
-            "type": "string",
-            "title": "Key"
-          },
-          "label": {
-            "type": "string",
-            "title": "Label"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description"
-          },
-          "body": {
-            "type": "string",
-            "title": "Body"
-          }
-        },
-        "type": "object",
-        "required": [
-          "key",
-          "label",
-          "description",
-          "body"
-        ],
-        "title": "VerifyTemplateEntry",
-        "description": "One prefilled verify-script template for a standard verification case."
       },
       "WorkbenchImage": {
         "properties": {

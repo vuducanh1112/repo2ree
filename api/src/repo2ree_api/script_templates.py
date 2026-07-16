@@ -21,23 +21,24 @@ from repo2ree_core.reserved_paths import (
     RESERVED_EXPERIMENT_SCRIPT_DIR,
 )
 from repo2ree_core.reserved_templates import (
-    experiment_run_template,
-    reserved_script_template,
+    ScriptTemplate,
+    activation_templates,
+    build_templates,
+    experiment_run_templates,
     verify_templates,
 )
 
 script_templates_router = APIRouter(tags=["files"])
 
 
-class ScriptTemplate(BaseModel):
-    """A starter template together with the workspace-relative path it belongs at."""
+class ScriptTemplateEntry(BaseModel):
+    """One named starter-template variant for an REE-owned script.
 
-    path: str
-    body: str
-
-
-class VerifyTemplateEntry(BaseModel):
-    """One prefilled verify-script template for a standard verification case."""
+    Every catalog section lists these; within a section the first entry is the
+    default. The run-script sections currently carry a single ``docker``
+    variant each; the keys exist so further strategies can be added without
+    changing the catalog shape.
+    """
 
     key: str
     label: str
@@ -45,21 +46,34 @@ class VerifyTemplateEntry(BaseModel):
     body: str
 
 
-class ActivationScriptTemplates(BaseModel):
-    """The activation run-script template and both reserved activation paths.
+class BuildScriptTemplates(BaseModel):
+    """The build-script templates and the reserved path they all belong at.
 
-    ``verifyScriptPath`` is where an activation verify script belongs when the
-    author writes one; declaring it on the intent is an explicit act (a
-    declared verify script must exist and pass).
+    One entry per standard runtime-packaging strategy; the first is the
+    default and is the content a fresh REE's build script is seeded with.
+    """
+
+    path: str
+    templates: list[ScriptTemplateEntry]
+
+
+class ActivationScriptTemplates(BaseModel):
+    """The activation run-script templates and both reserved activation paths.
+
+    The first template is the default and is the content a fresh REE's
+    activation script is seeded with. ``verifyScriptPath`` is where an
+    activation verify script belongs when the author writes one; declaring it
+    on the intent is an explicit act (a declared verify script must exist and
+    pass).
     """
 
     runScriptPath: str
     verifyScriptPath: str
-    runScript: str
+    templates: list[ScriptTemplateEntry]
 
 
 class ExperimentScriptTemplates(BaseModel):
-    """Templates for per-experiment scripts, plus the path convention they follow.
+    """Templates for per-experiment run scripts, plus the path convention they follow.
 
     The path patterns carry a ``{slug}`` placeholder: the experiment name with
     whitespace collapsed to hyphens. Naming an experiment on the intent settles
@@ -69,16 +83,28 @@ class ExperimentScriptTemplates(BaseModel):
 
     runScriptPathPattern: str
     verifyScriptPathPattern: str
-    runScript: str
+    templates: list[ScriptTemplateEntry]
 
 
 class ScriptTemplateCatalog(BaseModel):
-    build: ScriptTemplate
+    build: BuildScriptTemplates
     activation: ActivationScriptTemplates
     experiment: ExperimentScriptTemplates
     # Verify scripts share one contract across runnables (activation and
     # experiments), so their templates are catalog-wide. The first is the default.
-    verify: list[VerifyTemplateEntry]
+    verify: list[ScriptTemplateEntry]
+
+
+def _entries(templates: tuple[ScriptTemplate, ...]) -> list[ScriptTemplateEntry]:
+    return [
+        ScriptTemplateEntry(
+            key=template.key,
+            label=template.label,
+            description=template.description,
+            body=template.body,
+        )
+        for template in templates
+    ]
 
 
 @script_templates_router.get(
@@ -90,33 +116,25 @@ class ScriptTemplateCatalog(BaseModel):
 def list_script_templates() -> ScriptTemplateCatalog:
     """Starter templates for the REE-owned scripts and where each belongs.
 
-    Static per deployment. ``build`` and ``activation`` are the same content a
-    fresh REE is seeded with; the experiment templates are for scripts created
-    on demand under the reserved experiments directory. The first verify
-    template is the default.
+    Static per deployment. The default (first) build and activation templates
+    are the same content a fresh REE is seeded with; the experiment templates
+    are for scripts created on demand under the reserved experiments
+    directory. The first verify template is the default.
     """
     return ScriptTemplateCatalog(
-        build=ScriptTemplate(
+        build=BuildScriptTemplates(
             path=RESERVED_BUILD_SCRIPT,
-            body=reserved_script_template(RESERVED_BUILD_SCRIPT),
+            templates=_entries(build_templates()),
         ),
         activation=ActivationScriptTemplates(
             runScriptPath=RESERVED_ACTIVATION_SCRIPT,
             verifyScriptPath=RESERVED_ACTIVATION_VERIFY_SCRIPT,
-            runScript=reserved_script_template(RESERVED_ACTIVATION_SCRIPT),
+            templates=_entries(activation_templates()),
         ),
         experiment=ExperimentScriptTemplates(
             runScriptPathPattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh",
             verifyScriptPathPattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh",
-            runScript=experiment_run_template(),
+            templates=_entries(experiment_run_templates()),
         ),
-        verify=[
-            VerifyTemplateEntry(
-                key=template.key,
-                label=template.label,
-                description=template.description,
-                body=template.body,
-            )
-            for template in verify_templates()
-        ],
+        verify=_entries(verify_templates()),
     )

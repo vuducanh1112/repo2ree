@@ -133,7 +133,7 @@ export function ExperimentDetail({
             disabled={locked || !scriptPath}
             label="Experiment run script"
             helper="Saved to the workspace overlay and run from the workspace root."
-            defaultTemplate={templates?.experiment.runScript ?? ""}
+            defaultTemplate={templates?.experiment.templates[0]?.body ?? ""}
             onSave={(content) => onSaveScript(scriptPath, content)}
           />
         </DetailField>

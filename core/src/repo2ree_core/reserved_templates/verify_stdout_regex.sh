@@ -3,7 +3,7 @@
 # Runs from the workspace root after the run script. Exit 0 = verified.
 # Nothing is injected: read whatever you check straight from the workspace.
 # To check the run's stdout, have the run script write it to a file, e.g.
-#   <your run command> | tee results/run.log
+#   <your run command> > results/run.log
 set -eu
 
 # Claim: the run log matches the expected pattern.

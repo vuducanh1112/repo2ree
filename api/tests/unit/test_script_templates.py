@@ -10,7 +10,21 @@ from repo2ree_core.reserved_paths import (
     RESERVED_BUILD_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
 )
-from repo2ree_core.reserved_templates import verify_templates
+from repo2ree_core.reserved_templates import (
+    activation_templates,
+    build_templates,
+    experiment_run_templates,
+    verify_templates,
+)
+
+
+def _assert_entries_match(entries: list[dict[str, str]], expected_keys: list[str]) -> None:
+    assert [entry["key"] for entry in entries] == expected_keys
+    for entry in entries:
+        assert entry["label"]
+        assert entry["description"]
+        assert entry["body"].startswith("#!/usr/bin/env sh")
+        assert "set -eu" in entry["body"]
 
 
 def test_list_script_templates_returns_catalog(client: TestClient) -> None:
@@ -18,23 +32,22 @@ def test_list_script_templates_returns_catalog(client: TestClient) -> None:
     assert resp.status_code == 200, resp.text
     body = resp.json()
 
-    # Build and activation carry the seeded reserved paths and real content.
+    # Build and activation carry the seeded reserved paths and their named
+    # template variants (docker first, as the default a fresh REE is seeded with).
     assert body["build"]["path"] == RESERVED_BUILD_SCRIPT
-    assert body["build"]["body"].startswith("#!/usr/bin/env sh")
+    _assert_entries_match(body["build"]["templates"], [t.key for t in build_templates()])
+    assert body["build"]["templates"][0]["key"] == "docker"
     assert body["activation"]["runScriptPath"] == RESERVED_ACTIVATION_SCRIPT
     assert body["activation"]["verifyScriptPath"] == RESERVED_ACTIVATION_VERIFY_SCRIPT
-    assert body["activation"]["runScript"].startswith("#!/usr/bin/env sh")
+    _assert_entries_match(body["activation"]["templates"], [t.key for t in activation_templates()])
+    assert body["activation"]["templates"][0]["key"] == "docker"
 
-    # Experiment templates state the path convention and a run starter.
+    # Experiment templates state the path convention and the run variants.
     experiment = body["experiment"]
     assert experiment["runScriptPathPattern"] == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh"
     assert experiment["verifyScriptPathPattern"] == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh"
-    assert experiment["runScript"].startswith("#!/usr/bin/env sh")
+    _assert_entries_match(experiment["templates"], [t.key for t in experiment_run_templates()])
+    assert experiment["templates"][0]["key"] == "docker"
 
     # The verify templates mirror the packaged registry, default first.
-    assert [entry["key"] for entry in body["verify"]] == [t.key for t in verify_templates()]
-    for entry in body["verify"]:
-        assert entry["label"]
-        assert entry["description"]
-        assert entry["body"].startswith("#!/usr/bin/env sh")
-        assert "set -eu" in entry["body"]
+    _assert_entries_match(body["verify"], [t.key for t in verify_templates()])
