@@ -34,23 +34,25 @@ script_templates_router = APIRouter(tags=["files"])
 class ScriptTemplateEntry(BaseModel):
     """One named starter-template variant for an REE-owned script.
 
-    Every catalog section lists these; within a section the first entry is the
-    default. The run-script sections currently carry a single ``docker``
-    variant each; the keys exist so further strategies can be added without
-    changing the catalog shape.
+    Every catalog section lists these; exactly one entry per section carries
+    ``isDefault`` (for the seeded scripts it is the content a fresh REE starts
+    with). The run-script sections currently carry a single ``docker`` variant
+    each; the keys exist so further strategies can be added without changing
+    the catalog shape.
     """
 
     key: str
     label: str
     description: str
     body: str
+    isDefault: bool
 
 
 class BuildScriptTemplates(BaseModel):
     """The build-script templates and the reserved path they all belong at.
 
-    One entry per standard runtime-packaging strategy; the first is the
-    default and is the content a fresh REE's build script is seeded with.
+    One entry per standard runtime-packaging strategy; the default entry
+    (``isDefault``) is the content a fresh REE's build script is seeded with.
     """
 
     path: str
@@ -60,7 +62,7 @@ class BuildScriptTemplates(BaseModel):
 class ActivationScriptTemplates(BaseModel):
     """The activation run-script templates and both reserved activation paths.
 
-    The first template is the default and is the content a fresh REE's
+    The default template (``isDefault``) is the content a fresh REE's
     activation script is seeded with. ``verifyScriptPath`` is where an
     activation verify script belongs when the author writes one; declaring it
     on the intent is an explicit act (a declared verify script must exist and
@@ -91,19 +93,22 @@ class ScriptTemplateCatalog(BaseModel):
     activation: ActivationScriptTemplates
     experiment: ExperimentScriptTemplates
     # Verify scripts share one contract across runnables (activation and
-    # experiments), so their templates are catalog-wide. The first is the default.
+    # experiments), so their templates are catalog-wide.
     verify: list[ScriptTemplateEntry]
 
 
 def _entries(templates: tuple[ScriptTemplate, ...]) -> list[ScriptTemplateEntry]:
+    # The core catalogs order their entries default-first; publish that as an
+    # explicit flag so clients don't have to know the positional convention.
     return [
         ScriptTemplateEntry(
             key=template.key,
             label=template.label,
             description=template.description,
             body=template.body,
+            isDefault=index == 0,
         )
-        for template in templates
+        for index, template in enumerate(templates)
     ]
 
 
@@ -116,10 +121,10 @@ def _entries(templates: tuple[ScriptTemplate, ...]) -> list[ScriptTemplateEntry]
 def list_script_templates() -> ScriptTemplateCatalog:
     """Starter templates for the REE-owned scripts and where each belongs.
 
-    Static per deployment. The default (first) build and activation templates
-    are the same content a fresh REE is seeded with; the experiment templates
-    are for scripts created on demand under the reserved experiments
-    directory. The first verify template is the default.
+    Static per deployment. Each section marks its default entry with
+    ``isDefault``; the default build and activation templates are the same
+    content a fresh REE is seeded with. The experiment templates are for
+    scripts created on demand under the reserved experiments directory.
     """
     return ScriptTemplateCatalog(
         build=BuildScriptTemplates(

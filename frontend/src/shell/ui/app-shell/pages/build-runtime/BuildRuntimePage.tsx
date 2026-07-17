@@ -73,9 +73,10 @@ export function PageBuildRuntime({
 }: StepPageProps) {
   const files = workspaceFiles || [];
 
-  // The reserved build-script path is backend-owned; the file itself arrives
-  // seeded, so only the path comes from the catalog.
-  const scriptPath = useScriptTemplates().data?.build.path ?? "";
+  // The reserved build-script path and template variants are backend-owned;
+  // the file itself arrives seeded with the default template.
+  const { data: templateCatalog } = useScriptTemplates();
+  const scriptPath = templateCatalog?.build.path ?? "";
   const scriptFile = useMemo(
     () => (scriptPath ? findFileByWorkspacePath(files, scriptPath) : null),
     [files, scriptPath],
@@ -183,6 +184,7 @@ export function PageBuildRuntime({
               // enabled editor without a save destination would let edits
               // race the fetch (and silently drop the save).
               disabled={!scriptPath}
+              templates={templateCatalog?.build.templates}
               onSave={handleSaveReservedBuildScript}
             />
           </div>

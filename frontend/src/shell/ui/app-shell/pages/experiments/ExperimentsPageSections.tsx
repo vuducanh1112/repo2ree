@@ -133,7 +133,7 @@ export function ExperimentDetail({
             disabled={locked || !scriptPath}
             label="Experiment run script"
             helper="Saved to the workspace overlay and run from the workspace root."
-            defaultTemplate={templates?.experiment.templates[0]?.body ?? ""}
+            templates={templates?.experiment.templates}
             onSave={(content) => onSaveScript(scriptPath, content)}
           />
         </DetailField>
@@ -142,16 +142,13 @@ export function ExperimentDetail({
           label="Verify script"
           help="Checks the run's results afterwards — a plain script run from the workspace root after the run script, whose exit code is the verdict (0 = the claimed result was reproduced). It reads what it checks straight from the workspace; to check stdout, have the run script write it to a file (e.g. `… | tee results/run.log`). Start from a template for the standard cases."
         >
-          {!locked && (
-            <VerifyTemplatePicker onInsert={(body) => onSaveVerifyScript(verifyScriptPath, body)} />
-          )}
           <RunScriptCard
             scriptPath={verifyScriptPath}
             currentContent={verifyScriptContent}
             disabled={locked || !verifyScriptPath}
             label="Experiment verify script"
             helper="Runs from the workspace root after the run script; its exit code is the verdict (0 = pass). Reads outputs straight from the workspace — no injected variables."
-            defaultTemplate={templates?.verify[0]?.body ?? ""}
+            templates={templates?.verify}
             saveButtonContent="Save verify script"
             savedLabel="Saved verify script"
             unsavedLabel="Unsaved verify script"
@@ -255,42 +252,6 @@ function DetailBreadcrumb({ index, onBack }: { index: number; onBack: () => void
       >
         {expId(index)}
       </span>
-    </div>
-  );
-}
-
-// ================================================
-// Verify template picker
-// ================================================
-
-// Inserting a template saves it to the verify script slot, replacing whatever
-// is there — the card below then shows it for editing. The templates are
-// backend-owned; until they load, the picker renders just its caption.
-function VerifyTemplatePicker({ onInsert }: { onInsert: (body: string) => void }) {
-  const { data: templates } = useScriptTemplates();
-  return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
-      <span
-        style={{ fontSize: 11, fontWeight: 700, color: lgColors.textMuted, alignSelf: "center" }}
-      >
-        Templates:
-      </span>
-      {(templates?.verify ?? []).map((template) => (
-        <button
-          key={template.key}
-          type="button"
-          title={`${template.description} Inserting replaces the current verify script.`}
-          onClick={() => onInsert(template.body)}
-          style={{
-            ...lgGlassButton(),
-            padding: "3px 9px",
-            fontSize: 11,
-            fontWeight: 700,
-          }}
-        >
-          {template.label}
-        </button>
-      ))}
     </div>
   );
 }

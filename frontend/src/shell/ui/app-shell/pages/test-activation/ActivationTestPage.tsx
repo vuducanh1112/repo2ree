@@ -188,6 +188,7 @@ export function PageTestActivation({
               disabled={!activationScriptPath}
               label="Activation run script"
               helper="Saved to the workspace overlay and run from the workspace root."
+              templates={templates?.activation.templates}
               onSave={handleSaveScript}
             />
           </div>
@@ -199,7 +200,7 @@ export function PageTestActivation({
               disabled={!activationVerifyScriptPath}
               label="Activation verify script (optional)"
               helper="Checks the activation run afterwards — a plain script run from the workspace root, reading outputs straight from the workspace; its exit code is the verdict. Without one, the run script's exit code decides."
-              defaultTemplate={templates?.verify[0]?.body ?? ""}
+              templates={templates?.verify}
               saveButtonContent="Save verify script"
               savedLabel="Saved verify script"
               unsavedLabel="Unsaved verify script"

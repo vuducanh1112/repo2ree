@@ -20,6 +20,9 @@ from repo2ree_core.reserved_templates import (
 
 def _assert_entries_match(entries: list[dict[str, str]], expected_keys: list[str]) -> None:
     assert [entry["key"] for entry in entries] == expected_keys
+    # Exactly one entry per section is the explicit default: the first, per
+    # the core catalogs' ordering.
+    assert [entry["isDefault"] for entry in entries] == [True] + [False] * (len(entries) - 1)
     for entry in entries:
         assert entry["label"]
         assert entry["description"]

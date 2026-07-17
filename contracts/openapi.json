@@ -4297,7 +4297,7 @@
           "files"
         ],
         "summary": "List Script Templates",
-        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. The default (first) build and activation templates\nare the same content a fresh REE is seeded with; the experiment templates\nare for scripts created on demand under the reserved experiments\ndirectory. The first verify template is the default.",
+        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. Each section marks its default entry with\n``isDefault``; the default build and activation templates are the same\ncontent a fresh REE is seeded with. The experiment templates are for\nscripts created on demand under the reserved experiments directory.",
         "operationId": "listScriptTemplates",
         "responses": {
           "200": {
@@ -4724,7 +4724,7 @@
           "templates"
         ],
         "title": "ActivationScriptTemplates",
-        "description": "The activation run-script templates and both reserved activation paths.\n\nThe first template is the default and is the content a fresh REE's\nactivation script is seeded with. ``verifyScriptPath`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
+        "description": "The activation run-script templates and both reserved activation paths.\n\nThe default template (``isDefault``) is the content a fresh REE's\nactivation script is seeded with. ``verifyScriptPath`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
       },
       "AgentList": {
         "properties": {
@@ -4800,7 +4800,7 @@
           "templates"
         ],
         "title": "BuildScriptTemplates",
-        "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the first is the\ndefault and is the content a fresh REE's build script is seeded with."
+        "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the default entry\n(``isDefault``) is the content a fresh REE's build script is seeded with."
       },
       "CPUDefinition": {
         "properties": {
@@ -6210,6 +6210,10 @@
           "body": {
             "type": "string",
             "title": "Body"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "title": "Isdefault"
           }
         },
         "type": "object",
@@ -6217,10 +6221,11 @@
           "key",
           "label",
           "description",
-          "body"
+          "body",
+          "isDefault"
         ],
         "title": "ScriptTemplateEntry",
-        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; within a section the first entry is the\ndefault. The run-script sections currently carry a single ``docker``\nvariant each; the keys exist so further strategies can be added without\nchanging the catalog shape."
+        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; exactly one entry per section carries\n``isDefault`` (for the seeded scripts it is the content a fresh REE starts\nwith). The run-script sections currently carry a single ``docker`` variant\neach; the keys exist so further strategies can be added without changing\nthe catalog shape."
       },
       "SourceAcquirePayload": {
         "properties": {

@@ -121,19 +121,20 @@ export interface WorkbenchImageCatalogDto {
   defaultId: string;
 }
 
-/** One named starter-template variant for an REE-owned script; the first entry of a list is the default. */
+/** One named starter-template variant for an REE-owned script; exactly one entry per list is the default. */
 export interface ScriptTemplateEntryDto {
   key: string;
   label: string;
   description: string;
   body: string;
+  isDefault: boolean;
 }
 
 /** Backend-owned starter templates for the REE-owned scripts (GET /script-templates). */
 export interface ScriptTemplateCatalogDto {
   build: {
     path: string;
-    /** Named variants (currently only `docker`); the first is the default a fresh REE is seeded with. */
+    /** Named variants (currently only `docker`); the default is what a fresh REE is seeded with. */
     templates: ScriptTemplateEntryDto[];
   };
   activation: {
@@ -148,7 +149,7 @@ export interface ScriptTemplateCatalogDto {
     verifyScriptPathPattern: string;
     templates: ScriptTemplateEntryDto[];
   };
-  /** Verify templates shared across runnables; the first entry is the default. */
+  /** Verify templates shared across runnables. */
   verify: ScriptTemplateEntryDto[];
 }
 
