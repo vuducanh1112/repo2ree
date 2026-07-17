@@ -3,17 +3,17 @@ import type { ReeDetailDto } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices } from "./mapping";
 
 describe("shell/data/ree/mapping", () => {
-  it("falls back to workspace external ref when originUrl is absent", () => {
+  it("falls back to workspace external ref when origin_url is absent", () => {
     const ree: ReeDetailDto = {
-      reeId: "ree-1",
+      ree_id: "ree-1",
       name: "workspace-demo",
       status: "draft",
-      createdAt: "2026-01-01T00:00:00Z",
-      updatedAt: "2026-01-01T00:00:00Z",
-      externalRef: "https://example.org/archive.tar.gz",
-      reeIntent: {},
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+      external_ref: "https://example.org/archive.tar.gz",
+      ree_intent: {},
       files: [],
-      reeFiles: [],
+      ree_files: [],
     };
 
     const mapped = mapReeDetailToReeSlices(ree);

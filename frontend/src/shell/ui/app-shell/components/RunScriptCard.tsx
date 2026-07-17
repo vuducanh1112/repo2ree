@@ -53,7 +53,7 @@ export function RunScriptCard({
   savedLabel = "Saved run script",
   unsavedLabel = "Unsaved run script",
 }: RunScriptCardProps) {
-  const defaultTemplate = templates?.find((template) => template.isDefault)?.body ?? "";
+  const defaultTemplate = templates?.find((template) => template.is_default)?.body ?? "";
   const [content, setContent] = useState(currentContent || defaultTemplate);
   const [savedContent, setSavedContent] = useState(currentContent);
   // What the editor was last synced to — the baseline for "has the user

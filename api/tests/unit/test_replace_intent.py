@@ -42,19 +42,19 @@ def test_replace_intent_route_patches_every_intent_field(
         return ActionResult(status="succeeded", exit_code=0)
 
     workspace = {
-        "reeId": online_ree.ree_id,
+        "ree_id": online_ree.ree_id,
         "name": "demo",
         "status": "draft",
-        "createdAt": "t1",
-        "updatedAt": "t2",
+        "created_at": "t1",
+        "updated_at": "t2",
     }
-    monkeypatch.setattr(workbench_manager, "get_ree_metadata", lambda handle: {"updatedAt": "t2"})
+    monkeypatch.setattr(workbench_manager, "get_ree_metadata", lambda handle: {"updated_at": "t2"})
     monkeypatch.setattr(workbench_manager, "get_workspace", lambda handle: workspace)
     monkeypatch.setattr(workbench_manager, "dispatch_action", _dispatch)
 
     resp = client.put(
         f"/api/v1/rees/{online_ree.ree_id}/intent",
-        json={"reeIntent": {"name": "demo-renamed"}},
+        json={"ree_intent": {"name": "demo-renamed"}},
     )
 
     assert resp.status_code == 200, resp.text

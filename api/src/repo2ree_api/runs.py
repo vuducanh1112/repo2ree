@@ -56,9 +56,9 @@ def list_workspace_runs(
         runs,
         cursor=cursor,
         limit=limit,
-        key=lambda run: (run["createdAt"], run["runId"]),
+        key=lambda run: (run["created_at"], run["run_id"]),
     )
-    return {"runs": page, "nextCursor": next_cursor}
+    return {"runs": page, "next_cursor": next_cursor}
 
 
 @runs_router.get(
@@ -91,9 +91,9 @@ def get_workspace_run_logs(
     next_cursor = str(page[-1]["seq"]) if page else (str(after_seq) if cursor is not None else None)
     return {
         "entries": page,
-        "nextCursor": next_cursor,
-        "hasMore": len(remaining) > len(page),
-        "runStatus": run_state["status"],
+        "next_cursor": next_cursor,
+        "has_more": len(remaining) > len(page),
+        "run_status": run_state["status"],
     }
 
 
@@ -107,7 +107,7 @@ def observe_workspace_run(
     ree_id: str,
     run_id: str,
     cursor: Annotated[int | None, Query(ge=0)] = None,
-    wait_seconds: Annotated[float, Query(alias="waitSeconds", ge=0, le=30)] = 25,
+    wait_seconds: Annotated[float, Query(ge=0, le=30)] = 25,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ):
     run, entries, next_cursor, changed = observe_run(
@@ -117,7 +117,7 @@ def observe_workspace_run(
         wait_seconds=wait_seconds,
         limit=limit,
     )
-    return {"run": run, "entries": entries, "nextCursor": next_cursor, "changed": changed}
+    return {"run": run, "entries": entries, "next_cursor": next_cursor, "changed": changed}
 
 
 @runs_router.post(

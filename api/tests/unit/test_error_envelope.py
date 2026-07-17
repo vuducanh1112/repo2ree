@@ -124,7 +124,7 @@ def test_unknown_ree_yields_404_envelope(client: TestClient):
 
 
 def test_request_validation_uses_error_envelope(client: TestClient):
-    resp = client.post("/api/v1/rees", json={"originUrl": "https://example.org/repo.git"})
+    resp = client.post("/api/v1/rees", json={"origin_url": "https://example.org/repo.git"})
     assert resp.status_code == 422
     body = resp.json()
     assert body["error"]["code"] == "request_validation_failed"

@@ -93,16 +93,16 @@ def new_upload_token(
     _upload_metadata_path(token).write_text(
         json.dumps(
             {
-                "fileName": file_name,
-                "expectedSize": expected_size,
-                "contentType": content_type,
+                "file_name": file_name,
+                "expected_size": expected_size,
+                "content_type": content_type,
             }
         ),
         encoding="utf-8",
     )
     ttl = timedelta(seconds=service_settings.UPLOAD_TTL_SECONDS)
     expires_at = (datetime.now(UTC) + ttl).isoformat().replace("+00:00", "Z")
-    return {"uploadToken": token, "expiresAt": expires_at}
+    return {"upload_token": token, "expires_at": expires_at}
 
 
 async def stage_upload_stream(token: str, chunks: AsyncIterable[bytes]) -> Path:
@@ -129,7 +129,7 @@ async def stage_upload_stream(token: str, chunks: AsyncIterable[bytes]) -> Path:
                     )
                 await asyncio.to_thread(f.write, chunk)
         metadata = _read_upload_metadata(token)
-        expected_size = metadata.get("expectedSize")
+        expected_size = metadata.get("expected_size")
         if isinstance(expected_size, int) and expected_size > 0 and total != expected_size:
             raise UploadSizeMismatchError(f"upload size {total} does not match declared size {expected_size}")
     except BaseException:

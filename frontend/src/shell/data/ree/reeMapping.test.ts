@@ -4,14 +4,14 @@ import { mapReeDetailToReeProject } from "./reeMapping";
 
 function baseRee(overrides: Partial<ReeDetailDto> = {}): ReeDetailDto {
   return {
-    reeId: "ree-1",
+    ree_id: "ree-1",
     name: "workspace-demo",
     status: "draft",
-    createdAt: "2026-01-01T00:00:00Z",
-    updatedAt: "2026-01-01T00:00:00Z",
-    reeIntent: {},
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    ree_intent: {},
     files: [],
-    reeFiles: [],
+    ree_files: [],
     ...overrides,
   };
 }
@@ -20,12 +20,12 @@ describe("shell/data/ree/reeMapping", () => {
   it("keeps the draft manifest separate from REE files", () => {
     const project = mapReeDetailToReeProject(
       baseRee({
-        draftManifest: {
+        draft_manifest: {
           manifest_state: "draft",
           name: "workspace-demo",
           file_inventory: { workspace: [], overlay: [], artifacts: [] },
         },
-        reeFiles: [{ path: "overlay/build.sh", kind: "ree", tag: "Overlay", size: 9 }],
+        ree_files: [{ path: "overlay/build.sh", kind: "ree", tag: "Overlay", size: 9 }],
       }),
     );
 
@@ -40,7 +40,7 @@ describe("shell/data/ree/reeMapping", () => {
   it("leaves draft manifest empty when the API does not provide one", () => {
     const project = mapReeDetailToReeProject(
       baseRee({
-        reeFiles: [{ path: "overlay/build.sh", kind: "ree", tag: "Overlay", size: 9 }],
+        ree_files: [{ path: "overlay/build.sh", kind: "ree", tag: "Overlay", size: 9 }],
       }),
     );
 

@@ -126,15 +126,15 @@ def ree(client: TestClient, request: pytest.FixtureRequest) -> Iterator[dict[str
     # Drive the image this tier gates on, passed per-request like a real client.
     resp = client.post(
         "/api/v1/rees",
-        json={"name": "api-itest", "workbenchImage": WORKBENCH_IMAGE},
+        json={"name": "api-itest", "workbench_image": WORKBENCH_IMAGE},
     )
     assert resp.status_code == 200, resp.text
     run = resp.json()
-    ree_id = run["reeId"]
+    ree_id = run["ree_id"]
     try:
         # Provisioning is a background run now (so the image pull streams live);
         # wait for it before yielding the fully-provisioned workspace.
-        assert _wait_for_provision(client, ree_id, run["runId"]) == "succeeded"
+        assert _wait_for_provision(client, ree_id, run["run_id"]) == "succeeded"
         workspace = client.get(f"/api/v1/rees/{ree_id}").json()
         yield workspace
     finally:

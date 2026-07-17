@@ -115,7 +115,7 @@ export interface ReeCatalogMetadata {
   correspondingAuthorIdentifier: string | null;
 }
 
-export interface HBOM {
+export interface Hbom {
   cpus: Record<DeviceModel, CPUDefinition>;
   gpus: Record<DeviceModel, GPUDefinition>;
   memory: Record<DeviceModel, MemoryDefinition>;
@@ -141,7 +141,7 @@ export interface ReeSpec {
   zenodoDoi?: string;
   dataverseDoi?: string;
   experiments?: ReeExperiment[];
-  hardwareDescription: HBOM;
+  hardwareDescription: Hbom;
 }
 
 // ================================================

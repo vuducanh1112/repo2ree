@@ -1,7 +1,7 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
-import type { HBOM, ReeCatalogMetadata, ReeExperiment, ReeRunnable, ReeSpec } from "./ReeSpec";
+import type { Hbom, ReeCatalogMetadata, ReeExperiment, ReeRunnable, ReeSpec } from "./ReeSpec";
 
 // The patch travels in the backend's wire format: the intent payload is a
 // serialized Pydantic model, so its keys are snake_case. Domain types are
@@ -87,7 +87,7 @@ const DEVICE_WIRE_FIELDS: Record<string, string> = {
   extraInfo: "extra_info",
 };
 
-function serializeHbom(hbom: HBOM): Record<string, unknown> {
+function serializeHbom(hbom: Hbom): Record<string, unknown> {
   const asDeviceMap = (value: unknown) =>
     serializeDeviceMap(value as Record<string, Record<string, unknown>>, DEVICE_WIRE_FIELDS);
   return {

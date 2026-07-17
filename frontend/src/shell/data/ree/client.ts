@@ -40,7 +40,7 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
     },
     async updateReeIntent(id, intentPatch) {
       const reeId = await ensureReeId(runtime, id);
-      await runtime.reeApi.patchReeIntent(reeId, { reeIntentPatch: intentPatch });
+      await runtime.reeApi.patchReeIntent(reeId, { ree_intent_patch: intentPatch });
     },
     async deleteFile(id, path) {
       const reeId = await ensureReeId(runtime, id);
@@ -69,8 +69,8 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
         await runtime.reeApi.acquireSource(
           reeId,
           toSourceAcquireRequest({
-            originUrl: request.source,
-            sourceType: request.sourceType,
+            origin_url: request.source,
+            source_type: request.sourceType,
             revision: request.revision,
           }),
         );
@@ -79,15 +79,15 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
       if (mode === "upload") {
         const archiveName = String(request.archiveName || "source.tar.gz");
         const init = await runtime.reeApi.initUpload(reeId, {
-          fileName: archiveName,
+          file_name: archiveName,
           size: 0,
-          contentType: "application/gzip",
+          content_type: "application/gzip",
         });
         if (request.archiveContentBase64) {
           const archiveData = decodeBase64ToArrayBuffer(String(request.archiveContentBase64));
-          await runtime.reeApi.uploadSourceBytes(init.uploadUrl, archiveData);
+          await runtime.reeApi.uploadSourceBytes(init.upload_url, archiveData);
         }
-        await runtime.reeApi.completeUpload(reeId, init.uploadToken, archiveName);
+        await runtime.reeApi.completeUpload(reeId, init.upload_token, archiveName);
         return;
       }
       throw new Error(`Unsupported workspace reset mode: ${mode}`);

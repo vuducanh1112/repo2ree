@@ -1,6 +1,3 @@
-import type { ConsistencyReport } from "@core/ree-steps/sealConsistency";
-import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
-
 export interface ApiErrorEnvelope {
   error: {
     code: string;
@@ -11,16 +8,16 @@ export interface ApiErrorEnvelope {
 
 export interface ApiListResponse<TItem> {
   items: TItem[];
-  nextCursor?: string;
+  next_cursor?: string;
 }
 
 export interface ReeSummaryDto {
-  reeId: string;
-  externalRef?: string;
+  ree_id: string;
+  external_ref?: string;
   name: string;
   status: "draft" | "ready" | "sealed" | "archived";
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ReeFileDto {
@@ -83,28 +80,55 @@ export interface ReeSessionDto {
   runtime_included?: boolean;
 }
 
+/** Display-ready source-repository facts as they cross the wire (snake_case). */
+export interface SourceRepoMetadataDto {
+  name: string;
+  origin: string;
+  acquired_by: string;
+  source_type: string;
+  swhid: string;
+  size_bytes: number | null;
+  size_label: string | null;
+}
+
+export interface ConsistencyStaleInputDto {
+  input: string;
+  recorded: string | null;
+  current: string | null;
+}
+
+export interface ConsistencyStepDto {
+  step: string;
+  status: "fresh" | "stale" | "missing";
+  run_id?: string;
+  recorded_at?: string;
+  stale_inputs?: ConsistencyStaleInputDto[];
+  workspace_drift?: "clean" | "modified" | "unknown";
+}
+
+/** Per-step freshness of recorded run receipts vs. the current tree. */
+export interface ConsistencyReportDto {
+  steps: ConsistencyStepDto[];
+}
+
 export interface ReeDetailDto extends ReeSummaryDto {
-  reeIntent: Partial<ReeIntentDto>;
-  reeSession?: Partial<ReeSessionDto>;
+  ree_intent: Partial<ReeIntentDto>;
+  ree_session?: Partial<ReeSessionDto>;
   files?: ReeFileDto[];
-  reeFiles?: ReeArtifactFileDto[];
-  draftManifest?: Record<string, unknown>;
-  // The backend emits this already camelCased and the frontend renders it
-  // untouched, so the wire shape and the domain type are one and the same.
-  sourceRepo?: SourceRepoMetadata;
-  // Per-step freshness of recorded run receipts vs. the current tree; emitted
-  // camelCased by the backend and rendered untouched, like sourceRepo.
-  consistency?: ConsistencyReport;
+  ree_files?: ReeArtifactFileDto[];
+  draft_manifest?: Record<string, unknown>;
+  source_repo?: SourceRepoMetadataDto;
+  consistency?: ConsistencyReportDto;
   /** The image this REE's workbench was provisioned from. */
-  workbenchImage?: string;
+  workbench_image?: string;
 }
 
 export interface CreateReeRequestDto {
   name?: string;
   /** Image to provision the workbench from; omitted falls back to the server default. */
-  workbenchImage?: string;
+  workbench_image?: string;
   /** Agent to place the workbench on (GET /agents); omitted means "any connected agent". */
-  agentId?: string;
+  agent_id?: string;
 }
 
 /** A base image offered for workbench provisioning (GET /workbench/images). */
@@ -118,7 +142,7 @@ export interface WorkbenchImageDto {
 export interface WorkbenchImageCatalogDto {
   images: WorkbenchImageDto[];
   /** Id of the image used when a provisioning request omits one. */
-  defaultId: string;
+  default_id: string;
 }
 
 /** One named starter-template variant for an REE-owned script; exactly one entry per list is the default. */
@@ -127,7 +151,7 @@ export interface ScriptTemplateEntryDto {
   label: string;
   description: string;
   body: string;
-  isDefault: boolean;
+  is_default: boolean;
 }
 
 /** Backend-owned starter templates for the REE-owned scripts (GET /script-templates). */
@@ -138,15 +162,15 @@ export interface ScriptTemplateCatalogDto {
     templates: ScriptTemplateEntryDto[];
   };
   activation: {
-    runScriptPath: string;
+    run_script_path: string;
     /** Where an activation verify script belongs; declaring one is an explicit act. */
-    verifyScriptPath: string;
+    verify_script_path: string;
     templates: ScriptTemplateEntryDto[];
   };
   experiment: {
     /** Path conventions with a `{slug}` placeholder (experiment name, whitespace → hyphens). */
-    runScriptPathPattern: string;
-    verifyScriptPathPattern: string;
+    run_script_path_pattern: string;
+    verify_script_path_pattern: string;
     templates: ScriptTemplateEntryDto[];
   };
   /** Verify templates shared across runnables. */
@@ -155,12 +179,12 @@ export interface ScriptTemplateCatalogDto {
 
 /** A workbench agent connected to the control plane (GET /agents). */
 export interface AgentSummaryDto {
-  agentId: string;
+  agent_id: string;
   hostname: string;
   version: string;
-  dockerMode: string;
+  docker_mode: string;
   /** ISO 8601 UTC timestamp of when the agent dialed in. */
-  connectedAt: string;
+  connected_at: string;
   status: string;
 }
 
@@ -169,13 +193,13 @@ export interface AgentListDto {
 }
 
 export interface PatchReeRequestDto {
-  reeIntentPatch: Record<string, unknown>;
-  expectedVersion?: string;
+  ree_intent_patch: Record<string, unknown>;
+  expected_version?: string;
 }
 
 export interface SourceAcquireRequestDto {
-  originUrl: string;
-  sourceType: "git" | "tarball" | "zip";
+  origin_url: string;
+  source_type: "git" | "tarball" | "zip";
   /** Git revision (commit, branch, or tag) to pin the fetch to; blank means default-branch HEAD. */
   revision?: string;
 }
@@ -188,28 +212,28 @@ export interface SourceAcquireRequestDto {
  * here, next to the DTO, so the two paths cannot drift.
  */
 export function toSourceAcquireRequest(input: {
-  originUrl?: unknown;
-  sourceType?: unknown;
+  origin_url?: unknown;
+  source_type?: unknown;
   revision?: unknown;
 }): SourceAcquireRequestDto {
   const revision = typeof input.revision === "string" ? input.revision.trim() : "";
   return {
-    originUrl: String(input.originUrl ?? ""),
-    sourceType: String(input.sourceType ?? "git") as "git" | "tarball" | "zip",
+    origin_url: String(input.origin_url ?? ""),
+    source_type: String(input.source_type ?? "git") as "git" | "tarball" | "zip",
     ...(revision ? { revision } : {}),
   };
 }
 
 export interface UploadInitRequestDto {
-  fileName: string;
+  file_name: string;
   size: number;
-  contentType: string;
+  content_type: string;
 }
 
 export interface UploadInitResponseDto {
-  uploadUrl: string;
-  uploadToken: string;
-  expiresAt: string;
+  upload_url: string;
+  upload_token: string;
+  expires_at: string;
 }
 
 export type ReeRunOperationDto =
@@ -239,39 +263,39 @@ export type ReeRunStatusDto =
   | "canceled";
 
 export interface CreateBuildRuntimeRunRequestDto {
-  idempotencyKey?: string;
+  idempotency_key?: string;
 }
 
 export interface CreateGenerateSbomRunRequestDto {
   produced_runtime_path: string;
-  idempotencyKey?: string;
+  idempotency_key?: string;
 }
 
 export interface CreateGenerateHbomRunRequestDto {
-  idempotencyKey?: string;
+  idempotency_key?: string;
 }
 
 export interface CreateCrossCheckSbomRunRequestDto {
-  idempotencyKey?: string;
+  idempotency_key?: string;
 }
 
 export interface CreateActivationTestRunRequestDto {
-  idempotencyKey?: string;
+  idempotency_key?: string;
 }
 
 export interface CreateEvaluateRunRequestDto {
   strict: boolean;
-  idempotencyKey?: string;
+  idempotency_key?: string;
 }
 
 export interface ReeRunDto {
-  runId: string;
-  reeId: string;
+  run_id: string;
+  ree_id: string;
   operation: ReeRunOperationDto;
   status: ReeRunStatusDto;
-  createdAt: string;
-  startedAt?: string;
-  finishedAt?: string;
+  created_at: string;
+  started_at?: string;
+  finished_at?: string;
   outputs?: Record<string, unknown>;
 }
 
@@ -289,7 +313,7 @@ export interface ReeRunLogEntryDto {
 
 export interface ReeRunLogsDto {
   entries: ReeRunLogEntryDto[];
-  nextCursor?: string;
-  hasMore: boolean;
-  runStatus: ReeRunStatusDto;
+  next_cursor?: string;
+  has_more: boolean;
+  run_status: ReeRunStatusDto;
 }

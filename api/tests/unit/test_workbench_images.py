@@ -15,8 +15,8 @@ def test_list_workbench_images_returns_catalog(client: TestClient) -> None:
     ids = [image["id"] for image in body["images"]]
     assert ids == [image.id for image in WORKBENCH_IMAGE_CATALOG]
     # The default id is one of the listed images.
-    assert body["defaultId"] == default_workbench_image().id
-    assert body["defaultId"] in ids
+    assert body["default_id"] == default_workbench_image().id
+    assert body["default_id"] in ids
     # Every offered image carries the fields the selector renders.
     for image in body["images"]:
         assert image["ref"]

@@ -43,10 +43,10 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
     async createWorkspace(name = "REE", image, agentId) {
       const run = await runtime.reeApi.createRee({
         name,
-        workbenchImage: image?.trim() || undefined,
-        agentId: agentId?.trim() || undefined,
+        workbench_image: image?.trim() || undefined,
+        agent_id: agentId?.trim() || undefined,
       });
-      return { reeId: run.reeId, run: mapRun(run) };
+      return { reeId: run.ree_id, run: mapRun(run) };
     },
     async startReeRun(id, scriptKey, params = {}) {
       const reeId = await ensureReeId(runtime, id);
@@ -54,13 +54,13 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
       switch (scriptKey) {
         case "build":
           run = await runtime.runsApi.createBuildRuntimeRun(reeId, {
-            idempotencyKey:
+            idempotency_key:
               params.idempotencyKey == null ? undefined : String(params.idempotencyKey),
           });
           break;
         case "hbom":
           run = await runtime.runsApi.createGenerateHbomRun(reeId, {
-            idempotencyKey:
+            idempotency_key:
               params.idempotencyKey == null ? undefined : String(params.idempotencyKey),
           });
           break;
@@ -86,8 +86,8 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
             run = await runtime.reeApi.acquireSource(
               reeId,
               toSourceAcquireRequest({
-                originUrl: params.source,
-                sourceType: params.sourceType,
+                origin_url: params.source,
+                source_type: params.sourceType,
                 revision: params.revision,
               }),
             );
@@ -96,15 +96,15 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
           if (mode === "upload") {
             const archiveName = String(params.archiveName || "source.tar.gz");
             const init = await runtime.reeApi.initUpload(reeId, {
-              fileName: archiveName,
+              file_name: archiveName,
               size: 0,
-              contentType: "application/gzip",
+              content_type: "application/gzip",
             });
             if (params.archiveContentBase64) {
               const archiveData = decodeBase64ToArrayBuffer(String(params.archiveContentBase64));
-              await runtime.reeApi.uploadSourceBytes(init.uploadUrl, archiveData);
+              await runtime.reeApi.uploadSourceBytes(init.upload_url, archiveData);
             }
-            run = await runtime.reeApi.completeUpload(reeId, init.uploadToken, archiveName);
+            run = await runtime.reeApi.completeUpload(reeId, init.upload_token, archiveName);
             break;
           }
           throw new Error("Unsupported source acquisition mode");
@@ -131,8 +131,8 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
       });
       return {
         lines: mapRunLogsToLines(logs.entries),
-        nextCursor: nextRunLogCursor(logs.nextCursor, logs.entries, cursor),
-        hasMore: logs.hasMore,
+        nextCursor: nextRunLogCursor(logs.next_cursor, logs.entries, cursor),
+        hasMore: logs.has_more,
       };
     },
     async cancelReeRun(id, runId) {
@@ -164,11 +164,11 @@ function mapStatus(status: ReeRunStatusDto): ReeRunStatus {
 
 function mapRun(run: ReeRunDto): ReeRun {
   return {
-    runId: run.runId,
+    runId: run.run_id,
     status: mapStatus(run.status),
-    createdAt: run.createdAt,
-    startedAt: run.startedAt,
-    finishedAt: run.finishedAt,
+    createdAt: run.created_at,
+    startedAt: run.started_at,
+    finishedAt: run.finished_at,
   };
 }
 

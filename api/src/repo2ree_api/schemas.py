@@ -33,53 +33,53 @@ class ReeCreatePayload(_StrictRequestModel):
     name: str | None = None
     # Image to provision the workbench from. Omitted (or blank) falls back to the
     # server default (the workbench image catalog default; see workbench_images.py).
-    workbenchImage: str | None = None
+    workbench_image: str | None = None
     # Agent to place the workbench on (from GET /api/v1/agents). Omitted/blank
     # means "any connected agent" — the single-agent path.
-    agentId: str | None = None
+    agent_id: str | None = None
 
 
 class ReeIntentPatchPayload(_StrictRequestModel):
-    reeIntentPatch: dict[str, Any] = Field(default_factory=dict)
-    expectedVersion: str | None = None
+    ree_intent_patch: dict[str, Any] = Field(default_factory=dict)
+    expected_version: str | None = None
 
 
 class ReeIntentReplacePayload(_StrictRequestModel):
-    reeIntent: ReeIntent
-    expectedVersion: str | None = None
+    ree_intent: ReeIntent
+    expected_version: str | None = None
 
 
 class SourceAcquirePayload(_StrictRequestModel):
-    originUrl: str
-    sourceType: Literal["git", "tarball", "zip"]
+    origin_url: str
+    source_type: Literal["git", "tarball", "zip"]
     # Git revision (commit, branch, or tag) to pin the fetch to. Blank/omitted
     # means the origin's default branch HEAD. Ignored for non-git sources.
     revision: str | None = None
-    idempotencyKey: str | None = None
+    idempotency_key: str | None = None
 
 
 class UploadInitPayload(_StrictRequestModel):
-    fileName: str
+    file_name: str
     size: int = Field(ge=0)
-    contentType: str
+    content_type: str
 
 
 class SourceUploadCompletePayload(_StrictRequestModel):
-    uploadToken: str
-    archiveName: str
-    idempotencyKey: str | None = None
+    upload_token: str
+    archive_name: str
+    idempotency_key: str | None = None
 
 
 class WorkspaceFileContentPayload(_StrictRequestModel):
     path: str
     content: str
-    ifMatch: str | None = None
+    if_match: str | None = None
 
 
 class ReeSealPayload(_StrictRequestModel):
-    includeSource: bool = False
-    includeRuntime: bool = False
-    includeResults: bool = False
+    include_source: bool = False
+    include_runtime: bool = False
+    include_results: bool = False
 
 
 # ================================================

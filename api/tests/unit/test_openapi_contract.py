@@ -71,10 +71,10 @@ def test_creation_and_source_acquisition_are_separate_contracts() -> None:
     create_ref = create_operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
     create_schema = schema["components"]["schemas"][create_ref.rsplit("/", 1)[-1]]
 
-    assert set(create_schema["properties"]) == {"name", "workbenchImage", "agentId"}
+    assert set(create_schema["properties"]) == {"name", "workbench_image", "agent_id"}
 
     acquire_operation = schema["paths"]["/api/v1/rees/{ree_id}/source:acquire"]["post"]
     acquire_ref = acquire_operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
     acquire_schema = schema["components"]["schemas"][acquire_ref.rsplit("/", 1)[-1]]
 
-    assert {"originUrl", "sourceType", "revision"} <= set(acquire_schema["properties"])
+    assert {"origin_url", "source_type", "revision"} <= set(acquire_schema["properties"])

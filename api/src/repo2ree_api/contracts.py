@@ -65,13 +65,13 @@ ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
 class RunSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    runId: str
-    reeId: str
+    run_id: str
+    ree_id: str
     operation: RunOperation
     status: RunStatus
-    createdAt: str
-    startedAt: str | None = None
-    finishedAt: str | None = None
+    created_at: str
+    started_at: str | None = None
+    finished_at: str | None = None
     outputs: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -79,7 +79,7 @@ class RunList(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     runs: list[RunSummary]
-    nextCursor: str | None = None
+    next_cursor: str | None = None
 
 
 class RunLogEntry(BaseModel):
@@ -96,9 +96,9 @@ class RunLogPage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     entries: list[RunLogEntry]
-    nextCursor: str | None = None
-    hasMore: bool
-    runStatus: RunStatus
+    next_cursor: str | None = None
+    has_more: bool
+    run_status: RunStatus
 
 
 class RunObservation(BaseModel):
@@ -106,7 +106,7 @@ class RunObservation(BaseModel):
 
     run: RunSummary
     entries: list[RunLogEntry]
-    nextCursor: str | None = None
+    next_cursor: str | None = None
     changed: bool
 
 
@@ -121,28 +121,28 @@ class ReeDocument(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    reeId: str
+    ree_id: str
     name: str
     status: str
-    createdAt: str
-    updatedAt: str
+    created_at: str
+    updated_at: str
 
 
 class ReeSummary(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    reeId: str
+    ree_id: str
     name: str
     status: str
-    createdAt: str
-    updatedAt: str
+    created_at: str
+    updated_at: str
 
 
 class ReeList(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     items: list[ReeSummary]
-    nextCursor: str | None = None
+    next_cursor: str | None = None
 
 
 class ReeState(BaseModel):
@@ -150,45 +150,45 @@ class ReeState(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    reeId: str
+    ree_id: str
     name: str
     status: str
-    updatedAt: str
+    updated_at: str
     workbench: dict[str, Any]
-    reeIntent: dict[str, Any] = Field(default_factory=dict)
-    reeSession: dict[str, Any] = Field(default_factory=dict)
+    ree_intent: dict[str, Any] = Field(default_factory=dict)
+    ree_session: dict[str, Any] = Field(default_factory=dict)
     consistency: dict[str, Any] = Field(default_factory=dict)
     files: list[dict[str, Any]] = Field(default_factory=list)
-    activeRuns: list[RunSummary] = Field(default_factory=list)
+    active_runs: list[RunSummary] = Field(default_factory=list)
 
 
 class DeleteReeResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    deletedAt: str
+    deleted_at: str
     state: Literal["deleted"]
 
 
 class UploadInitResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    uploadToken: str
-    uploadUrl: str
-    expiresAt: str
+    upload_token: str
+    upload_url: str
+    expires_at: str
 
 
 class UploadStoredResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    uploadToken: str
-    storedAt: str
+    upload_token: str
+    stored_at: str
 
 
 class FileMutationResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    updatedAt: str | None = None
-    deletedAt: str | None = None
+    updated_at: str | None = None
+    deleted_at: str | None = None
     etag: str | None = None
 
 
@@ -196,7 +196,7 @@ class ReprovisionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: Literal["reprovisioned"]
-    reeId: str
+    ree_id: str
 
 
 class HealthResponse(BaseModel):

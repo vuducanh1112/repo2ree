@@ -117,7 +117,13 @@ wait_until() {
 
 agents_connected() {
     local want=$1
-    [ "$(curl -sf "$api_url/api/v1/agents" | grep -o '"agentId"' | wc -l)" -ge "$want" ]
+    # Parse the JSON structurally rather than grepping a field name, so the
+    # probe cannot silently drift from the wire format.
+    local count
+    count=$(curl -sf "$api_url/api/v1/agents" \
+        | python3 -c 'import json,sys; print(len(json.load(sys.stdin).get("agents", [])))' \
+        2>/dev/null) || count=0
+    [ "${count:-0}" -ge "$want" ]
 }
 
 up() {

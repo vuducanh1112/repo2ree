@@ -35,7 +35,7 @@ class ScriptTemplateEntry(BaseModel):
     """One named starter-template variant for an REE-owned script.
 
     Every catalog section lists these; exactly one entry per section carries
-    ``isDefault`` (for the seeded scripts it is the content a fresh REE starts
+    ``is_default`` (for the seeded scripts it is the content a fresh REE starts
     with). The run-script sections currently carry a single ``docker`` variant
     each; the keys exist so further strategies can be added without changing
     the catalog shape.
@@ -45,14 +45,14 @@ class ScriptTemplateEntry(BaseModel):
     label: str
     description: str
     body: str
-    isDefault: bool
+    is_default: bool
 
 
 class BuildScriptTemplates(BaseModel):
     """The build-script templates and the reserved path they all belong at.
 
     One entry per standard runtime-packaging strategy; the default entry
-    (``isDefault``) is the content a fresh REE's build script is seeded with.
+    (``is_default``) is the content a fresh REE's build script is seeded with.
     """
 
     path: str
@@ -62,15 +62,15 @@ class BuildScriptTemplates(BaseModel):
 class ActivationScriptTemplates(BaseModel):
     """The activation run-script templates and both reserved activation paths.
 
-    The default template (``isDefault``) is the content a fresh REE's
-    activation script is seeded with. ``verifyScriptPath`` is where an
+    The default template (``is_default``) is the content a fresh REE's
+    activation script is seeded with. ``verify_script_path`` is where an
     activation verify script belongs when the author writes one; declaring it
     on the intent is an explicit act (a declared verify script must exist and
     pass).
     """
 
-    runScriptPath: str
-    verifyScriptPath: str
+    run_script_path: str
+    verify_script_path: str
     templates: list[ScriptTemplateEntry]
 
 
@@ -83,8 +83,8 @@ class ExperimentScriptTemplates(BaseModel):
     published so clients can show the destination before the intent round-trips.
     """
 
-    runScriptPathPattern: str
-    verifyScriptPathPattern: str
+    run_script_path_pattern: str
+    verify_script_path_pattern: str
     templates: list[ScriptTemplateEntry]
 
 
@@ -106,7 +106,7 @@ def _entries(templates: tuple[ScriptTemplate, ...]) -> list[ScriptTemplateEntry]
             label=template.label,
             description=template.description,
             body=template.body,
-            isDefault=index == 0,
+            is_default=index == 0,
         )
         for index, template in enumerate(templates)
     ]
@@ -122,7 +122,7 @@ def list_script_templates() -> ScriptTemplateCatalog:
     """Starter templates for the REE-owned scripts and where each belongs.
 
     Static per deployment. Each section marks its default entry with
-    ``isDefault``; the default build and activation templates are the same
+    ``is_default``; the default build and activation templates are the same
     content a fresh REE is seeded with. The experiment templates are for
     scripts created on demand under the reserved experiments directory.
     """
@@ -132,13 +132,13 @@ def list_script_templates() -> ScriptTemplateCatalog:
             templates=_entries(build_templates()),
         ),
         activation=ActivationScriptTemplates(
-            runScriptPath=RESERVED_ACTIVATION_SCRIPT,
-            verifyScriptPath=RESERVED_ACTIVATION_VERIFY_SCRIPT,
+            run_script_path=RESERVED_ACTIVATION_SCRIPT,
+            verify_script_path=RESERVED_ACTIVATION_VERIFY_SCRIPT,
             templates=_entries(activation_templates()),
         ),
         experiment=ExperimentScriptTemplates(
-            runScriptPathPattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh",
-            verifyScriptPathPattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh",
+            run_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh",
+            verify_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh",
             templates=_entries(experiment_run_templates()),
         ),
         verify=_entries(verify_templates()),

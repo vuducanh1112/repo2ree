@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nruntime agents.\n\n## Authoring lifecycle\n\nOperations that mutate a workbench are asynchronous: they return a `runId`, and\nclients await completion by long-polling `observeRun` until the run reaches a\nterminal status (`succeeded`, `failed`, `canceled`). A REE is authored end to\nend in this order:\n\n1. `createRee` \u2014 provision a workbench; await the returned provisioning run.\n2. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   upload URL), then `completeSourceUpload`; await the extraction run.\n3. `getReeState` \u2014 compact durable state plus file metadata, never inline\n   contents; read file bytes via `readReeFile`.\n4. Author the workspace: `writeReeFile` / `deleteReeFile`, and record catalog\n   metadata via `patchReeIntent`.\n5. Optionally build and assess: `startBuild`, `startActivationTest`,\n   `startEvaluate` / `getEvaluateReport`, `getScorecard`.\n6. `sealRee` \u2014 freeze the REE (returns its `seal_hash`), then download the\n   sealed archive via `downloadReeArchive`.\n7. `deleteRee` \u2014 tear the workbench down.\n\nA complete, CI-asserted walkthrough of this sequence as real `curl` calls lives\nin `api/tests/e2e/api_agent_walkthrough.py` (see the external documentation\nlink).\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nruntime agents.\n\n## Authoring lifecycle\n\nOperations that mutate a workbench are asynchronous: they return a `run_id`, and\nclients await completion by long-polling `observeRun` until the run reaches a\nterminal status (`succeeded`, `failed`, `canceled`). A REE is authored end to\nend in this order:\n\n1. `createRee` \u2014 provision a workbench; await the returned provisioning run.\n2. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   upload URL), then `completeSourceUpload`; await the extraction run.\n3. `getReeState` \u2014 compact durable state plus file metadata, never inline\n   contents; read file bytes via `readReeFile`.\n4. Author the workspace: `writeReeFile` / `deleteReeFile`, and record catalog\n   metadata via `patchReeIntent`.\n5. Optionally build and assess: `startBuild`, `startActivationTest`,\n   `startEvaluate` / `getEvaluateReport`, `getScorecard`.\n6. `sealRee` \u2014 freeze the REE (returns its `seal_hash`), then download the\n   sealed archive via `downloadReeArchive`.\n7. `deleteRee` \u2014 tear the workbench down.\n\nA complete, CI-asserted walkthrough of this sequence as real `curl` calls lives\nin `api/tests/e2e/api_agent_walkthrough.py` (see the external documentation\nlink).\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -1679,7 +1679,7 @@
             }
           },
           {
-            "name": "waitSeconds",
+            "name": "wait_seconds",
             "in": "query",
             "required": false,
             "schema": {
@@ -1687,7 +1687,7 @@
               "maximum": 30,
               "minimum": 0,
               "default": 25,
-              "title": "Waitseconds"
+              "title": "Wait Seconds"
             }
           },
           {
@@ -3793,7 +3793,7 @@
             }
           },
           {
-            "name": "ifMatch",
+            "name": "if_match",
             "in": "query",
             "required": false,
             "schema": {
@@ -3805,7 +3805,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Ifmatch"
+              "title": "If Match"
             }
           }
         ],
@@ -4297,7 +4297,7 @@
           "files"
         ],
         "summary": "List Script Templates",
-        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. Each section marks its default entry with\n``isDefault``; the default build and activation templates are the same\ncontent a fresh REE is seeded with. The experiment templates are for\nscripts created on demand under the reserved experiments directory.",
+        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. Each section marks its default entry with\n``is_default``; the default build and activation templates are the same\ncontent a fresh REE is seeded with. The experiment templates are for\nscripts created on demand under the reserved experiments directory.",
         "operationId": "listScriptTemplates",
         "responses": {
           "200": {
@@ -4701,13 +4701,13 @@
       },
       "ActivationScriptTemplates": {
         "properties": {
-          "runScriptPath": {
+          "run_script_path": {
             "type": "string",
-            "title": "Runscriptpath"
+            "title": "Run Script Path"
           },
-          "verifyScriptPath": {
+          "verify_script_path": {
             "type": "string",
-            "title": "Verifyscriptpath"
+            "title": "Verify Script Path"
           },
           "templates": {
             "items": {
@@ -4719,12 +4719,12 @@
         },
         "type": "object",
         "required": [
-          "runScriptPath",
-          "verifyScriptPath",
+          "run_script_path",
+          "verify_script_path",
           "templates"
         ],
         "title": "ActivationScriptTemplates",
-        "description": "The activation run-script templates and both reserved activation paths.\n\nThe default template (``isDefault``) is the content a fresh REE's\nactivation script is seeded with. ``verifyScriptPath`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
+        "description": "The activation run-script templates and both reserved activation paths.\n\nThe default template (``is_default``) is the content a fresh REE's\nactivation script is seeded with. ``verify_script_path`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
       },
       "AgentList": {
         "properties": {
@@ -4744,9 +4744,9 @@
       },
       "AgentSummary": {
         "properties": {
-          "agentId": {
+          "agent_id": {
             "type": "string",
-            "title": "Agentid"
+            "title": "Agent Id"
           },
           "hostname": {
             "type": "string",
@@ -4756,13 +4756,13 @@
             "type": "string",
             "title": "Version"
           },
-          "dockerMode": {
+          "docker_mode": {
             "type": "string",
-            "title": "Dockermode"
+            "title": "Docker Mode"
           },
-          "connectedAt": {
+          "connected_at": {
             "type": "string",
-            "title": "Connectedat"
+            "title": "Connected At"
           },
           "status": {
             "type": "string",
@@ -4772,11 +4772,11 @@
         },
         "type": "object",
         "required": [
-          "agentId",
+          "agent_id",
           "hostname",
           "version",
-          "dockerMode",
-          "connectedAt"
+          "docker_mode",
+          "connected_at"
         ],
         "title": "AgentSummary"
       },
@@ -4800,7 +4800,7 @@
           "templates"
         ],
         "title": "BuildScriptTemplates",
-        "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the default entry\n(``isDefault``) is the content a fresh REE's build script is seeded with."
+        "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the default entry\n(``is_default``) is the content a fresh REE's build script is seeded with."
       },
       "CPUDefinition": {
         "properties": {
@@ -4900,7 +4900,7 @@
       },
       "CreateActivationTestRunPayload": {
         "properties": {
-          "idempotencyKey": {
+          "idempotency_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -4909,7 +4909,7 @@
                 "type": "null"
               }
             ],
-            "title": "Idempotencykey"
+            "title": "Idempotency Key"
           }
         },
         "additionalProperties": false,
@@ -4918,7 +4918,7 @@
       },
       "CreateBuildRuntimeRunPayload": {
         "properties": {
-          "idempotencyKey": {
+          "idempotency_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -4927,7 +4927,7 @@
                 "type": "null"
               }
             ],
-            "title": "Idempotencykey"
+            "title": "Idempotency Key"
           }
         },
         "additionalProperties": false,
@@ -4936,7 +4936,7 @@
       },
       "CreateCrossCheckSbomRunPayload": {
         "properties": {
-          "idempotencyKey": {
+          "idempotency_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -4945,7 +4945,7 @@
                 "type": "null"
               }
             ],
-            "title": "Idempotencykey"
+            "title": "Idempotency Key"
           }
         },
         "additionalProperties": false,
@@ -4959,7 +4959,7 @@
             "title": "Strict",
             "default": false
           },
-          "idempotencyKey": {
+          "idempotency_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -4968,7 +4968,7 @@
                 "type": "null"
               }
             ],
-            "title": "Idempotencykey"
+            "title": "Idempotency Key"
           }
         },
         "additionalProperties": false,
@@ -4977,7 +4977,7 @@
       },
       "CreateExperimentRunPayload": {
         "properties": {
-          "idempotencyKey": {
+          "idempotency_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -4986,7 +4986,7 @@
                 "type": "null"
               }
             ],
-            "title": "Idempotencykey"
+            "title": "Idempotency Key"
           }
         },
         "additionalProperties": false,
@@ -4996,7 +4996,7 @@
       },
       "CreateGenerateHbomRunPayload": {
         "properties": {
-          "idempotencyKey": {
+          "idempotency_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -5005,7 +5005,7 @@
                 "type": "null"
               }
             ],
-            "title": "Idempotencykey"
+            "title": "Idempotency Key"
           }
         },
         "additionalProperties": false,
@@ -5018,7 +5018,7 @@
             "type": "string",
             "title": "Produced Runtime Path"
           },
-          "idempotencyKey": {
+          "idempotency_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -5027,7 +5027,7 @@
                 "type": "null"
               }
             ],
-            "title": "Idempotencykey"
+            "title": "Idempotency Key"
           }
         },
         "additionalProperties": false,
@@ -5039,9 +5039,9 @@
       },
       "DeleteReeResponse": {
         "properties": {
-          "deletedAt": {
+          "deleted_at": {
             "type": "string",
-            "title": "Deletedat"
+            "title": "Deleted At"
           },
           "state": {
             "type": "string",
@@ -5052,7 +5052,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "deletedAt",
+          "deleted_at",
           "state"
         ],
         "title": "DeleteReeResponse"
@@ -5158,13 +5158,13 @@
       },
       "ExperimentScriptTemplates": {
         "properties": {
-          "runScriptPathPattern": {
+          "run_script_path_pattern": {
             "type": "string",
-            "title": "Runscriptpathpattern"
+            "title": "Run Script Path Pattern"
           },
-          "verifyScriptPathPattern": {
+          "verify_script_path_pattern": {
             "type": "string",
-            "title": "Verifyscriptpathpattern"
+            "title": "Verify Script Path Pattern"
           },
           "templates": {
             "items": {
@@ -5176,8 +5176,8 @@
         },
         "type": "object",
         "required": [
-          "runScriptPathPattern",
-          "verifyScriptPathPattern",
+          "run_script_path_pattern",
+          "verify_script_path_pattern",
           "templates"
         ],
         "title": "ExperimentScriptTemplates",
@@ -5185,7 +5185,7 @@
       },
       "FileMutationResponse": {
         "properties": {
-          "updatedAt": {
+          "updated_at": {
             "anyOf": [
               {
                 "type": "string"
@@ -5194,9 +5194,9 @@
                 "type": "null"
               }
             ],
-            "title": "Updatedat"
+            "title": "Updated At"
           },
-          "deletedAt": {
+          "deleted_at": {
             "anyOf": [
               {
                 "type": "string"
@@ -5205,7 +5205,7 @@
                 "type": "null"
               }
             ],
-            "title": "Deletedat"
+            "title": "Deleted At"
           },
           "etag": {
             "anyOf": [
@@ -5512,7 +5512,7 @@
             ],
             "title": "Name"
           },
-          "workbenchImage": {
+          "workbench_image": {
             "anyOf": [
               {
                 "type": "string"
@@ -5521,9 +5521,9 @@
                 "type": "null"
               }
             ],
-            "title": "Workbenchimage"
+            "title": "Workbench Image"
           },
-          "agentId": {
+          "agent_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -5532,7 +5532,7 @@
                 "type": "null"
               }
             ],
-            "title": "Agentid"
+            "title": "Agent Id"
           }
         },
         "additionalProperties": false,
@@ -5542,9 +5542,9 @@
       },
       "ReeDocument": {
         "properties": {
-          "reeId": {
+          "ree_id": {
             "type": "string",
-            "title": "Reeid"
+            "title": "Ree Id"
           },
           "name": {
             "type": "string",
@@ -5554,23 +5554,23 @@
             "type": "string",
             "title": "Status"
           },
-          "createdAt": {
+          "created_at": {
             "type": "string",
-            "title": "Createdat"
+            "title": "Created At"
           },
-          "updatedAt": {
+          "updated_at": {
             "type": "string",
-            "title": "Updatedat"
+            "title": "Updated At"
           }
         },
         "additionalProperties": true,
         "type": "object",
         "required": [
-          "reeId",
+          "ree_id",
           "name",
           "status",
-          "createdAt",
-          "updatedAt"
+          "created_at",
+          "updated_at"
         ],
         "title": "ReeDocument",
         "description": "The stable identity/version fields plus the workbench-owned document."
@@ -5680,12 +5680,12 @@
       },
       "ReeIntentPatchPayload": {
         "properties": {
-          "reeIntentPatch": {
+          "ree_intent_patch": {
             "additionalProperties": true,
             "type": "object",
-            "title": "Reeintentpatch"
+            "title": "Ree Intent Patch"
           },
-          "expectedVersion": {
+          "expected_version": {
             "anyOf": [
               {
                 "type": "string"
@@ -5694,7 +5694,7 @@
                 "type": "null"
               }
             ],
-            "title": "Expectedversion"
+            "title": "Expected Version"
           }
         },
         "additionalProperties": false,
@@ -5703,10 +5703,10 @@
       },
       "ReeIntentReplacePayload": {
         "properties": {
-          "reeIntent": {
+          "ree_intent": {
             "$ref": "#/components/schemas/ReeIntent"
           },
-          "expectedVersion": {
+          "expected_version": {
             "anyOf": [
               {
                 "type": "string"
@@ -5715,13 +5715,13 @@
                 "type": "null"
               }
             ],
-            "title": "Expectedversion"
+            "title": "Expected Version"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "reeIntent"
+          "ree_intent"
         ],
         "title": "ReeIntentReplacePayload"
       },
@@ -5734,7 +5734,7 @@
             "type": "array",
             "title": "Items"
           },
-          "nextCursor": {
+          "next_cursor": {
             "anyOf": [
               {
                 "type": "string"
@@ -5743,7 +5743,7 @@
                 "type": "null"
               }
             ],
-            "title": "Nextcursor"
+            "title": "Next Cursor"
           }
         },
         "additionalProperties": false,
@@ -5755,19 +5755,19 @@
       },
       "ReeSealPayload": {
         "properties": {
-          "includeSource": {
+          "include_source": {
             "type": "boolean",
-            "title": "Includesource",
+            "title": "Include Source",
             "default": false
           },
-          "includeRuntime": {
+          "include_runtime": {
             "type": "boolean",
-            "title": "Includeruntime",
+            "title": "Include Runtime",
             "default": false
           },
-          "includeResults": {
+          "include_results": {
             "type": "boolean",
-            "title": "Includeresults",
+            "title": "Include Results",
             "default": false
           }
         },
@@ -5777,9 +5777,9 @@
       },
       "ReeState": {
         "properties": {
-          "reeId": {
+          "ree_id": {
             "type": "string",
-            "title": "Reeid"
+            "title": "Ree Id"
           },
           "name": {
             "type": "string",
@@ -5789,24 +5789,24 @@
             "type": "string",
             "title": "Status"
           },
-          "updatedAt": {
+          "updated_at": {
             "type": "string",
-            "title": "Updatedat"
+            "title": "Updated At"
           },
           "workbench": {
             "additionalProperties": true,
             "type": "object",
             "title": "Workbench"
           },
-          "reeIntent": {
+          "ree_intent": {
             "additionalProperties": true,
             "type": "object",
-            "title": "Reeintent"
+            "title": "Ree Intent"
           },
-          "reeSession": {
+          "ree_session": {
             "additionalProperties": true,
             "type": "object",
-            "title": "Reesession"
+            "title": "Ree Session"
           },
           "consistency": {
             "additionalProperties": true,
@@ -5821,21 +5821,21 @@
             "type": "array",
             "title": "Files"
           },
-          "activeRuns": {
+          "active_runs": {
             "items": {
               "$ref": "#/components/schemas/RunSummary"
             },
             "type": "array",
-            "title": "Activeruns"
+            "title": "Active Runs"
           }
         },
         "additionalProperties": true,
         "type": "object",
         "required": [
-          "reeId",
+          "ree_id",
           "name",
           "status",
-          "updatedAt",
+          "updated_at",
           "workbench"
         ],
         "title": "ReeState",
@@ -5843,9 +5843,9 @@
       },
       "ReeSummary": {
         "properties": {
-          "reeId": {
+          "ree_id": {
             "type": "string",
-            "title": "Reeid"
+            "title": "Ree Id"
           },
           "name": {
             "type": "string",
@@ -5855,23 +5855,23 @@
             "type": "string",
             "title": "Status"
           },
-          "createdAt": {
+          "created_at": {
             "type": "string",
-            "title": "Createdat"
+            "title": "Created At"
           },
-          "updatedAt": {
+          "updated_at": {
             "type": "string",
-            "title": "Updatedat"
+            "title": "Updated At"
           }
         },
         "additionalProperties": true,
         "type": "object",
         "required": [
-          "reeId",
+          "ree_id",
           "name",
           "status",
-          "createdAt",
-          "updatedAt"
+          "created_at",
+          "updated_at"
         ],
         "title": "ReeSummary"
       },
@@ -5882,16 +5882,16 @@
             "const": "reprovisioned",
             "title": "Status"
           },
-          "reeId": {
+          "ree_id": {
             "type": "string",
-            "title": "Reeid"
+            "title": "Ree Id"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "status",
-          "reeId"
+          "ree_id"
         ],
         "title": "ReprovisionResponse"
       },
@@ -5936,7 +5936,7 @@
             "type": "array",
             "title": "Runs"
           },
-          "nextCursor": {
+          "next_cursor": {
             "anyOf": [
               {
                 "type": "string"
@@ -5945,7 +5945,7 @@
                 "type": "null"
               }
             ],
-            "title": "Nextcursor"
+            "title": "Next Cursor"
           }
         },
         "additionalProperties": false,
@@ -6009,7 +6009,7 @@
             "type": "array",
             "title": "Entries"
           },
-          "nextCursor": {
+          "next_cursor": {
             "anyOf": [
               {
                 "type": "string"
@@ -6018,13 +6018,13 @@
                 "type": "null"
               }
             ],
-            "title": "Nextcursor"
+            "title": "Next Cursor"
           },
-          "hasMore": {
+          "has_more": {
             "type": "boolean",
-            "title": "Hasmore"
+            "title": "Has More"
           },
-          "runStatus": {
+          "run_status": {
             "type": "string",
             "enum": [
               "queued",
@@ -6035,15 +6035,15 @@
               "failed",
               "canceled"
             ],
-            "title": "Runstatus"
+            "title": "Run Status"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "entries",
-          "hasMore",
-          "runStatus"
+          "has_more",
+          "run_status"
         ],
         "title": "RunLogPage"
       },
@@ -6059,7 +6059,7 @@
             "type": "array",
             "title": "Entries"
           },
-          "nextCursor": {
+          "next_cursor": {
             "anyOf": [
               {
                 "type": "string"
@@ -6068,7 +6068,7 @@
                 "type": "null"
               }
             ],
-            "title": "Nextcursor"
+            "title": "Next Cursor"
           },
           "changed": {
             "type": "boolean",
@@ -6086,13 +6086,13 @@
       },
       "RunSummary": {
         "properties": {
-          "runId": {
+          "run_id": {
             "type": "string",
-            "title": "Runid"
+            "title": "Run Id"
           },
-          "reeId": {
+          "ree_id": {
             "type": "string",
-            "title": "Reeid"
+            "title": "Ree Id"
           },
           "operation": {
             "type": "string",
@@ -6122,11 +6122,11 @@
             ],
             "title": "Status"
           },
-          "createdAt": {
+          "created_at": {
             "type": "string",
-            "title": "Createdat"
+            "title": "Created At"
           },
-          "startedAt": {
+          "started_at": {
             "anyOf": [
               {
                 "type": "string"
@@ -6135,9 +6135,9 @@
                 "type": "null"
               }
             ],
-            "title": "Startedat"
+            "title": "Started At"
           },
-          "finishedAt": {
+          "finished_at": {
             "anyOf": [
               {
                 "type": "string"
@@ -6146,7 +6146,7 @@
                 "type": "null"
               }
             ],
-            "title": "Finishedat"
+            "title": "Finished At"
           },
           "outputs": {
             "additionalProperties": true,
@@ -6157,11 +6157,11 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "runId",
-          "reeId",
+          "run_id",
+          "ree_id",
           "operation",
           "status",
-          "createdAt"
+          "created_at"
         ],
         "title": "RunSummary"
       },
@@ -6211,9 +6211,9 @@
             "type": "string",
             "title": "Body"
           },
-          "isDefault": {
+          "is_default": {
             "type": "boolean",
-            "title": "Isdefault"
+            "title": "Is Default"
           }
         },
         "type": "object",
@@ -6222,25 +6222,25 @@
           "label",
           "description",
           "body",
-          "isDefault"
+          "is_default"
         ],
         "title": "ScriptTemplateEntry",
-        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; exactly one entry per section carries\n``isDefault`` (for the seeded scripts it is the content a fresh REE starts\nwith). The run-script sections currently carry a single ``docker`` variant\neach; the keys exist so further strategies can be added without changing\nthe catalog shape."
+        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; exactly one entry per section carries\n``is_default`` (for the seeded scripts it is the content a fresh REE starts\nwith). The run-script sections currently carry a single ``docker`` variant\neach; the keys exist so further strategies can be added without changing\nthe catalog shape."
       },
       "SourceAcquirePayload": {
         "properties": {
-          "originUrl": {
+          "origin_url": {
             "type": "string",
-            "title": "Originurl"
+            "title": "Origin Url"
           },
-          "sourceType": {
+          "source_type": {
             "type": "string",
             "enum": [
               "git",
               "tarball",
               "zip"
             ],
-            "title": "Sourcetype"
+            "title": "Source Type"
           },
           "revision": {
             "anyOf": [
@@ -6253,7 +6253,7 @@
             ],
             "title": "Revision"
           },
-          "idempotencyKey": {
+          "idempotency_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -6262,28 +6262,28 @@
                 "type": "null"
               }
             ],
-            "title": "Idempotencykey"
+            "title": "Idempotency Key"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "originUrl",
-          "sourceType"
+          "origin_url",
+          "source_type"
         ],
         "title": "SourceAcquirePayload"
       },
       "SourceUploadCompletePayload": {
         "properties": {
-          "uploadToken": {
+          "upload_token": {
             "type": "string",
-            "title": "Uploadtoken"
+            "title": "Upload Token"
           },
-          "archiveName": {
+          "archive_name": {
             "type": "string",
-            "title": "Archivename"
+            "title": "Archive Name"
           },
-          "idempotencyKey": {
+          "idempotency_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -6292,14 +6292,14 @@
                 "type": "null"
               }
             ],
-            "title": "Idempotencykey"
+            "title": "Idempotency Key"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "uploadToken",
-          "archiveName"
+          "upload_token",
+          "archive_name"
         ],
         "title": "SourceUploadCompletePayload"
       },
@@ -6357,69 +6357,69 @@
       },
       "UploadInitPayload": {
         "properties": {
-          "fileName": {
+          "file_name": {
             "type": "string",
-            "title": "Filename"
+            "title": "File Name"
           },
           "size": {
             "type": "integer",
             "minimum": 0.0,
             "title": "Size"
           },
-          "contentType": {
+          "content_type": {
             "type": "string",
-            "title": "Contenttype"
+            "title": "Content Type"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "fileName",
+          "file_name",
           "size",
-          "contentType"
+          "content_type"
         ],
         "title": "UploadInitPayload"
       },
       "UploadInitResponse": {
         "properties": {
-          "uploadToken": {
+          "upload_token": {
             "type": "string",
-            "title": "Uploadtoken"
+            "title": "Upload Token"
           },
-          "uploadUrl": {
+          "upload_url": {
             "type": "string",
-            "title": "Uploadurl"
+            "title": "Upload Url"
           },
-          "expiresAt": {
+          "expires_at": {
             "type": "string",
-            "title": "Expiresat"
+            "title": "Expires At"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "uploadToken",
-          "uploadUrl",
-          "expiresAt"
+          "upload_token",
+          "upload_url",
+          "expires_at"
         ],
         "title": "UploadInitResponse"
       },
       "UploadStoredResponse": {
         "properties": {
-          "uploadToken": {
+          "upload_token": {
             "type": "string",
-            "title": "Uploadtoken"
+            "title": "Upload Token"
           },
-          "storedAt": {
+          "stored_at": {
             "type": "string",
-            "title": "Storedat"
+            "title": "Stored At"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "uploadToken",
-          "storedAt"
+          "upload_token",
+          "stored_at"
         ],
         "title": "UploadStoredResponse"
       },
@@ -6461,15 +6461,15 @@
             "type": "array",
             "title": "Images"
           },
-          "defaultId": {
+          "default_id": {
             "type": "string",
-            "title": "Defaultid"
+            "title": "Default Id"
           }
         },
         "type": "object",
         "required": [
           "images",
-          "defaultId"
+          "default_id"
         ],
         "title": "WorkbenchImageCatalog"
       },
@@ -6483,7 +6483,7 @@
             "type": "string",
             "title": "Content"
           },
-          "ifMatch": {
+          "if_match": {
             "anyOf": [
               {
                 "type": "string"
@@ -6492,7 +6492,7 @@
                 "type": "null"
               }
             ],
-            "title": "Ifmatch"
+            "title": "If Match"
           }
         },
         "additionalProperties": false,

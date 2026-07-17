@@ -5,7 +5,7 @@ volumes + containers, dind vs host-socket daemon modes, container/volume
 naming, the pull-with-cache fallback, streaming executor logs, and the
 ``docker exec`` exit codes that mean the container is gone. It emits the
 protocol's ``AgentFrame`` records for streaming calls and raises
-``WorkbenchGone`` for request/response calls when the backend has vanished.
+``WorkbenchGoneError`` for request/response calls when the backend has vanished.
 
 Executor injection: when the agent ships an executor bundle (the
 ``REPO2REE_EXEC_BUNDLE`` dir — see nix/exec-bundle.nix), benches don't need
@@ -41,7 +41,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
-from repo2ree_agent.workbench_runtime import WorkbenchGone
+from repo2ree_agent.workbench_runtime import WorkbenchGoneError
 from repo2ree_protocol.agent import (
     COPY_CHUNK_BYTES,
     AgentFrame,
@@ -56,7 +56,7 @@ from repo2ree_protocol.agent import (
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import command_metric_attrs, get_meter, get_tracer, record_command_status
 
-__all__ = ["DockerRuntime", "WorkbenchGone"]
+__all__ = ["DockerRuntime", "WorkbenchGoneError"]
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
@@ -448,7 +448,7 @@ class DockerRuntime:
         status = "succeeded"
         try:
             self._exec(location.container_name, [location.exec_path, *argv], timeout, what=f"docker exec {argv[0]}")
-        except WorkbenchGone:
+        except WorkbenchGoneError:
             status = "unavailable"
             raise
         except Exception:
@@ -467,7 +467,7 @@ class DockerRuntime:
             yield from _stream_exec(
                 ["docker", "exec", location.container_name, location.exec_path, *argv], timeout, what=f"query {argv!r}"
             )
-        except WorkbenchGone:
+        except WorkbenchGoneError:
             status = "unavailable"
             raise
         except Exception:
@@ -480,7 +480,7 @@ class DockerRuntime:
     def _exec(container_name: str, argv: list[str], timeout: int, what: str) -> bytes:
         """Run ``argv`` in the container and return its stdout bytes.
 
-        Raises ``WorkbenchGone`` when the failure means the container is gone or
+        Raises ``WorkbenchGoneError`` when the failure means the container is gone or
         stopping, ``RuntimeError`` for any other non-zero exit."""
         result = subprocess.run(
             ["docker", "exec", container_name, *argv],
@@ -493,7 +493,7 @@ class DockerRuntime:
             detail = stderr or stdout or "(no output on stdout/stderr)"
             message = f"{what} failed (exit {result.returncode}): {detail}"
             if result.returncode in _CONTAINER_GONE_EXIT_CODES or "No such container" in detail:
-                raise WorkbenchGone(message)
+                raise WorkbenchGoneError(message)
             raise RuntimeError(message)
         return result.stdout
 
@@ -721,7 +721,7 @@ def _stream_exec(cmd: list[str], timeout: int, what: str) -> Iterator[bytes]:
             detail = stderr_text or stdout_text or "(no output on stdout/stderr)"
             message = f"{what} failed (exit {returncode}): {detail}"
             if returncode in _CONTAINER_GONE_EXIT_CODES or "No such container" in detail:
-                raise WorkbenchGone(message)
+                raise WorkbenchGoneError(message)
             raise RuntimeError(message)
 
 

@@ -17,12 +17,12 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workspace: dict[str, Any] = {
-        "reeId": online_ree.ree_id,
+        "ree_id": online_ree.ree_id,
         "name": "demo",
         "status": "draft",
-        "updatedAt": "v1",
-        "reeIntent": {"name": "demo"},
-        "reeSession": {},
+        "updated_at": "v1",
+        "ree_intent": {"name": "demo"},
+        "ree_session": {},
         "consistency": {"steps": []},
         "files": [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12}],
         "source": None,
@@ -33,9 +33,9 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
 
     assert resp.status_code == 200
     state = resp.json()
-    assert state["reeId"] == online_ree.ree_id
+    assert state["ree_id"] == online_ree.ree_id
     assert state["workbench"]["status"] == "available"
     assert state["files"] == [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12}]
     assert all("content" not in file for file in state["files"])
-    assert "reeFiles" not in state
-    assert "draftManifest" not in state
+    assert "ree_files" not in state
+    assert "draft_manifest" not in state

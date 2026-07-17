@@ -85,7 +85,7 @@ src = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src", 
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "S"]
+select = ["E", "F", "W", "I", "UP", "B", "S", "N"]
 extend-ignore = [
     # subprocess calls with a list arg (not shell=True) are the safe pattern;
     # S603/S607 fire on every docker/git invocation and add no signal here.

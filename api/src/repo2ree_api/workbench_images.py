@@ -4,7 +4,7 @@ Which images the UI can pick from — and which one a provisioning request defau
 to when it omits one — is configured on ``Settings.WORKBENCH_IMAGE_CATALOG`` (see
 settings.py), so a deployment can serve a different set (e.g. a locally-built
 image) via env without touching code. This module reads that catalog and serves
-it. To drive a one-off image, pass it as ``workbenchImage`` on the provision
+it. To drive a one-off image, pass it as ``workbench_image`` on the provision
 request instead.
 """
 
@@ -31,7 +31,7 @@ workbench_images_router = APIRouter(tags=["fleet"])
 
 class WorkbenchImageCatalog(BaseModel):
     images: list[WorkbenchImage]
-    defaultId: str
+    default_id: str
 
 
 @workbench_images_router.get(
@@ -44,5 +44,5 @@ def list_workbench_images() -> WorkbenchImageCatalog:
     """The base images the frontend offers at provision time."""
     return WorkbenchImageCatalog(
         images=list(WORKBENCH_IMAGE_CATALOG),
-        defaultId=default_workbench_image().id,
+        default_id=default_workbench_image().id,
     )

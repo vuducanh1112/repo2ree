@@ -5,7 +5,7 @@ import { useApiRuntime } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
 
 function mapCatalog(dto: WorkbenchImageCatalogDto): WorkbenchImageCatalog {
-  return { images: dto.images, defaultId: dto.defaultId };
+  return { images: dto.images, defaultId: dto.default_id };
 }
 
 // The backend's workbench image catalog. It's effectively static for a session,

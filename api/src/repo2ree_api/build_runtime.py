@@ -31,7 +31,7 @@ class _StrictRequestModel(BaseModel):
 
 
 class CreateBuildRuntimeRunPayload(_StrictRequestModel):
-    idempotencyKey: str | None = None
+    idempotency_key: str | None = None
 
 
 # ================================================
@@ -66,6 +66,6 @@ def create_build_run_state(
         run_id_prefix="build",
         request_payload={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
         canceled_message="Build run canceled",
-        fallback_outputs={"buildRuntimeScriptPath": RESERVED_BUILD_SCRIPT},
-        idempotency_key=payload.idempotencyKey,
+        fallback_outputs={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
+        idempotency_key=payload.idempotency_key,
     )

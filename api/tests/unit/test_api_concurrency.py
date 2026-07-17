@@ -21,18 +21,18 @@ def test_intent_version_conflict_reports_expected_and_actual_versions(
     online_ree: WorkbenchHandle,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(workbench_manager, "get_ree_metadata", lambda handle: {"updatedAt": "v2"})
+    monkeypatch.setattr(workbench_manager, "get_ree_metadata", lambda handle: {"updated_at": "v2"})
 
     resp = client.patch(
         f"/api/v1/rees/{online_ree.ree_id}/intent",
-        json={"reeIntentPatch": {"name": "changed"}, "expectedVersion": "v1"},
+        json={"ree_intent_patch": {"name": "changed"}, "expected_version": "v1"},
     )
 
     assert resp.status_code == 409
     error = resp.json()["error"]
     assert error["code"] == "version_conflict"
     assert error["retryable"] is True
-    assert error["details"] == {"expectedVersion": "v1", "actualVersion": "v2"}
+    assert error["details"] == {"expected_version": "v1", "actual_version": "v2"}
 
 
 def _conflict_result(path: str, expected: str, actual: str | None) -> ActionResult:
@@ -41,10 +41,10 @@ def _conflict_result(path: str, expected: str, actual: str | None) -> ActionResu
         status="failed",
         exit_code=1,
         outputs={
-            "errorCode": "version_conflict",
+            "error_code": "version_conflict",
             "path": path,
-            "expectedVersion": expected,
-            "actualVersion": actual,
+            "expected_version": expected,
+            "actual_version": actual,
         },
     )
 
@@ -65,14 +65,14 @@ def test_file_write_conflict_from_the_workbench_maps_to_409(
 
     resp = client.put(
         f"/api/v1/rees/{online_ree.ree_id}/files/content",
-        json={"path": "build.sh", "content": "next", "ifMatch": stale},
+        json={"path": "build.sh", "content": "next", "if_match": stale},
     )
 
     assert resp.status_code == 409
     error = resp.json()["error"]
     assert error["code"] == "version_conflict"
     assert error["retryable"] is True
-    assert error["details"]["actualVersion"] == _etag(b"current")
+    assert error["details"]["actual_version"] == _etag(b"current")
     # The guard rides inside the command so the workbench checks it atomically.
     assert dispatched[0].args.expected_etag == stale
 
@@ -91,7 +91,7 @@ def test_file_delete_conflict_from_the_workbench_maps_to_409(
 
     resp = client.delete(
         f"/api/v1/rees/{online_ree.ree_id}/files/content",
-        params={"path": "build.sh", "ifMatch": stale},
+        params={"path": "build.sh", "if_match": stale},
     )
 
     assert resp.status_code == 409
@@ -111,7 +111,7 @@ def test_file_write_returns_new_content_etag(
 
     resp = client.put(
         f"/api/v1/rees/{online_ree.ree_id}/files/content",
-        json={"path": "build.sh", "content": "next", "ifMatch": _etag(b"current")},
+        json={"path": "build.sh", "content": "next", "if_match": _etag(b"current")},
     )
 
     assert resp.status_code == 200

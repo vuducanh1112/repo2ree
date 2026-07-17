@@ -45,14 +45,14 @@ def test_upload_init_allocates_token_and_url(
 ) -> None:
     resp = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
-        json={"fileName": "project.zip", "size": 3, "contentType": "application/zip"},
+        json={"file_name": "project.zip", "size": 3, "content_type": "application/zip"},
     )
     assert resp.status_code == 200, resp.text
     upload = resp.json()
-    token = upload["uploadToken"]
-    assert upload["uploadUrl"] == f"/api/v1/rees/{online_ree.ree_id}/source:upload/{token}"
+    token = upload["upload_token"]
+    assert upload["upload_url"] == f"/api/v1/rees/{online_ree.ree_id}/source:upload/{token}"
 
-    expires_at = datetime.fromisoformat(upload["expiresAt"].replace("Z", "+00:00"))
+    expires_at = datetime.fromisoformat(upload["expires_at"].replace("Z", "+00:00"))
     assert expires_at > datetime.now(UTC) + timedelta(minutes=50)
 
     # init mints an empty marker (proof the token was issued); bytes land on PUT
@@ -63,7 +63,7 @@ def test_upload_init_allocates_token_and_url(
 def test_upload_init_for_unknown_ree_is_404(client: TestClient) -> None:
     resp = client.post(
         "/api/v1/rees/nope/source:upload-init",
-        json={"fileName": "project.zip", "size": 3, "contentType": "application/zip"},
+        json={"file_name": "project.zip", "size": 3, "content_type": "application/zip"},
     )
     assert resp.status_code == 404
 
@@ -71,25 +71,25 @@ def test_upload_init_for_unknown_ree_is_404(client: TestClient) -> None:
 def test_put_bytes_lands_in_staging(client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path) -> None:
     resp = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
-        json={"fileName": "project.zip", "size": 18, "contentType": "application/zip"},
+        json={"file_name": "project.zip", "size": 18, "content_type": "application/zip"},
     )
-    token = resp.json()["uploadToken"]
+    token = resp.json()["upload_token"]
 
     data = b"zip-bytes-stand-in"
     resp = client.put(f"/api/v1/rees/{online_ree.ree_id}/source:upload/{token}", content=data)
     assert resp.status_code == 200
     body = resp.json()
-    assert body["uploadToken"] == token
-    assert body["storedAt"]
+    assert body["upload_token"] == token
+    assert body["stored_at"]
     assert staged_upload_path(token).read_bytes() == data
 
 
 def test_put_rejects_declared_size_mismatch(client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path) -> None:
     init = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
-        json={"fileName": "project.zip", "size": 10, "contentType": "application/zip"},
+        json={"file_name": "project.zip", "size": 10, "content_type": "application/zip"},
     )
-    token = init.json()["uploadToken"]
+    token = init.json()["upload_token"]
 
     resp = client.put(f"/api/v1/rees/{online_ree.ree_id}/source:upload/{token}", content=b"short")
 
@@ -109,7 +109,7 @@ def test_upload_init_rejects_declared_size_over_limit(
     monkeypatch.setattr(service_settings, "UPLOAD_MAX_BYTES", 8)
     resp = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
-        json={"fileName": "project.zip", "size": 9, "contentType": "application/zip"},
+        json={"file_name": "project.zip", "size": 9, "content_type": "application/zip"},
     )
 
     assert resp.status_code == 413
@@ -138,7 +138,7 @@ def test_put_bytes_with_unminted_token_is_404(
 
 
 def test_tokens_are_unique(staging_dir: Path) -> None:
-    tokens = {new_upload_token()["uploadToken"] for _ in range(50)}
+    tokens = {new_upload_token()["upload_token"] for _ in range(50)}
     assert len(tokens) == 50
 
 
@@ -207,7 +207,7 @@ def test_upload_complete_with_traversal_token_is_400(client: TestClient, online_
     # must be validated before it touches a path.
     resp = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/source:upload-complete",
-        json={"uploadToken": "../escape", "archiveName": "project.zip"},
+        json={"upload_token": "../escape", "archive_name": "project.zip"},
     )
     assert resp.status_code == 400
 

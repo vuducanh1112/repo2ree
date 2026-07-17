@@ -82,11 +82,11 @@ export function createApiRuntime({
     });
     // Provisioning is a background run (the image pull streams live); wait for
     // it to finish so callers get a workbench that's actually ready to use.
-    const status = await waitForRunCompletion(runsApi, run.reeId, run.runId);
+    const status = await waitForRunCompletion(runsApi, run.ree_id, run.run_id);
     if (status !== "succeeded") {
       throw new Error(`Workbench provisioning ${status}`);
     }
-    resolvedReeId = asReeId(run.reeId);
+    resolvedReeId = asReeId(run.ree_id);
     return resolvedReeId;
   };
 

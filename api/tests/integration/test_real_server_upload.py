@@ -187,19 +187,19 @@ def test_upload_over_real_server(server: str) -> None:
         # like a real client — never pull the published edge default.
         resp = client.post(
             "/api/v1/rees",
-            json={"name": "real-server-itest", "workbenchImage": WORKBENCH_IMAGE},
+            json={"name": "real-server-itest", "workbench_image": WORKBENCH_IMAGE},
         )
         assert resp.status_code == 200, resp.text
         run = resp.json()
-        ree_id = run["reeId"]
+        ree_id = run["ree_id"]
         try:
-            assert _wait_for_run(client, ree_id, run["runId"]) == "succeeded"
+            assert _wait_for_run(client, ree_id, run["run_id"]) == "succeeded"
 
             # --- three-step upload over real TCP ------------------------
             data = _project_zip()
             resp = client.post(
                 f"/api/v1/rees/{ree_id}/source:upload-init",
-                json={"fileName": "project.zip", "size": len(data), "contentType": "application/zip"},
+                json={"file_name": "project.zip", "size": len(data), "content_type": "application/zip"},
             )
             assert resp.status_code == 200, resp.text
             upload = resp.json()
@@ -208,7 +208,7 @@ def test_upload_over_real_server(server: str) -> None:
             # against its own agent reply. On the loop it must answer fast;
             # a regression trips REQUEST_TIMEOUT instead of hanging the suite.
             t0 = time.monotonic()
-            resp = client.put(upload["uploadUrl"], content=data)
+            resp = client.put(upload["upload_url"], content=data)
             put_elapsed = time.monotonic() - t0
             assert resp.status_code == 200, resp.text
             assert put_elapsed < 10.0, f"upload PUT took {put_elapsed:.1f}s — event loop likely stalled"
@@ -219,14 +219,14 @@ def test_upload_over_real_server(server: str) -> None:
 
             resp = client.post(
                 f"/api/v1/rees/{ree_id}/source:upload-complete",
-                json={"uploadToken": upload["uploadToken"], "archiveName": "project.zip"},
+                json={"upload_token": upload["upload_token"], "archive_name": "project.zip"},
             )
             assert resp.status_code == 200, resp.text
             source_run = resp.json()
-            assert _wait_for_run(client, ree_id, source_run["runId"]) == "succeeded"
+            assert _wait_for_run(client, ree_id, source_run["run_id"]) == "succeeded"
 
             # The run log narrates the copy: the step that used to fail silently.
-            resp = client.get(f"/api/v1/rees/{ree_id}/runs/{source_run['runId']}/logs")
+            resp = client.get(f"/api/v1/rees/{ree_id}/runs/{source_run['run_id']}/logs")
             assert resp.status_code == 200
             messages = [entry["message"] for entry in resp.json()["entries"]]
             assert any("Copying staged archive" in m for m in messages)
@@ -237,7 +237,7 @@ def test_upload_over_real_server(server: str) -> None:
             assert any(f.get("path") == "README.md" for f in resp.json()["files"])
 
             # --- seal (with source), download an archive over one WS frame --
-            resp = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={"includeSource": True})
+            resp = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={"include_source": True})
             assert resp.status_code == 200, resp.text
 
             # The archive (> uvicorn's 16 MiB WS cap) must arrive intact via

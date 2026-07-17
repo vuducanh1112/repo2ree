@@ -28,7 +28,7 @@ generate_hbom_router = APIRouter(tags=["runs"])
 class CreateGenerateHbomRunPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    idempotencyKey: str | None = None
+    idempotency_key: str | None = None
 
 
 # ================================================
@@ -63,5 +63,5 @@ def create_generate_hbom_run_state(
         run_id_prefix="hbom",
         request_payload={},
         canceled_message="HBOM run canceled",
-        idempotency_key=payload.idempotencyKey,
+        idempotency_key=payload.idempotency_key,
     )

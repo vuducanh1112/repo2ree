@@ -34,7 +34,7 @@ from websockets.asyncio.client import ClientConnection, connect
 
 from repo2ree_agent.docker_runtime import DockerRuntime
 from repo2ree_agent.transfers import TransferStore
-from repo2ree_agent.workbench_runtime import WorkbenchGone, WorkbenchRuntime
+from repo2ree_agent.workbench_runtime import WorkbenchGoneError, WorkbenchRuntime
 from repo2ree_protocol.agent import (
     AgentFrame,
     AgentHello,
@@ -307,7 +307,7 @@ async def _handle(
             else:
                 status = "failed"
                 await _send(ws, req_id, ErrorFrame(detail=f"unhandled op {req.op!r}"))
-        except WorkbenchGone as exc:
+        except WorkbenchGoneError as exc:
             status = "unavailable"
             await _send(ws, req_id, UnavailableFrame(detail=str(exc)))
         except asyncio.CancelledError:
@@ -349,7 +349,7 @@ async def _pump(ws: ClientConnection, req_id: str, gen_factory: Callable[[], Ite
                 try:
                     for frame in gen_factory():
                         anyio.from_thread.run(send_stream.send, frame)
-                except WorkbenchGone as exc:
+                except WorkbenchGoneError as exc:
                     anyio.from_thread.run(send_stream.send, UnavailableFrame(detail=str(exc)))
                 except Exception as exc:  # noqa: BLE001 — surface any failure as a terminal frame
                     anyio.from_thread.run(send_stream.send, ErrorFrame(detail=str(exc)))

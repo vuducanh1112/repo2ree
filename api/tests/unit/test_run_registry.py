@@ -64,23 +64,32 @@ def test_successful_run_reaches_succeeded_with_outputs():
     )
     # run_state is live — the worker may already have finished by now, so the
     # queued → running transition is asserted in the blocking-runner lifecycle test
-    assert run_state["runId"].startswith("src-")
+    assert run_state["run_id"].startswith("src-")
     assert run_state["request"] == {"mode": "upload"}
 
-    final = _wait_for(registry, run_state["runId"], TERMINAL)
+    final = _wait_for(registry, run_state["run_id"], TERMINAL)
     assert final["status"] == "succeeded"
     assert final["outputs"] == {"resolved": "abc"}
-    assert final["finishedAt"] is not None
+    assert final["finished_at"] is not None
     # the internal sequence counter is stripped from the terminal state
-    assert "_nextSeq" not in final
+    assert "_next_seq" not in final
 
 
 def test_run_summary_has_stable_keys():
     registry = _registry()
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ("succeeded", {}))
     summary = registry.run_summary(run_state)
-    assert list(summary) == ["runId", "reeId", "operation", "status", "createdAt", "startedAt", "finishedAt", "outputs"]
-    _wait_for(registry, run_state["runId"], TERMINAL)
+    assert list(summary) == [
+        "run_id",
+        "ree_id",
+        "operation",
+        "status",
+        "created_at",
+        "started_at",
+        "finished_at",
+        "outputs",
+    ]
+    _wait_for(registry, run_state["run_id"], TERMINAL)
 
 
 def test_idempotency_key_returns_original_run_without_duplicate_work():
@@ -110,10 +119,10 @@ def test_idempotency_key_returns_original_run_without_duplicate_work():
         idempotency_key="request-1",
     )
 
-    assert second["runId"] == first["runId"]
+    assert second["run_id"] == first["run_id"]
     release.set()
-    _wait_for(registry, first["runId"], TERMINAL)
-    assert calls == [first["runId"]]
+    _wait_for(registry, first["run_id"], TERMINAL)
+    assert calls == [first["run_id"]]
 
 
 def test_idempotency_key_rejects_different_request_payload():
@@ -139,8 +148,8 @@ def test_idempotency_key_rejects_different_request_payload():
 
     assert excinfo.value.status_code == 409
     assert excinfo.value.detail["code"] == "idempotency_conflict"
-    assert excinfo.value.detail["details"]["runId"] == first["runId"]
-    _wait_for(registry, first["runId"], TERMINAL)
+    assert excinfo.value.detail["details"]["run_id"] == first["run_id"]
+    _wait_for(registry, first["run_id"], TERMINAL)
 
 
 # ================================================
@@ -158,15 +167,15 @@ def test_run_starts_queued_then_running_with_started_at_stamped():
 
     run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
     # Created queued with no start time; the worker stamps both when it begins.
-    assert run_state["createdAt"] is not None
+    assert run_state["created_at"] is not None
 
-    running = _wait_for(registry, run_state["runId"], frozenset({"running"}))
-    assert running["startedAt"] is not None
-    assert running["startedAt"] >= running["createdAt"]
-    assert running["finishedAt"] is None
+    running = _wait_for(registry, run_state["run_id"], frozenset({"running"}))
+    assert running["started_at"] is not None
+    assert running["started_at"] >= running["created_at"]
+    assert running["finished_at"] is None
 
     release.set()
-    _wait_for(registry, run_state["runId"], TERMINAL)
+    _wait_for(registry, run_state["run_id"], TERMINAL)
 
 
 def test_provision_run_reports_provisioning_while_working():
@@ -178,9 +187,9 @@ def test_provision_run_reports_provisioning_while_working():
         return "succeeded", {}
 
     run_state = registry.start_background(KNOWN_REE, "provision", {}, "provision", _runner, require_ree_exists=False)
-    _wait_for(registry, run_state["runId"], frozenset({"provisioning"}))
+    _wait_for(registry, run_state["run_id"], frozenset({"provisioning"}))
     release.set()
-    assert _wait_for(registry, run_state["runId"], TERMINAL)["status"] == "succeeded"
+    assert _wait_for(registry, run_state["run_id"], TERMINAL)["status"] == "succeeded"
 
 
 # ================================================
@@ -195,7 +204,7 @@ def test_runner_exception_finalizes_as_failed_with_error_log():
         raise RuntimeError("docker cp exploded")
 
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
-    final = _wait_for(registry, run_state["runId"], TERMINAL)
+    final = _wait_for(registry, run_state["run_id"], TERMINAL)
     assert final["status"] == "failed"
     assert final["outputs"] == {}
     assert [(e["stream"], e["level"], e["message"]) for e in final["logs"]] == [
@@ -210,7 +219,7 @@ def test_runner_http_exception_finalizes_as_failed_with_detail_logged():
         raise HTTPException(status_code=409, detail="seal in progress")
 
     run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
-    final = _wait_for(registry, run_state["runId"], TERMINAL)
+    final = _wait_for(registry, run_state["run_id"], TERMINAL)
     assert final["status"] == "failed"
     assert final["logs"][0]["message"] == "seal in progress"
 
@@ -232,7 +241,7 @@ def test_cancel_of_in_flight_run_transitions_canceling_then_canceled():
         return "succeeded", {}
 
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
-    run_id = run_state["runId"]
+    run_id = run_state["run_id"]
     _wait_for(registry, run_id, frozenset({"running"}))
 
     assert registry.mark_cancel_requested(KNOWN_REE, run_id) is True
@@ -241,7 +250,7 @@ def test_cancel_of_in_flight_run_transitions_canceling_then_canceled():
     release.set()
     final = _wait_for(registry, run_id, TERMINAL)
     assert final["status"] == "canceled"
-    assert final["finishedAt"] is not None
+    assert final["finished_at"] is not None
 
 
 def test_cancel_after_runner_crash_still_reports_canceled():
@@ -254,16 +263,16 @@ def test_cancel_after_runner_crash_still_reports_canceled():
         raise RuntimeError("interrupted")
 
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
-    registry.mark_cancel_requested(KNOWN_REE, run_state["runId"])
+    registry.mark_cancel_requested(KNOWN_REE, run_state["run_id"])
     release.set()
-    assert _wait_for(registry, run_state["runId"], TERMINAL)["status"] == "canceled"
+    assert _wait_for(registry, run_state["run_id"], TERMINAL)["status"] == "canceled"
 
 
 def test_completed_run_is_not_retroactively_canceled():
     """finalize never demotes a result that already succeeded or failed."""
     registry = _registry()
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ("succeeded", {}))
-    run_id = run_state["runId"]
+    run_id = run_state["run_id"]
     _wait_for(registry, run_id, TERMINAL)
 
     assert registry.mark_cancel_requested(KNOWN_REE, run_id) is True
@@ -290,7 +299,7 @@ def test_append_log_assigns_monotonic_sequence_numbers():
         return "succeeded", {}
 
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
-    run_id = run_state["runId"]
+    run_id = run_state["run_id"]
     registry.append_log(KNOWN_REE, run_id, "stdout", "info", "one")
     registry.append_log(KNOWN_REE, run_id, "stderr", "warn", "two")
     release.set()
@@ -314,13 +323,13 @@ def test_observe_returns_only_logs_after_sequence_cursor():
         return "succeeded", {}
 
     run = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
-    _wait_for(registry, run["runId"], frozenset({"running"}))
-    registry.append_log(KNOWN_REE, run["runId"], "stdout", "info", "one")
-    registry.append_log(KNOWN_REE, run["runId"], "stdout", "info", "two")
+    _wait_for(registry, run["run_id"], frozenset({"running"}))
+    registry.append_log(KNOWN_REE, run["run_id"], "stdout", "info", "one")
+    registry.append_log(KNOWN_REE, run["run_id"], "stdout", "info", "two")
 
     summary, entries, cursor, changed = registry.observe(
         KNOWN_REE,
-        run["runId"],
+        run["run_id"],
         after_seq=1,
         wait_seconds=0,
         limit=200,
@@ -331,7 +340,7 @@ def test_observe_returns_only_logs_after_sequence_cursor():
     assert cursor == "2"
     assert changed is True
     release.set()
-    _wait_for(registry, run["runId"], TERMINAL)
+    _wait_for(registry, run["run_id"], TERMINAL)
 
 
 def test_observe_timeout_returns_unchanged_active_run():
@@ -344,11 +353,11 @@ def test_observe_timeout_returns_unchanged_active_run():
         "build",
         lambda e, r: (release.wait(timeout=5.0) and "succeeded" or "failed", {}),
     )
-    _wait_for(registry, run["runId"], frozenset({"running"}))
+    _wait_for(registry, run["run_id"], frozenset({"running"}))
 
     summary, entries, cursor, changed = registry.observe(
         KNOWN_REE,
-        run["runId"],
+        run["run_id"],
         after_seq=0,
         wait_seconds=0,
         limit=200,
@@ -359,7 +368,7 @@ def test_observe_timeout_returns_unchanged_active_run():
     assert cursor is None
     assert changed is False
     release.set()
-    _wait_for(registry, run["runId"], TERMINAL)
+    _wait_for(registry, run["run_id"], TERMINAL)
 
 
 def test_get_run_state_for_unknown_run_is_404():

@@ -20,7 +20,7 @@ from typing import Protocol
 from repo2ree_protocol.agent import AgentFrame, WorkbenchLocation
 
 
-class WorkbenchGone(RuntimeError):
+class WorkbenchGoneError(RuntimeError):
     """The workbench backend is gone or stopping (a request/response call)."""
 
 
@@ -28,7 +28,7 @@ class WorkbenchRuntime(Protocol):
     """The verbs the agent needs to place and drive a workbench on its host.
 
     Streaming verbs yield ``AgentFrame`` records ending in a terminal frame;
-    request/response verbs return plain values and raise ``WorkbenchGone`` when
+    request/response verbs return plain values and raise ``WorkbenchGoneError`` when
     the failure means the bench is gone rather than the operation failed.
     """
 

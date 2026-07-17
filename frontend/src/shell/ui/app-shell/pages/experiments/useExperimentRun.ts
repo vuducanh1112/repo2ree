@@ -18,6 +18,21 @@ export type RunState = {
 
 export const TERMINAL_STATUSES: ReeRunStatus[] = ["succeeded", "failed", "canceled"];
 
+// Wire → domain: run outputs cross the API snake_cased; the domain type
+// (and everything rendering it) stays camelCase.
+function mapExperimentOutputs(
+  outputs: Record<string, unknown> | undefined,
+): ExperimentRunOutputs | null {
+  if (!outputs) return null;
+  return {
+    subjectName: String(outputs.subject_name ?? ""),
+    exitCode: (outputs.exit_code as number | null) ?? null,
+    verifyExitCode: outputs.verify_exit_code as number | null | undefined,
+    verdict: outputs.verdict as "pass" | "fail" | undefined,
+    runtimePath: outputs.runtime_path as string | undefined,
+  };
+}
+
 const MAX_RUN_LOG_LINES = 2000;
 
 function appendCappedLogLines(existing: LogLine[], incoming: LogLine[]): LogLine[] {
@@ -95,9 +110,7 @@ export function useExperimentRun({
           fetchLogsOnce(runState.reeId, runState.runId, runState.logCursor),
         ]);
         const isTerminal = TERMINAL_STATUSES.includes(run.status);
-        const outputs = isTerminal
-          ? ((run.outputs as unknown as ExperimentRunOutputs | null) ?? null)
-          : null;
+        const outputs = isTerminal ? mapExperimentOutputs(run.outputs) : null;
         setRunState((prev) =>
           prev
             ? {
@@ -133,11 +146,11 @@ export function useExperimentRun({
         const run = await runsApi.createExperimentRun(resolvedReeId, experimentName, {});
         setRunState({
           reeId: resolvedReeId,
-          runId: run.runId,
+          runId: run.run_id,
           status: run.status,
           outputs: null,
           error: null,
-          startedAt: run.startedAt || run.createdAt || new Date().toISOString(),
+          startedAt: run.started_at || run.created_at || new Date().toISOString(),
           logLines: [],
           logCursor: undefined,
         });

@@ -45,7 +45,7 @@ def _start_failing_upload_run(client: TestClient, ree_id: str) -> dict[str, Any]
     """Complete an upload whose staged bytes were never PUT: the run fails for real."""
     resp = client.post(
         f"/api/v1/rees/{ree_id}/source:upload-complete",
-        json={"uploadToken": "never-staged", "archiveName": "project.zip"},
+        json={"upload_token": "never-staged", "archive_name": "project.zip"},
     )
     assert resp.status_code == 200, resp.text
     return resp.json()
@@ -54,7 +54,7 @@ def _start_failing_upload_run(client: TestClient, ree_id: str) -> dict[str, Any]
 @pytest.fixture
 def failed_run(client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path) -> dict[str, Any]:
     run = _start_failing_upload_run(client, online_ree.ree_id)
-    status = _wait_for_run(client, online_ree.ree_id, run["runId"])
+    status = _wait_for_run(client, online_ree.ree_id, run["run_id"])
     assert status == "failed"
     return run
 
@@ -65,15 +65,15 @@ def failed_run(client: TestClient, online_ree: WorkbenchHandle, staging_dir: Pat
 
 
 def test_failed_run_summary_shape(client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]) -> None:
-    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['runId']}")
+    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['run_id']}")
     assert resp.status_code == 200
     summary = resp.json()
     assert summary["status"] == "failed"
     assert summary["operation"] == "source"
-    assert summary["reeId"] == online_ree.ree_id
-    assert summary["finishedAt"] is not None
+    assert summary["ree_id"] == online_ree.ree_id
+    assert summary["finished_at"] is not None
     # internal bookkeeping never leaks into the API shape
-    assert "_nextSeq" not in summary
+    assert "_next_seq" not in summary
     assert "logs" not in summary
 
 
@@ -91,41 +91,41 @@ def test_run_endpoints_for_unknown_ree_are_404(client: TestClient) -> None:
 def test_list_runs_is_empty_for_ree_without_runs(client: TestClient, online_ree: WorkbenchHandle) -> None:
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs")
     assert resp.status_code == 200
-    assert resp.json() == {"runs": [], "nextCursor": None}
+    assert resp.json() == {"runs": [], "next_cursor": None}
 
 
 def test_list_runs_returns_summaries_newest_first(
     client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any], staging_dir: Path
 ) -> None:
     second = _start_failing_upload_run(client, online_ree.ree_id)
-    _wait_for_run(client, online_ree.ree_id, second["runId"])
+    _wait_for_run(client, online_ree.ree_id, second["run_id"])
 
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs")
     assert resp.status_code == 200
     runs = resp.json()["runs"]
-    assert [run["runId"] for run in runs] == [second["runId"], failed_run["runId"]]
+    assert [run["run_id"] for run in runs] == [second["run_id"], failed_run["run_id"]]
     for summary in runs:
         assert summary["operation"] == "source"
         assert summary["status"] == "failed"
         # summaries carry no log feed or internal bookkeeping
         assert "logs" not in summary
-        assert "_nextSeq" not in summary
+        assert "_next_seq" not in summary
 
 
 def test_list_runs_pagination_walks_newest_to_oldest(
     client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any], staging_dir: Path
 ) -> None:
     second = _start_failing_upload_run(client, online_ree.ree_id)
-    _wait_for_run(client, online_ree.ree_id, second["runId"])
+    _wait_for_run(client, online_ree.ree_id, second["run_id"])
     base = f"/api/v1/rees/{online_ree.ree_id}/runs"
 
     first_page = client.get(base, params={"limit": 1}).json()
-    assert [run["runId"] for run in first_page["runs"]] == [second["runId"]]
-    assert first_page["nextCursor"] is not None
+    assert [run["run_id"] for run in first_page["runs"]] == [second["run_id"]]
+    assert first_page["next_cursor"] is not None
 
-    second_page = client.get(base, params={"limit": 1, "cursor": first_page["nextCursor"]}).json()
-    assert [run["runId"] for run in second_page["runs"]] == [failed_run["runId"]]
-    assert second_page["nextCursor"] is None
+    second_page = client.get(base, params={"limit": 1, "cursor": first_page["next_cursor"]}).json()
+    assert [run["run_id"] for run in second_page["runs"]] == [failed_run["run_id"]]
+    assert second_page["next_cursor"] is None
 
 
 def test_list_runs_rejects_malformed_cursor(
@@ -150,28 +150,28 @@ def test_unknown_run_for_known_ree_is_404(client: TestClient, online_ree: Workbe
 def test_failed_run_log_feed_carries_the_failure(
     client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
 ) -> None:
-    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['runId']}/logs")
+    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['run_id']}/logs")
     assert resp.status_code == 200
     logs = resp.json()
-    assert logs["runStatus"] == "failed"
+    assert logs["run_status"] == "failed"
     messages = [entry["message"] for entry in logs["entries"]]
     assert "Staged upload not found, empty, or expired" in messages
-    assert logs["hasMore"] is False
-    assert logs["nextCursor"] == str(logs["entries"][-1]["seq"])
+    assert logs["has_more"] is False
+    assert logs["next_cursor"] == str(logs["entries"][-1]["seq"])
 
 
 def test_log_pagination_walks_the_feed(
     client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
 ) -> None:
-    base = f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['runId']}/logs"
+    base = f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['run_id']}/logs"
 
     first = client.get(base, params={"limit": 1}).json()
     assert len(first["entries"]) == 1
-    assert first["hasMore"] is True
-    assert first["nextCursor"] == "1"
+    assert first["has_more"] is True
+    assert first["next_cursor"] == "1"
 
-    rest = client.get(base, params={"cursor": first["nextCursor"]}).json()
-    assert rest["hasMore"] is False
+    rest = client.get(base, params={"cursor": first["next_cursor"]}).json()
+    assert rest["has_more"] is False
     assert [e["seq"] for e in first["entries"] + rest["entries"]] == list(
         range(1, len(first["entries"]) + len(rest["entries"]) + 1)
     )
@@ -180,7 +180,7 @@ def test_log_pagination_walks_the_feed(
 def test_log_pagination_rejects_garbage_cursor(
     client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
 ) -> None:
-    base = f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['runId']}/logs"
+    base = f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['run_id']}/logs"
     resp = client.get(base, params={"cursor": "not-a-number"})
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "request_validation_failed"
@@ -189,7 +189,7 @@ def test_log_pagination_rejects_garbage_cursor(
 def test_observe_terminal_run_returns_status_and_logs_after_cursor(
     client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
 ) -> None:
-    run_id = failed_run["runId"]
+    run_id = failed_run["run_id"]
     first_log = client.get(
         f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}/logs",
         params={"limit": 1},
@@ -197,13 +197,13 @@ def test_observe_terminal_run_returns_status_and_logs_after_cursor(
 
     resp = client.get(
         f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}/observe",
-        params={"cursor": first_log["nextCursor"], "waitSeconds": 0},
+        params={"cursor": first_log["next_cursor"], "wait_seconds": 0},
     )
 
     assert resp.status_code == 200
     observation = resp.json()
     assert observation["run"]["status"] == "failed"
-    assert all(entry["seq"] > int(first_log["nextCursor"]) for entry in observation["entries"])
+    assert all(entry["seq"] > int(first_log["next_cursor"]) for entry in observation["entries"])
     assert observation["changed"] is True
 
 
@@ -215,7 +215,7 @@ def test_observe_terminal_run_returns_status_and_logs_after_cursor(
 def test_cancel_of_terminal_run_returns_status_unchanged(
     client: TestClient, online_ree: WorkbenchHandle, failed_run: dict[str, Any]
 ) -> None:
-    run_id = failed_run["runId"]
+    run_id = failed_run["run_id"]
     logs_before = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}/logs").json()
 
     resp = client.post(f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}:cancel")
@@ -252,14 +252,14 @@ def test_cancel_of_active_run_signals_workbench(
         runner=_runner,
     )
 
-    resp = client.post(f"/api/v1/rees/{online_ree.ree_id}/runs/{run['runId']}:cancel")
+    resp = client.post(f"/api/v1/rees/{online_ree.ree_id}/runs/{run['run_id']}:cancel")
 
     assert resp.status_code == 200
-    assert calls == [(online_ree, run["runId"])]
+    assert calls == [(online_ree, run["run_id"])]
     assert resp.json()["status"] in {"canceling", "canceled"}
-    logs = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run['runId']}/logs").json()
+    logs = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run['run_id']}/logs").json()
     assert any(entry["message"] == "Cancel requested by user" for entry in logs["entries"])
-    assert _wait_for_run(client, online_ree.ree_id, run["runId"]) == "canceled"
+    assert _wait_for_run(client, online_ree.ree_id, run["run_id"]) == "canceled"
 
 
 def test_cancel_of_unknown_run_is_404(client: TestClient, online_ree: WorkbenchHandle) -> None:

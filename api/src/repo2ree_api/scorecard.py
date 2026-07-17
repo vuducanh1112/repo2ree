@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.wire import to_wire
 
 # ================================================
 # Router
@@ -33,6 +34,6 @@ def get_ree_scorecard(ree_id: str) -> dict[str, Any]:
     if handle is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     try:
-        return workbench_manager.get_scorecard(handle)
+        return to_wire(workbench_manager.get_scorecard(handle))
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Workbench get-scorecard failed: {exc}") from exc

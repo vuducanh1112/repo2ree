@@ -1,13 +1,13 @@
 import type {
   CPUDefinition,
   GPUDefinition,
-  HBOM,
+  Hbom,
   MemoryDefinition,
   NetworkDefinition,
   StorageDefinition,
 } from "../ree/ReeSpec";
 
-export function emptyHBOM(): HBOM {
+export function emptyHBOM(): Hbom {
   return {
     cpus: {},
     gpus: {},
@@ -137,7 +137,7 @@ function normalizeNetworkMap(raw: unknown): Record<string, NetworkDefinition> {
   );
 }
 
-export function normalizeHBOM(raw: unknown): HBOM {
+export function normalizeHBOM(raw: unknown): Hbom {
   const record = asRecord(raw);
   const hasStructuredKeys = ["cpus", "gpus", "memory", "storage", "network", "extra_info"].some(
     (key) => key in record,
@@ -158,7 +158,7 @@ export function normalizeHBOM(raw: unknown): HBOM {
   };
 }
 
-export function hbomHasAnyComponents(hbom: HBOM): boolean {
+export function hbomHasAnyComponents(hbom: Hbom): boolean {
   return (
     Object.keys(hbom.cpus).length +
       Object.keys(hbom.gpus).length +

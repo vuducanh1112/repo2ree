@@ -28,7 +28,7 @@ cross_check_sbom_router = APIRouter(tags=["runs"])
 class CreateCrossCheckSbomRunPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    idempotencyKey: str | None = None
+    idempotency_key: str | None = None
 
 
 # ================================================
@@ -63,5 +63,5 @@ def create_cross_check_sbom_run_state(
         run_id_prefix="crosscheck",
         request_payload={},
         canceled_message="SBOM cross-check run canceled",
-        idempotency_key=payload.idempotencyKey,
+        idempotency_key=payload.idempotency_key,
     )

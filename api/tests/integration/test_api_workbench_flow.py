@@ -87,17 +87,17 @@ def _upload_source(client: TestClient, ree_id: str, data: bytes, archive_name: s
     """Drive the three-step upload flow; return the background run summary."""
     resp = client.post(
         f"/api/v1/rees/{ree_id}/source:upload-init",
-        json={"fileName": archive_name, "size": len(data), "contentType": "application/zip"},
+        json={"file_name": archive_name, "size": len(data), "content_type": "application/zip"},
     )
     assert resp.status_code == 200, resp.text
     upload = resp.json()
 
-    resp = client.put(upload["uploadUrl"], content=data)
+    resp = client.put(upload["upload_url"], content=data)
     assert resp.status_code == 200, resp.text
 
     resp = client.post(
         f"/api/v1/rees/{ree_id}/source:upload-complete",
-        json={"uploadToken": upload["uploadToken"], "archiveName": archive_name},
+        json={"upload_token": upload["upload_token"], "archive_name": archive_name},
     )
     assert resp.status_code == 200, resp.text
     return resp.json()
@@ -109,24 +109,24 @@ def _upload_source(client: TestClient, ree_id: str, data: bytes, archive_name: s
 
 
 def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
-    ree_id = ree["reeId"]
+    ree_id = ree["ree_id"]
     assert ree["status"] == "draft"
 
     # the freshly provisioned REE is visible in the listing
     resp = client.get("/api/v1/rees")
     assert resp.status_code == 200
-    assert any(item.get("reeId") == ree_id for item in resp.json()["items"])
+    assert any(item.get("ree_id") == ree_id for item in resp.json()["items"])
 
     # --- source upload: staging -> docker cp -> extract pipeline --------
     run = _upload_source(client, ree_id, _project_zip(), "project.zip")
     assert run["operation"] == "source"
-    assert _wait_for_run(client, ree_id, run["runId"]) == "succeeded"
+    assert _wait_for_run(client, ree_id, run["run_id"]) == "succeeded"
 
     # the run's log feed carried the real pipeline steps back over HTTP
-    resp = client.get(f"/api/v1/rees/{ree_id}/runs/{run['runId']}/logs")
+    resp = client.get(f"/api/v1/rees/{ree_id}/runs/{run['run_id']}/logs")
     assert resp.status_code == 200
     logs = resp.json()
-    assert logs["runStatus"] == "succeeded"
+    assert logs["run_status"] == "succeeded"
     assert logs["entries"]
 
     # the extracted source landed in the workspace on the workbench volume
@@ -150,7 +150,7 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     resp = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={})
     assert resp.status_code == 200, resp.text
     sealed = resp.json()
-    assert sealed["reeSession"]["seal_hash"].startswith("sha256:")
+    assert sealed["ree_session"]["seal_hash"].startswith("sha256:")
 
     resp = client.get(f"/api/v1/rees/{ree_id}/ree-archive")
     assert resp.status_code == 200
@@ -160,7 +160,7 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
 
 
 def test_delete_tears_down_workbench(client: TestClient, ree: dict[str, Any]) -> None:
-    ree_id = ree["reeId"]
+    ree_id = ree["ree_id"]
 
     resp = client.delete(f"/api/v1/rees/{ree_id}")
     assert resp.status_code == 200
@@ -189,5 +189,5 @@ def test_unknown_ree_yields_error_envelope(client: TestClient) -> None:
 
 def test_archive_before_seal_conflicts(client: TestClient, ree: dict[str, Any]) -> None:
     """Downloading the archive of an unsealed REE is a 409, not a 500."""
-    resp = client.get(f"/api/v1/rees/{ree['reeId']}/ree-archive")
+    resp = client.get(f"/api/v1/rees/{ree['ree_id']}/ree-archive")
     assert resp.status_code == 409

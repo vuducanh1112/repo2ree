@@ -34,7 +34,7 @@ class CreateExperimentRunPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    idempotencyKey: str | None = None
+    idempotency_key: str | None = None
 
 
 # ================================================
@@ -53,7 +53,7 @@ def create_experiment_run(
     experiment_name: str,
     payload: CreateExperimentRunPayload,
 ):
-    run_state = _create_experiment_run_state(ree_id, experiment_name, payload.idempotencyKey)
+    run_state = _create_experiment_run_state(ree_id, experiment_name, payload.idempotency_key)
     return run_summary(run_state)
 
 
@@ -106,8 +106,8 @@ def _create_experiment_run_state(
         operation="experiment",
         command=RunExperimentCommand(args=RunExperimentArgs(experiment_name=experiment_name)),
         run_id_prefix="experiment",
-        request_payload={"experimentName": experiment_name},
+        request_payload={"experiment_name": experiment_name},
         canceled_message="Experiment run canceled",
-        fallback_outputs={"subjectName": experiment_name},
+        fallback_outputs={"subject_name": experiment_name},
         idempotency_key=idempotency_key,
     )

@@ -29,7 +29,7 @@ activation_test_router = APIRouter(tags=["runs"])
 class CreateActivationTestRunPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    idempotencyKey: str | None = None
+    idempotency_key: str | None = None
 
 
 # ================================================
@@ -64,6 +64,6 @@ def create_activation_run_state(
         run_id_prefix="activation",
         request_payload={},
         canceled_message="Activation run canceled",
-        fallback_outputs={"subjectName": "activation"},
-        idempotency_key=payload.idempotencyKey,
+        fallback_outputs={"subject_name": "activation"},
+        idempotency_key=payload.idempotency_key,
     )

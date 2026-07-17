@@ -68,7 +68,7 @@ runtime agents.
 
 ## Authoring lifecycle
 
-Operations that mutate a workbench are asynchronous: they return a `runId`, and
+Operations that mutate a workbench are asynchronous: they return a `run_id`, and
 clients await completion by long-polling `observeRun` until the run reaches a
 terminal status (`succeeded`, `failed`, `canceled`). A REE is authored end to
 end in this order:
@@ -213,7 +213,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
             "error": {
                 "code": "internal_error",
                 "message": "An internal error occurred",
-                "details": {"traceId": trace_id} if trace_id else None,
+                "details": {"trace_id": trace_id} if trace_id else None,
                 "retryable": False,
             }
         },

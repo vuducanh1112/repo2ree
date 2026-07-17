@@ -31,7 +31,7 @@ class CreateGenerateSbomRunPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     produced_runtime_path: str
-    idempotencyKey: str | None = None
+    idempotency_key: str | None = None
 
 
 # ================================================
@@ -89,6 +89,6 @@ def create_generate_sbom_run_state(
         run_id_prefix="sbom",
         request_payload={"produced_runtime_path": runtime_path},
         canceled_message="SBOM run canceled",
-        fallback_outputs={"runtimeRelativePath": runtime_path},
-        idempotency_key=payload.idempotencyKey,
+        fallback_outputs={"runtime_relative_path": runtime_path},
+        idempotency_key=payload.idempotency_key,
     )

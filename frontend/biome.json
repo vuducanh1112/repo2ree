@@ -38,7 +38,56 @@
       "style": {
         "useImportType": "error",
         "noNonNullAssertion": "warn",
-        "useTemplate": "error"
+        "useTemplate": "error",
+        "useNamingConvention": {
+          "level": "error",
+          "options": {
+            "strictCase": false,
+            "conventions": [
+              {
+                "selector": {
+                  "kind": "typeProperty"
+                },
+                "match": "__brand|(.+)",
+                "formats": [
+                  "camelCase",
+                  "PascalCase",
+                  "CONSTANT_CASE"
+                ]
+              },
+              {
+                "selector": {
+                  "kind": "objectLiteralProperty"
+                },
+                "formats": [
+                  "camelCase",
+                  "PascalCase",
+                  "CONSTANT_CASE"
+                ]
+              },
+              {
+                "selector": {
+                  "kind": "variable"
+                },
+                "formats": [
+                  "camelCase",
+                  "PascalCase",
+                  "CONSTANT_CASE"
+                ]
+              }
+            ]
+          }
+        },
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "strictCase": false,
+            "filenameCases": [
+              "camelCase",
+              "PascalCase"
+            ]
+          }
+        }
       },
       "a11y": {
         "recommended": true
@@ -53,7 +102,9 @@
       "trailingCommas": "all",
       "arrowParentheses": "always"
     },
-    "globals": ["React"]
+    "globals": [
+      "React"
+    ]
   },
   "css": {
     "formatter": {
@@ -65,11 +116,95 @@
   },
   "overrides": [
     {
-      "includes": ["*.test.ts", "*.test.tsx", "*.spec.ts", "*.spec.tsx"],
+      "includes": [
+        "*.test.ts",
+        "*.test.tsx",
+        "*.spec.ts",
+        "*.spec.tsx"
+      ],
       "linter": {
         "rules": {
           "suspicious": {
             "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "src/shell/infra/api/**",
+        "src/shell/data/**",
+        "src/core/ree/**",
+        "src/core/ree-steps/**",
+        "src/core/workspace/**",
+        "src/core/evaluate/**",
+        "src/core/hbom/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "useNamingConvention": {
+              "level": "error",
+              "options": {
+                "strictCase": false,
+                "conventions": [
+                  {
+                    "selector": {
+                      "kind": "typeProperty"
+                    },
+                    "match": "__brand|(.+)",
+                    "formats": [
+                      "camelCase",
+                      "PascalCase",
+                      "CONSTANT_CASE",
+                      "snake_case"
+                    ]
+                  },
+                  {
+                    "selector": {
+                      "kind": "objectLiteralProperty"
+                    },
+                    "formats": [
+                      "camelCase",
+                      "PascalCase",
+                      "CONSTANT_CASE",
+                      "snake_case"
+                    ]
+                  },
+                  {
+                    "selector": {
+                      "kind": "variable"
+                    },
+                    "formats": [
+                      "camelCase",
+                      "PascalCase",
+                      "CONSTANT_CASE"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "tests/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": {
+              "level": "error",
+              "options": {
+                "strictCase": false,
+                "filenameCases": [
+                  "camelCase",
+                  "kebab-case"
+                ]
+              }
+            }
           }
         }
       }

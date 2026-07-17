@@ -34,7 +34,7 @@ class CreateEvaluateRunPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     strict: bool = False
-    idempotencyKey: str | None = None
+    idempotency_key: str | None = None
 
 
 # ================================================
@@ -92,5 +92,5 @@ def create_evaluate_run_state(
         run_id_prefix="evaluate",
         request_payload={"strict": bool(payload.strict)},
         canceled_message="Evaluate run canceled",
-        idempotency_key=payload.idempotencyKey,
+        idempotency_key=payload.idempotency_key,
     )

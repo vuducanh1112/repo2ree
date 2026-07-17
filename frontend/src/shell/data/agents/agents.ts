@@ -9,11 +9,11 @@ import { queryKeys } from "../queryKeys";
 // state; the endpoint only lists connected agents.
 function mapAgent(dto: AgentSummaryDto): Agent {
   return {
-    id: dto.agentId,
+    id: dto.agent_id,
     hostname: dto.hostname,
     version: dto.version,
-    dockerMode: dto.dockerMode,
-    connectedAt: dto.connectedAt,
+    dockerMode: dto.docker_mode,
+    connectedAt: dto.connected_at,
     status: "connected",
   };
 }

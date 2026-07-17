@@ -84,11 +84,12 @@ export function PageTestActivation({
   // The backend settles the activation run-script path on the intent; the
   // catalog covers the moment before that lands and the not-yet-declared
   // verify script.
-  const activationScriptPath = activation.runScript || (templates?.activation.runScriptPath ?? "");
+  const activationScriptPath =
+    activation.runScript || (templates?.activation.run_script_path ?? "");
   const activationScriptContent =
     findFileByWorkspacePath(files, activationScriptPath)?.content ?? "";
   const activationVerifyScriptPath =
-    activation.verifyScript || (templates?.activation.verifyScriptPath ?? "");
+    activation.verifyScript || (templates?.activation.verify_script_path ?? "");
   const activationVerifyScriptContent =
     findFileByWorkspacePath(files, activationVerifyScriptPath)?.content ?? "";
 

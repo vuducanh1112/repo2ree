@@ -84,12 +84,12 @@ agents_router = APIRouter(tags=["fleet"])
 
 
 class AgentSummary(BaseModel):
-    agentId: str
+    agent_id: str
     hostname: str
     version: str
-    dockerMode: str
+    docker_mode: str
     # ISO 8601 UTC; when the agent dialed in.
-    connectedAt: str
+    connected_at: str
     status: str = "connected"
 
 
@@ -107,11 +107,11 @@ def list_agents() -> AgentList:
     """Every workbench agent currently connected to this control plane."""
     agents = [
         AgentSummary(
-            agentId=info.agent_id,
+            agent_id=info.agent_id,
             hostname=info.hostname,
             version=info.version,
-            dockerMode=info.docker_mode,
-            connectedAt=datetime.fromtimestamp(info.connected_at, tz=UTC).isoformat(),
+            docker_mode=info.docker_mode,
+            connected_at=datetime.fromtimestamp(info.connected_at, tz=UTC).isoformat(),
         )
         for info in agent_registry.list_agents()
     ]

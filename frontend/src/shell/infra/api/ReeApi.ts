@@ -25,7 +25,7 @@ interface ListReesQuery {
 interface PutReeFileContentRequest {
   path: string;
   content: string;
-  ifMatch?: string;
+  if_match?: string;
 }
 
 function parseContentDispositionFilename(contentDisposition: string | null): string | undefined {
@@ -126,8 +126,8 @@ export class ReeApi {
     });
   }
 
-  async deleteRee(reeId: ReeId): Promise<{ deletedAt: string; state: string }> {
-    return this.client.request<{ deletedAt: string; state: string }>(endpoints.ree(reeId), {
+  async deleteRee(reeId: ReeId): Promise<{ deleted_at: string; state: string }> {
+    return this.client.request<{ deleted_at: string; state: string }>(endpoints.ree(reeId), {
       method: "DELETE",
     });
   }
@@ -149,7 +149,7 @@ export class ReeApi {
   async completeUpload(reeId: ReeId, uploadToken: string, archiveName: string): Promise<ReeRunDto> {
     return this.client.request<ReeRunDto>(endpoints.reeSourceUploadComplete(reeId), {
       method: "POST",
-      body: JSON.stringify({ uploadToken, archiveName }),
+      body: JSON.stringify({ upload_token: uploadToken, archive_name: archiveName }),
     });
   }
 
@@ -175,9 +175,9 @@ export class ReeApi {
     return this.client.request<ReeDetailDto>(endpoints.reeSeal(reeId), {
       method: "POST",
       body: JSON.stringify({
-        includeSource: opts.includeSource,
-        includeRuntime: opts.includeRuntime,
-        includeResults: opts.includeResults,
+        include_source: opts.includeSource,
+        include_runtime: opts.includeRuntime,
+        include_results: opts.includeResults,
       }),
     });
   }
@@ -195,8 +195,8 @@ export class ReeApi {
   async putFileContent(
     reeId: ReeId,
     payload: PutReeFileContentRequest,
-  ): Promise<{ etag?: string; updatedAt?: string }> {
-    return this.client.request<{ etag?: string; updatedAt?: string }>(
+  ): Promise<{ etag?: string; updated_at?: string }> {
+    return this.client.request<{ etag?: string; updated_at?: string }>(
       endpoints.reeFileContent(reeId),
       {
         method: "PUT",
@@ -205,16 +205,16 @@ export class ReeApi {
     );
   }
 
-  async reprovisionWorkbench(reeId: ReeId | string): Promise<{ status: string; reeId: string }> {
-    return this.client.request<{ status: string; reeId: string }>(
+  async reprovisionWorkbench(reeId: ReeId | string): Promise<{ status: string; ree_id: string }> {
+    return this.client.request<{ status: string; ree_id: string }>(
       endpoints.reeWorkbenchReprovision(reeId),
       { method: "POST" },
     );
   }
 
-  async deleteFileContent(reeId: ReeId, path: string): Promise<{ deletedAt?: string }> {
+  async deleteFileContent(reeId: ReeId, path: string): Promise<{ deleted_at?: string }> {
     const searchParams = new URLSearchParams({ path });
-    return this.client.request<{ deletedAt?: string }>(
+    return this.client.request<{ deleted_at?: string }>(
       endpoints.reeFileContent(reeId),
       {
         method: "DELETE",

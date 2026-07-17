@@ -1,7 +1,7 @@
 import type {
   CPUDefinition,
   GPUDefinition,
-  HBOM,
+  Hbom,
   MemoryDefinition,
   NetworkDefinition,
   StorageDefinition,
@@ -108,7 +108,7 @@ export function newNetworkRow(generateId: GenerateRowId): NetworkRow {
   };
 }
 
-export function draftFromHBOM(hbom: HBOM, previous?: HardwareBomDraft): HardwareBomDraft {
+export function draftFromHBOM(hbom: Hbom, previous?: HardwareBomDraft): HardwareBomDraft {
   return {
     cpus: Object.entries(hbom.cpus).map(([model, item], index) => ({
       id: previous?.cpus[index]?.id || `cpu-${index}`,
@@ -146,7 +146,7 @@ function parsePositiveNumber(value: number): number | null {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
-export function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: HBOM): HBOM {
+export function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: Hbom): Hbom {
   const nextHBOM = emptyHBOM();
   nextHBOM.extraInfo = previousHBOM.extraInfo || {};
 
@@ -222,6 +222,6 @@ export function hbomFromDraft(draft: HardwareBomDraft, previousHBOM: HBOM): HBOM
   return nextHBOM;
 }
 
-export function hbomSyncKey(hbom: HBOM): string {
+export function hbomSyncKey(hbom: Hbom): string {
   return JSON.stringify(hbom);
 }

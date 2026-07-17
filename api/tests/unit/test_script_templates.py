@@ -22,7 +22,7 @@ def _assert_entries_match(entries: list[dict[str, str]], expected_keys: list[str
     assert [entry["key"] for entry in entries] == expected_keys
     # Exactly one entry per section is the explicit default: the first, per
     # the core catalogs' ordering.
-    assert [entry["isDefault"] for entry in entries] == [True] + [False] * (len(entries) - 1)
+    assert [entry["is_default"] for entry in entries] == [True] + [False] * (len(entries) - 1)
     for entry in entries:
         assert entry["label"]
         assert entry["description"]
@@ -40,15 +40,15 @@ def test_list_script_templates_returns_catalog(client: TestClient) -> None:
     assert body["build"]["path"] == RESERVED_BUILD_SCRIPT
     _assert_entries_match(body["build"]["templates"], [t.key for t in build_templates()])
     assert body["build"]["templates"][0]["key"] == "docker"
-    assert body["activation"]["runScriptPath"] == RESERVED_ACTIVATION_SCRIPT
-    assert body["activation"]["verifyScriptPath"] == RESERVED_ACTIVATION_VERIFY_SCRIPT
+    assert body["activation"]["run_script_path"] == RESERVED_ACTIVATION_SCRIPT
+    assert body["activation"]["verify_script_path"] == RESERVED_ACTIVATION_VERIFY_SCRIPT
     _assert_entries_match(body["activation"]["templates"], [t.key for t in activation_templates()])
     assert body["activation"]["templates"][0]["key"] == "docker"
 
     # Experiment templates state the path convention and the run variants.
     experiment = body["experiment"]
-    assert experiment["runScriptPathPattern"] == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh"
-    assert experiment["verifyScriptPathPattern"] == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh"
+    assert experiment["run_script_path_pattern"] == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh"
+    assert experiment["verify_script_path_pattern"] == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh"
     _assert_entries_match(experiment["templates"], [t.key for t in experiment_run_templates()])
     assert experiment["templates"][0]["key"] == "docker"
 

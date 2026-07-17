@@ -1,8 +1,45 @@
 import type { ReeFile } from "@core/ree/ReeTypes";
+import type { ConsistencyReport } from "@core/ree-steps/sealConsistency";
 import type { FileTreeNode } from "@core/workspace/FileTree";
-import type { ReeProject } from "@core/workspace/WorkspaceTypes";
-import type { ReeDetailDto } from "../../infra/api/apiTypes";
+import type { ReeProject, SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import type {
+  ConsistencyReportDto,
+  ReeDetailDto,
+  SourceRepoMetadataDto,
+} from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices } from "./mapping";
+
+// Wire → domain: the API speaks snake_case, the frontend camelCase.
+function mapSourceRepo(dto: SourceRepoMetadataDto | undefined): SourceRepoMetadata | undefined {
+  if (!dto) {
+    return undefined;
+  }
+  return {
+    name: dto.name,
+    origin: dto.origin,
+    acquiredBy: dto.acquired_by,
+    sourceType: dto.source_type,
+    swhid: dto.swhid,
+    sizeBytes: dto.size_bytes,
+    sizeLabel: dto.size_label,
+  };
+}
+
+function mapConsistency(dto: ConsistencyReportDto | undefined): ConsistencyReport | undefined {
+  if (!dto) {
+    return undefined;
+  }
+  return {
+    steps: (dto.steps || []).map((step) => ({
+      step: step.step,
+      status: step.status,
+      runId: step.run_id,
+      recordedAt: step.recorded_at,
+      staleInputs: step.stale_inputs,
+      workspaceDrift: step.workspace_drift,
+    })),
+  };
+}
 
 function upsertTreeFile(
   roots: FileTreeNode[],
@@ -66,7 +103,7 @@ export function mapReeDetailToReeProject(
     upsertTreeFile(files, file.path, file.content, file.size, file.kind);
   }
 
-  const reeFiles: ReeFile[] = (ree.reeFiles || []).map((file, index) => ({
+  const reeFiles: ReeFile[] = (ree.ree_files || []).map((file, index) => ({
     id: `remote-ree-${index}-${file.path}`,
     name: file.path,
     type: "file",
@@ -77,13 +114,13 @@ export function mapReeDetailToReeProject(
   const reeState = mapReeDetailToReeSlices(ree);
 
   return {
-    id: ree.reeId,
+    id: ree.ree_id,
     files,
     reeFiles,
     ree: reeState,
-    draftManifest: ree.draftManifest,
-    sourceRepo: ree.sourceRepo,
-    consistency: ree.consistency,
-    workbenchImage: ree.workbenchImage,
+    draftManifest: ree.draft_manifest,
+    sourceRepo: mapSourceRepo(ree.source_repo),
+    consistency: mapConsistency(ree.consistency),
+    workbenchImage: ree.workbench_image,
   };
 }

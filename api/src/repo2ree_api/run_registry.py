@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
+from repo2ree_api.wire import to_wire
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.log import emit_run_log
 from repo2ree_protocol.tracing import (
@@ -39,7 +40,7 @@ TERMINAL_STATUSES: frozenset[str] = frozenset({"succeeded", "failed", "canceled"
 ACTIVE_STATUSES: frozenset[str] = frozenset({"running", "queued", "provisioning"})
 
 # JSON field name for the REE id in run state and summaries.
-_REE_ID_FIELD = "reeId"
+_REE_ID_FIELD = "ree_id"
 
 
 class RunRegistry:
@@ -89,29 +90,29 @@ class RunRegistry:
         request_payload: dict[str, Any],
     ) -> dict[str, Any]:
         run_state: dict[str, Any] = {
-            "runId": run_id,
+            "run_id": run_id,
             _REE_ID_FIELD: ree_id,
             "operation": operation,
             "status": "queued",
-            "createdAt": created_at,
-            "startedAt": None,
-            "finishedAt": None,
+            "created_at": created_at,
+            "started_at": None,
+            "finished_at": None,
             "outputs": {},
             "logs": [],
             "request": request_payload,
-            "_nextSeq": 1,
+            "_next_seq": 1,
         }
         with self._lock:
             self._run_store.setdefault(ree_id, {})[run_id] = run_state
             self._run_control.setdefault(ree_id, {})[run_id] = {
-                "cancelRequested": False,
+                "cancel_requested": False,
                 "thread": None,
                 "operation": operation,
             }
         return run_state
 
     def _begin_run(self, ree_id: str, run_id: str, operation: str) -> None:
-        """Mark the worker as started: stamp startedAt and advance out of 'queued'.
+        """Mark the worker as started: stamp started_at and advance out of 'queued'.
 
         A provisioning run's working state is "provisioning"; every other run's
         is "running". A cancel that landed while queued set "canceling" — leave
@@ -121,7 +122,7 @@ class RunRegistry:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
             if not run_state:
                 return
-            run_state["startedAt"] = utc_now()
+            run_state["started_at"] = utc_now()
             if run_state["status"] == "queued":
                 run_state["status"] = "provisioning" if operation == "provision" else "running"
                 self._changed.notify_all()
@@ -133,7 +134,7 @@ class RunRegistry:
                 return
             run_state["status"] = status
             if status in TERMINAL_STATUSES:
-                run_state["finishedAt"] = utc_now()
+                run_state["finished_at"] = utc_now()
             self._changed.notify_all()
 
     # ================================================
@@ -156,21 +157,23 @@ class RunRegistry:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
             if not run_state:
                 return
-            next_seq = int(run_state.get("_nextSeq", 1))
+            next_seq = int(run_state.get("_next_seq", 1))
             logs = run_state.setdefault("logs", [])
-            run_state["_nextSeq"] = self._append_log_entry(logs, next_seq, stream, level, message)
+            run_state["_next_seq"] = self._append_log_entry(logs, next_seq, stream, level, message)
             self._changed.notify_all()
 
     def update_outputs(self, ree_id: str, run_id: str, outputs: dict[str, Any]) -> None:
+        # Command-envelope outputs arrive with camelCase keys; runs serve them
+        # over HTTP, so convert at this single entry point.
         with self._lock:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
             if run_state:
-                run_state["outputs"] = outputs
+                run_state["outputs"] = to_wire(outputs)
 
     def is_cancel_requested(self, ree_id: str, run_id: str) -> bool:
         with self._lock:
             control = self._run_control.get(ree_id, {}).get(run_id)
-            return bool(control and control.get("cancelRequested"))
+            return bool(control and control.get("cancel_requested"))
 
     def mark_cancel_requested(self, ree_id: str, run_id: str) -> bool:
         with self._lock:
@@ -178,7 +181,7 @@ class RunRegistry:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
             if not control or not run_state:
                 return False
-            control["cancelRequested"] = True
+            control["cancel_requested"] = True
             if run_state.get("status") in ACTIVE_STATUSES:
                 run_state["status"] = "canceling"
                 self._changed.notify_all()
@@ -198,7 +201,7 @@ class RunRegistry:
         with self._lock:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
             if run_state:
-                run_state.pop("_nextSeq", None)
+                run_state.pop("_next_seq", None)
 
     def start_background(
         self,
@@ -234,8 +237,8 @@ class RunRegistry:
                                 "message": "Idempotency key was already used with a different request",
                                 "details": {
                                     "operation": operation,
-                                    "idempotencyKey": normalized_key,
-                                    "runId": existing_run_id,
+                                    "idempotency_key": normalized_key,
+                                    "run_id": existing_run_id,
                                 },
                             },
                         )
@@ -302,13 +305,13 @@ class RunRegistry:
 
     def run_summary(self, run_state: dict[str, Any]) -> dict[str, Any]:
         keys = [
-            "runId",
+            "run_id",
             _REE_ID_FIELD,
             "operation",
             "status",
-            "createdAt",
-            "startedAt",
-            "finishedAt",
+            "created_at",
+            "started_at",
+            "finished_at",
             "outputs",
         ]
         return {key: run_state[key] for key in keys}
@@ -329,7 +332,7 @@ class RunRegistry:
         with self._lock:
             run_states = list(self._run_store.get(ree_id, {}).values())
         summaries = [self.run_summary(run_state) for run_state in run_states]
-        summaries.sort(key=lambda summary: (summary["createdAt"], summary["runId"]), reverse=True)
+        summaries.sort(key=lambda summary: (summary["created_at"], summary["run_id"]), reverse=True)
         return summaries
 
     def get_run_state(self, ree_id: str, run_id: str) -> dict[str, Any]:

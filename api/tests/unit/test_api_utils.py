@@ -21,18 +21,18 @@ from repo2ree_core.run_script import stream_output
 # ================================================
 
 
-# Sorted descending by (createdAt, id), the order the routes hand in.
+# Sorted descending by (created_at, id), the order the routes hand in.
 ITEMS = [
-    {"createdAt": "t5", "id": "e"},
-    {"createdAt": "t4", "id": "d"},
-    {"createdAt": "t3", "id": "c"},
-    {"createdAt": "t2", "id": "b"},
-    {"createdAt": "t1", "id": "a"},
+    {"created_at": "t5", "id": "e"},
+    {"created_at": "t4", "id": "d"},
+    {"created_at": "t3", "id": "c"},
+    {"created_at": "t2", "id": "b"},
+    {"created_at": "t1", "id": "a"},
 ]
 
 
 def _key(item: dict[str, str]) -> tuple[str, str]:
-    return item["createdAt"], item["id"]
+    return item["created_at"], item["id"]
 
 
 def test_keyset_no_cursor_no_limit_returns_everything():
@@ -66,7 +66,7 @@ def test_keyset_last_page_has_no_next_cursor():
 def test_keyset_items_created_between_pages_do_not_shift_the_boundary():
     # A new item at the head (newest) must not push earlier items into the
     # next page — the failure mode of offset cursors.
-    grown = [{"createdAt": "t6", "id": "f"}, *ITEMS]
+    grown = [{"created_at": "t6", "id": "f"}, *ITEMS]
     page, _, _ = keyset_paginate(grown, cursor="t4~d", limit=2, key=_key)
     assert page == ITEMS[2:4]
 

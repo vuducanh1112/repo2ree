@@ -132,15 +132,15 @@ def wait_for_run(ree_id: str, run_id: str) -> str:
     note(f"streaming run {run_id} via observeRun until it settles")
     cursor = 0
     while True:
-        url = f"{BASE_URL}/api/v1/rees/{ree_id}/runs/{run_id}/observe?cursor={cursor}&waitSeconds=25"
+        url = f"{BASE_URL}/api/v1/rees/{ree_id}/runs/{run_id}/observe?cursor={cursor}&wait_seconds=25"
         # --max-time gives curl headroom past the server-side long-poll window.
         rc, out, err = _run_curl([url, "--max-time", "40"], echo=False)
         check(rc == 0, f"observing run {run_id} failed: {_curl_detail(rc, err)}")
         obs = json.loads(out)
         for entry in obs.get("entries", []):
             print(f"    {entry['stream']}/{entry['level']}: {entry['message']}")
-        if obs.get("nextCursor"):
-            cursor = int(obs["nextCursor"])
+        if obs.get("next_cursor"):
+            cursor = int(obs["next_cursor"])
         if obs["run"]["status"] in TERMINAL:
             return obs["run"]["status"]
         time.sleep(0.1)
@@ -175,10 +175,10 @@ def run() -> None:
     health = call("GET", "/")
     check(health.get("status") == "online", "service not online")
     created = call("POST", "/api/v1/rees", {"name": "agent-authored-ree"})
-    ree_id = created["reeId"]
-    check(ree_id, "no reeId in create response")
-    note(f"provisioning runs in the background as {created['runId']}")
-    check(wait_for_run(ree_id, created["runId"]) == "succeeded", "provisioning did not succeed")
+    ree_id = created["ree_id"]
+    check(ree_id, "no ree_id in create response")
+    note(f"provisioning runs in the background as {created['run_id']}")
+    check(wait_for_run(ree_id, created["run_id"]) == "succeeded", "provisioning did not succeed")
     ok(f"workbench provisioned for REE {ree_id}")
 
     chapter("2. Upload a source archive")
@@ -187,9 +187,9 @@ def run() -> None:
     init = call(
         "POST",
         f"/api/v1/rees/{ree_id}/source:upload-init",
-        {"fileName": archive_name, "size": len(archive), "contentType": "application/gzip"},
+        {"file_name": archive_name, "size": len(archive), "content_type": "application/gzip"},
     )
-    token = init["uploadToken"]
+    token = init["upload_token"]
     note("PUT the raw archive bytes to the returned upload URL")
     with tempfile.TemporaryDirectory() as work:
         (Path(work) / archive_name).write_bytes(archive)
@@ -197,7 +197,7 @@ def run() -> None:
             [
                 "-X",
                 "PUT",
-                f"{BASE_URL}{init['uploadUrl']}",
+                f"{BASE_URL}{init['upload_url']}",
                 "-H",
                 "Content-Type: application/octet-stream",
                 "--data-binary",
@@ -207,13 +207,13 @@ def run() -> None:
         )
     stored = json.loads(out) if out.strip() else {}
     print(json.dumps(stored, indent=2))
-    check(rc == 0 and stored.get("uploadToken") == token, f"upload did not store the token: {_curl_detail(rc, err)}")
+    check(rc == 0 and stored.get("upload_token") == token, f"upload did not store the token: {_curl_detail(rc, err)}")
     completed = call(
         "POST",
         f"/api/v1/rees/{ree_id}/source:upload-complete",
-        {"uploadToken": token, "archiveName": archive_name},
+        {"upload_token": token, "archive_name": archive_name},
     )
-    check(wait_for_run(ree_id, completed["runId"]) == "succeeded", "source extraction did not succeed")
+    check(wait_for_run(ree_id, completed["run_id"]) == "succeeded", "source extraction did not succeed")
     ok(f"source extracted into the workspace ({len(archive)} bytes)")
 
     chapter("3. Inspect the compact state")
@@ -243,7 +243,7 @@ def run() -> None:
         "PATCH",
         f"/api/v1/rees/{ree_id}/intent",
         {
-            "reeIntentPatch": {
+            "ree_intent_patch": {
                 "name": "agent-authored-ree",
                 "catalog_metadata": {
                     "version": "1.0.0",
@@ -252,12 +252,12 @@ def run() -> None:
             }
         },
     )
-    check(patched["reeIntent"]["catalog_metadata"]["version"] == "1.0.0", "intent version not recorded")
+    check(patched["ree_intent"]["catalog_metadata"]["version"] == "1.0.0", "intent version not recorded")
     ok("intent recorded")
 
     chapter("6. Seal and download")
-    sealed = call("POST", f"/api/v1/rees/{ree_id}/ree:seal", {"includeSource": True})
-    seal_hash = sealed["reeSession"]["seal_hash"]
+    sealed = call("POST", f"/api/v1/rees/{ree_id}/ree:seal", {"include_source": True})
+    seal_hash = sealed["ree_session"]["seal_hash"]
     check(seal_hash.startswith("sha256:"), "seal did not produce a sha256 hash")
     ok(f"sealed as {seal_hash}")
     with tempfile.TemporaryDirectory() as work:
