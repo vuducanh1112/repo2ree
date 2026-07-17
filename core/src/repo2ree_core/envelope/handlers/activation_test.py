@@ -10,6 +10,7 @@ from __future__ import annotations
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.envelope.handlers._common import run_runnable_handler
 from repo2ree_core.experiment.experiment import Runnable
+from repo2ree_core.experiment.resolve import RunnableResolutionError, resolve_activation_runnable
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_protocol.command import ActivationTestArgs
 from repo2ree_protocol.log import LogSink
@@ -24,9 +25,10 @@ def handle_activation_test(
     is_canceled: CancelCheck,
 ) -> ActionResult:
     def select(ree: ReeIntent, log: LogSink) -> tuple[Runnable, str] | None:
-        activation = ree.activation
-        if not activation.run_script.strip():
-            log("system", "error", "Activation has no run script")
+        try:
+            activation = resolve_activation_runnable(ree)
+        except RunnableResolutionError as exc:
+            log("system", "error", str(exc))
             return None
         return activation, "activation"
 

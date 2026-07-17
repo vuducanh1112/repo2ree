@@ -319,13 +319,13 @@ class TestHandlerWiring:
         assert receipt["workspaceDrift"]["status"] == "unknown"  # never materialized
         assert result.outputs["receipt"] == receipt
 
-    def _seed_experiment(self, workbench: ReeStore) -> ReeIntent:
+    def _seed_experiment(self, workbench: ReeStore, *, runtime: str = "runtime.tar") -> ReeIntent:
         from repo2ree_core.workspace.model import WorkspaceMetadata
 
         layout = workbench.layout
         intent = ReeIntent.model_validate(
             {
-                "runtime": "runtime.tar",
+                "runtime": runtime,
                 "experiments": [
                     {
                         "name": "exp-a",
@@ -370,6 +370,28 @@ class TestHandlerWiring:
         assert (layout.results_dir("exp-a") / "results" / "out.txt").read_text() == "answer"
         receipt = json.loads(layout.run_receipt("run-e").read_text(encoding="utf-8"))
         assert receipt["producedOutputDigest"] == digest_output_paths(layout.workspace, ["results/out.txt"])
+
+    def test_native_experiment_run_warns_and_omits_runtime_binding(self, workbench: ReeStore) -> None:
+        from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
+        from repo2ree_protocol.command import RunExperimentArgs
+
+        self._seed_experiment(workbench, runtime="")
+        layout = workbench.layout
+        lines: list[tuple[str, str, str]] = []
+
+        result = handle_run_experiment(
+            RunExperimentArgs(experiment_name="exp-a"),
+            run_id="run-native",
+            log=lambda stream, level, message: lines.append((stream, level, message)),
+            is_canceled=lambda: False,
+        )
+
+        assert result.status == "succeeded"
+        warns = [message for stream, level, message in lines if level == "warn"]
+        assert any("No runtime artifact declared" in message for message in warns)
+        receipt = json.loads(layout.run_receipt("run-native").read_text(encoding="utf-8"))
+        assert receipt["runtimePath"] is None
+        assert receipt["declaredRuntimeDigest"] is None
 
     def test_rewritten_output_makes_experiment_stale(self, workbench: ReeStore) -> None:
         from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment

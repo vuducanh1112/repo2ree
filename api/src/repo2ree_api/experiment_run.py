@@ -14,6 +14,11 @@ from repo2ree_api.run_management import (
     start_single_command_run,
 )
 from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.experiment.resolve import (
+    ExperimentNotFoundError,
+    RunnableResolutionError,
+    resolve_experiment_runnable,
+)
 from repo2ree_protocol.command import RunExperimentArgs, RunExperimentCommand
 
 # ================================================
@@ -63,7 +68,11 @@ def create_experiment_run(
 
 
 def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
-    """Validate the experiment exists and has a run script before starting a run."""
+    """Reject a run that cannot start, with a synchronous 4xx instead of a failed run.
+
+    Advisory only: the intent can change between this check and dispatch, so the
+    in-workbench handler applies the same core rules authoritatively.
+    """
     handle = workbench_manager.lookup(ree_id)
     if handle is None:
         raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
@@ -78,20 +87,12 @@ def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid REE intent: {exc}") from exc
 
-    if not ree.runtime:
-        raise HTTPException(
-            status_code=400,
-            detail="Runtime artifact is required before running experiments",
-        )
-
-    experiment = next((e for e in ree.experiments if e.name == experiment_name), None)
-    if experiment is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Experiment {experiment_name!r} not found",
-        )
-    if not experiment.run_script.strip():
-        raise HTTPException(status_code=400, detail="Experiment has no run script")
+    try:
+        resolve_experiment_runnable(ree, experiment_name)
+    except ExperimentNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RunnableResolutionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _create_experiment_run_state(
