@@ -1,5 +1,5 @@
 // A workbench agent dialed into the control plane. Pure domain shape; the data
-// layer maps the API DTO onto this. An agent is listed only while it holds its
+// layer maps the API wire shape onto this. An agent is listed only while it holds its
 // outbound connection, so `status` is "connected" for everything the fleet view
 // receives — the field exists so a later broker step can add drained/draining.
 export type AgentStatus = "connected";

@@ -1,4 +1,4 @@
-import type { ScriptTemplateEntryDto } from "@shell/data/scriptTemplates/catalog";
+import type { ScriptTemplateEntry } from "@shell/data/scriptTemplates/catalog";
 import {
   lgColors,
   lgContentCard,
@@ -23,7 +23,7 @@ interface RunScriptCardProps {
   // editor; choosing a template replaces the editor content locally — nothing
   // is persisted until the save button. The entry marked `isDefault` doubles
   // as the prefill for a script that doesn't exist yet.
-  templates?: ScriptTemplateEntryDto[];
+  templates?: ScriptTemplateEntry[];
   disabled?: boolean;
   // Optional header icon rendered beside the label.
   icon?: React.ReactNode;

@@ -2,11 +2,7 @@ import type { ReeId } from "@core/ree/ReeId";
 import type { ReeRun, ReeRunLogChunk, ReeRunSummary } from "@core/runs/ReeRun";
 import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
 import { useMemo } from "react";
-import {
-  type ReeRunDto,
-  type ReeRunStatusDto,
-  toSourceAcquireRequest,
-} from "../../infra/api/apiTypes";
+import { type RunStatus, type RunSummary, toSourceAcquireRequest } from "../../infra/api/apiTypes";
 import { mapRunLogsToLines } from "../../infra/api/ReeRunsApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { ensureReeId } from "../client";
@@ -50,7 +46,7 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
     },
     async startReeRun(id, scriptKey, params = {}) {
       const reeId = await ensureReeId(runtime, id);
-      let run: ReeRunDto;
+      let run: RunSummary;
       switch (scriptKey) {
         case "build":
           run = await runtime.runsApi.createBuildRuntimeRun(reeId, {
@@ -131,7 +127,7 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
       });
       return {
         lines: mapRunLogsToLines(logs.entries),
-        nextCursor: nextRunLogCursor(logs.next_cursor, logs.entries, cursor),
+        nextCursor: nextRunLogCursor(logs.next_cursor ?? undefined, logs.entries, cursor),
         hasMore: logs.has_more,
       };
     },
@@ -158,17 +154,17 @@ export function useReeRunsClient(): ReeRunsClient {
   return useMemo(() => createReeRunsClient(runtime), [runtime]);
 }
 
-function mapStatus(status: ReeRunStatusDto): ReeRunStatus {
+function mapStatus(status: RunStatus): ReeRunStatus {
   return status;
 }
 
-function mapRun(run: ReeRunDto): ReeRun {
+function mapRun(run: RunSummary): ReeRun {
   return {
     runId: run.run_id,
     status: mapStatus(run.status),
     createdAt: run.created_at,
-    startedAt: run.started_at,
-    finishedAt: run.finished_at,
+    startedAt: run.started_at ?? undefined,
+    finishedAt: run.finished_at ?? undefined,
   };
 }
 

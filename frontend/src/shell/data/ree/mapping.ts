@@ -1,7 +1,7 @@
 import { mapRawReeIntentToSlices } from "@core/ree/mapRawReeIntent";
-import type { ReeDetailDto } from "../../infra/api/apiTypes";
+import type { ReeDocument } from "../../infra/api/apiTypes";
 
-export function mapReeDetailToReeSlices(ree: ReeDetailDto) {
+export function mapReeDetailToReeSlices(ree: ReeDocument) {
   return mapRawReeIntentToSlices({
     reeIntent: ree.ree_intent,
     reeSession: ree.ree_session,

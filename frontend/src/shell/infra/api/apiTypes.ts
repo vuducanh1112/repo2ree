@@ -1,87 +1,60 @@
-export interface ApiErrorEnvelope {
-  error: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
-  };
-}
+import type { components } from "./generated/openapi";
+
+type Schema<TName extends keyof components["schemas"]> = components["schemas"][TName];
+
+type NullToUndefined<TValue> = TValue extends null ? undefined : TValue;
+
+type NullableToOptional<T> = {
+  [K in keyof T]: NullToUndefined<T[K]>;
+};
+
+export type ApiErrorEnvelope = Schema<"ErrorEnvelope">;
 
 export interface ApiListResponse<TItem> {
   items: TItem[];
-  next_cursor?: string;
+  next_cursor?: string | null;
 }
 
-export interface ReeSummaryDto {
-  ree_id: string;
-  external_ref?: string;
-  name: string;
-  status: "draft" | "ready" | "sealed" | "archived";
-  created_at: string;
-  updated_at: string;
-}
+export type ReeSummary = Schema<"ReeSummary"> & {
+  external_ref?: string | null;
+};
 
-export interface ReeFileDto {
+export type ReeFileWire = {
   path: string;
-  content?: string;
-  size?: number;
+  content?: string | null;
+  size?: number | null;
   kind: "source" | "generated";
-  etag?: string;
-}
+  etag?: string | null;
+};
 
-export interface ReeArtifactFileDto {
+export type ReeArtifactFileWire = {
   path: string;
-  content?: string;
-  size?: number;
+  content?: string | null;
+  size?: number | null;
   kind: "ree";
-  tag?: string;
-}
+  tag?: string | null;
+};
 
-export interface ReeIntentDto {
-  name: string;
-  catalog_metadata: {
-    description?: string;
-    version?: string;
-    website?: string;
-    keywords?: string[];
-    contributors?: Array<{
-      identifier?: string;
-      name?: string;
-      affiliation_name?: string;
-      affiliation_identifier?: string;
-    }>;
-    corresponding_author_identifier?: string | null;
-  };
-  origin_url: string;
-  source_type: string;
-  runtime: string;
-  lifecycle?: Record<string, unknown>;
-  sbom: string;
-  activation?: Record<string, unknown>;
-  swhid: string;
-  zenodo_doi: string;
-  dataverse_doi: string;
-  hardware_description: Record<string, unknown>;
-  experiments?: Array<Record<string, unknown>>;
-}
+export type ReeIntent = Schema<"ReeIntent">;
 
-export interface ReeSessionDto {
-  sealed_at?: string;
-  seal_hash?: string;
-  dependency_level?: number;
-  environment_level?: number;
-  machine_level?: number;
-  detected_dependencies?: string;
-  source_available?: boolean;
-  source_acquired_by?: string;
-  uploaded_archive?: string;
-  source_snapshot_archive?: string;
-  source_snapshot_captured_at?: string;
-  source_included?: boolean;
-  runtime_included?: boolean;
-}
+export type ReeSessionWire = {
+  sealed_at?: string | null;
+  seal_hash?: string | null;
+  dependency_level?: number | null;
+  environment_level?: number | null;
+  machine_level?: number | null;
+  detected_dependencies?: string | null;
+  source_available?: boolean | null;
+  source_acquired_by?: string | null;
+  uploaded_archive?: string | null;
+  source_snapshot_archive?: string | null;
+  source_snapshot_captured_at?: string | null;
+  source_included?: boolean | null;
+  runtime_included?: boolean | null;
+};
 
 /** Display-ready source-repository facts as they cross the wire (snake_case). */
-export interface SourceRepoMetadataDto {
+export type SourceRepoMetadataWire = {
   name: string;
   origin: string;
   acquired_by: string;
@@ -89,231 +62,110 @@ export interface SourceRepoMetadataDto {
   swhid: string;
   size_bytes: number | null;
   size_label: string | null;
-}
+};
 
-export interface ConsistencyStaleInputDto {
+export type ConsistencyStaleInputWire = {
   input: string;
   recorded: string | null;
   current: string | null;
-}
+};
 
-export interface ConsistencyStepDto {
+export type ConsistencyStepWire = {
   step: string;
   status: "fresh" | "stale" | "missing";
-  run_id?: string;
-  recorded_at?: string;
-  stale_inputs?: ConsistencyStaleInputDto[];
-  workspace_drift?: "clean" | "modified" | "unknown";
-}
+  run_id?: string | null;
+  recorded_at?: string | null;
+  stale_inputs?: ConsistencyStaleInputWire[];
+  workspace_drift?: "clean" | "modified" | "unknown" | null;
+};
 
 /** Per-step freshness of recorded run receipts vs. the current tree. */
-export interface ConsistencyReportDto {
-  steps: ConsistencyStepDto[];
-}
+export type ConsistencyReportWire = {
+  steps: ConsistencyStepWire[];
+};
 
-export interface ReeDetailDto extends ReeSummaryDto {
-  ree_intent: Partial<ReeIntentDto>;
-  ree_session?: Partial<ReeSessionDto>;
-  files?: ReeFileDto[];
-  ree_files?: ReeArtifactFileDto[];
+export type ReeDocument = Schema<"ReeDocument"> & {
+  external_ref?: string | null;
+  ree_intent: Partial<ReeIntent>;
+  ree_session?: Partial<ReeSessionWire>;
+  files?: ReeFileWire[];
+  ree_files?: ReeArtifactFileWire[];
   draft_manifest?: Record<string, unknown>;
-  source_repo?: SourceRepoMetadataDto;
-  consistency?: ConsistencyReportDto;
+  source_repo?: SourceRepoMetadataWire;
+  consistency?: ConsistencyReportWire;
   /** The image this REE's workbench was provisioned from. */
-  workbench_image?: string;
-}
+  workbench_image?: string | null;
+};
 
-export interface CreateReeRequestDto {
-  name?: string;
-  /** Image to provision the workbench from; omitted falls back to the server default. */
-  workbench_image?: string;
-  /** Agent to place the workbench on (GET /agents); omitted means "any connected agent". */
-  agent_id?: string;
-}
+export type ReeCreatePayload = Schema<"ReeCreatePayload">;
 
-/** A base image offered for workbench provisioning (GET /workbench/images). */
-export interface WorkbenchImageDto {
-  id: string;
-  ref: string;
-  label: string;
-  description: string;
-}
-
-export interface WorkbenchImageCatalogDto {
-  images: WorkbenchImageDto[];
-  /** Id of the image used when a provisioning request omits one. */
-  default_id: string;
-}
+export type WorkbenchImageCatalog = Schema<"WorkbenchImageCatalog">;
 
 /** One named starter-template variant for an REE-owned script; exactly one entry per list is the default. */
-export interface ScriptTemplateEntryDto {
-  key: string;
-  label: string;
-  description: string;
-  body: string;
-  is_default: boolean;
-}
+export type ScriptTemplateEntry = Schema<"ScriptTemplateEntry">;
 
 /** Backend-owned starter templates for the REE-owned scripts (GET /script-templates). */
-export interface ScriptTemplateCatalogDto {
-  build: {
-    path: string;
-    /** Named variants (currently only `docker`); the default is what a fresh REE is seeded with. */
-    templates: ScriptTemplateEntryDto[];
-  };
-  activation: {
-    run_script_path: string;
-    /** Where an activation verify script belongs; declaring one is an explicit act. */
-    verify_script_path: string;
-    templates: ScriptTemplateEntryDto[];
-  };
-  experiment: {
-    /** Path conventions with a `{slug}` placeholder (experiment name, whitespace → hyphens). */
-    run_script_path_pattern: string;
-    verify_script_path_pattern: string;
-    templates: ScriptTemplateEntryDto[];
-  };
-  /** Verify templates shared across runnables. */
-  verify: ScriptTemplateEntryDto[];
-}
+export type ScriptTemplateCatalog = Schema<"ScriptTemplateCatalog">;
 
 /** A workbench agent connected to the control plane (GET /agents). */
-export interface AgentSummaryDto {
-  agent_id: string;
-  hostname: string;
-  version: string;
-  docker_mode: string;
-  /** ISO 8601 UTC timestamp of when the agent dialed in. */
-  connected_at: string;
-  status: string;
-}
+export type AgentSummary = Schema<"AgentSummary">;
 
-export interface AgentListDto {
-  agents: AgentSummaryDto[];
-}
+export type AgentList = Schema<"AgentList">;
 
-export interface PatchReeRequestDto {
-  ree_intent_patch: Record<string, unknown>;
-  expected_version?: string;
-}
+export type ReeIntentPatchPayload = Schema<"ReeIntentPatchPayload">;
 
-export interface SourceAcquireRequestDto {
-  origin_url: string;
-  source_type: "git" | "tarball" | "zip";
-  /** Git revision (commit, branch, or tag) to pin the fetch to; blank means default-branch HEAD. */
-  revision?: string;
-}
+export type SourceAcquirePayload = Schema<"SourceAcquirePayload">;
 
 /**
- * Shape an {@link SourceAcquireRequestDto} from loosely-typed download inputs,
+ * Shape an {@link SourceAcquirePayload} from loosely-typed download inputs,
  * applying the one normalization rule both acquire call sites (source execution
  * and workspace-reset fallback) must agree on: trim the revision and omit it
  * when blank, so the backend sees no revision rather than an empty string. Kept
- * here, next to the DTO, so the two paths cannot drift.
+ * here, next to the wire type, so the two paths cannot drift.
  */
 export function toSourceAcquireRequest(input: {
   origin_url?: unknown;
   source_type?: unknown;
   revision?: unknown;
-}): SourceAcquireRequestDto {
+}): SourceAcquirePayload {
   const revision = typeof input.revision === "string" ? input.revision.trim() : "";
   return {
     origin_url: String(input.origin_url ?? ""),
-    source_type: String(input.source_type ?? "git") as "git" | "tarball" | "zip",
+    source_type: String(input.source_type ?? "git") as SourceAcquirePayload["source_type"],
     ...(revision ? { revision } : {}),
   };
 }
 
-export interface UploadInitRequestDto {
-  file_name: string;
-  size: number;
-  content_type: string;
-}
+export type UploadInitPayload = Schema<"UploadInitPayload">;
 
-export interface UploadInitResponseDto {
-  upload_url: string;
-  upload_token: string;
-  expires_at: string;
-}
+export type UploadInitResponse = Schema<"UploadInitResponse">;
 
-export type ReeRunOperationDto =
-  | "provision"
-  | "evaluate"
-  | "build"
-  | "hbom"
-  | "sbom"
-  | "activation"
-  | "source"
-  | "swh"
-  | "zenodo"
-  | "dataverse"
-  | "experiment";
+export type CreateExperimentRunPayload = Schema<"CreateExperimentRunPayload">;
 
-// No fields yet — kept as the extension point for future run options.
-export type CreateExperimentRunRequestDto = Record<string, never>;
+export type RunStatus = Schema<"RunSummary">["status"];
 
-export type ReeRunStatusDto =
-  | "created"
-  | "queued"
-  | "provisioning"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "canceling"
-  | "canceled";
+export type CreateBuildRuntimeRunPayload = Schema<"CreateBuildRuntimeRunPayload">;
 
-export interface CreateBuildRuntimeRunRequestDto {
-  idempotency_key?: string;
-}
+export type CreateGenerateSbomRunPayload = Schema<"CreateGenerateSbomRunPayload">;
 
-export interface CreateGenerateSbomRunRequestDto {
-  produced_runtime_path: string;
-  idempotency_key?: string;
-}
+export type CreateGenerateHbomRunPayload = Schema<"CreateGenerateHbomRunPayload">;
 
-export interface CreateGenerateHbomRunRequestDto {
-  idempotency_key?: string;
-}
+export type CreateCrossCheckSbomRunPayload = Schema<"CreateCrossCheckSbomRunPayload">;
 
-export interface CreateCrossCheckSbomRunRequestDto {
-  idempotency_key?: string;
-}
+export type CreateActivationTestRunPayload = Schema<"CreateActivationTestRunPayload">;
 
-export interface CreateActivationTestRunRequestDto {
-  idempotency_key?: string;
-}
+export type CreateEvaluateRunPayload = Schema<"CreateEvaluateRunPayload">;
 
-export interface CreateEvaluateRunRequestDto {
-  strict: boolean;
-  idempotency_key?: string;
-}
+export type RunSummary = Schema<"RunSummary">;
 
-export interface ReeRunDto {
-  run_id: string;
-  ree_id: string;
-  operation: ReeRunOperationDto;
-  status: ReeRunStatusDto;
-  created_at: string;
-  started_at?: string;
-  finished_at?: string;
-  outputs?: Record<string, unknown>;
-}
+export type RunList = Schema<"RunList">;
 
-export interface ReeRunListDto {
-  runs: ReeRunDto[];
-}
+export type RunLogEntry = Schema<"RunLogEntry">;
 
-export interface ReeRunLogEntryDto {
-  seq: number;
-  ts: string;
-  stream: "stdout" | "stderr" | "system";
-  level: "info" | "warn" | "error" | "debug";
-  message: string;
-}
+export type RunLogPage = Schema<"RunLogPage">;
 
-export interface ReeRunLogsDto {
-  entries: ReeRunLogEntryDto[];
-  next_cursor?: string;
-  has_more: boolean;
-  run_status: ReeRunStatusDto;
-}
+export type FileMutationResponse = NullableToOptional<Schema<"FileMutationResponse">>;
+
+export type DeleteReeResponse = Schema<"DeleteReeResponse">;
+
+export type ReprovisionResponse = Schema<"ReprovisionResponse">;

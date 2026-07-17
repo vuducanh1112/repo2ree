@@ -9,6 +9,7 @@
     "ignoreUnknown": true,
     "includes": [
       "src/**/*.{ts,tsx}",
+      "!src/shell/infra/api/generated/**",
       "!dist",
       "!node_modules",
       "!.vite",

@@ -2,6 +2,9 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
 
   "ignoreDependencies": ["@biomejs/biome"],
+  "ignoreIssues": {
+    "src/shell/infra/api/generated/openapi.ts": ["exports", "types"]
+  },
 
   "entry": ["scripts/gen-frontend-coverage.mjs"]
 }

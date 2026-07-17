@@ -1,11 +1,11 @@
 import type { WorkbenchImageCatalog } from "@core/workbench/WorkbenchImage";
-import type { WorkbenchImageCatalogDto } from "@shell/infra/api/apiTypes";
+import type { WorkbenchImageCatalog as WorkbenchImageCatalogWire } from "@shell/infra/api/apiTypes";
 import { useQuery } from "@tanstack/react-query";
 import { useApiRuntime } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
 
-function mapCatalog(dto: WorkbenchImageCatalogDto): WorkbenchImageCatalog {
-  return { images: dto.images, defaultId: dto.default_id };
+function mapCatalog(wire: WorkbenchImageCatalogWire): WorkbenchImageCatalog {
+  return { images: wire.images, defaultId: wire.default_id };
 }
 
 // The backend's workbench image catalog. It's effectively static for a session,

@@ -1,4 +1,4 @@
-import type { ScriptTemplateEntryDto } from "@shell/data/scriptTemplates/catalog";
+import type { ScriptTemplateEntry } from "@shell/data/scriptTemplates/catalog";
 import { RunScriptCard } from "@shell/ui/app-shell/components/RunScriptCard";
 import { Ic } from "@shell/ui/shared/components/Icon";
 
@@ -8,7 +8,7 @@ interface ReservedBuildScriptCardProps {
   // Backend-owned build-script template variants; the picker inserts into the
   // editor only, saving stays on the button. The build script itself is seeded
   // at REE creation, so the card's content arrives already prefilled.
-  templates?: ScriptTemplateEntryDto[];
+  templates?: ScriptTemplateEntry[];
   onSave: (content: string) => void;
 }
 

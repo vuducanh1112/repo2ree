@@ -1,5 +1,5 @@
 // A base image offered for workbench provisioning. Domain shape used by the UI;
-// the data layer maps the API DTO onto this.
+// the data layer maps the API wire shape onto this.
 export interface WorkbenchImage {
   id: string;
   ref: string;

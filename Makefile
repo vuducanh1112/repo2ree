@@ -3,6 +3,7 @@
 # split.
 #
 #   mk/checks.mk   static checks (docs, shell, nix, frontend, python)
+#   mk/contracts.mk contract generation (OpenAPI + frontend API types)
 #   mk/tests.mk    unit/integration suites and coverage variants
 #   mk/e2e.mk      e2e bundles, stacks, playwright runs
 #   mk/images.mk   image builds and the archive path
@@ -63,6 +64,7 @@ require-clean-tree:
 		|| { echo "working tree dirty — commit first, so published images match a commit"; exit 1; }
 
 include mk/checks.mk
+include mk/contracts.mk
 include mk/tests.mk
 include mk/e2e.mk
 include mk/images.mk

@@ -1,19 +1,19 @@
 import type { Agent } from "@core/agent/Agent";
 import { sortAgents } from "@core/agent/Agent";
-import type { AgentSummaryDto } from "@shell/infra/api/apiTypes";
+import type { AgentSummary } from "@shell/infra/api/apiTypes";
 import { useQuery } from "@tanstack/react-query";
 import { useApiRuntime } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
 
-// Pure DTO → domain map. Status is narrowed to the domain's single connected
+// Pure wire shape → domain map. Status is narrowed to the domain's single connected
 // state; the endpoint only lists connected agents.
-function mapAgent(dto: AgentSummaryDto): Agent {
+function mapAgent(wire: AgentSummary): Agent {
   return {
-    id: dto.agent_id,
-    hostname: dto.hostname,
-    version: dto.version,
-    dockerMode: dto.docker_mode,
-    connectedAt: dto.connected_at,
+    id: wire.agent_id,
+    hostname: wire.hostname,
+    version: wire.version,
+    dockerMode: wire.docker_mode,
+    connectedAt: wire.connected_at,
     status: "connected",
   };
 }
@@ -29,8 +29,8 @@ export function useAgents() {
   return useQuery({
     queryKey: queryKeys.agents(),
     queryFn: async (): Promise<Agent[]> => {
-      const dto = await reeApi.listAgents();
-      return sortAgents(dto.agents.map(mapAgent));
+      const wire = await reeApi.listAgents();
+      return sortAgents(wire.agents.map(mapAgent));
     },
     refetchInterval: AGENTS_REFETCH_MS,
   });

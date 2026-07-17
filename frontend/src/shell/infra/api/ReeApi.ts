@@ -1,18 +1,21 @@
 import type { ReeId } from "@core/ree/ReeId";
 import type { ApiClient } from "./ApiClient";
 import type {
-  AgentListDto,
+  AgentList,
   ApiListResponse,
-  CreateReeRequestDto,
-  PatchReeRequestDto,
-  ReeDetailDto,
-  ReeRunDto,
-  ReeSummaryDto,
-  ScriptTemplateCatalogDto,
-  SourceAcquireRequestDto,
-  UploadInitRequestDto,
-  UploadInitResponseDto,
-  WorkbenchImageCatalogDto,
+  DeleteReeResponse,
+  FileMutationResponse,
+  ReeCreatePayload,
+  ReeDocument,
+  ReeIntentPatchPayload,
+  ReeSummary,
+  ReprovisionResponse,
+  RunSummary,
+  ScriptTemplateCatalog,
+  SourceAcquirePayload,
+  UploadInitPayload,
+  UploadInitResponse,
+  WorkbenchImageCatalog,
 } from "./apiTypes";
 import { endpoints } from "./endpoints";
 
@@ -48,22 +51,22 @@ export class ReeApi {
   constructor(private readonly client: ApiClient) {}
 
   /** The base images the backend offers at provision time. */
-  async listWorkbenchImages(): Promise<WorkbenchImageCatalogDto> {
-    return this.client.request<WorkbenchImageCatalogDto>(endpoints.workbenchImages(), {
+  async listWorkbenchImages(): Promise<WorkbenchImageCatalog> {
+    return this.client.request<WorkbenchImageCatalog>(endpoints.workbenchImages(), {
       method: "GET",
     });
   }
 
   /** Backend-owned starter templates for the REE-owned scripts. */
-  async listScriptTemplates(): Promise<ScriptTemplateCatalogDto> {
-    return this.client.request<ScriptTemplateCatalogDto>(endpoints.scriptTemplates(), {
+  async listScriptTemplates(): Promise<ScriptTemplateCatalog> {
+    return this.client.request<ScriptTemplateCatalog>(endpoints.scriptTemplates(), {
       method: "GET",
     });
   }
 
   /** Workbench agents currently dialed into the control plane. */
-  async listAgents(): Promise<AgentListDto> {
-    return this.client.request<AgentListDto>(endpoints.agents(), { method: "GET" });
+  async listAgents(): Promise<AgentList> {
+    return this.client.request<AgentList>(endpoints.agents(), { method: "GET" });
   }
 
   async uploadSourceBytes(uploadUrl: string, data: ArrayBuffer): Promise<void> {
@@ -82,27 +85,27 @@ export class ReeApi {
    * runId), not the finished workspace. Poll the run / its log feed and fetch
    * the workspace with {@link getRee} once it reaches "succeeded".
    */
-  async createRee(payload: CreateReeRequestDto): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.rees(), {
+  async createRee(payload: ReeCreatePayload): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.rees(), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
-  async listRees(query: ListReesQuery = {}): Promise<ApiListResponse<ReeSummaryDto>> {
+  async listRees(query: ListReesQuery = {}): Promise<ApiListResponse<ReeSummary>> {
     const searchParams = new URLSearchParams();
     if (query.cursor) searchParams.set("cursor", query.cursor);
     if (typeof query.limit === "number") searchParams.set("limit", String(query.limit));
     if (query.status) searchParams.set("status", query.status);
-    return this.client.request<ApiListResponse<ReeSummaryDto>>(
+    return this.client.request<ApiListResponse<ReeSummary>>(
       endpoints.rees(),
       { method: "GET" },
       searchParams,
     );
   }
 
-  async getRee(reeId: ReeId): Promise<ReeDetailDto> {
-    return this.client.request<ReeDetailDto>(endpoints.ree(reeId), {
+  async getRee(reeId: ReeId): Promise<ReeDocument> {
+    return this.client.request<ReeDocument>(endpoints.ree(reeId), {
       method: "GET",
     });
   }
@@ -119,35 +122,39 @@ export class ReeApi {
     });
   }
 
-  async patchReeIntent(reeId: ReeId, payload: PatchReeRequestDto): Promise<ReeDetailDto> {
-    return this.client.request<ReeDetailDto>(endpoints.reeIntent(reeId), {
+  async patchReeIntent(reeId: ReeId, payload: ReeIntentPatchPayload): Promise<ReeDocument> {
+    return this.client.request<ReeDocument>(endpoints.reeIntent(reeId), {
       method: "PATCH",
       body: JSON.stringify(payload),
     });
   }
 
-  async deleteRee(reeId: ReeId): Promise<{ deleted_at: string; state: string }> {
-    return this.client.request<{ deleted_at: string; state: string }>(endpoints.ree(reeId), {
+  async deleteRee(reeId: ReeId): Promise<DeleteReeResponse> {
+    return this.client.request<DeleteReeResponse>(endpoints.ree(reeId), {
       method: "DELETE",
     });
   }
 
-  async acquireSource(reeId: ReeId, payload: SourceAcquireRequestDto): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.reeSourceAcquire(reeId), {
+  async acquireSource(reeId: ReeId, payload: SourceAcquirePayload): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeSourceAcquire(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
-  async initUpload(reeId: ReeId, payload: UploadInitRequestDto): Promise<UploadInitResponseDto> {
-    return this.client.request<UploadInitResponseDto>(endpoints.reeSourceUploadInit(reeId), {
+  async initUpload(reeId: ReeId, payload: UploadInitPayload): Promise<UploadInitResponse> {
+    return this.client.request<UploadInitResponse>(endpoints.reeSourceUploadInit(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
-  async completeUpload(reeId: ReeId, uploadToken: string, archiveName: string): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.reeSourceUploadComplete(reeId), {
+  async completeUpload(
+    reeId: ReeId,
+    uploadToken: string,
+    archiveName: string,
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeSourceUploadComplete(reeId), {
       method: "POST",
       body: JSON.stringify({ upload_token: uploadToken, archive_name: archiveName }),
     });
@@ -171,8 +178,8 @@ export class ReeApi {
   async sealRee(
     reeId: ReeId,
     opts: { includeSource: boolean; includeRuntime: boolean; includeResults: boolean },
-  ): Promise<ReeDetailDto> {
-    return this.client.request<ReeDetailDto>(endpoints.reeSeal(reeId), {
+  ): Promise<ReeDocument> {
+    return this.client.request<ReeDocument>(endpoints.reeSeal(reeId), {
       method: "POST",
       body: JSON.stringify({
         include_source: opts.includeSource,
@@ -195,26 +202,22 @@ export class ReeApi {
   async putFileContent(
     reeId: ReeId,
     payload: PutReeFileContentRequest,
-  ): Promise<{ etag?: string; updated_at?: string }> {
-    return this.client.request<{ etag?: string; updated_at?: string }>(
-      endpoints.reeFileContent(reeId),
-      {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      },
-    );
+  ): Promise<FileMutationResponse> {
+    return this.client.request<FileMutationResponse>(endpoints.reeFileContent(reeId), {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
   }
 
-  async reprovisionWorkbench(reeId: ReeId | string): Promise<{ status: string; ree_id: string }> {
-    return this.client.request<{ status: string; ree_id: string }>(
-      endpoints.reeWorkbenchReprovision(reeId),
-      { method: "POST" },
-    );
+  async reprovisionWorkbench(reeId: ReeId | string): Promise<ReprovisionResponse> {
+    return this.client.request<ReprovisionResponse>(endpoints.reeWorkbenchReprovision(reeId), {
+      method: "POST",
+    });
   }
 
-  async deleteFileContent(reeId: ReeId, path: string): Promise<{ deleted_at?: string }> {
+  async deleteFileContent(reeId: ReeId, path: string): Promise<FileMutationResponse> {
     const searchParams = new URLSearchParams({ path });
-    return this.client.request<{ deleted_at?: string }>(
+    return this.client.request<FileMutationResponse>(
       endpoints.reeFileContent(reeId),
       {
         method: "DELETE",

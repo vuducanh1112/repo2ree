@@ -4,7 +4,7 @@ import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { WorkspaceResetPayload } from "@core/workspace/WorkspaceReset";
 import type { ReeProject, WorkspaceBinaryDownload } from "@core/workspace/WorkspaceTypes";
 import { useMemo } from "react";
-import { type ReeDetailDto, toSourceAcquireRequest } from "../../infra/api/apiTypes";
+import { type ReeDocument, toSourceAcquireRequest } from "../../infra/api/apiTypes";
 import type { ReeApi } from "../../infra/api/ReeApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { ensureReeId } from "../client";
@@ -22,7 +22,7 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
   sealRee(
     id: ReeId | string,
     opts: { includeSource: boolean; includeRuntime: boolean; includeResults: boolean },
-  ): Promise<ReeDetailDto>;
+  ): Promise<ReeDocument>;
   getReeArchive(id: ReeId | string): Promise<WorkspaceBinaryDownload>;
   resetWorkspaceRequest(id: ReeId | string, request: WorkspaceResetPayload): Promise<void>;
 }

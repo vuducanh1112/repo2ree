@@ -40,12 +40,12 @@ export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent 
       } catch {
         throw new Error("could not save pending changes");
       }
-      const workspaceDto = await reeClient.sealRee(reeId, {
+      const workspaceWire = await reeClient.sealRee(reeId, {
         includeSource: inclusionOpts.includeSource,
         includeRuntime: inclusionOpts.includeRuntime,
         includeResults: inclusionOpts.includeResults,
       });
-      const project = mapReeDetailToReeProject(workspaceDto);
+      const project = mapReeDetailToReeProject(workspaceWire);
       hydrateWorkspace({
         workspaceFiles: project.files,
         reeArtifactFiles: project.reeFiles ?? [],

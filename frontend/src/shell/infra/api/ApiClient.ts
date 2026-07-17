@@ -8,9 +8,14 @@ interface ApiClientOptions {
 class ApiRequestError extends Error {
   status: number;
   code: string;
-  details?: Record<string, unknown>;
+  details?: ApiErrorEnvelope["error"]["details"];
 
-  constructor(status: number, code: string, message: string, details?: Record<string, unknown>) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    details?: ApiErrorEnvelope["error"]["details"],
+  ) {
     super(message);
     this.name = "ApiRequestError";
     this.status = status;

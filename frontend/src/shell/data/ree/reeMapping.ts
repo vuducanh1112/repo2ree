@@ -3,40 +3,40 @@ import type { ConsistencyReport } from "@core/ree-steps/sealConsistency";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { ReeProject, SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import type {
-  ConsistencyReportDto,
-  ReeDetailDto,
-  SourceRepoMetadataDto,
+  ConsistencyReportWire,
+  ReeDocument,
+  SourceRepoMetadataWire,
 } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices } from "./mapping";
 
 // Wire → domain: the API speaks snake_case, the frontend camelCase.
-function mapSourceRepo(dto: SourceRepoMetadataDto | undefined): SourceRepoMetadata | undefined {
-  if (!dto) {
+function mapSourceRepo(wire: SourceRepoMetadataWire | undefined): SourceRepoMetadata | undefined {
+  if (!wire) {
     return undefined;
   }
   return {
-    name: dto.name,
-    origin: dto.origin,
-    acquiredBy: dto.acquired_by,
-    sourceType: dto.source_type,
-    swhid: dto.swhid,
-    sizeBytes: dto.size_bytes,
-    sizeLabel: dto.size_label,
+    name: wire.name,
+    origin: wire.origin,
+    acquiredBy: wire.acquired_by,
+    sourceType: wire.source_type,
+    swhid: wire.swhid,
+    sizeBytes: wire.size_bytes,
+    sizeLabel: wire.size_label,
   };
 }
 
-function mapConsistency(dto: ConsistencyReportDto | undefined): ConsistencyReport | undefined {
-  if (!dto) {
+function mapConsistency(wire: ConsistencyReportWire | undefined): ConsistencyReport | undefined {
+  if (!wire) {
     return undefined;
   }
   return {
-    steps: (dto.steps || []).map((step) => ({
+    steps: (wire.steps || []).map((step) => ({
       step: step.step,
       status: step.status,
-      runId: step.run_id,
-      recordedAt: step.recorded_at,
+      runId: step.run_id ?? undefined,
+      recordedAt: step.recorded_at ?? undefined,
       staleInputs: step.stale_inputs,
-      workspaceDrift: step.workspace_drift,
+      workspaceDrift: step.workspace_drift ?? undefined,
     })),
   };
 }
@@ -93,14 +93,14 @@ function upsertTreeFile(
 }
 
 export function mapReeDetailToReeProject(
-  ree: ReeDetailDto,
+  ree: ReeDocument,
 ): ReeProject<FileTreeNode, ReturnType<typeof mapReeDetailToReeSlices>> {
   const files: FileTreeNode[] = [];
   for (const file of ree.files || []) {
     if (!file.path) {
       continue;
     }
-    upsertTreeFile(files, file.path, file.content, file.size, file.kind);
+    upsertTreeFile(files, file.path, file.content ?? undefined, file.size ?? undefined, file.kind);
   }
 
   const reeFiles: ReeFile[] = (ree.ree_files || []).map((file, index) => ({
@@ -108,8 +108,8 @@ export function mapReeDetailToReeProject(
     name: file.path,
     type: "file",
     tag: file.tag || "REE",
-    content: file.content,
-    size: file.size,
+    content: file.content ?? undefined,
+    size: file.size ?? undefined,
   }));
   const reeState = mapReeDetailToReeSlices(ree);
 
@@ -121,6 +121,6 @@ export function mapReeDetailToReeProject(
     draftManifest: ree.draft_manifest,
     sourceRepo: mapSourceRepo(ree.source_repo),
     consistency: mapConsistency(ree.consistency),
-    workbenchImage: ree.workbench_image,
+    workbenchImage: ree.workbench_image ?? undefined,
   };
 }

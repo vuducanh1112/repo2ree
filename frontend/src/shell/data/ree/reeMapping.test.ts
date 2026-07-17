@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { ReeDetailDto } from "../../infra/api/apiTypes";
+import type { ReeDocument } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeProject } from "./reeMapping";
 
-function baseRee(overrides: Partial<ReeDetailDto> = {}): ReeDetailDto {
+function baseRee(overrides: Partial<ReeDocument> = {}): ReeDocument {
   return {
     ree_id: "ree-1",
     name: "workspace-demo",

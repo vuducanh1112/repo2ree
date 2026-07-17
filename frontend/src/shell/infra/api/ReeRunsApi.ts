@@ -1,17 +1,17 @@
 import type { ApiClient } from "./ApiClient";
 import type {
-  CreateActivationTestRunRequestDto,
-  CreateBuildRuntimeRunRequestDto,
-  CreateCrossCheckSbomRunRequestDto,
-  CreateEvaluateRunRequestDto,
-  CreateExperimentRunRequestDto,
-  CreateGenerateHbomRunRequestDto,
-  CreateGenerateSbomRunRequestDto,
-  ReeRunDto,
-  ReeRunListDto,
-  ReeRunLogEntryDto,
-  ReeRunLogsDto,
-  ReeRunStatusDto,
+  CreateActivationTestRunPayload,
+  CreateBuildRuntimeRunPayload,
+  CreateCrossCheckSbomRunPayload,
+  CreateEvaluateRunPayload,
+  CreateExperimentRunPayload,
+  CreateGenerateHbomRunPayload,
+  CreateGenerateSbomRunPayload,
+  RunList,
+  RunLogEntry,
+  RunLogPage,
+  RunStatus,
+  RunSummary,
 } from "./apiTypes";
 import { endpoints } from "./endpoints";
 
@@ -26,9 +26,9 @@ export class ReeRunsApi {
 
   async createBuildRuntimeRun(
     reeId: string,
-    payload: CreateBuildRuntimeRunRequestDto,
-  ): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.reeBuildRuntime(reeId), {
+    payload: CreateBuildRuntimeRunPayload,
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeBuildRuntime(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -36,9 +36,9 @@ export class ReeRunsApi {
 
   async createGenerateSbomRun(
     reeId: string,
-    payload: CreateGenerateSbomRunRequestDto,
-  ): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.reeGenerateSbom(reeId), {
+    payload: CreateGenerateSbomRunPayload,
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeGenerateSbom(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -46,9 +46,9 @@ export class ReeRunsApi {
 
   async createCrossCheckSbomRun(
     reeId: string,
-    payload: CreateCrossCheckSbomRunRequestDto = {},
-  ): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.reeCrossCheckSbom(reeId), {
+    payload: CreateCrossCheckSbomRunPayload = {},
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeCrossCheckSbom(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -56,9 +56,9 @@ export class ReeRunsApi {
 
   async createGenerateHbomRun(
     reeId: string,
-    payload: CreateGenerateHbomRunRequestDto = {},
-  ): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.reeGenerateHbom(reeId), {
+    payload: CreateGenerateHbomRunPayload = {},
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeGenerateHbom(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -66,16 +66,16 @@ export class ReeRunsApi {
 
   async createActivationTestRun(
     reeId: string,
-    payload: CreateActivationTestRunRequestDto,
-  ): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.reeActivationTest(reeId), {
+    payload: CreateActivationTestRunPayload,
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeActivationTest(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
-  async createEvaluateRun(reeId: string, payload: CreateEvaluateRunRequestDto): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.reeEvaluate(reeId), {
+  async createEvaluateRun(reeId: string, payload: CreateEvaluateRunPayload): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeEvaluate(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -84,28 +84,28 @@ export class ReeRunsApi {
   async createExperimentRun(
     reeId: string,
     experimentName: string,
-    payload: CreateExperimentRunRequestDto,
-  ): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.reeExperimentRun(reeId, experimentName), {
+    payload: CreateExperimentRunPayload,
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeExperimentRun(reeId, experimentName), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
-  async listRuns(reeId: string): Promise<ReeRunListDto> {
-    return this.client.request<ReeRunListDto>(endpoints.reeRuns(reeId), {
+  async listRuns(reeId: string): Promise<RunList> {
+    return this.client.request<RunList>(endpoints.reeRuns(reeId), {
       method: "GET",
     });
   }
 
-  async getRun(reeId: string, runId: string): Promise<ReeRunDto> {
-    return this.client.request<ReeRunDto>(endpoints.reeRun(reeId, runId), {
+  async getRun(reeId: string, runId: string): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeRun(reeId, runId), {
       method: "GET",
     });
   }
 
-  async cancelRun(reeId: string, runId: string): Promise<{ status: ReeRunStatusDto }> {
-    return this.client.request<{ status: ReeRunStatusDto }>(endpoints.reeRunCancel(reeId, runId), {
+  async cancelRun(reeId: string, runId: string): Promise<{ status: RunStatus }> {
+    return this.client.request<{ status: RunStatus }>(endpoints.reeRunCancel(reeId, runId), {
       method: "POST",
     });
   }
@@ -114,12 +114,12 @@ export class ReeRunsApi {
     reeId: string,
     runId: string,
     query: ListRunLogsQuery = {},
-  ): Promise<ReeRunLogsDto> {
+  ): Promise<RunLogPage> {
     const searchParams = new URLSearchParams();
     if (query.cursor) searchParams.set("cursor", query.cursor);
     if (typeof query.limit === "number") searchParams.set("limit", String(query.limit));
     if (query.sinceTs) searchParams.set("sinceTs", query.sinceTs);
-    return this.client.request<ReeRunLogsDto>(
+    return this.client.request<RunLogPage>(
       endpoints.reeRunLogs(reeId, runId),
       { method: "GET" },
       searchParams,
@@ -127,7 +127,7 @@ export class ReeRunsApi {
   }
 }
 
-export function mapRunLogsToLines(lines: ReeRunLogEntryDto[]): Array<{
+export function mapRunLogsToLines(lines: RunLogEntry[]): Array<{
   type: "info" | "ok" | "warn" | "err" | "out";
   msg: string;
   ts?: string;

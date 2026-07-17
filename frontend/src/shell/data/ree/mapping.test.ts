@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { ReeDetailDto } from "../../infra/api/apiTypes";
+import type { ReeDocument } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices } from "./mapping";
 
 describe("shell/data/ree/mapping", () => {
   it("falls back to workspace external ref when origin_url is absent", () => {
-    const ree: ReeDetailDto = {
+    const ree: ReeDocument = {
       ree_id: "ree-1",
       name: "workspace-demo",
       status: "draft",
