@@ -105,7 +105,7 @@ def test_get_scorecard_emits_camel_case_card(initialized_ree: Path) -> None:
     result = runner.invoke(cli, ["get-scorecard"])
     assert result.exit_code == 0
     card = json.loads(result.output)
-    assert card["levelCode"] == "R0"
+    assert card["level_code"] == "R0"
     assert [category["key"] for category in card["categories"]] == [
         "source",
         "runtime",

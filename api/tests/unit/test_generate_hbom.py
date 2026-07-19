@@ -11,19 +11,17 @@ def temp_storage(tmp_path, monkeypatch):
     yield tmp_path
 
 
-def test_ree_from_metadata_normalizes_invalid_hardware_description_payload():
+def test_ree_intent_normalizes_invalid_hardware_description_payload():
     from repo2ree_core.domain.ree_intent import ReeIntent
 
-    intent = ReeIntent.from_metadata(
+    intent = ReeIntent.model_validate(
         {
-            "ree_intent": {
-                "name": "hbom-test",
-                "hardware_description": {
-                    "memory": "asdasd",
-                    "cpu": "awdasd",
-                    "gpu": "awdwad",
-                },
-            }
+            "name": "hbom-test",
+            "hardware_description": {
+                "memory": "asdasd",
+                "cpu": "awdasd",
+                "gpu": "awdwad",
+            },
         }
     )
 

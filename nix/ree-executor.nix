@@ -82,7 +82,7 @@ let
     jq -n \
       --arg execPath "${bin}/bin/repo2ree-exec" \
       --arg pausePath "${pause}/bin/sleep" \
-      '{schemaVersion: 1, execPath: $execPath, pausePath: $pausePath}' \
+      '{schema_version: 1, exec_path: $execPath, pause_path: $pausePath}' \
       > $out
   '';
 in

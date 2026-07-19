@@ -5,22 +5,22 @@ describe("parseReproducibilityReport", () => {
   it("returns null for non-report payloads", () => {
     expect(parseReproducibilityReport(null)).toBeNull();
     expect(parseReproducibilityReport({})).toBeNull();
-    expect(parseReproducibilityReport({ dependencyLevel: "x" })).toBeNull();
+    expect(parseReproducibilityReport({ dependency_level: "x" })).toBeNull();
     // all three axes are required
-    expect(parseReproducibilityReport({ dependencyLevel: 2, environmentLevel: 0 })).toBeNull();
+    expect(parseReproducibilityReport({ dependency_level: 2, environment_level: 0 })).toBeNull();
   });
 
   it("parses a well-formed report and drops malformed threats", () => {
     const report = parseReproducibilityReport({
-      dependencyLevel: 2,
-      dependencyLevelLabel: "Pinned",
-      environmentLevel: 0,
-      environmentLevelLabel: "None",
-      machineLevel: 0,
-      machineLevelLabel: "None",
-      ladderLevel: 3,
-      ladderLabel: "Top-level Pins",
-      dependencySummary: { manifests: 1, total: 2, pinned: 2, ranged: 0, unpinned: 0, locked: 0 },
+      dependency_level: 2,
+      dependency_level_label: "Pinned",
+      environment_level: 0,
+      environment_level_label: "None",
+      machine_level: 0,
+      machine_level_label: "None",
+      ladder_level: 3,
+      ladder_label: "Top-level Pins",
+      dependency_summary: { manifests: 1, total: 2, pinned: 2, ranged: 0, unpinned: 0, locked: 0 },
       dependencies: [
         {
           ecosystem: "npm",
@@ -73,9 +73,9 @@ describe("parseReproducibilityReport", () => {
 
   it("defaults a missing threats array to empty", () => {
     const report = parseReproducibilityReport({
-      dependencyLevel: 0,
-      environmentLevel: 0,
-      machineLevel: 0,
+      dependency_level: 0,
+      environment_level: 0,
+      machine_level: 0,
     });
     expect(report?.threats).toEqual([]);
     expect(report?.sbomCrossCheck).toBeNull();
@@ -83,9 +83,9 @@ describe("parseReproducibilityReport", () => {
 
   it("parses cross-check enrichment: presence, undeclared rows, and the summary", () => {
     const report = parseReproducibilityReport({
-      dependencyLevel: 3,
-      environmentLevel: 0,
-      machineLevel: 0,
+      dependency_level: 3,
+      environment_level: 0,
+      machine_level: 0,
       dependencies: [
         {
           ecosystem: "pypi",
@@ -107,14 +107,14 @@ describe("parseReproducibilityReport", () => {
           runtime_presence: "shiny",
         },
       ],
-      sbomCrossCheck: {
-        sbomDigest: "sha256:abc",
-        checkedAt: "2026-07-15T00:00:00Z",
-        declaredDirectTotal: 1,
-        observedMatched: 1,
-        versionMismatches: 0,
-        undeclaredSameEcosystem: 1,
-        observedTotal: 42,
+      sbom_cross_check: {
+        sbom_digest: "sha256:abc",
+        checked_at: "2026-07-15T00:00:00Z",
+        declared_direct_total: 1,
+        observed_matched: 1,
+        version_mismatches: 0,
+        undeclared_same_ecosystem: 1,
+        observed_total: 42,
         undeclared: [{ ecosystem: "pypi", name: "certifi", version: "2024.2.2" }, { bad: true }],
       },
       threats: [],

@@ -270,7 +270,7 @@ class TestCrossCheckRung:
     def test_cross_check_reaches_with_matching_sbom_digest(self) -> None:
         receipts: list[RunReceipt] = [_build_receipt(), _sbom_receipt(), _crosscheck_receipt()]
         card = build_scorecard(_intent(), _session(), receipts)
-        rung = _rung(card, "runtime", "crossChecked")
+        rung = _rung(card, "runtime", "cross_checked")
         assert rung.reached
         assert (rung.done, rung.total) == (3, 4)
 
@@ -282,7 +282,7 @@ class TestCrossCheckRung:
             _crosscheck_receipt(sbom_digest="sha256:" + "f" * 64),
         ]
         card = build_scorecard(_intent(), _session(), receipts)
-        assert not _rung(card, "runtime", "crossChecked").reached
+        assert not _rung(card, "runtime", "cross_checked").reached
 
     def test_cross_check_requires_an_inventoried_runtime(self) -> None:
         # SBOM from an older build: inventoried fails, so cross-checked must too.
@@ -292,11 +292,11 @@ class TestCrossCheckRung:
             _crosscheck_receipt(),
         ]
         card = build_scorecard(_intent(), _session(), receipts)
-        assert not _rung(card, "runtime", "crossChecked").reached
+        assert not _rung(card, "runtime", "cross_checked").reached
 
     def test_missing_cross_check_leaves_fraction_unset(self) -> None:
         card = build_scorecard(_intent(), _session(), [_build_receipt(), _sbom_receipt()])
-        rung = _rung(card, "runtime", "crossChecked")
+        rung = _rung(card, "runtime", "cross_checked")
         assert not rung.reached
         assert (rung.done, rung.total) == (None, None)
 
@@ -310,9 +310,9 @@ class TestWireContract:
     def test_serializes_camel_case_with_derived_labels(self) -> None:
         card = build_scorecard(_intent(), _sealed_session(), _full_receipts())
         raw = json.loads(card.model_dump_json(by_alias=True))
-        assert raw["schemaVersion"] == 1
-        assert raw["levelCode"] == "R5"
-        assert raw["levelName"] == "Archived"
+        assert raw["schema_version"] == 1
+        assert raw["level_code"] == "R5"
+        assert raw["level_name"] == "Archived"
         assert [category["key"] for category in raw["categories"]] == [
             "source",
             "runtime",

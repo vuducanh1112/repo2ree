@@ -1,6 +1,7 @@
 // Domain model for the reproducibility threat report produced by the backend
 // evaluate run (api/src/repo2ree_api/evaluate.py -> core reproducibility_report.py).
-// Field names mirror the camelCase JSON the backend serializes.
+// The wire is snake_case; the parsers below map it into these camelCase
+// domain fields at the boundary.
 
 import type { AxisKey } from "./axes";
 
@@ -155,8 +156,6 @@ function parseDependency(value: unknown): EvaluatedDependency | null {
   return {
     ecosystem: raw.ecosystem as DependencyEcosystem,
     name: raw.name,
-    // Dependency is a core-domain model (snake_case); the report envelope is
-    // camelCase. Normalize that embedded shape at the frontend boundary.
     nameAsWritten: typeof raw.name_as_written === "string" ? raw.name_as_written : null,
     scope: typeof raw.scope === "string" ? raw.scope : null,
     direct: raw.direct !== false,
@@ -190,13 +189,13 @@ function parseSbomCrossCheck(value: unknown): SbomCrossCheckSummary | null {
   const raw = asRecord(value);
   if (!raw) return null;
   return {
-    sbomDigest: typeof raw.sbomDigest === "string" ? raw.sbomDigest : null,
-    checkedAt: typeof raw.checkedAt === "string" ? raw.checkedAt : "",
-    declaredDirectTotal: asInt(raw.declaredDirectTotal),
-    observedMatched: asInt(raw.observedMatched),
-    versionMismatches: asInt(raw.versionMismatches),
-    undeclaredSameEcosystem: asInt(raw.undeclaredSameEcosystem),
-    observedTotal: asInt(raw.observedTotal),
+    sbomDigest: typeof raw.sbom_digest === "string" ? raw.sbom_digest : null,
+    checkedAt: typeof raw.checked_at === "string" ? raw.checked_at : "",
+    declaredDirectTotal: asInt(raw.declared_direct_total),
+    observedMatched: asInt(raw.observed_matched),
+    versionMismatches: asInt(raw.version_mismatches),
+    undeclaredSameEcosystem: asInt(raw.undeclared_same_ecosystem),
+    observedTotal: asInt(raw.observed_total),
     undeclared: Array.isArray(raw.undeclared)
       ? raw.undeclared
           .map(parseUndeclaredPackage)
@@ -213,9 +212,9 @@ export function parseReproducibilityReport(value: unknown): ReproducibilityRepor
   const raw = asRecord(value);
   if (
     !raw ||
-    typeof raw.dependencyLevel !== "number" ||
-    typeof raw.environmentLevel !== "number" ||
-    typeof raw.machineLevel !== "number"
+    typeof raw.dependency_level !== "number" ||
+    typeof raw.environment_level !== "number" ||
+    typeof raw.machine_level !== "number"
   ) {
     return null;
   }
@@ -228,17 +227,17 @@ export function parseReproducibilityReport(value: unknown): ReproducibilityRepor
         .filter((dependency): dependency is EvaluatedDependency => dependency !== null)
     : [];
   return {
-    dependencyLevel: asInt(raw.dependencyLevel),
+    dependencyLevel: asInt(raw.dependency_level),
     dependencyLevelLabel:
-      typeof raw.dependencyLevelLabel === "string" ? raw.dependencyLevelLabel : "",
-    environmentLevel: asInt(raw.environmentLevel),
+      typeof raw.dependency_level_label === "string" ? raw.dependency_level_label : "",
+    environmentLevel: asInt(raw.environment_level),
     environmentLevelLabel:
-      typeof raw.environmentLevelLabel === "string" ? raw.environmentLevelLabel : "",
-    machineLevel: asInt(raw.machineLevel),
-    machineLevelLabel: typeof raw.machineLevelLabel === "string" ? raw.machineLevelLabel : "",
-    dependencySummary: parseDependencySummary(raw.dependencySummary),
+      typeof raw.environment_level_label === "string" ? raw.environment_level_label : "",
+    machineLevel: asInt(raw.machine_level),
+    machineLevelLabel: typeof raw.machine_level_label === "string" ? raw.machine_level_label : "",
+    dependencySummary: parseDependencySummary(raw.dependency_summary),
     dependencies,
-    sbomCrossCheck: parseSbomCrossCheck(raw.sbomCrossCheck),
+    sbomCrossCheck: parseSbomCrossCheck(raw.sbom_cross_check),
     threats,
   };
 }

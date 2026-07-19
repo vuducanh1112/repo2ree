@@ -49,9 +49,9 @@ def test_scorecard_crosses_as_the_core_models_camelcase_dump(
 
     assert resp.status_code == 200
     scorecard = resp.json()
-    assert scorecard["schemaVersion"] == 1
-    assert scorecard["levelCode"] == "R1"
-    assert scorecard["levelName"] == "Available"
+    assert scorecard["schema_version"] == 1
+    assert scorecard["level_code"] == "R1"
+    assert scorecard["level_name"] == "Available"
     assert scorecard["categories"][0]["rungs"][0] == {
         "key": "acquired",
         "label": "Source acquired",
@@ -81,7 +81,7 @@ def test_evaluate_report_crosses_as_the_core_models_camelcase_dump(
 
     assert resp.status_code == 200
     wire = resp.json()
-    assert wire["dependencyLevel"] == int(DependencyLevel.PINNED)
-    assert wire["dependencyLevelLabel"] == DependencyLevel.PINNED.label
-    assert wire["dependencySummary"]["pinned"] == 2
-    assert wire["detectedDependencies"] == "2 dependencies across 1 manifest file"
+    assert wire["dependency_level"] == int(DependencyLevel.PINNED)
+    assert wire["dependency_level_label"] == DependencyLevel.PINNED.label
+    assert wire["dependency_summary"]["pinned"] == 2
+    assert wire["detected_dependencies"] == "2 dependencies across 1 manifest file"

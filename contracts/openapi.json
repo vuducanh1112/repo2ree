@@ -945,7 +945,7 @@
           "runs"
         ],
         "summary": "Get Workspace Evaluate Report",
-        "description": "The persisted evaluate-run report artifact.\n\nA workbench-derived document: unlike the snake_case control-plane wire,\nit crosses as the core model's camelCase dump (``dependencyLevel`` etc.).",
+        "description": "The persisted evaluate-run report artifact.",
         "operationId": "getEvaluateReport",
         "parameters": [
           {
@@ -1068,7 +1068,7 @@
           "rees"
         ],
         "summary": "Get Ree Scorecard",
-        "description": "The reproducibility scorecard, computed inside the workbench from the\nREE's persisted record (intent + session + run receipts).\n\nA workbench-derived document: unlike the snake_case control-plane wire,\nit crosses as the core model's camelCase dump (``levelCode`` etc.).",
+        "description": "The reproducibility scorecard, computed inside the workbench from the\nREE's persisted record (intent + session + run receipts).",
         "operationId": "getScorecard",
         "parameters": [
           {
@@ -5563,7 +5563,7 @@
             "title": "Etag"
           }
         },
-        "additionalProperties": true,
+        "additionalProperties": false,
         "type": "object",
         "title": "FileMutationResponse"
       },
@@ -6573,7 +6573,6 @@
             "title": "External Ref"
           }
         },
-        "additionalProperties": true,
         "type": "object",
         "required": [
           "ree_id",
@@ -6586,16 +6585,16 @@
       },
       "ReproducibilityReport": {
         "properties": {
-          "dependencyLevel": {
+          "dependency_level": {
             "$ref": "#/components/schemas/DependencyLevel"
           },
-          "environmentLevel": {
+          "environment_level": {
             "$ref": "#/components/schemas/EnvironmentLevel"
           },
-          "machineLevel": {
+          "machine_level": {
             "$ref": "#/components/schemas/MachineLevel"
           },
-          "dependencySummary": {
+          "dependency_summary": {
             "$ref": "#/components/schemas/DependencySummary"
           },
           "dependencies": {
@@ -6605,7 +6604,7 @@
             "type": "array",
             "title": "Dependencies"
           },
-          "sbomCrossCheck": {
+          "sbom_cross_check": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/SbomCrossCheckSummary"
@@ -6622,47 +6621,47 @@
             "type": "array",
             "title": "Threats"
           },
-          "dependencyLevelLabel": {
+          "dependency_level_label": {
             "type": "string",
-            "title": "Dependencylevellabel",
+            "title": "Dependency Level Label",
             "readOnly": true
           },
-          "environmentLevelLabel": {
+          "environment_level_label": {
             "type": "string",
-            "title": "Environmentlevellabel",
+            "title": "Environment Level Label",
             "readOnly": true
           },
-          "machineLevelLabel": {
+          "machine_level_label": {
             "type": "string",
-            "title": "Machinelevellabel",
+            "title": "Machine Level Label",
             "readOnly": true
           },
-          "detectedDependencies": {
+          "detected_dependencies": {
             "type": "string",
-            "title": "Detecteddependencies",
+            "title": "Detected Dependencies",
             "readOnly": true
           }
         },
         "type": "object",
         "required": [
-          "dependencyLevel",
-          "environmentLevel",
-          "machineLevel",
-          "dependencySummary",
+          "dependency_level",
+          "environment_level",
+          "machine_level",
+          "dependency_summary",
           "threats",
-          "dependencyLevelLabel",
-          "environmentLevelLabel",
-          "machineLevelLabel",
-          "detectedDependencies"
+          "dependency_level_label",
+          "environment_level_label",
+          "machine_level_label",
+          "detected_dependencies"
         ],
         "title": "ReproducibilityReport"
       },
       "ReproducibilityScoreCard": {
         "properties": {
-          "schemaVersion": {
+          "schema_version": {
             "type": "integer",
             "const": 1,
-            "title": "Schemaversion",
+            "title": "Schema Version",
             "default": 1
           },
           "level": {
@@ -6682,14 +6681,14 @@
             "type": "array",
             "title": "Categories"
           },
-          "levelCode": {
+          "level_code": {
             "type": "string",
-            "title": "Levelcode",
+            "title": "Level Code",
             "readOnly": true
           },
-          "levelName": {
+          "level_name": {
             "type": "string",
-            "title": "Levelname",
+            "title": "Level Name",
             "readOnly": true
           }
         },
@@ -6698,8 +6697,8 @@
           "level",
           "sealed",
           "categories",
-          "levelCode",
-          "levelName"
+          "level_code",
+          "level_name"
         ],
         "title": "ReproducibilityScoreCard",
         "description": "The scorecard: five evidence categories + the ordinal level.\n\n``level`` is the bottleneck aggregate (see module docstring); the code and\nname are derived from it so they can never drift."
@@ -6996,7 +6995,7 @@
       },
       "SbomCrossCheckSummary": {
         "properties": {
-          "sbomDigest": {
+          "sbom_digest": {
             "anyOf": [
               {
                 "type": "string"
@@ -7005,36 +7004,36 @@
                 "type": "null"
               }
             ],
-            "title": "Sbomdigest"
+            "title": "Sbom Digest"
           },
-          "checkedAt": {
+          "checked_at": {
             "type": "string",
-            "title": "Checkedat",
+            "title": "Checked At",
             "default": ""
           },
-          "declaredDirectTotal": {
+          "declared_direct_total": {
             "type": "integer",
-            "title": "Declareddirecttotal",
+            "title": "Declared Direct Total",
             "default": 0
           },
-          "observedMatched": {
+          "observed_matched": {
             "type": "integer",
-            "title": "Observedmatched",
+            "title": "Observed Matched",
             "default": 0
           },
-          "versionMismatches": {
+          "version_mismatches": {
             "type": "integer",
-            "title": "Versionmismatches",
+            "title": "Version Mismatches",
             "default": 0
           },
-          "undeclaredSameEcosystem": {
+          "undeclared_same_ecosystem": {
             "type": "integer",
-            "title": "Undeclaredsameecosystem",
+            "title": "Undeclared Same Ecosystem",
             "default": 0
           },
-          "observedTotal": {
+          "observed_total": {
             "type": "integer",
-            "title": "Observedtotal",
+            "title": "Observed Total",
             "default": 0
           },
           "undeclared": {

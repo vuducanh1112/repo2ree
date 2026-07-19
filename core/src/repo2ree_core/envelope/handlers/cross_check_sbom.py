@@ -29,8 +29,8 @@ class CrossCheckSbomOutputs(BaseModel):
 
     report_relative_path: str
     sbom_relative_path: str
-    # The cross-check summary, camelCase by design: it is part of the evaluate
-    # report document the frontend consumes as-is (see the de-stringing plan).
+    # The cross-check summary (an SbomCrossCheckSummary dump); kept as a dict
+    # here because the outputs envelope stays JSON.
     cross_check: dict[str, Any]
     receipt: dict[str, Any]
 
@@ -104,7 +104,7 @@ def handle_cross_check_sbom(
         report.dependencies = result.dependencies
         report.sbom_cross_check = summary
         report_path.write_text(
-            json.dumps(report.model_dump(by_alias=True), indent=2),
+            json.dumps(report.model_dump(), indent=2),
             encoding="utf-8",
         )
     except Exception as exc:
@@ -123,7 +123,7 @@ def handle_cross_check_sbom(
     outputs = CrossCheckSbomOutputs(
         report_relative_path=_REPORT_FILENAME,
         sbom_relative_path=str(sbom_rel),
-        cross_check=summary.model_dump(by_alias=True),
+        cross_check=summary.model_dump(),
         receipt=recorded.model_dump(),
     )
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())

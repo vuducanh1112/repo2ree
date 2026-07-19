@@ -154,7 +154,10 @@ class ReeDocument(BaseModel):
 
 
 class ReeSummary(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    # A projection: routes feed this the full workbench sidecar and validation
+    # drops everything beyond the summary fields, so the wire matches the
+    # contract exactly.
+    model_config = ConfigDict(extra="ignore")
 
     ree_id: str
     name: str
@@ -222,7 +225,7 @@ class UploadStoredResponse(BaseModel):
 
 
 class FileMutationResponse(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     updated_at: str | None = None
     deleted_at: str | None = None

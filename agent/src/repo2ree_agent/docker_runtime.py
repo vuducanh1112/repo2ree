@@ -151,7 +151,7 @@ def _load_injection_bundle(exec_bundle_dir: str | None, tools_bundle_dir: str | 
         # scripts calling bare tool names work on tool-less images. Applied by
         # the executor, not the container env — overriding the container PATH
         # would shadow the image's own binaries (dind's docker CLI).
-        bin_dir = tools_manifest.get("binDir")
+        bin_dir = tools_manifest.get("bin_dir")
         if bin_dir:
             tool_env["REPO2REE_TOOLS_BIN"] = bin_dir
         # Verbatim bench env from the manifest (TLS roots for git/curl).
@@ -161,8 +161,8 @@ def _load_injection_bundle(exec_bundle_dir: str | None, tools_bundle_dir: str | 
         digest.update(source.encode())
 
     return _InjectionBundle(
-        exec_path=exec_manifest["execPath"],
-        pause_path=exec_manifest["pausePath"],
+        exec_path=exec_manifest["exec_path"],
+        pause_path=exec_manifest["pause_path"],
         store_sources=tuple(sources),
         volume_name=f"repo2ree-store-{digest.hexdigest()[:12]}",
         tool_env=tool_env,

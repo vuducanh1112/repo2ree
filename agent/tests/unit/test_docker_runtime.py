@@ -184,9 +184,9 @@ def exec_bundle_dir(tmp_path: Path) -> str:
     return _write_bundle(
         tmp_path / "exec-bundle",
         {
-            "schemaVersion": 1,
-            "execPath": "/nix/store/aaa-exec/bin/repo2ree-exec",
-            "pausePath": "/nix/store/bbb-busybox/bin/sleep",
+            "schema_version": 1,
+            "exec_path": "/nix/store/aaa-exec/bin/repo2ree-exec",
+            "pause_path": "/nix/store/bbb-busybox/bin/sleep",
         },
         ["/nix/store/aaa-exec", "/nix/store/bbb-busybox"],
     )
@@ -197,9 +197,9 @@ def tools_bundle_dir(tmp_path: Path) -> str:
     return _write_bundle(
         tmp_path / "tools-bundle",
         {
-            "schemaVersion": 1,
+            "schema_version": 1,
             "tools": {"syft": "/nix/store/ccc-syft/bin/syft"},
-            "binDir": "/nix/store/ddd-tools-bin/bin",
+            "bin_dir": "/nix/store/ddd-tools-bin/bin",
             "env": {"SSL_CERT_FILE": "/nix/store/eee-cacert/ca-bundle.crt"},
         },
         ["/nix/store/ccc-syft", "/nix/store/ddd-tools-bin"],

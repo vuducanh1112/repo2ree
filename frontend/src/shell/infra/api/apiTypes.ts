@@ -25,10 +25,6 @@ export type ConsistencyReportWire = Schema<"ConsistencyReport">;
 
 export type ReeDocument = Schema<"ReeDocument">;
 
-/**
- * Workbench-derived documents: unlike the snake_case control-plane wire these
- * cross as the core models' camelCase dumps (``levelCode``, ``dependencyLevel``).
- */
 export type ReproducibilityScoreCardWire = Schema<"ReproducibilityScoreCard">;
 
 export type ReproducibilityReportWire = Schema<"ReproducibilityReport">;

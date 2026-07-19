@@ -28,9 +28,6 @@ scorecard_router = APIRouter(tags=["rees"])
 def get_ree_scorecard(ree_id: str):
     """The reproducibility scorecard, computed inside the workbench from the
     REE's persisted record (intent + session + run receipts).
-
-    A workbench-derived document: unlike the snake_case control-plane wire,
-    it crosses as the core model's camelCase dump (``levelCode`` etc.).
     """
     handle = workbench_manager.lookup(ree_id)
     if handle is None:

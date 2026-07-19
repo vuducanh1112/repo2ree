@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { parseReproducibilityScoreCard } from "./ReproducibilityScoreCard";
 
 const wireCard = {
-  schemaVersion: 1,
+  schema_version: 1,
   level: 3,
-  levelCode: "R3",
-  levelName: "Functional",
+  level_code: "R3",
+  level_name: "Functional",
   sealed: false,
   categories: [
     {
@@ -52,7 +52,7 @@ describe("parseReproducibilityScoreCard", () => {
     });
     expect(card?.categories).toHaveLength(1);
     expect(card?.categories[0].key).toBe("source");
-    // Missing levelCode falls back to the level.
+    // Missing level_code falls back to the level.
     expect(card?.levelCode).toBe("R0");
   });
 });

@@ -190,8 +190,8 @@ export function parseReproducibilityScoreCard(value: unknown): ReproducibilitySc
     : [];
   return {
     level: Math.trunc(raw.level),
-    levelCode: typeof raw.levelCode === "string" ? raw.levelCode : `R${Math.trunc(raw.level)}`,
-    levelName: typeof raw.levelName === "string" ? raw.levelName : "",
+    levelCode: typeof raw.level_code === "string" ? raw.level_code : `R${Math.trunc(raw.level)}`,
+    levelName: typeof raw.level_name === "string" ? raw.level_name : "",
     sealed: raw.sealed === true,
     categories,
   };

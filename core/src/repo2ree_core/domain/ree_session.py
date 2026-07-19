@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -45,10 +44,6 @@ class ReeSession(BaseModel):
     source_included: bool = False
     runtime_included: bool = False
     results_included: bool = False
-
-    @classmethod
-    def from_metadata(cls, metadata: Mapping[str, Any]) -> ReeSession:
-        return cls.model_validate(dict(metadata.get("ree_session") or {}))
 
     def with_source(
         self,

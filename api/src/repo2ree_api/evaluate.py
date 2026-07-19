@@ -64,11 +64,7 @@ _REPORT_FILENAME = "reproducibility-report.json"
     responses=ERROR_RESPONSES,
 )
 def get_workspace_evaluate_report(ree_id: str) -> dict[str, Any]:
-    """The persisted evaluate-run report artifact.
-
-    A workbench-derived document: unlike the snake_case control-plane wire,
-    it crosses as the core model's camelCase dump (``dependencyLevel`` etc.).
-    """
+    """The persisted evaluate-run report artifact."""
     handle = workbench_manager.lookup(ree_id)
     if handle is not None:
         try:

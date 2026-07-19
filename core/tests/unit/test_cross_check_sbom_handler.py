@@ -33,10 +33,10 @@ def _silent_log(*_: object) -> None:
 
 
 _REPORT = {
-    "dependencyLevel": 3,
-    "environmentLevel": 1,
-    "machineLevel": 0,
-    "dependencySummary": {"manifests": 1, "total": 1, "locked": 1},
+    "dependency_level": 3,
+    "environment_level": 1,
+    "machine_level": 0,
+    "dependency_summary": {"manifests": 1, "total": 1, "locked": 1},
     "dependencies": [
         {
             "ecosystem": "pypi",
@@ -137,17 +137,17 @@ def test_enriches_report_and_records_receipt(tmp_path: Path, monkeypatch: pytest
     assert rows["requests"]["runtime_presence"] == "observed"
     assert rows["requests"]["observed_version"] == "2.31.0"
     assert rows["certifi"]["status"] == "undeclared"
-    summary = persisted["sbomCrossCheck"]
-    assert summary["declaredDirectTotal"] == 1
-    assert summary["observedMatched"] == 1
-    assert summary["undeclaredSameEcosystem"] == 1
-    assert summary["sbomDigest"]
-    assert summary["checkedAt"]
+    summary = persisted["sbom_cross_check"]
+    assert summary["declared_direct_total"] == 1
+    assert summary["observed_matched"] == 1
+    assert summary["undeclared_same_ecosystem"] == 1
+    assert summary["sbom_digest"]
+    assert summary["checked_at"]
 
     (receipt,) = load_receipts(layout)
     assert isinstance(receipt, CrossCheckSbomReceipt)
     assert receipt.status == "succeeded"
-    assert receipt.sbom_digest == summary["sbomDigest"]
+    assert receipt.sbom_digest == summary["sbom_digest"]
     assert receipt.observed_matched == 1
     assert receipt.observed_total == 2
 

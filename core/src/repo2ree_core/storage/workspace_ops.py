@@ -31,9 +31,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.receipts import build_consistency_report, published_receipts
+from repo2ree_core.receipts import ConsistencyReport, build_consistency_report, published_receipts
 from repo2ree_core.ree_scripts.reproducer import (
     reproducer_entries,
     runtime_artifact_basename_from_remap,
@@ -66,6 +64,7 @@ from repo2ree_core.workspace.inventory import (
     is_reserved_workspace_filename,
     should_inline_file_content,
 )
+from repo2ree_core.workspace.model import WorkspaceMetadata
 
 
 # Deferred import to break the storage → workspace_ops → manifest → storage cycle.
@@ -82,7 +81,7 @@ def _build_manifest_payload(
 
 
 def _build_draft_manifest_payload(
-    metadata: dict[str, Any],
+    metadata: WorkspaceMetadata,
     *,
     workspace_files: list[dict[str, Any]],
     ree_files: list[dict[str, Any]],
@@ -117,11 +116,11 @@ def _validate_user_path(path: str) -> str:
     return normalized
 
 
-def _read_metadata(storage_root: Path, ree_id: str) -> dict[str, Any]:
+def _read_metadata(storage_root: Path, ree_id: str) -> WorkspaceMetadata:
     store = _store(storage_root, ree_id)
     if not store.metadata_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
-    return store.read_metadata_json()
+    return store.read_metadata()
 
 
 def _list_tree_relpaths(root: Path) -> list[str]:
@@ -343,9 +342,9 @@ def _workspace_ree_files_with_content(
 
 def get_workspace(storage_root: Path, ree_id: str, *, include_content: bool = True) -> dict[str, Any]:
     metadata = _read_metadata(storage_root, ree_id)
-    intent = ReeIntent.from_metadata(metadata)
-    session = ReeSession.from_metadata(metadata)
-    detail = dict(metadata)
+    intent = metadata.ree_intent
+    session = metadata.ree_session
+    detail: dict[str, Any] = metadata.model_dump()
     files = _workspace_files_with_content(storage_root, ree_id, include_content=include_content)
     ree_files = _workspace_ree_files_with_content(storage_root, ree_id, include_content=include_content)
     detail["files"] = files
@@ -429,7 +428,7 @@ class SealOutputs(BaseModel):
     seal_hash: str | None
     source_included: bool
     runtime_included: bool
-    consistency: dict[str, Any]
+    consistency: ConsistencyReport
 
 
 def seal_workspace_ree(
@@ -464,7 +463,8 @@ def seal_workspace_ree(
     # Per-step freshness of the recorded run receipts against the tree being
     # sealed. Sealing over stale results proceeds — the staleness is recorded
     # in the manifest (and bundled receipts) so it is diagnosable later.
-    consistency = build_consistency_report(layout, intent, session).model_dump()
+    consistency_report = build_consistency_report(layout, intent, session)
+    consistency = consistency_report.model_dump()
 
     # The artifact plan and all file-heavy entries are identical across the
     # pre-seal digest and the final bundle — only the manifest differs — so read
@@ -517,7 +517,7 @@ def seal_workspace_ree(
         seal_hash=session.seal_hash,
         source_included=session.source_included,
         runtime_included=session.runtime_included,
-        consistency=consistency,
+        consistency=consistency_report,
     )
 
 

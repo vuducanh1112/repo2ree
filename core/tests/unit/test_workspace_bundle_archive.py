@@ -28,9 +28,10 @@ def _make_ree(storage_root, name):
             "external_ref": None,
             "name": name,
             "status": "ready",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
             "ree_intent": ReeIntent(name=name).model_dump(exclude_none=True),
             "ree_session": ReeSession().model_dump(exclude_none=True),
-            "source": {"mode": "download", "acquiredAt": "2026-01-01T00:00:00Z"},
         }
     )
     return ree_id, layout
@@ -391,15 +392,15 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
         sealed_at="2026-06-05T00:00:00Z",
     )
 
-    build_step = next(s for s in outputs.consistency["steps"] if s["step"] == "build_runtime")
-    assert build_step["status"] == "stale"
-    assert [entry["input"] for entry in build_step["stale_inputs"]] == ["build_script"]
+    build_step = next(s for s in outputs.consistency.steps if s.step == "build_runtime")
+    assert build_step.status == "stale"
+    assert [entry.input for entry in build_step.stale_inputs] == ["build_script"]
 
     with zipfile.ZipFile(io.BytesIO(build_workspace_ree_archive(storage_root, ree_id))) as zf:
         bundle_manifest = json.loads(zf.read("ree/ree.json"))
         receipt = json.loads(zf.read("ree/receipts/run-b.receipt.json"))
         bundled_receipts = [n for n in zf.namelist() if n.startswith("ree/receipts/") and n.endswith(".json")]
-    assert bundle_manifest["consistency"] == outputs.consistency
+    assert bundle_manifest["consistency"] == outputs.consistency.model_dump()
     assert receipt["run_id"] == "run-b"
     assert bundled_receipts == ["ree/receipts/run-b.receipt.json"]
     # The full run history stays on the workbench.

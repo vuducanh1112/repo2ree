@@ -139,7 +139,8 @@
         "src/core/ree-steps/**",
         "src/core/workspace/**",
         "src/core/evaluate/**",
-        "src/core/hbom/**"
+        "src/core/hbom/**",
+        "src/core/scorecard/**"
       ],
       "linter": {
         "rules": {

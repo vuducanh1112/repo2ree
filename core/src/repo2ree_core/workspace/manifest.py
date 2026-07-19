@@ -14,6 +14,7 @@ from typing import Any
 
 from repo2ree_core.domain.ree_intent import REE_MANIFEST_VERSION, ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.workspace.model import WorkspaceMetadata
 
 _SESSION_MANIFEST_EXCLUDE = {"detected_dependencies", "uploaded_archive", "source_resolved_commit"}
 
@@ -42,7 +43,7 @@ def build_manifest_payload(
 
 
 def build_draft_manifest_payload(
-    metadata: Mapping[str, Any],
+    metadata: WorkspaceMetadata,
     *,
     workspace_files: Sequence[Mapping[str, Any]],
     ree_files: Sequence[Mapping[str, Any]],
@@ -53,18 +54,15 @@ def build_draft_manifest_payload(
     and is not written to disk. It gives clients a stable overview assembled
     from the current metadata and file inventory.
     """
-    ree_id = str(metadata.get("ree_id") or "")
-    intent = ReeIntent.from_metadata(metadata)
-    session = ReeSession.from_metadata(metadata)
-    manifest = build_manifest_payload(intent, session, ree_id=ree_id)
+    manifest = build_manifest_payload(metadata.ree_intent, metadata.ree_session, ree_id=metadata.ree_id)
 
     return {
         **manifest,
         "manifest_state": "draft",
-        "ree_id": ree_id,
-        "status": str(metadata.get("status") or "draft"),
-        "created_at": metadata.get("created_at"),
-        "updated_at": metadata.get("updated_at"),
+        "ree_id": metadata.ree_id,
+        "status": metadata.status,
+        "created_at": metadata.created_at,
+        "updated_at": metadata.updated_at,
         "file_inventory": {
             "workspace": [_file_inventory_entry(file) for file in workspace_files],
             "overlay": [_file_inventory_entry(file) for file in _files_under(ree_files, "overlay")],

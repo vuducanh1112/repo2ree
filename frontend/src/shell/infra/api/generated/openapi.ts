@@ -133,9 +133,6 @@ export interface paths {
         /**
          * Get Workspace Evaluate Report
          * @description The persisted evaluate-run report artifact.
-         *
-         *     A workbench-derived document: unlike the snake_case control-plane wire,
-         *     it crosses as the core model's camelCase dump (``dependencyLevel`` etc.).
          */
         get: operations["getEvaluateReport"];
         put?: never;
@@ -157,9 +154,6 @@ export interface paths {
          * Get Ree Scorecard
          * @description The reproducibility scorecard, computed inside the workbench from the
          *     REE's persisted record (intent + session + run receipts).
-         *
-         *     A workbench-derived document: unlike the snake_case control-plane wire,
-         *     it crosses as the core model's camelCase dump (``levelCode`` etc.).
          */
         get: operations["getScorecard"];
         put?: never;
@@ -1034,8 +1028,6 @@ export interface components {
             deleted_at?: string | null;
             /** Etag */
             etag?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** GPUDefinition */
         GPUDefinition: {
@@ -1529,28 +1521,26 @@ export interface components {
             updated_at: string;
             /** External Ref */
             external_ref?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** ReproducibilityReport */
         ReproducibilityReport: {
-            dependencyLevel: components["schemas"]["DependencyLevel"];
-            environmentLevel: components["schemas"]["EnvironmentLevel"];
-            machineLevel: components["schemas"]["MachineLevel"];
-            dependencySummary: components["schemas"]["DependencySummary"];
+            dependency_level: components["schemas"]["DependencyLevel"];
+            environment_level: components["schemas"]["EnvironmentLevel"];
+            machine_level: components["schemas"]["MachineLevel"];
+            dependency_summary: components["schemas"]["DependencySummary"];
             /** Dependencies */
             dependencies?: components["schemas"]["EvaluatedDependency"][];
-            sbomCrossCheck?: components["schemas"]["SbomCrossCheckSummary"] | null;
+            sbom_cross_check?: components["schemas"]["SbomCrossCheckSummary"] | null;
             /** Threats */
             threats: components["schemas"]["Threat"][];
-            /** Dependencylevellabel */
-            readonly dependencyLevelLabel: string;
-            /** Environmentlevellabel */
-            readonly environmentLevelLabel: string;
-            /** Machinelevellabel */
-            readonly machineLevelLabel: string;
-            /** Detecteddependencies */
-            readonly detectedDependencies: string;
+            /** Dependency Level Label */
+            readonly dependency_level_label: string;
+            /** Environment Level Label */
+            readonly environment_level_label: string;
+            /** Machine Level Label */
+            readonly machine_level_label: string;
+            /** Detected Dependencies */
+            readonly detected_dependencies: string;
         };
         /**
          * ReproducibilityScoreCard
@@ -1561,21 +1551,21 @@ export interface components {
          */
         ReproducibilityScoreCard: {
             /**
-             * Schemaversion
+             * Schema Version
              * @default 1
              * @constant
              */
-            schemaVersion: 1;
+            schema_version: 1;
             /** Level */
             level: number;
             /** Sealed */
             sealed: boolean;
             /** Categories */
             categories: components["schemas"]["ScoreCardCategory"][];
-            /** Levelcode */
-            readonly levelCode: string;
-            /** Levelname */
-            readonly levelName: string;
+            /** Level Code */
+            readonly level_code: string;
+            /** Level Name */
+            readonly level_name: string;
         };
         /** ReprovisionResponse */
         ReprovisionResponse: {
@@ -1701,38 +1691,38 @@ export interface components {
          *     counted in ``observed_total`` but never listed.
          */
         SbomCrossCheckSummary: {
-            /** Sbomdigest */
-            sbomDigest?: string | null;
+            /** Sbom Digest */
+            sbom_digest?: string | null;
             /**
-             * Checkedat
+             * Checked At
              * @default
              */
-            checkedAt: string;
+            checked_at: string;
             /**
-             * Declareddirecttotal
+             * Declared Direct Total
              * @default 0
              */
-            declaredDirectTotal: number;
+            declared_direct_total: number;
             /**
-             * Observedmatched
+             * Observed Matched
              * @default 0
              */
-            observedMatched: number;
+            observed_matched: number;
             /**
-             * Versionmismatches
+             * Version Mismatches
              * @default 0
              */
-            versionMismatches: number;
+            version_mismatches: number;
             /**
-             * Undeclaredsameecosystem
+             * Undeclared Same Ecosystem
              * @default 0
              */
-            undeclaredSameEcosystem: number;
+            undeclared_same_ecosystem: number;
             /**
-             * Observedtotal
+             * Observed Total
              * @default 0
              */
-            observedTotal: number;
+            observed_total: number;
             /** Undeclared */
             undeclared?: components["schemas"]["UndeclaredPackage"][];
         };

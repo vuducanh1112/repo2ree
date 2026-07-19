@@ -1,6 +1,7 @@
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.workspace.manifest import build_draft_manifest_payload, build_manifest_payload
+from repo2ree_core.workspace.model import WorkspaceMetadata
 
 
 def _intent(**overrides) -> ReeIntent:
@@ -83,15 +84,15 @@ def test_session_fields_reflected_in_manifest():
 
 
 def test_draft_manifest_adds_workspace_context_without_file_content():
-    metadata = {
-        "ree_id": "abc123",
-        "name": "demo",
-        "status": "ready",
-        "created_at": "2026-01-01T00:00:00Z",
-        "updated_at": "2026-01-02T00:00:00Z",
-        "ree_intent": _intent(runtime="runtime.tar.gz").model_dump(exclude_none=True),
-        "ree_session": _session(source_available=True).model_dump(exclude_none=True),
-    }
+    metadata = WorkspaceMetadata(
+        ree_id="abc123",
+        name="demo",
+        status="ready",
+        created_at="2026-01-01T00:00:00Z",
+        updated_at="2026-01-02T00:00:00Z",
+        ree_intent=_intent(runtime="runtime.tar.gz"),
+        ree_session=_session(source_available=True),
+    )
 
     manifest = build_draft_manifest_payload(
         metadata,

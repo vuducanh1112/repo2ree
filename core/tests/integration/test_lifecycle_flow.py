@@ -84,7 +84,7 @@ class Ree:
     log: LogCollector
 
     def session(self) -> ReeSession:
-        return ReeSession.from_metadata(ReeStore(self.layout).read_metadata_json())
+        return ReeStore(self.layout).read_session()
 
 
 def _make_source_repo(

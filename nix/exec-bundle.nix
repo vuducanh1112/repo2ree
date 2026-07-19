@@ -9,9 +9,9 @@
 #
 # `manifest.json` tells the agent the absolute in-container paths, so
 # provisioning never assumes anything about the env image's PATH:
-#   execPath  — the repo2ree-exec entrypoint to `docker exec`
-#   pausePath — a static `sleep` for the bench keep-alive command,
-#               so the env image needs no coreutils of its own
+#   exec_path  — the repo2ree-exec entrypoint to `docker exec`
+#   pause_path — a static `sleep` for the bench keep-alive command,
+#                so the env image needs no coreutils of its own
 #
 # This standalone form carries the closure as a `store/` copy for hosts
 # without a nix store. The agent image instead ships manifest.json plus
@@ -20,7 +20,7 @@
 #
 # Build with:   nix build .#exec-bundle
 # Smoke-test:   docker run --rm -v "$(readlink -f result)/store:/nix/store:ro" \
-#                 alpine "$(jq -r .execPath result/manifest.json)" --help
+#                 alpine "$(jq -r .exec_path result/manifest.json)" --help
 # ----------------------------------------------------------------
 { pkgs }:
 

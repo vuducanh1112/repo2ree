@@ -13,12 +13,12 @@ from repo2ree_api.run_management import (
     run_summary,
     start_single_command_run,
 )
-from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.experiment.resolve import (
     ExperimentNotFoundError,
     RunnableResolutionError,
     resolve_experiment_runnable,
 )
+from repo2ree_core.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import RunExperimentArgs, RunExperimentCommand
 
 # ================================================
@@ -83,7 +83,7 @@ def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     try:
-        ree = ReeIntent.from_metadata(metadata)
+        ree = WorkspaceMetadata.model_validate(metadata).ree_intent
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid REE intent: {exc}") from exc
 

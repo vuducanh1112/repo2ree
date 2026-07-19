@@ -86,7 +86,7 @@ let
       --argjson tools '${builtins.toJSON bins}' \
       --arg binDir "${binDir}/bin" \
       --argjson env '${builtins.toJSON extraEnv}' \
-      '{schemaVersion: 1, tools: $tools, binDir: $binDir, env: $env}' \
+      '{schema_version: 1, tools: $tools, bin_dir: $binDir, env: $env}' \
       > $out
   '';
 in

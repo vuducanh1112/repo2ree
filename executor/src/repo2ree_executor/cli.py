@@ -378,13 +378,13 @@ def get_scorecard_cmd() -> None:
         click.echo(json.dumps({"error": "not initialised"}), file=sys.stderr)
         sys.exit(1)
 
-    metadata = store.read_metadata_json()
+    metadata = store.read_metadata()
     card = build_scorecard(
-        ReeIntent.from_metadata(metadata),
-        ReeSession.from_metadata(metadata),
+        metadata.ree_intent,
+        metadata.ree_session,
         load_receipts(layout),
     )
-    click.echo(card.model_dump_json(by_alias=True))
+    click.echo(card.model_dump_json())
 
 
 @cli.command("build-archive")

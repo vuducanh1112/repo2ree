@@ -25,8 +25,8 @@ class EvaluateOutputs(BaseModel):
     environment_level: int
     machine_level: int
     detected_dependencies: str
-    # The full evaluate report, camelCase by design: it is a workbench-derived
-    # document the frontend consumes as-is (see the de-stringing plan).
+    # The full evaluate report (a ReproducibilityReport dump); kept as a dict
+    # here because the outputs envelope stays JSON.
     report: dict[str, Any]
 
 
@@ -59,7 +59,7 @@ def handle_evaluate_dependency_score(
         layout.artifacts.mkdir(parents=True, exist_ok=True)
         report_path = layout.artifacts / _REPORT_FILENAME
         report_path.write_text(
-            json.dumps(report.model_dump(by_alias=True), indent=2),
+            json.dumps(report.model_dump(), indent=2),
             encoding="utf-8",
         )
         store = ReeStore(layout)
@@ -81,7 +81,7 @@ def handle_evaluate_dependency_score(
         environment_level=int(report.environment_level),
         machine_level=int(report.machine_level),
         detected_dependencies=report.detected_dependencies,
-        report=report.model_dump(by_alias=True),
+        report=report.model_dump(),
     )
     log("system", "info", "Evaluate run succeeded")
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())

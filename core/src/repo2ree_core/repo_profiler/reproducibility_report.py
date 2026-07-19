@@ -18,8 +18,7 @@ import re
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
-from pydantic.alias_generators import to_camel
+from pydantic import BaseModel, Field, computed_field
 
 from repo2ree_core.domain.dependency import Dependency, DependencyInventory
 
@@ -82,11 +81,7 @@ _SEVERITY_RANK: dict[Severity, int] = {
 }
 
 
-class _CamelModel(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-
-class Threat(_CamelModel):
+class Threat(BaseModel):
     id: str
     category: ThreatCategory
     severity: Severity
@@ -97,7 +92,7 @@ class Threat(_CamelModel):
     affected: list[str] = Field(default_factory=list)
 
 
-class DependencySummary(_CamelModel):
+class DependencySummary(BaseModel):
     manifests: int = 0
     total: int = 0
     pinned: int = 0
@@ -131,7 +126,7 @@ class EvaluatedDependency(Dependency):
     runtime_presence: RuntimePresence | None = None
 
 
-class UndeclaredPackage(_CamelModel):
+class UndeclaredPackage(BaseModel):
     """One runtime package no manifest declared (same-ecosystem only)."""
 
     ecosystem: str
@@ -139,7 +134,7 @@ class UndeclaredPackage(_CamelModel):
     version: str | None = None
 
 
-class SbomCrossCheckSummary(_CamelModel):
+class SbomCrossCheckSummary(BaseModel):
     """Aggregates of the runtime-SBOM cross-check, mirrored into the receipt.
 
     ``undeclared`` is capped (the counts carry the truth) and holds only
@@ -157,7 +152,7 @@ class SbomCrossCheckSummary(_CamelModel):
     undeclared: list[UndeclaredPackage] = Field(default_factory=list)
 
 
-class ReproducibilityReport(_CamelModel):
+class ReproducibilityReport(BaseModel):
     # Three orthogonal axes — the model evaluate actually reasons about. The levels
     # are int-enums, so they serialize to their integer value on the wire.
     dependency_level: DependencyLevel
@@ -175,7 +170,7 @@ class ReproducibilityReport(_CamelModel):
 
     # Labels are derived from their level, never set independently, so they can
     # never drift out of sync. They are still serialized (computed fields) so the
-    # wire contract keeps `dependencyLevelLabel` etc.
+    # wire contract keeps `dependency_level_label` etc.
     # mypy does not support decorators on properties (python/mypy#1362), so the
     # @computed_field lines need an explicit ignore.
     @computed_field  # type: ignore[prop-decorator]

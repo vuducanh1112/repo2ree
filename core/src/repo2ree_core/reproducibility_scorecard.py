@@ -30,8 +30,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
-from pydantic.alias_generators import to_camel
+from pydantic import BaseModel, Field, computed_field
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
@@ -78,11 +77,7 @@ LEVEL_NAMES: tuple[str, ...] = (
 # ================================================
 
 
-class _CamelModel(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-
-class ScoreCardRung(_CamelModel):
+class ScoreCardRung(BaseModel):
     """One checkable fact inside a category.
 
     Rungs are ordered strongest-last but are *independent* checkmarks, not a
@@ -99,13 +94,13 @@ class ScoreCardRung(_CamelModel):
     total: int | None = None
 
 
-class ScoreCardCategory(_CamelModel):
+class ScoreCardCategory(BaseModel):
     key: CategoryKey
     label: str
     rungs: list[ScoreCardRung]
 
 
-class ReproducibilityScoreCard(_CamelModel):
+class ReproducibilityScoreCard(BaseModel):
     """The scorecard: five evidence categories + the ordinal level.
 
     ``level`` is the bottleneck aggregate (see module docstring); the code and
@@ -276,7 +271,7 @@ def _runtime_category(intent: ReeIntent, session: ReeSession, evidence: _Evidenc
             # observed in the runtime. Deliberately not part of the R-level —
             # dev/build-only deps legitimately never reach the runtime.
             ScoreCardRung(
-                key="crossChecked",
+                key="cross_checked",
                 label="Cross-checked",
                 reached=evidence.sbom_cross_checked(),
                 done=evidence.crosscheck.observed_matched if evidence.crosscheck else None,

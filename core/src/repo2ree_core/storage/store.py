@@ -207,7 +207,7 @@ class ReeStore:
     # --- Typed intent / session accessors -------------------------------
 
     def read_intent(self) -> ReeIntent:
-        return ReeIntent.from_metadata(self.read_metadata_json())
+        return self.read_metadata().ree_intent
 
     def write_intent(self, intent: ReeIntent) -> None:
         raw = self.read_metadata_json()
@@ -218,7 +218,7 @@ class ReeStore:
         self.write_metadata_json(raw)
 
     def read_session(self) -> ReeSession:
-        return ReeSession.from_metadata(self.read_metadata_json())
+        return self.read_metadata().ree_session
 
     def write_session(self, session: ReeSession) -> None:
         raw = self.read_metadata_json()

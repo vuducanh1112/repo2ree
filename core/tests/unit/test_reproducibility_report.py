@@ -281,12 +281,14 @@ def test_unpinned_apt_detected_from_dockerfile_text():
 def test_report_serializes_camel_case():
     report = build_report(_pinned_no_lock_inventory(), FileSignals())
     dumped = report.model_dump(by_alias=True)
-    assert {"dependencyLevel", "environmentLevel", "machineLevel"} <= set(dumped)
+    assert {"dependency_level", "environment_level", "machine_level"} <= set(dumped)
     assert "ladderLevel" not in dumped
     assert {
-        "dependencyLevelLabel",
-        "environmentLevelLabel",
-        "machineLevelLabel",
+        "dependency_level_label",
+        "environment_level_label",
+        "machine_level_label",
     } <= set(dumped)
-    assert "dependencySummary" in dumped
-    assert set(dumped["dependencySummary"]).issuperset({"manifests", "total", "pinned", "ranged", "unpinned", "locked"})
+    assert "dependency_summary" in dumped
+    assert set(dumped["dependency_summary"]).issuperset(
+        {"manifests", "total", "pinned", "ranged", "unpinned", "locked"}
+    )
