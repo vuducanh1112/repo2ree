@@ -10,7 +10,7 @@
 | `make fe-checks` | Frontend TypeScript, Biome, knip, dependency-cruiser. |
 | `make fe-tests` | Frontend Vitest tests. |
 | `make be-checks` | Ruff, Ruff format, and mypy across Python workspace packages. |
-| `make scripts-checks` | Shellcheck over `scripts/*.sh`. |
+| `make scripts-checks` | ShellCheck over `scripts/*.sh`. |
 | `make be-unit-tests` | Container-free backend unit tests. |
 | `make be-integration-tests` | Integration tiers, including Docker-gated workbench tests when Docker and the image exist. |
 | `make be-tests` | Backend unit plus integration tests. |
@@ -191,7 +191,7 @@ Hub images the push targets publish; override `DOCKERHUB_NAMESPACE` /
 `IMAGE_TAG` as with those targets. `make e2e-tests-stack-published
 IMAGE_TAG=<tag>` is the full-suite gate for a pushed build.
 
-The source-run `e2e-tests` remains the iteration loop (fast, debuggable,
+The source-run `e2e-tests` remains the iteration loop (fast, easy to debug,
 coverage-capable); the image-backed variants are the deployment gate before
 pushing or promoting images.
 

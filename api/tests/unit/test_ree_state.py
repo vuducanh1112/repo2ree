@@ -25,7 +25,6 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
         "ree_session": {},
         "consistency": {"steps": []},
         "files": [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12}],
-        "source": None,
     }
     monkeypatch.setattr(workbench_manager, "get_workspace_state", lambda handle: workspace)
 
@@ -35,7 +34,7 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
     state = resp.json()
     assert state["ree_id"] == online_ree.ree_id
     assert state["workbench"]["status"] == "available"
-    assert state["files"] == [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12}]
-    assert all("content" not in file for file in state["files"])
+    # Typed file entries serialize every field; content stays null — never inlined.
+    assert state["files"] == [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12, "content": None}]
     assert "ree_files" not in state
     assert "draft_manifest" not in state

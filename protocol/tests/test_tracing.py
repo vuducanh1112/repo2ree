@@ -115,7 +115,7 @@ def test_record_span_facts_flattens_and_shapes_values() -> None:
             "skipped": None,
             "upload_token": "secret",
             "content": "x" * 1000,
-            "receipt": {"snapshotDigest": "sha256:abc", "changedPaths": ["a", "b"]},
+            "receipt": {"snapshot_digest": "sha256:abc", "changed_paths": ["a", "b"]},
         },
         namespace="arg",
     )
@@ -125,8 +125,8 @@ def test_record_span_facts_flattens_and_shapes_values() -> None:
         "repo2ree.arg.refetch": False,
         "repo2ree.arg.exit_code": 0,
         "repo2ree.arg.content.size": 1000,
-        "repo2ree.arg.receipt.snapshotDigest": "sha256:abc",
-        "repo2ree.arg.receipt.changedPaths.count": 2,
+        "repo2ree.arg.receipt.snapshot_digest": "sha256:abc",
+        "repo2ree.arg.receipt.changed_paths.count": 2,
     }
 
 

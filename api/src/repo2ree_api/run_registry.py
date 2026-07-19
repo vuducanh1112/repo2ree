@@ -9,7 +9,6 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from repo2ree_api.wire import to_wire
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.log import emit_run_log
 from repo2ree_protocol.tracing import (
@@ -163,12 +162,10 @@ class RunRegistry:
             self._changed.notify_all()
 
     def update_outputs(self, ree_id: str, run_id: str, outputs: dict[str, Any]) -> None:
-        # Command-envelope outputs arrive with camelCase keys; runs serve them
-        # over HTTP, so convert at this single entry point.
         with self._lock:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
             if run_state:
-                run_state["outputs"] = to_wire(outputs)
+                run_state["outputs"] = outputs
 
     def is_cancel_requested(self, ree_id: str, run_id: str) -> bool:
         with self._lock:

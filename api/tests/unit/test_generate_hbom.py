@@ -16,7 +16,7 @@ def test_ree_from_metadata_normalizes_invalid_hardware_description_payload():
 
     intent = ReeIntent.from_metadata(
         {
-            "reeIntent": {
+            "ree_intent": {
                 "name": "hbom-test",
                 "hardware_description": {
                     "memory": "asdasd",

@@ -48,9 +48,7 @@ class ReeSession(BaseModel):
 
     @classmethod
     def from_metadata(cls, metadata: Mapping[str, Any]) -> ReeSession:
-        raw = dict(metadata.get("reeSession") or {})
-        filtered = {k: v for k, v in raw.items() if k in cls.model_fields}
-        return cls.model_validate(filtered)
+        return cls.model_validate(dict(metadata.get("ree_session") or {}))
 
     def with_source(
         self,

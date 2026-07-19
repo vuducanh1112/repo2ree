@@ -8,6 +8,8 @@ run's receipt.
 
 from __future__ import annotations
 
+from pydantic import BaseModel, ConfigDict
+
 from repo2ree_core.receipts import (
     SnapshotUpstreamReceipt,
     persist_snapshot_digest,
@@ -21,6 +23,13 @@ from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+
+
+class SnapshotUpstreamOutputs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    snapshot_archive: str
+    snapshot_digest: str | None
 
 
 def handle_snapshot_upstream(
@@ -62,8 +71,8 @@ def handle_snapshot_upstream(
     return ActionResult(
         status="succeeded",
         exit_code=0,
-        outputs={
-            "snapshot_archive": layout.snapshot_archive.name,
-            "snapshotDigest": snapshot_digest,
-        },
+        outputs=SnapshotUpstreamOutputs(
+            snapshot_archive=layout.snapshot_archive.name,
+            snapshot_digest=snapshot_digest,
+        ).model_dump(),
     )

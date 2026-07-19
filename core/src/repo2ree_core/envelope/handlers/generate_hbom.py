@@ -6,6 +6,10 @@ Profiles the workbench container's hardware and merges the result into
 
 from __future__ import annotations
 
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
+
 from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.envelope.handlers._common import patch_ree_intent
 from repo2ree_core.hbom.generate_hbom import generate_hbom
@@ -14,6 +18,13 @@ from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+
+
+class GenerateHbomOutputs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    hardware_description: dict[str, Any]
+    component_counts: dict[str, int]
 
 
 def handle_generate_hbom(
@@ -62,14 +73,14 @@ def handle_generate_hbom(
     return ActionResult(
         status="succeeded",
         exit_code=0,
-        outputs={
-            "hardwareDescription": merged.model_dump(exclude_none=True),
-            "componentCounts": {
+        outputs=GenerateHbomOutputs(
+            hardware_description=merged.model_dump(exclude_none=True),
+            component_counts={
                 "cpus": len(merged.cpus),
                 "gpus": len(merged.gpus),
                 "memory": len(merged.memory),
                 "storage": len(merged.storage),
                 "network": len(merged.network),
             },
-        },
+        ).model_dump(),
     )

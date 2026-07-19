@@ -945,6 +945,7 @@
           "runs"
         ],
         "summary": "Get Workspace Evaluate Report",
+        "description": "The persisted evaluate-run report artifact.\n\nA workbench-derived document: unlike the snake_case control-plane wire,\nit crosses as the core model's camelCase dump (``dependencyLevel`` etc.).",
         "operationId": "getEvaluateReport",
         "parameters": [
           {
@@ -963,9 +964,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Getevaluatereport"
+                  "$ref": "#/components/schemas/ReproducibilityReport"
                 }
               }
             }
@@ -1069,7 +1068,7 @@
           "rees"
         ],
         "summary": "Get Ree Scorecard",
-        "description": "The reproducibility scorecard, computed inside the workbench from the\nREE's persisted record (intent + session + run receipts).",
+        "description": "The reproducibility scorecard, computed inside the workbench from the\nREE's persisted record (intent + session + run receipts).\n\nA workbench-derived document: unlike the snake_case control-plane wire,\nit crosses as the core model's camelCase dump (``levelCode`` etc.).",
         "operationId": "getScorecard",
         "parameters": [
           {
@@ -1088,9 +1087,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Getscorecard"
+                  "$ref": "#/components/schemas/ReproducibilityScoreCard"
                 }
               }
             }
@@ -2720,7 +2717,7 @@
           "rees"
         ],
         "summary": "Replace Ree Intent Route",
-        "description": "Atomically replace the complete typed authoring intent.\n\nDelegating to the patch route is a true replace only because model_dump()\nemits every ReeIntent field (defaults included) and apply_patch merges at\nthe top level, so each key gets overwritten. Guarded by\ntest_replace_intent_resets_fields_omitted_from_the_new_intent.",
+        "description": "Atomically replace the complete typed authoring intent.\n\nDelegating to the patch route is a true replace only because the patch is\nre-validated from a full model_dump() \u2014 every ReeIntent field (defaults\nincluded) counts as explicitly set, so the patch dispatch's exclude_unset\nkeeps them all and apply_patch overwrites each top-level key. Guarded by\ntest_replace_intent_resets_fields_omitted_from_the_new_intent.",
         "operationId": "replaceReeIntent",
         "parameters": [
           {
@@ -4871,6 +4868,130 @@
         ],
         "title": "CancelRunResponse"
       },
+      "ConsistencyReport": {
+        "properties": {
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyStep"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ConsistencyReport",
+        "description": "Per-step freshness of recorded run receipts vs. the current tree."
+      },
+      "ConsistencyStaleInput": {
+        "properties": {
+          "input": {
+            "type": "string",
+            "title": "Input"
+          },
+          "recorded": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "input",
+          "recorded",
+          "current"
+        ],
+        "title": "ConsistencyStaleInput",
+        "description": "One input whose recorded digest disagrees with the current tree."
+      },
+      "ConsistencyStep": {
+        "properties": {
+          "step": {
+            "type": "string",
+            "title": "Step"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "stale",
+              "missing"
+            ],
+            "title": "Status"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "recorded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded At"
+          },
+          "stale_inputs": {
+            "items": {
+              "$ref": "#/components/schemas/ConsistencyStaleInput"
+            },
+            "type": "array",
+            "title": "Stale Inputs"
+          },
+          "workspace_drift": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "clean",
+                  "modified",
+                  "unknown"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Drift"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "step",
+          "status"
+        ],
+        "title": "ConsistencyStep",
+        "description": "Freshness of one step's latest successful receipt vs. the current tree."
+      },
       "Contributor": {
         "properties": {
           "identifier": {
@@ -5057,6 +5178,61 @@
         ],
         "title": "DeleteReeResponse"
       },
+      "DependencyLevel": {
+        "type": "integer",
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "title": "DependencyLevel"
+      },
+      "DependencySummary": {
+        "properties": {
+          "manifests": {
+            "type": "integer",
+            "title": "Manifests",
+            "default": 0
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "default": 0
+          },
+          "pinned": {
+            "type": "integer",
+            "title": "Pinned",
+            "default": 0
+          },
+          "ranged": {
+            "type": "integer",
+            "title": "Ranged",
+            "default": 0
+          },
+          "unpinned": {
+            "type": "integer",
+            "title": "Unpinned",
+            "default": 0
+          },
+          "locked": {
+            "type": "integer",
+            "title": "Locked",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "DependencySummary"
+      },
+      "EnvironmentLevel": {
+        "type": "integer",
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "title": "EnvironmentLevel"
+      },
       "ErrorDetail": {
         "properties": {
           "code": {
@@ -5112,6 +5288,174 @@
           "error"
         ],
         "title": "ErrorEnvelope"
+      },
+      "EvaluatedDependency": {
+        "properties": {
+          "ecosystem": {
+            "type": "string",
+            "enum": [
+              "pypi",
+              "conda",
+              "npm",
+              "apt",
+              "oci",
+              "other"
+            ],
+            "title": "Ecosystem",
+            "default": "other"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "name_as_written": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name As Written"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "direct": {
+            "type": "boolean",
+            "title": "Direct",
+            "default": true
+          },
+          "declared_constraint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Constraint"
+          },
+          "declared_in": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared In"
+          },
+          "locked_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locked Version"
+          },
+          "locked_hashes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Locked Hashes"
+          },
+          "locked_in": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locked In"
+          },
+          "archived_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived Path"
+          },
+          "archived_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived Digest"
+          },
+          "observed_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Version"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "locked",
+              "pinned",
+              "ranged",
+              "unpinned",
+              "undeclared"
+            ],
+            "title": "Status"
+          },
+          "runtime_presence": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "observed",
+                  "version-mismatch",
+                  "not-observed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Presence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "status"
+        ],
+        "title": "EvaluatedDependency",
+        "description": "A ``Dependency`` row plus the report's classification of it.\n\nThe status is computed here \u2014 the single classifier that also feeds the\nsummary buckets \u2014 so presentation layers never re-derive it. The same\nholds for ``runtime_presence``, filled by the SBOM cross-check step."
       },
       "Experiment": {
         "properties": {
@@ -5345,6 +5689,14 @@
         ],
         "title": "HealthResponse"
       },
+      "MachineLevel": {
+        "type": "integer",
+        "enum": [
+          0,
+          1
+        ],
+        "title": "MachineLevel"
+      },
       "MemoryDefinition": {
         "properties": {
           "vendor": {
@@ -5561,9 +5913,69 @@
           "updated_at": {
             "type": "string",
             "title": "Updated At"
+          },
+          "external_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ref"
+          },
+          "workbench_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workbench Image"
+          },
+          "ree_intent": {
+            "$ref": "#/components/schemas/ReeIntent-Output"
+          },
+          "ree_session": {
+            "$ref": "#/components/schemas/ReeSession"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceFile"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "ree_files": {
+            "items": {
+              "$ref": "#/components/schemas/ReeFile"
+            },
+            "type": "array",
+            "title": "Ree Files"
+          },
+          "draft_manifest": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Draft Manifest"
+          },
+          "source_repo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceRepoMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "consistency": {
+            "$ref": "#/components/schemas/ConsistencyReport"
           }
         },
-        "additionalProperties": true,
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "ree_id",
@@ -5573,9 +5985,154 @@
           "updated_at"
         ],
         "title": "ReeDocument",
-        "description": "The stable identity/version fields plus the workbench-owned document."
+        "description": "The workbench-owned REE document, typed in full.\n\nThe typed fields reuse the core models the workbench produces the document\nfrom, so the contract cannot drift from the producers. The contract is\ntotal: an unknown key coming out of the workbench is an error, not a\npassthrough."
       },
-      "ReeIntent": {
+      "ReeFile": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "kind": {
+            "type": "string",
+            "const": "ree",
+            "title": "Kind",
+            "default": "ree"
+          },
+          "tag": {
+            "type": "string",
+            "title": "Tag"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "tag",
+          "size"
+        ],
+        "title": "ReeFile",
+        "description": "One file under the REE root (upstream/overlay/artifacts/\u2026)."
+      },
+      "ReeIntent-Input": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "catalog_metadata": {
+            "$ref": "#/components/schemas/ReeCatalogMetadata"
+          },
+          "origin_url": {
+            "type": "string",
+            "title": "Origin Url",
+            "default": ""
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "",
+              "git",
+              "hg",
+              "svn",
+              "cvs",
+              "bzr",
+              "tarball",
+              "zip"
+            ],
+            "title": "Source Type",
+            "default": ""
+          },
+          "revision": {
+            "type": "string",
+            "title": "Revision",
+            "default": ""
+          },
+          "runtime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime"
+          },
+          "activation": {
+            "$ref": "#/components/schemas/Activation"
+          },
+          "sbom": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sbom"
+          },
+          "swhid": {
+            "type": "string",
+            "title": "Swhid",
+            "default": ""
+          },
+          "zenodo_doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zenodo Doi"
+          },
+          "dataverse_doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataverse Doi"
+          },
+          "hardware_description": {
+            "$ref": "#/components/schemas/HBOM"
+          },
+          "experiments": {
+            "items": {
+              "$ref": "#/components/schemas/Experiment"
+            },
+            "type": "array",
+            "title": "Experiments"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReeIntent",
+        "description": "Author-declared reproducibility intent \u2014 the only patchable model."
+      },
+      "ReeIntent-Output": {
         "properties": {
           "name": {
             "type": "string",
@@ -5681,9 +6238,7 @@
       "ReeIntentPatchPayload": {
         "properties": {
           "ree_intent_patch": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Ree Intent Patch"
+            "$ref": "#/components/schemas/ReeIntent-Input"
           },
           "expected_version": {
             "anyOf": [
@@ -5699,12 +6254,13 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "ReeIntentPatchPayload"
+        "title": "ReeIntentPatchPayload",
+        "description": "Merge the provided intent fields into the stored intent (top-level keys).\n\nEvery ``ReeIntent`` field has a default, so the model doubles as the patch\nshape: only the keys the client actually sent are applied (``exclude_unset``\nat the dispatch site), and unknown keys are rejected up front instead of\nfailing inside the workbench."
       },
       "ReeIntentReplacePayload": {
         "properties": {
           "ree_intent": {
-            "$ref": "#/components/schemas/ReeIntent"
+            "$ref": "#/components/schemas/ReeIntent-Input"
           },
           "expected_version": {
             "anyOf": [
@@ -5775,6 +6331,147 @@
         "type": "object",
         "title": "ReeSealPayload"
       },
+      "ReeSession": {
+        "properties": {
+          "dependency_level": {
+            "type": "integer",
+            "title": "Dependency Level",
+            "default": 0
+          },
+          "environment_level": {
+            "type": "integer",
+            "title": "Environment Level",
+            "default": 0
+          },
+          "machine_level": {
+            "type": "integer",
+            "title": "Machine Level",
+            "default": 0
+          },
+          "detected_dependencies": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detected Dependencies"
+          },
+          "sealed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sealed At"
+          },
+          "seal_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seal Hash"
+          },
+          "source_available": {
+            "type": "boolean",
+            "title": "Source Available",
+            "default": false
+          },
+          "source_acquired_by": {
+            "type": "string",
+            "enum": [
+              "",
+              "download",
+              "upload"
+            ],
+            "title": "Source Acquired By",
+            "default": ""
+          },
+          "source_resolved_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Resolved Commit"
+          },
+          "uploaded_archive": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploaded Archive"
+          },
+          "source_snapshot_archive": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Snapshot Archive"
+          },
+          "source_snapshot_captured_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Snapshot Captured At"
+          },
+          "source_snapshot_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Snapshot Digest"
+          },
+          "source_included": {
+            "type": "boolean",
+            "title": "Source Included",
+            "default": false
+          },
+          "runtime_included": {
+            "type": "boolean",
+            "title": "Runtime Included",
+            "default": false
+          },
+          "results_included": {
+            "type": "boolean",
+            "title": "Results Included",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReeSession",
+        "description": "Action-managed session state \u2014 mutated only via named transitions, never patched."
+      },
       "ReeState": {
         "properties": {
           "ree_id": {
@@ -5794,32 +6491,33 @@
             "title": "Updated At"
           },
           "workbench": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Workbench"
+            "$ref": "#/components/schemas/WorkbenchStatus"
           },
           "ree_intent": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Ree Intent"
+            "$ref": "#/components/schemas/ReeIntent-Output"
           },
           "ree_session": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Ree Session"
+            "$ref": "#/components/schemas/ReeSession"
           },
           "consistency": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Consistency"
+            "$ref": "#/components/schemas/ConsistencyReport"
           },
           "files": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/WorkspaceFile"
             },
             "type": "array",
             "title": "Files"
+          },
+          "source_repo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceRepoMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "active_runs": {
             "items": {
@@ -5829,7 +6527,7 @@
             "title": "Active Runs"
           }
         },
-        "additionalProperties": true,
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "ree_id",
@@ -5862,6 +6560,17 @@
           "updated_at": {
             "type": "string",
             "title": "Updated At"
+          },
+          "external_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Ref"
           }
         },
         "additionalProperties": true,
@@ -5874,6 +6583,126 @@
           "updated_at"
         ],
         "title": "ReeSummary"
+      },
+      "ReproducibilityReport": {
+        "properties": {
+          "dependencyLevel": {
+            "$ref": "#/components/schemas/DependencyLevel"
+          },
+          "environmentLevel": {
+            "$ref": "#/components/schemas/EnvironmentLevel"
+          },
+          "machineLevel": {
+            "$ref": "#/components/schemas/MachineLevel"
+          },
+          "dependencySummary": {
+            "$ref": "#/components/schemas/DependencySummary"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/EvaluatedDependency"
+            },
+            "type": "array",
+            "title": "Dependencies"
+          },
+          "sbomCrossCheck": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SbomCrossCheckSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "threats": {
+            "items": {
+              "$ref": "#/components/schemas/Threat"
+            },
+            "type": "array",
+            "title": "Threats"
+          },
+          "dependencyLevelLabel": {
+            "type": "string",
+            "title": "Dependencylevellabel",
+            "readOnly": true
+          },
+          "environmentLevelLabel": {
+            "type": "string",
+            "title": "Environmentlevellabel",
+            "readOnly": true
+          },
+          "machineLevelLabel": {
+            "type": "string",
+            "title": "Machinelevellabel",
+            "readOnly": true
+          },
+          "detectedDependencies": {
+            "type": "string",
+            "title": "Detecteddependencies",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "dependencyLevel",
+          "environmentLevel",
+          "machineLevel",
+          "dependencySummary",
+          "threats",
+          "dependencyLevelLabel",
+          "environmentLevelLabel",
+          "machineLevelLabel",
+          "detectedDependencies"
+        ],
+        "title": "ReproducibilityReport"
+      },
+      "ReproducibilityScoreCard": {
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schemaversion",
+            "default": 1
+          },
+          "level": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Level"
+          },
+          "sealed": {
+            "type": "boolean",
+            "title": "Sealed"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreCardCategory"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "levelCode": {
+            "type": "string",
+            "title": "Levelcode",
+            "readOnly": true
+          },
+          "levelName": {
+            "type": "string",
+            "title": "Levelname",
+            "readOnly": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "sealed",
+          "categories",
+          "levelCode",
+          "levelName"
+        ],
+        "title": "ReproducibilityScoreCard",
+        "description": "The scorecard: five evidence categories + the ordinal level.\n\n``level`` is the bottleneck aggregate (see module docstring); the code and\nname are derived from it so they can never drift."
       },
       "ReprovisionResponse": {
         "properties": {
@@ -6165,6 +6994,145 @@
         ],
         "title": "RunSummary"
       },
+      "SbomCrossCheckSummary": {
+        "properties": {
+          "sbomDigest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sbomdigest"
+          },
+          "checkedAt": {
+            "type": "string",
+            "title": "Checkedat",
+            "default": ""
+          },
+          "declaredDirectTotal": {
+            "type": "integer",
+            "title": "Declareddirecttotal",
+            "default": 0
+          },
+          "observedMatched": {
+            "type": "integer",
+            "title": "Observedmatched",
+            "default": 0
+          },
+          "versionMismatches": {
+            "type": "integer",
+            "title": "Versionmismatches",
+            "default": 0
+          },
+          "undeclaredSameEcosystem": {
+            "type": "integer",
+            "title": "Undeclaredsameecosystem",
+            "default": 0
+          },
+          "observedTotal": {
+            "type": "integer",
+            "title": "Observedtotal",
+            "default": 0
+          },
+          "undeclared": {
+            "items": {
+              "$ref": "#/components/schemas/UndeclaredPackage"
+            },
+            "type": "array",
+            "title": "Undeclared"
+          }
+        },
+        "type": "object",
+        "title": "SbomCrossCheckSummary",
+        "description": "Aggregates of the runtime-SBOM cross-check, mirrored into the receipt.\n\n``undeclared`` is capped (the counts carry the truth) and holds only\necosystems the declared inventory uses \u2014 base-image OS packages are\ncounted in ``observed_total`` but never listed."
+      },
+      "ScoreCardCategory": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "source",
+              "runtime",
+              "activation",
+              "experiments",
+              "results"
+            ],
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "rungs": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreCardRung"
+            },
+            "type": "array",
+            "title": "Rungs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "rungs"
+        ],
+        "title": "ScoreCardCategory"
+      },
+      "ScoreCardRung": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "reached": {
+            "type": "boolean",
+            "title": "Reached"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          },
+          "done": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "reached"
+        ],
+        "title": "ScoreCardRung",
+        "description": "One checkable fact inside a category.\n\nRungs are ordered strongest-last but are *independent* checkmarks, not a\nforced prefix: e.g. results can be bundled at seal time while the source\nwas never SWH-archived.  ``done``/``total`` carry the fraction for rungs\naggregated over the experiment list (``None`` elsewhere)."
+      },
       "ScriptTemplateCatalog": {
         "properties": {
           "build": {
@@ -6227,6 +7195,15 @@
         "title": "ScriptTemplateEntry",
         "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; exactly one entry per section carries\n``is_default`` (for the seeded scripts it is the content a fresh REE starts\nwith). The run-script sections currently carry a single ``docker`` variant\neach; the keys exist so further strategies can be added without changing\nthe catalog shape."
       },
+      "Severity": {
+        "type": "string",
+        "enum": [
+          "high",
+          "medium",
+          "low"
+        ],
+        "title": "Severity"
+      },
       "SourceAcquirePayload": {
         "properties": {
           "origin_url": {
@@ -6272,6 +7249,75 @@
           "source_type"
         ],
         "title": "SourceAcquirePayload"
+      },
+      "SourceRepoMetadata": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin",
+            "default": ""
+          },
+          "acquired_by": {
+            "type": "string",
+            "enum": [
+              "",
+              "download",
+              "upload"
+            ],
+            "title": "Acquired By",
+            "default": ""
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "",
+              "git",
+              "hg",
+              "svn",
+              "cvs",
+              "bzr",
+              "tarball",
+              "zip"
+            ],
+            "title": "Source Type",
+            "default": ""
+          },
+          "swhid": {
+            "type": "string",
+            "title": "Swhid",
+            "default": ""
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "size_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Label"
+          }
+        },
+        "type": "object",
+        "title": "SourceRepoMetadata",
+        "description": "One coherent view of the source loaded into a workspace.\n\nsnake_case field names are the wire shape \u2014 the model doubles as the\nAPI contract for the document's ``source_repo`` block."
       },
       "SourceUploadCompletePayload": {
         "properties": {
@@ -6354,6 +7400,93 @@
         "additionalProperties": false,
         "type": "object",
         "title": "StorageDefinition"
+      },
+      "Threat": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "category": {
+            "$ref": "#/components/schemas/ThreatCategory"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "blocking": {
+            "type": "boolean",
+            "title": "Blocking",
+            "default": false
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "remediation": {
+            "type": "string",
+            "title": "Remediation"
+          },
+          "affected": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Affected"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "severity",
+          "title",
+          "detail",
+          "remediation"
+        ],
+        "title": "Threat"
+      },
+      "ThreatCategory": {
+        "type": "string",
+        "enum": [
+          "dependency",
+          "environment",
+          "machine"
+        ],
+        "title": "ThreatCategory"
+      },
+      "UndeclaredPackage": {
+        "properties": {
+          "ecosystem": {
+            "type": "string",
+            "title": "Ecosystem"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ecosystem",
+          "name"
+        ],
+        "title": "UndeclaredPackage",
+        "description": "One runtime package no manifest declared (same-ecosystem only)."
       },
       "UploadInitPayload": {
         "properties": {
@@ -6472,6 +7605,83 @@
           "default_id"
         ],
         "title": "WorkbenchImageCatalog"
+      },
+      "WorkbenchStatus": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Id"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "WorkbenchStatus",
+        "description": "Whether (and where) a live workbench backs the REE."
+      },
+      "WorkspaceFile": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "source",
+              "generated"
+            ],
+            "title": "Kind"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "kind",
+          "size"
+        ],
+        "title": "WorkspaceFile",
+        "description": "One workspace-subtree file as the enumeration presents it.\n\n``content`` is the inlined text when the file is small enough (see\n:func:`should_inline_file_content`) and the caller asked for content;\n``None`` otherwise."
       },
       "WorkspaceFileContentPayload": {
         "properties": {

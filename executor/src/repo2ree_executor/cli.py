@@ -29,6 +29,7 @@ from repo2ree_core.storage.workspace_ops import (
 from repo2ree_core.storage.workspace_ops import get_workspace as _get_workspace
 from repo2ree_core.storage.workspace_ops import read_file_bytes as _read_file_bytes
 from repo2ree_core.time_utils import utc_now as _utc_now
+from repo2ree_core.workspace.model import WorkspaceMetadata
 from repo2ree_protocol import ActionResult, command_adapter
 from repo2ree_protocol.command import (
     AcquireSourceArgs,
@@ -202,7 +203,7 @@ def cancel_run_cmd(run_id: str) -> None:
     layout = ReeLayout.in_workbench()
     layout.runs.mkdir(parents=True, exist_ok=True)
     layout.run_cancel_marker(run_id).touch()
-    click.echo(json.dumps({"status": "cancel_requested", "runId": run_id}))
+    click.echo(json.dumps({"status": "cancel_requested", "run_id": run_id}))
 
 
 # ================================================
@@ -285,7 +286,7 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
     store = ReeStore(layout)
 
     if store.metadata_exists():
-        click.echo(json.dumps({"status": "already_initialised", "reeId": ree_id}))
+        click.echo(json.dumps({"status": "already_initialised", "ree_id": ree_id}))
         return
 
     store.ensure_dirs()
@@ -293,20 +294,18 @@ def init_ree_cmd(ree_id: str, name: str | None) -> None:
 
     ts = _utc_now()
     ree_name = name or f"workspace-{ree_id[:8]}"
-    metadata = {
-        "reeId": ree_id,
-        "externalRef": None,
-        "name": ree_name,
-        "status": "draft",
-        "createdAt": ts,
-        "updatedAt": ts,
-        "reeIntent": ReeIntent(name=ree_name).model_dump(exclude_none=True),
-        "reeSession": ReeSession().model_dump(exclude_none=True),
-        "source": None,
-    }
-
-    store.write_metadata_json(metadata)
-    click.echo(json.dumps({"status": "initialised", "reeId": ree_id}))
+    store.write_metadata(
+        WorkspaceMetadata(
+            ree_id=ree_id,
+            name=ree_name,
+            status="draft",
+            created_at=ts,
+            updated_at=ts,
+            ree_intent=ReeIntent(name=ree_name),
+            ree_session=ReeSession(),
+        )
+    )
+    click.echo(json.dumps({"status": "initialised", "ree_id": ree_id}))
 
 
 # ================================================

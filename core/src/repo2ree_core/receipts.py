@@ -31,7 +31,6 @@ from typing import Annotated, Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
-from pydantic.alias_generators import to_camel
 
 from repo2ree_core.digests import (
     digest_file,
@@ -60,11 +59,7 @@ _SBOM_TOOL_OUTPUTS = ("sbom.json",)
 
 
 class _ReceiptModel(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        populate_by_name=True,
-        alias_generator=to_camel,
-    )
+    model_config = ConfigDict(extra="forbid")
 
 
 # ================================================
@@ -241,7 +236,7 @@ def record_receipt(layout: ReeLayout, receipt: RunReceipt, *, log: LogSink) -> N
         path = layout.run_receipt(receipt.run_id)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            json.dumps(receipt.model_dump(by_alias=True), indent=2, sort_keys=True),
+            json.dumps(receipt.model_dump(), indent=2, sort_keys=True),
             encoding="utf-8",
         )
     except Exception as exc:
@@ -344,9 +339,9 @@ def write_materialize_marker(
     """
     try:
         marker = {
-            "materializedAt": utc_now(),
-            "snapshotDigest": snapshot_digest,
-            "overlayDigest": digest_tree(layout.overlay),
+            "materialized_at": utc_now(),
+            "snapshot_digest": snapshot_digest,
+            "overlay_digest": digest_tree(layout.overlay),
             "files": _stat_table(layout.workspace),
         }
         layout.materialize_marker.write_text(
@@ -451,7 +446,7 @@ def current_runtime_digest(layout: ReeLayout, runtime_path: str | None) -> str |
     if not path.is_file():
         return None
     stat = path.stat()
-    key = {"path": runtime_path, "size": stat.st_size, "mtimeNs": stat.st_mtime_ns}
+    key = {"path": runtime_path, "size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
     with suppress(Exception):
         cached = json.loads(layout.digest_cache.read_text(encoding="utf-8"))
         if {name: cached.get(name) for name in key} == key and cached.get("digest"):
@@ -467,8 +462,39 @@ def current_runtime_digest(layout: ReeLayout, runtime_path: str | None) -> str |
 # ================================================
 
 
+class ConsistencyStaleInput(BaseModel):
+    """One input whose recorded digest disagrees with the current tree."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    input: str
+    recorded: str | None
+    current: str | None
+
+
+class ConsistencyStep(BaseModel):
+    """Freshness of one step's latest successful receipt vs. the current tree."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    step: str
+    status: Literal["fresh", "stale", "missing"]
+    run_id: str | None = None
+    recorded_at: str | None = None
+    stale_inputs: list[ConsistencyStaleInput] = Field(default_factory=list)
+    workspace_drift: DriftStatus | None = None
+
+
+class ConsistencyReport(BaseModel):
+    """Per-step freshness of recorded run receipts vs. the current tree."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    steps: list[ConsistencyStep] = Field(default_factory=list)
+
+
 def _compare(
-    stale_inputs: list[dict[str, Any]],
+    stale_inputs: list[ConsistencyStaleInput],
     input_name: str,
     recorded: str | None,
     current: str | None,
@@ -480,26 +506,24 @@ def _compare(
     """
     if recorded == current:
         return
-    stale_inputs.append({"input": input_name, "recorded": recorded, "current": current})
+    stale_inputs.append(ConsistencyStaleInput(input=input_name, recorded=recorded, current=current))
 
 
-def _step_report(step: str, receipt: RunReceipt | None, stale_inputs: list[dict[str, Any]]) -> dict[str, Any]:
+def _step_report(step: str, receipt: RunReceipt | None, stale_inputs: list[ConsistencyStaleInput]) -> ConsistencyStep:
     if receipt is None:
-        return {"step": step, "status": "missing"}
-    report: dict[str, Any] = {
-        "step": step,
-        "status": "stale" if stale_inputs else "fresh",
-        "runId": receipt.run_id,
-        "recordedAt": receipt.recorded_at,
-        "staleInputs": stale_inputs,
-    }
+        return ConsistencyStep(step=step, status="missing")
     drift = getattr(receipt, "workspace_drift", None)
-    if drift is not None:
-        report["workspaceDrift"] = drift.status
-    return report
+    return ConsistencyStep(
+        step=step,
+        status="stale" if stale_inputs else "fresh",
+        run_id=receipt.run_id,
+        recorded_at=receipt.recorded_at,
+        stale_inputs=stale_inputs,
+        workspace_drift=drift.status if drift is not None else None,
+    )
 
 
-def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any) -> dict[str, Any]:
+def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any) -> ConsistencyReport:
     """Per-step freshness of recorded receipts against the tree being sealed.
 
     For every step the bundle's replay will re-execute, compare the latest
@@ -513,25 +537,25 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
     snapshot_digest = getattr(session, "source_snapshot_digest", None)
     runtime_digest = current_runtime_digest(layout, intent.runtime)
 
-    steps: list[dict[str, Any]] = []
+    steps: list[ConsistencyStep] = []
 
     build = latest.get("build_runtime")
-    stale: list[dict[str, Any]] = []
+    stale: list[ConsistencyStaleInput] = []
     if isinstance(build, BuildRuntimeReceipt):
         _compare(stale, "snapshot", build.snapshot_digest, snapshot_digest)
         _compare(
             stale,
-            "buildScript",
+            "build_script",
             build.build_script_digest,
             digest_file_if_exists(layout.workspace / build.build_script_path) if build.build_script_path else None,
         )
-        _compare(stale, "runtimeArtifact", build.produced_runtime_digest, runtime_digest)
+        _compare(stale, "runtime_artifact", build.produced_runtime_digest, runtime_digest)
     steps.append(_step_report("build_runtime", build, stale))
 
     sbom = latest.get("generate_sbom")
     stale = []
     if isinstance(sbom, GenerateSbomReceipt):
-        _compare(stale, "runtimeArtifact", sbom.declared_runtime_digest, runtime_digest)
+        _compare(stale, "runtime_artifact", sbom.declared_runtime_digest, runtime_digest)
     steps.append(_step_report("generate_sbom", sbom, stale))
 
     activation = latest.get("activation_test")
@@ -540,7 +564,7 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
         _compare(stale, "snapshot", activation.snapshot_digest, snapshot_digest)
         _compare(
             stale,
-            "activationScript",
+            "activation_script",
             activation.run_script_digest,
             digest_file_if_exists(layout.workspace / intent.activation.run_script)
             if intent.activation.run_script
@@ -548,13 +572,13 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
         )
         _compare(
             stale,
-            "verifyScript",
+            "verify_script",
             activation.verify_script_digest,
             digest_file_if_exists(layout.workspace / intent.activation.verify_script)
             if intent.activation.verify_script
             else None,
         )
-        _compare(stale, "runtimeArtifact", activation.declared_runtime_digest, runtime_digest)
+        _compare(stale, "runtime_artifact", activation.declared_runtime_digest, runtime_digest)
     steps.append(_step_report("activation_test", activation, stale))
 
     for experiment in intent.experiments:
@@ -567,24 +591,24 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
             _compare(stale, "snapshot", receipt.snapshot_digest, snapshot_digest)
             _compare(
                 stale,
-                "experimentScript",
+                "experiment_script",
                 receipt.run_script_digest,
                 digest_file_if_exists(layout.workspace / experiment.run_script) if experiment.run_script else None,
             )
             _compare(
                 stale,
-                "verifyScript",
+                "verify_script",
                 receipt.verify_script_digest,
                 digest_file_if_exists(layout.workspace / experiment.verify_script)
                 if experiment.verify_script
                 else None,
             )
-            _compare(stale, "runtimeArtifact", receipt.declared_runtime_digest, runtime_digest)
+            _compare(stale, "runtime_artifact", receipt.declared_runtime_digest, runtime_digest)
             # Mutation gap: the declared outputs verify ran over may have been
             # rewritten in the shared workspace since this receipt was recorded.
             _compare(
                 stale,
-                "producedOutput",
+                "produced_output",
                 receipt.produced_output_digest,
                 digest_output_paths(layout.workspace, experiment.output_paths),
             )
@@ -593,4 +617,4 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
     # No timestamp here: the report must be a pure function of tree + receipts
     # so re-sealing unchanged content reproduces the same seal hash. The seal's
     # own sealedAt already dates the check.
-    return {"steps": steps}
+    return ConsistencyReport(steps=steps)

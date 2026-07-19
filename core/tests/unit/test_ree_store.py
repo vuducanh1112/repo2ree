@@ -15,13 +15,13 @@ def _make_metadata(ree_id: str = "ree-1", name: str = "demo") -> WorkspaceMetada
     ts = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     return WorkspaceMetadata.model_validate(
         {
-            "reeId": ree_id,
+            "ree_id": ree_id,
             "name": name,
             "status": "draft",
-            "createdAt": ts,
-            "updatedAt": ts,
-            "reeIntent": ReeIntent(name=name).model_dump(exclude_none=True),
-            "reeSession": ReeSession().model_dump(exclude_none=True),
+            "created_at": ts,
+            "updated_at": ts,
+            "ree_intent": ReeIntent(name=name).model_dump(exclude_none=True),
+            "ree_session": ReeSession().model_dump(exclude_none=True),
         }
     )
 
@@ -109,10 +109,10 @@ def test_write_metadata_uses_aliased_keys_on_disk(tmp_path):
     store.write_metadata(_make_metadata())
 
     raw = json.loads(store.layout.metadata.read_text(encoding="utf-8"))
-    assert "reeId" in raw
-    assert "createdAt" in raw
-    assert "reeIntent" in raw
-    assert "reeSession" in raw
+    assert "ree_id" in raw
+    assert "created_at" in raw
+    assert "ree_intent" in raw
+    assert "ree_session" in raw
 
 
 def test_write_metadata_creates_parent_if_missing(tmp_path):
@@ -173,13 +173,13 @@ def test_metadata_json_roundtrip_preserves_extra_fields(tmp_path):
     store.ensure_dirs()
 
     payload = {
-        "reeId": "ree-1",
+        "ree_id": "ree-1",
         "name": "demo",
         "status": "draft",
-        "createdAt": "2026-01-01T00:00:00Z",
-        "updatedAt": "2026-01-01T00:00:00Z",
-        "reeIntent": {"name": "demo"},
-        "reeSession": {},
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-01T00:00:00Z",
+        "ree_intent": {"name": "demo"},
+        "ree_session": {},
         "vendorExtraField": {"nested": [1, 2, 3]},
     }
     store.write_metadata_json(payload)
@@ -203,7 +203,7 @@ def test_typed_write_metadata_uses_atomic_json_path(tmp_path):
     store.write_metadata(_make_metadata())
 
     raw = store.read_metadata_json()
-    assert raw["reeId"] == "ree-1"
+    assert raw["ree_id"] == "ree-1"
 
 
 def test_two_stores_for_different_rees_are_independent(tmp_path):

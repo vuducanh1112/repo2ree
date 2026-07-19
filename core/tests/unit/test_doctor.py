@@ -12,7 +12,7 @@ from repo2ree_core.doctor import run_doctor
 def test_writable_ree_is_ok(tmp_path: Path) -> None:
     report = run_doctor(ree_path=tmp_path, docker_wait_seconds=0)
     assert report["ok"] is True
-    assert report["reeWritable"] is True
+    assert report["ree_writable"] is True
     # Capability inventory is always present, whatever it found.
     assert set(report["tools"]) == {"syft", "git", "curl", "unzip", "tar", "gzip"}
     assert "available" in report["docker"]
@@ -21,7 +21,7 @@ def test_writable_ree_is_ok(tmp_path: Path) -> None:
 def test_missing_ree_fails_the_contract(tmp_path: Path) -> None:
     report = run_doctor(ree_path=tmp_path / "nope", docker_wait_seconds=0)
     assert report["ok"] is False
-    assert report["reeWritable"] is False
+    assert report["ree_writable"] is False
 
 
 def test_unwritable_ree_fails_the_contract(tmp_path: Path) -> None:
@@ -31,6 +31,6 @@ def test_unwritable_ree_fails_the_contract(tmp_path: Path) -> None:
         report = run_doctor(ree_path=locked, docker_wait_seconds=0)
     finally:
         locked.chmod(0o700)
-    if report["reeWritable"]:  # running as root, nothing is unwritable
+    if report["ree_writable"]:  # running as root, nothing is unwritable
         pytest.skip("cannot make a directory unwritable for this uid")
     assert report["ok"] is False

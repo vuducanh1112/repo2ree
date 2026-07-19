@@ -84,13 +84,13 @@ def test_session_fields_reflected_in_manifest():
 
 def test_draft_manifest_adds_workspace_context_without_file_content():
     metadata = {
-        "reeId": "abc123",
+        "ree_id": "abc123",
         "name": "demo",
         "status": "ready",
-        "createdAt": "2026-01-01T00:00:00Z",
-        "updatedAt": "2026-01-02T00:00:00Z",
-        "reeIntent": _intent(runtime="runtime.tar.gz").model_dump(exclude_none=True),
-        "reeSession": _session(source_available=True).model_dump(exclude_none=True),
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": "2026-01-02T00:00:00Z",
+        "ree_intent": _intent(runtime="runtime.tar.gz").model_dump(exclude_none=True),
+        "ree_session": _session(source_available=True).model_dump(exclude_none=True),
     }
 
     manifest = build_draft_manifest_payload(

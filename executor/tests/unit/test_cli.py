@@ -58,17 +58,17 @@ def _stderr_events(result) -> list[dict]:  # type: ignore[type-arg]
 def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
     result = runner.invoke(cli, ["init-ree", "--ree-id", "abc123", "--name", "demo"])
     assert result.exit_code == 0
-    assert json.loads(result.output) == {"status": "initialised", "reeId": "abc123"}
+    assert json.loads(result.output) == {"status": "initialised", "ree_id": "abc123"}
 
     layout = ReeLayout.in_workbench()
     assert layout.workspace.is_dir()
     metadata = json.loads(layout.metadata.read_text())
-    assert metadata["reeId"] == "abc123"
+    assert metadata["ree_id"] == "abc123"
     assert metadata["name"] == "demo"
     assert metadata["status"] == "draft"
     # The build script is no longer carried on the intent; it is seeded as a
     # reserved, REE-owned overlay script (mirrored into the workspace).
-    assert "build_runtime_script" not in metadata["reeIntent"]
+    assert "build_runtime_script" not in metadata["ree_intent"]
     assert layout.overlay_file(RESERVED_BUILD_SCRIPT).is_file()
     assert layout.workspace_file(RESERVED_BUILD_SCRIPT).is_file()
 
@@ -92,7 +92,7 @@ def test_get_ree_before_init_exits_nonzero(ree_root: Path) -> None:
 def test_get_ree_emits_metadata(initialized_ree: Path) -> None:
     result = runner.invoke(cli, ["get-ree"])
     assert result.exit_code == 0
-    assert json.loads(result.output)["reeId"] == "abc123"
+    assert json.loads(result.output)["ree_id"] == "abc123"
 
 
 def test_get_scorecard_before_init_exits_nonzero(ree_root: Path) -> None:
@@ -173,7 +173,7 @@ def test_execute_failing_command_exits_1_with_failed_result(initialized_ree: Pat
 def test_cancel_run_writes_cancel_marker(initialized_ree: Path) -> None:
     result = runner.invoke(cli, ["cancel-run", "--run-id", "run-1"])
     assert result.exit_code == 0, result.output
-    assert json.loads(result.output) == {"status": "cancel_requested", "runId": "run-1"}
+    assert json.loads(result.output) == {"status": "cancel_requested", "run_id": "run-1"}
     assert ReeLayout.in_workbench().run_cancel_marker("run-1").is_file()
 
 
@@ -228,7 +228,7 @@ def test_get_workspace_reflects_workspace_files(initialized_ree: Path) -> None:
     result = runner.invoke(cli, ["get-workspace"])
     assert result.exit_code == 0
     workspace = json.loads(result.output)
-    assert workspace["reeId"] == "abc123"
+    assert workspace["ree_id"] == "abc123"
     assert any(f.get("path") == "app.py" for f in workspace["files"])
 
 
@@ -241,8 +241,9 @@ def test_get_workspace_summary_omits_inline_file_content(initialized_ree: Path) 
     assert result.exit_code == 0
     workspace = json.loads(result.output)
     assert workspace["files"]
-    assert all("content" not in file for file in workspace["files"])
-    assert all("content" not in file for file in workspace["reeFiles"])
+    # Typed entries always carry the key; summary mode never inlines the text.
+    assert all(file["content"] is None for file in workspace["files"])
+    assert all(file["content"] is None for file in workspace["ree_files"])
 
 
 def test_build_archive_before_seal_exits_nonzero(initialized_ree: Path) -> None:

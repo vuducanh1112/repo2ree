@@ -112,7 +112,7 @@ only in the dev container, docker login only on the host), replace
 there. `push-archives` loads the tarballs and pushes them under the stamped
 rev — it never takes an `IMAGE_TAG`, so like `push-rev` it cannot move
 `edge`. Continue with `validate-rev`/`promote-edge` as above, passing
-`REV=$(cat dist/images/REV)` if the host checkout is not on that commit. `promote-edge` retags registry-side (`docker buildx imagetools
+`REV=$(cat dist/images/REV)` if the host checkout is not on that commit. `promote-edge` moves the registry tag (`docker buildx imagetools
 create`), so the promoted digests are exactly the validated ones.
 `validate-rev` and `promote-edge` default `REV` to the current HEAD, so the
 whole flow runs tag-free from the commit being published. All images always move together — the

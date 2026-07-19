@@ -236,7 +236,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
 
     # --- init produced metadata on the real /ree volume ----------------
     metadata = manager.get_ree_metadata(handle)
-    assert metadata["reeId"] == handle.ree_id
+    assert metadata["ree_id"] == handle.ree_id
     assert metadata["status"] == "draft"
 
     # --- write_file: dispatched over real `docker exec` ----------------
@@ -268,7 +268,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[WorkbenchManager, WorkbenchHan
     # --- seal_ree: produce the immutable bundle on the volume ----------
     result = manager.dispatch_action(handle, SealReeCommand(), "seal", log)
     assert result.status == "succeeded"
-    assert result.outputs["sealHash"].startswith("sha256:")
+    assert result.outputs["seal_hash"].startswith("sha256:")
 
     # --- build-archive: real sealed zip streamed back over the wire ----
     archive = manager.build_archive(handle)

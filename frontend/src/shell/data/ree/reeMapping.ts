@@ -10,7 +10,9 @@ import type {
 import { mapReeDetailToReeSlices } from "./mapping";
 
 // Wire → domain: the API speaks snake_case, the frontend camelCase.
-function mapSourceRepo(wire: SourceRepoMetadataWire | undefined): SourceRepoMetadata | undefined {
+function mapSourceRepo(
+  wire: SourceRepoMetadataWire | null | undefined,
+): SourceRepoMetadata | undefined {
   if (!wire) {
     return undefined;
   }
@@ -20,8 +22,8 @@ function mapSourceRepo(wire: SourceRepoMetadataWire | undefined): SourceRepoMeta
     acquiredBy: wire.acquired_by,
     sourceType: wire.source_type,
     swhid: wire.swhid,
-    sizeBytes: wire.size_bytes,
-    sizeLabel: wire.size_label,
+    sizeBytes: wire.size_bytes ?? null,
+    sizeLabel: wire.size_label ?? null,
   };
 }
 

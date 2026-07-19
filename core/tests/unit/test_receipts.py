@@ -11,6 +11,8 @@ from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.receipts import (
     BuildRuntimeReceipt,
+    ConsistencyReport,
+    ConsistencyStep,
     CrossCheckSbomReceipt,
     RunExperimentReceipt,
     RunReceipt,
@@ -56,7 +58,7 @@ class TestPersistence:
         assert loaded == [receipt]
         # File is camelCase JSON beside the NDJSON log slot.
         raw = json.loads(layout.run_receipt("run-1").read_text(encoding="utf-8"))
-        assert raw["runId"] == "run-1"
+        assert raw["run_id"] == "run-1"
         assert raw["operation"] == "build_runtime"
 
     def test_unparseable_receipts_are_skipped(self, layout: ReeLayout) -> None:
@@ -193,15 +195,15 @@ class TestConsistencyReport:
             log=_silent_log,
         )
 
-    def _step(self, report: dict, name: str) -> dict:
-        return next(s for s in report["steps"] if s["step"] == name)
+    def _step(self, report: ConsistencyReport, name: str) -> ConsistencyStep:
+        return next(s for s in report.steps if s.step == name)
 
     def test_matching_receipt_is_fresh(self, layout: ReeLayout) -> None:
         intent, session = self._seed(layout, ReeIntent())
         self._record_build(layout)
         step = self._step(build_consistency_report(layout, intent, session), "build_runtime")
-        assert step["status"] == "fresh"
-        assert step["staleInputs"] == []
+        assert step.status == "fresh"
+        assert step.stale_inputs == []
 
     def test_edited_build_script_names_the_moved_input(self, layout: ReeLayout) -> None:
         intent, session = self._seed(layout, ReeIntent())
@@ -209,15 +211,15 @@ class TestConsistencyReport:
         (layout.workspace / "ree-scripts" / "build_script.sh").write_text("make other")
 
         step = self._step(build_consistency_report(layout, intent, session), "build_runtime")
-        assert step["status"] == "stale"
-        assert [entry["input"] for entry in step["staleInputs"]] == ["buildScript"]
-        assert step["staleInputs"][0]["recorded"] == digest_bytes(b"make all")
-        assert step["staleInputs"][0]["current"] == digest_bytes(b"make other")
+        assert step.status == "stale"
+        assert [entry.input for entry in step.stale_inputs] == ["build_script"]
+        assert step.stale_inputs[0].recorded == digest_bytes(b"make all")
+        assert step.stale_inputs[0].current == digest_bytes(b"make other")
 
     def test_steps_without_receipts_are_missing(self, layout: ReeLayout) -> None:
         intent, session = self._seed(layout, ReeIntent())
         report = build_consistency_report(layout, intent, session)
-        assert {s["step"]: s["status"] for s in report["steps"]} == {
+        assert {s.step: s.status for s in report.steps} == {
             "build_runtime": "missing",
             "generate_sbom": "missing",
             "activation_test": "missing",
@@ -260,12 +262,12 @@ class TestConsistencyReport:
         )
 
         fresh = self._step(build_consistency_report(layout, intent, session), "experiment:exp-a")
-        assert fresh["status"] == "fresh"
+        assert fresh.status == "fresh"
 
         verify.write_text("check something else")
         stale = self._step(build_consistency_report(layout, intent, session), "experiment:exp-a")
-        assert stale["status"] == "stale"
-        assert [entry["input"] for entry in stale["staleInputs"]] == ["verifyScript"]
+        assert stale.status == "stale"
+        assert [entry.input for entry in stale.stale_inputs] == ["verify_script"]
 
 
 class TestHandlerWiring:
@@ -280,12 +282,12 @@ class TestHandlerWiring:
         store.ensure_dirs()
         store.write_metadata(
             WorkspaceMetadata(
-                reeId="ree123",
+                ree_id="ree123",
                 name="demo",
-                createdAt="2026-01-01T00:00:00Z",
-                updatedAt="2026-01-01T00:00:00Z",
-                reeIntent=ReeIntent(runtime="runtime.tar"),
-                reeSession=ReeSession(source_snapshot_digest="sha256:snap"),
+                created_at="2026-01-01T00:00:00Z",
+                updated_at="2026-01-01T00:00:00Z",
+                ree_intent=ReeIntent(runtime="runtime.tar"),
+                ree_session=ReeSession(source_snapshot_digest="sha256:snap"),
             )
         )
         monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
@@ -303,7 +305,6 @@ class TestHandlerWiring:
             "ree-scripts/build_script.sh",
             operation="build_runtime",
             noun="Build",
-            output_key="buildRuntimeScriptPath",
             run_id="run-42",
             log=_silent_log,
             is_canceled=lambda: False,
@@ -313,10 +314,10 @@ class TestHandlerWiring:
         receipt = json.loads(layout.run_receipt("run-42").read_text(encoding="utf-8"))
         assert receipt["operation"] == "build_runtime"
         assert receipt["status"] == "succeeded"
-        assert receipt["snapshotDigest"] == "sha256:snap"
-        assert receipt["buildScriptDigest"] == digest_bytes(script.read_bytes())
-        assert receipt["producedRuntimeDigest"] == digest_bytes(b"runtime-bytes")
-        assert receipt["workspaceDrift"]["status"] == "unknown"  # never materialized
+        assert receipt["snapshot_digest"] == "sha256:snap"
+        assert receipt["build_script_digest"] == digest_bytes(script.read_bytes())
+        assert receipt["produced_runtime_digest"] == digest_bytes(b"runtime-bytes")
+        assert receipt["workspace_drift"]["status"] == "unknown"  # never materialized
         assert result.outputs["receipt"] == receipt
 
     def _seed_experiment(self, workbench: ReeStore, *, runtime: str = "runtime.tar") -> ReeIntent:
@@ -337,12 +338,12 @@ class TestHandlerWiring:
         )
         workbench.write_metadata(
             WorkspaceMetadata(
-                reeId="ree123",
+                ree_id="ree123",
                 name="demo",
-                createdAt="2026-01-01T00:00:00Z",
-                updatedAt="2026-01-01T00:00:00Z",
-                reeIntent=intent,
-                reeSession=ReeSession(source_snapshot_digest="sha256:snap"),
+                created_at="2026-01-01T00:00:00Z",
+                updated_at="2026-01-01T00:00:00Z",
+                ree_intent=intent,
+                ree_session=ReeSession(source_snapshot_digest="sha256:snap"),
             )
         )
         script = layout.workspace / "ree-scripts" / "experiments" / "exp-a.sh"
@@ -369,7 +370,7 @@ class TestHandlerWiring:
         # Output captured into the produced-results store, keyed by name.
         assert (layout.results_dir("exp-a") / "results" / "out.txt").read_text() == "answer"
         receipt = json.loads(layout.run_receipt("run-e").read_text(encoding="utf-8"))
-        assert receipt["producedOutputDigest"] == digest_output_paths(layout.workspace, ["results/out.txt"])
+        assert receipt["produced_output_digest"] == digest_output_paths(layout.workspace, ["results/out.txt"])
 
     def test_native_experiment_run_warns_and_omits_runtime_binding(self, workbench: ReeStore) -> None:
         from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
@@ -390,8 +391,8 @@ class TestHandlerWiring:
         warns = [message for stream, level, message in lines if level == "warn"]
         assert any("No runtime artifact declared" in message for message in warns)
         receipt = json.loads(layout.run_receipt("run-native").read_text(encoding="utf-8"))
-        assert receipt["runtimePath"] is None
-        assert receipt["declaredRuntimeDigest"] is None
+        assert receipt["runtime_path"] is None
+        assert receipt["declared_runtime_digest"] is None
 
     def test_rewritten_output_makes_experiment_stale(self, workbench: ReeStore) -> None:
         from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
@@ -408,15 +409,15 @@ class TestHandlerWiring:
 
         session = workbench.read_session()
         fresh = build_consistency_report(layout, intent, session)
-        exp = next(s for s in fresh["steps"] if s["step"] == "experiment:exp-a")
-        assert exp["status"] == "fresh"
+        exp = next(s for s in fresh.steps if s.step == "experiment:exp-a")
+        assert exp.status == "fresh"
 
         # The shared workspace mutated the declared output after the run.
         (layout.workspace / "results" / "out.txt").write_text("tampered")
         stale = build_consistency_report(layout, intent, session)
-        exp = next(s for s in stale["steps"] if s["step"] == "experiment:exp-a")
-        assert exp["status"] == "stale"
-        assert "producedOutput" in [entry["input"] for entry in exp["staleInputs"]]
+        exp = next(s for s in stale.steps if s.step == "experiment:exp-a")
+        assert exp.status == "stale"
+        assert "produced_output" in [entry.input for entry in exp.stale_inputs]
 
     def test_snapshot_upstream_persists_digest_on_session(self, workbench: ReeStore) -> None:
         from repo2ree_core.digests import digest_file
@@ -429,10 +430,10 @@ class TestHandlerWiring:
 
         assert result.status == "succeeded"
         expected = digest_file(layout.snapshot_archive)
-        assert result.outputs["snapshotDigest"] == expected
+        assert result.outputs["snapshot_digest"] == expected
         assert workbench.read_session().source_snapshot_digest == expected
         receipt = json.loads(layout.run_receipt("run-snap").read_text(encoding="utf-8"))
-        assert receipt["snapshotDigest"] == expected
+        assert receipt["snapshot_digest"] == expected
 
 
 class TestCurrentRuntimeDigest:

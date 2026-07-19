@@ -9,8 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
+from pydantic import BaseModel
 
 from repo2ree_core.domain.ree_intent import ReeIntent, SourceType
 from repo2ree_core.domain.ree_session import ReeSession, SourceAcquiredBy
@@ -26,11 +25,9 @@ _VCS_SUFFIX = ".git"
 class SourceRepoMetadata(BaseModel):
     """One coherent view of the source loaded into a workspace.
 
-    Field names are snake_case in Python; ``to_camel`` serializes them to the
-    camelCase the workspace API exposes (e.g. ``size_bytes`` → ``sizeBytes``).
+    snake_case field names are the wire shape — the model doubles as the
+    API contract for the document's ``source_repo`` block.
     """
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     name: str = ""
     origin: str = ""

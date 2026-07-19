@@ -8,7 +8,7 @@ envelope.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,7 +40,15 @@ class ReeCreatePayload(_StrictRequestModel):
 
 
 class ReeIntentPatchPayload(_StrictRequestModel):
-    ree_intent_patch: dict[str, Any] = Field(default_factory=dict)
+    """Merge the provided intent fields into the stored intent (top-level keys).
+
+    Every ``ReeIntent`` field has a default, so the model doubles as the patch
+    shape: only the keys the client actually sent are applied (``exclude_unset``
+    at the dispatch site), and unknown keys are rejected up front instead of
+    failing inside the workbench.
+    """
+
+    ree_intent_patch: ReeIntent = Field(default_factory=ReeIntent)
     expected_version: str | None = None
 
 

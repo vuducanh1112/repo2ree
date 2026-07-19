@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, HTTPException
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import workbench_manager
-from repo2ree_api.wire import to_wire
+from repo2ree_core.reproducibility_scorecard import ReproducibilityScoreCard
 
 # ================================================
 # Router
@@ -24,16 +22,20 @@ scorecard_router = APIRouter(tags=["rees"])
 @scorecard_router.get(
     "/api/v1/rees/{ree_id}/scorecard",
     operation_id="getScorecard",
-    response_model=dict[str, Any],
+    response_model=ReproducibilityScoreCard,
     responses=ERROR_RESPONSES,
 )
-def get_ree_scorecard(ree_id: str) -> dict[str, Any]:
+def get_ree_scorecard(ree_id: str):
     """The reproducibility scorecard, computed inside the workbench from the
-    REE's persisted record (intent + session + run receipts)."""
+    REE's persisted record (intent + session + run receipts).
+
+    A workbench-derived document: unlike the snake_case control-plane wire,
+    it crosses as the core model's camelCase dump (``levelCode`` etc.).
+    """
     handle = workbench_manager.lookup(ree_id)
     if handle is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     try:
-        return to_wire(workbench_manager.get_scorecard(handle))
+        return workbench_manager.get_scorecard(handle)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Workbench get-scorecard failed: {exc}") from exc

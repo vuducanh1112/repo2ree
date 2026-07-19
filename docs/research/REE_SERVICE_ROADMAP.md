@@ -33,8 +33,8 @@ publication-grade loop.
 - Preserve captured files/stdout/stderr as content-addressed evidence.
 - Surface a **re-run → diff against baseline** loop in the UI, not just a
   pass/fail run status.
-- A green/red "this REE reproduced" verdict, distinct from "this REE is
-  well-specified."
+- A green/red "this rerun matched the author baseline" verdict, distinct from
+  both "this author run validated" and "this REE has strong evidence."
 
 Frontend-visible today: experiment run actions exist, and verify scripts can
 produce pass/fail verdicts plus named check rows. The missing surface is a

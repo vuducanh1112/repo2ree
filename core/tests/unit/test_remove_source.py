@@ -35,17 +35,17 @@ def test_remove_source_recreates_reserved_build_script(tmp_path: Path, monkeypat
     store.layout.sealed_archive.write_bytes(b"old sealed archive")
     store.write_metadata(
         WorkspaceMetadata(
-            reeId="ree123",
+            ree_id="ree123",
             name="demo",
-            createdAt="2026-01-01T00:00:00Z",
-            updatedAt="2026-01-01T00:00:00Z",
-            reeIntent=ReeIntent(
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+            ree_intent=ReeIntent(
                 name="demo",
                 origin_url="https://example.com/old.git",
                 source_type="git",
                 runtime="runtime.tar.gz",
             ),
-            reeSession=ReeSession(source_available=True, sealed_at="2026-01-02T00:00:00Z", seal_hash="sha256:old"),
+            ree_session=ReeSession(source_available=True, sealed_at="2026-01-02T00:00:00Z", seal_hash="sha256:old"),
         )
     )
 

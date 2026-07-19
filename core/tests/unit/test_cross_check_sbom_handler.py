@@ -72,12 +72,12 @@ def _seed(
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
-            reeId="ree123",
+            ree_id="ree123",
             name="demo",
-            createdAt="2026-01-01T00:00:00Z",
-            updatedAt="2026-01-01T00:00:00Z",
-            reeIntent=ReeIntent(name="demo", sbom="sbom.json"),
-            reeSession=ReeSession(source_available=True),
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+            ree_intent=ReeIntent(name="demo", sbom="sbom.json"),
+            ree_session=ReeSession(source_available=True),
         )
     )
     if with_sbom:

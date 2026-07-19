@@ -20,7 +20,6 @@ def handle_build_runtime(
         RESERVED_BUILD_SCRIPT,
         operation="build_runtime",
         noun="Build",
-        output_key="buildRuntimeScriptPath",
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,

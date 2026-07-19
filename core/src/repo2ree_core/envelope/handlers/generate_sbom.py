@@ -4,6 +4,8 @@ import json
 import subprocess
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict
+
 from repo2ree_core.digests import digest_file
 from repo2ree_core.envelope.handlers._common import (
     patch_ree_intent,
@@ -18,6 +20,15 @@ from repo2ree_core.tooling import resolve_tool
 from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
+
+
+class GenerateSbomOutputs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sbom_relative_path: str
+    runtime_relative_path: str
+    format: str
+    receipt: dict[str, Any]
 
 
 def handle_generate_sbom(
@@ -119,13 +130,13 @@ def handle_generate_sbom(
         sbom_digest=digest_file(output_path),
         tool_version=tool_version,
     )
-    outputs: dict[str, Any] = {
-        "sbomRelativePath": "sbom.json",
-        "runtimeRelativePath": runtime_path,
-        "format": "cyclonedx-json",
-        "receipt": recorded.model_dump(by_alias=True),
-    }
-    return ActionResult(status="succeeded", exit_code=0, outputs=outputs)
+    outputs = GenerateSbomOutputs(
+        sbom_relative_path="sbom.json",
+        runtime_relative_path=runtime_path,
+        format="cyclonedx-json",
+        receipt=recorded.model_dump(),
+    )
+    return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())
 
 
 def _syft_version(sbom_data: Any) -> str | None:

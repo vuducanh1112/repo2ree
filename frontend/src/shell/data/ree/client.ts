@@ -4,7 +4,11 @@ import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { WorkspaceResetPayload } from "@core/workspace/WorkspaceReset";
 import type { ReeProject, WorkspaceBinaryDownload } from "@core/workspace/WorkspaceTypes";
 import { useMemo } from "react";
-import { type ReeDocument, toSourceAcquireRequest } from "../../infra/api/apiTypes";
+import {
+  type ReeDocument,
+  type ReeIntentPatchPayload,
+  toSourceAcquireRequest,
+} from "../../infra/api/apiTypes";
 import type { ReeApi } from "../../infra/api/ReeApi";
 import { type ApiRuntimeValue, useApiRuntime } from "../apiRuntime";
 import { ensureReeId } from "../client";
@@ -40,7 +44,11 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
     },
     async updateReeIntent(id, intentPatch) {
       const reeId = await ensureReeId(runtime, id);
-      await runtime.reeApi.patchReeIntent(reeId, { ree_intent_patch: intentPatch });
+      // The domain serializers emit loosely-typed records in the wire's shape;
+      // the backend validates the patch strictly (unknown keys are rejected).
+      await runtime.reeApi.patchReeIntent(reeId, {
+        ree_intent_patch: intentPatch as ReeIntentPatchPayload["ree_intent_patch"],
+      });
     },
     async deleteFile(id, path) {
       const reeId = await ensureReeId(runtime, id);

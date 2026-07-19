@@ -243,7 +243,7 @@ export async function provideMetadata(
   await stepShot(page, "provide-metadata", "after");
 }
 
-/** Run dependency evaluation and wait for the score to be produced. */
+/** Run the source-repository assessment and wait for its findings. */
 export async function runEvaluate(page: Page) {
   await stepShot(page, "run-evaluate", "before");
   await openPort(page, "Reproducibility Readiness");
@@ -486,7 +486,7 @@ export async function runExperiment(
   // the heaviest wait in the suite, and the first to blow its budget when
   // the host is under load. Keep it roomier than the other 90s steps.
   await expect(runResult.getByText("pass", { exact: true })).toBeVisible({ timeout: 180000 });
-  await expect(runResult.getByText(/claimed result was reproduced/)).toBeVisible();
+  await expect(runResult.getByText(/declared validation passed/)).toBeVisible();
   await stepShot(page, "run-experiment", "after");
 }
 

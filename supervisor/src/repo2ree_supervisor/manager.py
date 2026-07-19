@@ -456,7 +456,7 @@ class WorkbenchManager:
                 continue
             with suppress(Exception):
                 results.append(self.get_ree_metadata(handle))
-        results.sort(key=lambda m: m.get("updatedAt", ""), reverse=True)
+        results.sort(key=lambda m: m.get("updated_at", ""), reverse=True)
         return results
 
     def copy_to_workbench(self, handle: WorkbenchHandle, host_path: str, container_path: str) -> None:

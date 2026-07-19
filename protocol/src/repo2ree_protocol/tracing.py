@@ -330,7 +330,7 @@ _FACT_STR_LIMIT = 256
 _TAIL_LIMIT = 2048
 
 # Never recorded: secrets have no place on a span, in any form.
-_SECRET_FACT_KEYS = frozenset({"upload_token", "uploadToken"})
+_SECRET_FACT_KEYS = frozenset({"upload_token"})
 # Recorded as `<key>.size` only: bulk payloads whose presence/magnitude is the
 # queryable fact, not their bytes.
 _SIZE_ONLY_FACT_KEYS = frozenset({"content", "patch", "report"})

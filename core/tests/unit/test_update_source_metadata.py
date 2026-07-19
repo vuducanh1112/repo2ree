@@ -19,12 +19,12 @@ def _seed_workspace(root: Path) -> ReeStore:
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
-            reeId="ree123",
+            ree_id="ree123",
             name="demo",
-            createdAt="2026-01-01T00:00:00Z",
-            updatedAt="2026-01-01T00:00:00Z",
-            reeIntent=ReeIntent(),
-            reeSession=ReeSession(),
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+            ree_intent=ReeIntent(),
+            ree_session=ReeSession(),
         )
     )
     return store

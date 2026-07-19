@@ -15,87 +15,23 @@ export interface ApiListResponse<TItem> {
   next_cursor?: string | null;
 }
 
-export type ReeSummary = Schema<"ReeSummary"> & {
-  external_ref?: string | null;
-};
-
-export type ReeFileWire = {
-  path: string;
-  content?: string | null;
-  size?: number | null;
-  kind: "source" | "generated";
-  etag?: string | null;
-};
-
-export type ReeArtifactFileWire = {
-  path: string;
-  content?: string | null;
-  size?: number | null;
-  kind: "ree";
-  tag?: string | null;
-};
-
-export type ReeIntent = Schema<"ReeIntent">;
-
-export type ReeSessionWire = {
-  sealed_at?: string | null;
-  seal_hash?: string | null;
-  dependency_level?: number | null;
-  environment_level?: number | null;
-  machine_level?: number | null;
-  detected_dependencies?: string | null;
-  source_available?: boolean | null;
-  source_acquired_by?: string | null;
-  uploaded_archive?: string | null;
-  source_snapshot_archive?: string | null;
-  source_snapshot_captured_at?: string | null;
-  source_included?: boolean | null;
-  runtime_included?: boolean | null;
-};
+export type ReeSummary = Schema<"ReeSummary">;
 
 /** Display-ready source-repository facts as they cross the wire (snake_case). */
-export type SourceRepoMetadataWire = {
-  name: string;
-  origin: string;
-  acquired_by: string;
-  source_type: string;
-  swhid: string;
-  size_bytes: number | null;
-  size_label: string | null;
-};
-
-export type ConsistencyStaleInputWire = {
-  input: string;
-  recorded: string | null;
-  current: string | null;
-};
-
-export type ConsistencyStepWire = {
-  step: string;
-  status: "fresh" | "stale" | "missing";
-  run_id?: string | null;
-  recorded_at?: string | null;
-  stale_inputs?: ConsistencyStaleInputWire[];
-  workspace_drift?: "clean" | "modified" | "unknown" | null;
-};
+export type SourceRepoMetadataWire = Schema<"SourceRepoMetadata">;
 
 /** Per-step freshness of recorded run receipts vs. the current tree. */
-export type ConsistencyReportWire = {
-  steps: ConsistencyStepWire[];
-};
+export type ConsistencyReportWire = Schema<"ConsistencyReport">;
 
-export type ReeDocument = Schema<"ReeDocument"> & {
-  external_ref?: string | null;
-  ree_intent: Partial<ReeIntent>;
-  ree_session?: Partial<ReeSessionWire>;
-  files?: ReeFileWire[];
-  ree_files?: ReeArtifactFileWire[];
-  draft_manifest?: Record<string, unknown>;
-  source_repo?: SourceRepoMetadataWire;
-  consistency?: ConsistencyReportWire;
-  /** The image this REE's workbench was provisioned from. */
-  workbench_image?: string | null;
-};
+export type ReeDocument = Schema<"ReeDocument">;
+
+/**
+ * Workbench-derived documents: unlike the snake_case control-plane wire these
+ * cross as the core models' camelCase dumps (``levelCode``, ``dependencyLevel``).
+ */
+export type ReproducibilityScoreCardWire = Schema<"ReproducibilityScoreCard">;
+
+export type ReproducibilityReportWire = Schema<"ReproducibilityReport">;
 
 export type ReeCreatePayload = Schema<"ReeCreatePayload">;
 
@@ -112,7 +48,14 @@ export type AgentSummary = Schema<"AgentSummary">;
 
 export type AgentList = Schema<"AgentList">;
 
-export type ReeIntentPatchPayload = Schema<"ReeIntentPatchPayload">;
+/**
+ * The PATCH wire applies only the keys actually sent (``exclude_unset`` on the
+ * backend), so any subset of intent fields is a valid patch. The generated
+ * Input type marks defaulted fields as required; relax that here.
+ */
+export type ReeIntentPatchPayload = Omit<Schema<"ReeIntentPatchPayload">, "ree_intent_patch"> & {
+  ree_intent_patch?: Partial<Schema<"ReeIntent-Input">>;
+};
 
 export type SourceAcquirePayload = Schema<"SourceAcquirePayload">;
 

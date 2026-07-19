@@ -61,9 +61,9 @@ def test_stale_etag_conflicts_without_writing(tmp_path: Path, monkeypatch: pytes
     )
 
     assert result.status == "failed"
-    assert result.outputs["errorCode"] == "version_conflict"
-    assert result.outputs["expectedVersion"] == _etag(b"stale body")
-    assert result.outputs["actualVersion"] == _etag(b"current body")
+    assert result.outputs["error_code"] == "version_conflict"
+    assert result.outputs["expected_version"] == _etag(b"stale body")
+    assert result.outputs["actual_version"] == _etag(b"current body")
     assert store.workspace.read_bytes("build.sh") == b"current body"
 
 
@@ -77,8 +77,8 @@ def test_expected_etag_against_missing_file_conflicts(tmp_path: Path, monkeypatc
     )
 
     assert result.status == "failed"
-    assert result.outputs["errorCode"] == "version_conflict"
-    assert result.outputs["actualVersion"] is None
+    assert result.outputs["error_code"] == "version_conflict"
+    assert result.outputs["actual_version"] is None
 
 
 def test_no_expected_etag_skips_the_guard(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

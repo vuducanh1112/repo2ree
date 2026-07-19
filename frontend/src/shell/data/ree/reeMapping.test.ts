@@ -9,7 +9,6 @@ function baseRee(overrides: Partial<ReeDocument> = {}): ReeDocument {
     status: "draft",
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
-    ree_intent: {},
     files: [],
     ree_files: [],
     ...overrides,

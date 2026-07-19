@@ -78,7 +78,7 @@ def test_stale_etag_conflicts_without_deleting(tmp_path: Path, monkeypatch: pyte
     )
 
     assert result.status == "failed"
-    assert result.outputs["errorCode"] == "version_conflict"
+    assert result.outputs["error_code"] == "version_conflict"
     assert store.workspace.is_file("new.txt")
 
 

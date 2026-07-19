@@ -19,6 +19,20 @@ govern how they're composed.
 
 Each primitive and workflow declares which layers it integrates.
 
+## Vocabulary boundary
+
+The product uses four related terms for four different evidentiary claims:
+
+| Term | Evidence and claim |
+|---|---|
+| **Evaluate** | Observes the source repository before build. It produces declaration findings and independent dependency, environment, and machine axes. |
+| **REE evidence scorecard** | Derives cumulative R0-R5 evidence maturity from persisted intent, session facts, and run receipts across the whole REE. It is not a reproduction verdict. |
+| **Validation** | One run and its optional verify script passed the author-declared check. An author validation creates evidence and a comparison baseline. |
+| **Reproduction** | A later execution is compared with prior author evidence. A durable reproduction claim therefore needs baseline or predecessor identity, not only a passing verify script. |
+
+These boundaries are normative. In particular, a successful first author run
+must be called **validated**, not **reproduced**.
+
 ## Core nouns
 
 ### Source
@@ -55,14 +69,22 @@ outputs.
 
 *Integrates: Environment substrate → Lifecycle vocabulary.*
 
-The repo's standing reproducibility disclosure. Scored on independent
-axes — today: *dependency declaration*, *environment capture*; with
+The repo's standing reproducibility disclosure, produced by Evaluate and shown
+on independent axes — today: *dependency declaration*, *environment capture*; with
 archival also: *source-identifier stability*, *closure-capturability*.
 
 **Observational**: describes the repo as-is, without modifying it. A
 nutrition label, not a grade. The Label reads whatever environment
 substrate the repo brought (Dockerfile, flake.nix, conda env, plain
 pip) and exposes it in lifecycle-layer vocabulary. **Primitive 1.**
+
+### REE evidence scorecard
+
+The assembled REE's receipt-derived evidence summary: source, runtime,
+activation, experiments, and results, plus a cumulative R0-R5 level. Unlike the
+Repro Label, it is not a source observation. Unlike Verify, it does not compare
+a later run with prior evidence. It records the strongest lifecycle claim the
+persisted evidence supports.
 
 ### Run Receipt
 
@@ -93,6 +115,10 @@ the `predecessor` pointer is what binds a reviewer's verification to
 the author's original claim. A verification receipt can be signed by the
 reviewer, executor, or venue as a claim about what was re-derived and under
 which comparison policy. **Primitive 2.**
+
+An author receipt may record that its declared validation passed. It becomes
+reproduction evidence only when a later receipt or comparison names it as the
+baseline or predecessor.
 
 ### Seal Manifest
 

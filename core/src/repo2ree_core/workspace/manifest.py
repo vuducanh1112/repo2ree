@@ -53,7 +53,7 @@ def build_draft_manifest_payload(
     and is not written to disk. It gives clients a stable overview assembled
     from the current metadata and file inventory.
     """
-    ree_id = str(metadata.get("reeId") or "")
+    ree_id = str(metadata.get("ree_id") or "")
     intent = ReeIntent.from_metadata(metadata)
     session = ReeSession.from_metadata(metadata)
     manifest = build_manifest_payload(intent, session, ree_id=ree_id)
@@ -63,8 +63,8 @@ def build_draft_manifest_payload(
         "manifest_state": "draft",
         "ree_id": ree_id,
         "status": str(metadata.get("status") or "draft"),
-        "created_at": metadata.get("createdAt"),
-        "updated_at": metadata.get("updatedAt"),
+        "created_at": metadata.get("created_at"),
+        "updated_at": metadata.get("updated_at"),
         "file_inventory": {
             "workspace": [_file_inventory_entry(file) for file in workspace_files],
             "overlay": [_file_inventory_entry(file) for file in _files_under(ree_files, "overlay")],

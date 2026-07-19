@@ -157,12 +157,11 @@ class ReeIntent(BaseModel):
 
     @classmethod
     def from_metadata(cls, metadata: Mapping[str, Any]) -> ReeIntent:
-        intent = dict(metadata.get("reeIntent") or {})
-        intent = {k: v for k, v in intent.items() if k in cls.model_fields}
+        intent = dict(metadata.get("ree_intent") or {})
         if not intent.get("name"):
             intent["name"] = str(metadata.get("name") or "")
         if not intent.get("origin_url"):
-            intent["origin_url"] = str(metadata.get("externalRef") or "")
+            intent["origin_url"] = str(metadata.get("external_ref") or "")
         return cls.model_validate(intent)
 
     def apply_patch(self, patch: Mapping[str, Any]) -> ReeIntent:

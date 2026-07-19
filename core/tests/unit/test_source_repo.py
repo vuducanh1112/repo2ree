@@ -67,14 +67,14 @@ class TestDeriveSourceRepoMetadata:
         assert meta.size_bytes is None
         assert meta.size_label is None
 
-    def test_serializes_with_camelcase_aliases(self) -> None:
+    def test_serializes_snake_case(self) -> None:
         intent = ReeIntent(origin_url="https://github.com/acme/widget", source_type="git")
         session = ReeSession(source_available=True, source_acquired_by="download")
-        dumped = derive_source_repo_metadata(intent, session, [{"size": 5}]).model_dump(by_alias=True)
-        assert dumped["sourceType"] == "git"
-        assert dumped["sizeBytes"] == 5
-        assert dumped["sizeLabel"] == "5 B"
-        assert dumped["acquiredBy"] == "download"
+        dumped = derive_source_repo_metadata(intent, session, [{"size": 5}]).model_dump()
+        assert dumped["source_type"] == "git"
+        assert dumped["size_bytes"] == 5
+        assert dumped["size_label"] == "5 B"
+        assert dumped["acquired_by"] == "download"
 
     def test_falls_back_to_ree_name(self) -> None:
         meta = derive_source_repo_metadata(ReeIntent(name="my-ree"), ReeSession(), [])

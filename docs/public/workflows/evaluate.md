@@ -7,7 +7,7 @@ Evaluate is the first public-facing question repo2ree answers:
 
 The current app scans the repository and reports reproducibility evidence such
 as dependency declarations, manifest files, runtime hints, and risks. The result
-is the seed of a Repro Label.
+is the seed of a Repro Label: a source-level assessment on independent axes.
 
 ## When to use it
 
@@ -28,10 +28,20 @@ Typical findings include missing lockfiles, floating image tags, loosely
 declared dependencies, absent runtime instructions, or incomplete environment
 metadata.
 
+## Relationship to the REE evidence scorecard
+
+Evaluate and the R0-R5 scorecard answer different questions. Evaluate reads the
+source repository and discloses what it declares. The scorecard reads the whole
+REE's persisted intent, session state, and run receipts to summarize which
+lifecycle evidence has actually been recorded. Evaluate findings can feed later
+runtime-SBOM reconciliation, but running Evaluate does not validate a result or
+prove a reproduction.
+
 ## What it does not prove
 
-Evaluate does not prove that the repository builds, that a result reproduces, or
-that an archive can preserve every dependency. Those questions need the build,
-run, verify, and archive workflows.
+Evaluate does not prove that the repository builds, that a run satisfies its
+declared validation, that a later run reproduces prior evidence, or that an
+archive can preserve every dependency. Those questions need the build, run,
+verify, and archive workflows.
 
 For the deeper design, see [Repro Label](../concepts.md#repro-label).

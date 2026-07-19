@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import BaseModel, ConfigDict
+
 from repo2ree_core.receipts import AcquireSourceReceipt, receipt_run_id, record_receipt
 from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
 from repo2ree_core.run_script import (
@@ -23,6 +25,12 @@ from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+
+
+class AcquireSourceOutputs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    origin_url: str
 
 
 def _write_acquire_script(args: AcquireSourceArgs, *, log: LogSink, layout: ReeLayout) -> Path:
@@ -89,5 +97,5 @@ def handle_acquire_source(
     return ActionResult(
         status="succeeded",
         exit_code=0,
-        outputs={"origin_url": args.origin_url},
+        outputs=AcquireSourceOutputs(origin_url=args.origin_url).model_dump(),
     )

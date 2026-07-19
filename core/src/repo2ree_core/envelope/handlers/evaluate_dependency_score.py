@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.repo_profiler.profiler import AnalysisError, analyze_repo
 from repo2ree_core.run_script import CancelCheck
@@ -11,6 +14,20 @@ from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
 _REPORT_FILENAME = "reproducibility-report.json"
+
+
+class EvaluateOutputs(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dependency_count: int
+    manifest_count: int
+    dependency_level: int
+    environment_level: int
+    machine_level: int
+    detected_dependencies: str
+    # The full evaluate report, camelCase by design: it is a workbench-derived
+    # document the frontend consumes as-is (see the de-stringing plan).
+    report: dict[str, Any]
 
 
 def handle_evaluate_dependency_score(
@@ -57,14 +74,14 @@ def handle_evaluate_dependency_score(
         log("system", "error", f"failed to persist evaluation outputs: {exc}")
         return ActionResult(status="failed", exit_code=1)
 
-    outputs = {
-        "dependencyCount": report.dependency_summary.total,
-        "manifestCount": report.dependency_summary.manifests,
-        "dependencyLevel": int(report.dependency_level),
-        "environmentLevel": int(report.environment_level),
-        "machineLevel": int(report.machine_level),
-        "detectedDependencies": report.detected_dependencies,
-        "report": report.model_dump(by_alias=True),
-    }
+    outputs = EvaluateOutputs(
+        dependency_count=report.dependency_summary.total,
+        manifest_count=report.dependency_summary.manifests,
+        dependency_level=int(report.dependency_level),
+        environment_level=int(report.environment_level),
+        machine_level=int(report.machine_level),
+        detected_dependencies=report.detected_dependencies,
+        report=report.model_dump(by_alias=True),
+    )
     log("system", "info", "Evaluate run succeeded")
-    return ActionResult(status="succeeded", exit_code=0, outputs=outputs)
+    return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())

@@ -140,7 +140,7 @@ export function ExperimentDetail({
 
         <DetailField
           label="Verify script"
-          help="Checks the run's results afterwards — a plain script run from the workspace root after the run script, whose exit code is the verdict (0 = the claimed result was reproduced). It reads what it checks straight from the workspace; to check stdout, have the run script write it to a file (e.g. `… | tee results/run.log`). Start from a template for the standard cases."
+          help="Validates the run's results afterwards — a plain script run from the workspace root after the run script, whose exit code is the verdict (0 = the declared validation passed). It reads what it checks straight from the workspace; to check stdout, have the run script write it to a file (e.g. `… | tee results/run.log`). Start from a template for the standard cases."
         >
           <RunScriptCard
             scriptPath={verifyScriptPath}
@@ -356,11 +356,11 @@ function runResultSummary(outputs: ExperimentRunOutputs): string {
   const hasVerify = outputs.verifyExitCode !== undefined;
   if (outputs.verdict === "pass") {
     return hasVerify
-      ? "Verify script exited 0 — the claimed result was reproduced."
+      ? "Verify script exited 0 — the declared validation passed."
       : "Command exited 0 — no verify script declared.";
   }
   if (hasVerify && outputs.exitCode === 0) {
-    return `Verify script failed (exit code ${outputs.verifyExitCode ?? "?"}) — result not reproduced.`;
+    return `Verify script failed (exit code ${outputs.verifyExitCode ?? "?"}) — declared validation failed.`;
   }
   return `Run script failed (exit code ${outputs.exitCode ?? "?"}).`;
 }

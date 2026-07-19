@@ -12,11 +12,13 @@ adapters.
 - Keep source separate from repo2ree's overlay and workspace state.
 - Edit metadata, runtime instructions, activation scripts, hardware context,
   and experiment declarations.
-- Evaluate repository reproducibility signals and dependency evidence.
+- Evaluate source-repository declarations, reproducibility risks, and dependency evidence.
 - Build a runtime from the declared build script.
 - Generate SBOM and HBOM evidence.
 - Test that a built runtime activates.
-- Run experiment commands and check results with author-provided verify scripts.
+- Run experiment commands and validate results with author-provided verify scripts.
+- Derive an R0-R5 REE evidence scorecard from persisted intent, session state,
+  and run receipts; this is evidence maturity, not a reproduction verdict.
 - Seal the current REE state and download a sealed ZIP bundle.
 - Track archive-oriented metadata such as SWHID, Zenodo DOI, and Dataverse DOI.
 

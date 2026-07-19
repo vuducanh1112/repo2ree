@@ -125,15 +125,14 @@ def _init_ree(layout: ReeLayout, ree_id: str) -> None:
     name = f"workspace-{ree_id[:8]}"
     store.write_metadata_json(
         {
-            "reeId": ree_id,
-            "externalRef": None,
+            "ree_id": ree_id,
+            "external_ref": None,
             "name": name,
             "status": "draft",
-            "createdAt": ts,
-            "updatedAt": ts,
-            "reeIntent": ReeIntent(name=name).model_dump(exclude_none=True),
-            "reeSession": ReeSession().model_dump(exclude_none=True),
-            "source": None,
+            "created_at": ts,
+            "updated_at": ts,
+            "ree_intent": ReeIntent(name=name).model_dump(exclude_none=True),
+            "ree_session": ReeSession().model_dump(exclude_none=True),
         }
     )
 
@@ -222,11 +221,11 @@ def test_ree_lifecycle_flow(ree: Ree, source_repo: Path) -> None:
     assert result.status == "succeeded"
     assert layout.sealed_archive.is_file()
     assert layout.manifest.is_file()
-    assert result.outputs["sealHash"].startswith("sha256:")
+    assert result.outputs["seal_hash"].startswith("sha256:")
 
     sealed_session = ree.session()
     assert sealed_session.is_sealed
-    assert sealed_session.seal_hash == result.outputs["sealHash"]
+    assert sealed_session.seal_hash == result.outputs["seal_hash"]
 
     # the flow streamed log events at every step (the supervisor's relay path)
     assert log.events
@@ -416,7 +415,7 @@ def test_seal_is_deterministic_for_unchanged_content(ree: Ree, source_repo: Path
     second = run_command(SealReeCommand(), log=log, run_id="seal-2")
 
     assert first.status == second.status == "succeeded"
-    assert first.outputs["sealHash"] == second.outputs["sealHash"]
+    assert first.outputs["seal_hash"] == second.outputs["seal_hash"]
 
 
 # ================================================
@@ -445,9 +444,9 @@ def test_evaluate_dependency_score_real(ree: Ree, source_repo: Path) -> None:
 
     assert result.status == "succeeded"
     assert (layout.artifacts / "reproducibility-report.json").is_file()
-    assert result.outputs["manifestCount"] == 1  # requirements.txt (the Dockerfile is the env axis)
-    assert result.outputs["dependencyCount"] == 1  # requests==2.31.0
-    assert result.outputs["dependencyLevel"] == 2  # pinned, but no lockfile
+    assert result.outputs["manifest_count"] == 1  # requirements.txt (the Dockerfile is the env axis)
+    assert result.outputs["dependency_count"] == 1  # requests==2.31.0
+    assert result.outputs["dependency_level"] == 2  # pinned, but no lockfile
     # The floating base image is reported as a threat, not counted as a dependency.
     threat_ids = {threat["id"] for threat in result.outputs["report"]["threats"]}
     assert "floating-base-image" in threat_ids

@@ -11,13 +11,15 @@ WorkspaceStatus = Literal["draft", "ready", "sealed", "archived"]
 
 
 class WorkspaceMetadata(BaseModel):
-    model_config = ConfigDict(extra="allow", populate_by_name=True)
+    """The full schema of the ``.workspace.json`` sidecar."""
 
-    ree_id: str = Field(alias="reeId")
-    external_ref: str | None = Field(default=None, alias="externalRef")
+    model_config = ConfigDict(extra="forbid")
+
+    ree_id: str
+    external_ref: str | None = None
     name: str
     status: WorkspaceStatus = "draft"
-    created_at: str = Field(alias="createdAt")
-    updated_at: str = Field(alias="updatedAt")
-    ree_intent: ReeIntent = Field(alias="reeIntent")
-    ree_session: ReeSession = Field(alias="reeSession")
+    created_at: str
+    updated_at: str
+    ree_intent: ReeIntent = Field(default_factory=ReeIntent)
+    ree_session: ReeSession = Field(default_factory=ReeSession)

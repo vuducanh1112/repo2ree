@@ -60,7 +60,7 @@ from repo2ree_api.storage.upload_staging import (
     stage_upload_stream,
     staged_upload_path,
 )
-from repo2ree_api.wire import to_wire
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol import (
     AcquireSourceCommand,
@@ -185,7 +185,7 @@ def _dispatch_or_fail(handle: WorkbenchHandle, cmd: Command, run_id: str, error_
     result = workbench_manager.dispatch_action(handle, cmd, run_id, lambda *_: None)
     if result.status == "succeeded":
         return result
-    outputs = to_wire(result.outputs or {})
+    outputs = result.outputs or {}
     if outputs.get("error_code") == "version_conflict":
         raise HTTPException(
             status_code=409,
@@ -340,7 +340,7 @@ def list_workspaces_route(
     limit: int | None = Query(None, ge=1),
     status: str | None = Query(None),
 ):
-    items = to_wire(workbench_manager.list_all_metadata())
+    items = workbench_manager.list_all_metadata()
     if status:
         items = [m for m in items if m.get("status") == status]
     # Keyset pagination needs an immutable sort key: created_at (with ree_id as
@@ -363,7 +363,7 @@ def _ree_page_key(metadata: dict[str, Any]) -> tuple[str, str]:
 )
 def get_workspace_route(ree_id: str):
     handle = _require_handle(ree_id)
-    workspace = to_wire(workbench_manager.get_workspace(handle))
+    workspace = workbench_manager.get_workspace(handle)
     # get-workspace runs inside the container and can't know the image, so the
     # manager (which owns the registry) supplies it.
     workspace["workbench_image"] = workbench_manager.image_for(handle)
@@ -379,7 +379,7 @@ def get_workspace_route(ree_id: str):
 def get_workspace_state_route(ree_id: str):
     """Compact automation view: durable state and file metadata, never contents."""
     handle = _require_handle(ree_id)
-    workspace = to_wire(workbench_manager.get_workspace_state(handle))
+    workspace = workbench_manager.get_workspace_state(handle)
     active_runs = [run for run in list_runs(ree_id) if run.get("status") in ACTIVE_STATUSES]
     state = {
         "ree_id": workspace["ree_id"],
@@ -397,9 +397,8 @@ def get_workspace_state_route(ree_id: str):
         "files": workspace.get("files", []),
         "active_runs": active_runs,
     }
-    for key in ("source", "source_repo"):
-        if key in workspace:
-            state[key] = workspace[key]
+    if "source_repo" in workspace:
+        state["source_repo"] = workspace["source_repo"]
     return state
 
 
@@ -412,7 +411,7 @@ def get_workspace_state_route(ree_id: str):
 def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
     handle = _require_handle(ree_id)
     with _ree_command_span("patch-intent", ree_id):
-        current = to_wire(workbench_manager.get_ree_metadata(handle))
+        current = workbench_manager.get_ree_metadata(handle)
         if payload.expected_version and payload.expected_version != current.get("updated_at"):
             raise HTTPException(
                 status_code=409,
@@ -427,9 +426,11 @@ def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
                 },
             )
 
-        cmd = PatchReeIntentCommand(args=PatchReeIntentArgs(patch=dict(payload.ree_intent_patch or {})))
+        cmd = PatchReeIntentCommand(
+            args=PatchReeIntentArgs(patch=payload.ree_intent_patch.model_dump(mode="json", exclude_unset=True))
+        )
         _dispatch_or_fail(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
-        return to_wire(workbench_manager.get_workspace(handle))
+        return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.put(
@@ -441,15 +442,16 @@ def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
 def replace_ree_intent_route(ree_id: str, payload: ReeIntentReplacePayload):
     """Atomically replace the complete typed authoring intent.
 
-    Delegating to the patch route is a true replace only because model_dump()
-    emits every ReeIntent field (defaults included) and apply_patch merges at
-    the top level, so each key gets overwritten. Guarded by
+    Delegating to the patch route is a true replace only because the patch is
+    re-validated from a full model_dump() — every ReeIntent field (defaults
+    included) counts as explicitly set, so the patch dispatch's exclude_unset
+    keeps them all and apply_patch overwrites each top-level key. Guarded by
     test_replace_intent_resets_fields_omitted_from_the_new_intent.
     """
     return patch_ree_intent_route(
         ree_id,
         ReeIntentPatchPayload(
-            ree_intent_patch=payload.ree_intent.model_dump(mode="json"),
+            ree_intent_patch=ReeIntent.model_validate(payload.ree_intent.model_dump(mode="json")),
             expected_version=payload.expected_version,
         ),
     )
@@ -697,7 +699,7 @@ def remove_source_route(ree_id: str):
     handle = _require_handle(ree_id)
     with _ree_command_span("remove-source", ree_id):
         _dispatch_or_fail(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
-        return to_wire(workbench_manager.get_workspace(handle))
+        return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.get(
@@ -739,7 +741,7 @@ def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentP
             args=WriteFileArgs(path=payload.path, content=payload.content, expected_etag=payload.if_match or "")
         )
         wb_result = _dispatch_or_fail(handle, cmd, "write-file", "Workbench write_file failed")
-        result = to_wire(dict(wb_result.outputs or {}))
+        result = dict(wb_result.outputs or {})
         result["etag"] = _content_etag(payload.content.encode())
         result.setdefault("updated_at", None)
         return result
@@ -761,7 +763,7 @@ def delete_workspace_file_content_route(
     with _ree_command_span("delete-file", ree_id):
         cmd = DeleteFileCommand(args=DeleteFileArgs(path=path, expected_etag=if_match or ""))
         wb_result = _dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed")
-        return to_wire(wb_result.outputs) or {"deleted_at": None}
+        return wb_result.outputs or {"deleted_at": None}
 
 
 @manage_ree_router.post(
@@ -809,7 +811,7 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload):
         )
         _dispatch_or_fail(handle, cmd, "seal", "Workbench seal_ree failed")
         # Return the post-seal workspace so the client sees the sealed state.
-        return to_wire(workbench_manager.get_workspace(handle))
+        return workbench_manager.get_workspace(handle)
 
 
 @manage_ree_router.get(

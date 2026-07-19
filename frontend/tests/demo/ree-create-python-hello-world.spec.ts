@@ -207,7 +207,7 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await clickDemo(
       page,
       main.getByRole("button", { name: /^Run Evaluate$/ }),
-      "Run evaluation to obtain reproducibility score",
+      "Assess the source declarations and surface reproducibility risks",
     );
     await expect(main.getByRole("button", { name: /Re-run Evaluate/ })).toBeVisible({
       timeout: 60000,
@@ -406,7 +406,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await page.waitForTimeout(5000);
     const runResultPanel = main.getByRole("region", { name: "Run result" });
     await expect(runResultPanel.getByText("pass", { exact: true })).toBeVisible({ timeout: 90000 });
-    await expect(runResultPanel.getByText(/claimed result was reproduced/)).toBeVisible();
+    await expect(runResultPanel.getByText(/declared validation passed/)).toBeVisible();
   });
 
   await demoStep(page, "Review decomposed experiment view", async () => {

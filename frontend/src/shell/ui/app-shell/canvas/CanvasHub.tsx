@@ -174,8 +174,8 @@ export function CanvasHub({
     animate,
   });
 
-  // Cables tint by the REE's own standing (the scorecard), not the source
-  // repo's static axes — a verified REE must not read as its upstream repo.
+  // Cables tint by the REE's own evidence standing (the scorecard), not the
+  // source repo's static Evaluate axes.
   const scorecard = useReproducibilityScoreCard({ enabled: provisioned });
   const levelMeta = scoreCardStanding(scorecard.data ?? null);
 

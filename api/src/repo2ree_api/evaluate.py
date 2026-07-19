@@ -12,6 +12,7 @@ from repo2ree_api.run_management import (
     run_summary,
     start_single_command_run,
 )
+from repo2ree_core.repo_profiler.reproducibility_report import ReproducibilityReport
 from repo2ree_protocol.command import (
     EvaluateDependencyScoreArgs,
     EvaluateDependencyScoreCommand,
@@ -59,10 +60,15 @@ _REPORT_FILENAME = "reproducibility-report.json"
 @evaluate_router.get(
     "/api/v1/rees/{ree_id}/evaluate/report",
     operation_id="getEvaluateReport",
-    response_model=dict[str, Any],
+    response_model=ReproducibilityReport,
     responses=ERROR_RESPONSES,
 )
 def get_workspace_evaluate_report(ree_id: str) -> dict[str, Any]:
+    """The persisted evaluate-run report artifact.
+
+    A workbench-derived document: unlike the snake_case control-plane wire,
+    it crosses as the core model's camelCase dump (``dependencyLevel`` etc.).
+    """
     handle = workbench_manager.lookup(ree_id)
     if handle is not None:
         try:

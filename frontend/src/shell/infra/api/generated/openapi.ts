@@ -130,7 +130,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Workspace Evaluate Report */
+        /**
+         * Get Workspace Evaluate Report
+         * @description The persisted evaluate-run report artifact.
+         *
+         *     A workbench-derived document: unlike the snake_case control-plane wire,
+         *     it crosses as the core model's camelCase dump (``dependencyLevel`` etc.).
+         */
         get: operations["getEvaluateReport"];
         put?: never;
         post?: never;
@@ -151,6 +157,9 @@ export interface paths {
          * Get Ree Scorecard
          * @description The reproducibility scorecard, computed inside the workbench from the
          *     REE's persisted record (intent + session + run receipts).
+         *
+         *     A workbench-derived document: unlike the snake_case control-plane wire,
+         *     it crosses as the core model's camelCase dump (``levelCode`` etc.).
          */
         get: operations["getScorecard"];
         put?: never;
@@ -314,9 +323,10 @@ export interface paths {
          * Replace Ree Intent Route
          * @description Atomically replace the complete typed authoring intent.
          *
-         *     Delegating to the patch route is a true replace only because model_dump()
-         *     emits every ReeIntent field (defaults included) and apply_patch merges at
-         *     the top level, so each key gets overwritten. Guarded by
+         *     Delegating to the patch route is a true replace only because the patch is
+         *     re-validated from a full model_dump() — every ReeIntent field (defaults
+         *     included) counts as explicitly set, so the patch dispatch's exclude_unset
+         *     keeps them all and apply_patch overwrites each top-level key. Guarded by
          *     test_replace_intent_resets_fields_omitted_from_the_new_intent.
          */
         put: operations["replaceReeIntent"];
@@ -725,6 +735,47 @@ export interface components {
              */
             status: "queued" | "provisioning" | "running" | "canceling" | "succeeded" | "failed" | "canceled";
         };
+        /**
+         * ConsistencyReport
+         * @description Per-step freshness of recorded run receipts vs. the current tree.
+         */
+        ConsistencyReport: {
+            /** Steps */
+            steps?: components["schemas"]["ConsistencyStep"][];
+        };
+        /**
+         * ConsistencyStaleInput
+         * @description One input whose recorded digest disagrees with the current tree.
+         */
+        ConsistencyStaleInput: {
+            /** Input */
+            input: string;
+            /** Recorded */
+            recorded: string | null;
+            /** Current */
+            current: string | null;
+        };
+        /**
+         * ConsistencyStep
+         * @description Freshness of one step's latest successful receipt vs. the current tree.
+         */
+        ConsistencyStep: {
+            /** Step */
+            step: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "fresh" | "stale" | "missing";
+            /** Run Id */
+            run_id?: string | null;
+            /** Recorded At */
+            recorded_at?: string | null;
+            /** Stale Inputs */
+            stale_inputs?: components["schemas"]["ConsistencyStaleInput"][];
+            /** Workspace Drift */
+            workspace_drift?: ("clean" | "modified" | "unknown") | null;
+        };
         /** Contributor */
         Contributor: {
             /**
@@ -803,6 +854,49 @@ export interface components {
              */
             state: "deleted";
         };
+        /**
+         * DependencyLevel
+         * @enum {integer}
+         */
+        DependencyLevel: 0 | 1 | 2 | 3;
+        /** DependencySummary */
+        DependencySummary: {
+            /**
+             * Manifests
+             * @default 0
+             */
+            manifests: number;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+            /**
+             * Pinned
+             * @default 0
+             */
+            pinned: number;
+            /**
+             * Ranged
+             * @default 0
+             */
+            ranged: number;
+            /**
+             * Unpinned
+             * @default 0
+             */
+            unpinned: number;
+            /**
+             * Locked
+             * @default 0
+             */
+            locked: number;
+        };
+        /**
+         * EnvironmentLevel
+         * @enum {integer}
+         */
+        EnvironmentLevel: 0 | 1 | 2;
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -824,6 +918,56 @@ export interface components {
         /** ErrorEnvelope */
         ErrorEnvelope: {
             error: components["schemas"]["ErrorDetail"];
+        };
+        /**
+         * EvaluatedDependency
+         * @description A ``Dependency`` row plus the report's classification of it.
+         *
+         *     The status is computed here — the single classifier that also feeds the
+         *     summary buckets — so presentation layers never re-derive it. The same
+         *     holds for ``runtime_presence``, filled by the SBOM cross-check step.
+         */
+        EvaluatedDependency: {
+            /**
+             * Ecosystem
+             * @default other
+             * @enum {string}
+             */
+            ecosystem: "pypi" | "conda" | "npm" | "apt" | "oci" | "other";
+            /** Name */
+            name: string;
+            /** Name As Written */
+            name_as_written?: string | null;
+            /** Scope */
+            scope?: string | null;
+            /**
+             * Direct
+             * @default true
+             */
+            direct: boolean;
+            /** Declared Constraint */
+            declared_constraint?: string | null;
+            /** Declared In */
+            declared_in?: string | null;
+            /** Locked Version */
+            locked_version?: string | null;
+            /** Locked Hashes */
+            locked_hashes?: string[];
+            /** Locked In */
+            locked_in?: string | null;
+            /** Archived Path */
+            archived_path?: string | null;
+            /** Archived Digest */
+            archived_digest?: string | null;
+            /** Observed Version */
+            observed_version?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "locked" | "pinned" | "ranged" | "unpinned" | "undeclared";
+            /** Runtime Presence */
+            runtime_presence?: ("observed" | "version-mismatch" | "not-observed") | null;
         };
         /**
          * Experiment
@@ -967,6 +1111,11 @@ export interface components {
             /** Message */
             message: string;
         };
+        /**
+         * MachineLevel
+         * @enum {integer}
+         */
+        MachineLevel: 0 | 1;
         /** MemoryDefinition */
         MemoryDefinition: {
             /**
@@ -1090,7 +1239,12 @@ export interface components {
         };
         /**
          * ReeDocument
-         * @description The stable identity/version fields plus the workbench-owned document.
+         * @description The workbench-owned REE document, typed in full.
+         *
+         *     The typed fields reuse the core models the workbench produces the document
+         *     from, so the contract cannot drift from the producers. The contract is
+         *     total: an unknown key coming out of the workbench is an error, not a
+         *     passthrough.
          */
         ReeDocument: {
             /** Ree Id */
@@ -1103,14 +1257,48 @@ export interface components {
             created_at: string;
             /** Updated At */
             updated_at: string;
-        } & {
-            [key: string]: unknown;
+            /** External Ref */
+            external_ref?: string | null;
+            /** Workbench Image */
+            workbench_image?: string | null;
+            ree_intent?: components["schemas"]["ReeIntent-Output"];
+            ree_session?: components["schemas"]["ReeSession"];
+            /** Files */
+            files?: components["schemas"]["WorkspaceFile"][];
+            /** Ree Files */
+            ree_files?: components["schemas"]["ReeFile"][];
+            /** Draft Manifest */
+            draft_manifest?: {
+                [key: string]: unknown;
+            };
+            source_repo?: components["schemas"]["SourceRepoMetadata"] | null;
+            consistency?: components["schemas"]["ConsistencyReport"];
+        };
+        /**
+         * ReeFile
+         * @description One file under the REE root (upstream/overlay/artifacts/…).
+         */
+        ReeFile: {
+            /** Path */
+            path: string;
+            /**
+             * Kind
+             * @default ree
+             * @constant
+             */
+            kind: "ree";
+            /** Tag */
+            tag: string;
+            /** Size */
+            size: number;
+            /** Content */
+            content?: string | null;
         };
         /**
          * ReeIntent
          * @description Author-declared reproducibility intent — the only patchable model.
          */
-        ReeIntent: {
+        "ReeIntent-Input": {
             /**
              * Name
              * @default
@@ -1151,18 +1339,68 @@ export interface components {
             /** Experiments */
             experiments?: components["schemas"]["Experiment"][];
         };
-        /** ReeIntentPatchPayload */
+        /**
+         * ReeIntent
+         * @description Author-declared reproducibility intent — the only patchable model.
+         */
+        "ReeIntent-Output": {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            catalog_metadata?: components["schemas"]["ReeCatalogMetadata"];
+            /**
+             * Origin Url
+             * @default
+             */
+            origin_url: string;
+            /**
+             * Source Type
+             * @default
+             * @enum {string}
+             */
+            source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
+            /**
+             * Revision
+             * @default
+             */
+            revision: string;
+            /** Runtime */
+            runtime?: string | null;
+            activation?: components["schemas"]["Activation"];
+            /** Sbom */
+            sbom?: string | null;
+            /**
+             * Swhid
+             * @default
+             */
+            swhid: string;
+            /** Zenodo Doi */
+            zenodo_doi?: string | null;
+            /** Dataverse Doi */
+            dataverse_doi?: string | null;
+            hardware_description?: components["schemas"]["HBOM"];
+            /** Experiments */
+            experiments?: components["schemas"]["Experiment"][];
+        };
+        /**
+         * ReeIntentPatchPayload
+         * @description Merge the provided intent fields into the stored intent (top-level keys).
+         *
+         *     Every ``ReeIntent`` field has a default, so the model doubles as the patch
+         *     shape: only the keys the client actually sent are applied (``exclude_unset``
+         *     at the dispatch site), and unknown keys are rejected up front instead of
+         *     failing inside the workbench.
+         */
         ReeIntentPatchPayload: {
-            /** Ree Intent Patch */
-            ree_intent_patch?: {
-                [key: string]: unknown;
-            };
+            ree_intent_patch?: components["schemas"]["ReeIntent-Input"];
             /** Expected Version */
             expected_version?: string | null;
         };
         /** ReeIntentReplacePayload */
         ReeIntentReplacePayload: {
-            ree_intent: components["schemas"]["ReeIntent"];
+            ree_intent: components["schemas"]["ReeIntent-Input"];
             /** Expected Version */
             expected_version?: string | null;
         };
@@ -1192,6 +1430,69 @@ export interface components {
             include_results: boolean;
         };
         /**
+         * ReeSession
+         * @description Action-managed session state — mutated only via named transitions, never patched.
+         */
+        ReeSession: {
+            /**
+             * Dependency Level
+             * @default 0
+             */
+            dependency_level: number;
+            /**
+             * Environment Level
+             * @default 0
+             */
+            environment_level: number;
+            /**
+             * Machine Level
+             * @default 0
+             */
+            machine_level: number;
+            /** Detected Dependencies */
+            detected_dependencies?: string | null;
+            /** Sealed At */
+            sealed_at?: string | null;
+            /** Seal Hash */
+            seal_hash?: string | null;
+            /**
+             * Source Available
+             * @default false
+             */
+            source_available: boolean;
+            /**
+             * Source Acquired By
+             * @default
+             * @enum {string}
+             */
+            source_acquired_by: "" | "download" | "upload";
+            /** Source Resolved Commit */
+            source_resolved_commit?: string | null;
+            /** Uploaded Archive */
+            uploaded_archive?: string | null;
+            /** Source Snapshot Archive */
+            source_snapshot_archive?: string | null;
+            /** Source Snapshot Captured At */
+            source_snapshot_captured_at?: string | null;
+            /** Source Snapshot Digest */
+            source_snapshot_digest?: string | null;
+            /**
+             * Source Included
+             * @default false
+             */
+            source_included: boolean;
+            /**
+             * Runtime Included
+             * @default false
+             */
+            runtime_included: boolean;
+            /**
+             * Results Included
+             * @default false
+             */
+            results_included: boolean;
+        };
+        /**
          * ReeState
          * @description Compact control-plane observation without inline workspace content.
          */
@@ -1204,30 +1505,15 @@ export interface components {
             status: string;
             /** Updated At */
             updated_at: string;
-            /** Workbench */
-            workbench: {
-                [key: string]: unknown;
-            };
-            /** Ree Intent */
-            ree_intent?: {
-                [key: string]: unknown;
-            };
-            /** Ree Session */
-            ree_session?: {
-                [key: string]: unknown;
-            };
-            /** Consistency */
-            consistency?: {
-                [key: string]: unknown;
-            };
+            workbench: components["schemas"]["WorkbenchStatus"];
+            ree_intent?: components["schemas"]["ReeIntent-Output"];
+            ree_session?: components["schemas"]["ReeSession"];
+            consistency?: components["schemas"]["ConsistencyReport"];
             /** Files */
-            files?: {
-                [key: string]: unknown;
-            }[];
+            files?: components["schemas"]["WorkspaceFile"][];
+            source_repo?: components["schemas"]["SourceRepoMetadata"] | null;
             /** Active Runs */
             active_runs?: components["schemas"]["RunSummary"][];
-        } & {
-            [key: string]: unknown;
         };
         /** ReeSummary */
         ReeSummary: {
@@ -1241,8 +1527,55 @@ export interface components {
             created_at: string;
             /** Updated At */
             updated_at: string;
+            /** External Ref */
+            external_ref?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /** ReproducibilityReport */
+        ReproducibilityReport: {
+            dependencyLevel: components["schemas"]["DependencyLevel"];
+            environmentLevel: components["schemas"]["EnvironmentLevel"];
+            machineLevel: components["schemas"]["MachineLevel"];
+            dependencySummary: components["schemas"]["DependencySummary"];
+            /** Dependencies */
+            dependencies?: components["schemas"]["EvaluatedDependency"][];
+            sbomCrossCheck?: components["schemas"]["SbomCrossCheckSummary"] | null;
+            /** Threats */
+            threats: components["schemas"]["Threat"][];
+            /** Dependencylevellabel */
+            readonly dependencyLevelLabel: string;
+            /** Environmentlevellabel */
+            readonly environmentLevelLabel: string;
+            /** Machinelevellabel */
+            readonly machineLevelLabel: string;
+            /** Detecteddependencies */
+            readonly detectedDependencies: string;
+        };
+        /**
+         * ReproducibilityScoreCard
+         * @description The scorecard: five evidence categories + the ordinal level.
+         *
+         *     ``level`` is the bottleneck aggregate (see module docstring); the code and
+         *     name are derived from it so they can never drift.
+         */
+        ReproducibilityScoreCard: {
+            /**
+             * Schemaversion
+             * @default 1
+             * @constant
+             */
+            schemaVersion: 1;
+            /** Level */
+            level: number;
+            /** Sealed */
+            sealed: boolean;
+            /** Categories */
+            categories: components["schemas"]["ScoreCardCategory"][];
+            /** Levelcode */
+            readonly levelCode: string;
+            /** Levelname */
+            readonly levelName: string;
         };
         /** ReprovisionResponse */
         ReprovisionResponse: {
@@ -1359,6 +1692,88 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * SbomCrossCheckSummary
+         * @description Aggregates of the runtime-SBOM cross-check, mirrored into the receipt.
+         *
+         *     ``undeclared`` is capped (the counts carry the truth) and holds only
+         *     ecosystems the declared inventory uses — base-image OS packages are
+         *     counted in ``observed_total`` but never listed.
+         */
+        SbomCrossCheckSummary: {
+            /** Sbomdigest */
+            sbomDigest?: string | null;
+            /**
+             * Checkedat
+             * @default
+             */
+            checkedAt: string;
+            /**
+             * Declareddirecttotal
+             * @default 0
+             */
+            declaredDirectTotal: number;
+            /**
+             * Observedmatched
+             * @default 0
+             */
+            observedMatched: number;
+            /**
+             * Versionmismatches
+             * @default 0
+             */
+            versionMismatches: number;
+            /**
+             * Undeclaredsameecosystem
+             * @default 0
+             */
+            undeclaredSameEcosystem: number;
+            /**
+             * Observedtotal
+             * @default 0
+             */
+            observedTotal: number;
+            /** Undeclared */
+            undeclared?: components["schemas"]["UndeclaredPackage"][];
+        };
+        /** ScoreCardCategory */
+        ScoreCardCategory: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "source" | "runtime" | "activation" | "experiments" | "results";
+            /** Label */
+            label: string;
+            /** Rungs */
+            rungs: components["schemas"]["ScoreCardRung"][];
+        };
+        /**
+         * ScoreCardRung
+         * @description One checkable fact inside a category.
+         *
+         *     Rungs are ordered strongest-last but are *independent* checkmarks, not a
+         *     forced prefix: e.g. results can be bundled at seal time while the source
+         *     was never SWH-archived.  ``done``/``total`` carry the fraction for rungs
+         *     aggregated over the experiment list (``None`` elsewhere).
+         */
+        ScoreCardRung: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Reached */
+            reached: boolean;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Done */
+            done?: number | null;
+            /** Total */
+            total?: number | null;
+        };
         /** ScriptTemplateCatalog */
         ScriptTemplateCatalog: {
             build: components["schemas"]["BuildScriptTemplates"];
@@ -1389,6 +1804,11 @@ export interface components {
             /** Is Default */
             is_default: boolean;
         };
+        /**
+         * Severity
+         * @enum {string}
+         */
+        Severity: "high" | "medium" | "low";
         /** SourceAcquirePayload */
         SourceAcquirePayload: {
             /** Origin Url */
@@ -1402,6 +1822,46 @@ export interface components {
             revision?: string | null;
             /** Idempotency Key */
             idempotency_key?: string | null;
+        };
+        /**
+         * SourceRepoMetadata
+         * @description One coherent view of the source loaded into a workspace.
+         *
+         *     snake_case field names are the wire shape — the model doubles as the
+         *     API contract for the document's ``source_repo`` block.
+         */
+        SourceRepoMetadata: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Origin
+             * @default
+             */
+            origin: string;
+            /**
+             * Acquired By
+             * @default
+             * @enum {string}
+             */
+            acquired_by: "" | "download" | "upload";
+            /**
+             * Source Type
+             * @default
+             * @enum {string}
+             */
+            source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
+            /**
+             * Swhid
+             * @default
+             */
+            swhid: string;
+            /** Size Bytes */
+            size_bytes?: number | null;
+            /** Size Label */
+            size_label?: string | null;
         };
         /** SourceUploadCompletePayload */
         SourceUploadCompletePayload: {
@@ -1452,6 +1912,43 @@ export interface components {
             extra_info?: {
                 [key: string]: unknown;
             };
+        };
+        /** Threat */
+        Threat: {
+            /** Id */
+            id: string;
+            category: components["schemas"]["ThreatCategory"];
+            severity: components["schemas"]["Severity"];
+            /**
+             * Blocking
+             * @default false
+             */
+            blocking: boolean;
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+            /** Remediation */
+            remediation: string;
+            /** Affected */
+            affected?: string[];
+        };
+        /**
+         * ThreatCategory
+         * @enum {string}
+         */
+        ThreatCategory: "dependency" | "environment" | "machine";
+        /**
+         * UndeclaredPackage
+         * @description One runtime package no manifest declared (same-ecosystem only).
+         */
+        UndeclaredPackage: {
+            /** Ecosystem */
+            ecosystem: string;
+            /** Name */
+            name: string;
+            /** Version */
+            version?: string | null;
         };
         /** UploadInitPayload */
         UploadInitPayload: {
@@ -1516,6 +2013,39 @@ export interface components {
             images: components["schemas"]["WorkbenchImage"][];
             /** Default Id */
             default_id: string;
+        };
+        /**
+         * WorkbenchStatus
+         * @description Whether (and where) a live workbench backs the REE.
+         */
+        WorkbenchStatus: {
+            /** Status */
+            status: string;
+            /** Agent Id */
+            agent_id?: string | null;
+            /** Image */
+            image?: string | null;
+        };
+        /**
+         * WorkspaceFile
+         * @description One workspace-subtree file as the enumeration presents it.
+         *
+         *     ``content`` is the inlined text when the file is small enough (see
+         *     :func:`should_inline_file_content`) and the caller asked for content;
+         *     ``None`` otherwise.
+         */
+        WorkspaceFile: {
+            /** Path */
+            path: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "source" | "generated";
+            /** Size */
+            size: number;
+            /** Content */
+            content?: string | null;
         };
         /** WorkspaceFileContentPayload */
         WorkspaceFileContentPayload: {
@@ -2302,9 +2832,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ReproducibilityReport"];
                 };
             };
             /** @description Invalid request or operation precondition */
@@ -2407,9 +2935,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ReproducibilityScoreCard"];
                 };
             };
             /** @description Invalid request or operation precondition */

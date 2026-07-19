@@ -24,12 +24,12 @@ def _make_ree(storage_root, name):
     store.ensure_dirs()
     store.write_metadata_json(
         {
-            "reeId": ree_id,
-            "externalRef": None,
+            "ree_id": ree_id,
+            "external_ref": None,
             "name": name,
             "status": "ready",
-            "reeIntent": ReeIntent(name=name).model_dump(exclude_none=True),
-            "reeSession": ReeSession().model_dump(exclude_none=True),
+            "ree_intent": ReeIntent(name=name).model_dump(exclude_none=True),
+            "ree_session": ReeSession().model_dump(exclude_none=True),
             "source": {"mode": "download", "acquiredAt": "2026-01-01T00:00:00Z"},
         }
     )
@@ -55,13 +55,13 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     (ree_root / "snapshot.tar.gz").write_bytes(b"snapshot-bytes")
 
     metadata = _read_metadata(layout)
-    metadata["reeIntent"] = {
-        **(metadata.get("reeIntent") or {}),
+    metadata["ree_intent"] = {
+        **(metadata.get("ree_intent") or {}),
         "runtime": "/runtime.tar.gz",
         "sbom": " sbom.json ",
     }
-    metadata["reeSession"] = {
-        **(metadata.get("reeSession") or {}),
+    metadata["ree_session"] = {
+        **(metadata.get("ree_session") or {}),
         "source_snapshot_archive": "snapshot.tar.gz",
     }
     _write_metadata(layout, metadata)
@@ -95,8 +95,8 @@ def _seed_results_experiments(layout):
         (layout.results_dir(name) / "results").mkdir(parents=True)
         (layout.results_dir(name) / "results" / "out.txt").write_text(name, encoding="utf-8")
     metadata = _read_metadata(layout)
-    metadata["reeIntent"] = {
-        **(metadata.get("reeIntent") or {}),
+    metadata["ree_intent"] = {
+        **(metadata.get("ree_intent") or {}),
         "experiments": [
             {"name": "exp-a", "output_paths": ["results/out.txt"]},
             {"name": "exp-b", "output_paths": ["results/out.txt"]},
@@ -155,13 +155,13 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
     (ree_root / "snapshot.tar.gz").write_bytes(b"snapshot-bytes")
 
     metadata = _read_metadata(layout)
-    metadata["reeIntent"] = {
-        **(metadata.get("reeIntent") or {}),
+    metadata["ree_intent"] = {
+        **(metadata.get("ree_intent") or {}),
         "runtime": "/runtime.tar.gz",
         "sbom": " sbom.json ",
     }
-    metadata["reeSession"] = {
-        **(metadata.get("reeSession") or {}),
+    metadata["ree_session"] = {
+        **(metadata.get("ree_session") or {}),
         "source_snapshot_archive": " snapshot.tar.gz ",
     }
     _write_metadata(layout, metadata)
@@ -201,15 +201,15 @@ def test_seal_persists_seal_facts_and_content_hash(tmp_path):
         sealed_at="2026-06-05T12:00:00Z",
     )
 
-    assert outputs["sealedAt"] == "2026-06-05T12:00:00Z"
-    assert outputs["sealHash"].startswith("sha256:")
-    assert len(outputs["sealHash"]) == len("sha256:") + 64
+    assert outputs.sealed_at == "2026-06-05T12:00:00Z"
+    assert outputs.seal_hash.startswith("sha256:")
+    assert len(outputs.seal_hash) == len("sha256:") + 64
 
     # Session persisted in metadata
     metadata = _read_metadata(layout)
-    session = metadata["reeSession"]
+    session = metadata["ree_session"]
     assert session["sealed_at"] == "2026-06-05T12:00:00Z"
-    assert session["seal_hash"] == outputs["sealHash"]
+    assert session["seal_hash"] == outputs.seal_hash
 
     # sealed.zip written
     assert layout.sealed_archive.exists()
@@ -217,12 +217,12 @@ def test_seal_persists_seal_facts_and_content_hash(tmp_path):
     # manifest.json reflects seal facts
     manifest = json.loads(layout.manifest.read_text(encoding="utf-8"))
     assert manifest["sealed_at"] == "2026-06-05T12:00:00Z"
-    assert manifest["seal_hash"] == outputs["sealHash"]
+    assert manifest["seal_hash"] == outputs.seal_hash
 
     # bundle contains manifest with matching seal_hash
     with zipfile.ZipFile(layout.sealed_archive) as zf:
         bundle_manifest = json.loads(zf.read("ree/ree.json"))
-    assert bundle_manifest["seal_hash"] == outputs["sealHash"]
+    assert bundle_manifest["seal_hash"] == outputs.seal_hash
 
 
 def test_seal_hash_is_stable_with_same_content(tmp_path):
@@ -246,7 +246,7 @@ def test_seal_hash_is_stable_with_same_content(tmp_path):
         results_included=False,
         sealed_at="2026-06-05T12:00:00Z",
     )
-    assert out1["sealHash"] == out2["sealHash"]
+    assert out1.seal_hash == out2.seal_hash
 
 
 def test_seal_hash_changes_with_different_content(tmp_path):
@@ -274,7 +274,7 @@ def test_seal_hash_changes_with_different_content(tmp_path):
         sealed_at="2026-06-05T12:00:00Z",
     )
 
-    assert out1["sealHash"] != out2["sealHash"]
+    assert out1.seal_hash != out2.seal_hash
 
 
 def test_build_archive_raises_before_seal(tmp_path):
@@ -312,7 +312,7 @@ def test_get_workspace_includes_draft_manifest_projection(tmp_path):
     (layout.workspace / "main.py").write_text("print('hi')", encoding="utf-8")
 
     workspace = get_workspace(storage_root, ree_id)
-    draft = workspace["draftManifest"]
+    draft = workspace["draft_manifest"]
 
     assert draft["manifest_state"] == "draft"
     assert draft["ree_id"] == ree_id
@@ -391,16 +391,16 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
         sealed_at="2026-06-05T00:00:00Z",
     )
 
-    build_step = next(s for s in outputs["consistency"]["steps"] if s["step"] == "build_runtime")
+    build_step = next(s for s in outputs.consistency["steps"] if s["step"] == "build_runtime")
     assert build_step["status"] == "stale"
-    assert [entry["input"] for entry in build_step["staleInputs"]] == ["buildScript"]
+    assert [entry["input"] for entry in build_step["stale_inputs"]] == ["build_script"]
 
     with zipfile.ZipFile(io.BytesIO(build_workspace_ree_archive(storage_root, ree_id))) as zf:
         bundle_manifest = json.loads(zf.read("ree/ree.json"))
         receipt = json.loads(zf.read("ree/receipts/run-b.receipt.json"))
         bundled_receipts = [n for n in zf.namelist() if n.startswith("ree/receipts/") and n.endswith(".json")]
-    assert bundle_manifest["consistency"] == outputs["consistency"]
-    assert receipt["runId"] == "run-b"
+    assert bundle_manifest["consistency"] == outputs.consistency
+    assert receipt["run_id"] == "run-b"
     assert bundled_receipts == ["ree/receipts/run-b.receipt.json"]
     # The full run history stays on the workbench.
     assert {p.name for p in layout.runs.glob("*.receipt.json")} == {
@@ -440,4 +440,4 @@ def test_get_workspace_includes_live_consistency_report(tmp_path):
     stale = get_workspace(storage_root, ree_id)["consistency"]
     build_step = next(s for s in stale["steps"] if s["step"] == "build_runtime")
     assert build_step["status"] == "stale"
-    assert [entry["input"] for entry in build_step["staleInputs"]] == ["buildScript"]
+    assert [entry["input"] for entry in build_step["stale_inputs"]] == ["build_script"]

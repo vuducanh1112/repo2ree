@@ -98,7 +98,8 @@ def verify_templates() -> tuple[ScriptTemplate, ...]:
 
     Verify scripts are plain POSIX sh, run from the workspace root after the
     run script, with nothing injected into their environment; the exit code is
-    the verdict (0 = the claimed result was reproduced).
+    the verdict (0 = the declared validation passed). A later reproduction
+    compares a fresh validated run with prior author evidence.
     """
     return (
         ScriptTemplate(

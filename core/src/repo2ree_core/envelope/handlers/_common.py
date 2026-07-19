@@ -6,12 +6,14 @@ from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.experiment.experiment import Runnable
-from repo2ree_core.experiment.run import run_runnable
+from repo2ree_core.experiment.run import RunnableRunOutputs, run_runnable
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
 from repo2ree_core.receipts import (
     ActivationTestReceipt,
@@ -111,12 +113,39 @@ def _record_step_inputs(inputs: _StepInputs) -> None:
     ).apply_current()
 
 
+class BuildRuntimeOutputs(BaseModel):
+    """Outputs of the bare build step (the bare runner's only client)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    build_runtime_script_path: str
+    container_exit_code: int | None = None
+    receipt: dict[str, Any] | None = None
+
+
+class RunnableStepOutputs(RunnableRunOutputs):
+    """A runnable run's outputs plus the handler-level facts."""
+
+    runtime_path: str = ""
+    receipt: dict[str, Any] | None = None
+
+
+class VersionConflictOutputs(BaseModel):
+    """Outputs reported when an optimistic-concurrency etag check fails."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    error_code: Literal["version_conflict"] = "version_conflict"
+    path: str
+    expected_version: str
+    actual_version: str | None
+
+
 def run_bare_script_handler(
     script_path: str,
     *,
     operation: str,
     noun: str,
-    output_key: str,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
@@ -159,9 +188,10 @@ def run_bare_script_handler(
         "info" if outcome.status == "succeeded" else "error",
         f"{noun} run {outcome.status} (exit code {outcome.exit_code})",
     )
-    outputs: dict[str, Any] = {output_key: script_path}
-    if outcome.exit_code is not None:
-        outputs["containerExitCode"] = outcome.exit_code
+    outputs = BuildRuntimeOutputs(
+        build_runtime_script_path=script_path,
+        container_exit_code=outcome.exit_code,
+    )
 
     # The bare runner currently serves only the build step; grow this into a
     # per-operation dispatch if other bare steps ever appear.
@@ -182,12 +212,12 @@ def run_bare_script_handler(
             ),
         )
         record_receipt(layout, receipt, log=log)
-        outputs["receipt"] = receipt.model_dump(by_alias=True)
+        outputs.receipt = receipt.model_dump()
 
     return ActionResult(
         status=outcome.status,
         exit_code=outcome.exit_code if outcome.exit_code is not None else 0,
-        outputs=outputs,
+        outputs=outputs.model_dump(exclude_none=True),
     )
 
 
@@ -275,8 +305,10 @@ def run_runnable_handler(
         log=log,
         is_canceled=is_canceled,
     )
-    outputs = dict(outcome.run_outputs)
-    outputs["runtimePath"] = ree.runtime or ""
+    outputs = RunnableStepOutputs(
+        **outcome.run_outputs.model_dump(),
+        runtime_path=ree.runtime or "",
+    )
 
     status: ActionStatus = outcome.status
 
@@ -306,9 +338,9 @@ def run_runnable_handler(
         receipt.experiment_name = label
         receipt.produced_output_digest = produced_output_digest
     record_receipt(layout, receipt, log=log)
-    outputs["receipt"] = receipt.model_dump(by_alias=True)
+    outputs.receipt = receipt.model_dump()
 
-    return ActionResult(status=status, exit_code=0, outputs=outputs)
+    return ActionResult(status=status, exit_code=0, outputs=outputs.model_dump(exclude_none=True))
 
 
 def workspace_content_etag(store: ReeStore, path: str) -> str | None:
@@ -334,12 +366,11 @@ def check_expected_etag(store: ReeStore, path: str, expected: str, *, log: LogSi
     return ActionResult(
         status="failed",
         exit_code=1,
-        outputs={
-            "errorCode": "version_conflict",
-            "path": path,
-            "expectedVersion": expected,
-            "actualVersion": actual,
-        },
+        outputs=VersionConflictOutputs(
+            path=path,
+            expected_version=expected,
+            actual_version=actual,
+        ).model_dump(),
     )
 
 

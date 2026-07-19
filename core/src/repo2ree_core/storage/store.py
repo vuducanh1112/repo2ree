@@ -190,7 +190,7 @@ class ReeStore:
         return WorkspaceMetadata.model_validate(self.read_metadata_json())
 
     def write_metadata(self, metadata: WorkspaceMetadata) -> None:
-        self.write_metadata_json(metadata.model_dump(by_alias=True, exclude_none=True))
+        self.write_metadata_json(metadata.model_dump(exclude_none=True))
 
     def read_metadata_json(self) -> dict[str, Any]:
         """Raw JSON metadata, without model validation.
@@ -211,10 +211,10 @@ class ReeStore:
 
     def write_intent(self, intent: ReeIntent) -> None:
         raw = self.read_metadata_json()
-        raw["reeIntent"] = intent.model_dump(exclude_none=True)
+        raw["ree_intent"] = intent.model_dump(exclude_none=True)
         raw["name"] = intent.name or raw.get("name", "")
-        raw["externalRef"] = intent.origin_url or None
-        raw["updatedAt"] = utc_now()
+        raw["external_ref"] = intent.origin_url or None
+        raw["updated_at"] = utc_now()
         self.write_metadata_json(raw)
 
     def read_session(self) -> ReeSession:
@@ -222,8 +222,8 @@ class ReeStore:
 
     def write_session(self, session: ReeSession) -> None:
         raw = self.read_metadata_json()
-        raw["reeSession"] = session.model_dump(exclude_none=True)
-        raw["updatedAt"] = utc_now()
+        raw["ree_session"] = session.model_dump(exclude_none=True)
+        raw["updated_at"] = utc_now()
         self.write_metadata_json(raw)
 
     # --- Manifest -------------------------------------------------------

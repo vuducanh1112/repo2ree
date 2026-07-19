@@ -9,6 +9,8 @@ import type {
   ReeDocument,
   ReeIntentPatchPayload,
   ReeSummary,
+  ReproducibilityReportWire,
+  ReproducibilityScoreCardWire,
   ReprovisionResponse,
   RunSummary,
   ScriptTemplateCatalog,
@@ -110,14 +112,14 @@ export class ReeApi {
     });
   }
 
-  async getEvaluateReport(reeId: ReeId): Promise<unknown> {
-    return this.client.request<unknown>(endpoints.reeEvaluateReport(reeId), {
+  async getEvaluateReport(reeId: ReeId): Promise<ReproducibilityReportWire> {
+    return this.client.request<ReproducibilityReportWire>(endpoints.reeEvaluateReport(reeId), {
       method: "GET",
     });
   }
 
-  async getScorecard(reeId: ReeId): Promise<unknown> {
-    return this.client.request<unknown>(endpoints.reeScorecard(reeId), {
+  async getScorecard(reeId: ReeId): Promise<ReproducibilityScoreCardWire> {
+    return this.client.request<ReproducibilityScoreCardWire>(endpoints.reeScorecard(reeId), {
       method: "GET",
     });
   }

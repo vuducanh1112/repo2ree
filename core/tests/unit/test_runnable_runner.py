@@ -77,7 +77,7 @@ def test_script_runs_and_succeeds(tmp_path):
     exp = _experiment(body=f"echo experiment_ran > {out_file}", workspace=tmp_path)
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "succeeded"
-    assert outcome.run_outputs.get("verdict") == "pass"
+    assert outcome.run_outputs.verdict == "pass"
     assert out_file.read_text().strip() == "experiment_ran"
 
 
@@ -99,8 +99,8 @@ def test_nonzero_exit_fails(tmp_path):
     exp = _experiment(body="exit 2", workspace=tmp_path)
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
-    assert outcome.run_outputs.get("exitCode") == 2
-    assert outcome.run_outputs.get("verdict") == "fail"
+    assert outcome.run_outputs.exit_code == 2
+    assert outcome.run_outputs.verdict == "fail"
 
 
 # ================================================
@@ -117,8 +117,8 @@ def test_verify_script_runs_from_workspace_root(tmp_path, monkeypatch):
     )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "succeeded"
-    assert outcome.run_outputs.get("verdict") == "pass"
-    assert outcome.run_outputs.get("verifyExitCode") == 0
+    assert outcome.run_outputs.verdict == "pass"
+    assert outcome.run_outputs.verify_exit_code == 0
     assert (tmp_path / "verify-cwd.txt").read_text().strip() == str(tmp_path.resolve())
 
 
@@ -132,8 +132,8 @@ def test_verify_script_reads_materialized_stdout(tmp_path):
     )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "succeeded"
-    assert outcome.run_outputs.get("verdict") == "pass"
-    assert outcome.run_outputs.get("verifyExitCode") == 0
+    assert outcome.run_outputs.verdict == "pass"
+    assert outcome.run_outputs.verify_exit_code == 0
 
 
 def test_verify_script_failure_fails_the_run(tmp_path):
@@ -144,8 +144,8 @@ def test_verify_script_failure_fails_the_run(tmp_path):
     )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
-    assert outcome.run_outputs.get("verdict") == "fail"
-    assert outcome.run_outputs.get("verifyExitCode") == 1
+    assert outcome.run_outputs.verdict == "fail"
+    assert outcome.run_outputs.verify_exit_code == 1
 
 
 def test_verify_script_reads_file_outputs_from_workspace(tmp_path):
@@ -156,7 +156,7 @@ def test_verify_script_reads_file_outputs_from_workspace(tmp_path):
     )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "succeeded"
-    assert outcome.run_outputs.get("verdict") == "pass"
+    assert outcome.run_outputs.verdict == "pass"
 
 
 def test_no_injected_environment_for_verify_script(tmp_path):
@@ -169,7 +169,7 @@ def test_no_injected_environment_for_verify_script(tmp_path):
     )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
-    assert outcome.run_outputs.get("verdict") == "fail"
+    assert outcome.run_outputs.verdict == "fail"
 
 
 def test_missing_verify_script_fails(tmp_path):
@@ -177,7 +177,7 @@ def test_missing_verify_script_fails(tmp_path):
     exp = exp.model_copy(update={"verify_script": "ree-scripts/experiments/nope.verify.sh"})
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
-    assert outcome.run_outputs.get("verdict") == "fail"
+    assert outcome.run_outputs.verdict == "fail"
 
 
 def test_verify_runs_even_when_run_fails(tmp_path):
@@ -189,8 +189,8 @@ def test_verify_runs_even_when_run_fails(tmp_path):
     )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
-    assert outcome.run_outputs.get("verdict") == "fail"
+    assert outcome.run_outputs.verdict == "fail"
     # The verify script still runs (it may want to report on a failed run), but
     # a failed run can never verify to pass.
-    assert outcome.run_outputs.get("verifyExitCode") == 0
+    assert outcome.run_outputs.verify_exit_code == 0
     assert marker.exists()

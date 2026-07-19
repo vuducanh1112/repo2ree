@@ -72,11 +72,11 @@ function CategoryRow({ category }: { category: ScoreCardCategory }) {
   );
 }
 
-// The reproducibility scorecard HUD — the top-centre console on the canvas.
-// A plain report: five evidence categories with their rung states, plus the
+// The REE evidence scorecard HUD — the top-centre console on the canvas. A
+// plain report: five evidence categories with their rung states, plus the
 // ordinal level (R0..R5) the backend derives from the persisted record
-// (intent + session + run receipts). It recommends nothing and derives no
-// facts of its own; it only renders what the receipts prove.
+// (intent + session + run receipts). The level describes evidence maturity;
+// it is not a claim that an independent reproduction has happened.
 export function ReproducibilityScoreCardConsole({
   provisioned,
 }: ReproducibilityScoreCardConsoleProps) {
@@ -99,11 +99,11 @@ export function ReproducibilityScoreCardConsole({
       outerStyle={{ top: 16, left: "50%", transform: "translateX(-50%)" }}
       icon={Ic.star(14)}
       iconColor={provisioned ? SCORECARD_CATEGORY_COLORS.activation : C.textMuted}
-      title="Reproducibility"
+      title="REE evidence"
       subtitle={<span style={{ color: levelTint }}>{subtitle}</span>}
       on={provisioned && !!query.data}
-      expandLabel="Expand reproducibility scorecard"
-      collapseLabel="Collapse reproducibility scorecard"
+      expandLabel="Expand REE evidence scorecard"
+      collapseLabel="Collapse REE evidence scorecard"
       bodyMaxHeight={280}
     >
       {card.categories.map((category) => (
@@ -122,8 +122,8 @@ export function ReproducibilityScoreCardConsole({
         {query.isError
           ? "Live scorecard unreachable — showing the R0 defaults."
           : card.sealed
-            ? `Sealed at ${card.levelCode} · ${card.levelName} — recomputable from the bundle's receipts.`
-            : "Derived from the recorded run receipts; seal to stamp the level."}
+            ? `Sealed at ${card.levelCode} · ${card.levelName} — an evidence level, not a reproduction verdict.`
+            : "Derived from recorded evidence; seal to stamp the level. Not a reproduction verdict."}
       </div>
     </HudConsole>
   );

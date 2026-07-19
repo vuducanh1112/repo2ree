@@ -8,7 +8,7 @@ to execute it, build a runtime, and run declared commands inside that runtime.
 1. Create an REE workspace.
 2. Acquire source from a URL or upload.
 3. Add metadata and build/runtime instructions.
-4. Run Evaluate to inspect reproducibility evidence.
+4. Run Evaluate to assess source declarations and reproducibility risks.
 5. Build the runtime.
 6. Generate SBOM and HBOM evidence.
 7. Test activation.
@@ -37,8 +37,11 @@ verify script. The verify script runs from the workspace root after the run —
 exactly like the run script, with nothing injected into its environment — and
 its exit code is the verdict; it inspects whatever it needs straight from the
 workspace (a run whose stdout is checked materializes it to a workspace file).
-This is the foundation for Run Receipts, but the current public object is still
-an execution result rather than a fully citable receipt.
+When the command and verify script pass, that run is **validated** against the
+declared check. It is not yet a reproduction: reproduction requires a later run
+to be compared with prior author evidence. This is the foundation for Run
+Receipts, but the current public object is still an execution result rather than
+a fully citable receipt.
 
 A successful experiment run also captures the files it declares as outputs into
 a per-experiment results store and records their digest on the receipt. An

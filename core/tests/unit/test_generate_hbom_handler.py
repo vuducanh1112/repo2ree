@@ -34,12 +34,12 @@ def _seed_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, existing: HB
     store.ensure_dirs()
     store.write_metadata(
         WorkspaceMetadata(
-            reeId="ree123",
+            ree_id="ree123",
             name="demo",
-            createdAt="2026-01-01T00:00:00Z",
-            updatedAt="2026-01-01T00:00:00Z",
-            reeIntent=ReeIntent(name="demo", hardware_description=existing or HBOM()),
-            reeSession=ReeSession(source_available=True),
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+            ree_intent=ReeIntent(name="demo", hardware_description=existing or HBOM()),
+            ree_session=ReeSession(source_available=True),
         )
     )
     monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
@@ -81,7 +81,7 @@ def test_profiles_and_persists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     result = handler.handle_generate_hbom(log=_silent_log, is_canceled=_never_canceled)
     assert result.status == "succeeded"
     assert result.outputs is not None
-    assert result.outputs["componentCounts"]["cpus"] == 1
+    assert result.outputs["component_counts"]["cpus"] == 1
     # The profiled hardware landed in the persisted intent.
     persisted = store.read_intent().hardware_description
     assert "Xeon" in persisted.cpus

@@ -19,7 +19,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.experiment.experiment import Runnable, validate_runnable_script_path
 from repo2ree_core.run_script import (
@@ -44,15 +46,26 @@ tracer = get_tracer(__name__)
 # ================================================
 
 
+class RunnableRunOutputs(BaseModel):
+    """Typed schema of a runnable run's outputs (the run-store payload)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    subject_name: str
+    exit_code: int | None = None
+    verify_exit_code: int | None = None
+    verdict: Literal["pass", "fail"] | None = None
+
+
 @dataclass
 class ExperimentRunOutcome:
     """Result of a runnable run.
 
-    ``run_outputs`` is the serialized payload for the run store.
+    ``run_outputs`` is the typed payload for the run store.
     """
 
     status: ActionStatus
-    run_outputs: dict[str, Any]
+    run_outputs: RunnableRunOutputs
 
 
 # ================================================
@@ -91,7 +104,7 @@ def run_runnable(
     """
     workspace = workspace.resolve()
 
-    base_outputs: dict[str, Any] = {"subjectName": label}
+    outputs = RunnableRunOutputs(subject_name=label)
 
     log("system", "info", f"Starting run {run_id}")
     log("system", "info", f"Subject: {label!r}")
@@ -106,10 +119,7 @@ def run_runnable(
             record_exit_code(span, run_outcome.exit_code)
     except Exception as exc:
         log("system", "error", f"Run failed: {exc}")
-        return ExperimentRunOutcome(
-            status="failed",
-            run_outputs={**base_outputs, "exitCode": None},
-        )
+        return ExperimentRunOutcome(status="failed", run_outputs=outputs)
 
     log(
         "system",
@@ -117,17 +127,16 @@ def run_runnable(
         f"Run {run_outcome.status} (exit code {run_outcome.exit_code})",
     )
 
-    run_outputs: dict[str, Any] = {**base_outputs, "exitCode": run_outcome.exit_code}
+    outputs.exit_code = run_outcome.exit_code
 
     if run_outcome.status == "canceled":
-        return ExperimentRunOutcome(status="canceled", run_outputs=run_outputs)
+        return ExperimentRunOutcome(status="canceled", run_outputs=outputs)
 
     if not runnable.verify_script:
         # No verify script declared: the run's exit code is the verdict.
-        verdict = "pass" if run_outcome.status == "succeeded" else "fail"
-        run_outputs["verdict"] = verdict
-        log("system", "info" if verdict == "pass" else "error", f"Verdict: {verdict.upper()}")
-        return ExperimentRunOutcome(status=run_outcome.status, run_outputs=run_outputs)
+        outputs.verdict = "pass" if run_outcome.status == "succeeded" else "fail"
+        log("system", "info" if outputs.verdict == "pass" else "error", f"Verdict: {outputs.verdict.upper()}")
+        return ExperimentRunOutcome(status=run_outcome.status, run_outputs=outputs)
 
     log("system", "info", f"Verify script: {runnable.verify_script}")
     try:
@@ -137,17 +146,15 @@ def run_runnable(
             record_exit_code(span, verify_outcome.exit_code)
     except Exception as exc:
         log("system", "error", f"Verify failed: {exc}")
-        run_outputs["verifyExitCode"] = None
-        run_outputs["verdict"] = "fail"
-        return ExperimentRunOutcome(status="failed", run_outputs=run_outputs)
+        outputs.verdict = "fail"
+        return ExperimentRunOutcome(status="failed", run_outputs=outputs)
 
-    run_outputs["verifyExitCode"] = verify_outcome.exit_code
+    outputs.verify_exit_code = verify_outcome.exit_code
     if verify_outcome.status == "canceled":
-        return ExperimentRunOutcome(status="canceled", run_outputs=run_outputs)
+        return ExperimentRunOutcome(status="canceled", run_outputs=outputs)
 
-    verdict = "pass" if (run_outcome.status == "succeeded" and verify_outcome.exit_code == 0) else "fail"
-    run_outputs["verdict"] = verdict
-    log("system", "info" if verdict == "pass" else "error", f"Verdict: {verdict.upper()}")
+    outputs.verdict = "pass" if (run_outcome.status == "succeeded" and verify_outcome.exit_code == 0) else "fail"
+    log("system", "info" if outputs.verdict == "pass" else "error", f"Verdict: {outputs.verdict.upper()}")
 
-    status: ActionStatus = "succeeded" if verdict == "pass" else "failed"
-    return ExperimentRunOutcome(status=status, run_outputs=run_outputs)
+    status: ActionStatus = "succeeded" if outputs.verdict == "pass" else "failed"
+    return ExperimentRunOutcome(status=status, run_outputs=outputs)

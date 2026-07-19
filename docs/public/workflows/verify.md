@@ -26,6 +26,11 @@ The current app has the pieces needed for the first version of Verify:
 The durable verification receipt, receipt-to-receipt diff view, and citable
 reviewer artifact are still target work.
 
+An author run whose verify script passes is a **validated baseline**, not a
+reproduction. The term reproduction is reserved for the later comparison: a
+fresh run evaluated against that baseline, ideally recorded with a predecessor
+link to the author's receipt.
+
 ## What Verify should compare
 
 Not every result should be byte-exact. Some outputs need exact hashes, while

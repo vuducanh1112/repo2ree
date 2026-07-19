@@ -3,6 +3,18 @@
 These are the public names repo2ree uses. For the fuller design reference, see
 [CONCEPTS.md](../CONCEPTS.md).
 
+## Vocabulary boundary
+
+Four related terms describe different evidence and must not be used as
+synonyms:
+
+| Term | Meaning |
+|---|---|
+| **Evaluate** | A source-repository assessment. It reports declarations, risks, and independent dependency/environment/machine axes before a build proves anything. |
+| **REE evidence scorecard** | A receipt-derived summary of the whole REE. Its cumulative R0-R5 level describes recorded evidence maturity, not whether an independent reproduction happened. |
+| **Validation** | One run satisfied its declared check: the run script exited successfully and, when present, the author-provided verify script passed. |
+| **Reproduction** | A later run is compared with prior author evidence or a predecessor receipt. A validated author run creates the baseline; it is not itself a reproduction. |
+
 ## Source
 
 The original repository or source archive. repo2ree treats it as upstream
@@ -19,10 +31,11 @@ make an existing project reproducible without rewriting the project itself.
 The active working tree inside the REE workbench. It is where source and overlay
 are materialized so commands can build, run, and inspect the artifact.
 
-## Runtime image
+## Runtime artifact
 
-The runnable environment built from the declared instructions. In the current
-prototype this is Docker/OCI-shaped.
+The runnable environment built from the declared instructions. It may be a
+Docker/OCI image archive, a packed virtual environment, or another artifact
+that the REE's self-contained scripts know how to restore and enter.
 
 ## SBOM
 
@@ -43,9 +56,16 @@ and archive metadata.
 
 ## Repro Label
 
-A disclosure of reproducibility standing. It should explain what is pinned,
-what is drifting, what evidence exists, and what risks remain. It is a
-nutrition label, not a single grade.
+A source-level disclosure produced by Evaluate. It explains what is declared,
+pinned, drifting, or missing on independent axes. It is a nutrition label, not
+the REE's cumulative R0-R5 evidence level.
+
+## REE evidence scorecard
+
+A receipt-derived view of the assembled REE across source, runtime, activation,
+experiments, and results. Its R0-R5 level is cumulative: each level requires the
+evidence below it. The scorecard records how much evidence exists; it is not an
+independent reproduction verdict.
 
 ## Run Receipt
 
@@ -55,6 +75,9 @@ execution pieces; the durable receipt object is still being shaped. An
 experiment run also records a digest of its declared outputs, captured into a
 per-experiment results store — the baseline a reviewer diffs against and the
 signal that flags a result whose bytes drifted before it was sealed.
+
+A successful author run whose verify script passes is **validated**. Calling it
+**reproduced** requires a later run related to this baseline or receipt.
 
 ## Verify
 

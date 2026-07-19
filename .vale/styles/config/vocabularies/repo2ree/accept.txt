@@ -68,6 +68,7 @@ Nextflow
 Snakemake
 
 # Tooling
+ShellCheck
 kubectl
 uv
 npm

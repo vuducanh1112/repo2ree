@@ -38,9 +38,9 @@ def run_doctor(ree_path: Path = Path("/ree"), docker_wait_seconds: float = _DOCK
     """Probe this environment; ``ok`` reflects only the hard requirements."""
     ree_writable = _dir_writable(ree_path)
     return {
-        "schemaVersion": 1,
+        "schema_version": 1,
         "ok": ree_writable,
-        "reeWritable": ree_writable,
+        "ree_writable": ree_writable,
         "docker": _probe_docker(docker_wait_seconds),
         "tools": {name: find_tool(name) for name in _PROBED_TOOLS},
         "python": platform.python_version(),
@@ -71,7 +71,7 @@ def _probe_docker(wait_seconds: float) -> dict[str, Any]:
             timeout=30,
         )
         if result.returncode == 0:
-            return {"available": True, "serverVersion": result.stdout.strip()}
+            return {"available": True, "server_version": result.stdout.strip()}
         detail = (result.stderr or result.stdout).strip().splitlines()[-1] if (result.stderr or result.stdout) else ""
         if time.monotonic() >= deadline:
             return {"available": False, "detail": f"daemon not reachable: {detail}"}
