@@ -37,6 +37,14 @@ export interface ReeRun {
   finishedAt?: string;
   /** Set on a ``failed`` run: the typed reason it did not succeed. */
   failure?: ReeRunFailure;
+  /**
+   * The run's operation-specific outputs, opaque at the domain level. Present
+   * once the backend has recorded them (typically at terminal status); each
+   * surface narrows this to its own typed shape (e.g. an experiment run reads
+   * exit codes and a verdict). Kept opaque so the domain run stays operation-
+   * agnostic while every consumer still goes through the one mapping boundary.
+   */
+  outputs?: Record<string, unknown>;
 }
 
 /** Backend run operation keys, as recorded on every run summary. */

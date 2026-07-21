@@ -166,6 +166,7 @@ function mapRun(run: RunSummary): ReeRun {
     startedAt: run.started_at ?? undefined,
     finishedAt: run.finished_at ?? undefined,
     failure: mapFailure(run.failure),
+    outputs: run.outputs,
   };
 }
 

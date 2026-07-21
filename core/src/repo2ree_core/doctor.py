@@ -64,15 +64,25 @@ def _probe_docker(wait_seconds: float) -> dict[str, Any]:
     deadline = time.monotonic() + wait_seconds
     detail = ""
     while True:
-        result = subprocess.run(
-            [docker, "info", "--format", "{{.ServerVersion}}"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode == 0:
-            return {"available": True, "server_version": result.stdout.strip()}
-        detail = (result.stderr or result.stdout).strip().splitlines()[-1] if (result.stderr or result.stdout) else ""
+        # A still-starting dockerd can leave `docker info` *blocking* on a
+        # half-open socket, not just failing fast. Treat that timeout as one
+        # more "not ready yet" tick — never let it escape and crash the probe,
+        # which the agent would read as a bench-contract violation and fail
+        # provisioning on a substrate that was merely slow to boot.
+        try:
+            result = subprocess.run(
+                [docker, "info", "--format", "{{.ServerVersion}}"],
+                capture_output=True,
+                text=True,
+                timeout=min(30.0, wait_seconds),
+            )
+        except subprocess.TimeoutExpired:
+            detail = "daemon did not respond in time"
+        else:
+            if result.returncode == 0:
+                return {"available": True, "server_version": result.stdout.strip()}
+            combined = result.stderr or result.stdout
+            detail = combined.strip().splitlines()[-1] if combined else ""
         if time.monotonic() >= deadline:
             return {"available": False, "detail": f"daemon not reachable: {detail}"}
         time.sleep(1)

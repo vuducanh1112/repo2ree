@@ -1,7 +1,7 @@
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
 import type { ReeRunFailure, ReeRunSummary } from "@core/runs/ReeRun";
 import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
-import { type ReeRunFailureTone, runFailurePresentation } from "@core/runs/runFailurePresentation";
+import { FAILURE_TONE_COLOR, runFailurePresentation } from "@core/runs/runFailurePresentation";
 import {
   activeRunCount,
   formatRunDuration,
@@ -34,14 +34,6 @@ const STATUS_COLOR: Record<ReeRunSummary["status"], string> = {
 
 type StreamKey = "stdout" | "stderr" | "system";
 const STREAMS: StreamKey[] = ["stdout", "stderr", "system"];
-
-// Tone-driven accent for the failure note, so a retryable outage reads
-// differently from a rejected request or a genuine fault.
-const FAILURE_TONE_COLOR: Record<ReeRunFailureTone, string> = {
-  transient: "#d97706",
-  rejected: "#ca8a04",
-  fault: "#dc2626",
-};
 
 function tabLabel(key: RunHudTabKey): string {
   return RUN_HUD_TABS.find((tab) => tab.key === key)?.label ?? key;

@@ -1,6 +1,8 @@
 import type { ExperimentResourceEstimates, ReeExperiment } from "@core/ree/ReeSpec";
 import type { LogEntry } from "@core/ree/ReeTypes";
 import type { ExperimentRunOutputs } from "@core/runs/ExperimentRun";
+import type { ReeRunFailure } from "@core/runs/ReeRun";
+import { FAILURE_TONE_COLOR, runFailurePresentation } from "@core/runs/runFailurePresentation";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import {
   experimentRunScriptPath,
@@ -365,6 +367,30 @@ function runResultSummary(outputs: ExperimentRunOutputs): string {
   return `Run script failed (exit code ${outputs.exitCode ?? "?"}).`;
 }
 
+/**
+ * The typed reason a run failed without producing outputs — a transport or
+ * workbench-availability failure the plain "no output data" line used to
+ * swallow. Reuses the shared {@link runFailurePresentation} policy so this reads
+ * the same as the run HUD's failure note.
+ */
+function ExperimentFailureNote({ failure }: { failure: ReeRunFailure }) {
+  const view = runFailurePresentation(failure);
+  const color = FAILURE_TONE_COLOR[view.tone];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <span style={{ color, fontWeight: 700 }}>{view.label}</span>
+        {view.retryable && (
+          <span style={{ color: lgColors.textMuted, fontSize: 11 }} title="Safe to retry">
+            retryable
+          </span>
+        )}
+      </div>
+      <div style={{ color: lgColors.textMuted }}>{view.message}</div>
+    </div>
+  );
+}
+
 function RunResultPanel({ runState }: { runState: RunState }) {
   const isTerminal = TERMINAL_STATUSES.includes(runState.status);
   const { outputs } = runState;
@@ -425,7 +451,11 @@ function RunResultPanel({ runState }: { runState: RunState }) {
         </div>
       )}
 
-      {isTerminal && !outputs && (
+      {isTerminal && !outputs && runState.failure && (
+        <ExperimentFailureNote failure={runState.failure} />
+      )}
+
+      {isTerminal && !outputs && !runState.failure && (
         <div style={{ fontSize: 12, color: lgColors.required }}>
           Run {runState.status} — no output data available.
         </div>
