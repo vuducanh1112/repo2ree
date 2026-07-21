@@ -192,6 +192,7 @@ export async function observeReeRun(
     const logs = await fetchReeRunLogs(queryClient, executionRunsClient, reeId, args.runId);
     const snapshot = {
       status: run.status,
+      failure: run.failure,
       lines: logs.lines,
       ts: resolveRunTimestamp(run, new Date().toISOString()),
     };

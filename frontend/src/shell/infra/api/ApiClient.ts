@@ -8,18 +8,26 @@ interface ApiClientOptions {
 class ApiRequestError extends Error {
   status: number;
   code: string;
+  /**
+   * Whether the caller may safely retry. Sourced from the error envelope so UI
+   * policy can distinguish a transient outage from a conflict or a permanent
+   * validation failure instead of treating every error the same.
+   */
+  retryable: boolean;
   details?: ApiErrorEnvelope["error"]["details"];
 
   constructor(
     status: number,
     code: string,
     message: string,
+    retryable: boolean,
     details?: ApiErrorEnvelope["error"]["details"],
   ) {
     super(message);
     this.name = "ApiRequestError";
     this.status = status;
     this.code = code;
+    this.retryable = retryable;
     this.details = details;
   }
 }
@@ -62,6 +70,7 @@ export class ApiClient {
         response.status,
         errorPayload?.error.code || "request_failed",
         errorPayload?.error.message || response.statusText,
+        errorPayload?.error.retryable ?? false,
         errorPayload?.error.details,
       );
     }
@@ -101,6 +110,7 @@ export class ApiClient {
         response.status,
         payload?.error.code || "request_failed",
         payload?.error.message || response.statusText,
+        payload?.error.retryable ?? false,
         payload?.error.details,
       );
     }

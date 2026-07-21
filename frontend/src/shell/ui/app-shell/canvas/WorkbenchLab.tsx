@@ -1,6 +1,7 @@
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
+import { runFailurePresentation } from "@core/runs/runFailurePresentation";
 import { useAgents } from "@shell/data/agents/agents";
 import { useReeRunsClient } from "@shell/data/runs/client";
 import { observeReeRun } from "@shell/data/runs/queries";
@@ -78,7 +79,13 @@ export function WorkbenchLab({ evaluation }: WorkbenchLabProps) {
         onUpdate: ({ lines, ts }) => setLog({ lines: [...preamble, ...lines], ts }),
       });
       if (result.status !== "succeeded") {
-        throw new Error(`Provisioning ${result.status}`);
+        // Prefer the typed failure reason over a bare status, so the user sees
+        // *why* provisioning failed (e.g. "Workbench unavailable") rather than
+        // just "failed".
+        const reason = result.failure
+          ? runFailurePresentation(result.failure).label
+          : `Provisioning ${result.status}`;
+        throw new Error(reason);
       }
       setLog((l) => appendLine(l, "ok", "Lab online — seating the specimen"));
       navigate(`${APP_ROUTE.WORKSPACE}?reeId=${encodeURIComponent(reeId)}`);

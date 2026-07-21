@@ -1,6 +1,7 @@
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
-import type { ReeRunSummary } from "@core/runs/ReeRun";
+import type { ReeRunFailure, ReeRunSummary } from "@core/runs/ReeRun";
 import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
+import { type ReeRunFailureTone, runFailurePresentation } from "@core/runs/runFailurePresentation";
 import {
   activeRunCount,
   formatRunDuration,
@@ -33,6 +34,14 @@ const STATUS_COLOR: Record<ReeRunSummary["status"], string> = {
 
 type StreamKey = "stdout" | "stderr" | "system";
 const STREAMS: StreamKey[] = ["stdout", "stderr", "system"];
+
+// Tone-driven accent for the failure note, so a retryable outage reads
+// differently from a rejected request or a genuine fault.
+const FAILURE_TONE_COLOR: Record<ReeRunFailureTone, string> = {
+  transient: "#d97706",
+  rejected: "#ca8a04",
+  fault: "#dc2626",
+};
 
 function tabLabel(key: RunHudTabKey): string {
   return RUN_HUD_TABS.find((tab) => tab.key === key)?.label ?? key;
@@ -409,7 +418,48 @@ function RunRow({
           {run.status.toUpperCase()}
         </span>
       </button>
+      {run.failure && <RunFailureNote failure={run.failure} />}
       {expanded && <RunLogView run={run} streams={streams} maxHeight={logMaxHeight} />}
+    </div>
+  );
+}
+
+// The typed reason a run failed, shown at a glance under its row: a category
+// label, a retryable hint, and the underlying message. Surfaces the failure
+// contract so a client need not open the log stream to learn why a run failed.
+function RunFailureNote({ failure }: { failure: ReeRunFailure }) {
+  const view = runFailurePresentation(failure);
+  const color = FAILURE_TONE_COLOR[view.tone];
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "baseline",
+        gap: 8,
+        padding: "6px 10px 8px 30px",
+        borderTop: `1px solid ${C.border}`,
+        fontFamily: F.mono,
+        fontSize: 10.5,
+      }}
+    >
+      <span style={{ color, fontWeight: 700, flexShrink: 0 }}>{view.label}</span>
+      {view.retryable && (
+        <span style={{ color: C.textMuted, flexShrink: 0 }} title="Safe to retry">
+          retryable
+        </span>
+      )}
+      <span
+        style={{
+          color: C.textMid,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          minWidth: 0,
+        }}
+        title={view.message}
+      >
+        {view.message}
+      </span>
     </div>
   );
 }

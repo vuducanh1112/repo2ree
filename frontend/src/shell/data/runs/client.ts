@@ -1,5 +1,5 @@
 import type { ReeId } from "@core/ree/ReeId";
-import type { ReeRun, ReeRunLogChunk, ReeRunSummary } from "@core/runs/ReeRun";
+import type { ReeRun, ReeRunFailure, ReeRunLogChunk, ReeRunSummary } from "@core/runs/ReeRun";
 import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
 import { useMemo } from "react";
 import { type RunStatus, type RunSummary, toSourceAcquireRequest } from "../../infra/api/apiTypes";
@@ -165,6 +165,21 @@ function mapRun(run: RunSummary): ReeRun {
     createdAt: run.created_at,
     startedAt: run.started_at ?? undefined,
     finishedAt: run.finished_at ?? undefined,
+    failure: mapFailure(run.failure),
+  };
+}
+
+/** Reconcile the wire failure (nullable) with the domain's optional shape. */
+function mapFailure(failure: RunSummary["failure"]): ReeRunFailure | undefined {
+  if (!failure) {
+    return undefined;
+  }
+  return {
+    category: failure.category,
+    message: failure.message,
+    retryable: failure.retryable,
+    origin: failure.origin,
+    details: failure.details ?? undefined,
   };
 }
 
