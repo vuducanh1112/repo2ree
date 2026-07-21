@@ -8,7 +8,9 @@ logs and cooperative cancellation.
 
 from __future__ import annotations
 
+import os
 import shlex
+import signal
 import subprocess
 import threading
 import time
@@ -32,6 +34,11 @@ from repo2ree_protocol.tracing import (
 tracer = get_tracer(__name__)
 
 CancelCheck = Callable[[], bool]  # True once a cancel has been requested
+
+# Grace period between asking a canceled process group to stop (SIGTERM) and
+# forcing it (SIGKILL). Cooperative shutdown gets a real window; a shell that
+# ignores SIGTERM, or a child that outlives its parent, is killed after it.
+CANCEL_GRACE_SECONDS = 5.0
 
 
 @dataclass(frozen=True)
@@ -103,6 +110,34 @@ def run_streaming_process(
         return result
 
 
+def _signal_group(proc: subprocess.Popen, sig: int) -> None:
+    """Send *sig* to the process group led by *proc*.
+
+    ``proc`` is its own group leader (``start_new_session``), so its pid is the
+    pgid and the signal reaches every descendant. A missing group — the tree
+    already exited between the poll and here — is not an error.
+    """
+    try:
+        os.killpg(proc.pid, sig)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
+def _terminate_process_group(proc: subprocess.Popen, *, log: LogSink) -> None:
+    """Stop a canceled process tree: SIGTERM, then SIGKILL after a deadline.
+
+    The group gets ``CANCEL_GRACE_SECONDS`` to exit cooperatively; anything
+    still alive after that — a shell ignoring SIGTERM, a child that outlived its
+    parent — is force-killed so cancellation cannot leave the tree running.
+    """
+    _signal_group(proc, signal.SIGTERM)
+    try:
+        proc.wait(timeout=CANCEL_GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        log("system", "warn", f"process group survived SIGTERM after {CANCEL_GRACE_SECONDS:g}s; sending SIGKILL")
+        _signal_group(proc, signal.SIGKILL)
+
+
 def _stream_process(
     cmd: list[str],
     *,
@@ -120,6 +155,11 @@ def _stream_process(
         text=True,
         env=env,
         cwd=cwd,
+        # Put the shell in its own session/process group so a cancel can signal
+        # the whole tree — children and grandchildren the script spawned — not
+        # just the immediate shell, which would leave them orphaned. A new
+        # session also means we never signal the executor that launched us.
+        start_new_session=True,
     )
 
     stdout_lines: list[str] = []
@@ -163,15 +203,11 @@ def _stream_process(
     while proc.poll() is None:
         if is_canceled():
             canceled = True
-            proc.terminate()
+            _terminate_process_group(proc, log=log)
             break
         time.sleep(0.1)
 
-    try:
-        returncode = proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        returncode = proc.wait()
+    returncode = proc.wait()
 
     stdout_reader.join(timeout=5)
     stderr_reader.join(timeout=5)
