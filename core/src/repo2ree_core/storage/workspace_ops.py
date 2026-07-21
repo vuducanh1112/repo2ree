@@ -31,11 +31,18 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.receipts import ConsistencyReport, build_consistency_report, published_receipts
+from repo2ree_core.receipts import (
+    ConsistencyReport,
+    build_consistency_report,
+    latest_successful_receipts,
+    load_receipts,
+    published_receipts,
+)
 from repo2ree_core.ree_scripts.reproducer import (
     reproducer_entries,
     runtime_artifact_basename_from_remap,
 )
+from repo2ree_core.ree_steps import build_ree_step_states
 from repo2ree_core.source_repo import derive_source_repo_metadata
 from repo2ree_core.storage.layout import (
     ReeLayout,
@@ -358,7 +365,24 @@ def get_workspace(storage_root: Path, ree_id: str, *, include_content: bool = Tr
     # Live per-step staleness (recorded receipts vs. the current tree): saving
     # a script flips the derived state on the next fetch — no invalidation
     # events needed.
-    detail["consistency"] = build_consistency_report(_layout(storage_root, ree_id), intent, session).model_dump()
+    layout = _layout(storage_root, ree_id)
+    consistency = build_consistency_report(layout, intent, session)
+    detail["consistency"] = consistency.model_dump()
+    # Operational overlay — done / ready / blocked per authoring step. Completion
+    # is "a successful run is recorded" (the receipt-step keys), matching the
+    # frontend badges and the scorecard; staleness stays on the consistency
+    # report above. Evaluate records no receipt, so its report artifact is the
+    # signal the receipt keys can't carry.
+    completed_run_steps = set(latest_successful_receipts(load_receipts(layout)))
+    detail["ree_steps"] = [
+        state.model_dump()
+        for state in build_ree_step_states(
+            intent,
+            session,
+            completed_run_steps=completed_run_steps,
+            evaluate_report_present=(layout.artifacts / "reproducibility-report.json").is_file(),
+        )
+    ]
     return detail
 
 

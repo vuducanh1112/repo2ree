@@ -1185,6 +1185,118 @@
         }
       }
     },
+    "/api/v1/ree-steps": {
+      "get": {
+        "tags": [
+          "ree-steps"
+        ],
+        "summary": "List Ree Steps",
+        "description": "The static authoring steps: ordered, their prerequisite edges, and the\noperationIds that advance each. Deployment-static, so a client may cache it.",
+        "operationId": "listReeSteps",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReeStepCatalog"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rees/{ree_id}/runs": {
       "get": {
         "tags": [
@@ -6031,6 +6143,13 @@
           },
           "consistency": {
             "$ref": "#/components/schemas/ConsistencyReport"
+          },
+          "ree_steps": {
+            "items": {
+              "$ref": "#/components/schemas/ReeStepState"
+            },
+            "type": "array",
+            "title": "Ree Steps"
           }
         },
         "additionalProperties": false,
@@ -6560,6 +6679,13 @@
           "consistency": {
             "$ref": "#/components/schemas/ConsistencyReport"
           },
+          "ree_steps": {
+            "items": {
+              "$ref": "#/components/schemas/ReeStepState"
+            },
+            "type": "array",
+            "title": "Ree Steps"
+          },
           "files": {
             "items": {
               "$ref": "#/components/schemas/WorkspaceFile"
@@ -6596,6 +6722,91 @@
         ],
         "title": "ReeState",
         "description": "Compact control-plane observation without inline workspace content."
+      },
+      "ReeStepCatalog": {
+        "properties": {
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/ReeStepCatalogEntry"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReeStepCatalog"
+      },
+      "ReeStepCatalogEntry": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "requires": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Requires"
+          },
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Actions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "order",
+          "label"
+        ],
+        "title": "ReeStepCatalogEntry",
+        "description": "One authoring step: its structure (from core) plus the calls that run it."
+      },
+      "ReeStepState": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "ready",
+              "blocked"
+            ],
+            "title": "Status"
+          },
+          "blocked_by": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Blocked By"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "status"
+        ],
+        "title": "ReeStepState",
+        "description": "The live state of one authoring step for a specific REE."
       },
       "ReeSummary": {
         "properties": {

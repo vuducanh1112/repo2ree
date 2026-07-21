@@ -164,6 +164,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ree-steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Ree Steps
+         * @description The static authoring steps: ordered, their prerequisite edges, and the
+         *     operationIds that advance each. Deployment-static, so a client may cache it.
+         */
+        get: operations["listReeSteps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rees/{ree_id}/runs": {
         parameters: {
             query?: never;
@@ -1299,6 +1320,8 @@ export interface components {
             };
             source_repo?: components["schemas"]["SourceRepoMetadata"] | null;
             consistency?: components["schemas"]["ConsistencyReport"];
+            /** Ree Steps */
+            ree_steps?: components["schemas"]["ReeStepState"][];
         };
         /**
          * ReeFile
@@ -1535,11 +1558,49 @@ export interface components {
             ree_intent?: components["schemas"]["ReeIntent-Output"];
             ree_session?: components["schemas"]["ReeSession"];
             consistency?: components["schemas"]["ConsistencyReport"];
+            /** Ree Steps */
+            ree_steps?: components["schemas"]["ReeStepState"][];
             /** Files */
             files?: components["schemas"]["WorkspaceFile"][];
             source_repo?: components["schemas"]["SourceRepoMetadata"] | null;
             /** Active Runs */
             active_runs?: components["schemas"]["RunSummary"][];
+        };
+        /** ReeStepCatalog */
+        ReeStepCatalog: {
+            /** Steps */
+            steps?: components["schemas"]["ReeStepCatalogEntry"][];
+        };
+        /**
+         * ReeStepCatalogEntry
+         * @description One authoring step: its structure (from core) plus the calls that run it.
+         */
+        ReeStepCatalogEntry: {
+            /** Key */
+            key: string;
+            /** Order */
+            order: number;
+            /** Label */
+            label: string;
+            /** Requires */
+            requires?: string[];
+            /** Actions */
+            actions?: string[];
+        };
+        /**
+         * ReeStepState
+         * @description The live state of one authoring step for a specific REE.
+         */
+        ReeStepState: {
+            /** Key */
+            key: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "done" | "ready" | "blocked";
+            /** Blocked By */
+            blocked_by?: string[];
         };
         /** ReeSummary */
         ReeSummary: {
@@ -2961,6 +3022,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReproducibilityScoreCard"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listReeSteps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReeStepCatalog"];
                 };
             };
             /** @description Invalid request or operation precondition */

@@ -403,6 +403,7 @@ def get_workspace_state_route(ree_id: str):
         "ree_intent": workspace.get("ree_intent", {}),
         "ree_session": workspace.get("ree_session", {}),
         "consistency": workspace.get("consistency", {}),
+        "ree_steps": workspace.get("ree_steps", []),
         "files": workspace.get("files", []),
         "active_runs": active_runs,
     }

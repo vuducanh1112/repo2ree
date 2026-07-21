@@ -23,14 +23,32 @@ terminal:
     make e2e-api            # the same, always recorded to a .cast
 
 Needs only ``curl`` (already required by the orchestrator) and the Python stdlib,
-so it runs under a bare ``python3`` shebang regardless of what execs it. Drives
-only the public surface:
+so it runs under a bare ``python3`` shebang regardless of what execs it. It is
+the pure-API mirror of the frontend golden path (``ree-pipeline.spec.ts``): the
+same journey — one workbench, one runtime build, every pipeline stage exercised
+in order — driven only through the public surface:
 
     createRee -> observeRun (provision)
+      -> listReeSteps (discover the authoring steps + prerequisites)
+      -> listScriptTemplates (discover the reserved script paths)
       -> source:upload-init / uploadSourceBytes / source:upload-complete
       -> observeRun (extract)
       -> getReeState -> writeReeFile / readReeFile
-      -> patchReeIntent -> sealRee -> downloadReeArchive -> deleteRee
+      -> patchReeIntent (metadata)
+      -> startEvaluate -> observeRun -> getEvaluateReport
+      -> writeReeFile (build script) -> startBuild -> observeRun
+      -> patchReeIntent (declare runtime artifact + hardware BOM)
+      -> startSbomGeneration -> observeRun -> startSbomCrossCheck -> observeRun
+      -> writeReeFile (activation script) -> startActivationTest -> observeRun
+      -> patchReeIntent (declare experiment) -> writeReeFile (run + verify)
+         -> startExperiment -> observeRun
+      -> getReeState (ree_steps overlay) -> getScorecard
+      -> sealRee -> downloadReeArchive -> deleteRee
+
+The build, activation, and experiment stages drive a real cold Docker-in-Docker
+runtime build (pandas on ``python:3.11-slim``) inside the workbench — the same
+work the frontend golden path does, so the recording shows the genuine cost of
+authoring a reproducible environment, not a stub.
 """
 
 from __future__ import annotations
@@ -146,12 +164,103 @@ def wait_for_run(ree_id: str, run_id: str) -> str:
         time.sleep(0.1)
 
 
+# ------------------------------------------------------------------
+# The project being authored, and the REE recipe scripts that turn it into a
+# reproducible environment. Kept byte-for-byte in step with the frontend golden
+# path's ``python_hello_world`` fixture so both e2e mirrors build the same
+# runtime and assert the same "Pandas Hello World" evidence.
+# ------------------------------------------------------------------
+
+# The archive extracts under this top-level directory; the runtime tarball the
+# build produces lands beside the sources.
+PROJECT_DIR = "python_hello_world"
+RUNTIME_PATH = f"{PROJECT_DIR}/runtime.tar"
+
+# REE-owned recipe scripts live under a reserved overlay: a fresh REE seeds the
+# build and activation slots, and naming an experiment settles its own reserved
+# run-script path. Authoring a stage means writing its script to the reserved
+# path, then declaring the intent. The paths themselves are *not* hardcoded here
+# — the session discovers them at runtime from listScriptTemplates (see chapter
+# 2), the way an agent driving cold from the OpenAPI would. The experiment name
+# is kept deliberately slug-safe (no whitespace) so it substitutes directly into
+# the catalog's ``{slug}`` path pattern without needing core's slug rules.
+EXPERIMENT_NAME = "python-hello"
+# Workspace file the experiment run script tees its stdout into; the verify
+# script reads it back and its exit code is the verdict.
+EXPERIMENT_OUTPUT_FILE = "result.txt"
+
+# The built image's tag, shared by build/activation/experiment scripts.
+_IMAGE = "pandas-hello:latest"
+
+_DOCKERFILE = """\
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "main.py"]
+"""
+
+_MAIN_PY = """\
+import pandas as pd
+
+
+def main():
+    data = {"Greeting": ["Hello", "Hi", "Hey"], "Target": ["World", "Pandas", "Docker"]}
+    df = pd.DataFrame(data)
+    print("--- Pandas Hello World ---")
+    print(df)
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+# Build the runtime image from the project and save it as the runtime tarball.
+BUILD_SCRIPT = f"""\
+#!/usr/bin/env sh
+set -eu
+docker build -t {_IMAGE} {PROJECT_DIR}
+docker save {_IMAGE} -o {RUNTIME_PATH}
+"""
+
+
+def _docker_run_script(command: str, *, capture: str | None = None) -> str:
+    """A self-contained runnable script: load the built runtime if absent, then
+    enter it with its own ``docker run``, bind-mounting the workspace so declared
+    file outputs surface. Mirrors the frontend helper of the same shape."""
+    tee = f' | tee "{capture}"' if capture else ""
+    return f"""\
+#!/usr/bin/env sh
+set -eu
+if ! docker image inspect {_IMAGE} >/dev/null 2>&1; then
+  docker load < "{RUNTIME_PATH}"
+fi
+docker run --rm -v "$(pwd):/workspace" -w /workspace {_IMAGE} {command}{tee}
+"""
+
+
+# Activation proves the built runtime is inhabitable — import the installed dep.
+ACTIVATION_SCRIPT = _docker_run_script("python -c \"import pandas; print('activation ok')\"")
+
+# The experiment runs the project and captures its stdout as the author baseline.
+EXPERIMENT_RUN_SCRIPT = _docker_run_script(f"python {PROJECT_DIR}/main.py", capture=EXPERIMENT_OUTPUT_FILE)
+
+# The verify script owns the claim: the captured stdout contains the expected line.
+EXPERIMENT_VERIFY_SCRIPT = f"""\
+#!/usr/bin/env sh
+set -eu
+grep -Fq "Pandas Hello World" "{EXPERIMENT_OUTPUT_FILE}"
+"""
+
+
 def make_source_archive() -> bytes:
-    """A tiny in-memory .tar.gz standing in for the project being authored."""
+    """The ``python_hello_world`` project as an in-memory .tar.gz — a Dockerfile,
+    a pandas requirement, and a script whose output the experiment verifies."""
     files = {
-        "demo-project/README.md": b"# demo project\n",
-        "demo-project/requirements.txt": b"requests==2.31.0\n",
-        "demo-project/main.py": b"print('hello from the reproduced environment')\n",
+        f"{PROJECT_DIR}/Dockerfile": _DOCKERFILE.encode(),
+        f"{PROJECT_DIR}/requirements.txt": b"pandas==2.2.1\n",
+        f"{PROJECT_DIR}/main.py": _MAIN_PY.encode(),
     }
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as tar:
@@ -160,6 +269,25 @@ def make_source_archive() -> bytes:
             info.size = len(content)
             tar.addfile(info, io.BytesIO(content))
     return buf.getvalue()
+
+
+def put_file(ree_id: str, path: str, content: str) -> None:
+    """Author a workspace file (writeReeFile). Used for the REE recipe scripts —
+    the build, activation, and experiment scripts live in the workspace and are
+    referenced by path from the typed intent."""
+    call("PUT", f"/api/v1/rees/{ree_id}/files/content", {"path": path, "content": content})
+
+
+def run_stage(ree_id: str, method: str, path: str, payload: dict, *, what: str) -> dict:
+    """Kick off a background pipeline run and block on observeRun until it settles,
+    asserting success. Returns the run's start response. This is the automation
+    idiom every heavyweight stage (evaluate, build, sbom, activation, experiment)
+    shares: POST to start, long-poll to await."""
+    started = call(method, path, payload)
+    run_id = started["run_id"]
+    status = wait_for_run(ree_id, run_id)
+    check(status == "succeeded", f"{what} did not succeed (settled {status})")
+    return started
 
 
 # ==================================================================
@@ -181,9 +309,32 @@ def run() -> None:
     check(wait_for_run(ree_id, created["run_id"]) == "succeeded", "provisioning did not succeed")
     ok(f"workbench provisioned for REE {ree_id}")
 
-    chapter("2. Upload a source archive")
+    chapter("2. Discover the authoring model")
+    note("listReeSteps publishes the authoring steps, their order, and their prerequisites")
+    steps_catalog = call("GET", "/api/v1/ree-steps")
+    step_keys = [step["key"] for step in steps_catalog["steps"]]
+    check("build" in step_keys and "seal" in step_keys, "step catalog missing core steps")
+    # The catalog is the DAG as data: `requires` names each step's prerequisites,
+    # `actions` the operationIds that advance it — enough to plan a traversal
+    # without hardcoding the pipeline shape.
+    sbom_step = next(step for step in steps_catalog["steps"] if step["key"] == "sbom")
+    check(sbom_step["requires"] == ["build"], "sbom should require build")
+    ok(f"{len(step_keys)} authoring steps discovered: {' → '.join(step_keys)}")
+
+    note("listScriptTemplates publishes where each REE-owned script belongs — no hardcoded paths")
+    catalog = call("GET", "/api/v1/script-templates")
+    build_script_path = catalog["build"]["path"]
+    activation_script_path = catalog["activation"]["run_script_path"]
+    experiment_run_script_path = catalog["experiment"]["run_script_path_pattern"].replace("{slug}", EXPERIMENT_NAME)
+    experiment_verify_script_path = catalog["experiment"]["verify_script_path_pattern"].replace(
+        "{slug}", EXPERIMENT_NAME
+    )
+    check(build_script_path and activation_script_path, "catalog did not resolve the reserved paths")
+    ok(f"reserved paths resolved (build → {build_script_path})")
+
+    chapter("3. Upload a source archive")
     archive = make_source_archive()
-    archive_name = "demo-project.tar.gz"
+    archive_name = "python-hello-world.tar.gz"
     init = call(
         "POST",
         f"/api/v1/rees/{ree_id}/source:upload-init",
@@ -216,27 +367,14 @@ def run() -> None:
     check(wait_for_run(ree_id, completed["run_id"]) == "succeeded", "source extraction did not succeed")
     ok(f"source extracted into the workspace ({len(archive)} bytes)")
 
-    chapter("3. Inspect the compact state")
+    chapter("4. Inspect the compact state")
     note("getReeState returns durable state + file metadata, never inline contents")
     state = call("GET", f"/api/v1/rees/{ree_id}/state")
     check(
-        "demo-project/README.md" in {f["path"] for f in state.get("files", [])},
-        "extracted README.md not visible in state",
+        f"{PROJECT_DIR}/Dockerfile" in {f["path"] for f in state.get("files", [])},
+        "extracted Dockerfile not visible in state",
     )
     ok("workspace tree reflects the uploaded project")
-
-    chapter("4. Author a file in the workspace")
-    call(
-        "PUT",
-        f"/api/v1/rees/{ree_id}/files/content",
-        {"path": "build.sh", "content": "pip install -r demo-project/requirements.txt\n"},
-    )
-    note("read the raw bytes back (readReeFile returns octet-stream, not JSON)")
-    rc, out, err = _run_curl([f"{BASE_URL}/api/v1/rees/{ree_id}/files/raw?path=build.sh"])
-    text = out.decode()
-    print(f"    {text}")
-    check(rc == 0 and text == "pip install -r demo-project/requirements.txt\n", "round-tripped file mismatch")
-    ok("file round-trips byte-for-byte")
 
     chapter("5. Record authoring intent")
     patched = call(
@@ -253,10 +391,123 @@ def run() -> None:
         },
     )
     check(patched["ree_intent"]["catalog_metadata"]["version"] == "1.0.0", "intent version not recorded")
-    ok("intent recorded")
+    ok("metadata recorded")
 
-    chapter("6. Seal and download")
-    sealed = call("POST", f"/api/v1/rees/{ree_id}/ree:seal", {"include_source": True})
+    chapter("6. Evaluate reproducibility readiness")
+    note("scans the sources for dependency signals; the report backs the SBOM cross-check")
+    run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/evaluate", {}, what="evaluate")
+    report = call("GET", f"/api/v1/rees/{ree_id}/evaluate/report")
+    check(isinstance(report, dict) and report, "evaluate produced no report")
+    ok("reproducibility report generated")
+
+    chapter("7. Build the runtime")
+    note("author the reserved build script, then run it — a real cold docker build in the workbench")
+    put_file(ree_id, build_script_path, BUILD_SCRIPT)
+    note("read the reserved script back (readReeFile returns octet-stream, not JSON)")
+    rc, out, err = _run_curl([f"{BASE_URL}/api/v1/rees/{ree_id}/files/raw?path={build_script_path}"])
+    check(rc == 0 and out.decode() == BUILD_SCRIPT, f"build script did not round-trip: {_curl_detail(rc, err)}")
+    run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/build-runtime", {}, what="build")
+    built = call("GET", f"/api/v1/rees/{ree_id}/state")
+    check(RUNTIME_PATH in {f["path"] for f in built.get("files", [])}, "runtime tarball not produced")
+    ok(f"runtime image built and saved to {RUNTIME_PATH}")
+
+    chapter("8. Declare the runtime artifact and hardware BOM")
+    note("bind the produced tarball as the runtime, and record the machine it was built on")
+    declared = call(
+        "PATCH",
+        f"/api/v1/rees/{ree_id}/intent",
+        {
+            "ree_intent_patch": {
+                "runtime": RUNTIME_PATH,
+                "hardware_description": {"cpus": {"Intel Core i9-14900K": {"vendor": "Intel", "cores_per_cpu": 24}}},
+            }
+        },
+    )
+    check(declared["ree_intent"]["runtime"] == RUNTIME_PATH, "runtime artifact not declared")
+    check(
+        "Intel Core i9-14900K" in declared["ree_intent"]["hardware_description"]["cpus"],
+        "hardware BOM entry not recorded",
+    )
+    ok("runtime artifact and hardware BOM declared")
+
+    chapter("9. Generate and cross-check the SBOM")
+    note("scan the runtime tarball for its software bill of materials")
+    run_stage(
+        ree_id,
+        "POST",
+        f"/api/v1/rees/{ree_id}/generate-sbom",
+        {"produced_runtime_path": RUNTIME_PATH},
+        what="SBOM generation",
+    )
+    note("join the SBOM against the evaluate report — do the declared deps appear in the runtime?")
+    run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/cross-check-sbom", {}, what="SBOM cross-check")
+    ok("SBOM generated and cross-checked against the scanned dependencies")
+
+    chapter("10. Prove activation")
+    note("activation is the required run that proves the built runtime is inhabitable")
+    put_file(ree_id, activation_script_path, ACTIVATION_SCRIPT)
+    run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/activation-test", {}, what="activation")
+    ok("runtime activates: pandas imports inside the sealed image")
+
+    chapter("11. Run an experiment")
+    note("declare a named experiment; naming it settles its reserved run-script path")
+    experiment_declared = call(
+        "PATCH",
+        f"/api/v1/rees/{ree_id}/intent",
+        {
+            "ree_intent_patch": {
+                "experiments": [
+                    {
+                        "name": EXPERIMENT_NAME,
+                        "verify_script": experiment_verify_script_path,
+                        "output_paths": [EXPERIMENT_OUTPUT_FILE],
+                    }
+                ]
+            }
+        },
+    )
+    settled_run_script = experiment_declared["ree_intent"]["experiments"][0]["run_script"]
+    check(
+        settled_run_script == experiment_run_script_path,
+        "experiment run-script path did not settle to the discovered pattern",
+    )
+    note("author the run script (captures stdout) and the verify script (owns the claim)")
+    put_file(ree_id, experiment_run_script_path, EXPERIMENT_RUN_SCRIPT)
+    put_file(ree_id, experiment_verify_script_path, EXPERIMENT_VERIFY_SCRIPT)
+    run_stage(
+        ree_id,
+        "POST",
+        f"/api/v1/rees/{ree_id}/experiments/{EXPERIMENT_NAME}:run",
+        {},
+        what="experiment",
+    )
+    ok(f"experiment {EXPERIMENT_NAME!r} passed — declared validation held")
+
+    chapter("12. Review the authoring steps")
+    note("getReeState carries a ree_steps overlay: done / ready / blocked per step")
+    state = call("GET", f"/api/v1/rees/{ree_id}/state")
+    status_by_step = {step["key"]: step["status"] for step in state["ree_steps"]}
+    print("    " + "  ".join(f"{key}={status}" for key, status in status_by_step.items()))
+    # Every run-backed step now reads done; only the seal remains — ready, since
+    # sealing is the next (and last) action.
+    for step_key in ("source", "build", "sbom", "crosscheck", "activation", "experiments"):
+        check(status_by_step[step_key] == "done", f"step {step_key} should be done, was {status_by_step[step_key]}")
+    check(status_by_step["seal"] == "ready", "seal should be the remaining ready step")
+    ok("every authoring step is done — only the seal remains")
+
+    chapter("13. Read the reproducibility scorecard")
+    note("the scorecard aggregates intent + receipts into an ordinal reproducibility level")
+    scorecard = call("GET", f"/api/v1/rees/{ree_id}/scorecard")
+    check("level" in scorecard, "scorecard missing its level")
+    ok(f"reproducibility level {scorecard['level_code']} — {scorecard['level_name']}")
+
+    chapter("14. Seal and download")
+    note("seal binds the whole record; package the source and the experiment baselines")
+    sealed = call(
+        "POST",
+        f"/api/v1/rees/{ree_id}/ree:seal",
+        {"include_source": True, "include_results": True},
+    )
     seal_hash = sealed["ree_session"]["seal_hash"]
     check(seal_hash.startswith("sha256:"), "seal did not produce a sha256 hash")
     ok(f"sealed as {seal_hash}")
@@ -266,9 +517,13 @@ def run() -> None:
         data = (Path(work) / "ree.zip").read_bytes()
     entries = zipfile.ZipFile(io.BytesIO(data)).namelist()
     check(len(entries) > 0, "sealed archive is empty")
+    # The experiment declared an output, so its baseline rides along in the bundle
+    # — the same evidence the frontend golden path asserts on its downloaded zip.
+    result_entry = f"ree/results/{EXPERIMENT_NAME}/{EXPERIMENT_OUTPUT_FILE}"
+    check(result_entry in entries, f"experiment baseline {result_entry} missing from the bundle")
     ok(f"downloaded sealed archive: {len(entries)} entries, {len(data)} bytes")
 
-    chapter("7. Tear down")
+    chapter("15. Tear down")
     deleted = call("DELETE", f"/api/v1/rees/{ree_id}")
     check(deleted.get("state") == "deleted", "delete did not report deleted")
     ok(f"REE {ree_id} deleted")
