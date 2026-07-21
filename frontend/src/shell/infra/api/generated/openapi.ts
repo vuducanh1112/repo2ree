@@ -1020,6 +1020,40 @@ export interface components {
             /** Templates */
             templates: components["schemas"]["ScriptTemplateEntry"][];
         };
+        /**
+         * Failure
+         * @description Machine-readable description of why an action did not succeed.
+         *
+         *     A single shared object carried on every ``failed`` :class:`ActionResult`
+         *     (and, over time, through error frames, run records, and HTTP envelopes). The
+         *     contract is that a component *enriches* the same failure as it travels up
+         *     the layers rather than collapsing it to ``str(exc)`` at each hop, so the
+         *     ``category``/``origin`` a client sees are the ones the originating component
+         *     chose.
+         */
+        Failure: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "validation" | "precondition" | "conflict" | "execution" | "timeout" | "unavailable" | "internal";
+            /** Message */
+            message: string;
+            /**
+             * Retryable
+             * @default false
+             */
+            retryable: boolean;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "api" | "supervisor" | "agent" | "executor" | "core";
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
+        };
         /** FileMutationResponse */
         FileMutationResponse: {
             /** Updated At */
@@ -1681,6 +1715,7 @@ export interface components {
             outputs?: {
                 [key: string]: unknown;
             };
+            failure?: components["schemas"]["Failure"] | null;
         };
         /**
          * SbomCrossCheckSummary

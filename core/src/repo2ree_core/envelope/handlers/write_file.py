@@ -29,7 +29,7 @@ def handle_write_file(
         validate_relative_path(args.path)
     except ValueError as exc:
         log("system", "error", f"invalid path: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("validation", f"invalid path: {exc}")
 
     layout = ReeLayout.in_workbench()
     store = ReeStore(layout)
@@ -44,6 +44,6 @@ def handle_write_file(
         store.workspace.write_text(args.path, args.content)
     except Exception as exc:
         log("system", "error", f"write_file failed: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"write_file failed: {exc}")
 
     return ActionResult(status="succeeded", exit_code=0)

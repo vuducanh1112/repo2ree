@@ -17,6 +17,7 @@ from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.receipts import ConsistencyReport
 from repo2ree_core.source_repo.metadata import SourceRepoMetadata
 from repo2ree_core.workspace.inventory import ReeFile, WorkspaceFile
+from repo2ree_protocol.result import Failure
 
 RunStatus = Literal[
     "queued",
@@ -79,6 +80,11 @@ class RunSummary(BaseModel):
     started_at: str | None = None
     finished_at: str | None = None
     outputs: dict[str, Any] = Field(default_factory=dict)
+    # Set on a failed run: the typed reason the run did not succeed, so a client
+    # can pivot off `status == "failed"` without parsing the log stream. Absent
+    # for succeeded/canceled runs, and (best-effort) for a failure that predates
+    # this contract or arises outside a single ActionResult.
+    failure: Failure | None = None
 
 
 class RunList(BaseModel):

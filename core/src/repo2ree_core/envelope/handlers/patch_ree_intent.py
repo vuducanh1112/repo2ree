@@ -31,20 +31,24 @@ def handle_patch_ree_intent(
     unsupported = sorted(set(args.patch) - _INTENT_FIELDS)
     if unsupported:
         log("system", "error", f"patch contains unknown fields: {unsupported}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed(
+            "validation",
+            f"patch contains unknown fields: {unsupported}",
+            details={"fields": unsupported},
+        )
 
     layout = ReeLayout.in_workbench()
     store = ReeStore(layout)
 
     if not store.metadata_exists():
         log("system", "error", "metadata not found — was init-ree run?")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
 
     log("system", "info", f"patch_ree_intent: {sorted(args.patch)}")
     try:
         patch_ree_intent(store, args.patch)
     except Exception as exc:
         log("system", "error", f"patch_ree_intent failed: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"patch_ree_intent failed: {exc}")
 
     return ActionResult(status="succeeded", exit_code=0)

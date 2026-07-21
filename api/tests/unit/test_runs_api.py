@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import start_background_run
+from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
 
 # ================================================
@@ -72,6 +73,12 @@ def test_failed_run_summary_shape(client: TestClient, online_ree: WorkbenchHandl
     assert summary["operation"] == "source"
     assert summary["ree_id"] == online_ree.ree_id
     assert summary["finished_at"] is not None
+    # A failed run carries its typed failure, so a client need not read the logs
+    # to learn why. This upload failed its staging precondition inside the API.
+    assert summary["failure"] is not None
+    assert summary["failure"]["category"] == "precondition"
+    assert summary["failure"]["origin"] == "api"
+    assert summary["failure"]["retryable"] is False
     # internal bookkeeping never leaks into the API shape
     assert "_next_seq" not in summary
     assert "logs" not in summary
@@ -235,9 +242,9 @@ def test_cancel_of_active_run_signals_workbench(
     canceled = Event()
     calls: list[tuple[WorkbenchHandle, str]] = []
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
         canceled.wait(timeout=2.0)
-        return "canceled", {}
+        return ActionResult(status="canceled")
 
     def _cancel_run(handle: WorkbenchHandle, run_id: str) -> None:
         calls.append((handle, run_id))

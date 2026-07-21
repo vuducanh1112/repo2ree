@@ -11,6 +11,7 @@ from fastapi import HTTPException
 
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.log import emit_run_log
+from repo2ree_protocol.result import ActionResult, Failure
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     current_span_link,
@@ -97,6 +98,7 @@ class RunRegistry:
             "started_at": None,
             "finished_at": None,
             "outputs": {},
+            "failure": None,
             "logs": [],
             "request": request_payload,
             "_next_seq": 1,
@@ -126,12 +128,15 @@ class RunRegistry:
                 run_state["status"] = "provisioning" if operation == "provision" else "running"
                 self._changed.notify_all()
 
-    def _set_status(self, ree_id: str, run_id: str, status: str) -> None:
+    def _set_status(self, ree_id: str, run_id: str, status: str, failure: Failure | None = None) -> None:
         with self._lock:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
             if not run_state:
                 return
             run_state["status"] = status
+            # Stored (and cleared) together with the status under one lock, so a
+            # poller can never observe a terminal `failed` without its failure.
+            run_state["failure"] = failure.model_dump() if failure is not None else None
             if status in TERMINAL_STATUSES:
                 run_state["finished_at"] = utc_now()
             self._changed.notify_all()
@@ -190,15 +195,28 @@ class RunRegistry:
         run_id: str,
         status: str,
         outputs: dict[str, Any],
+        failure: Failure | None = None,
     ) -> None:
         if self.is_cancel_requested(ree_id, run_id) and status not in {"failed", "succeeded"}:
             status = "canceled"
+            # A canceled run carries no failure (mirrors the ActionResult contract).
+            failure = None
         self.update_outputs(ree_id, run_id, outputs)
-        self._set_status(ree_id, run_id, status)
+        self._set_status(ree_id, run_id, status, failure)
         with self._lock:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
             if run_state:
                 run_state.pop("_next_seq", None)
+
+    def _terminal_from_exception(self, ree_id: str, run_id: str, message: str) -> ActionResult:
+        """Terminal result for a runner that raised.
+
+        A cancel in flight settles to `canceled`; anything else is an
+        `internal` failure that originated here in the API worker thread.
+        """
+        if self.is_cancel_requested(ree_id, run_id):
+            return ActionResult(status="canceled")
+        return ActionResult.failed("internal", message, origin="api")
 
     def start_background(
         self,
@@ -206,7 +224,7 @@ class RunRegistry:
         operation: str,
         request_payload: dict[str, Any],
         run_id_prefix: str,
-        runner: Callable[[str, str], tuple[str, dict[str, Any]]],
+        runner: Callable[[str, str], ActionResult],
         require_ree_exists: bool = True,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
@@ -270,27 +288,24 @@ class RunRegistry:
                 CommandSpanAttrs(operation=operation, run_id=run_id, ree_id=ree_id).apply(span)
                 self._begin_run(ree_id, run_id, operation)
                 try:
-                    status, outputs = runner(ree_id, run_id)
+                    result = runner(ree_id, run_id)
                 except HTTPException as exc:
-                    self.append_log(
-                        ree_id,
-                        run_id,
-                        "system",
-                        "error",
-                        str(exc.detail or "Run failed"),
-                    )
-                    status = "canceled" if self.is_cancel_requested(ree_id, run_id) else "failed"
-                    outputs = {}
+                    message = str(exc.detail or "Run failed")
+                    self.append_log(ree_id, run_id, "system", "error", message)
+                    result = self._terminal_from_exception(ree_id, run_id, message)
                 except Exception as exc:
                     span.record_exception(exc)
-                    self.append_log(ree_id, run_id, "system", "error", str(exc))
-                    status = "canceled" if self.is_cancel_requested(ree_id, run_id) else "failed"
-                    outputs = {}
+                    message = str(exc)
+                    self.append_log(ree_id, run_id, "system", "error", message)
+                    result = self._terminal_from_exception(ree_id, run_id, message)
                 # The run root is the trace a user finds first; make it a
-                # self-sufficient wide event by recording the outputs here too.
-                record_span_facts(span, outputs, namespace="output")
-                record_command_status(span, status)
-                self.finalize(ree_id, run_id, status, outputs)
+                # self-sufficient wide event by recording the outputs — and the
+                # failure, when there is one — here too.
+                record_span_facts(span, result.outputs, namespace="output")
+                if result.failure is not None:
+                    record_span_facts(span, result.failure.model_dump(exclude_none=True), namespace="failure")
+                record_command_status(span, result.status)
+                self.finalize(ree_id, run_id, result.status, result.outputs, result.failure)
 
         worker = Thread(target=_worker, daemon=True)
         with self._lock:
@@ -310,6 +325,7 @@ class RunRegistry:
             "started_at",
             "finished_at",
             "outputs",
+            "failure",
         ]
         return {key: run_state[key] for key in keys}
 

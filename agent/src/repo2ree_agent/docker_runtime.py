@@ -757,7 +757,12 @@ def _parse_action_result(stdout: str, returncode: int) -> ActionResult:
             return ActionResult.model_validate_json(stdout)
         except ValueError:
             pass
-    return ActionResult(status="failed", exit_code=returncode or 1)
+    return ActionResult.failed(
+        "internal",
+        f"executor produced no valid result (exit {returncode})",
+        origin="agent",
+        exit_code=returncode or 1,
+    )
 
 
 def _docker(*args: str, timeout: int = 60) -> None:

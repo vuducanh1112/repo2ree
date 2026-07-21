@@ -59,7 +59,11 @@ def handle_materialize_workspace(
         log("system", "warn", "materialize_workspace canceled")
         return ActionResult(status="canceled")
     if result.returncode != 0:
-        return ActionResult(status="failed", exit_code=result.returncode or 1)
+        return ActionResult.failed(
+            "execution",
+            f"materialize script exited {result.returncode}",
+            exit_code=result.returncode or 1,
+        )
 
     store = ReeStore(layout)
     snapshot_digest = store.read_session().source_snapshot_digest if store.metadata_exists() else None

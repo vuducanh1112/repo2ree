@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_registry import RunRegistry
 from repo2ree_protocol.command import Command
+from repo2ree_protocol.result import ActionResult
 
 # ================================================
 # Types
@@ -51,7 +52,7 @@ def start_background_run(
     operation: RunOperation,
     request_payload: dict[str, Any],
     run_id_prefix: str,
-    runner: Callable[[str, str], tuple[str, dict[str, Any]]],
+    runner: Callable[[str, str], ActionResult],
     idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     return _registry.start_background(
@@ -67,7 +68,7 @@ def start_background_run(
 def start_provisioning_run(
     ree_id: str,
     request_payload: dict[str, Any],
-    runner: Callable[[str, str], tuple[str, dict[str, Any]]],
+    runner: Callable[[str, str], ActionResult],
 ) -> dict[str, Any]:
     """Start the background run that provisions a brand-new workbench.
 
@@ -103,21 +104,29 @@ def start_single_command_run(
     """
     outputs = fallback_outputs or {}
 
-    def _runner(rid: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(rid: str, run_id: str) -> ActionResult:
         def _log(stream: str, level: str, message: str) -> None:
             append_run_log(rid, run_id, stream, level, message)
 
         if is_cancel_requested(rid, run_id):
             _log("system", "warn", canceled_message)
-            return "canceled", outputs
+            return ActionResult(status="canceled", outputs=outputs)
 
         handle = workbench_manager.lookup(rid)
         if handle is None:
             _log("system", "error", f"No workbench available for {command.operation}")
-            return "failed", {}
+            return ActionResult.failed(
+                "unavailable",
+                f"No workbench available for {command.operation}",
+                origin="api",
+                retryable=True,
+            )
 
         result = workbench_manager.dispatch_action(handle, command, run_id, _log)
-        return result.status, result.outputs or outputs
+        # Preserve the route's fallback outputs when the command reported none.
+        if not result.outputs and outputs:
+            return result.model_copy(update={"outputs": outputs})
+        return result
 
     return start_background_run(
         ree_id=ree_id,

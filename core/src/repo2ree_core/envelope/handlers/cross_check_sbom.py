@@ -53,12 +53,12 @@ def handle_cross_check_sbom(
     sbom_abs = layout.workspace / sbom_rel
     if not sbom_abs.is_file():
         log("system", "error", f"SBOM not found: {sbom_rel} — run generate-sbom first")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", f"SBOM not found: {sbom_rel} — run generate-sbom first")
 
     report_path = layout.artifacts / _REPORT_FILENAME
     if not report_path.is_file():
         log("system", "error", "No reproducibility report — run evaluate first")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", "No reproducibility report — run evaluate first")
 
     sbom_digest = digest_file(sbom_abs)
 
@@ -83,7 +83,7 @@ def handle_cross_check_sbom(
     except Exception as exc:
         log("system", "error", f"unreadable reproducibility report: {exc}")
         receipt("failed")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"unreadable reproducibility report: {exc}")
 
     observed = parse_cyclonedx(sbom_abs.read_text(encoding="utf-8"))
     log("system", "info", f"SBOM: {sbom_rel} — {len(observed)} observed packages")
@@ -110,7 +110,7 @@ def handle_cross_check_sbom(
     except Exception as exc:
         log("system", "error", f"failed to persist cross-checked report: {exc}")
         receipt("failed")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"failed to persist cross-checked report: {exc}")
 
     log(
         "system",

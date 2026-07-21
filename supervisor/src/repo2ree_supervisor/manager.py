@@ -370,8 +370,14 @@ class WorkbenchManager:
                 raise RuntimeError(frame.detail)
 
         if result is None:
-            # Stream ended without a terminal result frame.
-            return ActionResult(status="failed", exit_code=1)
+            # Stream ended without a terminal result frame: the executor exited
+            # or the connection dropped before reporting an outcome.
+            return ActionResult.failed(
+                "internal",
+                f"{cmd.operation} ended without a result",
+                origin="supervisor",
+                retryable=True,
+            )
         return result
 
     # ------------------------------------------------

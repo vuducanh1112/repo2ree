@@ -30,14 +30,14 @@ def handle_delete_file(
         validate_relative_path(args.path)
     except ValueError as exc:
         log("system", "error", f"invalid path: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("validation", f"invalid path: {exc}")
 
     layout = ReeLayout.in_workbench()
     store = ReeStore(layout)
 
     if not store.workspace.is_file(args.path):
         log("system", "error", f"file not found in workspace: {args.path}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", f"file not found in workspace: {args.path}")
 
     conflict = check_expected_etag(store, args.path, args.expected_etag, log=log)
     if conflict is not None:
@@ -52,6 +52,6 @@ def handle_delete_file(
             store.workspace.delete_if_exists(args.path)
     except Exception as exc:
         log("system", "error", f"delete_file failed: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"delete_file failed: {exc}")
 
     return ActionResult(status="succeeded", exit_code=0)

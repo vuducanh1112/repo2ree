@@ -38,7 +38,7 @@ def handle_extract_upload(
 
     if not staged.exists():
         log("system", "error", f"staged archive not found: {staged}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", f"staged archive not found: {staged}")
 
     log("system", "info", f"packing {args.archive_name} → {layout.snapshot_archive.name}")
     try:
@@ -51,7 +51,7 @@ def handle_extract_upload(
             snapshot_digest = pack_directory_tar_gz(extract_dir, layout.snapshot_archive)
     except Exception as exc:
         log("system", "error", f"upload ingest failed: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("validation", f"upload ingest failed: {exc}")
 
     persist_snapshot_digest(ReeStore(layout), snapshot_digest, log=log)
     staged.unlink(missing_ok=True)

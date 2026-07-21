@@ -63,14 +63,14 @@ def handle_reset_for_source_change(
 
     if not store.metadata_exists():
         log("system", "error", "metadata not found — was init-ree run?")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
 
     log("system", "info", "reset_for_source_change: clearing source-derived state")
     try:
         reset_source_state(layout=layout, store=store)
     except Exception as exc:
         log("system", "error", f"reset_for_source_change failed: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"reset_for_source_change failed: {exc}")
 
     log("system", "info", "reset_for_source_change succeeded")
     return ActionResult(status="succeeded", exit_code=0)

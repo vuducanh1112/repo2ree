@@ -5527,6 +5527,64 @@
         "title": "ExperimentScriptTemplates",
         "description": "Templates for per-experiment run scripts, plus the path convention they follow.\n\nThe path patterns carry a ``{slug}`` placeholder: the experiment name with\nwhitespace collapsed to hyphens. Naming an experiment on the intent settles\nits ``run_script`` to this convention server-side; the patterns are\npublished so clients can show the destination before the intent round-trips."
       },
+      "Failure": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "validation",
+              "precondition",
+              "conflict",
+              "execution",
+              "timeout",
+              "unavailable",
+              "internal"
+            ],
+            "title": "Category"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "retryable": {
+            "type": "boolean",
+            "title": "Retryable",
+            "default": false
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "api",
+              "supervisor",
+              "agent",
+              "executor",
+              "core"
+            ],
+            "title": "Origin"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "category",
+          "message",
+          "origin"
+        ],
+        "title": "Failure",
+        "description": "Machine-readable description of why an action did not succeed.\n\nA single shared object carried on every ``failed`` :class:`ActionResult`\n(and, over time, through error frames, run records, and HTTP envelopes). The\ncontract is that a component *enriches* the same failure as it travels up\nthe layers rather than collapsing it to ``str(exc)`` at each hop, so the\n``category``/``origin`` a client sees are the ones the originating component\nchose."
+      },
       "FileMutationResponse": {
         "properties": {
           "updated_at": {
@@ -6980,6 +7038,16 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Outputs"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Failure"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,

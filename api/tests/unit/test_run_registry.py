@@ -16,6 +16,7 @@ import pytest
 from fastapi import HTTPException
 
 from repo2ree_api.run_registry import RunRegistry
+from repo2ree_protocol.result import ActionResult
 
 # ================================================
 # Helpers
@@ -53,14 +54,18 @@ def _wait_for(registry: RunRegistry, run_id: str, statuses: frozenset[str], time
 def test_start_background_rejects_unknown_ree():
     registry = _registry()
     with pytest.raises(HTTPException) as excinfo:
-        registry.start_background("nope", "source", {}, "run", lambda e, r: ("succeeded", {}))
+        registry.start_background("nope", "source", {}, "run", lambda e, r: ActionResult(status="succeeded"))
     assert excinfo.value.status_code == 404
 
 
 def test_successful_run_reaches_succeeded_with_outputs():
     registry = _registry()
     run_state = registry.start_background(
-        KNOWN_REE, "source", {"mode": "upload"}, "src", lambda e, r: ("succeeded", {"resolved": "abc"})
+        KNOWN_REE,
+        "source",
+        {"mode": "upload"},
+        "src",
+        lambda e, r: ActionResult(status="succeeded", outputs={"resolved": "abc"}),
     )
     # run_state is live — the worker may already have finished by now, so the
     # queued → running transition is asserted in the blocking-runner lifecycle test
@@ -77,7 +82,7 @@ def test_successful_run_reaches_succeeded_with_outputs():
 
 def test_run_summary_has_stable_keys():
     registry = _registry()
-    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ("succeeded", {}))
+    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ActionResult(status="succeeded"))
     summary = registry.run_summary(run_state)
     assert list(summary) == [
         "run_id",
@@ -88,6 +93,7 @@ def test_run_summary_has_stable_keys():
         "started_at",
         "finished_at",
         "outputs",
+        "failure",
     ]
     _wait_for(registry, run_state["run_id"], TERMINAL)
 
@@ -97,10 +103,10 @@ def test_idempotency_key_returns_original_run_without_duplicate_work():
     release = Event()
     calls: list[str] = []
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
         calls.append(run_id)
         release.wait(timeout=5.0)
-        return "succeeded", {}
+        return ActionResult(status="succeeded")
 
     first = registry.start_background(
         KNOWN_REE,
@@ -132,7 +138,7 @@ def test_idempotency_key_rejects_different_request_payload():
         "evaluate",
         {"strict": False},
         "evaluate",
-        lambda e, r: ("succeeded", {}),
+        lambda e, r: ActionResult(status="succeeded"),
         idempotency_key="request-1",
     )
 
@@ -142,7 +148,7 @@ def test_idempotency_key_rejects_different_request_payload():
             "evaluate",
             {"strict": True},
             "evaluate",
-            lambda e, r: ("succeeded", {}),
+            lambda e, r: ActionResult(status="succeeded"),
             idempotency_key="request-1",
         )
 
@@ -161,9 +167,9 @@ def test_run_starts_queued_then_running_with_started_at_stamped():
     registry = _registry()
     release = Event()
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
         release.wait(timeout=5.0)
-        return "succeeded", {}
+        return ActionResult(status="succeeded")
 
     run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
     # Created queued with no start time; the worker stamps both when it begins.
@@ -182,9 +188,9 @@ def test_provision_run_reports_provisioning_while_working():
     registry = _registry()
     release = Event()
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
         release.wait(timeout=5.0)
-        return "succeeded", {}
+        return ActionResult(status="succeeded")
 
     run_state = registry.start_background(KNOWN_REE, "provision", {}, "provision", _runner, require_ree_exists=False)
     _wait_for(registry, run_state["run_id"], frozenset({"provisioning"}))
@@ -200,13 +206,18 @@ def test_provision_run_reports_provisioning_while_working():
 def test_runner_exception_finalizes_as_failed_with_error_log():
     registry = _registry()
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
         raise RuntimeError("docker cp exploded")
 
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
     final = _wait_for(registry, run_state["run_id"], TERMINAL)
     assert final["status"] == "failed"
     assert final["outputs"] == {}
+    # A runner that raised is synthesized into an internal failure attributed to
+    # the API worker thread, carried on the run — not just logged.
+    assert final["failure"]["category"] == "internal"
+    assert final["failure"]["origin"] == "api"
+    assert final["failure"]["message"] == "docker cp exploded"
     assert [(e["stream"], e["level"], e["message"]) for e in final["logs"]] == [
         ("system", "error", "docker cp exploded")
     ]
@@ -215,12 +226,14 @@ def test_runner_exception_finalizes_as_failed_with_error_log():
 def test_runner_http_exception_finalizes_as_failed_with_detail_logged():
     registry = _registry()
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
         raise HTTPException(status_code=409, detail="seal in progress")
 
     run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
     final = _wait_for(registry, run_state["run_id"], TERMINAL)
     assert final["status"] == "failed"
+    assert final["failure"]["origin"] == "api"
+    assert final["failure"]["message"] == "seal in progress"
     assert final["logs"][0]["message"] == "seal in progress"
 
 
@@ -233,12 +246,12 @@ def test_cancel_of_in_flight_run_transitions_canceling_then_canceled():
     registry = _registry()
     release = Event()
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
         release.wait(timeout=5.0)
         # cooperative cancellation, the way the route runners check the flag
         if registry.is_cancel_requested(ree_id, run_id):
-            return "canceled", {}
-        return "succeeded", {}
+            return ActionResult(status="canceled")
+        return ActionResult(status="succeeded")
 
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
     run_id = run_state["run_id"]
@@ -258,7 +271,7 @@ def test_cancel_after_runner_crash_still_reports_canceled():
     registry = _registry()
     release = Event()
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
         release.wait(timeout=5.0)
         raise RuntimeError("interrupted")
 
@@ -271,7 +284,7 @@ def test_cancel_after_runner_crash_still_reports_canceled():
 def test_completed_run_is_not_retroactively_canceled():
     """finalize never demotes a result that already succeeded or failed."""
     registry = _registry()
-    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ("succeeded", {}))
+    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ActionResult(status="succeeded"))
     run_id = run_state["run_id"]
     _wait_for(registry, run_id, TERMINAL)
 
@@ -294,9 +307,9 @@ def test_append_log_assigns_monotonic_sequence_numbers():
     registry = _registry()
     release = Event()
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
         release.wait(timeout=5.0)
-        return "succeeded", {}
+        return ActionResult(status="succeeded")
 
     run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
     run_id = run_state["run_id"]
@@ -318,9 +331,9 @@ def test_observe_returns_only_logs_after_sequence_cursor():
     registry = _registry()
     release = Event()
 
-    def _runner(ree_id: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
         release.wait(timeout=5.0)
-        return "succeeded", {}
+        return ActionResult(status="succeeded")
 
     run = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
     _wait_for(registry, run["run_id"], frozenset({"running"}))
@@ -351,7 +364,9 @@ def test_observe_timeout_returns_unchanged_active_run():
         "build",
         {},
         "build",
-        lambda e, r: (release.wait(timeout=5.0) and "succeeded" or "failed", {}),
+        lambda e, r: ActionResult(status="succeeded")
+        if release.wait(timeout=5.0)
+        else ActionResult.failed("timeout", "runner wait timed out", origin="api"),
     )
     _wait_for(registry, run["run_id"], frozenset({"running"}))
 

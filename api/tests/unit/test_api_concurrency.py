@@ -37,9 +37,10 @@ def test_intent_version_conflict_reports_expected_and_actual_versions(
 
 def _conflict_result(path: str, expected: str, actual: str | None) -> ActionResult:
     """The shape the write/delete handlers report on an etag mismatch."""
-    return ActionResult(
-        status="failed",
-        exit_code=1,
+    return ActionResult.failed(
+        "conflict",
+        f"etag mismatch for {path}",
+        retryable=True,
         outputs={
             "error_code": "version_conflict",
             "path": path,
@@ -126,8 +127,8 @@ def test_workbench_command_failure_maps_to_400_with_operation_code(
     monkeypatch.setattr(
         workbench_manager,
         "dispatch_action",
-        lambda handle, command, run_id, log: ActionResult(
-            status="failed", exit_code=1, outputs={"reason": "reserved path"}
+        lambda handle, command, run_id, log: ActionResult.failed(
+            "validation", "reserved path", outputs={"reason": "reserved path"}
         ),
     )
 

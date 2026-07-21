@@ -24,14 +24,14 @@ def handle_remove_source(
 
     if not store.metadata_exists():
         log("system", "error", "metadata not found — was init-ree run?")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
 
     log("system", "info", "remove_source: clearing content and resetting metadata")
     try:
         reset_source_state(layout=layout, store=store)
     except Exception as exc:
         log("system", "error", f"remove_source failed: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"remove_source failed: {exc}")
 
     log("system", "info", "remove_source succeeded")
     return ActionResult(status="succeeded", exit_code=0)

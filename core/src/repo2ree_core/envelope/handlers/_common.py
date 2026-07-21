@@ -141,6 +141,29 @@ class VersionConflictOutputs(BaseModel):
     actual_version: str | None
 
 
+def _result_from_run_outcome(
+    status: ActionStatus,
+    *,
+    exit_code: int | None,
+    outputs: dict[str, Any],
+    operation: str,
+) -> ActionResult:
+    """Terminal ActionResult for a script-backed handler.
+
+    A ``failed`` outcome carries an ``execution`` :class:`Failure` and the real
+    underlying exit code (never a misleading 0), so a client learns *that* and
+    *why* the author's script failed from the result itself, not the log tail.
+    """
+    if status == "failed":
+        return ActionResult.failed(
+            "execution",
+            f"{operation} failed",
+            exit_code=exit_code or 1,
+            outputs=outputs,
+        )
+    return ActionResult(status=status, exit_code=0, outputs=outputs)
+
+
 def run_bare_script_handler(
     script_path: str,
     *,
@@ -167,7 +190,7 @@ def run_bare_script_handler(
         resolve_workspace_path(layout, script_path)
     except Exception as exc:
         log("system", "error", f"invalid {noun.lower()} script path: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("validation", f"invalid {noun.lower()} script path: {exc}")
 
     store = ReeStore(layout)
     intent = _read_intent_or_none(store)
@@ -214,10 +237,11 @@ def run_bare_script_handler(
         record_receipt(layout, receipt, log=log)
         outputs.receipt = receipt.model_dump()
 
-    return ActionResult(
-        status=outcome.status,
-        exit_code=outcome.exit_code if outcome.exit_code is not None else 0,
+    return _result_from_run_outcome(
+        outcome.status,
+        exit_code=outcome.exit_code,
         outputs=outputs.model_dump(exclude_none=True),
+        operation=operation,
     )
 
 
@@ -281,17 +305,18 @@ def run_runnable_handler(
     store = ReeStore(layout)
     if not store.metadata_exists():
         log("system", "error", "metadata not found")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", "metadata not found")
 
     try:
         ree = store.read_intent()
     except Exception as exc:
         log("system", "error", f"Invalid REE intent: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"Invalid REE intent: {exc}")
 
     selected = select(ree, log)
     if selected is None:
-        return ActionResult(status="failed", exit_code=1)
+        # ``select`` has already logged why the runnable could not be resolved.
+        return ActionResult.failed("precondition", f"{operation} target could not be resolved")
     runnable, label = selected
 
     inputs = _collect_step_inputs(layout, store, ree, runnable.run_script, runnable.verify_script)
@@ -340,7 +365,12 @@ def run_runnable_handler(
     record_receipt(layout, receipt, log=log)
     outputs.receipt = receipt.model_dump()
 
-    return ActionResult(status=status, exit_code=0, outputs=outputs.model_dump(exclude_none=True))
+    return _result_from_run_outcome(
+        status,
+        exit_code=outcome.run_outputs.verify_exit_code or outcome.run_outputs.exit_code,
+        outputs=outputs.model_dump(exclude_none=True),
+        operation=operation,
+    )
 
 
 def workspace_content_etag(store: ReeStore, path: str) -> str | None:
@@ -363,9 +393,10 @@ def check_expected_etag(store: ReeStore, path: str, expected: str, *, log: LogSi
     if expected == actual:
         return None
     log("system", "error", f"etag mismatch for {path}: expected {expected}, actual {actual}")
-    return ActionResult(
-        status="failed",
-        exit_code=1,
+    return ActionResult.failed(
+        "conflict",
+        f"etag mismatch for {path}: expected {expected}, actual {actual}",
+        retryable=True,
         outputs=VersionConflictOutputs(
             path=path,
             expected_version=expected,

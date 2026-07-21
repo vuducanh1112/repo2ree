@@ -46,7 +46,7 @@ def handle_update_source_metadata(
 
     if not store.metadata_exists():
         log("system", "error", "metadata not found — was init-ree run?")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
 
     log("system", "info", "updating source metadata")
     try:
@@ -103,7 +103,7 @@ def handle_update_source_metadata(
         store.write_metadata(updated)
     except Exception as exc:
         log("system", "error", f"metadata update failed: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"metadata update failed: {exc}")
 
     log("system", "info", "update_source_metadata succeeded")
     return ActionResult(status="succeeded", exit_code=0)

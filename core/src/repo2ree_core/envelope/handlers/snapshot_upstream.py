@@ -53,7 +53,7 @@ def handle_snapshot_upstream(
         snapshot_digest = pack_directory_tar_gz(layout.upstream, layout.snapshot_archive)
     except Exception as exc:
         log("system", "error", f"snapshot failed: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"snapshot failed: {exc}")
 
     persist_snapshot_digest(ReeStore(layout), snapshot_digest, log=log)
     record_receipt(

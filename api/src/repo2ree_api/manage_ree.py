@@ -186,18 +186,21 @@ def _dispatch_or_fail(handle: WorkbenchHandle, cmd: Command, run_id: str, error_
     if result.status == "succeeded":
         return result
     outputs = result.outputs or {}
-    if outputs.get("error_code") == "version_conflict":
+    # A failed ActionResult always carries a typed Failure (enforced by the
+    # ActionResult contract); read it rather than sniffing the outputs blob.
+    failure = result.failure
+    if failure is not None and failure.category == "conflict":
         raise HTTPException(
             status_code=409,
             detail={
                 "code": "version_conflict",
-                "message": "Workspace file changed since it was read",
+                "message": failure.message,
                 "details": {
                     "path": outputs.get("path"),
                     "expected_version": outputs.get("expected_version"),
                     "actual_version": outputs.get("actual_version"),
                 },
-                "retryable": True,
+                "retryable": failure.retryable,
             },
         )
     raise HTTPException(
@@ -206,7 +209,7 @@ def _dispatch_or_fail(handle: WorkbenchHandle, cmd: Command, run_id: str, error_
             "code": f"{cmd.operation}_failed",
             "message": error_message,
             "details": {"operation": cmd.operation, "exit_code": result.exit_code, "outputs": outputs or None},
-            "retryable": False,
+            "retryable": failure.retryable if failure is not None else False,
         },
     )
 
@@ -252,10 +255,11 @@ def _run_source_pipeline(
     run_id: str,
     pipeline: list[Command],
     log_run,
-) -> str:
+) -> ActionResult:
     """Dispatch each command in order, recording outputs and stopping on first non-success.
 
-    Returns the final status ("succeeded" or the failing step's status).
+    Returns the failing step's ActionResult (carrying its typed failure) on the
+    first non-success, or a succeeded result when the whole pipeline passes.
     """
     for cmd in pipeline:
         result = workbench_manager.dispatch_action(handle, cmd, run_id, log_run)
@@ -263,8 +267,8 @@ def _run_source_pipeline(
             update_run_outputs(ws_id, run_id, result.outputs)
         if result.status != "succeeded":
             log_run("system", "error", f"Workbench step {cmd.operation} {result.status}")
-            return result.status
-    return "succeeded"
+            return result
+    return ActionResult(status="succeeded")
 
 
 # ================================================
@@ -298,13 +302,13 @@ def create_workspace_route(payload: ReeCreatePayload):
     # progress live into the run's log stream (GET .../runs/{run_id}/logs)
     # instead of blocking the request with no visible output. The ree_id is
     # minted up front, so the response carries it immediately.
-    def _runner(rid: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    def _runner(rid: str, run_id: str) -> ActionResult:
         def _log(stream: str, level: str, message: str) -> None:
             append_run_log(rid, run_id, stream, level, message)
 
         if is_cancel_requested(rid, run_id):
             _log("system", "warn", "Provisioning canceled before it started")
-            return "canceled", {}
+            return ActionResult(status="canceled")
 
         # Note: cancel is only honoured at the phase boundaries below — the image
         # pull and container start inside provision() run to completion once
@@ -313,13 +317,18 @@ def create_workspace_route(payload: ReeCreatePayload):
             handle = workbench_manager.provision(rid, name, log=_log, image=image, agent_id=agent_id)
         except Exception as exc:
             _log("system", "error", f"Workbench provisioning failed: {exc}")
-            return "failed", {}
+            return ActionResult.failed(
+                "unavailable",
+                f"Workbench provisioning failed: {exc}",
+                origin="supervisor",
+                retryable=True,
+            )
 
         if is_cancel_requested(rid, run_id):
             _log("system", "warn", "Provisioning canceled after workbench startup")
-            return "canceled", {"workspace": workbench_manager.get_workspace(handle)}
+            return ActionResult(status="canceled", outputs={"workspace": workbench_manager.get_workspace(handle)})
 
-        return "succeeded", {"workspace": workbench_manager.get_workspace(handle)}
+        return ActionResult(status="succeeded", outputs={"workspace": workbench_manager.get_workspace(handle)})
 
     run_state = start_provisioning_run(
         ree_id=ree_id,
@@ -493,7 +502,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
         "revision": payload.revision,
     }
 
-    def _runner(ws_id: str, run_id: str):
+    def _runner(ws_id: str, run_id: str) -> ActionResult:
         def _log_run(stream: str, level: str, message: str) -> None:
             append_run_log(ws_id, run_id, stream, level, message)
 
@@ -504,7 +513,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
         )
         if is_cancel_requested(ws_id, run_id):
             _log_run("system", "warn", "Source acquisition canceled")
-            return "canceled", request_payload
+            return ActionResult(status="canceled", outputs=request_payload)
 
         pipeline = _download_pipeline(
             AcquireSourceCommand(
@@ -519,12 +528,12 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
                 source_type=payload.source_type,
             ),
         )
-        status = _run_source_pipeline(handle, ws_id, run_id, pipeline, _log_run)
-        if status != "succeeded":
-            return status, request_payload
+        result = _run_source_pipeline(handle, ws_id, run_id, pipeline, _log_run)
+        if result.status != "succeeded":
+            return result.model_copy(update={"outputs": request_payload})
 
         _log_run("system", "info", "Source acquisition succeeded")
-        return "succeeded", request_payload
+        return ActionResult(status="succeeded", outputs=request_payload)
 
     run_state = start_background_run(
         ree_id=ree_id,
@@ -621,7 +630,7 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
     except InvalidUploadTokenError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    def _runner(ws_id: str, run_id: str):
+    def _runner(ws_id: str, run_id: str) -> ActionResult:
         def _log_run(stream: str, level: str, message: str) -> None:
             append_run_log(ws_id, run_id, stream, level, message)
 
@@ -632,14 +641,19 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
         )
         if is_cancel_requested(ws_id, run_id):
             _log_run("system", "warn", "Source upload canceled")
-            return "canceled", request_payload
+            return ActionResult(status="canceled", outputs=request_payload)
 
         # Sweep first so a staged file past its TTL reads as expired, not found.
         # Size zero means the token was minted but the bytes never PUT.
         discard_expired_uploads()
         if not staged_host.exists() or staged_host.stat().st_size == 0:
             _log_run("system", "error", "Staged upload not found, empty, or expired")
-            return "failed", request_payload
+            return ActionResult.failed(
+                "precondition",
+                "Staged upload not found, empty, or expired",
+                origin="api",
+                outputs=request_payload,
+            )
 
         size = staged_host.stat().st_size
         _log_run("system", "info", f"Copying staged archive into the workbench ({size} bytes)")
@@ -651,7 +665,13 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
             )
         except Exception as exc:
             _log_run("system", "error", f"Copy to workbench failed: {exc}")
-            return "failed", request_payload
+            return ActionResult.failed(
+                "unavailable",
+                f"Copy to workbench failed: {exc}",
+                origin="supervisor",
+                retryable=True,
+                outputs=request_payload,
+            )
         _log_run("system", "info", "Archive copied; extracting into the workspace")
 
         pipeline = _upload_pipeline(
@@ -667,14 +687,15 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
                 upload_token=payload.upload_token,
             ),
         )
-        status = _run_source_pipeline(handle, ws_id, run_id, pipeline, _log_run)
+        result = _run_source_pipeline(handle, ws_id, run_id, pipeline, _log_run)
 
         # Clean up the transient host landing file regardless of outcome.
         discard_staged_upload(payload.upload_token)
 
-        if status == "succeeded":
+        if result.status == "succeeded":
             _log_run("system", "info", "Source upload extraction succeeded")
-        return status, request_payload
+            return ActionResult(status="succeeded", outputs=request_payload)
+        return result.model_copy(update={"outputs": request_payload})
 
     run_state = start_background_run(
         ree_id=ree_id,

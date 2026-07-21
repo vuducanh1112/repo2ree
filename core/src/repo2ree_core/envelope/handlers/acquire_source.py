@@ -80,7 +80,11 @@ def handle_acquire_source(
         log("system", "warn", "acquire_source canceled")
         return ActionResult(status="canceled")
     if result.returncode != 0:
-        return ActionResult(status="failed", exit_code=result.returncode or 1)
+        return ActionResult.failed(
+            "execution",
+            f"acquire script exited {result.returncode}",
+            exit_code=result.returncode or 1,
+        )
 
     record_receipt(
         layout,

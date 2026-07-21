@@ -48,18 +48,18 @@ def handle_generate_sbom(
         runtime_abs = resolve_workspace_path(layout, runtime_path)
     except Exception as exc:
         log("system", "error", f"invalid runtime path: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("validation", f"invalid runtime path: {exc}")
 
     if not runtime_abs.is_file():
         log("system", "error", f"Runtime tarball not found: {runtime_path}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", f"Runtime tarball not found: {runtime_path}")
     if not runtime_path.lower().endswith((".tar", ".tar.gz", ".tgz")):
         log(
             "system",
             "error",
             "SBOM generation currently supports runtime tarballs only",
         )
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("validation", "SBOM generation currently supports runtime tarballs only")
 
     # Workspace-independent step: its only input is the declared runtime
     # artifact, digested before syft consumes it.
@@ -113,7 +113,7 @@ def handle_generate_sbom(
     if result.returncode != 0:
         log("system", "error", f"syft failed (exit {result.returncode})")
         receipt("failed")
-        return ActionResult(status="failed", exit_code=result.returncode)
+        return ActionResult.failed("execution", f"syft failed (exit {result.returncode})", exit_code=result.returncode)
 
     try:
         sbom_data = json.loads(output_path.read_text())
@@ -122,7 +122,7 @@ def handle_generate_sbom(
     except Exception as exc:
         log("system", "error", f"post-processing SBOM failed: {exc}")
         receipt("failed")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"post-processing SBOM failed: {exc}")
 
     log("system", "info", "SBOM run succeeded")
     recorded = receipt(

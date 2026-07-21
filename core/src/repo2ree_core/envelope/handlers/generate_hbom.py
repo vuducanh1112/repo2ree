@@ -41,14 +41,14 @@ def handle_generate_hbom(
 
     if not store.metadata_exists():
         log("system", "error", "metadata not found — was init-ree run?")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
 
     log("system", "info", "profiling hardware")
     try:
         profiled = generate_hbom()
     except Exception as exc:
         log("system", "error", f"hardware profiling failed: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"hardware profiling failed: {exc}")
 
     if is_canceled():
         log("system", "warn", "generate_hbom canceled after profiling")
@@ -67,7 +67,7 @@ def handle_generate_hbom(
         patch_ree_intent(store, {"hardware_description": merged.model_dump(exclude_none=True)})
     except Exception as exc:
         log("system", "error", f"failed to persist hbom: {exc}")
-        return ActionResult(status="failed", exit_code=1)
+        return ActionResult.failed("internal", f"failed to persist hbom: {exc}")
 
     log("system", "info", "generate_hbom succeeded")
     return ActionResult(

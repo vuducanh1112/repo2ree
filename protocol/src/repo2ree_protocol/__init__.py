@@ -55,10 +55,11 @@ from repo2ree_protocol.command import (
     command_adapter,
 )
 from repo2ree_protocol.log import LogSink  # noqa: F401
-from repo2ree_protocol.result import ActionResult
+from repo2ree_protocol.result import ActionResult, Failure
 
 __all__ = [
     "ActionResult",
+    "Failure",
     "LogSink",
     "TERMINAL_FRAME_TYPES",
     "COPY_CHUNK_BYTES",
