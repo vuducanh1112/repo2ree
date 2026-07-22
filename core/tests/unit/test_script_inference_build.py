@@ -46,8 +46,8 @@ def test_flat_single_dockerfile_is_complete_automatic(tmp_path: Path) -> None:
     candidate = result.candidates[0]
     body = _body(result)
     assert candidate.target.path == "ree-scripts/build_script.sh"
-    assert 'DOCKERFILE="Dockerfile"' in body
-    assert 'BUILD_CONTEXT="."' in body
+    assert "DOCKERFILE=Dockerfile\n" in body
+    assert "BUILD_CONTEXT=.\n" in body
     # No blocking warning on an automatic candidate.
     assert not any(w.blocking for w in result.warnings)
 
@@ -57,8 +57,8 @@ def test_single_wrapper_uses_wrapper_as_build_context(tmp_path: Path) -> None:
     result = _build(tmp_path)
     assert result.status == "complete"
     body = _body(result)
-    assert 'DOCKERFILE="proj-main/Dockerfile"' in body
-    assert 'BUILD_CONTEXT="proj-main"' in body
+    assert "DOCKERFILE=proj-main/Dockerfile\n" in body
+    assert "BUILD_CONTEXT=proj-main\n" in body
 
 
 def test_two_root_dockerfiles_block(tmp_path: Path) -> None:
@@ -100,17 +100,17 @@ def test_runtime_artifact_uses_repo2ree_dir_ignoring_declared_runtime(tmp_path: 
     # dedicated .repo2ree/ control directory.
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
     result = _build(tmp_path, runtime="ree-out/prebuilt.tar")
-    assert 'RUNTIME_ARTIFACT=".repo2ree/artifacts/runtime.tar"' in _body(result)
+    assert "RUNTIME_ARTIFACT=.repo2ree/artifacts/runtime.tar\n" in _body(result)
 
 
 def test_image_tag_is_derived_from_the_ree_name(tmp_path: Path) -> None:
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
-    assert 'IMAGE_TAG="ree-runtime:python-hello-world"' in _body(_build(tmp_path, name="Python Hello World"))
+    assert "IMAGE_TAG=ree-runtime:python-hello-world\n" in _body(_build(tmp_path, name="Python Hello World"))
 
 
 def test_image_tag_falls_back_when_name_is_empty(tmp_path: Path) -> None:
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
-    assert 'IMAGE_TAG="ree-runtime:ree"' in _body(_build(tmp_path, name=""))
+    assert "IMAGE_TAG=ree-runtime:ree\n" in _body(_build(tmp_path, name=""))
 
 
 def test_candidate_bytes_are_deterministic(tmp_path: Path, tmp_path_factory) -> None:  # type: ignore[no-untyped-def]

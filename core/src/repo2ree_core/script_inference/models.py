@@ -173,6 +173,75 @@ class DockerRuntimeContract(BaseModel):
     working_directory: str = "/workspace"
 
 
+# The absolute path a repo2ree-built venv is created at (and therefore restored
+# to, because a venv bakes absolute paths). The build renderer creates the venv
+# here and the run scaffolds restore it here; both import this one literal so the
+# build/restore locations can never silently drift apart. A literal for the
+# generated shell, not a temp path this process opens.
+DEFAULT_VENV_RESTORE_DIR = "/tmp/ree-venv"  # noqa: S108
+
+
+class VenvRuntimeContract(BaseModel):
+    """A packed Python virtual environment as the runtime substrate.
+
+    The build packs the venv as a gzipped tarball at ``artifact_path``; a
+    runnable restores it to ``venv_restore_dir`` (an absolute path, because a
+    venv bakes absolute paths and must be restored where it was built) and runs
+    the command with that venv's ``bin`` on ``PATH``. There is no image ref: the
+    workbench base image is the environment. ``venv_restore_dir`` defaults to the
+    path a repo2ree build packs; an inspected artifact overrides it with the path
+    recovered from the venv's own ``pyvenv.cfg``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["venv_archive"] = "venv_archive"
+    artifact_path: str
+    venv_restore_dir: str = DEFAULT_VENV_RESTORE_DIR
+    interpreter: str = "python"
+
+
+RuntimeContract = Annotated[
+    DockerRuntimeContract | VenvRuntimeContract,
+    Field(discriminator="kind"),
+]
+
+
+# ================================================
+# Command candidates — runnable commands *suggested* to the author, never
+# auto-selected in Phase 1. Rendered as commented `set --` examples.
+# ================================================
+
+
+class ArgvCommandCandidate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["argv"] = "argv"
+    candidate_id: str
+    argv: list[str]
+    source: str
+
+
+class ShellCommandCandidate(BaseModel):
+    """A shell-form command (e.g. a Docker shell-form ENTRYPOINT/CMD). It is
+    never rewritten into guessed argv; the author must make the shell dependency
+    explicit (``set -- sh -c '...'``)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["shell"] = "shell"
+    candidate_id: str
+    command: str
+    shell: str = "sh"
+    source: str
+
+
+ScriptCommandCandidate = Annotated[
+    ArgvCommandCandidate | ShellCommandCandidate,
+    Field(discriminator="kind"),
+]
+
+
 # ================================================
 # Bindings — closed, discriminated typed dataflow along the DAG
 # ================================================
@@ -240,12 +309,51 @@ class RuntimeDeclarationBinding(BaseModel):
     digest: str | None = None
 
 
+RuntimeContractProvenance = Literal["inspected_artifact", "unchanged_generated_build"]
+
+
+class RuntimeContractBinding(BaseModel):
+    """A resolved, non-executable runtime contract plus how it was established.
+
+    ``inspected_artifact`` inspected the built artifact itself;
+    ``unchanged_generated_build`` reused the constants of a still-unedited
+    inference-generated build script. Downstream renderers copy the contract's
+    values as explicit literals.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["runtime_contract"] = "runtime_contract"
+    contract: RuntimeContract
+    provenance: RuntimeContractProvenance
+
+
+class ExperimentBinding(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["experiment"] = "experiment"
+    name: str
+    run_script_path: str
+    verify_script_path: str | None = None
+    output_paths: list[str] = Field(default_factory=list)
+
+
+class CommandCandidatesBinding(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["command_candidates"] = "command_candidates"
+    candidates: list[ScriptCommandCandidate] = Field(default_factory=list)
+
+
 DecisionBinding = Annotated[
     ProjectRootBinding
     | DockerfileBinding
     | RequirementsProjectBinding
     | RuntimePlanBinding
-    | RuntimeDeclarationBinding,
+    | RuntimeDeclarationBinding
+    | RuntimeContractBinding
+    | ExperimentBinding
+    | CommandCandidatesBinding,
     Field(discriminator="kind"),
 ]
 
@@ -286,8 +394,46 @@ class StrategyOutcomesObservation(BaseModel):
     outcomes: list[StrategyOutcomeObservation]
 
 
+class RuntimeContractObservation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["runtime_contract"] = "runtime_contract"
+    # The check's outcome branch (e.g. "docker_single_ref", "missing", "valid").
+    result: str
+    runtime_kind: str | None = None
+    provenance: str | None = None
+    detail: str = ""
+
+
+class CommandCandidatesObservation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["command_candidates"] = "command_candidates"
+    count: int
+    sources: list[str] = Field(default_factory=list)
+
+
+class ExperimentGateObservation(BaseModel):
+    """The experiment-declaration gate's outcome, for the decision trace."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["experiment_gate"] = "experiment_gate"
+    # The check's branch: "found" or "absent".
+    result: str
+    # The experiment name requested on the target (empty when none was set).
+    requested: str = ""
+    # Whether that name matched a declared REE experiment.
+    declared: bool = False
+
+
 DecisionObservation = Annotated[
-    LogicalRootObservation | PathMatchesObservation | StrategyOutcomesObservation,
+    LogicalRootObservation
+    | PathMatchesObservation
+    | StrategyOutcomesObservation
+    | RuntimeContractObservation
+    | CommandCandidatesObservation
+    | ExperimentGateObservation,
     Field(discriminator="kind"),
 ]
 
@@ -312,6 +458,14 @@ class DecisionContext(BaseModel):
     policy: InferencePolicy
     # The REE's declared name, used to derive a readable runtime image tag.
     ree_name: str = ""
+    # Authored state that does not come from scanning ``upstream``: the declared
+    # runtime path, experiment declarations, and access to the built artifact /
+    # written build script. Empty for build inference, which needs none of it.
+    runtime: RuntimeInputs = Field(default_factory=lambda: RuntimeInputs())
+    # The experiment a run/verify experiment target names. Empty for build and
+    # activation targets. Set per-target by ``infer_scripts`` because the name
+    # lives on the target, not on the shared scan.
+    requested_experiment: str = ""
     bindings: tuple[DecisionBinding, ...] = ()
 
     def binding(self, kind: BindingKind) -> DecisionBinding | None:
@@ -338,6 +492,11 @@ class CheckResult(BaseModel):
     observed: DecisionObservation
     bindings: tuple[DecisionBinding, ...] = ()
     evidence: list[InferenceEvidence] = Field(default_factory=list)
+    # Warnings a check observes at evaluation time (e.g. a blocked runtime
+    # contract). Unlike a strategy leaf's static warning codes, these depend on
+    # what the check saw, so they ride on the result. The engine folds them into
+    # the target's warning union along whatever path the walk takes.
+    warnings: list[InferenceWarning] = Field(default_factory=list)
 
 
 @runtime_checkable
@@ -574,6 +733,7 @@ class InferenceReport(BaseModel):
 # free of forward-reference clutter while avoiding an import cycle.
 from repo2ree_core.script_inference.policy import InferencePolicy  # noqa: E402
 from repo2ree_core.script_inference.repository_facts import RepositoryFacts  # noqa: E402
+from repo2ree_core.script_inference.runtime_inputs import RuntimeInputs  # noqa: E402
 
 DecisionContext.model_rebuild()
 StrategyOutcome.model_rebuild()

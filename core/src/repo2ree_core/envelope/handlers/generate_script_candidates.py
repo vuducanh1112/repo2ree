@@ -13,6 +13,7 @@ from __future__ import annotations
 from contextlib import suppress
 
 from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.envelope.handlers._script_inference_inputs import build_runtime_inputs
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.script_inference import ScriptTargetSelector, infer_scripts
 from repo2ree_core.storage.layout import ReeLayout
@@ -44,6 +45,7 @@ def handle_generate_script_candidates(
     store = ReeStore(layout)
     intent = _read_intent_or_none(store)
     ree_id, snapshot_digest = _identity(store)
+    runtime_inputs = build_runtime_inputs(layout, intent)
 
     selectors = [
         ScriptTargetSelector(kind=target.kind, experiment_name=target.experiment_name) for target in args.targets
@@ -54,6 +56,7 @@ def handle_generate_script_candidates(
             upstream,
             selectors,
             intent=intent,
+            runtime_inputs=runtime_inputs,
             ree_id=ree_id,
             source_snapshot_digest=snapshot_digest,
         )

@@ -27,6 +27,8 @@ from repo2ree_core.script_inference.renderers._common import (
     DOCKER_RUNTIME_ARTIFACT_SUFFIX,
     runtime_artifact_path,
     runtime_image_ref,
+    sh_comment,
+    sh_quote,
 )
 from repo2ree_core.script_inference.warnings import make_warning
 
@@ -99,17 +101,17 @@ set -eu
 #
 # Inference rule: single-project-root-dockerfile-v1
 # Evidence:
-#   Dockerfile {digest}
-#   Logical project root: {logical_root}
+#   Dockerfile {sh_comment(digest)}
+#   Logical project root: {sh_comment(logical_root)}
 #   Exactly one Dockerfile at the logical project root
 #   Build context resolved to the logical project root
 #
 # This script has been inferred but not yet validated by execution.
 
-DOCKERFILE="{dockerfile_path}"
-BUILD_CONTEXT="{build_context}"
-IMAGE_TAG="{image_tag}"
-RUNTIME_ARTIFACT="{runtime_artifact}"
+DOCKERFILE={sh_quote(dockerfile_path)}
+BUILD_CONTEXT={sh_quote(build_context)}
+IMAGE_TAG={sh_quote(image_tag)}
+RUNTIME_ARTIFACT={sh_quote(runtime_artifact)}
 
 docker build \\
     --file "$DOCKERFILE" \\

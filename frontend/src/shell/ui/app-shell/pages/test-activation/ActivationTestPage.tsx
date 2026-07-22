@@ -8,6 +8,7 @@ import { resolvedRuntimePath } from "@core/ree-steps/buildRuntimeUiState";
 import { resolvedSbomPath } from "@core/ree-steps/sbomUiState";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
+import { useGenerateActivationScript } from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import {
@@ -17,8 +18,9 @@ import {
   pageIconTint,
 } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
+import { GenerateScriptControl } from "../../components/GenerateScriptControl";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
 import { GlassSectionHeader } from "../../components/GlassSectionHeader";
@@ -79,6 +81,14 @@ export function PageTestActivation({
   // Backend-owned starter templates; the verify editor prefills from the
   // default verify template until a script exists.
   const { data: templates } = useScriptTemplates();
+
+  // Read-only inference: generate an activation scaffold from the built runtime
+  // and load it into the editor. Never written here — the author reviews and
+  // saves it exactly like editing by hand.
+  const generateActivation = useGenerateActivationScript();
+  const [activationExternalEdit, setActivationExternalEdit] = useState<
+    { content: string; nonce: number } | undefined
+  >();
 
   const activation: ReeActivation = ree.activation ?? createEmptyReeActivation();
   // The backend settles the activation run-script path on the intent; the
@@ -190,6 +200,20 @@ export function PageTestActivation({
               label="Activation run script"
               helper="Saved to the workspace overlay and run from the workspace root."
               templates={templates?.activation.templates}
+              externalEdit={activationExternalEdit}
+              generateSlot={
+                <GenerateScriptControl
+                  generate={generateActivation}
+                  noun="activation script"
+                  disabled={!activationScriptPath}
+                  onLoad={(body) =>
+                    setActivationExternalEdit((prev) => ({
+                      content: body,
+                      nonce: (prev?.nonce ?? 0) + 1,
+                    }))
+                  }
+                />
+              }
               onSave={handleSaveScript}
             />
           </div>

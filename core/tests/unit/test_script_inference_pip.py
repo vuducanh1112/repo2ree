@@ -77,8 +77,8 @@ def test_wrapper_archive_uses_wrapper_paths(tmp_path: Path) -> None:
     _tree(tmp_path, {"proj-main/requirements.txt": "flask\n", "proj-main/main.py": "x"})
     candidate = _pip_candidate(_build(tmp_path))
     assert candidate.body is not None
-    assert 'REQUIREMENTS="proj-main/requirements.txt"' in candidate.body
-    assert 'RUNTIME_ARTIFACT="proj-main/.repo2ree/artifacts/runtime-venv.tar.gz"' in candidate.body
+    assert "REQUIREMENTS=proj-main/requirements.txt\n" in candidate.body
+    assert "RUNTIME_ARTIFACT=proj-main/.repo2ree/artifacts/runtime-venv.tar.gz\n" in candidate.body
 
 
 def test_dockerfile_and_requirements_is_a_decision(tmp_path: Path) -> None:

@@ -8,6 +8,13 @@ import {
   selectBuildDag,
   selectBuildTrace,
 } from "./buildCandidate";
+import {
+  type RunScriptGeneration,
+  type RunTargetKind,
+  selectRunCandidate,
+  selectRunDag,
+  selectRunTrace,
+} from "./runCandidate";
 
 interface BuildInferenceOutcome {
   generation: BuildScriptGeneration;
@@ -37,6 +44,58 @@ export function useGenerateBuildScript(reeId?: string) {
         generation: selectBuildCandidate(report),
         trace: selectBuildTrace(report),
         dag: selectBuildDag(report),
+      };
+    },
+  });
+}
+
+export interface RunInferenceOutcome {
+  generation: RunScriptGeneration;
+  trace: DecisionTrace | null;
+  dag: DecisionDag | null;
+}
+
+/**
+ * Run read-only inference for the activation-run scaffold and reduce it to the
+ * script the build page loads plus its decision trace. Persists nothing.
+ */
+export function useGenerateActivationScript(reeId?: string) {
+  const runtime = useApiRuntime();
+  const resolvedReeId = resolveReeId(runtime, reeId);
+
+  return useMutation<RunInferenceOutcome>({
+    mutationFn: async () => {
+      const report = await runtime.reeApi.generateScriptCandidates(resolvedReeId, [
+        { kind: "activation_run" },
+      ]);
+      const kind: RunTargetKind = "activation_run";
+      return {
+        generation: selectRunCandidate(report, kind),
+        trace: selectRunTrace(report, kind),
+        dag: selectRunDag(report, kind),
+      };
+    },
+  });
+}
+
+/**
+ * Run read-only inference for one experiment's run scaffold. The experiment
+ * name selects the target; the returned body becomes a script only when saved.
+ */
+export function useGenerateExperimentScript(experimentName: string, reeId?: string) {
+  const runtime = useApiRuntime();
+  const resolvedReeId = resolveReeId(runtime, reeId);
+
+  return useMutation<RunInferenceOutcome>({
+    mutationFn: async () => {
+      const report = await runtime.reeApi.generateScriptCandidates(resolvedReeId, [
+        { kind: "experiment_run", experiment_name: experimentName },
+      ]);
+      const kind: RunTargetKind = "experiment_run";
+      return {
+        generation: selectRunCandidate(report, kind, experimentName),
+        trace: selectRunTrace(report, kind, experimentName),
+        dag: selectRunDag(report, kind, experimentName),
       };
     },
   });

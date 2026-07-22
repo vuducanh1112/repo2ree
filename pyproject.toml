@@ -110,3 +110,9 @@ explicit_package_bases = true
 [[tool.mypy.overrides]]
 module = "conftest"
 ignore_missing_imports = true
+
+# Shared test-helper modules imported as top-level modules the same way (put on
+# sys.path by pytest, but invisible to mypy's file-path-based module naming).
+[[tool.mypy.overrides]]
+module = "scriptinfer_helpers"
+ignore_missing_imports = true

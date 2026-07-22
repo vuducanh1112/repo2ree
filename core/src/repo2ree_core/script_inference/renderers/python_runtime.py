@@ -19,6 +19,7 @@ artifact.
 from __future__ import annotations
 
 from repo2ree_core.script_inference.models import (
+    DEFAULT_VENV_RESTORE_DIR,
     BindingKind,
     CandidateDependency,
     DecisionContext,
@@ -31,13 +32,15 @@ from repo2ree_core.script_inference.models import (
 from repo2ree_core.script_inference.renderers._common import (
     VENV_RUNTIME_ARTIFACT_SUFFIX,
     runtime_artifact_path,
+    sh_comment,
+    sh_quote,
 )
 from repo2ree_core.script_inference.warnings import make_warning
 
 # Where the venv is built inside the bench — deliberately outside the workspace
-# (see module docstring). Matches the reference pip flow's convention. This is a
-# literal for the generated shell script, not a temp path this process opens.
-_VENV_DIR = "/tmp/ree-venv"  # noqa: S108
+# (see module docstring). Shared with the run scaffolds via one constant so the
+# build location and the restore location can never drift apart.
+_VENV_DIR = DEFAULT_VENV_RESTORE_DIR
 
 
 def _bindings(context: DecisionContext) -> tuple[ProjectRootBinding, RequirementsProjectBinding]:
@@ -100,7 +103,7 @@ set -eu
 #
 # Inference rule: root-pip-requirements-v1
 # Evidence:
-#   requirements.txt {digest}
+#   requirements.txt {sh_comment(digest)}
 #
 # Builds the environment with pip alone — no container — and packs the virtual
 # environment as the runtime artifact. The venv is built outside the workspace
@@ -109,9 +112,9 @@ set -eu
 #
 # This script has been inferred but not yet validated by execution.
 
-REQUIREMENTS="{requirements_path}"
-RUNTIME_ARTIFACT="{runtime_artifact}"
-VENV_DIR="{_VENV_DIR}"
+REQUIREMENTS={sh_quote(requirements_path)}
+RUNTIME_ARTIFACT={sh_quote(runtime_artifact)}
+VENV_DIR={sh_quote(_VENV_DIR)}
 
 python -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --no-cache-dir --requirement "$REQUIREMENTS"

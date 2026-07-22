@@ -96,6 +96,15 @@ def validate_dag(
                 )
             for branch, target in node.branches.items():
                 require_target(f"node {node.id} branch {branch!r}", target)
+                # A check may short-circuit straight to a result (a blocked
+                # prefix, e.g. an unresolved runtime contract). That path renders
+                # no candidate, so it may only reach a not_inferred result.
+                dest = by_id[target]
+                if isinstance(dest, ResultNode) and dest.status != "not_inferred":
+                    raise DagValidationError(
+                        f"{dag.key}: check {node.id} branch {branch!r} short-circuits to "
+                        f"{dest.status!r} result {target!r}; only not_inferred is allowed"
+                    )
         elif isinstance(node, ForkNode):
             if not node.branches:
                 raise DagValidationError(f"{dag.key}: fork {node.id} has no strategy branches")
@@ -302,6 +311,10 @@ def evaluate_target(
     # only after resolution decides the target's status/application.
     rendered: dict[str, tuple[StrategyLeafNode, RenderedScript]] = {}
     outcomes: dict[str, StrategyOutcome] = {}
+    # Warnings observed by prefix checks (before/after the fork). A blocked
+    # runtime-contract prefix short-circuits straight to a result and surfaces
+    # its reason through these; the command fork never runs on that path.
+    prefix_warnings: list[InferenceWarning] = []
 
     current = dag.root
     while True:
@@ -320,6 +333,7 @@ def evaluate_target(
                     evidence=result.evidence,
                 )
             )
+            prefix_warnings.extend(result.warnings)
             context = context.with_bindings(result.bindings)
             target_id = node.branches[result.branch]
             edges.append(TraversedEdge(source=node.id, branch=result.branch, target=target_id))
@@ -372,7 +386,7 @@ def evaluate_target(
                 result_node=node.id,
             )
             candidates = _finalize_candidates(node, target, outcomes, rendered)
-            warnings = _collect_warnings(outcomes, candidates)
+            warnings = _collect_warnings(outcomes, candidates, prefix_warnings)
             return TargetInferenceResult(
                 target=target,
                 status=node.status,
@@ -403,6 +417,7 @@ def _walk_branch(
     """
     steps: list[DecisionStep] = []
     edges: list[TraversedEdge] = []
+    branch_warnings: list[InferenceWarning] = []
     current = start
     while True:
         node = by_id[current]
@@ -419,6 +434,7 @@ def _walk_branch(
                     evidence=result.evidence,
                 )
             )
+            branch_warnings.extend(result.warnings)
             context = context.with_bindings(result.bindings)
             target_id = node.branches[result.branch]
             edges.append(TraversedEdge(source=node.id, branch=result.branch, target=target_id))
@@ -437,7 +453,7 @@ def _walk_branch(
                 leaf=node.id,
                 outcome=node.outcome,
                 bindings=context.bindings,
-                warnings=leaf_warnings,
+                warnings=branch_warnings + leaf_warnings,
             )
             return outcome, steps, edges
 
@@ -494,14 +510,21 @@ def _finalize_candidates(
 def _collect_warnings(
     outcomes: dict[str, StrategyOutcome],
     candidates: list[ScriptCandidate],
+    prefix_warnings: list[InferenceWarning],
 ) -> list[InferenceWarning]:
     """Stable, de-duplicated union of every warning affecting the target.
 
-    A caller may enforce automation policy on this alone: it includes blocked
-    and not-applicable leaves' warnings plus every returned candidate's.
+    A caller may enforce automation policy on this alone: it includes the prefix
+    checks' warnings (e.g. a blocked runtime contract) plus blocked and
+    not-applicable leaves' warnings plus every returned candidate's.
     """
     seen: set[tuple[str, tuple[str, ...]]] = set()
     union: list[InferenceWarning] = []
+    for warning in prefix_warnings:
+        key = (warning.code, tuple(warning.affected_paths))
+        if key not in seen:
+            seen.add(key)
+            union.append(warning)
     for strategy in sorted(outcomes):
         source_warnings = list(outcomes[strategy].warnings)
         for warning in source_warnings:

@@ -713,6 +713,20 @@ export interface components {
              */
             status: string;
         };
+        /** ArgvCommandCandidate */
+        ArgvCommandCandidate: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "argv";
+            /** Candidate Id */
+            candidate_id: string;
+            /** Argv */
+            argv: string[];
+            /** Source */
+            source: string;
+        };
         /**
          * BuildScriptTemplates
          * @description The build-script templates and the reserved path they all belong at.
@@ -806,6 +820,28 @@ export interface components {
             branches: {
                 [key: string]: string;
             };
+        };
+        /** CommandCandidatesBinding */
+        CommandCandidatesBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "command_candidates";
+            /** Candidates */
+            candidates?: (components["schemas"]["ArgvCommandCandidate"] | components["schemas"]["ShellCommandCandidate"])[];
+        };
+        /** CommandCandidatesObservation */
+        CommandCandidatesObservation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "command_candidates";
+            /** Count */
+            count: number;
+            /** Sources */
+            sources?: string[];
         };
         /**
          * ConsistencyReport
@@ -941,14 +977,14 @@ export interface components {
             /** Branch */
             branch?: string | null;
             /** Observed */
-            observed?: (components["schemas"]["LogicalRootObservation"] | components["schemas"]["PathMatchesObservation"] | components["schemas"]["StrategyOutcomesObservation"]) | null;
+            observed?: (components["schemas"]["LogicalRootObservation"] | components["schemas"]["PathMatchesObservation"] | components["schemas"]["StrategyOutcomesObservation"] | components["schemas"]["RuntimeContractObservation"] | components["schemas"]["CommandCandidatesObservation"] | components["schemas"]["ExperimentGateObservation"]) | null;
             /** Outcome */
             outcome?: string | null;
             /**
              * Bindings
              * @default []
              */
-            bindings: (components["schemas"]["ProjectRootBinding"] | components["schemas"]["DockerfileBinding"] | components["schemas"]["RequirementsProjectBinding"] | components["schemas"]["RuntimePlanBinding"] | components["schemas"]["RuntimeDeclarationBinding"])[];
+            bindings: (components["schemas"]["ProjectRootBinding"] | components["schemas"]["DockerfileBinding"] | components["schemas"]["RequirementsProjectBinding"] | components["schemas"]["RuntimePlanBinding"] | components["schemas"]["RuntimeDeclarationBinding"] | components["schemas"]["RuntimeContractBinding"] | components["schemas"]["ExperimentBinding"] | components["schemas"]["CommandCandidatesBinding"])[];
             /** Evidence */
             evidence?: components["schemas"]["InferenceEvidence"][];
         };
@@ -1012,6 +1048,28 @@ export interface components {
              * @default 0
              */
             locked: number;
+        };
+        /** DockerRuntimeContract */
+        DockerRuntimeContract: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "docker_archive";
+            /** Artifact Path */
+            artifact_path: string;
+            /** Image Ref */
+            image_ref: string;
+            /**
+             * Workspace Mount
+             * @default /workspace
+             */
+            workspace_mount: string;
+            /**
+             * Working Directory
+             * @default /workspace
+             */
+            working_directory: string;
         };
         /** DockerRuntimePlan */
         DockerRuntimePlan: {
@@ -1160,6 +1218,45 @@ export interface components {
              * @default
              */
             name: string;
+        };
+        /** ExperimentBinding */
+        ExperimentBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "experiment";
+            /** Name */
+            name: string;
+            /** Run Script Path */
+            run_script_path: string;
+            /** Verify Script Path */
+            verify_script_path?: string | null;
+            /** Output Paths */
+            output_paths?: string[];
+        };
+        /**
+         * ExperimentGateObservation
+         * @description The experiment-declaration gate's outcome, for the decision trace.
+         */
+        ExperimentGateObservation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "experiment_gate";
+            /** Result */
+            result: string;
+            /**
+             * Requested
+             * @default
+             */
+            requested: string;
+            /**
+             * Declared
+             * @default false
+             */
+            declared: boolean;
         };
         /**
          * ExperimentScriptTemplates
@@ -2095,6 +2192,48 @@ export interface components {
             };
             failure?: components["schemas"]["Failure"] | null;
         };
+        /**
+         * RuntimeContractBinding
+         * @description A resolved, non-executable runtime contract plus how it was established.
+         *
+         *     ``inspected_artifact`` inspected the built artifact itself;
+         *     ``unchanged_generated_build`` reused the constants of a still-unedited
+         *     inference-generated build script. Downstream renderers copy the contract's
+         *     values as explicit literals.
+         */
+        RuntimeContractBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "runtime_contract";
+            /** Contract */
+            contract: components["schemas"]["DockerRuntimeContract"] | components["schemas"]["VenvRuntimeContract"];
+            /**
+             * Provenance
+             * @enum {string}
+             */
+            provenance: "inspected_artifact" | "unchanged_generated_build";
+        };
+        /** RuntimeContractObservation */
+        RuntimeContractObservation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "runtime_contract";
+            /** Result */
+            result: string;
+            /** Runtime Kind */
+            runtime_kind?: string | null;
+            /** Provenance */
+            provenance?: string | null;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+        };
         /** RuntimeDeclarationBinding */
         RuntimeDeclarationBinding: {
             /**
@@ -2319,6 +2458,30 @@ export interface components {
          * @enum {string}
          */
         Severity: "high" | "medium" | "low";
+        /**
+         * ShellCommandCandidate
+         * @description A shell-form command (e.g. a Docker shell-form ENTRYPOINT/CMD). It is
+         *     never rewritten into guessed argv; the author must make the shell dependency
+         *     explicit (``set -- sh -c '...'``).
+         */
+        ShellCommandCandidate: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "shell";
+            /** Candidate Id */
+            candidate_id: string;
+            /** Command */
+            command: string;
+            /**
+             * Shell
+             * @default sh
+             */
+            shell: string;
+            /** Source */
+            source: string;
+        };
         /** SourceAcquirePayload */
         SourceAcquirePayload: {
             /** Origin Url */
@@ -2564,6 +2727,37 @@ export interface components {
             upload_token: string;
             /** Stored At */
             stored_at: string;
+        };
+        /**
+         * VenvRuntimeContract
+         * @description A packed Python virtual environment as the runtime substrate.
+         *
+         *     The build packs the venv as a gzipped tarball at ``artifact_path``; a
+         *     runnable restores it to ``venv_restore_dir`` (an absolute path, because a
+         *     venv bakes absolute paths and must be restored where it was built) and runs
+         *     the command with that venv's ``bin`` on ``PATH``. There is no image ref: the
+         *     workbench base image is the environment. ``venv_restore_dir`` defaults to the
+         *     path a repo2ree build packs; an inspected artifact overrides it with the path
+         *     recovered from the venv's own ``pyvenv.cfg``.
+         */
+        VenvRuntimeContract: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "venv_archive";
+            /** Artifact Path */
+            artifact_path: string;
+            /**
+             * Venv Restore Dir
+             * @default /tmp/ree-venv
+             */
+            venv_restore_dir: string;
+            /**
+             * Interpreter
+             * @default python
+             */
+            interpreter: string;
         };
         /**
          * WorkbenchImage

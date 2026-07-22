@@ -60,6 +60,74 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
         False,
         "requirements.txt is not a lockfile; a future install may resolve different transitive versions.",
     ),
+    # --- runtime contract (activation / experiment) ---
+    "runtime_not_resolved": (
+        "error",
+        True,
+        "No runtime contract could be resolved, so the runtime plumbing cannot be generated.",
+    ),
+    "runtime_artifact_missing": (
+        "error",
+        True,
+        "The declared runtime artifact does not exist yet; build the runtime before generating this script.",
+    ),
+    "runtime_archive_invalid": (
+        "error",
+        True,
+        "The declared runtime artifact is not a readable archive of a recognized runtime kind.",
+    ),
+    "runtime_image_ref_missing": (
+        "error",
+        True,
+        "The runtime archive declares no usable image reference, so no image can be loaded and run.",
+    ),
+    "multiple_runtime_images": (
+        "error",
+        True,
+        "The runtime archive declares more than one image reference; repo2ree will not guess which is the runtime.",
+    ),
+    "venv_restore_dir_assumed": (
+        "warning",
+        False,
+        "The packed venv does not record the directory it was built in, so it will be restored to the "
+        "default location; if it was built elsewhere, restoration will fail — set VENV_DIR in the "
+        "generated script to the path the venv was built at.",
+    ),
+    # --- activation / experiment command ---
+    "activation_command_missing": (
+        "warning",
+        True,
+        "No activation command was selected; edit the 'set --' line to define a finite command that "
+        "proves the runtime is usable before running activation.",
+    ),
+    "experiment_command_missing": (
+        "warning",
+        True,
+        "No experiment command was selected; edit the 'set --' line to define the command whose result "
+        "you intend to preserve before running the experiment.",
+    ),
+    "experiment_not_declared": (
+        "error",
+        True,
+        "The requested experiment is not declared on the REE; declare it before generating its run script.",
+    ),
+    "experiment_output_declaration_missing": (
+        "warning",
+        True,
+        "The generated log path is not among the experiment's declared output_paths; declare it so the "
+        "result is captured and disclosed.",
+    ),
+    "possibly_long_running": (
+        "info",
+        False,
+        "A detected candidate command may start a server or run indefinitely; confirm it is finite before use.",
+    ),
+    "shell_required_in_runtime": (
+        "info",
+        False,
+        "A detected candidate is a shell-form command; it is offered verbatim and needs a shell in the "
+        "runtime (make it explicit with 'set -- sh -c ...').",
+    ),
 }
 
 

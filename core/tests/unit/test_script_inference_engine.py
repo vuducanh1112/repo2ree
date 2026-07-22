@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import pytest
 
+from repo2ree_core.script_inference.decision_graphs.activation_run import ACTIVATION_RUN_DAG
 from repo2ree_core.script_inference.decision_graphs.build import BUILD_INFERENCE_DAG
+from repo2ree_core.script_inference.decision_graphs.experiment_run import EXPERIMENT_RUN_DAG
 from repo2ree_core.script_inference.engine import DagValidationError, validate_dag
 from repo2ree_core.script_inference.models import (
     CheckNode,
@@ -26,6 +28,25 @@ def _validate(dag: DecisionDag) -> None:
 
 def test_reference_build_dag_is_valid() -> None:
     _validate(BUILD_INFERENCE_DAG)  # must not raise
+
+
+def test_activation_and_experiment_dags_are_valid() -> None:
+    _validate(ACTIVATION_RUN_DAG)
+    _validate(EXPERIMENT_RUN_DAG)
+
+
+def test_check_short_circuit_to_non_not_inferred_result_is_rejected() -> None:
+    # The activation DAG's declared-runtime check short-circuits blocked branches
+    # to run-not-inferred. Repointing one at a needs_input result must be caught.
+    dag = ACTIVATION_RUN_DAG.model_copy(deep=True)
+    nodes = []
+    for node in dag.nodes:
+        if isinstance(node, CheckNode) and node.id == "declared-runtime":
+            node = node.model_copy(update={"branches": {**node.branches, "absent": "run-needs-input"}})
+        nodes.append(node)
+    broken = dag.model_copy(update={"nodes": nodes})
+    with pytest.raises(DagValidationError, match="short-circuits"):
+        _validate(broken)
 
 
 def _mutate(replace: dict[str, object]) -> DecisionDag:

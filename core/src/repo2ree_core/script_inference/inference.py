@@ -39,6 +39,7 @@ from repo2ree_core.script_inference.registry import (
     RESOLVERS,
 )
 from repo2ree_core.script_inference.repository_facts import scan_repository
+from repo2ree_core.script_inference.runtime_inputs import RuntimeInputs
 
 ENGINE_VERSION = "1"
 
@@ -70,6 +71,7 @@ def infer_scripts(
     *,
     intent: ReeIntent | None = None,
     policy: InferencePolicy | None = None,
+    runtime_inputs: RuntimeInputs | None = None,
     ree_id: str = "",
     source_snapshot_digest: str | None = None,
 ) -> InferenceReport:
@@ -79,6 +81,7 @@ def infer_scripts(
         facts=facts,
         policy=active_policy,
         ree_name=intent.name if intent else "",
+        runtime=runtime_inputs or RuntimeInputs(),
     )
 
     results: list[TargetInferenceResult] = []
@@ -93,10 +96,15 @@ def infer_scripts(
             continue
         dag = DECISION_DAGS[dag_key]
         used_dags[dag.key] = dag
+        # The experiment name lives on the target, so it enters the context here
+        # rather than on the shared scan; build/activation targets carry none.
+        context = base_context
+        if target.experiment_name:
+            context = base_context.model_copy(update={"requested_experiment": target.experiment_name})
         results.append(
             evaluate_target(
                 dag,
-                base_context,
+                context,
                 target,
                 checks=CHECKS,
                 resolvers=RESOLVERS,

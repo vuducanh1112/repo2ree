@@ -13,6 +13,7 @@ author supplied, which is not where a freshly generated build should write.
 from __future__ import annotations
 
 import re
+import shlex
 from pathlib import PurePosixPath
 
 # Default runtime-artifact names per strategy. Both live beneath the reserved
@@ -20,6 +21,27 @@ from pathlib import PurePosixPath
 # pip packs the virtual environment as a gzipped tarball.
 DOCKER_RUNTIME_ARTIFACT_SUFFIX = ".repo2ree/artifacts/runtime.tar"
 VENV_RUNTIME_ARTIFACT_SUFFIX = ".repo2ree/artifacts/runtime-venv.tar.gz"
+
+
+def sh_quote(value: str) -> str:
+    """POSIX-shell-quote a value for safe interpolation into a generated script.
+
+    Repository-derived paths and image references are untrusted (a filename may
+    contain quotes, ``$``, backticks, or spaces). Every such value is passed
+    through this before it lands in the shell body so a crafted name cannot break
+    out of its assignment. Constants the renderer itself controls do not need it,
+    but quoting them anyway is harmless and keeps the renderers uniform.
+    """
+    return shlex.quote(value)
+
+
+def sh_comment(value: str) -> str:
+    """Fold an untrusted value onto a single line for a shell comment.
+
+    A newline in a repository-derived value would otherwise end the ``#`` comment
+    and inject a live shell line, so collapse all line breaks to spaces.
+    """
+    return " ".join(value.splitlines()) if value else value
 
 
 def runtime_artifact_path(project_root: str, suffix: str) -> str:

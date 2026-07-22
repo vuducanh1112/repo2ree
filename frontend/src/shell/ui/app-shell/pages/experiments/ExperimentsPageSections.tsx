@@ -3,6 +3,7 @@ import type { LogEntry } from "@core/ree/ReeTypes";
 import type { ExperimentRunOutputs } from "@core/runs/ExperimentRun";
 import type { ReeRunFailure } from "@core/runs/ReeRun";
 import { FAILURE_TONE_COLOR, runFailurePresentation } from "@core/runs/runFailurePresentation";
+import { useGenerateExperimentScript } from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import {
   experimentRunScriptPath,
@@ -20,6 +21,7 @@ import {
 import { F } from "@shell/ui/theme/theme";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { GenerateScriptControl } from "../../components/GenerateScriptControl";
 import { LogPanel } from "../../components/logPanel";
 import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
@@ -84,6 +86,14 @@ export function ExperimentDetail({
     experiment.verifyScript ||
     (templates ? experimentVerifyScriptPath(templates, fallbackName) : "");
 
+  // Read-only inference: generate an experiment run scaffold from the built
+  // runtime and load it into the editor (never written here). Requires the
+  // experiment to be declared (named + saved) so the backend can resolve it.
+  const generateExperiment = useGenerateExperimentScript(experiment.name);
+  const [runScriptExternalEdit, setRunScriptExternalEdit] = useState<
+    { content: string; nonce: number } | undefined
+  >();
+
   return (
     <section style={{ ...lgStyles.panel, overflow: "hidden" }}>
       <DetailBreadcrumb index={index} onBack={onBack} />
@@ -136,6 +146,20 @@ export function ExperimentDetail({
             label="Experiment run script"
             helper="Saved to the workspace overlay and run from the workspace root."
             templates={templates?.experiment.templates}
+            externalEdit={runScriptExternalEdit}
+            generateSlot={
+              <GenerateScriptControl
+                generate={generateExperiment}
+                noun="experiment run script"
+                disabled={locked || !scriptPath || !experiment.name}
+                onLoad={(body) =>
+                  setRunScriptExternalEdit((prev) => ({
+                    content: body,
+                    nonce: (prev?.nonce ?? 0) + 1,
+                  }))
+                }
+              />
+            }
             onSave={(content) => onSaveScript(scriptPath, content)}
           />
         </DetailField>

@@ -32,6 +32,9 @@ interface RunScriptCardProps {
   externalEdit?: { content: string; nonce: number };
   // Optional header icon rendered beside the label.
   icon?: React.ReactNode;
+  // Optional control rendered above the editor (e.g. a "Generate from
+  // repository" affordance that loads a candidate via `externalEdit`).
+  generateSlot?: React.ReactNode;
   // Button content and footer status text — overridable so callers (e.g. the
   // reserved build script) can speak in their own terms.
   saveButtonContent?: React.ReactNode;
@@ -55,6 +58,7 @@ export function RunScriptCard({
   disabled = false,
   externalEdit,
   icon,
+  generateSlot,
   saveButtonContent = "Save run script",
   savedLabel = "Saved run script",
   unsavedLabel = "Unsaved run script",
@@ -144,6 +148,8 @@ export function RunScriptCard({
           ))}
         </div>
       )}
+
+      {!disabled && generateSlot}
 
       <textarea
         aria-label={label}

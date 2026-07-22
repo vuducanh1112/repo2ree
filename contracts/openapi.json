@@ -5022,6 +5022,39 @@
         ],
         "title": "AgentSummary"
       },
+      "ArgvCommandCandidate": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "argv",
+            "title": "Kind",
+            "default": "argv"
+          },
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          },
+          "argv": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Argv"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "argv",
+          "source"
+        ],
+        "title": "ArgvCommandCandidate"
+      },
       "BuildScriptTemplates": {
         "properties": {
           "path": {
@@ -5190,6 +5223,67 @@
           "branches"
         ],
         "title": "CheckNode"
+      },
+      "CommandCandidatesBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "command_candidates",
+            "title": "Kind",
+            "default": "command_candidates"
+          },
+          "candidates": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ArgvCommandCandidate"
+                },
+                {
+                  "$ref": "#/components/schemas/ShellCommandCandidate"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "argv": "#/components/schemas/ArgvCommandCandidate",
+                  "shell": "#/components/schemas/ShellCommandCandidate"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Candidates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CommandCandidatesBinding"
+      },
+      "CommandCandidatesObservation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "command_candidates",
+            "title": "Kind",
+            "default": "command_candidates"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "count"
+        ],
+        "title": "CommandCandidatesObservation"
       },
       "ConsistencyReport": {
         "properties": {
@@ -5590,13 +5684,25 @@
                   },
                   {
                     "$ref": "#/components/schemas/StrategyOutcomesObservation"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RuntimeContractObservation"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CommandCandidatesObservation"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ExperimentGateObservation"
                   }
                 ],
                 "discriminator": {
                   "propertyName": "kind",
                   "mapping": {
+                    "command_candidates": "#/components/schemas/CommandCandidatesObservation",
+                    "experiment_gate": "#/components/schemas/ExperimentGateObservation",
                     "logical_root": "#/components/schemas/LogicalRootObservation",
                     "path_matches": "#/components/schemas/PathMatchesObservation",
+                    "runtime_contract": "#/components/schemas/RuntimeContractObservation",
                     "strategy_outcomes": "#/components/schemas/StrategyOutcomesObservation"
                   }
                 }
@@ -5635,14 +5741,26 @@
                 },
                 {
                   "$ref": "#/components/schemas/RuntimeDeclarationBinding"
+                },
+                {
+                  "$ref": "#/components/schemas/RuntimeContractBinding"
+                },
+                {
+                  "$ref": "#/components/schemas/ExperimentBinding"
+                },
+                {
+                  "$ref": "#/components/schemas/CommandCandidatesBinding"
                 }
               ],
               "discriminator": {
                 "propertyName": "kind",
                 "mapping": {
+                  "command_candidates": "#/components/schemas/CommandCandidatesBinding",
                   "dockerfile": "#/components/schemas/DockerfileBinding",
+                  "experiment": "#/components/schemas/ExperimentBinding",
                   "project_root": "#/components/schemas/ProjectRootBinding",
                   "requirements_project": "#/components/schemas/RequirementsProjectBinding",
+                  "runtime_contract": "#/components/schemas/RuntimeContractBinding",
                   "runtime_declaration": "#/components/schemas/RuntimeDeclarationBinding",
                   "runtime_plan": "#/components/schemas/RuntimePlanBinding"
                 }
@@ -5773,6 +5891,41 @@
         },
         "type": "object",
         "title": "DependencySummary"
+      },
+      "DockerRuntimeContract": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "docker_archive",
+            "title": "Kind",
+            "default": "docker_archive"
+          },
+          "artifact_path": {
+            "type": "string",
+            "title": "Artifact Path"
+          },
+          "image_ref": {
+            "type": "string",
+            "title": "Image Ref"
+          },
+          "workspace_mount": {
+            "type": "string",
+            "title": "Workspace Mount",
+            "default": "/workspace"
+          },
+          "working_directory": {
+            "type": "string",
+            "title": "Working Directory",
+            "default": "/workspace"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "artifact_path",
+          "image_ref"
+        ],
+        "title": "DockerRuntimeContract"
       },
       "DockerRuntimePlan": {
         "properties": {
@@ -6114,6 +6267,80 @@
         "type": "object",
         "title": "Experiment",
         "description": "A named experiment attached to a REE draft. Zero or more per REE.\n\nA successful run always captures the experiment's declared ``output_paths``\ninto the produced-results store (``results/<name>/``) for local provenance.\nWhether those baselines are packaged into the sealed bundle is a seal-time\nchoice (``results_included``), not per-experiment authoring state \u2014 so there\nis no flag here."
+      },
+      "ExperimentBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "experiment",
+            "title": "Kind",
+            "default": "experiment"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "run_script_path": {
+            "type": "string",
+            "title": "Run Script Path"
+          },
+          "verify_script_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Script Path"
+          },
+          "output_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Output Paths"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "run_script_path"
+        ],
+        "title": "ExperimentBinding"
+      },
+      "ExperimentGateObservation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "experiment_gate",
+            "title": "Kind",
+            "default": "experiment_gate"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result"
+          },
+          "requested": {
+            "type": "string",
+            "title": "Requested",
+            "default": ""
+          },
+          "declared": {
+            "type": "boolean",
+            "title": "Declared",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result"
+        ],
+        "title": "ExperimentGateObservation",
+        "description": "The experiment-declaration gate's outcome, for the decision trace."
       },
       "ExperimentScriptTemplates": {
         "properties": {
@@ -8183,6 +8410,97 @@
         ],
         "title": "RunSummary"
       },
+      "RuntimeContractBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "runtime_contract",
+            "title": "Kind",
+            "default": "runtime_contract"
+          },
+          "contract": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DockerRuntimeContract"
+              },
+              {
+                "$ref": "#/components/schemas/VenvRuntimeContract"
+              }
+            ],
+            "title": "Contract",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "docker_archive": "#/components/schemas/DockerRuntimeContract",
+                "venv_archive": "#/components/schemas/VenvRuntimeContract"
+              }
+            }
+          },
+          "provenance": {
+            "type": "string",
+            "enum": [
+              "inspected_artifact",
+              "unchanged_generated_build"
+            ],
+            "title": "Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "contract",
+          "provenance"
+        ],
+        "title": "RuntimeContractBinding",
+        "description": "A resolved, non-executable runtime contract plus how it was established.\n\n``inspected_artifact`` inspected the built artifact itself;\n``unchanged_generated_build`` reused the constants of a still-unedited\ninference-generated build script. Downstream renderers copy the contract's\nvalues as explicit literals."
+      },
+      "RuntimeContractObservation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "runtime_contract",
+            "title": "Kind",
+            "default": "runtime_contract"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result"
+          },
+          "runtime_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Kind"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result"
+        ],
+        "title": "RuntimeContractObservation"
+      },
       "RuntimeDeclarationBinding": {
         "properties": {
           "kind": {
@@ -8669,6 +8987,42 @@
           "low"
         ],
         "title": "Severity"
+      },
+      "ShellCommandCandidate": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "shell",
+            "title": "Kind",
+            "default": "shell"
+          },
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          },
+          "command": {
+            "type": "string",
+            "title": "Command"
+          },
+          "shell": {
+            "type": "string",
+            "title": "Shell",
+            "default": "sh"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "command",
+          "source"
+        ],
+        "title": "ShellCommandCandidate",
+        "description": "A shell-form command (e.g. a Docker shell-form ENTRYPOINT/CMD). It is\nnever rewritten into guessed argv; the author must make the shell dependency\nexplicit (``set -- sh -c '...'``)."
       },
       "SourceAcquirePayload": {
         "properties": {
@@ -9224,6 +9578,37 @@
           "stored_at"
         ],
         "title": "UploadStoredResponse"
+      },
+      "VenvRuntimeContract": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "venv_archive",
+            "title": "Kind",
+            "default": "venv_archive"
+          },
+          "artifact_path": {
+            "type": "string",
+            "title": "Artifact Path"
+          },
+          "venv_restore_dir": {
+            "type": "string",
+            "title": "Venv Restore Dir",
+            "default": "/tmp/ree-venv"
+          },
+          "interpreter": {
+            "type": "string",
+            "title": "Interpreter",
+            "default": "python"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "artifact_path"
+        ],
+        "title": "VenvRuntimeContract",
+        "description": "A packed Python virtual environment as the runtime substrate.\n\nThe build packs the venv as a gzipped tarball at ``artifact_path``; a\nrunnable restores it to ``venv_restore_dir`` (an absolute path, because a\nvenv bakes absolute paths and must be restored where it was built) and runs\nthe command with that venv's ``bin`` on ``PATH``. There is no image ref: the\nworkbench base image is the environment. ``venv_restore_dir`` defaults to the\npath a repo2ree build packs; an inspected artifact overrides it with the path\nrecovered from the venv's own ``pyvenv.cfg``."
       },
       "WorkbenchImage": {
         "properties": {

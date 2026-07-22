@@ -48,12 +48,13 @@ def test_resolve_target_requires_experiment_name_for_experiment() -> None:
 
 
 def test_unregistered_target_kinds_return_wellformed_not_inferred(tmp_path: Path) -> None:
+    # Verify targets remain deferred in Phase 1 (no verification-claim field yet).
     (tmp_path / "Dockerfile").write_text("FROM x\n")
     report = infer_scripts(
         tmp_path,
         [
-            ScriptTargetSelector(kind="activation_run"),
-            ScriptTargetSelector(kind="experiment_run", experiment_name="e1"),
+            ScriptTargetSelector(kind="activation_verify"),
+            ScriptTargetSelector(kind="experiment_verify", experiment_name="e1"),
         ],
     )
     for result in report.results:
@@ -96,7 +97,7 @@ def test_report_deduplicates_dags_across_targets(tmp_path: Path) -> None:
 
 def test_unregistered_targets_contribute_no_dag(tmp_path: Path) -> None:
     (tmp_path / "main.py").write_text("x")
-    report = infer_scripts(tmp_path, [ScriptTargetSelector(kind="activation_run")])
+    report = infer_scripts(tmp_path, [ScriptTargetSelector(kind="activation_verify")])
     assert report.dags == []
 
 
