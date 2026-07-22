@@ -88,10 +88,10 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
     ),
     "venv_restore_dir_assumed": (
         "warning",
-        False,
+        True,
         "The packed venv does not record the directory it was built in, so it will be restored to the "
-        "default location; if it was built elsewhere, restoration will fail — set VENV_DIR in the "
-        "generated script to the path the venv was built at.",
+        "default location; if it was built elsewhere, restoration will fail — confirm VENV_DIR in the "
+        "generated script points at the path the venv was built at before running.",
     ),
     # --- activation / experiment command ---
     "activation_command_missing": (

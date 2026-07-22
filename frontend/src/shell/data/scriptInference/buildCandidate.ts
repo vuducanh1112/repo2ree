@@ -1,24 +1,8 @@
 import type { DecisionDag, DecisionTrace, InferenceReport } from "@shell/infra/api/apiTypes";
+import type { ScriptGeneration } from "./generation";
+import { dagForTrace, findResult, traceForResult } from "./reportSelectors";
 
-export interface GeneratedBuildScript {
-  // The rendered build-script body to load into the editor.
-  body: string;
-  // The rule that produced it (e.g. "single-project-root-dockerfile-v1" or
-  // "root-pip-requirements-v1").
-  ruleId: string;
-  // Advisory: whether a human should confirm a strategy choice before saving.
-  // Inference never writes, so this is advice, not a gate.
-  application: "automatic_allowed" | "confirmation_required" | "unavailable";
-  // How many candidates the build target returned. More than one means the
-  // repository offered several runtime strategies — a decision, not a default.
-  alternativeCount: number;
-}
-
-export type BuildScriptGeneration =
-  | { status: "generated"; script: GeneratedBuildScript }
-  // No candidate could be generated (e.g. no Dockerfile / requirements.txt, or
-  // an ambiguous or blocked repository shape). The trace explains why.
-  | { status: "not_inferred" };
+const isBuild = (result: { target: { kind: string } }) => result.target.kind === "build";
 
 /**
  * Reduce an inference report to what the build-runtime page needs: the build
@@ -28,16 +12,17 @@ export type BuildScriptGeneration =
  *
  * When the build target is a decision (several viable strategies), the first
  * candidate is chosen as the one to load; the caller surfaces the alternative
- * count so the author knows others exist.
+ * count so the author knows others exist. Build surfaces no blocking warnings
+ * yet, so `blockingMessages` is always empty.
  */
-export function selectBuildCandidate(report: InferenceReport): BuildScriptGeneration {
-  const buildResult = (report.results ?? []).find((result) => result.target.kind === "build");
+export function selectBuildCandidate(report: InferenceReport): ScriptGeneration {
+  const buildResult = findResult(report, isBuild);
   const candidates = buildResult?.candidates ?? [];
   const candidate = candidates.find(
     (entry) => typeof entry.body === "string" && entry.body.length > 0,
   );
   if (!buildResult || !candidate || typeof candidate.body !== "string") {
-    return { status: "not_inferred" };
+    return { status: "not_inferred", blockingMessages: [] };
   }
   return {
     status: "generated",
@@ -46,6 +31,7 @@ export function selectBuildCandidate(report: InferenceReport): BuildScriptGenera
       ruleId: candidate.inference_rule,
       application: candidate.application,
       alternativeCount: candidates.length,
+      blockingMessages: [],
     },
   };
 }
@@ -56,8 +42,7 @@ export function selectBuildCandidate(report: InferenceReport): BuildScriptGenera
  * request; `null` only if the report has no build target.
  */
 export function selectBuildTrace(report: InferenceReport): DecisionTrace | null {
-  const buildResult = (report.results ?? []).find((result) => result.target.kind === "build");
-  return buildResult?.decision ?? null;
+  return traceForResult(report, isBuild);
 }
 
 /**
@@ -65,7 +50,5 @@ export function selectBuildTrace(report: InferenceReport): DecisionTrace | null 
  * matched by key. `null` if the report shipped no matching DAG.
  */
 export function selectBuildDag(report: InferenceReport): DecisionDag | null {
-  const trace = selectBuildTrace(report);
-  if (!trace) return null;
-  return (report.dags ?? []).find((dag) => dag.key === trace.dag) ?? null;
+  return dagForTrace(report, selectBuildTrace(report));
 }

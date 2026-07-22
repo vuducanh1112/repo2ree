@@ -23,7 +23,11 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.script_inference.build_wiring import BUILD_CHECKS, BUILD_RENDERERS, BUILD_RESOLVERS
-from repo2ree_core.script_inference.decision_graphs.build import BUILD_INFERENCE_DAG
+from repo2ree_core.script_inference.decision_graphs.build import (
+    BUILD_INFERENCE_DAG,
+    DOCKER_BUILD_RULE,
+    PIP_BUILD_RULE,
+)
 from repo2ree_core.script_inference.engine import evaluate_target
 from repo2ree_core.script_inference.models import (
     DecisionContext,
@@ -38,10 +42,6 @@ from repo2ree_core.script_inference.renderers._common import (
     runtime_artifact_path,
     runtime_image_ref,
 )
-
-# Maps a build strategy rule to the runtime it produces at the logical root.
-_DOCKER_RULE = "single-project-root-dockerfile-v1"
-_PIP_RULE = "root-pip-requirements-v1"
 
 
 class ExpectedBuild(BaseModel):
@@ -89,12 +89,12 @@ def _contract_for(
     ree_name: str,
     declared_runtime_path: str,
 ) -> RuntimeContract | None:
-    if rule == _DOCKER_RULE:
+    if rule == DOCKER_BUILD_RULE:
         artifact = runtime_artifact_path(root, DOCKER_RUNTIME_ARTIFACT_SUFFIX)
         if artifact != declared_runtime_path:
             return None
         return DockerRuntimeContract(artifact_path=artifact, image_ref=runtime_image_ref(ree_name))
-    if rule == _PIP_RULE:
+    if rule == PIP_BUILD_RULE:
         artifact = runtime_artifact_path(root, VENV_RUNTIME_ARTIFACT_SUFFIX)
         if artifact != declared_runtime_path:
             return None

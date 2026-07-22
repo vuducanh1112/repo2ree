@@ -123,8 +123,9 @@ def infer_scripts(
 
 
 def _unsupported_result(target: ScriptTarget) -> TargetInferenceResult:
-    """A requested target with no DAG registered yet (activation/experiment in
-    Phase 1). Still returns a well-formed, empty trace rather than an error."""
+    """A requested target with no DAG registered yet — the verify targets in
+    Phase 1 (they await an author verification claim ``ReeIntent`` cannot yet
+    carry). Still returns a well-formed, empty trace rather than an error."""
     return TargetInferenceResult(
         target=target,
         status="not_inferred",

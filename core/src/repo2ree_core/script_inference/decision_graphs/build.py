@@ -23,6 +23,13 @@ from repo2ree_core.script_inference.models import (
     StrategyLeafNode,
 )
 
+# The build-strategy rule ids the leaves below emit. They are the authority:
+# ``build_regeneration`` imports these to map a regenerated build candidate back
+# to the runtime it produces, so the rule name lives in exactly one place and the
+# two cannot drift apart behind a string literal.
+DOCKER_BUILD_RULE = "single-project-root-dockerfile-v1"
+PIP_BUILD_RULE = "root-pip-requirements-v1"
+
 BUILD_INFERENCE_DAG = DecisionDag(
     key="build-inference",
     version=1,
@@ -59,7 +66,7 @@ BUILD_INFERENCE_DAG = DecisionDag(
             id="dockerfile-complete",
             strategy="dockerfile",
             outcome="complete",
-            rule="single-project-root-dockerfile-v1",
+            rule=DOCKER_BUILD_RULE,
             inference_version=1,
             render="docker_build_v1",
             next="resolve-runtime-strategies",
@@ -68,7 +75,7 @@ BUILD_INFERENCE_DAG = DecisionDag(
             id="dockerfile-multiple",
             strategy="dockerfile",
             outcome="blocked",
-            rule="single-project-root-dockerfile-v1",
+            rule=DOCKER_BUILD_RULE,
             warnings=["multiple_dockerfiles"],
             next="resolve-runtime-strategies",
         ),
@@ -76,7 +83,7 @@ BUILD_INFERENCE_DAG = DecisionDag(
             id="dockerfile-ambiguous",
             strategy="dockerfile",
             outcome="blocked",
-            rule="single-project-root-dockerfile-v1",
+            rule=DOCKER_BUILD_RULE,
             warnings=["ambiguous_build_context"],
             next="resolve-runtime-strategies",
         ),
@@ -102,7 +109,7 @@ BUILD_INFERENCE_DAG = DecisionDag(
             # lone candidate therefore resolves to needs_input, and a Dockerfile
             # alongside it makes the two strategies an explicit decision.
             outcome="candidate",
-            rule="root-pip-requirements-v1",
+            rule=PIP_BUILD_RULE,
             inference_version=1,
             render="pip_venv_build_v1",
             next="resolve-runtime-strategies",

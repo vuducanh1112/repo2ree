@@ -1,38 +1,18 @@
 import type { DecisionDag, DecisionTrace, InferenceReport } from "@shell/infra/api/apiTypes";
+import type { ScriptGeneration } from "./generation";
+import { dagForTrace, findResult, type InferenceResult, traceForResult } from "./reportSelectors";
 
 // A run-target kind the build-runtime / experiment pages can generate a script
 // for. Build has its own selector (buildCandidate.ts); these cover the runtime
 // load/run scaffolds that share one shape.
 export type RunTargetKind = "activation_run" | "experiment_run";
 
-export interface GeneratedRunScript {
-  // The rendered scaffold body to load into the editor.
-  body: string;
-  // The rule that produced it (e.g. "docker-runtime-activation-v1").
-  ruleId: string;
-  // Advisory: whether a human should confirm before saving. Inference never
-  // writes, so this is advice, not a gate. Phase 1 run scaffolds are always
-  // "confirmation_required" (the command is never inferred).
-  application: "automatic_allowed" | "confirmation_required" | "unavailable";
-  // How many candidates the target returned (>1 means several viable runtimes).
-  alternativeCount: number;
-  // Blocking warning messages the author must resolve before the scaffold is
-  // usable (e.g. an undeclared runtime, or the missing command).
-  blockingMessages: string[];
-}
-
-export type RunScriptGeneration =
-  | { status: "generated"; script: GeneratedRunScript }
-  // Nothing could be inferred (no resolved runtime contract, undeclared
-  // experiment, ambiguous artifact, …). The trace explains why.
-  | { status: "not_inferred"; blockingMessages: string[] };
-
-type InferenceResult = NonNullable<InferenceReport["results"]>[number];
-
-function matches(result: InferenceResult, kind: RunTargetKind, experimentName?: string): boolean {
-  if (result.target.kind !== kind) return false;
-  if (kind === "experiment_run") return result.target.experiment_name === experimentName;
-  return true;
+function matches(kind: RunTargetKind, experimentName?: string) {
+  return (result: InferenceResult): boolean => {
+    if (result.target.kind !== kind) return false;
+    if (kind === "experiment_run") return result.target.experiment_name === experimentName;
+    return true;
+  };
 }
 
 /**
@@ -44,8 +24,8 @@ export function selectRunCandidate(
   report: InferenceReport,
   kind: RunTargetKind,
   experimentName?: string,
-): RunScriptGeneration {
-  const result = (report.results ?? []).find((r) => matches(r, kind, experimentName));
+): ScriptGeneration {
+  const result = findResult(report, matches(kind, experimentName));
   const candidates = result?.candidates ?? [];
   const blockingMessages = (result?.warnings ?? []).filter((w) => w.blocking).map((w) => w.message);
   const candidate = candidates.find(
@@ -72,8 +52,7 @@ export function selectRunTrace(
   kind: RunTargetKind,
   experimentName?: string,
 ): DecisionTrace | null {
-  const result = (report.results ?? []).find((r) => matches(r, kind, experimentName));
-  return result?.decision ?? null;
+  return traceForResult(report, matches(kind, experimentName));
 }
 
 /** The static DAG the run trace overlays onto, matched by key. */
@@ -82,7 +61,5 @@ export function selectRunDag(
   kind: RunTargetKind,
   experimentName?: string,
 ): DecisionDag | null {
-  const trace = selectRunTrace(report, kind, experimentName);
-  if (!trace) return null;
-  return (report.dags ?? []).find((dag) => dag.key === trace.dag) ?? null;
+  return dagForTrace(report, selectRunTrace(report, kind, experimentName));
 }

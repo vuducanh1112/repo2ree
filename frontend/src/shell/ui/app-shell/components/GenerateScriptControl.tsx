@@ -1,4 +1,4 @@
-import type { RunInferenceOutcome } from "@shell/data/scriptInference/mutations";
+import type { ScriptInferenceOutcome } from "@shell/data/scriptInference/mutations";
 import { renderDecisionDiagram, renderDecisionTrace } from "@shell/data/scriptInference/traceAscii";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { lgColors, lgGlassButton } from "@shell/ui/theme/lightGlassTheme";
@@ -20,20 +20,30 @@ function toneColor(tone: Tone): string {
 }
 
 interface Props {
-  // The mutation from useGenerateActivationScript / useGenerateExperimentScript.
-  generate: UseMutationResult<RunInferenceOutcome, Error, void>;
-  // Load a generated body into the editor (wire to RunScriptCard.externalEdit).
+  // Any generate mutation: build, activation, or experiment. They all resolve to
+  // the same outcome, so this one control renders every target.
+  generate: UseMutationResult<ScriptInferenceOutcome, Error, void>;
+  // Load a generated body into the editor (wire to the editor's externalEdit).
   onLoad: (body: string) => void;
-  // What the button generates, e.g. "activation script" / "experiment run script".
+  // What the button generates, e.g. "build script" / "activation script".
   noun: string;
+  // An extra sentence appended to the not-inferred message, e.g. the concrete
+  // evidence a build target was looking for. Omitted for run scaffolds.
+  notInferredHint?: string;
   disabled?: boolean;
 }
 
-// A "Generate from repository" affordance for a run script: it infers a scaffold
-// from the built runtime and loads it into the editor (nothing is saved), then
-// explains the outcome and, collapsibly, the decision graph. Mirrors the build
-// page's generate control so activation and experiments behave identically.
-export function GenerateScriptControl({ generate, onLoad, noun, disabled = false }: Props) {
+// A "Generate from repository" affordance: it infers a script from the
+// repository / built runtime and loads it into the editor (nothing is saved),
+// then explains the outcome and, collapsibly, the decision graph. One control
+// for every target so build, activation, and experiments behave identically.
+export function GenerateScriptControl({
+  generate,
+  onLoad,
+  noun,
+  notInferredHint,
+  disabled = false,
+}: Props) {
   const [status, setStatus] = useState<Status | null>(null);
   const [traceText, setTraceText] = useState<string | null>(null);
 
@@ -49,13 +59,14 @@ export function GenerateScriptControl({ generate, onLoad, noun, disabled = false
               : null,
         );
         if (generation.status === "not_inferred") {
+          const hint = notInferredHint ? ` ${notInferredHint}` : "";
           const why =
             generation.blockingMessages.length > 0
               ? ` ${generation.blockingMessages.join(" ")}`
               : "";
           setStatus({
             tone: "warn",
-            message: `No ${noun} could be inferred yet.${why} See the decision graph below.`,
+            message: `No ${noun} could be inferred yet.${hint}${why} See the decision graph below.`,
           });
           return;
         }
@@ -63,12 +74,16 @@ export function GenerateScriptControl({ generate, onLoad, noun, disabled = false
         const parts = [`Loaded a generated ${noun} (${generation.script.ruleId}).`];
         if (generation.script.alternativeCount > 1) {
           parts.push(
-            `${generation.script.alternativeCount} runtimes were available — review before saving.`,
+            `${generation.script.alternativeCount} alternatives were available — review before saving.`,
           );
         }
         for (const message of generation.script.blockingMessages) parts.push(message);
         parts.push("Review it, then save to keep it.");
-        setStatus({ tone: "info", message: parts.join(" ") });
+        // A strategy that warrants confirmation reads as advisory (info); an
+        // automatically-allowed one as a clean success (ok).
+        const tone: Tone =
+          generation.script.application === "confirmation_required" ? "info" : "ok";
+        setStatus({ tone, message: parts.join(" ") });
       },
       onError: (error) => {
         setTraceText(null);
@@ -78,7 +93,7 @@ export function GenerateScriptControl({ generate, onLoad, noun, disabled = false
         });
       },
     });
-  }, [generate, onLoad, noun]);
+  }, [generate, onLoad, noun, notInferredHint]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
