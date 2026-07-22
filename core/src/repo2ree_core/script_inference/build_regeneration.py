@@ -8,11 +8,13 @@ Docker build tags, or the venv tarball a pip build packs). Merely declaring
 artifact.
 
 This runs the published build DAG through the same generic engine (the DAG stays
-the sole authority; there is no parallel build rule here) with the build checks,
-resolver, and renderers wired directly so it never imports the registry — which
-imports this module's consumers. It returns the expected build-script body and
-the runtime contract that body implies, only when a single build candidate's
-runtime-artifact path matches the declared runtime.
+the sole authority; there is no parallel build rule here) using the shared build
+wiring (``build_wiring``) — the same checks, resolver, and renderers the registry
+serves — so it never imports the registry (which imports this module's consumers)
+yet can never drift from the build inference the registry actually runs. It
+returns the expected build-script body and the runtime contract that body
+implies, only when a single build candidate's runtime-artifact path matches the
+declared runtime.
 """
 
 from __future__ import annotations
@@ -20,20 +22,12 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
-from repo2ree_core.script_inference.checks.dockerfile import (
-    DockerfilesAtProjectRootCheck,
-    NestedDockerfilesCheck,
-)
-from repo2ree_core.script_inference.checks.project_root import LogicalProjectRootCheck
-from repo2ree_core.script_inference.checks.python import RequirementsAtProjectRootCheck
+from repo2ree_core.script_inference.build_wiring import BUILD_CHECKS, BUILD_RENDERERS, BUILD_RESOLVERS
 from repo2ree_core.script_inference.decision_graphs.build import BUILD_INFERENCE_DAG
 from repo2ree_core.script_inference.engine import evaluate_target
 from repo2ree_core.script_inference.models import (
-    Check,
     DecisionContext,
     DockerRuntimeContract,
-    Renderer,
-    Resolver,
     RuntimeContract,
     ScriptTarget,
     VenvRuntimeContract,
@@ -44,23 +38,6 @@ from repo2ree_core.script_inference.renderers._common import (
     runtime_artifact_path,
     runtime_image_ref,
 )
-from repo2ree_core.script_inference.renderers.docker_runtime import DockerBuildRenderer
-from repo2ree_core.script_inference.renderers.python_runtime import PipVenvBuildRenderer
-from repo2ree_core.script_inference.resolvers import ScoreFreeViabilityResolver
-
-_BUILD_CHECKS: dict[str, Check] = {
-    check.code: check
-    for check in (
-        LogicalProjectRootCheck(),
-        DockerfilesAtProjectRootCheck(),
-        NestedDockerfilesCheck(),
-        RequirementsAtProjectRootCheck(),
-    )
-}
-_BUILD_RESOLVERS: dict[str, Resolver] = {ScoreFreeViabilityResolver().code: ScoreFreeViabilityResolver()}
-_BUILD_RENDERERS: dict[str, Renderer] = {
-    renderer.code: renderer for renderer in (DockerBuildRenderer(), PipVenvBuildRenderer())
-}
 
 # Maps a build strategy rule to the runtime it produces at the logical root.
 _DOCKER_RULE = "single-project-root-dockerfile-v1"
@@ -94,9 +71,9 @@ def expected_build_for_runtime(context: DecisionContext, declared_runtime_path: 
         BUILD_INFERENCE_DAG,
         base,
         ScriptTarget(kind="build", path=RESERVED_BUILD_SCRIPT),
-        checks=_BUILD_CHECKS,
-        resolvers=_BUILD_RESOLVERS,
-        renderers=_BUILD_RENDERERS,
+        checks=BUILD_CHECKS,
+        resolvers=BUILD_RESOLVERS,
+        renderers=BUILD_RENDERERS,
     )
 
     for candidate in result.candidates:

@@ -30,6 +30,7 @@ from repo2ree_core.script_inference.models import (
     CheckResult,
     DecisionContext,
     DockerRuntimeContract,
+    ImageCommandBinding,
     ProjectRootBinding,
     RuntimeContractBinding,
     RuntimeContractObservation,
@@ -119,7 +120,7 @@ class RuntimeArtifactInspectionCheck:
     branches = frozenset({"docker_single_ref", "docker_multiple_refs", "docker_no_ref", "venv", "invalid"})
     requires: frozenset[BindingKind] = frozenset({"runtime_declaration"})
     produces: dict[str, frozenset[BindingKind]] = {
-        "docker_single_ref": frozenset({"runtime_contract"}),
+        "docker_single_ref": frozenset({"runtime_contract", "image_command"}),
         "docker_multiple_refs": frozenset(),
         "docker_no_ref": frozenset(),
         "venv": frozenset({"runtime_contract"}),
@@ -191,7 +192,12 @@ class RuntimeArtifactInspectionCheck:
                     provenance="inspected_artifact",
                     detail=refs[0],
                 ),
-                bindings=(RuntimeContractBinding(contract=docker_contract, provenance="inspected_artifact"),),
+                bindings=(
+                    RuntimeContractBinding(contract=docker_contract, provenance="inspected_artifact"),
+                    # The image's declared command travels forward so the
+                    # command-candidate check need not re-open this archive.
+                    ImageCommandBinding(argv=inspection.argv, shell_command=inspection.shell_command),
+                ),
             )
 
         return CheckResult(

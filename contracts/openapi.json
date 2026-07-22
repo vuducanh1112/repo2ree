@@ -5746,6 +5746,9 @@
                   "$ref": "#/components/schemas/RuntimeContractBinding"
                 },
                 {
+                  "$ref": "#/components/schemas/ImageCommandBinding"
+                },
+                {
                   "$ref": "#/components/schemas/ExperimentBinding"
                 },
                 {
@@ -5758,6 +5761,7 @@
                   "command_candidates": "#/components/schemas/CommandCandidatesBinding",
                   "dockerfile": "#/components/schemas/DockerfileBinding",
                   "experiment": "#/components/schemas/ExperimentBinding",
+                  "image_command": "#/components/schemas/ImageCommandBinding",
                   "project_root": "#/components/schemas/ProjectRootBinding",
                   "requirements_project": "#/components/schemas/RequirementsProjectBinding",
                   "runtime_contract": "#/components/schemas/RuntimeContractBinding",
@@ -6638,6 +6642,45 @@
           "message"
         ],
         "title": "HealthResponse"
+      },
+      "ImageCommandBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "image_command",
+            "title": "Kind",
+            "default": "image_command"
+          },
+          "argv": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Argv"
+          },
+          "shell_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shell Command"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ImageCommandBinding",
+        "description": "The runtime image's declared command (Entrypoint/Cmd), parsed once when\nthe artifact is inspected and carried forward so the command-candidate check\nneed not re-open the (possibly multi-hundred-MB) archive. Absent when the\ncontract came from an unchanged generated build (no artifact to inspect); the\nexec/shell forms are mutually exclusive, matching what inspection reports."
       },
       "InferenceEngineInfo": {
         "properties": {

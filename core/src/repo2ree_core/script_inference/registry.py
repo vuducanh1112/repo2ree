@@ -8,14 +8,9 @@ fails the process at startup rather than at request time.
 
 from __future__ import annotations
 
+from repo2ree_core.script_inference.build_wiring import BUILD_CHECKS, BUILD_RENDERERS, BUILD_RESOLVERS
 from repo2ree_core.script_inference.checks.docker_config import DockerConfigCommandsCheck
-from repo2ree_core.script_inference.checks.dockerfile import (
-    DockerfilesAtProjectRootCheck,
-    NestedDockerfilesCheck,
-)
 from repo2ree_core.script_inference.checks.experiment import RequestedExperimentCheck
-from repo2ree_core.script_inference.checks.project_root import LogicalProjectRootCheck
-from repo2ree_core.script_inference.checks.python import RequirementsAtProjectRootCheck
 from repo2ree_core.script_inference.checks.runtime_contract import (
     DeclaredRuntimePathCheck,
     RuntimeArtifactInspectionCheck,
@@ -30,41 +25,40 @@ from repo2ree_core.script_inference.engine import validate_dag
 from repo2ree_core.script_inference.models import Check, DecisionDag, Renderer, Resolver
 from repo2ree_core.script_inference.renderers.docker_activation import DockerActivationRenderer
 from repo2ree_core.script_inference.renderers.docker_experiment import DockerExperimentRenderer
-from repo2ree_core.script_inference.renderers.docker_runtime import DockerBuildRenderer
-from repo2ree_core.script_inference.renderers.python_runtime import PipVenvBuildRenderer
 from repo2ree_core.script_inference.renderers.venv_activation import VenvActivationRenderer
 from repo2ree_core.script_inference.renderers.venv_experiment import VenvExperimentRenderer
-from repo2ree_core.script_inference.resolvers import ScoreFreeViabilityResolver
 
+# The build wiring is shared with ``build_regeneration`` (see ``build_wiring``) so
+# the two can never drift; the run-side checks/renderers are layered on top here.
 CHECKS: dict[str, Check] = {
-    check.code: check
-    for check in (
-        LogicalProjectRootCheck(),
-        DockerfilesAtProjectRootCheck(),
-        NestedDockerfilesCheck(),
-        RequirementsAtProjectRootCheck(),
-        DeclaredRuntimePathCheck(),
-        RuntimeArtifactStateCheck(),
-        RuntimeArtifactInspectionCheck(),
-        UnchangedGeneratedBuildCheck(),
-        RuntimeContractKindCheck(),
-        DockerConfigCommandsCheck(),
-        RequestedExperimentCheck(),
-    )
+    **BUILD_CHECKS,
+    **{
+        check.code: check
+        for check in (
+            DeclaredRuntimePathCheck(),
+            RuntimeArtifactStateCheck(),
+            RuntimeArtifactInspectionCheck(),
+            UnchangedGeneratedBuildCheck(),
+            RuntimeContractKindCheck(),
+            DockerConfigCommandsCheck(),
+            RequestedExperimentCheck(),
+        )
+    },
 }
 
-RESOLVERS: dict[str, Resolver] = {resolver.code: resolver for resolver in (ScoreFreeViabilityResolver(),)}
+RESOLVERS: dict[str, Resolver] = dict(BUILD_RESOLVERS)
 
 RENDERERS: dict[str, Renderer] = {
-    renderer.code: renderer
-    for renderer in (
-        DockerBuildRenderer(),
-        PipVenvBuildRenderer(),
-        DockerActivationRenderer(),
-        VenvActivationRenderer(),
-        DockerExperimentRenderer(),
-        VenvExperimentRenderer(),
-    )
+    **BUILD_RENDERERS,
+    **{
+        renderer.code: renderer
+        for renderer in (
+            DockerActivationRenderer(),
+            VenvActivationRenderer(),
+            DockerExperimentRenderer(),
+            VenvExperimentRenderer(),
+        )
+    },
 }
 
 DECISION_DAGS: dict[str, DecisionDag] = {

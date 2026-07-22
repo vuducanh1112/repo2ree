@@ -984,7 +984,7 @@ export interface components {
              * Bindings
              * @default []
              */
-            bindings: (components["schemas"]["ProjectRootBinding"] | components["schemas"]["DockerfileBinding"] | components["schemas"]["RequirementsProjectBinding"] | components["schemas"]["RuntimePlanBinding"] | components["schemas"]["RuntimeDeclarationBinding"] | components["schemas"]["RuntimeContractBinding"] | components["schemas"]["ExperimentBinding"] | components["schemas"]["CommandCandidatesBinding"])[];
+            bindings: (components["schemas"]["ProjectRootBinding"] | components["schemas"]["DockerfileBinding"] | components["schemas"]["RequirementsProjectBinding"] | components["schemas"]["RuntimePlanBinding"] | components["schemas"]["RuntimeDeclarationBinding"] | components["schemas"]["RuntimeContractBinding"] | components["schemas"]["ImageCommandBinding"] | components["schemas"]["ExperimentBinding"] | components["schemas"]["CommandCandidatesBinding"])[];
             /** Evidence */
             evidence?: components["schemas"]["InferenceEvidence"][];
         };
@@ -1412,6 +1412,25 @@ export interface components {
             status: "online";
             /** Message */
             message: string;
+        };
+        /**
+         * ImageCommandBinding
+         * @description The runtime image's declared command (Entrypoint/Cmd), parsed once when
+         *     the artifact is inspected and carried forward so the command-candidate check
+         *     need not re-open the (possibly multi-hundred-MB) archive. Absent when the
+         *     contract came from an unchanged generated build (no artifact to inspect); the
+         *     exec/shell forms are mutually exclusive, matching what inspection reports.
+         */
+        ImageCommandBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "image_command";
+            /** Argv */
+            argv?: string[] | null;
+            /** Shell Command */
+            shell_command?: string | null;
         };
         /** InferenceEngineInfo */
         InferenceEngineInfo: {

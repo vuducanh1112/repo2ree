@@ -253,6 +253,7 @@ BindingKind = Literal[
     "runtime_plan",
     "runtime_declaration",
     "runtime_contract",
+    "image_command",
     "experiment",
     "command_candidates",
     "verification_claim",
@@ -328,6 +329,20 @@ class RuntimeContractBinding(BaseModel):
     provenance: RuntimeContractProvenance
 
 
+class ImageCommandBinding(BaseModel):
+    """The runtime image's declared command (Entrypoint/Cmd), parsed once when
+    the artifact is inspected and carried forward so the command-candidate check
+    need not re-open the (possibly multi-hundred-MB) archive. Absent when the
+    contract came from an unchanged generated build (no artifact to inspect); the
+    exec/shell forms are mutually exclusive, matching what inspection reports."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["image_command"] = "image_command"
+    argv: list[str] | None = None
+    shell_command: str | None = None
+
+
 class ExperimentBinding(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -352,6 +367,7 @@ DecisionBinding = Annotated[
     | RuntimePlanBinding
     | RuntimeDeclarationBinding
     | RuntimeContractBinding
+    | ImageCommandBinding
     | ExperimentBinding
     | CommandCandidatesBinding,
     Field(discriminator="kind"),
