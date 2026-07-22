@@ -4512,6 +4512,139 @@
         }
       }
     },
+    "/api/v1/rees/{ree_id}/script-inferences:generate": {
+      "post": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Generate Script Candidates Route",
+        "description": "Synchronously generate candidate scripts for the requested targets.\n\nRead-only and always recomputed: every call rescans and re-runs the DAGs\nagainst current inputs, so it needs no idempotency key and returns the report\ndirectly rather than a background run.",
+        "operationId": "generateScriptCandidates",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateScriptCandidatesPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InferenceReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workbench/images": {
       "get": {
         "tags": [
@@ -4980,6 +5113,84 @@
         ],
         "title": "CancelRunResponse"
       },
+      "CandidateDependency": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "source",
+              "dependency_inventory",
+              "script",
+              "runtime_artifact",
+              "runtime_declaration",
+              "experiment_declaration",
+              "baseline_result"
+            ],
+            "title": "Kind"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "digest": {
+            "type": "string",
+            "title": "Digest"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "digest",
+          "role"
+        ],
+        "title": "CandidateDependency",
+        "description": "Exactly which evidence justifies a candidate \u2014 the staleness key."
+      },
+      "CheckNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "check",
+            "title": "Kind",
+            "default": "check"
+          },
+          "check": {
+            "type": "string",
+            "title": "Check"
+          },
+          "branches": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Branches"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "check",
+          "branches"
+        ],
+        "title": "CheckNode"
+      },
       "ConsistencyReport": {
         "properties": {
           "steps": {
@@ -5270,6 +5481,233 @@
         ],
         "title": "CreateGenerateSbomRunPayload"
       },
+      "DecisionDag": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "root": {
+            "type": "string",
+            "title": "Root"
+          },
+          "nodes": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/CheckNode"
+                },
+                {
+                  "$ref": "#/components/schemas/ForkNode"
+                },
+                {
+                  "$ref": "#/components/schemas/StrategyLeafNode"
+                },
+                {
+                  "$ref": "#/components/schemas/ResolveNode"
+                },
+                {
+                  "$ref": "#/components/schemas/ResultNode"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "check": "#/components/schemas/CheckNode",
+                  "fork": "#/components/schemas/ForkNode",
+                  "resolve": "#/components/schemas/ResolveNode",
+                  "result": "#/components/schemas/ResultNode",
+                  "strategy_leaf": "#/components/schemas/StrategyLeafNode"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Nodes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "version",
+          "root",
+          "nodes"
+        ],
+        "title": "DecisionDag"
+      },
+      "DecisionStep": {
+        "properties": {
+          "node_id": {
+            "type": "string",
+            "title": "Node Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "check",
+              "fork",
+              "strategy_leaf",
+              "resolve",
+              "result"
+            ],
+            "title": "Kind"
+          },
+          "check": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "observed": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/LogicalRootObservation"
+                  },
+                  {
+                    "$ref": "#/components/schemas/PathMatchesObservation"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StrategyOutcomesObservation"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "kind",
+                  "mapping": {
+                    "logical_root": "#/components/schemas/LogicalRootObservation",
+                    "path_matches": "#/components/schemas/PathMatchesObservation",
+                    "strategy_outcomes": "#/components/schemas/StrategyOutcomesObservation"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "bindings": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ProjectRootBinding"
+                },
+                {
+                  "$ref": "#/components/schemas/DockerfileBinding"
+                },
+                {
+                  "$ref": "#/components/schemas/RequirementsProjectBinding"
+                },
+                {
+                  "$ref": "#/components/schemas/RuntimePlanBinding"
+                },
+                {
+                  "$ref": "#/components/schemas/RuntimeDeclarationBinding"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "dockerfile": "#/components/schemas/DockerfileBinding",
+                  "project_root": "#/components/schemas/ProjectRootBinding",
+                  "requirements_project": "#/components/schemas/RequirementsProjectBinding",
+                  "runtime_declaration": "#/components/schemas/RuntimeDeclarationBinding",
+                  "runtime_plan": "#/components/schemas/RuntimePlanBinding"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Bindings",
+            "default": []
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/InferenceEvidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "node_id",
+          "kind"
+        ],
+        "title": "DecisionStep"
+      },
+      "DecisionTrace": {
+        "properties": {
+          "dag": {
+            "type": "string",
+            "title": "Dag"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionStep"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/TraversedEdge"
+            },
+            "type": "array",
+            "title": "Edges"
+          },
+          "result_node": {
+            "type": "string",
+            "title": "Result Node"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dag",
+          "version",
+          "steps",
+          "edges",
+          "result_node"
+        ],
+        "title": "DecisionTrace"
+      },
       "DeleteReeResponse": {
         "properties": {
           "deleted_at": {
@@ -5335,6 +5773,71 @@
         },
         "type": "object",
         "title": "DependencySummary"
+      },
+      "DockerRuntimePlan": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "docker_archive",
+            "title": "Kind",
+            "default": "docker_archive"
+          },
+          "dockerfile_path": {
+            "type": "string",
+            "title": "Dockerfile Path"
+          },
+          "build_context": {
+            "type": "string",
+            "title": "Build Context"
+          },
+          "image_ref": {
+            "type": "string",
+            "title": "Image Ref"
+          },
+          "artifact_path": {
+            "type": "string",
+            "title": "Artifact Path"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "dockerfile_path",
+          "build_context",
+          "image_ref",
+          "artifact_path"
+        ],
+        "title": "DockerRuntimePlan"
+      },
+      "DockerfileBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "dockerfile",
+            "title": "Kind",
+            "default": "dockerfile"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "build_context": {
+            "type": "string",
+            "title": "Build Context"
+          },
+          "digest": {
+            "type": "string",
+            "title": "Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "build_context",
+          "digest"
+        ],
+        "title": "DockerfileBinding"
       },
       "EnvironmentLevel": {
         "type": "integer",
@@ -5737,6 +6240,39 @@
         "type": "object",
         "title": "FileMutationResponse"
       },
+      "ForkNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "fork",
+            "title": "Kind",
+            "default": "fork"
+          },
+          "branches": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Branches"
+          },
+          "join": {
+            "type": "string",
+            "title": "Join"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "branches",
+          "join"
+        ],
+        "title": "ForkNode"
+      },
       "GPUDefinition": {
         "properties": {
           "vendor": {
@@ -5775,6 +6311,23 @@
         "additionalProperties": false,
         "type": "object",
         "title": "GPUDefinition"
+      },
+      "GenerateScriptCandidatesPayload": {
+        "properties": {
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptTargetSelectorPayload"
+            },
+            "type": "array",
+            "title": "Targets"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "targets"
+        ],
+        "title": "GenerateScriptCandidatesPayload"
       },
       "HBOM": {
         "properties": {
@@ -5858,6 +6411,203 @@
           "message"
         ],
         "title": "HealthResponse"
+      },
+      "InferenceEngineInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "repo2ree-script-inference"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "InferenceEngineInfo"
+      },
+      "InferenceEvidence": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Digest"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "detail"
+        ],
+        "title": "InferenceEvidence"
+      },
+      "InferenceReport": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "title": "Schema Version",
+            "default": 1
+          },
+          "ree_id": {
+            "type": "string",
+            "title": "Ree Id",
+            "default": ""
+          },
+          "source_snapshot_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Snapshot Digest"
+          },
+          "engine": {
+            "$ref": "#/components/schemas/InferenceEngineInfo"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/TargetInferenceResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "dags": {
+            "items": {
+              "$ref": "#/components/schemas/DecisionDag"
+            },
+            "type": "array",
+            "title": "Dags"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "engine"
+        ],
+        "title": "InferenceReport"
+      },
+      "InferenceWarning": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ],
+            "title": "Severity"
+          },
+          "blocking": {
+            "type": "boolean",
+            "title": "Blocking"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "affected_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Affected Paths"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "severity",
+          "blocking",
+          "message"
+        ],
+        "title": "InferenceWarning"
+      },
+      "LogicalRootObservation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "logical_root",
+            "title": "Kind",
+            "default": "logical_root"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "wrapper_depth": {
+            "type": "integer",
+            "title": "Wrapper Depth"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "wrapper_depth"
+        ],
+        "title": "LogicalRootObservation"
       },
       "MachineLevel": {
         "type": "integer",
@@ -5973,6 +6723,63 @@
         "additionalProperties": false,
         "type": "object",
         "title": "NetworkDefinition"
+      },
+      "PathMatchesObservation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "path_matches",
+            "title": "Kind",
+            "default": "path_matches"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Paths"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "count",
+          "paths"
+        ],
+        "title": "PathMatchesObservation"
+      },
+      "ProjectRootBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "project_root",
+            "title": "Kind",
+            "default": "project_root"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "root",
+              "wrapper"
+            ],
+            "title": "Source"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "source"
+        ],
+        "title": "ProjectRootBinding"
       },
       "ReeCatalogMetadata": {
         "properties": {
@@ -6992,6 +7799,70 @@
         ],
         "title": "ReprovisionResponse"
       },
+      "RequirementsProjectBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "requirements_project",
+            "title": "Kind",
+            "default": "requirements_project"
+          },
+          "requirements_path": {
+            "type": "string",
+            "title": "Requirements Path"
+          },
+          "digest": {
+            "type": "string",
+            "title": "Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "requirements_path",
+          "digest"
+        ],
+        "title": "RequirementsProjectBinding",
+        "description": "A pip ``requirements.txt`` shape at the logical project root.\n\nCarries only the located file and its digest \u2014 the base image travels via\ndeployment policy, not repository evidence, so it is resolved by the\nbase-image check/renderer rather than baked into this binding."
+      },
+      "ResolveNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "resolve",
+            "title": "Kind",
+            "default": "resolve"
+          },
+          "fork": {
+            "type": "string",
+            "title": "Fork"
+          },
+          "resolver": {
+            "type": "string",
+            "title": "Resolver"
+          },
+          "branches": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Branches"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "fork",
+          "resolver",
+          "branches"
+        ],
+        "title": "ResolveNode"
+      },
       "ResourceEstimates": {
         "properties": {
           "cpu": {
@@ -7023,6 +7894,46 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ResourceEstimates"
+      },
+      "ResultNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "result",
+            "title": "Kind",
+            "default": "result"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "needs_input",
+              "not_inferred"
+            ],
+            "title": "Status"
+          },
+          "application": {
+            "type": "string",
+            "enum": [
+              "automatic_allowed",
+              "confirmation_required",
+              "unavailable"
+            ],
+            "title": "Application"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "application"
+        ],
+        "title": "ResultNode"
       },
       "RunList": {
         "properties": {
@@ -7272,6 +8183,56 @@
         ],
         "title": "RunSummary"
       },
+      "RuntimeDeclarationBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "runtime_declaration",
+            "title": "Kind",
+            "default": "runtime_declaration"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "title": "RuntimeDeclarationBinding"
+      },
+      "RuntimePlanBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "runtime_plan",
+            "title": "Kind",
+            "default": "runtime_plan"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/DockerRuntimePlan"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plan"
+        ],
+        "title": "RuntimePlanBinding"
+      },
       "SbomCrossCheckSummary": {
         "properties": {
           "sbom_digest": {
@@ -7411,6 +8372,167 @@
         "title": "ScoreCardRung",
         "description": "One checkable fact inside a category.\n\nRungs are ordered strongest-last but are *independent* checkmarks, not a\nforced prefix: e.g. results can be bundled at seal time while the source\nwas never SWH-archived.  ``done``/``total`` carry the fraction for rungs\naggregated over the experiment list (``None`` elsewhere)."
       },
+      "ScriptCandidate": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ScriptTarget"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "needs_input",
+              "not_inferred"
+            ],
+            "title": "Status"
+          },
+          "application": {
+            "type": "string",
+            "enum": [
+              "automatic_allowed",
+              "confirmation_required",
+              "unavailable"
+            ],
+            "title": "Application"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateDependency"
+            },
+            "type": "array",
+            "title": "Dependencies"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/InferenceEvidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/InferenceWarning"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "inference_rule": {
+            "type": "string",
+            "title": "Inference Rule"
+          },
+          "inference_version": {
+            "type": "integer",
+            "title": "Inference Version"
+          },
+          "decision_leaf": {
+            "type": "string",
+            "title": "Decision Leaf"
+          },
+          "validation": {
+            "$ref": "#/components/schemas/ScriptValidation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "target",
+          "status",
+          "application",
+          "body",
+          "inference_rule",
+          "inference_version",
+          "decision_leaf",
+          "validation"
+        ],
+        "title": "ScriptCandidate"
+      },
+      "ScriptTarget": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "build",
+              "activation_run",
+              "activation_verify",
+              "experiment_run",
+              "experiment_verify"
+            ],
+            "title": "Kind"
+          },
+          "experiment_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Name"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "path"
+        ],
+        "title": "ScriptTarget",
+        "description": "A resolved executable target. ``path`` is output-only."
+      },
+      "ScriptTargetSelectorPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "build",
+              "activation_run",
+              "activation_verify",
+              "experiment_run",
+              "experiment_verify"
+            ],
+            "title": "Kind"
+          },
+          "experiment_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "ScriptTargetSelectorPayload",
+        "description": "One target a caller asks inference about: a kind, never a path.\n\nThe workbench resolves the reserved path from the kind (and, for\nexperiments, the reserved slug convention); a caller cannot redirect\ninference at an arbitrary workspace file."
+      },
       "ScriptTemplateCatalog": {
         "properties": {
           "build": {
@@ -7472,6 +8594,72 @@
         ],
         "title": "ScriptTemplateEntry",
         "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; exactly one entry per section carries\n``is_default`` (for the seeded scripts it is the content a fresh REE starts\nwith). The run-script sections currently carry a single ``docker`` variant\neach; the keys exist so further strategies can be added without changing\nthe catalog shape."
+      },
+      "ScriptValidation": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_run",
+              "not_runnable",
+              "succeeded",
+              "failed",
+              "stale"
+            ],
+            "title": "Status"
+          },
+          "script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Script Digest"
+          },
+          "source_snapshot_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Snapshot Digest"
+          },
+          "runtime_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Digest"
+          },
+          "matching_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matching Run Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ScriptValidation",
+        "description": "Execution validation of a *written* script \u2014 distinct from inference.\n\nFor a candidate that has not been written, ``script_digest`` is the\ncandidate's own byte digest and ``status`` is ``not_run``; the other digests\nstay absent until a real run produces a receipt."
       },
       "Severity": {
         "type": "string",
@@ -7679,6 +8867,185 @@
         "type": "object",
         "title": "StorageDefinition"
       },
+      "StrategyLeafNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "strategy_leaf",
+            "title": "Kind",
+            "default": "strategy_leaf"
+          },
+          "strategy": {
+            "type": "string",
+            "title": "Strategy"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "candidate",
+              "blocked",
+              "not_applicable"
+            ],
+            "title": "Outcome"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
+          },
+          "inference_version": {
+            "type": "integer",
+            "title": "Inference Version",
+            "default": 1
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "render": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Render"
+          },
+          "next": {
+            "type": "string",
+            "title": "Next"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "strategy",
+          "outcome",
+          "next"
+        ],
+        "title": "StrategyLeafNode"
+      },
+      "StrategyOutcomeObservation": {
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "title": "Strategy"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "candidate",
+              "blocked",
+              "not_applicable"
+            ],
+            "title": "Outcome"
+          },
+          "leaf": {
+            "type": "string",
+            "title": "Leaf"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "strategy",
+          "outcome",
+          "leaf"
+        ],
+        "title": "StrategyOutcomeObservation"
+      },
+      "StrategyOutcomesObservation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "strategy_outcomes",
+            "title": "Kind",
+            "default": "strategy_outcomes"
+          },
+          "outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyOutcomeObservation"
+            },
+            "type": "array",
+            "title": "Outcomes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "outcomes"
+        ],
+        "title": "StrategyOutcomesObservation"
+      },
+      "TargetInferenceResult": {
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/ScriptTarget"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "needs_input",
+              "not_inferred"
+            ],
+            "title": "Status"
+          },
+          "application": {
+            "type": "string",
+            "enum": [
+              "automatic_allowed",
+              "confirmation_required",
+              "unavailable"
+            ],
+            "title": "Application"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptCandidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/InferenceWarning"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/DecisionTrace"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target",
+          "status",
+          "application",
+          "decision"
+        ],
+        "title": "TargetInferenceResult"
+      },
       "Threat": {
         "properties": {
           "id": {
@@ -7735,6 +9102,30 @@
           "machine"
         ],
         "title": "ThreatCategory"
+      },
+      "TraversedEdge": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "branch": {
+            "type": "string",
+            "title": "Branch"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "branch",
+          "target"
+        ],
+        "title": "TraversedEdge"
       },
       "UndeclaredPackage": {
         "properties": {

@@ -5,6 +5,7 @@ import type {
   ApiListResponse,
   DeleteReeResponse,
   FileMutationResponse,
+  InferenceReport,
   ReeCreatePayload,
   ReeDocument,
   ReeIntentPatchPayload,
@@ -13,6 +14,7 @@ import type {
   ReproducibilityScoreCardWire,
   ReprovisionResponse,
   RunSummary,
+  ScriptTargetSelector,
   ScriptTemplateCatalog,
   SourceAcquirePayload,
   UploadInitPayload,
@@ -208,6 +210,22 @@ export class ReeApi {
     return this.client.request<FileMutationResponse>(endpoints.reeFileContent(reeId), {
       method: "PUT",
       body: JSON.stringify(payload),
+    });
+  }
+
+  /**
+   * Read-only inference of the REE-owned scripts for the requested targets.
+   * Recomputed on every call and persists nothing; the returned candidate
+   * bytes become a script only when the caller writes them via
+   * {@link putFileContent}.
+   */
+  async generateScriptCandidates(
+    reeId: ReeId | string,
+    targets: ScriptTargetSelector[],
+  ): Promise<InferenceReport> {
+    return this.client.request<InferenceReport>(endpoints.reeScriptInferences(reeId), {
+      method: "POST",
+      body: JSON.stringify({ targets }),
     });
   }
 

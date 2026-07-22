@@ -13,6 +13,9 @@ from repo2ree_core.envelope.handlers.evaluate_dependency_score import (
 from repo2ree_core.envelope.handlers.extract_upload import handle_extract_upload
 from repo2ree_core.envelope.handlers.generate_hbom import handle_generate_hbom
 from repo2ree_core.envelope.handlers.generate_sbom import handle_generate_sbom
+from repo2ree_core.envelope.handlers.generate_script_candidates import (
+    handle_generate_script_candidates,
+)
 from repo2ree_core.envelope.handlers.materialize_workspace import (
     handle_materialize_workspace,
 )
@@ -38,6 +41,7 @@ from repo2ree_protocol.command import (
     ExtractUploadCommand,
     GenerateHbomCommand,
     GenerateSbomCommand,
+    GenerateScriptCandidatesCommand,
     MaterializeWorkspaceCommand,
     PatchReeIntentCommand,
     RemoveSourceCommand,
@@ -127,6 +131,8 @@ def _dispatch(
         return handle_cross_check_sbom(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ActivationTestCommand):
         return handle_activation_test(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, GenerateScriptCandidatesCommand):
+        return handle_generate_script_candidates(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, SealReeCommand):
         return handle_seal_ree(cmd.args, log=log, is_canceled=cancel)
     raise ValueError(f"Unhandled command operation: {cmd.operation!r}")  # type: ignore[union-attr]

@@ -17,6 +17,8 @@ export const endpoints = {
   reeFileContent: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/content`,
   reeFileRaw: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/raw`,
+  reeScriptInferences: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-inferences:generate`,
   reeSeal: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:seal`,
   reeArchive: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive`,
   reeWorkbenchReprovision: (reeId: string) =>

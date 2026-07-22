@@ -552,6 +552,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rees/{ree_id}/script-inferences:generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Script Candidates Route
+         * @description Synchronously generate candidate scripts for the requested targets.
+         *
+         *     Read-only and always recomputed: every call rescans and re-runs the DAGs
+         *     against current inputs, so it needs no idempotency key and returns the report
+         *     directly rather than a background run.
+         */
+        post: operations["generateScriptCandidates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workbench/images": {
         parameters: {
             query?: never;
@@ -751,6 +775,39 @@ export interface components {
             status: "queued" | "provisioning" | "running" | "canceling" | "succeeded" | "failed" | "canceled";
         };
         /**
+         * CandidateDependency
+         * @description Exactly which evidence justifies a candidate — the staleness key.
+         */
+        CandidateDependency: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "source" | "dependency_inventory" | "script" | "runtime_artifact" | "runtime_declaration" | "experiment_declaration" | "baseline_result";
+            /** Path */
+            path?: string | null;
+            /** Digest */
+            digest: string;
+            /** Role */
+            role: string;
+        };
+        /** CheckNode */
+        CheckNode: {
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "check";
+            /** Check */
+            check: string;
+            /** Branches */
+            branches: {
+                [key: string]: string;
+            };
+        };
+        /**
          * ConsistencyReport
          * @description Per-step freshness of recorded run receipts vs. the current tree.
          */
@@ -859,6 +916,55 @@ export interface components {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
+        /** DecisionDag */
+        DecisionDag: {
+            /** Key */
+            key: string;
+            /** Version */
+            version: number;
+            /** Root */
+            root: string;
+            /** Nodes */
+            nodes: (components["schemas"]["CheckNode"] | components["schemas"]["ForkNode"] | components["schemas"]["StrategyLeafNode"] | components["schemas"]["ResolveNode"] | components["schemas"]["ResultNode"])[];
+        };
+        /** DecisionStep */
+        DecisionStep: {
+            /** Node Id */
+            node_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "check" | "fork" | "strategy_leaf" | "resolve" | "result";
+            /** Check */
+            check?: string | null;
+            /** Branch */
+            branch?: string | null;
+            /** Observed */
+            observed?: (components["schemas"]["LogicalRootObservation"] | components["schemas"]["PathMatchesObservation"] | components["schemas"]["StrategyOutcomesObservation"]) | null;
+            /** Outcome */
+            outcome?: string | null;
+            /**
+             * Bindings
+             * @default []
+             */
+            bindings: (components["schemas"]["ProjectRootBinding"] | components["schemas"]["DockerfileBinding"] | components["schemas"]["RequirementsProjectBinding"] | components["schemas"]["RuntimePlanBinding"] | components["schemas"]["RuntimeDeclarationBinding"])[];
+            /** Evidence */
+            evidence?: components["schemas"]["InferenceEvidence"][];
+        };
+        /** DecisionTrace */
+        DecisionTrace: {
+            /** Dag */
+            dag: string;
+            /** Version */
+            version: number;
+            /** Steps */
+            steps: components["schemas"]["DecisionStep"][];
+            /** Edges */
+            edges: components["schemas"]["TraversedEdge"][];
+            /** Result Node */
+            result_node: string;
+        };
         /** DeleteReeResponse */
         DeleteReeResponse: {
             /** Deleted At */
@@ -906,6 +1012,37 @@ export interface components {
              * @default 0
              */
             locked: number;
+        };
+        /** DockerRuntimePlan */
+        DockerRuntimePlan: {
+            /**
+             * Kind
+             * @default docker_archive
+             * @constant
+             */
+            kind: "docker_archive";
+            /** Dockerfile Path */
+            dockerfile_path: string;
+            /** Build Context */
+            build_context: string;
+            /** Image Ref */
+            image_ref: string;
+            /** Artifact Path */
+            artifact_path: string;
+        };
+        /** DockerfileBinding */
+        DockerfileBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "dockerfile";
+            /** Path */
+            path: string;
+            /** Build Context */
+            build_context: string;
+            /** Digest */
+            digest: string;
         };
         /**
          * EnvironmentLevel
@@ -1084,6 +1221,22 @@ export interface components {
             /** Etag */
             etag?: string | null;
         };
+        /** ForkNode */
+        ForkNode: {
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "fork";
+            /** Branches */
+            branches: {
+                [key: string]: string;
+            };
+            /** Join */
+            join: string;
+        };
         /** GPUDefinition */
         GPUDefinition: {
             /**
@@ -1117,6 +1270,11 @@ export interface components {
             extra_info?: {
                 [key: string]: unknown;
             };
+        };
+        /** GenerateScriptCandidatesPayload */
+        GenerateScriptCandidatesPayload: {
+            /** Targets */
+            targets: components["schemas"]["ScriptTargetSelectorPayload"][];
         };
         /** HBOM */
         HBOM: {
@@ -1157,6 +1315,81 @@ export interface components {
             status: "online";
             /** Message */
             message: string;
+        };
+        /** InferenceEngineInfo */
+        InferenceEngineInfo: {
+            /**
+             * Name
+             * @default repo2ree-script-inference
+             */
+            name: string;
+            /** Version */
+            version: string;
+        };
+        /** InferenceEvidence */
+        InferenceEvidence: {
+            /** Code */
+            code: string;
+            /** Path */
+            path?: string | null;
+            /** Digest */
+            digest?: string | null;
+            /** Line */
+            line?: number | null;
+            /** Detail */
+            detail: string;
+        };
+        /** InferenceReport */
+        InferenceReport: {
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /**
+             * Ree Id
+             * @default
+             */
+            ree_id: string;
+            /** Source Snapshot Digest */
+            source_snapshot_digest?: string | null;
+            engine: components["schemas"]["InferenceEngineInfo"];
+            /** Results */
+            results?: components["schemas"]["TargetInferenceResult"][];
+            /** Dags */
+            dags?: components["schemas"]["DecisionDag"][];
+        };
+        /** InferenceWarning */
+        InferenceWarning: {
+            /** Code */
+            code: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "error";
+            /** Blocking */
+            blocking: boolean;
+            /** Message */
+            message: string;
+            /** Affected Paths */
+            affected_paths?: string[];
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** LogicalRootObservation */
+        LogicalRootObservation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "logical_root";
+            /** Path */
+            path: string;
+            /** Wrapper Depth */
+            wrapper_depth: number;
         };
         /**
          * MachineLevel
@@ -1244,6 +1477,33 @@ export interface components {
             extra_info?: {
                 [key: string]: unknown;
             };
+        };
+        /** PathMatchesObservation */
+        PathMatchesObservation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "path_matches";
+            /** Count */
+            count: number;
+            /** Paths */
+            paths: string[];
+        };
+        /** ProjectRootBinding */
+        ProjectRootBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "project_root";
+            /** Path */
+            path: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "root" | "wrapper";
         };
         /** ReeCatalogMetadata */
         ReeCatalogMetadata: {
@@ -1672,6 +1932,43 @@ export interface components {
             /** Ree Id */
             ree_id: string;
         };
+        /**
+         * RequirementsProjectBinding
+         * @description A pip ``requirements.txt`` shape at the logical project root.
+         *
+         *     Carries only the located file and its digest — the base image travels via
+         *     deployment policy, not repository evidence, so it is resolved by the
+         *     base-image check/renderer rather than baked into this binding.
+         */
+        RequirementsProjectBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "requirements_project";
+            /** Requirements Path */
+            requirements_path: string;
+            /** Digest */
+            digest: string;
+        };
+        /** ResolveNode */
+        ResolveNode: {
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "resolve";
+            /** Fork */
+            fork: string;
+            /** Resolver */
+            resolver: string;
+            /** Branches */
+            branches: {
+                [key: string]: string;
+            };
+        };
         /** ResourceEstimates */
         ResourceEstimates: {
             /**
@@ -1699,6 +1996,26 @@ export interface components {
              * @default
              */
             network: string;
+        };
+        /** ResultNode */
+        ResultNode: {
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "result";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "complete" | "needs_input" | "not_inferred";
+            /**
+             * Application
+             * @enum {string}
+             */
+            application: "automatic_allowed" | "confirmation_required" | "unavailable";
         };
         /** RunList */
         RunList: {
@@ -1777,6 +2094,27 @@ export interface components {
                 [key: string]: unknown;
             };
             failure?: components["schemas"]["Failure"] | null;
+        };
+        /** RuntimeDeclarationBinding */
+        RuntimeDeclarationBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "runtime_declaration";
+            /** Path */
+            path: string;
+            /** Digest */
+            digest?: string | null;
+        };
+        /** RuntimePlanBinding */
+        RuntimePlanBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "runtime_plan";
+            plan: components["schemas"]["DockerRuntimePlan"];
         };
         /**
          * SbomCrossCheckSummary
@@ -1860,6 +2198,69 @@ export interface components {
             /** Total */
             total?: number | null;
         };
+        /** ScriptCandidate */
+        ScriptCandidate: {
+            /** Candidate Id */
+            candidate_id: string;
+            target: components["schemas"]["ScriptTarget"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "complete" | "needs_input" | "not_inferred";
+            /**
+             * Application
+             * @enum {string}
+             */
+            application: "automatic_allowed" | "confirmation_required" | "unavailable";
+            /** Body */
+            body: string | null;
+            /** Dependencies */
+            dependencies?: components["schemas"]["CandidateDependency"][];
+            /** Evidence */
+            evidence?: components["schemas"]["InferenceEvidence"][];
+            /** Warnings */
+            warnings?: components["schemas"]["InferenceWarning"][];
+            /** Inference Rule */
+            inference_rule: string;
+            /** Inference Version */
+            inference_version: number;
+            /** Decision Leaf */
+            decision_leaf: string;
+            validation: components["schemas"]["ScriptValidation"];
+        };
+        /**
+         * ScriptTarget
+         * @description A resolved executable target. ``path`` is output-only.
+         */
+        ScriptTarget: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "build" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
+            /** Experiment Name */
+            experiment_name?: string | null;
+            /** Path */
+            path: string;
+        };
+        /**
+         * ScriptTargetSelectorPayload
+         * @description One target a caller asks inference about: a kind, never a path.
+         *
+         *     The workbench resolves the reserved path from the kind (and, for
+         *     experiments, the reserved slug convention); a caller cannot redirect
+         *     inference at an arbitrary workspace file.
+         */
+        ScriptTargetSelectorPayload: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "build" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
+            /** Experiment Name */
+            experiment_name?: string | null;
+        };
         /** ScriptTemplateCatalog */
         ScriptTemplateCatalog: {
             build: components["schemas"]["BuildScriptTemplates"];
@@ -1889,6 +2290,29 @@ export interface components {
             body: string;
             /** Is Default */
             is_default: boolean;
+        };
+        /**
+         * ScriptValidation
+         * @description Execution validation of a *written* script — distinct from inference.
+         *
+         *     For a candidate that has not been written, ``script_digest`` is the
+         *     candidate's own byte digest and ``status`` is ``not_run``; the other digests
+         *     stay absent until a real run produces a receipt.
+         */
+        ScriptValidation: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_run" | "not_runnable" | "succeeded" | "failed" | "stale";
+            /** Script Digest */
+            script_digest?: string | null;
+            /** Source Snapshot Digest */
+            source_snapshot_digest?: string | null;
+            /** Runtime Digest */
+            runtime_digest?: string | null;
+            /** Matching Run Id */
+            matching_run_id?: string | null;
         };
         /**
          * Severity
@@ -1999,6 +2423,77 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** StrategyLeafNode */
+        StrategyLeafNode: {
+            /** Id */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "strategy_leaf";
+            /** Strategy */
+            strategy: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "complete" | "candidate" | "blocked" | "not_applicable";
+            /** Rule */
+            rule?: string | null;
+            /**
+             * Inference Version
+             * @default 1
+             */
+            inference_version: number;
+            /** Warnings */
+            warnings?: string[];
+            /** Render */
+            render?: string | null;
+            /** Next */
+            next: string;
+        };
+        /** StrategyOutcomeObservation */
+        StrategyOutcomeObservation: {
+            /** Strategy */
+            strategy: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "complete" | "candidate" | "blocked" | "not_applicable";
+            /** Leaf */
+            leaf: string;
+        };
+        /** StrategyOutcomesObservation */
+        StrategyOutcomesObservation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "strategy_outcomes";
+            /** Outcomes */
+            outcomes: components["schemas"]["StrategyOutcomeObservation"][];
+        };
+        /** TargetInferenceResult */
+        TargetInferenceResult: {
+            target: components["schemas"]["ScriptTarget"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "complete" | "needs_input" | "not_inferred";
+            /**
+             * Application
+             * @enum {string}
+             */
+            application: "automatic_allowed" | "confirmation_required" | "unavailable";
+            /** Candidates */
+            candidates?: components["schemas"]["ScriptCandidate"][];
+            /** Warnings */
+            warnings?: components["schemas"]["InferenceWarning"][];
+            decision: components["schemas"]["DecisionTrace"];
+        };
         /** Threat */
         Threat: {
             /** Id */
@@ -2024,6 +2519,15 @@ export interface components {
          * @enum {string}
          */
         ThreatCategory: "dependency" | "environment" | "machine";
+        /** TraversedEdge */
+        TraversedEdge: {
+            /** Source */
+            source: string;
+            /** Branch */
+            branch: string;
+            /** Target */
+            target: string;
+        };
         /**
          * UndeclaredPackage
          * @description One runtime package no manifest declared (same-ecosystem only).
@@ -5645,6 +6149,113 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScriptTemplateCatalog"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    generateScriptCandidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateScriptCandidatesPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InferenceReport"];
                 };
             };
             /** @description Invalid request or operation precondition */

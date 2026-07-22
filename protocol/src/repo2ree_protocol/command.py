@@ -273,6 +273,46 @@ class ActivationTestCommand(BaseModel):
     args: ActivationTestArgs = ActivationTestArgs()
 
 
+class ScriptTargetSelectorArg(BaseModel):
+    """One target a caller asks inference about: a kind, never a path.
+
+    The workbench resolves the reserved path from the kind (and, for
+    experiments, the reserved slug convention); a caller cannot redirect
+    inference at an arbitrary workspace file.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal[
+        "build",
+        "activation_run",
+        "activation_verify",
+        "experiment_run",
+        "experiment_verify",
+    ]
+    experiment_name: str | None = None
+
+
+class GenerateScriptCandidatesArgs(BaseModel):
+    """Read-only inference of author-facing shell scripts.
+
+    Synchronous and always recomputed from the current upstream tree, intent,
+    policy, and DAG version; it persists nothing and never writes. Writing a
+    chosen candidate stays on the existing ``write_file`` path.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    targets: list[ScriptTargetSelectorArg]
+
+
+class GenerateScriptCandidatesCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["generate_script_candidates"] = "generate_script_candidates"
+    args: GenerateScriptCandidatesArgs
+
+
 class SealReeArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -307,6 +347,7 @@ Command = Annotated[
     | RunExperimentCommand
     | GenerateHbomCommand
     | ActivationTestCommand
+    | GenerateScriptCandidatesCommand
     | SealReeCommand,
     Field(discriminator="operation"),
 ]

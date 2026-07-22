@@ -9,6 +9,9 @@ interface ReservedBuildScriptCardProps {
   // editor only, saving stays on the button. The build script itself is seeded
   // at REE creation, so the card's content arrives already prefilled.
   templates?: ScriptTemplateEntry[];
+  // A generated candidate to load into the editor (replaces the body, leaves it
+  // dirty; the author still saves manually). Bump the nonce on each load.
+  externalEdit?: { content: string; nonce: number };
   onSave: (content: string) => void;
 }
 
@@ -18,6 +21,7 @@ export function ReservedBuildScriptCard({
   currentContent,
   disabled = false,
   templates,
+  externalEdit,
   onSave,
 }: ReservedBuildScriptCardProps) {
   return (
@@ -25,6 +29,7 @@ export function ReservedBuildScriptCard({
       currentContent={currentContent}
       disabled={disabled}
       templates={templates}
+      externalEdit={externalEdit}
       onSave={onSave}
       icon={Ic.file(15)}
       label="Build script"

@@ -105,6 +105,21 @@ export type RunLogPage = Schema<"RunLogPage">;
 
 export type FileMutationResponse = NullableToOptional<Schema<"FileMutationResponse">>;
 
+/** A caller-supplied inference target (kind only; the backend resolves the path). */
+export type ScriptTargetSelector = Schema<"ScriptTargetSelectorPayload">;
+
+/** Read-only script inference over the current source (POST .../script-inferences:generate). */
+export type InferenceReport = Schema<"InferenceReport">;
+
+/** The executed decision-DAG walk for one target: visited steps, traversed edges, result node. */
+export type DecisionTrace = Schema<"DecisionTrace">;
+
+/** One visited node of a decision trace. */
+export type DecisionStep = Schema<"DecisionStep">;
+
+/** The static, versioned decision DAG: the full graph (all branches) a trace overlays onto. */
+export type DecisionDag = Schema<"DecisionDag">;
+
 export type DeleteReeResponse = Schema<"DeleteReeResponse">;
 
 export type ReprovisionResponse = Schema<"ReprovisionResponse">;

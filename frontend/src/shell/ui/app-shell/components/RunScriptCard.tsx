@@ -25,6 +25,11 @@ interface RunScriptCardProps {
   // as the prefill for a script that doesn't exist yet.
   templates?: ScriptTemplateEntry[];
   disabled?: boolean;
+  // Load content into the editor from outside (e.g. a generated candidate),
+  // exactly like a template click: it replaces the editor body locally and
+  // leaves it dirty — nothing is persisted until the save button. The `nonce`
+  // makes re-loading the same body reapply; bump it on every load.
+  externalEdit?: { content: string; nonce: number };
   // Optional header icon rendered beside the label.
   icon?: React.ReactNode;
   // Button content and footer status text — overridable so callers (e.g. the
@@ -48,6 +53,7 @@ export function RunScriptCard({
   helper = "This runnable owns its run script: it fully defines how it executes, including entering the runtime.",
   templates,
   disabled = false,
+  externalEdit,
   icon,
   saveButtonContent = "Save run script",
   savedLabel = "Saved run script",
@@ -71,6 +77,17 @@ export function RunScriptCard({
     syncedRef.current = next;
     setSavedContent(currentContent);
   }, [currentContent, defaultTemplate]);
+
+  // Apply an external load (a generated candidate) once per nonce, the same way
+  // a template click replaces the editor body. Distinct from the sync effect
+  // above, which only follows persisted content and never clobbers divergence.
+  const appliedNonceRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (externalEdit && externalEdit.nonce !== appliedNonceRef.current) {
+      appliedNonceRef.current = externalEdit.nonce;
+      setContent(externalEdit.content);
+    }
+  }, [externalEdit]);
 
   const dirty = content !== savedContent;
 
