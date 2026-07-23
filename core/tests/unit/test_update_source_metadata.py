@@ -33,7 +33,7 @@ def _seed_workspace(root: Path) -> ReeStore:
 @pytest.fixture
 def workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
     store = _seed_workspace(tmp_path)
-    monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store
 
 

@@ -13,9 +13,9 @@ why no runtime contract was established.
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import PurePosixPath
 
+from repo2ree_core.digests import digest_bytes
 from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.script_inference.artifact_inspection import (
@@ -245,7 +245,7 @@ def _written_build_matches(context: DecisionContext, expected_body: str) -> bool
     stat = context.runtime.accessor.stat(RESERVED_BUILD_SCRIPT)
     if not stat.exists or not stat.is_file or stat.digest is None:
         return False
-    expected_digest = f"sha256:{hashlib.sha256(expected_body.encode()).hexdigest()}"
+    expected_digest = digest_bytes(expected_body.encode())
     return stat.digest == expected_digest
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.envelope.handlers._common import open_ree_store
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
@@ -58,12 +59,10 @@ def handle_reset_for_source_change(
         log("system", "warn", "reset_for_source_change canceled before start")
         return ActionResult(status="canceled")
 
-    layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
-
-    if not store.metadata_exists():
-        log("system", "error", "metadata not found — was init-ree run?")
-        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
+    opened = open_ree_store(log)
+    if isinstance(opened, ActionResult):
+        return opened
+    layout, store = opened
 
     log("system", "info", "reset_for_source_change: clearing source-derived state")
     try:

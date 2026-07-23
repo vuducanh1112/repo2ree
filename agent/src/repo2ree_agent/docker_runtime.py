@@ -500,7 +500,7 @@ class DockerRuntime:
                 timeout=120,
             )
             if result.returncode != 0:
-                raise RuntimeError(f"docker cp failed: {result.stderr.strip() or result.stdout.strip()}")
+                raise RuntimeError(f"docker cp failed: {_failure_detail(result.stderr, result.stdout)}")
 
     # ------------------------------------------------
     # Action dispatch (streaming)
@@ -675,6 +675,15 @@ def _emit_docker_span(operation: str, started_at: float, status: str) -> None:
     span.end(end_time=end_ns)
 
 
+def _failure_detail(stderr: str, stdout: str) -> str:
+    """The message text for a failed docker command: stderr, else stdout.
+
+    One spelling, so every docker failure reads the same way whichever helper
+    raised it.
+    """
+    return stderr.strip() or stdout.strip()
+
+
 def _tail_text(output: bytes) -> str:
     """Decode command output for an error message, keeping only the last
     ``_FAILURE_OUTPUT_TAIL_BYTES`` so a chatty failure cannot balloon the frame."""
@@ -791,18 +800,16 @@ def _parse_action_result(stdout: str, returncode: int) -> ActionResult:
 
 
 def _docker(*args: str, timeout: int = 60) -> None:
-    with _docker_op(f"docker.{args[0]}"):
-        result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
-        if result.returncode != 0:
-            raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
+    """Run a docker subcommand, raising on a non-zero exit."""
+    _docker_out(*args, timeout=timeout)
 
 
 def _docker_out(*args: str, timeout: int = 60) -> str:
-    """Like ``_docker`` but returns stripped stdout (e.g. a created container id)."""
+    """Like :func:`_docker` but returns stripped stdout (e.g. a created container id)."""
     with _docker_op(f"docker.{args[0]}"):
         result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
         if result.returncode != 0:
-            raise RuntimeError(f"docker {args[0]} failed: {result.stderr.strip() or result.stdout.strip()}")
+            raise RuntimeError(f"docker {args[0]} failed: {_failure_detail(result.stderr, result.stdout)}")
         return result.stdout.strip()
 
 
@@ -898,7 +905,7 @@ def _container_running(container_name: str) -> bool:
         if "no such object" in stderr or "no such container" in stderr:
             return False
         raise ContainerStateUnknownError(
-            f"docker inspect failed for {container_name}: {result.stderr.strip() or result.stdout.strip()}"
+            f"docker inspect failed for {container_name}: {_failure_detail(result.stderr, result.stdout)}"
         )
 
 

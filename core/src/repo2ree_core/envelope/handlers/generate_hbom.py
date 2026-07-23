@@ -11,11 +11,9 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.domain.hbom import HBOM
-from repo2ree_core.envelope.handlers._common import patch_ree_intent
+from repo2ree_core.envelope.handlers._common import open_ree_store, patch_ree_intent
 from repo2ree_core.hbom.generate_hbom import generate_hbom
 from repo2ree_core.run_script import CancelCheck
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -36,12 +34,10 @@ def handle_generate_hbom(
         log("system", "warn", "generate_hbom canceled before start")
         return ActionResult(status="canceled")
 
-    layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
-
-    if not store.metadata_exists():
-        log("system", "error", "metadata not found — was init-ree run?")
-        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
+    opened = open_ree_store(log)
+    if isinstance(opened, ActionResult):
+        return opened
+    layout, store = opened
 
     log("system", "info", "profiling hardware")
     try:

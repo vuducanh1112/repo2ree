@@ -4,14 +4,10 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, ConfigDict
 
-from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
+from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
 from repo2ree_api.deps import workbench_manager
-from repo2ree_api.run_management import (
-    run_summary,
-    start_single_command_run,
-)
+from repo2ree_api.run_management import run_summary, start_single_command_run
 from repo2ree_core.repo_profiler.reproducibility_report import ReproducibilityReport
 from repo2ree_protocol.command import (
     EvaluateDependencyScoreArgs,
@@ -31,11 +27,8 @@ evaluate_router = APIRouter(tags=["runs"])
 # ================================================
 
 
-class CreateEvaluateRunPayload(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class CreateEvaluateRunPayload(CreateRunPayload):
     strict: bool = False
-    idempotency_key: str | None = None
 
 
 # ================================================
@@ -50,8 +43,17 @@ class CreateEvaluateRunPayload(BaseModel):
     responses=ERROR_RESPONSES,
 )
 def create_workspace_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload):
-    run_state = create_evaluate_run_state(ree_id, payload)
-    return run_summary(run_state)
+    return run_summary(
+        start_single_command_run(
+            ree_id,
+            operation="evaluate",
+            command=EvaluateDependencyScoreCommand(args=EvaluateDependencyScoreArgs(strict=payload.strict)),
+            run_id_prefix="evaluate",
+            request_payload={"strict": bool(payload.strict)},
+            canceled_message="Evaluate run canceled",
+            idempotency_key=payload.idempotency_key,
+        )
+    )
 
 
 _REPORT_FILENAME = "reproducibility-report.json"
@@ -76,23 +78,3 @@ def get_workspace_evaluate_report(ree_id: str) -> dict[str, Any]:
                 detail="No reproducibility report; run evaluate first",
             ) from exc
     raise HTTPException(status_code=404, detail="No reproducibility report; run evaluate first")
-
-
-# ================================================
-# Helpers
-# ================================================
-
-
-def create_evaluate_run_state(
-    ree_id: str,
-    payload: CreateEvaluateRunPayload,
-) -> dict[str, Any]:
-    return start_single_command_run(
-        ree_id,
-        operation="evaluate",
-        command=EvaluateDependencyScoreCommand(args=EvaluateDependencyScoreArgs(strict=payload.strict)),
-        run_id_prefix="evaluate",
-        request_payload={"strict": bool(payload.strict)},
-        canceled_message="Evaluate run canceled",
-        idempotency_key=payload.idempotency_key,
-    )

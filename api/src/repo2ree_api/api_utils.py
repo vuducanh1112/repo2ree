@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
+from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
 
 __all__ = [
     "WORKSPACE_CONTROL_PREFIXES",
@@ -73,11 +73,16 @@ def resolve_relative_path(
     invalid_detail: str,
     blocked_prefixes: tuple[str, ...] = (),
 ) -> Path:
-    candidate = (root / relative_path).resolve()
-    try:
-        candidate.relative_to(root)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=invalid_detail) from exc
+    """HTTP-facing wrapper around the shared containment check.
+
+    The escape rule itself is ``path_safety.resolve_within`` — one definition
+    for both trust boundaries, so the API cannot drift from what the workbench
+    enforces. This layer only maps "unsafe" onto a 400 and adds the
+    control-file basename guard the HTTP surface needs.
+    """
+    candidate = resolve_within(root, relative_path)
+    if candidate is None:
+        raise HTTPException(status_code=400, detail=invalid_detail)
     if blocked_prefixes and candidate.name.startswith(blocked_prefixes):
         raise HTTPException(status_code=400, detail=invalid_detail)
     return candidate

@@ -22,11 +22,12 @@ paths, and structural ambiguity, all of which the report's levels flatten away.
 
 from __future__ import annotations
 
-import hashlib
 import os
 from pathlib import Path, PurePosixPath
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from repo2ree_core.digests import digest_bytes
 
 SCANNER_VERSION = 1
 
@@ -203,10 +204,6 @@ def _is_dockerfile_name(name: str) -> bool:
     )
 
 
-def _digest_bytes(data: bytes) -> str:
-    return f"sha256:{hashlib.sha256(data).hexdigest()}"
-
-
 def scan_repository(repo_path: Path) -> RepositoryFacts:
     """Scan an extracted source tree into normalized facts.
 
@@ -235,7 +232,7 @@ def scan_repository(repo_path: Path) -> RepositoryFacts:
                 continue
             rel_path = prefix / name
             try:
-                digest = _digest_bytes((Path(dirpath) / name).read_bytes())
+                digest = digest_bytes((Path(dirpath) / name).read_bytes())
             except OSError:
                 continue
             project_relative = _relative_to_project_root(rel_path, logical_root_posix)

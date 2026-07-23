@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 import logging
 import re
 import tempfile
@@ -60,6 +59,7 @@ from repo2ree_api.storage.upload_staging import (
     stage_upload_stream,
     staged_upload_path,
 )
+from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol import (
@@ -215,7 +215,13 @@ def _dispatch_or_fail(handle: WorkbenchHandle, cmd: Command, run_id: str, error_
 
 
 def _content_etag(content: bytes) -> str:
-    return f"sha256:{hashlib.sha256(content).hexdigest()}"
+    """The etag returned for a written file.
+
+    The workbench validates a later ``if_match`` against
+    ``workspace_content_etag``, which digests the stored bytes the same way —
+    one shared helper so the compare cannot drift across the two processes.
+    """
+    return digest_bytes(content)
 
 
 def _download_pipeline(lead: AcquireSourceCommand, metadata_args: UpdateSourceMetadataArgs) -> list[Command]:

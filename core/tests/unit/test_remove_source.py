@@ -49,7 +49,7 @@ def test_remove_source_recreates_reserved_build_script(tmp_path: Path, monkeypat
         )
     )
 
-    monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
 
     result = handler.handle_remove_source(log=_silent_log, is_canceled=_never_canceled)
 

@@ -7,10 +7,8 @@ All ReeIntent fields are user-editable; no whitelist needed.
 from __future__ import annotations
 
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.envelope.handlers._common import patch_ree_intent
+from repo2ree_core.envelope.handlers._common import open_ree_store, patch_ree_intent
 from repo2ree_core.run_script import CancelCheck
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
 from repo2ree_protocol.command import PatchReeIntentArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -37,12 +35,10 @@ def handle_patch_ree_intent(
             details={"fields": unsupported},
         )
 
-    layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
-
-    if not store.metadata_exists():
-        log("system", "error", "metadata not found — was init-ree run?")
-        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
+    opened = open_ree_store(log)
+    if isinstance(opened, ActionResult):
+        return opened
+    layout, store = opened
 
     log("system", "info", f"patch_ree_intent: {sorted(args.patch)}")
     try:

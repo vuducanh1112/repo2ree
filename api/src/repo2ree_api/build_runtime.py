@@ -1,15 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter
-from pydantic import BaseModel, ConfigDict
 
-from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
-from repo2ree_api.run_management import (
-    run_summary,
-    start_single_command_run,
-)
+from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
+from repo2ree_api.run_management import run_summary, start_single_command_run
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_protocol.command import BuildRuntimeCommand
 
@@ -26,12 +20,8 @@ build_runtime_router = APIRouter(tags=["runs"])
 # ================================================
 
 
-class _StrictRequestModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-
-class CreateBuildRuntimeRunPayload(_StrictRequestModel):
-    idempotency_key: str | None = None
+class CreateBuildRuntimeRunPayload(CreateRunPayload):
+    """Run the reserved build script. Takes no parameters of its own."""
 
 
 # ================================================
@@ -46,26 +36,15 @@ class CreateBuildRuntimeRunPayload(_StrictRequestModel):
     responses=ERROR_RESPONSES,
 )
 def create_workspace_build_runtime_run(ree_id: str, payload: CreateBuildRuntimeRunPayload):
-    run_state = create_build_run_state(ree_id, payload)
-    return run_summary(run_state)
-
-
-# ================================================
-# Helpers
-# ================================================
-
-
-def create_build_run_state(
-    ree_id: str,
-    payload: CreateBuildRuntimeRunPayload,
-) -> dict[str, Any]:
-    return start_single_command_run(
-        ree_id,
-        operation="build",
-        command=BuildRuntimeCommand(),
-        run_id_prefix="build",
-        request_payload={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
-        canceled_message="Build run canceled",
-        fallback_outputs={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
-        idempotency_key=payload.idempotency_key,
+    return run_summary(
+        start_single_command_run(
+            ree_id,
+            operation="build",
+            command=BuildRuntimeCommand(),
+            run_id_prefix="build",
+            request_payload={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
+            canceled_message="Build run canceled",
+            fallback_outputs={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
+            idempotency_key=payload.idempotency_key,
+        )
     )

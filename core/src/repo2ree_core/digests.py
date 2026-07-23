@@ -40,6 +40,17 @@ def digest_bytes(data: bytes) -> str:
     return digest
 
 
+def short_hash(data: bytes, *, length: int = 12) -> str:
+    """A truncated hex hash for identifiers, not provenance.
+
+    Deliberately not a canonical digest: it labels a value (a candidate id, a
+    config fingerprint) so equal inputs get equal labels. Never record one in a
+    receipt — those must stay comparable, which is what :func:`digest_bytes` is
+    for.
+    """
+    return hashlib.sha256(data).hexdigest()[:length]
+
+
 def digest_file(path: Path) -> str:
     hasher = hashlib.sha256()
     with path.open("rb") as handle:

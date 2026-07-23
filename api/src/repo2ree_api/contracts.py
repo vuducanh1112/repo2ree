@@ -20,6 +20,9 @@ from repo2ree_core.source_repo.metadata import SourceRepoMetadata
 from repo2ree_core.workspace.inventory import ReeFile, WorkspaceFile
 from repo2ree_protocol.result import Failure
 
+# The run vocabulary. It is part of the wire contract (it lands in the OpenAPI
+# schema through RunSummary), so it is declared here once and imported by the
+# registry and the run routes rather than re-spelled next to each of them.
 RunStatus = Literal[
     "queued",
     "provisioning",
@@ -40,6 +43,27 @@ RunOperation = Literal[
     "evaluate",
     "experiment",
 ]
+
+
+class StrictRequestModel(BaseModel):
+    """Base for request bodies: an unknown field is a client error, not ignored.
+
+    Declared here with the rest of the control-plane contract so every route's
+    payload inherits the same strictness instead of re-spelling the config.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CreateRunPayload(StrictRequestModel):
+    """The body every "start a run" route accepts.
+
+    Routes that need nothing else subclass it as-is; the two that take
+    parameters (sbom, evaluate) add their fields. Subclassing rather than
+    sharing one model keeps each route's schema named after its operation.
+    """
+
+    idempotency_key: str | None = None
 
 
 class ErrorDetail(BaseModel):

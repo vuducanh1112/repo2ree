@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import shutil
 from collections.abc import Callable
 from contextlib import suppress
@@ -10,7 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
+from repo2ree_core.digests import digest_bytes, digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.experiment.experiment import Runnable
 from repo2ree_core.experiment.run import RunnableRunOutputs, run_runnable
@@ -60,7 +59,35 @@ class _StepInputs:
     workspace_drift: WorkspaceDrift
 
 
-def _read_intent_or_none(store: ReeStore) -> ReeIntent | None:
+METADATA_MISSING = "metadata not found — was init-ree run?"
+
+
+def open_ree_store(log: LogSink) -> tuple[ReeLayout, ReeStore] | ActionResult:
+    """Open the workbench REE store, or the failure to return when it is absent.
+
+    Every handler that touches REE state starts this way, so the guard and the
+    message an author sees for "no REE here yet" live in one place. Callers
+    ``return`` the ActionResult unchanged::
+
+        opened = open_ree_store(log)
+        if isinstance(opened, ActionResult):
+            return opened
+        layout, store = opened
+    """
+    layout = ReeLayout.in_workbench()
+    store = ReeStore(layout)
+    if not store.metadata_exists():
+        log("system", "error", METADATA_MISSING)
+        return ActionResult.failed("precondition", METADATA_MISSING)
+    return layout, store
+
+
+def read_intent_or_none(store: ReeStore) -> ReeIntent | None:
+    """The intent, or None when there is no readable metadata.
+
+    For the read-only paths that must still answer when a REE is half-built
+    (inference, step inputs) rather than fail the command.
+    """
     with suppress(Exception):
         if store.metadata_exists():
             return store.read_intent()
@@ -193,7 +220,7 @@ def run_bare_script_handler(
         return ActionResult.failed("validation", f"invalid {noun.lower()} script path: {exc}")
 
     store = ReeStore(layout)
-    intent = _read_intent_or_none(store)
+    intent = read_intent_or_none(store)
     inputs = _collect_step_inputs(layout, store, intent, script_path)
     _record_step_inputs(inputs)
 
@@ -301,11 +328,10 @@ def run_runnable_handler(
         log("system", "warn", f"{operation} canceled before start")
         return ActionResult(status="canceled")
 
-    layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
-    if not store.metadata_exists():
-        log("system", "error", "metadata not found")
-        return ActionResult.failed("precondition", "metadata not found")
+    opened = open_ree_store(log)
+    if isinstance(opened, ActionResult):
+        return opened
+    layout, store = opened
 
     try:
         ree = store.read_intent()
@@ -374,10 +400,15 @@ def run_runnable_handler(
 
 
 def workspace_content_etag(store: ReeStore, path: str) -> str | None:
-    """Current "sha256:<hex>" etag of a workspace file, or None if it is absent."""
+    """Current canonical etag of a workspace file, or None if it is absent.
+
+    The API computes the etag it hands back after a write with the same
+    ``digest_bytes``; the two are compared across a process boundary, so they
+    must not be spelled independently.
+    """
     if not store.workspace.is_file(path):
         return None
-    return f"sha256:{hashlib.sha256(store.workspace.read_bytes(path)).hexdigest()}"
+    return digest_bytes(store.workspace.read_bytes(path))
 
 
 def check_expected_etag(store: ReeStore, path: str, expected: str, *, log: LogSink) -> ActionResult | None:

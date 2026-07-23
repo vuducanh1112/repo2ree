@@ -15,8 +15,7 @@ is inferred.
 
 from __future__ import annotations
 
-import hashlib
-
+from repo2ree_core.digests import digest_bytes, short_hash
 from repo2ree_core.script_inference.models import (
     BindingKind,
     Check,
@@ -482,7 +481,7 @@ def _finalize_candidates(
             continue
         leaf, script = rendered[strategy]
         body = script.body
-        body_hash = hashlib.sha256(body.encode()).hexdigest()[:12]
+        body_hash = short_hash(body.encode())
         rule = leaf.rule or leaf.strategy
         candidate_id = f"{rule}:{leaf.inference_version}:{target.kind}:{body_hash}"
         candidates.append(
@@ -500,7 +499,7 @@ def _finalize_candidates(
                 decision_leaf=leaf.id,
                 validation=ScriptValidation(
                     status="not_run",
-                    script_digest=f"sha256:{hashlib.sha256(body.encode()).hexdigest()}",
+                    script_digest=digest_bytes(body.encode()),
                 ),
             )
         )

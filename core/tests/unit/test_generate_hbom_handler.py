@@ -42,7 +42,7 @@ def _seed_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, existing: HB
             ree_session=ReeSession(source_available=True),
         )
     )
-    monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store
 
 
@@ -55,7 +55,7 @@ def test_canceled_before_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 def test_missing_metadata_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     store = ReeStore(ReeLayout(root=tmp_path))
     store.ensure_dirs()
-    monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     result = handler.handle_generate_hbom(log=_silent_log, is_canceled=_never_canceled)
     assert result.status == "failed"
     assert result.exit_code == 1

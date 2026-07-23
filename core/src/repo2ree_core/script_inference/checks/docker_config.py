@@ -17,8 +17,7 @@ check reads only the already-parsed binding — it never re-opens the archive.
 
 from __future__ import annotations
 
-import hashlib
-
+from repo2ree_core.digests import short_hash
 from repo2ree_core.script_inference.models import (
     ArgvCommandCandidate,
     BindingKind,
@@ -99,4 +98,4 @@ def _looks_long_running(text: str) -> bool:
 
 
 def _candidate_id(kind: str, text: str) -> str:
-    return f"{kind}:{hashlib.sha256(text.encode()).hexdigest()[:12]}"
+    return f"{kind}:{short_hash(text.encode())}"

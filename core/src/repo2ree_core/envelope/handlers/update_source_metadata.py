@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from repo2ree_core.envelope.handlers._common import open_ree_store
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.source_repo import directory_swhid, resolved_git_head
-from repo2ree_core.storage.layout import SNAPSHOT_FILENAME, ReeLayout
-from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.storage.layout import SNAPSHOT_FILENAME
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.command import UpdateSourceMetadataArgs
 from repo2ree_protocol.log import LogSink
@@ -41,12 +41,10 @@ def handle_update_source_metadata(
         log("system", "warn", "update_source_metadata canceled before start")
         return ActionResult(status="canceled")
 
-    layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
-
-    if not store.metadata_exists():
-        log("system", "error", "metadata not found — was init-ree run?")
-        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
+    opened = open_ree_store(log)
+    if isinstance(opened, ActionResult):
+        return opened
+    layout, store = opened
 
     log("system", "info", "updating source metadata")
     try:

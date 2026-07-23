@@ -28,6 +28,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from repo2ree_api.settings import service_settings
+from repo2ree_core.time_utils import iso_utc
 
 # Minted tokens are uuid hex; accept a slightly wider single-path-component
 # charset so the format is not load-bearing, but nothing that can traverse.
@@ -101,7 +102,7 @@ def new_upload_token(
         encoding="utf-8",
     )
     ttl = timedelta(seconds=service_settings.UPLOAD_TTL_SECONDS)
-    expires_at = (datetime.now(UTC) + ttl).isoformat().replace("+00:00", "Z")
+    expires_at = iso_utc(datetime.now(UTC) + ttl)
     return {"upload_token": token, "expires_at": expires_at}
 
 

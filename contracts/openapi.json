@@ -5452,7 +5452,8 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CreateActivationTestRunPayload"
+        "title": "CreateActivationTestRunPayload",
+        "description": "Run the reserved activation script. Takes no parameters of its own."
       },
       "CreateBuildRuntimeRunPayload": {
         "properties": {
@@ -5470,7 +5471,8 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CreateBuildRuntimeRunPayload"
+        "title": "CreateBuildRuntimeRunPayload",
+        "description": "Run the reserved build script. Takes no parameters of its own."
       },
       "CreateCrossCheckSbomRunPayload": {
         "properties": {
@@ -5488,15 +5490,11 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CreateCrossCheckSbomRunPayload"
+        "title": "CreateCrossCheckSbomRunPayload",
+        "description": "Cross-check the recorded SBOM against the built runtime. No parameters."
       },
       "CreateEvaluateRunPayload": {
         "properties": {
-          "strict": {
-            "type": "boolean",
-            "title": "Strict",
-            "default": false
-          },
           "idempotency_key": {
             "anyOf": [
               {
@@ -5507,6 +5505,11 @@
               }
             ],
             "title": "Idempotency Key"
+          },
+          "strict": {
+            "type": "boolean",
+            "title": "Strict",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -5530,7 +5533,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "CreateExperimentRunPayload",
-        "description": "No fields yet \u2014 kept as the extension point for future run options."
+        "description": "No fields of its own yet \u2014 the extension point for future run options."
       },
       "CreateGenerateHbomRunPayload": {
         "properties": {
@@ -5548,14 +5551,11 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CreateGenerateHbomRunPayload"
+        "title": "CreateGenerateHbomRunPayload",
+        "description": "Profile the workbench host's hardware. Takes no parameters of its own."
       },
       "CreateGenerateSbomRunPayload": {
         "properties": {
-          "produced_runtime_path": {
-            "type": "string",
-            "title": "Produced Runtime Path"
-          },
           "idempotency_key": {
             "anyOf": [
               {
@@ -5566,6 +5566,10 @@
               }
             ],
             "title": "Idempotency Key"
+          },
+          "produced_runtime_path": {
+            "type": "string",
+            "title": "Produced Runtime Path"
           }
         },
         "additionalProperties": false,

@@ -4,7 +4,7 @@ import json
 import time
 from collections.abc import Callable
 from threading import Condition, RLock, Thread
-from typing import Any, Literal
+from typing import Any
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -25,16 +25,6 @@ tracer = get_tracer(__name__)
 # ================================================
 # Types
 # ================================================
-
-RunStatus = Literal[
-    "queued",
-    "provisioning",
-    "running",
-    "canceling",
-    "succeeded",
-    "failed",
-    "canceled",
-]
 
 TERMINAL_STATUSES: frozenset[str] = frozenset({"succeeded", "failed", "canceled"})
 ACTIVE_STATUSES: frozenset[str] = frozenset({"running", "queued", "provisioning"})

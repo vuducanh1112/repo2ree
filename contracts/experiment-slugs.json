@@ -1,0 +1,14 @@
+{
+  "description": "Cross-language fixture for the experiment-name slug rule. The backend settles an experiment's reserved script path (repo2ree_core.reserved_paths.experiment_slug); the frontend derives the same path locally so the editor can show and save to it before that round-trip. Two implementations of one rule, so both test suites assert against this table and a divergence fails one of them.",
+  "cases": [
+    { "name": "Simple", "slug": "Simple" },
+    { "name": "with space", "slug": "with-space" },
+    { "name": "  leading and trailing  ", "slug": "leading-and-trailing" },
+    { "name": "multiple   spaces", "slug": "multiple-spaces" },
+    { "name": "tab\tseparated", "slug": "tab-separated" },
+    { "name": "line\nbreak", "slug": "line-break" },
+    { "name": "mixed_case-1.2", "slug": "mixed_case-1.2" },
+    { "name": "", "slug": "experiment" },
+    { "name": "   ", "slug": "experiment" }
+  ]
+}

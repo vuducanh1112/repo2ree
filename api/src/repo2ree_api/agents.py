@@ -25,6 +25,7 @@ from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import agent_registry
+from repo2ree_core.time_utils import iso_utc
 from repo2ree_protocol.agent import ws_hello_adapter
 from repo2ree_supervisor import AgentConnection
 
@@ -111,7 +112,7 @@ def list_agents() -> AgentList:
             hostname=info.hostname,
             version=info.version,
             docker_mode=info.docker_mode,
-            connected_at=datetime.fromtimestamp(info.connected_at, tz=UTC).isoformat(),
+            connected_at=iso_utc(datetime.fromtimestamp(info.connected_at, tz=UTC)),
         )
         for info in agent_registry.list_agents()
     ]

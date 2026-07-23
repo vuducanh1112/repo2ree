@@ -907,50 +907,62 @@ export interface components {
              */
             affiliation_identifier: string;
         };
-        /** CreateActivationTestRunPayload */
+        /**
+         * CreateActivationTestRunPayload
+         * @description Run the reserved activation script. Takes no parameters of its own.
+         */
         CreateActivationTestRunPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
-        /** CreateBuildRuntimeRunPayload */
+        /**
+         * CreateBuildRuntimeRunPayload
+         * @description Run the reserved build script. Takes no parameters of its own.
+         */
         CreateBuildRuntimeRunPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
-        /** CreateCrossCheckSbomRunPayload */
+        /**
+         * CreateCrossCheckSbomRunPayload
+         * @description Cross-check the recorded SBOM against the built runtime. No parameters.
+         */
         CreateCrossCheckSbomRunPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
         /** CreateEvaluateRunPayload */
         CreateEvaluateRunPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
             /**
              * Strict
              * @default false
              */
             strict: boolean;
-            /** Idempotency Key */
-            idempotency_key?: string | null;
         };
         /**
          * CreateExperimentRunPayload
-         * @description No fields yet — kept as the extension point for future run options.
+         * @description No fields of its own yet — the extension point for future run options.
          */
         CreateExperimentRunPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
-        /** CreateGenerateHbomRunPayload */
+        /**
+         * CreateGenerateHbomRunPayload
+         * @description Profile the workbench host's hardware. Takes no parameters of its own.
+         */
         CreateGenerateHbomRunPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
         /** CreateGenerateSbomRunPayload */
         CreateGenerateSbomRunPayload: {
-            /** Produced Runtime Path */
-            produced_runtime_path: string;
             /** Idempotency Key */
             idempotency_key?: string | null;
+            /** Produced Runtime Path */
+            produced_runtime_path: string;
         };
         /** DecisionDag */
         DecisionDag: {

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 
-from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.envelope.handlers._common import read_intent_or_none
 from repo2ree_core.envelope.handlers._script_inference_inputs import build_runtime_inputs
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.script_inference import ScriptTargetSelector, infer_scripts
@@ -43,7 +43,7 @@ def handle_generate_script_candidates(
         return ActionResult.failed("precondition", "no acquired source (upstream tree is absent)")
 
     store = ReeStore(layout)
-    intent = _read_intent_or_none(store)
+    intent = read_intent_or_none(store)
     ree_id, snapshot_digest = _identity(store)
     runtime_inputs = build_runtime_inputs(layout, intent)
 
@@ -76,13 +76,6 @@ def handle_generate_script_candidates(
     inferred = sum(1 for result in report.results if result.status != "not_inferred")
     log("system", "info", f"inference produced results for {len(report.results)} target(s); {inferred} with candidates")
     return ActionResult(status="succeeded", exit_code=0, outputs=report.model_dump())
-
-
-def _read_intent_or_none(store: ReeStore) -> ReeIntent | None:
-    with suppress(Exception):
-        if store.metadata_exists():
-            return store.read_intent()
-    return None
 
 
 def _identity(store: ReeStore) -> tuple[str, str | None]:

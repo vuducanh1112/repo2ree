@@ -1,17 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.api_utils import WORKSPACE_CONTROL_PREFIXES, resolve_relative_path
-from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
-from repo2ree_api.run_management import (
-    run_summary,
-    start_single_command_run,
-)
+from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
+from repo2ree_api.run_management import run_summary, start_single_command_run
 from repo2ree_protocol.command import GenerateSbomArgs, GenerateSbomCommand
 
 # ================================================
@@ -27,11 +22,8 @@ generate_sbom_router = APIRouter(tags=["runs"])
 # ================================================
 
 
-class CreateGenerateSbomRunPayload(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class CreateGenerateSbomRunPayload(CreateRunPayload):
     produced_runtime_path: str
-    idempotency_key: str | None = None
 
 
 # ================================================
@@ -46,8 +38,19 @@ class CreateGenerateSbomRunPayload(BaseModel):
     responses=ERROR_RESPONSES,
 )
 def create_workspace_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload):
-    run_state = create_generate_sbom_run_state(ree_id, payload)
-    return run_summary(run_state)
+    runtime_path = _resolve_sbom_runtime_path(payload.produced_runtime_path)
+    return run_summary(
+        start_single_command_run(
+            ree_id,
+            operation="sbom",
+            command=GenerateSbomCommand(args=GenerateSbomArgs(produced_runtime_path=runtime_path)),
+            run_id_prefix="sbom",
+            request_payload={"produced_runtime_path": runtime_path},
+            canceled_message="SBOM run canceled",
+            fallback_outputs={"runtime_relative_path": runtime_path},
+            idempotency_key=payload.idempotency_key,
+        )
+    )
 
 
 # ================================================
@@ -55,7 +58,7 @@ def create_workspace_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomR
 # ================================================
 
 
-def _resolve_sbom_runtime_path(ree_id: str, produced_runtime_path: str) -> str:
+def _resolve_sbom_runtime_path(produced_runtime_path: str) -> str:
     runtime_path = produced_runtime_path.strip()
     if not runtime_path:
         raise HTTPException(status_code=400, detail="produced_runtime_path is required for sbom runs")
@@ -74,21 +77,3 @@ def _resolve_sbom_runtime_path(ree_id: str, produced_runtime_path: str) -> str:
             detail="SBOM generation currently supports runtime tarballs only (.tar, .tar.gz, or .tgz)",
         )
     return runtime_path
-
-
-def create_generate_sbom_run_state(
-    ree_id: str,
-    payload: CreateGenerateSbomRunPayload,
-) -> dict[str, Any]:
-    runtime_path = _resolve_sbom_runtime_path(ree_id, payload.produced_runtime_path)
-
-    return start_single_command_run(
-        ree_id,
-        operation="sbom",
-        command=GenerateSbomCommand(args=GenerateSbomArgs(produced_runtime_path=runtime_path)),
-        run_id_prefix="sbom",
-        request_payload={"produced_runtime_path": runtime_path},
-        canceled_message="SBOM run canceled",
-        fallback_outputs={"runtime_relative_path": runtime_path},
-        idempotency_key=payload.idempotency_key,
-    )

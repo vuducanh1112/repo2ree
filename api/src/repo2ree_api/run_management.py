@@ -1,24 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import HTTPException
 
+from repo2ree_api.contracts import RunOperation
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_registry import RunRegistry
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
-
-# ================================================
-# Types
-# ================================================
-
-
-RunOperation = Literal[
-    "provision", "build", "sbom", "crosscheck", "hbom", "activation", "source", "evaluate", "experiment"
-]
-
 
 # ================================================
 # Registry
