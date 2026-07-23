@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import io
 
-from scriptinfer_helpers import docker_archive, not_an_archive, venv_archive
+from scriptinfer_helpers import docker_archive, not_an_archive, oci_archive, venv_archive
 
 from repo2ree_core.script_inference.artifact_inspection import (
     DockerArchiveInspection,
@@ -67,6 +67,32 @@ def test_docker_archive_is_classified() -> None:
     inspection = _inspect(docker_archive(["ree-runtime:demo"]))
     assert isinstance(inspection, DockerArchiveInspection)
     assert inspection.repo_tags == ["ree-runtime:demo"]
+
+
+def test_oci_archive_is_classified_as_docker() -> None:
+    # A containerd-image-store ``docker save`` (OCI layout, no manifest.json) must
+    # classify exactly like the legacy layout so activation/experiment resolve.
+    inspection = _inspect(oci_archive("ree-runtime:demo", entrypoint=["python"], cmd=["main.py"]))
+    assert isinstance(inspection, DockerArchiveInspection)
+    assert inspection.repo_tags == ["ree-runtime:demo"]
+    assert inspection.argv == ["python", "main.py"]
+
+
+def test_oci_multi_arch_index_resolves_the_config_command() -> None:
+    # The index points at a nested platform index; inspection descends to the
+    # image manifest to read its declared command.
+    inspection = _inspect(oci_archive("ree-runtime:demo", cmd=["run.py"], multi_arch=True))
+    assert isinstance(inspection, DockerArchiveInspection)
+    assert inspection.repo_tags == ["ree-runtime:demo"]
+    assert inspection.argv == ["run.py"]
+
+
+def test_oci_archive_without_a_ref_has_no_repo_tags() -> None:
+    # An untagged export declares no image name; downstream this is "no usable
+    # image reference", not a resolved runtime.
+    inspection = _inspect(oci_archive(None))
+    assert isinstance(inspection, DockerArchiveInspection)
+    assert inspection.repo_tags == []
 
 
 def test_non_archive_is_unrecognized_and_never_raises() -> None:

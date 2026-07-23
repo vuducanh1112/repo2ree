@@ -16,6 +16,7 @@ const {
   fillDemo,
   saveRunScript,
   saveVerifyScript,
+  generateScriptDemo,
   showcaseScroll,
   showcasePanel,
 } = createDemoKit({ stepDelayMs: 350, narrationDelayMs: 900 });
@@ -23,8 +24,10 @@ const {
 test("author, seal, and download a Python hello-world REE", async ({ page }) => {
   // DinD: every workbench builds against a cold (empty) image cache, so the
   // build/activation/experiment steps are full cold pulls + installs. Combined
-  // with the narration delays this needs a much larger budget than warm runs.
-  test.setTimeout(420000);
+  // with the narration delays — and the three script-generation chapters, each a
+  // real inference round-trip plus dwell time — this needs a much larger budget
+  // than warm runs.
+  test.setTimeout(540000);
 
   const sourceArchive = path.resolve(__dirname, "../resources/examples/python-hello-world.tar.gz");
   const archiveEntries = execFileSync("tar", ["-tzf", sourceArchive], { encoding: "utf8" })
@@ -217,7 +220,7 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
     await showcasePanel(page, main.getByText("Run Log").first(), "Review output logs");
   });
 
-  await demoStep(page, "Build runtime", async () => {
+  await demoStep(page, "Generate a build script from the repository", async () => {
     // Decomposed, the inner shell itself is the build runtime — click it to open
     // the Build Runtime page (there is no separate Build panel in this view).
     await page.keyboard.press("Escape").catch(() => {});
@@ -228,6 +231,21 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
       "Open the inner shell: the build runtime the whole REE executes on",
     );
     await expect(main.getByText("Build Runtime", { exact: true })).toBeVisible();
+
+    // Before authoring by hand: ask repo2ree what it can infer from the sources
+    // alone. This reads the immutable upstream tree only — it never runs, never
+    // writes, and never inspects its own output.
+    await generateScriptDemo(page, {
+      action:
+        "Ask repo2ree to infer a build script from the repository — read-only: it scans the acquired sources, nothing is saved",
+      result:
+        "It found the project’s Dockerfile and proposed a complete build. Both a Dockerfile and a requirements.txt are viable here, so this is a decision the author confirms — not a silent default",
+      graph:
+        "Open the decision graph — inference explains itself with the versioned DAG it actually walked, so a proposal is never a black box",
+    });
+  });
+
+  await demoStep(page, "Build runtime", async () => {
     await fillDemo(
       page,
       main.getByLabel("Build script"),
@@ -245,7 +263,7 @@ docker build -t "$IMAGE_NAME:$TAG" "$PROJECT_DIR"
 echo "Exporting image to $RUNTIME_FILE..."
 docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
 `,
-      "Author the whole runtime build directly in REE’s canonical build script — build the image from the project Dockerfile and save it to the workspace",
+      "The proposal is a starting point, not a verdict: the author edits REE’s canonical build script directly — build the image from the project Dockerfile and save it to the workspace",
     );
     await clickDemo(page, main.getByRole("button", { name: "Save build script" }));
 
@@ -329,7 +347,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     );
   });
 
-  await demoStep(page, "Test activation", async () => {
+  await demoStep(page, "Generate an activation script from the built runtime", async () => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
@@ -337,11 +355,25 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       "Open activation test",
     );
     await expect(main.getByText("Activation Run Script", { exact: true })).toBeVisible();
+
+    // The runtime artifact exists and is declared now, so inference inspects the
+    // built image itself rather than guessing from the sources.
+    await generateScriptDemo(page, {
+      action:
+        "Infer the activation script — this time from the built runtime: repo2ree reads the saved image and derives the docker plumbing",
+      result:
+        "The load-and-run wrapper was inferred, but the activation command was not. repo2ree never guesses what proves a runtime is usable — the scaffold is fail-closed and exits 64 until the author fills it in",
+      graph:
+        "The graph shows how the runtime contract was resolved: the declared artifact was inspected, and its single image reference settled the docker branch",
+    });
+  });
+
+  await demoStep(page, "Test activation", async () => {
     await saveRunScript(
       page,
       main.getByRole("textbox", { name: "Activation run script", exact: true }),
       dockerRunScript("python -c \"import sys; print('ok')\"", PYTHON_RUNTIME_PATH),
-      "Author the activation as a self-contained docker run that proves the image starts",
+      "The author supplies the missing piece: a finite command that proves the image starts, in a self-contained docker run",
     );
     await clickDemo(
       page,
@@ -358,7 +390,7 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await showcasePanel(page, main.getByText(/Activation log/i).first(), "Review activation logs");
   });
 
-  await demoStep(page, "Run experiment", async () => {
+  await demoStep(page, "Declare an experiment", async () => {
     await page.keyboard.press("Escape").catch(() => {});
     await clickDemo(
       page,
@@ -375,8 +407,24 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
       page,
       main.getByPlaceholder("smoke-test"),
       "python-hello",
-      "Name the experiment",
+      "Name the experiment — naming it declares it on the REE and settles its reserved script paths",
     );
+  });
+
+  await demoStep(page, "Generate the experiment run script", async () => {
+    // Inference is gated on the experiment being declared: it will only generate
+    // for an experiment the REE actually carries.
+    await generateScriptDemo(page, {
+      action:
+        "Infer this experiment’s run script — it generates only for a declared experiment, and only once a runtime is resolved",
+      result:
+        "Same shape as activation: the runtime plumbing and the result-capture wiring were inferred, while the scientific command — the one claim that must be the author’s — was deliberately left blank",
+      graph:
+        "Activation and experiments share one versioned runtime-contract subgraph; only the leaf that renders the script differs",
+    });
+  });
+
+  await demoStep(page, "Run experiment", async () => {
     await saveRunScript(
       page,
       main.getByRole("textbox", { name: "Experiment run script", exact: true }),

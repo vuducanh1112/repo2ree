@@ -57,7 +57,7 @@ class DockerExperimentRenderer:
             workspace_mount=contract.workspace_mount,
             working_directory=contract.working_directory,
             run_log=run_log,
-            examples=candidate_examples_block(candidates, noun="the experiment"),
+            examples=candidate_examples_block(candidates, noun="experiment"),
         )
         dependencies = [
             CandidateDependency(

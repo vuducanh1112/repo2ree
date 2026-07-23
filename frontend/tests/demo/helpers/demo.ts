@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
+import { GENERATE_STATUS } from "../../e2e/helpers/flow";
 import { stepShot } from "../../screenshot";
 
 /**
@@ -215,6 +216,49 @@ export function createDemoKit(options: DemoKitOptions = {}) {
     );
   }
 
+  /**
+   * Run the page's "Generate from repository" control and narrate the result:
+   * dwell on the status inference reported, then expand the decision graph and
+   * dwell on that too. Inference is read-only — it loads a candidate into the
+   * editor and nothing is saved — so a demo can always run it before the author
+   * writes the script they actually keep.
+   */
+  async function generateScriptDemo(
+    page: Page,
+    narration: { action: string; result: string; graph: string },
+  ) {
+    const main = page.getByRole("main");
+    await clickDemo(
+      page,
+      main.getByRole("button", { name: /Generate from repository/ }).first(),
+      narration.action,
+    );
+
+    // The status line renders only once the round-trip settles.
+    const status = main.getByText(GENERATE_STATUS).first();
+    await expect(status).toBeVisible({ timeout: 30000 });
+    await showcasePanel(page, status, narration.result);
+
+    // The decision graph is collapsed by default — open it and dwell on it.
+    await clickDemo(
+      page,
+      main.getByText("Decision graph", { exact: true }).first(),
+      narration.graph,
+    );
+    const graphBlock = main
+      .locator("details")
+      .filter({ hasText: "Decision graph" })
+      .locator("pre")
+      .first();
+    await expect(graphBlock).toBeVisible();
+    await showcasePanel(
+      page,
+      graphBlock,
+      "The executed decision graph: every branch of the published DAG, with the path inference actually took marked",
+    );
+    await page.waitForTimeout(1200);
+  }
+
   /** Scroll the page by a wheel tick and dwell, so the recording can pan. */
   async function showcaseScroll(page: Page, deltaY = 700) {
     await page.mouse.wheel(0, deltaY);
@@ -237,6 +281,7 @@ export function createDemoKit(options: DemoKitOptions = {}) {
     selectDemo,
     saveRunScript,
     saveVerifyScript,
+    generateScriptDemo,
     showcaseScroll,
     showcasePanel,
   };

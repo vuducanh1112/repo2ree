@@ -36,19 +36,23 @@ in order — driven only through the public surface:
       -> getReeState -> writeReeFile / readReeFile
       -> patchReeIntent (metadata)
       -> startEvaluate -> observeRun -> getEvaluateReport
-      -> writeReeFile (build script) -> startBuild -> observeRun
+      -> generateScriptCandidates (build) -> writeReeFile (build script) -> startBuild -> observeRun
       -> patchReeIntent (declare runtime artifact + hardware BOM)
       -> startSbomGeneration -> observeRun -> startSbomCrossCheck -> observeRun
-      -> writeReeFile (activation script) -> startActivationTest -> observeRun
-      -> patchReeIntent (declare experiment) -> writeReeFile (run + verify)
-         -> startExperiment -> observeRun
+      -> generateScriptCandidates (activation) -> writeReeFile (activation script) -> startActivationTest -> observeRun
+      -> patchReeIntent (declare experiment) -> generateScriptCandidates (experiment)
+         -> writeReeFile (run + verify) -> startExperiment -> observeRun
       -> getReeState (ree_steps overlay) -> getScorecard
       -> sealRee -> downloadReeArchive -> deleteRee
 
-The build, activation, and experiment stages drive a real cold Docker-in-Docker
-runtime build (pandas on ``python:3.11-slim``) inside the workbench — the same
-work the frontend golden path does, so the recording shows the genuine cost of
-authoring a reproducible environment, not a stub.
+The build, activation, and experiment recipe scripts are not hardcoded: each is
+inferred from the repository through ``generateScriptCandidates`` and its
+decision graph printed, then authored (the build script is complete; the
+fail-closed run scaffolds get their one ``set --`` command filled in). Those
+stages then drive a real cold Docker-in-Docker runtime build (pandas on
+``python:3.11-slim``) inside the workbench — the same work the frontend golden
+path does, so the recording shows the genuine cost of authoring a reproducible
+environment, not a stub.
 """
 
 from __future__ import annotations
@@ -171,10 +175,12 @@ def wait_for_run(ree_id: str, run_id: str) -> str:
 # runtime and assert the same "Pandas Hello World" evidence.
 # ------------------------------------------------------------------
 
-# The archive extracts under this top-level directory; the runtime tarball the
-# build produces lands beside the sources.
+# The archive extracts under this top-level directory. Where the *build* writes
+# the runtime tarball, and the image tag it produces, are no longer hardcoded:
+# chapter 7 infers the build script and reads those back out of it — inference
+# owns those conventions now, exactly as an author reading the generated script
+# would.
 PROJECT_DIR = "python_hello_world"
-RUNTIME_PATH = f"{PROJECT_DIR}/runtime.tar"
 
 # REE-owned recipe scripts live under a reserved overlay: a fresh REE seeds the
 # build and activation slots, and naming an experiment settles its own reserved
@@ -185,12 +191,10 @@ RUNTIME_PATH = f"{PROJECT_DIR}/runtime.tar"
 # is kept deliberately slug-safe (no whitespace) so it substitutes directly into
 # the catalog's ``{slug}`` path pattern without needing core's slug rules.
 EXPERIMENT_NAME = "python-hello"
-# Workspace file the experiment run script tees its stdout into; the verify
-# script reads it back and its exit code is the verdict.
-EXPERIMENT_OUTPUT_FILE = "result.txt"
-
-# The built image's tag, shared by build/activation/experiment scripts.
-_IMAGE = "pandas-hello:latest"
+# The inferred experiment scaffold captures stdout to its own ``results/<slug>.log``
+# convention (its ``RUN_LOG``); the verify script reads that back and its exit code
+# is the verdict. Declared as the experiment's output so the baseline is sealed.
+EXPERIMENT_LOG = f"results/{EXPERIMENT_NAME}.log"
 
 _DOCKERFILE = """\
 FROM python:3.11-slim
@@ -216,41 +220,21 @@ if __name__ == "__main__":
     main()
 """
 
-# Build the runtime image from the project and save it as the runtime tarball.
-BUILD_SCRIPT = f"""\
-#!/usr/bin/env sh
-set -eu
-docker build -t {_IMAGE} {PROJECT_DIR}
-docker save {_IMAGE} -o {RUNTIME_PATH}
-"""
+# Phase 1 inference never selects a run command — it emits a fail-closed scaffold
+# with a guarded, empty ``set --``. Authoring an activation or experiment run
+# script is therefore: infer the scaffold, then fill in that one line. These are
+# the commands the author supplies — activation proves the runtime is inhabitable
+# (import the installed dep); the experiment runs the project.
+ACTIVATION_COMMAND = "python -c \"import pandas; print('activation ok')\""
+EXPERIMENT_COMMAND = f"python {PROJECT_DIR}/main.py"
 
-
-def _docker_run_script(command: str, *, capture: str | None = None) -> str:
-    """A self-contained runnable script: load the built runtime if absent, then
-    enter it with its own ``docker run``, bind-mounting the workspace so declared
-    file outputs surface. Mirrors the frontend helper of the same shape."""
-    tee = f' | tee "{capture}"' if capture else ""
-    return f"""\
-#!/usr/bin/env sh
-set -eu
-if ! docker image inspect {_IMAGE} >/dev/null 2>&1; then
-  docker load < "{RUNTIME_PATH}"
-fi
-docker run --rm -v "$(pwd):/workspace" -w /workspace {_IMAGE} {command}{tee}
-"""
-
-
-# Activation proves the built runtime is inhabitable — import the installed dep.
-ACTIVATION_SCRIPT = _docker_run_script("python -c \"import pandas; print('activation ok')\"")
-
-# The experiment runs the project and captures its stdout as the author baseline.
-EXPERIMENT_RUN_SCRIPT = _docker_run_script(f"python {PROJECT_DIR}/main.py", capture=EXPERIMENT_OUTPUT_FILE)
-
-# The verify script owns the claim: the captured stdout contains the expected line.
+# The verify script owns the claim: the captured stdout contains the expected
+# line. It reads the scaffold's own RUN_LOG (EXPERIMENT_LOG), declared as the
+# experiment's output.
 EXPERIMENT_VERIFY_SCRIPT = f"""\
 #!/usr/bin/env sh
 set -eu
-grep -Fq "Pandas Hello World" "{EXPERIMENT_OUTPUT_FILE}"
+grep -Fq "Pandas Hello World" "{EXPERIMENT_LOG}"
 """
 
 
@@ -288,6 +272,82 @@ def run_stage(ree_id: str, method: str, path: str, payload: dict, *, what: str) 
     status = wait_for_run(ree_id, run_id)
     check(status == "succeeded", f"{what} did not succeed (settled {status})")
     return started
+
+
+# ------------------------------------------------------------------
+# Script inference — generate the reserved recipe scripts from the repository
+# rather than hardcoding them. Inference is read-only: it proposes candidate
+# bytes and the decision graph that produced them, and writes nothing. A chosen
+# candidate becomes a script only when the author saves it via writeReeFile.
+# ------------------------------------------------------------------
+
+
+def generate_scripts(ree_id: str, targets: list[dict]) -> dict:
+    """Run read-only inference for the requested targets and return the report."""
+    return call("POST", f"/api/v1/rees/{ree_id}/script-inferences:generate", {"targets": targets})
+
+
+def _inference_result(report: dict, kind: str, experiment_name: str | None = None) -> dict:
+    """The report's result for one target (empty dict if absent)."""
+    for result in report.get("results", []):
+        target = result.get("target", {})
+        if target.get("kind") != kind:
+            continue
+        if experiment_name is not None and target.get("experiment_name") != experiment_name:
+            continue
+        return result
+    return {}
+
+
+def summarize_decision(report: dict, kind: str, experiment_name: str | None = None) -> dict:
+    """Print the target's decision graph — the executed DAG path and outcome —
+    then return its result. This is the same trace the frontend renders; showing
+    it proves inference explains itself, whether or not it produced a script."""
+    result = _inference_result(report, kind, experiment_name)
+    check(bool(result), f"inference returned no result for {kind}")
+    decision = result["decision"]
+    path = " -> ".join(
+        step["node_id"] + (f"[{step['branch']}]" if step.get("branch") else "") for step in decision["steps"]
+    )
+    print(f"    decision {decision['dag']} v{decision['version']} => {result['status']}")
+    print(f"    path: {path}")
+    for warning in result.get("warnings", []):
+        if warning.get("blocking"):
+            print(f"    blocking: {warning['message']}")
+    return result
+
+
+def inferred_script(report: dict, kind: str, *, rule: str | None = None, experiment_name: str | None = None) -> str:
+    """The body of the target's first non-empty candidate (optionally the one a
+    given inference rule produced); empty string when nothing was inferred."""
+    result = _inference_result(report, kind, experiment_name)
+    for candidate in result.get("candidates", []):
+        body = candidate.get("body")
+        if not body:
+            continue
+        if rule is not None and candidate.get("inference_rule") != rule:
+            continue
+        return body
+    return ""
+
+
+def shell_value(body: str, name: str) -> str:
+    """Read a ``NAME=value`` assignment back out of a generated shell script — how
+    an author learns where the inferred build writes its runtime, or where the
+    experiment scaffold captures its log."""
+    for line in body.splitlines():
+        if line.startswith(f"{name}="):
+            tokens = shlex.split(line[len(name) + 1 :])
+            return tokens[0] if tokens else ""
+    return ""
+
+
+def author_command(body: str, command: str) -> str:
+    """Fill the scaffold's single guarded, empty ``set --`` line with the run
+    command — the one edit Phase 1 deliberately leaves to the author."""
+    anchor = "\nset --\n"
+    check(body.count(anchor) == 1, "expected exactly one unconfigured 'set --' line in the scaffold")
+    return body.replace(anchor, f"\nset -- {command}\n", 1)
 
 
 # ==================================================================
@@ -400,16 +460,28 @@ def run() -> None:
     check(isinstance(report, dict) and report, "evaluate produced no report")
     ok("reproducibility report generated")
 
-    chapter("7. Build the runtime")
-    note("author the reserved build script, then run it — a real cold docker build in the workbench")
-    put_file(ree_id, build_script_path, BUILD_SCRIPT)
+    chapter("7. Infer and run the build script")
+    note("generateScriptCandidates reads the immutable source and proposes the reserved build script — writing nothing")
+    build_report = generate_scripts(ree_id, [{"kind": "build"}])
+    summarize_decision(build_report, "build")
+    # The repo carries both a Dockerfile and a requirements.txt, so inference
+    # offers two runtime strategies (a decision, not a default). This REE is a
+    # container build — take the Dockerfile candidate.
+    build_script = inferred_script(build_report, "build", rule="single-project-root-dockerfile-v1")
+    check(build_script, "docker build strategy was not inferred")
+    # The generated script owns the runtime-artifact convention; read it back out
+    # rather than hardcoding where the build writes.
+    runtime_artifact = shell_value(build_script, "RUNTIME_ARTIFACT")
+    check(runtime_artifact, "generated build script declares no RUNTIME_ARTIFACT")
+    note(f"the inferred build tags its image and saves the runtime tarball to {runtime_artifact}")
+    put_file(ree_id, build_script_path, build_script)
     note("read the reserved script back (readReeFile returns octet-stream, not JSON)")
     rc, out, err = _run_curl([f"{BASE_URL}/api/v1/rees/{ree_id}/files/raw?path={build_script_path}"])
-    check(rc == 0 and out.decode() == BUILD_SCRIPT, f"build script did not round-trip: {_curl_detail(rc, err)}")
+    check(rc == 0 and out.decode() == build_script, f"build script did not round-trip: {_curl_detail(rc, err)}")
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/build-runtime", {}, what="build")
     built = call("GET", f"/api/v1/rees/{ree_id}/state")
-    check(RUNTIME_PATH in {f["path"] for f in built.get("files", [])}, "runtime tarball not produced")
-    ok(f"runtime image built and saved to {RUNTIME_PATH}")
+    check(runtime_artifact in {f["path"] for f in built.get("files", [])}, "runtime tarball not produced")
+    ok(f"runtime image built and saved to {runtime_artifact}")
 
     chapter("8. Declare the runtime artifact and hardware BOM")
     note("bind the produced tarball as the runtime, and record the machine it was built on")
@@ -418,12 +490,12 @@ def run() -> None:
         f"/api/v1/rees/{ree_id}/intent",
         {
             "ree_intent_patch": {
-                "runtime": RUNTIME_PATH,
+                "runtime": runtime_artifact,
                 "hardware_description": {"cpus": {"Intel Core i9-14900K": {"vendor": "Intel", "cores_per_cpu": 24}}},
             }
         },
     )
-    check(declared["ree_intent"]["runtime"] == RUNTIME_PATH, "runtime artifact not declared")
+    check(declared["ree_intent"]["runtime"] == runtime_artifact, "runtime artifact not declared")
     check(
         "Intel Core i9-14900K" in declared["ree_intent"]["hardware_description"]["cpus"],
         "hardware BOM entry not recorded",
@@ -436,21 +508,27 @@ def run() -> None:
         ree_id,
         "POST",
         f"/api/v1/rees/{ree_id}/generate-sbom",
-        {"produced_runtime_path": RUNTIME_PATH},
+        {"produced_runtime_path": runtime_artifact},
         what="SBOM generation",
     )
     note("join the SBOM against the evaluate report — do the declared deps appear in the runtime?")
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/cross-check-sbom", {}, what="SBOM cross-check")
     ok("SBOM generated and cross-checked against the scanned dependencies")
 
-    chapter("10. Prove activation")
-    note("activation is the required run that proves the built runtime is inhabitable")
-    put_file(ree_id, activation_script_path, ACTIVATION_SCRIPT)
+    chapter("10. Infer the activation scaffold, then author its command")
+    note("with the runtime built and declared, inference resolves the runtime contract and emits a scaffold")
+    activation_report = generate_scripts(ree_id, [{"kind": "activation_run"}])
+    summarize_decision(activation_report, "activation_run")
+    activation_scaffold = inferred_script(activation_report, "activation_run")
+    check(activation_scaffold, "activation inference produced no scaffold")
+    note("Phase 1 never selects the run command; the author fills the guarded 'set --' line and saves")
+    activation_script = author_command(activation_scaffold, ACTIVATION_COMMAND)
+    put_file(ree_id, activation_script_path, activation_script)
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/activation-test", {}, what="activation")
     ok("runtime activates: pandas imports inside the sealed image")
 
-    chapter("11. Run an experiment")
-    note("declare a named experiment; naming it settles its reserved run-script path")
+    chapter("11. Infer the experiment scaffold, then run it")
+    note("declare a named experiment; naming it settles its run-script path, and its declared output is sealed")
     experiment_declared = call(
         "PATCH",
         f"/api/v1/rees/{ree_id}/intent",
@@ -460,7 +538,7 @@ def run() -> None:
                     {
                         "name": EXPERIMENT_NAME,
                         "verify_script": experiment_verify_script_path,
-                        "output_paths": [EXPERIMENT_OUTPUT_FILE],
+                        "output_paths": [EXPERIMENT_LOG],
                     }
                 ]
             }
@@ -471,8 +549,20 @@ def run() -> None:
         settled_run_script == experiment_run_script_path,
         "experiment run-script path did not settle to the discovered pattern",
     )
-    note("author the run script (captures stdout) and the verify script (owns the claim)")
-    put_file(ree_id, experiment_run_script_path, EXPERIMENT_RUN_SCRIPT)
+    note("infer the experiment scaffold (gated on the declaration above), then author its scientific command")
+    experiment_report = generate_scripts(ree_id, [{"kind": "experiment_run", "experiment_name": EXPERIMENT_NAME}])
+    summarize_decision(experiment_report, "experiment_run", EXPERIMENT_NAME)
+    experiment_scaffold = inferred_script(experiment_report, "experiment_run", experiment_name=EXPERIMENT_NAME)
+    check(experiment_scaffold, "experiment inference produced no scaffold")
+    # The scaffold captures to its own RUN_LOG; it must match the output we
+    # declared so the sealed baseline is the file the verify script reads.
+    check(
+        shell_value(experiment_scaffold, "RUN_LOG") == EXPERIMENT_LOG,
+        "experiment scaffold RUN_LOG did not match the declared output",
+    )
+    experiment_run_script = author_command(experiment_scaffold, EXPERIMENT_COMMAND)
+    note("author the run script (its command; capture is inferred) and the verify script (owns the claim)")
+    put_file(ree_id, experiment_run_script_path, experiment_run_script)
     put_file(ree_id, experiment_verify_script_path, EXPERIMENT_VERIFY_SCRIPT)
     run_stage(
         ree_id,
@@ -518,8 +608,9 @@ def run() -> None:
     entries = zipfile.ZipFile(io.BytesIO(data)).namelist()
     check(len(entries) > 0, "sealed archive is empty")
     # The experiment declared an output, so its baseline rides along in the bundle
-    # — the same evidence the frontend golden path asserts on its downloaded zip.
-    result_entry = f"ree/results/{EXPERIMENT_NAME}/{EXPERIMENT_OUTPUT_FILE}"
+    # — the store mirrors the workspace layout, so the inferred results/<slug>.log
+    # capture nests under the per-experiment prefix.
+    result_entry = f"ree/results/{EXPERIMENT_NAME}/{EXPERIMENT_LOG}"
     check(result_entry in entries, f"experiment baseline {result_entry} missing from the bundle")
     ok(f"downloaded sealed archive: {len(entries)} entries, {len(data)} bytes")
 

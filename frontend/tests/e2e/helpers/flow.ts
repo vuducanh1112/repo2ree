@@ -89,9 +89,70 @@ export function main(page: Page) {
   return page.getByRole("main");
 }
 
+/**
+ * The three outcomes the "Generate from repository" control reports. Matching
+ * any of them is how a spec knows the inference round-trip settled — the status
+ * line renders only once the mutation resolves.
+ */
+export const GENERATE_STATUS = /Loaded a generated|could be inferred yet|Generation failed/;
+
+/**
+ * Run read-only script inference from the generate control on the docked page,
+ * then expand the decision graph it renders.
+ *
+ * Inference never writes: it loads a candidate into the editor (leaving it
+ * dirty) and explains itself with the executed decision DAG. The graph is
+ * rendered whether or not a candidate was produced, so callers can assert on it
+ * either way. Returns the status message and the graph text.
+ */
+export async function generateScript(page: Page): Promise<{ message: string; graph: string }> {
+  await stepShot(page, "generate-script", "before");
+  const content = main(page);
+  await content
+    .getByRole("button", { name: /Generate from repository/ })
+    .first()
+    .click();
+
+  const status = content.getByText(GENERATE_STATUS).first();
+  // A real backend round-trip: rescan + DAG walk (and, before the artifact
+  // exists, a build-script regeneration), so allow well past the default.
+  await expect(status).toBeVisible({ timeout: 30000 });
+  const message = (await status.textContent()) ?? "";
+
+  // The decision graph is collapsed by default — open it and read it back.
+  const summary = content.getByText("Decision graph", { exact: true }).first();
+  await expect(summary).toBeVisible();
+  await summary.click();
+  const graphBlock = content
+    .locator("details")
+    .filter({ hasText: "Decision graph" })
+    .locator("pre")
+    .first();
+  await expect(graphBlock).toBeVisible();
+  const graph = (await graphBlock.textContent()) ?? "";
+
+  await stepShot(page, "generate-script", "after");
+  return { message, graph };
+}
+
 function waitForIntentPatch(page: Page) {
   return page.waitForResponse(
     (res) => res.url().includes("/intent") && res.request().method() === "PATCH",
+  );
+}
+
+/**
+ * Await the workspace-file write a script save always performs.
+ *
+ * Prefer this over {@link waitForIntentPatch} for a save whose intent PATCH is
+ * *conditional* — the experiment page only re-declares a script path when it
+ * differs from the one already on the intent, so once the backend has settled
+ * that path (naming an experiment does exactly that) a save writes the file and
+ * patches nothing. The PUT is the signal that always fires.
+ */
+function waitForFileWrite(page: Page) {
+  return page.waitForResponse(
+    (res) => res.url().includes("/files/content") && res.request().method() === "PUT",
   );
 }
 
@@ -343,7 +404,12 @@ async function selectRuntimeArtifact(page: Page, producedRuntimePath: string) {
     .click();
   const producedRuntime = page.getByRole("button", { name: producedRuntimePath });
   await expect(producedRuntime).toBeVisible({ timeout: 20000 });
+  // Declaring the runtime is a debounced intent PATCH. Anything that asks the
+  // backend about the runtime next (script inference, most obviously) must not
+  // race it, so settle the declaration here rather than in each caller.
+  const runtimeDeclared = waitForIntentPatch(page);
   await producedRuntime.click();
+  await runtimeDeclared;
 }
 
 /** Add a hardware BOM entry (a CPU component with a device model). */
@@ -433,7 +499,18 @@ export async function testActivation(page: Page, runScript: string) {
  */
 export async function runExperiment(
   page: Page,
-  experiment: { name: string; runScript: string; expectedStdout: string },
+  experiment: {
+    name: string;
+    runScript: string;
+    expectedStdout: string;
+    /**
+     * Run script inference for this experiment once it is named (the gate the
+     * backend needs to resolve it) and assert it produced a scaffold, before
+     * authoring the real run script over it. Returns nothing — the assertions
+     * live here so the caller keeps one step.
+     */
+    generateFirst?: boolean;
+  },
 ) {
   await stepShot(page, "run-experiment", "before");
   await openPort(page, "Experiments");
@@ -449,13 +526,28 @@ export async function runExperiment(
   await main(page).getByPlaceholder("smoke-test").fill(experiment.name);
   await nameSaved;
 
-  const runScriptDeclared = waitForIntentPatch(page);
+  if (experiment.generateFirst) {
+    // The experiment is declared now, so inference can resolve it and the
+    // already-built runtime. Phase 1 never picks the scientific command, so the
+    // scaffold arrives fail-closed — the author writes the command below.
+    const { message, graph } = await generateScript(page);
+    expect(message).toMatch(/Loaded a generated experiment run script/);
+    expect(graph).toContain("experiment-run-inference");
+    await expect(
+      main(page).getByRole("textbox", { name: "Experiment run script", exact: true }),
+    ).toHaveValue(/exit 64/);
+  }
+
+  // Naming the experiment already settled its reserved run-script path on the
+  // intent, so this save writes the file and re-declares nothing — wait on the
+  // write itself rather than an intent PATCH that legitimately never fires.
+  const runScriptWritten = waitForFileWrite(page);
   await saveRunScript(
     page,
     main(page).getByRole("textbox", { name: "Experiment run script", exact: true }),
     experiment.runScript,
   );
-  await runScriptDeclared;
+  await runScriptWritten;
 
   // Saving the verify script also declares its fallback reserved path on the
   // experiment intent. Arm the wait before the save so the run can't race ahead

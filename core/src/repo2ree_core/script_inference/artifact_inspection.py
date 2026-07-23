@@ -7,6 +7,12 @@ loading the whole (possibly multi-hundred-MB) image into memory and never
 extracting to disk — and applies the same bounded-size and safe-name spirit as
 ``storage/extract.py``.
 
+Both ``docker save`` shapes are recognized: the legacy layout (a root
+``manifest.json``, the default with dockerd's own image store) and the OCI layout
+(a root ``index.json`` + ``blobs/``, what a containerd-image-store daemon or
+``buildx --output type=oci`` emits). Both classify as a Docker archive; only the
+member layout differs, so the runtime-command fork downstream is unchanged.
+
 This is pure evidence extraction. Selecting a command is a downstream decision;
 inspection only reports what the archive declares.
 """
@@ -63,10 +69,10 @@ ArtifactInspection = DockerArchiveInspection | VenvArchiveInspection | Unrecogni
 def inspect_runtime_artifact(stream: BinaryIO) -> ArtifactInspection:
     """Classify a runtime archive from a seekable binary stream.
 
-    Recognizes an uncompressed Docker ``docker save`` tar (has ``manifest.json``)
-    and a gzipped venv tarball (contains a ``pyvenv.cfg``). Anything else — not a
-    tar, unreadable, or an unrecognized shape — is ``unrecognized`` and never
-    raises.
+    Recognizes both ``docker save`` layouts — legacy (root ``manifest.json``) and
+    OCI (root ``index.json`` + ``blobs/``) — and a gzipped venv tarball (contains a
+    ``pyvenv.cfg``). Anything else — not a tar, unreadable, or an unrecognized
+    shape — is ``unrecognized`` and never raises.
     """
     try:
         # "r:*" transparently handles the venv's gzip and the image's plain tar.
@@ -74,6 +80,8 @@ def inspect_runtime_artifact(stream: BinaryIO) -> ArtifactInspection:
             names = tar.getnames()
             if "manifest.json" in names:
                 return _inspect_docker(tar)
+            if "index.json" in names:
+                return _inspect_oci(tar)
             cfg_name = next((name for name in names if _is_pyvenv_cfg(name)), None)
             if cfg_name is not None:
                 return VenvArchiveInspection(restore_dir=_venv_restore_dir(tar, cfg_name))
@@ -150,6 +158,94 @@ def _inspect_docker(tar: tarfile.TarFile) -> ArtifactInspection:
         argv, shell_command = _config_command(config)
 
     return DockerArchiveInspection(repo_tags=repo_tags, argv=argv, shell_command=shell_command)
+
+
+# Annotation keys an OCI ``index.json`` carries an image's reference under, most
+# specific first: containerd (dockerd's OCI export) records the full ``name:tag``;
+# the OCI standard key often holds just the tag. One name per manifest descriptor,
+# so a single-image export yields a single ref (not a false "multiple images").
+_OCI_IMAGE_NAME_ANNOTATIONS = ("io.containerd.image.name", "org.opencontainers.image.ref.name")
+# Bound on how deep a nested OCI index (multi-arch) is followed to an image
+# manifest — a self-referential index cannot spin this into an unbounded walk.
+_MAX_OCI_INDEX_DEPTH = 4
+
+
+def _inspect_oci(tar: tarfile.TarFile) -> ArtifactInspection:
+    """Classify an OCI-layout ``docker save`` tar (root ``index.json`` + blobs).
+
+    Reads the image references off the index's manifest annotations and follows
+    one manifest (descending through a multi-arch sub-index if present) to its
+    config blob for the declared Entrypoint/Cmd. Never reads a layer blob.
+    """
+    index = _read_json_member(tar, "index.json")
+    if not isinstance(index, dict):
+        return UnrecognizedArtifact(reason="OCI index.json is malformed")
+    manifests = index.get("manifests")
+    if not isinstance(manifests, list) or not manifests:
+        return UnrecognizedArtifact(reason="OCI index.json lists no manifests")
+
+    repo_tags = _dedupe(name for descriptor in manifests if (name := _oci_ref_name(descriptor)) is not None)
+
+    argv: list[str] | None = None
+    shell_command: str | None = None
+    image_manifest = _resolve_oci_image_manifest(tar, manifests)
+    if image_manifest is not None:
+        config_descriptor = image_manifest.get("config")
+        if isinstance(config_descriptor, dict):
+            config = _read_blob_json(tar, config_descriptor.get("digest"))
+            argv, shell_command = _config_command(config)
+
+    return DockerArchiveInspection(repo_tags=repo_tags, argv=argv, shell_command=shell_command)
+
+
+def _oci_ref_name(descriptor: object) -> str | None:
+    if not isinstance(descriptor, dict):
+        return None
+    annotations = descriptor.get("annotations")
+    if not isinstance(annotations, dict):
+        return None
+    for key in _OCI_IMAGE_NAME_ANNOTATIONS:
+        value = annotations.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _resolve_oci_image_manifest(
+    tar: tarfile.TarFile, descriptors: list[object], _depth: int = 0
+) -> dict[str, object] | None:
+    """The first image manifest (a blob with a ``config``) reachable from these
+    descriptors, descending through nested indexes up to a bounded depth."""
+    if _depth > _MAX_OCI_INDEX_DEPTH:
+        return None
+    for descriptor in descriptors:
+        if not isinstance(descriptor, dict):
+            continue
+        blob = _read_blob_json(tar, descriptor.get("digest"))
+        if not isinstance(blob, dict):
+            continue
+        if isinstance(blob.get("config"), dict):
+            return blob
+        nested = blob.get("manifests")
+        if isinstance(nested, list):
+            found = _resolve_oci_image_manifest(tar, nested, _depth + 1)
+            if found is not None:
+                return found
+    return None
+
+
+def _read_blob_json(tar: tarfile.TarFile, digest: object) -> object:
+    """Read and parse an OCI blob addressed by its ``<algo>:<hex>`` digest.
+
+    The digest names the member ``blobs/<algo>/<hex>``; reject anything that is
+    not a plain algo/hex pair so a crafted digest cannot escape ``blobs/``.
+    """
+    if not isinstance(digest, str) or ":" not in digest:
+        return None
+    algo, _, hexdigest = digest.partition(":")
+    if not algo.isalnum() or not hexdigest.isalnum():
+        return None
+    return _read_json_member(tar, f"blobs/{algo}/{hexdigest}")
 
 
 def _config_command(config: object) -> tuple[list[str] | None, str | None]:

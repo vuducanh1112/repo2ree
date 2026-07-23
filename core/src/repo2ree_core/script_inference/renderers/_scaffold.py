@@ -30,7 +30,8 @@ def experiment_log_path(experiment_name: str) -> str:
 
 def candidate_examples_block(candidates: list[ScriptCommandCandidate], *, noun: str) -> str:
     """Commented ``set --`` examples for the detected candidates, or a note that
-    none were found. ``noun`` is 'activation' or 'the experiment'."""
+    none were found. ``noun`` is the bare runnable kind ('activation' /
+    'experiment'); it reads directly after 'the', so it carries no article."""
     if not candidates:
         return (
             f"# No command was detected in the runtime, so none is suggested. Define the {noun} command\n"

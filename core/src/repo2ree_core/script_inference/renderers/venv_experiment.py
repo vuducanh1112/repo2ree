@@ -51,7 +51,7 @@ class VenvExperimentRenderer:
             artifact_path=contract.artifact_path,
             venv_restore_dir=contract.venv_restore_dir,
             run_log=run_log,
-            examples=candidate_examples_block([], noun="the experiment"),
+            examples=candidate_examples_block([], noun="experiment"),
         )
         dependencies = [
             CandidateDependency(

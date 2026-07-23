@@ -2,6 +2,9 @@ import { expect, test } from "./helpers/fixtures";
 import {
   buildRuntime,
   EXPERIMENT_OUTPUT_FILE,
+  generateScript,
+  main,
+  openPort,
   provisionWorkbench,
   pythonPipHelloWorld,
   releaseWorkbench,
@@ -32,7 +35,10 @@ import {
 
 const WORKBENCH_IMAGE = "docker.io/library/python:3.11-slim";
 const PROJECT_DIR = "python_pip_hello_world";
-const RUNTIME_PATH = "runtime-venv.tar.gz";
+// Packed inside the project dir, not at the workspace root: the declared runtime
+// must live within the logical project root, or script inference refuses to
+// resolve a runtime contract for it (runtime_outside_project_root).
+const RUNTIME_PATH = `${PROJECT_DIR}/runtime-venv.tar.gz`;
 
 // Where the live venv lives inside the bench. Deliberately OUTSIDE the
 // workspace: the workspace is snapshot-hashed on every intent PATCH, and a
@@ -102,8 +108,46 @@ test.describe("REE pip pipeline", () => {
       await runEvaluate(page);
     });
 
+    await test.step("generate a build script from the repository", async () => {
+      // The docker-less inference branch: no Dockerfile, so the only viable
+      // strategy is pip-into-a-venv packed as the runtime artifact.
+      await openPort(page, "Build");
+      await expect(main(page).getByText("Build Runtime", { exact: true })).toBeVisible();
+
+      const { message, graph } = await generateScript(page);
+      expect(message).toMatch(/Loaded a generated build script/);
+      expect(graph).toContain("build-inference");
+      expect(graph).toContain("root-pip-requirements-v1");
+
+      // A venv build, not a container one — the pip renderer, not the docker one.
+      await expect(page.getByLabel("Build script")).toHaveValue(/python -m venv/);
+      await expect(page.getByLabel("Build script")).not.toHaveValue(/docker build/);
+    });
+
     await test.step("build runtime via pip", async () => {
       await buildRuntime(page, buildScript, RUNTIME_PATH);
+    });
+
+    await test.step("generate an activation script from the packed venv", async () => {
+      // The declared artifact is a real packed venv, so inspection classifies it
+      // as a venv runtime and the venv scaffold renders — restore-and-run rather
+      // than docker load. The venv records its own build directory, so the
+      // restore path is recovered rather than assumed.
+      await openPort(page, "Activation");
+      await expect(main(page).getByText("Activation Run Script", { exact: true })).toBeVisible();
+
+      const { message, graph } = await generateScript(page);
+      expect(message).toMatch(/Loaded a generated activation script/);
+      expect(graph).toContain("activation-run-inference");
+
+      const editor = main(page).getByRole("textbox", {
+        name: "Activation run script",
+        exact: true,
+      });
+      await expect(editor).toHaveValue(/tar -xzf/);
+      await expect(editor).toHaveValue(new RegExp(`VENV_DIR=${VENV_DIR}`));
+      // Fail-closed like every Phase 1 run scaffold.
+      await expect(editor).toHaveValue(/exit 64/);
     });
 
     await test.step("test activation", async () => {

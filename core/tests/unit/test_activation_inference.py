@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from scriptinfer_helpers import MemoryAccessor, docker_archive, not_an_archive, venv_archive
+from scriptinfer_helpers import MemoryAccessor, docker_archive, not_an_archive, oci_archive, venv_archive
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.script_inference import ScriptTargetSelector, TargetInferenceResult, infer_scripts
@@ -55,6 +55,26 @@ def test_docker_runtime_yields_confirmation_required_scaffold(tmp_path: Path) ->
     assert "exit 64" in body
     assert "#   set -- python main.py" in body
     assert "activation_command_missing" in _codes(result)
+
+
+def test_oci_runtime_resolves_like_a_legacy_docker_archive(tmp_path: Path) -> None:
+    # A containerd-image-store ``docker save`` writes an OCI archive (no
+    # manifest.json); it must resolve the same docker runtime contract so
+    # activation is inferred rather than falling to not_inferred.
+    _tree(tmp_path, {"Dockerfile": "FROM x\n", "main.py": "y"})
+    result = _activation(
+        tmp_path,
+        runtime=_DOCKER_RUNTIME,
+        files={_DOCKER_RUNTIME: oci_archive("ree-runtime:demo", cmd=["python", "main.py"])},
+    )
+    assert result.status == "needs_input"
+    candidate = result.candidates[0]
+    assert candidate.inference_rule == "docker-runtime-activation-v1"
+    body = candidate.body or ""
+    assert "IMAGE_TAG=ree-runtime:demo" in body
+    # The OCI image's declared command surfaces as a commented example, exactly
+    # like the legacy path.
+    assert "#   set -- python main.py" in body
 
 
 def test_venv_runtime_yields_venv_scaffold(tmp_path: Path) -> None:
