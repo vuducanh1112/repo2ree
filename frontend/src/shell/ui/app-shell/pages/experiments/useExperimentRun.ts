@@ -73,6 +73,10 @@ export function useExperimentRun({
   const { runsApi, ensureReeId } = useApiRuntime();
   const [target, setTarget] = useState<RunTarget | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+  // When the click happened, for the window before the backend has a run to
+  // observe. Set synchronously so the control and the result panel react on the
+  // click's own frame rather than after the start round-trip.
+  const [startingAt, setStartingAt] = useState<string | null>(null);
 
   // Switching experiments (or returning to the catalog) abandons the previous
   // run's result — each experiment shows only its own run. experimentName is the
@@ -81,6 +85,7 @@ export function useExperimentRun({
   useEffect(() => {
     setTarget(null);
     setStartError(null);
+    setStartingAt(null);
   }, [experimentName]);
 
   const runQuery = useReeRunQuery(target?.reeId, target?.runId);
@@ -90,6 +95,10 @@ export function useExperimentRun({
     if (!experimentName) return;
     setTarget(null);
     setStartError(null);
+    // Before any await: flushing the draft and creating the run together take
+    // seconds, and until one of them lands there is no run to observe. Marking
+    // the start here is what makes the button and log panel respond on click.
+    setStartingAt(new Date().toISOString());
     void (async () => {
       try {
         // Flush any pending debounced draft edits (e.g. the script the user
@@ -106,6 +115,8 @@ export function useExperimentRun({
         });
       } catch {
         setStartError("Failed to start run");
+      } finally {
+        setStartingAt(null);
       }
     })();
   }, [ensureReeId, reeId, experimentName, runsApi, onBeforeRun]);
@@ -125,7 +136,22 @@ export function useExperimentRun({
         logLines: [],
       };
     }
-    if (!target) return null;
+    // The start is in flight: report the run as created so the surface shows it
+    // beginning. There is no run id yet, so nothing is polled and no logs exist
+    // — the real target replaces this the moment the backend hands one back.
+    if (!target) {
+      if (!startingAt) return null;
+      return {
+        reeId,
+        runId: "",
+        status: "created",
+        outputs: null,
+        failure: null,
+        error: null,
+        startedAt: startingAt,
+        logLines: [],
+      };
+    }
     const run = runQuery.data;
     const status = run?.status ?? target.status;
     const isTerminal = TERMINAL_STATUSES.includes(status);
@@ -139,7 +165,7 @@ export function useExperimentRun({
       startedAt: target.startedAt,
       logLines: logsQuery.data?.lines ?? [],
     };
-  }, [startError, target, runQuery.data, logsQuery.data, reeId]);
+  }, [startError, startingAt, target, runQuery.data, logsQuery.data, reeId]);
 
   const isRunning = runState !== null && !TERMINAL_STATUSES.includes(runState.status);
 

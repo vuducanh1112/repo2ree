@@ -4,21 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.contracts import ERROR_RESPONSES, RunSummary
-from repo2ree_api.deps import workbench_manager
 from repo2ree_api.run_management import (
     run_summary,
     start_single_command_run,
 )
-from repo2ree_core.experiment.resolve import (
-    ExperimentNotFoundError,
-    RunnableResolutionError,
-    resolve_experiment_runnable,
-)
-from repo2ree_core.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import RunExperimentArgs, RunExperimentCommand
 
 # ================================================
@@ -67,41 +60,17 @@ def create_experiment_run(
 # ================================================
 
 
-def _resolve_experiment_preflight(ree_id: str, experiment_name: str) -> None:
-    """Reject a run that cannot start, with a synchronous 4xx instead of a failed run.
-
-    Advisory only: the intent can change between this check and dispatch, so the
-    in-workbench handler applies the same core rules authoritatively.
-    """
-    handle = workbench_manager.lookup(ree_id)
-    if handle is None:
-        raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
-
-    try:
-        metadata = workbench_manager.get_ree_metadata(handle)
-    except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    try:
-        ree = WorkspaceMetadata.model_validate(metadata).ree_intent
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid REE intent: {exc}") from exc
-
-    try:
-        resolve_experiment_runnable(ree, experiment_name)
-    except ExperimentNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except RunnableResolutionError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
 def _create_experiment_run_state(
     ree_id: str,
     experiment_name: str,
     idempotency_key: str | None = None,
 ) -> dict[str, Any]:
-    _resolve_experiment_preflight(ree_id, experiment_name)
-
+    # No host-side resolution preflight: reading the intent costs a synchronous
+    # round-trip into the workbench (~600ms on the click path) to re-check rules
+    # the in-workbench handler applies authoritatively anyway — the intent can
+    # change between the two, so only the workbench's verdict ever counted. An
+    # unresolvable experiment now surfaces as a failed run carrying the same
+    # message, exactly as the activation route already behaved.
     return start_single_command_run(
         ree_id,
         operation="experiment",

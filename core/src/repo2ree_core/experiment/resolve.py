@@ -1,10 +1,10 @@
 """Pure resolution rules for starting a runnable — the single source of truth.
 
-Both consumers of core apply these rules: the API preflight (host-side, for a
-synchronous 4xx before a run is created) and the in-workbench handlers
-(authoritative — the intent can change between preflight and dispatch, so the
-preflight is advisory). Keeping the rules in one function is what stops the
-two sides drifting.
+The in-workbench handlers are the only consumer: they read the intent from the
+workbench itself, so their verdict is authoritative. The API deliberately does
+not pre-check these rules host-side — that would cost a round-trip into the
+workbench on the click path for an answer the intent could invalidate before
+dispatch anyway. An unresolvable runnable surfaces as a failed run.
 """
 
 from __future__ import annotations
