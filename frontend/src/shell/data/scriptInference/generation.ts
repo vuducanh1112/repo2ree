@@ -1,7 +1,7 @@
 // The one shape a generated script takes, whatever target produced it. Build and
 // the run scaffolds (activation / experiment) differ only in how they are
-// inferred, not in what the editor and the generate control need back, so both
-// selectors return this and one control renders it.
+// inferred, not in what the editor and the generate control need back, so one
+// selector returns this and one control renders it.
 
 export type ScriptApplication = "automatic_allowed" | "confirmation_required" | "unavailable";
 
@@ -17,7 +17,7 @@ export interface GeneratedScript {
   // strategies — a decision, not a default).
   alternativeCount: number;
   // Blocking warning messages the author must resolve before the script is
-  // usable. Empty for build, which surfaces no blocking warnings yet.
+  // usable, e.g. two Dockerfiles at the project root or an unbuilt runtime.
   blockingMessages: string[];
 }
 

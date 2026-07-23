@@ -1,7 +1,6 @@
 import type { ReeSpec } from "../ree/ReeSpec";
 import { planManualArtifactCompletion } from "../workspace/manualArtifactUpdatePlanning";
 import {
-  isTerminalReeRunFailure,
   planStepRunCompletion,
   planTerminalReeRunFailure,
   type StepRunCompletionPlan,
@@ -34,7 +33,6 @@ export function planManualArtifactUpdateSuccess(
 
 export {
   buildStepRunParams,
-  isTerminalReeRunFailure,
   planStepRunCompletion,
   planTerminalReeRunFailure,
   shouldRefreshWorkspaceAfterStep,

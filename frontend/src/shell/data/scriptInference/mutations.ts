@@ -2,14 +2,8 @@ import type { DecisionDag, DecisionTrace } from "@shell/infra/api/apiTypes";
 import { useMutation } from "@tanstack/react-query";
 import { useApiRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
-import { selectBuildCandidate, selectBuildDag, selectBuildTrace } from "./buildCandidate";
+import { type ScriptTargetKind, selectCandidate, selectDag, selectTrace } from "./candidate";
 import type { ScriptGeneration } from "./generation";
-import {
-  type RunTargetKind,
-  selectRunCandidate,
-  selectRunDag,
-  selectRunTrace,
-} from "./runCandidate";
 
 // What every generate mutation resolves to: the script to load into the editor
 // plus the executed decision-DAG walk (the explanation) and the full static
@@ -30,21 +24,7 @@ export interface ScriptInferenceOutcome {
  * saves it — so there are no queries to invalidate on success.
  */
 export function useGenerateBuildScript(reeId?: string) {
-  const runtime = useApiRuntime();
-  const resolvedReeId = resolveReeId(runtime, reeId);
-
-  return useMutation<ScriptInferenceOutcome>({
-    mutationFn: async () => {
-      const report = await runtime.reeApi.generateScriptCandidates(resolvedReeId, [
-        { kind: "build" },
-      ]);
-      return {
-        generation: selectBuildCandidate(report),
-        trace: selectBuildTrace(report),
-        dag: selectBuildDag(report),
-      };
-    },
-  });
+  return useGenerateScriptForTarget("build", undefined, reeId);
 }
 
 /**
@@ -52,22 +32,7 @@ export function useGenerateBuildScript(reeId?: string) {
  * script the build page loads plus its decision trace. Persists nothing.
  */
 export function useGenerateActivationScript(reeId?: string) {
-  const runtime = useApiRuntime();
-  const resolvedReeId = resolveReeId(runtime, reeId);
-
-  return useMutation<ScriptInferenceOutcome>({
-    mutationFn: async () => {
-      const report = await runtime.reeApi.generateScriptCandidates(resolvedReeId, [
-        { kind: "activation_run" },
-      ]);
-      const kind: RunTargetKind = "activation_run";
-      return {
-        generation: selectRunCandidate(report, kind),
-        trace: selectRunTrace(report, kind),
-        dag: selectRunDag(report, kind),
-      };
-    },
-  });
+  return useGenerateScriptForTarget("activation_run", undefined, reeId);
 }
 
 /**
@@ -75,19 +40,28 @@ export function useGenerateActivationScript(reeId?: string) {
  * name selects the target; the returned body becomes a script only when saved.
  */
 export function useGenerateExperimentScript(experimentName: string, reeId?: string) {
+  return useGenerateScriptForTarget("experiment_run", experimentName, reeId);
+}
+
+// The one generate mutation. Every target requests its own inference report and
+// reduces it identically, so the per-page hooks above only name their target.
+function useGenerateScriptForTarget(
+  kind: ScriptTargetKind,
+  experimentName: string | undefined,
+  reeId: string | undefined,
+) {
   const runtime = useApiRuntime();
   const resolvedReeId = resolveReeId(runtime, reeId);
 
   return useMutation<ScriptInferenceOutcome>({
     mutationFn: async () => {
       const report = await runtime.reeApi.generateScriptCandidates(resolvedReeId, [
-        { kind: "experiment_run", experiment_name: experimentName },
+        experimentName ? { kind, experiment_name: experimentName } : { kind },
       ]);
-      const kind: RunTargetKind = "experiment_run";
       return {
-        generation: selectRunCandidate(report, kind, experimentName),
-        trace: selectRunTrace(report, kind, experimentName),
-        dag: selectRunDag(report, kind, experimentName),
+        generation: selectCandidate(report, kind, experimentName),
+        trace: selectTrace(report, kind, experimentName),
+        dag: selectDag(report, kind, experimentName),
       };
     },
   });

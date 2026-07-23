@@ -24,6 +24,26 @@ export function useStartReeRunMutation(reeId?: string) {
   });
 }
 
+/**
+ * Start one named experiment's run. Seeds the run cache with what the POST
+ * already returned, so the surface observing it renders from that answer
+ * instead of spending another round-trip re-fetching it.
+ */
+export function useStartExperimentRunMutation(reeId?: string) {
+  const runtime = useApiRuntime();
+  const executionRunsClient = useReeRunsClient();
+  const queryClient = useQueryClient();
+  const resolvedReeId = resolveReeId(runtime, reeId);
+
+  return useMutation({
+    mutationFn: ({ experimentName }: { experimentName: string }) =>
+      executionRunsClient.startExperimentRun(resolvedReeId, experimentName),
+    onSuccess: ({ reeId: startedReeId, run }) => {
+      queryClient.setQueryData(queryKeys.stepRuns(startedReeId, run.runId), run);
+    },
+  });
+}
+
 export function useCancelReeRunMutation(reeId?: string) {
   const runtime = useApiRuntime();
   const executionRunsClient = useReeRunsClient();

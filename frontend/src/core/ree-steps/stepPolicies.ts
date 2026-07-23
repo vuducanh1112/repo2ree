@@ -1,18 +1,9 @@
 import type { ReeSpec } from "../ree/ReeSpec";
 import type { StepRunOutcome } from "../ree/ReeTypes";
+import type { TerminalReeRunFailure } from "../runs/ReeRunStatus";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { ReeStepKey } from "./stepRunParams";
 import type { ReeStepRequirement } from "./stepTypes";
-
-type ReeRunStatus =
-  | "created"
-  | "queued"
-  | "provisioning"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "canceling"
-  | "canceled";
 
 const REE_STEP_REQUIREMENTS: Record<ReeStepKey, ReeStepRequirement[]> = {
   evaluate: [{ field: "sourceAvailable", label: "Source loaded in workspace" }],
@@ -38,12 +29,6 @@ export function missingReeStepRequirements(
   ree: Partial<ReeSpec & WorkspaceSourceState>,
 ): ReeStepRequirement[] {
   return getReeStepRequirements(key).filter((requirement) => !ree[requirement.field]);
-}
-
-export function isTerminalReeRunFailure(
-  status: ReeRunStatus,
-): status is Extract<ReeRunStatus, "failed" | "canceled"> {
-  return status === "failed" || status === "canceled";
 }
 
 export function shouldRefreshWorkspaceAfterStep(key: string): boolean {
@@ -78,7 +63,7 @@ export function planStepRunCompletion(
 
 export function planTerminalReeRunFailure(
   key: string,
-  status: Extract<ReeRunStatus, "failed" | "canceled">,
+  status: TerminalReeRunFailure,
   timestamp: string,
 ): StepRunFailurePlan {
   return {

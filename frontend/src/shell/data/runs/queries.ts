@@ -100,10 +100,13 @@ async function fetchReeRunLogs(
   return queryClient.fetchQuery(createReeRunLogsQueryOptions(executionRunsClient, reeId, runId));
 }
 
-// The run listing drives the always-mounted logs HUD: poll briskly while
-// anything is in flight, lazily otherwise (still often enough to notice runs
-// started outside this tab, e.g. by an agent).
+// How briskly anything in flight is polled — the run listing that drives the
+// always-mounted logs HUD, a single run and its logs, and the imperative
+// observer below. One constant so the app's responsiveness is retuned in one
+// place instead of five.
 const RUNS_ACTIVE_POLL_MS = 1500;
+// Nothing in flight: still often enough to notice runs started outside this tab,
+// e.g. by an agent.
 const RUNS_IDLE_POLL_MS = 5000;
 
 export function useReeRunsQuery(reeId?: string) {
@@ -139,7 +142,8 @@ export function useReeRunQuery(reeId: string | undefined, runId: string | undefi
           },
         }),
     enabled: !!runId,
-    refetchInterval: (query) => (isTerminalReeRunStatus(query.state.data?.status) ? false : 1500),
+    refetchInterval: (query) =>
+      isTerminalReeRunStatus(query.state.data?.status) ? false : RUNS_ACTIVE_POLL_MS,
   });
 }
 
@@ -165,7 +169,7 @@ export function useReeRunLogsQuery(reeId: string | undefined, runId: string | un
         return false;
       }
       const run = queryClient.getQueryData<ReeRun>(queryKeys.stepRuns(resolvedReeId, runId));
-      return isTerminalReeRunStatus(run?.status) ? false : 1500;
+      return isTerminalReeRunStatus(run?.status) ? false : RUNS_ACTIVE_POLL_MS;
     },
   });
 }
@@ -212,6 +216,6 @@ export async function observeReeRun(
       };
     }
 
-    await sleep(1500);
+    await sleep(RUNS_ACTIVE_POLL_MS);
   }
 }

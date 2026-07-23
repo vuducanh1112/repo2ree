@@ -21,6 +21,7 @@ function buildArgs(queryClient: QueryClient) {
       createWorkspace: vi.fn(),
       listReeRuns: vi.fn(),
       startReeRun: vi.fn(),
+      startExperimentRun: vi.fn(),
       getReeRun: vi.fn(),
       getReeRunLogs: vi.fn(),
       cancelReeRun: vi.fn(),

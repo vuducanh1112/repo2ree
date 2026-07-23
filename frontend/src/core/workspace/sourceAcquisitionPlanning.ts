@@ -1,9 +1,8 @@
 import { clearedSourceIdentityReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
+import type { TerminalReeRunFailure } from "../../core/runs/ReeRunStatus";
 import type { FileTreeNode } from "../../core/workspace/FileTree";
 import { normalizeSnapshotArchiveName } from "../../core/workspace/PathUtils";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
-
-type SourceExecutionStatus = "failed" | "canceled";
 
 interface SourceActionPlanSuccess<T> {
   ok: true;
@@ -237,7 +236,7 @@ export function planSourceUploadAction(
   };
 }
 
-export function planSourceExecutionFailure(status: SourceExecutionStatus): SourceActionPlanFailure {
+export function planSourceExecutionFailure(status: TerminalReeRunFailure): SourceActionPlanFailure {
   return {
     ok: false,
     error: `Source ${status}`,

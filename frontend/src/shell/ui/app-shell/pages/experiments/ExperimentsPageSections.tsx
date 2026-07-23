@@ -2,6 +2,7 @@ import type { ExperimentResourceEstimates, ReeExperiment } from "@core/ree/ReeSp
 import type { LogEntry } from "@core/ree/ReeTypes";
 import type { ExperimentRunOutputs } from "@core/runs/ExperimentRun";
 import type { ReeRunFailure } from "@core/runs/ReeRun";
+import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
 import { FAILURE_TONE_COLOR, runFailurePresentation } from "@core/runs/runFailurePresentation";
 import { useGenerateExperimentScript } from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
@@ -21,12 +22,12 @@ import {
 import { F } from "@shell/ui/theme/theme";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GenerateScriptControl } from "../../components/GenerateScriptControl";
-import { LogPanel } from "../../components/logPanel";
 import { RunActionButton } from "../../components/RunActionButton";
 import { RunScriptCard } from "../../components/RunScriptCard";
 import { experimentValidation, expId } from "./experimentsPageHelpers";
-import { type RunState, TERMINAL_STATUSES } from "./useExperimentRun";
+import type { RunState } from "./useExperimentRun";
 
 // The experiments page is composed from three modules; re-exported here so the
 // page keeps a single import surface.
@@ -290,12 +291,14 @@ export function ExperimentHeaderActions({
   canRun,
   isRunning,
   onRun,
+  onCancel,
   onRemove,
 }: {
   locked: boolean;
   canRun: boolean;
   isRunning: boolean;
   onRun: () => void;
+  onCancel: () => void;
   onRemove: () => void;
 }) {
   const runTitle = canRun
@@ -325,6 +328,7 @@ export function ExperimentHeaderActions({
           opacity: canRun && !isRunning ? 1 : 0.45,
         }}
         onRun={onRun}
+        onCancel={onCancel}
       />
       {!locked && (
         <button
@@ -416,7 +420,7 @@ function ExperimentFailureNote({ failure }: { failure: ReeRunFailure }) {
 }
 
 function RunResultPanel({ runState }: { runState: RunState }) {
-  const isTerminal = TERMINAL_STATUSES.includes(runState.status);
+  const isTerminal = isTerminalReeRunStatus(runState.status);
   const { outputs } = runState;
   const logEntry: LogEntry | null =
     runState.logLines.length > 0 ? { lines: runState.logLines, ts: runState.startedAt } : null;
@@ -485,8 +489,8 @@ function RunResultPanel({ runState }: { runState: RunState }) {
         </div>
       )}
 
-      <div style={{ marginTop: 10, height: 320, display: "flex", flexDirection: "column" }}>
-        <LogPanel log={logEntry} running={!isTerminal} />
+      <div style={{ marginTop: 10 }}>
+        <CollapsibleLogCard log={logEntry} running={!isTerminal} title="Run log" maxHeight={320} />
       </div>
     </section>
   );

@@ -192,6 +192,7 @@ export function PageExperiments({
                 canRun={canRun}
                 isRunning={run.isRunning}
                 onRun={() => run.startRun()}
+                onCancel={() => run.cancelRun()}
                 onRemove={() => removeExperiment(selectedIndex)}
               />
             ) : undefined

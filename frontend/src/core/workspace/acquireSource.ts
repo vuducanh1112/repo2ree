@@ -1,4 +1,5 @@
 import type { ReeSpec } from "../../core/ree/ReeSpec";
+import { isTerminalReeRunFailure, type ReeRunStatus } from "../../core/runs/ReeRunStatus";
 import type { FileTreeNode } from "../../core/workspace/FileTree";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
 import { type SourceCommand, sourceFailureCommands } from "./sourceAcquisitionCommands";
@@ -11,21 +12,11 @@ import {
   planUploadedSourceState,
 } from "./sourceAcquisitionPlanning";
 
-type SourceExecutionStatus =
-  | "created"
-  | "queued"
-  | "provisioning"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "canceling"
-  | "canceled";
-
 type SourceExecutionRequest = Record<string, string | boolean | number | null | undefined>;
 
 interface SourceExecutionResult {
   runId?: string;
-  status: SourceExecutionStatus;
+  status: ReeRunStatus;
 }
 
 interface SourceUseCaseEffects {
@@ -49,12 +40,6 @@ interface UploadSourceArgs {
   archiveContentBase64?: string;
 }
 
-function isTerminalSourceExecutionFailure(
-  status: SourceExecutionStatus,
-): status is Extract<SourceExecutionStatus, "failed" | "canceled"> {
-  return status === "failed" || status === "canceled";
-}
-
 export function createSourceUseCase({
   ree,
   executeCommands,
@@ -75,7 +60,7 @@ export function createSourceUseCase({
     sourceChanged({ silent: true });
     executeCommands([{ type: "setSourceLoading" }]);
     const result = await runSourceAction(resetRequest, runParams);
-    if (isTerminalSourceExecutionFailure(result.status)) {
+    if (isTerminalReeRunFailure(result.status)) {
       failSourceAction(planSourceExecutionFailure(result.status).error, result.runId);
       return { ok: false, runId: result.runId };
     }

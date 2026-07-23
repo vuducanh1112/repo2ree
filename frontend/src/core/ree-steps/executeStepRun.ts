@@ -1,6 +1,7 @@
 import type { RawReeIntentSlices } from "../ree/mapRawReeIntent";
 import type { ReeSpec } from "../ree/ReeSpec";
 import type { LogLine, ReeFile } from "../ree/ReeTypes";
+import { isTerminalReeRunFailure, type ReeRunStatus } from "../runs/ReeRunStatus";
 import type { FileTreeNode } from "../workspace/FileTree";
 import {
   nonStepPlanToCommands,
@@ -11,23 +12,12 @@ import { isReeStepKey } from "./stepPolicies";
 import { runExecutionLifecycle } from "./stepRunLifecycle";
 import type { ReeStepRunParamsByKey } from "./stepRunParams";
 import {
-  isTerminalReeRunFailure,
   planManualArtifactUpdateSuccess,
   planStepRunCompletion,
   planTerminalReeRunFailure,
 } from "./stepRunPlanning";
 import { buildStepRunRequest } from "./stepRunRequests";
 import type { GenericReeStepParams } from "./stepTypes";
-
-type ReeRunStatus =
-  | "created"
-  | "queued"
-  | "provisioning"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "canceling"
-  | "canceled";
 
 interface ReeRunPollResult {
   status: ReeRunStatus;

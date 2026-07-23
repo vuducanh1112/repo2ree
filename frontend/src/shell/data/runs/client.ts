@@ -27,6 +27,17 @@ export interface ReeRunsClient {
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
   ): Promise<ReeRun>;
+  /**
+   * Run one named experiment. Separate from {@link startReeRun} because the
+   * experiment is addressed by name in the path rather than by a script key,
+   * and returns the resolved reeId alongside the run so the caller can pin what
+   * it observes — but it goes through this client like every other run, so the
+   * cache seeding and cancellation in ``runs/mutations`` apply to it too.
+   */
+  startExperimentRun(
+    id: ReeId | string,
+    experimentName: string,
+  ): Promise<{ reeId: string; run: ReeRun }>;
   /** Every recorded run for the REE, newest first. */
   listReeRuns(id: ReeId | string): Promise<ReeRunSummary[]>;
   getReeRun(id: ReeId | string, runId: string): Promise<ReeRun>;
@@ -109,6 +120,11 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
           throw new Error(`Unsupported execution run operation: ${scriptKey}`);
       }
       return mapRun(run);
+    },
+    async startExperimentRun(id, experimentName) {
+      const reeId = await ensureReeId(runtime, id);
+      const run = await runtime.runsApi.createExperimentRun(reeId, experimentName, {});
+      return { reeId, run: mapRun(run) };
     },
     async listReeRuns(id) {
       const reeId = await ensureReeId(runtime, id);

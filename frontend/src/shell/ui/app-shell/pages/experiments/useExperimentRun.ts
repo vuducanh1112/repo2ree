@@ -1,8 +1,8 @@
 import type { LogLine } from "@core/ree/ReeTypes";
 import type { ExperimentRunOutputs } from "@core/runs/ExperimentRun";
 import type { ReeRunFailure } from "@core/runs/ReeRun";
-import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
-import { useApiRuntime } from "@shell/data/apiRuntime";
+import { isTerminalReeRunStatus, type ReeRunStatus } from "@core/runs/ReeRunStatus";
+import { useCancelReeRunMutation, useStartExperimentRunMutation } from "@shell/data/runs/mutations";
 import { useReeRunLogsQuery, useReeRunQuery } from "@shell/data/runs/queries";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -18,8 +18,6 @@ export type RunState = {
   startedAt: string;
   logLines: LogLine[];
 };
-
-export const TERMINAL_STATUSES: ReeRunStatus[] = ["succeeded", "failed", "canceled"];
 
 // The one experiment-specific mapping: the run's opaque outputs record narrowed
 // to the exit codes and verdict this surface renders. Everything else (fetch,
@@ -49,6 +47,8 @@ interface ExperimentRunController {
   runState: RunState | null;
   isRunning: boolean;
   startRun: () => void;
+  /** Cancel the run in flight. No-op before the backend has handed one back. */
+  cancelRun: () => void;
 }
 
 /** The run we started and are now observing, pinned so a later query resolution
@@ -70,7 +70,11 @@ export function useExperimentRun({
   experimentName,
   onBeforeRun,
 }: UseExperimentRunOptions): ExperimentRunController {
-  const { runsApi, ensureReeId } = useApiRuntime();
+  // Destructured: react-query keeps these callbacks stable across renders while
+  // the mutation object itself is new each time, so the handlers below stay
+  // memoized.
+  const { mutateAsync: startExperimentRun } = useStartExperimentRunMutation(reeId);
+  const { mutate: cancelReeRun } = useCancelReeRunMutation(reeId);
   const [target, setTarget] = useState<RunTarget | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   // When the click happened, for the window before the backend has a run to
@@ -105,13 +109,12 @@ export function useExperimentRun({
         // just saved) before running — the backend validates the run against
         // the persisted draft, so a stale draft would 400 the run.
         await onBeforeRun();
-        const resolvedReeId = await ensureReeId(reeId);
-        const run = await runsApi.createExperimentRun(resolvedReeId, experimentName, {});
+        const { reeId: startedReeId, run } = await startExperimentRun({ experimentName });
         setTarget({
-          reeId: resolvedReeId,
-          runId: run.run_id,
+          reeId: startedReeId,
+          runId: run.runId,
           status: run.status,
-          startedAt: run.started_at || run.created_at || new Date().toISOString(),
+          startedAt: run.startedAt || run.createdAt || new Date().toISOString(),
         });
       } catch {
         setStartError("Failed to start run");
@@ -119,7 +122,7 @@ export function useExperimentRun({
         setStartingAt(null);
       }
     })();
-  }, [ensureReeId, reeId, experimentName, runsApi, onBeforeRun]);
+  }, [experimentName, onBeforeRun, startExperimentRun]);
 
   const runState = useMemo<RunState | null>(() => {
     // A start that never produced a run: a client-side failure with no backend
@@ -154,7 +157,7 @@ export function useExperimentRun({
     }
     const run = runQuery.data;
     const status = run?.status ?? target.status;
-    const isTerminal = TERMINAL_STATUSES.includes(status);
+    const isTerminal = isTerminalReeRunStatus(status);
     return {
       reeId: target.reeId,
       runId: target.runId,
@@ -167,7 +170,12 @@ export function useExperimentRun({
     };
   }, [startError, startingAt, target, runQuery.data, logsQuery.data, reeId]);
 
-  const isRunning = runState !== null && !TERMINAL_STATUSES.includes(runState.status);
+  const isRunning = runState !== null && !isTerminalReeRunStatus(runState.status);
 
-  return { runState, isRunning, startRun };
+  const cancelRun = useCallback(() => {
+    if (!target?.runId) return;
+    cancelReeRun({ runId: target.runId });
+  }, [cancelReeRun, target]);
+
+  return { runState, isRunning, startRun, cancelRun };
 }

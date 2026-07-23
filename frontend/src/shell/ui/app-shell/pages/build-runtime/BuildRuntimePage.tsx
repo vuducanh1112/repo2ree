@@ -17,6 +17,7 @@ import {
 } from "@shell/ui/theme/lightGlassTheme";
 import { F } from "@shell/ui/theme/theme";
 import { useCallback, useMemo, useState } from "react";
+import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
 import { GenerateScriptControl } from "../../components/GenerateScriptControl";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
@@ -27,7 +28,7 @@ import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
 import type { StepPageProps } from "../sharedStepUi";
-import { BuildLogCard, ReservedBuildScriptCard, RuntimeArtifactCard } from "./sections";
+import { ReservedBuildScriptCard, RuntimeArtifactCard } from "./sections";
 
 const BUILD_PAGE_COLOR = lgPageColors.runtimeEnv;
 
@@ -214,7 +215,7 @@ export function PageBuildRuntime({
         </GlassSubPanel>
 
         <GlassSubPanel>
-          <BuildLogCard log={log} running={running} ts={ts} />
+          <CollapsibleLogCard log={log} running={running} title="Build log" />
         </GlassSubPanel>
 
         <GlassPanelFooter bar>

@@ -1,29 +1,16 @@
-import type { LogLine } from "../../core/ree/ReeTypes";
 import type { WorkspaceResetPayload } from "../../core/workspace/WorkspaceReset";
 import { parseWorkspaceResetPayload } from "../../core/workspace/WorkspaceReset";
+import type { ReeRunPollResult, ReeRunUpdate } from "../ree-steps/stepRunLifecycle";
+import { runExecutionLifecycle } from "../ree-steps/stepRunLifecycle";
 
-type SourceExecutionStatus =
-  | "created"
-  | "queued"
-  | "provisioning"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "canceling"
-  | "canceled";
-
-interface SourceReeRunRecord {
-  runId: string;
-}
-
-interface SourceExecutionUpdate {
-  lines: LogLine[];
-  ts: string;
-}
+// Once source acquisition actually starts, it is a run like any other, so the
+// start/observe/report-once bookkeeping is the shared lifecycle. What is
+// specific to source is the branch above it: a request carrying no mode is a
+// workspace reset, which never becomes a run at all.
 
 interface SourceExecutionResult {
   runId?: string;
-  status: SourceExecutionStatus;
+  status: ReeRunPollResult["status"];
 }
 
 interface SourceReeRunner {
@@ -35,7 +22,7 @@ interface SourceExecutionPoller {
     id: string,
     scriptKey: string,
     params?: Record<string, string | boolean | number | null | undefined>,
-  ) => Promise<SourceReeRunRecord>;
+  ) => Promise<{ runId: string }>;
 }
 
 interface RunSourceWorkspaceActionArgs {
@@ -47,11 +34,11 @@ interface RunSourceWorkspaceActionArgs {
   pollRun: (
     reeId: string,
     runId: string,
-    onUpdate?: (update: SourceExecutionUpdate) => void,
-  ) => Promise<SourceExecutionResult>;
+    onUpdate?: (update: ReeRunUpdate) => void,
+  ) => Promise<ReeRunPollResult>;
   onRunStarted?: (key: string, runId: string) => void;
   onRunFinished?: (key: string, runId: string) => void;
-  onUpdateLogs?: (update: SourceExecutionUpdate) => void;
+  onUpdateLogs?: (update: ReeRunUpdate) => void;
 }
 
 export async function runSourceWorkspaceAction({
@@ -70,12 +57,12 @@ export async function runSourceWorkspaceAction({
     return { status: "succeeded" };
   }
 
-  const run = await executionRunClient.startReeRun(reeId, "source", runParams);
-  onRunStarted?.("source", run.runId);
-  try {
-    const result = await pollRun(reeId, run.runId, onUpdateLogs);
-    return { ...result, runId: run.runId };
-  } finally {
-    onRunFinished?.("source", run.runId);
-  }
+  return runExecutionLifecycle({
+    startReeRun: (scriptKey, params) => executionRunClient.startReeRun(reeId, scriptKey, params),
+    request: { key: "source", scriptKey: "source", params: runParams },
+    pollRun: (runId, onUpdate) => pollRun(reeId, runId, onUpdate),
+    onRunStarted,
+    onRunFinished,
+    onUpdateLogs,
+  });
 }

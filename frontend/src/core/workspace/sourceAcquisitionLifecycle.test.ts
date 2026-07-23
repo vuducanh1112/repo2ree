@@ -26,7 +26,11 @@ describe("runSourceWorkspaceAction", () => {
     const onUpdateLogs = vi.fn();
     const pollRun = vi.fn(async (_reeId, _runId, onUpdate) => {
       onUpdate?.({ lines: [{ type: "info", msg: "working" }], ts: "2026-01-01T00:00:00Z" });
-      return { status: "succeeded" as const };
+      return {
+        status: "succeeded" as const,
+        lines: [{ type: "info" as const, msg: "working" }],
+        ts: "2026-01-01T00:00:00Z",
+      };
     });
 
     const result = await runSourceWorkspaceAction({

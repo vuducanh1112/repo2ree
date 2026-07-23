@@ -13,8 +13,8 @@ import type { AppShellClock } from "@shell/app/bootstrap/ports";
 import { queryKeys } from "@shell/data/queryKeys";
 import type { ReeClient } from "@shell/data/ree/client";
 import type { ReeRunsClient } from "@shell/data/runs/client";
+import { observeReeRun } from "@shell/data/runs/queries";
 import type { QueryClient } from "@tanstack/react-query";
-import { pollReeRun } from "../step-runs/pollReeRun";
 import { executeSourceCommands, type ReeEditorDispatch } from "../step-runs/stepActionEffects";
 import type { ShowToast } from "../types";
 
@@ -69,11 +69,10 @@ export function createSourceActions({
       resetPayload: serializeWorkspaceResetPayload(resetRequest),
       runParams,
       pollRun: (nextReeId, runId, onUpdateLogs) =>
-        pollReeRun(queryClient, executionRunsClient, {
+        observeReeRun(queryClient, executionRunsClient, {
           reeId: nextReeId,
           runId,
           onUpdate: onUpdateLogs,
-          clock,
           sleep,
         }),
       onRunStarted: (key, runId) => {

@@ -3,7 +3,6 @@ import { createEmptyReeSpec } from "../ree/ReeSpec";
 import type { ReeEditorViewModel } from "../ree-editor/reeEditorViewModel";
 import {
   buildStepRunParams,
-  isTerminalReeRunFailure,
   planManualArtifactUpdateSuccess,
   planStepRunCompletion,
   planTerminalReeRunFailure,
@@ -23,12 +22,6 @@ describe("stepRunPlanning", () => {
 
     expect(buildStepRunParams("activation", {}, ree)).toEqual({});
     expect(buildStepRunParams("build", {}, ree)).toEqual({});
-  });
-
-  it("flags failure terminal statuses", () => {
-    expect(isTerminalReeRunFailure("failed")).toBe(true);
-    expect(isTerminalReeRunFailure("canceled")).toBe(true);
-    expect(isTerminalReeRunFailure("succeeded")).toBe(false);
   });
 
   it("marks only build-ish runs for workspace refresh", () => {
