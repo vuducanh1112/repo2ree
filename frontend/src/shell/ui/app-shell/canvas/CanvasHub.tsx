@@ -2,7 +2,7 @@ import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { Badges, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { scoreCardStanding } from "@core/scorecard/ReproducibilityScoreCard";
-import type { DraftManifest, SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
+import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { useReproducibilityScoreCard } from "@shell/data/scorecard/queries";
 import { useMemo, useRef, useState } from "react";
 import { C } from "../../theme/theme";
@@ -30,7 +30,7 @@ import { FileTreeConsole } from "./FileTreeConsole";
 import { InnerShellButton } from "./InnerShellButton";
 import { LabBackdrop } from "./LabBackdrop";
 import { NodeCard } from "./NodeCard";
-import { ReeStateConsole } from "./ReeStateConsole";
+import { ReceiptsConsole } from "./ReceiptsConsole";
 import { ReproducibilityScoreCardConsole } from "./ReproducibilityScoreCardConsole";
 import { useCableGeometry } from "./useCableGeometry";
 import { type Transform, useCanvasViewport } from "./useCanvasViewport";
@@ -65,7 +65,6 @@ interface CanvasHubProps {
   /** Inner-shell pod → the runtime environment page. */
   onOpenRuntime: () => void;
   reeFiles: ReeFile[];
-  draftManifest: DraftManifest | undefined;
   sourceRepo: SourceRepoMetadata | undefined;
   /** Node keys whose recorded run result is stale (see sealConsistency). */
   staleNodeKeys?: ReadonlySet<string>;
@@ -86,7 +85,6 @@ export function CanvasHub({
   onOpenExperiment,
   onOpenRuntime,
   reeFiles,
-  draftManifest,
   sourceRepo,
   staleNodeKeys,
   filesConsoleOpen,
@@ -334,7 +332,7 @@ export function CanvasHub({
         onOpenChange={onFilesConsoleOpenChange}
       />
 
-      <ReeStateConsole draftManifest={draftManifest} />
+      <ReceiptsConsole provisioned={provisioned} />
 
       <BenchConsole provisioned={provisioned} reeName={ree.name} />
 

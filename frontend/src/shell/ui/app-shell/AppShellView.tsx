@@ -173,7 +173,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
               openPage(PAGE.BUILD);
             }}
             reeFiles={currentReeFiles}
-            draftManifest={workspaceRemote.draftManifest}
             sourceRepo={workspaceRemote.sourceRepo}
             filesConsoleOpen={uiChrome.filesConsoleOpen}
             onFilesConsoleOpenChange={commands.setFilesConsoleOpen}

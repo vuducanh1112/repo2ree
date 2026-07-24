@@ -4,8 +4,6 @@ import { useApiRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 
-export type AuthorReceiptEntry = NonNullable<AuthorReceiptSetWire["receipts"]>[number];
-
 export function useAuthorReceiptsQuery({ enabled = true }: { enabled?: boolean } = {}) {
   const runtime = useApiRuntime();
   const reeId = resolveReeId(runtime);

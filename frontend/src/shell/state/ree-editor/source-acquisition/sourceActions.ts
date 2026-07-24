@@ -1,3 +1,4 @@
+import type { RawReeIntentSlices } from "@core/ree/mapRawReeIntent";
 import type { SourceUploadCommit } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { createSourceUseCase } from "@core/workspace/acquireSource";
@@ -9,11 +10,13 @@ import {
 } from "@core/workspace/sourceAcquisitionCommands";
 import { runSourceWorkspaceAction } from "@core/workspace/sourceAcquisitionLifecycle";
 import { serializeWorkspaceResetPayload } from "@core/workspace/WorkspaceReset";
+import type { ReeProject } from "@core/workspace/WorkspaceTypes";
 import type { AppShellClock } from "@shell/app/bootstrap/ports";
 import { queryKeys } from "@shell/data/queryKeys";
 import type { ReeClient } from "@shell/data/ree/client";
 import type { ReeRunsClient } from "@shell/data/runs/client";
 import { observeReeRun } from "@shell/data/runs/queries";
+import { updateReeSpec } from "@shell/ui/app-shell/state/actions";
 import type { QueryClient } from "@tanstack/react-query";
 import { executeSourceCommands, type ReeEditorDispatch } from "../step-runs/stepActionEffects";
 import type { ShowToast } from "../types";
@@ -62,7 +65,23 @@ export function createSourceActions({
   // after acquisition. A file-only refresh leaves those fields stranded in the
   // workbench document, so every completed source mutation must rehydrate the
   // editor from that authoritative document as well.
-  const refreshSourceWorkspaceFiles = () => refreshWorkspaceFiles({ forceReeHydration: true });
+  const refreshSourceWorkspaceFiles = async () => {
+    const files = await refreshWorkspaceFiles({ forceReeHydration: true });
+    const remote = queryClient.getQueryData<ReeProject<FileTreeNode, RawReeIntentSlices>>(
+      queryKeys.ree(reeId),
+    );
+    if (remote?.ree) {
+      const { resolvedRevision, swhid } = remote.ree.reeSpec;
+      dispatch(
+        updateReeSpec((current) => ({
+          ...current,
+          resolvedRevision,
+          swhid,
+        })),
+      );
+    }
+    return files;
+  };
 
   const runRemoteOrLocalSourceAction = async (
     resetRequest: Record<string, string | boolean | number | null | undefined>,
