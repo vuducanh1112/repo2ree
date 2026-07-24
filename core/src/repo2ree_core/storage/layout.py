@@ -17,7 +17,8 @@ Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
     workspace/            materialized view (upstream + overlay) used at build time
     runs/                 per-action logs and immutable receipt history
     receipts/author/      latest successful author receipt per operation
-    reviews/<review-id>/  isolated reviewer source, receipts, and comparisons
+    reviews/<review-id>/  isolated reviewer tree: its own upstream/, overlay/,
+                          workspace/, receipts, and comparisons
 
 ``upstream/`` and ``overlay/`` are the sources of truth; ``workspace/`` is
 derived and may be rebuilt at any time.
@@ -250,7 +251,14 @@ class ReeLayout:
 
 @dataclass(frozen=True)
 class ReviewLayout:
-    """Writable evidence namespace for one independent review attempt."""
+    """Writable evidence namespace for one independent review attempt.
+
+    Deliberately a *parallel* REE tree, not a view onto the author's: it carries
+    its own ``upstream/``, ``overlay/``, and ``workspace/`` under the same
+    dirnames, so the shared acquire and materialize scripts — which derive their
+    paths from their own location — run here unchanged and mean the same thing.
+    The author's tree is only ever read.
+    """
 
     root: Path
 
@@ -263,8 +271,31 @@ class ReviewLayout:
         return self.root / ACQUIRE_SCRIPT_FILENAME
 
     @property
+    def materialize_script(self) -> Path:
+        return self.root / MATERIALIZE_SCRIPT_FILENAME
+
+    @property
     def upstream(self) -> Path:
         return self.root / UPSTREAM_DIRNAME
+
+    @property
+    def overlay(self) -> Path:
+        """The author's recipe files, copied in so the merge never mutates them."""
+        return self.root / OVERLAY_DIRNAME
+
+    @property
+    def workspace(self) -> Path:
+        return self.root / WORKSPACE_DIRNAME
+
+    @property
+    def sbom(self) -> Path:
+        """The reviewer's own scan of the runtime they built.
+
+        Sits at the attempt root rather than inside ``workspace/``: the workspace
+        is disposable (and pruned after a build), while this document is the
+        evidence the build verdict rests on.
+        """
+        return self.root / "sbom.json"
 
     @property
     def runs(self) -> Path:

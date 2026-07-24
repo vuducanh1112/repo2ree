@@ -187,7 +187,14 @@ def test_unknown_ree_yields_error_envelope(client: TestClient) -> None:
     assert body["error"]["details"] is None
 
 
-def test_archive_before_seal_conflicts(client: TestClient, ree: dict[str, Any]) -> None:
-    """Downloading the archive of an unsealed REE is a 409, not a 500."""
+def test_archive_before_seal_returns_a_draft_bundle(client: TestClient, ree: dict[str, Any]) -> None:
+    """An unsealed REE downloads as a draft bundle on demand, not an error.
+
+    Assembling the draft is the handoff path (loadable into another REE); only
+    the sealed archive is the citable, seal-hashed artifact. See the
+    ``ree-archive`` route.
+    """
     resp = client.get(f"/api/v1/rees/{ree['ree_id']}/ree-archive")
-    assert resp.status_code == 409
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/zip"
+    assert resp.content

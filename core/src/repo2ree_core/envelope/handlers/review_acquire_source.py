@@ -7,9 +7,11 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.receipts import AcquireSourceReceipt, receipt_run_id
 from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
 from repo2ree_core.reviews import (
-    ReviewRecord,
+    ReviewStatus,
     SourceComparison,
     compare_source_swhids,
+    new_review_record,
+    with_step,
     write_review_record,
     write_review_source_evidence,
 )
@@ -43,25 +45,25 @@ def handle_review_acquire_source(
     intent = ReeStore(ree_layout).read_intent()
     timer = OperationTimer.start()
 
-    started = ReviewRecord(
-        review_id=args.review_id,
-        created_at=timer.started_at,
-        updated_at=timer.started_at,
+    started = with_step(
+        new_review_record(args.review_id, at=timer.started_at),
+        "source",
         status="running",
+        at=timer.started_at,
     )
     write_review_record(review_layout, started)
 
     def stop(status: str, message: str) -> ActionResult:
         timing = timer.finish()
-        terminal_status = "canceled" if status == "canceled" else "failed"
+        terminal_status: ReviewStatus = "canceled" if status == "canceled" else "failed"
         write_review_record(
             review_layout,
-            started.model_copy(
-                update={
-                    "updated_at": timing.finished_at,
-                    "status": terminal_status,
-                    "failure": message,
-                }
+            with_step(
+                started,
+                "source",
+                status=terminal_status,
+                at=timing.finished_at,
+                failure=message,
             ),
         )
         level = "warn" if terminal_status == "canceled" else "error"
@@ -112,13 +114,11 @@ def handle_review_acquire_source(
     write_review_source_evidence(review_layout, receipt, comparison)
     write_review_record(
         review_layout,
-        started.model_copy(
-            update={
-                "updated_at": timing.finished_at,
-                "status": "completed",
-                "source_receipt": receipt,
-                "source_comparison": comparison,
-            }
+        with_step(
+            started.model_copy(update={"source_receipt": receipt, "source_comparison": comparison}),
+            "source",
+            status="completed",
+            at=timing.finished_at,
         ),
     )
     log(

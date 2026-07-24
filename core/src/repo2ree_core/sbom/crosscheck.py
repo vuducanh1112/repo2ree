@@ -16,7 +16,6 @@ Verdict semantics (deliberately asymmetric):
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from repo2ree_core.domain.dependency import Dependency, Ecosystem
@@ -27,14 +26,11 @@ from repo2ree_core.repo_profiler.reproducibility_report import (
     UndeclaredPackage,
 )
 from repo2ree_core.sbom.cyclonedx import ObservedPackage
+from repo2ree_core.sbom.versions import versions_match
 
 # The listed undeclared packages are capped so a pathological image cannot
 # balloon the report; the count carries the truth.
 _UNDECLARED_LIST_CAP = 50
-
-# ``N!`` (PEP 440) / ``N:`` (deb, conda) epoch prefixes — packaging metadata,
-# not identity, for the exact-match comparison done here.
-_EPOCH_RE = re.compile(r"^\d+[!:]")
 
 
 @dataclass(frozen=True)
@@ -122,7 +118,7 @@ def _presence(dep: Dependency, package: ObservedPackage | None) -> RuntimePresen
     if package is None:
         return "not-observed"
     expected = _expected_version(dep)
-    if expected and package.version and not _versions_match(expected, package.version):
+    if expected and package.version and not versions_match(expected, package.version):
         return "version-mismatch"
     return "observed"
 
@@ -147,12 +143,3 @@ def _expected_version(dep: Dependency) -> str | None:
     if not body or any(token in body for token in ("*", ",", " ")):
         return None
     return body
-
-
-def _versions_match(expected: str, observed: str) -> bool:
-    return _normalize_version(expected) == _normalize_version(observed)
-
-
-def _normalize_version(version: str) -> str:
-    normalized = version.strip().lower().removeprefix("v")
-    return _EPOCH_RE.sub("", normalized)

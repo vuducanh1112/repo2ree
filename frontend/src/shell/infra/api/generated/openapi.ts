@@ -307,6 +307,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rees/{ree_id}/reviews/{review_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Review */
+        get: operations["getReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rees/{ree_id}/reviews/source:reproduce": {
         parameters: {
             query?: never;
@@ -318,6 +335,30 @@ export interface paths {
         put?: never;
         /** Start Source Review */
         post: operations["startSourceReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/build:reproduce": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Build Review
+         * @description Rebuild the runtime inside an attempt whose source was already reproduced.
+         *
+         *     Addressed by review id rather than minting a new one: the build is only
+         *     meaningful against the source *this* attempt fetched for itself, and the
+         *     workbench rejects the command outright when that step has not settled.
+         */
+        post: operations["startBuildReview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -969,6 +1010,81 @@ export interface components {
             /** Receipts */
             receipts?: components["schemas"]["AuthorReceiptEntry"][];
         };
+        /**
+         * BuildComparison
+         * @description How a reviewer's rebuilt runtime compares to the author's.
+         *
+         *     Carries both tiers of evidence: the runtime digests (which settle
+         *     ``identical`` when a build happens to be bit-reproducible) and the SBOM
+         *     closure delta (which settles the rest). The listed deltas are capped
+         *     samples — the ``*_count`` fields are the whole truth.
+         */
+        BuildComparison: {
+            /**
+             * Policy
+             * @default sbom-closure
+             * @constant
+             */
+            policy: "sbom-closure";
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "identical" | "equivalent" | "different" | "inconclusive";
+            /** Expected Runtime Digest */
+            expected_runtime_digest?: string | null;
+            /** Observed Runtime Digest */
+            observed_runtime_digest?: string | null;
+            /** Expected Sbom Digest */
+            expected_sbom_digest?: string | null;
+            /** Observed Sbom Digest */
+            observed_sbom_digest?: string | null;
+            /** Sbom Tool Version */
+            sbom_tool_version?: string | null;
+            /**
+             * Expected Package Total
+             * @default 0
+             */
+            expected_package_total: number;
+            /**
+             * Observed Package Total
+             * @default 0
+             */
+            observed_package_total: number;
+            /**
+             * Matched
+             * @default 0
+             */
+            matched: number;
+            /**
+             * Missing Count
+             * @default 0
+             */
+            missing_count: number;
+            /**
+             * Extra Count
+             * @default 0
+             */
+            extra_count: number;
+            /**
+             * Version Mismatch Count
+             * @default 0
+             */
+            version_mismatch_count: number;
+            /**
+             * Advisory Count
+             * @default 0
+             */
+            advisory_count: number;
+            /** Missing */
+            missing?: components["schemas"]["PackageDeltaRecord"][];
+            /** Extra */
+            extra?: components["schemas"]["PackageDeltaRecord"][];
+            /** Version Mismatches */
+            version_mismatches?: components["schemas"]["PackageDeltaRecord"][];
+            /** Advisory */
+            advisory?: components["schemas"]["PackageDeltaRecord"][];
+        };
         /** BuildRuntimeReceipt */
         BuildRuntimeReceipt: {
             /**
@@ -1199,6 +1315,19 @@ export interface components {
         CreateActivationTestRunPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
+        };
+        /**
+         * CreateBuildReviewPayload
+         * @description Reproduce the runtime build inside an existing review attempt.
+         */
+        CreateBuildReviewPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /**
+             * Prune Workspace
+             * @default true
+             */
+            prune_workspace: boolean;
         };
         /**
          * CreateBuildRuntimeRunPayload
@@ -2010,6 +2139,20 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * PackageDeltaRecord
+         * @description One package the author's and the reviewer's runtimes disagree about.
+         */
+        PackageDeltaRecord: {
+            /** Ecosystem */
+            ecosystem: string;
+            /** Name */
+            name: string;
+            /** Expected Version */
+            expected_version?: string | null;
+            /** Observed Version */
+            observed_version?: string | null;
+        };
         /** PathMatchesObservation */
         PathMatchesObservation: {
             /**
@@ -2563,7 +2706,13 @@ export interface components {
              */
             application: "automatic_allowed" | "confirmation_required" | "unavailable";
         };
-        /** ReviewRecord */
+        /**
+         * ReviewRecord
+         * @description One independent review attempt: its lifecycle plus its evidence.
+         *
+         *     ``status`` and ``failure`` are derived from ``steps`` — write through
+         *     :func:`with_step` rather than setting them.
+         */
         ReviewRecord: {
             /** Review Id */
             review_id: string;
@@ -2576,8 +2725,12 @@ export interface components {
              * @enum {string}
              */
             status: "running" | "completed" | "failed" | "canceled";
+            /** Steps */
+            steps?: components["schemas"]["ReviewStepState"][];
             source_receipt?: components["schemas"]["AcquireSourceReceipt"] | null;
             source_comparison?: components["schemas"]["SourceComparison"] | null;
+            build_receipt?: components["schemas"]["BuildRuntimeReceipt"] | null;
+            build_comparison?: components["schemas"]["BuildComparison"] | null;
             /** Failure */
             failure?: string | null;
         };
@@ -2585,6 +2738,28 @@ export interface components {
         ReviewSet: {
             /** Reviews */
             reviews?: components["schemas"]["ReviewRecord"][];
+        };
+        /**
+         * ReviewStepState
+         * @description The lifecycle state of one step within a review attempt.
+         */
+        ReviewStepState: {
+            /**
+             * Step
+             * @enum {string}
+             */
+            step: "source" | "build" | "activation" | "experiments";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "completed" | "failed" | "canceled";
+            /** Started At */
+            started_at: string;
+            /** Updated At */
+            updated_at: string;
+            /** Failure */
+            failure?: string | null;
         };
         /** RunExperimentReceipt */
         RunExperimentReceipt: {
@@ -5241,6 +5416,110 @@ export interface operations {
             };
         };
     };
+    getReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+                review_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewRecord"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     startSourceReview: {
         parameters: {
             query?: never;
@@ -5253,6 +5532,114 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CreateSourceReviewPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startBuildReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+                review_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBuildReviewPayload"];
             };
         };
         responses: {

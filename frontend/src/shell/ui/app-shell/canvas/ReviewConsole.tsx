@@ -1,10 +1,11 @@
 import type { ReeExperiment } from "@core/ree/ReeSpec";
+import type { ReviewAttempt } from "@core/reviews/Review";
+import { type ReviewStepKey, settledReviewStepCount } from "@core/reviews/reviewDag";
+import { reviewStepStatuses, runnableReviewSteps } from "@core/reviews/reviewStatuses";
 import {
-  type ReviewStepKey,
-  type ReviewStepStatus,
-  settledReviewStepCount,
-} from "@core/reviews/reviewDag";
-import { useStartSourceReviewMutation } from "@shell/data/reviews/mutations";
+  useStartBuildReviewMutation,
+  useStartSourceReviewMutation,
+} from "@shell/data/reviews/mutations";
 import { useReviewsQuery } from "@shell/data/reviews/queries";
 import { useState } from "react";
 import { Ic } from "../../shared/components/Icon";
@@ -21,32 +22,28 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
   const [open, setOpen] = useState(false);
   const reviews = useReviewsQuery();
   const startSourceReview = useStartSourceReviewMutation();
+  const startBuildReview = useStartBuildReviewMutation();
   const latest = reviews.data?.[0];
 
-  const sourceStatus: ReviewStepStatus = startSourceReview.isPending
-    ? "queued"
-    : latest?.status === "running"
-      ? "running"
-      : latest?.status === "completed"
-        ? (latest.sourceComparison?.verdict ?? "succeeded")
-        : latest?.status === "failed" || latest?.status === "canceled"
-          ? "failed"
-          : "ready";
-  const statuses: Partial<Record<ReviewStepKey, ReviewStepStatus>> = {
-    source: sourceStatus,
-    build: "unavailable",
-    activation: "unavailable",
-    experiments: "unavailable",
-  };
+  const pendingStep: ReviewStepKey | undefined = startSourceReview.isPending
+    ? "source"
+    : startBuildReview.isPending
+      ? "build"
+      : undefined;
+  const statuses = reviewStepStatuses(latest, { pendingStep });
+  const enabledSteps = runnableReviewSteps(statuses);
   const complete = settledReviewStepCount(statuses);
-  const running = sourceStatus === "queued" || sourceStatus === "running";
-  const enabledSteps = new Set<ReviewStepKey>(running ? [] : ["source"]);
+  const running = pendingStep != null || latest?.status === "running";
 
   const invokeStep = (step: ReviewStepKey) => {
-    if (step === "source" && enabledSteps.has(step)) startSourceReview.mutate();
+    if (!enabledSteps.has(step)) return;
+    if (step === "source") startSourceReview.mutate();
+    // Build joins the attempt source opened; without one there is nothing to
+    // build against, which is also why the DAG leaves it disabled until then.
+    if (step === "build" && latest) startBuildReview.mutate(latest.reviewId);
   };
 
-  const error = startSourceReview.error ?? reviews.error;
+  const error = startSourceReview.error ?? startBuildReview.error ?? reviews.error;
 
   return (
     <HudConsole
@@ -64,7 +61,7 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
       icon={Ic.refresh(16)}
       iconColor={running ? C.accent : "#7c3aed"}
       title="Review"
-      subtitle={latest ? `${latest.reviewId} · source ${sourceStatus}` : "ready for source review"}
+      subtitle={latest ? attemptSubtitle(latest, statuses) : "ready for source review"}
       on={running || complete > 0}
       expandLabel="Expand review controls"
       collapseLabel="Collapse review controls"
@@ -78,6 +75,8 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
         enabledSteps={enabledSteps}
         onRunStep={invokeStep}
       />
+
+      {latest?.buildComparison ? <BuildVerdictDetail attempt={latest} /> : null}
 
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <button
@@ -111,7 +110,7 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
             lineHeight: 1.35,
           }}
         >
-          Source is enabled first. Build, activation, and experiments remain isolated next steps.
+          Source and build are enabled. Activation and experiments remain isolated next steps.
         </span>
       </div>
 
@@ -132,5 +131,53 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
         </div>
       ) : null}
     </HudConsole>
+  );
+}
+
+function attemptSubtitle(
+  attempt: ReviewAttempt,
+  statuses: Readonly<Record<ReviewStepKey, string>>,
+): string {
+  const build = attempt.buildComparison ? ` · build ${statuses.build}` : "";
+  return `${attempt.reviewId} · source ${statuses.source}${build}`;
+}
+
+/**
+ * Why the build earned its verdict. A digest line and a closure line, because
+ * "equivalent" is a claim about the dependency closure and a reviewer should
+ * see the counts it rests on without opening the run log.
+ */
+function BuildVerdictDetail({ attempt }: { attempt: ReviewAttempt }) {
+  const comparison = attempt.buildComparison;
+  if (!comparison) return null;
+  const digestsMatch =
+    !!comparison.expectedRuntimeDigest &&
+    comparison.expectedRuntimeDigest === comparison.observedRuntimeDigest;
+
+  return (
+    <div
+      style={{
+        padding: "7px 9px",
+        border: `1px solid ${C.border}`,
+        borderRadius: 7,
+        background: C.surfaceAlt,
+        color: C.textMuted,
+        fontFamily: F.mono,
+        fontSize: 9,
+        lineHeight: 1.5,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+      }}
+    >
+      <span>
+        runtime digest: {digestsMatch ? "bit-identical" : "differs — closure decides the verdict"}
+      </span>
+      <span>
+        closure: {comparison.matched} matched · {comparison.missingCount} missing ·{" "}
+        {comparison.extraCount} extra · {comparison.versionMismatchCount} version drift
+        {comparison.advisoryCount > 0 ? ` · ${comparison.advisoryCount} advisory` : ""}
+      </span>
+    </div>
   );
 }

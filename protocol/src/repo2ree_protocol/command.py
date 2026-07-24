@@ -58,6 +58,33 @@ class ReviewAcquireSourceCommand(BaseModel):
     args: ReviewAcquireSourceArgs
 
 
+class ReviewBuildRuntimeArgs(BaseModel):
+    """Rebuild the runtime inside an existing review attempt and certify it.
+
+    Joins an attempt the source step already created rather than opening a new
+    one: the build is reproduced from *that* attempt's independently acquired
+    source, and its verdict is only meaningful next to that source verdict.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    review_id: str
+    # The rebuilt workspace (source + a copy of the author overlay) and the
+    # runtime tarball it produces are reconstructible, and the runtime alone can
+    # run to hundreds of megabytes per attempt. The evidence the verdict rests
+    # on — receipts, the reviewer's SBOM, the comparison — is kept regardless.
+    # Reviewers who intend to run activation next pass false to keep the built
+    # runtime in place.
+    prune_workspace: bool = True
+
+
+class ReviewBuildRuntimeCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["review_build_runtime"] = "review_build_runtime"
+    args: ReviewBuildRuntimeArgs
+
+
 class SnapshotUpstreamArgs(BaseModel):
     """No args — operates on /ree/upstream → /ree/snapshot.tar.gz."""
 
@@ -368,6 +395,7 @@ class SealReeCommand(BaseModel):
 Command = Annotated[
     AcquireSourceCommand
     | ReviewAcquireSourceCommand
+    | ReviewBuildRuntimeCommand
     | SnapshotUpstreamCommand
     | MaterializeWorkspaceCommand
     | UpdateSourceMetadataCommand

@@ -32,6 +32,7 @@ from repo2ree_protocol.command import (
     RemoveSourceCommand,
     ResetForSourceChangeCommand,
     ReviewAcquireSourceCommand,
+    ReviewBuildRuntimeCommand,
     RunExperimentCommand,
     SealReeCommand,
     SnapshotUpstreamCommand,
@@ -45,6 +46,7 @@ from repo2ree_protocol.result import ActionResult
 _ROUTES: list[tuple[type[BaseModel], str]] = [
     (AcquireSourceCommand, "handle_acquire_source"),
     (ReviewAcquireSourceCommand, "handle_review_acquire_source"),
+    (ReviewBuildRuntimeCommand, "handle_review_build_runtime"),
     (SnapshotUpstreamCommand, "handle_snapshot_upstream"),
     (MaterializeWorkspaceCommand, "handle_materialize_workspace"),
     (UpdateSourceMetadataCommand, "handle_update_source_metadata"),

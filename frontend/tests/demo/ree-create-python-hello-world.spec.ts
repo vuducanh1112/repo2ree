@@ -465,7 +465,9 @@ docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
     await expect(page.getByRole("button", { name: "Reassemble" })).toBeVisible();
     await showcasePanel(
       page,
-      page.getByRole("button", { name: "python-hello" }),
+      // Exact: once the run records a receipt, the receipts console carries a
+      // card named after the same experiment ("Experiment run · python-hello").
+      page.getByRole("button", { name: "python-hello", exact: true }),
       "The core shell now carries the experiment as its own cabled panel",
     );
     await page.waitForTimeout(1500);

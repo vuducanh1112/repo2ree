@@ -108,33 +108,74 @@ export function newNetworkRow(generateId: GenerateRowId): NetworkRow {
   };
 }
 
+/** Rows the HBOM can represent: it is keyed by model, so a blank one cannot be. */
+function named<TRow extends { model: string }>(rows: readonly TRow[] | undefined): TRow[] {
+  return (rows ?? []).filter((row) => row.model.trim().length > 0);
+}
+
+/** Rows the author has added but not yet named — editing state, not HBOM state. */
+function unnamed<TRow extends { model: string }>(rows: readonly TRow[] | undefined): TRow[] {
+  return (rows ?? []).filter((row) => row.model.trim().length === 0);
+}
+
+/**
+ * Project an HBOM onto the editable draft, carrying local editing state across.
+ *
+ * A just-added row has no model yet, and ``hbomFromDraft`` keys rows by model —
+ * so such a row is invisible to the HBOM and would be erased by the next sync,
+ * taking the author's half-finished input with it. Any sync can happen at any
+ * moment (an unrelated intent save round-trips the whole document), so unnamed
+ * rows are carried over rather than rebuilt. Ids for the synced rows come from
+ * the previously *named* rows, which are the ones that line up by index.
+ */
 export function draftFromHBOM(hbom: Hbom, previous?: HardwareBomDraft): HardwareBomDraft {
+  const previousCpus = named(previous?.cpus);
+  const previousGpus = named(previous?.gpus);
+  const previousMemory = named(previous?.memory);
+  const previousStorage = named(previous?.storage);
+  const previousNetwork = named(previous?.network);
+
   return {
-    cpus: Object.entries(hbom.cpus).map(([model, item], index) => ({
-      id: previous?.cpus[index]?.id || `cpu-${index}`,
-      model,
-      ...item,
-    })),
-    gpus: Object.entries(hbom.gpus).map(([model, item], index) => ({
-      id: previous?.gpus[index]?.id || `gpu-${index}`,
-      model,
-      ...item,
-    })),
-    memory: Object.entries(hbom.memory).map(([model, item], index) => ({
-      id: previous?.memory[index]?.id || `memory-${index}`,
-      model,
-      ...item,
-    })),
-    storage: Object.entries(hbom.storage).map(([model, item], index) => ({
-      id: previous?.storage[index]?.id || `storage-${index}`,
-      model,
-      ...item,
-    })),
-    network: Object.entries(hbom.network).map(([model, item], index) => ({
-      id: previous?.network[index]?.id || `network-${index}`,
-      model,
-      ...item,
-    })),
+    cpus: [
+      ...Object.entries(hbom.cpus).map(([model, item], index) => ({
+        id: previousCpus[index]?.id || `cpu-${index}`,
+        model,
+        ...item,
+      })),
+      ...unnamed(previous?.cpus),
+    ],
+    gpus: [
+      ...Object.entries(hbom.gpus).map(([model, item], index) => ({
+        id: previousGpus[index]?.id || `gpu-${index}`,
+        model,
+        ...item,
+      })),
+      ...unnamed(previous?.gpus),
+    ],
+    memory: [
+      ...Object.entries(hbom.memory).map(([model, item], index) => ({
+        id: previousMemory[index]?.id || `memory-${index}`,
+        model,
+        ...item,
+      })),
+      ...unnamed(previous?.memory),
+    ],
+    storage: [
+      ...Object.entries(hbom.storage).map(([model, item], index) => ({
+        id: previousStorage[index]?.id || `storage-${index}`,
+        model,
+        ...item,
+      })),
+      ...unnamed(previous?.storage),
+    ],
+    network: [
+      ...Object.entries(hbom.network).map(([model, item], index) => ({
+        id: previousNetwork[index]?.id || `network-${index}`,
+        model,
+        ...item,
+      })),
+      ...unnamed(previous?.network),
+    ],
   };
 }
 

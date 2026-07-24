@@ -22,7 +22,7 @@ from repo2ree_core.reproduction import (
     TEST_ACTIVATION,
 )
 from repo2ree_core.reviews import load_reviews
-from repo2ree_core.storage.layout import ReeLayout
+from repo2ree_core.storage.layout import ReeLayout, ReviewLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.storage.workspace_ops import (
     build_workspace_ree_archive as _build_archive,
@@ -39,7 +39,6 @@ from repo2ree_protocol.command import (
     ActivationTestCommand,
     BuildRuntimeCommand,
     MaterializeWorkspaceCommand,
-    ReviewAcquireSourceCommand,
     RunExperimentArgs,
     RunExperimentCommand,
 )
@@ -162,7 +161,11 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
     cancel_marker: Path | None = None
     if run_id is not None:
         layout = ReeLayout.in_workbench()
-        evidence_layout = layout.review(cmd.args.review_id) if isinstance(cmd, ReviewAcquireSourceCommand) else layout
+        # Review commands stream their logs into their own attempt namespace so
+        # reviewer evidence never lands in the author's runs/. Recognised by the
+        # arg they all carry, so a new review step needs no branch here.
+        review_id = getattr(cmd.args, "review_id", None)
+        evidence_layout: ReeLayout | ReviewLayout = layout.review(review_id) if review_id else layout
         evidence_layout.runs.mkdir(parents=True, exist_ok=True)
         run_log = evidence_layout.run_log(run_id).open("a", encoding="utf-8")
         cancel_marker = layout.run_cancel_marker(run_id)

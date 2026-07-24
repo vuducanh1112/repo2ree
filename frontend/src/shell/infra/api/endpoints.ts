@@ -47,6 +47,8 @@ export const endpoints = {
   reeReviews: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews`,
   reeSourceReview: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/source:reproduce`,
+  reeBuildReview: (reeId: string, reviewId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/build:reproduce`,
   reeRuns: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs`,
   reeRun: (reeId: string, runId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs/${encodeURIComponent(runId)}`,

@@ -4,6 +4,7 @@ import type {
   AgentList,
   ApiListResponse,
   AuthorReceiptSetWire,
+  CreateBuildReviewPayload,
   CreateSourceReviewPayload,
   DeleteReeResponse,
   FileMutationResponse,
@@ -144,6 +145,17 @@ export class ReeApi {
     payload: CreateSourceReviewPayload,
   ): Promise<RunSummary> {
     return this.client.request<RunSummary>(endpoints.reeSourceReview(reeId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async startBuildReview(
+    reeId: ReeId | string,
+    reviewId: string,
+    payload: CreateBuildReviewPayload,
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeBuildReview(reeId, reviewId), {
       method: "POST",
       body: JSON.stringify(payload),
     });

@@ -616,12 +616,33 @@ export async function openReviewConsole(page: Page) {
  * verdict the comparison settled on, as shown on the step.
  */
 export async function reproduceSource(page: Page) {
+  return reproduceReviewStep(page, "Source", 180000);
+}
+
+/**
+ * Run the build step of the review lifecycle and wait for its verdict.
+ *
+ * The reviewer rebuilds the runtime from the source their own attempt fetched,
+ * then scans it — a full container build plus an SBOM scan, so it is the
+ * slowest step in the lifecycle. Returns the verdict the comparison settled on.
+ * ``EQUIVALENT`` is the expected pass: image builds are rarely bit-identical,
+ * so matching dependency closures is what a faithful rebuild earns.
+ */
+export async function reproduceBuild(page: Page) {
+  return reproduceReviewStep(page, "Build", 600000);
+}
+
+/** Click one review step and read back the verdict it settles on. */
+async function reproduceReviewStep(page: Page, label: string, timeout: number) {
   const console = reviewConsole(page);
-  await stepShot(page, "reproduce-source", "before");
-  await console.getByRole("button", { name: "Reproduce Source" }).click();
-  const verdict = console.getByText(/^(IDENTICAL|DIFFERENT|INCONCLUSIVE|FAILED)$/);
-  await expect(verdict).toBeVisible({ timeout: 180000 });
-  await stepShot(page, "reproduce-source", "after");
+  const slug = `reproduce-${label.toLowerCase()}`;
+  await stepShot(page, slug, "before");
+  const step = console.getByRole("button", { name: `Reproduce ${label}` });
+  await expect(step).toBeEnabled();
+  await step.click();
+  const verdict = step.getByText(/^(IDENTICAL|EQUIVALENT|DIFFERENT|INCONCLUSIVE|FAILED)$/);
+  await expect(verdict).toBeVisible({ timeout });
+  await stepShot(page, slug, "after");
   return (await verdict.textContent()) ?? "";
 }
 
