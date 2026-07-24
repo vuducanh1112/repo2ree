@@ -25,6 +25,12 @@ export type ConsistencyReportWire = Schema<"ConsistencyReport">;
 
 export type AuthorReceiptSetWire = Schema<"AuthorReceiptSet">;
 
+export type ReviewRecordWire = Schema<"ReviewRecord">;
+
+export type ReviewSetWire = Schema<"ReviewSet">;
+
+export type CreateSourceReviewPayload = Schema<"CreateSourceReviewPayload">;
+
 export type ReeDocument = Schema<"ReeDocument">;
 
 export type ReproducibilityScoreCardWire = Schema<"ReproducibilityScoreCard">;

@@ -112,6 +112,8 @@ class AcquireSourceReceipt(_ReceiptEnvelope):
     origin_url: str = ""
     source_type: str = ""
     revision: str = ""
+    expected_swhid: str | None = None
+    observed_swhid: str | None = None
 
 
 class SnapshotUpstreamReceipt(_ReceiptEnvelope):

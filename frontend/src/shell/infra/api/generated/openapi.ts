@@ -290,6 +290,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rees/{ree_id}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Reviews */
+        get: operations["listReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rees/{ree_id}/reviews/source:reproduce": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Source Review */
+        post: operations["startSourceReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rees": {
         parameters: {
             query?: never;
@@ -703,6 +737,10 @@ export interface components {
              * @default
              */
             revision: string;
+            /** Expected Swhid */
+            expected_swhid?: string | null;
+            /** Observed Swhid */
+            observed_swhid?: string | null;
         };
         /**
          * Activation
@@ -1142,6 +1180,14 @@ export interface components {
             idempotency_key?: string | null;
             /** Produced Runtime Path */
             produced_runtime_path: string;
+        };
+        /**
+         * CreateSourceReviewPayload
+         * @description Start a fresh isolated review attempt at source acquisition.
+         */
+        CreateSourceReviewPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
         };
         /**
          * CrossCheckSbomReceipt
@@ -2437,6 +2483,29 @@ export interface components {
              */
             application: "automatic_allowed" | "confirmation_required" | "unavailable";
         };
+        /** ReviewRecord */
+        ReviewRecord: {
+            /** Review Id */
+            review_id: string;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "completed" | "failed" | "canceled";
+            source_receipt?: components["schemas"]["AcquireSourceReceipt"] | null;
+            source_comparison?: components["schemas"]["SourceComparison"] | null;
+            /** Failure */
+            failure?: string | null;
+        };
+        /** ReviewSet */
+        ReviewSet: {
+            /** Reviews */
+            reviews?: components["schemas"]["ReviewRecord"][];
+        };
         /** RunExperimentReceipt */
         RunExperimentReceipt: {
             /**
@@ -2906,6 +2975,24 @@ export interface components {
             revision?: string | null;
             /** Idempotency Key */
             idempotency_key?: string | null;
+        };
+        /** SourceComparison */
+        SourceComparison: {
+            /**
+             * Policy
+             * @default swhid
+             * @constant
+             */
+            policy: "swhid";
+            /** Expected Swhid */
+            expected_swhid?: string | null;
+            /** Observed Swhid */
+            observed_swhid?: string | null;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "identical" | "different" | "inconclusive";
         };
         /**
          * SourceRepoMetadata
@@ -4886,6 +4973,216 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthorReceiptSet"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewSet"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startSourceReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSourceReviewPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
                 };
             };
             /** @description Invalid request or operation precondition */

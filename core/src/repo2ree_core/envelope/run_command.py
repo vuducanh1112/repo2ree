@@ -21,6 +21,7 @@ from repo2ree_core.envelope.handlers.materialize_workspace import (
 )
 from repo2ree_core.envelope.handlers.patch_ree_intent import handle_patch_ree_intent
 from repo2ree_core.envelope.handlers.remove_source import handle_remove_source
+from repo2ree_core.envelope.handlers.review_acquire_source import handle_review_acquire_source
 from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
 from repo2ree_core.envelope.handlers.seal_ree import handle_seal_ree
 from repo2ree_core.envelope.handlers.snapshot_upstream import handle_snapshot_upstream
@@ -46,6 +47,7 @@ from repo2ree_protocol.command import (
     PatchReeIntentCommand,
     RemoveSourceCommand,
     ResetForSourceChangeCommand,
+    ReviewAcquireSourceCommand,
     RunExperimentCommand,
     SealReeCommand,
     SnapshotUpstreamCommand,
@@ -99,6 +101,8 @@ def _dispatch(
 ) -> ActionResult:
     if isinstance(cmd, AcquireSourceCommand):
         return handle_acquire_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, ReviewAcquireSourceCommand):
+        return handle_review_acquire_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, SnapshotUpstreamCommand):
         return handle_snapshot_upstream(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, MaterializeWorkspaceCommand):

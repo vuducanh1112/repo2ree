@@ -4,6 +4,7 @@ import type {
   AgentList,
   ApiListResponse,
   AuthorReceiptSetWire,
+  CreateSourceReviewPayload,
   DeleteReeResponse,
   FileMutationResponse,
   InferenceReport,
@@ -14,6 +15,7 @@ import type {
   ReproducibilityReportWire,
   ReproducibilityScoreCardWire,
   ReprovisionResponse,
+  ReviewSetWire,
   RunSummary,
   ScriptTargetSelector,
   ScriptTemplateCatalog,
@@ -130,6 +132,20 @@ export class ReeApi {
   async listAuthorReceipts(reeId: ReeId): Promise<AuthorReceiptSetWire> {
     return this.client.request<AuthorReceiptSetWire>(endpoints.reeAuthorReceipts(reeId), {
       method: "GET",
+    });
+  }
+
+  async listReviews(reeId: ReeId | string): Promise<ReviewSetWire> {
+    return this.client.request<ReviewSetWire>(endpoints.reeReviews(reeId), { method: "GET" });
+  }
+
+  async startSourceReview(
+    reeId: ReeId | string,
+    payload: CreateSourceReviewPayload,
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeSourceReview(reeId), {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
   }
 

@@ -2170,6 +2170,260 @@
         }
       }
     },
+    "/api/v1/rees/{ree_id}/reviews": {
+      "get": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "List Reviews",
+        "operationId": "listReviews",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rees/{ree_id}/reviews/source:reproduce": {
+      "post": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "Start Source Review",
+        "operationId": "startSourceReview",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSourceReviewPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rees": {
       "post": {
         "tags": [
@@ -5084,6 +5338,28 @@
             "type": "string",
             "title": "Revision",
             "default": ""
+          },
+          "expected_swhid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Swhid"
+          },
+          "observed_swhid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Swhid"
           }
         },
         "additionalProperties": false,
@@ -6095,6 +6371,25 @@
           "produced_runtime_path"
         ],
         "title": "CreateGenerateSbomRunPayload"
+      },
+      "CreateSourceReviewPayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CreateSourceReviewPayload",
+        "description": "Start a fresh isolated review attempt at source acquisition."
       },
       "CrossCheckSbomReceipt": {
         "properties": {
@@ -8944,6 +9239,86 @@
         ],
         "title": "ResultNode"
       },
+      "ReviewRecord": {
+        "properties": {
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "completed",
+              "failed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "source_receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcquireSourceReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "review_id",
+          "created_at",
+          "updated_at",
+          "status"
+        ],
+        "title": "ReviewRecord"
+      },
+      "ReviewSet": {
+        "properties": {
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewRecord"
+            },
+            "type": "array",
+            "title": "Reviews"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReviewSet"
+      },
       "RunExperimentReceipt": {
         "properties": {
           "schema_version": {
@@ -10067,6 +10442,53 @@
           "source_type"
         ],
         "title": "SourceAcquirePayload"
+      },
+      "SourceComparison": {
+        "properties": {
+          "policy": {
+            "type": "string",
+            "const": "swhid",
+            "title": "Policy",
+            "default": "swhid"
+          },
+          "expected_swhid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Swhid"
+          },
+          "observed_swhid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Swhid"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "identical",
+              "different",
+              "inconclusive"
+            ],
+            "title": "Verdict"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "verdict"
+        ],
+        "title": "SourceComparison"
       },
       "SourceRepoMetadata": {
         "properties": {

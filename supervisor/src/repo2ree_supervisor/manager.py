@@ -434,6 +434,10 @@ class WorkbenchManager:
         raw = self.dispatch_query(handle, "get-scorecard")
         return json.loads(raw)
 
+    def get_reviews(self, handle: WorkbenchHandle) -> dict[str, Any]:
+        raw = self.dispatch_query(handle, "get-reviews")
+        return json.loads(raw)
+
     def image_for(self, handle: WorkbenchHandle) -> str:
         """The image this REE's workbench runs, falling back to the manager default."""
         return handle.image or self._image

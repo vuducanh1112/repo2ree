@@ -21,6 +21,7 @@ from repo2ree_core.reproduction import (
     MATERIALIZE_WORKSPACE,
     TEST_ACTIVATION,
 )
+from repo2ree_core.reviews import load_reviews
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.storage.workspace_ops import (
@@ -38,6 +39,7 @@ from repo2ree_protocol.command import (
     ActivationTestCommand,
     BuildRuntimeCommand,
     MaterializeWorkspaceCommand,
+    ReviewAcquireSourceCommand,
     RunExperimentArgs,
     RunExperimentCommand,
 )
@@ -160,8 +162,9 @@ def _run_command_envelope(cmd: Any, run_id: str | None) -> None:
     cancel_marker: Path | None = None
     if run_id is not None:
         layout = ReeLayout.in_workbench()
-        layout.runs.mkdir(parents=True, exist_ok=True)
-        run_log = layout.run_log(run_id).open("a", encoding="utf-8")
+        evidence_layout = layout.review(cmd.args.review_id) if isinstance(cmd, ReviewAcquireSourceCommand) else layout
+        evidence_layout.runs.mkdir(parents=True, exist_ok=True)
+        run_log = evidence_layout.run_log(run_id).open("a", encoding="utf-8")
         cancel_marker = layout.run_cancel_marker(run_id)
     is_canceled = (lambda marker=cancel_marker: marker.exists()) if cancel_marker is not None else None
 
@@ -385,6 +388,12 @@ def get_scorecard_cmd() -> None:
         list(load_author_receipts(layout).values()),
     )
     click.echo(card.model_dump_json())
+
+
+@cli.command("get-reviews")
+def get_reviews_cmd() -> None:
+    """Emit persisted review attempts, newest first."""
+    click.echo(load_reviews(ReeLayout.in_workbench()).model_dump_json())
 
 
 @cli.command("build-archive")

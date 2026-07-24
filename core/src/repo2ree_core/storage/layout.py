@@ -17,6 +17,7 @@ Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
     workspace/            materialized view (upstream + overlay) used at build time
     runs/                 per-action logs and immutable receipt history
     receipts/author/      latest successful author receipt per operation
+    reviews/<review-id>/  isolated reviewer source, receipts, and comparisons
 
 ``upstream/`` and ``overlay/`` are the sources of truth; ``workspace/`` is
 derived and may be rebuilt at any time.
@@ -69,6 +70,7 @@ WORKSPACE_DIRNAME = "workspace"
 RUNS_DIRNAME = "runs"
 RECEIPTS_DIRNAME = "receipts"
 AUTHOR_RECEIPTS_DIRNAME = "author"
+REVIEWS_DIRNAME = "reviews"
 
 # Reserved, REE-owned overlay scripts are defined in the leaf
 # ``repo2ree_core.reserved_paths`` module so domain, experiment, and storage
@@ -181,6 +183,13 @@ class ReeLayout:
         return self.root / RECEIPTS_DIRNAME
 
     @property
+    def reviews(self) -> Path:
+        return self.root / REVIEWS_DIRNAME
+
+    def review(self, review_id: str) -> ReviewLayout:
+        return ReviewLayout(root=self._resolve_under(self.reviews, self._validate_review_id(review_id)))
+
+    @property
     def author_receipts(self) -> Path:
         """Selected author evidence: latest successful receipt per step."""
         return self.receipts / AUTHOR_RECEIPTS_DIRNAME
@@ -211,6 +220,12 @@ class ReeLayout:
             raise ValueError(f"invalid run_id: {run_id!r}")
         return run_id
 
+    @staticmethod
+    def _validate_review_id(review_id: str) -> str:
+        if not review_id or "/" in review_id or "\\" in review_id or review_id.startswith("."):
+            raise ValueError(f"invalid review_id: {review_id!r}")
+        return review_id
+
     def upstream_file(self, rel: str | PurePosixPath) -> Path:
         return self._resolve_under(self.upstream, rel)
 
@@ -231,6 +246,49 @@ class ReeLayout:
     def _resolve_under(base: Path, rel: str | PurePosixPath) -> Path:
         validate_relative_path(rel)
         return base / Path(str(rel))
+
+
+@dataclass(frozen=True)
+class ReviewLayout:
+    """Writable evidence namespace for one independent review attempt."""
+
+    root: Path
+
+    @property
+    def metadata(self) -> Path:
+        return self.root / "review.json"
+
+    @property
+    def acquire_script(self) -> Path:
+        return self.root / ACQUIRE_SCRIPT_FILENAME
+
+    @property
+    def upstream(self) -> Path:
+        return self.root / UPSTREAM_DIRNAME
+
+    @property
+    def runs(self) -> Path:
+        return self.root / RUNS_DIRNAME
+
+    @property
+    def receipts(self) -> Path:
+        return self.root / RECEIPTS_DIRNAME
+
+    @property
+    def comparisons(self) -> Path:
+        return self.root / "comparisons"
+
+    def run_log(self, run_id: str) -> Path:
+        return self.runs / f"{ReeLayout._validate_run_id(run_id)}.ndjson"
+
+    def run_receipt(self, run_id: str) -> Path:
+        return self.runs / f"{ReeLayout._validate_run_id(run_id)}.receipt.json"
+
+    def operation_receipt(self, operation: str) -> Path:
+        return ReeLayout._resolve_under(self.receipts, f"{operation}.json")
+
+    def comparison(self, step: str) -> Path:
+        return ReeLayout._resolve_under(self.comparisons, f"{step}.json")
 
 
 # ================================================

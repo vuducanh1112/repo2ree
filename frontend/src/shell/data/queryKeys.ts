@@ -6,6 +6,7 @@ export const queryKeys = {
   evaluateReport: (reeId: string) => ["evaluate-report", reeId] as const,
   scorecard: (reeId: string) => ["scorecard", reeId] as const,
   authorReceipts: (reeId: string) => ["author-receipts", reeId] as const,
+  reviews: (reeId: string) => ["reviews", reeId] as const,
   reeRuns: (reeId: string) => ["ree-runs", reeId] as const,
   stepRuns: (reeId: string, runId: string) => ["step-run", reeId, runId] as const,
   stepRunLogs: (reeId: string, runId: string) => ["step-run-logs", reeId, runId] as const,

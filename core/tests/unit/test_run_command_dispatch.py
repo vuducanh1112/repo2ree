@@ -31,6 +31,7 @@ from repo2ree_protocol.command import (
     PatchReeIntentCommand,
     RemoveSourceCommand,
     ResetForSourceChangeCommand,
+    ReviewAcquireSourceCommand,
     RunExperimentCommand,
     SealReeCommand,
     SnapshotUpstreamCommand,
@@ -43,6 +44,7 @@ from repo2ree_protocol.result import ActionResult
 # (Command class, name of the handler in run_command it must route to).
 _ROUTES: list[tuple[type[BaseModel], str]] = [
     (AcquireSourceCommand, "handle_acquire_source"),
+    (ReviewAcquireSourceCommand, "handle_review_acquire_source"),
     (SnapshotUpstreamCommand, "handle_snapshot_upstream"),
     (MaterializeWorkspaceCommand, "handle_materialize_workspace"),
     (UpdateSourceMetadataCommand, "handle_update_source_metadata"),

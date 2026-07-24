@@ -32,6 +32,7 @@ import { LabBackdrop } from "./LabBackdrop";
 import { NodeCard } from "./NodeCard";
 import { ReceiptsConsole } from "./ReceiptsConsole";
 import { ReproducibilityScoreCardConsole } from "./ReproducibilityScoreCardConsole";
+import { ReviewConsole } from "./ReviewConsole";
 import { useCableGeometry } from "./useCableGeometry";
 import { type Transform, useCanvasViewport } from "./useCanvasViewport";
 import { useExperimentCables } from "./useExperimentCables";
@@ -335,6 +336,8 @@ export function CanvasHub({
       <ReceiptsConsole provisioned={provisioned} />
 
       <BenchConsole provisioned={provisioned} reeName={ree.name} />
+
+      <ReviewConsole experiments={experiments} />
 
       <ExplodeToggle exploded={exploded} onToggle={toggleExplode} />
 

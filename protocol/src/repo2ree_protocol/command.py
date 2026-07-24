@@ -43,6 +43,21 @@ class AcquireSourceCommand(BaseModel):
     args: AcquireSourceArgs
 
 
+class ReviewAcquireSourceArgs(BaseModel):
+    """Acquire the author-pinned source into one isolated review attempt."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    review_id: str
+
+
+class ReviewAcquireSourceCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["review_acquire_source"] = "review_acquire_source"
+    args: ReviewAcquireSourceArgs
+
+
 class SnapshotUpstreamArgs(BaseModel):
     """No args — operates on /ree/upstream → /ree/snapshot.tar.gz."""
 
@@ -331,6 +346,7 @@ class SealReeCommand(BaseModel):
 # Tagged union discriminated on 'operation'.
 Command = Annotated[
     AcquireSourceCommand
+    | ReviewAcquireSourceCommand
     | SnapshotUpstreamCommand
     | MaterializeWorkspaceCommand
     | UpdateSourceMetadataCommand
