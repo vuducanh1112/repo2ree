@@ -4,10 +4,12 @@ import {
   type ScoreCardCategory,
   type ScoreCardRung,
 } from "@core/scorecard/ReproducibilityScoreCard";
+import { useAuthorReceiptsQuery } from "@shell/data/receipts/queries";
 import { useReproducibilityScoreCard } from "@shell/data/scorecard/queries";
 import { useState } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
+import { AuthorReceipts } from "./AuthorReceipts";
 import { HudConsole } from "./HudConsole";
 
 interface ReproducibilityScoreCardConsoleProps {
@@ -83,6 +85,7 @@ export function ReproducibilityScoreCardConsole({
   const [open, setOpen] = useState(false);
 
   const query = useReproducibilityScoreCard({ enabled: provisioned });
+  const receiptsQuery = useAuthorReceiptsQuery({ enabled: provisioned });
   // The lowest level is the honest default: an unmeasured REE *is* R0 Draft,
   // so absence of a server card never reads as a separate "unavailable" state.
   const card = query.data ?? emptyReproducibilityScoreCard();
@@ -104,7 +107,7 @@ export function ReproducibilityScoreCardConsole({
       on={provisioned && !!query.data}
       expandLabel="Expand REE evidence scorecard"
       collapseLabel="Collapse REE evidence scorecard"
-      bodyMaxHeight={280}
+      bodyMaxHeight={520}
     >
       {card.categories.map((category) => (
         <CategoryRow key={category.key} category={category} />
@@ -124,6 +127,34 @@ export function ReproducibilityScoreCardConsole({
           : card.sealed
             ? `Sealed at ${card.levelCode} · ${card.levelName} — an evidence level, not a reproduction verdict.`
             : "Derived from recorded evidence; seal to stamp the level. Not a reproduction verdict."}
+      </div>
+      <div
+        style={{
+          marginTop: 4,
+          paddingTop: 8,
+          borderTop: `1px dashed ${C.border}`,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}
+      >
+        <div
+          style={{
+            color: C.textMid,
+            fontSize: 10,
+            fontWeight: 800,
+            fontFamily: F.mono,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
+          Author receipts
+        </div>
+        {receiptsQuery.isError ? (
+          <div style={{ color: C.textMuted, fontSize: 10.5 }}>Receipts unavailable.</div>
+        ) : (
+          <AuthorReceipts receipts={receiptsQuery.data?.receipts ?? []} />
+        )}
       </div>
     </HudConsole>
   );

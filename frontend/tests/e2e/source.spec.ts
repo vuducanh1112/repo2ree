@@ -1,7 +1,7 @@
 import { expect, test } from "./helpers/fixtures";
 import { downloadSource, provisionWorkbench, startReeCreation } from "./helpers/flow";
 
-const GIT_ORIGIN_URL = "https://codeberg.org/vuducanh1112/repo2ree";
+const GIT_ORIGIN_URL = "https://github.com/vuducanh1112/repo2ree.git";
 
 // The upload path is covered by the golden-path journey (ree-pipeline.spec.ts).
 // This spec keeps the branch the journey cannot take: fetching from an origin

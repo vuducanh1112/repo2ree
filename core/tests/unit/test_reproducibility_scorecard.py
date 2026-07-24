@@ -28,6 +28,9 @@ _OUTPUT_DIGEST = "sha256:" + "c" * 64
 def _build_receipt(*, digest: str | None = _RUNTIME_DIGEST) -> BuildRuntimeReceipt:
     return BuildRuntimeReceipt(
         run_id="build-1",
+        started_at="2026-01-01T00:00:00Z",
+        finished_at="2026-01-01T00:00:00Z",
+        duration_ms=0,
         recorded_at="2026-01-01T00:00:00Z",
         status="succeeded",
         produced_runtime_digest=digest,
@@ -37,6 +40,9 @@ def _build_receipt(*, digest: str | None = _RUNTIME_DIGEST) -> BuildRuntimeRecei
 def _sbom_receipt(*, declared: str | None = _RUNTIME_DIGEST) -> GenerateSbomReceipt:
     return GenerateSbomReceipt(
         run_id="sbom-1",
+        started_at="2026-01-01T01:00:00Z",
+        finished_at="2026-01-01T01:00:00Z",
+        duration_ms=0,
         recorded_at="2026-01-01T01:00:00Z",
         status="succeeded",
         declared_runtime_digest=declared,
@@ -50,6 +56,9 @@ _SBOM_DIGEST = "sha256:" + "d" * 64
 def _crosscheck_receipt(*, sbom_digest: str | None = _SBOM_DIGEST) -> CrossCheckSbomReceipt:
     return CrossCheckSbomReceipt(
         run_id="crosscheck-1",
+        started_at="2026-01-01T01:30:00Z",
+        finished_at="2026-01-01T01:30:00Z",
+        duration_ms=0,
         recorded_at="2026-01-01T01:30:00Z",
         status="succeeded",
         sbom_digest=sbom_digest,
@@ -61,6 +70,9 @@ def _crosscheck_receipt(*, sbom_digest: str | None = _SBOM_DIGEST) -> CrossCheck
 def _activation_receipt(*, declared: str | None = _RUNTIME_DIGEST) -> ActivationTestReceipt:
     return ActivationTestReceipt(
         run_id="act-1",
+        started_at="2026-01-01T02:00:00Z",
+        finished_at="2026-01-01T02:00:00Z",
+        duration_ms=0,
         recorded_at="2026-01-01T02:00:00Z",
         status="succeeded",
         declared_runtime_digest=declared,
@@ -76,6 +88,9 @@ def _experiment_receipt(
 ) -> RunExperimentReceipt:
     return RunExperimentReceipt(
         run_id=f"exp-{name}",
+        started_at="2026-01-01T03:00:00Z",
+        finished_at="2026-01-01T03:00:00Z",
+        duration_ms=0,
         recorded_at="2026-01-01T03:00:00Z",
         status=status,  # type: ignore[arg-type]
         experiment_name=name,

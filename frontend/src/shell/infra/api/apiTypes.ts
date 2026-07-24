@@ -23,6 +23,8 @@ export type SourceRepoMetadataWire = Schema<"SourceRepoMetadata">;
 /** Per-step freshness of recorded run receipts vs. the current tree. */
 export type ConsistencyReportWire = Schema<"ConsistencyReport">;
 
+export type AuthorReceiptSetWire = Schema<"AuthorReceiptSet">;
+
 export type ReeDocument = Schema<"ReeDocument">;
 
 export type ReproducibilityScoreCardWire = Schema<"ReproducibilityScoreCard">;

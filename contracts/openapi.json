@@ -2047,6 +2047,129 @@
         }
       }
     },
+    "/api/v1/rees/{ree_id}/receipts/author": {
+      "get": {
+        "tags": [
+          "receipts"
+        ],
+        "summary": "List Author Receipts",
+        "description": "Latest successful author receipt per operation, with live freshness.",
+        "operationId": "listAuthorReceipts",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthorReceiptSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rees": {
       "post": {
         "tags": [
@@ -4903,6 +5026,79 @@
   },
   "components": {
     "schemas": {
+      "AcquireSourceReceipt": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms"
+          },
+          "recorded_at": {
+            "type": "string",
+            "title": "Recorded At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "operation": {
+            "type": "string",
+            "const": "acquire_source",
+            "title": "Operation",
+            "default": "acquire_source"
+          },
+          "origin_url": {
+            "type": "string",
+            "title": "Origin Url",
+            "default": ""
+          },
+          "source_type": {
+            "type": "string",
+            "title": "Source Type",
+            "default": ""
+          },
+          "revision": {
+            "type": "string",
+            "title": "Revision",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "recorded_at",
+          "status"
+        ],
+        "title": "AcquireSourceReceipt",
+        "description": "Chain root: no inputs, records what was acquired."
+      },
       "Activation": {
         "properties": {
           "description": {
@@ -4967,6 +5163,138 @@
         ],
         "title": "ActivationScriptTemplates",
         "description": "The activation run-script templates and both reserved activation paths.\n\nThe default template (``is_default``) is the content a fresh REE's\nactivation script is seeded with. ``verify_script_path`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
+      },
+      "ActivationTestReceipt": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms"
+          },
+          "recorded_at": {
+            "type": "string",
+            "title": "Recorded At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "workspace_drift": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkspaceDrift"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "snapshot_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Digest"
+          },
+          "run_script_path": {
+            "type": "string",
+            "title": "Run Script Path",
+            "default": ""
+          },
+          "run_script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Script Digest"
+          },
+          "verify_script_path": {
+            "type": "string",
+            "title": "Verify Script Path",
+            "default": ""
+          },
+          "verify_script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Script Digest"
+          },
+          "runtime_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Path"
+          },
+          "declared_runtime_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Runtime Digest"
+          },
+          "operation": {
+            "type": "string",
+            "const": "activation_test",
+            "title": "Operation",
+            "default": "activation_test"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "recorded_at",
+          "status"
+        ],
+        "title": "ActivationTestReceipt"
       },
       "AgentList": {
         "properties": {
@@ -5054,6 +5382,195 @@
           "source"
         ],
         "title": "ArgvCommandCandidate"
+      },
+      "AuthorReceiptEntry": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "receipt": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AcquireSourceReceipt"
+              },
+              {
+                "$ref": "#/components/schemas/SnapshotUpstreamReceipt"
+              },
+              {
+                "$ref": "#/components/schemas/BuildRuntimeReceipt"
+              },
+              {
+                "$ref": "#/components/schemas/GenerateSbomReceipt"
+              },
+              {
+                "$ref": "#/components/schemas/CrossCheckSbomReceipt"
+              },
+              {
+                "$ref": "#/components/schemas/ActivationTestReceipt"
+              },
+              {
+                "$ref": "#/components/schemas/RunExperimentReceipt"
+              }
+            ],
+            "title": "Receipt",
+            "discriminator": {
+              "propertyName": "operation",
+              "mapping": {
+                "acquire_source": "#/components/schemas/AcquireSourceReceipt",
+                "activation_test": "#/components/schemas/ActivationTestReceipt",
+                "build_runtime": "#/components/schemas/BuildRuntimeReceipt",
+                "cross_check_sbom": "#/components/schemas/CrossCheckSbomReceipt",
+                "generate_sbom": "#/components/schemas/GenerateSbomReceipt",
+                "run_experiment": "#/components/schemas/RunExperimentReceipt",
+                "snapshot_upstream": "#/components/schemas/SnapshotUpstreamReceipt"
+              }
+            }
+          },
+          "consistency": {
+            "$ref": "#/components/schemas/ConsistencyStep"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "receipt",
+          "consistency"
+        ],
+        "title": "AuthorReceiptEntry",
+        "description": "One selected author receipt joined to its live freshness verdict."
+      },
+      "AuthorReceiptSet": {
+        "properties": {
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/AuthorReceiptEntry"
+            },
+            "type": "array",
+            "title": "Receipts"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AuthorReceiptSet",
+        "description": "Latest successful, fully typed author evidence for the REE."
+      },
+      "BuildRuntimeReceipt": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms"
+          },
+          "recorded_at": {
+            "type": "string",
+            "title": "Recorded At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "operation": {
+            "type": "string",
+            "const": "build_runtime",
+            "title": "Operation",
+            "default": "build_runtime"
+          },
+          "workspace_drift": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkspaceDrift"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "snapshot_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Digest"
+          },
+          "build_script_path": {
+            "type": "string",
+            "title": "Build Script Path",
+            "default": ""
+          },
+          "build_script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Script Digest"
+          },
+          "runtime_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Path"
+          },
+          "produced_runtime_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Produced Runtime Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "recorded_at",
+          "status"
+        ],
+        "title": "BuildRuntimeReceipt"
       },
       "BuildScriptTemplates": {
         "properties": {
@@ -5578,6 +6095,100 @@
           "produced_runtime_path"
         ],
         "title": "CreateGenerateSbomRunPayload"
+      },
+      "CrossCheckSbomReceipt": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms"
+          },
+          "recorded_at": {
+            "type": "string",
+            "title": "Recorded At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "operation": {
+            "type": "string",
+            "const": "cross_check_sbom",
+            "title": "Operation",
+            "default": "cross_check_sbom"
+          },
+          "sbom_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sbom Digest"
+          },
+          "declared_direct_total": {
+            "type": "integer",
+            "title": "Declared Direct Total",
+            "default": 0
+          },
+          "observed_matched": {
+            "type": "integer",
+            "title": "Observed Matched",
+            "default": 0
+          },
+          "version_mismatches": {
+            "type": "integer",
+            "title": "Version Mismatches",
+            "default": 0
+          },
+          "undeclared_same_ecosystem": {
+            "type": "integer",
+            "title": "Undeclared Same Ecosystem",
+            "default": 0
+          },
+          "observed_total": {
+            "type": "integer",
+            "title": "Observed Total",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "recorded_at",
+          "status"
+        ],
+        "title": "CrossCheckSbomReceipt",
+        "description": "Aggregates of the SBOM \u2194 declared-inventory cross-check.\n\nCarries only counts plus the digest of the SBOM it consumed: the digest\nchain (this \u2192 ``GenerateSbomReceipt.sbom_digest`` \u2192 build receipt) ties\nthe verdict to the built runtime; per-dependency detail stays in the\nreport artifact."
       },
       "DecisionDag": {
         "properties": {
@@ -6547,6 +7158,124 @@
         "type": "object",
         "title": "GPUDefinition"
       },
+      "GenerateSbomReceipt": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms"
+          },
+          "recorded_at": {
+            "type": "string",
+            "title": "Recorded At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "operation": {
+            "type": "string",
+            "const": "generate_sbom",
+            "title": "Operation",
+            "default": "generate_sbom"
+          },
+          "runtime_path": {
+            "type": "string",
+            "title": "Runtime Path",
+            "default": ""
+          },
+          "declared_runtime_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Runtime Digest"
+          },
+          "sbom_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sbom Path"
+          },
+          "sbom_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sbom Digest"
+          },
+          "sbom_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sbom Format"
+          },
+          "tool_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "recorded_at",
+          "status"
+        ],
+        "title": "GenerateSbomReceipt",
+        "description": "Workspace-independent: consumes only the declared runtime artifact."
+      },
       "GenerateScriptCandidatesPayload": {
         "properties": {
           "targets": {
@@ -7225,6 +7954,9 @@
           "consistency": {
             "$ref": "#/components/schemas/ConsistencyReport"
           },
+          "author_receipts": {
+            "$ref": "#/components/schemas/AuthorReceiptSet"
+          },
           "ree_steps": {
             "items": {
               "$ref": "#/components/schemas/ReeStepState"
@@ -7760,6 +8492,9 @@
           "consistency": {
             "$ref": "#/components/schemas/ConsistencyReport"
           },
+          "author_receipts": {
+            "$ref": "#/components/schemas/AuthorReceiptSet"
+          },
           "ree_steps": {
             "items": {
               "$ref": "#/components/schemas/ReeStepState"
@@ -8208,6 +8943,154 @@
           "application"
         ],
         "title": "ResultNode"
+      },
+      "RunExperimentReceipt": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms"
+          },
+          "recorded_at": {
+            "type": "string",
+            "title": "Recorded At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "workspace_drift": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkspaceDrift"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "snapshot_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Digest"
+          },
+          "run_script_path": {
+            "type": "string",
+            "title": "Run Script Path",
+            "default": ""
+          },
+          "run_script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Script Digest"
+          },
+          "verify_script_path": {
+            "type": "string",
+            "title": "Verify Script Path",
+            "default": ""
+          },
+          "verify_script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Script Digest"
+          },
+          "runtime_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Path"
+          },
+          "declared_runtime_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Runtime Digest"
+          },
+          "operation": {
+            "type": "string",
+            "const": "run_experiment",
+            "title": "Operation",
+            "default": "run_experiment"
+          },
+          "experiment_name": {
+            "type": "string",
+            "title": "Experiment Name",
+            "default": ""
+          },
+          "produced_output_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Produced Output Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "recorded_at",
+          "status"
+        ],
+        "title": "RunExperimentReceipt"
       },
       "RunList": {
         "properties": {
@@ -9071,6 +9954,74 @@
         "title": "ShellCommandCandidate",
         "description": "A shell-form command (e.g. a Docker shell-form ENTRYPOINT/CMD). It is\nnever rewritten into guessed argv; the author must make the shell dependency\nexplicit (``set -- sh -c '...'``)."
       },
+      "SnapshotUpstreamReceipt": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms"
+          },
+          "recorded_at": {
+            "type": "string",
+            "title": "Recorded At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "failed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "operation": {
+            "type": "string",
+            "const": "snapshot_upstream",
+            "title": "Operation",
+            "default": "snapshot_upstream"
+          },
+          "snapshot_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "recorded_at",
+          "status"
+        ],
+        "title": "SnapshotUpstreamReceipt"
+      },
       "SourceAcquirePayload": {
         "properties": {
           "origin_url": {
@@ -9744,6 +10695,38 @@
         "title": "WorkbenchStatus",
         "description": "Whether (and where) a live workbench backs the REE."
       },
+      "WorkspaceDrift": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "clean",
+              "modified",
+              "unknown"
+            ],
+            "title": "Status"
+          },
+          "changed_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Changed Paths"
+          },
+          "changed_path_count": {
+            "type": "integer",
+            "title": "Changed Path Count",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "WorkspaceDrift",
+        "description": "Whether the workspace still equals ``materialize(snapshot + overlay)``.\n\n``unknown`` means there was no materialization marker to check against\n(the workspace was never materialized through the tracked path).\n``changed_paths`` is capped; ``changed_path_count`` carries the true count."
+      },
       "WorkspaceFile": {
         "properties": {
           "path": {
@@ -9824,6 +10807,10 @@
     {
       "name": "runs",
       "description": "Start and observe asynchronous workbench operations."
+    },
+    {
+      "name": "receipts",
+      "description": "Inspect selected, typed author evidence."
     },
     {
       "name": "sources",

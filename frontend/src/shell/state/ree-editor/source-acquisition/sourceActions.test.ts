@@ -53,6 +53,7 @@ describe("createSourceActions", () => {
     expect(args.reeClient.resetWorkspaceRequest).toHaveBeenCalledWith("ree-1", {
       mode: "clear",
     });
+    expect(args.refreshWorkspaceFiles).toHaveBeenCalledWith({ forceReeHydration: true });
     expect(queryClient.getQueryData(queryKeys.evaluateReport("ree-1"))).toBeNull();
   });
 

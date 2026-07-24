@@ -33,6 +33,8 @@ def test_remove_source_recreates_reserved_build_script(tmp_path: Path, monkeypat
     store.layout.acquire_script.write_text("old acquire")
     store.layout.manifest.write_text("{}")
     store.layout.sealed_archive.write_bytes(b"old sealed archive")
+    store.layout.author_operation_receipt("build_runtime").write_text("{}")
+    store.layout.run_receipt("old-build").write_text("{}")
     store.write_metadata(
         WorkspaceMetadata(
             ree_id="ree123",
@@ -62,6 +64,8 @@ def test_remove_source_recreates_reserved_build_script(tmp_path: Path, monkeypat
     assert not store.layout.acquire_script.exists()
     assert not store.layout.manifest.exists()
     assert not store.layout.sealed_archive.exists()
+    assert list(store.layout.author_receipts.rglob("*.json")) == []
+    assert store.layout.run_receipt("old-build").exists()
 
     metadata = store.read_metadata()
     assert metadata.name == "demo"

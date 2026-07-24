@@ -3,6 +3,7 @@ import type { ApiClient } from "./ApiClient";
 import type {
   AgentList,
   ApiListResponse,
+  AuthorReceiptSetWire,
   DeleteReeResponse,
   FileMutationResponse,
   InferenceReport,
@@ -122,6 +123,12 @@ export class ReeApi {
 
   async getScorecard(reeId: ReeId): Promise<ReproducibilityScoreCardWire> {
     return this.client.request<ReproducibilityScoreCardWire>(endpoints.reeScorecard(reeId), {
+      method: "GET",
+    });
+  }
+
+  async listAuthorReceipts(reeId: ReeId): Promise<AuthorReceiptSetWire> {
+    return this.client.request<AuthorReceiptSetWire>(endpoints.reeAuthorReceipts(reeId), {
       method: "GET",
     });
   }

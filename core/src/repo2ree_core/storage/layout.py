@@ -15,7 +15,8 @@ Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
     overlay/              user-added and tool-generated recipe files
     artifacts/            build outputs (runtime, sbom, ...)
     workspace/            materialized view (upstream + overlay) used at build time
-    runs/                 per-action NDJSON run logs (<run_id>.ndjson)
+    runs/                 per-action logs and immutable receipt history
+    receipts/author/      latest successful author receipt per operation
 
 ``upstream/`` and ``overlay/`` are the sources of truth; ``workspace/`` is
 derived and may be rebuilt at any time.
@@ -66,6 +67,8 @@ ARTIFACTS_DIRNAME = "artifacts"
 RESULTS_DIRNAME = "results"
 WORKSPACE_DIRNAME = "workspace"
 RUNS_DIRNAME = "runs"
+RECEIPTS_DIRNAME = "receipts"
+AUTHOR_RECEIPTS_DIRNAME = "author"
 
 # Reserved, REE-owned overlay scripts are defined in the leaf
 # ``repo2ree_core.reserved_paths`` module so domain, experiment, and storage
@@ -172,6 +175,23 @@ class ReeLayout:
     @property
     def runs(self) -> Path:
         return self.root / RUNS_DIRNAME
+
+    @property
+    def receipts(self) -> Path:
+        return self.root / RECEIPTS_DIRNAME
+
+    @property
+    def author_receipts(self) -> Path:
+        """Selected author evidence: latest successful receipt per step."""
+        return self.receipts / AUTHOR_RECEIPTS_DIRNAME
+
+    def author_operation_receipt(self, operation: str) -> Path:
+        """Selected receipt for a singleton operation."""
+        return self._resolve_under(self.author_receipts, f"{operation}.json")
+
+    def author_experiment_receipt(self, experiment_slug: str) -> Path:
+        """Selected receipt for one experiment, keyed by its canonical slug."""
+        return self._resolve_under(self.author_receipts, PurePosixPath("experiments") / f"{experiment_slug}.json")
 
     def run_log(self, run_id: str) -> Path:
         """Path to the NDJSON log file for a single action run."""

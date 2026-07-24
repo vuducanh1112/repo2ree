@@ -29,7 +29,9 @@ from typing import Any
 
 from repo2ree_core.storage.layout import (
     ARTIFACTS_DIRNAME,
+    AUTHOR_RECEIPTS_DIRNAME,
     OVERLAY_DIRNAME,
+    RECEIPTS_DIRNAME,
     RESULTS_DIRNAME,
     SNAPSHOT_FILENAME,
     WORKSPACE_DIRNAME,
@@ -57,7 +59,8 @@ REE_RESULTS_PREFIX = f"{REE_ROOT_PREFIX}{RESULTS_DIRNAME}/"
 REE_WORKSPACE_DIR_ENTRY = f"{REE_ROOT_PREFIX}{WORKSPACE_DIRNAME}/"
 # Receipts get their own bundle directory (rather than mirroring ``runs/``)
 # because only the receipt record is published — NDJSON logs stay out.
-REE_RECEIPTS_PREFIX = f"{REE_ROOT_PREFIX}receipts/"
+REE_RECEIPTS_PREFIX = f"{REE_ROOT_PREFIX}{RECEIPTS_DIRNAME}/"
+REE_AUTHOR_RECEIPTS_PREFIX = f"{REE_RECEIPTS_PREFIX}{AUTHOR_RECEIPTS_DIRNAME}/"
 
 _EPOCH_DATE_TIME = (1980, 1, 1, 0, 0, 0)
 

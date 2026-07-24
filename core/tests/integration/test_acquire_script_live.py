@@ -22,7 +22,7 @@ from repo2ree_core.storage.layout import ACQUIRE_SCRIPT_FILENAME, UPSTREAM_DIRNA
 # something a local file:// origin cannot reproduce. The repo2ree repo itself is
 # the fixture; the pinned commit is a permanent ancestor of ``main``, chosen so
 # an unpinned clone of the moving HEAD would resolve to a different commit.
-_LIVE_ORIGIN = "https://codeberg.org/vuducanh1112/repo2ree"
+_LIVE_ORIGIN = "https://github.com/vuducanh1112/repo2ree.git"
 _LIVE_PINNED_COMMIT = "1fbbca3e81f09798afdb36729b358289829dda94"
 
 

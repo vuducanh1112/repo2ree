@@ -161,6 +161,7 @@ class ReeStore:
             subtree.ensure_root()
         self.layout.upload_staging.mkdir(parents=True, exist_ok=True)
         self.layout.runs.mkdir(parents=True, exist_ok=True)
+        self.layout.author_receipts.mkdir(parents=True, exist_ok=True)
 
     def ensure_reserved_overlay_scripts(self) -> None:
         """Seed the REE-owned scripts with their packaged starter templates.

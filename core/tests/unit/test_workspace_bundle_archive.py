@@ -351,8 +351,8 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
     """The motivating receipts scenario: build recorded, script edited, seal.
 
     The sealed manifest must carry a consistency block naming the build
-    script as the moved input, and the run receipts must ride in the bundle
-    under ree/receipts/.
+    script as the moved input, and the selected author receipts must ride in
+    the bundle under ree/receipts/author/.
     """
     from repo2ree_core.digests import digest_bytes
     from repo2ree_core.receipts import BuildRuntimeReceipt, record_receipt
@@ -368,6 +368,9 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
             layout,
             BuildRuntimeReceipt(
                 run_id=run_id,
+                started_at=recorded_at,
+                finished_at=recorded_at,
+                duration_ms=0,
                 recorded_at=recorded_at,
                 status=status,
                 build_script_path="ree-scripts/build_script.sh",
@@ -398,11 +401,11 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
 
     with zipfile.ZipFile(io.BytesIO(build_workspace_ree_archive(storage_root, ree_id))) as zf:
         bundle_manifest = json.loads(zf.read("ree/ree.json"))
-        receipt = json.loads(zf.read("ree/receipts/run-b.receipt.json"))
+        receipt = json.loads(zf.read("ree/receipts/author/build_runtime.json"))
         bundled_receipts = [n for n in zf.namelist() if n.startswith("ree/receipts/") and n.endswith(".json")]
     assert bundle_manifest["consistency"] == outputs.consistency.model_dump()
     assert receipt["run_id"] == "run-b"
-    assert bundled_receipts == ["ree/receipts/run-b.receipt.json"]
+    assert bundled_receipts == ["ree/receipts/author/build_runtime.json"]
     # The full run history stays on the workbench.
     assert {p.name for p in layout.runs.glob("*.receipt.json")} == {
         "run-old.receipt.json",
@@ -426,6 +429,9 @@ def test_get_workspace_includes_live_consistency_report(tmp_path):
         layout,
         BuildRuntimeReceipt(
             run_id="run-b",
+            started_at="2026-01-01T00:00:00Z",
+            finished_at="2026-01-01T00:00:00Z",
+            duration_ms=0,
             recorded_at="2026-01-01T00:00:00Z",
             status="succeeded",
             build_script_path="ree-scripts/build_script.sh",

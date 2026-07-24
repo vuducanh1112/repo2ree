@@ -15,7 +15,7 @@ from repo2ree_core.receipts import GenerateSbomReceipt, receipt_run_id, record_r
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.time_utils import utc_now
+from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_core.tooling import resolve_tool
 from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.log import LogSink
@@ -61,6 +61,8 @@ def handle_generate_sbom(
         )
         return ActionResult.failed("validation", "SBOM generation currently supports runtime tarballs only")
 
+    timer = OperationTimer.start()
+
     # Workspace-independent step: its only input is the declared runtime
     # artifact, digested before syft consumes it.
     declared_runtime_digest = digest_file(runtime_abs)
@@ -71,9 +73,13 @@ def handle_generate_sbom(
         sbom_digest: str | None = None,
         tool_version: str | None = None,
     ) -> GenerateSbomReceipt:
+        timing = timer.finish()
         built = GenerateSbomReceipt(
             run_id=receipt_run_id(run_id),
-            recorded_at=utc_now(),
+            started_at=timing.started_at,
+            finished_at=timing.finished_at,
+            duration_ms=timing.duration_ms,
+            recorded_at=timing.finished_at,
             status=status,
             runtime_path=runtime_path,
             declared_runtime_digest=declared_runtime_digest,
@@ -83,6 +89,11 @@ def handle_generate_sbom(
             tool_version=tool_version,
         )
         record_receipt(layout, built, log=log)
+        log(
+            "system",
+            "info" if status == "succeeded" else "error",
+            f"generate_sbom {status} in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+        )
         return built
 
     output_path = layout.workspace / "sbom.json"
@@ -124,7 +135,6 @@ def handle_generate_sbom(
         receipt("failed")
         return ActionResult.failed("internal", f"post-processing SBOM failed: {exc}")
 
-    log("system", "info", "SBOM run succeeded")
     recorded = receipt(
         "succeeded",
         sbom_digest=digest_file(output_path),

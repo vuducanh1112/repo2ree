@@ -33,7 +33,7 @@ interface CreateSourceActionsArgs {
   reeId: string;
   queryClient: QueryClient;
   dispatch: ReeEditorDispatch;
-  refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
+  refreshWorkspaceFiles: (options?: { forceReeHydration?: boolean }) => Promise<FileTreeNode[]>;
   showToast: ShowToast;
   clock: AppShellClock;
   sleep: (ms: number) => Promise<void>;
@@ -57,6 +57,12 @@ export function createSourceActions({
   const resetSourceStepsState = (options: { silent?: boolean } = {}) => {
     resetStepsStateOnSourceChange(dispatch, showToast, options);
   };
+
+  // Source handlers settle backend-owned identity (resolved commit and SWHID)
+  // after acquisition. A file-only refresh leaves those fields stranded in the
+  // workbench document, so every completed source mutation must rehydrate the
+  // editor from that authoritative document as well.
+  const refreshSourceWorkspaceFiles = () => refreshWorkspaceFiles({ forceReeHydration: true });
 
   const runRemoteOrLocalSourceAction = async (
     resetRequest: Record<string, string | boolean | number | null | undefined>,
@@ -88,7 +94,7 @@ export function createSourceActions({
     executeCommands: runCommands,
     sourceChanged: resetSourceStepsState,
     runSourceAction: runRemoteOrLocalSourceAction,
-    refreshWorkspaceFiles,
+    refreshWorkspaceFiles: refreshSourceWorkspaceFiles,
     clearWorkspace: () => reeClient.resetWorkspaceRequest(reeId, { mode: "clear" }),
     nowIso: clock.nowIso,
   });

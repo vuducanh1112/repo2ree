@@ -20,7 +20,7 @@ from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.storage.extract import pack_directory_tar_gz
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.time_utils import utc_now
+from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -48,26 +48,40 @@ def handle_snapshot_upstream(
         log("system", "warn", "upstream/ does not exist — skipping snapshot")
         return ActionResult(status="succeeded", exit_code=0)
 
+    timer = OperationTimer.start()
     log("system", "info", f"snapshotting {layout.upstream} → {layout.snapshot_archive}")
     try:
         snapshot_digest = pack_directory_tar_gz(layout.upstream, layout.snapshot_archive)
     except Exception as exc:
-        log("system", "error", f"snapshot failed: {exc}")
+        timing = timer.finish()
+        log(
+            "system",
+            "error",
+            f"snapshot failed after {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms}): {exc}",
+        )
         return ActionResult.failed("internal", f"snapshot failed: {exc}")
 
     persist_snapshot_digest(ReeStore(layout), snapshot_digest, log=log)
+    timing = timer.finish()
     record_receipt(
         layout,
         SnapshotUpstreamReceipt(
             run_id=receipt_run_id(run_id),
-            recorded_at=utc_now(),
+            started_at=timing.started_at,
+            finished_at=timing.finished_at,
+            duration_ms=timing.duration_ms,
+            recorded_at=timing.finished_at,
             status="succeeded",
             snapshot_digest=snapshot_digest,
         ),
         log=log,
     )
 
-    log("system", "info", "snapshot_upstream succeeded")
+    log(
+        "system",
+        "info",
+        f"snapshot_upstream succeeded in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+    )
     return ActionResult(
         status="succeeded",
         exit_code=0,

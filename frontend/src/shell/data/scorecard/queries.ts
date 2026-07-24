@@ -63,6 +63,7 @@ export function useScorecardRunSync() {
     // already reflects it.
     if (previous === null || previous === terminalRunIds) return;
     void queryClient.invalidateQueries({ queryKey: queryKeys.scorecard(resolvedReeId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.authorReceipts(resolvedReeId) });
     // The evaluate report is also run-derived: the cross-check step rewrites
     // the artifact in place, so it refreshes on the same signal.
     void queryClient.invalidateQueries({ queryKey: queryKeys.evaluateReport(resolvedReeId) });

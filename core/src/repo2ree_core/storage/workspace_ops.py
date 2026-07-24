@@ -33,9 +33,10 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.receipts import (
     ConsistencyReport,
+    author_receipt_path,
+    build_author_receipt_set,
     build_consistency_report,
-    latest_successful_receipts,
-    load_receipts,
+    load_author_receipts,
     published_receipts,
 )
 from repo2ree_core.ree_scripts.reproducer import (
@@ -52,6 +53,7 @@ from repo2ree_core.storage.layout import (
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.workspace.bundle import (
     REE_ARTIFACTS_PREFIX,
+    REE_AUTHOR_RECEIPTS_PREFIX,
     REE_MANIFEST_ENTRY_PATH,
     REE_OVERLAY_PREFIX,
     REE_RECEIPTS_PREFIX,
@@ -198,10 +200,12 @@ def _bundle_entry_partition(
             )
         )
     tail.append((REE_RECEIPTS_PREFIX, b""))
+    tail.append((REE_AUTHOR_RECEIPTS_PREFIX, b""))
     for receipt in published_receipts(layout, intent):
-        receipt_path = layout.run_receipt(receipt.run_id)
+        receipt_path = author_receipt_path(layout, receipt)
         if receipt_path.is_file():
-            tail.append((f"{REE_RECEIPTS_PREFIX}{receipt_path.name}", receipt_path.read_bytes()))
+            relative = receipt_path.relative_to(layout.author_receipts).as_posix()
+            tail.append((f"{REE_AUTHOR_RECEIPTS_PREFIX}{relative}", receipt_path.read_bytes()))
     # Produced-results baselines, packaged only when the seal opted results into
     # the bundle (a seal-time choice, like source/runtime). Emitted only when a
     # captured store actually has content, so a results-excluded seal — or one
@@ -368,12 +372,13 @@ def get_workspace(storage_root: Path, ree_id: str, *, include_content: bool = Tr
     layout = _layout(storage_root, ree_id)
     consistency = build_consistency_report(layout, intent, session)
     detail["consistency"] = consistency.model_dump()
+    detail["author_receipts"] = build_author_receipt_set(layout, intent, session).model_dump()
     # Operational overlay — done / ready / blocked per authoring step. Completion
     # is "a successful run is recorded" (the receipt-step keys), matching the
     # frontend badges and the scorecard; staleness stays on the consistency
     # report above. Evaluate records no receipt, so its report artifact is the
     # signal the receipt keys can't carry.
-    completed_run_steps = set(latest_successful_receipts(load_receipts(layout)))
+    completed_run_steps = set(load_author_receipts(layout))
     detail["ree_steps"] = [
         state.model_dump()
         for state in build_ree_step_states(

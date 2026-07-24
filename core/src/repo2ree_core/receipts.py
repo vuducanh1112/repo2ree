@@ -41,6 +41,7 @@ from repo2ree_core.digests import (
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.experiment.experiment import Runnable
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
+from repo2ree_core.reserved_paths import experiment_slug
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.time_utils import utc_now
@@ -97,6 +98,9 @@ class _ReceiptEnvelope(_ReceiptModel):
 
     schema_version: Literal[1] = RECEIPT_SCHEMA_VERSION
     run_id: str
+    started_at: str
+    finished_at: str
+    duration_ms: int = Field(ge=0)
     recorded_at: str
     status: ActionStatus
 
@@ -226,19 +230,44 @@ def receipt_run_id(run_id: str) -> str:
     return f"manual-{uuid4().hex[:12]}"
 
 
+def _atomic_write(path: Path, content: str) -> None:
+    """Atomically replace one receipt file with fully serialized JSON."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    try:
+        temporary.write_text(content, encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def receipt_step_key(receipt: RunReceipt) -> str:
+    """Stable selection key: operation, except experiments are keyed by name."""
+    if isinstance(receipt, RunExperimentReceipt):
+        return f"experiment:{receipt.experiment_name}"
+    return receipt.operation
+
+
+def author_receipt_path(layout: ReeLayout, receipt: RunReceipt) -> Path:
+    """Deterministic selected-author-receipt path for ``receipt``."""
+    if isinstance(receipt, RunExperimentReceipt):
+        return layout.author_experiment_receipt(experiment_slug(receipt.experiment_name))
+    return layout.author_operation_receipt(receipt.operation)
+
+
 def record_receipt(layout: ReeLayout, receipt: RunReceipt, *, log: LogSink) -> None:
-    """Persist ``receipt`` beside the run's NDJSON log. Never raises.
+    """Persist immutable history and select successful author evidence. Never raises.
 
     A receipt is evidence, not a gate: failing to record one must never fail
-    the run it describes.
+    the run it describes. Every attempt lands beside its run log; only a
+    successful attempt atomically replaces the operation's selected receipt
+    under ``receipts/author``.
     """
     try:
-        path = layout.run_receipt(receipt.run_id)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps(receipt.model_dump(), indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        content = json.dumps(receipt.model_dump(), indent=2, sort_keys=True)
+        _atomic_write(layout.run_receipt(receipt.run_id), content)
+        if receipt.status == "succeeded":
+            _atomic_write(author_receipt_path(layout, receipt), content)
     except Exception as exc:
         log("system", "warn", f"failed to record run receipt: {exc}")
 
@@ -264,12 +293,6 @@ def load_receipts(layout: ReeLayout) -> list[RunReceipt]:
     return receipts
 
 
-def _step_key(receipt: RunReceipt) -> str:
-    if isinstance(receipt, RunExperimentReceipt):
-        return f"experiment:{receipt.experiment_name}"
-    return receipt.operation
-
-
 def latest_successful_receipts(receipts: list[RunReceipt]) -> dict[str, RunReceipt]:
     """Latest successful receipt per step, keyed by operation (per-experiment
     for ``run_experiment``).
@@ -278,7 +301,7 @@ def latest_successful_receipts(receipts: list[RunReceipt]) -> dict[str, RunRecei
     for receipt in receipts:
         if receipt.status != "succeeded":
             continue
-        key = _step_key(receipt)
+        key = receipt_step_key(receipt)
         current = latest.get(key)
         # recorded_at is ISO-8601 UTC, so lexicographic order is time order.
         if current is None or receipt.recorded_at >= current.recorded_at:
@@ -286,15 +309,54 @@ def latest_successful_receipts(receipts: list[RunReceipt]) -> dict[str, RunRecei
     return latest
 
 
+def load_author_receipts(layout: ReeLayout) -> dict[str, RunReceipt]:
+    """Load the fully typed selected author receipt for every successful step.
+
+    ``receipts/author`` is authoritative. Immutable receipts in ``runs/`` are
+    history only and must not be promoted implicitly: doing so would resurrect
+    invalidated evidence after a source reset.
+    """
+    direct = sorted(layout.author_receipts.glob("*.json"))
+    experiment_dir = layout.author_receipts / "experiments"
+    experiments = sorted(experiment_dir.glob("*.json")) if experiment_dir.is_dir() else []
+
+    selected: dict[str, RunReceipt] = {}
+    for path in direct:
+        receipt = _receipt_adapter.validate_json(path.read_text(encoding="utf-8"))
+        if isinstance(receipt, RunExperimentReceipt) or path.name != f"{receipt.operation}.json":
+            raise ValueError(f"author receipt path does not match its operation: {path}")
+        selected[receipt_step_key(receipt)] = receipt
+
+    for path in experiments:
+        receipt = _receipt_adapter.validate_json(path.read_text(encoding="utf-8"))
+        if not isinstance(receipt, RunExperimentReceipt):
+            raise ValueError(f"author experiment receipt has the wrong operation: {path}")
+        if path.stem != experiment_slug(receipt.experiment_name):
+            raise ValueError(f"author experiment receipt path does not match its experiment: {path}")
+        selected[receipt_step_key(receipt)] = receipt
+    return selected
+
+
+def prune_author_experiment_receipts(layout: ReeLayout, intent: ReeIntent) -> None:
+    """Drop selected receipts for experiments no longer declared on the REE."""
+    directory = layout.author_receipts / "experiments"
+    if not directory.is_dir():
+        return
+    declared = {experiment_slug(experiment.name) for experiment in intent.experiments if experiment.name}
+    for path in directory.glob("*.json"):
+        if path.stem not in declared:
+            path.unlink(missing_ok=True)
+
+
 def published_receipts(layout: ReeLayout, intent: ReeIntent) -> list[RunReceipt]:
-    """The receipts the sealed bundle publishes: latest successful per step.
+    """The selected author receipts the sealed bundle publishes.
 
     The bundle records the *reproducible endstate*, not authoring history —
     superseded and failed runs stay behind in the workbench ``runs/`` record.
     Experiment receipts are published only for experiments still on the
     intent. Ordered by step so bundle assembly stays deterministic.
     """
-    latest = latest_successful_receipts(load_receipts(layout))
+    latest = load_author_receipts(layout)
     step_keys = [
         "acquire_source",
         "snapshot_upstream",
@@ -493,6 +555,24 @@ class ConsistencyReport(BaseModel):
     steps: list[ConsistencyStep] = Field(default_factory=list)
 
 
+class AuthorReceiptEntry(BaseModel):
+    """One selected author receipt joined to its live freshness verdict."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    receipt: RunReceipt
+    consistency: ConsistencyStep
+
+
+class AuthorReceiptSet(BaseModel):
+    """Latest successful, fully typed author evidence for the REE."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    receipts: list[AuthorReceiptEntry] = Field(default_factory=list)
+
+
 def _compare(
     stale_inputs: list[ConsistencyStaleInput],
     input_name: str,
@@ -533,7 +613,7 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
     Purely informational — sealing over stale results proceeds; recording the
     inconsistency is the point.
     """
-    latest = latest_successful_receipts(load_receipts(layout))
+    latest = load_author_receipts(layout)
     snapshot_digest = getattr(session, "source_snapshot_digest", None)
     runtime_digest = current_runtime_digest(layout, intent.runtime)
 
@@ -618,3 +698,31 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
     # so re-sealing unchanged content reproduces the same seal hash. The seal's
     # own sealedAt already dates the check.
     return ConsistencyReport(steps=steps)
+
+
+def build_author_receipt_set(layout: ReeLayout, intent: ReeIntent, session: Any) -> AuthorReceiptSet:
+    """Join selected author receipts to the existing consistency projection."""
+    selected = load_author_receipts(layout)
+    consistency = {step.step: step for step in build_consistency_report(layout, intent, session).steps}
+    ordered_keys = [
+        "acquire_source",
+        "snapshot_upstream",
+        "build_runtime",
+        "generate_sbom",
+        "cross_check_sbom",
+        "activation_test",
+        *(f"experiment:{experiment.name}" for experiment in intent.experiments if experiment.name),
+    ]
+    entries: list[AuthorReceiptEntry] = []
+    for key in ordered_keys:
+        receipt = selected.get(key)
+        if receipt is None:
+            continue
+        entries.append(
+            AuthorReceiptEntry(
+                key=key,
+                receipt=receipt,
+                consistency=consistency.get(key, _step_report(key, receipt, [])),
+            )
+        )
+    return AuthorReceiptSet(receipts=entries)

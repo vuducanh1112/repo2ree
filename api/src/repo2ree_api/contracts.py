@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.receipts import ConsistencyReport
+from repo2ree_core.receipts import AuthorReceiptSet, ConsistencyReport
 from repo2ree_core.ree_steps import ReeStepState
 from repo2ree_core.source_repo.metadata import SourceRepoMetadata
 from repo2ree_core.workspace.inventory import ReeFile, WorkspaceFile
@@ -182,6 +182,7 @@ class ReeDocument(BaseModel):
     draft_manifest: dict[str, Any] = Field(default_factory=dict)
     source_repo: SourceRepoMetadata | None = None
     consistency: ConsistencyReport = Field(default_factory=ConsistencyReport)
+    author_receipts: AuthorReceiptSet = Field(default_factory=AuthorReceiptSet)
     ree_steps: list[ReeStepState] = Field(default_factory=list)
 
 
@@ -229,6 +230,7 @@ class ReeState(BaseModel):
     ree_intent: ReeIntent = Field(default_factory=ReeIntent)
     ree_session: ReeSession = Field(default_factory=ReeSession)
     consistency: ConsistencyReport = Field(default_factory=ConsistencyReport)
+    author_receipts: AuthorReceiptSet = Field(default_factory=AuthorReceiptSet)
     ree_steps: list[ReeStepState] = Field(default_factory=list)
     files: list[WorkspaceFile] = Field(default_factory=list)
     source_repo: SourceRepoMetadata | None = None

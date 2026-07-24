@@ -13,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
+from repo2ree_core.receipts import AuthorReceiptEntry, AuthorReceiptSet, BuildRuntimeReceipt, ConsistencyStep
 from repo2ree_core.repo_profiler.reproducibility_report import (
     DependencyLevel,
     DependencySummary,
@@ -85,3 +86,40 @@ def test_evaluate_report_crosses_as_the_core_models_camelcase_dump(
     assert wire["dependency_level_label"] == DependencyLevel.PINNED.label
     assert wire["dependency_summary"]["pinned"] == 2
     assert wire["detected_dependencies"] == "2 dependencies across 1 manifest file"
+
+
+def test_author_receipts_cross_as_a_typed_document(
+    client: TestClient,
+    online_ree: WorkbenchHandle,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    selected = AuthorReceiptSet(
+        receipts=[
+            AuthorReceiptEntry(
+                key="build_runtime",
+                receipt=BuildRuntimeReceipt(
+                    run_id="build-1",
+                    started_at="2026-07-24T00:00:00Z",
+                    finished_at="2026-07-24T00:00:01Z",
+                    duration_ms=1000,
+                    recorded_at="2026-07-24T00:00:01Z",
+                    status="succeeded",
+                    build_script_path="ree-scripts/build_script.sh",
+                    build_script_digest="sha256:abc",
+                ),
+                consistency=ConsistencyStep(step="build_runtime", status="fresh", run_id="build-1"),
+            )
+        ]
+    )
+    monkeypatch.setattr(
+        workbench_manager,
+        "get_workspace_state",
+        lambda handle: {"author_receipts": selected.model_dump()},
+    )
+
+    response = client.get(f"/api/v1/rees/{online_ree.ree_id}/receipts/author")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["receipts"][0]["receipt"]["operation"] == "build_runtime"
+    assert payload["receipts"][0]["consistency"]["status"] == "fresh"

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.ree_intent import ReeIntent
@@ -19,6 +20,7 @@ from repo2ree_core.receipts import (
     build_consistency_report,
     check_workspace_drift,
     latest_successful_receipts,
+    load_author_receipts,
     load_receipts,
     receipt_run_id,
     record_receipt,
@@ -42,6 +44,9 @@ def layout(tmp_path: Path) -> ReeLayout:
 def _build_receipt(run_id: str, recorded_at: str, status: str = "succeeded") -> BuildRuntimeReceipt:
     return BuildRuntimeReceipt(
         run_id=run_id,
+        started_at=recorded_at,
+        finished_at=recorded_at,
+        duration_ms=0,
         recorded_at=recorded_at,
         status=status,  # type: ignore[arg-type]
         build_script_path="ree-scripts/build_script.sh",
@@ -56,10 +61,71 @@ class TestPersistence:
 
         loaded = load_receipts(layout)
         assert loaded == [receipt]
-        # File is camelCase JSON beside the NDJSON log slot.
+        # The immutable JSON receipt sits beside the NDJSON log slot.
         raw = json.loads(layout.run_receipt("run-1").read_text(encoding="utf-8"))
         assert raw["run_id"] == "run-1"
         assert raw["operation"] == "build_runtime"
+        assert raw["schema_version"] == 1
+        assert raw["duration_ms"] == 0
+
+        selected = load_author_receipts(layout)
+        assert selected == {"build_runtime": receipt}
+        assert layout.author_operation_receipt("build_runtime").read_bytes() == layout.run_receipt("run-1").read_bytes()
+
+    def test_timing_fields_are_required(self) -> None:
+        with pytest.raises(ValidationError):
+            BuildRuntimeReceipt.model_validate(
+                {
+                    "run_id": "legacy",
+                    "recorded_at": "2026-01-01T00:00:00Z",
+                    "status": "succeeded",
+                }
+            )
+
+    def test_failed_run_keeps_previous_selected_author_receipt(self, layout: ReeLayout) -> None:
+        succeeded = _build_receipt("ok", "2026-01-01T00:00:00Z")
+        failed = _build_receipt("failed", "2026-01-02T00:00:00Z", status="failed")
+        record_receipt(layout, succeeded, log=_silent_log)
+        record_receipt(layout, failed, log=_silent_log)
+
+        assert load_author_receipts(layout)["build_runtime"] == succeeded
+        assert layout.run_receipt("failed").is_file()
+
+    def test_run_history_is_never_implicitly_selected(self, layout: ReeLayout) -> None:
+        receipt = _build_receipt("historical", "2026-01-01T00:00:00Z")
+        layout.run_receipt(receipt.run_id).write_text(receipt.model_dump_json(), encoding="utf-8")
+
+        assert load_receipts(layout) == [receipt]
+        assert load_author_receipts(layout) == {}
+
+    def test_experiments_have_independent_selected_paths(self, layout: ReeLayout) -> None:
+        first = RunExperimentReceipt(
+            run_id="exp-a-run",
+            started_at="2026-01-01T00:00:00Z",
+            finished_at="2026-01-01T00:00:00Z",
+            duration_ms=0,
+            recorded_at="2026-01-01T00:00:00Z",
+            status="succeeded",
+            experiment_name="Experiment A",
+        )
+        second = RunExperimentReceipt(
+            run_id="exp-b-run",
+            started_at="2026-01-01T00:00:00Z",
+            finished_at="2026-01-01T00:00:00Z",
+            duration_ms=0,
+            recorded_at="2026-01-01T00:00:00Z",
+            status="succeeded",
+            experiment_name="Experiment B",
+        )
+        record_receipt(layout, first, log=_silent_log)
+        record_receipt(layout, second, log=_silent_log)
+
+        assert load_author_receipts(layout) == {
+            "experiment:Experiment A": first,
+            "experiment:Experiment B": second,
+        }
+        assert layout.author_experiment_receipt("Experiment-A").is_file()
+        assert layout.author_experiment_receipt("Experiment-B").is_file()
 
     def test_unparseable_receipts_are_skipped(self, layout: ReeLayout) -> None:
         layout.run_receipt("bad").write_text("{not json", encoding="utf-8")
@@ -74,6 +140,9 @@ class TestPersistence:
     def test_cross_check_receipt_roundtrips_with_aggregates(self, layout: ReeLayout) -> None:
         receipt = CrossCheckSbomReceipt(
             run_id="crosscheck-1",
+            started_at="2026-01-01T00:00:00Z",
+            finished_at="2026-01-01T00:00:00Z",
+            duration_ms=0,
             recorded_at="2026-01-01T00:00:00Z",
             status="succeeded",
             sbom_digest=digest_bytes(b"sbom"),
@@ -102,6 +171,9 @@ class TestLatestSelection:
         def experiment(run_id: str, recorded_at: str, name: str) -> RunExperimentReceipt:
             return RunExperimentReceipt(
                 run_id=run_id,
+                started_at=recorded_at,
+                finished_at=recorded_at,
+                duration_ms=0,
                 recorded_at=recorded_at,
                 status="succeeded",
                 experiment_name=name,
@@ -186,6 +258,9 @@ class TestConsistencyReport:
             layout,
             BuildRuntimeReceipt(
                 run_id="run-b",
+                started_at="2026-01-01T00:00:00Z",
+                finished_at="2026-01-01T00:00:00Z",
+                duration_ms=0,
                 recorded_at="2026-01-01T00:00:00Z",
                 status="succeeded",
                 snapshot_digest="sha256:snap",
@@ -249,6 +324,9 @@ class TestConsistencyReport:
             layout,
             RunExperimentReceipt(
                 run_id="run-e",
+                started_at="2026-01-01T00:00:00Z",
+                finished_at="2026-01-01T00:00:00Z",
+                duration_ms=0,
                 recorded_at="2026-01-01T00:00:00Z",
                 status="succeeded",
                 experiment_name="exp-a",

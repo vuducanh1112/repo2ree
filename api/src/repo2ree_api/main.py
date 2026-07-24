@@ -20,6 +20,7 @@ from repo2ree_api.experiment_run import experiment_run_router
 from repo2ree_api.generate_hbom import generate_hbom_router
 from repo2ree_api.generate_sbom import generate_sbom_router
 from repo2ree_api.manage_ree import manage_ree_router
+from repo2ree_api.receipts import receipts_router
 from repo2ree_api.ree_steps import ree_steps_router
 from repo2ree_api.runs import runs_router
 from repo2ree_api.scorecard import scorecard_router
@@ -97,6 +98,7 @@ link).
 _OPENAPI_TAGS = [
     {"name": "rees", "description": "Create, inspect, author, seal, and release REEs."},
     {"name": "runs", "description": "Start and observe asynchronous workbench operations."},
+    {"name": "receipts", "description": "Inspect selected, typed author evidence."},
     {"name": "sources", "description": "Acquire, upload, and remove source snapshots."},
     {"name": "files", "description": "Read and mutate files in an REE workspace."},
     {"name": "fleet", "description": "Discover connected runtime agents and workbench images."},
@@ -135,6 +137,7 @@ app.include_router(evaluate_router)
 app.include_router(scorecard_router)
 app.include_router(ree_steps_router)
 app.include_router(runs_router)
+app.include_router(receipts_router)
 app.include_router(manage_ree_router)
 app.include_router(script_templates_router)
 app.include_router(script_inference_router)

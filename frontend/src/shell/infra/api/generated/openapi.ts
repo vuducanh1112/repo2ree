@@ -270,6 +270,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rees/{ree_id}/receipts/author": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Author Receipts
+         * @description Latest successful author receipt per operation, with live freshness.
+         */
+        get: operations["listAuthorReceipts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rees": {
         parameters: {
             query?: never;
@@ -638,6 +658,53 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AcquireSourceReceipt
+         * @description Chain root: no inputs, records what was acquired.
+         */
+        AcquireSourceReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed" | "canceled";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "acquire_source";
+            /**
+             * Origin Url
+             * @default
+             */
+            origin_url: string;
+            /**
+             * Source Type
+             * @default
+             */
+            source_type: string;
+            /**
+             * Revision
+             * @default
+             */
+            revision: string;
+        };
+        /**
          * Activation
          * @description The REE's required activation — a singleton sibling of experiments.
          *
@@ -690,6 +757,56 @@ export interface components {
             /** Templates */
             templates: components["schemas"]["ScriptTemplateEntry"][];
         };
+        /** ActivationTestReceipt */
+        ActivationTestReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed" | "canceled";
+            workspace_drift?: components["schemas"]["WorkspaceDrift"] | null;
+            /** Snapshot Digest */
+            snapshot_digest?: string | null;
+            /**
+             * Run Script Path
+             * @default
+             */
+            run_script_path: string;
+            /** Run Script Digest */
+            run_script_digest?: string | null;
+            /**
+             * Verify Script Path
+             * @default
+             */
+            verify_script_path: string;
+            /** Verify Script Digest */
+            verify_script_digest?: string | null;
+            /** Runtime Path */
+            runtime_path?: string | null;
+            /** Declared Runtime Digest */
+            declared_runtime_digest?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "activation_test";
+        };
         /** AgentList */
         AgentList: {
             /** Agents */
@@ -726,6 +843,68 @@ export interface components {
             argv: string[];
             /** Source */
             source: string;
+        };
+        /**
+         * AuthorReceiptEntry
+         * @description One selected author receipt joined to its live freshness verdict.
+         */
+        AuthorReceiptEntry: {
+            /** Key */
+            key: string;
+            /** Receipt */
+            receipt: components["schemas"]["AcquireSourceReceipt"] | components["schemas"]["SnapshotUpstreamReceipt"] | components["schemas"]["BuildRuntimeReceipt"] | components["schemas"]["GenerateSbomReceipt"] | components["schemas"]["CrossCheckSbomReceipt"] | components["schemas"]["ActivationTestReceipt"] | components["schemas"]["RunExperimentReceipt"];
+            consistency: components["schemas"]["ConsistencyStep"];
+        };
+        /**
+         * AuthorReceiptSet
+         * @description Latest successful, fully typed author evidence for the REE.
+         */
+        AuthorReceiptSet: {
+            /** Receipts */
+            receipts?: components["schemas"]["AuthorReceiptEntry"][];
+        };
+        /** BuildRuntimeReceipt */
+        BuildRuntimeReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed" | "canceled";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "build_runtime";
+            workspace_drift?: components["schemas"]["WorkspaceDrift"] | null;
+            /** Snapshot Digest */
+            snapshot_digest?: string | null;
+            /**
+             * Build Script Path
+             * @default
+             */
+            build_script_path: string;
+            /** Build Script Digest */
+            build_script_digest?: string | null;
+            /** Runtime Path */
+            runtime_path?: string | null;
+            /** Produced Runtime Digest */
+            produced_runtime_digest?: string | null;
         };
         /**
          * BuildScriptTemplates
@@ -963,6 +1142,70 @@ export interface components {
             idempotency_key?: string | null;
             /** Produced Runtime Path */
             produced_runtime_path: string;
+        };
+        /**
+         * CrossCheckSbomReceipt
+         * @description Aggregates of the SBOM ↔ declared-inventory cross-check.
+         *
+         *     Carries only counts plus the digest of the SBOM it consumed: the digest
+         *     chain (this → ``GenerateSbomReceipt.sbom_digest`` → build receipt) ties
+         *     the verdict to the built runtime; per-dependency detail stays in the
+         *     report artifact.
+         */
+        CrossCheckSbomReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed" | "canceled";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "cross_check_sbom";
+            /** Sbom Digest */
+            sbom_digest?: string | null;
+            /**
+             * Declared Direct Total
+             * @default 0
+             */
+            declared_direct_total: number;
+            /**
+             * Observed Matched
+             * @default 0
+             */
+            observed_matched: number;
+            /**
+             * Version Mismatches
+             * @default 0
+             */
+            version_mismatches: number;
+            /**
+             * Undeclared Same Ecosystem
+             * @default 0
+             */
+            undeclared_same_ecosystem: number;
+            /**
+             * Observed Total
+             * @default 0
+             */
+            observed_total: number;
         };
         /** DecisionDag */
         DecisionDag: {
@@ -1380,6 +1623,53 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * GenerateSbomReceipt
+         * @description Workspace-independent: consumes only the declared runtime artifact.
+         */
+        GenerateSbomReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed" | "canceled";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "generate_sbom";
+            /**
+             * Runtime Path
+             * @default
+             */
+            runtime_path: string;
+            /** Declared Runtime Digest */
+            declared_runtime_digest?: string | null;
+            /** Sbom Path */
+            sbom_path?: string | null;
+            /** Sbom Digest */
+            sbom_digest?: string | null;
+            /** Sbom Format */
+            sbom_format?: string | null;
+            /** Tool Version */
+            tool_version?: string | null;
+        };
         /** GenerateScriptCandidatesPayload */
         GenerateScriptCandidatesPayload: {
             /** Targets */
@@ -1708,6 +1998,7 @@ export interface components {
             };
             source_repo?: components["schemas"]["SourceRepoMetadata"] | null;
             consistency?: components["schemas"]["ConsistencyReport"];
+            author_receipts?: components["schemas"]["AuthorReceiptSet"];
             /** Ree Steps */
             ree_steps?: components["schemas"]["ReeStepState"][];
         };
@@ -1946,6 +2237,7 @@ export interface components {
             ree_intent?: components["schemas"]["ReeIntent-Output"];
             ree_session?: components["schemas"]["ReeSession"];
             consistency?: components["schemas"]["ConsistencyReport"];
+            author_receipts?: components["schemas"]["AuthorReceiptSet"];
             /** Ree Steps */
             ree_steps?: components["schemas"]["ReeStepState"][];
             /** Files */
@@ -2144,6 +2436,63 @@ export interface components {
              * @enum {string}
              */
             application: "automatic_allowed" | "confirmation_required" | "unavailable";
+        };
+        /** RunExperimentReceipt */
+        RunExperimentReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed" | "canceled";
+            workspace_drift?: components["schemas"]["WorkspaceDrift"] | null;
+            /** Snapshot Digest */
+            snapshot_digest?: string | null;
+            /**
+             * Run Script Path
+             * @default
+             */
+            run_script_path: string;
+            /** Run Script Digest */
+            run_script_digest?: string | null;
+            /**
+             * Verify Script Path
+             * @default
+             */
+            verify_script_path: string;
+            /** Verify Script Digest */
+            verify_script_digest?: string | null;
+            /** Runtime Path */
+            runtime_path?: string | null;
+            /** Declared Runtime Digest */
+            declared_runtime_digest?: string | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "run_experiment";
+            /**
+             * Experiment Name
+             * @default
+             */
+            experiment_name: string;
+            /** Produced Output Digest */
+            produced_output_digest?: string | null;
         };
         /** RunList */
         RunList: {
@@ -2513,6 +2862,37 @@ export interface components {
             /** Source */
             source: string;
         };
+        /** SnapshotUpstreamReceipt */
+        SnapshotUpstreamReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "succeeded" | "failed" | "canceled";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            operation: "snapshot_upstream";
+            /** Snapshot Digest */
+            snapshot_digest?: string | null;
+        };
         /** SourceAcquirePayload */
         SourceAcquirePayload: {
             /** Origin Url */
@@ -2840,6 +3220,28 @@ export interface components {
             agent_id?: string | null;
             /** Image */
             image?: string | null;
+        };
+        /**
+         * WorkspaceDrift
+         * @description Whether the workspace still equals ``materialize(snapshot + overlay)``.
+         *
+         *     ``unknown`` means there was no materialization marker to check against
+         *     (the workspace was never materialized through the tracked path).
+         *     ``changed_paths`` is capped; ``changed_path_count`` carries the true count.
+         */
+        WorkspaceDrift: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "clean" | "modified" | "unknown";
+            /** Changed Paths */
+            changed_paths?: string[];
+            /**
+             * Changed Path Count
+             * @default 0
+             */
+            changed_path_count: number;
         };
         /**
          * WorkspaceFile
@@ -4381,6 +4783,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CancelRunResponse"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listAuthorReceipts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorReceiptSet"];
                 };
             };
             /** @description Invalid request or operation precondition */

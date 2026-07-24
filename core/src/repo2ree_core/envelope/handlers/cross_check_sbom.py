@@ -16,7 +16,7 @@ from repo2ree_core.sbom.crosscheck import cross_check
 from repo2ree_core.sbom.cyclonedx import parse_cyclonedx
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.time_utils import utc_now
+from repo2ree_core.time_utils import OperationTimer, format_duration_ms, utc_now
 from repo2ree_protocol.command import CrossCheckSbomArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
@@ -60,13 +60,18 @@ def handle_cross_check_sbom(
         log("system", "error", "No reproducibility report — run evaluate first")
         return ActionResult.failed("precondition", "No reproducibility report — run evaluate first")
 
+    timer = OperationTimer.start()
     sbom_digest = digest_file(sbom_abs)
 
     def receipt(status: ActionStatus, counts: SbomCrossCheckSummary | None = None) -> CrossCheckSbomReceipt:
         aggregates = counts or SbomCrossCheckSummary()
+        timing = timer.finish()
         built = CrossCheckSbomReceipt(
             run_id=receipt_run_id(run_id),
-            recorded_at=utc_now(),
+            started_at=timing.started_at,
+            finished_at=timing.finished_at,
+            duration_ms=timing.duration_ms,
+            recorded_at=timing.finished_at,
             status=status,
             sbom_digest=sbom_digest,
             declared_direct_total=aggregates.declared_direct_total,
@@ -76,6 +81,11 @@ def handle_cross_check_sbom(
             observed_total=aggregates.observed_total,
         )
         record_receipt(layout, built, log=log)
+        log(
+            "system",
+            "info" if status == "succeeded" else "error",
+            f"cross_check_sbom {status} in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+        )
         return built
 
     try:
@@ -97,7 +107,12 @@ def handle_cross_check_sbom(
     summary.checked_at = utc_now()
 
     if is_canceled():
-        log("system", "warn", "cross_check_sbom canceled")
+        timing = timer.finish()
+        log(
+            "system",
+            "warn",
+            f"cross_check_sbom canceled in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+        )
         return ActionResult(status="canceled")
 
     try:

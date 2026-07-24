@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shutil
+
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.handlers._common import open_ree_store
@@ -23,6 +25,8 @@ def reset_source_state(*, layout: ReeLayout, store: ReeStore) -> None:
         subtree.clear()
         subtree.ensure_root()
     store.ensure_reserved_overlay_scripts()
+    shutil.rmtree(layout.author_receipts, ignore_errors=True)
+    layout.author_receipts.mkdir(parents=True, exist_ok=True)
 
     for path in (
         layout.snapshot_archive,

@@ -27,7 +27,7 @@ from repo2ree_core.receipts import (
 from repo2ree_core.run_script import CancelCheck, run_workspace_script
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.time_utils import utc_now
+from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
 from repo2ree_protocol.tracing import ReceiptInputAttrs
@@ -219,6 +219,7 @@ def run_bare_script_handler(
         log("system", "error", f"invalid {noun.lower()} script path: {exc}")
         return ActionResult.failed("validation", f"invalid {noun.lower()} script path: {exc}")
 
+    timer = OperationTimer.start()
     store = ReeStore(layout)
     intent = read_intent_or_none(store)
     inputs = _collect_step_inputs(layout, store, intent, script_path)
@@ -233,11 +234,6 @@ def run_bare_script_handler(
         is_canceled=is_canceled,
     )
 
-    log(
-        "system",
-        "info" if outcome.status == "succeeded" else "error",
-        f"{noun} run {outcome.status} (exit code {outcome.exit_code})",
-    )
     outputs = BuildRuntimeOutputs(
         build_runtime_script_path=script_path,
         container_exit_code=outcome.exit_code,
@@ -246,23 +242,35 @@ def run_bare_script_handler(
     # The bare runner currently serves only the build step; grow this into a
     # per-operation dispatch if other bare steps ever appear.
     if operation == "build_runtime":
+        produced_runtime_digest = (
+            digest_file_if_exists(layout.workspace / inputs.runtime_path)
+            if outcome.status == "succeeded" and inputs.runtime_path
+            else None
+        )
+        timing = timer.finish()
         receipt = BuildRuntimeReceipt(
             run_id=receipt_run_id(run_id),
-            recorded_at=utc_now(),
+            started_at=timing.started_at,
+            finished_at=timing.finished_at,
+            duration_ms=timing.duration_ms,
+            recorded_at=timing.finished_at,
             status=outcome.status,
             workspace_drift=inputs.workspace_drift,
             snapshot_digest=inputs.snapshot_digest,
             build_script_path=script_path,
             build_script_digest=inputs.script_digest,
             runtime_path=inputs.runtime_path,
-            produced_runtime_digest=(
-                digest_file_if_exists(layout.workspace / inputs.runtime_path)
-                if outcome.status == "succeeded" and inputs.runtime_path
-                else None
-            ),
+            produced_runtime_digest=produced_runtime_digest,
         )
         record_receipt(layout, receipt, log=log)
         outputs.receipt = receipt.model_dump()
+        level = "info" if outcome.status == "succeeded" else "warn" if outcome.status == "canceled" else "error"
+        log(
+            "system",
+            level,
+            f"{noun} run {outcome.status} (exit code {outcome.exit_code}) in "
+            f"{format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+        )
 
     return _result_from_run_outcome(
         outcome.status,
@@ -345,6 +353,7 @@ def run_runnable_handler(
         return ActionResult.failed("precondition", f"{operation} target could not be resolved")
     runnable, label = selected
 
+    timer = OperationTimer.start()
     inputs = _collect_step_inputs(layout, store, ree, runnable.run_script, runnable.verify_script)
     _record_step_inputs(inputs)
 
@@ -371,10 +380,14 @@ def run_runnable_handler(
     if operation == "run_experiment" and status == "succeeded" and runnable.output_paths:
         produced_output_digest = _capture_experiment_outputs(layout, label, runnable.output_paths, log)
 
+    timing = timer.finish()
     receipt_cls = RunExperimentReceipt if operation == "run_experiment" else ActivationTestReceipt
     receipt: ActivationTestReceipt | RunExperimentReceipt = receipt_cls(
         run_id=receipt_run_id(run_id),
-        recorded_at=utc_now(),
+        started_at=timing.started_at,
+        finished_at=timing.finished_at,
+        duration_ms=timing.duration_ms,
+        recorded_at=timing.finished_at,
         status=status,
         workspace_drift=inputs.workspace_drift,
         snapshot_digest=inputs.snapshot_digest,
@@ -390,6 +403,12 @@ def run_runnable_handler(
         receipt.produced_output_digest = produced_output_digest
     record_receipt(layout, receipt, log=log)
     outputs.receipt = receipt.model_dump()
+    level = "info" if status == "succeeded" else "warn" if status == "canceled" else "error"
+    log(
+        "system",
+        level,
+        f"{operation} {status} in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+    )
 
     return _result_from_run_outcome(
         status,

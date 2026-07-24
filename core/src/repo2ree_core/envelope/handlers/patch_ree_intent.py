@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.envelope.handlers._common import open_ree_store, patch_ree_intent
+from repo2ree_core.receipts import prune_author_experiment_receipts
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_protocol.command import PatchReeIntentArgs
 from repo2ree_protocol.log import LogSink
@@ -43,6 +44,7 @@ def handle_patch_ree_intent(
     log("system", "info", f"patch_ree_intent: {sorted(args.patch)}")
     try:
         patch_ree_intent(store, args.patch)
+        prune_author_experiment_receipts(layout, store.read_intent())
     except Exception as exc:
         log("system", "error", f"patch_ree_intent failed: {exc}")
         return ActionResult.failed("internal", f"patch_ree_intent failed: {exc}")

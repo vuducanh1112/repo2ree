@@ -13,7 +13,7 @@ import { createSourceActions } from "./sourceActions";
 interface UseSourceAcquisitionArgs {
   dispatch: React.Dispatch<AppShellAction>;
   ree: ReeEditorViewModel;
-  refreshWorkspaceFiles: () => Promise<FileTreeNode[]>;
+  refreshWorkspaceFiles: (options?: { forceReeHydration?: boolean }) => Promise<FileTreeNode[]>;
   showToast: ShowToast;
 }
 

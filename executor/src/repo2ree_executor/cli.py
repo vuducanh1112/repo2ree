@@ -12,7 +12,7 @@ from repo2ree_core.doctor import run_doctor
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.run_command import run_command
-from repo2ree_core.receipts import load_receipts
+from repo2ree_core.receipts import load_author_receipts
 from repo2ree_core.reproducibility_scorecard import build_scorecard
 from repo2ree_core.reproduction import (
     ACQUIRE_SOURCE,
@@ -382,7 +382,7 @@ def get_scorecard_cmd() -> None:
     card = build_scorecard(
         metadata.ree_intent,
         metadata.ree_session,
-        load_receipts(layout),
+        list(load_author_receipts(layout).values()),
     )
     click.echo(card.model_dump_json())
 

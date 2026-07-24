@@ -21,7 +21,7 @@ from repo2ree_core.run_script import (
     run_streaming_process,
 )
 from repo2ree_core.storage.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
-from repo2ree_core.time_utils import utc_now
+from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -60,6 +60,7 @@ def handle_acquire_source(
         log("system", "warn", "acquire_source canceled before start")
         return ActionResult(status="canceled")
 
+    timer = OperationTimer.start()
     layout = ReeLayout.in_workbench()
     log(
         "system",
@@ -77,26 +78,46 @@ def handle_acquire_source(
     result = run_streaming_process(cmd, log=log, is_canceled=is_canceled)
 
     if result.canceled or is_canceled():
-        log("system", "warn", "acquire_source canceled")
+        timing = timer.finish()
+        log(
+            "system",
+            "warn",
+            f"acquire_source canceled in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+        )
         return ActionResult(status="canceled")
     if result.returncode != 0:
+        timing = timer.finish()
+        log(
+            "system",
+            "error",
+            f"acquire_source failed in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+        )
         return ActionResult.failed(
             "execution",
             f"acquire script exited {result.returncode}",
             exit_code=result.returncode or 1,
         )
 
+    timing = timer.finish()
     record_receipt(
         layout,
         AcquireSourceReceipt(
             run_id=receipt_run_id(run_id),
-            recorded_at=utc_now(),
+            started_at=timing.started_at,
+            finished_at=timing.finished_at,
+            duration_ms=timing.duration_ms,
+            recorded_at=timing.finished_at,
             status="succeeded",
             origin_url=args.origin_url,
             source_type=args.source_type or "",
             revision=args.revision or "",
         ),
         log=log,
+    )
+    log(
+        "system",
+        "info",
+        f"acquire_source succeeded in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
     )
     return ActionResult(
         status="succeeded",
