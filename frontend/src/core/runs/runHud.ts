@@ -15,7 +15,14 @@ interface RunHudTab {
 }
 
 export const RUN_HUD_TABS = [
-  { key: "provision", abbrev: "PROV", label: "Provision", operations: ["provision"] },
+  // Loading an existing REE is part of setting the workbench up, so it shares
+  // the provisioning tab rather than opening one of its own.
+  {
+    key: "provision",
+    abbrev: "PROV",
+    label: "Provision",
+    operations: ["provision", "ree-load"],
+  },
   { key: "source", abbrev: "SRC", label: "Source", operations: ["source"] },
   { key: "build", abbrev: "BLD", label: "Build", operations: ["build"] },
   { key: "sbom", abbrev: "SBOM", label: "SBOM", operations: ["sbom"] },

@@ -26,11 +26,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.receipts import (
     ConsistencyReport,
     author_receipt_path,
@@ -51,6 +54,7 @@ from repo2ree_core.storage.layout import (
     validate_relative_path,
 )
 from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.time_utils import utc_now
 from repo2ree_core.workspace.bundle import (
     REE_ARTIFACTS_PREFIX,
     REE_AUTHOR_RECEIPTS_PREFIX,
@@ -87,6 +91,12 @@ def _build_manifest_payload(
     from repo2ree_core.workspace.manifest import build_manifest_payload
 
     return build_manifest_payload(intent, session, ree_id=ree_id, consistency=consistency)
+
+
+def _split_manifest_payload(payload: dict[str, Any]) -> tuple[Any, Any]:
+    from repo2ree_core.workspace.manifest import split_manifest_payload
+
+    return split_manifest_payload(payload)
 
 
 def _build_draft_manifest_payload(
@@ -460,6 +470,45 @@ class SealOutputs(BaseModel):
     consistency: ConsistencyReport
 
 
+def reset_source_state(*, layout: ReeLayout, store: ReeStore) -> None:
+    """Clear source-derived state while preserving REE identity metadata.
+
+    Upload staging and run logs are intentionally left alone: staging is the
+    handoff into the source pipeline, and logs are operational history.
+    """
+    for subtree in (store.upstream, store.overlay, store.artifacts, store.workspace):
+        subtree.clear()
+        subtree.ensure_root()
+    store.ensure_reserved_overlay_scripts()
+    shutil.rmtree(layout.author_receipts, ignore_errors=True)
+    layout.author_receipts.mkdir(parents=True, exist_ok=True)
+
+    for path in (
+        layout.snapshot_archive,
+        layout.acquire_script,
+        layout.materialize_script,
+        layout.manifest,
+        layout.sealed_archive,
+    ):
+        path.unlink(missing_ok=True)
+
+    meta = store.read_metadata()
+    cleared_intent = ReeIntent(
+        name=meta.ree_intent.name,
+        catalog_metadata=meta.ree_intent.catalog_metadata,
+    )
+    updated = meta.model_copy(
+        update={
+            "ree_intent": cleared_intent,
+            "ree_session": ReeSession(),
+            "status": "draft",
+            "updated_at": utc_now(),
+            "external_ref": None,
+        }
+    )
+    store.write_metadata(updated)
+
+
 def seal_workspace_ree(
     storage_root: Path,
     ree_id: str,
@@ -551,16 +600,131 @@ def seal_workspace_ree(
 
 
 def build_workspace_ree_archive(storage_root: Path, ree_id: str) -> bytes:
-    """Return the sealed archive bytes.
+    """Return the REE's downloadable bundle bytes.
 
-    Raises RuntimeError if the REE has not been sealed yet.
+    A sealed REE hands back the immutable ``sealed.zip`` it was sealed into —
+    the bytes the seal hash covers. An unsealed REE is assembled on demand
+    into a *draft* bundle: the same layout, carrying everything it currently
+    has (source, runtime, results), but with no seal stamps in its manifest.
+    Draft bundles exist so work in progress can be handed to another workbench
+    (see ``load_ree_bundle``); only a sealed bundle is a citable artifact.
     """
     store = _store(storage_root, ree_id)
     if not store.metadata_exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
-    if not store.read_session().is_sealed:
-        raise RuntimeError("REE is not sealed")
     layout = _layout(storage_root, ree_id)
+    session = store.read_session()
+    if not session.is_sealed:
+        zip_bytes, _ = _assemble_bundle(
+            layout,
+            store.read_intent(),
+            session.with_packaging(source_included=True, runtime_included=True, results_included=True),
+            ree_id=ree_id,
+        )
+        return zip_bytes
     if not layout.sealed_archive.exists():
         raise RuntimeError("Sealed archive file not found; please re-seal")
     return layout.sealed_archive.read_bytes()
+
+
+class BundleLoadOutputs(BaseModel):
+    """What loading a bundle put into the REE."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    sealed: bool
+    seal_hash: str | None
+    source_restored: bool
+    overlay_files: int
+    artifact_files: int
+    author_receipts: int
+
+
+def restore_ree_bundle(
+    storage_root: Path,
+    ree_id: str,
+    *,
+    bundle_root: Path,
+    archive_path: Path,
+) -> BundleLoadOutputs:
+    """Replace this REE's contents with an extracted bundle's (shell).
+
+    The inverse of :func:`seal_workspace_ree` / :func:`build_workspace_ree_archive`:
+    ``bundle_root`` is the already-extracted (and path-checked) bundle tree, so
+    every path read here is trusted; ``archive_path`` is the ZIP it came from.
+    Everything the bundle publishes is restored to the on-disk home it was
+    packaged from — snapshot, overlay, artifacts,
+    results, and the selected author receipts — while ``upstream/`` and
+    ``workspace/`` stay empty: they are derived, and the caller rebuilds them
+    from the restored snapshot.
+
+    Artifacts land under ``artifacts/`` (where the seal reads them), not in the
+    workspace: a loaded REE carries the author's built outputs as *evidence*,
+    and a reviewer's own build writes its own. A bundle with no snapshot leaves
+    the source facts cleared — the origin is still on the intent, so the source
+    can be acquired (or reviewed) from it.
+    """
+    store = _store(storage_root, ree_id)
+    if not store.metadata_exists():
+        raise FileNotFoundError(f"REE {ree_id} not found")
+
+    manifest_path = bundle_root / REE_MANIFEST_ENTRY_PATH
+    if not manifest_path.is_file():
+        raise ValueError(f"not an REE bundle: missing {REE_MANIFEST_ENTRY_PATH}")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    intent, session = _split_manifest_payload(manifest)
+
+    layout = _layout(storage_root, ree_id)
+    store.ensure_dirs()
+    # A load is a whole-REE replacement, so it starts from the same cleared
+    # state a source change does, plus the derived caches and produced results
+    # that only a full replacement invalidates.
+    reset_source_state(layout=layout, store=store)
+    shutil.rmtree(layout.results, ignore_errors=True)
+    for stale in (layout.digest_cache, layout.materialize_marker):
+        stale.unlink(missing_ok=True)
+
+    source_restored = _restore_file(bundle_root / REE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive)
+    overlay_files = _restore_tree(bundle_root / REE_OVERLAY_PREFIX, layout.overlay)
+    artifact_files = _restore_tree(bundle_root / REE_ARTIFACTS_PREFIX, layout.artifacts)
+    _restore_tree(bundle_root / REE_RESULTS_PREFIX, layout.results)
+    author_receipts = _restore_tree(bundle_root / REE_AUTHOR_RECEIPTS_PREFIX, layout.author_receipts)
+
+    if not source_restored:
+        session = session.without_source()
+    store.write_intent(intent)
+    store.write_session(session)
+    if session.is_sealed:
+        # The uploaded bytes *are* the sealed archive the seal hash covers, so
+        # the loaded REE can hand back the identical download.
+        shutil.copyfile(archive_path, layout.sealed_archive)
+        store.write_manifest(manifest)
+
+    return BundleLoadOutputs(
+        name=intent.name,
+        sealed=session.is_sealed,
+        seal_hash=session.seal_hash,
+        source_restored=source_restored,
+        overlay_files=overlay_files,
+        artifact_files=artifact_files,
+        author_receipts=author_receipts,
+    )
+
+
+def _restore_file(source: Path, target: Path) -> bool:
+    """Copy a single bundle entry into place. False when the bundle omits it."""
+    if not source.is_file():
+        return False
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, target)
+    return True
+
+
+def _restore_tree(source: Path, target: Path) -> int:
+    """Copy a bundle subtree into place, returning how many files it held."""
+    if not source.is_dir():
+        return 0
+    target.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, target, dirs_exist_ok=True)
+    return len(_list_tree_relpaths(source))

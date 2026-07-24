@@ -31,7 +31,10 @@ result-*
 .coverage.*
 coverage.xml
 
-examples/
+# Third-party capsules used as authoring inputs: large downloaded archives,
+# fetched on demand rather than versioned. Everything else under examples/ —
+# the source projects and REE bundles the suites read — is tracked.
+/examples/code-ocean/
 fastapi.log
 .env.example
 .vale/styles/proselint/

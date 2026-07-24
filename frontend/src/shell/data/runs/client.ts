@@ -22,6 +22,13 @@ export interface ReeRunsClient {
     image?: string,
     agentId?: string,
   ): Promise<{ reeId: string; run: ReeRun }>;
+  /**
+   * Make an REE be a downloaded REE bundle — the counterpart of the ree-archive
+   * download. Uploads the bundle's bytes, then starts the background run that
+   * restores them over whatever the REE holds, so it belongs on a freshly
+   * provisioned workbench.
+   */
+  loadReeBundle(id: ReeId | string, bundle: File): Promise<ReeRun>;
   startReeRun(
     id: ReeId | string,
     scriptKey: string,
@@ -54,6 +61,17 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
         agent_id: agentId?.trim() || undefined,
       });
       return { reeId: run.ree_id, run: mapRun(run) };
+    },
+    async loadReeBundle(id, bundle) {
+      const reeId = await ensureReeId(runtime, id);
+      const archiveName = bundle.name || "ree.zip";
+      const init = await runtime.reeApi.initBundleUpload(reeId, {
+        file_name: archiveName,
+        size: bundle.size,
+        content_type: bundle.type || "application/zip",
+      });
+      await runtime.reeApi.uploadStagedBytes(init.upload_url, await bundle.arrayBuffer());
+      return mapRun(await runtime.reeApi.loadReeBundle(reeId, init.upload_token, archiveName));
     },
     async startReeRun(id, scriptKey, params = {}) {
       const reeId = await ensureReeId(runtime, id);
@@ -109,7 +127,7 @@ function createReeRunsClient(runtime: ApiRuntimeValue): ReeRunsClient {
             });
             if (params.archiveContentBase64) {
               const archiveData = decodeBase64ToArrayBuffer(String(params.archiveContentBase64));
-              await runtime.reeApi.uploadSourceBytes(init.upload_url, archiveData);
+              await runtime.reeApi.uploadStagedBytes(init.upload_url, archiveData);
             }
             run = await runtime.reeApi.completeUpload(reeId, init.upload_token, archiveName);
             break;

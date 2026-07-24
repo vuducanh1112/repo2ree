@@ -76,7 +76,7 @@ export class ReeApi {
     return this.client.request<AgentList>(endpoints.agents(), { method: "GET" });
   }
 
-  async uploadSourceBytes(uploadUrl: string, data: ArrayBuffer): Promise<void> {
+  async uploadStagedBytes(uploadUrl: string, data: ArrayBuffer): Promise<void> {
     await this.client.request<Record<string, unknown>>(uploadUrl, {
       method: "PUT",
       headers: {
@@ -182,6 +182,22 @@ export class ReeApi {
     archiveName: string,
   ): Promise<RunSummary> {
     return this.client.request<RunSummary>(endpoints.reeSourceUploadComplete(reeId), {
+      method: "POST",
+      body: JSON.stringify({ upload_token: uploadToken, archive_name: archiveName }),
+    });
+  }
+
+  /** Open a staging slot for a downloaded REE bundle (the `ree:load` counterpart of `initUpload`). */
+  async initBundleUpload(reeId: ReeId, payload: UploadInitPayload): Promise<UploadInitResponse> {
+    return this.client.request<UploadInitResponse>(endpoints.reeBundleUploadInit(reeId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  /** Make the REE be the staged bundle: intent, source, and author evidence. */
+  async loadReeBundle(reeId: ReeId, uploadToken: string, archiveName: string): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeBundleLoad(reeId), {
       method: "POST",
       body: JSON.stringify({ upload_token: uploadToken, archive_name: archiveName }),
     });

@@ -65,6 +65,26 @@ class ReeSession(BaseModel):
             }
         )
 
+    def without_source(self) -> ReeSession:
+        """Drop every source fact, keeping the rest of the session intact.
+
+        Used when a session is reconstructed from a manifest whose bundle
+        carried no snapshot: the recorded source facts describe a tree this
+        REE does not have, and the origin lives on the intent regardless.
+        """
+        return self.model_copy(
+            update={
+                "source_available": False,
+                "source_acquired_by": "",
+                "source_resolved_commit": None,
+                "uploaded_archive": None,
+                "source_snapshot_archive": None,
+                "source_snapshot_captured_at": None,
+                "source_snapshot_digest": None,
+                "source_included": False,
+            }
+        )
+
     def with_snapshot_digest(self, digest: str | None) -> ReeSession:
         return self.model_copy(update={"source_snapshot_digest": digest or None})
 

@@ -5,6 +5,7 @@
 
 .PHONY: e2e-bundles \
 	e2e-tests e2e-tests-images e2e-tests-stack e2e-tests-stack-published \
+	e2e-review e2e-review-images e2e-review-stack e2e-review-stack-published \
 	e2e-demo e2e-demo-images e2e-demo-stack e2e-demo-stack-published \
 	e2e-demo-code-ocean e2e-coverage \
 	e2e-api e2e-api-images e2e-api-stack e2e-api-stack-published \
@@ -33,6 +34,13 @@ E2E_AGENTS ?= 2
 
 e2e-tests: e2e-bundles
 	$(E2E_STACK) --project e2e --agents $(E2E_AGENTS)
+
+# The reviewer-side suite, on a stack of its own. Kept out of `e2e-tests` (which
+# covers authoring) so a reviewer-facing change is one command to validate, and
+# so neither suite pays for the other — every spec provisions a real workbench.
+# Single-agent: reviews reproduce in their own namespace, never on a second lab.
+e2e-review: e2e-bundles
+	$(E2E_STACK) --project review --agents 1
 
 e2e-demo: e2e-bundles
 	$(E2E_STACK) --project demo
@@ -86,6 +94,9 @@ endef
 e2e-tests-images:
 	$(call playwright_against_stack,e2e)
 
+e2e-review-images:
+	$(call playwright_against_stack,review)
+
 e2e-demo-images:
 	$(call playwright_against_stack,demo)
 
@@ -117,6 +128,15 @@ e2e-tests-stack:
 e2e-tests-stack-published:
 	$(PUBLISHED_STACK) $(MAKE) stack-up
 	$(call run_then_stack_down,e2e-tests-images)
+
+e2e-review-stack:
+	$(MAKE) images
+	$(MAKE) stack-up
+	$(call run_then_stack_down,e2e-review-images)
+
+e2e-review-stack-published:
+	$(PUBLISHED_STACK) $(MAKE) stack-up
+	$(call run_then_stack_down,e2e-review-images)
 
 e2e-demo-stack:
 	$(MAKE) images

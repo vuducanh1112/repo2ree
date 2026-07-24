@@ -50,6 +50,7 @@ export interface ReeRun {
 /** Backend run operation keys, as recorded on every run summary. */
 export type ReeRunOperation =
   | "provision"
+  | "ree-load"
   | "source"
   | "build"
   | "sbom"

@@ -29,13 +29,16 @@ commit-gate:
 # from the working tree (stage-nix-sources even intent-adds untracked files),
 # so only a committed state gives the pushed images a commit they correspond
 # to. Slow by design: it runs the e2e suite twice, source-run and
-# image-backed. When it passes, the :local images it just built are exactly
-# what push-rev will publish.
+# image-backed. The review suite is its own playwright project, so it is named
+# here too — source-run only, since an image-backed review adds stack coverage
+# the authoring pass already gives. When it passes, the :local images it just
+# built are exactly what push-rev will publish.
 push-gate: require-clean-tree
 	$(MAKE) scripts-checks fe-checks be-checks
 	$(MAKE) e2e-bundles
 	$(MAKE) fe-tests be-tests
 	$(MAKE) e2e-tests
+	$(MAKE) e2e-review
 	$(MAKE) e2e-tests-stack
 	@echo ">> push gate green — publish with: make push-rev"
 

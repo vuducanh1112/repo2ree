@@ -15,10 +15,11 @@
 | `make be-integration-tests` | Integration tiers, including Docker-gated workbench tests when Docker and the image exist. |
 | `make be-tests` | Backend unit plus integration tests. |
 | `make e2e-tests` | Playwright e2e project against a live API and frontend dev server. |
+| `make e2e-review` | Playwright review project: the reviewer-side reproduction specs. |
 | `make e2e-demo` | Playwright demo walkthrough project with video. |
-| `make e2e-tests-images` / `e2e-demo-images` | Suite / demo against an already-running image-backed stack. |
-| `make e2e-tests-stack` / `e2e-demo-stack` | One command: build local images, `stack-up`, run suite / demo, `stack-down`. |
-| `make e2e-tests-stack-published` / `e2e-demo-stack-published` | The same flows against the pushed registry images (nothing built). |
+| `make e2e-tests-images` / `e2e-review-images` / `e2e-demo-images` | Suite / review / demo against an already-running image-backed stack. |
+| `make e2e-tests-stack` / `e2e-review-stack` / `e2e-demo-stack` | One command: build local images, `stack-up`, run the project, `stack-down`. |
+| `make e2e-tests-stack-published` / `e2e-review-stack-published` / `e2e-demo-stack-published` | The same flows against the pushed registry images (nothing built). |
 | `make stack-up` / `stack-down` | Start/stop the image-backed stack (`scripts/image-stack.sh`). |
 | `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. |
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
@@ -167,19 +168,31 @@ make e2e-tests
 That target starts the backend on `127.0.0.1:8000`, waits for it to respond,
 then runs the Playwright `e2e` project from `frontend/`.
 
+The reviewer side of the lifecycle is a separate project under
+`frontend/tests/e2e/review/` — one spec per review step, each reproducing that
+step in an isolated namespace and comparing the result with the author's
+recorded evidence:
+
+```bash
+make e2e-review
+```
+
+It stays out of `e2e-tests`: every spec provisions a real workbench, so the two
+suites cost real time and are worth running independently. `push-gate` runs both.
+
 Run the narrated demo flow:
 
 ```bash
 make e2e-demo
 ```
 
-Both the e2e suite and the demo can also drive the image-backed stack instead
-of the dev servers — `make e2e-tests-stack` / `make e2e-demo-stack` do the
-whole flow in one command: build the local images, `make stack-up` (compose
-control plane + agent container, via `scripts/image-stack.sh`), run the
-playwright project, `make stack-down`. With a stack already up,
-`make e2e-tests-images` / `make e2e-demo-images` run just the playwright
-part. Playwright is pointed at the Caddy-served frontend (via `E2E_BASE_URL`,
+Every browser project can also drive the image-backed stack instead of the dev
+servers — `make e2e-tests-stack` / `make e2e-review-stack` /
+`make e2e-demo-stack` do the whole flow in one command: build the local images,
+`make stack-up` (compose control plane + agent container, via
+`scripts/image-stack.sh`), run the playwright project, `make stack-down`. With a
+stack already up, `make e2e-tests-images` / `make e2e-review-images` /
+`make e2e-demo-images` run just the playwright part. Playwright is pointed at the Caddy-served frontend (via `E2E_BASE_URL`,
 which also skips the Vite dev server), so the frontend image's `/api` reverse
 proxy and the backend/agent images are what get exercised. The stack is
 addressed as `localhost` from the host or via compose service DNS from the

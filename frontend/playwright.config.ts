@@ -42,10 +42,33 @@ export default defineConfig({
       // a trace is kept only for failures, which is cheap and debuggable.
       name: "e2e",
       testDir: "./tests/e2e",
+      // The review specs are their own project (below), so the authoring suite
+      // does not also run them.
+      testIgnore: ["**/review/**"],
       outputDir: "./test-artifacts/playwright/e2e",
       // Generous per-test budget: with DinD, each workbench builds against a
       // cold (empty) image cache, so a test that builds + runs can need ~60s+.
       timeout: 180 * 1000,
+      expect: { timeout: 15 * 1000 },
+      use: {
+        ...baseUse,
+        video: "off",
+        trace: "retain-on-failure",
+        screenshot: "only-on-failure",
+      },
+    },
+    {
+      // The reviewer side of the lifecycle: one spec per review step, each
+      // reproducing that step in an isolated namespace and comparing what comes
+      // out with the author's recorded evidence. Same lean setup as the e2e
+      // project — it is a regression suite, not a recording — but its own
+      // project so a reviewer-facing change can be validated on its own, and
+      // with a larger budget: a review re-runs work the author already did, on
+      // top of doing it once to have something to review.
+      name: "review",
+      testDir: "./tests/e2e/review",
+      outputDir: "./test-artifacts/playwright/review",
+      timeout: 420 * 1000,
       expect: { timeout: 15 * 1000 },
       use: {
         ...baseUse,

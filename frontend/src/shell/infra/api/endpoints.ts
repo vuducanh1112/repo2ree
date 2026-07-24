@@ -13,6 +13,9 @@ export const endpoints = {
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source:upload-init`,
   reeSourceUploadComplete: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source:upload-complete`,
+  reeBundleUploadInit: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:upload-init`,
+  reeBundleLoad: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:load`,
   reeSource: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source`,
   reeFileContent: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/content`,

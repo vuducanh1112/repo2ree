@@ -2,8 +2,8 @@ import type { Agent } from "@core/agent/Agent";
 import { connectedDurationMs, formatDuration } from "@core/agent/Agent";
 import { useAgents } from "@shell/data/agents/agents";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { APP_ROUTE } from "../app-shell/state/pages";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { APP_ROUTE, LOAD_REE_PARAM } from "../app-shell/state/pages";
 import { Ic } from "../shared/components/Icon";
 import { C, F } from "../theme/theme";
 
@@ -16,6 +16,7 @@ interface LabLocationViewProps {
 // pins the REE to that agent on provision.
 export function LabLocationView({ onBack }: LabLocationViewProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: agents, isLoading, isError, error } = useAgents();
 
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -25,7 +26,11 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
   }, []);
 
   const chooseAgent = (agent: Agent) => {
-    navigate(`${APP_ROUTE.WORKSPACE}?agentId=${encodeURIComponent(agent.id)}`);
+    // "Load an existing REE" is chosen on the landing screen and asked for on
+    // the workbench step, so the intent rides along through this one.
+    const params = new URLSearchParams({ agentId: agent.id });
+    if (searchParams.get(LOAD_REE_PARAM)) params.set(LOAD_REE_PARAM, "1");
+    navigate(`${APP_ROUTE.WORKSPACE}?${params.toString()}`);
   };
 
   return (

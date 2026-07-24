@@ -2,56 +2,11 @@
 
 from __future__ import annotations
 
-import shutil
-
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.handlers._common import open_ree_store
 from repo2ree_core.run_script import CancelCheck
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.time_utils import utc_now
+from repo2ree_core.storage.workspace_ops import reset_source_state
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
-
-
-def reset_source_state(*, layout: ReeLayout, store: ReeStore) -> None:
-    """Clear source-derived state while preserving REE identity metadata.
-
-    Upload staging and run logs are intentionally left alone: staging is the
-    handoff into the source pipeline, and logs are operational history.
-    """
-    for subtree in (store.upstream, store.overlay, store.artifacts, store.workspace):
-        subtree.clear()
-        subtree.ensure_root()
-    store.ensure_reserved_overlay_scripts()
-    shutil.rmtree(layout.author_receipts, ignore_errors=True)
-    layout.author_receipts.mkdir(parents=True, exist_ok=True)
-
-    for path in (
-        layout.snapshot_archive,
-        layout.acquire_script,
-        layout.materialize_script,
-        layout.manifest,
-        layout.sealed_archive,
-    ):
-        path.unlink(missing_ok=True)
-
-    meta = store.read_metadata()
-    cleared_intent = ReeIntent(
-        name=meta.ree_intent.name,
-        catalog_metadata=meta.ree_intent.catalog_metadata,
-    )
-    updated = meta.model_copy(
-        update={
-            "ree_intent": cleared_intent,
-            "ree_session": ReeSession(),
-            "status": "draft",
-            "updated_at": utc_now(),
-            "external_ref": None,
-        }
-    )
-    store.write_metadata(updated)
 
 
 def handle_reset_for_source_change(

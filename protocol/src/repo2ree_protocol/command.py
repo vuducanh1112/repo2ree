@@ -119,6 +119,27 @@ class ExtractUploadCommand(BaseModel):
     args: ExtractUploadArgs
 
 
+class LoadReeBundleArgs(BaseModel):
+    """Restore an uploaded REE bundle from /ree/upload-staging/<upload_token>.bin.
+
+    The bundle is a previously downloaded REE ZIP (sealed or draft). Loading it
+    replaces the whole REE — intent, session, snapshot, overlay, artifacts,
+    results, and author receipts — with what the bundle recorded.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    upload_token: str
+    archive_name: str
+
+
+class LoadReeBundleCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["load_ree_bundle"] = "load_ree_bundle"
+    args: LoadReeBundleArgs
+
+
 class WriteFileArgs(BaseModel):
     """Write content into /ree/overlay/<path> and mirror to /ree/workspace/<path>."""
 
@@ -351,6 +372,7 @@ Command = Annotated[
     | MaterializeWorkspaceCommand
     | UpdateSourceMetadataCommand
     | ExtractUploadCommand
+    | LoadReeBundleCommand
     | WriteFileCommand
     | DeleteFileCommand
     | PatchReeIntentCommand

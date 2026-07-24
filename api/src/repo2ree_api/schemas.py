@@ -78,6 +78,14 @@ class SourceUploadCompletePayload(_StrictRequestModel):
     idempotency_key: str | None = None
 
 
+class ReeBundleLoadPayload(_StrictRequestModel):
+    """Load a staged REE bundle into this (freshly provisioned) REE."""
+
+    upload_token: str
+    archive_name: str
+    idempotency_key: str | None = None
+
+
 class WorkspaceFileContentPayload(_StrictRequestModel):
     path: str
     content: str

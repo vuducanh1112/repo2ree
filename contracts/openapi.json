@@ -3864,6 +3864,403 @@
         }
       }
     },
+    "/api/v1/rees/{ree_id}/ree:upload-init": {
+      "post": {
+        "tags": [
+          "rees"
+        ],
+        "summary": "Bundle Upload Init Route",
+        "description": "Open a staging slot for a downloaded REE bundle (see ``ree:load``).",
+        "operationId": "initializeReeBundleUpload",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadInitPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadInitResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rees/{ree_id}/ree:upload/{upload_token}": {
+      "put": {
+        "tags": [
+          "rees"
+        ],
+        "summary": "Store Bundle Bytes Route",
+        "operationId": "uploadReeBundleBytes",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          },
+          {
+            "name": "upload_token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadStoredResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rees/{ree_id}/ree:load": {
+      "post": {
+        "tags": [
+          "rees"
+        ],
+        "summary": "Load Ree Bundle Route",
+        "description": "Make this REE be the uploaded bundle: intent, source, evidence, and all.\n\nThe counterpart of ``ree-archive``. Intended right after ``createRee`` \u2014\nloading replaces whatever the REE holds, so a fresh workbench is the only\nplace it is non-destructive.",
+        "operationId": "loadReeBundle",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReeBundleLoadPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rees/{ree_id}/source": {
       "delete": {
         "tags": [
@@ -4660,6 +5057,7 @@
           "rees"
         ],
         "summary": "Download Workspace Ree Archive Route",
+        "description": "Download this REE as a bundle, loadable into another REE via ``ree:load``.\n\nA sealed REE hands back its immutable sealed archive; an unsealed one is\nassembled into a draft bundle on demand. Only the sealed bundle carries a\nseal hash \u2014 a draft is a handoff, not a citable artifact.",
         "operationId": "downloadReeArchive",
         "parameters": [
           {
@@ -4674,7 +5072,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Sealed REE ZIP archive",
+            "description": "REE ZIP bundle \u2014 the sealed archive, or a draft bundle when unsealed",
             "content": {
               "application/zip": {
                 "schema": {
@@ -8079,6 +8477,37 @@
         ],
         "title": "ProjectRootBinding"
       },
+      "ReeBundleLoadPayload": {
+        "properties": {
+          "upload_token": {
+            "type": "string",
+            "title": "Upload Token"
+          },
+          "archive_name": {
+            "type": "string",
+            "title": "Archive Name"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "upload_token",
+          "archive_name"
+        ],
+        "title": "ReeBundleLoadPayload",
+        "description": "Load a staged REE bundle into this (freshly provisioned) REE."
+      },
       "ReeCatalogMetadata": {
         "properties": {
           "description": {
@@ -9638,6 +10067,7 @@
             "type": "string",
             "enum": [
               "provision",
+              "ree-load",
               "build",
               "sbom",
               "crosscheck",

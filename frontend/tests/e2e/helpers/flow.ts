@@ -19,11 +19,13 @@ import { stepShot } from "../../screenshot";
  * waits — they exist for fast regression coverage, not recording.
  */
 
-const RESOURCES_DIR = path.resolve(__dirname, "../../resources");
+// Example inputs are shared across suites (and the API walkthrough), so they
+// live at the repository root rather than under this suite.
+const EXAMPLES_DIR = path.resolve(__dirname, "../../../../examples");
 
 /** Absolute path to the bundled Python hello-world source archive. */
 export function pythonHelloWorld(): string {
-  return path.join(RESOURCES_DIR, "examples/python-hello-world.tar.gz");
+  return path.join(EXAMPLES_DIR, "projects/python-hello-world.tar.gz");
 }
 
 /**
@@ -40,7 +42,7 @@ export function pythonPipHelloWorld(): string {
     "-czf",
     archive,
     "-C",
-    path.join(RESOURCES_DIR, "examples"),
+    path.join(EXAMPLES_DIR, "projects"),
     "python_pip_hello_world",
   ]);
   return archive;
@@ -580,6 +582,47 @@ export async function runExperiment(
   await expect(runResult.getByText("pass", { exact: true })).toBeVisible({ timeout: 180000 });
   await expect(runResult.getByText(/declared validation passed/)).toBeVisible();
   await stepShot(page, "run-experiment", "after");
+}
+
+/**
+ * The pinned review HUD (bottom-center of the canvas hub). Several HUD consoles
+ * share the same chrome, so it is identified by its own toggle — whose label
+ * names the console in both the expanded and collapsed state.
+ */
+function reviewConsole(page: Page) {
+  return page
+    .locator("[data-canvas-hud]")
+    .filter({ has: page.getByRole("button", { name: /review controls/i }) });
+}
+
+/** Open the review HUD and return it, ready for the lifecycle controls. */
+export async function openReviewConsole(page: Page) {
+  await stepShot(page, "open-review-console", "before");
+  // The HUD lives on the canvas hub, behind any docked page.
+  await page.keyboard.press("Escape").catch(() => {});
+  await page.getByRole("button", { name: /Expand review controls/i }).click();
+  const console = reviewConsole(page);
+  await expect(console.getByRole("button", { name: "Reproduce Source" })).toBeVisible();
+  await stepShot(page, "open-review-console", "after");
+  return console;
+}
+
+/**
+ * Run the source step of the review lifecycle and wait for its verdict.
+ *
+ * A review acquires the author-pinned source into its own namespace — a real
+ * fetch from the recorded origin, then a SWHID over the acquired tree — so this
+ * takes about as long as the author's own acquisition, plus hashing. Returns the
+ * verdict the comparison settled on, as shown on the step.
+ */
+export async function reproduceSource(page: Page) {
+  const console = reviewConsole(page);
+  await stepShot(page, "reproduce-source", "before");
+  await console.getByRole("button", { name: "Reproduce Source" }).click();
+  const verdict = console.getByText(/^(IDENTICAL|DIFFERENT|INCONCLUSIVE|FAILED)$/);
+  await expect(verdict).toBeVisible({ timeout: 180000 });
+  await stepShot(page, "reproduce-source", "after");
+  return (await verdict.textContent()) ?? "";
 }
 
 /**

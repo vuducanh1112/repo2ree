@@ -93,7 +93,7 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
         });
         if (request.archiveContentBase64) {
           const archiveData = decodeBase64ToArrayBuffer(String(request.archiveContentBase64));
-          await runtime.reeApi.uploadSourceBytes(init.upload_url, archiveData);
+          await runtime.reeApi.uploadStagedBytes(init.upload_url, archiveData);
         }
         await runtime.reeApi.completeUpload(reeId, init.upload_token, archiveName);
         return;

@@ -10,7 +10,9 @@ uses. The in-container composition is covered by the supervisor e2e.
 
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -246,7 +248,10 @@ def test_get_workspace_summary_omits_inline_file_content(initialized_ree: Path) 
     assert all(file["content"] is None for file in workspace["ree_files"])
 
 
-def test_build_archive_before_seal_exits_nonzero(initialized_ree: Path) -> None:
+def test_build_archive_before_seal_writes_a_draft_bundle(initialized_ree: Path) -> None:
     result = runner.invoke(cli, ["build-archive"])
-    assert result.exit_code == 1
-    assert json.loads(result.stderr)["error"]
+
+    assert result.exit_code == 0
+    with zipfile.ZipFile(io.BytesIO(result.stdout_bytes)) as archive:
+        manifest = json.loads(archive.read("ree/ree.json"))
+    assert manifest["seal_hash"] is None

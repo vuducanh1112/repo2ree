@@ -16,6 +16,7 @@ from repo2ree_core.envelope.handlers.generate_sbom import handle_generate_sbom
 from repo2ree_core.envelope.handlers.generate_script_candidates import (
     handle_generate_script_candidates,
 )
+from repo2ree_core.envelope.handlers.load_ree_bundle import handle_load_ree_bundle
 from repo2ree_core.envelope.handlers.materialize_workspace import (
     handle_materialize_workspace,
 )
@@ -43,6 +44,7 @@ from repo2ree_protocol.command import (
     GenerateHbomCommand,
     GenerateSbomCommand,
     GenerateScriptCandidatesCommand,
+    LoadReeBundleCommand,
     MaterializeWorkspaceCommand,
     PatchReeIntentCommand,
     RemoveSourceCommand,
@@ -111,6 +113,8 @@ def _dispatch(
         return handle_update_source_metadata(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, ExtractUploadCommand):
         return handle_extract_upload(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, LoadReeBundleCommand):
+        return handle_load_ree_bundle(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, WriteFileCommand):
         return handle_write_file(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, DeleteFileCommand):

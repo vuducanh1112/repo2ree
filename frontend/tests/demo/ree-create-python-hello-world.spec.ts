@@ -29,7 +29,10 @@ test("author, seal, and download a Python hello-world REE", async ({ page }) => 
   // than warm runs.
   test.setTimeout(540000);
 
-  const sourceArchive = path.resolve(__dirname, "../resources/examples/python-hello-world.tar.gz");
+  const sourceArchive = path.resolve(
+    __dirname,
+    "../../../examples/projects/python-hello-world.tar.gz",
+  );
   const archiveEntries = execFileSync("tar", ["-tzf", sourceArchive], { encoding: "utf8" })
     .split("\n")
     .map((entry) => entry.trim())

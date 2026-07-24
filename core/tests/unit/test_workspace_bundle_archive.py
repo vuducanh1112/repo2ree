@@ -278,11 +278,35 @@ def test_seal_hash_changes_with_different_content(tmp_path):
     assert out1.seal_hash != out2.seal_hash
 
 
-def test_build_archive_raises_before_seal(tmp_path):
+def test_build_archive_assembles_a_draft_bundle_before_seal(tmp_path):
     storage_root = tmp_path / "storage"
-    ree_id, _ = _make_ree(storage_root, "unsealed")
+    ree_id, layout = _make_ree(storage_root, "unsealed")
+    (layout.overlay / "build.sh").write_text("echo build", encoding="utf-8")
 
-    with pytest.raises(RuntimeError, match="not sealed"):
+    with zipfile.ZipFile(io.BytesIO(build_workspace_ree_archive(storage_root, ree_id))) as zf:
+        names = zf.namelist()
+        manifest = json.loads(zf.read("ree/ree.json"))
+
+    assert "ree/overlay/build.sh" in names
+    # A draft carries no seal stamps: it is a handoff, not a citable artifact.
+    assert manifest["sealed_at"] is None
+    assert manifest["seal_hash"] is None
+
+
+def test_build_archive_raises_when_the_sealed_archive_is_missing(tmp_path):
+    storage_root = tmp_path / "storage"
+    ree_id, layout = _make_ree(storage_root, "sealed-then-lost")
+    seal_workspace_ree(
+        storage_root,
+        ree_id,
+        source_included=False,
+        runtime_included=False,
+        results_included=False,
+        sealed_at="2026-01-01T00:00:00Z",
+    )
+    layout.sealed_archive.unlink()
+
+    with pytest.raises(RuntimeError, match="re-seal"):
         build_workspace_ree_archive(storage_root, ree_id)
 
 

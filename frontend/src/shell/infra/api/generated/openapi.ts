@@ -475,6 +475,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rees/{ree_id}/ree:upload-init": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bundle Upload Init Route
+         * @description Open a staging slot for a downloaded REE bundle (see ``ree:load``).
+         */
+        post: operations["initializeReeBundleUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rees/{ree_id}/ree:upload/{upload_token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Store Bundle Bytes Route */
+        put: operations["uploadReeBundleBytes"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rees/{ree_id}/ree:load": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Load Ree Bundle Route
+         * @description Make this REE be the uploaded bundle: intent, source, evidence, and all.
+         *
+         *     The counterpart of ``ree-archive``. Intended right after ``createRee`` —
+         *     loading replaces whatever the REE holds, so a fresh workbench is the only
+         *     place it is non-destructive.
+         */
+        post: operations["loadReeBundle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rees/{ree_id}/source": {
         parameters: {
             query?: never;
@@ -571,7 +632,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download Workspace Ree Archive Route */
+        /**
+         * Download Workspace Ree Archive Route
+         * @description Download this REE as a bundle, loadable into another REE via ``ree:load``.
+         *
+         *     A sealed REE hands back its immutable sealed archive; an unsealed one is
+         *     assembled into a draft bundle on demand. Only the sealed bundle carries a
+         *     seal hash — a draft is a handoff, not a citable artifact.
+         */
         get: operations["downloadReeArchive"];
         put?: never;
         post?: never;
@@ -1969,6 +2037,18 @@ export interface components {
              */
             source: "root" | "wrapper";
         };
+        /**
+         * ReeBundleLoadPayload
+         * @description Load a staged REE bundle into this (freshly provisioned) REE.
+         */
+        ReeBundleLoadPayload: {
+            /** Upload Token */
+            upload_token: string;
+            /** Archive Name */
+            archive_name: string;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
         /** ReeCatalogMetadata */
         ReeCatalogMetadata: {
             /**
@@ -2623,7 +2703,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "provision" | "build" | "sbom" | "crosscheck" | "hbom" | "activation" | "source" | "evaluate" | "experiment";
+            operation: "provision" | "ree-load" | "build" | "sbom" | "crosscheck" | "hbom" | "activation" | "source" | "evaluate" | "experiment";
             /**
              * Status
              * @enum {string}
@@ -6426,6 +6506,324 @@ export interface operations {
             };
         };
     };
+    initializeReeBundleUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadInitPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadInitResponse"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    uploadReeBundleBytes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+                upload_token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadStoredResponse"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    loadReeBundle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReeBundleLoadPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     removeSource: {
         parameters: {
             query?: never;
@@ -7068,7 +7466,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Sealed REE ZIP archive */
+            /** @description REE ZIP bundle — the sealed archive, or a draft bundle when unsealed */
             200: {
                 headers: {
                     [name: string]: unknown;

@@ -30,7 +30,13 @@ export const APP_ROUTE = {
 export type AppLoadRoutePath =
   | typeof APP_ROUTE.WORKSPACE
   | `${typeof APP_ROUTE.WORKSPACE}?${string}`
-  | typeof APP_ROUTE.LAB_LOCATION;
+  | typeof APP_ROUTE.LAB_LOCATION
+  | `${typeof APP_ROUTE.LAB_LOCATION}?${string}`;
+
+// Carried from the landing screen through the lab-location picker to the
+// workbench step: the user came to load an existing REE, not to start a blank
+// one, so that step asks for the bundle before it will provision.
+export const LOAD_REE_PARAM = "load";
 
 export type AppShellPage = (typeof PAGE)[keyof typeof PAGE];
 const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as AppShellPage[];

@@ -1,6 +1,6 @@
 import { AXES } from "@core/evaluate/axes";
 import type React from "react";
-import { APP_ROUTE, type AppLoadRoutePath } from "../app-shell/state/pages";
+import { APP_ROUTE, type AppLoadRoutePath, LOAD_REE_PARAM } from "../app-shell/state/pages";
 import { Ic } from "../shared/components/Icon";
 import { C, F, S_ACTION_BUTTON_BASE, S_SECTION_LABEL } from "../theme/theme";
 
@@ -15,9 +15,14 @@ const actionBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
 });
 
 export function LandingView({ onLoad, onViewAgents }: LandingViewProps) {
+  // Both entry points run the same creation flow: pick a lab location (agent),
+  // then the workbench step — which is also where an existing REE bundle is
+  // loaded, since the load runs on the workbench that step provisions.
   const createRee = () => {
-    // First pick a lab location (agent); the workbench/image step follows there.
     onLoad(APP_ROUTE.LAB_LOCATION);
+  };
+  const loadRee = () => {
+    onLoad(`${APP_ROUTE.LAB_LOCATION}?${LOAD_REE_PARAM}=1`);
   };
 
   return (
@@ -113,6 +118,29 @@ export function LandingView({ onLoad, onViewAgents }: LandingViewProps) {
           >
             <span style={{ display: "flex" }}>{Ic.play()}</span>
             <span style={{ fontSize: 14, fontWeight: 600 }}>Create REE</span>
+          </button>
+          <button
+            type="button"
+            onClick={loadRee}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              width: "100%",
+              borderRadius: 10,
+              padding: "9px 16px",
+              background: "transparent",
+              border: `1px solid ${C.border}`,
+              color: C.textMid,
+              fontSize: 13,
+              fontWeight: 500,
+              fontFamily: F.sans,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ display: "flex" }}>{Ic.upload(15)}</span>
+            Load REE
           </button>
           <button
             type="button"

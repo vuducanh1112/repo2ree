@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from repo2ree_core.envelope.handlers._common import open_ree_store
-from repo2ree_core.envelope.handlers.source_reset import reset_source_state
 from repo2ree_core.run_script import CancelCheck
+from repo2ree_core.storage.workspace_ops import reset_source_state
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 

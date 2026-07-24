@@ -42,6 +42,29 @@ def build_manifest_payload(
     return payload
 
 
+def split_manifest_payload(payload: Mapping[str, Any]) -> tuple[ReeIntent, ReeSession]:
+    """Recover the intent and session a published manifest was built from.
+
+    The inverse of :func:`build_manifest_payload`, used when an REE is loaded
+    back from a downloaded bundle. Manifest-only keys (``ree_version``, the
+    seal-time ``consistency`` report, and the draft projection's extras) are
+    dropped, and the session fields the manifest never carries
+    (``_SESSION_MANIFEST_EXCLUDE``) fall back to their defaults — they are
+    authoring detail, not part of the published record.
+    """
+    version = payload.get("ree_version")
+    if version != REE_MANIFEST_VERSION:
+        raise ValueError(f"unsupported manifest version: {version!r} (expected {REE_MANIFEST_VERSION})")
+    intent = ReeIntent.model_validate(_pick(payload, ReeIntent))
+    session = ReeSession.model_validate(_pick(payload, ReeSession))
+    return intent, session
+
+
+def _pick(payload: Mapping[str, Any], model: type[ReeIntent] | type[ReeSession]) -> dict[str, Any]:
+    """The subset of ``payload`` that ``model`` declares, keyed by field name."""
+    return {key: value for key, value in payload.items() if key in model.model_fields}
+
+
 def build_draft_manifest_payload(
     metadata: WorkspaceMetadata,
     *,
