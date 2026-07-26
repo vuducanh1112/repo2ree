@@ -239,6 +239,14 @@ class ReeLayout:
     def workspace_file(self, rel: str | PurePosixPath) -> Path:
         return self._resolve_under(self.workspace, rel)
 
+    def ree_file(self, rel: str | PurePosixPath) -> Path:
+        """A path relative to the REE root itself, e.g. ``artifacts/runtime.tar.gz``.
+
+        The spelling a bundle's manifest uses once packaging has lifted the
+        runtime and SBOM out of the workspace (see ``ReeStore.author_artifact``).
+        """
+        return self._resolve_under(self.root, rel)
+
     def upload_staging_file(self, token: str) -> Path:
         validate_upload_token(token)
         return self.upload_staging / f"{token}.bin"
@@ -273,6 +281,16 @@ class ReviewLayout:
     @property
     def materialize_script(self) -> Path:
         return self.root / MATERIALIZE_SCRIPT_FILENAME
+
+    @property
+    def snapshot_archive(self) -> Path:
+        """The author's frozen snapshot, copied in for a bundled-basis acquisition.
+
+        Present only on attempts that reproduced from the bundle rather than
+        from the origin: ``acquire_source.sh`` extracts whatever snapshot sits
+        beside it, which is how the same script serves both bases.
+        """
+        return self.root / SNAPSHOT_FILENAME
 
     @property
     def upstream(self) -> Path:

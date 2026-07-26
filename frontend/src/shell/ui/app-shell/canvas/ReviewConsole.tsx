@@ -1,5 +1,5 @@
 import type { ReeExperiment } from "@core/ree/ReeSpec";
-import type { ReviewAttempt } from "@core/reviews/Review";
+import type { ReviewAttempt, ReviewBasisRequest } from "@core/reviews/Review";
 import { type ReviewStepKey, settledReviewStepCount } from "@core/reviews/reviewDag";
 import { reviewStepStatuses, runnableReviewSteps } from "@core/reviews/reviewStatuses";
 import {
@@ -20,6 +20,11 @@ interface ReviewConsoleProps {
 /** Active controller for isolated reviewer evidence. */
 export function ReviewConsole({ experiments }: ReviewConsoleProps) {
   const [open, setOpen] = useState(false);
+  // What the next step reproduces from. "auto" takes the strongest basis the
+  // baseline supports; "bundled" is the deliberate choice to certify what the
+  // REE already carries, which is the only path open for a bundle with no
+  // reachable origin — and the weaker verdict, so it is never the default.
+  const [basis, setBasis] = useState<ReviewBasisRequest>("auto");
   const reviews = useReviewsQuery();
   const startSourceReview = useStartSourceReviewMutation();
   const startBuildReview = useStartBuildReviewMutation();
@@ -37,10 +42,10 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
 
   const invokeStep = (step: ReviewStepKey) => {
     if (!enabledSteps.has(step)) return;
-    if (step === "source") startSourceReview.mutate();
+    if (step === "source") startSourceReview.mutate(basis);
     // Build joins the attempt source opened; without one there is nothing to
     // build against, which is also why the DAG leaves it disabled until then.
-    if (step === "build" && latest) startBuildReview.mutate(latest.reviewId);
+    if (step === "build" && latest) startBuildReview.mutate({ reviewId: latest.reviewId, basis });
   };
 
   const error = startSourceReview.error ?? startBuildReview.error ?? reviews.error;
@@ -76,6 +81,9 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
         onRunStep={invokeStep}
       />
 
+      <BasisPicker value={basis} onChange={setBasis} disabled={running} />
+
+      {latest ? <BasisNotice attempt={latest} /> : null}
       {latest?.buildComparison ? <BuildVerdictDetail attempt={latest} /> : null}
 
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -140,6 +148,100 @@ function attemptSubtitle(
 ): string {
   const build = attempt.buildComparison ? ` · build ${statuses.build}` : "";
   return `${attempt.reviewId} · source ${statuses.source}${build}`;
+}
+
+const BASIS_OPTIONS: { value: ReviewBasisRequest; label: string; hint: string }[] = [
+  {
+    value: "auto",
+    label: "Strongest",
+    hint: "Fetch the origin and rebuild where the REE allows it",
+  },
+  {
+    value: "independent",
+    label: "Independent",
+    hint: "Require the origin and a real rebuild; fail if unavailable",
+  },
+  {
+    value: "bundled",
+    label: "From bundle",
+    hint: "Verify the source and runtime this REE already carries",
+  },
+];
+
+/** Which evidence the next step should rest on. */
+function BasisPicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: ReviewBasisRequest;
+  onChange: (basis: ReviewBasisRequest) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 5 }}>
+      {BASIS_OPTIONS.map((option) => {
+        const active = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            title={option.hint}
+            disabled={disabled}
+            onClick={() => onChange(option.value)}
+            style={{
+              flex: 1,
+              minHeight: 28,
+              border: `1px solid ${active ? C.accent : C.border}`,
+              borderRadius: 7,
+              background: active ? C.surface : C.surfaceAlt,
+              color: active ? C.text : C.textMuted,
+              cursor: disabled ? "not-allowed" : "pointer",
+              fontFamily: F.mono,
+              fontSize: 9.5,
+              fontWeight: active ? 750 : 500,
+            }}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * States plainly when a settled verdict rests on the REE's own bytes.
+ *
+ * Without this the console would show "identical" for a bundled attempt exactly
+ * as it does for a fetched-and-rebuilt one, and the two mean very different
+ * things — the first says the bundle is intact, the second says the work
+ * reproduces. The verdict colour is deliberately left alone; this is a
+ * qualification of the claim, not a downgrade of it.
+ */
+function BasisNotice({ attempt }: { attempt: ReviewAttempt }) {
+  const bundled: string[] = [];
+  if (attempt.sourceComparison?.basis === "bundled") bundled.push("source");
+  if (attempt.buildComparison?.basis === "bundled") bundled.push("runtime");
+  if (bundled.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        padding: "6px 9px",
+        border: `1px solid ${C.borderMid}`,
+        borderRadius: 7,
+        background: C.surfaceAlt,
+        color: C.textMuted,
+        fontFamily: F.mono,
+        fontSize: 9,
+        lineHeight: 1.5,
+      }}
+    >
+      {bundled.join(" and ")} verified from the REE's own artifacts — integrity check, not an
+      independent reproduction.
+    </div>
+  );
 }
 
 /**

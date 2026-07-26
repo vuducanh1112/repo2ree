@@ -21,6 +21,7 @@ export function mapReviewRecord(wire: ReviewRecordWire): ReviewAttempt {
     steps: (wire.steps ?? []).map(mapStepState),
     sourceComparison: comparison
       ? {
+          basis: comparison.basis ?? "independent",
           expectedSwhid: comparison.expected_swhid ?? undefined,
           observedSwhid: comparison.observed_swhid ?? undefined,
           verdict: comparison.verdict,
@@ -37,6 +38,7 @@ function mapStepState(wire: ReviewStepStateWire): ReviewStepState {
 
 function mapBuildComparison(wire: BuildComparisonWire): ReviewBuildComparison {
   return {
+    basis: wire.basis ?? "independent",
     verdict: wire.verdict,
     expectedRuntimeDigest: wire.expected_runtime_digest ?? undefined,
     observedRuntimeDigest: wire.observed_runtime_digest ?? undefined,

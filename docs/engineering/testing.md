@@ -169,9 +169,11 @@ That target starts the backend on `127.0.0.1:8000`, waits for it to respond,
 then runs the Playwright `e2e` project from `frontend/`.
 
 The reviewer side of the lifecycle is a separate project under
-`frontend/tests/e2e/review/` — one spec per review step, each reproducing that
+`frontend/tests/e2e/review/` — a spec per review step, each reproducing that
 step in an isolated namespace and comparing the result with the author's
-recorded evidence:
+recorded evidence, plus `bundled.spec.ts` for the second evidence basis: an REE
+that carries its own source and runtime, reviewed without reaching for an
+origin:
 
 ```bash
 make e2e-review

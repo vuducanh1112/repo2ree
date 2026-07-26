@@ -5,7 +5,7 @@ interface ApiClientOptions {
   headers?: Record<string, string>;
 }
 
-class ApiRequestError extends Error {
+export class ApiRequestError extends Error {
   status: number;
   code: string;
   /**

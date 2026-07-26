@@ -33,7 +33,7 @@ describe("reviewStepStatuses", () => {
     const statuses = reviewStepStatuses(
       attempt({
         steps: [step("source")],
-        sourceComparison: { verdict: "identical" },
+        sourceComparison: { basis: "independent", verdict: "identical" },
       }),
     );
 
@@ -44,7 +44,7 @@ describe("reviewStepStatuses", () => {
     const statuses = reviewStepStatuses(
       attempt({
         steps: [step("source")],
-        sourceComparison: { verdict: "different" },
+        sourceComparison: { basis: "independent", verdict: "different" },
       }),
     );
 
@@ -64,8 +64,9 @@ describe("reviewStepStatuses", () => {
     const statuses = reviewStepStatuses(
       attempt({
         steps: [step("source"), step("build")],
-        sourceComparison: { verdict: "identical" },
+        sourceComparison: { basis: "independent", verdict: "identical" },
         buildComparison: {
+          basis: "independent",
           verdict: "equivalent",
           matched: 42,
           missingCount: 0,
@@ -100,8 +101,9 @@ describe("reviewStepStatuses", () => {
     const statuses = reviewStepStatuses(
       attempt({
         steps: [step("source"), step("build")],
-        sourceComparison: { verdict: "identical" },
+        sourceComparison: { basis: "independent", verdict: "identical" },
         buildComparison: {
+          basis: "independent",
           verdict: "identical",
           matched: 1,
           missingCount: 0,
@@ -119,5 +121,21 @@ describe("reviewStepStatuses", () => {
     // out of the runnable set until it has a handler behind it.
     expect(statuses.activation).toBe("ready");
     expect(runnableReviewSteps(statuses)).toEqual(new Set(["source", "build"]));
+  });
+});
+
+describe("evidence basis", () => {
+  it("keeps the verdict and the basis independent of each other", () => {
+    // A bundled attempt still reports the verdict its comparison earned; what
+    // the basis changes is the claim the console makes about it, not the DAG.
+    const statuses = reviewStepStatuses(
+      attempt({
+        steps: [step("source")],
+        sourceComparison: { basis: "bundled", verdict: "identical" },
+      }),
+    );
+
+    expect(statuses.source).toBe("identical");
+    expect(statuses.build).toBe("ready");
   });
 });

@@ -43,6 +43,16 @@ ReviewStepKey = Literal["source", "build", "activation", "experiments"]
 ComparisonVerdict = Literal["identical", "different", "inconclusive"]
 BuildVerdict = Literal["identical", "equivalent", "different", "inconclusive"]
 
+# What the reviewer's side of a comparison was produced from, and therefore how
+# much the verdict is worth. ``independent`` means the reviewer's machine
+# derived it from the outside world — the origin was fetched, the build was run.
+# ``bundled`` means it came out of the REE itself, so the verdict certifies that
+# the shipped bytes are the ones the author's evidence describes, and nothing
+# about whether the world still produces them. Never collapse the two: a
+# ``bundled`` verdict compared against the author's own record is expected to
+# agree, so reading it as a reproduction would overstate it every time.
+EvidenceBasis = Literal["independent", "bundled"]
+
 # Attempt status resolution, most urgent first: a running step outranks a
 # failure (the attempt is still moving), and any failure outranks a success.
 _STATUS_PRECEDENCE: tuple[ReviewStatus, ...] = ("running", "failed", "canceled", "completed")
@@ -59,6 +69,7 @@ class _ReviewModel(BaseModel):
 
 class SourceComparison(_ReviewModel):
     policy: Literal["swhid"] = "swhid"
+    basis: EvidenceBasis = "independent"
     expected_swhid: str | None = None
     observed_swhid: str | None = None
     verdict: ComparisonVerdict
@@ -83,6 +94,7 @@ class BuildComparison(_ReviewModel):
     """
 
     policy: Literal["sbom-closure"] = "sbom-closure"
+    basis: EvidenceBasis = "independent"
     verdict: BuildVerdict
     # Runtime artifact tier.
     expected_runtime_digest: str | None = None
@@ -149,8 +161,19 @@ class ReviewSet(_ReviewModel):
 # ================================================
 
 
-def compare_source_swhids(expected: str, observed: str) -> SourceComparison:
-    """Compare the author's source identity with a freshly acquired tree."""
+def compare_source_swhids(
+    expected: str,
+    observed: str,
+    *,
+    basis: EvidenceBasis = "independent",
+) -> SourceComparison:
+    """Compare the author's source identity with the tree the reviewer holds.
+
+    The comparison is the same either way — a SWHID is a SWHID — but what it
+    settles depends on ``basis``: an independently fetched tree agreeing with
+    the recorded identity means the origin still serves the authored source,
+    while an extracted snapshot agreeing means the bundle is intact.
+    """
     normalized_expected = expected.strip() or None
     normalized_observed = observed.strip() or None
     if normalized_expected is None or normalized_observed is None:
@@ -160,6 +183,7 @@ def compare_source_swhids(expected: str, observed: str) -> SourceComparison:
     else:
         verdict = "different"
     return SourceComparison(
+        basis=basis,
         expected_swhid=normalized_expected,
         observed_swhid=normalized_observed,
         verdict=verdict,
@@ -175,14 +199,20 @@ def compare_build_runtimes(
     expected_sbom_digest: str | None = None,
     observed_sbom_digest: str | None = None,
     sbom_tool_version: str | None = None,
+    basis: EvidenceBasis = "independent",
 ) -> BuildComparison:
-    """Certify a rebuilt runtime against the author's, digests first.
+    """Certify a runtime against the author's record, digests first.
 
     The ladder, strongest first: equal runtime digests mean the build is bit
     reproducible (``identical``); otherwise the dependency closures decide
     (``equivalent`` / ``different``); a closure that cannot be compared at all
     — no author SBOM, or a scan that yielded nothing — is ``inconclusive``
     rather than a pass, because an absent baseline is not agreement.
+
+    The ladder is basis-blind on purpose: a ``bundled`` runtime is scanned and
+    diffed by exactly the same rules, so a shipped artifact that does *not*
+    match the author's own receipt still comes back ``different``. What the
+    resulting agreement is worth is carried by ``basis``, not by the verdict.
     """
     delta = compare_sbom_closures(expected_packages, observed_packages)
     if expected_runtime_digest and expected_runtime_digest == observed_runtime_digest:
@@ -190,6 +220,7 @@ def compare_build_runtimes(
     else:
         verdict = closure_verdict(delta)
     return BuildComparison(
+        basis=basis,
         verdict=verdict,
         expected_runtime_digest=expected_runtime_digest,
         observed_runtime_digest=observed_runtime_digest,

@@ -149,6 +149,26 @@ class ReeStore:
     def exists(self) -> bool:
         return self.layout.root.is_dir()
 
+    def author_artifact(self, declared: str | None) -> Path | None:
+        """Resolve an author-declared artifact path to the file it names.
+
+        The runtime and SBOM paths on the intent are workspace-relative while
+        authoring, but bundling lifts both into the bundle's ``artifacts/`` and
+        rewrites the manifest to match — so an REE loaded from a bundle declares
+        ``artifacts/<name>``, which is REE-root-relative and never appears under
+        ``workspace/``. Both spellings resolve here, workspace first, so a loaded
+        baseline reads exactly like an authored one to everything downstream.
+
+        Returns None when the path is unset or names nothing on disk; callers
+        decide whether that is a failure or merely inconclusive evidence.
+        """
+        if not declared:
+            return None
+        for candidate in (self.layout.workspace_file(declared), self.layout.ree_file(declared)):
+            if candidate.is_file():
+                return candidate
+        return None
+
     def ensure_dirs(self) -> None:
         """Create the full REE directory skeleton. Idempotent."""
         self.layout.root.mkdir(parents=True, exist_ok=True)

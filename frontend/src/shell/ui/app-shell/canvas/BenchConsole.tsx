@@ -1,6 +1,7 @@
 import { appendLine } from "@core/ree/logEntry";
 import type { LogEntry, LogLine } from "@core/ree/ReeTypes";
 import { useApiRuntime } from "@shell/data/apiRuntime";
+import { useReeClient } from "@shell/data/ree/client";
 import { useReeQuery } from "@shell/data/ree/queries";
 import { defaultImageRef, useWorkbenchImageCatalog } from "@shell/data/workbench/images";
 import { useState } from "react";
@@ -31,6 +32,7 @@ interface BenchConsoleProps {
 export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
   const { reeId, reeApi } = useApiRuntime();
   const { data: reeProject } = useReeQuery();
+  const reeClient = useReeClient();
   const { data: imageCatalog } = useWorkbenchImageCatalog();
   // The REE's actual provisioned image, falling back to the catalog default
   // until the REE detail has loaded.
@@ -43,7 +45,15 @@ export function BenchConsole({ provisioned, reeName }: BenchConsoleProps) {
 
   async function handleReleaseWorkbench() {
     setReleasing(true);
-    await reeApi.deleteRee(reeId);
+    try {
+      await reeClient.releaseRee(reeId);
+    } catch (err) {
+      // The workbench is still up, so stay on it with the reason in the console
+      // rather than spinning on "Releasing…" forever.
+      setLog(appendLine(null, "err", err instanceof Error ? err.message : "Release failed"));
+      setReleasing(false);
+      return;
+    }
     navigate(APP_ROUTE.ROOT);
   }
 

@@ -6411,6 +6411,15 @@
             "title": "Policy",
             "default": "sbom-closure"
           },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "independent",
+              "bundled"
+            ],
+            "title": "Basis",
+            "default": "independent"
+          },
           "verdict": {
             "type": "string",
             "enum": [
@@ -7081,6 +7090,16 @@
             "type": "boolean",
             "title": "Prune Workspace",
             "default": true
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "independent",
+              "bundled"
+            ],
+            "title": "Basis",
+            "default": "auto"
           }
         },
         "additionalProperties": false,
@@ -7224,12 +7243,22 @@
               }
             ],
             "title": "Idempotency Key"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "independent",
+              "bundled"
+            ],
+            "title": "Basis",
+            "default": "auto"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "CreateSourceReviewPayload",
-        "description": "Start a fresh isolated review attempt at source acquisition."
+        "description": "Start a fresh isolated review attempt at source acquisition.\n\n``basis`` chooses what to reproduce from: the recorded origin, or the\nsnapshot the REE carries. The default settles it from what the baseline\nhas, preferring the origin (see :data:`ReviewBasis`)."
       },
       "CrossCheckSbomReceipt": {
         "properties": {
@@ -11445,6 +11474,15 @@
             "const": "swhid",
             "title": "Policy",
             "default": "swhid"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "independent",
+              "bundled"
+            ],
+            "title": "Basis",
+            "default": "independent"
           },
           "expected_swhid": {
             "anyOf": [

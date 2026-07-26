@@ -1027,6 +1027,12 @@ export interface components {
              */
             policy: "sbom-closure";
             /**
+             * Basis
+             * @default independent
+             * @enum {string}
+             */
+            basis: "independent" | "bundled";
+            /**
              * Verdict
              * @enum {string}
              */
@@ -1328,6 +1334,12 @@ export interface components {
              * @default true
              */
             prune_workspace: boolean;
+            /**
+             * Basis
+             * @default auto
+             * @enum {string}
+             */
+            basis: "auto" | "independent" | "bundled";
         };
         /**
          * CreateBuildRuntimeRunPayload
@@ -1381,10 +1393,20 @@ export interface components {
         /**
          * CreateSourceReviewPayload
          * @description Start a fresh isolated review attempt at source acquisition.
+         *
+         *     ``basis`` chooses what to reproduce from: the recorded origin, or the
+         *     snapshot the REE carries. The default settles it from what the baseline
+         *     has, preferring the origin (see :data:`ReviewBasis`).
          */
         CreateSourceReviewPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
+            /**
+             * Basis
+             * @default auto
+             * @enum {string}
+             */
+            basis: "auto" | "independent" | "bundled";
         };
         /**
          * CrossCheckSbomReceipt
@@ -3239,6 +3261,12 @@ export interface components {
              * @constant
              */
             policy: "swhid";
+            /**
+             * Basis
+             * @default independent
+             * @enum {string}
+             */
+            basis: "independent" | "bundled";
             /** Expected Swhid */
             expected_swhid?: string | null;
             /** Observed Swhid */

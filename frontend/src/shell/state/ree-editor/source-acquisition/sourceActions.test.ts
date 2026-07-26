@@ -16,6 +16,7 @@ function buildArgs(queryClient: QueryClient) {
       sealRee: vi.fn(),
       getReeArchive: vi.fn(),
       resetWorkspaceRequest: vi.fn(async () => {}),
+      releaseRee: vi.fn(async () => {}),
     },
     executionRunsClient: {
       createWorkspace: vi.fn(),

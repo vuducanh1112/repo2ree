@@ -18,12 +18,27 @@ tree. The author's overlay is *copied* into it and merged with the attempt's own
 independently acquired upstream by the shared materialize script, so nothing
 here can write to author evidence — and the workspace the build runs in is the
 reviewer's, assembled from the source they fetched themselves.
+
+An REE that ships its runtime offers a second basis: certify the artifact it
+already carries instead of building one. That reproduces nothing — the same
+scan and the same closure diff run, but against the author's own bytes, so
+agreement is expected and only *disagreement* is news (a shipped runtime that
+contradicts the author's receipt). It exists because the alternative for a
+baseline whose build cannot run here — no Docker, wrong architecture, no
+network — is no verdict at all, and it is marked ``bundled`` on the comparison
+so it can never be read as a reproduction.
+
+What both bases share is the workspace they leave behind: source materialized
+from the attempt's own acquisition, with a runtime beside it at the path the
+recipe expects. Only how the runtime got there differs — built here, or copied
+in from the bundle — because activation and the experiments run *in* that
+workspace and cannot tell the difference, nor should they have to.
 """
 
 from __future__ import annotations
 
 import shutil
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from pydantic import BaseModel, ConfigDict
 
@@ -31,6 +46,7 @@ from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.receipts import (
     BuildRuntimeReceipt,
     GenerateSbomReceipt,
+    RunReceipt,
     load_author_receipts,
     receipt_run_id,
 )
@@ -38,6 +54,7 @@ from repo2ree_core.ree_scripts.materialize_workspace import build_materialize_sh
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.reviews import (
     BuildComparison,
+    EvidenceBasis,
     ReviewStatus,
     compare_build_runtimes,
     read_review_record,
@@ -54,7 +71,7 @@ from repo2ree_core.run_script import (
 )
 from repo2ree_core.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
 from repo2ree_core.sbom.scan import is_runtime_archive, scan_runtime_archive
-from repo2ree_core.storage.layout import ReeLayout, ReviewLayout
+from repo2ree_core.storage.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import ReviewBuildRuntimeArgs
@@ -106,15 +123,25 @@ def handle_review_build_runtime(
 
     source = step_state(started, "source")
     if source is None or source.status != "completed":
-        return stop("failed", "Reproduce the source before rebuilding the runtime")
+        return stop("failed", "Reproduce the source before certifying the runtime")
 
-    intent = ReeStore(ree_layout).read_intent()
+    store = ReeStore(ree_layout)
+    intent = store.read_intent()
     runtime_path = (intent.runtime or "").strip()
     if not runtime_path:
-        return stop("failed", "The author baseline declares no runtime artifact to rebuild")
+        return stop("failed", "The author baseline declares no runtime artifact to certify")
+
+    bundled_runtime = store.author_artifact(runtime_path)
+    has_recipe = _has_build_recipe(ree_layout, review_layout)
+    basis = _resolve_basis(args.basis, has_recipe=has_recipe, has_bundled_runtime=bundled_runtime is not None)
+    if basis is None:
+        return stop("failed", _basis_refusal(args.basis))
 
     # 1. Assemble the reviewer's own workspace: their upstream + the author's
-    #    recipe, merged by the very script the author's workbench runs.
+    #    recipe, merged by the very script the author's workbench runs. Both
+    #    bases need this — the workspace is not scaffolding for the build, it is
+    #    what activation and the experiments run *in*, and they need the source
+    #    beside the runtime whether or not this attempt built one.
     try:
         _stage_author_overlay(ree_layout, review_layout)
     except Exception as exc:
@@ -130,21 +157,31 @@ def handle_review_build_runtime(
     if materialized.returncode != 0:
         return stop("failed", f"materialize script exited {materialized.returncode}")
 
-    # 2. Run the author's build script from that workspace, unmodified.
-    log("system", "info", f"Build script: {RESERVED_BUILD_SCRIPT}")
-    outcome = run_workspace_script(
-        review_layout.workspace.resolve(),
-        RESERVED_BUILD_SCRIPT,
-        log=log,
-        is_canceled=is_canceled,
-    )
-    if outcome.status == "canceled" or is_canceled():
-        return stop("canceled", "build canceled")
-    if outcome.status != "succeeded":
-        return stop("failed", f"build script exited {outcome.exit_code}")
+    # 2. Put a runtime in that workspace: build one, or stage the shipped one.
+    if basis == "bundled" and bundled_runtime is not None:
+        log("system", "info", f"review {args.review_id}: staging the runtime the REE ships at {runtime_path}")
+        try:
+            runtime_abs = _stage_bundled_runtime(review_layout, bundled_runtime, runtime_path)
+        except Exception as exc:
+            return stop("failed", f"could not stage the bundled runtime: {exc}")
+        build_script_digest = None
+    else:
+        # The author's build script, run from that workspace, unmodified.
+        log("system", "info", f"Build script: {RESERVED_BUILD_SCRIPT}")
+        outcome = run_workspace_script(
+            review_layout.workspace.resolve(),
+            RESERVED_BUILD_SCRIPT,
+            log=log,
+            is_canceled=is_canceled,
+        )
+        if outcome.status == "canceled" or is_canceled():
+            return stop("canceled", "build canceled")
+        if outcome.status != "succeeded":
+            return stop("failed", f"build script exited {outcome.exit_code}")
+        runtime_abs = _produced_runtime(review_layout, runtime_path)
+        build_script_digest = digest_file_if_exists(review_layout.workspace / RESERVED_BUILD_SCRIPT)
 
-    # 3. Certify what came out.
-    runtime_abs = review_layout.workspace / runtime_path
+    # 3. Certify the runtime, however it got there.
     observed_runtime_digest = digest_file_if_exists(runtime_abs)
     if observed_runtime_digest is None:
         return stop("failed", f"the build produced no runtime artifact at {runtime_path}")
@@ -156,6 +193,7 @@ def handle_review_build_runtime(
         runtime_path=runtime_path,
         observed_runtime_digest=observed_runtime_digest,
         author_sbom_path=intent.sbom,
+        basis=basis,
         log=log,
     )
 
@@ -170,8 +208,10 @@ def handle_review_build_runtime(
         duration_ms=timing.duration_ms,
         recorded_at=timing.finished_at,
         status="succeeded",
-        build_script_path=RESERVED_BUILD_SCRIPT,
-        build_script_digest=digest_file_if_exists(review_layout.workspace / RESERVED_BUILD_SCRIPT),
+        # A bundled certification ran no build script, so it names none: the
+        # input slice of this receipt must describe what actually happened.
+        build_script_path=RESERVED_BUILD_SCRIPT if basis == "independent" else "",
+        build_script_digest=build_script_digest,
         runtime_path=runtime_path,
         produced_runtime_digest=observed_runtime_digest,
     )
@@ -228,9 +268,10 @@ def _certify(
     runtime_path: str,
     observed_runtime_digest: str,
     author_sbom_path: str | None,
+    basis: EvidenceBasis,
     log: LogSink,
 ) -> BuildComparison:
-    """Scan the rebuilt runtime and compare it with the author's recorded build.
+    """Scan the runtime in hand and compare it with the author's recorded build.
 
     A scan that cannot run — an unsupported artifact shape, a missing scanner,
     an absent author SBOM — yields an empty closure on one side, which the
@@ -241,9 +282,7 @@ def _certify(
     author_build = author.get("build_runtime")
     author_sbom_receipt = author.get("generate_sbom")
 
-    expected_runtime_digest = (
-        author_build.produced_runtime_digest if isinstance(author_build, BuildRuntimeReceipt) else None
-    )
+    expected_runtime_digest = _author_runtime_digest(author_build, author_sbom_receipt, runtime_path, log=log)
     expected_sbom_digest = (
         author_sbom_receipt.sbom_digest if isinstance(author_sbom_receipt, GenerateSbomReceipt) else None
     )
@@ -270,19 +309,143 @@ def _certify(
         expected_sbom_digest=expected_sbom_digest,
         observed_sbom_digest=digest_file_if_exists(review_layout.sbom),
         sbom_tool_version=tool_version,
+        basis=basis,
     )
 
 
+def _author_runtime_digest(
+    author_build: RunReceipt | None,
+    author_sbom_receipt: RunReceipt | None,
+    runtime_path: str,
+    *,
+    log: LogSink,
+) -> str | None:
+    """The digest the author recorded for the runtime this REE declares.
+
+    The build receipt is the natural home for it, but often does not have it:
+    the runtime artifact is *declared after the build*, because the picker
+    chooses among the files the build just produced. A build that ran before
+    that choice legitimately does not know which of its outputs became the
+    runtime, and its receipt is evidence of what happened — not to be rewritten
+    once the author decides.
+
+    The SBOM step runs after that choice and records ``declared_runtime_digest``
+    for the file it scanned, so it answers the same question. It is only
+    accepted when it scanned the artifact the REE still declares; an author who
+    re-pointed ``runtime`` since would otherwise have the wrong file's digest
+    compared. Without this the digest tier is dead for every REE authored in the
+    natural order, and no build review could ever reach ``identical``.
+    """
+    if isinstance(author_build, BuildRuntimeReceipt) and author_build.produced_runtime_digest:
+        return author_build.produced_runtime_digest
+    if not isinstance(author_sbom_receipt, GenerateSbomReceipt):
+        return None
+    if author_sbom_receipt.runtime_path != runtime_path or not author_sbom_receipt.declared_runtime_digest:
+        return None
+    log(
+        "system",
+        "info",
+        "the author's build receipt records no runtime digest (the artifact was declared after the build); "
+        "comparing against the digest their SBOM scan recorded for the same file",
+    )
+    return author_sbom_receipt.declared_runtime_digest
+
+
 def _author_packages(ree_layout: ReeLayout, sbom_path: str | None, *, log: LogSink) -> list[ObservedPackage]:
-    """The closure the author published, read from the SBOM their intent names."""
+    """The closure the author published, read from the SBOM their intent names.
+
+    Resolved through the store rather than straight off ``workspace/``: a
+    baseline loaded from a bundle declares its SBOM at ``artifacts/<name>``,
+    which never appears in the materialized workspace.
+    """
     if not sbom_path:
         log("system", "warn", "the author baseline carries no SBOM — the closure comparison is inconclusive")
         return []
-    document = ree_layout.workspace / sbom_path
-    if not document.is_file():
+    document = ReeStore(ree_layout).author_artifact(sbom_path)
+    if document is None:
         log("system", "warn", f"author SBOM not found at {sbom_path} — the closure comparison is inconclusive")
         return []
     return parse_cyclonedx(document.read_text(encoding="utf-8"))
+
+
+def _workspace_runtime_candidates(review_layout: ReviewLayout, runtime_path: str) -> tuple[Path, ...]:
+    """Where a runtime can sit in the reviewer's workspace, declared path first.
+
+    Normally there is only one answer. The exception is a baseline loaded from a
+    bundle: packaging lifted the runtime into ``artifacts/`` and rewrote the
+    declared path to ``artifacts/<basename>``, discarding the workspace path the
+    build script actually writes to. That remap keeps the basename by
+    construction, so undoing it is a lookup rather than a guess — and without it
+    a loaded REE could never be rebuilt at all, only certified against itself.
+    """
+    declared = review_layout.workspace / runtime_path
+    parts = PurePosixPath(runtime_path).parts
+    if len(parts) == 2 and parts[0] == ARTIFACTS_DIRNAME:
+        return (declared, review_layout.workspace / parts[1])
+    return (declared,)
+
+
+def _produced_runtime(review_layout: ReviewLayout, runtime_path: str) -> Path:
+    """Where the rebuild's runtime landed. Falls back to the declared path so a
+    miss is reported against the path the author declared."""
+    candidates = _workspace_runtime_candidates(review_layout, runtime_path)
+    return next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
+
+
+def _stage_bundled_runtime(review_layout: ReviewLayout, shipped: Path, runtime_path: str) -> Path:
+    """Copy the shipped runtime into the workspace, where a rebuild would leave it.
+
+    Both bases have to leave the same workspace behind, because the steps after
+    this one do not care how the runtime got there — the author's activation and
+    experiment scripts reach for it at the path their own build wrote, which is
+    the last candidate when the declared path has been remapped into
+    ``artifacts/``.
+
+    Copied rather than linked: the workspace is the reviewer's to run scripts in,
+    and a hard link would let one of them write through to author evidence.
+    """
+    target = _workspace_runtime_candidates(review_layout, runtime_path)[-1]
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(shipped, target)
+    return target
+
+
+def _has_build_recipe(ree_layout: ReeLayout, review_layout: ReviewLayout) -> bool:
+    """Whether a build script exists to run over the reviewer's own source.
+
+    Checked in both halves the materialized workspace is merged from: the
+    author's overlay (where the reserved script normally lives) and the source
+    tree this attempt acquired for itself.
+    """
+    return (ree_layout.overlay / RESERVED_BUILD_SCRIPT).is_file() or (
+        review_layout.upstream / RESERVED_BUILD_SCRIPT
+    ).is_file()
+
+
+def _resolve_basis(requested: str, *, has_recipe: bool, has_bundled_runtime: bool) -> EvidenceBasis | None:
+    """Settle the requested basis against what this baseline can actually offer.
+
+    ``auto`` rebuilds whenever a recipe exists, because a rebuild is the only
+    thing here that reproduces anything; it falls back to the shipped artifact
+    only when there is no script to run. An explicit request is never quietly
+    downgraded — see the source step's counterpart for why.
+    """
+    if requested == "independent":
+        return "independent" if has_recipe else None
+    if requested == "bundled":
+        return "bundled" if has_bundled_runtime else None
+    if has_recipe:
+        return "independent"
+    return "bundled" if has_bundled_runtime else None
+
+
+def _basis_refusal(requested: str) -> str:
+    if requested == "independent":
+        return f"The author baseline carries no {RESERVED_BUILD_SCRIPT} to rebuild the runtime with"
+    if requested == "bundled":
+        return "This REE ships no runtime artifact to certify"
+    # auto only refuses when it had nothing at all to choose between.
+    return f"The author baseline has neither a {RESERVED_BUILD_SCRIPT} nor a bundled runtime artifact"
 
 
 def _log_verdict(comparison: BuildComparison, *, log: LogSink) -> None:
@@ -290,7 +453,7 @@ def _log_verdict(comparison: BuildComparison, *, log: LogSink) -> None:
     log(
         "system",
         level,
-        f"build comparison {comparison.verdict}: {comparison.matched} packages matched, "
+        f"build comparison {comparison.verdict} ({comparison.basis}): {comparison.matched} packages matched, "
         f"{comparison.missing_count} missing, {comparison.extra_count} extra, "
         f"{comparison.version_mismatch_count} version mismatches "
         f"({comparison.advisory_count} advisory)",
@@ -301,6 +464,13 @@ def _log_verdict(comparison: BuildComparison, *, log: LogSink) -> None:
         f"runtime digest: author {comparison.expected_runtime_digest or 'none'}, "
         f"reviewer {comparison.observed_runtime_digest or 'none'}",
     )
+    if comparison.basis == "bundled":
+        log(
+            "system",
+            "warn",
+            "this verdict certifies the runtime the REE ships against the author's own record — "
+            "nothing was rebuilt, so it is an integrity check rather than an independent reproduction",
+        )
 
 
 def _prune_rebuilt_tree(review_layout: ReviewLayout, *, log: LogSink) -> None:

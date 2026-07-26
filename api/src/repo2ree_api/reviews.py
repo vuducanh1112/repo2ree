@@ -11,6 +11,7 @@ from repo2ree_core.reviews import ReviewRecord, ReviewSet
 from repo2ree_protocol.command import (
     ReviewAcquireSourceArgs,
     ReviewAcquireSourceCommand,
+    ReviewBasis,
     ReviewBuildRuntimeArgs,
     ReviewBuildRuntimeCommand,
 )
@@ -19,7 +20,14 @@ reviews_router = APIRouter(tags=["reviews"])
 
 
 class CreateSourceReviewPayload(CreateRunPayload):
-    """Start a fresh isolated review attempt at source acquisition."""
+    """Start a fresh isolated review attempt at source acquisition.
+
+    ``basis`` chooses what to reproduce from: the recorded origin, or the
+    snapshot the REE carries. The default settles it from what the baseline
+    has, preferring the origin (see :data:`ReviewBasis`).
+    """
+
+    basis: ReviewBasis = "auto"
 
 
 class CreateBuildReviewPayload(CreateRunPayload):
@@ -28,6 +36,7 @@ class CreateBuildReviewPayload(CreateRunPayload):
     # Reviewers who mean to run activation next keep the rebuilt workspace; the
     # default reclaims it once the verdict is recorded (see ReviewBuildRuntimeArgs).
     prune_workspace: bool = True
+    basis: ReviewBasis = "auto"
 
 
 def _reviews(ree_id: str) -> ReviewSet:
@@ -72,7 +81,7 @@ def get_review(ree_id: str, review_id: str) -> ReviewRecord:
 )
 def start_source_review(ree_id: str, payload: CreateSourceReviewPayload) -> RunSummary:
     review_id = f"review-{uuid4().hex[:12]}"
-    command = ReviewAcquireSourceCommand(args=ReviewAcquireSourceArgs(review_id=review_id))
+    command = ReviewAcquireSourceCommand(args=ReviewAcquireSourceArgs(review_id=review_id, basis=payload.basis))
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
@@ -103,7 +112,11 @@ def start_build_review(ree_id: str, review_id: str, payload: CreateBuildReviewPa
     workbench rejects the command outright when that step has not settled.
     """
     command = ReviewBuildRuntimeCommand(
-        args=ReviewBuildRuntimeArgs(review_id=review_id, prune_workspace=payload.prune_workspace)
+        args=ReviewBuildRuntimeArgs(
+            review_id=review_id,
+            prune_workspace=payload.prune_workspace,
+            basis=payload.basis,
+        )
     )
     return RunSummary.model_validate(
         run_summary(

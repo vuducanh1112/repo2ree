@@ -77,6 +77,7 @@ def test_start_source_review_dispatches_review_command(
     command = captured["command"]
     assert isinstance(command, ReviewAcquireSourceCommand)
     assert command.args.review_id.startswith("review-")
+    assert command.args.basis == "auto"
     assert captured["fallback_outputs"] == {"review_id": command.args.review_id}
 
 
@@ -115,6 +116,7 @@ def test_start_build_review_targets_the_named_attempt(
     # The build joins the attempt named in the path rather than opening a new one.
     assert command.args.review_id == "review-one"
     assert command.args.prune_workspace is True
+    assert command.args.basis == "auto"
 
 
 def test_get_review_returns_one_attempt_and_404s_for_the_rest(
@@ -152,3 +154,55 @@ def test_get_review_returns_one_attempt_and_404s_for_the_rest(
 
     missing = client.get(f"/api/v1/rees/{online_ree.ree_id}/reviews/review-other")
     assert missing.status_code == 404
+
+
+def test_a_requested_basis_reaches_the_workbench_command(
+    client: TestClient,
+    online_ree: WorkbenchHandle,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Reproducing from the REE's own artifacts is a per-run choice, so it has
+    to survive the trip from the request body into the dispatched command."""
+    captured: dict[str, Any] = {}
+
+    def start(ree_id: str, **kwargs: Any) -> dict[str, Any]:
+        captured.update({"ree_id": ree_id, **kwargs})
+        return {
+            "run_id": "review-run",
+            "ree_id": ree_id,
+            "operation": kwargs["operation"],
+            "status": "queued",
+            "created_at": "2026-07-24T10:00:00Z",
+            "started_at": None,
+            "finished_at": None,
+            "outputs": {},
+            "failure": None,
+        }
+
+    monkeypatch.setattr(review_routes, "start_single_command_run", start)
+
+    source = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/source:reproduce",
+        json={"basis": "bundled"},
+    )
+    assert source.status_code == 200
+    assert captured["command"].args.basis == "bundled"
+
+    build = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/build:reproduce",
+        json={"basis": "bundled"},
+    )
+    assert build.status_code == 200
+    assert captured["command"].args.basis == "bundled"
+
+
+def test_an_unknown_basis_is_rejected_at_the_edge(
+    client: TestClient,
+    online_ree: WorkbenchHandle,
+) -> None:
+    response = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/source:reproduce",
+        json={"basis": "whatever"},
+    )
+
+    assert response.status_code == 422

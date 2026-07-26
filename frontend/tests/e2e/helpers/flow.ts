@@ -608,6 +608,20 @@ export async function openReviewConsole(page: Page) {
 }
 
 /**
+ * Choose what the next review step reproduces from.
+ *
+ * "Strongest" is the default and needs no selection; "From bundle" is the
+ * deliberate choice to verify the artifacts the REE already carries, which is
+ * the only path open for an REE with no reachable origin.
+ */
+export async function selectReviewBasis(
+  page: Page,
+  label: "Strongest" | "Independent" | "From bundle",
+) {
+  await reviewConsole(page).getByRole("button", { name: label, exact: true }).click();
+}
+
+/**
  * Run the source step of the review lifecycle and wait for its verdict.
  *
  * A review acquires the author-pinned source into its own namespace — a real
@@ -641,6 +655,12 @@ async function reproduceReviewStep(page: Page, label: string, timeout: number) {
   await expect(step).toBeEnabled();
   await step.click();
   const verdict = step.getByText(/^(IDENTICAL|EQUIVALENT|DIFFERENT|INCONCLUSIVE|FAILED)$/);
+  // A re-run starts from the badge the previous attempt left on the step, and
+  // that stale verdict would satisfy the wait below immediately. Clicking marks
+  // the step queued in the same render, so the badge clears client-side before
+  // the run is even dispatched — a first run has no badge and passes straight
+  // through.
+  await expect(verdict).toHaveCount(0);
   await expect(verdict).toBeVisible({ timeout });
   await stepShot(page, slug, "after");
   return (await verdict.textContent()) ?? "";

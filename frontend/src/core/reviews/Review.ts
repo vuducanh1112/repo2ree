@@ -4,7 +4,21 @@ export type ReviewStatus = "running" | "completed" | "failed" | "canceled";
 export type SourceComparisonVerdict = "identical" | "different" | "inconclusive";
 export type BuildComparisonVerdict = "identical" | "equivalent" | "different" | "inconclusive";
 
+/**
+ * What the reviewer's side of a comparison was produced from, and therefore
+ * what its verdict is worth. `independent` means the outside world produced it
+ * — the origin was fetched, the runtime was rebuilt. `bundled` means it came
+ * out of the REE itself, so agreement says the shipped bytes match the author's
+ * own evidence and nothing more. The two must never be presented alike: a
+ * `bundled` verdict is an integrity check, not a reproduction.
+ */
+export type ReviewEvidenceBasis = "independent" | "bundled";
+
+/** What a step should reproduce from; `auto` lets the backend take the strongest available. */
+export type ReviewBasisRequest = "auto" | ReviewEvidenceBasis;
+
 export interface ReviewSourceComparison {
+  basis: ReviewEvidenceBasis;
   expectedSwhid?: string;
   observedSwhid?: string;
   verdict: SourceComparisonVerdict;
@@ -25,6 +39,7 @@ export interface ReviewPackageDelta {
  * verdict a faithful rebuild normally earns.
  */
 export interface ReviewBuildComparison {
+  basis: ReviewEvidenceBasis;
   verdict: BuildComparisonVerdict;
   expectedRuntimeDigest?: string;
   observedRuntimeDigest?: string;

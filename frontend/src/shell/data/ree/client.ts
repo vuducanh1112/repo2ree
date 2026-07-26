@@ -4,6 +4,7 @@ import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { WorkspaceResetPayload } from "@core/workspace/WorkspaceReset";
 import type { ReeProject, WorkspaceBinaryDownload } from "@core/workspace/WorkspaceTypes";
 import { useMemo } from "react";
+import { ApiRequestError } from "../../infra/api/ApiClient";
 import {
   type ReeDocument,
   type ReeIntentPatchPayload,
@@ -29,6 +30,8 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
   ): Promise<ReeDocument>;
   getReeArchive(id: ReeId | string): Promise<WorkspaceBinaryDownload>;
   resetWorkspaceRequest(id: ReeId | string, request: WorkspaceResetPayload): Promise<void>;
+  /** End the REE session and remove its workbench. Succeeds if it is already gone. */
+  releaseRee(id: ReeId | string): Promise<void>;
 }
 
 function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReeProjectState> {
@@ -65,6 +68,17 @@ function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode, ReePro
     async getReeArchive(id) {
       const reeId = await ensureReeId(runtime, id);
       return runtime.reeApi.getReeArchive(reeId);
+    },
+    async releaseRee(id) {
+      const reeId = await ensureReeId(runtime, id);
+      try {
+        await runtime.reeApi.deleteRee(reeId);
+      } catch (err) {
+        // A 404 means the backend already has no session for this REE, which is
+        // the outcome release was asking for. Reporting it as a failure would
+        // strand the caller on a workbench that no longer exists.
+        if (!(err instanceof ApiRequestError) || err.status !== 404) throw err;
+      }
     },
     async resetWorkspaceRequest(id, request) {
       const reeId = await ensureReeId(runtime, id);

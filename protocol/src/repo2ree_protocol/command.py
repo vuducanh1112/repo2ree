@@ -43,12 +43,26 @@ class AcquireSourceCommand(BaseModel):
     args: AcquireSourceArgs
 
 
+# What a review step is allowed to reproduce *from*.
+#
+# ``independent`` is the strong form: fetch the source from its recorded origin,
+# rebuild the runtime from that source. ``bundled`` uses what the REE already
+# carries — the frozen snapshot, the shipped runtime artifact — which makes a
+# review possible with no network and no live origin, at the cost of being an
+# integrity check rather than an independent reproduction. ``auto`` picks the
+# strong form whenever the baseline supports it and falls back to ``bundled``.
+ReviewBasis = Literal["auto", "independent", "bundled"]
+
+
 class ReviewAcquireSourceArgs(BaseModel):
     """Acquire the author-pinned source into one isolated review attempt."""
 
     model_config = ConfigDict(extra="forbid")
 
     review_id: str
+    # ``independent`` fetches the recorded origin; ``bundled`` extracts the REE's
+    # own snapshot.tar.gz, which is what makes a bundle-only REE reviewable.
+    basis: ReviewBasis = "auto"
 
 
 class ReviewAcquireSourceCommand(BaseModel):
@@ -69,13 +83,17 @@ class ReviewBuildRuntimeArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     review_id: str
-    # The rebuilt workspace (source + a copy of the author overlay) and the
-    # runtime tarball it produces are reconstructible, and the runtime alone can
-    # run to hundreds of megabytes per attempt. The evidence the verdict rests
-    # on — receipts, the reviewer's SBOM, the comparison — is kept regardless.
-    # Reviewers who intend to run activation next pass false to keep the built
-    # runtime in place.
+    # The attempt's workspace (source + a copy of the author overlay) and the
+    # runtime beside it are reconstructible, and the runtime alone can run to
+    # hundreds of megabytes per attempt. The evidence the verdict rests on —
+    # receipts, the reviewer's SBOM, the comparison — is kept regardless.
+    # Reviewers who intend to run activation or the experiments next pass false:
+    # those steps run *in* that workspace, on either basis.
     prune_workspace: bool = True
+    # ``independent`` runs the author's build script over the reviewer's own
+    # source; ``bundled`` certifies the runtime artifact the REE already ships
+    # instead of building one, for baselines whose build cannot run here.
+    basis: ReviewBasis = "auto"
 
 
 class ReviewBuildRuntimeCommand(BaseModel):

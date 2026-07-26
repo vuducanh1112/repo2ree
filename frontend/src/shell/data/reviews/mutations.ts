@@ -1,3 +1,4 @@
+import type { ReviewBasisRequest } from "@core/reviews/Review";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApiRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
@@ -9,13 +10,14 @@ export function useStartSourceReviewMutation() {
   const invalidate = useReviewInvalidation(reeId);
 
   return useMutation({
-    mutationFn: () => runtime.reeApi.startSourceReview(reeId, {}),
+    mutationFn: (basis: ReviewBasisRequest = "auto") =>
+      runtime.reeApi.startSourceReview(reeId, { basis }),
     onSuccess: invalidate,
   });
 }
 
 /**
- * Rebuild the runtime inside an existing attempt. Takes the review id at call
+ * Certify the runtime inside an existing attempt. Takes the review id at call
  * time rather than at hook time: the attempt to build in is whichever one the
  * source step opened, which is not known when the console mounts.
  */
@@ -25,11 +27,11 @@ export function useStartBuildReviewMutation() {
   const invalidate = useReviewInvalidation(reeId);
 
   return useMutation({
-    mutationFn: (reviewId: string) =>
-      // Stated rather than defaulted: the console has no activation step to
-      // hand the rebuilt runtime to yet, so the attempt reclaims it once the
-      // verdict is recorded.
-      runtime.reeApi.startBuildReview(reeId, reviewId, { prune_workspace: true }),
+    mutationFn: ({ reviewId, basis = "auto" }: { reviewId: string; basis?: ReviewBasisRequest }) =>
+      // prune_workspace is stated rather than defaulted: the console has no
+      // activation step to hand the rebuilt runtime to yet, so the attempt
+      // reclaims it once the verdict is recorded.
+      runtime.reeApi.startBuildReview(reeId, reviewId, { prune_workspace: true, basis }),
     onSuccess: invalidate,
   });
 }

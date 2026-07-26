@@ -216,3 +216,30 @@ def test_two_stores_for_different_rees_are_independent(tmp_path):
     assert a.exists() is True
     assert b.exists() is False
     assert a.read_metadata().name == "A"
+
+
+def test_author_artifact_resolves_a_workspace_relative_path(tmp_path):
+    store = _store(tmp_path)
+    store.ensure_dirs()
+    store.workspace.write_text("runtime.tar", "bytes")
+
+    assert store.author_artifact("runtime.tar") == store.layout.workspace / "runtime.tar"
+
+
+def test_author_artifact_resolves_the_path_a_loaded_bundle_declares(tmp_path):
+    """Packaging lifts the runtime into ``artifacts/`` and rewrites the declared
+    path to match, so a loaded REE names a file that is not in its workspace."""
+    store = _store(tmp_path)
+    store.ensure_dirs()
+    store.artifacts.write_text("runtime.tar", "bytes")
+
+    assert store.author_artifact("artifacts/runtime.tar") == store.layout.artifacts / "runtime.tar"
+
+
+def test_author_artifact_is_none_when_unset_or_absent(tmp_path):
+    store = _store(tmp_path)
+    store.ensure_dirs()
+
+    assert store.author_artifact(None) is None
+    assert store.author_artifact("") is None
+    assert store.author_artifact("artifacts/missing.tar") is None
