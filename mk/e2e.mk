@@ -9,7 +9,7 @@
 	e2e-demo e2e-demo-images e2e-demo-stack e2e-demo-stack-published \
 	e2e-demo-code-ocean e2e-coverage \
 	e2e-api e2e-api-images e2e-api-stack e2e-api-stack-published \
-	stack-up stack-down
+	stack-up stack-down stack-clean workbench-clean store-gc
 
 # The e2e agent always gets the executor/tools bundles: lean env images (the
 # dind default, custom benches) need the injection, and images that ship their
@@ -77,8 +77,34 @@ e2e-coverage: e2e-bundles
 stack-up:
 	STACK_AGENTS=$(E2E_AGENTS) scripts/image-stack.sh up
 
+# Stop the stack, keeping its volumes: a demo stack picks up where it left off,
+# and the agent keeps its identity.
 stack-down:
 	scripts/image-stack.sh down
+
+# Stop the stack and drop everything it stored: the compose volumes plus any
+# workbench containers/volumes the agent left behind. What the one-command test
+# flows below use — their REEs die with the backend volume, so keeping either
+# only leaks disk.
+stack-clean:
+	scripts/image-stack.sh down --volumes
+
+# Just the workbench leftovers (containers, per-REE volumes, and the anonymous
+# volumes the bench image declares), for cleaning up after a source-run stack or
+# an interrupted run. `STORE=1` additionally drops every bundle store volume —
+# the live one included, so the next provision re-copies the closure.
+workbench-clean:
+	scripts/workbench-cleanup.sh $(if $(STORE),--store,)
+
+# Evict the bundle store cache: ~450MB per volume, one orphaned every time the
+# executor or tools bundle is rebuilt, so it grows without bound on a dev
+# machine. Drops those no container references and no build has recreated in
+# STORE_GC_DAYS, keeping this checkout's live bundle so runs still start warm.
+# Deliberately not part of any e2e teardown — evicting a cache the next run
+# needs is exactly what a test target should not do behind your back.
+STORE_GC_DAYS ?= 14
+store-gc:
+	scripts/workbench-cleanup.sh --store-gc $(STORE_GC_DAYS)
 
 # Run a playwright project against the already-running image-backed stack:
 # the Caddy-served frontend (its /api reverse proxy included) instead of a
@@ -110,9 +136,11 @@ e2e-api-images:
 
 # One-command flows: build the :local images (or pull the pushed ones),
 # stack-up, run against the stack, and tear it down again (also on failure).
+# These own the whole stack lifecycle, so they clean up after themselves —
+# volumes and leftover workbenches included.
 define run_then_stack_down  # $(1) = target to run against the running stack
 	@status=0; $(MAKE) $(1) || status=$$?; \
-	$(MAKE) stack-down; exit $$status
+	$(MAKE) stack-clean; exit $$status
 endef
 
 # The pushed images default to the Docker Hub set at IMAGE_TAG; use

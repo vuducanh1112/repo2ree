@@ -18,9 +18,12 @@
 | `make e2e-review` | Playwright review project: the reviewer-side reproduction specs. |
 | `make e2e-demo` | Playwright demo walkthrough project with video. |
 | `make e2e-tests-images` / `e2e-review-images` / `e2e-demo-images` | Suite / review / demo against an already-running image-backed stack. |
-| `make e2e-tests-stack` / `e2e-review-stack` / `e2e-demo-stack` | One command: build local images, `stack-up`, run the project, `stack-down`. |
+| `make e2e-tests-stack` / `e2e-review-stack` / `e2e-demo-stack` | One command: build local images, `stack-up`, run the project, `stack-clean`. |
 | `make e2e-tests-stack-published` / `e2e-review-stack-published` / `e2e-demo-stack-published` | The same flows against the pushed registry images (nothing built). |
-| `make stack-up` / `stack-down` | Start/stop the image-backed stack (`scripts/image-stack.sh`). |
+| `make stack-up` / `stack-down` | Start/stop the image-backed stack, keeping its volumes (`scripts/image-stack.sh`). |
+| `make stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
+| `make workbench-clean` | Just the workbench leftovers; `STORE=1` also drops every bundle store volume. |
+| `make store-gc` | Evict bundle store caches unused for `STORE_GC_DAYS` (14), keeping the live one. |
 | `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. |
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
 | `make e2e-coverage` | Backend coverage plus browser-side frontend coverage for e2e. |
@@ -192,13 +195,42 @@ Every browser project can also drive the image-backed stack instead of the dev
 servers — `make e2e-tests-stack` / `make e2e-review-stack` /
 `make e2e-demo-stack` do the whole flow in one command: build the local images,
 `make stack-up` (compose control plane + agent container, via
-`scripts/image-stack.sh`), run the playwright project, `make stack-down`. With a
+`scripts/image-stack.sh`), run the playwright project, `make stack-clean`. With a
 stack already up, `make e2e-tests-images` / `make e2e-review-images` /
 `make e2e-demo-images` run just the playwright part. Playwright is pointed at the Caddy-served frontend (via `E2E_BASE_URL`,
 which also skips the Vite dev server), so the frontend image's `/api` reverse
 proxy and the backend/agent images are what get exercised. The stack is
 addressed as `localhost` from the host or via compose service DNS from the
 devcontainer; `scripts/image-stack.sh` picks automatically.
+
+Those one-command flows own the whole lifecycle, so they end on `stack-clean`
+(`image-stack.sh down --volumes`): the compose volumes go with the containers,
+and so do any workbench containers and per-REE volumes the specs left on the
+daemon. A stack you started yourself with `make stack-up` ends with
+`make stack-down` instead, which keeps the volumes so the backend state and the
+agent's identity survive to the next run — use `make stack-clean` when you want
+that state gone too. The source-run `e2e-*` targets prune workbench leftovers on
+exit for the same reason: their backend state is throwaway, so any REE the specs
+did not delete is already unreachable. `make workbench-clean` does that prune on
+its own, after an interrupted run.
+
+The prune also sweeps unreferenced anonymous volumes — the hex-named ones the
+bench image declares for itself (`docker:dind` declares `/var/lib/docker` and
+`/certs`), which no name can address once their container is gone. The agent
+now removes containers with `docker rm -v` so they no longer accumulate; the
+sweep is what reclaims the ones from earlier runs.
+
+The `repo2ree-store-{hash}` volumes are the exception: no cleanup touches them
+by default. Each holds the executor/tools closure every bench mounts (~450MB),
+keyed by bundle content — so rebuilding the executor or the tools bundle mints a
+new one and orphans the old, which nothing will mount again. That makes them a
+cache needing eviction, not state to preserve. `make store-gc` drops the ones no
+container references and no build has recreated in `STORE_GC_DAYS` (14),
+protecting the bundle this checkout resolves to so the next run still starts
+warm; `make workbench-clean STORE=1` drops all of them, live one included, at
+the cost of one full store copy per bundle on the next provision. Neither runs
+as part of an e2e teardown — a test target should not silently evict a cache the
+next run needs.
 
 The `*-stack-published` variants validate the pushed images instead of local
 builds (docker pulls the refs, nothing is built). They default to the Docker

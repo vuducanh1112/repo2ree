@@ -6,6 +6,7 @@
 #
 #   image-stack.sh up            start compose + agent, wait until ready
 #   image-stack.sh down          remove the agent container and the compose stack
+#   image-stack.sh down --volumes  ... and every volume the run created
 #   image-stack.sh check         verify backend, connected agent, and frontend
 #   image-stack.sh frontend-url  print the frontend base URL for this context
 #   image-stack.sh api-url       print the backend base URL for this context
@@ -36,7 +37,7 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: $0 up|down|check|frontend-url|api-url" >&2
+    echo "usage: $0 up|down [--volumes]|check|frontend-url|api-url" >&2
     exit 2
 }
 
@@ -171,17 +172,29 @@ up() {
     echo ">> stack up — frontend at $frontend_url"
 }
 
+# down [--volumes]: stop the stack. With --volumes, also drop every volume the
+# run created — the compose ones (backend data, agent identity) and whatever
+# workbench state the agent left on the daemon. That is the right default for a
+# test stack, where a surviving backend volume outlives the REEs it describes;
+# the plain `down` keeps the volumes so a demo stack resumes where it left off.
 down() {
+    local with_volumes=${1:-}
+    local down_args=()
+    [ "$with_volumes" = "--volumes" ] && down_args=(-v)
+
     # Tear down every agent instance found on the daemon, not just
     # $stack_agents of them — a previous `up` may have started more.
     echo ">> stopping workbench agent stack(s)"
     local name
     for name in $(docker ps -a --format '{{.Names}}' \
         | grep -E "^${agent_container}(-[0-9]+)?$" || true); do
-        agent_compose "$name" down >/dev/null 2>&1 || true
+        agent_compose "$name" down "${down_args[@]}" >/dev/null 2>&1 || true
     done
     echo ">> stopping compose control plane"
-    compose_stack down
+    compose_stack down "${down_args[@]}"
+
+    [ "$with_volumes" = "--volumes" ] && "$root/scripts/workbench-cleanup.sh"
+    return 0
 }
 
 check() {
@@ -196,7 +209,7 @@ check() {
 
 case "${1:-}" in
     up) up ;;
-    down) down ;;
+    down) down "${2:-}" ;;
     check) check ;;
     frontend-url) resolve_urls; echo "$frontend_url" ;;
     api-url) resolve_urls; echo "$api_url" ;;

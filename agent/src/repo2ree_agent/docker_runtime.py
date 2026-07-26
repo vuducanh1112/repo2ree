@@ -235,7 +235,7 @@ class DockerRuntime:
     def reprovision(self, ree_id: str, location: WorkbenchLocation, image: str) -> Iterator[AgentFrame]:
         with _docker_op("reprovision") as op:
             try:
-                _docker_silent("rm", "-f", location.container_name)
+                _docker_silent("rm", "-f", "-v", location.container_name)
                 exec_path = yield from self._run_workbench_container(
                     location.container_name, ree_id, location.volume_name, image
                 )
@@ -253,7 +253,12 @@ class DockerRuntime:
 
     def remove(self, ree_id: str, location: WorkbenchLocation) -> None:
         with _docker_op("remove"):
-            _docker_silent("rm", "-f", location.container_name)
+            # -v drops the anonymous volumes the image declared (docker:dind
+            # declares /var/lib/docker and /certs, so every bench would leave
+            # unreclaimable hex-named volumes behind). Named volumes — ours,
+            # below — are never touched by it, which is why every `rm` here
+            # carries it.
+            _docker_silent("rm", "-f", "-v", location.container_name)
             _docker_silent("volume", "rm", location.volume_name)
             if self._docker_mode == "dind":
                 _docker_silent("volume", "rm", self._dind_volume_name(ree_id))
@@ -359,7 +364,7 @@ class DockerRuntime:
         except ContainerStateUnknownError:
             stayed_up = False
         if not stayed_up:
-            _docker_silent("rm", "-f", container_name)
+            _docker_silent("rm", "-f", "-v", container_name)
             return False
         _docker("update", "--restart", "unless-stopped", container_name)
         return True
@@ -394,7 +399,7 @@ class DockerRuntime:
                     _docker("cp", marker.name, f"{scratch}:/bundle-store/{_POPULATED_SENTINEL}")
                 self._populated_volumes.add(bundle.volume_name)
             finally:
-                _docker_silent("rm", "-f", scratch)
+                _docker_silent("rm", "-f", "-v", scratch)
 
     def _docker_backend_args(self, ree_id: str) -> list[str]:
         if self._docker_mode == "dind":
@@ -931,7 +936,7 @@ def _image_has_nix(image: str) -> bool:
             _kill_process(proc)
             return bool(first_byte)
     finally:
-        _docker_silent("rm", "-f", scratch)
+        _docker_silent("rm", "-f", "-v", scratch)
 
 
 def _container_path_exists(container_id: str, path: str) -> bool:

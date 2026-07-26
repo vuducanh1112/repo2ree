@@ -80,6 +80,10 @@ def test_teardown_removes_dind_volume_only_in_dind_mode(monkeypatch: pytest.Monk
 
     dind = DockerRuntime()
     dind.remove("ree123", _location("ree123"))
+    # -v: the bench image's own anonymous volumes (docker:dind declares
+    # /var/lib/docker and /certs) are unaddressable once the container is gone,
+    # so they have to be reclaimed with it.
+    assert ("rm", "-f", "-v", "repo2ree-wb-ree123") in silent_calls
     assert ("volume", "rm", "repo2ree-ree-ree123") in silent_calls
     assert ("volume", "rm", "repo2ree-dind-ree123") in silent_calls
 
@@ -313,7 +317,7 @@ def test_default_command_exit_falls_back_to_pause(monkeypatch: pytest.MonkeyPatc
     assert run_calls[0][-1] == "alpine"
     assert run_calls[1][-2:] == ("/nix/store/bbb-busybox/bin/sleep", "infinity")
     # The failed attempt was removed so the retry could reuse the name.
-    assert ("rm", "-f", "repo2ree-wb-ree1") in docker_calls
+    assert ("rm", "-f", "-v", "repo2ree-wb-ree1") in docker_calls
     assert any(isinstance(f, LogFrame) and "exited immediately" in f.message for f in frames)
     assert _only_location(frames).exec_path == "/nix/store/aaa-exec/bin/repo2ree-exec"
     # The restart policy lands only on the surviving container.

@@ -113,6 +113,11 @@ stop_stack() {
         kill -TERM "$api_pid" 2>/dev/null || true
         wait "$api_pid" 2>/dev/null || true
     fi
+    # The backend state this stack ran on is throwaway, so any workbench the
+    # specs did not delete is now unreachable — drop the containers and per-REE
+    # volumes with it. (Assumes this stack owns the daemon's workbenches, which
+    # holds: a run needs :8000, so no second stack is up alongside it.)
+    "$root/scripts/workbench-cleanup.sh"
 }
 trap stop_stack EXIT
 
