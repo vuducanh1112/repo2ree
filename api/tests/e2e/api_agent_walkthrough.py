@@ -196,6 +196,12 @@ EXPERIMENT_NAME = "python-hello"
 # is the verdict. Declared as the experiment's output so the baseline is sealed.
 EXPERIMENT_LOG = f"results/{EXPERIMENT_NAME}.log"
 
+# Where the REE keeps its SBOM. Unlike the runtime — which the author's own build
+# script writes into the workspace and packaging then lifts — the scan writes
+# REE-owned evidence, so it lands in ``artifacts/`` from the start and is
+# declared, listed, and bundled at that one path.
+SBOM_ARTIFACT_PATH = "artifacts/sbom.json"
+
 _DOCKERFILE = """\
 FROM python:3.11-slim
 WORKDIR /app
@@ -511,6 +517,23 @@ def run() -> None:
         {"produced_runtime_path": runtime_artifact},
         what="SBOM generation",
     )
+    # The scan writes REE evidence, not a workspace file: it lands in artifacts/
+    # and the intent is patched to that path, so the SBOM shows up in ree_files
+    # rather than in the materialized tree the next step's drift check watches.
+    scanned = call("GET", f"/api/v1/rees/{ree_id}/state")
+    check(
+        scanned["ree_intent"]["sbom"] == SBOM_ARTIFACT_PATH,
+        f"SBOM should be declared at {SBOM_ARTIFACT_PATH}, was {scanned['ree_intent']['sbom']!r}",
+    )
+    check(
+        SBOM_ARTIFACT_PATH in {file["path"] for file in scanned.get("ree_files", [])},
+        f"{SBOM_ARTIFACT_PATH} missing from the REE's own files",
+    )
+    check(
+        "sbom.json" not in {file["path"] for file in scanned.get("files", [])},
+        "the SBOM leaked into the materialized workspace",
+    )
+    ok(f"SBOM written to {SBOM_ARTIFACT_PATH} — REE evidence, outside the workspace")
     note("join the SBOM against the evaluate report — do the declared deps appear in the runtime?")
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/cross-check-sbom", {}, what="SBOM cross-check")
     ok("SBOM generated and cross-checked against the scanned dependencies")
@@ -612,6 +635,10 @@ def run() -> None:
     # capture nests under the per-experiment prefix.
     result_entry = f"ree/results/{EXPERIMENT_NAME}/{EXPERIMENT_LOG}"
     check(result_entry in entries, f"experiment baseline {result_entry} missing from the bundle")
+    # The SBOM was authored into artifacts/, so packaging carries it verbatim:
+    # the same path inside the bundle as on disk, and the same one the manifest
+    # declares — nothing to remap, nothing to lift.
+    check(f"ree/{SBOM_ARTIFACT_PATH}" in entries, f"ree/{SBOM_ARTIFACT_PATH} missing from the bundle")
     ok(f"downloaded sealed archive: {len(entries)} entries, {len(data)} bytes")
 
     chapter("15. Tear down")

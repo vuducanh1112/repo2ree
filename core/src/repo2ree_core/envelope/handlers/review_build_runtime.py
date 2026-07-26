@@ -192,7 +192,6 @@ def handle_review_build_runtime(
         runtime_abs=runtime_abs,
         runtime_path=runtime_path,
         observed_runtime_digest=observed_runtime_digest,
-        author_sbom_path=intent.sbom,
         basis=basis,
         log=log,
     )
@@ -267,7 +266,6 @@ def _certify(
     runtime_abs: Path,
     runtime_path: str,
     observed_runtime_digest: str,
-    author_sbom_path: str | None,
     basis: EvidenceBasis,
     log: LogSink,
 ) -> BuildComparison:
@@ -299,7 +297,7 @@ def _certify(
             tool_version = scan.tool_version
             observed_packages = parse_cyclonedx(review_layout.sbom.read_text(encoding="utf-8"))
 
-    expected_packages = _author_packages(ree_layout, author_sbom_path, log=log)
+    expected_packages = _author_packages(ree_layout, log=log)
 
     return compare_build_runtimes(
         expected_runtime_digest=expected_runtime_digest,
@@ -351,19 +349,17 @@ def _author_runtime_digest(
     return author_sbom_receipt.declared_runtime_digest
 
 
-def _author_packages(ree_layout: ReeLayout, sbom_path: str | None, *, log: LogSink) -> list[ObservedPackage]:
-    """The closure the author published, read from the SBOM their intent names.
+def _author_packages(ree_layout: ReeLayout, *, log: LogSink) -> list[ObservedPackage]:
+    """The closure the author published, read from the REE's own SBOM slot.
 
-    Resolved through the store rather than straight off ``workspace/``: a
-    baseline loaded from a bundle declares its SBOM at ``artifacts/<name>``,
-    which never appears in the materialized workspace.
+    Read straight off ``artifacts/`` rather than resolved from a declared path:
+    the author's scan writes there and a loaded bundle restores there, so both
+    kinds of baseline are read identically — and a baseline that never ran the
+    step simply has no file, which is inconclusive rather than wrong.
     """
-    if not sbom_path:
+    document = ree_layout.sbom
+    if not document.is_file():
         log("system", "warn", "the author baseline carries no SBOM — the closure comparison is inconclusive")
-        return []
-    document = ReeStore(ree_layout).author_artifact(sbom_path)
-    if document is None:
-        log("system", "warn", f"author SBOM not found at {sbom_path} — the closure comparison is inconclusive")
         return []
     return parse_cyclonedx(document.read_text(encoding="utf-8"))
 

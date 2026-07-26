@@ -152,12 +152,15 @@ class ReeStore:
     def author_artifact(self, declared: str | None) -> Path | None:
         """Resolve an author-declared artifact path to the file it names.
 
-        The runtime and SBOM paths on the intent are workspace-relative while
-        authoring, but bundling lifts both into the bundle's ``artifacts/`` and
-        rewrites the manifest to match — so an REE loaded from a bundle declares
-        ``artifacts/<name>``, which is REE-root-relative and never appears under
-        ``workspace/``. Both spellings resolve here, workspace first, so a loaded
-        baseline reads exactly like an authored one to everything downstream.
+        For the runtime, which an author's own build script writes: the declared
+        path is workspace-relative while authoring, but bundling lifts the file
+        into the bundle's ``artifacts/`` and rewrites the manifest to match — so
+        an REE loaded from a bundle declares ``artifacts/<name>``, which is
+        REE-root-relative and never appears under ``workspace/``. Both spellings
+        resolve here, workspace first, so a loaded baseline reads exactly like an
+        authored one to everything downstream. (REE-produced artifacts need none
+        of this: they are written to their fixed ``artifacts/`` slot from the
+        start — see ``ReeLayout.sbom``.)
 
         Returns None when the path is unset or names nothing on disk; callers
         decide whether that is a failure or merely inconclusive evidence.

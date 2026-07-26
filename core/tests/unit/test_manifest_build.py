@@ -1,5 +1,6 @@
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH
 from repo2ree_core.workspace.manifest import build_draft_manifest_payload, build_manifest_payload
 from repo2ree_core.workspace.model import WorkspaceMetadata
 
@@ -39,11 +40,11 @@ def test_source_type_comes_from_intent():
 def test_named_slot_paths_are_normalized():
     intent = _intent(
         runtime="/runtime.tar.gz",
-        sbom="  sbom.json  ",
+        sbom=f"  {SBOM_ARTIFACT_PATH}  ",
     )
     manifest = build_manifest_payload(intent, _session(), ree_id="abc")
     assert manifest["runtime"] == "runtime.tar.gz"
-    assert manifest["sbom"] == "sbom.json"
+    assert manifest["sbom"] == SBOM_ARTIFACT_PATH
 
 
 def test_activation_in_manifest():

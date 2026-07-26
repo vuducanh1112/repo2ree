@@ -5,7 +5,7 @@ import {
   canRunActivation,
 } from "@core/ree-steps/activationUiState";
 import { resolvedRuntimePath } from "@core/ree-steps/buildRuntimeUiState";
-import { resolvedSbomPath } from "@core/ree-steps/sbomUiState";
+import { findSbomArtifact, resolvedSbomPath } from "@core/ree-steps/sbomUiState";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { useGenerateActivationScript } from "@shell/data/scriptInference/mutations";
@@ -63,6 +63,7 @@ export function PageTestActivation({
   step,
   ree,
   workspaceFiles,
+  reeFiles,
   log,
   running,
   runDone,
@@ -106,7 +107,7 @@ export function PageTestActivation({
   const runtimePath = resolvedRuntimePath(ree.runtime);
   const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
   const sbomPath = resolvedSbomPath(ree.sbom);
-  const sbomPathExists = sbomPath ? workspaceFileExists(files, sbomPath) : false;
+  const sbomPathExists = !!findSbomArtifact(reeFiles, sbomPath);
 
   const activationParams: ReeStepRunParams<"activation"> = params as ReeStepRunParams<"activation">;
 

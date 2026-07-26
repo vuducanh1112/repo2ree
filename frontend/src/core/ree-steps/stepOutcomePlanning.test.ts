@@ -28,10 +28,10 @@ describe("stepOutcomePlanning", () => {
     expect(result.successMessage).toContain("current machine");
   });
 
-  it("plans SBOM metadata", () => {
+  it("declares the SBOM at the REE's own artifact path, not a workspace file", () => {
     const result = planSbomEffect();
 
-    expect(result.reeSpecPatch.sbom).toBe("sbom.json");
+    expect(result.reeSpecPatch.sbom).toBe("artifacts/sbom.json");
   });
 
   it("plans evaluate metadata", () => {

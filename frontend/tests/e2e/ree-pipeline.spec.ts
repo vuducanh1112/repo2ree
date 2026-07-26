@@ -17,6 +17,7 @@ import {
   releaseWorkbench,
   runEvaluate,
   runExperiment,
+  SBOM_ARTIFACT_PATH,
   sealRee,
   startReeCreation,
   testActivation,
@@ -228,7 +229,11 @@ test.describe("REE pipeline", () => {
       const stream = await download.createReadStream();
       const chunks: Buffer[] = [];
       for await (const chunk of stream) chunks.push(chunk as Buffer);
-      expect(Buffer.concat(chunks).includes("ree/results/python-hello/result.txt")).toBe(true);
+      const bundle = Buffer.concat(chunks);
+      expect(bundle.includes("ree/results/python-hello/result.txt")).toBe(true);
+      // The SBOM was written to the REE's artifacts, so packaging carries it
+      // there verbatim — no lift out of the workspace, same path either side.
+      expect(bundle.includes(`ree/${SBOM_ARTIFACT_PATH}`)).toBe(true);
     });
 
     await test.step("release workbench", async () => {

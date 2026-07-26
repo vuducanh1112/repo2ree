@@ -18,7 +18,7 @@ describe("toReePatchFromSlices", () => {
       originUrl: "https://example.org/repo.git",
       sourceType: "git" as const,
       runtime: "runtime.tar.gz",
-      sbom: "sbom.json",
+      sbom: "artifacts/sbom.json",
       swhid: "swh:1:dir:test",
       experiments: [
         {
@@ -90,7 +90,7 @@ describe("toReePatchFromSlices", () => {
         runtime_estimate: "",
         resource_estimates: { cpu: "", memory: "", gpu: "", storage: "", network: "" },
       },
-      sbom: "sbom.json",
+      sbom: "artifacts/sbom.json",
       swhid: "swh:1:dir:test",
       zenodo_doi: "",
       dataverse_doi: "",

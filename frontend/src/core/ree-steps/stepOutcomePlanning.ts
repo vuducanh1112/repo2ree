@@ -1,6 +1,7 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../evaluate/EvaluationState";
 import type { ReeSpec } from "../ree/ReeSpec";
+import { SBOM_ARTIFACT_PATH } from "./sbomUiState";
 import type { ReeStepKey } from "./stepRunParams";
 import type { GenericReeStepParams } from "./stepTypes";
 
@@ -61,8 +62,8 @@ export function planHbomEffect(): HbomEffectPlan {
 
 export function planSbomEffect(): SbomEffectPlan {
   return {
-    reeSpecPatch: { sbom: "sbom.json" },
-    successMessage: "SBOM generated — sbom.json",
+    reeSpecPatch: { sbom: SBOM_ARTIFACT_PATH },
+    successMessage: `SBOM generated — ${SBOM_ARTIFACT_PATH}`,
   };
 }
 

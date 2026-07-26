@@ -156,7 +156,6 @@ def _build_artifact_plan(layout: ReeLayout, intent: Any, *, include_runtime: boo
     return plan_artifact_layout(
         on_disk_artifact_relpaths=on_disk_artifacts,
         workspace_runtime_path=intent.runtime,
-        workspace_sbom_path=intent.sbom,
         workspace_files=workspace_files,
         runtime_included=include_runtime,
     )

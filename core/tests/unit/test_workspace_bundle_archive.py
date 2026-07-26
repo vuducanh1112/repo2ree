@@ -7,7 +7,7 @@ import pytest
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.storage.layout import ReeLayout
+from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.storage.workspace_ops import (
     build_workspace_ree_archive,
@@ -52,14 +52,14 @@ def test_bundle_archive_honors_inclusion_flags_and_manifest_remap(tmp_path):
     ree_root = layout.root
 
     (workspace_root / "runtime.tar.gz").write_bytes(b"runtime-bytes")
-    (workspace_root / "sbom.json").write_text('{"bom":1}', encoding="utf-8")
+    layout.sbom.write_text('{"bom":1}', encoding="utf-8")
     (ree_root / "snapshot.tar.gz").write_bytes(b"snapshot-bytes")
 
     metadata = _read_metadata(layout)
     metadata["ree_intent"] = {
         **(metadata.get("ree_intent") or {}),
         "runtime": "/runtime.tar.gz",
-        "sbom": " sbom.json ",
+        "sbom": SBOM_ARTIFACT_PATH,
     }
     metadata["ree_session"] = {
         **(metadata.get("ree_session") or {}),
@@ -152,14 +152,14 @@ def test_bundle_archive_includes_snapshot_and_normalized_runtime_when_enabled(tm
     ree_root = layout.root
 
     (workspace_root / "runtime.tar.gz").write_bytes(b"runtime-bytes")
-    (workspace_root / "sbom.json").write_text('{"bom":1}', encoding="utf-8")
+    layout.sbom.write_text('{"bom":1}', encoding="utf-8")
     (ree_root / "snapshot.tar.gz").write_bytes(b"snapshot-bytes")
 
     metadata = _read_metadata(layout)
     metadata["ree_intent"] = {
         **(metadata.get("ree_intent") or {}),
         "runtime": "/runtime.tar.gz",
-        "sbom": " sbom.json ",
+        "sbom": SBOM_ARTIFACT_PATH,
     }
     metadata["ree_session"] = {
         **(metadata.get("ree_session") or {}),

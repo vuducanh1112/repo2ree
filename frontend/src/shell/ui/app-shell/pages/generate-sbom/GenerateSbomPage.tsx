@@ -1,7 +1,12 @@
 import { resolvedRuntimePath } from "@core/ree-steps/buildRuntimeUiState";
-import { isRuntimeTarballPath, resolvedSbomPath, summarizeSbom } from "@core/ree-steps/sbomUiState";
+import {
+  findSbomArtifact,
+  isRuntimeTarballPath,
+  resolvedSbomPath,
+  summarizeSbom,
+} from "@core/ree-steps/sbomUiState";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
-import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
+import { workspaceFileExists } from "@core/workspace/fileTreeTraversal";
 import { lgPageRoot, lgStatusBadge, pageIconTint } from "@shell/ui/theme/lightGlassTheme";
 import { useMemo } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
@@ -19,6 +24,7 @@ export function PageGenerateSbom({
   step,
   ree,
   workspaceFiles,
+  reeFiles,
   log,
   running,
   runDone,
@@ -36,8 +42,11 @@ export function PageGenerateSbom({
   const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
   const runtimeIsTarball = !!runtimePath && isRuntimeTarballPath(runtimePath);
 
+  // The runtime is scanned where the build left it, in the workspace; the SBOM
+  // that comes back is REE evidence and lives in artifacts/, so it is found
+  // among the REE's own files rather than in the materialized tree.
   const sbomPath = resolvedSbomPath(ree.sbom);
-  const sbomNode = sbomPath ? findFileByWorkspacePath(files, sbomPath) : null;
+  const sbomNode = findSbomArtifact(reeFiles, sbomPath);
   const sbomSummary = useMemo(() => summarizeSbom(sbomNode), [sbomNode]);
   const sbomReady = !!sbomPath && !!sbomNode;
 

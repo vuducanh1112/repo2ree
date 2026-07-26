@@ -14,8 +14,7 @@ from repo2ree_core.repo_profiler.reproducibility_report import (
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.sbom.crosscheck import cross_check
 from repo2ree_core.sbom.cyclonedx import parse_cyclonedx
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms, utc_now
 from repo2ree_protocol.command import CrossCheckSbomArgs
 from repo2ree_protocol.log import LogSink
@@ -47,10 +46,12 @@ def handle_cross_check_sbom(
         return ActionResult(status="canceled")
 
     layout = ReeLayout.in_workbench()
-    store = ReeStore(layout)
 
-    sbom_rel = store.read_intent().sbom or "sbom.json"
-    sbom_abs = layout.workspace / sbom_rel
+    # The SBOM's home is fixed, so this reads it rather than resolving whatever
+    # the intent declares: a baseline loaded from a bundle lands its SBOM in the
+    # same artifacts/ slot the author's scan wrote, and cross-checks identically.
+    sbom_abs = layout.sbom
+    sbom_rel = SBOM_ARTIFACT_PATH
     if not sbom_abs.is_file():
         log("system", "error", f"SBOM not found: {sbom_rel} — run generate-sbom first")
         return ActionResult.failed("precondition", f"SBOM not found: {sbom_rel} — run generate-sbom first")
@@ -137,7 +138,7 @@ def handle_cross_check_sbom(
     recorded = receipt("succeeded", counts=summary)
     outputs = CrossCheckSbomOutputs(
         report_relative_path=_REPORT_FILENAME,
-        sbom_relative_path=str(sbom_rel),
+        sbom_relative_path=sbom_rel,
         cross_check=summary.model_dump(),
         receipt=recorded.model_dump(),
     )

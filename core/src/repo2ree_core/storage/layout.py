@@ -13,7 +13,8 @@ Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
     upload-staging/       staging area for in-flight source uploads
     upstream/             extracted snapshot, treated as read-only
     overlay/              user-added and tool-generated recipe files
-    artifacts/            build outputs (runtime, sbom, ...)
+    artifacts/            produced evidence (sbom.json, reproducibility-report.json,
+                          and a runtime restored from a loaded bundle)
     workspace/            materialized view (upstream + overlay) used at build time
     runs/                 per-action logs and immutable receipt history
     receipts/author/      latest successful author receipt per operation
@@ -61,6 +62,13 @@ UPSTREAM_DIRNAME = "upstream"
 SNAPSHOT_FILENAME = "snapshot.tar.gz"
 OVERLAY_DIRNAME = "overlay"
 ARTIFACTS_DIRNAME = "artifacts"
+# The SBOM is REE-owned evidence, not an authored file: only ``generate_sbom``
+# writes it, and it names one fixed place. Published on the intent (and so in
+# the manifest) as this REE-root-relative path, which is also where the bundle
+# carries it — so an REE loaded from a bundle declares exactly what it declared
+# before packaging.
+SBOM_FILENAME = "sbom.json"
+SBOM_ARTIFACT_PATH = f"{ARTIFACTS_DIRNAME}/{SBOM_FILENAME}"
 # Produced-results store: per-experiment captured outputs, keyed by name. A
 # sibling of ``artifacts/`` (produced, not authored) rather than a subtree of
 # it, so the sealed bundle exposes the author baseline at ``ree/results/<name>/``
@@ -160,6 +168,17 @@ class ReeLayout:
         return self.root / ARTIFACTS_DIRNAME
 
     @property
+    def sbom(self) -> Path:
+        """This REE's software bill of materials, scanned off its runtime.
+
+        Sits in ``artifacts/`` rather than in ``workspace/``: the workspace is a
+        materialized view of source + recipe that any run may rewrite, while
+        this document is produced evidence the seal and every reviewer read.
+        Mirrors :attr:`ReviewLayout.sbom` on the reviewer's side.
+        """
+        return self.artifacts / SBOM_FILENAME
+
+    @property
     def results(self) -> Path:
         return self.root / RESULTS_DIRNAME
 
@@ -243,7 +262,7 @@ class ReeLayout:
         """A path relative to the REE root itself, e.g. ``artifacts/runtime.tar.gz``.
 
         The spelling a bundle's manifest uses once packaging has lifted the
-        runtime and SBOM out of the workspace (see ``ReeStore.author_artifact``).
+        runtime out of the workspace (see ``ReeStore.author_artifact``).
         """
         return self._resolve_under(self.root, rel)
 

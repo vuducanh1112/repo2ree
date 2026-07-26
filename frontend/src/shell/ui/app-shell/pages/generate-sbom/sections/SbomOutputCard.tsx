@@ -39,7 +39,7 @@ export function SbomOutputCard({
       <div style={lgInfoBanner("danger")}>
         <span style={{ color: lgColors.danger, display: "flex" }}>{Ic.info(13)}</span>
         <span style={{ color: lgColors.danger, fontSize: 12 }}>
-          SBOM is set to <code>{sbomPath}</code>, but that file is not present in the workspace.
+          SBOM is set to <code>{sbomPath}</code>, but that file is not present in the REE.
         </span>
       </div>
     );

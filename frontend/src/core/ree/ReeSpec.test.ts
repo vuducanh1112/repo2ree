@@ -7,7 +7,7 @@ function buildReeDraft() {
     sourceType: "git",
     runtime: "runtime.tar.gz",
     activation_script: "activate_runtime.sh",
-    sbom: "sbom.json",
+    sbom: "artifacts/sbom.json",
     swhid: "swh:1:dir:test",
     zenodoDoi: "10.1234/example",
     dataverseDoi: "doi:10.5678/example",

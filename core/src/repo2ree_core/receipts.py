@@ -54,10 +54,6 @@ RECEIPT_SCHEMA_VERSION: Literal[1] = 1
 # cannot balloon the receipt; the status alone carries the verdict.
 _DRIFT_PATHS_CAP = 20
 
-# generate_sbom writes this into the workspace at a fixed name (the sbom path
-# is also declared on the intent).
-_SBOM_TOOL_OUTPUTS = ("sbom.json",)
-
 
 class _ReceiptModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -424,13 +420,12 @@ def declared_output_paths(intent: ReeIntent) -> set[str]:
     """Workspace paths that runs legitimately (re)write.
 
     These are excluded from drift: outputs landing inside the workspace must
-    not make every step's output part of the next step's input.
+    not make every step's output part of the next step's input. The SBOM needs
+    no exemption — it is written to ``artifacts/``, outside the workspace.
     """
-    paths: set[str] = set(_SBOM_TOOL_OUTPUTS)
+    paths: set[str] = set()
     if intent.runtime:
         paths.add(intent.runtime)
-    if intent.sbom:
-        paths.add(intent.sbom)
     runnables: list[Runnable] = [intent.activation, *intent.experiments]
     for runnable in runnables:
         paths.update(runnable.output_paths)

@@ -12,7 +12,7 @@ function buildWorkspaceState(): SourceChangeInput {
       originUrl: "https://example.org/repo.git",
       sourceType: "git",
       runtime: "runtime.tar.gz",
-      sbom: "sbom.json",
+      sbom: "artifacts/sbom.json",
       swhid: "swh:1:dir:abc",
     },
     workspaceSourceState: {

@@ -125,11 +125,13 @@ class ArtifactPlan:
     """Pure description of how ``ree/artifacts/`` should be populated.
 
     ``on_disk_relpaths`` are paths (relative to the on-disk ``artifacts/``
-    directory) that should be included verbatim. ``workspace_pulls`` maps
-    ``{workspace_relpath: archive_basename}`` for files currently stored in
-    ``workspace/`` that should be lifted into ``artifacts/<basename>``.
-    ``manifest_remap`` maps original manifest path strings to the new
-    ``artifacts/<basename>`` path used in the bundled manifest.
+    directory) that should be included verbatim — every REE-produced artifact
+    (the SBOM, the reproducibility report) is already one of these.
+    ``workspace_pulls`` maps ``{workspace_relpath: archive_basename}`` for the
+    runtime, the one artifact an author's own build script writes into
+    ``workspace/`` and that packaging therefore has to lift into
+    ``artifacts/<basename>``. ``manifest_remap`` maps the original manifest path
+    string to the ``artifacts/<basename>`` path used in the bundled manifest.
     """
 
     on_disk_relpaths: tuple[str, ...]
@@ -141,7 +143,6 @@ def plan_artifact_layout(
     *,
     on_disk_artifact_relpaths: Sequence[str],
     workspace_runtime_path: str | None,
-    workspace_sbom_path: str | None,
     workspace_files: frozenset[str],
     runtime_included: bool,
 ) -> ArtifactPlan:
@@ -149,28 +150,23 @@ def plan_artifact_layout(
 
     Pure: only path arithmetic and set operations. ``workspace_files`` is the
     set of relative paths the shell observed in ``workspace/``; the planner
-    uses it to skip manifest references that don't have a backing file.
-    On-disk artifacts always win over workspace-pulled entries with the same
-    final archive path, so a deliberately staged ``artifacts/runtime.tar.gz``
-    is never shadowed.
+    uses it to skip a runtime reference that has no backing file. On-disk
+    artifacts always win over the workspace pull with the same final archive
+    path, so a runtime already staged at ``artifacts/runtime.tar.gz`` (as a
+    loaded bundle leaves it) is never shadowed.
     """
     on_disk_targets = set(on_disk_artifact_relpaths)
     workspace_pulls: dict[str, str] = {}
     manifest_remap: dict[str, str] = {}
-    for ws_path in (
-        workspace_runtime_path if runtime_included else "",
-        workspace_sbom_path,
+    ws_path = workspace_runtime_path if runtime_included else ""
+    normalized = normalize_workspace_path(ws_path or "")
+    if (
+        normalized
+        and ".." not in PurePosixPath(normalized).parts
+        and normalized in workspace_files
+        and PurePosixPath(normalized).name not in on_disk_targets
     ):
-        if not ws_path:
-            continue
-        normalized = normalize_workspace_path(ws_path)
-        if not normalized or ".." in PurePosixPath(normalized).parts:
-            continue
-        if normalized not in workspace_files:
-            continue
         basename = PurePosixPath(normalized).name
-        if basename in on_disk_targets:
-            continue
         workspace_pulls[normalized] = basename
         manifest_remap[normalized] = f"{ARTIFACTS_DIRNAME}/{basename}"
     return ArtifactPlan(
@@ -181,10 +177,13 @@ def plan_artifact_layout(
 
 
 def rewrite_manifest_for_bundle(manifest: Mapping[str, Any], remap: Mapping[str, str]) -> dict[str, Any]:
-    """Return a copy of ``manifest`` with ``runtime``/``sbom`` paths remapped."""
+    """Return a copy of ``manifest`` with the ``runtime`` path remapped.
+
+    The ``sbom`` path needs no remapping: it is authored REE-root-relative
+    (``artifacts/sbom.json``) and the bundle carries it at exactly that path.
+    """
     rewritten = dict(manifest)
-    for field in ("runtime", "sbom"):
-        original = rewritten.get(field)
-        if isinstance(original, str) and original in remap:
-            rewritten[field] = remap[original]
+    original = rewritten.get("runtime")
+    if isinstance(original, str) and original in remap:
+        rewritten["runtime"] = remap[original]
     return rewritten

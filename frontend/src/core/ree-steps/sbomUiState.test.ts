@@ -1,5 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { isRuntimeTarballPath, sbomReadiness, summarizeSbom } from "./sbomUiState";
+import type { ReeFile } from "../ree/ReeTypes";
+import {
+  findSbomArtifact,
+  isRuntimeTarballPath,
+  SBOM_ARTIFACT_PATH,
+  sbomReadiness,
+  summarizeSbom,
+} from "./sbomUiState";
+
+function reeFile(name: string, content = "{}"): ReeFile {
+  return { id: name, name, type: "file", content };
+}
+
+describe("findSbomArtifact", () => {
+  it("reads the SBOM out of the REE's artifacts, not a same-named source file", () => {
+    const files = [reeFile("upstream/sbom.json", '{"source":1}'), reeFile(SBOM_ARTIFACT_PATH)];
+
+    expect(findSbomArtifact(files, SBOM_ARTIFACT_PATH)?.name).toBe(SBOM_ARTIFACT_PATH);
+  });
+
+  it("is null before the scan has run, and for an undeclared path", () => {
+    expect(findSbomArtifact([reeFile("overlay/build.sh")], SBOM_ARTIFACT_PATH)).toBeNull();
+    expect(findSbomArtifact([reeFile(SBOM_ARTIFACT_PATH)], "")).toBeNull();
+  });
+});
 
 describe("isRuntimeTarballPath", () => {
   it("matches tar, tar.gz, tgz regardless of case", () => {

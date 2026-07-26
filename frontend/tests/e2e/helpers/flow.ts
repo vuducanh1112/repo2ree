@@ -427,6 +427,12 @@ export async function provideHbom(page: Page, cpuModel: string) {
 }
 
 /**
+ * Where the REE keeps its SBOM. Not a workspace file: the scan writes straight
+ * into the REE's own `artifacts/`, and the page reads it from there.
+ */
+export const SBOM_ARTIFACT_PATH = "artifacts/sbom.json";
+
+/**
  * Generate the SBOM. Navigates to the SBOM canvas node (a docked page, like
  * Build Runtime).
  */
@@ -442,6 +448,9 @@ export async function generateSbom(page: Page) {
   await expect(content.getByText("SBOM ready", { exact: true }).first()).toBeVisible({
     timeout: 20000,
   });
+  // "Ready" means the declared path resolved to a real file. Asserting the path
+  // pins where that file is: the REE's artifacts, not the materialized tree.
+  await expect(content.getByText(SBOM_ARTIFACT_PATH, { exact: true }).first()).toBeVisible();
   await stepShot(page, "generate-sbom", "after");
 }
 

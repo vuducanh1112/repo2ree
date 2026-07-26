@@ -122,7 +122,7 @@ export function HardwareBomPageContainer({
 }
 
 export function StepPageContainer(props: AppShellPageContainerProps) {
-  const { ree, workspaceRemote, stepRuns, commands } = props;
+  const { ree, workspaceRemote, stepRuns, commands, currentReeFiles } = props;
   const { badges } = stepRuns;
   const { workspaceFiles, workspaceSourceState, artifactStatus } = workspaceRemote;
 
@@ -158,6 +158,7 @@ export function StepPageContainer(props: AppShellPageContainerProps) {
         ree={ree}
         badges={badges}
         workspaceFiles={workspaceFiles}
+        reeFiles={currentReeFiles}
         workspaceSourceState={workspaceSourceState}
         artifactStatus={artifactStatus}
         evaluationState={stepRuns.evaluationState}

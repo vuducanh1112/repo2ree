@@ -1,8 +1,8 @@
 """Unit coverage for the cross_check_sbom envelope handler.
 
-The handler joins two persisted artifacts — the workspace SBOM and the
-reproducibility report — enriches the report in place, and records the
-aggregate receipt. These tests point ``ReeLayout.in_workbench`` at a tmp root
+The handler joins two persisted artifacts — the REE's SBOM and its
+reproducibility report, both in ``artifacts/`` — enriches the report in place,
+and records the aggregate receipt. These tests point ``ReeLayout.in_workbench`` at a tmp root
 and seed both artifacts directly; the pure merge has its own suite.
 """
 
@@ -17,7 +17,7 @@ from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.handlers import cross_check_sbom as handler
 from repo2ree_core.receipts import CrossCheckSbomReceipt, load_receipts
-from repo2ree_core.storage.layout import ReeLayout
+from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import CrossCheckSbomArgs
@@ -76,14 +76,14 @@ def _seed(
             name="demo",
             created_at="2026-01-01T00:00:00Z",
             updated_at="2026-01-01T00:00:00Z",
-            ree_intent=ReeIntent(name="demo", sbom="sbom.json"),
+            ree_intent=ReeIntent(name="demo", sbom=SBOM_ARTIFACT_PATH),
             ree_session=ReeSession(source_available=True),
         )
     )
+    layout.artifacts.mkdir(parents=True, exist_ok=True)
     if with_sbom:
-        (layout.workspace / "sbom.json").write_text(json.dumps(_SBOM), encoding="utf-8")
+        layout.sbom.write_text(json.dumps(_SBOM), encoding="utf-8")
     if with_report:
-        layout.artifacts.mkdir(parents=True, exist_ok=True)
         (layout.artifacts / "reproducibility-report.json").write_text(json.dumps(_REPORT), encoding="utf-8")
     monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return layout

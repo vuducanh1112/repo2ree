@@ -12,7 +12,7 @@ from repo2ree_core.envelope.handlers._common import (
 from repo2ree_core.receipts import GenerateSbomReceipt, receipt_run_id, record_receipt
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.sbom.scan import SBOM_FORMAT, is_runtime_archive, scan_runtime_archive
-from repo2ree_core.storage.layout import ReeLayout
+from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import GenerateSbomArgs
@@ -81,7 +81,7 @@ def handle_generate_sbom(
             status=status,
             runtime_path=runtime_path,
             declared_runtime_digest=declared_runtime_digest,
-            sbom_path="sbom.json" if sbom_digest else None,
+            sbom_path=SBOM_ARTIFACT_PATH if sbom_digest else None,
             sbom_digest=sbom_digest,
             sbom_format=SBOM_FORMAT if sbom_digest else None,
             tool_version=tool_version,
@@ -94,7 +94,10 @@ def handle_generate_sbom(
         )
         return built
 
-    output_path = layout.workspace / "sbom.json"
+    # Written straight into the REE's own artifacts/, never into the workspace:
+    # the SBOM is produced evidence, so nothing downstream has to lift it out of
+    # a materialized tree — or exempt it from that tree's drift check.
+    output_path = layout.sbom
     log("system", "info", f"Runtime input: {runtime_path}")
     scan = scan_runtime_archive(runtime_abs, output_path, log=log)
     if scan.returncode != 0:
@@ -103,7 +106,7 @@ def handle_generate_sbom(
         return ActionResult.failed("execution", f"syft failed (exit {scan.returncode})", exit_code=scan.returncode)
 
     try:
-        patch_ree_intent(ReeStore(layout), {"sbom": "sbom.json"})
+        patch_ree_intent(ReeStore(layout), {"sbom": SBOM_ARTIFACT_PATH})
     except Exception as exc:
         log("system", "error", f"post-processing SBOM failed: {exc}")
         receipt("failed")
@@ -115,7 +118,7 @@ def handle_generate_sbom(
         tool_version=scan.tool_version,
     )
     outputs = GenerateSbomOutputs(
-        sbom_relative_path="sbom.json",
+        sbom_relative_path=SBOM_ARTIFACT_PATH,
         runtime_relative_path=runtime_path,
         format=SBOM_FORMAT,
         receipt=recorded.model_dump(),

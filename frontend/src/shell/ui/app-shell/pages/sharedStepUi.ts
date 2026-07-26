@@ -1,7 +1,13 @@
 import type { ArtifactStatus } from "@core/artifact/ArtifactStatus";
 import type { EvaluationState } from "@core/evaluate/EvaluationState";
 import type { ReeSpec } from "@core/ree/ReeSpec";
-import type { ActionStates, Badges, LogEntry, SourceUploadCommit } from "@core/ree/ReeTypes";
+import type {
+  ActionStates,
+  Badges,
+  LogEntry,
+  ReeFile,
+  SourceUploadCommit,
+} from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import type { ReeStepKey, ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import type {
@@ -94,6 +100,8 @@ export interface StepPageProps {
   evaluationState: EvaluationState;
   badges: Badges;
   workspaceFiles: FileTreeNode[];
+  /** The REE's own files (artifacts/, overlay/, …), not the materialized tree. */
+  reeFiles: ReeFile[];
   log: LogEntry | null;
   running: boolean;
   runDone: boolean;

@@ -26,7 +26,7 @@ from repo2ree_core.reviews import (
     write_review_record,
 )
 from repo2ree_core.sbom.scan import ScanOutcome
-from repo2ree_core.storage.layout import ReeLayout
+from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import ReviewBuildRuntimeArgs
@@ -76,7 +76,7 @@ def _author_ree(
             ree_intent=ReeIntent(
                 name="review",
                 runtime=RUNTIME_PATH,
-                sbom="sbom.json" if author_sbom is not None else None,
+                sbom=SBOM_ARTIFACT_PATH if author_sbom is not None else None,
             ),
             ree_session=ReeSession(),
         )
@@ -88,8 +88,7 @@ def _author_ree(
     script.write_text(build_script, encoding="utf-8")
 
     if author_sbom is not None:
-        layout.workspace.mkdir(parents=True, exist_ok=True)
-        (layout.workspace / "sbom.json").write_text(author_sbom, encoding="utf-8")
+        layout.sbom.write_text(author_sbom, encoding="utf-8")
 
     record_receipt(
         layout,
@@ -116,7 +115,7 @@ def _author_ree(
             recorded_at="2026-01-01T00:00:03Z",
             status="succeeded",
             runtime_path=RUNTIME_PATH,
-            sbom_path="sbom.json",
+            sbom_path=SBOM_ARTIFACT_PATH,
             sbom_digest="sha256:" + "a" * 64,
         ),
         log=lambda *_: None,
@@ -279,7 +278,9 @@ def test_the_rebuild_is_isolated_from_author_evidence(tmp_path: Path, monkeypatc
     assert (review.workspace / "main.py").is_file()
     # ...and the author's workspace, artifacts, and receipts are untouched.
     assert not (layout.workspace / RUNTIME_PATH).exists()
-    assert not layout.artifacts.exists() or not any(layout.artifacts.iterdir())
+    assert list(layout.artifacts.iterdir()) == [layout.sbom]
+    # The reviewer's own scan wrote to their attempt, never over the author's.
+    assert layout.sbom.read_text(encoding="utf-8") == _sbom(AUTHOR_PACKAGES)
     author_build = (layout.author_receipts / "build_runtime.json").read_text(encoding="utf-8")
     assert "review-build-run" not in author_build
     # Reviewer evidence lands in the attempt.
@@ -524,27 +525,26 @@ def test_asking_for_a_bundled_runtime_the_ree_does_not_carry_is_refused(
     assert result.failure is not None and "ships no runtime artifact" in result.failure.message
 
 
-def test_a_bundled_author_sbom_outside_the_workspace_is_still_found(
+def test_the_author_closure_is_read_from_the_ree_slot_not_the_workspace(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A loaded bundle declares its SBOM at ``artifacts/`` — resolve it there.
+    """A workspace file named sbom.json is source, never the author's evidence.
 
-    Read straight off ``workspace/`` this would come back inconclusive, and a
-    reviewer would be told the author published no closure when they did.
+    The author's scan and a loaded bundle both fill ``artifacts/sbom.json``, so
+    that is the only place the closure is read from. A repository that happens
+    to carry its own ``sbom.json`` cannot stand in for a scan that never ran —
+    the comparison must say inconclusive rather than certify against source.
     """
     layout = _author_ree(tmp_path, monkeypatch, author_runtime_digest="sha256:" + "f" * 64)
-    store = ReeStore(layout)
-    (layout.artifacts / "sbom.json").write_text(_sbom(AUTHOR_PACKAGES), encoding="utf-8")
-    metadata = store.read_metadata()
-    store.write_metadata(
-        metadata.model_copy(
-            update={"ree_intent": metadata.ree_intent.model_copy(update={"sbom": "artifacts/sbom.json"})}
-        )
-    )
+    layout.workspace.mkdir(parents=True, exist_ok=True)
+    (layout.workspace / "sbom.json").write_text(_sbom(AUTHOR_PACKAGES), encoding="utf-8")
     _reviewed_source(layout)
     _stub_scan(monkeypatch, AUTHOR_PACKAGES)
 
-    assert _build().outputs["comparison"]["verdict"] == "equivalent"
+    comparison = _build().outputs["comparison"]
+
+    assert comparison["verdict"] == "inconclusive"
+    assert comparison["matched"] == 0
 
 
 def test_a_rebuild_finds_the_runtime_a_loaded_bundle_declares_under_artifacts(
@@ -608,7 +608,7 @@ def _author_declared_runtime(layout: ReeLayout, digest: str | None, *, runtime_p
             status="succeeded",
             runtime_path=runtime_path,
             declared_runtime_digest=digest,
-            sbom_path="sbom.json",
+            sbom_path=SBOM_ARTIFACT_PATH,
             sbom_digest="sha256:" + "a" * 64,
         ),
         log=lambda *_: None,
