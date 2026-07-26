@@ -38,11 +38,16 @@ workspace and cannot tell the difference, nor should they have to.
 from __future__ import annotations
 
 import shutil
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.envelope.handlers._review_common import (
+    review_step_halt,
+    workspace_runtime,
+    workspace_runtime_candidates,
+)
 from repo2ree_core.receipts import (
     BuildRuntimeReceipt,
     GenerateSbomReceipt,
@@ -55,7 +60,6 @@ from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.reviews import (
     BuildComparison,
     EvidenceBasis,
-    ReviewStatus,
     compare_build_runtimes,
     read_review_record,
     step_state,
@@ -71,7 +75,7 @@ from repo2ree_core.run_script import (
 )
 from repo2ree_core.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
 from repo2ree_core.sbom.scan import is_runtime_archive, scan_runtime_archive
-from repo2ree_core.storage.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
+from repo2ree_core.storage.layout import ReeLayout, ReviewLayout
 from repo2ree_core.storage.store import ReeStore
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import ReviewBuildRuntimeArgs
@@ -107,16 +111,15 @@ def handle_review_build_runtime(
     started = with_step(record, "build", status="running", at=timer.started_at)
     write_review_record(review_layout, started)
 
-    def stop(status: ReviewStatus, message: str) -> ActionResult:
-        timing = timer.finish()
-        write_review_record(
-            review_layout,
-            with_step(started, "build", status=status, at=timing.finished_at, failure=message),
-        )
-        log("system", "warn" if status == "canceled" else "error", f"review build {status}: {message}")
-        if status == "canceled":
-            return ActionResult(status="canceled", outputs={"review_id": args.review_id})
-        return ActionResult.failed("precondition", message)
+    stop = review_step_halt(
+        review_layout=review_layout,
+        record=started,
+        step="build",
+        review_id=args.review_id,
+        timer=timer,
+        log=log,
+        noun="review build",
+    )
 
     if is_canceled():
         return stop("canceled", "canceled before build")
@@ -178,7 +181,7 @@ def handle_review_build_runtime(
             return stop("canceled", "build canceled")
         if outcome.status != "succeeded":
             return stop("failed", f"build script exited {outcome.exit_code}")
-        runtime_abs = _produced_runtime(review_layout, runtime_path)
+        runtime_abs = workspace_runtime(review_layout, runtime_path)
         build_script_digest = digest_file_if_exists(review_layout.workspace / RESERVED_BUILD_SCRIPT)
 
     # 3. Certify the runtime, however it got there.
@@ -364,30 +367,6 @@ def _author_packages(ree_layout: ReeLayout, *, log: LogSink) -> list[ObservedPac
     return parse_cyclonedx(document.read_text(encoding="utf-8"))
 
 
-def _workspace_runtime_candidates(review_layout: ReviewLayout, runtime_path: str) -> tuple[Path, ...]:
-    """Where a runtime can sit in the reviewer's workspace, declared path first.
-
-    Normally there is only one answer. The exception is a baseline loaded from a
-    bundle: packaging lifted the runtime into ``artifacts/`` and rewrote the
-    declared path to ``artifacts/<basename>``, discarding the workspace path the
-    build script actually writes to. That remap keeps the basename by
-    construction, so undoing it is a lookup rather than a guess — and without it
-    a loaded REE could never be rebuilt at all, only certified against itself.
-    """
-    declared = review_layout.workspace / runtime_path
-    parts = PurePosixPath(runtime_path).parts
-    if len(parts) == 2 and parts[0] == ARTIFACTS_DIRNAME:
-        return (declared, review_layout.workspace / parts[1])
-    return (declared,)
-
-
-def _produced_runtime(review_layout: ReviewLayout, runtime_path: str) -> Path:
-    """Where the rebuild's runtime landed. Falls back to the declared path so a
-    miss is reported against the path the author declared."""
-    candidates = _workspace_runtime_candidates(review_layout, runtime_path)
-    return next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
-
-
 def _stage_bundled_runtime(review_layout: ReviewLayout, shipped: Path, runtime_path: str) -> Path:
     """Copy the shipped runtime into the workspace, where a rebuild would leave it.
 
@@ -400,7 +379,7 @@ def _stage_bundled_runtime(review_layout: ReviewLayout, shipped: Path, runtime_p
     Copied rather than linked: the workspace is the reviewer's to run scripts in,
     and a hard link would let one of them write through to author evidence.
     """
-    target = _workspace_runtime_candidates(review_layout, runtime_path)[-1]
+    target = workspace_runtime_candidates(review_layout, runtime_path)[-1]
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(shipped, target)
     return target

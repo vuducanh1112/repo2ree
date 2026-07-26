@@ -655,15 +655,29 @@ export async function reproduceBuild(page: Page) {
   return reproduceReviewStep(page, "Build", 600000);
 }
 
+/**
+ * Run the activation step of the review lifecycle and wait for its verdict.
+ *
+ * Unlike source and build this settles a boolean, not a comparison: there is no
+ * author artifact to diff against, so the reviewer's own probe is the claim.
+ * ``COMPLETE`` means the runtime came up; ``DID NOT ACTIVATE`` means it did not,
+ * which is a finding the step completed with rather than a step that broke.
+ */
+export async function reproduceActivation(page: Page) {
+  return reproduceReviewStep(page, "Test Activation", 600000);
+}
+
 /** Click one review step and read back the verdict it settles on. */
 async function reproduceReviewStep(page: Page, label: string, timeout: number) {
   const console = reviewConsole(page);
-  const slug = `reproduce-${label.toLowerCase()}`;
+  const slug = `reproduce-${label.toLowerCase().replace(/\s+/g, "-")}`;
   await stepShot(page, slug, "before");
   const step = console.getByRole("button", { name: `Reproduce ${label}` });
   await expect(step).toBeEnabled();
   await step.click();
-  const verdict = step.getByText(/^(IDENTICAL|EQUIVALENT|DIFFERENT|INCONCLUSIVE|FAILED)$/);
+  const verdict = step.getByText(
+    /^(IDENTICAL|EQUIVALENT|DIFFERENT|INCONCLUSIVE|COMPLETE|DID NOT ACTIVATE|FAILED)$/,
+  );
   // A re-run starts from the badge the previous attempt left on the step, and
   // that stale verdict would satisfy the wait below immediately. Clicking marks
   // the step queued in the same render, so the badge clears client-side before

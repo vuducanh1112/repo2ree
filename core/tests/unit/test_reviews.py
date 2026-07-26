@@ -8,7 +8,15 @@ import pytest
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.handlers import review_acquire_source as handler
-from repo2ree_core.reviews import compare_source_swhids, load_reviews
+from repo2ree_core.reviews import (
+    BuildComparison,
+    ReviewRecord,
+    SourceComparison,
+    attempt_basis,
+    compare_source_swhids,
+    load_reviews,
+    new_review_record,
+)
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
@@ -113,3 +121,46 @@ def test_review_source_mismatch_is_a_completed_negative_result(
 def test_source_comparison_without_author_swhid_is_inconclusive() -> None:
     comparison = compare_source_swhids("", "swh:1:dir:" + "1" * 40)
     assert comparison.verdict == "inconclusive"
+
+
+# ================================================
+# What an attempt's evidence as a whole is worth
+# ================================================
+
+
+def _attempt_with(
+    *,
+    source: str | None = None,
+    build: str | None = None,
+) -> ReviewRecord:
+    record = new_review_record("review-basis", at="2026-07-24T10:00:00Z")
+    update: dict[str, object] = {}
+    if source is not None:
+        update["source_comparison"] = SourceComparison(basis=source, verdict="identical")  # type: ignore[arg-type]
+    if build is not None:
+        update["build_comparison"] = BuildComparison(basis=build, verdict="equivalent")  # type: ignore[arg-type]
+    return record.model_copy(update=update)
+
+
+@pytest.mark.parametrize(
+    ("source", "build", "expected"),
+    [
+        ("independent", "independent", "independent"),
+        # One bundled step is enough: nothing downstream of a runtime the REE
+        # shipped has been independently reproduced, whatever the source says.
+        ("independent", "bundled", "bundled"),
+        ("bundled", "independent", "bundled"),
+        ("bundled", "bundled", "bundled"),
+        # A step that has not settled contributes nothing rather than a default.
+        ("independent", None, "independent"),
+        (None, "bundled", "bundled"),
+    ],
+)
+def test_an_attempt_is_worth_its_weakest_settled_basis(source: str | None, build: str | None, expected: str) -> None:
+    assert attempt_basis(_attempt_with(source=source, build=build)) == expected
+
+
+def test_an_attempt_that_has_settled_nothing_has_no_basis_to_inherit() -> None:
+    """None rather than a default: a step that would have to inherit this has
+    no evidence to stand on, and assuming the strong form would invent some."""
+    assert attempt_basis(_attempt_with()) is None

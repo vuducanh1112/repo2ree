@@ -4,18 +4,28 @@ A *review attempt* is one independent reproduction of an author's REE, kept in
 its own namespace so it can never write to author evidence. It advances through
 the reviewer-facing lifecycle — source, build, activation, experiments — one
 step at a time, and each step contributes two things: a receipt (what the
-reviewer's machine did) and a comparison (how that compares to what the author
-recorded). The attempt's own ``status`` is derived from its steps; it is never
-set directly, so "the attempt failed" can never disagree with "which step
-failed".
+reviewer's machine did) and a verdict (what that settles). The attempt's own
+``status`` is derived from its steps; it is never set directly, so "the attempt
+failed" can never disagree with "which step failed".
 
-The comparison policy differs per step because the certifiable property does:
+A step that ran to completion and found something unwelcome is ``completed``
+with an unwelcome verdict, never ``failed``: the reviewer's machine did its job,
+and losing that distinction would collapse "the review could not run" into "the
+review has news" — the second being the whole point of running one.
+
+What settles a verdict differs per step, because the certifiable property does:
 
 * source — SWHID identity, which *is* reproducible bit for bit;
 * build — SBOM closure equivalence, because container builds are routinely not
   bit-reproducible even from identical inputs (see
   :mod:`repo2ree_core.sbom.equivalence`). A digest match is the stronger
   verdict where it happens, not the only acceptable one.
+* activation — no comparison at all. There is no author artifact to reproduce
+  here: the author's own activation is a precondition of a credible baseline,
+  not a baseline to diff against, so "theirs passed and so did mine" would
+  certify nothing beyond the second half. The reviewer's own probe is the whole
+  claim, and it is recorded as an :class:`ActivationOutcome` rather than a
+  comparison to keep that distinction visible in the type.
 """
 
 from __future__ import annotations
@@ -29,7 +39,11 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_core.receipts import AcquireSourceReceipt, BuildRuntimeReceipt
+from repo2ree_core.receipts import (
+    AcquireSourceReceipt,
+    ActivationTestReceipt,
+    BuildRuntimeReceipt,
+)
 from repo2ree_core.sbom.cyclonedx import ObservedPackage
 from repo2ree_core.sbom.equivalence import (
     PackageDelta,
@@ -42,6 +56,12 @@ ReviewStatus = Literal["running", "completed", "failed", "canceled"]
 ReviewStepKey = Literal["source", "build", "activation", "experiments"]
 ComparisonVerdict = Literal["identical", "different", "inconclusive"]
 BuildVerdict = Literal["identical", "equivalent", "different", "inconclusive"]
+# Activation has no middle ground: the runtime either came up under the author's
+# own script or it did not. There is no ``inconclusive`` because the conditions
+# that would produce one — no workspace, no activation script, a runtime the
+# build step did not certify — stop the step before it probes anything, and are
+# reported as step failures rather than as a verdict about the runtime.
+ActivationVerdict = Literal["passed", "failed"]
 
 # What the reviewer's side of a comparison was produced from, and therefore how
 # much the verdict is worth. ``independent`` means the reviewer's machine
@@ -118,6 +138,34 @@ class BuildComparison(_ReviewModel):
     advisory: list[PackageDeltaRecord] = Field(default_factory=list)
 
 
+class ActivationOutcome(_ReviewModel):
+    """Whether the runtime this attempt certified is inhabitable.
+
+    Deliberately not a ``*Comparison``: nothing here is diffed against the
+    author (see the module docstring). What the pass is *worth* is carried by
+    ``basis``, which activation inherits rather than chooses — it runs in the
+    workspace the build left behind and cannot tell whether the runtime there
+    was rebuilt or unpacked from the bundle.
+
+    ``runtime_digest`` is what the pass is *about*: the artifact actually
+    probed, which the step requires to equal the one the build step certified.
+    Without it a re-run build would silently leave a pass attached to a runtime
+    that no longer exists — the same binding the author-side scorecard makes
+    when it only counts activation against the runtime that was built.
+
+    The exit codes separate the two failures that read alike but are not: a
+    runtime that would not come up, and one that came up and was rejected by
+    the author's own verify script.
+    """
+
+    policy: Literal["activation-probe"] = "activation-probe"
+    basis: EvidenceBasis
+    verdict: ActivationVerdict
+    runtime_digest: str | None = None
+    run_exit_code: int | None = None
+    verify_exit_code: int | None = None
+
+
 # ================================================
 # Records
 # ================================================
@@ -149,6 +197,8 @@ class ReviewRecord(_ReviewModel):
     source_comparison: SourceComparison | None = None
     build_receipt: BuildRuntimeReceipt | None = None
     build_comparison: BuildComparison | None = None
+    activation_receipt: ActivationTestReceipt | None = None
+    activation_outcome: ActivationOutcome | None = None
     failure: str | None = None
 
 
@@ -297,6 +347,27 @@ def with_step(
     )
 
 
+def attempt_basis(record: ReviewRecord) -> EvidenceBasis | None:
+    """What this attempt's evidence as a whole is worth: its weakest link.
+
+    A step that derives nothing from the outside world itself — activation runs
+    the author's script in a workspace it did not assemble — has no basis of its
+    own to report. It inherits this one, and inheriting the *weakest* settled
+    basis is the only safe rule: an attempt that fetched the origin but then
+    certified the runtime the bundle ships has not independently reproduced
+    anything downstream of that runtime, whatever the source verdict says.
+
+    ``None`` when nothing has settled yet, which is a precondition failure for
+    any step that would have to inherit it rather than a basis to assume.
+    """
+    settled = [
+        comparison.basis for comparison in (record.source_comparison, record.build_comparison) if comparison is not None
+    ]
+    if not settled:
+        return None
+    return "bundled" if "bundled" in settled else "independent"
+
+
 def step_state(record: ReviewRecord, step: ReviewStepKey) -> ReviewStepState | None:
     """The recorded state of one step, or None when it has not been run."""
     for state in record.steps:
@@ -360,9 +431,24 @@ def write_review_build_evidence(
     _write_review_evidence(layout, receipt, "build", comparison.model_dump(mode="json"))
 
 
+def write_review_activation_evidence(
+    layout: ReviewLayout,
+    receipt: ActivationTestReceipt,
+    outcome: ActivationOutcome,
+) -> None:
+    """Persist the activation probe beside the other steps' evidence.
+
+    Filed under ``comparisons/activation.json`` despite not being a comparison:
+    the directory is the attempt's per-step verdict store, and giving activation
+    its own would split one lookup into two for a distinction the reader already
+    gets from the document's ``policy``.
+    """
+    _write_review_evidence(layout, receipt, "activation", outcome.model_dump(mode="json"))
+
+
 def _write_review_evidence(
     layout: ReviewLayout,
-    receipt: AcquireSourceReceipt | BuildRuntimeReceipt,
+    receipt: AcquireSourceReceipt | BuildRuntimeReceipt | ActivationTestReceipt,
     step: ReviewStepKey,
     comparison: dict[str, object],
 ) -> None:

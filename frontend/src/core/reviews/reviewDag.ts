@@ -1,5 +1,12 @@
 export type ReviewStepKey = "source" | "build" | "activation" | "experiments";
 
+/**
+ * `uninhabitable` is a verdict, `failed` is a breakdown — activation is the one
+ * step where the two are easy to confuse and expensive to. A runtime that will
+ * not come up is the review working and reporting the most valuable thing it
+ * can; a step that could not run at all says nothing about the runtime. Sharing
+ * one token would render the first as "the review failed".
+ */
 export type ReviewStepStatus =
   | "unavailable"
   | "ready"
@@ -10,6 +17,7 @@ export type ReviewStepStatus =
   | "equivalent"
   | "different"
   | "inconclusive"
+  | "uninhabitable"
   | "failed";
 
 interface ReviewStepDefinition {

@@ -2697,6 +2697,148 @@
         }
       }
     },
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/activation:reproduce": {
+      "post": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "Start Activation Review",
+        "description": "Probe whether the runtime this attempt certified is inhabitable.\n\nTakes no ``basis``, unlike the two steps before it: activation runs in the\nworkspace the build left behind and inherits what that evidence is worth\nrather than choosing (see :class:`ReviewActivationTestArgs`).",
+        "operationId": "startActivationReview",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          },
+          {
+            "name": "review_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Review Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rees": {
       "post": {
         "tags": [
@@ -6084,6 +6226,73 @@
         "title": "Activation",
         "description": "The REE's required activation \u2014 a singleton sibling of experiments.\n\nActivation proves the built runtime is inhabitable by running its own\nscript. There is exactly one per REE, so it is unnamed. Its run script\nis always the reserved activation path unless declared otherwise \u2014 an\nempty declaration (e.g. from a client zeroing the activation on source\nreset) normalizes back to the reserved path rather than sticking."
       },
+      "ActivationOutcome": {
+        "properties": {
+          "policy": {
+            "type": "string",
+            "const": "activation-probe",
+            "title": "Policy",
+            "default": "activation-probe"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "independent",
+              "bundled"
+            ],
+            "title": "Basis"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "Verdict"
+          },
+          "runtime_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Digest"
+          },
+          "run_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Exit Code"
+          },
+          "verify_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Exit Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "basis",
+          "verdict"
+        ],
+        "title": "ActivationOutcome",
+        "description": "Whether the runtime this attempt certified is inhabitable.\n\nDeliberately not a ``*Comparison``: nothing here is diffed against the\nauthor (see the module docstring). What the pass is *worth* is carried by\n``basis``, which activation inherits rather than chooses \u2014 it runs in the\nworkspace the build left behind and cannot tell whether the runtime there\nwas rebuilt or unpacked from the bundle.\n\n``runtime_digest`` is what the pass is *about*: the artifact actually\nprobed, which the step requires to equal the one the build step certified.\nWithout it a re-run build would silently leave a pass attached to a runtime\nthat no longer exists \u2014 the same binding the author-side scorecard makes\nwhen it only counts activation against the runtime that was built.\n\nThe exit codes separate the two failures that read alike but are not: a\nruntime that would not come up, and one that came up and was rejected by\nthe author's own verify script."
+      },
       "ActivationScriptTemplates": {
         "properties": {
           "run_script_path": {
@@ -6186,6 +6395,17 @@
             ],
             "title": "Run Script Digest"
           },
+          "run_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Exit Code"
+          },
           "verify_script_path": {
             "type": "string",
             "title": "Verify Script Path",
@@ -6201,6 +6421,17 @@
               }
             ],
             "title": "Verify Script Digest"
+          },
+          "verify_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Exit Code"
           },
           "runtime_path": {
             "anyOf": [
@@ -7089,7 +7320,7 @@
           "prune_workspace": {
             "type": "boolean",
             "title": "Prune Workspace",
-            "default": true
+            "default": false
           },
           "basis": {
             "type": "string",
@@ -7230,6 +7461,25 @@
           "produced_runtime_path"
         ],
         "title": "CreateGenerateSbomRunPayload"
+      },
+      "CreateRunPayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CreateRunPayload",
+        "description": "The body every \"start a run\" route accepts.\n\nRoutes that need nothing else subclass it as-is; the two that take\nparameters (sbom, evaluate) add their fields. Subclassing rather than\nsharing one model keeps each route's schema named after its operation."
       },
       "CreateSourceReviewPayload": {
         "properties": {
@@ -10252,6 +10502,26 @@
               }
             ]
           },
+          "activation_receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActivationTestReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activation_outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActivationOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "failure": {
             "anyOf": [
               {
@@ -10417,6 +10687,17 @@
             ],
             "title": "Run Script Digest"
           },
+          "run_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Exit Code"
+          },
           "verify_script_path": {
             "type": "string",
             "title": "Verify Script Path",
@@ -10432,6 +10713,17 @@
               }
             ],
             "title": "Verify Script Digest"
+          },
+          "verify_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Exit Code"
           },
           "runtime_path": {
             "anyOf": [

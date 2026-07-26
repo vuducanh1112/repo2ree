@@ -11,6 +11,8 @@ from repo2ree_core.reviews import ReviewRecord, ReviewSet
 from repo2ree_protocol.command import (
     ReviewAcquireSourceArgs,
     ReviewAcquireSourceCommand,
+    ReviewActivationTestArgs,
+    ReviewActivationTestCommand,
     ReviewBasis,
     ReviewBuildRuntimeArgs,
     ReviewBuildRuntimeCommand,
@@ -33,9 +35,10 @@ class CreateSourceReviewPayload(CreateRunPayload):
 class CreateBuildReviewPayload(CreateRunPayload):
     """Reproduce the runtime build inside an existing review attempt."""
 
-    # Reviewers who mean to run activation next keep the rebuilt workspace; the
-    # default reclaims it once the verdict is recorded (see ReviewBuildRuntimeArgs).
-    prune_workspace: bool = True
+    # The rebuilt workspace is kept, because activation and the experiments run
+    # in it and the runtime exists nowhere else (see ReviewBuildRuntimeArgs).
+    # A reviewer who wants only a build verdict passes true to reclaim it.
+    prune_workspace: bool = False
     basis: ReviewBasis = "auto"
 
 
@@ -127,6 +130,36 @@ def start_build_review(ree_id: str, review_id: str, payload: CreateBuildReviewPa
                 run_id_prefix="review-build",
                 request_payload={"review_id": review_id},
                 canceled_message="Build review canceled",
+                fallback_outputs={"review_id": review_id},
+                idempotency_key=payload.idempotency_key,
+            )
+        )
+    )
+
+
+@reviews_router.post(
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/activation:reproduce",
+    operation_id="startActivationReview",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
+def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPayload) -> RunSummary:
+    """Probe whether the runtime this attempt certified is inhabitable.
+
+    Takes no ``basis``, unlike the two steps before it: activation runs in the
+    workspace the build left behind and inherits what that evidence is worth
+    rather than choosing (see :class:`ReviewActivationTestArgs`).
+    """
+    command = ReviewActivationTestCommand(args=ReviewActivationTestArgs(review_id=review_id))
+    return RunSummary.model_validate(
+        run_summary(
+            start_single_command_run(
+                ree_id,
+                operation="activation",
+                command=command,
+                run_id_prefix="review-activation",
+                request_payload={"review_id": review_id},
+                canceled_message="Activation review canceled",
                 fallback_outputs={"review_id": review_id},
                 idempotency_key=payload.idempotency_key,
             )

@@ -94,10 +94,8 @@ test.describe("Review build", () => {
       await expect(review.getByText(/runtime digest: bit-identical/)).toBeVisible();
     });
 
-    await test.step("the steps with no reviewer path yet stay disabled", async () => {
-      await expect(
-        review.getByRole("button", { name: "Reproduce Test Activation" }),
-      ).toBeDisabled();
+    await test.step("a settled build opens activation, and nothing beyond it", async () => {
+      await expect(review.getByRole("button", { name: "Reproduce Test Activation" })).toBeEnabled();
       await expect(review.getByRole("button", { name: "Reproduce Experiments" })).toBeDisabled();
     });
   });

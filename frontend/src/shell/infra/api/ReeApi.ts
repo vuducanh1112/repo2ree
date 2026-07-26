@@ -161,6 +161,18 @@ export class ReeApi {
     });
   }
 
+  /**
+   * Probe whether the runtime an attempt certified is inhabitable. Takes no
+   * basis, unlike the two steps before it: activation inherits what the
+   * attempt's evidence is worth rather than choosing.
+   */
+  async startActivationReview(reeId: ReeId | string, reviewId: string): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.reeActivationReview(reeId, reviewId), {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
   async patchReeIntent(reeId: ReeId, payload: ReeIntentPatchPayload): Promise<ReeDocument> {
     return this.client.request<ReeDocument>(endpoints.reeIntent(reeId), {
       method: "PATCH",

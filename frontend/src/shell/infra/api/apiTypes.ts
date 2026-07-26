@@ -35,6 +35,9 @@ export type BuildComparisonWire = Schema<"BuildComparison">;
 
 export type PackageDeltaWire = Schema<"PackageDeltaRecord">;
 
+/** Whether the runtime a review attempt certified is inhabitable. */
+export type ActivationOutcomeWire = Schema<"ActivationOutcome">;
+
 export type ReviewSetWire = Schema<"ReviewSet">;
 
 export type CreateSourceReviewPayload = Schema<"CreateSourceReviewPayload">;

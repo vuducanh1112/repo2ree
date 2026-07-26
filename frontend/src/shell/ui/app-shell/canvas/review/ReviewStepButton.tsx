@@ -13,6 +13,9 @@ const STATUS_META: Record<ReviewStepStatus, { label: string; color: string }> = 
   equivalent: { label: "Equivalent", color: "#0891b2" },
   different: { label: "Different", color: "#d97706" },
   inconclusive: { label: "Inconclusive", color: C.textMuted },
+  // A settled finding, not a breakdown — hence its own label. Coloured like a
+  // failure because that is what it means for the reviewer, but the step ran.
+  uninhabitable: { label: "Did not activate", color: C.error },
   failed: { label: "Failed", color: C.error },
 };
 

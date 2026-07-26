@@ -53,6 +53,24 @@ export interface ReviewBuildComparison {
   versionMismatches: ReviewPackageDelta[];
 }
 
+/**
+ * Whether the runtime an attempt certified is inhabitable.
+ *
+ * Not a comparison — there is no author artifact to reproduce here, so the
+ * reviewer's own probe is the whole claim. `basis` is inherited from the steps
+ * before it rather than chosen: activation runs in the workspace the build left
+ * behind and cannot tell whether the runtime there was rebuilt or unpacked.
+ */
+export interface ReviewActivationOutcome {
+  basis: ReviewEvidenceBasis;
+  verdict: ActivationVerdict;
+  runtimeDigest?: string;
+  runExitCode?: number;
+  verifyExitCode?: number;
+}
+
+export type ActivationVerdict = "passed" | "failed";
+
 /** The lifecycle state of one step within a review attempt. */
 export interface ReviewStepState {
   step: ReviewStepKey;
@@ -68,5 +86,6 @@ export interface ReviewAttempt {
   steps: ReviewStepState[];
   sourceComparison?: ReviewSourceComparison;
   buildComparison?: ReviewBuildComparison;
+  activationOutcome?: ReviewActivationOutcome;
   failure?: string;
 }

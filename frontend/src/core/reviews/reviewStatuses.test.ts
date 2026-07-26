@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReviewAttempt, ReviewStepState } from "./Review";
-import { reviewStepStatuses, runnableReviewSteps } from "./reviewStatuses";
+import { reviewStepStatuses, runnableReviewSteps, selectReviewAttempt } from "./reviewStatuses";
 
 function attempt(overrides: Partial<ReviewAttempt> = {}): ReviewAttempt {
   return {
@@ -117,10 +117,63 @@ describe("reviewStepStatuses", () => {
       }),
     );
 
-    // Activation's dependency has settled, so the DAG would allow it; it stays
-    // out of the runnable set until it has a handler behind it.
+    // Activation now has a handler behind it, so a settled build offers it;
+    // experiments stay out until they have one too.
     expect(statuses.activation).toBe("ready");
-    expect(runnableReviewSteps(statuses)).toEqual(new Set(["source", "build"]));
+    expect(statuses.experiments).toBe("unavailable");
+    expect(runnableReviewSteps(statuses)).toEqual(new Set(["source", "build", "activation"]));
+  });
+});
+
+describe("activation", () => {
+  const settledBuild = attempt({
+    steps: [step("source"), step("build"), step("activation")],
+    sourceComparison: { basis: "independent", verdict: "identical" },
+    buildComparison: {
+      basis: "independent",
+      verdict: "equivalent",
+      matched: 1,
+      missingCount: 0,
+      extraCount: 0,
+      versionMismatchCount: 0,
+      advisoryCount: 0,
+      missing: [],
+      extra: [],
+      versionMismatches: [],
+    },
+  });
+
+  it("reads a passing probe as a settled step", () => {
+    const statuses = reviewStepStatuses({
+      ...settledBuild,
+      activationOutcome: { basis: "independent", verdict: "passed" },
+    });
+
+    expect(statuses.activation).toBe("succeeded");
+  });
+
+  it("distinguishes a runtime that did not come up from a step that broke", () => {
+    // The step completed — the reviewer's machine did its job and found
+    // something. Rendering that as "failed" would report the review as broken.
+    const statuses = reviewStepStatuses({
+      ...settledBuild,
+      activationOutcome: { basis: "independent", verdict: "failed", runExitCode: 7 },
+    });
+
+    expect(statuses.activation).toBe("uninhabitable");
+    expect(statuses.activation).not.toBe("failed");
+  });
+
+  it("does not offer experiments inside a runtime that would not come up", () => {
+    const statuses = reviewStepStatuses({
+      ...settledBuild,
+      activationOutcome: { basis: "independent", verdict: "failed", runExitCode: 7 },
+    });
+
+    // Experiments run *in* that runtime, so their failures would say nothing
+    // about the experiments themselves.
+    expect(statuses.experiments).toBe("unavailable");
+    expect(runnableReviewSteps(statuses).has("experiments")).toBe(false);
   });
 });
 
@@ -137,5 +190,42 @@ describe("evidence basis", () => {
 
     expect(statuses.source).toBe("identical");
     expect(statuses.build).toBe("ready");
+  });
+});
+
+describe("selectReviewAttempt", () => {
+  const previous = attempt({ reviewId: "review-old", steps: [step("source"), step("build")] });
+  const opened = attempt({ reviewId: "review-new", steps: [step("source")] });
+
+  it("takes the newest listed attempt before this console has opened one", () => {
+    expect(selectReviewAttempt([opened, previous], undefined)).toEqual({
+      attempt: opened,
+      pending: false,
+    });
+  });
+
+  it("drives the attempt it opened, not whichever is newest", () => {
+    expect(selectReviewAttempt([opened, previous], "review-old")).toEqual({
+      attempt: previous,
+      pending: false,
+    });
+  });
+
+  it("reports the gap rather than falling back to the previous attempt", () => {
+    // The workbench writes the record a moment after the POST returns. Handing
+    // back `previous` here is what let a build join the wrong attempt: its steps
+    // read as settled, so the console offered — and dispatched — the next one.
+    expect(selectReviewAttempt([previous], "review-new")).toEqual({
+      attempt: undefined,
+      pending: true,
+    });
+  });
+
+  it("holds every step closed until the opened attempt is readable", () => {
+    const { attempt: selected, pending } = selectReviewAttempt([previous], "review-new");
+    const statuses = reviewStepStatuses(selected, { pendingStep: pending ? "source" : undefined });
+
+    expect(statuses.source).toBe("queued");
+    expect(runnableReviewSteps(statuses)).toEqual(new Set());
   });
 });

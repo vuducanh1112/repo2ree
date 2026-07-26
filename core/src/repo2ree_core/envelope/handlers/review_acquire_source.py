@@ -21,11 +21,11 @@ import shutil
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.envelope.handlers._review_common import review_step_halt
 from repo2ree_core.receipts import AcquireSourceReceipt, receipt_run_id
 from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
 from repo2ree_core.reviews import (
     EvidenceBasis,
-    ReviewStatus,
     SourceComparison,
     compare_source_swhids,
     new_review_record,
@@ -71,24 +71,15 @@ def handle_review_acquire_source(
     )
     write_review_record(review_layout, started)
 
-    def stop(status: str, message: str) -> ActionResult:
-        timing = timer.finish()
-        terminal_status: ReviewStatus = "canceled" if status == "canceled" else "failed"
-        write_review_record(
-            review_layout,
-            with_step(
-                started,
-                "source",
-                status=terminal_status,
-                at=timing.finished_at,
-                failure=message,
-            ),
-        )
-        level = "warn" if terminal_status == "canceled" else "error"
-        log("system", level, f"review source acquisition {terminal_status}: {message}")
-        if terminal_status == "canceled":
-            return ActionResult(status="canceled", outputs={"review_id": args.review_id})
-        return ActionResult.failed("precondition", message)
+    stop = review_step_halt(
+        review_layout=review_layout,
+        record=started,
+        step="source",
+        review_id=args.review_id,
+        timer=timer,
+        log=log,
+        noun="review source acquisition",
+    )
 
     if is_canceled():
         return stop("canceled", "canceled before source acquisition")

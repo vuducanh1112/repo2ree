@@ -1,8 +1,13 @@
 import type { ReeExperiment } from "@core/ree/ReeSpec";
 import type { ReviewAttempt, ReviewBasisRequest } from "@core/reviews/Review";
 import { type ReviewStepKey, settledReviewStepCount } from "@core/reviews/reviewDag";
-import { reviewStepStatuses, runnableReviewSteps } from "@core/reviews/reviewStatuses";
 import {
+  reviewStepStatuses,
+  runnableReviewSteps,
+  selectReviewAttempt,
+} from "@core/reviews/reviewStatuses";
+import {
+  useStartActivationReviewMutation,
   useStartBuildReviewMutation,
   useStartSourceReviewMutation,
 } from "@shell/data/reviews/mutations";
@@ -28,27 +33,47 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
   const reviews = useReviewsQuery();
   const startSourceReview = useStartSourceReviewMutation();
   const startBuildReview = useStartBuildReviewMutation();
-  const latest = reviews.data?.[0];
+  const startActivationReview = useStartActivationReviewMutation();
+  // The attempt this console opened, named by the run that opened it. Preferred
+  // over the newest listed attempt because the list lags: the workbench writes
+  // the record a moment after the POST returns, and every step dispatched in
+  // that gap would join the *previous* attempt instead.
+  const openedReviewId = startSourceReview.data;
+  const { attempt, pending } = selectReviewAttempt(reviews.data, openedReviewId);
 
   const pendingStep: ReviewStepKey | undefined = startSourceReview.isPending
     ? "source"
     : startBuildReview.isPending
       ? "build"
-      : undefined;
-  const statuses = reviewStepStatuses(latest, { pendingStep });
+      : startActivationReview.isPending
+        ? "activation"
+        : // An attempt opened but not yet readable is the source step still
+          // going, which also keeps every later step disabled until it lands.
+          pending
+          ? "source"
+          : undefined;
+  const statuses = reviewStepStatuses(attempt, { pendingStep });
   const enabledSteps = runnableReviewSteps(statuses);
   const complete = settledReviewStepCount(statuses);
-  const running = pendingStep != null || latest?.status === "running";
+  const running = pendingStep != null || attempt?.status === "running";
 
   const invokeStep = (step: ReviewStepKey) => {
     if (!enabledSteps.has(step)) return;
     if (step === "source") startSourceReview.mutate(basis);
     // Build joins the attempt source opened; without one there is nothing to
     // build against, which is also why the DAG leaves it disabled until then.
-    if (step === "build" && latest) startBuildReview.mutate({ reviewId: latest.reviewId, basis });
+    if (step === "build" && attempt) startBuildReview.mutate({ reviewId: attempt.reviewId, basis });
+    // Activation takes no basis: it probes whatever runtime the build left in
+    // the attempt's workspace and inherits what that evidence is worth.
+    if (step === "activation" && attempt)
+      startActivationReview.mutate({ reviewId: attempt.reviewId });
   };
 
-  const error = startSourceReview.error ?? startBuildReview.error ?? reviews.error;
+  const error =
+    startSourceReview.error ??
+    startBuildReview.error ??
+    startActivationReview.error ??
+    reviews.error;
 
   return (
     <HudConsole
@@ -66,7 +91,7 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
       icon={Ic.refresh(16)}
       iconColor={running ? C.accent : "#7c3aed"}
       title="Review"
-      subtitle={latest ? attemptSubtitle(latest, statuses) : "ready for source review"}
+      subtitle={attempt ? attemptSubtitle(attempt, statuses) : "ready for source review"}
       on={running || complete > 0}
       expandLabel="Expand review controls"
       collapseLabel="Collapse review controls"
@@ -83,8 +108,9 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
 
       <BasisPicker value={basis} onChange={setBasis} disabled={running} />
 
-      {latest ? <BasisNotice attempt={latest} /> : null}
-      {latest?.buildComparison ? <BuildVerdictDetail attempt={latest} /> : null}
+      {attempt ? <BasisNotice attempt={attempt} /> : null}
+      {attempt?.buildComparison ? <BuildVerdictDetail attempt={attempt} /> : null}
+      {attempt?.activationOutcome ? <ActivationOutcomeDetail attempt={attempt} /> : null}
 
       <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
         <button
@@ -118,7 +144,7 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
             lineHeight: 1.35,
           }}
         >
-          Source and build are enabled. Activation and experiments remain isolated next steps.
+          Source, build and activation are enabled. Experiments remain the next isolated step.
         </span>
       </div>
 
@@ -147,7 +173,8 @@ function attemptSubtitle(
   statuses: Readonly<Record<ReviewStepKey, string>>,
 ): string {
   const build = attempt.buildComparison ? ` · build ${statuses.build}` : "";
-  return `${attempt.reviewId} · source ${statuses.source}${build}`;
+  const activation = attempt.activationOutcome ? ` · activation ${statuses.activation}` : "";
+  return `${attempt.reviewId} · source ${statuses.source}${build}${activation}`;
 }
 
 const BASIS_OPTIONS: { value: ReviewBasisRequest; label: string; hint: string }[] = [
@@ -223,6 +250,8 @@ function BasisNotice({ attempt }: { attempt: ReviewAttempt }) {
   const bundled: string[] = [];
   if (attempt.sourceComparison?.basis === "bundled") bundled.push("source");
   if (attempt.buildComparison?.basis === "bundled") bundled.push("runtime");
+  // Activation inherits its basis, so naming it separately would double-count
+  // the same weakness the source or runtime line already reports.
   if (bundled.length === 0) return null;
 
   return (
@@ -240,6 +269,47 @@ function BasisNotice({ attempt }: { attempt: ReviewAttempt }) {
     >
       {bundled.join(" and ")} verified from the REE's own artifacts — integrity check, not an
       independent reproduction.
+    </div>
+  );
+}
+
+/**
+ * What the activation probe settled, and on a failure which half settled it.
+ *
+ * A run script that never brought the runtime up and a verify script that
+ * rejected a runtime which did come up both read as "failed" and call for
+ * entirely different work, so the exit codes are shown rather than summarised.
+ */
+function ActivationOutcomeDetail({ attempt }: { attempt: ReviewAttempt }) {
+  const outcome = attempt.activationOutcome;
+  if (!outcome) return null;
+  const passed = outcome.verdict === "passed";
+
+  return (
+    <div
+      style={{
+        padding: "7px 9px",
+        border: `1px solid ${C.border}`,
+        borderRadius: 7,
+        background: C.surfaceAlt,
+        color: passed ? C.textMuted : C.error,
+        fontFamily: F.mono,
+        fontSize: 9,
+        lineHeight: 1.5,
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+      }}
+    >
+      <span>
+        activation: {passed ? "the runtime is inhabitable" : "the runtime did not activate"}
+      </span>
+      {passed ? null : (
+        <span>
+          run exited {outcome.runExitCode ?? "?"} · verify{" "}
+          {outcome.verifyExitCode == null ? "not run" : `exited ${outcome.verifyExitCode}`}
+        </span>
+      )}
     </div>
   );
 }

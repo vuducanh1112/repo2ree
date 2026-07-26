@@ -365,6 +365,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/activation:reproduce": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Activation Review
+         * @description Probe whether the runtime this attempt certified is inhabitable.
+         *
+         *     Takes no ``basis``, unlike the two steps before it: activation runs in the
+         *     workspace the build left behind and inherits what that evidence is worth
+         *     rather than choosing (see :class:`ReviewActivationTestArgs`).
+         */
+        post: operations["startActivationReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rees": {
         parameters: {
             query?: never;
@@ -887,6 +911,50 @@ export interface components {
             resource_estimates?: components["schemas"]["ResourceEstimates"];
         };
         /**
+         * ActivationOutcome
+         * @description Whether the runtime this attempt certified is inhabitable.
+         *
+         *     Deliberately not a ``*Comparison``: nothing here is diffed against the
+         *     author (see the module docstring). What the pass is *worth* is carried by
+         *     ``basis``, which activation inherits rather than chooses — it runs in the
+         *     workspace the build left behind and cannot tell whether the runtime there
+         *     was rebuilt or unpacked from the bundle.
+         *
+         *     ``runtime_digest`` is what the pass is *about*: the artifact actually
+         *     probed, which the step requires to equal the one the build step certified.
+         *     Without it a re-run build would silently leave a pass attached to a runtime
+         *     that no longer exists — the same binding the author-side scorecard makes
+         *     when it only counts activation against the runtime that was built.
+         *
+         *     The exit codes separate the two failures that read alike but are not: a
+         *     runtime that would not come up, and one that came up and was rejected by
+         *     the author's own verify script.
+         */
+        ActivationOutcome: {
+            /**
+             * Policy
+             * @default activation-probe
+             * @constant
+             */
+            policy: "activation-probe";
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "independent" | "bundled";
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "passed" | "failed";
+            /** Runtime Digest */
+            runtime_digest?: string | null;
+            /** Run Exit Code */
+            run_exit_code?: number | null;
+            /** Verify Exit Code */
+            verify_exit_code?: number | null;
+        };
+        /**
          * ActivationScriptTemplates
          * @description The activation run-script templates and both reserved activation paths.
          *
@@ -937,6 +1005,8 @@ export interface components {
             run_script_path: string;
             /** Run Script Digest */
             run_script_digest?: string | null;
+            /** Run Exit Code */
+            run_exit_code?: number | null;
             /**
              * Verify Script Path
              * @default
@@ -944,6 +1014,8 @@ export interface components {
             verify_script_path: string;
             /** Verify Script Digest */
             verify_script_digest?: string | null;
+            /** Verify Exit Code */
+            verify_exit_code?: number | null;
             /** Runtime Path */
             runtime_path?: string | null;
             /** Declared Runtime Digest */
@@ -1331,7 +1403,7 @@ export interface components {
             idempotency_key?: string | null;
             /**
              * Prune Workspace
-             * @default true
+             * @default false
              */
             prune_workspace: boolean;
             /**
@@ -1389,6 +1461,18 @@ export interface components {
             idempotency_key?: string | null;
             /** Produced Runtime Path */
             produced_runtime_path: string;
+        };
+        /**
+         * CreateRunPayload
+         * @description The body every "start a run" route accepts.
+         *
+         *     Routes that need nothing else subclass it as-is; the two that take
+         *     parameters (sbom, evaluate) add their fields. Subclassing rather than
+         *     sharing one model keeps each route's schema named after its operation.
+         */
+        CreateRunPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
         };
         /**
          * CreateSourceReviewPayload
@@ -2753,6 +2837,8 @@ export interface components {
             source_comparison?: components["schemas"]["SourceComparison"] | null;
             build_receipt?: components["schemas"]["BuildRuntimeReceipt"] | null;
             build_comparison?: components["schemas"]["BuildComparison"] | null;
+            activation_receipt?: components["schemas"]["ActivationTestReceipt"] | null;
+            activation_outcome?: components["schemas"]["ActivationOutcome"] | null;
             /** Failure */
             failure?: string | null;
         };
@@ -2816,6 +2902,8 @@ export interface components {
             run_script_path: string;
             /** Run Script Digest */
             run_script_digest?: string | null;
+            /** Run Exit Code */
+            run_exit_code?: number | null;
             /**
              * Verify Script Path
              * @default
@@ -2823,6 +2911,8 @@ export interface components {
             verify_script_path: string;
             /** Verify Script Digest */
             verify_script_digest?: string | null;
+            /** Verify Exit Code */
+            verify_exit_code?: number | null;
             /** Runtime Path */
             runtime_path?: string | null;
             /** Declared Runtime Digest */
@@ -5668,6 +5758,114 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CreateBuildReviewPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startActivationReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+                review_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRunPayload"];
             };
         };
         responses: {

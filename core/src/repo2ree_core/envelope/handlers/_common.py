@@ -393,8 +393,10 @@ def run_runnable_handler(
         snapshot_digest=inputs.snapshot_digest,
         run_script_path=runnable.run_script,
         run_script_digest=inputs.script_digest,
+        run_exit_code=outcome.run_outputs.exit_code,
         verify_script_path=runnable.verify_script,
         verify_script_digest=inputs.verify_script_digest,
+        verify_exit_code=outcome.run_outputs.verify_exit_code,
         runtime_path=inputs.runtime_path,
         declared_runtime_digest=inputs.declared_runtime_digest,
     )

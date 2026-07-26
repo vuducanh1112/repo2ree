@@ -83,13 +83,13 @@ class ReviewBuildRuntimeArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     review_id: str
-    # The attempt's workspace (source + a copy of the author overlay) and the
-    # runtime beside it are reconstructible, and the runtime alone can run to
-    # hundreds of megabytes per attempt. The evidence the verdict rests on —
-    # receipts, the reviewer's SBOM, the comparison — is kept regardless.
-    # Reviewers who intend to run activation or the experiments next pass false:
-    # those steps run *in* that workspace, on either basis.
-    prune_workspace: bool = True
+    # Activation and the experiments run *in* the workspace this step leaves
+    # behind, and on an ``independent`` basis the runtime exists nowhere else —
+    # so reclaiming it here would end the attempt at the build. Off by default
+    # for that reason; a reviewer who wants only a build verdict passes true and
+    # keeps the evidence it rests on (receipts, the reviewer's SBOM, the
+    # comparison), which is kept regardless.
+    prune_workspace: bool = False
     # ``independent`` runs the author's build script over the reviewer's own
     # source; ``bundled`` certifies the runtime artifact the REE already ships
     # instead of building one, for baselines whose build cannot run here.
@@ -101,6 +101,28 @@ class ReviewBuildRuntimeCommand(BaseModel):
 
     operation: Literal["review_build_runtime"] = "review_build_runtime"
     args: ReviewBuildRuntimeArgs
+
+
+class ReviewActivationTestArgs(BaseModel):
+    """Probe the runtime an attempt certified, inside that attempt's workspace.
+
+    No ``basis``: activation runs *in* the workspace the build step left behind
+    and cannot tell how the runtime got there — deliberately, so the author's
+    scripts run unchanged on either basis. What the resulting pass is worth is
+    therefore not this step's to choose; it is inherited from the bases the
+    source and build steps already settled (see ``reviews.attempt_basis``).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    review_id: str
+
+
+class ReviewActivationTestCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["review_activation_test"] = "review_activation_test"
+    args: ReviewActivationTestArgs
 
 
 class SnapshotUpstreamArgs(BaseModel):
@@ -414,6 +436,7 @@ Command = Annotated[
     AcquireSourceCommand
     | ReviewAcquireSourceCommand
     | ReviewBuildRuntimeCommand
+    | ReviewActivationTestCommand
     | SnapshotUpstreamCommand
     | MaterializeWorkspaceCommand
     | UpdateSourceMetadataCommand

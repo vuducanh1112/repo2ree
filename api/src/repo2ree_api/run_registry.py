@@ -78,6 +78,7 @@ class RunRegistry:
         operation: str,
         created_at: str,
         request_payload: dict[str, Any],
+        outputs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         run_state: dict[str, Any] = {
             "run_id": run_id,
@@ -87,7 +88,12 @@ class RunRegistry:
             "created_at": created_at,
             "started_at": None,
             "finished_at": None,
-            "outputs": {},
+            # Seeded with whatever the route already knows this run is *about* —
+            # an id it minted itself, say. A queued run is a real answer to "what
+            # did my request start", and a caller that has to wait for the run to
+            # execute before it can learn that cannot act on its own request.
+            # Command outputs replace these wholesale once there are any.
+            "outputs": dict(outputs or {}),
             "failure": None,
             "logs": [],
             "request": request_payload,
@@ -217,6 +223,7 @@ class RunRegistry:
         runner: Callable[[str, str], ActionResult],
         require_ree_exists: bool = True,
         idempotency_key: str | None = None,
+        initial_outputs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         # A provisioning run *creates* its REE, so it can't require the REE
         # to already exist; every other run runs against a live REE.
@@ -259,6 +266,7 @@ class RunRegistry:
                 operation=operation,
                 created_at=created_at,
                 request_payload=request_payload,
+                outputs=initial_outputs,
             )
             if normalized_key:
                 self._idempotency_store[idempotency_slot] = (run_id, fingerprint)

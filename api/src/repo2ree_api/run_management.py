@@ -45,6 +45,7 @@ def start_background_run(
     run_id_prefix: str,
     runner: Callable[[str, str], ActionResult],
     idempotency_key: str | None = None,
+    initial_outputs: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return _registry.start_background(
         ree_id,
@@ -53,6 +54,7 @@ def start_background_run(
         run_id_prefix,
         runner,
         idempotency_key=idempotency_key,
+        initial_outputs=initial_outputs,
     )
 
 
@@ -90,8 +92,15 @@ def start_single_command_run(
     """Start a background run that dispatches a single workbench command.
 
     Collapses the common runner shape used by the build / activation / sbom /
-    hbom routes: cancel-check → workbench lookup → dispatch → result. The
-    fallback outputs are returned when the command yields none (and on cancel).
+    hbom routes: cancel-check → workbench lookup → dispatch → result.
+
+    The fallback outputs stand in whenever the command reports none — on cancel,
+    and when it simply produced nothing — and are also seeded onto the run at
+    creation. They describe what the run *is about* rather than what it found,
+    which is knowable before it runs and is what a caller needs back from its own
+    POST: the review routes mint the attempt id themselves, and a client that
+    could only learn it by waiting for the run could not address the attempt it
+    just opened.
     """
     outputs = fallback_outputs or {}
 
@@ -126,4 +135,5 @@ def start_single_command_run(
         run_id_prefix=run_id_prefix,
         runner=_runner,
         idempotency_key=idempotency_key,
+        initial_outputs=outputs,
     )

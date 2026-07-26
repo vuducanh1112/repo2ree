@@ -171,14 +171,23 @@ class _RunnableReceipt(_ReceiptEnvelope):
     artifact's state at run time, not that the script used it. A pass verdict
     is relative to the verify script, so its digest is part of the input
     slice alongside the run script's.
+
+    The two exit codes are recorded separately because envelope ``status``
+    cannot distinguish the failures they name: a run script that never brought
+    the runtime up, and a run that came up and was then rejected by the
+    author's own verify script. Both read as "failed" and mean different things
+    to whoever has to act on them. ``None`` on receipts written before either
+    field existed, and on a half that never ran.
     """
 
     workspace_drift: WorkspaceDrift | None = None
     snapshot_digest: str | None = None
     run_script_path: str = ""
     run_script_digest: str | None = None
+    run_exit_code: int | None = None
     verify_script_path: str = ""
     verify_script_digest: str | None = None
+    verify_exit_code: int | None = None
     runtime_path: str | None = None
     declared_runtime_digest: str | None = None
 
