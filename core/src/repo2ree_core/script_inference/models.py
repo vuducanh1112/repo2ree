@@ -17,17 +17,14 @@ from typing import Annotated, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from repo2ree_protocol.command import TargetKind
+
 # ================================================
 # Targets
 # ================================================
 
-TargetKind = Literal[
-    "build",
-    "activation_run",
-    "activation_verify",
-    "experiment_run",
-    "experiment_verify",
-]
+# TargetKind comes from the wire type, which owns the vocabulary so the command
+# crossing into the workbench and the models resolving it here cannot disagree.
 
 
 class ScriptTargetSelector(BaseModel):

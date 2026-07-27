@@ -27,7 +27,7 @@ import json
 import os
 from contextlib import suppress
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, TypedDict
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
@@ -44,7 +44,7 @@ from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
 from repo2ree_core.reserved_paths import experiment_slug
 from repo2ree_core.storage.layout import ReeLayout
 from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.time_utils import utc_now
+from repo2ree_core.time_utils import OperationTiming, utc_now
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionStatus
 
@@ -218,6 +218,40 @@ RunReceipt = Annotated[
 ]
 
 _receipt_adapter: TypeAdapter[RunReceipt] = TypeAdapter(RunReceipt)
+
+
+class ReceiptEnvelopeFields(TypedDict):
+    """The envelope half of a receipt constructor's arguments.
+
+    A TypedDict rather than a base-class factory so a handler still names its
+    operation-specific fields itself: ``Receipt(**receipt_envelope(...), path=…)``
+    keeps the call site's shape — every field visible at the constructor — while
+    the five fields that are the same everywhere are spelled once.
+    """
+
+    run_id: str
+    started_at: str
+    finished_at: str
+    duration_ms: int
+    recorded_at: str
+    status: ActionStatus
+
+
+def receipt_envelope(run_id: str, timing: OperationTiming, status: ActionStatus) -> ReceiptEnvelopeFields:
+    """Derive the uniform receipt envelope from one run's timing and outcome.
+
+    ``recorded_at`` is the run's finish instant rather than "now": a receipt
+    records when the run it describes ended, and taking a second clock reading
+    here would let the two disagree by however long recording took.
+    """
+    return ReceiptEnvelopeFields(
+        run_id=receipt_run_id(run_id),
+        started_at=timing.started_at,
+        finished_at=timing.finished_at,
+        duration_ms=timing.duration_ms,
+        recorded_at=timing.finished_at,
+        status=status,
+    )
 
 
 # ================================================

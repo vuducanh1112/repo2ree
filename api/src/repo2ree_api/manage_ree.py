@@ -2,10 +2,8 @@ import asyncio
 import logging
 import re
 import tempfile
-import time
 import uuid
 from collections.abc import Iterator
-from contextlib import contextmanager
 from pathlib import Path
 from typing import IO, Any
 from urllib.parse import quote
@@ -27,6 +25,7 @@ from repo2ree_api.contracts import (
     UploadStoredResponse,
 )
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.ree_commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_api.run_management import (
     append_run_log,
     is_cancel_requested,
@@ -91,13 +90,6 @@ from repo2ree_protocol.command import (
     WriteFileArgs,
 )
 from repo2ree_protocol.log import LogSink
-from repo2ree_protocol.tracing import (
-    CommandSpanAttrs,
-    command_metric_attrs,
-    get_meter,
-    get_tracer,
-    record_command_status,
-)
 from repo2ree_supervisor import WorkbenchHandle
 
 # ================================================
@@ -109,114 +101,8 @@ _log = logging.getLogger(__name__)
 
 
 # ================================================
-# Observability
-# ================================================
-
-
-_tracer = get_tracer(__name__)
-_meter = get_meter(__name__)
-
-_command_counter = _meter.create_counter(
-    "ree.command",
-    description="Number of synchronous REE commands handled, by operation and status.",
-)
-_command_duration = _meter.create_histogram(
-    "ree.command_duration_seconds",
-    description="Wall-clock duration of a synchronous REE command handler.",
-    unit="s",
-)
-
-
-@contextmanager
-def _ree_command_span(operation: str, ree_id: str) -> Iterator[None]:
-    """Operation-level span + metrics for a synchronous REE command handler.
-
-    Mirrors the ``run.{operation}`` root that background runs get in the run
-    registry: every synchronous main command gets its own ``ree.{operation}``
-    span tagged with the REE and a terminal status, plus a duration histogram
-    and count, so traces and error-rate queries treat synchronous and
-    background commands uniformly. The inner ``workbench.dispatch_action`` span
-    nests beneath this one.
-
-    Wrap only the command work — call ``_require_handle`` first so a 404/503 for
-    an unknown or unreachable REE stays out of the command's status and metrics.
-    """
-    t0 = time.monotonic()
-    status = "succeeded"
-    with _tracer.start_as_current_span(f"ree.{operation}") as span:
-        CommandSpanAttrs(operation=operation, ree_id=ree_id).apply(span)
-        try:
-            yield
-        except Exception as exc:
-            status = "failed"
-            span.record_exception(exc)
-            raise
-        finally:
-            record_command_status(span, status)
-            attrs = command_metric_attrs(operation, status=status)
-            _command_duration.record(time.monotonic() - t0, attrs)
-            _command_counter.add(1, attrs)
-
-
-# ================================================
 # Utility Functions
 # ================================================
-
-
-def _require_handle(ree_id: str) -> WorkbenchHandle:
-    """Return the workbench handle for ree_id or raise.
-
-    404 if no workbench is registered for the REE; 503 if one is registered
-    but its container is not currently reachable. The workbench volume is the
-    single source of truth — there is no host-side fallback.
-    """
-    handle = workbench_manager.lookup(ree_id)
-    if handle is not None:
-        return handle
-    if workbench_manager.is_registered(ree_id):
-        raise HTTPException(status_code=503, detail="Workbench unavailable for this REE")
-    raise HTTPException(status_code=404, detail=f"REE {ree_id} not found")
-
-
-def _dispatch_or_fail(handle: WorkbenchHandle, cmd: Command, run_id: str, error_message: str) -> ActionResult:
-    """Dispatch a single workbench command, translating failure into the error envelope.
-
-    A handler-reported version conflict maps to 409 (retryable after re-reading);
-    any other reported failure is an input or REE-state problem and maps to 400
-    with the command's outputs attached so the caller can see what the workbench
-    said. Transport-level failures raise WorkbenchUnavailableError instead and
-    map to 503 in the app-level handler.
-    """
-    result = workbench_manager.dispatch_action(handle, cmd, run_id, lambda *_: None)
-    if result.status == "succeeded":
-        return result
-    outputs = result.outputs or {}
-    # A failed ActionResult always carries a typed Failure (enforced by the
-    # ActionResult contract); read it rather than sniffing the outputs blob.
-    failure = result.failure
-    if failure is not None and failure.category == "conflict":
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "version_conflict",
-                "message": failure.message,
-                "details": {
-                    "path": outputs.get("path"),
-                    "expected_version": outputs.get("expected_version"),
-                    "actual_version": outputs.get("actual_version"),
-                },
-                "retryable": failure.retryable,
-            },
-        )
-    raise HTTPException(
-        status_code=400,
-        detail={
-            "code": f"{cmd.operation}_failed",
-            "message": error_message,
-            "details": {"operation": cmd.operation, "exit_code": result.exit_code, "outputs": outputs or None},
-            "retryable": failure.retryable if failure is not None else False,
-        },
-    )
 
 
 def _content_etag(content: bytes) -> str:
@@ -235,7 +121,7 @@ def _mint_upload_token(ree_id: str, payload: UploadInitPayload, *, upload_route:
     Shared by every upload kind (source archives, REE bundles): staging is one
     mechanism, and only the route the client uploads to differs.
     """
-    _require_handle(ree_id)
+    require_handle(ree_id)
     if payload.size > service_settings.UPLOAD_MAX_BYTES:
         raise HTTPException(
             status_code=413,
@@ -259,12 +145,12 @@ async def _stage_upload_bytes(ree_id: str, upload_token: str, request: Request) 
 
     Callers are async routes so the body streams in incrementally. They run on
     the event loop, so blocking control-plane calls must hop to a thread:
-    ``_require_handle`` does a synchronous round-trip to the workbench agent
+    ``require_handle`` does a synchronous round-trip to the workbench agent
     over the multiplexed WebSocket that *this same loop* pumps — calling it
     inline deadlocks the loop against its own reply (frozen API, agent
     keepalive death) rather than merely stalling.
     """
-    await asyncio.to_thread(_require_handle, ree_id)
+    await asyncio.to_thread(require_handle, ree_id)
     try:
         await stage_upload_stream(upload_token, request.stream())
     except InvalidUploadTokenError as exc:
@@ -473,7 +359,7 @@ def _ree_page_key(metadata: dict[str, Any]) -> tuple[str, str]:
     responses=ERROR_RESPONSES,
 )
 def get_workspace_route(ree_id: str) -> ReeDocument:
-    handle = _require_handle(ree_id)
+    handle = require_handle(ree_id)
     workspace = workbench_manager.get_workspace(handle)
     # get-workspace runs inside the container and can't know the image, so the
     # manager (which owns the registry) supplies it.
@@ -489,7 +375,7 @@ def get_workspace_route(ree_id: str) -> ReeDocument:
 )
 def get_workspace_state_route(ree_id: str) -> ReeState:
     """Compact automation view: durable state and file metadata, never contents."""
-    handle = _require_handle(ree_id)
+    handle = require_handle(ree_id)
     workspace = workbench_manager.get_workspace_state(handle)
     active_runs = [run for run in list_runs(ree_id) if run.get("status") in ACTIVE_STATUSES]
     state = {
@@ -522,8 +408,8 @@ def get_workspace_state_route(ree_id: str) -> ReeState:
     responses=ERROR_RESPONSES,
 )
 def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload) -> ReeDocument:
-    handle = _require_handle(ree_id)
-    with _ree_command_span("patch-intent", ree_id):
+    handle = require_handle(ree_id)
+    with ree_command_span("patch-intent", ree_id):
         current = workbench_manager.get_ree_metadata(handle)
         if payload.expected_version and payload.expected_version != current.get("updated_at"):
             raise HTTPException(
@@ -542,7 +428,7 @@ def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload) -> ReeDo
         cmd = PatchReeIntentCommand(
             args=PatchReeIntentArgs(patch=payload.ree_intent_patch.model_dump(mode="json", exclude_unset=True))
         )
-        _dispatch_or_fail(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
+        dispatch_or_fail(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
         return ReeDocument.model_validate(workbench_manager.get_workspace(handle))
 
 
@@ -577,8 +463,8 @@ def replace_ree_intent_route(ree_id: str, payload: ReeIntentReplacePayload) -> R
     responses=ERROR_RESPONSES,
 )
 def delete_workspace_route(ree_id: str) -> DeleteReeResponse:
-    handle = _require_handle(ree_id)
-    with _ree_command_span("delete", ree_id):
+    handle = require_handle(ree_id)
+    with ree_command_span("delete", ree_id):
         try:
             workbench_manager.teardown(handle)
         except Exception as exc:
@@ -600,7 +486,7 @@ def delete_workspace_route(ree_id: str) -> DeleteReeResponse:
     responses=ERROR_RESPONSES,
 )
 def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSummary:
-    handle = _require_handle(ree_id)
+    handle = require_handle(ree_id)
     request_payload = {
         "mode": "download",
         "origin_url": payload.origin_url,
@@ -683,7 +569,7 @@ async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Requ
     responses=ERROR_RESPONSES,
 )
 def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> RunSummary:
-    handle = _require_handle(ree_id)
+    handle = require_handle(ree_id)
     request_payload = {
         "mode": "upload",
         "upload_token": payload.upload_token,
@@ -787,7 +673,7 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
     loading replaces whatever the REE holds, so a fresh workbench is the only
     place it is non-destructive.
     """
-    handle = _require_handle(ree_id)
+    handle = require_handle(ree_id)
     request_payload = {"upload_token": payload.upload_token, "archive_name": payload.archive_name}
     try:
         staged_host = staged_upload_path(payload.upload_token)
@@ -853,9 +739,9 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
     responses=ERROR_RESPONSES,
 )
 def remove_source_route(ree_id: str) -> ReeDocument:
-    handle = _require_handle(ree_id)
-    with _ree_command_span("remove-source", ree_id):
-        _dispatch_or_fail(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
+    handle = require_handle(ree_id)
+    with ree_command_span("remove-source", ree_id):
+        dispatch_or_fail(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
         return ReeDocument.model_validate(workbench_manager.get_workspace(handle))
 
 
@@ -873,7 +759,7 @@ def remove_source_route(ree_id: str) -> ReeDocument:
     },
 )
 def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
-    handle = _require_handle(ree_id)
+    handle = require_handle(ree_id)
     try:
         content = workbench_manager.read_file_bytes(handle, path)
     except RuntimeError as exc:
@@ -889,15 +775,15 @@ def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)) -> Respons
     responses=ERROR_RESPONSES,
 )
 def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload) -> FileMutationResponse:
-    handle = _require_handle(ree_id)
-    with _ree_command_span("write-file", ree_id):
+    handle = require_handle(ree_id)
+    with ree_command_span("write-file", ree_id):
         # The if_match check rides inside the command so the workbench verifies
         # it under the same per-REE serialization as the write — an API-side
         # pre-read could pass and still lose to a concurrent writer.
         cmd = WriteFileCommand(
             args=WriteFileArgs(path=payload.path, content=payload.content, expected_etag=payload.if_match or "")
         )
-        wb_result = _dispatch_or_fail(handle, cmd, "write-file", "Workbench write_file failed")
+        wb_result = dispatch_or_fail(handle, cmd, "write-file", "Workbench write_file failed")
         result = dict(wb_result.outputs or {})
         result["etag"] = _content_etag(payload.content.encode())
         result.setdefault("updated_at", None)
@@ -916,10 +802,10 @@ def delete_workspace_file_content_route(
     path: str = Query(...),
     if_match: str | None = Query(None),
 ) -> FileMutationResponse:
-    handle = _require_handle(ree_id)
-    with _ree_command_span("delete-file", ree_id):
+    handle = require_handle(ree_id)
+    with ree_command_span("delete-file", ree_id):
         cmd = DeleteFileCommand(args=DeleteFileArgs(path=path, expected_etag=if_match or ""))
-        wb_result = _dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed")
+        wb_result = dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed")
         return FileMutationResponse.model_validate(wb_result.outputs or {"deleted_at": None})
 
 
@@ -957,8 +843,8 @@ def reprovision_workbench_route(ree_id: str) -> ReprovisionResponse:
     responses=ERROR_RESPONSES,
 )
 def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> ReeDocument:
-    handle = _require_handle(ree_id)
-    with _ree_command_span("seal", ree_id):
+    handle = require_handle(ree_id)
+    with ree_command_span("seal", ree_id):
         cmd = SealReeCommand(
             args=SealReeArgs(
                 source_included=payload.include_source,
@@ -966,7 +852,7 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> ReeDocument:
                 results_included=payload.include_results,
             )
         )
-        _dispatch_or_fail(handle, cmd, "seal", "Workbench seal_ree failed")
+        dispatch_or_fail(handle, cmd, "seal", "Workbench seal_ree failed")
         # Return the post-seal workspace so the client sees the sealed state.
         return ReeDocument.model_validate(workbench_manager.get_workspace(handle))
 
@@ -990,7 +876,7 @@ def download_workspace_ree_archive_route(ree_id: str) -> StreamingResponse:
     assembled into a draft bundle on demand. Only the sealed bundle carries a
     seal hash — a draft is a handoff, not a citable artifact.
     """
-    handle = _require_handle(ree_id)
+    handle = require_handle(ree_id)
     archive_filename = _archive_download_filename(handle)
     # Spool the archive to a control-plane temp file before responding. The
     # per-REE lock (and the agent's exec) is held only while the workbench
@@ -998,7 +884,7 @@ def download_workspace_ree_archive_route(ree_id: str) -> StreamingResponse:
     # slow client cannot block other operations on the REE.
     spool = tempfile.TemporaryFile()
     try:
-        with _ree_command_span("ree-archive", ree_id):
+        with ree_command_span("ree-archive", ree_id):
             for chunk in workbench_manager.build_archive_stream(handle):
                 spool.write(chunk)
             if spool.tell() == 0:

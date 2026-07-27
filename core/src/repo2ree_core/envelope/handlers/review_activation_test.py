@@ -38,15 +38,18 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists
-from repo2ree_core.envelope.handlers._review_common import review_step_halt, workspace_runtime
+from repo2ree_core.envelope.handlers._review_common import (
+    begin_review_step,
+    require_review_record,
+    workspace_runtime,
+)
 from repo2ree_core.experiment.resolve import RunnableResolutionError, resolve_activation_runnable
 from repo2ree_core.experiment.run import run_runnable
-from repo2ree_core.receipts import ActivationTestReceipt, receipt_run_id
+from repo2ree_core.receipts import ActivationTestReceipt, receipt_envelope
 from repo2ree_core.reviews import (
     ActivationOutcome,
     ActivationVerdict,
     attempt_basis,
-    read_review_record,
     step_state,
     with_step,
     write_review_activation_evidence,
@@ -80,19 +83,14 @@ def handle_review_activation_test(
     review_layout = ree_layout.review(args.review_id)
     timer = OperationTimer.start()
 
-    record = read_review_record(review_layout)
-    if record is None:
-        message = f"No review attempt named {args.review_id}"
-        log("system", "error", message)
-        return ActionResult.failed("precondition", message)
+    record = require_review_record(review_layout, args.review_id, log)
+    if isinstance(record, ActionResult):
+        return record
 
-    started = with_step(record, "activation", status="running", at=timer.started_at)
-    write_review_record(review_layout, started)
-
-    stop = review_step_halt(
-        review_layout=review_layout,
-        record=started,
-        step="activation",
+    started, stop = begin_review_step(
+        review_layout,
+        record,
+        "activation",
         review_id=args.review_id,
         timer=timer,
         log=log,
@@ -169,12 +167,7 @@ def handle_review_activation_test(
     # what it was materialized from, and a review namespace is materialized
     # fresh from its own acquisition every time.
     receipt = ActivationTestReceipt(
-        run_id=receipt_run_id(run_id),
-        started_at=timing.started_at,
-        finished_at=timing.finished_at,
-        duration_ms=timing.duration_ms,
-        recorded_at=timing.finished_at,
-        status=outcome.status,
+        **receipt_envelope(run_id, timing, outcome.status),
         run_script_path=activation.run_script,
         run_exit_code=outcome.run_outputs.exit_code,
         verify_script_path=activation.verify_script,

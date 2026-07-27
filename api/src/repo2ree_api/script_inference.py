@@ -10,18 +10,19 @@ path; there is no apply or resolve endpoint here.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.contracts import ERROR_RESPONSES
-from repo2ree_api.manage_ree import _dispatch_or_fail, _ree_command_span, _require_handle
+from repo2ree_api.ree_commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_core.script_inference.models import InferenceReport
 from repo2ree_protocol.command import (
     GenerateScriptCandidatesArgs,
     GenerateScriptCandidatesCommand,
     ScriptTargetSelectorArg,
+    TargetKind,
 )
 
 # ================================================
@@ -37,6 +38,12 @@ script_inference_router = APIRouter(tags=["files"])
 # ================================================
 
 
+# Its own model rather than the command's ``ScriptTargetSelectorArg``, because
+# the class name and docstring are the schema name and description in the
+# published contract — but the kind vocabulary comes from that arg's
+# ``TargetKind``, so what a client may ask for and what the workbench accepts
+# cannot drift apart. Keep maintenance notes like this one *out* of the
+# docstring: it is published to every API consumer.
 class ScriptTargetSelectorPayload(BaseModel):
     """One target a caller asks inference about: a kind, never a path.
 
@@ -47,13 +54,7 @@ class ScriptTargetSelectorPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal[
-        "build",
-        "activation_run",
-        "activation_verify",
-        "experiment_run",
-        "experiment_verify",
-    ]
+    kind: TargetKind
     experiment_name: str | None = None
 
 
@@ -81,8 +82,8 @@ def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandida
     against current inputs, so it needs no idempotency key and returns the report
     directly rather than a background run.
     """
-    handle = _require_handle(ree_id)
-    with _ree_command_span("generate-script-candidates", ree_id):
+    handle = require_handle(ree_id)
+    with ree_command_span("generate-script-candidates", ree_id):
         cmd = GenerateScriptCandidatesCommand(
             args=GenerateScriptCandidatesArgs(
                 targets=[
@@ -91,5 +92,5 @@ def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandida
                 ]
             )
         )
-        result = _dispatch_or_fail(handle, cmd, "generate-script-candidates", "Workbench inference failed")
+        result = dispatch_or_fail(handle, cmd, "generate-script-candidates", "Workbench inference failed")
         return result.outputs

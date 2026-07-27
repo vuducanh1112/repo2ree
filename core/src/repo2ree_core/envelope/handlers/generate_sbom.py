@@ -9,7 +9,7 @@ from repo2ree_core.envelope.handlers._common import (
     patch_ree_intent,
     resolve_workspace_path,
 )
-from repo2ree_core.receipts import GenerateSbomReceipt, receipt_run_id, record_receipt
+from repo2ree_core.receipts import GenerateSbomReceipt, receipt_envelope, record_receipt
 from repo2ree_core.run_script import CancelCheck
 from repo2ree_core.sbom.scan import SBOM_FORMAT, is_runtime_archive, scan_runtime_archive
 from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH, ReeLayout
@@ -73,12 +73,7 @@ def handle_generate_sbom(
     ) -> GenerateSbomReceipt:
         timing = timer.finish()
         built = GenerateSbomReceipt(
-            run_id=receipt_run_id(run_id),
-            started_at=timing.started_at,
-            finished_at=timing.finished_at,
-            duration_ms=timing.duration_ms,
-            recorded_at=timing.finished_at,
-            status=status,
+            **receipt_envelope(run_id, timing, status),
             runtime_path=runtime_path,
             declared_runtime_digest=declared_runtime_digest,
             sbom_path=SBOM_ARTIFACT_PATH if sbom_digest else None,

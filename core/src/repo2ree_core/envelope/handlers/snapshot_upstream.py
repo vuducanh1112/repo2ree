@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.receipts import (
     SnapshotUpstreamReceipt,
     persist_snapshot_digest,
-    receipt_run_id,
+    receipt_envelope,
     record_receipt,
 )
 from repo2ree_core.run_script import CancelCheck
@@ -66,12 +66,7 @@ def handle_snapshot_upstream(
     record_receipt(
         layout,
         SnapshotUpstreamReceipt(
-            run_id=receipt_run_id(run_id),
-            started_at=timing.started_at,
-            finished_at=timing.finished_at,
-            duration_ms=timing.duration_ms,
-            recorded_at=timing.finished_at,
-            status="succeeded",
+            **receipt_envelope(run_id, timing, "succeeded"),
             snapshot_digest=snapshot_digest,
         ),
         log=log,

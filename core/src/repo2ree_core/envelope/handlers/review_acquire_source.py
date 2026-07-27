@@ -21,8 +21,8 @@ import shutil
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.envelope.handlers._review_common import review_step_halt
-from repo2ree_core.receipts import AcquireSourceReceipt, receipt_run_id
+from repo2ree_core.envelope.handlers._review_common import begin_review_step
+from repo2ree_core.receipts import AcquireSourceReceipt, receipt_envelope
 from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
 from repo2ree_core.reviews import (
     EvidenceBasis,
@@ -63,18 +63,12 @@ def handle_review_acquire_source(
     intent = ReeStore(ree_layout).read_intent()
     timer = OperationTimer.start()
 
-    started = with_step(
+    # The one step that opens an attempt rather than joining one: there is no
+    # record to require, so it starts from a freshly minted one.
+    started, stop = begin_review_step(
+        review_layout,
         new_review_record(args.review_id, at=timer.started_at),
         "source",
-        status="running",
-        at=timer.started_at,
-    )
-    write_review_record(review_layout, started)
-
-    stop = review_step_halt(
-        review_layout=review_layout,
-        record=started,
-        step="source",
         review_id=args.review_id,
         timer=timer,
         log=log,
@@ -106,12 +100,7 @@ def handle_review_acquire_source(
     comparison = compare_source_swhids(intent.swhid, observed_swhid, basis=basis)
     timing = timer.finish()
     receipt = AcquireSourceReceipt(
-        run_id=receipt_run_id(run_id),
-        started_at=timing.started_at,
-        finished_at=timing.finished_at,
-        duration_ms=timing.duration_ms,
-        recorded_at=timing.finished_at,
-        status="succeeded",
+        **receipt_envelope(run_id, timing, "succeeded"),
         # Origin facts describe a fetch. A bundled acquisition performed none,
         # so the receipt records none rather than implying the origin was reached.
         origin_url=intent.origin_url if basis == "independent" else "",

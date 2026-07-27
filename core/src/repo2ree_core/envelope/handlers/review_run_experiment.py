@@ -35,21 +35,24 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
-from repo2ree_core.envelope.handlers._review_common import review_step_halt, workspace_runtime
+from repo2ree_core.envelope.handlers._review_common import (
+    begin_review_step,
+    require_review_record,
+    workspace_runtime,
+)
 from repo2ree_core.experiment.experiment import Experiment
 from repo2ree_core.experiment.resolve import RunnableResolutionError, resolve_experiment_runnable
 from repo2ree_core.experiment.run import run_runnable
 from repo2ree_core.receipts import (
     RunExperimentReceipt,
     load_author_receipts,
-    receipt_run_id,
+    receipt_envelope,
 )
 from repo2ree_core.reviews import (
     EvidenceBasis,
     ExperimentComparison,
     attempt_basis,
     compare_experiment_results,
-    read_review_record,
     step_state,
     with_experiment,
     with_step,
@@ -85,19 +88,14 @@ def handle_review_run_experiment(
     review_layout = ree_layout.review(args.review_id)
     timer = OperationTimer.start()
 
-    record = read_review_record(review_layout)
-    if record is None:
-        message = f"No review attempt named {args.review_id}"
-        log("system", "error", message)
-        return ActionResult.failed("precondition", message)
+    record = require_review_record(review_layout, args.review_id, log)
+    if isinstance(record, ActionResult):
+        return record
 
-    started = with_step(record, "experiments", status="running", at=timer.started_at)
-    write_review_record(review_layout, started)
-
-    stop = review_step_halt(
-        review_layout=review_layout,
-        record=started,
-        step="experiments",
+    started, stop = begin_review_step(
+        review_layout,
+        record,
+        "experiments",
         review_id=args.review_id,
         timer=timer,
         log=log,
@@ -181,12 +179,7 @@ def handle_review_run_experiment(
 
     timing = timer.finish()
     receipt = RunExperimentReceipt(
-        run_id=receipt_run_id(run_id),
-        started_at=timing.started_at,
-        finished_at=timing.finished_at,
-        duration_ms=timing.duration_ms,
-        recorded_at=timing.finished_at,
-        status=outcome.status,
+        **receipt_envelope(run_id, timing, outcome.status),
         experiment_name=experiment.name,
         run_script_path=experiment.run_script,
         run_exit_code=outcome.run_outputs.exit_code,

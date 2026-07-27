@@ -44,7 +44,8 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.envelope.handlers._review_common import (
-    review_step_halt,
+    begin_review_step,
+    require_review_record,
     workspace_runtime,
     workspace_runtime_candidates,
 )
@@ -53,7 +54,7 @@ from repo2ree_core.receipts import (
     GenerateSbomReceipt,
     RunReceipt,
     load_author_receipts,
-    receipt_run_id,
+    receipt_envelope,
 )
 from repo2ree_core.ree_scripts.materialize_workspace import build_materialize_sh
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
@@ -61,7 +62,6 @@ from repo2ree_core.reviews import (
     BuildComparison,
     EvidenceBasis,
     compare_build_runtimes,
-    read_review_record,
     step_state,
     with_step,
     write_review_build_evidence,
@@ -102,19 +102,14 @@ def handle_review_build_runtime(
     review_layout = ree_layout.review(args.review_id)
     timer = OperationTimer.start()
 
-    record = read_review_record(review_layout)
-    if record is None:
-        message = f"No review attempt named {args.review_id}"
-        log("system", "error", message)
-        return ActionResult.failed("precondition", message)
+    record = require_review_record(review_layout, args.review_id, log)
+    if isinstance(record, ActionResult):
+        return record
 
-    started = with_step(record, "build", status="running", at=timer.started_at)
-    write_review_record(review_layout, started)
-
-    stop = review_step_halt(
-        review_layout=review_layout,
-        record=started,
-        step="build",
+    started, stop = begin_review_step(
+        review_layout,
+        record,
+        "build",
         review_id=args.review_id,
         timer=timer,
         log=log,
@@ -204,12 +199,7 @@ def handle_review_build_runtime(
     # workspace drifting away from what it was materialized from, and a review
     # namespace is materialized fresh from its own acquisition every time.
     receipt = BuildRuntimeReceipt(
-        run_id=receipt_run_id(run_id),
-        started_at=timing.started_at,
-        finished_at=timing.finished_at,
-        duration_ms=timing.duration_ms,
-        recorded_at=timing.finished_at,
-        status="succeeded",
+        **receipt_envelope(run_id, timing, "succeeded"),
         # A bundled certification ran no build script, so it names none: the
         # input slice of this receipt must describe what actually happened.
         build_script_path=RESERVED_BUILD_SCRIPT if basis == "independent" else "",

@@ -17,6 +17,7 @@ from repo2ree_core.reviews import (
     ReviewRecord,
     ReviewStatus,
     ReviewStepKey,
+    read_review_record,
     with_step,
     write_review_record,
 )
@@ -27,6 +28,62 @@ from repo2ree_protocol.result import ActionResult
 
 # Signature of the per-handler early exit: a terminal status and why.
 ReviewHalt = Callable[[ReviewStatus, str], ActionResult]
+
+
+def require_review_record(review_layout: ReviewLayout, review_id: str, log: LogSink) -> ReviewRecord | ActionResult:
+    """The attempt this step joins, or the failure to return when there is none.
+
+    Only the source step opens an attempt; every later step joins one the source
+    step already created, so "no such attempt" is the same precondition failure
+    for all of them. Note that it halts *before* :func:`begin_review_step` — with
+    no record there is nothing to mark running and nothing to record a halt on.
+    Callers ``return`` the ActionResult unchanged::
+
+        record = require_review_record(review_layout, args.review_id, log)
+        if isinstance(record, ActionResult):
+            return record
+    """
+    record = read_review_record(review_layout)
+    if record is not None:
+        return record
+    message = f"No review attempt named {review_id}"
+    log("system", "error", message)
+    return ActionResult.failed("precondition", message)
+
+
+def begin_review_step(
+    review_layout: ReviewLayout,
+    record: ReviewRecord,
+    step: ReviewStepKey,
+    *,
+    review_id: str,
+    timer: OperationTimer,
+    log: LogSink,
+    noun: str,
+) -> tuple[ReviewRecord, ReviewHalt]:
+    """Mark a step running on the persisted record and arm its halt.
+
+    Every review step opens the same way: settle the step to ``running`` on disk
+    *before* doing any work — so an attempt killed mid-step reads as a step that
+    started rather than one that never ran — and build the halt that every
+    non-success path below returns through (see :func:`review_step_halt`).
+
+    Returns the started record, which is the one every later write must build on:
+    the halt closes over it, so a handler that kept the pre-start record would
+    persist a step whose status contradicts what the halt already wrote.
+    """
+    started = with_step(record, step, status="running", at=timer.started_at)
+    write_review_record(review_layout, started)
+    halt = review_step_halt(
+        review_layout=review_layout,
+        record=started,
+        step=step,
+        review_id=review_id,
+        timer=timer,
+        log=log,
+        noun=noun,
+    )
+    return started, halt
 
 
 def review_step_halt(

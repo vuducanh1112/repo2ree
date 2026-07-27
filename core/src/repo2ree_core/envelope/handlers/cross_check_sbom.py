@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file
-from repo2ree_core.receipts import CrossCheckSbomReceipt, receipt_run_id, record_receipt
+from repo2ree_core.receipts import CrossCheckSbomReceipt, receipt_envelope, record_receipt
 from repo2ree_core.repo_profiler.reproducibility_report import (
     ReproducibilityReport,
     SbomCrossCheckSummary,
@@ -68,12 +68,7 @@ def handle_cross_check_sbom(
         aggregates = counts or SbomCrossCheckSummary()
         timing = timer.finish()
         built = CrossCheckSbomReceipt(
-            run_id=receipt_run_id(run_id),
-            started_at=timing.started_at,
-            finished_at=timing.finished_at,
-            duration_ms=timing.duration_ms,
-            recorded_at=timing.finished_at,
-            status=status,
+            **receipt_envelope(run_id, timing, status),
             sbom_digest=sbom_digest,
             declared_direct_total=aggregates.declared_direct_total,
             observed_matched=aggregates.observed_matched,

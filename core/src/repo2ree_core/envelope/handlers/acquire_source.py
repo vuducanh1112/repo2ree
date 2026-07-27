@@ -13,7 +13,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.receipts import AcquireSourceReceipt, receipt_run_id, record_receipt
+from repo2ree_core.receipts import AcquireSourceReceipt, receipt_envelope, record_receipt
 from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
 from repo2ree_core.run_script import (
     CancelCheck,
@@ -102,12 +102,7 @@ def handle_acquire_source(
     record_receipt(
         layout,
         AcquireSourceReceipt(
-            run_id=receipt_run_id(run_id),
-            started_at=timing.started_at,
-            finished_at=timing.finished_at,
-            duration_ms=timing.duration_ms,
-            recorded_at=timing.finished_at,
-            status="succeeded",
+            **receipt_envelope(run_id, timing, "succeeded"),
             origin_url=args.origin_url,
             source_type=args.source_type or "",
             revision=args.revision or "",

@@ -21,7 +21,7 @@ from repo2ree_core.receipts import (
     WorkspaceDrift,
     check_workspace_drift,
     declared_output_paths,
-    receipt_run_id,
+    receipt_envelope,
     record_receipt,
 )
 from repo2ree_core.run_script import CancelCheck, run_workspace_script
@@ -249,12 +249,7 @@ def run_bare_script_handler(
         )
         timing = timer.finish()
         receipt = BuildRuntimeReceipt(
-            run_id=receipt_run_id(run_id),
-            started_at=timing.started_at,
-            finished_at=timing.finished_at,
-            duration_ms=timing.duration_ms,
-            recorded_at=timing.finished_at,
-            status=outcome.status,
+            **receipt_envelope(run_id, timing, outcome.status),
             workspace_drift=inputs.workspace_drift,
             snapshot_digest=inputs.snapshot_digest,
             build_script_path=script_path,
@@ -383,12 +378,7 @@ def run_runnable_handler(
     timing = timer.finish()
     receipt_cls = RunExperimentReceipt if operation == "run_experiment" else ActivationTestReceipt
     receipt: ActivationTestReceipt | RunExperimentReceipt = receipt_cls(
-        run_id=receipt_run_id(run_id),
-        started_at=timing.started_at,
-        finished_at=timing.finished_at,
-        duration_ms=timing.duration_ms,
-        recorded_at=timing.finished_at,
-        status=status,
+        **receipt_envelope(run_id, timing, status),
         workspace_drift=inputs.workspace_drift,
         snapshot_digest=inputs.snapshot_digest,
         run_script_path=runnable.run_script,

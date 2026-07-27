@@ -402,6 +402,21 @@ class ActivationTestCommand(BaseModel):
     args: ActivationTestArgs = ActivationTestArgs()
 
 
+# The kinds of author-facing script inference can be asked about. Declared here,
+# on the wire type, because all three layers that name it must agree by
+# construction: the HTTP payload validating a client's request, this command
+# crossing to the workbench, and core's inference models resolving it to a
+# reserved path. Spelled once, adding a kind is one edit rather than three that
+# nothing checks are in sync.
+TargetKind = Literal[
+    "build",
+    "activation_run",
+    "activation_verify",
+    "experiment_run",
+    "experiment_verify",
+]
+
+
 class ScriptTargetSelectorArg(BaseModel):
     """One target a caller asks inference about: a kind, never a path.
 
@@ -412,13 +427,7 @@ class ScriptTargetSelectorArg(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal[
-        "build",
-        "activation_run",
-        "activation_verify",
-        "experiment_run",
-        "experiment_verify",
-    ]
+    kind: TargetKind
     experiment_name: str | None = None
 
 

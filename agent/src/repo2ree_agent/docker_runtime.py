@@ -622,7 +622,7 @@ class _DockerOp:
 
 
 @contextmanager
-def _docker_op(operation: str) -> Iterator[_DockerOp]:
+def _docker_op(operation: str) -> Generator[_DockerOp]:
     """Time a docker operation and record its metric exactly once, with the
     right terminal status on every exit path.
 
