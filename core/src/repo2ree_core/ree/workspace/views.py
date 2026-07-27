@@ -13,7 +13,7 @@ files plus consistency, receipts, and step states — is assembled a layer up, i
 ``evidence`` and this package must not.
 
 Mutating workspace operations (acquire, write, patch, upload, remove) are owned
-by the operations handlers in ``repo2ree_core.operations.handlers``.
+by the operations handlers in ``repo2ree_core.operations.handlers.author``.
 """
 
 from __future__ import annotations

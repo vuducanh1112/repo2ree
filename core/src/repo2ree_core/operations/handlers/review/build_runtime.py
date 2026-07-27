@@ -54,7 +54,7 @@ from repo2ree_core.evidence.receipts.models import (
 )
 from repo2ree_core.evidence.receipts.store import load_author_receipts
 from repo2ree_core.evidence.review.comparison import compare_build_runtimes
-from repo2ree_core.evidence.review.models import BuildComparison, EvidenceBasis, step_state, with_step
+from repo2ree_core.evidence.review.models import BuildComparison, EvidenceBasis, with_step
 from repo2ree_core.evidence.review.store import write_review_build_evidence, write_review_record
 from repo2ree_core.execution.process import (
     CancelCheck,
@@ -62,8 +62,9 @@ from repo2ree_core.execution.process import (
     run_streaming_process,
     run_workspace_script,
 )
-from repo2ree_core.operations.handlers.review_step import (
+from repo2ree_core.operations.steps.review import (
     begin_review_step,
+    require_completed_step,
     require_review_record,
     workspace_runtime,
     workspace_runtime_candidates,
@@ -113,9 +114,14 @@ def handle_review_build_runtime(
     if is_canceled():
         return stop("canceled", "canceled before build")
 
-    source = step_state(started, "source")
-    if source is None or source.status != "completed":
-        return stop("failed", "Reproduce the source before certifying the runtime")
+    halted = require_completed_step(
+        started,
+        "source",
+        stop=stop,
+        message="Reproduce the source before certifying the runtime",
+    )
+    if halted is not None:
+        return halted
 
     store = ReeStore(ree_layout)
     intent = store.read_intent()

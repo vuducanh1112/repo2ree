@@ -250,10 +250,23 @@ def receipt_run_id(run_id: str) -> str:
     return f"manual-{uuid4().hex[:12]}"
 
 
+def experiment_step_key(experiment_name: str) -> str:
+    """The selection key for one experiment's evidence.
+
+    Experiments are the one step with more than one subject, so their receipts
+    cannot be keyed by operation alone. This composite key is what joins an
+    author's recorded run to the reviewer's reproduction of the same experiment,
+    which is why it is spelled here and nowhere else: two spellings of a join key
+    are two joins, and the one that drifts silently stops matching rather than
+    failing.
+    """
+    return f"experiment:{experiment_name}"
+
+
 def receipt_step_key(receipt: RunReceipt) -> str:
     """Stable selection key: operation, except experiments are keyed by name."""
     if isinstance(receipt, RunExperimentReceipt):
-        return f"experiment:{receipt.experiment_name}"
+        return experiment_step_key(receipt.experiment_name)
     return receipt.operation
 
 

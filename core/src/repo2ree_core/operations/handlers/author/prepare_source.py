@@ -13,12 +13,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers.acquire_source import handle_acquire_source
-from repo2ree_core.operations.handlers.extract_upload import handle_extract_upload
-from repo2ree_core.operations.handlers.materialize_workspace import handle_materialize_workspace
-from repo2ree_core.operations.handlers.snapshot_upstream import handle_snapshot_upstream
-from repo2ree_core.operations.handlers.source_reset import handle_reset_for_source_change
-from repo2ree_core.operations.handlers.update_source_metadata import handle_update_source_metadata
+from repo2ree_core.operations.handlers.author.acquire_source import handle_acquire_source
+from repo2ree_core.operations.handlers.author.extract_upload import handle_extract_upload
+from repo2ree_core.operations.handlers.author.materialize_workspace import handle_materialize_workspace
+from repo2ree_core.operations.handlers.author.snapshot_upstream import handle_snapshot_upstream
+from repo2ree_core.operations.handlers.author.source_reset import handle_reset_for_source_change
+from repo2ree_core.operations.handlers.author.update_source_metadata import handle_update_source_metadata
 from repo2ree_protocol.command import (
     AcquireSourceArgs,
     ExtractUploadArgs,

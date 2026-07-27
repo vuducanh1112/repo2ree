@@ -12,7 +12,12 @@ from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.models import ActivationTestReceipt
 from repo2ree_core.execution.experiment.resolve import RunnableResolutionError, resolve_activation_runnable
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers.step_runner import RunnableStep, run_runnable_handler
+from repo2ree_core.operations.steps.author import (
+    RunnableStep,
+    StepRecord,
+    run_runnable_handler,
+    step_receipt_fields,
+)
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -31,11 +36,16 @@ def handle_activation_test(
             return None
         return activation, "activation"
 
+    def build_receipt(record: StepRecord) -> ActivationTestReceipt:
+        # The probe records nothing beyond the shared slice: activation has one
+        # subject and leaves no baseline, so there is nothing to name or bind.
+        return ActivationTestReceipt(**step_receipt_fields(record))
+
     return run_runnable_handler(
         RunnableStep(
             operation="activation",
             select=select,
-            receipt_cls=ActivationTestReceipt,
+            build_receipt=build_receipt,
             # Activation proves the runtime comes up; it produces no sealed
             # result, so there is no baseline to capture.
             captures_declared_outputs=False,

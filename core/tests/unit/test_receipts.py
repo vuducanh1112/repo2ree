@@ -377,7 +377,7 @@ class TestHandlerWiring:
         return store
 
     def test_build_run_records_receipt_with_input_slice_and_produced_digest(self, workbench: ReeStore) -> None:
-        from repo2ree_core.operations.handlers.build_runtime import handle_build_runtime
+        from repo2ree_core.operations.handlers.author.build_runtime import handle_build_runtime
 
         layout = workbench.layout
         script = layout.workspace / RESERVED_BUILD_SCRIPT
@@ -429,7 +429,7 @@ class TestHandlerWiring:
 
     def test_experiment_run_captures_outputs_and_records_digest(self, workbench: ReeStore) -> None:
         from repo2ree_core.digests import digest_output_paths
-        from repo2ree_core.operations.handlers.run_experiment import handle_run_experiment
+        from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
         from repo2ree_protocol.command import RunExperimentArgs
 
         self._seed_experiment(workbench)
@@ -449,7 +449,7 @@ class TestHandlerWiring:
         assert receipt["produced_output_digest"] == digest_output_paths(layout.workspace, ["results/out.txt"])
 
     def test_native_experiment_run_warns_and_omits_runtime_binding(self, workbench: ReeStore) -> None:
-        from repo2ree_core.operations.handlers.run_experiment import handle_run_experiment
+        from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
         from repo2ree_protocol.command import RunExperimentArgs
 
         self._seed_experiment(workbench, runtime="")
@@ -471,7 +471,7 @@ class TestHandlerWiring:
         assert receipt["declared_runtime_digest"] is None
 
     def test_rewritten_output_makes_experiment_stale(self, workbench: ReeStore) -> None:
-        from repo2ree_core.operations.handlers.run_experiment import handle_run_experiment
+        from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
         from repo2ree_protocol.command import RunExperimentArgs
 
         intent = self._seed_experiment(workbench)
@@ -497,7 +497,7 @@ class TestHandlerWiring:
 
     def test_snapshot_upstream_persists_digest_on_session(self, workbench: ReeStore) -> None:
         from repo2ree_core.digests import digest_file
-        from repo2ree_core.operations.handlers.snapshot_upstream import handle_snapshot_upstream
+        from repo2ree_core.operations.handlers.author.snapshot_upstream import handle_snapshot_upstream
 
         layout = workbench.layout
         (layout.upstream / "a.txt").write_text("alpha")

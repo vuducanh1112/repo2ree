@@ -6,14 +6,32 @@ can stop has to leave that tree's record consistent with what actually
 happened. Two handlers could each spell that out; three cannot without the
 copies drifting apart, which for this module means an attempt whose ``status``
 disagrees with its own steps.
+
+The same argument runs through :func:`require_certified_runtime`, and there it
+is about the verdict rather than the record: every step that runs *inside* what
+the build left behind must first prove that what is there is still what was
+certified. A copy of that check that drifted would leave a pass standing over a
+runtime nobody can point to — which is worse than no verdict, because it still
+reads as one.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from repo2ree_core.evidence.review.models import ReviewRecord, ReviewStatus, ReviewStepKey, with_step
+from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
+from repo2ree_core.evidence.review.models import (
+    EvidenceBasis,
+    ReviewRecord,
+    ReviewStatus,
+    ReviewStepKey,
+    attempt_basis,
+    step_state,
+    with_step,
+)
 from repo2ree_core.evidence.review.store import read_review_record, write_review_record
 from repo2ree_core.ree.layout import ARTIFACTS_DIRNAME, ReviewLayout
 from repo2ree_core.time_utils import OperationTimer
@@ -118,6 +136,105 @@ def review_step_halt(
         return ActionResult.failed("precondition", message)
 
     return halt
+
+
+def require_completed_step(
+    record: ReviewRecord,
+    step: ReviewStepKey,
+    *,
+    stop: ReviewHalt,
+    message: str,
+) -> ActionResult | None:
+    """Halt unless the step this one builds on has completed.
+
+    The review lifecycle is a chain — source, build, activation, experiments —
+    and each link is worth nothing without the one before it. ``message`` says
+    what to do about it rather than restating the graph, because a client that
+    called out of order needs the next action, not the topology. Callers::
+
+        halted = require_completed_step(started, "build", stop=stop, message="…")
+        if halted is not None:
+            return halted
+    """
+    state = step_state(record, step)
+    if state is None or state.status != "completed":
+        return stop("failed", message)
+    return None
+
+
+@dataclass(frozen=True)
+class CertifiedRuntime:
+    """The runtime a review attempt certified, confirmed still to be that one.
+
+    ``runtime_path`` is empty for a baseline that declares no runtime artifact —
+    a native experiment — in which case ``runtime_digest`` is None and there is
+    nothing to bind. Steps that cannot run without a runtime say so themselves;
+    this value reports what the attempt has, not what a caller needs.
+    """
+
+    basis: EvidenceBasis
+    build_receipt: BuildRuntimeReceipt
+    runtime_path: str
+    runtime_digest: str | None
+
+
+def require_certified_runtime(
+    record: ReviewRecord,
+    review_layout: ReviewLayout,
+    *,
+    stop: ReviewHalt,
+    purpose: str,
+    retry_purpose: str,
+) -> CertifiedRuntime | ActionResult:
+    """The apparatus every post-build review step runs against, or the halt.
+
+    Three things have to hold before any step can run *inside* what the build
+    left behind, and they are the same three whichever step is asking: the
+    attempt settled a basis and a build receipt, its workspace is still there,
+    and the runtime sitting in that workspace is byte-for-byte the one the build
+    certified. That last check is why this is shared rather than repeated — a
+    re-run build would otherwise leave an earlier step's verdict standing over a
+    runtime that no longer exists, and a verdict about bytes nobody can point to
+    is worse than no verdict.
+
+    ``purpose`` completes "This attempt has recorded no runtime …" and
+    ``retry_purpose`` completes "… re-run the build review …", so each step says
+    what *it* was trying to do. Callers ``return`` an ActionResult unchanged::
+
+        certified = require_certified_runtime(started, review_layout, stop=stop, …)
+        if isinstance(certified, ActionResult):
+            return certified
+    """
+    basis = attempt_basis(record)
+    if basis is None or record.build_receipt is None:
+        return stop("failed", f"This attempt has recorded no runtime {purpose}")
+
+    # The workspace is the whole apparatus here: the reviewer's source, the
+    # author's recipe, and the runtime beside them. Reclaiming it is a supported
+    # choice at build time, so hitting this is a reviewer's own doing and the
+    # message says how to undo it rather than reporting a bare missing path.
+    if not review_layout.workspace.is_dir():
+        return stop(
+            "failed",
+            f"This attempt's workspace was reclaimed after the build; re-run the build review {retry_purpose}",
+        )
+
+    runtime_path = (record.build_receipt.runtime_path or "").strip()
+    runtime_digest = digest_file_if_exists(workspace_runtime(review_layout, runtime_path)) if runtime_path else None
+    if runtime_path and runtime_digest is None:
+        return stop("failed", f"the certified runtime is no longer in this attempt's workspace at {runtime_path}")
+    if runtime_path and runtime_digest != record.build_receipt.produced_runtime_digest:
+        return stop(
+            "failed",
+            f"the runtime at {runtime_path} is not the one this attempt certified; re-run the build review",
+        )
+
+    return CertifiedRuntime(
+        basis=basis,
+        build_receipt=record.build_receipt,
+        runtime_path=runtime_path,
+        runtime_digest=runtime_digest,
+    )
 
 
 def workspace_runtime_candidates(review_layout: ReviewLayout, runtime_path: str) -> tuple[Path, ...]:

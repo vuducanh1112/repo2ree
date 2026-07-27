@@ -8,7 +8,7 @@ Mirrors the host-side delete_file_content behaviour exactly.
 from __future__ import annotations
 
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers.step_runner import check_expected_etag
+from repo2ree_core.operations.steps.author import check_expected_etag
 from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore

@@ -16,7 +16,7 @@ Two layers, used at different trust boundaries:
   symlink escapes. It is the guard for paths that come from author-supplied run
   scripts and declared outputs before they are handed to the shell or read back
   (see ``experiment/run.py``, ``run_script.py``,
-  ``operations/handlers/step_runner.py``).
+  ``operations/steps/author.py``).
 """
 
 from __future__ import annotations
@@ -73,6 +73,24 @@ def validate_relative_path(rel: str | PurePosixPath) -> None:
         raise ValueError(f"relative path must not be absolute: {text!r}")
     if any(part == ".." for part in pure.parts):
         raise ValueError(f"relative path must not contain '..': {text!r}")
+
+
+def validate_path_segment(value: str, *, kind: str) -> str:
+    """Reject anything that is not a single, safe path segment.
+
+    The guard for the *identifiers* an REE layout keys directories and files by
+    — run ids, review ids, upload tokens. They are stricter than a relative path
+    because they may never be one: a separator would let a caller name a sibling
+    tree, and a leading dot would collide with the reserved control files that
+    file enumeration deliberately skips.
+
+    ``kind`` names the identifier in the error, so a rejection says which of them
+    was malformed. Returns *value* so a caller can validate in the expression
+    that consumes it.
+    """
+    if not value or "/" in value or "\\" in value or value.startswith("."):
+        raise ValueError(f"invalid {kind}: {value!r}")
+    return value
 
 
 def normalize_workspace_path(path: str | None) -> str:

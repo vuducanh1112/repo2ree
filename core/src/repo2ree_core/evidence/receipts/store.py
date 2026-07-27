@@ -25,6 +25,7 @@ from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.models import (
     RunExperimentReceipt,
     RunReceipt,
+    experiment_step_key,
     receipt_adapter,
     receipt_step_key,
 )
@@ -146,7 +147,7 @@ def published_receipts(layout: ReeLayout, intent: ReeIntent) -> list[RunReceipt]
         "generate_sbom",
         "cross_check_sbom",
         "activation_test",
-        *(f"experiment:{experiment.name}" for experiment in intent.experiments if experiment.name),
+        *(experiment_step_key(experiment.name) for experiment in intent.experiments if experiment.name),
     ]
     return [latest[key] for key in step_keys if key in latest]
 

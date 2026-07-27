@@ -213,6 +213,34 @@ forbidden_modules = [
     "repo2ree_core.evidence",
 ]
 
+# The core counterpart of the API's authoring/review independence rule, and the
+# layer where it actually bites: this is where review evidence is produced. A
+# reviewer handler importing an authoring one would mean the code under review
+# also certifies itself, and the two families mirror each other closely enough
+# that such an import would read as reuse. What they legitimately share is
+# `operations.steps`, which is why that sits beside both rather than inside
+# either.
+[[tool.importlinter.contracts]]
+name = "Author and review handlers never reach into each other"
+type = "independence"
+modules = [
+    "repo2ree_core.operations.handlers.author",
+    "repo2ree_core.operations.handlers.review",
+]
+
+# Within `operations`, the shared step machinery is below the handlers that fill
+# it in — it exists to be composed, never to compose. A step runner that reached
+# back into a handler would be recognising its callers, which is the coupling
+# the runner's own descriptor (`RunnableStep`) exists to avoid.
+[[tool.importlinter.contracts]]
+name = "Step machinery never imports a handler"
+type = "forbidden"
+source_modules = ["repo2ree_core.operations.steps"]
+forbidden_modules = [
+    "repo2ree_core.operations.handlers",
+    "repo2ree_core.operations.dispatch",
+]
+
 # The domain vocabulary describes what an REE *is*, which has to stay true
 # independently of where it is stored, how it is executed, or what was observed
 # about it. A domain model that imported persistence would make the meaning of

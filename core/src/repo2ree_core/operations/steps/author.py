@@ -7,9 +7,12 @@ handlers can be about what makes them different, and so the input slice in
 particular is collected one way: it is the chain that makes a receipt auditable,
 and two spellings of it would be two chains.
 
-Nothing here knows its callers by name. A step that needs to record something
-another does not says so with a :class:`RunnableStep` field, never by having
-this module compare operation strings.
+Nothing here knows its callers, by name or by type. A step that needs to record
+something another does not says so with a :class:`RunnableStep` field — it
+brings its own :attr:`~RunnableStep.build_receipt` rather than handing over a
+receipt class this module would then have to interrogate. Recognising a caller
+by the shape of its evidence is the same coupling as recognising it by its
+operation string, and fails the same way when a third step arrives.
 """
 
 from __future__ import annotations
@@ -39,7 +42,7 @@ from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.time_utils import OperationTimer, format_duration_ms
+from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
 from repo2ree_protocol.tracing import ReceiptInputAttrs
@@ -262,20 +265,76 @@ RunnableSelector = Callable[[ReeIntent, "LogSink"], tuple[Runnable, str] | None]
 
 
 @dataclass(frozen=True)
+class StepRecord:
+    """Everything the shared runner learned about one runnable run.
+
+    The complete input to a step's receipt, assembled by the runner and handed
+    to :attr:`RunnableStep.build_receipt`. It exists so that hand-off can be one
+    typed value rather than a widening argument list: a receipt shape that needs
+    a fact none of the others do adds a field here, not a parameter to every
+    builder.
+    """
+
+    run_id: str
+    timing: OperationTiming
+    status: ActionStatus
+    inputs: StepInputs
+    runnable: Runnable
+    label: str
+    run_exit_code: int | None
+    verify_exit_code: int | None
+    #: Digest of the declared outputs captured after a successful run, or None
+    #: when the step captures none (see ``captures_declared_outputs``).
+    produced_output_digest: str | None
+
+
+def step_receipt_fields(record: StepRecord) -> dict[str, Any]:
+    """The receipt fields every runnable step records, whatever shape it takes.
+
+    Spread into the receipt a builder constructs (``**step_receipt_fields(...)``,
+    the same idiom as :func:`receipt_envelope`, which it includes). These are the
+    fields that make a receipt auditable — the input slice collected before the
+    run, bound to what the run did — so no builder gets to spell them itself.
+    """
+    return {
+        **receipt_envelope(record.run_id, record.timing, record.status),
+        "workspace_drift": record.inputs.workspace_drift,
+        "snapshot_digest": record.inputs.snapshot_digest,
+        "run_script_path": record.runnable.run_script,
+        "run_script_digest": record.inputs.script_digest,
+        "run_exit_code": record.run_exit_code,
+        "verify_script_path": record.runnable.verify_script,
+        "verify_script_digest": record.inputs.verify_script_digest,
+        "verify_exit_code": record.verify_exit_code,
+        "runtime_path": record.inputs.runtime_path,
+        "declared_runtime_digest": record.inputs.declared_runtime_digest,
+    }
+
+
+ReceiptBuilder = Callable[[StepRecord], ActivationTestReceipt | RunExperimentReceipt]
+
+
+@dataclass(frozen=True)
 class RunnableStep:
     """Everything that distinguishes one runnable step from another.
 
     Activation and experiments execute identically — that is what
     :class:`~repo2ree_core.domain.experiment.Runnable` means — and differ only
-    in what they *record*: which receipt shape the evidence takes, and whether a
+    in what they *record*: what shape their evidence takes, and whether a
     successful run has declared outputs to capture as a reviewer's baseline.
-    Both are stated here by the handler that owns the step, so the shared runner
-    below never has to recognise its callers.
+    Both are stated here by the handler that owns the step.
+
+    ``build_receipt`` is a builder rather than a receipt class because a step
+    that records something the others do not must be able to say so itself. Hand
+    the runner a class and it is left holding a receipt it has to interrogate
+    before it can finish filling in — which is recognising its callers by type,
+    the same coupling as recognising them by name and just as prone to going
+    quietly wrong when a third step arrives.
     """
 
     operation: str
     select: RunnableSelector
-    receipt_cls: type[ActivationTestReceipt] | type[RunExperimentReceipt]
+    build_receipt: ReceiptBuilder
     captures_declared_outputs: bool
 
 
@@ -337,22 +396,19 @@ def run_runnable_handler(
         produced_output_digest = _capture_experiment_outputs(layout, label, runnable.output_paths, log)
 
     timing = timer.finish()
-    receipt: ActivationTestReceipt | RunExperimentReceipt = step.receipt_cls(
-        **receipt_envelope(run_id, timing, status),
-        workspace_drift=inputs.workspace_drift,
-        snapshot_digest=inputs.snapshot_digest,
-        run_script_path=runnable.run_script,
-        run_script_digest=inputs.script_digest,
-        run_exit_code=outcome.run_outputs.exit_code,
-        verify_script_path=runnable.verify_script,
-        verify_script_digest=inputs.verify_script_digest,
-        verify_exit_code=outcome.run_outputs.verify_exit_code,
-        runtime_path=inputs.runtime_path,
-        declared_runtime_digest=inputs.declared_runtime_digest,
+    receipt = step.build_receipt(
+        StepRecord(
+            run_id=run_id,
+            timing=timing,
+            status=status,
+            inputs=inputs,
+            runnable=runnable,
+            label=label,
+            run_exit_code=outcome.run_outputs.exit_code,
+            verify_exit_code=outcome.run_outputs.verify_exit_code,
+            produced_output_digest=produced_output_digest,
+        )
     )
-    if isinstance(receipt, RunExperimentReceipt):
-        receipt.experiment_name = label
-        receipt.produced_output_digest = produced_output_digest
     record_receipt(layout, receipt, log=log)
     outputs.receipt = receipt.model_dump()
     log(

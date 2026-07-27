@@ -9,7 +9,7 @@ from repo2ree_core.digests import digest_file
 from repo2ree_core.evidence.receipts.models import GenerateSbomReceipt, receipt_envelope
 from repo2ree_core.evidence.receipts.store import record_receipt
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers.step_runner import (
+from repo2ree_core.operations.steps.author import (
     patch_ree_intent,
     resolve_workspace_path,
 )

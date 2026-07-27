@@ -37,23 +37,17 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.evidence.receipts.models import ActivationTestReceipt, receipt_envelope
-from repo2ree_core.evidence.review.models import (
-    ActivationOutcome,
-    ActivationVerdict,
-    attempt_basis,
-    step_state,
-    with_step,
-)
+from repo2ree_core.evidence.review.models import ActivationOutcome, ActivationVerdict, with_step
 from repo2ree_core.evidence.review.store import write_review_activation_evidence, write_review_record
 from repo2ree_core.execution.experiment.resolve import RunnableResolutionError, resolve_activation_runnable
 from repo2ree_core.execution.experiment.run import run_runnable
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers.review_step import (
+from repo2ree_core.operations.steps.review import (
     begin_review_step,
+    require_certified_runtime,
+    require_completed_step,
     require_review_record,
-    workspace_runtime,
 )
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
@@ -99,40 +93,30 @@ def handle_review_activation_test(
     if is_canceled():
         return stop("canceled", "canceled before activation")
 
-    build = step_state(started, "build")
-    if build is None or build.status != "completed":
-        return stop("failed", "Certify the runtime before probing whether it is inhabitable")
+    halted = require_completed_step(
+        started,
+        "build",
+        stop=stop,
+        message="Certify the runtime before probing whether it is inhabitable",
+    )
+    if halted is not None:
+        return halted
 
-    basis = attempt_basis(started)
-    if basis is None or started.build_receipt is None:
-        return stop("failed", "This attempt has recorded no runtime to activate")
+    certified = require_certified_runtime(
+        started,
+        review_layout,
+        stop=stop,
+        purpose="to activate",
+        retry_purpose="to activate",
+    )
+    if isinstance(certified, ActionResult):
+        return certified
 
-    # The workspace is the whole apparatus here: the reviewer's source, the
-    # author's recipe, and the runtime beside them. Reclaiming it is a supported
-    # choice at build time, so hitting this is a reviewer's own doing and the
-    # message says how to undo it rather than reporting a bare missing path.
-    if not review_layout.workspace.is_dir():
-        return stop(
-            "failed",
-            "This attempt's workspace was reclaimed after the build; re-run the build review to activate",
-        )
-
-    runtime_path = (started.build_receipt.runtime_path or "").strip()
-    if not runtime_path:
+    # Unlike an experiment, a probe of nothing is not a probe: activation exists
+    # to say the *runtime* comes up, so a baseline that declares none has no
+    # question here to answer.
+    if not certified.runtime_path:
         return stop("failed", "The certified build recorded no runtime artifact to activate")
-
-    # Bind the probe to the artifact the build step certified. Without this a
-    # re-run build would leave the earlier pass standing over a runtime that is
-    # no longer there — a verdict about bytes nobody can point to.
-    runtime_abs = workspace_runtime(review_layout, runtime_path)
-    runtime_digest = digest_file_if_exists(runtime_abs)
-    if runtime_digest is None:
-        return stop("failed", f"the certified runtime is no longer in this attempt's workspace at {runtime_path}")
-    if runtime_digest != started.build_receipt.produced_runtime_digest:
-        return stop(
-            "failed",
-            f"the runtime at {runtime_path} is not the one this attempt certified; re-run the build review",
-        )
 
     try:
         activation = resolve_activation_runnable(ReeStore(ree_layout).read_intent())
@@ -171,13 +155,13 @@ def handle_review_activation_test(
         run_exit_code=outcome.run_outputs.exit_code,
         verify_script_path=activation.verify_script,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
-        runtime_path=runtime_path,
-        declared_runtime_digest=runtime_digest,
+        runtime_path=certified.runtime_path,
+        declared_runtime_digest=certified.runtime_digest,
     )
     activation_outcome = ActivationOutcome(
-        basis=basis,
+        basis=certified.basis,
         verdict=verdict,
-        runtime_digest=runtime_digest,
+        runtime_digest=certified.runtime_digest,
         run_exit_code=outcome.run_outputs.exit_code,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
     )

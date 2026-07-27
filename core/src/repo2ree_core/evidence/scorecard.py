@@ -41,6 +41,7 @@ from repo2ree_core.evidence.receipts.models import (
     GenerateSbomReceipt,
     RunExperimentReceipt,
     RunReceipt,
+    experiment_step_key,
     latest_successful_receipts,
 )
 
@@ -165,7 +166,7 @@ class _Evidence:
         for experiment in intent.experiments:
             if not experiment.name:
                 continue
-            receipt = latest.get(f"experiment:{experiment.name}")
+            receipt = latest.get(experiment_step_key(experiment.name))
             if isinstance(receipt, RunExperimentReceipt):
                 self.experiments[experiment.name] = receipt
 

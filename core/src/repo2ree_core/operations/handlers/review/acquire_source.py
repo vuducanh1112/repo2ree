@@ -27,7 +27,7 @@ from repo2ree_core.evidence.review.comparison import compare_source_swhids
 from repo2ree_core.evidence.review.models import EvidenceBasis, SourceComparison, new_review_record, with_step
 from repo2ree_core.evidence.review.store import write_review_record, write_review_source_evidence
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
-from repo2ree_core.operations.handlers.review_step import begin_review_step
+from repo2ree_core.operations.steps.review import begin_review_step
 from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.source_repo.swhid import directory_swhid

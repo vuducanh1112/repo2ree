@@ -36,6 +36,7 @@ from repo2ree_core.evidence.receipts.models import (
     RunExperimentReceipt,
     RunReceipt,
     WorkspaceDrift,
+    experiment_step_key,
 )
 from repo2ree_core.evidence.receipts.store import load_author_receipts, stat_table
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
@@ -293,7 +294,7 @@ def build_consistency_report(layout: ReeLayout, intent: ReeIntent, session: Any)
     for experiment in intent.experiments:
         if not experiment.name:
             continue
-        key = f"experiment:{experiment.name}"
+        key = experiment_step_key(experiment.name)
         receipt = latest.get(key)
         stale = []
         if isinstance(receipt, RunExperimentReceipt):
@@ -340,7 +341,7 @@ def build_author_receipt_set(layout: ReeLayout, intent: ReeIntent, session: Any)
         "generate_sbom",
         "cross_check_sbom",
         "activation_test",
-        *(f"experiment:{experiment.name}" for experiment in intent.experiments if experiment.name),
+        *(experiment_step_key(experiment.name) for experiment in intent.experiments if experiment.name),
     ]
     entries: list[AuthorReceiptEntry] = []
     for key in ordered_keys:

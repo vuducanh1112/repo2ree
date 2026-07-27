@@ -20,7 +20,7 @@ from repo2ree_core.evidence.review.models import (
     with_experiment,
 )
 from repo2ree_core.evidence.review.store import load_reviews
-from repo2ree_core.operations.handlers import review_acquire_source as handler
+from repo2ree_core.operations.handlers.review import acquire_source as handler
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata

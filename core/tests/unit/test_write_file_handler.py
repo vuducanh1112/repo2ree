@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.operations.handlers import write_file as handler
+from repo2ree_core.operations.handlers.author import write_file as handler
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_protocol.command import WriteFileArgs

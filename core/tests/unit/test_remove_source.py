@@ -6,7 +6,7 @@ import pytest
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.operations.handlers import remove_source as handler
+from repo2ree_core.operations.handlers.author import remove_source as handler
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata

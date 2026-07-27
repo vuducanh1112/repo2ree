@@ -29,7 +29,7 @@ from repo2ree_core.evidence.review.models import (
     with_step,
 )
 from repo2ree_core.evidence.review.store import load_reviews, write_review_record
-from repo2ree_core.operations.handlers import review_activation_test as handler
+from repo2ree_core.operations.handlers.review import activation_test as handler
 from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata

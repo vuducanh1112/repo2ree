@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.operations.handlers import delete_file as handler
+from repo2ree_core.operations.handlers.author import delete_file as handler
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_protocol.command import DeleteFileArgs

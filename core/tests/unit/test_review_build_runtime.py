@@ -20,7 +20,7 @@ from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt, Generate
 from repo2ree_core.evidence.receipts.store import record_receipt
 from repo2ree_core.evidence.review.models import new_review_record, step_state, with_step
 from repo2ree_core.evidence.review.store import load_reviews, write_review_record
-from repo2ree_core.operations.handlers import review_build_runtime as handler
+from repo2ree_core.operations.handlers.review import build_runtime as handler
 from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata

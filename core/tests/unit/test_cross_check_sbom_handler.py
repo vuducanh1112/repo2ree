@@ -17,7 +17,7 @@ from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.evidence.receipts.models import CrossCheckSbomReceipt
 from repo2ree_core.evidence.receipts.store import load_receipts
-from repo2ree_core.operations.handlers import cross_check_sbom as handler
+from repo2ree_core.operations.handlers.author import cross_check_sbom as handler
 from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata

@@ -36,14 +36,12 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.experiment import Experiment
-from repo2ree_core.evidence.receipts.models import RunExperimentReceipt, receipt_envelope
+from repo2ree_core.evidence.receipts.models import RunExperimentReceipt, experiment_step_key, receipt_envelope
 from repo2ree_core.evidence.receipts.store import load_author_receipts
 from repo2ree_core.evidence.review.comparison import compare_experiment_results
 from repo2ree_core.evidence.review.models import (
     EvidenceBasis,
     ExperimentComparison,
-    attempt_basis,
-    step_state,
     with_experiment,
     with_step,
 )
@@ -51,10 +49,11 @@ from repo2ree_core.evidence.review.store import write_review_experiment_evidence
 from repo2ree_core.execution.experiment.resolve import RunnableResolutionError, resolve_experiment_runnable
 from repo2ree_core.execution.experiment.run import run_runnable
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers.review_step import (
+from repo2ree_core.operations.steps.review import (
     begin_review_step,
+    require_certified_runtime,
+    require_completed_step,
     require_review_record,
-    workspace_runtime,
 )
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
@@ -101,9 +100,14 @@ def handle_review_run_experiment(
     if is_canceled():
         return stop("canceled", "canceled before the experiment")
 
-    activation = step_state(started, "activation")
-    if activation is None or activation.status != "completed":
-        return stop("failed", "Probe the runtime before reproducing results in it")
+    halted = require_completed_step(
+        started,
+        "activation",
+        stop=stop,
+        message="Probe the runtime before reproducing results in it",
+    )
+    if halted is not None:
+        return halted
 
     # Completed is not enough: activation completes with a `failed` verdict when
     # the runtime would not come up, and every experiment run inside such a
@@ -112,15 +116,15 @@ def handle_review_run_experiment(
     if started.activation_outcome is None or started.activation_outcome.verdict != "passed":
         return stop("failed", "This attempt's runtime would not come up; its results cannot be reproduced in it")
 
-    basis = attempt_basis(started)
-    if basis is None or started.build_receipt is None:
-        return stop("failed", "This attempt has recorded no runtime to run experiments in")
-
-    if not review_layout.workspace.is_dir():
-        return stop(
-            "failed",
-            "This attempt's workspace was reclaimed after the build; re-run the build review to reproduce results",
-        )
+    certified = require_certified_runtime(
+        started,
+        review_layout,
+        stop=stop,
+        purpose="to run experiments in",
+        retry_purpose="to reproduce results",
+    )
+    if isinstance(certified, ActionResult):
+        return certified
 
     try:
         experiment = resolve_experiment_runnable(ReeStore(ree_layout).read_intent(), args.experiment_name)
@@ -131,17 +135,6 @@ def handle_review_run_experiment(
         return stop(
             "failed",
             f"the author baseline declares a run script that is not there: {experiment.run_script}",
-        )
-
-    # Bind the result to the runtime it was produced in, exactly as activation
-    # binds its probe: a re-run build would otherwise leave a reproduction
-    # standing over a runtime nobody can point to.
-    runtime_path = (started.build_receipt.runtime_path or "").strip()
-    runtime_digest = digest_file_if_exists(workspace_runtime(review_layout, runtime_path)) if runtime_path else None
-    if runtime_path and runtime_digest != started.build_receipt.produced_runtime_digest:
-        return stop(
-            "failed",
-            f"the runtime at {runtime_path} is not the one this attempt certified; re-run the build review",
         )
 
     outcome = run_runnable(
@@ -158,11 +151,11 @@ def handle_review_run_experiment(
     comparison = _certify(
         ree_layout,
         experiment=experiment,
-        basis=basis,
+        basis=certified.basis,
         run_exit_code=outcome.run_outputs.exit_code,
         observed_verify_exit_code=outcome.run_outputs.verify_exit_code,
         observed_output_digest=digest_output_paths(review_layout.workspace, experiment.output_paths),
-        runtime_digest=runtime_digest,
+        runtime_digest=certified.runtime_digest,
         # The criterion as it stood in the workspace it ran in, not as the author
         # recorded it: this digest is what lets a reader audit which script
         # granted the verdict they are being asked to trust.
@@ -181,8 +174,8 @@ def handle_review_run_experiment(
         run_exit_code=outcome.run_outputs.exit_code,
         verify_script_path=experiment.verify_script,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
-        runtime_path=runtime_path or None,
-        declared_runtime_digest=runtime_digest,
+        runtime_path=certified.runtime_path or None,
+        declared_runtime_digest=certified.runtime_digest,
         produced_output_digest=comparison.observed_output_digest,
     )
     write_review_experiment_evidence(review_layout, receipt, comparison)
@@ -234,7 +227,7 @@ def _certify(
     ``expected_verify_exit_code`` unset, which the comparison reports as
     inconclusive rather than as agreement.
     """
-    author = load_author_receipts(ree_layout).get(f"experiment:{experiment.name}")
+    author = load_author_receipts(ree_layout).get(experiment_step_key(experiment.name))
     expected_verify_exit_code = None
     expected_output_digest = None
     if isinstance(author, RunExperimentReceipt):

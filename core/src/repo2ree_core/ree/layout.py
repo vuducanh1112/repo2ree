@@ -34,7 +34,7 @@ from pathlib import Path, PurePosixPath
 # Canonical lexical path checks live in the dependency-free leaf module so the
 # domain and experiment layers can share them without an import cycle. Import
 # them from there, never from here: one spelling per primitive.
-from repo2ree_core.path_safety import validate_relative_path
+from repo2ree_core.path_safety import validate_path_segment, validate_relative_path
 
 # ================================================
 # Constants
@@ -203,7 +203,7 @@ class ReeLayout:
         Experiment names are already constrained to a safe single path segment
         (``EXPERIMENT_NAME_PATTERN``); the resolver rejects anything else.
         """
-        return self._resolve_under(self.results, name)
+        return _resolve_under(self.results, name)
 
     @property
     def workspace(self) -> Path:
@@ -222,7 +222,7 @@ class ReeLayout:
         return self.root / REVIEWS_DIRNAME
 
     def review(self, review_id: str) -> ReviewLayout:
-        return ReviewLayout(root=self._resolve_under(self.reviews, self._validate_review_id(review_id)))
+        return ReviewLayout(root=_resolve_under(self.reviews, validate_path_segment(review_id, kind="review_id")))
 
     @property
     def author_receipts(self) -> Path:
@@ -231,47 +231,35 @@ class ReeLayout:
 
     def author_operation_receipt(self, operation: str) -> Path:
         """Selected receipt for a singleton operation."""
-        return self._resolve_under(self.author_receipts, f"{operation}.json")
+        return _resolve_under(self.author_receipts, f"{operation}.json")
 
     def author_experiment_receipt(self, experiment_slug: str) -> Path:
         """Selected receipt for one experiment, keyed by its canonical slug."""
-        return self._resolve_under(self.author_receipts, PurePosixPath("experiments") / f"{experiment_slug}.json")
+        return _resolve_under(self.author_receipts, PurePosixPath("experiments") / f"{experiment_slug}.json")
 
     def run_log(self, run_id: str) -> Path:
         """Path to the NDJSON log file for a single action run."""
-        return self.runs / f"{self._validate_run_id(run_id)}.ndjson"
+        return self.runs / f"{validate_run_id(run_id)}.ndjson"
 
     def run_receipt(self, run_id: str) -> Path:
         """Path to the receipt (input/output digests) for a single action run."""
-        return self.runs / f"{self._validate_run_id(run_id)}.receipt.json"
+        return self.runs / f"{validate_run_id(run_id)}.receipt.json"
 
     def run_cancel_marker(self, run_id: str) -> Path:
         """Path whose existence means the action run should stop cooperatively."""
-        return self.runs / f"{self._validate_run_id(run_id)}.cancel"
-
-    @staticmethod
-    def _validate_run_id(run_id: str) -> str:
-        if not run_id or "/" in run_id or "\\" in run_id or run_id.startswith("."):
-            raise ValueError(f"invalid run_id: {run_id!r}")
-        return run_id
-
-    @staticmethod
-    def _validate_review_id(review_id: str) -> str:
-        if not review_id or "/" in review_id or "\\" in review_id or review_id.startswith("."):
-            raise ValueError(f"invalid review_id: {review_id!r}")
-        return review_id
+        return self.runs / f"{validate_run_id(run_id)}.cancel"
 
     def upstream_file(self, rel: str | PurePosixPath) -> Path:
-        return self._resolve_under(self.upstream, rel)
+        return _resolve_under(self.upstream, rel)
 
     def overlay_file(self, rel: str | PurePosixPath) -> Path:
-        return self._resolve_under(self.overlay, rel)
+        return _resolve_under(self.overlay, rel)
 
     def artifact_file(self, rel: str | PurePosixPath) -> Path:
-        return self._resolve_under(self.artifacts, rel)
+        return _resolve_under(self.artifacts, rel)
 
     def workspace_file(self, rel: str | PurePosixPath) -> Path:
-        return self._resolve_under(self.workspace, rel)
+        return _resolve_under(self.workspace, rel)
 
     def ree_file(self, rel: str | PurePosixPath) -> Path:
         """A path relative to the REE root itself, e.g. ``artifacts/runtime.tar.gz``.
@@ -279,16 +267,11 @@ class ReeLayout:
         The spelling a bundle's manifest uses once packaging has lifted the
         runtime out of the workspace (see ``ReeStore.author_artifact``).
         """
-        return self._resolve_under(self.root, rel)
+        return _resolve_under(self.root, rel)
 
     def upload_staging_file(self, token: str) -> Path:
         validate_upload_token(token)
         return self.upload_staging / f"{token}.bin"
-
-    @staticmethod
-    def _resolve_under(base: Path, rel: str | PurePosixPath) -> Path:
-        validate_relative_path(rel)
-        return base / Path(str(rel))
 
 
 @dataclass(frozen=True)
@@ -362,16 +345,16 @@ class ReviewLayout:
         return self.root / "comparisons"
 
     def run_log(self, run_id: str) -> Path:
-        return self.runs / f"{ReeLayout._validate_run_id(run_id)}.ndjson"
+        return self.runs / f"{validate_run_id(run_id)}.ndjson"
 
     def run_receipt(self, run_id: str) -> Path:
-        return self.runs / f"{ReeLayout._validate_run_id(run_id)}.receipt.json"
+        return self.runs / f"{validate_run_id(run_id)}.receipt.json"
 
     def operation_receipt(self, operation: str) -> Path:
-        return ReeLayout._resolve_under(self.receipts, f"{operation}.json")
+        return _resolve_under(self.receipts, f"{operation}.json")
 
     def comparison(self, step: str) -> Path:
-        return ReeLayout._resolve_under(self.comparisons, f"{step}.json")
+        return _resolve_under(self.comparisons, f"{step}.json")
 
     def experiment_receipt(self, experiment_slug: str) -> Path:
         """Selected receipt for one reproduced experiment, keyed by its slug.
@@ -380,18 +363,31 @@ class ReviewLayout:
         evidence needs a directory where the others need a file. Mirrors the
         author side's ``receipts/author/experiments/`` for the same reason.
         """
-        return ReeLayout._resolve_under(self.receipts, PurePosixPath("experiments") / f"{experiment_slug}.json")
+        return _resolve_under(self.receipts, PurePosixPath("experiments") / f"{experiment_slug}.json")
 
     def experiment_comparison(self, experiment_slug: str) -> Path:
         """This attempt's verdict for one experiment, keyed by its slug."""
-        return ReeLayout._resolve_under(self.comparisons, PurePosixPath("experiments") / f"{experiment_slug}.json")
+        return _resolve_under(self.comparisons, PurePosixPath("experiments") / f"{experiment_slug}.json")
 
 
 # ================================================
 # Validation and Normalization
 # ================================================
 
+# Both layouts key directories and files by the same three identifiers and join
+# paths the same way, so the primitives are module-level functions rather than
+# methods on either class: a layout that reached into the other's privates to
+# borrow one would make the two look like a hierarchy they are not.
+
+
+def validate_run_id(run_id: str) -> str:
+    return validate_path_segment(run_id, kind="run_id")
+
 
 def validate_upload_token(token: str) -> None:
-    if not token or "/" in token or "\\" in token or token.startswith("."):
-        raise ValueError(f"invalid upload token: {token!r}")
+    validate_path_segment(token, kind="upload token")
+
+
+def _resolve_under(base: Path, rel: str | PurePosixPath) -> Path:
+    validate_relative_path(rel)
+    return base / Path(str(rel))

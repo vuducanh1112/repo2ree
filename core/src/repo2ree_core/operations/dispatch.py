@@ -5,39 +5,39 @@ from typing import Never, NoReturn
 from pydantic import BaseModel
 
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers.acquire_source import handle_acquire_source
-from repo2ree_core.operations.handlers.activation_test import handle_activation_test
-from repo2ree_core.operations.handlers.build_runtime import handle_build_runtime
-from repo2ree_core.operations.handlers.cross_check_sbom import handle_cross_check_sbom
-from repo2ree_core.operations.handlers.delete_file import handle_delete_file
-from repo2ree_core.operations.handlers.evaluate_dependency_score import (
+from repo2ree_core.operations.handlers.author.acquire_source import handle_acquire_source
+from repo2ree_core.operations.handlers.author.activation_test import handle_activation_test
+from repo2ree_core.operations.handlers.author.build_runtime import handle_build_runtime
+from repo2ree_core.operations.handlers.author.cross_check_sbom import handle_cross_check_sbom
+from repo2ree_core.operations.handlers.author.delete_file import handle_delete_file
+from repo2ree_core.operations.handlers.author.evaluate_dependency_score import (
     handle_evaluate_dependency_score,
 )
-from repo2ree_core.operations.handlers.extract_upload import handle_extract_upload
-from repo2ree_core.operations.handlers.generate_hbom import handle_generate_hbom
-from repo2ree_core.operations.handlers.generate_sbom import handle_generate_sbom
-from repo2ree_core.operations.handlers.generate_script_candidates import (
+from repo2ree_core.operations.handlers.author.extract_upload import handle_extract_upload
+from repo2ree_core.operations.handlers.author.generate_hbom import handle_generate_hbom
+from repo2ree_core.operations.handlers.author.generate_sbom import handle_generate_sbom
+from repo2ree_core.operations.handlers.author.generate_script_candidates import (
     handle_generate_script_candidates,
 )
-from repo2ree_core.operations.handlers.load_ree_bundle import handle_load_ree_bundle
-from repo2ree_core.operations.handlers.materialize_workspace import (
+from repo2ree_core.operations.handlers.author.load_ree_bundle import handle_load_ree_bundle
+from repo2ree_core.operations.handlers.author.materialize_workspace import (
     handle_materialize_workspace,
 )
-from repo2ree_core.operations.handlers.patch_ree_intent import handle_patch_ree_intent
-from repo2ree_core.operations.handlers.prepare_source import handle_prepare_source
-from repo2ree_core.operations.handlers.remove_source import handle_remove_source
-from repo2ree_core.operations.handlers.review_acquire_source import handle_review_acquire_source
-from repo2ree_core.operations.handlers.review_activation_test import handle_review_activation_test
-from repo2ree_core.operations.handlers.review_build_runtime import handle_review_build_runtime
-from repo2ree_core.operations.handlers.review_run_experiment import handle_review_run_experiment
-from repo2ree_core.operations.handlers.run_experiment import handle_run_experiment
-from repo2ree_core.operations.handlers.seal_ree import handle_seal_ree
-from repo2ree_core.operations.handlers.snapshot_upstream import handle_snapshot_upstream
-from repo2ree_core.operations.handlers.source_reset import handle_reset_for_source_change
-from repo2ree_core.operations.handlers.update_source_metadata import (
+from repo2ree_core.operations.handlers.author.patch_ree_intent import handle_patch_ree_intent
+from repo2ree_core.operations.handlers.author.prepare_source import handle_prepare_source
+from repo2ree_core.operations.handlers.author.remove_source import handle_remove_source
+from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
+from repo2ree_core.operations.handlers.author.seal_ree import handle_seal_ree
+from repo2ree_core.operations.handlers.author.snapshot_upstream import handle_snapshot_upstream
+from repo2ree_core.operations.handlers.author.source_reset import handle_reset_for_source_change
+from repo2ree_core.operations.handlers.author.update_source_metadata import (
     handle_update_source_metadata,
 )
-from repo2ree_core.operations.handlers.write_file import handle_write_file
+from repo2ree_core.operations.handlers.author.write_file import handle_write_file
+from repo2ree_core.operations.handlers.review.acquire_source import handle_review_acquire_source
+from repo2ree_core.operations.handlers.review.activation_test import handle_review_activation_test
+from repo2ree_core.operations.handlers.review.build_runtime import handle_review_build_runtime
+from repo2ree_core.operations.handlers.review.run_experiment import handle_review_run_experiment
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,

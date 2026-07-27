@@ -9,7 +9,7 @@ from __future__ import annotations
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.store import prune_author_experiment_receipts
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers.step_runner import (
+from repo2ree_core.operations.steps.author import (
     VersionConflictOutputs,
     open_ree_store,
     patch_ree_intent,

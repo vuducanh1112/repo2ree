@@ -21,7 +21,7 @@ from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt, receipt_envelope
 from repo2ree_core.evidence.receipts.store import record_receipt
 from repo2ree_core.execution.process import CancelCheck, run_workspace_script
-from repo2ree_core.operations.handlers.step_runner import (
+from repo2ree_core.operations.steps.author import (
     collect_step_inputs,
     outcome_log_level,
     read_intent_or_none,

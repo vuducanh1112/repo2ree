@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers.step_runner import open_ree_store
+from repo2ree_core.operations.steps.author import open_ree_store
 from repo2ree_core.ree.layout import SNAPSHOT_FILENAME
 from repo2ree_core.source_repo import directory_swhid, resolved_git_head
 from repo2ree_core.time_utils import utc_now
