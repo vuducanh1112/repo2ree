@@ -2839,6 +2839,157 @@
         }
       }
     },
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/experiments/{experiment_name}:reproduce": {
+      "post": {
+        "tags": [
+          "reviews"
+        ],
+        "summary": "Start Experiment Review",
+        "description": "Reproduce one experiment's result inside an attempt whose runtime came up.\n\nOne experiment per call, addressed by name \u2014 the same shape as the author's\n``experiments/{name}:run``. Reproducing every experiment is the client\nissuing this in sequence rather than a batch route: each run then has its own\nlog, receipt, and cancel point, and a reviewer watching a slow experiment can\nstop that one without discarding the verdicts already settled.\n\nLike the activation route it takes no ``basis`` (the run inherits what the\nworkspace it happens in is worth), and like the author's route it does no\nhost-side resolution preflight: an unknown experiment name surfaces as a\nfailed run carrying the workbench's own message.",
+        "operationId": "startExperimentReview",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          },
+          {
+            "name": "review_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Review Id"
+            }
+          },
+          {
+            "name": "experiment_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Experiment Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Workbench or runtime agent unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rees": {
       "post": {
         "tags": [
@@ -8344,6 +8495,129 @@
         ],
         "title": "ExperimentBinding"
       },
+      "ExperimentComparison": {
+        "properties": {
+          "policy": {
+            "type": "string",
+            "const": "verify-script",
+            "title": "Policy",
+            "default": "verify-script"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "independent",
+              "bundled"
+            ],
+            "title": "Basis"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "identical",
+              "reproduced",
+              "different",
+              "inconclusive"
+            ],
+            "title": "Verdict"
+          },
+          "experiment_name": {
+            "type": "string",
+            "title": "Experiment Name"
+          },
+          "verify_script_path": {
+            "type": "string",
+            "title": "Verify Script Path",
+            "default": ""
+          },
+          "verify_script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Script Digest"
+          },
+          "expected_verify_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Verify Exit Code"
+          },
+          "observed_verify_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Verify Exit Code"
+          },
+          "run_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Exit Code"
+          },
+          "expected_output_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Output Digest"
+          },
+          "observed_output_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Output Digest"
+          },
+          "runtime_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runtime Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "basis",
+          "verdict",
+          "experiment_name"
+        ],
+        "title": "ExperimentComparison",
+        "description": "Whether one experiment's result reproduced, by the author's own criterion.\n\nA comparison rather than an outcome, unlike activation: the author *does*\nhave a recorded baseline here \u2014 their own run's verify verdict and output\ndigest \u2014 so there is something to disagree with. What is compared is the\ncriterion rather than the artifact, which is why ``verify_script_digest`` is\ncarried: ``reproduced`` is worth exactly as much as the script that granted\nit, and a reader who cannot see which script ran cannot audit the verdict.\n\n``basis`` is inherited from the steps before, for the same reason activation\ninherits it: the experiment runs in the workspace the build left behind and\ncannot tell whether the runtime there was rebuilt or unpacked."
+      },
       "ExperimentGateObservation": {
         "properties": {
           "kind": {
@@ -10521,6 +10795,20 @@
                 "type": "null"
               }
             ]
+          },
+          "experiment_receipts": {
+            "items": {
+              "$ref": "#/components/schemas/RunExperimentReceipt"
+            },
+            "type": "array",
+            "title": "Experiment Receipts"
+          },
+          "experiment_comparisons": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentComparison"
+            },
+            "type": "array",
+            "title": "Experiment Comparisons"
           },
           "failure": {
             "anyOf": [

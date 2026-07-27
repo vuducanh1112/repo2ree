@@ -58,10 +58,12 @@ export default defineConfig({
       },
     },
     {
-      // The reviewer side of the lifecycle: one spec per review step, each
-      // reproducing that step in an isolated namespace and comparing what comes
-      // out with the author's recorded evidence. Same lean setup as the e2e
-      // project — it is a regression suite, not a recording — but its own
+      // The reviewer side of the lifecycle: a golden path that loads an REE
+      // this repo authored earlier (examples/rees/) and reproduces all four
+      // steps against its evidence, plus one narrow spec for the case it cannot
+      // reach — re-fetching a live origin, which that REE does not have. Same
+      // lean setup as the e2e project — a regression suite, not a recording —
+      // but its own
       // project so a reviewer-facing change can be validated on its own, and
       // with a larger budget: a review re-runs work the author already did, on
       // top of doing it once to have something to review.

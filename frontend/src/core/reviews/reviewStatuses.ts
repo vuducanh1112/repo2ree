@@ -64,7 +64,76 @@ export function runnableReviewSteps(
 }
 
 /** Steps with a reviewer-side path today; the rest stay disabled in the DAG. */
-const IMPLEMENTED_STEPS = new Set<ReviewStepKey>(["source", "build", "activation"]);
+const IMPLEMENTED_STEPS = new Set<ReviewStepKey>(["source", "build", "activation", "experiments"]);
+
+/**
+ * The status of one experiment within an attempt.
+ *
+ * Separate from the step rollup because the console runs experiments
+ * individually: each needs its own button state, and "the experiments step is
+ * running" says nothing about which experiment the reviewer may start next.
+ */
+export function experimentReviewStatus(
+  attempt: ReviewAttempt | undefined,
+  experimentName: string,
+  statuses: Readonly<Record<ReviewStepKey, ReviewStepStatus>>,
+): ReviewStepStatus {
+  const step = statuses.experiments;
+  if (step === "unavailable") return "unavailable";
+  const comparison = attempt?.experimentComparisons.find(
+    (entry) => entry.experimentName === experimentName,
+  );
+  if (comparison) return comparison.verdict;
+  // No verdict yet: runnable exactly when the step as a whole is, so a
+  // reproduction already in flight does not offer a second start elsewhere.
+  return step === "queued" || step === "running" ? step : "ready";
+}
+
+/**
+ * How many of an attempt's experiments actually reproduced.
+ *
+ * Deliberately not "how many have a verdict": an experiment that came back
+ * `different` or `inconclusive` has settled without reproducing anything, and
+ * counting it toward a reproduced tally would report the review's own findings
+ * as successes.
+ */
+export function reproducedExperimentCount(attempt: ReviewAttempt | undefined): number {
+  return (attempt?.experimentComparisons ?? []).filter(
+    (entry) => entry.verdict === "identical" || entry.verdict === "reproduced",
+  ).length;
+}
+
+/** Experiments with no verdict in this attempt yet, in declared order. */
+export function unreproducedExperiments(
+  attempt: ReviewAttempt | undefined,
+  experimentNames: readonly string[],
+): string[] {
+  const settled = new Set(
+    (attempt?.experimentComparisons ?? []).map((entry) => entry.experimentName),
+  );
+  return experimentNames.filter((name) => !settled.has(name));
+}
+
+/**
+ * The experiments step's single status, rolled up from its per-experiment
+ * verdicts — worst first, because a reviewer scanning the graph needs to see
+ * that *something* did not reproduce without opening the list. Ties to the
+ * weakest claim: `inconclusive` outranks `reproduced` so an experiment with no
+ * criterion cannot hide behind its siblings' passes.
+ */
+const EXPERIMENT_ROLLUP: readonly ReviewStepStatus[] = [
+  "different",
+  "inconclusive",
+  "reproduced",
+  "identical",
+];
+
+function experimentsRollup(attempt: ReviewAttempt): ReviewStepStatus | undefined {
+  const verdicts = new Set<ReviewStepStatus>(
+    attempt.experimentComparisons.map((entry) => entry.verdict),
+  );
+  return EXPERIMENT_ROLLUP.find((verdict) => verdicts.has(verdict));
+}
 
 /**
  * Statuses a dependent step may build on.
@@ -103,6 +172,7 @@ function verdict(attempt: ReviewAttempt, key: ReviewStepKey): ReviewStepStatus |
     if (!outcome) return undefined;
     return outcome.verdict === "passed" ? "succeeded" : "uninhabitable";
   }
+  if (key === "experiments") return experimentsRollup(attempt);
   return undefined;
 }
 

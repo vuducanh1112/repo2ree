@@ -8,14 +8,19 @@ import pytest
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.envelope.handlers import review_acquire_source as handler
+from repo2ree_core.receipts import RunExperimentReceipt
 from repo2ree_core.reviews import (
     BuildComparison,
+    ExperimentComparison,
     ReviewRecord,
     SourceComparison,
     attempt_basis,
+    compare_experiment_results,
     compare_source_swhids,
+    experiment_comparison,
     load_reviews,
     new_review_record,
+    with_experiment,
 )
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.storage.layout import ReeLayout
@@ -164,3 +169,115 @@ def test_an_attempt_that_has_settled_nothing_has_no_basis_to_inherit() -> None:
     """None rather than a default: a step that would have to inherit this has
     no evidence to stand on, and assuming the strong form would invent some."""
     assert attempt_basis(_attempt_with()) is None
+
+
+# ================================================
+# What settles an experiment's result
+# ================================================
+
+
+def _compare_experiment(**overrides: object) -> ExperimentComparison:
+    kwargs: dict[str, object] = {
+        "experiment_name": "headline",
+        "basis": "independent",
+        "verify_script_path": "ree-scripts/experiments/headline.verify.sh",
+        "verify_script_digest": "sha256:criterion",
+        "expected_verify_exit_code": 0,
+        "observed_verify_exit_code": 0,
+        "run_exit_code": 0,
+    }
+    kwargs.update(overrides)
+    return compare_experiment_results(**kwargs)  # type: ignore[arg-type]
+
+
+def test_a_passing_verify_script_reproduces_a_result_whatever_the_bytes_say() -> None:
+    """The whole point of judging by criterion rather than by output: a run that
+    stamps a timestamp differs byte for byte on every honest reproduction."""
+    comparison = _compare_experiment(
+        expected_output_digest="sha256:author-bytes",
+        observed_output_digest="sha256:reviewer-bytes",
+    )
+
+    assert comparison.verdict == "reproduced"
+
+
+def test_matching_outputs_earn_the_stronger_verdict() -> None:
+    comparison = _compare_experiment(
+        expected_output_digest="sha256:same",
+        observed_output_digest="sha256:same",
+    )
+
+    assert comparison.verdict == "identical"
+
+
+def test_a_rejected_result_is_different() -> None:
+    assert _compare_experiment(observed_verify_exit_code=1).verdict == "different"
+
+
+def test_a_run_whose_verify_never_ran_is_different_rather_than_inconclusive() -> None:
+    """The run died before its results could be judged. That is a failure to
+    reproduce, not an absence of criterion."""
+    comparison = _compare_experiment(observed_verify_exit_code=None, run_exit_code=9)
+
+    assert comparison.verdict == "different"
+
+
+def test_an_experiment_with_no_criterion_is_never_a_pass() -> None:
+    """Without a verify script the only remaining fact is that the run script
+    exited 0, which says nothing about the result it wrote."""
+    comparison = _compare_experiment(verify_script_path="", verify_script_digest=None)
+
+    assert comparison.verdict == "inconclusive"
+
+
+def test_an_absent_author_baseline_is_not_agreement() -> None:
+    """The same rule the build step applies to a missing author SBOM."""
+    comparison = _compare_experiment(expected_verify_exit_code=None)
+
+    assert comparison.verdict == "inconclusive"
+
+
+def test_an_author_whose_own_verify_failed_is_still_a_baseline() -> None:
+    """A recorded nonzero verify is a claim — an odd one, but the reviewer's
+    matching run is not thereby a reproduction of a *correct* result."""
+    comparison = _compare_experiment(expected_verify_exit_code=1, observed_verify_exit_code=1)
+
+    assert comparison.verdict == "different"
+
+
+# ================================================
+# Per-experiment evidence on the record
+# ================================================
+
+
+def _experiment_receipt(name: str) -> RunExperimentReceipt:
+    return RunExperimentReceipt(
+        run_id=f"run-{name}",
+        started_at="2026-07-24T10:00:00Z",
+        finished_at="2026-07-24T10:00:01Z",
+        duration_ms=1000,
+        recorded_at="2026-07-24T10:00:01Z",
+        status="succeeded",
+        experiment_name=name,
+    )
+
+
+def test_experiments_are_keyed_by_name_so_a_re_run_replaces_only_itself() -> None:
+    record = new_review_record("review-exp", at="2026-07-24T10:00:00Z")
+    record = with_experiment(record, _experiment_receipt("a"), _compare_experiment(experiment_name="a"))
+    record = with_experiment(record, _experiment_receipt("b"), _compare_experiment(experiment_name="b"))
+    record = with_experiment(
+        record,
+        _experiment_receipt("a"),
+        _compare_experiment(experiment_name="a", observed_verify_exit_code=1),
+    )
+
+    assert [entry.experiment_name for entry in record.experiment_comparisons] == ["a", "b"]
+    assert experiment_comparison(record, "a").verdict == "different"  # type: ignore[union-attr]
+    assert experiment_comparison(record, "b").verdict == "reproduced"  # type: ignore[union-attr]
+
+
+def test_an_experiment_that_never_ran_has_no_comparison() -> None:
+    record = new_review_record("review-exp", at="2026-07-24T10:00:00Z")
+
+    assert experiment_comparison(record, "never-run") is None

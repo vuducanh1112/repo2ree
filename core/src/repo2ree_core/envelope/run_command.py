@@ -25,6 +25,7 @@ from repo2ree_core.envelope.handlers.remove_source import handle_remove_source
 from repo2ree_core.envelope.handlers.review_acquire_source import handle_review_acquire_source
 from repo2ree_core.envelope.handlers.review_activation_test import handle_review_activation_test
 from repo2ree_core.envelope.handlers.review_build_runtime import handle_review_build_runtime
+from repo2ree_core.envelope.handlers.review_run_experiment import handle_review_run_experiment
 from repo2ree_core.envelope.handlers.run_experiment import handle_run_experiment
 from repo2ree_core.envelope.handlers.seal_ree import handle_seal_ree
 from repo2ree_core.envelope.handlers.snapshot_upstream import handle_snapshot_upstream
@@ -54,6 +55,7 @@ from repo2ree_protocol.command import (
     ReviewAcquireSourceCommand,
     ReviewActivationTestCommand,
     ReviewBuildRuntimeCommand,
+    ReviewRunExperimentCommand,
     RunExperimentCommand,
     SealReeCommand,
     SnapshotUpstreamCommand,
@@ -113,6 +115,8 @@ def _dispatch(
         return handle_review_build_runtime(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ReviewActivationTestCommand):
         return handle_review_activation_test(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, ReviewRunExperimentCommand):
+        return handle_review_run_experiment(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, SnapshotUpstreamCommand):
         return handle_snapshot_upstream(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, MaterializeWorkspaceCommand):

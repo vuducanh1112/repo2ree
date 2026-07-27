@@ -12,10 +12,12 @@ import {
 // the comparison is deterministic even though HEAD moves.
 const GIT_ORIGIN_URL = "https://github.com/vuducanh1112/repo2ree.git";
 
-// The source step of the review lifecycle: reproduce the author's acquisition in
-// an isolated namespace and compare the identity that comes out. Build has its
-// own spec (build.spec.ts); the siblings still without a reviewer path stay
-// disabled, which this spec pins.
+// The one thing the golden path (lifecycle.spec.ts) structurally cannot cover:
+// re-fetching a *live origin*. Its REE was acquired by upload, so it records a
+// SWHID but no URL, and the strongest source verdict available there rests on
+// the snapshot the bundle carries. Here the origin is real and gets fetched
+// again, which is the only way the independent basis of this step is exercised.
+// Cheap by comparison — no runtime is ever built.
 test.describe("Review source", () => {
   test("source reproduction re-fetches the pinned origin and reports identical", async ({
     page,
@@ -37,8 +39,9 @@ test.describe("Review source", () => {
 
     // The attempt is persisted evidence, identified in the console header.
     await expect(review.getByText(/review-[0-9a-f]+ · source identical/)).toBeVisible();
-    // A settled source unlocks build — and nothing beyond it, since activation
-    // and experiments have no reviewer path yet.
+    // A settled source unlocks build and nothing beyond it: each later step
+    // waits on the one before, so a certified runtime is still owed before
+    // anything can be run inside it.
     await expect(review.getByRole("button", { name: "Reproduce Build" })).toBeEnabled();
     await expect(review.getByRole("button", { name: "Reproduce Test Activation" })).toBeDisabled();
     await expect(review.getByRole("button", { name: "Reproduce Experiments" })).toBeDisabled();

@@ -51,6 +51,8 @@ export const endpoints = {
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/build:reproduce`,
   reeActivationReview: (reeId: string, reviewId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/activation:reproduce`,
+  reeExperimentReview: (reeId: string, reviewId: string, experimentName: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/experiments/${encodeURIComponent(experimentName)}:reproduce`,
   reeRuns: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs`,
   reeRun: (reeId: string, runId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs/${encodeURIComponent(runId)}`,

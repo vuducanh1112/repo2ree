@@ -166,6 +166,23 @@ export class ReeApi {
    * basis, unlike the two steps before it: activation inherits what the
    * attempt's evidence is worth rather than choosing.
    */
+  /**
+   * Reproduce one experiment's result inside an attempt whose runtime came up.
+   * One name per call, like the author's own experiment route: reproducing the
+   * whole set is this called in sequence, so each run keeps its own log,
+   * receipt, and cancel point.
+   */
+  async startExperimentReview(
+    reeId: ReeId | string,
+    reviewId: string,
+    experimentName: string,
+  ): Promise<RunSummary> {
+    return this.client.request<RunSummary>(
+      endpoints.reeExperimentReview(reeId, reviewId, experimentName),
+      { method: "POST", body: JSON.stringify({}) },
+    );
+  }
+
   async startActivationReview(reeId: ReeId | string, reviewId: string): Promise<RunSummary> {
     return this.client.request<RunSummary>(endpoints.reeActivationReview(reeId, reviewId), {
       method: "POST",

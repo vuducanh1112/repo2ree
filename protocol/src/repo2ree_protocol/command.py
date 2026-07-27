@@ -125,6 +125,32 @@ class ReviewActivationTestCommand(BaseModel):
     args: ReviewActivationTestArgs
 
 
+class ReviewRunExperimentArgs(BaseModel):
+    """Reproduce one named experiment inside an attempt whose runtime came up.
+
+    One experiment per command, mirroring the author's ``run_experiment``: each
+    reproduction gets its own run, its own log, and its own receipt, and a
+    reviewer who cares about one experiment should not have to sit through the
+    others. Running them all is the caller issuing this command in sequence.
+
+    No ``basis``, for the same reason activation takes none: the experiment runs
+    in the workspace the build left behind and inherits what that evidence is
+    worth.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    review_id: str
+    experiment_name: str
+
+
+class ReviewRunExperimentCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["review_run_experiment"] = "review_run_experiment"
+    args: ReviewRunExperimentArgs
+
+
 class SnapshotUpstreamArgs(BaseModel):
     """No args — operates on /ree/upstream → /ree/snapshot.tar.gz."""
 
@@ -437,6 +463,7 @@ Command = Annotated[
     | ReviewAcquireSourceCommand
     | ReviewBuildRuntimeCommand
     | ReviewActivationTestCommand
+    | ReviewRunExperimentCommand
     | SnapshotUpstreamCommand
     | MaterializeWorkspaceCommand
     | UpdateSourceMetadataCommand

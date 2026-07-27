@@ -40,6 +40,15 @@ baseline has no independently acquirable origin — the honest verdict for an
 upload-acquired source, and the reason a review fixture with a URL origin is
 still worth adding.
 
+It is the baseline the reviewer suite reviews
+(`frontend/tests/e2e/review/lifecycle.spec.ts`). That is what its two omissions
+buy: with no runtime artifact the build step has to genuinely rebuild from the
+author's recipe, and unsealed means the review runs against an ordinary REE
+rather than a frozen one. Because its receipts come from a real earlier run,
+they also exercise evidence the current code did not write — one of them
+predates the `verify_exit_code` field, and the experiment review has to read the
+author's claim out of `status` instead.
+
 ## `code-ocean/`
 
 Downloaded third-party capsules, fetched on demand and gitignored (they are

@@ -389,6 +389,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/experiments/{experiment_name}:reproduce": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Experiment Review
+         * @description Reproduce one experiment's result inside an attempt whose runtime came up.
+         *
+         *     One experiment per call, addressed by name — the same shape as the author's
+         *     ``experiments/{name}:run``. Reproducing every experiment is the client
+         *     issuing this in sequence rather than a batch route: each run then has its own
+         *     log, receipt, and cancel point, and a reviewer watching a slow experiment can
+         *     stop that one without discarding the verdicts already settled.
+         *
+         *     Like the activation route it takes no ``basis`` (the run inherits what the
+         *     workspace it happens in is worth), and like the author's route it does no
+         *     host-side resolution preflight: an unknown experiment name surfaces as a
+         *     failed run carrying the workbench's own message.
+         */
+        post: operations["startExperimentReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rees": {
         parameters: {
             query?: never;
@@ -1840,6 +1871,60 @@ export interface components {
             output_paths?: string[];
         };
         /**
+         * ExperimentComparison
+         * @description Whether one experiment's result reproduced, by the author's own criterion.
+         *
+         *     A comparison rather than an outcome, unlike activation: the author *does*
+         *     have a recorded baseline here — their own run's verify verdict and output
+         *     digest — so there is something to disagree with. What is compared is the
+         *     criterion rather than the artifact, which is why ``verify_script_digest`` is
+         *     carried: ``reproduced`` is worth exactly as much as the script that granted
+         *     it, and a reader who cannot see which script ran cannot audit the verdict.
+         *
+         *     ``basis`` is inherited from the steps before, for the same reason activation
+         *     inherits it: the experiment runs in the workspace the build left behind and
+         *     cannot tell whether the runtime there was rebuilt or unpacked.
+         */
+        ExperimentComparison: {
+            /**
+             * Policy
+             * @default verify-script
+             * @constant
+             */
+            policy: "verify-script";
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "independent" | "bundled";
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "identical" | "reproduced" | "different" | "inconclusive";
+            /** Experiment Name */
+            experiment_name: string;
+            /**
+             * Verify Script Path
+             * @default
+             */
+            verify_script_path: string;
+            /** Verify Script Digest */
+            verify_script_digest?: string | null;
+            /** Expected Verify Exit Code */
+            expected_verify_exit_code?: number | null;
+            /** Observed Verify Exit Code */
+            observed_verify_exit_code?: number | null;
+            /** Run Exit Code */
+            run_exit_code?: number | null;
+            /** Expected Output Digest */
+            expected_output_digest?: string | null;
+            /** Observed Output Digest */
+            observed_output_digest?: string | null;
+            /** Runtime Digest */
+            runtime_digest?: string | null;
+        };
+        /**
          * ExperimentGateObservation
          * @description The experiment-declaration gate's outcome, for the decision trace.
          */
@@ -2839,6 +2924,10 @@ export interface components {
             build_comparison?: components["schemas"]["BuildComparison"] | null;
             activation_receipt?: components["schemas"]["ActivationTestReceipt"] | null;
             activation_outcome?: components["schemas"]["ActivationOutcome"] | null;
+            /** Experiment Receipts */
+            experiment_receipts?: components["schemas"]["RunExperimentReceipt"][];
+            /** Experiment Comparisons */
+            experiment_comparisons?: components["schemas"]["ExperimentComparison"][];
             /** Failure */
             failure?: string | null;
         };
@@ -5860,6 +5949,115 @@ export interface operations {
             path: {
                 ree_id: string;
                 review_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRunPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench or runtime agent unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startExperimentReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+                review_id: string;
+                experiment_name: string;
             };
             cookie?: never;
         };

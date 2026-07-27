@@ -15,6 +15,7 @@ export type ReviewStepStatus =
   | "succeeded"
   | "identical"
   | "equivalent"
+  | "reproduced"
   | "different"
   | "inconclusive"
   | "uninhabitable"

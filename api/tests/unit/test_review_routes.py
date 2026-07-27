@@ -11,6 +11,7 @@ from repo2ree_protocol.command import (
     ReviewAcquireSourceCommand,
     ReviewActivationTestCommand,
     ReviewBuildRuntimeCommand,
+    ReviewRunExperimentCommand,
 )
 from repo2ree_supervisor import WorkbenchHandle
 
@@ -171,6 +172,60 @@ def test_activation_takes_no_basis_at_the_edge(
 
     response = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/activation:reproduce",
+        json={"basis": "independent"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_start_experiment_review_names_both_the_attempt_and_the_experiment(
+    client: TestClient,
+    online_ree: WorkbenchHandle,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    def start(ree_id: str, **kwargs: Any) -> dict[str, Any]:
+        captured.update({"ree_id": ree_id, **kwargs})
+        return {
+            "run_id": "review-experiment-run",
+            "ree_id": ree_id,
+            "operation": "experiment",
+            "status": "queued",
+            "created_at": "2026-07-24T10:00:00Z",
+            "started_at": None,
+            "finished_at": None,
+            "outputs": {},
+            "failure": None,
+        }
+
+    monkeypatch.setattr(review_routes, "start_single_command_run", start)
+
+    response = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/experiments/headline result:reproduce",
+        json={},
+    )
+
+    assert response.status_code == 200
+    assert captured["operation"] == "experiment"
+    command = captured["command"]
+    assert isinstance(command, ReviewRunExperimentCommand)
+    assert command.args.review_id == "review-one"
+    # Names may carry spaces, so the route has to survive a percent-encoded one.
+    assert command.args.experiment_name == "headline result"
+
+
+def test_experiment_review_takes_no_basis_at_the_edge(
+    client: TestClient,
+    online_ree: WorkbenchHandle,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Like activation, the run inherits what the workspace it happens in is
+    worth rather than choosing a basis of its own."""
+    monkeypatch.setattr(review_routes, "start_single_command_run", lambda *a, **k: {})
+
+    response = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/experiments/one:reproduce",
         json={"basis": "independent"},
     )
 

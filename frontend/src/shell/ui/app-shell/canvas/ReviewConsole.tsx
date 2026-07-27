@@ -5,17 +5,20 @@ import {
   reviewStepStatuses,
   runnableReviewSteps,
   selectReviewAttempt,
+  unreproducedExperiments,
 } from "@core/reviews/reviewStatuses";
 import {
   useStartActivationReviewMutation,
   useStartBuildReviewMutation,
+  useStartExperimentReviewMutation,
   useStartSourceReviewMutation,
 } from "@shell/data/reviews/mutations";
 import { useReviewsQuery } from "@shell/data/reviews/queries";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Ic } from "../../shared/components/Icon";
 import { C, F } from "../../theme/theme";
 import { HudConsole } from "./HudConsole";
+import { ExperimentReviewPanel } from "./review/ExperimentReviewPanel";
 import { ReviewDag } from "./review/ReviewDag";
 
 interface ReviewConsoleProps {
@@ -34,6 +37,13 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
   const startSourceReview = useStartSourceReviewMutation();
   const startBuildReview = useStartBuildReviewMutation();
   const startActivationReview = useStartActivationReviewMutation();
+  const startExperimentReview = useStartExperimentReviewMutation();
+  // The names a "run all" sweep still has to get through, and the one it has
+  // already dispatched. Experiments share a workspace, so they must run one at
+  // a time; the sweep advances on evidence (a verdict appearing) rather than on
+  // the POST resolving, which only means the run was accepted.
+  const [sweep, setSweep] = useState<readonly string[] | undefined>();
+  const [dispatched, setDispatched] = useState<string | undefined>();
   // The attempt this console opened, named by the run that opened it. Preferred
   // over the newest listed attempt because the list lags: the workbench writes
   // the record a moment after the POST returns, and every step dispatched in
@@ -47,15 +57,61 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
       ? "build"
       : startActivationReview.isPending
         ? "activation"
-        : // An attempt opened but not yet readable is the source step still
-          // going, which also keeps every later step disabled until it lands.
-          pending
-          ? "source"
-          : undefined;
+        : startExperimentReview.isPending
+          ? "experiments"
+          : // An attempt opened but not yet readable is the source step still
+            // going, which also keeps every later step disabled until it lands.
+            pending
+            ? "source"
+            : undefined;
   const statuses = reviewStepStatuses(attempt, { pendingStep });
   const enabledSteps = runnableReviewSteps(statuses);
   const complete = settledReviewStepCount(statuses);
   const running = pendingStep != null || attempt?.status === "running";
+
+  const experimentNames = experiments
+    .map((experiment) => experiment.name.trim())
+    .filter((name) => name.length > 0);
+
+  const runExperiment = (experimentName: string) => {
+    if (!attempt || !enabledSteps.has("experiments")) return;
+    startExperimentReview.mutate({ reviewId: attempt.reviewId, experimentName });
+  };
+
+  // A sweep covers what has no verdict yet rather than everything declared:
+  // re-running a settled experiment is a deliberate act, and the per-experiment
+  // "Re-run" is where it belongs.
+  const remaining = unreproducedExperiments(attempt, experimentNames);
+  const runAllExperiments = () => {
+    if (!attempt || !enabledSteps.has("experiments") || remaining.length === 0) return;
+    setSweep(remaining);
+  };
+
+  // Drive a sweep one experiment at a time. The next one goes out only once the
+  // previous has a verdict on the record, because the POST resolving means the
+  // run was accepted rather than finished — and two experiments running at once
+  // would write over each other's outputs in the shared workspace.
+  useEffect(() => {
+    if (!sweep || !attempt) return;
+    const next = sweep.find(
+      (name) => !attempt.experimentComparisons.some((entry) => entry.experimentName === name),
+    );
+    if (next === undefined) {
+      setSweep(undefined);
+      setDispatched(undefined);
+      return;
+    }
+    // A step that failed produces no verdict, so waiting for one would stall the
+    // sweep in silence. Stop instead and leave the failure on screen.
+    if (attempt.status === "failed") {
+      setSweep(undefined);
+      setDispatched(undefined);
+      return;
+    }
+    if (next === dispatched || startExperimentReview.isPending) return;
+    setDispatched(next);
+    startExperimentReview.mutate({ reviewId: attempt.reviewId, experimentName: next });
+  }, [sweep, attempt, dispatched, startExperimentReview]);
 
   const invokeStep = (step: ReviewStepKey) => {
     if (!enabledSteps.has(step)) return;
@@ -67,12 +123,16 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
     // the attempt's workspace and inherits what that evidence is worth.
     if (step === "activation" && attempt)
       startActivationReview.mutate({ reviewId: attempt.reviewId });
+    // The graph node stands for the whole set, so it sweeps; one experiment at
+    // a time is the panel's job.
+    if (step === "experiments") runAllExperiments();
   };
 
   const error =
     startSourceReview.error ??
     startBuildReview.error ??
     startActivationReview.error ??
+    startExperimentReview.error ??
     reviews.error;
 
   return (
@@ -112,41 +172,15 @@ export function ReviewConsole({ experiments }: ReviewConsoleProps) {
       {attempt?.buildComparison ? <BuildVerdictDetail attempt={attempt} /> : null}
       {attempt?.activationOutcome ? <ActivationOutcomeDetail attempt={attempt} /> : null}
 
-      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-        <button
-          type="button"
-          disabled
-          style={{
-            flex: 1,
-            minHeight: 36,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-            border: `1px solid ${C.border}`,
-            borderRadius: 9,
-            background: C.surfaceAlt,
-            color: C.textMuted,
-            cursor: "not-allowed",
-            fontSize: 12,
-            fontWeight: 750,
-          }}
-        >
-          {Ic.play(13)}
-          <span>Lifecycle coming next</span>
-        </button>
-        <span
-          style={{
-            maxWidth: 205,
-            color: C.textMuted,
-            fontFamily: F.mono,
-            fontSize: 9,
-            lineHeight: 1.35,
-          }}
-        >
-          Source, build and activation are enabled. Experiments remain the next isolated step.
-        </span>
-      </div>
+      <ExperimentReviewPanel
+        attempt={attempt}
+        experimentNames={experimentNames}
+        statuses={statuses}
+        sweeping={sweep != null}
+        canRun={enabledSteps.has("experiments") && attempt != null}
+        onRun={runExperiment}
+        onRunAll={runAllExperiments}
+      />
 
       {error ? (
         <div
@@ -174,7 +208,9 @@ function attemptSubtitle(
 ): string {
   const build = attempt.buildComparison ? ` · build ${statuses.build}` : "";
   const activation = attempt.activationOutcome ? ` · activation ${statuses.activation}` : "";
-  return `${attempt.reviewId} · source ${statuses.source}${build}${activation}`;
+  const experiments =
+    attempt.experimentComparisons.length > 0 ? ` · results ${statuses.experiments}` : "";
+  return `${attempt.reviewId} · source ${statuses.source}${build}${activation}${experiments}`;
 }
 
 const BASIS_OPTIONS: { value: ReviewBasisRequest; label: string; hint: string }[] = [

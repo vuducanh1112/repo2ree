@@ -38,6 +38,9 @@ export type PackageDeltaWire = Schema<"PackageDeltaRecord">;
 /** Whether the runtime a review attempt certified is inhabitable. */
 export type ActivationOutcomeWire = Schema<"ActivationOutcome">;
 
+/** Whether one experiment's result reproduced, by the author's own verify script. */
+export type ExperimentComparisonWire = Schema<"ExperimentComparison">;
+
 export type ReviewSetWire = Schema<"ReviewSet">;
 
 export type CreateSourceReviewPayload = Schema<"CreateSourceReviewPayload">;

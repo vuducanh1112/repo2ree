@@ -358,6 +358,19 @@ class ReviewLayout:
     def comparison(self, step: str) -> Path:
         return ReeLayout._resolve_under(self.comparisons, f"{step}.json")
 
+    def experiment_receipt(self, experiment_slug: str) -> Path:
+        """Selected receipt for one reproduced experiment, keyed by its slug.
+
+        The experiments step is the one step with more than one subject, so its
+        evidence needs a directory where the others need a file. Mirrors the
+        author side's ``receipts/author/experiments/`` for the same reason.
+        """
+        return ReeLayout._resolve_under(self.receipts, PurePosixPath("experiments") / f"{experiment_slug}.json")
+
+    def experiment_comparison(self, experiment_slug: str) -> Path:
+        """This attempt's verdict for one experiment, keyed by its slug."""
+        return ReeLayout._resolve_under(self.comparisons, PurePosixPath("experiments") / f"{experiment_slug}.json")
+
 
 # ================================================
 # Validation and Normalization

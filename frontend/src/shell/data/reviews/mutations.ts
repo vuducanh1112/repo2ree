@@ -70,7 +70,26 @@ export function useStartActivationReviewMutation() {
   });
 }
 
-/** Both review mutations move the same two lists: the attempts and the runs. */
+/**
+ * Reproduce one experiment's result inside the attempt. Named per call rather
+ * than per hook: the console runs one experiment at a time, and "run all" is
+ * this awaited in sequence — which keeps each experiment's own run, log, and
+ * verdict separate, and lets a reviewer stop a slow one without discarding what
+ * already settled.
+ */
+export function useStartExperimentReviewMutation() {
+  const runtime = useApiRuntime();
+  const reeId = resolveReeId(runtime);
+  const invalidate = useReviewInvalidation(reeId);
+
+  return useMutation({
+    mutationFn: ({ reviewId, experimentName }: { reviewId: string; experimentName: string }) =>
+      runtime.reeApi.startExperimentReview(reeId, reviewId, experimentName),
+    onSuccess: invalidate,
+  });
+}
+
+/** Every review mutation moves the same two lists: the attempts and the runs. */
 function useReviewInvalidation(reeId: string) {
   const queryClient = useQueryClient();
   return async () => {

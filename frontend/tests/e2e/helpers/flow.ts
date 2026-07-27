@@ -29,6 +29,20 @@ export function pythonHelloWorld(): string {
 }
 
 /**
+ * Absolute path to a complete, already-authored REE, packaged the way
+ * `ree-archive` downloads one.
+ *
+ * The reviewer suite's baseline: it carries real author evidence — the frozen
+ * snapshot, the overlay scripts, the SBOM, and the author receipts for build,
+ * SBOM, activation and the experiment — so a review has something to reproduce
+ * *against* without the suite authoring it first. See `examples/README.md` for
+ * what it deliberately omits (the seal stamps, and the 327 MB runtime tarball).
+ */
+export function authoredRee(): string {
+  return path.join(EXAMPLES_DIR, "rees/ree-hello-world.zip");
+}
+
+/**
  * Absolute path to the pip-based Python hello-world source archive (no
  * Dockerfile — the workbench itself is the Python runtime). Packed on demand
  * from the checked-in sources into the gitignored test-artifacts dir, so no
@@ -246,6 +260,31 @@ export async function provisionWorkbench(page: Page, options?: { imageRef?: stri
     }),
   ).toBeVisible();
   await stepShot(page, "provision-workbench", "after");
+}
+
+/**
+ * Provision a workbench with an already-authored REE loaded onto it.
+ *
+ * The bundle is chosen during provisioning rather than after it, because the
+ * load runs on the workbench this step creates — so this replaces
+ * {@link provisionWorkbench} rather than following it. What comes back is a lab
+ * holding another author's evidence and nothing of this suite's own, which is
+ * exactly the position a reviewer is in.
+ */
+export async function provisionFromBundle(page: Page, bundlePath: string) {
+  await stepShot(page, "provision-from-bundle", "before");
+  await page.getByLabel("REE bundle").setInputFiles(bundlePath);
+  await expect(page.getByText(/This workbench will be loaded with the uploaded REE/)).toBeVisible();
+  // The control renames itself once a bundle is chosen — provisioning and
+  // loading are one action here, so waiting for "Provision workbench" would
+  // wait for a button this screen no longer has.
+  await page.getByRole("button", { name: /Provision and load REE/i }).click();
+  // Provisioning plus the load itself: bench container start, nested dockerd
+  // boot, doctor probe, then unpacking the bundle's evidence into the REE.
+  await expect(nav(page).getByRole("button", { name: "Source", exact: true })).toBeVisible({
+    timeout: 120000,
+  });
+  await stepShot(page, "provision-from-bundle", "after");
 }
 
 /** Upload a tarball into the workspace and wait for the snapshot to settle. */
@@ -667,6 +706,37 @@ export async function reproduceActivation(page: Page) {
   return reproduceReviewStep(page, "Test Activation", 600000);
 }
 
+/**
+ * Reproduce one named experiment and wait for the verdict its own row settles.
+ *
+ * Addressed by name rather than by clicking the graph node, because the
+ * experiments step has one row per experiment: the node sweeps the whole set,
+ * while a reviewer reproducing a single claim uses its row.
+ *
+ * `REPRODUCED` is the ordinary pass — the author's verify script accepted the
+ * reviewer's results. `IDENTICAL` additionally means the declared outputs came
+ * out byte for byte the same, which most experiments will not manage and none
+ * are required to.
+ */
+export async function reproduceExperiment(
+  page: Page,
+  experimentName: string,
+  timeout = 600000,
+): Promise<string> {
+  const console = reviewConsole(page);
+  const slug = `reproduce-experiment-${experimentName.toLowerCase().replace(/\s+/g, "-")}`;
+  await stepShot(page, slug, "before");
+  const row = console
+    .getByRole("button", { name: `Reproduce experiment ${experimentName}` })
+    .locator("xpath=..");
+  const verdict = row.getByText(/^(IDENTICAL|REPRODUCED|DIFFERENT|INCONCLUSIVE|FAILED)$/);
+  await expect(verdict).toHaveCount(0);
+  await console.getByRole("button", { name: `Reproduce experiment ${experimentName}` }).click();
+  await expect(verdict).toBeVisible({ timeout });
+  await stepShot(page, slug, "after");
+  return (await verdict.textContent()) ?? "";
+}
+
 /** Click one review step and read back the verdict it settles on. */
 async function reproduceReviewStep(page: Page, label: string, timeout: number) {
   const console = reviewConsole(page);
@@ -676,7 +746,7 @@ async function reproduceReviewStep(page: Page, label: string, timeout: number) {
   await expect(step).toBeEnabled();
   await step.click();
   const verdict = step.getByText(
-    /^(IDENTICAL|EQUIVALENT|DIFFERENT|INCONCLUSIVE|COMPLETE|DID NOT ACTIVATE|FAILED)$/,
+    /^(IDENTICAL|EQUIVALENT|REPRODUCED|DIFFERENT|INCONCLUSIVE|COMPLETE|DID NOT ACTIVATE|FAILED)$/,
   );
   // A re-run starts from the badge the previous attempt left on the step, and
   // that stale verdict would satisfy the wait below immediately. Clicking marks

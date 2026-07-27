@@ -2,12 +2,14 @@ import type {
   ReviewActivationOutcome,
   ReviewAttempt,
   ReviewBuildComparison,
+  ReviewExperimentComparison,
   ReviewPackageDelta,
   ReviewStepState,
 } from "@core/reviews/Review";
 import type {
   ActivationOutcomeWire,
   BuildComparisonWire,
+  ExperimentComparisonWire,
   PackageDeltaWire,
   ReviewRecordWire,
   ReviewStepStateWire,
@@ -33,7 +35,24 @@ export function mapReviewRecord(wire: ReviewRecordWire): ReviewAttempt {
     activationOutcome: wire.activation_outcome
       ? mapActivationOutcome(wire.activation_outcome)
       : undefined,
+    experimentComparisons: (wire.experiment_comparisons ?? []).map(mapExperimentComparison),
     failure: wire.failure ?? undefined,
+  };
+}
+
+function mapExperimentComparison(wire: ExperimentComparisonWire): ReviewExperimentComparison {
+  return {
+    basis: wire.basis,
+    verdict: wire.verdict,
+    experimentName: wire.experiment_name,
+    verifyScriptPath: wire.verify_script_path ?? "",
+    verifyScriptDigest: wire.verify_script_digest ?? undefined,
+    expectedVerifyExitCode: wire.expected_verify_exit_code ?? undefined,
+    observedVerifyExitCode: wire.observed_verify_exit_code ?? undefined,
+    runExitCode: wire.run_exit_code ?? undefined,
+    expectedOutputDigest: wire.expected_output_digest ?? undefined,
+    observedOutputDigest: wire.observed_output_digest ?? undefined,
+    runtimeDigest: wire.runtime_digest ?? undefined,
   };
 }
 

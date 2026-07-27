@@ -16,6 +16,8 @@ from repo2ree_protocol.command import (
     ReviewBasis,
     ReviewBuildRuntimeArgs,
     ReviewBuildRuntimeCommand,
+    ReviewRunExperimentArgs,
+    ReviewRunExperimentCommand,
 )
 
 reviews_router = APIRouter(tags=["reviews"])
@@ -161,6 +163,50 @@ def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPaylo
                 request_payload={"review_id": review_id},
                 canceled_message="Activation review canceled",
                 fallback_outputs={"review_id": review_id},
+                idempotency_key=payload.idempotency_key,
+            )
+        )
+    )
+
+
+@reviews_router.post(
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/experiments/{experiment_name}:reproduce",
+    operation_id="startExperimentReview",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
+def start_experiment_review(
+    ree_id: str,
+    review_id: str,
+    experiment_name: str,
+    payload: CreateRunPayload,
+) -> RunSummary:
+    """Reproduce one experiment's result inside an attempt whose runtime came up.
+
+    One experiment per call, addressed by name — the same shape as the author's
+    ``experiments/{name}:run``. Reproducing every experiment is the client
+    issuing this in sequence rather than a batch route: each run then has its own
+    log, receipt, and cancel point, and a reviewer watching a slow experiment can
+    stop that one without discarding the verdicts already settled.
+
+    Like the activation route it takes no ``basis`` (the run inherits what the
+    workspace it happens in is worth), and like the author's route it does no
+    host-side resolution preflight: an unknown experiment name surfaces as a
+    failed run carrying the workbench's own message.
+    """
+    command = ReviewRunExperimentCommand(
+        args=ReviewRunExperimentArgs(review_id=review_id, experiment_name=experiment_name)
+    )
+    return RunSummary.model_validate(
+        run_summary(
+            start_single_command_run(
+                ree_id,
+                operation="experiment",
+                command=command,
+                run_id_prefix="review-experiment",
+                request_payload={"review_id": review_id, "experiment_name": experiment_name},
+                canceled_message="Experiment review canceled",
+                fallback_outputs={"review_id": review_id, "subject_name": experiment_name},
                 idempotency_key=payload.idempotency_key,
             )
         )

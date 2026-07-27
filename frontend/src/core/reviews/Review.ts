@@ -71,6 +71,40 @@ export interface ReviewActivationOutcome {
 
 export type ActivationVerdict = "passed" | "failed";
 
+/**
+ * What one experiment's reproduction settled. `reproduced` is the ordinary
+ * pass: the author's own verify script accepted the reviewer's results.
+ * `identical` adds that the declared outputs came out byte for byte the same —
+ * more than the author claimed, and never required, since timestamps and seeds
+ * land in output files on every honest re-run. `inconclusive` means there was
+ * no criterion to meet: the experiment declares no verify script, or the author
+ * never ran it themselves.
+ */
+export type ExperimentVerdict = "identical" | "reproduced" | "different" | "inconclusive";
+
+/**
+ * Whether one experiment's result reproduced, judged by the author's own verify
+ * script rather than by output bytes.
+ *
+ * `verifyScriptDigest` is not decoration: a `reproduced` verdict is worth
+ * exactly as much as the script that granted it, and those range from a
+ * tolerance check against reference values to `test -f results.csv`. Showing
+ * which criterion ran is what makes the verdict auditable rather than asserted.
+ */
+export interface ReviewExperimentComparison {
+  basis: ReviewEvidenceBasis;
+  verdict: ExperimentVerdict;
+  experimentName: string;
+  verifyScriptPath: string;
+  verifyScriptDigest?: string;
+  expectedVerifyExitCode?: number;
+  observedVerifyExitCode?: number;
+  runExitCode?: number;
+  expectedOutputDigest?: string;
+  observedOutputDigest?: string;
+  runtimeDigest?: string;
+}
+
 /** The lifecycle state of one step within a review attempt. */
 export interface ReviewStepState {
   step: ReviewStepKey;
@@ -87,5 +121,12 @@ export interface ReviewAttempt {
   sourceComparison?: ReviewSourceComparison;
   buildComparison?: ReviewBuildComparison;
   activationOutcome?: ReviewActivationOutcome;
+  /**
+   * One entry per experiment this attempt has reproduced, keyed by name — the
+   * one step with more than one subject, so the one step whose evidence is a
+   * list. Absent names have not been run; the step's own `ReviewStepState` says
+   * only where the lifecycle stands.
+   */
+  experimentComparisons: ReviewExperimentComparison[];
   failure?: string;
 }

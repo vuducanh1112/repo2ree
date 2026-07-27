@@ -11,6 +11,11 @@ const STATUS_META: Record<ReviewStepStatus, { label: string; color: string }> = 
   succeeded: { label: "Complete", color: C.done },
   identical: { label: "Identical", color: C.done },
   equivalent: { label: "Equivalent", color: "#0891b2" },
+  // The ordinary pass for a result: the author's own verify script accepted it.
+  // Distinct from "identical" because matching output bytes are a stronger and
+  // rarer thing, and from "complete" because this is a verdict, not a lifecycle
+  // state.
+  reproduced: { label: "Reproduced", color: C.done },
   different: { label: "Different", color: "#d97706" },
   inconclusive: { label: "Inconclusive", color: C.textMuted },
   // A settled finding, not a breakdown — hence its own label. Coloured like a
