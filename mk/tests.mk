@@ -84,15 +84,16 @@ be-coverage-unit:
 	pytest protocol/tests core/tests/unit api/tests/unit executor/tests agent/tests core/tests/integration \
 		--cov --cov-report=term-missing --cov-report=html:test-artifacts/coverage/unit
 
-# Full suite: the honest number, but the integration tiers skip silently
-# without docker + the executor/tools bundles (build with `make e2e-bundles`).
+# Full suite: build the executor/tools bundles from the current tree first, so
+# the integration tiers cannot accidentally exercise a stale command protocol.
+# Docker-gated tests still skip when Docker itself is unavailable.
 #
 # Two invocations, not one: the api unit and integration tiers must run in
 # separate processes (they collide on OpenTelemetry's set-once tracer provider
 # — the tier conftests enforce this). The first run measures everything bar the
 # api integration tier and writes .coverage fresh; the second appends the api
 # integration tier and reports the combined total.
-be-coverage:
+be-coverage: e2e-bundles
 	pytest protocol/tests core/tests api/tests/unit supervisor/tests executor/tests agent/tests \
 		--cov --cov-report=
 	pytest api/tests/integration \
@@ -104,7 +105,7 @@ be-coverage:
 # tests hit it (use the filter box in the report's index.html to narrow to one
 # test). --show-contexts is kept on this target only, so the plain be-coverage
 # report stays uncluttered.
-be-coverage-context:
+be-coverage-context: e2e-bundles
 	pytest protocol/tests core/tests api/tests/unit supervisor/tests executor/tests agent/tests \
 		--cov --cov-context=test --cov-report=
 	pytest api/tests/integration \

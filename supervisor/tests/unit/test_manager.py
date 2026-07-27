@@ -37,6 +37,9 @@ class FakeAgent:
         self.cancel_run_calls: list[tuple[str, str]] = []
         # Records the agent_id each call was routed to, for placement assertions.
         self.routed_agent_ids: list[str] = []
+        self.fail_init = False
+        self.fail_remove = False
+        self.best_effort_remove_calls: list[str] = []
 
     def resolve_agent(self, agent_id: str) -> str:
         # No registry here; placement resolves to whatever the caller requested.
@@ -55,6 +58,13 @@ class FakeAgent:
 
     def remove(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> None:
         self.routed_agent_ids.append(agent_id)
+        if self.fail_remove:
+            raise RuntimeError("remove failed")
+
+    def remove_best_effort(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> bool:
+        self.routed_agent_ids.append(agent_id)
+        self.best_effort_remove_calls.append(ree_id)
+        return True
 
     def is_running(self, agent_id: str, location: WorkbenchLocation) -> bool:
         return self.running
@@ -62,6 +72,8 @@ class FakeAgent:
     def exec_simple(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 60) -> None:
         self.routed_agent_ids.append(agent_id)
         self.exec_simple_calls.append((location.container_name, argv))
+        if self.fail_init and argv and argv[0] == "init-ree":
+            raise RuntimeError("init failed")
 
     def exec_query(self, agent_id: str, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> bytes:
         self.routed_agent_ids.append(agent_id)
@@ -212,3 +224,27 @@ def test_lookup_returns_none_when_not_running(tmp_path) -> None:
 
     agent.running = False
     assert manager.lookup("ree1") is None
+
+
+def test_provision_compensates_when_initialization_fails(tmp_path) -> None:
+    agent = FakeAgent()
+    agent.fail_init = True
+    manager = _manager(tmp_path, agent)
+
+    with pytest.raises(RuntimeError, match="init failed"):
+        manager.provision("ree1", name="My REE")
+
+    assert agent.best_effort_remove_calls == ["ree1"]
+    assert not manager.is_registered("ree1")
+
+
+def test_teardown_keeps_registry_entry_when_remote_remove_fails(tmp_path) -> None:
+    agent = FakeAgent()
+    manager = _manager(tmp_path, agent)
+    handle = manager.provision("ree1", name="My REE")
+    agent.fail_remove = True
+
+    with pytest.raises(RuntimeError, match="remove failed"):
+        manager.teardown(handle)
+
+    assert manager.is_registered("ree1")

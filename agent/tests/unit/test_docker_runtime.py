@@ -77,7 +77,7 @@ def test_host_socket_mode_reuses_host_daemon_without_dind_volume(monkeypatch: py
 
 def test_teardown_removes_dind_volume_only_in_dind_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     silent_calls: list[tuple[str, ...]] = []
-    monkeypatch.setattr(rt_mod, "_docker_silent", lambda *args: silent_calls.append(args))
+    monkeypatch.setattr(rt_mod, "_docker_remove", lambda *args: silent_calls.append(args))
 
     dind = DockerRuntime()
     dind.remove("ree123", _location("ree123"))
@@ -93,6 +93,17 @@ def test_teardown_removes_dind_volume_only_in_dind_mode(monkeypatch: pytest.Monk
     host.remove("ree456", _location("ree456"))
     assert ("volume", "rm", "repo2ree-ree-ree456") in silent_calls
     assert ("volume", "rm", "repo2ree-dind-ree456") not in silent_calls
+
+
+def test_strict_remove_rejects_unacknowledged_docker_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 1, stdout="", stderr="daemon unavailable"),
+    )
+
+    with pytest.raises(RuntimeError, match="daemon unavailable"):
+        rt_mod._docker_remove("rm", "-f", "workbench")
 
 
 def test_provision_falls_back_to_cached_image_when_pull_fails(monkeypatch: pytest.MonkeyPatch) -> None:

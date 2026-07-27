@@ -212,6 +212,26 @@ class ExtractUploadCommand(BaseModel):
     args: ExtractUploadArgs
 
 
+class PrepareSourceArgs(BaseModel):
+    """Atomically prepare a REE source from an origin or staged upload."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["download", "upload"]
+    origin_url: str = ""
+    source_type: Literal["git", "tarball", "zip"] | None = None
+    revision: str = ""
+    upload_token: str = ""
+    archive_name: str = ""
+
+
+class PrepareSourceCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["prepare_source"] = "prepare_source"
+    args: PrepareSourceArgs
+
+
 class LoadReeBundleArgs(BaseModel):
     """Restore an uploaded REE bundle from /ree/upload-staging/<upload_token>.bin.
 
@@ -277,6 +297,9 @@ class PatchReeIntentArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     patch: dict[str, Any]
+    # Checked in the execution plane immediately before the mutation. Keeping
+    # this in the command makes compare-and-write atomic under per-REE dispatch.
+    expected_version: str = ""
 
 
 class PatchReeIntentCommand(BaseModel):
@@ -477,6 +500,7 @@ Command = Annotated[
     | MaterializeWorkspaceCommand
     | UpdateSourceMetadataCommand
     | ExtractUploadCommand
+    | PrepareSourceCommand
     | LoadReeBundleCommand
     | WriteFileCommand
     | DeleteFileCommand

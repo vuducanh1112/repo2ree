@@ -79,6 +79,8 @@ def new_upload_token(
     file_name: str | None = None,
     expected_size: int | None = None,
     content_type: str | None = None,
+    ree_id: str = "",
+    purpose: str = "",
 ) -> dict[str, str]:
     """Allocate an upload token and its expiry, minting its (empty) staged file.
 
@@ -97,6 +99,8 @@ def new_upload_token(
                 "file_name": file_name,
                 "expected_size": expected_size,
                 "content_type": content_type,
+                "ree_id": ree_id,
+                "purpose": purpose,
             }
         ),
         encoding="utf-8",
@@ -104,6 +108,21 @@ def new_upload_token(
     ttl = timedelta(seconds=service_settings.UPLOAD_TTL_SECONDS)
     expires_at = iso_utc(datetime.now(UTC) + ttl)
     return {"upload_token": token, "expires_at": expires_at}
+
+
+def validate_upload_owner(token: str, *, ree_id: str, purpose: str, file_name: str | None = None) -> None:
+    """Require a token to belong to the addressed REE and upload workflow."""
+    path = staged_upload_path(token)
+    if not path.exists():
+        raise UnknownUploadTokenError(f"unknown or expired upload token {token!r}")
+    metadata = _read_upload_metadata(token)
+    if metadata.get("ree_id") != ree_id or metadata.get("purpose") != purpose:
+        raise UnknownUploadTokenError(f"upload token {token!r} does not belong to this REE or upload type")
+    expected_name = metadata.get("file_name")
+    if file_name is not None and expected_name and expected_name != file_name:
+        raise UploadSizeMismatchError(
+            f"upload filename {file_name!r} does not match initialized filename {expected_name!r}"
+        )
 
 
 async def stage_upload_stream(token: str, chunks: AsyncIterable[bytes]) -> Path:

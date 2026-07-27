@@ -44,9 +44,14 @@ def _wait_for_run(client: TestClient, ree_id: str, run_id: str) -> str:
 
 def _start_failing_upload_run(client: TestClient, ree_id: str) -> dict[str, Any]:
     """Complete an upload whose staged bytes were never PUT: the run fails for real."""
+    initialized = client.post(
+        f"/api/v1/rees/{ree_id}/source:upload-init",
+        json={"file_name": "project.zip", "size": 1, "content_type": "application/zip"},
+    )
+    assert initialized.status_code == 200, initialized.text
     resp = client.post(
         f"/api/v1/rees/{ree_id}/source:upload-complete",
-        json={"upload_token": "never-staged", "archive_name": "project.zip"},
+        json={"upload_token": initialized.json()["upload_token"], "archive_name": "project.zip"},
     )
     assert resp.status_code == 200, resp.text
     payload: dict[str, Any] = resp.json()
@@ -88,6 +93,29 @@ def test_failed_run_summary_shape(client: TestClient, online_ree: WorkbenchHandl
 def test_run_endpoints_for_unknown_ree_are_404(client: TestClient) -> None:
     assert client.get("/api/v1/rees/nope/runs").status_code == 404
     assert client.get("/api/v1/rees/nope/runs/run-1").status_code == 404
+
+
+def test_historical_runs_do_not_authorize_new_work_after_ree_removal(
+    client: TestClient,
+    online_ree: WorkbenchHandle,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    run = start_background_run(
+        online_ree.ree_id,
+        "build",
+        {},
+        "history",
+        lambda *_: ActionResult(status="succeeded"),
+    )
+    assert _wait_for_run(client, online_ree.ree_id, run["run_id"]) == "succeeded"
+    monkeypatch.setattr(workbench_manager, "lookup", lambda _rid: None)
+    monkeypatch.setattr(workbench_manager, "is_registered", lambda _rid: False)
+
+    response = client.post(f"/api/v1/rees/{online_ree.ree_id}/build-runtime", json={})
+
+    assert response.status_code == 404
+    # Historical state remains readable without a live workbench.
+    assert client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run['run_id']}").status_code == 200
     assert client.get("/api/v1/rees/nope/runs/run-1/logs").status_code == 404
 
 

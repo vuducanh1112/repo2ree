@@ -1,11 +1,7 @@
-import asyncio
 import logging
-import re
 import tempfile
 import uuid
-from collections.abc import Iterator
-from pathlib import Path
-from typing import IO, Any
+from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
@@ -25,6 +21,12 @@ from repo2ree_api.contracts import (
     UploadStoredResponse,
 )
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.ree.archives import archive_download_filename, spool_chunks
+from repo2ree_api.ree.uploads import (
+    copy_staged_upload_into_workbench,
+    mint_upload_token,
+    stage_upload_bytes,
+)
 from repo2ree_api.ree_commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_api.run_management import (
     append_run_log,
@@ -33,6 +35,7 @@ from repo2ree_api.run_management import (
     run_summary,
     start_background_run,
     start_provisioning_run,
+    start_single_command_run,
     update_run_outputs,
 )
 from repo2ree_api.run_registry import ACTIVE_STATUSES
@@ -47,50 +50,35 @@ from repo2ree_api.schemas import (
     UploadInitPayload,
     WorkspaceFileContentPayload,
 )
-from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.upload_staging import (
     InvalidUploadTokenError,
     UnknownUploadTokenError,
     UploadSizeMismatchError,
-    UploadStagingFullError,
-    UploadTooLargeError,
-    discard_expired_uploads,
     discard_staged_upload,
-    new_upload_token,
-    stage_upload_stream,
     staged_upload_path,
+    validate_upload_owner,
 )
 from repo2ree_core.digests import digest_bytes
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol import (
-    AcquireSourceCommand,
     ActionResult,
     DeleteFileCommand,
-    ExtractUploadCommand,
     LoadReeBundleCommand,
-    MaterializeWorkspaceCommand,
     PatchReeIntentCommand,
+    PrepareSourceCommand,
     RemoveSourceCommand,
-    ResetForSourceChangeCommand,
     SealReeCommand,
-    SnapshotUpstreamCommand,
-    UpdateSourceMetadataCommand,
     WriteFileCommand,
 )
 from repo2ree_protocol.command import (
-    AcquireSourceArgs,
-    Command,
     DeleteFileArgs,
-    ExtractUploadArgs,
     LoadReeBundleArgs,
     PatchReeIntentArgs,
+    PrepareSourceArgs,
     SealReeArgs,
-    UpdateSourceMetadataArgs,
     WriteFileArgs,
 )
-from repo2ree_protocol.log import LogSink
-from repo2ree_supervisor import WorkbenchHandle
 
 # ================================================
 # Logging
@@ -113,150 +101,6 @@ def _content_etag(content: bytes) -> str:
     one shared helper so the compare cannot drift across the two processes.
     """
     return digest_bytes(content)
-
-
-def _mint_upload_token(ree_id: str, payload: UploadInitPayload, *, upload_route: str) -> dict[str, Any]:
-    """Open a staging slot and name the route its bytes are PUT to.
-
-    Shared by every upload kind (source archives, REE bundles): staging is one
-    mechanism, and only the route the client uploads to differs.
-    """
-    require_handle(ree_id)
-    if payload.size > service_settings.UPLOAD_MAX_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail={
-                "code": "upload_too_large",
-                "message": f"Upload exceeds the {service_settings.UPLOAD_MAX_BYTES}-byte limit",
-                "details": {"declared_size": payload.size, "max_bytes": service_settings.UPLOAD_MAX_BYTES},
-            },
-        )
-    result = new_upload_token(
-        file_name=payload.file_name,
-        expected_size=payload.size,
-        content_type=payload.content_type,
-    )
-    result["upload_url"] = f"/api/v1/rees/{ree_id}/{upload_route}/{result['upload_token']}"
-    return result
-
-
-async def _stage_upload_bytes(ree_id: str, upload_token: str, request: Request) -> dict[str, Any]:
-    """Consume the request body into the staging slot, mapping staging errors.
-
-    Callers are async routes so the body streams in incrementally. They run on
-    the event loop, so blocking control-plane calls must hop to a thread:
-    ``require_handle`` does a synchronous round-trip to the workbench agent
-    over the multiplexed WebSocket that *this same loop* pumps — calling it
-    inline deadlocks the loop against its own reply (frozen API, agent
-    keepalive death) rather than merely stalling.
-    """
-    await asyncio.to_thread(require_handle, ree_id)
-    try:
-        await stage_upload_stream(upload_token, request.stream())
-    except InvalidUploadTokenError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except UnknownUploadTokenError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except UploadTooLargeError as exc:
-        raise HTTPException(status_code=413, detail=str(exc)) from exc
-    except UploadStagingFullError as exc:
-        raise HTTPException(status_code=507, detail=str(exc)) from exc
-    except UploadSizeMismatchError as exc:
-        raise HTTPException(
-            status_code=400,
-            detail={"code": "upload_size_mismatch", "message": str(exc), "details": None},
-        ) from exc
-    return {"upload_token": upload_token, "stored_at": utc_now()}
-
-
-def _copy_staged_upload_into_workbench(
-    handle: WorkbenchHandle,
-    upload_token: str,
-    staged_host: Path,
-    *,
-    log_run: LogSink,
-    outputs: dict[str, Any],
-) -> ActionResult | None:
-    """Move staged bytes onto the workbench volume. Returns non-None on failure."""
-    # Sweep first so a staged file past its TTL reads as expired, not found.
-    # Size zero means the token was minted but the bytes never PUT.
-    discard_expired_uploads()
-    if not staged_host.exists() or staged_host.stat().st_size == 0:
-        log_run("system", "error", "Staged upload not found, empty, or expired")
-        return ActionResult.failed(
-            "precondition",
-            "Staged upload not found, empty, or expired",
-            origin="api",
-            outputs=outputs,
-        )
-
-    size = staged_host.stat().st_size
-    log_run("system", "info", f"Copying staged archive into the workbench ({size} bytes)")
-    try:
-        workbench_manager.copy_to_workbench(handle, str(staged_host), f"/ree/upload-staging/{upload_token}.bin")
-    except Exception as exc:
-        log_run("system", "error", f"Copy to workbench failed: {exc}")
-        return ActionResult.failed(
-            "unavailable",
-            f"Copy to workbench failed: {exc}",
-            origin="supervisor",
-            retryable=True,
-            outputs=outputs,
-        )
-    return None
-
-
-def _download_pipeline(lead: AcquireSourceCommand, metadata_args: UpdateSourceMetadataArgs) -> list[Command]:
-    """Download: acquire (fetch into upstream) → snapshot → materialize → update-metadata.
-
-    A downloaded source is *fetched then frozen*: acquire populates upstream, then
-    snapshot captures it.
-    """
-    return [
-        ResetForSourceChangeCommand(),
-        lead,
-        SnapshotUpstreamCommand(),
-        MaterializeWorkspaceCommand(),
-        UpdateSourceMetadataCommand(args=metadata_args),
-    ]
-
-
-def _upload_pipeline(lead: ExtractUploadCommand, metadata_args: UpdateSourceMetadataArgs) -> list[Command]:
-    """Upload: extract-upload (→ snapshot) → acquire (extract) → materialize → update-metadata.
-
-    An upload has no origin, so it is *born frozen*: the upload ingest produces
-    the snapshot, then the unified acquire extracts it into upstream — the same
-    extract arm a reproducer uses. No separate snapshot step.
-    """
-    return [
-        ResetForSourceChangeCommand(),
-        lead,
-        AcquireSourceCommand(args=AcquireSourceArgs()),
-        MaterializeWorkspaceCommand(),
-        UpdateSourceMetadataCommand(args=metadata_args),
-    ]
-
-
-def _run_source_pipeline(
-    handle: WorkbenchHandle,
-    ws_id: str,
-    run_id: str,
-    pipeline: list[Command],
-    log_run: LogSink,
-) -> ActionResult:
-    """Dispatch each command in order, recording outputs and stopping on first non-success.
-
-    Returns the failing step's ActionResult (carrying its typed failure) on the
-    first non-success, or a succeeded result when the whole pipeline passes.
-    """
-    for cmd in pipeline:
-        result = workbench_manager.dispatch_action(handle, cmd, run_id, log_run)
-        if result.outputs:
-            update_run_outputs(ws_id, run_id, result.outputs)
-        if result.status != "succeeded":
-            log_run("system", "error", f"Workbench step {cmd.operation} {result.status}")
-            return result
-    return ActionResult(status="succeeded")
 
 
 # ================================================
@@ -410,23 +254,11 @@ def get_workspace_state_route(ree_id: str) -> ReeState:
 def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload) -> ReeDocument:
     handle = require_handle(ree_id)
     with ree_command_span("patch-intent", ree_id):
-        current = workbench_manager.get_ree_metadata(handle)
-        if payload.expected_version and payload.expected_version != current.get("updated_at"):
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "code": "version_conflict",
-                    "message": "REE intent changed since it was read",
-                    "details": {
-                        "expected_version": payload.expected_version,
-                        "actual_version": current.get("updated_at"),
-                    },
-                    "retryable": True,
-                },
-            )
-
         cmd = PatchReeIntentCommand(
-            args=PatchReeIntentArgs(patch=payload.ree_intent_patch.model_dump(mode="json", exclude_unset=True))
+            args=PatchReeIntentArgs(
+                patch=payload.ree_intent_patch.model_dump(mode="json", exclude_unset=True),
+                expected_version=payload.expected_version or "",
+            )
         )
         dispatch_or_fail(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
         return ReeDocument.model_validate(workbench_manager.get_workspace(handle))
@@ -486,7 +318,6 @@ def delete_workspace_route(ree_id: str) -> DeleteReeResponse:
     responses=ERROR_RESPONSES,
 )
 def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSummary:
-    handle = require_handle(ree_id)
     request_payload = {
         "mode": "download",
         "origin_url": payload.origin_url,
@@ -494,45 +325,21 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSumma
         "revision": payload.revision,
     }
 
-    def _runner(ws_id: str, run_id: str) -> ActionResult:
-        def _log_run(stream: str, level: str, message: str) -> None:
-            append_run_log(ws_id, run_id, stream, level, message)
-
-        _log_run(
-            "system",
-            "info",
-            f"Starting source acquisition from {payload.origin_url}",
-        )
-        if is_cancel_requested(ws_id, run_id):
-            _log_run("system", "warn", "Source acquisition canceled")
-            return ActionResult(status="canceled", outputs=request_payload)
-
-        pipeline = _download_pipeline(
-            AcquireSourceCommand(
-                args=AcquireSourceArgs(
-                    origin_url=payload.origin_url,
-                    source_type=payload.source_type,
-                    revision=(payload.revision or "").strip(),
-                )
-            ),
-            UpdateSourceMetadataArgs(
+    run_state = start_single_command_run(
+        ree_id,
+        operation="source",
+        command=PrepareSourceCommand(
+            args=PrepareSourceArgs(
+                mode="download",
                 origin_url=payload.origin_url,
                 source_type=payload.source_type,
-            ),
-        )
-        result = _run_source_pipeline(handle, ws_id, run_id, pipeline, _log_run)
-        if result.status != "succeeded":
-            return result.model_copy(update={"outputs": request_payload})
-
-        _log_run("system", "info", "Source acquisition succeeded")
-        return ActionResult(status="succeeded", outputs=request_payload)
-
-    run_state = start_background_run(
-        ree_id=ree_id,
-        operation="source",
+                revision=(payload.revision or "").strip(),
+            )
+        ),
         request_payload=request_payload,
         run_id_prefix="source",
-        runner=_runner,
+        canceled_message="Source acquisition canceled",
+        fallback_outputs=request_payload,
         idempotency_key=payload.idempotency_key,
     )
 
@@ -547,7 +354,9 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSumma
     responses=ERROR_RESPONSES,
 )
 def upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
-    return UploadInitResponse.model_validate(_mint_upload_token(ree_id, payload, upload_route="source:upload"))
+    return UploadInitResponse.model_validate(
+        mint_upload_token(ree_id, payload, upload_route="source:upload", purpose="source")
+    )
 
 
 @manage_ree_router.put(
@@ -558,7 +367,9 @@ def upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResp
     responses=ERROR_RESPONSES,
 )
 async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Request) -> UploadStoredResponse:
-    return UploadStoredResponse.model_validate(await _stage_upload_bytes(ree_id, upload_token, request))
+    return UploadStoredResponse.model_validate(
+        await stage_upload_bytes(ree_id, upload_token, request, purpose="source")
+    )
 
 
 @manage_ree_router.post(
@@ -576,9 +387,17 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
         "archive_name": payload.archive_name,
     }
     try:
+        validate_upload_owner(
+            payload.upload_token,
+            ree_id=ree_id,
+            purpose="source",
+            file_name=payload.archive_name,
+        )
         staged_host = staged_upload_path(payload.upload_token)
-    except InvalidUploadTokenError as exc:
+    except (InvalidUploadTokenError, UploadSizeMismatchError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except UnknownUploadTokenError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     def _runner(ws_id: str, run_id: str) -> ActionResult:
         def _log_run(stream: str, level: str, message: str) -> None:
@@ -593,7 +412,7 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
             _log_run("system", "warn", "Source upload canceled")
             return ActionResult(status="canceled", outputs=request_payload)
 
-        copy_failure = _copy_staged_upload_into_workbench(
+        copy_failure = copy_staged_upload_into_workbench(
             handle,
             payload.upload_token,
             staged_host,
@@ -604,23 +423,22 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
             return copy_failure
         _log_run("system", "info", "Archive copied; extracting into the workspace")
 
-        pipeline = _upload_pipeline(
-            ExtractUploadCommand(
-                args=ExtractUploadArgs(
-                    upload_token=payload.upload_token,
-                    archive_name=payload.archive_name,
-                )
-            ),
-            UpdateSourceMetadataArgs(
-                mode="upload",
-                archive_name=payload.archive_name,
-                upload_token=payload.upload_token,
-            ),
-        )
-        result = _run_source_pipeline(handle, ws_id, run_id, pipeline, _log_run)
-
-        # Clean up the transient host landing file regardless of outcome.
-        discard_staged_upload(payload.upload_token)
+        try:
+            result = workbench_manager.dispatch_action(
+                handle,
+                PrepareSourceCommand(
+                    args=PrepareSourceArgs(
+                        mode="upload",
+                        upload_token=payload.upload_token,
+                        archive_name=payload.archive_name,
+                    )
+                ),
+                run_id,
+                _log_run,
+            )
+        finally:
+            # Ownership transferred to the workbench; always reclaim the host copy.
+            discard_staged_upload(payload.upload_token)
 
         if result.status == "succeeded":
             _log_run("system", "info", "Source upload extraction succeeded")
@@ -647,7 +465,9 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
 )
 def bundle_upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
     """Open a staging slot for a downloaded REE bundle (see ``ree:load``)."""
-    return UploadInitResponse.model_validate(_mint_upload_token(ree_id, payload, upload_route="ree:upload"))
+    return UploadInitResponse.model_validate(
+        mint_upload_token(ree_id, payload, upload_route="ree:upload", purpose="bundle")
+    )
 
 
 @manage_ree_router.put(
@@ -657,7 +477,9 @@ def bundle_upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadI
     responses=ERROR_RESPONSES,
 )
 async def store_bundle_bytes_route(ree_id: str, upload_token: str, request: Request) -> UploadStoredResponse:
-    return UploadStoredResponse.model_validate(await _stage_upload_bytes(ree_id, upload_token, request))
+    return UploadStoredResponse.model_validate(
+        await stage_upload_bytes(ree_id, upload_token, request, purpose="bundle")
+    )
 
 
 @manage_ree_router.post(
@@ -676,9 +498,17 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
     handle = require_handle(ree_id)
     request_payload = {"upload_token": payload.upload_token, "archive_name": payload.archive_name}
     try:
+        validate_upload_owner(
+            payload.upload_token,
+            ree_id=ree_id,
+            purpose="bundle",
+            file_name=payload.archive_name,
+        )
         staged_host = staged_upload_path(payload.upload_token)
-    except InvalidUploadTokenError as exc:
+    except (InvalidUploadTokenError, UploadSizeMismatchError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except UnknownUploadTokenError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     def _runner(ws_id: str, run_id: str) -> ActionResult:
         def _log_run(stream: str, level: str, message: str) -> None:
@@ -689,7 +519,7 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
             _log_run("system", "warn", "REE bundle load canceled")
             return ActionResult(status="canceled", outputs=request_payload)
 
-        copy_failure = _copy_staged_upload_into_workbench(
+        copy_failure = copy_staged_upload_into_workbench(
             handle,
             payload.upload_token,
             staged_host,
@@ -706,12 +536,13 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
                 archive_name=payload.archive_name,
             )
         )
-        result = workbench_manager.dispatch_action(handle, command, run_id, _log_run)
-        if result.outputs:
-            update_run_outputs(ws_id, run_id, result.outputs)
-
-        # Clean up the transient host landing file regardless of outcome.
-        discard_staged_upload(payload.upload_token)
+        try:
+            result = workbench_manager.dispatch_action(handle, command, run_id, _log_run)
+            if result.outputs:
+                update_run_outputs(ws_id, run_id, result.outputs)
+        finally:
+            # Ownership transferred to the workbench; always reclaim the host copy.
+            discard_staged_upload(payload.upload_token)
 
         if result.status != "succeeded":
             _log_run("system", "error", f"Workbench step load_ree_bundle {result.status}")
@@ -877,7 +708,7 @@ def download_workspace_ree_archive_route(ree_id: str) -> StreamingResponse:
     seal hash — a draft is a handoff, not a citable artifact.
     """
     handle = require_handle(ree_id)
-    archive_filename = _archive_download_filename(handle)
+    archive_filename = archive_download_filename(handle)
     # Spool the archive to a control-plane temp file before responding. The
     # per-REE lock (and the agent's exec) is held only while the workbench
     # streams to us — never for as long as the client takes to download — so a
@@ -901,7 +732,7 @@ def download_workspace_ree_archive_route(ree_id: str) -> StreamingResponse:
         spool.close()
         raise
     return StreamingResponse(
-        _spool_chunks(spool),
+        spool_chunks(spool),
         media_type="application/zip",
         headers={
             "Content-Disposition": (
@@ -910,25 +741,3 @@ def download_workspace_ree_archive_route(ree_id: str) -> StreamingResponse:
             "Content-Length": str(size),
         },
     )
-
-
-# ================================================
-# Helpers
-# ================================================
-
-
-def _archive_download_filename(handle: WorkbenchHandle) -> str:
-    metadata = workbench_manager.get_ree_metadata(handle)
-    raw_name = str(metadata.get("name") or "").strip()
-    safe_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._-")
-    if not safe_stem:
-        safe_stem = "ree"
-    return f"{safe_stem}.zip"
-
-
-def _spool_chunks(spool: IO[bytes]) -> Iterator[bytes]:
-    try:
-        while chunk := spool.read(64 * 1024):
-            yield chunk
-    finally:
-        spool.close()

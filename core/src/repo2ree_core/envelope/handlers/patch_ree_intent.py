@@ -41,6 +41,24 @@ def handle_patch_ree_intent(
         return opened
     layout, store = opened
 
+    if args.expected_version:
+        actual_version = store.read_metadata().updated_at
+        if args.expected_version != actual_version:
+            log(
+                "system",
+                "error",
+                f"intent version mismatch: expected {args.expected_version}, actual {actual_version}",
+            )
+            return ActionResult.failed(
+                "conflict",
+                "REE intent changed since it was read",
+                retryable=True,
+                outputs={
+                    "expected_version": args.expected_version,
+                    "actual_version": actual_version,
+                },
+            )
+
     log("system", "info", f"patch_ree_intent: {sorted(args.patch)}")
     try:
         patch_ree_intent(store, args.patch)

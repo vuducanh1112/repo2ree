@@ -23,6 +23,7 @@ from repo2ree_core.envelope.handlers.materialize_workspace import (
     handle_materialize_workspace,
 )
 from repo2ree_core.envelope.handlers.patch_ree_intent import handle_patch_ree_intent
+from repo2ree_core.envelope.handlers.prepare_source import handle_prepare_source
 from repo2ree_core.envelope.handlers.remove_source import handle_remove_source
 from repo2ree_core.envelope.handlers.review_acquire_source import handle_review_acquire_source
 from repo2ree_core.envelope.handlers.review_activation_test import handle_review_activation_test
@@ -52,6 +53,7 @@ from repo2ree_protocol.command import (
     LoadReeBundleCommand,
     MaterializeWorkspaceCommand,
     PatchReeIntentCommand,
+    PrepareSourceCommand,
     RemoveSourceCommand,
     ResetForSourceChangeCommand,
     ReviewAcquireSourceCommand,
@@ -135,6 +137,8 @@ def _dispatch(
         return handle_delete_file(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, PatchReeIntentCommand):
         return handle_patch_ree_intent(cmd.args, log=log, is_canceled=cancel)
+    if isinstance(cmd, PrepareSourceCommand):
+        return handle_prepare_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, RemoveSourceCommand):
         return handle_remove_source(log=log, is_canceled=cancel)
     if isinstance(cmd, ResetForSourceChangeCommand):

@@ -115,16 +115,18 @@ def dispatch_or_fail(handle: WorkbenchHandle, cmd: Command, run_id: str, error_m
     # ActionResult contract); read it rather than sniffing the outputs blob.
     failure = result.failure
     if failure is not None and failure.category == "conflict":
+        details = {
+            "expected_version": outputs.get("expected_version"),
+            "actual_version": outputs.get("actual_version"),
+        }
+        if outputs.get("path") is not None:
+            details["path"] = outputs["path"]
         raise HTTPException(
             status_code=409,
             detail={
                 "code": "version_conflict",
                 "message": failure.message,
-                "details": {
-                    "path": outputs.get("path"),
-                    "expected_version": outputs.get("expected_version"),
-                    "actual_version": outputs.get("actual_version"),
-                },
+                "details": details,
                 "retryable": failure.retryable,
             },
         )

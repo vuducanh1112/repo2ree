@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from repo2ree_api.contracts import RunOperation
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.ree_service import CommandRunSpec, ReeService
 from repo2ree_api.run_registry import RunRegistry
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
@@ -19,14 +20,13 @@ from repo2ree_protocol.result import ActionResult
 def _require_workspace(ree_id: str) -> None:
     if workbench_manager.lookup(ree_id) is not None:
         return
-    # The workbench may not exist yet during a provisioning run; accept the REE
-    # while that run is on record so its logs/status stay readable as it streams.
-    if _registry.has_runs(ree_id):
-        return
+    if workbench_manager.is_registered(ree_id):
+        raise HTTPException(status_code=503, detail="Workbench unavailable for this REE")
     raise HTTPException(status_code=404, detail="Workspace not found")
 
 
 _registry = RunRegistry(_require_workspace)
+ree_service = ReeService(workbench_manager, _registry)
 
 append_run_log = _registry.append_log
 update_run_outputs = _registry.update_outputs
@@ -102,38 +102,15 @@ def start_single_command_run(
     could only learn it by waiting for the run could not address the attempt it
     just opened.
     """
-    outputs = fallback_outputs or {}
-
-    def _runner(rid: str, run_id: str) -> ActionResult:
-        def _log(stream: str, level: str, message: str) -> None:
-            append_run_log(rid, run_id, stream, level, message)
-
-        if is_cancel_requested(rid, run_id):
-            _log("system", "warn", canceled_message)
-            return ActionResult(status="canceled", outputs=outputs)
-
-        handle = workbench_manager.lookup(rid)
-        if handle is None:
-            _log("system", "error", f"No workbench available for {command.operation}")
-            return ActionResult.failed(
-                "unavailable",
-                f"No workbench available for {command.operation}",
-                origin="api",
-                retryable=True,
-            )
-
-        result = workbench_manager.dispatch_action(handle, command, run_id, _log)
-        # Preserve the route's fallback outputs when the command reported none.
-        if not result.outputs and outputs:
-            return result.model_copy(update={"outputs": outputs})
-        return result
-
-    return start_background_run(
-        ree_id=ree_id,
-        operation=operation,
+    return ree_service.start_command(
+        ree_id,
+        CommandRunSpec(
+            operation=operation,
+            run_id_prefix=run_id_prefix,
+            canceled_message=canceled_message,
+            fallback_outputs=fallback_outputs or {},
+        ),
+        command,
         request_payload=request_payload,
-        run_id_prefix=run_id_prefix,
-        runner=_runner,
         idempotency_key=idempotency_key,
-        initial_outputs=outputs,
     )

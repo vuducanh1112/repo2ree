@@ -375,17 +375,20 @@ class WsAgentClient:
     # ------------------------------------------------
 
     def remove(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> None:
-        # Best-effort cleanup: never let a teardown failure propagate.
+        """Remove a workbench and require an acknowledgement from its agent."""
+        conn = self._registry.pick(agent_id)
+        self._drain_void(
+            conn.request(RemoveRequest(ree_id=ree_id, location=location), frame_gap_timeout=QUICK_OP_TIMEOUT)
+        )
+
+    def remove_best_effort(self, agent_id: str, ree_id: str, location: WorkbenchLocation) -> bool:
+        """Try to remove a partially-created workbench during compensation."""
         try:
-            conn = self._registry.pick(agent_id)
-        except WorkbenchUnavailableError:
-            return
-        try:
-            self._drain_void(
-                conn.request(RemoveRequest(ree_id=ree_id, location=location), frame_gap_timeout=QUICK_OP_TIMEOUT)
-            )
+            self.remove(agent_id, ree_id, location)
         except (WorkbenchUnavailableError, RuntimeError):
-            pass
+            logger.warning("best-effort workbench removal failed for %s", ree_id, exc_info=True)
+            return False
+        return True
 
     def is_running(self, agent_id: str, location: WorkbenchLocation) -> bool:
         try:

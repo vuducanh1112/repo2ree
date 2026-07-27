@@ -27,29 +27,26 @@ default process exits immediately.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import os
-import selectors
 import subprocess
 import tempfile
 import threading
 import time
 from collections.abc import Generator, Iterator
 from contextlib import contextmanager, suppress
-from dataclasses import dataclass
-from pathlib import Path
 
+from repo2ree_agent import docker_cli, executor_frames
+from repo2ree_agent.injection import InjectionBundle as _InjectionBundle
+from repo2ree_agent.injection import load_injection_bundle as _load_injection_bundle
 from repo2ree_agent.workbench_runtime import WorkbenchGoneError
 from repo2ree_protocol.agent import (
-    COPY_CHUNK_BYTES,
     AgentFrame,
     ErrorFrame,
     LocationFrame,
     LogFrame,
     ResultFrame,
-    SpanFrame,
     UnavailableFrame,
     WorkbenchLocation,
 )
@@ -96,77 +93,6 @@ _POPULATED_SENTINEL = ".repo2ree-populated"
 # /bin/sh); daemon *readiness* (dockerd accepting connections) is not gated
 # here — the process staying alive is the contract.
 _STARTUP_GRACE_SECONDS = 2.0
-
-
-@dataclass(frozen=True)
-class _InjectionBundle:
-    """The agent-shipped executor (and optional tools) closure, resolved once.
-
-    ``store_sources`` are agent-host paths handed to ``docker cp`` verbatim:
-    either one ``<dir>/.`` whose contents are the closure (the standalone
-    bundle's ``store/``) or the individual store paths from a ``store-paths``
-    list (the agent image, whose own /nix/store carries them).
-    """
-
-    exec_path: str
-    pause_path: str
-    store_sources: tuple[str, ...]
-    volume_name: str
-    # REPO2REE_TOOL_<NAME> → absolute path, set on the bench container so the
-    # executor (and its core handlers) can find injected tools without PATH.
-    tool_env: dict[str, str]
-
-
-def _load_injection_bundle(exec_bundle_dir: str | None, tools_bundle_dir: str | None) -> _InjectionBundle | None:
-    """Resolve the bundle dirs into an ``_InjectionBundle``; None when unset.
-
-    A *set but unreadable* bundle dir raises: a misconfigured agent must fail
-    at startup, not silently provision PATH-dependent benches.
-    """
-    if not exec_bundle_dir:
-        return None
-
-    def bundle_parts(bundle_dir: str) -> tuple[bytes, list[str]]:
-        root = Path(bundle_dir)
-        manifest_bytes = (root / "manifest.json").read_bytes()
-        store_dir = root / "store"
-        if store_dir.is_dir():
-            return manifest_bytes, [f"{store_dir}/."]
-        paths = [line for line in (root / "store-paths").read_text().splitlines() if line.strip()]
-        return manifest_bytes, paths
-
-    exec_manifest_bytes, sources = bundle_parts(exec_bundle_dir)
-    exec_manifest = json.loads(exec_manifest_bytes)
-    digest = hashlib.sha256(exec_manifest_bytes)
-
-    tool_env: dict[str, str] = {}
-    if tools_bundle_dir:
-        tools_manifest_bytes, tools_sources = bundle_parts(tools_bundle_dir)
-        sources += tools_sources
-        digest.update(tools_manifest_bytes)
-        tools_manifest = json.loads(tools_manifest_bytes)
-        for name, path in tools_manifest.get("tools", {}).items():
-            tool_env[f"REPO2REE_TOOL_{name.upper().replace('-', '_')}"] = path
-        # The symlink farm the executor prepends to its own PATH, so lifecycle
-        # scripts calling bare tool names work on tool-less images. Applied by
-        # the executor, not the container env — overriding the container PATH
-        # would shadow the image's own binaries (dind's docker CLI).
-        bin_dir = tools_manifest.get("bin_dir")
-        if bin_dir:
-            tool_env["REPO2REE_TOOLS_BIN"] = bin_dir
-        # Verbatim bench env from the manifest (TLS roots for git/curl).
-        tool_env.update(tools_manifest.get("env", {}))
-
-    for source in sources:
-        digest.update(source.encode())
-
-    return _InjectionBundle(
-        exec_path=exec_manifest["exec_path"],
-        pause_path=exec_manifest["pause_path"],
-        store_sources=tuple(sources),
-        volume_name=f"repo2ree-store-{digest.hexdigest()[:12]}",
-        tool_env=tool_env,
-    )
 
 
 class DockerRuntime:
@@ -226,6 +152,13 @@ class DockerRuntime:
                 exec_path = yield from self._run_workbench_container(container_name, ree_id, volume_name, image)
             except RuntimeError as exc:
                 op.status = "failed"
+                # Provision has not emitted a location yet, so the supervisor
+                # cannot compensate this partial creation. Reclaim every
+                # deterministic resource here before returning the error frame.
+                _docker_silent("rm", "-f", "-v", container_name)
+                _docker_silent("volume", "rm", volume_name)
+                if self._docker_mode == "dind":
+                    _docker_silent("volume", "rm", self._dind_volume_name(ree_id))
                 yield ErrorFrame(detail=str(exc))
                 return
             yield LocationFrame(
@@ -258,10 +191,10 @@ class DockerRuntime:
             # unreclaimable hex-named volumes behind). Named volumes — ours,
             # below — are never touched by it, which is why every `rm` here
             # carries it.
-            _docker_silent("rm", "-f", "-v", location.container_name)
-            _docker_silent("volume", "rm", location.volume_name)
+            _docker_remove("rm", "-f", "-v", location.container_name)
+            _docker_remove("volume", "rm", location.volume_name)
             if self._docker_mode == "dind":
-                _docker_silent("volume", "rm", self._dind_volume_name(ree_id))
+                _docker_remove("volume", "rm", self._dind_volume_name(ree_id))
             # The injected store volume is shared across benches and content-
             # addressed — never removed per REE.
 
@@ -686,13 +619,13 @@ def _failure_detail(stderr: str, stdout: str) -> str:
     One spelling, so every docker failure reads the same way whichever helper
     raised it.
     """
-    return stderr.strip() or stdout.strip()
+    return docker_cli.failure_detail(stderr, stdout)
 
 
 def _tail_text(output: bytes) -> str:
     """Decode command output for an error message, keeping only the last
     ``_FAILURE_OUTPUT_TAIL_BYTES`` so a chatty failure cannot balloon the frame."""
-    return output[-_FAILURE_OUTPUT_TAIL_BYTES:].decode(errors="replace").strip()
+    return docker_cli.tail_text(output)
 
 
 def _stream_exec(cmd: list[str], timeout: int, what: str) -> Iterator[bytes]:
@@ -703,65 +636,7 @@ def _stream_exec(cmd: list[str], timeout: int, what: str) -> Iterator[bytes]:
     A large result trickling to a slow consumer must not be killed mid-transfer;
     a process that stops producing while the consumer waits must be.
     """
-    deadline = time.monotonic() + timeout
-    stdout_tail = bytearray()
-    completed = False
-
-    with tempfile.TemporaryFile() as stderr:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=stderr)
-        if proc.stdout is None:
-            raise RuntimeError("Popen stdout pipe unavailable")
-
-        selector = selectors.DefaultSelector()
-        selector.register(proc.stdout, selectors.EVENT_READ)
-
-        try:
-            stdout_open = True
-            while stdout_open:
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    _kill_process(proc)
-                    raise subprocess.TimeoutExpired(cmd, timeout)
-
-                events = selector.select(timeout=min(remaining, 0.1))
-                if not events:
-                    continue
-
-                for _, _ in events:
-                    chunk = os.read(proc.stdout.fileno(), COPY_CHUNK_BYTES)
-                    if not chunk:
-                        stdout_open = False
-                        break
-                    _append_tail(stdout_tail, chunk)
-                    yield chunk
-                    # The consumer just asked for more: restart the silence
-                    # clock, excluding however long it sat on the last chunk.
-                    deadline = time.monotonic() + timeout
-
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                _kill_process(proc)
-                raise subprocess.TimeoutExpired(cmd, timeout)
-            returncode = proc.wait(timeout=remaining)
-            completed = True
-        except subprocess.TimeoutExpired:
-            _kill_process(proc)
-            raise
-        finally:
-            selector.close()
-            proc.stdout.close()
-            if not completed and proc.poll() is None:
-                _kill_process(proc)
-
-        if returncode != 0:
-            stderr.seek(0)
-            stderr_text = _tail_text(stderr.read())
-            stdout_text = _tail_text(bytes(stdout_tail))
-            detail = stderr_text or stdout_text or "(no output on stdout/stderr)"
-            message = f"{what} failed (exit {returncode}): {detail}"
-            if returncode in _CONTAINER_GONE_EXIT_CODES or "No such container" in detail:
-                raise WorkbenchGoneError(message)
-            raise RuntimeError(message)
+    yield from docker_cli.stream_exec(cmd, timeout, what)
 
 
 def _append_tail(tail: bytearray, chunk: bytes) -> None:
@@ -778,30 +653,11 @@ def _kill_process(proc: subprocess.Popen[bytes]) -> None:
 
 
 def _executor_line_to_frame(line: str) -> AgentFrame | None:
-    try:
-        event = json.loads(line)
-    except json.JSONDecodeError:
-        return LogFrame(stream="system", level="info", message=line)
-    event_type = event.get("type")
-    if event_type == "log":
-        return LogFrame(stream=event["stream"], level=event["level"], message=event["message"])
-    if event_type == "span":
-        return SpanFrame(payload=event["payload"])
-    return LogFrame(stream="system", level="info", message=line)
+    return executor_frames.executor_line_to_frame(line)
 
 
 def _parse_action_result(stdout: str, returncode: int) -> ActionResult:
-    if stdout:
-        try:
-            return ActionResult.model_validate_json(stdout)
-        except ValueError:
-            pass
-    return ActionResult.failed(
-        "internal",
-        f"executor produced no valid result (exit {returncode})",
-        origin="agent",
-        exit_code=returncode or 1,
-    )
+    return executor_frames.parse_action_result(stdout, returncode)
 
 
 def _docker(*args: str, timeout: int = 60) -> None:
@@ -812,16 +668,13 @@ def _docker(*args: str, timeout: int = 60) -> None:
 def _docker_out(*args: str, timeout: int = 60) -> str:
     """Like :func:`_docker` but returns stripped stdout (e.g. a created container id)."""
     with _docker_op(f"docker.{args[0]}"):
-        result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
-        if result.returncode != 0:
-            raise RuntimeError(f"docker {args[0]} failed: {_failure_detail(result.stderr, result.stdout)}")
-        return result.stdout.strip()
+        return docker_cli.docker_out(args, timeout)
 
 
 def _image_present(image: str) -> bool:
     """True if the image already exists locally (no registry round-trip)."""
     with _docker_op("docker.image_inspect"):
-        return subprocess.run(["docker", "image", "inspect", image], capture_output=True, timeout=30).returncode == 0
+        return docker_cli.image_present(image)
 
 
 def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[AgentFrame]:
@@ -997,3 +850,15 @@ def _docker_silent(*args: str) -> None:
                 op.status = "failed_ignored"
         except (subprocess.SubprocessError, OSError):
             op.status = "failed_ignored"
+
+
+def _docker_remove(*args: str) -> None:
+    """Idempotent but strict cleanup for acknowledged user deletion."""
+    with _docker_op(f"docker.{args[0]}"):
+        result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            return
+        detail = _failure_detail(result.stderr, result.stdout)
+        if "No such container" in detail or "No such volume" in detail:
+            return
+        raise RuntimeError(f"docker {args[0]} failed: {detail}")

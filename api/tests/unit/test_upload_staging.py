@@ -212,6 +212,24 @@ def test_upload_complete_with_traversal_token_is_400(client: TestClient, online_
     assert resp.status_code == 400
 
 
+def test_upload_token_cannot_cross_upload_purposes(
+    client: TestClient, online_ree: WorkbenchHandle, staging_dir: Path
+) -> None:
+    initialized = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/source:upload-init",
+        json={"file_name": "source.zip", "size": 3, "content_type": "application/zip"},
+    )
+    assert initialized.status_code == 200
+    token = initialized.json()["upload_token"]
+
+    response = client.put(
+        f"/api/v1/rees/{online_ree.ree_id}/ree:upload/{token}",
+        content=b"zip",
+    )
+
+    assert response.status_code == 404
+
+
 def test_stage_upload_stream_rejects_oversized_body(staging_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from repo2ree_api.settings import service_settings
 

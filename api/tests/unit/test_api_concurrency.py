@@ -21,7 +21,18 @@ def test_intent_version_conflict_reports_expected_and_actual_versions(
     online_ree: WorkbenchHandle,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(workbench_manager, "get_ree_metadata", lambda handle: {"updated_at": "v2"})
+    dispatched = []
+
+    def _dispatch(handle, command, run_id, log):
+        dispatched.append(command)
+        return ActionResult.failed(
+            "conflict",
+            "REE intent changed since it was read",
+            retryable=True,
+            outputs={"expected_version": "v1", "actual_version": "v2"},
+        )
+
+    monkeypatch.setattr(workbench_manager, "dispatch_action", _dispatch)
 
     resp = client.patch(
         f"/api/v1/rees/{online_ree.ree_id}/intent",
@@ -33,6 +44,7 @@ def test_intent_version_conflict_reports_expected_and_actual_versions(
     assert error["code"] == "version_conflict"
     assert error["retryable"] is True
     assert error["details"] == {"expected_version": "v1", "actual_version": "v2"}
+    assert dispatched[0].args.expected_version == "v1"
 
 
 def _conflict_result(path: str, expected: str, actual: str | None) -> ActionResult:

@@ -36,8 +36,9 @@ _REE_ID_FIELD = "ree_id"
 class RunRegistry:
     """Thread-safe in-memory store for background run state, keyed by REE.
 
-    Takes an existence check that should raise HTTPException(404) if the REE
-    is not found.
+    The supplied check guards creation of new work. Historical run reads are
+    resolved from this registry itself and deliberately do not probe workbench
+    liveness, so logs remain observable after deletion or agent disconnect.
     """
 
     def __init__(self, require_ree: Callable[[str], None]) -> None:
@@ -327,19 +328,8 @@ class RunRegistry:
         ]
         return {key: run_state[key] for key in keys}
 
-    def has_runs(self, ree_id: str) -> bool:
-        """True if any run is recorded for ree_id (even before it fully exists).
-
-        Lets the REE-existence check accept a REE that is still being
-        created by an in-flight run (e.g. a provisioning run that owns the
-        workbench's creation), so its logs are readable while it provisions.
-        """
-        with self._lock:
-            return bool(self._run_store.get(ree_id))
-
     def list_runs(self, ree_id: str) -> list[dict[str, Any]]:
         """Summaries of every recorded run for ree_id, newest first."""
-        self._require_ree(ree_id)
         with self._lock:
             run_states = list(self._run_store.get(ree_id, {}).values())
         summaries = [self.run_summary(run_state) for run_state in run_states]
@@ -347,7 +337,6 @@ class RunRegistry:
         return summaries
 
     def get_run_state(self, ree_id: str, run_id: str) -> dict[str, Any]:
-        self._require_ree(ree_id)
         with self._lock:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
         if not run_state:
@@ -364,7 +353,6 @@ class RunRegistry:
         limit: int,
     ) -> tuple[dict[str, Any], list[dict[str, Any]], str | None, bool]:
         """Wait boundedly for new log entries or terminal run state."""
-        self._require_ree(ree_id)
         deadline = time.monotonic() + wait_seconds
         with self._changed:
             while True:

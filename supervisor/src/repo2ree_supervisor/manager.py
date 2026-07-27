@@ -167,37 +167,45 @@ class WorkbenchManager:
         connected agent", resolved up front to a concrete id and pinned (see
         ``AgentClient.resolve_agent``).
         """
-        with tracer.start_as_current_span("workbench.provision") as span:
+        with self._ree_lock(ree_id), tracer.start_as_current_span("workbench.provision") as span:
             record_ree_id(span, ree_id)
             resolved_image = image or self._image
             resolved_agent_id = self._agent.resolve_agent(agent_id)
             WorkbenchSpanAttrs(image=resolved_image, agent_id=resolved_agent_id).apply(span)
 
-            location = self._consume_lifecycle(self._agent.provision(resolved_agent_id, ree_id, resolved_image), log)
-            if location is None:
-                raise RuntimeError(f"agent provision for {ree_id} ended without a location")
-            WorkbenchSpanAttrs(container=location.container_name).apply(span)
-            self._agent.exec_simple(
-                resolved_agent_id,
-                location,
-                ["init-ree", "--ree-id", ree_id, "--name", name],
-            )
+            location: WorkbenchLocation | None = None
+            try:
+                location = self._consume_lifecycle(
+                    self._agent.provision(resolved_agent_id, ree_id, resolved_image), log
+                )
+                if location is None:
+                    raise RuntimeError(f"agent provision for {ree_id} ended without a location")
+                WorkbenchSpanAttrs(container=location.container_name).apply(span)
+                self._agent.exec_simple(
+                    resolved_agent_id,
+                    location,
+                    ["init-ree", "--ree-id", ree_id, "--name", name],
+                )
 
-            entry = WorkbenchEntry(
-                ree_id=ree_id,
-                container_name=location.container_name,
-                volume_name=location.volume_name,
-                image=resolved_image,
-                agent_id=resolved_agent_id,
-                exec_path=location.exec_path,
-            )
-            self._registry.register(entry)
-            return WorkbenchHandle.from_entry(entry)
+                entry = WorkbenchEntry(
+                    ree_id=ree_id,
+                    container_name=location.container_name,
+                    volume_name=location.volume_name,
+                    image=resolved_image,
+                    agent_id=resolved_agent_id,
+                    exec_path=location.exec_path,
+                )
+                self._registry.register(entry)
+                return WorkbenchHandle.from_entry(entry)
+            except BaseException:
+                if location is not None:
+                    self._agent.remove_best_effort(resolved_agent_id, ree_id, location)
+                raise
 
     def reprovision(self, ree_id: str, log: LogSink | None = None) -> WorkbenchHandle:
         """Replace the container with a fresh one from the same image, keeping backing storage."""
         _reprovision_counter.add(1)
-        with tracer.start_as_current_span("workbench.reprovision") as span:
+        with self._ree_lock(ree_id), tracer.start_as_current_span("workbench.reprovision") as span:
             record_ree_id(span, ree_id)
             entry = self._registry.lookup(ree_id)
             if entry is None:
@@ -229,16 +237,11 @@ class WorkbenchManager:
 
     def teardown(self, handle: WorkbenchHandle) -> None:
         """Stop + remove the container and its backing storage, unregister."""
-        with tracer.start_as_current_span("workbench.teardown") as span:
+        with self._ree_lock(handle.ree_id), tracer.start_as_current_span("workbench.teardown") as span:
             record_ree_id(span, handle.ree_id)
             WorkbenchSpanAttrs(container=handle.container_name, agent_id=handle.agent_id).apply(span)
             self._agent.remove(handle.agent_id, handle.ree_id, handle.location)
             self._registry.unregister(handle.ree_id)
-            # Drop the per-REE lock with the REE, or the map grows for the
-            # process lifetime. A dispatch still holding it keeps its reference;
-            # the workbench it guards is gone either way.
-            with self._ree_locks_lock:
-                self._ree_locks.pop(handle.ree_id, None)
 
     def _consume_lifecycle(self, frames: Iterator[AgentFrame], log: LogSink | None) -> WorkbenchLocation | None:
         """Drain a provision/reprovision stream: forward logs, return the location.
