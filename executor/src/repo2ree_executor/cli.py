@@ -365,7 +365,7 @@ def get_workspace_cmd(summary: bool) -> None:
     except FileNotFoundError as exc:
         click.echo(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)
-    click.echo(json.dumps(result))
+    click.echo(result.model_dump_json())
 
 
 @cli.command("get-scorecard")

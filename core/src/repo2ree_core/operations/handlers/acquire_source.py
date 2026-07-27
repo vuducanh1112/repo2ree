@@ -57,10 +57,6 @@ def handle_acquire_source(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "acquire_source canceled before start")
-        return ActionResult(status="canceled")
-
     timer = OperationTimer.start()
     layout = ReeLayout.in_workbench()
     log(

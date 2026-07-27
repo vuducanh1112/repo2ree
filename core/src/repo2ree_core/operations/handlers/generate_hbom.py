@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.analysis.hbom.generate_hbom import generate_hbom
 from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers._common import open_ree_store, patch_ree_intent
+from repo2ree_core.operations.handlers.step_runner import open_ree_store, patch_ree_intent
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -30,10 +30,6 @@ def handle_generate_hbom(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "generate_hbom canceled before start")
-        return ActionResult(status="canceled")
-
     opened = open_ree_store(log)
     if isinstance(opened, ActionResult):
         return opened

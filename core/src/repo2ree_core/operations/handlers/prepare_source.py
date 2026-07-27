@@ -7,6 +7,11 @@ from interleaving between reset, acquire, snapshot, materialize, and metadata.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict
+
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.handlers.acquire_source import handle_acquire_source
 from repo2ree_core.operations.handlers.extract_upload import handle_extract_upload
@@ -24,6 +29,23 @@ from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
 
+class PrepareSourceOutputs(BaseModel):
+    """What the workflow prepared, in the vocabulary of the mode it ran in.
+
+    The fields of the other mode stay unset and are dropped on the way out, so
+    a client reads back exactly the inputs that were acted on.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["download", "upload"]
+    origin_url: str | None = None
+    source_type: str | None = None
+    revision: str | None = None
+    upload_token: str | None = None
+    archive_name: str | None = None
+
+
 def handle_prepare_source(
     args: PrepareSourceArgs,
     *,
@@ -31,67 +53,92 @@ def handle_prepare_source(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    def require_success(operation: str, result: ActionResult) -> ActionResult | None:
+    def step(operation: str, run: Callable[[], ActionResult]) -> ActionResult | None:
+        """Run one sub-step, or the result to stop the whole workflow with.
+
+        Returns ``None`` to carry on. The cancel check is here because these
+        sub-handlers are called directly rather than dispatched, so the
+        dispatcher's pre-start guard never runs for them — and between two
+        steps is exactly where a cancel can be honoured without leaving the
+        source half-prepared, since each step is itself atomic.
+        """
+        if is_canceled():
+            log("system", "warn", f"prepare_source canceled before {operation}")
+            return ActionResult(status="canceled")
+        result = run()
         if result.status == "succeeded":
             return None
         log("system", "error", f"prepare_source step {operation} {result.status}")
         return result
 
-    result = handle_reset_for_source_change(log=log, is_canceled=is_canceled)
-    if failed := require_success("reset_for_source_change", result):
-        return failed
+    if halted := step(
+        "reset_for_source_change",
+        lambda: handle_reset_for_source_change(log=log, is_canceled=is_canceled),
+    ):
+        return halted
 
     if args.mode == "download":
-        result = handle_acquire_source(
-            AcquireSourceArgs(
-                origin_url=args.origin_url,
-                source_type=args.source_type,
-                revision=args.revision,
+        if halted := step(
+            "acquire_source",
+            lambda: handle_acquire_source(
+                AcquireSourceArgs(
+                    origin_url=args.origin_url,
+                    source_type=args.source_type,
+                    revision=args.revision,
+                ),
+                run_id=run_id,
+                log=log,
+                is_canceled=is_canceled,
             ),
-            run_id=run_id,
-            log=log,
-            is_canceled=is_canceled,
-        )
-        if failed := require_success("acquire_source", result):
-            return failed
-        result = handle_snapshot_upstream(run_id=run_id, log=log, is_canceled=is_canceled)
-        if failed := require_success("snapshot_upstream", result):
-            return failed
+        ):
+            return halted
+        if halted := step(
+            "snapshot_upstream",
+            lambda: handle_snapshot_upstream(run_id=run_id, log=log, is_canceled=is_canceled),
+        ):
+            return halted
         metadata = UpdateSourceMetadataArgs(origin_url=args.origin_url, source_type=args.source_type or "")
-    else:
-        result = handle_extract_upload(
-            ExtractUploadArgs(upload_token=args.upload_token, archive_name=args.archive_name),
-            log=log,
-            is_canceled=is_canceled,
+        outputs = PrepareSourceOutputs(
+            mode=args.mode,
+            origin_url=args.origin_url,
+            source_type=args.source_type or "",
+            revision=args.revision,
         )
-        if failed := require_success("extract_upload", result):
-            return failed
-        result = handle_acquire_source(AcquireSourceArgs(), run_id=run_id, log=log, is_canceled=is_canceled)
-        if failed := require_success("acquire_source", result):
-            return failed
+    else:
+        if halted := step(
+            "extract_upload",
+            lambda: handle_extract_upload(
+                ExtractUploadArgs(upload_token=args.upload_token, archive_name=args.archive_name),
+                log=log,
+                is_canceled=is_canceled,
+            ),
+        ):
+            return halted
+        if halted := step(
+            "acquire_source",
+            lambda: handle_acquire_source(AcquireSourceArgs(), run_id=run_id, log=log, is_canceled=is_canceled),
+        ):
+            return halted
         metadata = UpdateSourceMetadataArgs(
             mode="upload",
             archive_name=args.archive_name,
             upload_token=args.upload_token,
         )
-    result = handle_materialize_workspace(log=log, is_canceled=is_canceled)
-    if failed := require_success("materialize_workspace", result):
-        return failed
-    result = handle_update_source_metadata(metadata, log=log, is_canceled=is_canceled)
-    if failed := require_success("update_source_metadata", result):
-        return failed
+        outputs = PrepareSourceOutputs(
+            mode=args.mode,
+            upload_token=args.upload_token,
+            archive_name=args.archive_name,
+        )
 
-    if args.mode == "download":
-        outputs = {
-            "mode": args.mode,
-            "origin_url": args.origin_url,
-            "source_type": args.source_type,
-            "revision": args.revision,
-        }
-    else:
-        outputs = {
-            "mode": args.mode,
-            "upload_token": args.upload_token,
-            "archive_name": args.archive_name,
-        }
-    return ActionResult(status="succeeded", outputs=outputs)
+    if halted := step(
+        "materialize_workspace",
+        lambda: handle_materialize_workspace(log=log, is_canceled=is_canceled),
+    ):
+        return halted
+    if halted := step(
+        "update_source_metadata",
+        lambda: handle_update_source_metadata(metadata, log=log, is_canceled=is_canceled),
+    ):
+        return halted
+
+    return ActionResult(status="succeeded", outputs=outputs.model_dump(exclude_none=True))

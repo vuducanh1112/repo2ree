@@ -14,8 +14,8 @@ from contextlib import suppress
 
 from repo2ree_core.authoring.script_inference import ScriptTargetSelector, infer_scripts
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers._common import read_intent_or_none
 from repo2ree_core.operations.handlers._script_inference_inputs import build_runtime_inputs
+from repo2ree_core.operations.handlers.step_runner import read_intent_or_none
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_protocol.command import GenerateScriptCandidatesArgs
@@ -29,10 +29,6 @@ def handle_generate_script_candidates(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "generate_script_candidates canceled before start")
-        return ActionResult(status="canceled")
-
     if not args.targets:
         return ActionResult.failed("validation", "no inference targets requested")
 
@@ -43,7 +39,7 @@ def handle_generate_script_candidates(
         return ActionResult.failed("precondition", "no acquired source (upstream tree is absent)")
 
     store = ReeStore(layout)
-    intent = read_intent_or_none(store)
+    intent = read_intent_or_none(store, log=log)
     ree_id, snapshot_digest = _identity(store)
     runtime_inputs = build_runtime_inputs(layout, intent)
 

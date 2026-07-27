@@ -51,7 +51,7 @@ from repo2ree_core.evidence.review.store import write_review_experiment_evidence
 from repo2ree_core.execution.experiment.resolve import RunnableResolutionError, resolve_experiment_runnable
 from repo2ree_core.execution.experiment.run import run_runnable
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers._review_common import (
+from repo2ree_core.operations.handlers.review_step import (
     begin_review_step,
     require_review_record,
     workspace_runtime,

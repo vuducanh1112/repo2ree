@@ -15,13 +15,10 @@ from repo2ree_core.digests import digest_file
 from repo2ree_core.evidence.receipts.models import CrossCheckSbomReceipt, receipt_envelope
 from repo2ree_core.evidence.receipts.store import record_receipt
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
+from repo2ree_core.ree.layout import REPRODUCIBILITY_REPORT_FILENAME, SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms, utc_now
-from repo2ree_protocol.command import CrossCheckSbomArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
-
-_REPORT_FILENAME = "reproducibility-report.json"
 
 
 class CrossCheckSbomOutputs(BaseModel):
@@ -36,16 +33,11 @@ class CrossCheckSbomOutputs(BaseModel):
 
 
 def handle_cross_check_sbom(
-    args: CrossCheckSbomArgs,
     *,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "cross_check_sbom canceled before start")
-        return ActionResult(status="canceled")
-
     layout = ReeLayout.in_workbench()
 
     # The SBOM's home is fixed, so this reads it rather than resolving whatever
@@ -57,7 +49,7 @@ def handle_cross_check_sbom(
         log("system", "error", f"SBOM not found: {sbom_rel} — run generate-sbom first")
         return ActionResult.failed("precondition", f"SBOM not found: {sbom_rel} — run generate-sbom first")
 
-    report_path = layout.artifacts / _REPORT_FILENAME
+    report_path = layout.reproducibility_report
     if not report_path.is_file():
         log("system", "error", "No reproducibility report — run evaluate first")
         return ActionResult.failed("precondition", "No reproducibility report — run evaluate first")
@@ -133,7 +125,7 @@ def handle_cross_check_sbom(
     )
     recorded = receipt("succeeded", counts=summary)
     outputs = CrossCheckSbomOutputs(
-        report_relative_path=_REPORT_FILENAME,
+        report_relative_path=REPRODUCIBILITY_REPORT_FILENAME,
         sbom_relative_path=sbom_rel,
         cross_check=summary.model_dump(),
         receipt=recorded.model_dump(),

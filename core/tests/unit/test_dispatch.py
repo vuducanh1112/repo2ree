@@ -101,6 +101,30 @@ def test_routes_to_its_handler(
     assert called == [handler_name]
 
 
+@pytest.mark.parametrize("command_cls,handler_name", _ROUTES, ids=lambda v: getattr(v, "__name__", v))
+def test_cancel_before_start_never_reaches_the_handler(
+    command_cls: type[BaseModel], handler_name: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The pre-start cancel guard lives here, so it must hold for every command.
+
+    It used to be re-implemented in each handler, which meant a new handler
+    could silently omit it. Parametrized over the same routing table so a
+    command added without a cancel-honouring path fails here.
+    """
+    called: list[str] = []
+
+    for name in _ALL_HANDLERS:
+        monkeypatch.setattr(rc, name, lambda *_a, _n=name, **_k: called.append(_n))
+
+    operation = command_cls.model_fields["operation"].default
+    cmd = command_cls.model_construct(operation=operation, args=object())
+
+    result = rc.run_command(cast(Command, cmd), log=_null_log(), is_canceled=lambda: True)
+
+    assert result.status == "canceled"
+    assert called == []
+
+
 def test_unknown_command_raises() -> None:
     bogus = SimpleNamespace(operation="not_a_real_operation")
     with pytest.raises(ValueError, match="Unhandled command operation"):

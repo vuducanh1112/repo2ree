@@ -3,8 +3,8 @@
 Collects file signals, scans the manifests into a dependency inventory
 (``sources/manifests.py`` — first-party parsers for the pypi/conda/oci
 ecosystems), and delegates to the pure ``build_report`` function. This is the
-single entry point for the API layer; the API has no knowledge of which
-sources are run.
+single entry point callers use; a caller has no knowledge of which sources
+are run.
 """
 
 from __future__ import annotations

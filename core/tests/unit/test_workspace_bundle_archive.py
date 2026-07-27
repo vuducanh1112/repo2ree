@@ -320,7 +320,7 @@ def test_get_workspace_tags_overlay_files_as_generated(tmp_path):
     (layout.workspace / "main.py").write_text("print('hi')", encoding="utf-8")
     (layout.workspace / "build_runtime.sh").write_text("docker build .", encoding="utf-8")
 
-    files = {f["path"]: f["kind"] for f in get_workspace(storage_root, ree_id)["files"]}
+    files = {f.path: f.kind for f in get_workspace(storage_root, ree_id).files}
 
     assert files["build_runtime.sh"] == "generated"
     assert files["main.py"] == "source"
@@ -335,7 +335,7 @@ def test_get_workspace_includes_draft_manifest_projection(tmp_path):
     (layout.workspace / "main.py").write_text("print('hi')", encoding="utf-8")
 
     workspace = get_workspace(storage_root, ree_id)
-    draft = workspace["draft_manifest"]
+    draft = workspace.draft_manifest
 
     assert draft["manifest_state"] == "draft"
     assert draft["ree_id"] == ree_id
@@ -464,11 +464,11 @@ def test_get_workspace_includes_live_consistency_report(tmp_path):
         log=lambda *_: None,
     )
 
-    fresh = get_workspace(storage_root, ree_id)["consistency"]
+    fresh = get_workspace(storage_root, ree_id).consistency.model_dump()
     assert next(s for s in fresh["steps"] if s["step"] == "build_runtime")["status"] == "fresh"
 
     script.write_text("make other", encoding="utf-8")
-    stale = get_workspace(storage_root, ree_id)["consistency"]
+    stale = get_workspace(storage_root, ree_id).consistency.model_dump()
     build_step = next(s for s in stale["steps"] if s["step"] == "build_runtime")
     assert build_step["status"] == "stale"
     assert [entry["input"] for entry in build_step["stale_inputs"]] == ["build_script"]

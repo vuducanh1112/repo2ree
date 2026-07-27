@@ -7,8 +7,9 @@ Mirrors the host-side write_file_content behaviour exactly.
 from __future__ import annotations
 
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers._common import check_expected_etag
-from repo2ree_core.ree.layout import ReeLayout, validate_relative_path
+from repo2ree_core.operations.handlers.step_runner import check_expected_etag
+from repo2ree_core.path_safety import validate_relative_path
+from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_protocol.command import WriteFileArgs
 from repo2ree_protocol.log import LogSink
@@ -21,10 +22,6 @@ def handle_write_file(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "write_file canceled before start")
-        return ActionResult(status="canceled")
-
     try:
         validate_relative_path(args.path)
     except ValueError as exc:

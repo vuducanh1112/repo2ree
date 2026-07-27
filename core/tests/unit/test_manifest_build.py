@@ -2,6 +2,7 @@ from repo2ree_core.bundle.manifest import build_draft_manifest_payload, build_ma
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH
+from repo2ree_core.ree.workspace.inventory import ReeFile, WorkspaceFile
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 
 
@@ -98,27 +99,11 @@ def test_draft_manifest_adds_workspace_context_without_file_content():
     manifest = build_draft_manifest_payload(
         metadata,
         workspace_files=[
-            {
-                "path": "main.py",
-                "kind": "source",
-                "size": 12,
-                "content": "print('hi')",
-            }
+            WorkspaceFile(path="main.py", kind="source", size=12, content="print('hi')"),
         ],
         ree_files=[
-            {
-                "path": "overlay/build.sh",
-                "kind": "ree",
-                "tag": "Overlay",
-                "size": 8,
-            },
-            {
-                "path": "artifacts/runtime.tar.gz",
-                "kind": "ree",
-                "tag": "Artifact",
-                "size": 99,
-                "content": None,
-            },
+            ReeFile(path="overlay/build.sh", tag="Overlay", size=8),
+            ReeFile(path="artifacts/runtime.tar.gz", tag="Artifact", size=99, content=None),
         ],
     )
 

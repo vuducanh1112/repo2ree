@@ -97,11 +97,32 @@ def run_command(
         args = getattr(cmd, "args", None)
         if isinstance(args, BaseModel):
             record_span_facts(span, args.model_dump(), namespace="arg")
-        result = _dispatch(cmd, log=log, run_id=run_id, cancel=cancel)
+        result = _run_unless_canceled(cmd, log=log, run_id=run_id, cancel=cancel)
         record_exit_code(span, result.exit_code)
         record_span_facts(span, result.outputs, namespace="output")
         record_command_status(span, result.status)
         return result
+
+
+def _run_unless_canceled(
+    cmd: Command,
+    *,
+    log: LogSink,
+    run_id: str,
+    cancel: CancelCheck,
+) -> ActionResult:
+    """Honour a cancel that arrived before the command started, then dispatch.
+
+    A cancel requested while the command was still queued means the same thing
+    for every operation — nothing has happened yet, so nothing has to be undone
+    — which makes this the one place it belongs. Handlers keep only the cancel
+    checks that are theirs: the ones *inside* a run, where what has already
+    happened decides what the check must do about it.
+    """
+    if cancel():
+        log("system", "warn", f"{cmd.operation} canceled before start")
+        return ActionResult(status="canceled")
+    return _dispatch(cmd, log=log, run_id=run_id, cancel=cancel)
 
 
 def _dispatch(
@@ -144,7 +165,7 @@ def _dispatch(
     if isinstance(cmd, ResetForSourceChangeCommand):
         return handle_reset_for_source_change(log=log, is_canceled=cancel)
     if isinstance(cmd, BuildRuntimeCommand):
-        return handle_build_runtime(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
+        return handle_build_runtime(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, EvaluateDependencyScoreCommand):
         return handle_evaluate_dependency_score(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, RunExperimentCommand):
@@ -154,9 +175,9 @@ def _dispatch(
     if isinstance(cmd, GenerateSbomCommand):
         return handle_generate_sbom(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, CrossCheckSbomCommand):
-        return handle_cross_check_sbom(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
+        return handle_cross_check_sbom(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ActivationTestCommand):
-        return handle_activation_test(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
+        return handle_activation_test(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateScriptCandidatesCommand):
         return handle_generate_script_candidates(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, SealReeCommand):

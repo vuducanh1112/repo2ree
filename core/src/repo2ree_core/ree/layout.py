@@ -1,8 +1,9 @@
 """Pure description of the on-disk layout of a single REE.
 
 This module is part of the functional core: it contains the data type and
-path arithmetic, but performs no filesystem I/O. The imperative shell in
-``repo2ree_api.storage`` uses ``ReeLayout`` to know where to read and write.
+path arithmetic, but performs no filesystem I/O. The imperative shell —
+:class:`repo2ree_core.ree.store.ReeStore` and the read views beside it — uses
+``ReeLayout`` to know where to read and write.
 
 Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
 
@@ -31,12 +32,9 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 # Canonical lexical path checks live in the dependency-free leaf module so the
-# domain and experiment layers can share them without an import cycle. Re-export
-# here for the storage-layer call sites that have always imported them from
-# ``layout``.
-from repo2ree_core.path_safety import normalize_workspace_path, validate_relative_path
-
-__all__ = ["normalize_workspace_path", "validate_relative_path"]
+# domain and experiment layers can share them without an import cycle. Import
+# them from there, never from here: one spelling per primitive.
+from repo2ree_core.path_safety import validate_relative_path
 
 # ================================================
 # Constants
@@ -69,6 +67,12 @@ ARTIFACTS_DIRNAME = "artifacts"
 # before packaging.
 SBOM_FILENAME = "sbom.json"
 SBOM_ARTIFACT_PATH = f"{ARTIFACTS_DIRNAME}/{SBOM_FILENAME}"
+# The evaluate step's report, the other piece of REE-owned produced evidence
+# with one fixed home. Unlike the SBOM it is never published on the intent (no
+# step consumes it as a declared input), so it needs no root-relative spelling —
+# but it is read by the step overlay and the cross-check, which is exactly why
+# its name belongs here rather than in each of them.
+REPRODUCIBILITY_REPORT_FILENAME = "reproducibility-report.json"
 # Produced-results store: per-experiment captured outputs, keyed by name. A
 # sibling of ``artifacts/`` (produced, not authored) rather than a subtree of
 # it, so the sealed bundle exposes the author baseline at ``ree/results/<name>/``
@@ -177,6 +181,17 @@ class ReeLayout:
         Mirrors :attr:`ReviewLayout.sbom` on the reviewer's side.
         """
         return self.artifacts / SBOM_FILENAME
+
+    @property
+    def reproducibility_report(self) -> Path:
+        """This REE's evaluate report, written by ``evaluate_dependency_score``.
+
+        Beside the SBOM in ``artifacts/`` and for the same reason: produced
+        evidence, not an authored file. Its presence is also the evaluate step's
+        completion signal — the step records no receipt — which is why the step
+        overlay asks the layout for it rather than spelling the name itself.
+        """
+        return self.artifacts / REPRODUCIBILITY_REPORT_FILENAME
 
     @property
     def results(self) -> Path:

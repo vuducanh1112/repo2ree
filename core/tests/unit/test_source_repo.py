@@ -2,12 +2,17 @@ from __future__ import annotations
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.ree.workspace.inventory import WorkspaceFile
 from repo2ree_core.source_repo import (
     derive_source_repo_metadata,
     format_source_size,
     repo_name_from_origin_url,
     total_source_size,
 )
+
+
+def _file(path: str, size: int) -> WorkspaceFile:
+    return WorkspaceFile(path=path, kind="source", size=size)
 
 
 class TestRepoNameFromOriginUrl:
@@ -23,11 +28,10 @@ class TestRepoNameFromOriginUrl:
 
 class TestTotalSourceSize:
     def test_sums_sizes(self) -> None:
-        files = [{"path": "a", "size": 100}, {"path": "b", "size": 250}]
-        assert total_source_size(files) == 350
+        assert total_source_size([_file("a", 100), _file("b", 250)]) == 350
 
-    def test_none_when_no_sizes(self) -> None:
-        assert total_source_size([{"path": "a"}]) is None
+    def test_none_when_inventory_is_empty(self) -> None:
+        assert total_source_size([]) is None
 
 
 class TestFormatSourceSize:
@@ -46,7 +50,7 @@ class TestDeriveSourceRepoMetadata:
             swhid="swh:1:dir:abc",
         )
         session = ReeSession(source_available=True, source_acquired_by="download")
-        meta = derive_source_repo_metadata(intent, session, [{"path": "a.py", "size": 10}])
+        meta = derive_source_repo_metadata(intent, session, [_file("a.py", 10)])
         assert meta.name == "widget"
         assert meta.origin == "https://github.com/acme/widget.git"
         assert meta.source_type == "git"
@@ -70,7 +74,7 @@ class TestDeriveSourceRepoMetadata:
     def test_serializes_snake_case(self) -> None:
         intent = ReeIntent(origin_url="https://github.com/acme/widget", source_type="git")
         session = ReeSession(source_available=True, source_acquired_by="download")
-        dumped = derive_source_repo_metadata(intent, session, [{"size": 5}]).model_dump()
+        dumped = derive_source_repo_metadata(intent, session, [_file("a.py", 5)]).model_dump()
         assert dumped["source_type"] == "git"
         assert dumped["size_bytes"] == 5
         assert dumped["size_label"] == "5 B"

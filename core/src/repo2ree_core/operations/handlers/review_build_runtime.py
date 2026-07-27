@@ -62,7 +62,7 @@ from repo2ree_core.execution.process import (
     run_streaming_process,
     run_workspace_script,
 )
-from repo2ree_core.operations.handlers._review_common import (
+from repo2ree_core.operations.handlers.review_step import (
     begin_review_step,
     require_review_record,
     workspace_runtime,

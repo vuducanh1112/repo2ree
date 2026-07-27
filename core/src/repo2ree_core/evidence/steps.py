@@ -43,7 +43,7 @@ class ReeStep(BaseModel):
 
     Purely structural and deployment-static — the same for every REE. The
     concrete calls that advance a step (operationIds) are an HTTP concern and
-    are joined on by the API layer, not carried here.
+    are joined on by whichever surface exposes the graph, not carried here.
     """
 
     model_config = ConfigDict(extra="forbid")

@@ -34,12 +34,6 @@ def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
     return store
 
 
-def test_canceled_before_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _store_at(tmp_path, monkeypatch)
-    result = handler.handle_delete_file(DeleteFileArgs(path="a.txt"), log=_silent_log, is_canceled=lambda: True)
-    assert result.status == "canceled"
-
-
 def test_invalid_path_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
     result = handler.handle_delete_file(DeleteFileArgs(path="../escape"), log=_silent_log, is_canceled=_never_canceled)

@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any
 
+from repo2ree_core.path_safety import normalize_workspace_path
 from repo2ree_core.ree.layout import (
     ARTIFACTS_DIRNAME,
     AUTHOR_RECEIPTS_DIRNAME,
@@ -36,7 +37,6 @@ from repo2ree_core.ree.layout import (
     RESULTS_DIRNAME,
     SNAPSHOT_FILENAME,
     WORKSPACE_DIRNAME,
-    normalize_workspace_path,
 )
 
 # ================================================

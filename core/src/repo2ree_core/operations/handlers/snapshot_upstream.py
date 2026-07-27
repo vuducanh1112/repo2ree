@@ -34,10 +34,6 @@ def handle_snapshot_upstream(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "snapshot_upstream canceled before start")
-        return ActionResult(status="canceled")
-
     layout = ReeLayout.in_workbench()
 
     if not layout.upstream.is_dir():

@@ -41,10 +41,6 @@ def handle_materialize_workspace(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "materialize_workspace canceled before start")
-        return ActionResult(status="canceled")
-
     layout = ReeLayout.in_workbench()
     log("system", "info", f"materializing {layout.workspace}")
 

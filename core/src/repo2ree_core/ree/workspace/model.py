@@ -35,3 +35,28 @@ class WorkspaceMetadata(BaseModel):
         if not self.ree_intent.origin_url and self.external_ref:
             self.ree_intent.origin_url = self.external_ref
         return self
+
+    def with_intent(self, intent: ReeIntent, *, at: str) -> WorkspaceMetadata:
+        """This sidecar carrying a new intent, with its identity fields re-derived.
+
+        ``name`` and ``external_ref`` are projections of the intent, not
+        independent state — the validator above already assumes so in the other
+        direction. Deriving them here rather than at each write site keeps that
+        assumption owned by the model that makes it: a store only persists what
+        this returns, and cannot invent a sidecar whose name disagrees with the
+        intent it holds. Re-validated on the way out, so the round trip either
+        yields a sound sidecar or raises before anything reaches disk.
+        """
+        return self._revalidated(
+            ree_intent=intent.model_dump(exclude_none=True),
+            name=intent.name or self.name,
+            external_ref=intent.origin_url or None,
+            updated_at=at,
+        )
+
+    def with_session(self, session: ReeSession, *, at: str) -> WorkspaceMetadata:
+        """This sidecar carrying new session state. Nothing else is derived from it."""
+        return self._revalidated(ree_session=session.model_dump(exclude_none=True), updated_at=at)
+
+    def _revalidated(self, **changes: object) -> WorkspaceMetadata:
+        return WorkspaceMetadata.model_validate(self.model_dump(exclude_none=True) | changes)

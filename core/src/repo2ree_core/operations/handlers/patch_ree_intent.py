@@ -9,7 +9,11 @@ from __future__ import annotations
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.store import prune_author_experiment_receipts
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers._common import open_ree_store, patch_ree_intent
+from repo2ree_core.operations.handlers.step_runner import (
+    VersionConflictOutputs,
+    open_ree_store,
+    patch_ree_intent,
+)
 from repo2ree_protocol.command import PatchReeIntentArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -23,10 +27,6 @@ def handle_patch_ree_intent(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "patch_ree_intent canceled before start")
-        return ActionResult(status="canceled")
-
     unsupported = sorted(set(args.patch) - _INTENT_FIELDS)
     if unsupported:
         log("system", "error", f"patch contains unknown fields: {unsupported}")
@@ -53,10 +53,13 @@ def handle_patch_ree_intent(
                 "conflict",
                 "REE intent changed since it was read",
                 retryable=True,
-                outputs={
-                    "expected_version": args.expected_version,
-                    "actual_version": actual_version,
-                },
+                # The intent is versioned by the sidecar's updated_at rather
+                # than by a file etag, so the conflict names no path — but it
+                # is the same conflict, reported in the same shape.
+                outputs=VersionConflictOutputs(
+                    expected_version=args.expected_version,
+                    actual_version=actual_version,
+                ).as_outputs(),
             )
 
     log("system", "info", f"patch_ree_intent: {sorted(args.patch)}")

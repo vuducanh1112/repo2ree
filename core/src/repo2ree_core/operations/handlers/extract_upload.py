@@ -29,10 +29,6 @@ def handle_extract_upload(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "extract_upload canceled before start")
-        return ActionResult(status="canceled")
-
     layout = ReeLayout.in_workbench()
     staged = layout.upload_staging_file(args.upload_token)
 

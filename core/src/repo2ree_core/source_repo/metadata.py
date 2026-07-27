@@ -1,18 +1,18 @@
 """Derive display-ready source-repository metadata.
 
 Pure module: no filesystem or network I/O. Callers pass already-loaded intent,
-session and a file inventory (each entry carrying a ``size`` in bytes).
+session and the enumerated workspace file inventory.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
-from typing import Any
+from collections.abc import Iterable
 
 from pydantic import BaseModel
 
 from repo2ree_core.domain.ree_intent import ReeIntent, SourceType
 from repo2ree_core.domain.ree_session import ReeSession, SourceAcquiredBy
+from repo2ree_core.ree.workspace.inventory import WorkspaceFile
 
 _VCS_SUFFIX = ".git"
 
@@ -58,16 +58,10 @@ def repo_name_from_origin_url(origin_url: str) -> str:
     return name
 
 
-def total_source_size(files: Iterable[Mapping[str, Any]]) -> int | None:
-    """Sum the ``size`` of every file entry, or ``None`` if no entry has one."""
-    total = 0
-    saw_size = False
-    for entry in files:
-        size = entry.get("size")
-        if isinstance(size, int | float) and not isinstance(size, bool):
-            total += int(size)
-            saw_size = True
-    return total if saw_size else None
+def total_source_size(files: Iterable[WorkspaceFile]) -> int | None:
+    """Sum the sizes of the enumerated files, or ``None`` for an empty inventory."""
+    sizes = [file.size for file in files]
+    return sum(sizes) if sizes else None
 
 
 def format_source_size(num_bytes: int) -> str:
@@ -92,7 +86,7 @@ def format_source_size(num_bytes: int) -> str:
 def derive_source_repo_metadata(
     intent: ReeIntent,
     session: ReeSession,
-    files: Iterable[Mapping[str, Any]],
+    files: Iterable[WorkspaceFile],
 ) -> SourceRepoMetadata:
     """Fold intent, session and the file inventory into one source record."""
     from_upload = session.source_acquired_by == "upload"

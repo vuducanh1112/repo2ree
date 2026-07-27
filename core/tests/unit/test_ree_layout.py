@@ -3,11 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.ree.layout import (
-    ReeLayout,
-    validate_relative_path,
-    validate_upload_token,
-)
+from repo2ree_core.path_safety import validate_relative_path
+from repo2ree_core.ree.layout import ReeLayout, validate_upload_token
 
 
 def test_for_ree_composes_root_from_storage_root_and_id():

@@ -21,7 +21,6 @@ from repo2ree_core.operations.handlers import cross_check_sbom as handler
 from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
-from repo2ree_protocol.command import CrossCheckSbomArgs
 from repo2ree_protocol.result import ActionResult
 
 
@@ -85,23 +84,13 @@ def _seed(
     if with_sbom:
         layout.sbom.write_text(json.dumps(_SBOM), encoding="utf-8")
     if with_report:
-        (layout.artifacts / "reproducibility-report.json").write_text(json.dumps(_REPORT), encoding="utf-8")
+        layout.reproducibility_report.write_text(json.dumps(_REPORT), encoding="utf-8")
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return layout
 
 
 def _run() -> ActionResult:
-    return handler.handle_cross_check_sbom(
-        CrossCheckSbomArgs(), run_id="run-1", log=_silent_log, is_canceled=_never_canceled
-    )
-
-
-def test_canceled_before_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _seed(tmp_path, monkeypatch)
-    result = handler.handle_cross_check_sbom(
-        CrossCheckSbomArgs(), run_id="run-1", log=_silent_log, is_canceled=lambda: True
-    )
-    assert result.status == "canceled"
+    return handler.handle_cross_check_sbom(run_id="run-1", log=_silent_log, is_canceled=_never_canceled)
 
 
 def test_missing_sbom_fails_without_receipt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -120,7 +109,7 @@ def test_missing_report_fails_without_receipt(tmp_path: Path, monkeypatch: pytes
 
 def test_unreadable_report_records_failed_receipt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     layout = _seed(tmp_path, monkeypatch)
-    (layout.artifacts / "reproducibility-report.json").write_text("not json", encoding="utf-8")
+    layout.reproducibility_report.write_text("not json", encoding="utf-8")
     result = _run()
     assert result.status == "failed"
     (receipt,) = load_receipts(layout)
@@ -133,7 +122,7 @@ def test_enriches_report_and_records_receipt(tmp_path: Path, monkeypatch: pytest
     result = _run()
     assert result.status == "succeeded"
 
-    persisted = json.loads((layout.artifacts / "reproducibility-report.json").read_text(encoding="utf-8"))
+    persisted = json.loads(layout.reproducibility_report.read_text(encoding="utf-8"))
     rows = {row["name"]: row for row in persisted["dependencies"]}
     assert rows["requests"]["runtime_presence"] == "observed"
     assert rows["requests"]["observed_version"] == "2.31.0"
@@ -157,6 +146,6 @@ def test_rerun_does_not_double_count_undeclared_rows(tmp_path: Path, monkeypatch
     layout = _seed(tmp_path, monkeypatch)
     assert _run().status == "succeeded"
     assert _run().status == "succeeded"
-    persisted = json.loads((layout.artifacts / "reproducibility-report.json").read_text(encoding="utf-8"))
+    persisted = json.loads(layout.reproducibility_report.read_text(encoding="utf-8"))
     undeclared = [row for row in persisted["dependencies"] if row["status"] == "undeclared"]
     assert len(undeclared) == 1

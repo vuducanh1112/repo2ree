@@ -32,6 +32,7 @@ from repo2ree_core.evidence.receipts.store import (
 )
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 
 
 def _silent_log(*_: object) -> None:
@@ -376,21 +377,14 @@ class TestHandlerWiring:
         return store
 
     def test_build_run_records_receipt_with_input_slice_and_produced_digest(self, workbench: ReeStore) -> None:
-        from repo2ree_core.operations.handlers._common import run_bare_script_handler
+        from repo2ree_core.operations.handlers.build_runtime import handle_build_runtime
 
         layout = workbench.layout
-        script = layout.workspace / "ree-scripts" / "build_script.sh"
+        script = layout.workspace / RESERVED_BUILD_SCRIPT
         script.parent.mkdir(parents=True)
         script.write_text("printf runtime-bytes > runtime.tar\n")
 
-        result = run_bare_script_handler(
-            "ree-scripts/build_script.sh",
-            operation="build_runtime",
-            noun="Build",
-            run_id="run-42",
-            log=_silent_log,
-            is_canceled=lambda: False,
-        )
+        result = handle_build_runtime(run_id="run-42", log=_silent_log, is_canceled=lambda: False)
 
         assert result.status == "succeeded"
         receipt = json.loads(layout.run_receipt("run-42").read_text(encoding="utf-8"))

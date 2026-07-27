@@ -18,7 +18,8 @@ from typing import Any
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.ree.layout import ReeLayout, validate_relative_path
+from repo2ree_core.path_safety import validate_relative_path
+from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.reserved_templates import reserved_script_template
@@ -217,10 +218,14 @@ class ReeStore:
         self.write_metadata_json(metadata.model_dump(exclude_none=True))
 
     def read_metadata_json(self) -> dict[str, Any]:
-        """Raw JSON metadata, without model validation.
+        """The sidecar's bytes as parsed JSON, without model validation.
 
-        Use this when callers need to mutate the metadata dict directly. For
-        new code, prefer :meth:`read_metadata`.
+        For the two callers that must see what is *actually on disk* rather
+        than what the model says it should be: the executor's ``get-metadata``
+        passthrough, and tests seeding a fixture. Every mutation goes through
+        the typed path (:meth:`write_intent`, :meth:`write_session`,
+        :meth:`write_metadata`) so no write site can hand-roll the sidecar's
+        derived fields.
         """
         return _read_json(self.layout.metadata)
 
@@ -234,21 +239,13 @@ class ReeStore:
         return self.read_metadata().ree_intent
 
     def write_intent(self, intent: ReeIntent) -> None:
-        raw = self.read_metadata_json()
-        raw["ree_intent"] = intent.model_dump(exclude_none=True)
-        raw["name"] = intent.name or raw.get("name", "")
-        raw["external_ref"] = intent.origin_url or None
-        raw["updated_at"] = utc_now()
-        self.write_metadata_json(raw)
+        self.write_metadata(self.read_metadata().with_intent(intent, at=utc_now()))
 
     def read_session(self) -> ReeSession:
         return self.read_metadata().ree_session
 
     def write_session(self, session: ReeSession) -> None:
-        raw = self.read_metadata_json()
-        raw["ree_session"] = session.model_dump(exclude_none=True)
-        raw["updated_at"] = utc_now()
-        self.write_metadata_json(raw)
+        self.write_metadata(self.read_metadata().with_session(session, at=utc_now()))
 
     # --- Manifest -------------------------------------------------------
 

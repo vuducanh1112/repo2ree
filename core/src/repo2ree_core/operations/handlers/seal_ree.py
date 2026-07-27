@@ -15,10 +15,6 @@ def handle_seal_ree(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "seal_ree canceled before start")
-        return ActionResult(status="canceled")
-
     layout = ReeLayout.in_workbench()
     storage_root = layout.root.parent
     ree_id = layout.root.name

@@ -14,6 +14,7 @@ from typing import Any
 
 from repo2ree_core.domain.ree_intent import REE_MANIFEST_VERSION, ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
+from repo2ree_core.ree.workspace.inventory import ReeFile, WorkspaceFile
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 
 _SESSION_MANIFEST_EXCLUDE = {"detected_dependencies", "uploaded_archive", "source_resolved_commit"}
@@ -68,8 +69,8 @@ def _pick(payload: Mapping[str, Any], model: type[ReeIntent] | type[ReeSession])
 def build_draft_manifest_payload(
     metadata: WorkspaceMetadata,
     *,
-    workspace_files: Sequence[Mapping[str, Any]],
-    ree_files: Sequence[Mapping[str, Any]],
+    workspace_files: Sequence[WorkspaceFile],
+    ree_files: Sequence[ReeFile],
 ) -> dict[str, Any]:
     """Build the live, read-only manifest projection for an editable REE.
 
@@ -94,21 +95,15 @@ def build_draft_manifest_payload(
     }
 
 
-def _files_under(
-    files: Sequence[Mapping[str, Any]],
-    top_level_dir: str,
-) -> list[Mapping[str, Any]]:
+def _files_under(files: Sequence[ReeFile], top_level_dir: str) -> list[ReeFile]:
     prefix = f"{top_level_dir}/"
-    return [file for file in files if str(file.get("path") or "").startswith(prefix)]
+    return [file for file in files if file.path.startswith(prefix)]
 
 
-def _file_inventory_entry(file: Mapping[str, Any]) -> dict[str, Any]:
-    entry: dict[str, Any] = {
-        "path": str(file.get("path") or ""),
-        "kind": str(file.get("kind") or ""),
-    }
-    if file.get("tag") is not None:
-        entry["tag"] = str(file.get("tag") or "")
-    if file.get("size") is not None:
-        entry["size"] = file.get("size")
+def _file_inventory_entry(file: WorkspaceFile | ReeFile) -> dict[str, Any]:
+    """One inventory row: what the file is and where, never its content."""
+    entry: dict[str, Any] = {"path": file.path, "kind": file.kind}
+    if isinstance(file, ReeFile):
+        entry["tag"] = file.tag
+    entry["size"] = file.size
     return entry

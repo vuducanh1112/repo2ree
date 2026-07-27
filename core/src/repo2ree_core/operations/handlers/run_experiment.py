@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from repo2ree_core.domain.experiment import Runnable
 from repo2ree_core.domain.ree_intent import ReeIntent
+from repo2ree_core.evidence.receipts.models import RunExperimentReceipt
 from repo2ree_core.execution.experiment.resolve import RunnableResolutionError, resolve_experiment_runnable
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers._common import run_runnable_handler
+from repo2ree_core.operations.handlers.step_runner import RunnableStep, run_runnable_handler
 from repo2ree_protocol.command import RunExperimentArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -32,8 +33,14 @@ def handle_run_experiment(
         return experiment, experiment.name
 
     return run_runnable_handler(
-        operation="run_experiment",
-        select=select,
+        RunnableStep(
+            operation="run_experiment",
+            select=select,
+            receipt_cls=RunExperimentReceipt,
+            # An experiment's declared outputs are the author-side baseline a
+            # reviewer later diffs against, so a successful run captures them.
+            captures_declared_outputs=True,
+        ),
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,

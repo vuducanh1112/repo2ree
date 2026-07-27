@@ -20,13 +20,9 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
-from typing import Any
 
-from repo2ree_core.ree.layout import (
-    ReeLayout,
-    normalize_workspace_path,
-    validate_relative_path,
-)
+from repo2ree_core.path_safety import normalize_workspace_path, validate_relative_path
+from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.inventory import (
     ReeFile,
@@ -89,26 +85,27 @@ def workspace_files(
     ree_id: str,
     *,
     include_content: bool = True,
-) -> list[dict[str, Any]]:
+) -> list[WorkspaceFile]:
     store = store_for(storage_root, ree_id)
     root = store.layout.workspace
     # Provenance: files present in overlay/ are user-added or tool-generated
     # recipe files; everything else came from the immutable upstream source.
     # The merged workspace flattens both, so we recover the origin here.
     overlay_rels = {rel.as_posix() for rel in store.overlay.iter_files()}
-    entries: list[dict[str, Any]] = []
+    entries: list[WorkspaceFile] = []
     for fp in _iter_workspace_files(store):
         rel = fp.relative_to(root).as_posix()
         size = fp.stat().st_size
-        entry = WorkspaceFile(
-            path=rel,
-            kind="generated" if rel in overlay_rels else classify_file_kind(rel),
-            size=size,
-            content=(_read_text_if_possible(fp) if should_inline_file_content(rel, size) else None)
-            if include_content
-            else None,
+        entries.append(
+            WorkspaceFile(
+                path=rel,
+                kind="generated" if rel in overlay_rels else classify_file_kind(rel),
+                size=size,
+                content=(_read_text_if_possible(fp) if should_inline_file_content(rel, size) else None)
+                if include_content
+                else None,
+            )
         )
-        entries.append(entry.model_dump())
     return entries
 
 
@@ -134,13 +131,13 @@ def ree_files(
     ree_id: str,
     *,
     include_content: bool = True,
-) -> list[dict[str, Any]]:
+) -> list[ReeFile]:
     """Enumerate every file under the REE root, mirroring the on-disk layout."""
     layout = layout_for(storage_root, ree_id)
     ree_root = layout.root
     if not ree_root.exists():
         raise FileNotFoundError(f"REE {ree_id} not found")
-    entries: list[dict[str, Any]] = []
+    entries: list[ReeFile] = []
     for fp in sorted(ree_root.rglob("*")):
         if not fp.is_file():
             continue
@@ -151,13 +148,14 @@ def ree_files(
             continue
         rel = rel_path.as_posix()
         size = fp.stat().st_size
-        entry = ReeFile(
-            path=rel,
-            tag=_ree_file_tag(rel),
-            size=size,
-            content=(_read_text_if_possible(fp) if should_inline_file_content(rel, size) else None)
-            if include_content
-            else None,
+        entries.append(
+            ReeFile(
+                path=rel,
+                tag=_ree_file_tag(rel),
+                size=size,
+                content=(_read_text_if_possible(fp) if should_inline_file_content(rel, size) else None)
+                if include_content
+                else None,
+            )
         )
-        entries.append(entry.model_dump())
     return entries

@@ -9,7 +9,7 @@ from repo2ree_core.digests import digest_file
 from repo2ree_core.evidence.receipts.models import GenerateSbomReceipt, receipt_envelope
 from repo2ree_core.evidence.receipts.store import record_receipt
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers._common import (
+from repo2ree_core.operations.handlers.step_runner import (
     patch_ree_intent,
     resolve_workspace_path,
 )
@@ -37,10 +37,6 @@ def handle_generate_sbom(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "generate_sbom canceled before start")
-        return ActionResult(status="canceled")
-
     layout = ReeLayout.in_workbench()
     runtime_path = args.produced_runtime_path.strip()
     try:

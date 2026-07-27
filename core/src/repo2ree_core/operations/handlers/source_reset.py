@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.handlers._common import open_ree_store
+from repo2ree_core.operations.handlers.step_runner import open_ree_store
 from repo2ree_core.ree.store import reset_source_state
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -14,10 +14,6 @@ def handle_reset_for_source_change(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "reset_for_source_change canceled before start")
-        return ActionResult(status="canceled")
-
     opened = open_ree_store(log)
     if isinstance(opened, ActionResult):
         return opened

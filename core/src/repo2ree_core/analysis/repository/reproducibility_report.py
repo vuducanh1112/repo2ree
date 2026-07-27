@@ -5,8 +5,20 @@ file signals into a structured report that enumerates concrete threats to
 reproducibility (unpinned dependencies, missing lockfile, floating base image,
 non-declarative system, ...).
 
-No I/O and no subprocess: running any dependency analysis tool and serializing
-the report to a file live in the API layer.  This module only computes.
+No I/O and no subprocess: scanning the repository and serializing the report to
+``artifacts/`` live in the ``evaluate_dependency_score`` handler.  This module
+only computes.
+
+Not to be confused with :mod:`repo2ree_core.evidence.scorecard`, the other
+module that scores an REE.  The two ask different questions of different
+inputs and neither is derived from the other: this one reads the *repository*
+(manifests, lockfiles, Dockerfiles) and grades how well it declares what it
+needs, on three orthogonal ladders settled onto
+:class:`repo2ree_core.domain.ree_session.ReeSession` by the handler; the
+scorecard reads the *evidence the REE has produced* (intent, session, run
+receipts) and grades what has actually been demonstrated, on the single R0-R5
+ladder.  A perfectly pinned repository that never built scores high here and
+low there, which is the point.
 
 Functions carry design-by-contract assertions (pre-/post-conditions) for the
 invariants that the type system cannot express.

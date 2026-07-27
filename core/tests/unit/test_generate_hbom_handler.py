@@ -46,12 +46,6 @@ def _seed_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, existing: HB
     return store
 
 
-def test_canceled_before_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _seed_store(tmp_path, monkeypatch)
-    result = handler.handle_generate_hbom(log=_silent_log, is_canceled=lambda: True)
-    assert result.status == "canceled"
-
-
 def test_missing_metadata_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     store = ReeStore(ReeLayout(root=tmp_path))
     store.ensure_dirs()

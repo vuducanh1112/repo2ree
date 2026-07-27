@@ -1,13 +1,27 @@
+"""The shared shape of an author-side step: preconditions, input slice, receipt.
+
+A step handler is mostly ceremony around one script run — open the REE, digest
+what the run is about to consume, run it, write a receipt binding the two, and
+report a status that agrees with all three. That ceremony is here so the
+handlers can be about what makes them different, and so the input slice in
+particular is collected one way: it is the chain that makes a receipt auditable,
+and two spellings of it would be two chains.
+
+Nothing here knows its callers by name. A step that needs to record something
+another does not says so with a :class:`RunnableStep` field, never by having
+this module compare operation strings.
+"""
+
 from __future__ import annotations
 
+import json
 import shutil
 from collections.abc import Callable
-from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from repo2ree_core.digests import digest_bytes, digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.experiment import Runnable
@@ -15,14 +29,13 @@ from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.consistency import check_workspace_drift, declared_output_paths
 from repo2ree_core.evidence.receipts.models import (
     ActivationTestReceipt,
-    BuildRuntimeReceipt,
     RunExperimentReceipt,
     WorkspaceDrift,
     receipt_envelope,
 )
 from repo2ree_core.evidence.receipts.store import record_receipt
 from repo2ree_core.execution.experiment.run import RunnableRunOutputs, run_runnable
-from repo2ree_core.execution.process import CancelCheck, run_workspace_script
+from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
@@ -30,6 +43,12 @@ from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
 from repo2ree_protocol.tracing import ReceiptInputAttrs
+
+# What a half-built or damaged sidecar raises on the way through pydantic and
+# json: an unreadable file, malformed bytes, or a document that no longer fits
+# the model. Anything outside this set is a defect here, not a fact about the
+# REE, and must not be mistaken for one.
+UNREADABLE_METADATA = (OSError, json.JSONDecodeError, ValidationError, ValueError)
 
 
 def resolve_workspace_path(layout: ReeLayout, rel_path: str) -> Path:
@@ -46,7 +65,7 @@ def resolve_workspace_path(layout: ReeLayout, rel_path: str) -> Path:
 
 
 @dataclass(frozen=True)
-class _StepInputs:
+class StepInputs:
     """The input slice of a workspace-dependent step, collected *before* the
     run so outputs landing in the workspace cannot leak into it."""
 
@@ -81,25 +100,33 @@ def open_ree_store(log: LogSink) -> tuple[ReeLayout, ReeStore] | ActionResult:
     return layout, store
 
 
-def read_intent_or_none(store: ReeStore) -> ReeIntent | None:
+def read_intent_or_none(store: ReeStore, *, log: LogSink) -> ReeIntent | None:
     """The intent, or None when there is no readable metadata.
 
     For the read-only paths that must still answer when a REE is half-built
-    (inference, step inputs) rather than fail the command.
+    (inference, step inputs) rather than fail the command. An *unreadable*
+    sidecar is not the same thing as an absent one, so it is said out loud:
+    what follows records "nothing declared" either way, and only the log can
+    tell a reader which of the two they are looking at.
     """
-    with suppress(Exception):
-        if store.metadata_exists():
-            return store.read_intent()
-    return None
+    if not store.metadata_exists():
+        return None
+    try:
+        return store.read_intent()
+    except UNREADABLE_METADATA as exc:
+        log("system", "warn", f"REE metadata is present but unreadable ({exc}); proceeding without an intent")
+        return None
 
 
-def _collect_step_inputs(
+def collect_step_inputs(
     layout: ReeLayout,
     store: ReeStore,
     intent: ReeIntent | None,
     script_path: str,
     verify_script_path: str = "",
-) -> _StepInputs:
+    *,
+    log: LogSink,
+) -> StepInputs:
     """Digest the step's inputs as they are at run start.
 
     The digests mirror the *materialization inputs* a re-runner will have —
@@ -107,11 +134,18 @@ def _collect_step_inputs(
     artifact's state — never a digest of the live workspace tree.
     """
     snapshot_digest: str | None = None
-    with suppress(Exception):
-        if store.metadata_exists():
+    if store.metadata_exists():
+        try:
             snapshot_digest = store.read_session().source_snapshot_digest
+        except UNREADABLE_METADATA as exc:
+            # The snapshot digest is the root of this receipt's input chain, so
+            # a receipt without one asserts "this REE has no captured source".
+            # When the truth is instead "the session could not be read", the
+            # receipt is still the honest record of what was known — but the
+            # difference has to be recoverable, and this line is where.
+            log("system", "warn", f"could not read the session for this receipt's snapshot digest: {exc}")
     runtime_path = intent.runtime if intent else None
-    return _StepInputs(
+    return StepInputs(
         snapshot_digest=snapshot_digest,
         script_digest=digest_file_if_exists(layout.workspace / script_path),
         verify_script_digest=(
@@ -126,7 +160,7 @@ def _collect_step_inputs(
     )
 
 
-def _record_step_inputs(inputs: _StepInputs) -> None:
+def record_step_inputs(inputs: StepInputs) -> None:
     """Surface the input slice on the command span as soon as it is known."""
     ReceiptInputAttrs(
         snapshot_digest=inputs.snapshot_digest,
@@ -139,16 +173,6 @@ def _record_step_inputs(inputs: _StepInputs) -> None:
     ).apply_current()
 
 
-class BuildRuntimeOutputs(BaseModel):
-    """Outputs of the bare build step (the bare runner's only client)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    build_runtime_script_path: str
-    container_exit_code: int | None = None
-    receipt: dict[str, Any] | None = None
-
-
 class RunnableStepOutputs(RunnableRunOutputs):
     """A runnable run's outputs plus the handler-level facts."""
 
@@ -157,17 +181,27 @@ class RunnableStepOutputs(RunnableRunOutputs):
 
 
 class VersionConflictOutputs(BaseModel):
-    """Outputs reported when an optimistic-concurrency etag check fails."""
+    """Outputs reported when an optimistic-concurrency check loses.
+
+    One shape for both subjects an author can hold a stale version of: a
+    workspace file (identified by ``path``, versioned by its content etag) and
+    the intent itself (versioned by the sidecar's ``updated_at``). The check is
+    the same check, and a client handling one conflict handles both.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     error_code: Literal["version_conflict"] = "version_conflict"
-    path: str
+    path: str | None = None
     expected_version: str
     actual_version: str | None
 
+    def as_outputs(self) -> dict[str, Any]:
+        """The conflict as an outputs blob, without the field that does not apply."""
+        return self.model_dump(exclude={"path"} if self.path is None else set())
 
-def _result_from_run_outcome(
+
+def result_from_run_outcome(
     status: ActionStatus,
     *,
     exit_code: int | None,
@@ -190,90 +224,6 @@ def _result_from_run_outcome(
     return ActionResult(status=status, exit_code=0, outputs=outputs)
 
 
-def run_bare_script_handler(
-    script_path: str,
-    *,
-    operation: str,
-    noun: str,
-    run_id: str,
-    log: LogSink,
-    is_canceled: CancelCheck,
-) -> ActionResult:
-    """Run a single workspace script directly inside the workbench, unevaluated.
-
-    The "bare" counterpart to :func:`run_runnable_handler`: it runs one script
-    and reports its exit status, with no declared outputs to capture or evaluate.
-    Used by the build_runtime handler. ``noun`` is the capitalised run name
-    (e.g. "Build") used in log lines.
-    """
-    if is_canceled():
-        log("system", "warn", f"{operation} canceled before start")
-        return ActionResult(status="canceled")
-
-    layout = ReeLayout.in_workbench()
-    script_path = script_path.strip()
-    try:
-        resolve_workspace_path(layout, script_path)
-    except Exception as exc:
-        log("system", "error", f"invalid {noun.lower()} script path: {exc}")
-        return ActionResult.failed("validation", f"invalid {noun.lower()} script path: {exc}")
-
-    timer = OperationTimer.start()
-    store = ReeStore(layout)
-    intent = read_intent_or_none(store)
-    inputs = _collect_step_inputs(layout, store, intent, script_path)
-    _record_step_inputs(inputs)
-
-    log("system", "info", f"Starting {noun.lower()} run {run_id}")
-    log("system", "info", f"{noun} script: {script_path}")
-    outcome = run_workspace_script(
-        layout.workspace.resolve(),
-        script_path,
-        log=log,
-        is_canceled=is_canceled,
-    )
-
-    outputs = BuildRuntimeOutputs(
-        build_runtime_script_path=script_path,
-        container_exit_code=outcome.exit_code,
-    )
-
-    # The bare runner currently serves only the build step; grow this into a
-    # per-operation dispatch if other bare steps ever appear.
-    if operation == "build_runtime":
-        produced_runtime_digest = (
-            digest_file_if_exists(layout.workspace / inputs.runtime_path)
-            if outcome.status == "succeeded" and inputs.runtime_path
-            else None
-        )
-        timing = timer.finish()
-        receipt = BuildRuntimeReceipt(
-            **receipt_envelope(run_id, timing, outcome.status),
-            workspace_drift=inputs.workspace_drift,
-            snapshot_digest=inputs.snapshot_digest,
-            build_script_path=script_path,
-            build_script_digest=inputs.script_digest,
-            runtime_path=inputs.runtime_path,
-            produced_runtime_digest=produced_runtime_digest,
-        )
-        record_receipt(layout, receipt, log=log)
-        outputs.receipt = receipt.model_dump()
-        level = "info" if outcome.status == "succeeded" else "warn" if outcome.status == "canceled" else "error"
-        log(
-            "system",
-            level,
-            f"{noun} run {outcome.status} (exit code {outcome.exit_code}) in "
-            f"{format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
-        )
-
-    return _result_from_run_outcome(
-        outcome.status,
-        exit_code=outcome.exit_code,
-        outputs=outputs.model_dump(exclude_none=True),
-        operation=operation,
-    )
-
-
 def _capture_experiment_outputs(
     layout: ReeLayout,
     name: str,
@@ -293,9 +243,8 @@ def _capture_experiment_outputs(
     if not output_paths:
         return None
     store = layout.results_dir(name)
-    with suppress(Exception):
-        if store.exists():
-            shutil.rmtree(store)
+    if store.exists():
+        shutil.rmtree(store, ignore_errors=True)
     for rel in output_paths:
         source = resolve_workspace_path(layout, rel)
         if source.is_dir():
@@ -312,24 +261,36 @@ def _capture_experiment_outputs(
 RunnableSelector = Callable[[ReeIntent, "LogSink"], tuple[Runnable, str] | None]
 
 
+@dataclass(frozen=True)
+class RunnableStep:
+    """Everything that distinguishes one runnable step from another.
+
+    Activation and experiments execute identically — that is what
+    :class:`~repo2ree_core.domain.experiment.Runnable` means — and differ only
+    in what they *record*: which receipt shape the evidence takes, and whether a
+    successful run has declared outputs to capture as a reviewer's baseline.
+    Both are stated here by the handler that owns the step, so the shared runner
+    below never has to recognise its callers.
+    """
+
+    operation: str
+    select: RunnableSelector
+    receipt_cls: type[ActivationTestReceipt] | type[RunExperimentReceipt]
+    captures_declared_outputs: bool
+
+
 def run_runnable_handler(
+    step: RunnableStep,
     *,
-    operation: str,
-    select: RunnableSelector,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    """Run a selected :class:`Runnable` and record its receipt.
+    """Run the step's selected :class:`Runnable` and record its receipt.
 
-    Shared by the run_experiment and activation_test handlers, which differ
-    only in *select* (which runnable to run, plus its label). *select* logs and
-    returns ``None`` when the runnable can't be resolved.
+    ``step.select`` logs and returns ``None`` when the runnable can't be
+    resolved.
     """
-    if is_canceled():
-        log("system", "warn", f"{operation} canceled before start")
-        return ActionResult(status="canceled")
-
     opened = open_ree_store(log)
     if isinstance(opened, ActionResult):
         return opened
@@ -337,19 +298,19 @@ def run_runnable_handler(
 
     try:
         ree = store.read_intent()
-    except Exception as exc:
+    except UNREADABLE_METADATA as exc:
         log("system", "error", f"Invalid REE intent: {exc}")
         return ActionResult.failed("internal", f"Invalid REE intent: {exc}")
 
-    selected = select(ree, log)
+    selected = step.select(ree, log)
     if selected is None:
         # ``select`` has already logged why the runnable could not be resolved.
-        return ActionResult.failed("precondition", f"{operation} target could not be resolved")
+        return ActionResult.failed("precondition", f"{step.operation} target could not be resolved")
     runnable, label = selected
 
     timer = OperationTimer.start()
-    inputs = _collect_step_inputs(layout, store, ree, runnable.run_script, runnable.verify_script)
-    _record_step_inputs(inputs)
+    inputs = collect_step_inputs(layout, store, ree, runnable.run_script, runnable.verify_script, log=log)
+    record_step_inputs(inputs)
 
     outcome = run_runnable(
         workspace=layout.workspace.resolve(),
@@ -366,17 +327,17 @@ def run_runnable_handler(
 
     status: ActionStatus = outcome.status
 
-    # Capture declared outputs after a successful experiment run (activation
-    # produces no sealed result). Always copies to the produced-results store —
-    # whether the store is packaged is an all-or-nothing seal-time choice
-    # (`results_included`) handled at bundle time, not per-experiment state.
+    # Capture declared outputs after a successful run, for the steps that have
+    # a baseline to leave behind (activation produces no sealed result). Always
+    # copies to the produced-results store — whether the store is packaged is an
+    # all-or-nothing seal-time choice (`results_included`) handled at bundle
+    # time, not per-experiment state.
     produced_output_digest: str | None = None
-    if operation == "run_experiment" and status == "succeeded" and runnable.output_paths:
+    if step.captures_declared_outputs and status == "succeeded" and runnable.output_paths:
         produced_output_digest = _capture_experiment_outputs(layout, label, runnable.output_paths, log)
 
     timing = timer.finish()
-    receipt_cls = RunExperimentReceipt if operation == "run_experiment" else ActivationTestReceipt
-    receipt: ActivationTestReceipt | RunExperimentReceipt = receipt_cls(
+    receipt: ActivationTestReceipt | RunExperimentReceipt = step.receipt_cls(
         **receipt_envelope(run_id, timing, status),
         workspace_drift=inputs.workspace_drift,
         snapshot_digest=inputs.snapshot_digest,
@@ -394,19 +355,25 @@ def run_runnable_handler(
         receipt.produced_output_digest = produced_output_digest
     record_receipt(layout, receipt, log=log)
     outputs.receipt = receipt.model_dump()
-    level = "info" if status == "succeeded" else "warn" if status == "canceled" else "error"
     log(
         "system",
-        level,
-        f"{operation} {status} in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+        outcome_log_level(status),
+        f"{step.operation} {status} in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
     )
 
-    return _result_from_run_outcome(
+    return result_from_run_outcome(
         status,
         exit_code=outcome.run_outputs.verify_exit_code or outcome.run_outputs.exit_code,
         outputs=outputs.model_dump(exclude_none=True),
-        operation=operation,
+        operation=step.operation,
     )
+
+
+def outcome_log_level(status: ActionStatus) -> Literal["info", "warn", "error"]:
+    """The level a step's closing line is logged at, keyed to how it ended."""
+    if status == "succeeded":
+        return "info"
+    return "warn" if status == "canceled" else "error"
 
 
 def workspace_content_etag(store: ReeStore, path: str) -> str | None:
@@ -442,7 +409,7 @@ def check_expected_etag(store: ReeStore, path: str, expected: str, *, log: LogSi
             path=path,
             expected_version=expected,
             actual_version=actual,
-        ).model_dump(),
+        ).as_outputs(),
     )
 
 

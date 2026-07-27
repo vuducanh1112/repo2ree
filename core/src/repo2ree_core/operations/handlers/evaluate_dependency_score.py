@@ -13,8 +13,6 @@ from repo2ree_protocol.command import EvaluateDependencyScoreArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
-_REPORT_FILENAME = "reproducibility-report.json"
-
 
 class EvaluateOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -36,10 +34,6 @@ def handle_evaluate_dependency_score(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    if is_canceled():
-        log("system", "warn", "evaluate_dependency_score canceled before start")
-        return ActionResult(status="canceled")
-
     layout = ReeLayout.in_workbench()
     log("system", "info", f"Workspace: {layout.workspace.resolve()}")
     try:
@@ -57,7 +51,7 @@ def handle_evaluate_dependency_score(
 
     try:
         layout.artifacts.mkdir(parents=True, exist_ok=True)
-        report_path = layout.artifacts / _REPORT_FILENAME
+        report_path = layout.reproducibility_report
         report_path.write_text(
             json.dumps(report.model_dump(), indent=2),
             encoding="utf-8",

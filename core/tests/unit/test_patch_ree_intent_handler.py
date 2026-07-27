@@ -41,7 +41,13 @@ def test_stale_expected_version_conflicts_without_mutating(tmp_path: Path, monke
 
     assert result.status == "failed"
     assert result.failure is not None and result.failure.category == "conflict"
-    assert result.outputs == {"expected_version": "stale", "actual_version": "v1"}
+    # The same shape a file etag conflict reports, minus the path an intent
+    # conflict has no equivalent of.
+    assert result.outputs == {
+        "error_code": "version_conflict",
+        "expected_version": "stale",
+        "actual_version": "v1",
+    }
     assert store.read_intent().name == "demo"
 
 

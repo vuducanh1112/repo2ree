@@ -45,13 +45,6 @@ def _args(*kinds: str) -> GenerateScriptCandidatesArgs:
     return GenerateScriptCandidatesArgs(targets=targets)
 
 
-def test_canceled_before_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _store_at(tmp_path, monkeypatch)
-    _seed_upstream(tmp_path, {"Dockerfile": "x"})
-    result = handler.handle_generate_script_candidates(_args("build"), log=_silent_log, is_canceled=lambda: True)
-    assert result.status == "canceled"
-
-
 def test_no_targets_is_validation_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
     result = handler.handle_generate_script_candidates(
