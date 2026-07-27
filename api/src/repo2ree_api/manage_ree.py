@@ -238,6 +238,7 @@ def get_workspace_state_route(ree_id: str) -> ReeState:
         "author_receipts": workspace.get("author_receipts", {}),
         "ree_steps": workspace.get("ree_steps", []),
         "files": workspace.get("files", []),
+        "ree_files": workspace.get("ree_files", []),
         "active_runs": active_runs,
     }
     if "source_repo" in workspace:

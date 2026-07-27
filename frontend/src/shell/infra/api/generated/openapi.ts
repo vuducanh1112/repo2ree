@@ -2702,6 +2702,8 @@ export interface components {
             ree_steps?: components["schemas"]["ReeStepState"][];
             /** Files */
             files?: components["schemas"]["WorkspaceFile"][];
+            /** Ree Files */
+            ree_files?: components["schemas"]["ReeFile"][];
             source_repo?: components["schemas"]["SourceRepoMetadata"] | null;
             /** Active Runs */
             active_runs?: components["schemas"]["RunSummary"][];

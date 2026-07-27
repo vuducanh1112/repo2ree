@@ -234,6 +234,10 @@ class ReeState(BaseModel):
     author_receipts: AuthorReceiptSet = Field(default_factory=AuthorReceiptSet)
     ree_steps: list[ReeStepState] = Field(default_factory=list)
     files: list[WorkspaceFile] = Field(default_factory=list)
+    # REE-owned files (artifacts/, overlay/, …) alongside the materialized
+    # workspace tree: produced evidence like the SBOM lives only here, so a
+    # state observation without them cannot see it at all.
+    ree_files: list[ReeFile] = Field(default_factory=list)
     source_repo: SourceRepoMetadata | None = None
     active_runs: list[RunSummary] = Field(default_factory=list)
 

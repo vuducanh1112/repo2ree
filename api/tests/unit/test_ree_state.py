@@ -25,6 +25,7 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
         "ree_session": {},
         "consistency": {"steps": []},
         "files": [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12}],
+        "ree_files": [{"path": "artifacts/sbom.json", "tag": "Artifact", "size": 34}],
     }
     monkeypatch.setattr(workbench_manager, "get_workspace_state", lambda handle: workspace)
 
@@ -36,5 +37,9 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
     assert state["workbench"]["status"] == "available"
     # Typed file entries serialize every field; content stays null — never inlined.
     assert state["files"] == [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12, "content": None}]
-    assert "ree_files" not in state
+    # REE-owned evidence is part of the observation: produced files like the SBOM
+    # live only under the REE root, never in the materialized workspace tree.
+    assert state["ree_files"] == [
+        {"path": "artifacts/sbom.json", "kind": "ree", "tag": "Artifact", "size": 34, "content": None}
+    ]
     assert "draft_manifest" not in state

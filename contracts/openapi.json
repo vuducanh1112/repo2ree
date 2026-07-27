@@ -10270,6 +10270,13 @@
             "type": "array",
             "title": "Files"
           },
+          "ree_files": {
+            "items": {
+              "$ref": "#/components/schemas/ReeFile"
+            },
+            "type": "array",
+            "title": "Ree Files"
+          },
           "source_repo": {
             "anyOf": [
               {
