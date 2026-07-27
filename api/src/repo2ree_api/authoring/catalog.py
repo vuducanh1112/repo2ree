@@ -1,19 +1,31 @@
-"""The script-template catalog route.
+"""What a client needs to know before authoring anything: the steps and the scripts.
 
-Serves the packaged starter templates for the REE-owned scripts, so every
-client — the frontend editors and pure-API agents alike — prefills from the
-same single source (``repo2ree_core.reserved_templates``) instead of keeping
-copies. The build and activation templates are also seeded into a fresh REE's
-overlay; the per-experiment templates cannot be (their paths only exist once an
-experiment is named), so this catalog is how clients obtain them.
+Two deployment-static catalogs, published so a machine client can plan a
+traversal cold instead of hardcoding what the frontend once hardcoded.
+
+``listReeSteps`` is the static counterpart of ``getReeState``'s per-REE
+``ree_steps`` overlay. Where the overlay says *what is done / ready / blocked for
+this REE*, this publishes the structure the overlay refers to: the ordered steps,
+their prerequisite edges, and — the HTTP binding core keeps out of itself — the
+operationIds that advance each step. That join table (``_STEP_ACTIONS``) lives
+here, one directory from the routes it names, because it must be updated
+whenever a step gains or loses a route.
+
+``listScriptTemplates`` serves the packaged starter templates for the REE-owned
+scripts, so every client prefills from the same source
+(``repo2ree_core.reserved_templates``) instead of keeping copies. The build and
+activation templates are also seeded into a fresh REE's overlay; the
+per-experiment templates cannot be (their paths only exist once an experiment is
+named), so this catalog is how clients obtain them.
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.contracts import ERROR_RESPONSES
+from repo2ree_core.ree_steps import ree_step_catalog
 from repo2ree_core.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
@@ -27,6 +39,78 @@ from repo2ree_core.reserved_templates import (
     experiment_run_templates,
     verify_templates,
 )
+
+# ================================================
+# The step catalog
+# ================================================
+
+
+ree_steps_router = APIRouter(tags=["ree-steps"])
+
+
+class ReeStepCatalogEntry(BaseModel):
+    """One authoring step: its structure (from core) plus the calls that run it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    order: int
+    label: str
+    requires: list[str] = Field(default_factory=list)
+    actions: list[str] = Field(default_factory=list)
+
+
+class ReeStepCatalog(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    steps: list[ReeStepCatalogEntry] = Field(default_factory=list)
+
+
+# The HTTP binding: which public operations advance each step. Lives in the API
+# layer, not core — operationIds are a contract concern. A step may expose more
+# than one call (an alternate path, or an init/commit pair); order is
+# most-direct first.
+_STEP_ACTIONS: dict[str, list[str]] = {
+    "source": ["startSourceAcquisition", "initializeSourceUpload", "completeSourceUpload"],
+    "metadata": ["patchReeIntent"],
+    "hbom": ["startHbomGeneration", "patchReeIntent"],
+    "evaluate": ["startEvaluate"],
+    "build": ["startBuild"],
+    "sbom": ["startSbomGeneration"],
+    "crosscheck": ["startSbomCrossCheck"],
+    "activation": ["startActivationTest"],
+    "experiments": ["startExperiment"],
+    "seal": ["sealRee"],
+}
+
+
+@ree_steps_router.get(
+    "/api/v1/ree-steps",
+    operation_id="listReeSteps",
+    response_model=ReeStepCatalog,
+    responses=ERROR_RESPONSES,
+)
+def list_ree_steps() -> ReeStepCatalog:
+    """The static authoring steps: ordered, their prerequisite edges, and the
+    operationIds that advance each. Deployment-static, so a client may cache it."""
+    return ReeStepCatalog(
+        steps=[
+            ReeStepCatalogEntry(
+                key=step.key,
+                order=step.order,
+                label=step.label,
+                requires=step.requires,
+                actions=_STEP_ACTIONS.get(step.key, []),
+            )
+            for step in ree_step_catalog()
+        ]
+    )
+
+
+# ================================================
+# The script-template catalog
+# ================================================
+
 
 script_templates_router = APIRouter(tags=["files"])
 

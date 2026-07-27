@@ -5,8 +5,8 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from repo2ree_api import reviews as review_routes
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.review import stages as review_routes
 from repo2ree_protocol.command import (
     ReviewAcquireSourceCommand,
     ReviewActivationTestCommand,

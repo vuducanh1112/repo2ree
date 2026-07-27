@@ -1,14 +1,20 @@
+"""The reviewer's reproduction steps, in step order.
+
+The mirror of :mod:`repo2ree_api.authoring.stages`: the same four stages an
+author ran — source, build, activation, experiments — re-run inside an isolated
+attempt. Each is a background run like its author-side twin, so a reviewer
+watching a slow step can cancel that one without discarding verdicts already
+settled.
+"""
+
 from __future__ import annotations
 
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
-from repo2ree_api.deps import workbench_manager
-from repo2ree_api.ree_commands import require_handle
-from repo2ree_api.run_management import run_summary, start_single_command_run
-from repo2ree_core.reviews import ReviewRecord, ReviewSet
+from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_protocol.command import (
     ReviewAcquireSourceArgs,
     ReviewAcquireSourceCommand,
@@ -21,7 +27,7 @@ from repo2ree_protocol.command import (
     ReviewRunExperimentCommand,
 )
 
-reviews_router = APIRouter(tags=["reviews"])
+review_stages_router = APIRouter(tags=["reviews"])
 
 
 class CreateSourceReviewPayload(CreateRunPayload):
@@ -45,39 +51,7 @@ class CreateBuildReviewPayload(CreateRunPayload):
     basis: ReviewBasis = "auto"
 
 
-def _reviews(ree_id: str) -> ReviewSet:
-    """Every persisted attempt for an REE, or the workbench failure to report."""
-    handle = require_handle(ree_id)
-    try:
-        return ReviewSet.model_validate(workbench_manager.get_reviews(handle))
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Workbench review query failed: {exc}") from exc
-
-
-@reviews_router.get(
-    "/api/v1/rees/{ree_id}/reviews",
-    operation_id="listReviews",
-    response_model=ReviewSet,
-    responses=ERROR_RESPONSES,
-)
-def list_reviews(ree_id: str) -> ReviewSet:
-    return _reviews(ree_id)
-
-
-@reviews_router.get(
-    "/api/v1/rees/{ree_id}/reviews/{review_id}",
-    operation_id="getReview",
-    response_model=ReviewRecord,
-    responses=ERROR_RESPONSES,
-)
-def get_review(ree_id: str, review_id: str) -> ReviewRecord:
-    for record in _reviews(ree_id).reviews:
-        if record.review_id == review_id:
-            return record
-    raise HTTPException(status_code=404, detail="Review not found")
-
-
-@reviews_router.post(
+@review_stages_router.post(
     "/api/v1/rees/{ree_id}/reviews/source:reproduce",
     operation_id="startSourceReview",
     response_model=RunSummary,
@@ -102,7 +76,7 @@ def start_source_review(ree_id: str, payload: CreateSourceReviewPayload) -> RunS
     )
 
 
-@reviews_router.post(
+@review_stages_router.post(
     "/api/v1/rees/{ree_id}/reviews/{review_id}/build:reproduce",
     operation_id="startBuildReview",
     response_model=RunSummary,
@@ -138,7 +112,7 @@ def start_build_review(ree_id: str, review_id: str, payload: CreateBuildReviewPa
     )
 
 
-@reviews_router.post(
+@review_stages_router.post(
     "/api/v1/rees/{ree_id}/reviews/{review_id}/activation:reproduce",
     operation_id="startActivationReview",
     response_model=RunSummary,
@@ -168,7 +142,7 @@ def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPaylo
     )
 
 
-@reviews_router.post(
+@review_stages_router.post(
     "/api/v1/rees/{ree_id}/reviews/{review_id}/experiments/{experiment_name}:reproduce",
     operation_id="startExperimentReview",
     response_model=RunSummary,

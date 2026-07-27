@@ -195,7 +195,7 @@ mistake:
   declarations that populate `/ree/overlay` are small, edited continuously and
   persisted through the REE/workspace API
   ([useReeIntentSync.ts](../frontend/src/shell/state/ree-editor/workspace-sync/useReeIntentSync.ts),
-  [manage_ree.py](../api/src/repo2ree_api/manage_ree.py)),
+  [authoring/intent.py](../api/src/repo2ree_api/authoring/intent.py)),
   and guarded by optimistic concurrency (`expectedVersion`). That concurrency
   check must stay **single-machine** — keep the manifest in host storage / the
   control-plane DB. Editing a field must never round-trip into a VM.
@@ -697,9 +697,9 @@ explicit SWH save/deposit request.
   the same layout.
 - **Remote the existing job model; don't reinvent it.** *(Done.)* The
   submit→stream→cancel async-job shape lives in
-  [`RunRegistry`](../api/src/repo2ree_api/run_registry.py), fronted by
+  [`RunRegistry`](../api/src/repo2ree_api/control/run_registry.py), fronted by
   `_start_background_run` / `_run_summary` / `_is_cancel_requested`
-  ([run_management.py:45](../api/src/repo2ree_api/run_management.py#L45)).
+  ([control/run_orchestration.py:45](../api/src/repo2ree_api/control/run_orchestration.py#L45)).
   Operations dispatch to `repo2ree-exec` through
   `WorkbenchManager.dispatch_action` with logs streamed back, and cancellation
   crosses the boundary as a remote signal to the agent

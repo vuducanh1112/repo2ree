@@ -11,26 +11,22 @@ from fastapi.responses import JSONResponse
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from repo2ree_api.activation_test import activation_test_router
-from repo2ree_api.agents import agent_ws_router, agents_router
-from repo2ree_api.build_runtime import build_runtime_router
+from repo2ree_api.authoring.catalog import ree_steps_router, script_templates_router
+from repo2ree_api.authoring.evidence import receipts_router, scorecard_router
+from repo2ree_api.authoring.files import files_router
+from repo2ree_api.authoring.inference import inference_router
+from repo2ree_api.authoring.intent import intent_router
+from repo2ree_api.authoring.seal import seal_router
+from repo2ree_api.authoring.source import source_router
+from repo2ree_api.authoring.stages import stages_router
 from repo2ree_api.contracts import ErrorEnvelope, HealthResponse
-from repo2ree_api.cross_check_sbom import cross_check_sbom_router
-from repo2ree_api.evaluate import evaluate_router
-from repo2ree_api.experiment_run import experiment_run_router
-from repo2ree_api.generate_hbom import generate_hbom_router
-from repo2ree_api.generate_sbom import generate_sbom_router
-from repo2ree_api.manage_ree import manage_ree_router
-from repo2ree_api.receipts import receipts_router
-from repo2ree_api.ree_steps import ree_steps_router
-from repo2ree_api.reviews import reviews_router
-from repo2ree_api.runs import runs_router
-from repo2ree_api.scorecard import scorecard_router
-from repo2ree_api.script_inference import script_inference_router
-from repo2ree_api.script_templates import script_templates_router
+from repo2ree_api.control.fleet import agent_ws_router, agents_router, workbench_images_router
+from repo2ree_api.control.rees import rees_router
+from repo2ree_api.control.runs import runs_router
+from repo2ree_api.review.records import review_records_router
+from repo2ree_api.review.stages import review_stages_router
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage.init_storage import create_upload_staging_if_not_exists
-from repo2ree_api.workbench_images import workbench_images_router
 from repo2ree_protocol.log import configure_logging, configure_run_log_export
 from repo2ree_protocol.tracing import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_supervisor import WorkbenchUnavailableError
@@ -129,24 +125,35 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(build_runtime_router)
-app.include_router(experiment_run_router)
-app.include_router(generate_hbom_router)
-app.include_router(generate_sbom_router)
-app.include_router(cross_check_sbom_router)
-app.include_router(activation_test_router)
-app.include_router(evaluate_router)
-app.include_router(scorecard_router)
-app.include_router(ree_steps_router)
-app.include_router(runs_router)
-app.include_router(receipts_router)
-app.include_router(reviews_router)
-app.include_router(manage_ree_router)
-app.include_router(script_templates_router)
-app.include_router(script_inference_router)
-app.include_router(workbench_images_router)
-app.include_router(agent_ws_router)
-app.include_router(agents_router)
+# Registration order is document order in the generated OpenAPI, so it is also
+# the reading order a client meets the API in: provision, then the authoring
+# lifecycle in step order, then review, then the control plane.
+ROUTERS = (
+    # Control plane — the REE and its runs exist before any step does.
+    rees_router,
+    runs_router,
+    # Authoring, in the order of repo2ree_core.ree_steps.REE_STEPS.
+    ree_steps_router,
+    script_templates_router,
+    source_router,
+    intent_router,
+    files_router,
+    inference_router,
+    stages_router,
+    scorecard_router,
+    receipts_router,
+    seal_router,
+    # Review — the same lifecycle, reproduced independently.
+    review_records_router,
+    review_stages_router,
+    # The fleet the whole thing runs on.
+    workbench_images_router,
+    agent_ws_router,
+    agents_router,
+)
+
+for router in ROUTERS:
+    app.include_router(router)
 
 
 # ================================================

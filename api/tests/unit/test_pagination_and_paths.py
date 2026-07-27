@@ -9,9 +9,9 @@ from typing import Any, cast
 import pytest
 from fastapi import HTTPException
 
-from repo2ree_api.api_utils import (
+from repo2ree_api.pagination import keyset_paginate
+from repo2ree_api.paths import (
     WORKSPACE_CONTROL_PREFIXES,
-    keyset_paginate,
     require_non_empty_path,
     resolve_relative_path,
 )

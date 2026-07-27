@@ -6,8 +6,7 @@ agents, and the manager that drives workbenches through those agents.
 
 from __future__ import annotations
 
-from repo2ree_api.settings import service_settings
-from repo2ree_api.workbench_images import default_workbench_image
+from repo2ree_api.settings import default_workbench_image, service_settings
 from repo2ree_protocol.tracing import build_span_sink
 from repo2ree_supervisor import (
     AgentConnectionRegistry,

@@ -1,6 +1,6 @@
 """The consuming half of the two-phase upload: staged bytes become REE work.
 
-Where :mod:`repo2ree_api.ree.uploads` leaves an archive on control-plane disk,
+Where :mod:`repo2ree_api.workbench.uploads` leaves an archive on control-plane disk,
 this module hands it to the workbench: claim the token for this REE and purpose,
 copy the bytes in, run one command over them, and reclaim the host copy. It runs
 in the background — the client polls the returned run — so the only HTTP here is
@@ -21,9 +21,13 @@ from typing import Any
 from fastapi import HTTPException
 
 from repo2ree_api.contracts import RunOperation
+from repo2ree_api.control.run_orchestration import (
+    append_run_log,
+    is_cancel_requested,
+    start_background_run,
+    update_run_outputs,
+)
 from repo2ree_api.deps import workbench_manager
-from repo2ree_api.ree_commands import require_handle
-from repo2ree_api.run_management import append_run_log, is_cancel_requested, start_background_run, update_run_outputs
 from repo2ree_api.storage.upload_staging import (
     InvalidUploadTokenError,
     UnknownUploadTokenError,
@@ -33,6 +37,7 @@ from repo2ree_api.storage.upload_staging import (
     staged_upload_path,
     validate_upload_owner,
 )
+from repo2ree_api.workbench.commands import require_handle
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult

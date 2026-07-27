@@ -16,8 +16,8 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from repo2ree_api.control.run_orchestration import start_background_run
 from repo2ree_api.deps import workbench_manager
-from repo2ree_api.run_management import start_background_run
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import WorkbenchHandle
 

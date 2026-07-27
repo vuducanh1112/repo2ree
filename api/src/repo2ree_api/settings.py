@@ -8,7 +8,7 @@ class WorkbenchImage(BaseModel):
     """A base image offered for workbench provisioning.
 
     Config schema, so it lives with the settings that carry the catalog. The
-    ``/api/v1/workbench/images`` route (workbench_images.py) serves these to the
+    ``/api/v1/workbench/images`` route (control/fleet.py) serves these to the
     UI's image picker.
 
     Only ``ref`` is required — it's the sole backend-meaningful field (the image
@@ -101,3 +101,14 @@ class Settings(BaseSettings):
 
 
 service_settings = Settings()
+
+# The configured catalog, resolved once at import. Ordered; the first entry is the
+# default offered when a request omits an image. Read here rather than from the
+# route that serves it, so the composition root (deps.py) does not have to import
+# a route module to learn the provisioning default.
+WORKBENCH_IMAGE_CATALOG: tuple[WorkbenchImage, ...] = service_settings.WORKBENCH_IMAGE_CATALOG
+
+
+def default_workbench_image() -> WorkbenchImage:
+    """The image used when a provisioning request doesn't specify one."""
+    return WORKBENCH_IMAGE_CATALOG[0]

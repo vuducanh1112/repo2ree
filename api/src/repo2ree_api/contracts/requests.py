@@ -1,4 +1,4 @@
-"""FastAPI request payload shapes for REE / workspace routes.
+"""Request payload shapes for every route.
 
 REE state lives in the per-REE workbench volume (the single source of truth);
 the host no longer persists workspaces, so these are pure request schemas with
@@ -14,16 +14,29 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 
-# ================================================
-# Request / response payload models
-# ================================================
 
+class StrictRequestModel(BaseModel):
+    """Base for request bodies: an unknown field is a client error, not ignored.
 
-class _StrictRequestModel(BaseModel):
+    Declared here with the rest of the control-plane contract so every route's
+    payload inherits the same strictness instead of re-spelling the config.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
 
-class ReeCreatePayload(_StrictRequestModel):
+class CreateRunPayload(StrictRequestModel):
+    """The body every "start a run" route accepts.
+
+    Routes that need nothing else subclass it as-is; the two that take
+    parameters (sbom, evaluate) add their fields. Subclassing rather than
+    sharing one model keeps each route's schema named after its operation.
+    """
+
+    idempotency_key: str | None = None
+
+
+class ReeCreatePayload(StrictRequestModel):
     """Provision a new empty REE workbench.
 
     Source acquisition is intentionally a separate lifecycle operation through
@@ -32,14 +45,14 @@ class ReeCreatePayload(_StrictRequestModel):
 
     name: str | None = None
     # Image to provision the workbench from. Omitted (or blank) falls back to the
-    # server default (the workbench image catalog default; see workbench_images.py).
+    # server default (the workbench image catalog default; see settings.py).
     workbench_image: str | None = None
     # Agent to place the workbench on (from GET /api/v1/agents). Omitted/blank
     # means "any connected agent" — the single-agent path.
     agent_id: str | None = None
 
 
-class ReeIntentPatchPayload(_StrictRequestModel):
+class ReeIntentPatchPayload(StrictRequestModel):
     """Merge the provided intent fields into the stored intent (top-level keys).
 
     Every ``ReeIntent`` field has a default, so the model doubles as the patch
@@ -52,12 +65,12 @@ class ReeIntentPatchPayload(_StrictRequestModel):
     expected_version: str | None = None
 
 
-class ReeIntentReplacePayload(_StrictRequestModel):
+class ReeIntentReplacePayload(StrictRequestModel):
     ree_intent: ReeIntent
     expected_version: str | None = None
 
 
-class SourceAcquirePayload(_StrictRequestModel):
+class SourceAcquirePayload(StrictRequestModel):
     origin_url: str
     source_type: Literal["git", "tarball", "zip"]
     # Git revision (commit, branch, or tag) to pin the fetch to. Blank/omitted
@@ -66,19 +79,19 @@ class SourceAcquirePayload(_StrictRequestModel):
     idempotency_key: str | None = None
 
 
-class UploadInitPayload(_StrictRequestModel):
+class UploadInitPayload(StrictRequestModel):
     file_name: str
     size: int = Field(ge=0)
     content_type: str
 
 
-class SourceUploadCompletePayload(_StrictRequestModel):
+class SourceUploadCompletePayload(StrictRequestModel):
     upload_token: str
     archive_name: str
     idempotency_key: str | None = None
 
 
-class ReeBundleLoadPayload(_StrictRequestModel):
+class ReeBundleLoadPayload(StrictRequestModel):
     """Load a staged REE bundle into this (freshly provisioned) REE."""
 
     upload_token: str
@@ -86,22 +99,13 @@ class ReeBundleLoadPayload(_StrictRequestModel):
     idempotency_key: str | None = None
 
 
-class WorkspaceFileContentPayload(_StrictRequestModel):
+class WorkspaceFileContentPayload(StrictRequestModel):
     path: str
     content: str
     if_match: str | None = None
 
 
-class ReeSealPayload(_StrictRequestModel):
+class ReeSealPayload(StrictRequestModel):
     include_source: bool = False
     include_runtime: bool = False
     include_results: bool = False
-
-
-# ================================================
-# Exceptions
-# ================================================
-
-
-class WorkspaceVersionConflictError(RuntimeError):
-    """Raised when an intent patch is applied against a stale workspace version."""

@@ -16,7 +16,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.contracts import ERROR_RESPONSES
-from repo2ree_api.ree_commands import dispatch_or_fail, ree_command_span, require_handle
+from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_core.script_inference.models import InferenceReport
 from repo2ree_protocol.command import (
     GenerateScriptCandidatesArgs,
@@ -30,7 +30,7 @@ from repo2ree_protocol.command import (
 # ================================================
 
 
-script_inference_router = APIRouter(tags=["files"])
+inference_router = APIRouter(tags=["files"])
 
 
 # ================================================
@@ -69,7 +69,7 @@ class GenerateScriptCandidatesPayload(BaseModel):
 # ================================================
 
 
-@script_inference_router.post(
+@inference_router.post(
     "/api/v1/rees/{ree_id}/script-inferences:generate",
     operation_id="generateScriptCandidates",
     response_model=InferenceReport,

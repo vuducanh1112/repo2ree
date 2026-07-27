@@ -1,4 +1,4 @@
-"""The agent plane's HTTP surface: where agents dial in, and the fleet view.
+"""The fleet: where agents dial in, who is connected, and what they can run.
 
 ``/agent/connect`` is the WebSocket endpoint a workbench agent dials and holds
 open; the control plane pushes ``WsRequest`` commands down it and receives
@@ -11,6 +11,12 @@ schedules a send on the loop, and each inbound message is handed to
 exactly as long as it holds its socket; the registry drops it on disconnect, so
 presence in the list *is* liveness. This is the control-plane surface behind
 the frontend's agent-management pane.
+
+``/api/v1/workbench/images`` publishes the base images provisioning may pick
+from. Which images those are is configured on ``Settings.WORKBENCH_IMAGE_CATALOG``
+(see settings.py), so a deployment can serve a different set — e.g. a
+locally-built image — via env without touching code. To drive a one-off image,
+pass it as ``workbench_image`` on the provision request instead.
 """
 
 from __future__ import annotations
@@ -25,6 +31,7 @@ from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import agent_registry
+from repo2ree_api.settings import WORKBENCH_IMAGE_CATALOG, WorkbenchImage, default_workbench_image
 from repo2ree_core.time_utils import iso_utc
 from repo2ree_protocol.agent import ws_hello_adapter
 from repo2ree_supervisor import AgentConnection
@@ -117,3 +124,30 @@ def list_agents() -> AgentList:
         for info in agent_registry.list_agents()
     ]
     return AgentList(agents=agents)
+
+
+# ================================================
+# Workbench image catalog
+# ================================================
+
+
+workbench_images_router = APIRouter(tags=["fleet"])
+
+
+class WorkbenchImageCatalog(BaseModel):
+    images: list[WorkbenchImage]
+    default_id: str
+
+
+@workbench_images_router.get(
+    "/api/v1/workbench/images",
+    operation_id="listWorkbenchImages",
+    response_model=WorkbenchImageCatalog,
+    responses=ERROR_RESPONSES,
+)
+def list_workbench_images() -> WorkbenchImageCatalog:
+    """The base images the frontend offers at provision time."""
+    return WorkbenchImageCatalog(
+        images=list(WORKBENCH_IMAGE_CATALOG),
+        default_id=default_workbench_image().id,
+    )

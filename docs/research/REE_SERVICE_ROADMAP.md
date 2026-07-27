@@ -14,7 +14,7 @@ Reproducibility = same inputs + same environment → **same outputs**.
 `ReeSpec` (`frontend/src/core/ree/ReeSpec.ts`) now captures a runnable
 `verify_script` and declared `output_paths`, and the backend can run experiments
 through the typed command envelope
-(`api/src/repo2ree_api/experiment_run.py`,
+(`api/src/repo2ree_api/authoring/stages.py`,
 `core/src/repo2ree_core/experiment/run.py`). That is the right foundation.
 
 The remaining gap is that an experiment run is still mostly an execution result,

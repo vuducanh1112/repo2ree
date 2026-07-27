@@ -15,7 +15,7 @@ from typing import Any, cast
 import pytest
 from fastapi import HTTPException
 
-from repo2ree_api.run_registry import RunRegistry
+from repo2ree_api.control.run_registry import RunRegistry
 from repo2ree_protocol.result import ActionResult
 
 # ================================================
