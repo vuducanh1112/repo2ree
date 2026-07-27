@@ -17,20 +17,36 @@ from contextlib import suppress
 from repo2ree_agent.workbench_runtime import WorkbenchGoneError
 from repo2ree_protocol.agent import COPY_CHUNK_BYTES
 
+# Exit codes from `docker exec` that mean the container is gone / stopping.
+# 137 = killed by SIGKILL (container OOM-killed or being removed)
+# 126 = OCI runtime exec failed (container shutting down, broken init pipe)
 CONTAINER_GONE_EXIT_CODES = frozenset({126, 137})
 FAILURE_OUTPUT_TAIL_BYTES = 16 * 1024
 
 
 def failure_detail(stderr: str, stdout: str) -> str:
+    """The message text for a failed docker command: stderr, else stdout.
+
+    One spelling, so every docker failure reads the same way whichever helper
+    raised it.
+    """
     return stderr.strip() or stdout.strip()
 
 
 def tail_text(output: bytes) -> str:
+    """Decode command output for an error message, keeping only the last
+    ``FAILURE_OUTPUT_TAIL_BYTES`` so a chatty failure cannot balloon the frame."""
     return output[-FAILURE_OUTPUT_TAIL_BYTES:].decode(errors="replace").strip()
 
 
 def stream_exec(cmd: list[str], timeout: int, what: str) -> Iterator[bytes]:
-    """Yield stdout chunks while bounding silence rather than total duration."""
+    """Run ``cmd`` and yield its stdout in bounded chunks.
+
+    ``timeout`` bounds *silence from the process* — the gap between resuming
+    the consumer and the next stdout chunk (or exit) — not total stream time.
+    A large result trickling to a slow consumer must not be killed mid-transfer;
+    a process that stops producing while the consumer waits must be.
+    """
     deadline = time.monotonic() + timeout
     stdout_tail = bytearray()
     completed = False
@@ -45,7 +61,7 @@ def stream_exec(cmd: list[str], timeout: int, what: str) -> Iterator[bytes]:
             while stdout_open:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    _kill_process(proc)
+                    kill_process(proc)
                     raise subprocess.TimeoutExpired(cmd, timeout)
                 events = selector.select(timeout=min(remaining, 0.1))
                 if not events:
@@ -60,18 +76,18 @@ def stream_exec(cmd: list[str], timeout: int, what: str) -> Iterator[bytes]:
                     deadline = time.monotonic() + timeout
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                _kill_process(proc)
+                kill_process(proc)
                 raise subprocess.TimeoutExpired(cmd, timeout)
             returncode = proc.wait(timeout=remaining)
             completed = True
         except subprocess.TimeoutExpired:
-            _kill_process(proc)
+            kill_process(proc)
             raise
         finally:
             selector.close()
             proc.stdout.close()
             if not completed and proc.poll() is None:
-                _kill_process(proc)
+                kill_process(proc)
         if returncode != 0:
             stderr.seek(0)
             detail = tail_text(stderr.read()) or tail_text(bytes(stdout_tail)) or "(no output on stdout/stderr)"
@@ -98,7 +114,7 @@ def _append_tail(tail: bytearray, chunk: bytes) -> None:
         del tail[: len(tail) - FAILURE_OUTPUT_TAIL_BYTES]
 
 
-def _kill_process(proc: subprocess.Popen[bytes]) -> None:
+def kill_process(proc: subprocess.Popen[bytes]) -> None:
     if proc.poll() is None:
         proc.kill()
     with suppress(Exception):

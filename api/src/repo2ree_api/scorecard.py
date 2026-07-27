@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.ree_commands import require_handle
 from repo2ree_core.reproducibility_scorecard import ReproducibilityScoreCard
 
 # ================================================
@@ -29,9 +30,7 @@ def get_ree_scorecard(ree_id: str) -> ReproducibilityScoreCard:
     """The reproducibility scorecard, computed inside the workbench from the
     REE's persisted record (intent + session + run receipts).
     """
-    handle = workbench_manager.lookup(ree_id)
-    if handle is None:
-        raise HTTPException(status_code=404, detail="Workspace not found")
+    handle = require_handle(ree_id)
     try:
         return ReproducibilityScoreCard.model_validate(workbench_manager.get_scorecard(handle))
     except Exception as exc:

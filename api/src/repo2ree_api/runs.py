@@ -15,13 +15,13 @@ from repo2ree_api.contracts import (
     RunSummary,
 )
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.ree_commands import require_handle
 from repo2ree_api.run_management import (
     append_run_log,
     get_run_state,
     list_runs,
     mark_cancel_requested,
     observe_run,
-    ree_service,
     run_summary,
 )
 from repo2ree_api.run_registry import TERMINAL_STATUSES
@@ -56,7 +56,7 @@ def list_workspace_runs(
     if not runs:
         # No historical run can establish the identifier; require a current
         # REE only for this empty-list case. Non-empty history is local.
-        ree_service.require_live_workbench(ree_id)
+        require_handle(ree_id)
     page, next_cursor, _has_more = keyset_paginate(
         runs,
         cursor=cursor,

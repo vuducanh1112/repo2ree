@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 import repo2ree_agent.docker_runtime as rt_mod
+from repo2ree_agent import docker_cli
 from repo2ree_agent.docker_runtime import DockerRuntime
 from repo2ree_protocol.agent import AgentFrame, ErrorFrame, LocationFrame, LogFrame, WorkbenchLocation
 
@@ -150,7 +151,7 @@ def test_stream_exec_timeout_bounds_silence_not_total_time() -> None:
     # Three chunks 0.6s apart under a 1s timeout: total runtime (~1.8s) exceeds
     # the timeout, but no single silent gap does — the stream must survive.
     script = "for i in 1 2 3; do printf 'chunk%s' \"$i\"; sleep 0.6; done"
-    chunks = list(rt_mod._stream_exec(["sh", "-c", script], timeout=1, what="test"))
+    chunks = list(docker_cli.stream_exec(["sh", "-c", script], timeout=1, what="test"))
     assert b"".join(chunks) == b"chunk1chunk2chunk3"
 
 
@@ -159,7 +160,7 @@ def test_stream_exec_times_out_when_process_goes_silent() -> None:
     # silent timeout window, not after timeout-since-start semantics.
     t0 = time.monotonic()
     with pytest.raises(subprocess.TimeoutExpired):
-        list(rt_mod._stream_exec(["sh", "-c", "printf started; sleep 30"], timeout=1, what="test"))
+        list(docker_cli.stream_exec(["sh", "-c", "printf started; sleep 30"], timeout=1, what="test"))
     assert time.monotonic() - t0 < 5.0
 
 

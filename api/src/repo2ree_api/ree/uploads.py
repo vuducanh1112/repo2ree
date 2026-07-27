@@ -1,14 +1,19 @@
-"""Shared HTTP upload staging and workbench-transfer operations."""
+"""The staging half of the two-phase upload: mint a slot, then receive bytes.
+
+Everything here runs on the request thread and answers to the client that is
+uploading: it validates the declared size, claims a token for one REE and one
+purpose, and streams the body onto control-plane disk. Nothing here touches a
+workbench or starts a run — handing staged bytes to the REE is the other half,
+in :mod:`repo2ree_api.ree.upload_runs`.
+"""
 
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException, Request
 
-from repo2ree_api.deps import workbench_manager
 from repo2ree_api.ree_commands import require_handle
 from repo2ree_api.schemas import UploadInitPayload
 from repo2ree_api.settings import service_settings
@@ -18,15 +23,11 @@ from repo2ree_api.storage.upload_staging import (
     UploadSizeMismatchError,
     UploadStagingFullError,
     UploadTooLargeError,
-    discard_expired_uploads,
     new_upload_token,
     stage_upload_stream,
     validate_upload_owner,
 )
 from repo2ree_core.time_utils import utc_now
-from repo2ree_protocol.log import LogSink
-from repo2ree_protocol.result import ActionResult
-from repo2ree_supervisor import WorkbenchHandle
 
 
 def mint_upload_token(ree_id: str, payload: UploadInitPayload, *, upload_route: str, purpose: str) -> dict[str, Any]:
@@ -70,36 +71,3 @@ async def stage_upload_bytes(ree_id: str, upload_token: str, request: Request, *
             detail={"code": "upload_size_mismatch", "message": str(exc), "details": None},
         ) from exc
     return {"upload_token": upload_token, "stored_at": utc_now()}
-
-
-def copy_staged_upload_into_workbench(
-    handle: WorkbenchHandle,
-    upload_token: str,
-    staged_host: Path,
-    *,
-    log_run: LogSink,
-    outputs: dict[str, Any],
-) -> ActionResult | None:
-    discard_expired_uploads()
-    if not staged_host.exists() or staged_host.stat().st_size == 0:
-        log_run("system", "error", "Staged upload not found, empty, or expired")
-        return ActionResult.failed(
-            "precondition",
-            "Staged upload not found, empty, or expired",
-            origin="api",
-            outputs=outputs,
-        )
-    size = staged_host.stat().st_size
-    log_run("system", "info", f"Copying staged archive into the workbench ({size} bytes)")
-    try:
-        workbench_manager.copy_to_workbench(handle, str(staged_host), f"/ree/upload-staging/{upload_token}.bin")
-    except Exception as exc:
-        log_run("system", "error", f"Copy to workbench failed: {exc}")
-        return ActionResult.failed(
-            "unavailable",
-            f"Copy to workbench failed: {exc}",
-            origin="supervisor",
-            retryable=True,
-            outputs=outputs,
-        )
-    return None

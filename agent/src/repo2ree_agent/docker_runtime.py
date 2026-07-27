@@ -35,11 +35,10 @@ import tempfile
 import threading
 import time
 from collections.abc import Generator, Iterator
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager
 
 from repo2ree_agent import docker_cli, executor_frames
-from repo2ree_agent.injection import InjectionBundle as _InjectionBundle
-from repo2ree_agent.injection import load_injection_bundle as _load_injection_bundle
+from repo2ree_agent.injection import InjectionBundle, load_injection_bundle
 from repo2ree_agent.workbench_runtime import WorkbenchGoneError
 from repo2ree_protocol.agent import (
     AgentFrame,
@@ -50,7 +49,6 @@ from repo2ree_protocol.agent import (
     UnavailableFrame,
     WorkbenchLocation,
 )
-from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.tracing import command_metric_attrs, get_meter, get_tracer, record_command_status
 
 __all__ = ["DockerRuntime", "WorkbenchGoneError"]
@@ -73,13 +71,8 @@ _workbench_gone_counter = _meter.create_counter(
     description="Number of Docker operations that found the target workbench gone or stopping.",
 )
 
-# Exit codes from `docker exec` that mean the container is gone / stopping.
-# 137 = killed by SIGKILL (container OOM-killed or being removed)
-# 126 = OCI runtime exec failed (container shutting down, broken init pipe)
-_CONTAINER_GONE_EXIT_CODES = frozenset({126, 137})
 _WORKBENCH_DOCKER_MODES = frozenset({"dind", "host-socket"})
 _HOST_DOCKER_SOCK_MOUNT = "/var/run/docker.sock:/var/run/docker.sock"
-_FAILURE_OUTPUT_TAIL_BYTES = 16 * 1024
 
 # Where the injected closure appears inside a bench. The bundle's paths are
 # absolute into /nix/store, so this is not a choice — it is the mount point
@@ -106,7 +99,7 @@ class DockerRuntime:
             modes = ", ".join(sorted(_WORKBENCH_DOCKER_MODES))
             raise ValueError(f"unknown workbench docker mode {docker_mode!r}; expected one of: {modes}")
         self._docker_mode = docker_mode
-        self._bundle = _load_injection_bundle(
+        self._bundle = load_injection_bundle(
             exec_bundle_dir if exec_bundle_dir is not None else os.environ.get("REPO2REE_EXEC_BUNDLE") or None,
             tools_bundle_dir if tools_bundle_dir is not None else os.environ.get("REPO2REE_TOOLS_BUNDLE") or None,
         )
@@ -302,7 +295,7 @@ class DockerRuntime:
         _docker("update", "--restart", "unless-stopped", container_name)
         return True
 
-    def _ensure_store_volume(self, image: str, bundle: _InjectionBundle) -> Iterator[AgentFrame]:
+    def _ensure_store_volume(self, image: str, bundle: InjectionBundle) -> Iterator[AgentFrame]:
         """Populate the content-addressed store volume, once.
 
         The copies go through a never-started scratch container from ``image``
@@ -400,7 +393,7 @@ class DockerRuntime:
 
     def exec_query_stream(self, location: WorkbenchLocation, argv: list[str], timeout: int = 30) -> Iterator[bytes]:
         with _docker_op("exec_query_stream"):
-            yield from _stream_exec(
+            yield from docker_cli.stream_exec(
                 ["docker", "exec", location.container_name, location.exec_path, *argv], timeout, what=f"query {argv!r}"
             )
 
@@ -416,11 +409,11 @@ class DockerRuntime:
             timeout=timeout,
         )
         if result.returncode != 0:
-            stderr = _tail_text(result.stderr)
-            stdout = _tail_text(result.stdout)
+            stderr = docker_cli.tail_text(result.stderr)
+            stdout = docker_cli.tail_text(result.stdout)
             detail = stderr or stdout or "(no output on stdout/stderr)"
             message = f"{what} failed (exit {result.returncode}): {detail}"
-            if result.returncode in _CONTAINER_GONE_EXIT_CODES or "No such container" in detail:
+            if result.returncode in docker_cli.CONTAINER_GONE_EXIT_CODES or "No such container" in detail:
                 raise WorkbenchGoneError(message)
             raise RuntimeError(message)
         return result.stdout
@@ -438,7 +431,7 @@ class DockerRuntime:
                 timeout=120,
             )
             if result.returncode != 0:
-                raise RuntimeError(f"docker cp failed: {_failure_detail(result.stderr, result.stdout)}")
+                raise RuntimeError(f"docker cp failed: {docker_cli.failure_detail(result.stderr, result.stdout)}")
 
     # ------------------------------------------------
     # Action dispatch (streaming)
@@ -511,7 +504,7 @@ class DockerRuntime:
                 line = raw_line.rstrip()
                 if not line:
                     continue
-                frame = _executor_line_to_frame(line)
+                frame = executor_frames.executor_line_to_frame(line)
                 if frame is not None:
                     yield frame
 
@@ -519,13 +512,13 @@ class DockerRuntime:
             stdout = "".join(stdout_parts).strip()
             proc.wait()
 
-            if proc.returncode in _CONTAINER_GONE_EXIT_CODES:
+            if proc.returncode in docker_cli.CONTAINER_GONE_EXIT_CODES:
                 status = "unavailable"
                 yield UnavailableFrame(detail=f"docker exec exited {proc.returncode} — container gone or stopping")
                 record_once()
                 return
 
-            result = _parse_action_result(stdout, proc.returncode or 0)
+            result = executor_frames.parse_action_result(stdout, proc.returncode or 0)
             status = result.status
             yield ResultFrame(result=result)
         except Exception:
@@ -613,53 +606,6 @@ def _emit_docker_span(operation: str, started_at: float, status: str) -> None:
     span.end(end_time=end_ns)
 
 
-def _failure_detail(stderr: str, stdout: str) -> str:
-    """The message text for a failed docker command: stderr, else stdout.
-
-    One spelling, so every docker failure reads the same way whichever helper
-    raised it.
-    """
-    return docker_cli.failure_detail(stderr, stdout)
-
-
-def _tail_text(output: bytes) -> str:
-    """Decode command output for an error message, keeping only the last
-    ``_FAILURE_OUTPUT_TAIL_BYTES`` so a chatty failure cannot balloon the frame."""
-    return docker_cli.tail_text(output)
-
-
-def _stream_exec(cmd: list[str], timeout: int, what: str) -> Iterator[bytes]:
-    """Run ``cmd`` and yield its stdout in bounded chunks.
-
-    ``timeout`` bounds *silence from the process* — the gap between resuming
-    the consumer and the next stdout chunk (or exit) — not total stream time.
-    A large result trickling to a slow consumer must not be killed mid-transfer;
-    a process that stops producing while the consumer waits must be.
-    """
-    yield from docker_cli.stream_exec(cmd, timeout, what)
-
-
-def _append_tail(tail: bytearray, chunk: bytes) -> None:
-    tail.extend(chunk)
-    if len(tail) > _FAILURE_OUTPUT_TAIL_BYTES:
-        del tail[: len(tail) - _FAILURE_OUTPUT_TAIL_BYTES]
-
-
-def _kill_process(proc: subprocess.Popen[bytes]) -> None:
-    if proc.poll() is None:
-        proc.kill()
-    with suppress(Exception):
-        proc.wait(timeout=5)
-
-
-def _executor_line_to_frame(line: str) -> AgentFrame | None:
-    return executor_frames.executor_line_to_frame(line)
-
-
-def _parse_action_result(stdout: str, returncode: int) -> ActionResult:
-    return executor_frames.parse_action_result(stdout, returncode)
-
-
 def _docker(*args: str, timeout: int = 60) -> None:
     """Run a docker subcommand, raising on a non-zero exit."""
     _docker_out(*args, timeout=timeout)
@@ -696,7 +642,11 @@ def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[Ag
             timeout=90,
         )
         if result.returncode != 0:
-            detail = _tail_text(result.stderr.encode()) or _tail_text(result.stdout.encode()) or "(no output)"
+            detail = (
+                docker_cli.tail_text(result.stderr.encode())
+                or docker_cli.tail_text(result.stdout.encode())
+                or "(no output)"
+            )
             raise RuntimeError(f"bench from {image} failed the executor probe (exit {result.returncode}): {detail}")
         try:
             report = json.loads(result.stdout)
@@ -763,7 +713,7 @@ def _container_running(container_name: str) -> bool:
         if "no such object" in stderr or "no such container" in stderr:
             return False
         raise ContainerStateUnknownError(
-            f"docker inspect failed for {container_name}: {_failure_detail(result.stderr, result.stdout)}"
+            f"docker inspect failed for {container_name}: {docker_cli.failure_detail(result.stderr, result.stdout)}"
         )
 
 
@@ -786,7 +736,7 @@ def _image_has_nix(image: str) -> bool:
             if proc.stdout is None:
                 raise RuntimeError("Popen stdout pipe unavailable")
             first_byte = proc.stdout.read(1)
-            _kill_process(proc)
+            docker_cli.kill_process(proc)
             return bool(first_byte)
     finally:
         _docker_silent("rm", "-f", "-v", scratch)
@@ -858,7 +808,7 @@ def _docker_remove(*args: str) -> None:
         result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
             return
-        detail = _failure_detail(result.stderr, result.stdout)
+        detail = docker_cli.failure_detail(result.stderr, result.stdout)
         if "No such container" in detail or "No such volume" in detail:
             return
         raise RuntimeError(f"docker {args[0]} failed: {detail}")

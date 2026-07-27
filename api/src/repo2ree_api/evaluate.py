@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.ree_commands import require_handle
 from repo2ree_api.run_management import run_summary, start_single_command_run
 from repo2ree_core.repo_profiler.reproducibility_report import ReproducibilityReport
 from repo2ree_protocol.command import (
@@ -69,15 +70,16 @@ _REPORT_FILENAME = "reproducibility-report.json"
 )
 def get_workspace_evaluate_report(ree_id: str) -> dict[str, Any]:
     """The persisted evaluate-run report artifact."""
-    handle = workbench_manager.lookup(ree_id)
-    if handle is not None:
-        try:
-            data = workbench_manager.read_artifact_bytes(handle, _REPORT_FILENAME)
-            report: dict[str, Any] = json.loads(data)
-            return report
-        except Exception as exc:
-            raise HTTPException(
-                status_code=404,
-                detail="No reproducibility report; run evaluate first",
-            ) from exc
-    raise HTTPException(status_code=404, detail="No reproducibility report; run evaluate first")
+    # An unknown or unreachable REE is resolved first, so "no report yet" is
+    # never how a caller learns their REE is gone (404) or its workbench is
+    # down (503).
+    handle = require_handle(ree_id)
+    try:
+        data = workbench_manager.read_artifact_bytes(handle, _REPORT_FILENAME)
+        report: dict[str, Any] = json.loads(data)
+        return report
+    except Exception as exc:
+        raise HTTPException(
+            status_code=404,
+            detail="No reproducibility report; run evaluate first",
+        ) from exc

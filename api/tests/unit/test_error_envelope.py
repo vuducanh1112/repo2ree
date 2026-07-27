@@ -162,3 +162,39 @@ def test_transport_failure_mid_request_yields_503_envelope(
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}")
     assert resp.status_code == 503
     assert resp.json()["error"]["code"] == "workbench_unavailable"
+
+
+# Every read route that resolves an REE before answering. Each of these once
+# resolved it its own way, so the same condition read differently depending on
+# which one a client called.
+_REE_READ_ROUTES = [
+    "/api/v1/rees/{ree_id}",
+    "/api/v1/rees/{ree_id}/reviews",
+    "/api/v1/rees/{ree_id}/evaluate/report",
+    "/api/v1/rees/{ree_id}/receipts/author",
+    "/api/v1/rees/{ree_id}/scorecard",
+    "/api/v1/rees/{ree_id}/runs",
+]
+
+
+@pytest.mark.parametrize("route", _REE_READ_ROUTES)
+def test_unreachable_workbench_is_503_on_every_read_route(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, route: str
+):
+    """Every route resolving an REE agrees on 503 for registered-but-down.
+
+    Reviews, receipts and scorecard reported 404 for a workbench that exists and
+    is merely unreachable; evaluate blamed a report that had never been run.
+    """
+    monkeypatch.setattr(workbench_manager, "is_registered", lambda rid: rid == "down-ree")
+    resp = client.get(route.format(ree_id="down-ree"))
+    assert resp.status_code == 503, resp.text
+    assert resp.json()["error"]["message"] == "Workbench unavailable for this REE"
+
+
+@pytest.mark.parametrize("route", _REE_READ_ROUTES)
+def test_unknown_ree_is_404_naming_the_ree(client: TestClient, route: str):
+    """An unknown REE reads as "not found", naming it — never as "no report yet"."""
+    resp = client.get(route.format(ree_id="no-such-ree"))
+    assert resp.status_code == 404, resp.text
+    assert resp.json()["error"]["message"] == "REE no-such-ree not found"

@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
 from repo2ree_api.deps import workbench_manager
+from repo2ree_api.ree_commands import require_handle
 from repo2ree_api.run_management import run_summary, start_single_command_run
 from repo2ree_core.reviews import ReviewRecord, ReviewSet
 from repo2ree_protocol.command import (
@@ -46,9 +47,7 @@ class CreateBuildReviewPayload(CreateRunPayload):
 
 def _reviews(ree_id: str) -> ReviewSet:
     """Every persisted attempt for an REE, or the workbench failure to report."""
-    handle = workbench_manager.lookup(ree_id)
-    if handle is None:
-        raise HTTPException(status_code=404, detail="Workspace not found")
+    handle = require_handle(ree_id)
     try:
         return ReviewSet.model_validate(workbench_manager.get_reviews(handle))
     except Exception as exc:

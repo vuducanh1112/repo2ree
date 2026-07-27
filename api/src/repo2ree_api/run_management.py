@@ -1,3 +1,11 @@
+"""Background-run orchestration: the run registry and the ways routes start work.
+
+Routes own HTTP validation and response shaping; this module owns starting a run
+and, for the single-command case, the runner that drives it. It is the one place
+routes reach the ``RunRegistry``, so the registry itself stays free of route
+concerns.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -7,7 +15,7 @@ from fastapi import HTTPException
 
 from repo2ree_api.contracts import RunOperation
 from repo2ree_api.deps import workbench_manager
-from repo2ree_api.ree_service import CommandRunSpec, ReeService
+from repo2ree_api.ree_commands import require_handle
 from repo2ree_api.run_registry import RunRegistry
 from repo2ree_protocol.command import Command
 from repo2ree_protocol.result import ActionResult
@@ -18,15 +26,16 @@ from repo2ree_protocol.result import ActionResult
 
 
 def _require_workspace(ree_id: str) -> None:
-    if workbench_manager.lookup(ree_id) is not None:
-        return
-    if workbench_manager.is_registered(ree_id):
-        raise HTTPException(status_code=503, detail="Workbench unavailable for this REE")
-    raise HTTPException(status_code=404, detail="Workspace not found")
+    """Starting new work needs a live workbench (404 unknown / 503 unreachable).
+
+    Reading run history deliberately does not — see ``RunRegistry``. The same
+    resolution every synchronous command route uses, so one REE cannot read as
+    "not found" from one route and "unavailable" from another.
+    """
+    require_handle(ree_id)
 
 
 _registry = RunRegistry(_require_workspace)
-ree_service = ReeService(workbench_manager, _registry)
 
 append_run_log = _registry.append_log
 update_run_outputs = _registry.update_outputs
@@ -36,26 +45,7 @@ run_summary = _registry.run_summary
 get_run_state = _registry.get_run_state
 list_runs = _registry.list_runs
 observe_run = _registry.observe
-
-
-def start_background_run(
-    ree_id: str,
-    operation: RunOperation,
-    request_payload: dict[str, Any],
-    run_id_prefix: str,
-    runner: Callable[[str, str], ActionResult],
-    idempotency_key: str | None = None,
-    initial_outputs: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    return _registry.start_background(
-        ree_id,
-        operation,
-        request_payload,
-        run_id_prefix,
-        runner,
-        idempotency_key=idempotency_key,
-        initial_outputs=initial_outputs,
-    )
+start_background_run = _registry.start_background
 
 
 def start_provisioning_run(
@@ -102,15 +92,43 @@ def start_single_command_run(
     could only learn it by waiting for the run could not address the attempt it
     just opened.
     """
-    return ree_service.start_command(
+    outputs = dict(fallback_outputs or {})
+
+    def _runner(rid: str, run_id: str) -> ActionResult:
+        def _log(stream: str, level: str, message: str) -> None:
+            append_run_log(rid, run_id, stream, level, message)
+
+        if is_cancel_requested(rid, run_id):
+            _log("system", "warn", canceled_message)
+            return ActionResult(status="canceled", outputs=outputs)
+
+        # The REE was live when the run was created; by the time this worker
+        # thread runs it may not be. Retryable only when the workbench is
+        # registered but unreachable (503) — a 404 means the REE is gone, and
+        # retrying that can never succeed.
+        try:
+            handle = require_handle(rid)
+        except HTTPException as exc:
+            _log("system", "error", str(exc.detail))
+            return ActionResult.failed(
+                "unavailable",
+                str(exc.detail),
+                origin="api",
+                retryable=exc.status_code == 503,
+            )
+
+        result = workbench_manager.dispatch_action(handle, command, run_id, _log)
+        # Preserve the route's fallback outputs when the command reported none.
+        if not result.outputs and outputs:
+            return result.model_copy(update={"outputs": outputs})
+        return result
+
+    return start_background_run(
         ree_id,
-        CommandRunSpec(
-            operation=operation,
-            run_id_prefix=run_id_prefix,
-            canceled_message=canceled_message,
-            fallback_outputs=fallback_outputs or {},
-        ),
-        command,
-        request_payload=request_payload,
+        operation,
+        request_payload,
+        run_id_prefix,
+        _runner,
         idempotency_key=idempotency_key,
+        initial_outputs=outputs,
     )
