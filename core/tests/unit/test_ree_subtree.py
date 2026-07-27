@@ -2,8 +2,8 @@ from pathlib import PurePosixPath
 
 import pytest
 
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.store import ReeStore
 
 
 def _store(tmp_path) -> ReeStore:

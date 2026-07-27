@@ -19,8 +19,8 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from repo2ree_core.analysis.repository.reproducibility_report import _CATALOG, FileSignals, build_report
 from repo2ree_core.domain.dependency import Dependency, DependencyInventory
-from repo2ree_core.repo_profiler.reproducibility_report import _CATALOG, FileSignals, build_report
 
 pytestmark = pytest.mark.property
 

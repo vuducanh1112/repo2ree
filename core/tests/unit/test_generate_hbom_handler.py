@@ -1,4 +1,4 @@
-"""Unit coverage for the generate_hbom envelope handler.
+"""Unit coverage for the generate_hbom operations handler.
 
 The handler profiles the workbench hardware and merges it into the persisted
 ree intent. These tests point ``ReeLayout.in_workbench`` at a tmp root and stub
@@ -15,10 +15,10 @@ import pytest
 from repo2ree_core.domain.hbom import HBOM, CPUDefinition, GPUDefinition
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.handlers import generate_hbom as handler
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.workspace.model import WorkspaceMetadata
+from repo2ree_core.operations.handlers import generate_hbom as handler
+from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 
 
 def _never_canceled() -> bool:

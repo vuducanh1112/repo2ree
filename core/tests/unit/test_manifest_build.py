@@ -1,8 +1,8 @@
+from repo2ree_core.bundle.manifest import build_draft_manifest_payload, build_manifest_payload
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH
-from repo2ree_core.workspace.manifest import build_draft_manifest_payload, build_manifest_payload
-from repo2ree_core.workspace.model import WorkspaceMetadata
+from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 
 
 def _intent(**overrides) -> ReeIntent:

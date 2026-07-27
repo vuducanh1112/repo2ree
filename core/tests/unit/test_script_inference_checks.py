@@ -9,20 +9,20 @@ from __future__ import annotations
 
 from typing import Literal
 
-from repo2ree_core.script_inference.checks.dockerfile import (
+from repo2ree_core.authoring.script_inference.checks.dockerfile import (
     DockerfilesAtProjectRootCheck,
     NestedDockerfilesCheck,
 )
-from repo2ree_core.script_inference.checks.project_root import LogicalProjectRootCheck
-from repo2ree_core.script_inference.models import (
+from repo2ree_core.authoring.script_inference.checks.project_root import LogicalProjectRootCheck
+from repo2ree_core.authoring.script_inference.models import (
     DecisionContext,
     DockerfileBinding,
     LogicalRootObservation,
     PathMatchesObservation,
     ProjectRootBinding,
 )
-from repo2ree_core.script_inference.policy import default_policy
-from repo2ree_core.script_inference.repository_facts import DockerfileFact, RepositoryFacts
+from repo2ree_core.authoring.script_inference.policy import default_policy
+from repo2ree_core.authoring.script_inference.repository_facts import DockerfileFact, RepositoryFacts
 
 
 def _context(facts: RepositoryFacts, *, project_root: str | None = None) -> DecisionContext:

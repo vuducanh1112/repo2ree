@@ -12,23 +12,19 @@ from typing import Any
 
 import pytest
 
+from repo2ree_core.analysis.sbom.scan import ScanOutcome
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.handlers import review_build_runtime as handler
-from repo2ree_core.receipts import BuildRuntimeReceipt, GenerateSbomReceipt, record_receipt
+from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt, GenerateSbomReceipt
+from repo2ree_core.evidence.receipts.store import record_receipt
+from repo2ree_core.evidence.review.models import new_review_record, step_state, with_step
+from repo2ree_core.evidence.review.store import load_reviews, write_review_record
+from repo2ree_core.operations.handlers import review_build_runtime as handler
+from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
+from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
-from repo2ree_core.reviews import (
-    load_reviews,
-    new_review_record,
-    step_state,
-    with_step,
-    write_review_record,
-)
-from repo2ree_core.sbom.scan import ScanOutcome
-from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import ReviewBuildRuntimeArgs
 
 RUNTIME_PATH = "runtime.tar"

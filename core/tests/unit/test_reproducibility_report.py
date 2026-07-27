@@ -1,5 +1,4 @@
-from repo2ree_core.domain.dependency import Dependency, DependencyInventory
-from repo2ree_core.repo_profiler.reproducibility_report import (
+from repo2ree_core.analysis.repository.reproducibility_report import (
     FileSignals,
     Severity,
     ThreatCategory,
@@ -7,6 +6,7 @@ from repo2ree_core.repo_profiler.reproducibility_report import (
     _classify,
     build_report,
 )
+from repo2ree_core.domain.dependency import Dependency, DependencyInventory
 
 # --------------------------------------------------------------------------- #
 # inventory builders

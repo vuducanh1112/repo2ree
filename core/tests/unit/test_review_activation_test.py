@@ -15,26 +15,25 @@ from typing import Any
 import pytest
 
 from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.domain.experiment import Activation
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.handlers import review_activation_test as handler
-from repo2ree_core.experiment.experiment import Activation
-from repo2ree_core.receipts import BuildRuntimeReceipt
-from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT
-from repo2ree_core.reviews import (
+from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
+from repo2ree_core.evidence.review.models import (
     BuildComparison,
     EvidenceBasis,
     ReviewRecord,
     SourceComparison,
-    load_reviews,
     new_review_record,
     step_state,
     with_step,
-    write_review_record,
 )
-from repo2ree_core.storage.layout import ReeLayout, ReviewLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.workspace.model import WorkspaceMetadata
+from repo2ree_core.evidence.review.store import load_reviews, write_review_record
+from repo2ree_core.operations.handlers import review_activation_test as handler
+from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
+from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT
 from repo2ree_protocol.command import ReviewActivationTestArgs
 
 RUNTIME_PATH = "runtime.tar"

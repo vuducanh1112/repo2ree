@@ -1,6 +1,6 @@
 import tarfile
 
-from repo2ree_core.storage.extract import pack_directory_tar_gz
+from repo2ree_core.ree.files import pack_directory_tar_gz
 
 
 def test_packs_top_level_entries_under_their_own_names(tmp_path):

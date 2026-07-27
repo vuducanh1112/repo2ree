@@ -19,17 +19,17 @@ import yaml
 from hypothesis import given
 from hypothesis import strategies as st
 
-from repo2ree_core.domain.dependency import Dependency, normalize_package_name
-from repo2ree_core.repo_profiler.sources.conda import parse_environment_yml
-from repo2ree_core.repo_profiler.sources.manifests import _REGISTRY, merge_locked
-from repo2ree_core.repo_profiler.sources.npm import parse_package_json, parse_package_lock
-from repo2ree_core.repo_profiler.sources.oci import parse_dockerfile
-from repo2ree_core.repo_profiler.sources.pypi import (
+from repo2ree_core.analysis.repository.sources.conda import parse_environment_yml
+from repo2ree_core.analysis.repository.sources.manifests import _REGISTRY, merge_locked
+from repo2ree_core.analysis.repository.sources.npm import parse_package_json, parse_package_lock
+from repo2ree_core.analysis.repository.sources.oci import parse_dockerfile
+from repo2ree_core.analysis.repository.sources.pypi import (
     parse_poetry_lock,
     parse_pyproject,
     parse_requirements_txt,
     parse_uv_lock,
 )
+from repo2ree_core.domain.dependency import Dependency, normalize_package_name
 
 pytestmark = pytest.mark.property
 

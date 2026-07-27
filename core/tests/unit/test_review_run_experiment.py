@@ -17,13 +17,12 @@ from typing import Any
 import pytest
 
 from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.handlers import review_run_experiment as handler
-from repo2ree_core.experiment.experiment import Experiment
-from repo2ree_core.receipts import BuildRuntimeReceipt, RunExperimentReceipt, record_receipt
-from repo2ree_core.reserved_paths import experiment_slug
-from repo2ree_core.reviews import (
+from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt, RunExperimentReceipt
+from repo2ree_core.evidence.receipts.store import record_receipt
+from repo2ree_core.evidence.review.models import (
     ActivationOutcome,
     ActivationVerdict,
     BuildComparison,
@@ -31,15 +30,16 @@ from repo2ree_core.reviews import (
     ReviewRecord,
     SourceComparison,
     experiment_comparison,
-    load_reviews,
     new_review_record,
     step_state,
     with_step,
-    write_review_record,
 )
-from repo2ree_core.storage.layout import ReeLayout, ReviewLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.workspace.model import WorkspaceMetadata
+from repo2ree_core.evidence.review.store import load_reviews, write_review_record
+from repo2ree_core.operations.handlers import review_run_experiment as handler
+from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
+from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.reserved_paths import experiment_slug
 from repo2ree_protocol.command import ReviewRunExperimentArgs
 
 RUNTIME_PATH = "runtime.tar"

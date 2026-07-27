@@ -23,17 +23,17 @@ from hypothesis import given
 from hypothesis import strategies as st
 from scriptinfer_helpers import MemoryAccessor, docker_archive, venv_archive
 
-from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.script_inference import ScriptTargetSelector, infer_scripts
-from repo2ree_core.script_inference.artifact_inspection import (
+from repo2ree_core.authoring.script_inference import ScriptTargetSelector, infer_scripts
+from repo2ree_core.authoring.script_inference.artifact_inspection import (
     VenvArchiveInspection,
     inspect_runtime_artifact,
 )
-from repo2ree_core.script_inference.models import StrategyOutcome
-from repo2ree_core.script_inference.renderers._common import runtime_image_ref
-from repo2ree_core.script_inference.repository_facts import resolve_logical_root
-from repo2ree_core.script_inference.resolvers import ScoreFreeViabilityResolver
-from repo2ree_core.script_inference.runtime_inputs import RuntimeInputs
+from repo2ree_core.authoring.script_inference.models import StrategyOutcome
+from repo2ree_core.authoring.script_inference.renderers._common import runtime_image_ref
+from repo2ree_core.authoring.script_inference.repository_facts import resolve_logical_root
+from repo2ree_core.authoring.script_inference.resolvers import ScoreFreeViabilityResolver
+from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
+from repo2ree_core.domain.ree_intent import ReeIntent
 
 pytestmark = pytest.mark.property
 
@@ -306,6 +306,6 @@ def test_recovered_venv_restore_dir_is_absolute_and_reconciled(top_dir: str, tar
 
 
 def _exp():
-    from repo2ree_core.experiment import Experiment
+    from repo2ree_core.domain.experiment import Experiment
 
     return Experiment(name="run", output_paths=["results/run.log"])

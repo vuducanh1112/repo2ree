@@ -2,7 +2,7 @@
 
 import pytest
 
-from repo2ree_core.ree_scripts.shell import assert_no_placeholders
+from repo2ree_core.authoring.script_generation.shell import assert_no_placeholders
 
 
 def test_assert_no_placeholders_returns_rendered_text():

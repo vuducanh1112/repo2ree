@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.envelope.handlers import patch_ree_intent as handler
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.workspace.model import WorkspaceMetadata
+from repo2ree_core.operations.handlers import patch_ree_intent as handler
+from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import PatchReeIntentArgs
 
 

@@ -10,7 +10,7 @@ from repo2ree_core.digests import (
     digest_output_paths,
     digest_tree,
 )
-from repo2ree_core.storage.extract import pack_directory_tar_gz
+from repo2ree_core.ree.files import pack_directory_tar_gz
 
 
 def test_digest_bytes_is_prefixed_sha256():

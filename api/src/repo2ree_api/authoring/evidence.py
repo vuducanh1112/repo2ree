@@ -13,8 +13,8 @@ from fastapi import APIRouter, HTTPException
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.workbench.commands import require_handle
-from repo2ree_core.receipts import AuthorReceiptSet
-from repo2ree_core.reproducibility_scorecard import ReproducibilityScoreCard
+from repo2ree_core.evidence.receipts.consistency import AuthorReceiptSet
+from repo2ree_core.evidence.scorecard import ReproducibilityScoreCard
 
 scorecard_router = APIRouter(tags=["rees"])
 receipts_router = APIRouter(tags=["receipts"])

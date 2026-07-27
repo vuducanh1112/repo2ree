@@ -15,10 +15,10 @@ import pytest
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.handlers import review_acquire_source as handler
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.workspace.model import WorkspaceMetadata
+from repo2ree_core.operations.handlers import review_acquire_source as handler
+from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import ReviewAcquireSourceArgs
 
 SWHID = "swh:1:dir:" + "a" * 40

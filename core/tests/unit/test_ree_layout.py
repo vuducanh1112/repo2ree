@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.storage.layout import (
+from repo2ree_core.ree.layout import (
     ReeLayout,
     validate_relative_path,
     validate_upload_token,

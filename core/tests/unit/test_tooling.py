@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.tooling import find_tool, resolve_tool, tool_env_var
+from repo2ree_core.execution.tools import find_tool, resolve_tool, tool_env_var
 
 
 def test_env_var_name_normalises_dashes() -> None:

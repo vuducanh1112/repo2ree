@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_core.script_inference.repository_facts import resolve_logical_root
+from repo2ree_core.authoring.script_inference.repository_facts import resolve_logical_root
 
 
 def _tree(root: Path, paths: list[str]) -> Path:

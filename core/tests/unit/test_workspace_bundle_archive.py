@@ -5,15 +5,12 @@ import zipfile
 
 import pytest
 
+from repo2ree_core.bundle.seal import build_workspace_ree_archive, seal_workspace_ree
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.storage.workspace_ops import (
-    build_workspace_ree_archive,
-    get_workspace,
-    seal_workspace_ree,
-)
+from repo2ree_core.operations.workspace_view import get_workspace
+from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
+from repo2ree_core.ree.store import ReeStore
 
 
 def _make_ree(storage_root, name):
@@ -380,7 +377,8 @@ def test_seal_records_consistency_and_bundles_receipts(tmp_path):
     the bundle under ree/receipts/author/.
     """
     from repo2ree_core.digests import digest_bytes
-    from repo2ree_core.receipts import BuildRuntimeReceipt, record_receipt
+    from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
+    from repo2ree_core.evidence.receipts.store import record_receipt
 
     storage_root = tmp_path / "storage"
     ree_id, layout = _make_ree(storage_root, "receipts-test")
@@ -443,7 +441,8 @@ def test_get_workspace_includes_live_consistency_report(tmp_path):
     """The workspace payload carries the same per-step freshness the seal
     records, so the UI flags staleness while authoring — before any seal."""
     from repo2ree_core.digests import digest_bytes
-    from repo2ree_core.receipts import BuildRuntimeReceipt, record_receipt
+    from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
+    from repo2ree_core.evidence.receipts.store import record_receipt
 
     storage_root = tmp_path / "storage"
     ree_id, layout = _make_ree(storage_root, "live-consistency")

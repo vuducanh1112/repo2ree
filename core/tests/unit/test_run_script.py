@@ -2,8 +2,8 @@ import os
 import time
 from pathlib import Path
 
-import repo2ree_core.run_script as run_script
-from repo2ree_core.run_script import CancelCheck, run_streaming_process
+import repo2ree_core.execution.process as run_script
+from repo2ree_core.execution.process import CancelCheck, run_streaming_process
 
 
 def test_run_streaming_process_logs_and_captures_stdout_stderr():

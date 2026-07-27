@@ -7,25 +7,24 @@ import pytest
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.handlers import review_acquire_source as handler
-from repo2ree_core.receipts import RunExperimentReceipt
-from repo2ree_core.reviews import (
+from repo2ree_core.evidence.receipts.models import RunExperimentReceipt
+from repo2ree_core.evidence.review.comparison import compare_experiment_results, compare_source_swhids
+from repo2ree_core.evidence.review.models import (
     BuildComparison,
     ExperimentComparison,
     ReviewRecord,
     SourceComparison,
     attempt_basis,
-    compare_experiment_results,
-    compare_source_swhids,
     experiment_comparison,
-    load_reviews,
     new_review_record,
     with_experiment,
 )
+from repo2ree_core.evidence.review.store import load_reviews
+from repo2ree_core.operations.handlers import review_acquire_source as handler
+from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.source_repo.swhid import directory_swhid
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import ReviewAcquireSourceArgs
 
 

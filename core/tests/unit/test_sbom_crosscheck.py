@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import json
 
-from repo2ree_core.repo_profiler.reproducibility_report import EvaluatedDependency
-from repo2ree_core.sbom.crosscheck import cross_check
-from repo2ree_core.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
+from repo2ree_core.analysis.repository.reproducibility_report import EvaluatedDependency
+from repo2ree_core.analysis.sbom.crosscheck import cross_check
+from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
 
 # ================================================
 # Adapter

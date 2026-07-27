@@ -13,15 +13,16 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import workbench_manager
-from repo2ree_core.receipts import AuthorReceiptEntry, AuthorReceiptSet, BuildRuntimeReceipt, ConsistencyStep
-from repo2ree_core.repo_profiler.reproducibility_report import (
+from repo2ree_core.analysis.repository.reproducibility_report import (
     DependencyLevel,
     DependencySummary,
     EnvironmentLevel,
     MachineLevel,
     ReproducibilityReport,
 )
-from repo2ree_core.reproducibility_scorecard import (
+from repo2ree_core.evidence.receipts.consistency import AuthorReceiptEntry, AuthorReceiptSet, ConsistencyStep
+from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
+from repo2ree_core.evidence.scorecard import (
     ReproducibilityScoreCard,
     ScoreCardCategory,
     ScoreCardRung,

@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from repo2ree_core.authoring.script_inference import ScriptTargetSelector, infer_scripts
+from repo2ree_core.authoring.script_inference.inference import resolve_target
 from repo2ree_core.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
@@ -19,8 +21,6 @@ from repo2ree_core.reserved_paths import (
     experiment_run_script_path,
     experiment_verify_script_path,
 )
-from repo2ree_core.script_inference import ScriptTargetSelector, infer_scripts
-from repo2ree_core.script_inference.inference import resolve_target
 
 
 def test_resolve_target_reserved_paths() -> None:

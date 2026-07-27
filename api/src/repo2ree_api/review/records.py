@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.workbench.commands import require_handle
-from repo2ree_core.reviews import ReviewRecord, ReviewSet
+from repo2ree_core.evidence.review.models import ReviewRecord, ReviewSet
 
 review_records_router = APIRouter(tags=["reviews"])
 

@@ -16,10 +16,10 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from repo2ree_core.hbom.cpu_profiler import _parse_cpuinfo_text
-from repo2ree_core.hbom.gpu_profiler import _parse_lspci_output, _parse_nvidia_smi_csv
-from repo2ree_core.hbom.profiler_utils import round_gib
-from repo2ree_core.hbom.storage_profiler import _parse_lsblk_devices, _storage_type_for_device
+from repo2ree_core.analysis.hbom.cpu_profiler import _parse_cpuinfo_text
+from repo2ree_core.analysis.hbom.gpu_profiler import _parse_lspci_output, _parse_nvidia_smi_csv
+from repo2ree_core.analysis.hbom.profiler_utils import round_gib
+from repo2ree_core.analysis.hbom.storage_profiler import _parse_lsblk_devices, _storage_type_for_device
 
 pytestmark = pytest.mark.property
 

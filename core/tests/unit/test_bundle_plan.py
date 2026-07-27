@@ -1,16 +1,16 @@
 import io
 import zipfile
 
-from repo2ree_core.storage.layout import ARTIFACTS_DIRNAME
-from repo2ree_core.workspace.bundle import (
+from repo2ree_core.bundle.plan import (
     REE_MANIFEST_ENTRY_PATH,
     REE_ROOT_PREFIX,
     build_zip_bytes,
     plan_artifact_layout,
     rewrite_manifest_for_bundle,
-    safe_filename,
     should_include_snapshot,
 )
+from repo2ree_core.ree.files import safe_filename
+from repo2ree_core.ree.layout import ARTIFACTS_DIRNAME
 
 
 def test_ree_root_prefix_and_manifest_path_constants():

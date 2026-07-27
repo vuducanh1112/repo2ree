@@ -1,6 +1,6 @@
 """End-to-end flow test for the REE lifecycle.
 
-This is a *flow* test, not a unit test: it drives the real ``run_command``
+This is a *flow* test, not a unit test: it drives the real ``run_command`` dispatcher
 dispatcher through the sequence of typed commands that make up the REE
 lifecycle described in docs/REE.md, asserting the state of the durable
 ``/ree`` tree after each transition.
@@ -9,7 +9,7 @@ lifecycle described in docs/REE.md, asserting the state of the durable
         -> write_file -> (re-materialize) -> seal_ree
 
 It exercises every layer the control plane sits on top of — the command
-envelope, the dispatcher, the handlers, and the ``ReeStore`` / ``ReeLayout``
+the command envelope, the dispatcher, the handlers, and the ``ReeStore`` / ``ReeLayout``
 filesystem shell — with no Docker, no HTTP, and no container transport.
 
 Nothing here is mocked. ``git`` runs for real against a local fixture
@@ -33,12 +33,12 @@ from uuid import uuid4
 
 import pytest
 
-import repo2ree_core.storage.layout as layout_mod
+import repo2ree_core.ree.layout as layout_mod
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.run_command import run_command
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.operations.dispatch import run_command
+from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.command import (
     AcquireSourceArgs,

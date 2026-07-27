@@ -13,8 +13,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from repo2ree_core.experiment.experiment import Experiment
-from repo2ree_core.experiment.run import run_runnable
+from repo2ree_core.domain.experiment import Experiment
+from repo2ree_core.execution.experiment.run import run_runnable
 
 # ================================================
 # Helpers

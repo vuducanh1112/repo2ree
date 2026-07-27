@@ -1,6 +1,6 @@
 import pytest
 
-from repo2ree_core.storage.fetch import download_or_copy
+from repo2ree_core.ree.files import download_or_copy
 
 
 def test_download_or_copy_local_path(tmp_path):

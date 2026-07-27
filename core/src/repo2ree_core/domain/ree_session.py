@@ -36,7 +36,7 @@ class ReeSession(BaseModel):
     source_snapshot_archive: str | None = None
     source_snapshot_captured_at: str | None = None
     # Content digest of the snapshot archive, recorded while it is written.
-    # The chain root of every step's input slice (see ``repo2ree_core.receipts``).
+    # The chain root of every step's input slice (see ``repo2ree_core.evidence.receipts``).
     source_snapshot_digest: str | None = None
     # Packaging facts settled at bundle time and recorded in the published
     # manifest. Unset while authoring (inclusion is a download-time choice);

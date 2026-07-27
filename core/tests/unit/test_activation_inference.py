@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from scriptinfer_helpers import MemoryAccessor, docker_archive, not_an_archive, oci_archive, venv_archive
 
+from repo2ree_core.authoring.script_inference import ScriptTargetSelector, TargetInferenceResult, infer_scripts
+from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.script_inference import ScriptTargetSelector, TargetInferenceResult, infer_scripts
-from repo2ree_core.script_inference.runtime_inputs import RuntimeInputs
 
 _DOCKER_RUNTIME = ".repo2ree/artifacts/runtime.tar"
 _VENV_RUNTIME = ".repo2ree/artifacts/runtime-venv.tar.gz"

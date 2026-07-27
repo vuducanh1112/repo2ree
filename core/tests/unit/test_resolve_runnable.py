@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 
 from repo2ree_core.domain.ree_intent import ReeIntent
-from repo2ree_core.experiment.resolve import (
+from repo2ree_core.execution.experiment.resolve import (
     ExperimentNotFoundError,
     RunnableNotReadyError,
     resolve_activation_runnable,

@@ -15,7 +15,7 @@ from repo2ree_api.paths import (
     require_non_empty_path,
     resolve_relative_path,
 )
-from repo2ree_core.run_script import stream_output
+from repo2ree_core.execution.process import stream_output
 
 # ================================================
 # keyset_paginate

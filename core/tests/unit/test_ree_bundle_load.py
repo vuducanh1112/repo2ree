@@ -5,17 +5,14 @@ import zipfile
 
 import pytest
 
+from repo2ree_core.bundle.manifest import build_manifest_payload, split_manifest_payload
+from repo2ree_core.bundle.restore import restore_ree_bundle
+from repo2ree_core.bundle.seal import build_workspace_ree_archive, seal_workspace_ree
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.receipts import AcquireSourceReceipt
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.storage.workspace_ops import (
-    build_workspace_ree_archive,
-    restore_ree_bundle,
-    seal_workspace_ree,
-)
-from repo2ree_core.workspace.manifest import build_manifest_payload, split_manifest_payload
+from repo2ree_core.evidence.receipts.models import AcquireSourceReceipt
+from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.store import ReeStore
 
 
 def _make_ree(storage_root, name):

@@ -3,7 +3,7 @@ import zipfile
 
 import pytest
 
-from repo2ree_core.workspace.bundle import build_zip_bytes
+from repo2ree_core.bundle.plan import build_zip_bytes
 
 
 def _unzip(data: bytes) -> dict[str, bytes]:

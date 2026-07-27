@@ -1,4 +1,4 @@
-"""Unit coverage for the generate_script_candidates envelope handler.
+"""Unit coverage for the generate_script_candidates operations handler.
 
 Points ``ReeLayout.in_workbench`` at a tmp root (the seam the other handler
 tests use) and exercises the precondition guard, the read-only success path, and
@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.envelope.handlers import generate_script_candidates as handler
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.operations.handlers import generate_script_candidates as handler
+from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.store import ReeStore
 from repo2ree_protocol.command import GenerateScriptCandidatesArgs, ScriptTargetSelectorArg
 
 

@@ -15,10 +15,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from repo2ree_api.contracts.runs import RunSummary
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.receipts import AuthorReceiptSet, ConsistencyReport
-from repo2ree_core.ree_steps import ReeStepState
+from repo2ree_core.evidence.receipts.consistency import AuthorReceiptSet, ConsistencyReport
+from repo2ree_core.evidence.steps import ReeStepState
+from repo2ree_core.ree.workspace.inventory import ReeFile, WorkspaceFile
 from repo2ree_core.source_repo.metadata import SourceRepoMetadata
-from repo2ree_core.workspace.inventory import ReeFile, WorkspaceFile
 
 
 class ReeDocument(BaseModel):

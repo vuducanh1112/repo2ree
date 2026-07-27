@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.domain.hbom import HBOM, CPUDefinition
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.experiment import Experiment
-from repo2ree_core.ree_steps import (
+from repo2ree_core.evidence.steps import (
     REE_STEPS,
     ReeStepState,
     build_ree_step_states,

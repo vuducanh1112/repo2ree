@@ -11,12 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.repo_profiler.profiler import AnalysisError, analyze_repo
-from repo2ree_core.repo_profiler.sources.conda import parse_environment_yml
-from repo2ree_core.repo_profiler.sources.manifests import merge_locked, scan_manifest_files
-from repo2ree_core.repo_profiler.sources.npm import parse_package_json, parse_package_lock
-from repo2ree_core.repo_profiler.sources.oci import parse_dockerfile
-from repo2ree_core.repo_profiler.sources.pypi import (
+from repo2ree_core.analysis.repository.profiler import AnalysisError, analyze_repo
+from repo2ree_core.analysis.repository.sources.conda import parse_environment_yml
+from repo2ree_core.analysis.repository.sources.manifests import merge_locked, scan_manifest_files
+from repo2ree_core.analysis.repository.sources.npm import parse_package_json, parse_package_lock
+from repo2ree_core.analysis.repository.sources.oci import parse_dockerfile
+from repo2ree_core.analysis.repository.sources.pypi import (
     parse_poetry_lock,
     parse_pyproject,
     parse_requirements_txt,

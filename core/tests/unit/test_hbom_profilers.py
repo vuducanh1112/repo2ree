@@ -15,24 +15,24 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.domain.hbom import HBOM
-from repo2ree_core.hbom import gpu_profiler, storage_profiler
-from repo2ree_core.hbom.cpu_profiler import _parse_cpuinfo_text, profile_cpus
-from repo2ree_core.hbom.generate_hbom import generate_hbom
-from repo2ree_core.hbom.gpu_profiler import _parse_lspci_output, _parse_nvidia_smi_csv, profile_gpus
-from repo2ree_core.hbom.memory_profiler import profile_memory
-from repo2ree_core.hbom.network_profiler import profile_network
-from repo2ree_core.hbom.profiler_utils import (
+from repo2ree_core.analysis.hbom import gpu_profiler, storage_profiler
+from repo2ree_core.analysis.hbom.cpu_profiler import _parse_cpuinfo_text, profile_cpus
+from repo2ree_core.analysis.hbom.generate_hbom import generate_hbom
+from repo2ree_core.analysis.hbom.gpu_profiler import _parse_lspci_output, _parse_nvidia_smi_csv, profile_gpus
+from repo2ree_core.analysis.hbom.memory_profiler import profile_memory
+from repo2ree_core.analysis.hbom.network_profiler import profile_network
+from repo2ree_core.analysis.hbom.profiler_utils import (
     read_optional_int,
     read_optional_text,
     round_gib,
     run_command,
 )
-from repo2ree_core.hbom.storage_profiler import (
+from repo2ree_core.analysis.hbom.storage_profiler import (
     _parse_lsblk_devices,
     _storage_type_for_device,
     profile_storage,
 )
+from repo2ree_core.domain.hbom import HBOM
 
 
 def _completed(stdout: str, returncode: int = 0) -> subprocess.CompletedProcess[str]:

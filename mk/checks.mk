@@ -1,15 +1,7 @@
-# Static checks: prose, shell scripts, nix, frontend, python.
+# Static checks: shell scripts, nix, frontend, python. Prose linting and the
+# generated architecture diagrams live in docs.mk.
 
-.PHONY: docs-lint scripts-checks nix-checks fe-checks be-checks arch-checks api-types-check
-
-# ================================================
-# Docs — prose linting
-# ================================================
-
-docs-lint:
-	@echo "Linting docs with Vale..."
-	vale sync
-	vale docs README.md
+.PHONY: scripts-checks nix-checks fe-checks be-checks arch-checks api-types-check
 
 # ================================================
 # Scripts — shell linting
@@ -18,6 +10,10 @@ docs-lint:
 scripts-checks:
 	@echo "Running shellcheck..."
 	shellcheck scripts/*.sh
+	@echo "Checking python scripts..."
+	ruff check scripts
+	ruff format scripts
+	mypy scripts
 
 # ================================================
 # Nix — formatting and linting

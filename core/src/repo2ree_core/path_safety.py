@@ -16,7 +16,7 @@ Two layers, used at different trust boundaries:
   symlink escapes. It is the guard for paths that come from author-supplied run
   scripts and declared outputs before they are handed to the shell or read back
   (see ``experiment/run.py``, ``run_script.py``,
-  ``envelope/handlers/_common.py``).
+  ``operations/handlers/_common.py``).
 """
 
 from __future__ import annotations

@@ -25,7 +25,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.contracts import ERROR_RESPONSES
-from repo2ree_core.ree_steps import ree_step_catalog
+from repo2ree_core.evidence.steps import ree_step_catalog
 from repo2ree_core.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,

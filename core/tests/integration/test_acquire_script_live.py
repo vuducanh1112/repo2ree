@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
-from repo2ree_core.storage.layout import ACQUIRE_SCRIPT_FILENAME, UPSTREAM_DIRNAME
+from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
+from repo2ree_core.ree.layout import ACQUIRE_SCRIPT_FILENAME, UPSTREAM_DIRNAME
 
 # A real, public git server exercises the pinned-fetch path against a remote that
 # may reject fetching an arbitrary SHA (triggering the full-clone fallback) —

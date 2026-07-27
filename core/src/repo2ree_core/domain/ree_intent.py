@@ -13,8 +13,8 @@ from pydantic import (
     model_validator,
 )
 
+from repo2ree_core.domain.experiment import Activation, Experiment
 from repo2ree_core.domain.hbom import HBOM
-from repo2ree_core.experiment import Activation, Experiment
 from repo2ree_core.path_safety import normalize_workspace_path
 
 # ================================================

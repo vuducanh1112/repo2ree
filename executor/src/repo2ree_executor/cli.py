@@ -8,12 +8,19 @@ from typing import Any, TextIO
 
 import click
 
+from repo2ree_core.bundle.seal import build_workspace_ree_archive as _build_archive
 from repo2ree_core.doctor import run_doctor
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.run_command import run_command
-from repo2ree_core.receipts import load_author_receipts
-from repo2ree_core.reproducibility_scorecard import build_scorecard
+from repo2ree_core.evidence.receipts.store import load_author_receipts
+from repo2ree_core.evidence.review.store import load_reviews
+from repo2ree_core.evidence.scorecard import build_scorecard
+from repo2ree_core.operations.dispatch import run_command
+from repo2ree_core.operations.workspace_view import get_workspace as _get_workspace
+from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
+from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
+from repo2ree_core.ree.workspace.views import read_file_bytes as _read_file_bytes
 from repo2ree_core.reproduction import (
     ACQUIRE_SOURCE,
     BUILD_RUNTIME,
@@ -21,16 +28,7 @@ from repo2ree_core.reproduction import (
     MATERIALIZE_WORKSPACE,
     TEST_ACTIVATION,
 )
-from repo2ree_core.reviews import load_reviews
-from repo2ree_core.storage.layout import ReeLayout, ReviewLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.storage.workspace_ops import (
-    build_workspace_ree_archive as _build_archive,
-)
-from repo2ree_core.storage.workspace_ops import get_workspace as _get_workspace
-from repo2ree_core.storage.workspace_ops import read_file_bytes as _read_file_bytes
 from repo2ree_core.time_utils import utc_now as _utc_now
-from repo2ree_core.workspace.model import WorkspaceMetadata
 from repo2ree_protocol import ActionResult, command_adapter
 from repo2ree_protocol.command import (
     AcquireSourceArgs,
@@ -358,7 +356,7 @@ def get_workspace_cmd(summary: bool) -> None:
     workbench container so the output reflects the workbench volume.
     """
     layout = ReeLayout.in_workbench()
-    # workspace_ops uses (storage_root, ree_id) addressing; the workbench
+    # The core read views use (storage_root, ree_id) addressing; the workbench
     # volume is mounted at /ree, which maps to storage_root=/ and ree_id=ree.
     storage_root = layout.root.parent
     ree_id = layout.root.name

@@ -1,4 +1,4 @@
-"""Unit coverage for the write_file envelope handler's optimistic-concurrency guard.
+"""Unit coverage for the write_file operations handler's optimistic-concurrency guard.
 
 Same seam as the delete_file handler tests: ``ReeLayout.in_workbench`` is
 pointed at a tmp root and the handler runs for real against it.
@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.envelope.handlers import write_file as handler
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.operations.handlers import write_file as handler
+from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.store import ReeStore
 from repo2ree_protocol.command import WriteFileArgs
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from repo2ree_core.sbom.cyclonedx import ObservedPackage
-from repo2ree_core.sbom.equivalence import (
+from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage
+from repo2ree_core.analysis.sbom.equivalence import (
     DELTA_LIST_CAP,
     closure_verdict,
     compare_sbom_closures,

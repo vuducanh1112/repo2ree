@@ -1,6 +1,6 @@
 """The author's side of the REE step graph.
 
-The modules here follow ``repo2ree_core.ree_steps.REE_STEPS`` — the step list
+The modules here follow ``repo2ree_core.evidence.steps.REE_STEPS`` — the step list
 this API publishes through ``listReeSteps``. Steps that advance by running
 something in the workbench are together in :mod:`stages`; the ones that advance
 by declaring (source, metadata, seal) have their own module, and :mod:`catalog`

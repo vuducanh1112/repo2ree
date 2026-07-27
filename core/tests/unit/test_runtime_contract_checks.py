@@ -11,14 +11,14 @@ from pathlib import Path
 
 from scriptinfer_helpers import MemoryAccessor, docker_archive
 
+from repo2ree_core.authoring.script_inference import ScriptTargetSelector, infer_scripts
+from repo2ree_core.authoring.script_inference.build_regeneration import expected_build_for_runtime
+from repo2ree_core.authoring.script_inference.models import DecisionContext
+from repo2ree_core.authoring.script_inference.policy import default_policy
+from repo2ree_core.authoring.script_inference.repository_facts import scan_repository
+from repo2ree_core.authoring.script_inference.runtime_inputs import RuntimeInputs
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
-from repo2ree_core.script_inference import ScriptTargetSelector, infer_scripts
-from repo2ree_core.script_inference.build_regeneration import expected_build_for_runtime
-from repo2ree_core.script_inference.models import DecisionContext
-from repo2ree_core.script_inference.policy import default_policy
-from repo2ree_core.script_inference.repository_facts import scan_repository
-from repo2ree_core.script_inference.runtime_inputs import RuntimeInputs
 
 _DOCKER_RUNTIME = ".repo2ree/artifacts/runtime.tar"
 _VENV_RUNTIME = ".repo2ree/artifacts/runtime-venv.tar.gz"

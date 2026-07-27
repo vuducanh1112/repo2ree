@@ -1,4 +1,4 @@
-"""Unit coverage for the cross_check_sbom envelope handler.
+"""Unit coverage for the cross_check_sbom operations handler.
 
 The handler joins two persisted artifacts — the REE's SBOM and its
 reproducibility report, both in ``artifacts/`` — enriches the report in place,
@@ -15,11 +15,12 @@ import pytest
 
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.envelope.handlers import cross_check_sbom as handler
-from repo2ree_core.receipts import CrossCheckSbomReceipt, load_receipts
-from repo2ree_core.storage.layout import SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.storage.store import ReeStore
-from repo2ree_core.workspace.model import WorkspaceMetadata
+from repo2ree_core.evidence.receipts.models import CrossCheckSbomReceipt
+from repo2ree_core.evidence.receipts.store import load_receipts
+from repo2ree_core.operations.handlers import cross_check_sbom as handler
+from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
+from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_protocol.command import CrossCheckSbomArgs
 from repo2ree_protocol.result import ActionResult
 

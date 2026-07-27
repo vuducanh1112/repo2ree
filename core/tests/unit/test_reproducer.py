@@ -5,9 +5,9 @@ import tarfile
 from pathlib import Path
 from typing import Any
 
-from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
-from repo2ree_core.ree_scripts.materialize_workspace import build_materialize_sh
-from repo2ree_core.ree_scripts.reproducer import (
+from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
+from repo2ree_core.authoring.script_generation.materialize_workspace import build_materialize_sh
+from repo2ree_core.authoring.script_generation.reproducer import (
     REPRODUCER_ACQUIRE_ENTRY_PATH,
     REPRODUCER_MATERIALIZE_ENTRY_PATH,
     REPRODUCER_README_ENTRY_PATH,
@@ -16,9 +16,7 @@ from repo2ree_core.ree_scripts.reproducer import (
     reproducer_entries,
     runtime_artifact_basename_from_remap,
 )
-from repo2ree_core.reproduction import REPRODUCTION_COMMANDS
-from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
-from repo2ree_core.storage.layout import (
+from repo2ree_core.ree.layout import (
     ACQUIRE_SCRIPT_FILENAME,
     ARTIFACTS_DIRNAME,
     MATERIALIZE_SCRIPT_FILENAME,
@@ -26,6 +24,8 @@ from repo2ree_core.storage.layout import (
     SNAPSHOT_FILENAME,
     WORKSPACE_DIRNAME,
 )
+from repo2ree_core.reproduction import REPRODUCTION_COMMANDS
+from repo2ree_core.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
 
 
 def test_reproducer_entries_are_run_sh_scripts_and_readme():

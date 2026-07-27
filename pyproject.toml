@@ -112,13 +112,12 @@ extend-ignore = [
 # violation or an import cycle — every contract below was a real defect at some
 # point rather than a hypothetical.
 #
-# Only repo2ree_api is under contract today. The other packages are declared as
-# root packages so cross-package imports resolve; core's own layering is the
-# next tranche and needs its cycles broken first.
 [tool.importlinter]
 root_packages = [
+    "repo2ree_agent",
     "repo2ree_api",
     "repo2ree_core",
+    "repo2ree_executor",
     "repo2ree_protocol",
     "repo2ree_supervisor",
 ]
@@ -166,6 +165,114 @@ forbidden_modules = [
     "repo2ree_api.control",
     "repo2ree_api.workbench",
     "repo2ree_api.deps",
+]
+
+# Core's spine, high to low. Each tier is defined by what it is allowed to
+# know: `operations` composes commands out of everything below it; `bundle`
+# packages an REE together with the evidence produced about it; `evidence` is
+# stored *inside* an REE, so it knows the aggregate but the aggregate must not
+# know it; `ree` owns the on-disk state; `domain` is the vocabulary all of them
+# are written in.
+#
+# The direction that matters most here is `ree` below `evidence`. Reversing it
+# is the mistake this tree used to make in another form — a `storage` package
+# and a `workspace` package that each owned half the aggregate and imported
+# each other through deferred, function-local imports.
+[[tool.importlinter.contracts]]
+name = "Core layers"
+type = "layers"
+layers = [
+    "repo2ree_core.operations",
+    "repo2ree_core.bundle",
+    "repo2ree_core.evidence",
+    "repo2ree_core.ree",
+    "repo2ree_core.domain",
+]
+
+# The capabilities the spine calls into. They are deliberately *not* placed in
+# one total order with each other — they are independent, and forcing a rank
+# between "profiles a repository" and "acquires a source" would invent a
+# dependency nobody needs. What they share is a direction: a capability is
+# something a handler reaches for, so none of them may reach back up into the
+# composing layers. `evidence` is on the forbidden list because it already
+# depends on `analysis` (a build verdict is an SBOM closure comparison), so an
+# import the other way would close a loop.
+[[tool.importlinter.contracts]]
+name = "Capabilities never import what composes them"
+type = "forbidden"
+source_modules = [
+    "repo2ree_core.analysis",
+    "repo2ree_core.authoring",
+    "repo2ree_core.execution",
+    "repo2ree_core.source_repo",
+    "repo2ree_core.doctor",
+]
+forbidden_modules = [
+    "repo2ree_core.operations",
+    "repo2ree_core.bundle",
+    "repo2ree_core.evidence",
+]
+
+# The domain vocabulary describes what an REE *is*, which has to stay true
+# independently of where it is stored, how it is executed, or what was observed
+# about it. A domain model that imported persistence would make the meaning of
+# `ReeIntent` a function of the directory it happens to live in.
+[[tool.importlinter.contracts]]
+name = "The domain vocabulary imports no capability"
+type = "forbidden"
+source_modules = ["repo2ree_core.domain"]
+forbidden_modules = [
+    "repo2ree_core.analysis",
+    "repo2ree_core.authoring",
+    "repo2ree_core.bundle",
+    "repo2ree_core.evidence",
+    "repo2ree_core.execution",
+    "repo2ree_core.operations",
+    "repo2ree_core.ree",
+    "repo2ree_core.source_repo",
+]
+
+# The leaf primitives every layer is allowed to use precisely because they use
+# nothing back. Each already says so in its own docstring; this is what keeps
+# that claim true. They may still import one another (`path_safety` builds on
+# `reserved_paths`), which is why the rule names the packages rather than all
+# of `repo2ree_core`.
+[[tool.importlinter.contracts]]
+name = "Leaf primitives depend on no package"
+type = "forbidden"
+source_modules = [
+    "repo2ree_core.digests",
+    "repo2ree_core.path_safety",
+    "repo2ree_core.reproduction",
+    "repo2ree_core.reserved_paths",
+    "repo2ree_core.reserved_templates",
+    "repo2ree_core.time_utils",
+]
+forbidden_modules = [
+    "repo2ree_core.analysis",
+    "repo2ree_core.authoring",
+    "repo2ree_core.bundle",
+    "repo2ree_core.domain",
+    "repo2ree_core.evidence",
+    "repo2ree_core.execution",
+    "repo2ree_core.operations",
+    "repo2ree_core.ree",
+    "repo2ree_core.source_repo",
+]
+
+# Core runs inside the workbench and knows nothing of what drives it. The
+# executor CLI, the supervisor, and the API all import core; core importing any
+# of them would mean the code that performs an operation depends on the process
+# that asked for it, and the same core could no longer run under a different one.
+[[tool.importlinter.contracts]]
+name = "Core imports no application tier"
+type = "forbidden"
+source_modules = ["repo2ree_core"]
+forbidden_modules = [
+    "repo2ree_agent",
+    "repo2ree_api",
+    "repo2ree_executor",
+    "repo2ree_supervisor",
 ]
 
 [tool.mypy]

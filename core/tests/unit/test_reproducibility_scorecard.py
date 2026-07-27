@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 
+from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.experiment import Experiment
-from repo2ree_core.receipts import (
+from repo2ree_core.evidence.receipts.models import (
     ActivationTestReceipt,
     BuildRuntimeReceipt,
     CrossCheckSbomReceipt,
@@ -13,7 +13,7 @@ from repo2ree_core.receipts import (
     RunExperimentReceipt,
     RunReceipt,
 )
-from repo2ree_core.reproducibility_scorecard import (
+from repo2ree_core.evidence.scorecard import (
     LEVEL_NAMES,
     ReproducibilityScoreCard,
     ScoreCardRung,

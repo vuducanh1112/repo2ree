@@ -2,7 +2,8 @@
 # topic files under mk/ and `make <target>` works the same as before the
 # split.
 #
-#   mk/checks.mk   static checks (docs, shell, nix, frontend, python)
+#   mk/checks.mk   static checks (shell, nix, frontend, python)
+#   mk/docs.mk     prose linting and generated architecture diagrams
 #   mk/contracts.mk contract generation (OpenAPI + frontend API types)
 #   mk/tests.mk    unit/integration suites and coverage variants
 #   mk/e2e.mk      e2e bundles, stacks, playwright runs
@@ -64,6 +65,7 @@ require-clean-tree:
 		|| { echo "working tree dirty — commit first, so published images match a commit"; exit 1; }
 
 include mk/checks.mk
+include mk/docs.mk
 include mk/contracts.mk
 include mk/tests.mk
 include mk/e2e.mk

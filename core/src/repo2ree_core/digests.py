@@ -5,7 +5,7 @@ string — one format from day one, so recorded and current values are always
 directly comparable. Digests are recorded as *receipts* (provenance), never
 used as cache keys.
 
-Leaf-ish module: imports nothing from ``repo2ree_core`` so storage, envelope,
+Leaf-ish module: imports nothing from ``repo2ree_core`` so ree, operations,
 and workspace layers can all share it without an import cycle.
 """
 

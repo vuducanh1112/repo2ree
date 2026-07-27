@@ -1,4 +1,4 @@
-"""Unit coverage for the delete_file envelope handler.
+"""Unit coverage for the delete_file operations handler.
 
 The handler runs inside the workbench against the fixed ``/ree`` layout; these
 tests point ``ReeLayout.in_workbench`` at a tmp root (the same seam the other
@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_core.envelope.handlers import delete_file as handler
-from repo2ree_core.storage.layout import ReeLayout
-from repo2ree_core.storage.store import ReeStore
+from repo2ree_core.operations.handlers import delete_file as handler
+from repo2ree_core.ree.layout import ReeLayout
+from repo2ree_core.ree.store import ReeStore
 from repo2ree_protocol.command import DeleteFileArgs
 
 
