@@ -31,7 +31,7 @@ def _build(root: Path) -> TargetInferenceResult:
     return infer_scripts(root, [ScriptTargetSelector(kind="build")]).results[0]
 
 
-def _pip_candidate(result: TargetInferenceResult):  # type: ignore[no-untyped-def]
+def _pip_candidate(result: TargetInferenceResult):
     return next(c for c in result.candidates if c.inference_rule == "root-pip-requirements-v1")
 
 
@@ -97,7 +97,7 @@ def test_nested_requirements_does_not_fire(tmp_path: Path) -> None:
     assert result.candidates == []
 
 
-def test_pip_candidate_bytes_are_deterministic(tmp_path: Path, tmp_path_factory) -> None:  # type: ignore[no-untyped-def]
+def test_pip_candidate_bytes_are_deterministic(tmp_path: Path, tmp_path_factory) -> None:
     other = tmp_path_factory.mktemp("other")
     files = {"requirements.txt": "flask==3.0\n"}
     _tree(tmp_path, files)

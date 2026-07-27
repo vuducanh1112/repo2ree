@@ -12,7 +12,7 @@ from __future__ import annotations
 import base64
 import threading
 from collections.abc import Iterator
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 import pytest
 
@@ -75,7 +75,7 @@ class FakeSocket:
 
 def _run_in_thread(fn):
     """Run a blocking client call in a thread; return a getter for its result."""
-    box: dict = {}
+    box: dict[str, Any] = {}
 
     def target() -> None:
         try:
@@ -131,7 +131,7 @@ def test_provision_stream_yields_until_terminal_location() -> None:
     registry.register("a1", socket.connection)
     client = WsAgentClient(registry)
 
-    frames: list = []
+    frames: list[Any] = []
     join = _run_in_thread(lambda: frames.extend(client.provision("a1", "ree1", "img:tag")))
     socket.wait_for_request()
     socket.respond(LogFrame(stream="system", level="info", message="pulling"))
@@ -164,7 +164,7 @@ def test_exec_action_streams_logs_then_result() -> None:
     registry.register("a1", socket.connection)
     client = WsAgentClient(registry)
 
-    frames: list = []
+    frames: list[Any] = []
     join = _run_in_thread(lambda: frames.extend(client.exec_action("a1", _WB, "{}", "run1", {})))
     socket.wait_for_request()
     socket.respond(LogFrame(stream="stdout", level="info", message="working"))

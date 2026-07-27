@@ -68,6 +68,7 @@ import tempfile
 import time
 import zipfile
 from pathlib import Path
+from typing import Any
 
 BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 
@@ -128,7 +129,7 @@ def _curl_detail(rc: int, err: bytes) -> str:
     return err.decode(errors="replace").strip() or f"HTTP error (curl exit {rc}; see response above)"
 
 
-def call(method: str, path: str, payload: dict | None = None) -> dict:
+def call(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     """A JSON request as a real curl. Prints the exact command and the parsed
     response (the error envelope too, on failure), then fails the session on any
     transport error or HTTP >= 400."""
@@ -164,7 +165,7 @@ def wait_for_run(ree_id: str, run_id: str) -> str:
         if obs.get("next_cursor"):
             cursor = int(obs["next_cursor"])
         if obs["run"]["status"] in TERMINAL:
-            return obs["run"]["status"]
+            return str(obs["run"]["status"])
         time.sleep(0.1)
 
 
@@ -268,7 +269,7 @@ def put_file(ree_id: str, path: str, content: str) -> None:
     call("PUT", f"/api/v1/rees/{ree_id}/files/content", {"path": path, "content": content})
 
 
-def run_stage(ree_id: str, method: str, path: str, payload: dict, *, what: str) -> dict:
+def run_stage(ree_id: str, method: str, path: str, payload: dict[str, Any], *, what: str) -> dict[str, Any]:
     """Kick off a background pipeline run and block on observeRun until it settles,
     asserting success. Returns the run's start response. This is the automation
     idiom every heavyweight stage (evaluate, build, sbom, activation, experiment)
@@ -288,12 +289,12 @@ def run_stage(ree_id: str, method: str, path: str, payload: dict, *, what: str) 
 # ------------------------------------------------------------------
 
 
-def generate_scripts(ree_id: str, targets: list[dict]) -> dict:
+def generate_scripts(ree_id: str, targets: list[dict[str, Any]]) -> dict[str, Any]:
     """Run read-only inference for the requested targets and return the report."""
     return call("POST", f"/api/v1/rees/{ree_id}/script-inferences:generate", {"targets": targets})
 
 
-def _inference_result(report: dict, kind: str, experiment_name: str | None = None) -> dict:
+def _inference_result(report: dict[str, Any], kind: str, experiment_name: str | None = None) -> dict[str, Any]:
     """The report's result for one target (empty dict if absent)."""
     for result in report.get("results", []):
         target = result.get("target", {})
@@ -301,11 +302,11 @@ def _inference_result(report: dict, kind: str, experiment_name: str | None = Non
             continue
         if experiment_name is not None and target.get("experiment_name") != experiment_name:
             continue
-        return result
+        return dict(result)
     return {}
 
 
-def summarize_decision(report: dict, kind: str, experiment_name: str | None = None) -> dict:
+def summarize_decision(report: dict[str, Any], kind: str, experiment_name: str | None = None) -> dict[str, Any]:
     """Print the target's decision graph — the executed DAG path and outcome —
     then return its result. This is the same trace the frontend renders; showing
     it proves inference explains itself, whether or not it produced a script."""
@@ -323,7 +324,9 @@ def summarize_decision(report: dict, kind: str, experiment_name: str | None = No
     return result
 
 
-def inferred_script(report: dict, kind: str, *, rule: str | None = None, experiment_name: str | None = None) -> str:
+def inferred_script(
+    report: dict[str, Any], kind: str, *, rule: str | None = None, experiment_name: str | None = None
+) -> str:
     """The body of the target's first non-empty candidate (optionally the one a
     given inference rule produced); empty string when nothing was inferred."""
     result = _inference_result(report, kind, experiment_name)
@@ -333,7 +336,7 @@ def inferred_script(report: dict, kind: str, *, rule: str | None = None, experim
             continue
         if rule is not None and candidate.get("inference_rule") != rule:
             continue
-        return body
+        return str(body)
     return ""
 
 

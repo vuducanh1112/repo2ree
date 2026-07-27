@@ -113,7 +113,7 @@ def test_image_tag_falls_back_when_name_is_empty(tmp_path: Path) -> None:
     assert "IMAGE_TAG=ree-runtime:ree\n" in _body(_build(tmp_path, name=""))
 
 
-def test_candidate_bytes_are_deterministic(tmp_path: Path, tmp_path_factory) -> None:  # type: ignore[no-untyped-def]
+def test_candidate_bytes_are_deterministic(tmp_path: Path, tmp_path_factory) -> None:
     other = tmp_path_factory.mktemp("other")
     files = {"Dockerfile": "FROM x\n", "main.py": "y\n"}
     _tree(tmp_path, files)

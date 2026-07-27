@@ -262,7 +262,8 @@ class ReeStore:
 
 
 def _read_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    parsed: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return parsed
 
 
 def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:

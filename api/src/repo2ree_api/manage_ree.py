@@ -90,6 +90,7 @@ from repo2ree_protocol.command import (
     UpdateSourceMetadataArgs,
     WriteFileArgs,
 )
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
     command_metric_attrs,
@@ -287,7 +288,7 @@ def _copy_staged_upload_into_workbench(
     upload_token: str,
     staged_host: Path,
     *,
-    log_run,
+    log_run: LogSink,
     outputs: dict[str, Any],
 ) -> ActionResult | None:
     """Move staged bytes onto the workbench volume. Returns non-None on failure."""
@@ -355,7 +356,7 @@ def _run_source_pipeline(
     ws_id: str,
     run_id: str,
     pipeline: list[Command],
-    log_run,
+    log_run: LogSink,
 ) -> ActionResult:
     """Dispatch each command in order, recording outputs and stopping on first non-success.
 
@@ -391,7 +392,7 @@ manage_ree_router = APIRouter(tags=["rees"])
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_route(payload: ReeCreatePayload):
+def create_workspace_route(payload: ReeCreatePayload) -> RunSummary:
     ree_id = uuid.uuid4().hex
     name = payload.name or ree_id[:8]
     # Blank/omitted image falls back to the server default in the manager.
@@ -436,7 +437,7 @@ def create_workspace_route(payload: ReeCreatePayload):
         request_payload=payload.model_dump(),
         runner=_runner,
     )
-    return run_summary(run_state)
+    return RunSummary.model_validate(run_summary(run_state))
 
 
 @manage_ree_router.get(
@@ -449,7 +450,7 @@ def list_workspaces_route(
     cursor: str | None = Query(None),
     limit: int | None = Query(None, ge=1),
     status: str | None = Query(None),
-):
+) -> ReeList:
     items = workbench_manager.list_all_metadata()
     if status:
         items = [m for m in items if m.get("status") == status]
@@ -458,7 +459,7 @@ def list_workspaces_route(
     # whenever an REE is touched mid-pagination.
     items.sort(key=_ree_page_key, reverse=True)
     page, next_cursor, _has_more = keyset_paginate(items, cursor=cursor, limit=limit, key=_ree_page_key)
-    return {"items": page, "next_cursor": next_cursor}
+    return ReeList.model_validate({"items": page, "next_cursor": next_cursor})
 
 
 def _ree_page_key(metadata: dict[str, Any]) -> tuple[str, str]:
@@ -471,13 +472,13 @@ def _ree_page_key(metadata: dict[str, Any]) -> tuple[str, str]:
     response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )
-def get_workspace_route(ree_id: str):
+def get_workspace_route(ree_id: str) -> ReeDocument:
     handle = _require_handle(ree_id)
     workspace = workbench_manager.get_workspace(handle)
     # get-workspace runs inside the container and can't know the image, so the
     # manager (which owns the registry) supplies it.
     workspace["workbench_image"] = workbench_manager.image_for(handle)
-    return workspace
+    return ReeDocument.model_validate(workspace)
 
 
 @manage_ree_router.get(
@@ -486,7 +487,7 @@ def get_workspace_route(ree_id: str):
     response_model=ReeState,
     responses=ERROR_RESPONSES,
 )
-def get_workspace_state_route(ree_id: str):
+def get_workspace_state_route(ree_id: str) -> ReeState:
     """Compact automation view: durable state and file metadata, never contents."""
     handle = _require_handle(ree_id)
     workspace = workbench_manager.get_workspace_state(handle)
@@ -511,7 +512,7 @@ def get_workspace_state_route(ree_id: str):
     }
     if "source_repo" in workspace:
         state["source_repo"] = workspace["source_repo"]
-    return state
+    return ReeState.model_validate(state)
 
 
 @manage_ree_router.patch(
@@ -520,7 +521,7 @@ def get_workspace_state_route(ree_id: str):
     response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )
-def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
+def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload) -> ReeDocument:
     handle = _require_handle(ree_id)
     with _ree_command_span("patch-intent", ree_id):
         current = workbench_manager.get_ree_metadata(handle)
@@ -542,7 +543,7 @@ def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
             args=PatchReeIntentArgs(patch=payload.ree_intent_patch.model_dump(mode="json", exclude_unset=True))
         )
         _dispatch_or_fail(handle, cmd, "patch-intent", "Workbench patch_ree_intent failed")
-        return workbench_manager.get_workspace(handle)
+        return ReeDocument.model_validate(workbench_manager.get_workspace(handle))
 
 
 @manage_ree_router.put(
@@ -551,7 +552,7 @@ def patch_ree_intent_route(ree_id: str, payload: ReeIntentPatchPayload):
     response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )
-def replace_ree_intent_route(ree_id: str, payload: ReeIntentReplacePayload):
+def replace_ree_intent_route(ree_id: str, payload: ReeIntentReplacePayload) -> ReeDocument:
     """Atomically replace the complete typed authoring intent.
 
     Delegating to the patch route is a true replace only because the patch is
@@ -575,7 +576,7 @@ def replace_ree_intent_route(ree_id: str, payload: ReeIntentReplacePayload):
     response_model=DeleteReeResponse,
     responses=ERROR_RESPONSES,
 )
-def delete_workspace_route(ree_id: str):
+def delete_workspace_route(ree_id: str) -> DeleteReeResponse:
     handle = _require_handle(ree_id)
     with _ree_command_span("delete", ree_id):
         try:
@@ -583,10 +584,12 @@ def delete_workspace_route(ree_id: str):
         except Exception as exc:
             _log.warning("workbench teardown failed for %s: %s", ree_id, exc)
             raise HTTPException(status_code=500, detail=f"Workbench teardown failed: {exc}") from exc
-        return {
-            "deleted_at": utc_now(),
-            "state": "deleted",
-        }
+        return DeleteReeResponse.model_validate(
+            {
+                "deleted_at": utc_now(),
+                "state": "deleted",
+            }
+        )
 
 
 @manage_ree_router.post(
@@ -596,7 +599,7 @@ def delete_workspace_route(ree_id: str):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
+def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSummary:
     handle = _require_handle(ree_id)
     request_payload = {
         "mode": "download",
@@ -622,7 +625,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
             AcquireSourceCommand(
                 args=AcquireSourceArgs(
                     origin_url=payload.origin_url,
-                    source_type=payload.source_type,  # type: ignore[arg-type]
+                    source_type=payload.source_type,
                     revision=(payload.revision or "").strip(),
                 )
             ),
@@ -647,7 +650,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
         idempotency_key=payload.idempotency_key,
     )
 
-    return run_summary(run_state)
+    return RunSummary.model_validate(run_summary(run_state))
 
 
 @manage_ree_router.post(
@@ -657,8 +660,8 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload):
     response_model=UploadInitResponse,
     responses=ERROR_RESPONSES,
 )
-def upload_init_route(ree_id: str, payload: UploadInitPayload):
-    return _mint_upload_token(ree_id, payload, upload_route="source:upload")
+def upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
+    return UploadInitResponse.model_validate(_mint_upload_token(ree_id, payload, upload_route="source:upload"))
 
 
 @manage_ree_router.put(
@@ -668,8 +671,8 @@ def upload_init_route(ree_id: str, payload: UploadInitPayload):
     response_model=UploadStoredResponse,
     responses=ERROR_RESPONSES,
 )
-async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Request):
-    return await _stage_upload_bytes(ree_id, upload_token, request)
+async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Request) -> UploadStoredResponse:
+    return UploadStoredResponse.model_validate(await _stage_upload_bytes(ree_id, upload_token, request))
 
 
 @manage_ree_router.post(
@@ -679,7 +682,7 @@ async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Requ
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
+def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> RunSummary:
     handle = _require_handle(ree_id)
     request_payload = {
         "mode": "upload",
@@ -747,7 +750,7 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
         idempotency_key=payload.idempotency_key,
     )
 
-    return run_summary(run_state)
+    return RunSummary.model_validate(run_summary(run_state))
 
 
 @manage_ree_router.post(
@@ -756,9 +759,9 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload):
     response_model=UploadInitResponse,
     responses=ERROR_RESPONSES,
 )
-def bundle_upload_init_route(ree_id: str, payload: UploadInitPayload):
+def bundle_upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
     """Open a staging slot for a downloaded REE bundle (see ``ree:load``)."""
-    return _mint_upload_token(ree_id, payload, upload_route="ree:upload")
+    return UploadInitResponse.model_validate(_mint_upload_token(ree_id, payload, upload_route="ree:upload"))
 
 
 @manage_ree_router.put(
@@ -767,8 +770,8 @@ def bundle_upload_init_route(ree_id: str, payload: UploadInitPayload):
     response_model=UploadStoredResponse,
     responses=ERROR_RESPONSES,
 )
-async def store_bundle_bytes_route(ree_id: str, upload_token: str, request: Request):
-    return await _stage_upload_bytes(ree_id, upload_token, request)
+async def store_bundle_bytes_route(ree_id: str, upload_token: str, request: Request) -> UploadStoredResponse:
+    return UploadStoredResponse.model_validate(await _stage_upload_bytes(ree_id, upload_token, request))
 
 
 @manage_ree_router.post(
@@ -777,7 +780,7 @@ async def store_bundle_bytes_route(ree_id: str, upload_token: str, request: Requ
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload):
+def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSummary:
     """Make this REE be the uploaded bundle: intent, source, evidence, and all.
 
     The counterpart of ``ree-archive``. Intended right after ``createRee`` —
@@ -839,7 +842,7 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload):
         idempotency_key=payload.idempotency_key,
     )
 
-    return run_summary(run_state)
+    return RunSummary.model_validate(run_summary(run_state))
 
 
 @manage_ree_router.delete(
@@ -849,11 +852,11 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload):
     response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )
-def remove_source_route(ree_id: str):
+def remove_source_route(ree_id: str) -> ReeDocument:
     handle = _require_handle(ree_id)
     with _ree_command_span("remove-source", ree_id):
         _dispatch_or_fail(handle, RemoveSourceCommand(), "remove-source", "Workbench remove_source failed")
-        return workbench_manager.get_workspace(handle)
+        return ReeDocument.model_validate(workbench_manager.get_workspace(handle))
 
 
 @manage_ree_router.get(
@@ -869,7 +872,7 @@ def remove_source_route(ree_id: str):
         },
     },
 )
-def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)):
+def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
     handle = _require_handle(ree_id)
     try:
         content = workbench_manager.read_file_bytes(handle, path)
@@ -885,7 +888,7 @@ def get_workspace_file_raw_route(ree_id: str, path: str = Query(...)):
     response_model=FileMutationResponse,
     responses=ERROR_RESPONSES,
 )
-def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload):
+def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload) -> FileMutationResponse:
     handle = _require_handle(ree_id)
     with _ree_command_span("write-file", ree_id):
         # The if_match check rides inside the command so the workbench verifies
@@ -898,7 +901,7 @@ def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentP
         result = dict(wb_result.outputs or {})
         result["etag"] = _content_etag(payload.content.encode())
         result.setdefault("updated_at", None)
-        return result
+        return FileMutationResponse.model_validate(result)
 
 
 @manage_ree_router.delete(
@@ -912,12 +915,12 @@ def delete_workspace_file_content_route(
     ree_id: str,
     path: str = Query(...),
     if_match: str | None = Query(None),
-):
+) -> FileMutationResponse:
     handle = _require_handle(ree_id)
     with _ree_command_span("delete-file", ree_id):
         cmd = DeleteFileCommand(args=DeleteFileArgs(path=path, expected_etag=if_match or ""))
         wb_result = _dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed")
-        return wb_result.outputs or {"deleted_at": None}
+        return FileMutationResponse.model_validate(wb_result.outputs or {"deleted_at": None})
 
 
 @manage_ree_router.post(
@@ -926,7 +929,7 @@ def delete_workspace_file_content_route(
     response_model=ReprovisionResponse,
     responses=ERROR_RESPONSES,
 )
-def reprovision_workbench_route(ree_id: str):
+def reprovision_workbench_route(ree_id: str) -> ReprovisionResponse:
     """Replace the workbench container from the current image, keeping REE volume data."""
     try:
         workbench_manager.reprovision(ree_id)
@@ -944,7 +947,7 @@ def reprovision_workbench_route(ree_id: str):
                 "retryable": True,
             },
         ) from exc
-    return {"status": "reprovisioned", "ree_id": ree_id}
+    return ReprovisionResponse.model_validate({"status": "reprovisioned", "ree_id": ree_id})
 
 
 @manage_ree_router.post(
@@ -953,7 +956,7 @@ def reprovision_workbench_route(ree_id: str):
     response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )
-def seal_ree_route(ree_id: str, payload: ReeSealPayload):
+def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> ReeDocument:
     handle = _require_handle(ree_id)
     with _ree_command_span("seal", ree_id):
         cmd = SealReeCommand(
@@ -965,7 +968,7 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload):
         )
         _dispatch_or_fail(handle, cmd, "seal", "Workbench seal_ree failed")
         # Return the post-seal workspace so the client sees the sealed state.
-        return workbench_manager.get_workspace(handle)
+        return ReeDocument.model_validate(workbench_manager.get_workspace(handle))
 
 
 @manage_ree_router.get(
@@ -980,7 +983,7 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload):
         },
     },
 )
-def download_workspace_ree_archive_route(ree_id: str):
+def download_workspace_ree_archive_route(ree_id: str) -> StreamingResponse:
     """Download this REE as a bundle, loadable into another REE via ``ree:load``.
 
     A sealed REE hands back its immutable sealed archive; an unsealed one is

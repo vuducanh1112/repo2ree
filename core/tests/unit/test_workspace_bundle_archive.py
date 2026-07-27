@@ -203,6 +203,7 @@ def test_seal_persists_seal_facts_and_content_hash(tmp_path):
     )
 
     assert outputs.sealed_at == "2026-06-05T12:00:00Z"
+    assert outputs.seal_hash is not None
     assert outputs.seal_hash.startswith("sha256:")
     assert len(outputs.seal_hash) == len("sha256:") + 64
 

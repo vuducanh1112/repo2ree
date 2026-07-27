@@ -151,7 +151,7 @@ def _wait_for_provision(client: TestClient, ree_id: str, run_id: str, timeout_se
         assert resp.status_code == 200, resp.text
         status = resp.json()["status"]
         if status in terminal:
-            return status
+            return str(status)
         time.sleep(1.0)
     raise AssertionError(f"provisioning run {run_id} did not finish within {timeout_seconds}s")
 

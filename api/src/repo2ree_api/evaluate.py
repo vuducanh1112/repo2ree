@@ -42,16 +42,18 @@ class CreateEvaluateRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload):
-    return run_summary(
-        start_single_command_run(
-            ree_id,
-            operation="evaluate",
-            command=EvaluateDependencyScoreCommand(args=EvaluateDependencyScoreArgs(strict=payload.strict)),
-            run_id_prefix="evaluate",
-            request_payload={"strict": bool(payload.strict)},
-            canceled_message="Evaluate run canceled",
-            idempotency_key=payload.idempotency_key,
+def create_workspace_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload) -> RunSummary:
+    return RunSummary.model_validate(
+        run_summary(
+            start_single_command_run(
+                ree_id,
+                operation="evaluate",
+                command=EvaluateDependencyScoreCommand(args=EvaluateDependencyScoreArgs(strict=payload.strict)),
+                run_id_prefix="evaluate",
+                request_payload={"strict": bool(payload.strict)},
+                canceled_message="Evaluate run canceled",
+                idempotency_key=payload.idempotency_key,
+            )
         )
     )
 
@@ -71,7 +73,8 @@ def get_workspace_evaluate_report(ree_id: str) -> dict[str, Any]:
     if handle is not None:
         try:
             data = workbench_manager.read_artifact_bytes(handle, _REPORT_FILENAME)
-            return json.loads(data)
+            report: dict[str, Any] = json.loads(data)
+            return report
         except Exception as exc:
             raise HTTPException(
                 status_code=404,

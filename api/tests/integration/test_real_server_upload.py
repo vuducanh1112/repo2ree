@@ -170,7 +170,7 @@ def _wait_for_run(client: httpx.Client, ree_id: str, run_id: str) -> str:
         assert resp.status_code == 200, resp.text
         status = resp.json()["status"]
         if status in TERMINAL_RUN_STATUSES:
-            return status
+            return str(status)
         time.sleep(1.0)
     pytest.fail(f"run {run_id} did not reach a terminal status within {RUN_TIMEOUT_SECONDS}s")
 

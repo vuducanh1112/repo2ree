@@ -25,7 +25,7 @@ LogSink = Callable[[str, str, str], None]
 
 class _JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        obj: dict = {
+        obj: dict[str, str] = {
             "ts": datetime.fromtimestamp(record.created, UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,

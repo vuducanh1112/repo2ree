@@ -50,7 +50,7 @@ def list_workspace_runs(
     ree_id: str,
     cursor: str | None = Query(None),
     limit: Annotated[int | None, Query(ge=1, le=500)] = None,
-):
+) -> RunList:
     runs = list_runs(ree_id)
     page, next_cursor, _has_more = keyset_paginate(
         runs,
@@ -58,7 +58,7 @@ def list_workspace_runs(
         limit=limit,
         key=lambda run: (run["created_at"], run["run_id"]),
     )
-    return {"runs": page, "next_cursor": next_cursor}
+    return RunList.model_validate({"runs": page, "next_cursor": next_cursor})
 
 
 @runs_router.get(
@@ -67,9 +67,9 @@ def list_workspace_runs(
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def get_workspace_run(ree_id: str, run_id: str):
+def get_workspace_run(ree_id: str, run_id: str) -> RunSummary:
     run_state = get_run_state(ree_id, run_id)
-    return run_summary(run_state)
+    return RunSummary.model_validate(run_summary(run_state))
 
 
 @runs_router.get(
@@ -83,18 +83,20 @@ def get_workspace_run_logs(
     run_id: str,
     cursor: Annotated[int | None, Query(ge=0)] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
-):
+) -> RunLogPage:
     run_state = get_run_state(ree_id, run_id)
     after_seq = cursor or 0
     remaining = [entry for entry in run_state.get("logs", []) if int(entry["seq"]) > after_seq]
     page = remaining[:limit]
     next_cursor = str(page[-1]["seq"]) if page else (str(after_seq) if cursor is not None else None)
-    return {
-        "entries": page,
-        "next_cursor": next_cursor,
-        "has_more": len(remaining) > len(page),
-        "run_status": run_state["status"],
-    }
+    return RunLogPage.model_validate(
+        {
+            "entries": page,
+            "next_cursor": next_cursor,
+            "has_more": len(remaining) > len(page),
+            "run_status": run_state["status"],
+        }
+    )
 
 
 @runs_router.get(
@@ -109,7 +111,7 @@ def observe_workspace_run(
     cursor: Annotated[int | None, Query(ge=0)] = None,
     wait_seconds: Annotated[float, Query(ge=0, le=30)] = 25,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
-):
+) -> RunObservation:
     run, entries, next_cursor, changed = observe_run(
         ree_id,
         run_id,
@@ -117,7 +119,9 @@ def observe_workspace_run(
         wait_seconds=wait_seconds,
         limit=limit,
     )
-    return {"run": run, "entries": entries, "next_cursor": next_cursor, "changed": changed}
+    return RunObservation.model_validate(
+        {"run": run, "entries": entries, "next_cursor": next_cursor, "changed": changed}
+    )
 
 
 @runs_router.post(
@@ -126,11 +130,11 @@ def observe_workspace_run(
     response_model=CancelRunResponse,
     responses=ERROR_RESPONSES,
 )
-def cancel_workspace_run(ree_id: str, run_id: str):
+def cancel_workspace_run(ree_id: str, run_id: str) -> CancelRunResponse:
     run_state = get_run_state(ree_id, run_id)
     current_status = run_state.get("status")
     if current_status in TERMINAL_STATUSES:
-        return {"status": current_status}
+        return CancelRunResponse.model_validate({"status": current_status})
 
     mark_cancel_requested(ree_id, run_id)
     append_run_log(
@@ -164,4 +168,4 @@ def cancel_workspace_run(ree_id: str, run_id: str):
         )
 
     refreshed = get_run_state(ree_id, run_id)
-    return {"status": refreshed["status"]}
+    return CancelRunResponse.model_validate({"status": refreshed["status"]})

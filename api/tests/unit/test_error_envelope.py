@@ -32,7 +32,8 @@ from repo2ree_supervisor import WorkbenchHandle, WorkbenchUnavailableError
 
 
 def _body(response: JSONResponse) -> dict[str, Any]:
-    return json.loads(bytes(response.body))
+    payload: dict[str, Any] = json.loads(bytes(response.body))
+    return payload
 
 
 def _request() -> Request:

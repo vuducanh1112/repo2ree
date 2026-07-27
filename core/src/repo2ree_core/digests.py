@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 _CHUNK_SIZE = 1024 * 1024
 
@@ -150,7 +150,7 @@ class HashingWriter:
     persisted, without a second read of the file.
     """
 
-    def __init__(self, target: Any):
+    def __init__(self, target: IO[bytes]):
         self._target = target
         self._hasher = hashlib.sha256()
 

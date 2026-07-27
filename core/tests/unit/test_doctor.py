@@ -48,7 +48,7 @@ def test_docker_probe_survives_a_hanging_daemon(tmp_path: Path, monkeypatch: pyt
     def _hang(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
         raise subprocess.TimeoutExpired(cmd="docker info", timeout=10)
 
-    monkeypatch.setattr(doctor_mod.subprocess, "run", _hang)
+    monkeypatch.setattr(subprocess, "run", _hang)
 
     report = run_doctor(ree_path=tmp_path, docker_wait_seconds=0)
 

@@ -36,7 +36,7 @@ def _stage_bundle(client: TestClient, ree_id: str, content: bytes = b"pretend-zi
     put = client.put(f"/api/v1/rees/{ree_id}/ree:upload/{token}", content=content)
     assert put.status_code == 200, put.text
     assert staged_upload_path(token).read_bytes() == content
-    return token
+    return str(token)
 
 
 def _await_run(client: TestClient, ree_id: str, run_id: str) -> dict[str, Any]:
@@ -47,7 +47,7 @@ def _await_run(client: TestClient, ree_id: str, run_id: str) -> dict[str, Any]:
         assert response.status_code == 200, response.text
         run = response.json()
         if run["status"] in TERMINAL_RUN_STATUSES:
-            return run
+            return dict(run)
         time.sleep(0.01)
     pytest.fail(f"run {run_id} did not reach a terminal status within {RUN_TIMEOUT_SECONDS}s")
 

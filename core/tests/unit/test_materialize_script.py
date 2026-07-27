@@ -12,7 +12,7 @@ from repo2ree_core.storage.layout import (
 )
 
 
-def _run(tmp: Path, *args: str) -> subprocess.CompletedProcess:
+def _run(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
     path = tmp / MATERIALIZE_SCRIPT_FILENAME
     path.write_bytes(build_materialize_sh())
     return subprocess.run(["sh", str(path), *args], text=True, capture_output=True)

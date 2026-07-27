@@ -1,8 +1,9 @@
 import os
 import time
+from pathlib import Path
 
 import repo2ree_core.run_script as run_script
-from repo2ree_core.run_script import run_streaming_process
+from repo2ree_core.run_script import CancelCheck, run_streaming_process
 
 
 def test_run_streaming_process_logs_and_captures_stdout_stderr():
@@ -39,7 +40,7 @@ def _wait_pid_gone(pid: int, timeout: float = 5.0) -> bool:
     return False
 
 
-def _cancel_once_pid_recorded(pid_file):
+def _cancel_once_pid_recorded(pid_file: Path) -> CancelCheck:
     """is_canceled that flips true as soon as the child has recorded its pid."""
 
     def is_canceled() -> bool:

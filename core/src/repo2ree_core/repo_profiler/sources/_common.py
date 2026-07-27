@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import tomllib
+from typing import Any
 
 from repo2ree_core.domain.dependency import Dependency, Ecosystem, normalize_package_name
 
@@ -64,7 +65,7 @@ def dependency_from_pep508(spec: str, path: str) -> Dependency | None:
     )
 
 
-def load_toml(text: str) -> dict | None:
+def load_toml(text: str) -> dict[str, Any] | None:
     try:
         return tomllib.loads(text)
     except tomllib.TOMLDecodeError:

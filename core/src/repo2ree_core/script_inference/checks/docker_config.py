@@ -26,6 +26,7 @@ from repo2ree_core.script_inference.models import (
     CommandCandidatesObservation,
     DecisionContext,
     ImageCommandBinding,
+    InferenceWarning,
     ScriptCommandCandidate,
     ShellCommandCandidate,
 )
@@ -61,12 +62,14 @@ class DockerConfigCommandsCheck:
         )
 
 
-def _candidates_from_binding(binding: object):
+def _candidates_from_binding(
+    binding: object,
+) -> tuple[list[ScriptCommandCandidate], list[InferenceWarning]]:
     if not isinstance(binding, ImageCommandBinding):
         return [], []
 
     candidates: list[ScriptCommandCandidate] = []
-    warnings = []
+    warnings: list[InferenceWarning] = []
     if binding.argv:
         text = " ".join(binding.argv)
         candidates.append(

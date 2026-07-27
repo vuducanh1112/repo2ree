@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Never, NoReturn
+
 from pydantic import BaseModel
 
 from repo2ree_core.envelope.handlers.acquire_source import handle_acquire_source
@@ -155,4 +157,22 @@ def _dispatch(
         return handle_generate_script_candidates(cmd.args, log=log, is_canceled=cancel)
     if isinstance(cmd, SealReeCommand):
         return handle_seal_ree(cmd.args, log=log, is_canceled=cancel)
-    raise ValueError(f"Unhandled command operation: {cmd.operation!r}")  # type: ignore[union-attr]
+    return _unhandled_command(cmd)
+
+
+def _unhandled_command(cmd: Never) -> NoReturn:
+    """The dispatch fallthrough, reachable only for a non-``Command`` value.
+
+    Typed to accept ``Never`` so it doubles as the exhaustiveness check: every
+    member of the union must be dispatched above, or the call below fails to
+    type-check naming the command nobody handled. A command added to ``Command``
+    without a branch therefore fails the build rather than reaching a workbench
+    and failing as an unhandled operation the type system had already promised
+    was handleable.
+
+    Preferred over a bare :func:`typing.assert_never`, which would raise
+    ``AssertionError`` carrying only a repr. Commands arrive deserialized from
+    the wire, so the fallthrough is worth keeping legible for whoever reads the
+    run log when something malformed slips past validation.
+    """
+    raise ValueError(f"Unhandled command operation: {getattr(cmd, 'operation', cmd)!r}")

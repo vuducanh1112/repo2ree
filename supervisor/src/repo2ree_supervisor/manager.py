@@ -417,26 +417,31 @@ class WorkbenchManager:
 
         return stream()
 
+    def _query_json(self, handle: WorkbenchHandle, *argv: str) -> dict[str, Any]:
+        """Run a read-only CLI subcommand and parse its stdout as a JSON object.
+
+        The one place the workbench's untyped JSON becomes a typed value, so the
+        ``Any`` that ``json.loads`` returns is narrowed once rather than at each
+        of the five call sites below.
+        """
+        parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, *argv))
+        return parsed
+
     def get_ree_metadata(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        raw = self.dispatch_query(handle, "get-ree")
-        return json.loads(raw)
+        return self._query_json(handle, "get-ree")
 
     def get_workspace(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        raw = self.dispatch_query(handle, "get-workspace")
-        return json.loads(raw)
+        return self._query_json(handle, "get-workspace")
 
     def get_workspace_state(self, handle: WorkbenchHandle) -> dict[str, Any]:
         """Return workspace state without embedding text file contents."""
-        raw = self.dispatch_query(handle, "get-workspace", "--summary")
-        return json.loads(raw)
+        return self._query_json(handle, "get-workspace", "--summary")
 
     def get_scorecard(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        raw = self.dispatch_query(handle, "get-scorecard")
-        return json.loads(raw)
+        return self._query_json(handle, "get-scorecard")
 
     def get_reviews(self, handle: WorkbenchHandle) -> dict[str, Any]:
-        raw = self.dispatch_query(handle, "get-reviews")
-        return json.loads(raw)
+        return self._query_json(handle, "get-reviews")
 
     def image_for(self, handle: WorkbenchHandle) -> str:
         """The image this REE's workbench runs, falling back to the manager default."""

@@ -4,6 +4,7 @@ import json
 import subprocess
 import time
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -176,7 +177,7 @@ def _has_option_value(call: tuple[str, ...], option: str, value: str) -> bool:
 # ================================================
 
 
-def _write_bundle(root: Path, manifest: dict, store_paths: list[str]) -> str:
+def _write_bundle(root: Path, manifest: dict[str, Any], store_paths: list[str]) -> str:
     root.mkdir(parents=True)
     (root / "manifest.json").write_text(json.dumps(manifest))
     (root / "store-paths").write_text("\n".join(store_paths) + "\n")
@@ -354,7 +355,7 @@ class _FakeCompleted:
 
 
 def _patch_doctor_exec(monkeypatch: pytest.MonkeyPatch, completed: _FakeCompleted) -> None:
-    monkeypatch.setattr(rt_mod.subprocess, "run", lambda *a, **k: completed)
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: completed)
 
 
 def test_probe_reports_capabilities(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -401,13 +402,13 @@ def test_probe_fails_provision_when_executor_cannot_run(monkeypatch: pytest.Monk
 def test_container_running_reports_confirmed_states(monkeypatch: pytest.MonkeyPatch) -> None:
     """A completed `docker inspect` is a confirmed verdict: a running or stopped
     container, or a genuinely absent one (which is a confirmed "not running")."""
-    monkeypatch.setattr(rt_mod.subprocess, "run", lambda *a, **k: _FakeCompleted(0, stdout="true\n"))
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _FakeCompleted(0, stdout="true\n"))
     assert _real_container_running("wb") is True
 
-    monkeypatch.setattr(rt_mod.subprocess, "run", lambda *a, **k: _FakeCompleted(0, stdout="false\n"))
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _FakeCompleted(0, stdout="false\n"))
     assert _real_container_running("wb") is False
 
-    monkeypatch.setattr(rt_mod.subprocess, "run", lambda *a, **k: _FakeCompleted(1, stderr="Error: No such object: wb"))
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _FakeCompleted(1, stderr="Error: No such object: wb"))
     assert _real_container_running("wb") is False
 
 
@@ -418,12 +419,12 @@ def test_container_running_raises_unknown_when_probe_cannot_complete(monkeypatch
     def _timeout(*_a: object, **_k: object) -> _FakeCompleted:
         raise subprocess.TimeoutExpired(cmd="docker inspect", timeout=10)
 
-    monkeypatch.setattr(rt_mod.subprocess, "run", _timeout)
+    monkeypatch.setattr(subprocess, "run", _timeout)
     with pytest.raises(rt_mod.ContainerStateUnknownError):
         _real_container_running("wb")
 
     monkeypatch.setattr(
-        rt_mod.subprocess,
+        subprocess,
         "run",
         lambda *a, **k: _FakeCompleted(1, stderr="Cannot connect to the Docker daemon"),
     )
@@ -435,7 +436,7 @@ def test_is_running_leans_available_on_an_indeterminate_probe(monkeypatch: pytes
     """A liveness gate that can't reach the daemon must not declare a healthy
     bench dead — doing so fails the session's next action with a spurious
     "workbench unavailable". After a retry, an unresolved probe leans available."""
-    monkeypatch.setattr(rt_mod.time, "sleep", lambda _s: None)
+    monkeypatch.setattr(time, "sleep", lambda _s: None)
 
     def _unknown(_name: str) -> bool:
         raise rt_mod.ContainerStateUnknownError("daemon blip")
@@ -508,7 +509,7 @@ def test_probe_helpers_record_failure_on_timeout(monkeypatch: pytest.MonkeyPatch
     def _timeout(*_a: object, **_k: object) -> _FakeCompleted:
         raise subprocess.TimeoutExpired(cmd="docker", timeout=30)
 
-    monkeypatch.setattr(rt_mod.subprocess, "run", _timeout)
+    monkeypatch.setattr(subprocess, "run", _timeout)
 
     with pytest.raises(subprocess.TimeoutExpired):
         rt_mod._image_present("img")

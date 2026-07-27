@@ -11,12 +11,12 @@ from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
 from repo2ree_core.storage.layout import ACQUIRE_SCRIPT_FILENAME, SNAPSHOT_FILENAME, UPSTREAM_DIRNAME
 
 
-def _sh_n(script: bytes) -> subprocess.CompletedProcess:
+def _sh_n(script: bytes) -> subprocess.CompletedProcess[bytes]:
     """Syntax-check a generated script with ``sh -n`` (no execution)."""
     return subprocess.run(["sh", "-n", "/dev/stdin"], input=script, capture_output=True)
 
 
-def _run(script: bytes, tmp: Path, *args: str) -> subprocess.CompletedProcess:
+def _run(script: bytes, tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
     path = tmp / ACQUIRE_SCRIPT_FILENAME
     path.write_bytes(script)
     return subprocess.run(["sh", str(path), *args], text=True, capture_output=True)

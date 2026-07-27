@@ -27,6 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -268,7 +269,7 @@ def _read_text_if_possible(path: Path) -> str | None:
         return None
 
 
-def _iter_workspace_files(store: ReeStore):
+def _iter_workspace_files(store: ReeStore) -> Iterator[Path]:
     """Yield every regular file in the materialized workspace/ subtree."""
     root = store.layout.workspace
     if not root.exists():

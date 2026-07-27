@@ -75,7 +75,8 @@ class WorkbenchRegistry:
     def _read(self) -> dict[str, dict[str, str]]:
         if not self._path.exists():
             return {}
-        return json.loads(self._path.read_text(encoding="utf-8"))
+        parsed: dict[str, dict[str, str]] = json.loads(self._path.read_text(encoding="utf-8"))
+        return parsed
 
     def _write(self, data: dict[str, dict[str, str]]) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)

@@ -121,7 +121,7 @@ def _author_ree(
         log=lambda *_: None,
     )
 
-    monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: layout))
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout
 
 

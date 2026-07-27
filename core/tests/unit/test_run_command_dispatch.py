@@ -21,6 +21,7 @@ from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
     BuildRuntimeCommand,
+    Command,
     CrossCheckSbomCommand,
     DeleteFileCommand,
     EvaluateDependencyScoreCommand,
@@ -92,7 +93,7 @@ def test_routes_to_its_handler(
     operation = command_cls.model_fields["operation"].default
     cmd = command_cls.model_construct(operation=operation, args=object())
 
-    result = rc.run_command(cast("rc.Command", cmd), log=_null_log(), is_canceled=lambda: False)
+    result = rc.run_command(cast(Command, cmd), log=_null_log(), is_canceled=lambda: False)
 
     assert result.status == "succeeded"
     assert called == [handler_name]

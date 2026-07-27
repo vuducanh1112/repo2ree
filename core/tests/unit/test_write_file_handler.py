@@ -32,7 +32,7 @@ def _etag(content: bytes) -> str:
 def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeStore:
     store = ReeStore(ReeLayout(root=tmp_path))
     store.ensure_dirs()
-    monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store
 
 

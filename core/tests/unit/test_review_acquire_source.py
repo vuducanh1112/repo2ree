@@ -59,7 +59,7 @@ def _author_ree(
             for entry in sorted(source.iterdir()):
                 archive.add(entry, arcname=entry.name)
 
-    monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: layout))
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout
 
 

@@ -85,7 +85,7 @@ def _seed(
         layout.sbom.write_text(json.dumps(_SBOM), encoding="utf-8")
     if with_report:
         (layout.artifacts / "reproducibility-report.json").write_text(json.dumps(_REPORT), encoding="utf-8")
-    monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return layout
 
 

@@ -34,15 +34,17 @@ class CreateGenerateHbomRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload):
-    return run_summary(
-        start_single_command_run(
-            ree_id,
-            operation="hbom",
-            command=GenerateHbomCommand(),
-            run_id_prefix="hbom",
-            request_payload={},
-            canceled_message="HBOM run canceled",
-            idempotency_key=payload.idempotency_key,
+def create_workspace_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload) -> RunSummary:
+    return RunSummary.model_validate(
+        run_summary(
+            start_single_command_run(
+                ree_id,
+                operation="hbom",
+                command=GenerateHbomCommand(),
+                run_id_prefix="hbom",
+                request_payload={},
+                canceled_message="HBOM run canceled",
+                idempotency_key=payload.idempotency_key,
+            )
         )
     )

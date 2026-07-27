@@ -37,7 +37,7 @@ def _wait_for_run(client: TestClient, ree_id: str, run_id: str) -> str:
         assert resp.status_code == 200, resp.text
         status = resp.json()["status"]
         if status in TERMINAL_RUN_STATUSES:
-            return status
+            return str(status)
         time.sleep(0.01)
     pytest.fail(f"run {run_id} did not reach a terminal status within {RUN_TIMEOUT_SECONDS}s")
 
@@ -49,7 +49,8 @@ def _start_failing_upload_run(client: TestClient, ree_id: str) -> dict[str, Any]
         json={"upload_token": "never-staged", "archive_name": "project.zip"},
     )
     assert resp.status_code == 200, resp.text
-    return resp.json()
+    payload: dict[str, Any] = resp.json()
+    return payload
 
 
 @pytest.fixture

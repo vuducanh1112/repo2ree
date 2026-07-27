@@ -1,4 +1,5 @@
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -40,7 +41,7 @@ from repo2ree_supervisor import WorkbenchUnavailableError
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger_provider = setup_logs("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT)
     log_handler = otlp_log_handler(logger_provider) if logger_provider is not None else None
     configure_logging(structured=service_settings.OTLP_ENDPOINT is not None, otlp_handler=log_handler)
@@ -154,7 +155,7 @@ app.include_router(agents_router)
 
 
 @app.exception_handler(FastAPIHTTPException)
-async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
+async def http_exception_handler(request: Request, exc: FastAPIHTTPException) -> JSONResponse:
     detail = exc.detail
     if isinstance(detail, dict) and "error" in detail:
         content = dict(detail)
@@ -182,7 +183,7 @@ async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
 
 
 @app.exception_handler(RequestValidationError)
-async def request_validation_error_handler(request: Request, exc: RequestValidationError):
+async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     return JSONResponse(
         status_code=422,
         content={
@@ -197,7 +198,7 @@ async def request_validation_error_handler(request: Request, exc: RequestValidat
 
 
 @app.exception_handler(WorkbenchUnavailableError)
-async def workbench_unavailable_handler(request: Request, exc: WorkbenchUnavailableError):
+async def workbench_unavailable_handler(request: Request, exc: WorkbenchUnavailableError) -> JSONResponse:
     return JSONResponse(
         status_code=503,
         content={
@@ -212,7 +213,7 @@ async def workbench_unavailable_handler(request: Request, exc: WorkbenchUnavaila
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     span_context = trace.get_current_span().get_span_context()
     trace_id = f"{span_context.trace_id:032x}" if span_context.is_valid else None
     _log.error("unhandled API exception", exc_info=exc)
@@ -241,5 +242,5 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     response_model=HealthResponse,
     responses={500: {"model": ErrorEnvelope}},
 )
-def read_root():
-    return {"status": "online", "message": "This is the REE API backend."}
+def read_root() -> HealthResponse:
+    return HealthResponse(status="online", message="This is the REE API backend.")

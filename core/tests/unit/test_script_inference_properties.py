@@ -87,7 +87,7 @@ def test_resolver_follows_the_fixed_policy(kinds: list[str]) -> None:
 
 
 @given(st.lists(_OUTCOME_KIND, min_size=1, max_size=7), st.randoms())
-def test_resolver_is_order_independent(kinds: list[str], rng) -> None:  # type: ignore[no-untyped-def]
+def test_resolver_is_order_independent(kinds: list[str], rng) -> None:
     shuffled = kinds[:]
     rng.shuffle(shuffled)
     a = ScoreFreeViabilityResolver().evaluate(_outcomes(kinds)).result
@@ -280,7 +280,8 @@ def test_every_run_scaffold_is_fail_closed(kind: Literal["activation_run", "expe
 
 
 def _venv_bytes() -> bytes:
-    return venv_archive()
+    archive: bytes = venv_archive()
+    return archive
 
 
 # ================================================

@@ -35,16 +35,18 @@ class CreateBuildRuntimeRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_build_runtime_run(ree_id: str, payload: CreateBuildRuntimeRunPayload):
-    return run_summary(
-        start_single_command_run(
-            ree_id,
-            operation="build",
-            command=BuildRuntimeCommand(),
-            run_id_prefix="build",
-            request_payload={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
-            canceled_message="Build run canceled",
-            fallback_outputs={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
-            idempotency_key=payload.idempotency_key,
+def create_workspace_build_runtime_run(ree_id: str, payload: CreateBuildRuntimeRunPayload) -> RunSummary:
+    return RunSummary.model_validate(
+        run_summary(
+            start_single_command_run(
+                ree_id,
+                operation="build",
+                command=BuildRuntimeCommand(),
+                run_id_prefix="build",
+                request_payload={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
+                canceled_message="Build run canceled",
+                fallback_outputs={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
+                idempotency_key=payload.idempotency_key,
+            )
         )
     )

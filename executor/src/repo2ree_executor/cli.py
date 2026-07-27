@@ -42,6 +42,7 @@ from repo2ree_protocol.command import (
     RunExperimentArgs,
     RunExperimentCommand,
 )
+from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.log import configure_logging as _configure_logging
 from repo2ree_protocol.tracing import (
     attach_remote_context,
@@ -54,7 +55,7 @@ from repo2ree_protocol.tracing import (
 # ================================================
 
 
-def _make_log_sink(run_log: TextIO | None):
+def _make_log_sink(run_log: TextIO | None) -> LogSink:
     """Return a LogSink that emits NDJSON to stderr (and optionally a run log file)."""
 
     def _log(stream: str, level: str, message: str) -> None:

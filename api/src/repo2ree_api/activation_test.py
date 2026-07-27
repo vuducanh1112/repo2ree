@@ -35,16 +35,18 @@ class CreateActivationTestRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayload):
-    return run_summary(
-        start_single_command_run(
-            ree_id,
-            operation="activation",
-            command=ActivationTestCommand(args=ActivationTestArgs()),
-            run_id_prefix="activation",
-            request_payload={},
-            canceled_message="Activation run canceled",
-            fallback_outputs={"subject_name": "activation"},
-            idempotency_key=payload.idempotency_key,
+def create_workspace_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayload) -> RunSummary:
+    return RunSummary.model_validate(
+        run_summary(
+            start_single_command_run(
+                ree_id,
+                operation="activation",
+                command=ActivationTestCommand(args=ActivationTestArgs()),
+                run_id_prefix="activation",
+                request_payload={},
+                canceled_message="Activation run canceled",
+                fallback_outputs={"subject_name": "activation"},
+                idempotency_key=payload.idempotency_key,
+            )
         )
     )

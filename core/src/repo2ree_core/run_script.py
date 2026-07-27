@@ -17,7 +17,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import IO, Literal
 
 from repo2ree_core.path_safety import resolve_within
 from repo2ree_protocol.log import LogSink
@@ -89,7 +89,7 @@ def run_streaming_process(
     stdin_text: str | None = None,
     env: dict[str, str] | None = None,
     cwd: Path | str | None = None,
-    is_canceled=lambda: False,
+    is_canceled: CancelCheck = lambda: False,
 ) -> StreamingProcessResult:
     """Run *cmd*, streaming child output while preserving captured streams.
 
@@ -110,7 +110,7 @@ def run_streaming_process(
         return result
 
 
-def _signal_group(proc: subprocess.Popen, sig: int) -> None:
+def _signal_group(proc: subprocess.Popen[str], sig: int) -> None:
     """Send *sig* to the process group led by *proc*.
 
     ``proc`` is its own group leader (``start_new_session``), so its pid is the
@@ -123,7 +123,7 @@ def _signal_group(proc: subprocess.Popen, sig: int) -> None:
         pass
 
 
-def _terminate_process_group(proc: subprocess.Popen, *, log: LogSink) -> None:
+def _terminate_process_group(proc: subprocess.Popen[str], *, log: LogSink) -> None:
     """Stop a canceled process tree: SIGTERM, then SIGKILL after a deadline.
 
     The group gets ``CANCEL_GRACE_SECONDS`` to exit cooperatively; anything
@@ -145,7 +145,7 @@ def _stream_process(
     stdin_text: str | None = None,
     env: dict[str, str] | None = None,
     cwd: Path | str | None = None,
-    is_canceled=lambda: False,
+    is_canceled: CancelCheck = lambda: False,
 ) -> StreamingProcessResult:
     proc = subprocess.Popen(
         cmd,
@@ -166,7 +166,7 @@ def _stream_process(
     stderr_lines: list[str] = []
 
     def _reader(
-        pipe,
+        pipe: IO[str] | None,
         stream: Literal["stdout", "stderr"],
         level: Literal["info", "warn"],
         sink: list[str],

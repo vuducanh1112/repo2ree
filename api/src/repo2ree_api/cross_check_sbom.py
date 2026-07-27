@@ -34,15 +34,17 @@ class CreateCrossCheckSbomRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_cross_check_sbom_run(ree_id: str, payload: CreateCrossCheckSbomRunPayload):
-    return run_summary(
-        start_single_command_run(
-            ree_id,
-            operation="crosscheck",
-            command=CrossCheckSbomCommand(args=CrossCheckSbomArgs()),
-            run_id_prefix="crosscheck",
-            request_payload={},
-            canceled_message="SBOM cross-check run canceled",
-            idempotency_key=payload.idempotency_key,
+def create_workspace_cross_check_sbom_run(ree_id: str, payload: CreateCrossCheckSbomRunPayload) -> RunSummary:
+    return RunSummary.model_validate(
+        run_summary(
+            start_single_command_run(
+                ree_id,
+                operation="crosscheck",
+                command=CrossCheckSbomCommand(args=CrossCheckSbomArgs()),
+                run_id_prefix="crosscheck",
+                request_payload={},
+                canceled_message="SBOM cross-check run canceled",
+                idempotency_key=payload.idempotency_key,
+            )
         )
     )

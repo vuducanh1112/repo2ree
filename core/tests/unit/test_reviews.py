@@ -71,7 +71,7 @@ def _author_workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, expect
             ree_session=ReeSession(),
         )
     )
-    monkeypatch.setattr(handler.ReeLayout, "in_workbench", classmethod(lambda cls: layout))
+    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout
 
 

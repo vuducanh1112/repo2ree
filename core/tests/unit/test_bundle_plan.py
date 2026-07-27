@@ -1,8 +1,8 @@
 import io
 import zipfile
 
+from repo2ree_core.storage.layout import ARTIFACTS_DIRNAME
 from repo2ree_core.workspace.bundle import (
-    ARTIFACTS_DIRNAME,
     REE_MANIFEST_ENTRY_PATH,
     REE_ROOT_PREFIX,
     build_zip_bytes,

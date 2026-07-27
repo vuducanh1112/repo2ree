@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException
@@ -75,7 +76,10 @@ def test_keyset_malformed_cursor_is_a_400_invalid_cursor():
     with pytest.raises(HTTPException) as excinfo:
         keyset_paginate(ITEMS, cursor="no-separator", limit=2, key=_key)
     assert excinfo.value.status_code == 400
-    assert excinfo.value.detail["code"] == "invalid_cursor"
+    # Starlette declares ``detail`` as a string; this API raises the structured
+    # error envelope through it, which is what the handler in main.py renders.
+    detail = cast(dict[str, Any], excinfo.value.detail)
+    assert detail["code"] == "invalid_cursor"
 
 
 # ================================================

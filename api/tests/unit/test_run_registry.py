@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import time
 from threading import Event
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException
@@ -153,8 +153,11 @@ def test_idempotency_key_rejects_different_request_payload():
         )
 
     assert excinfo.value.status_code == 409
-    assert excinfo.value.detail["code"] == "idempotency_conflict"
-    assert excinfo.value.detail["details"]["run_id"] == first["run_id"]
+    # Starlette declares ``detail`` as a string; this API raises the structured
+    # error envelope through it, which is what the handler in main.py renders.
+    detail = cast(dict[str, Any], excinfo.value.detail)
+    assert detail["code"] == "idempotency_conflict"
+    assert detail["details"]["run_id"] == first["run_id"]
     _wait_for(registry, first["run_id"], TERMINAL)
 
 

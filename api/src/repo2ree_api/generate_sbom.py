@@ -37,18 +37,20 @@ class CreateGenerateSbomRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_workspace_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload):
+def create_workspace_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload) -> RunSummary:
     runtime_path = _resolve_sbom_runtime_path(payload.produced_runtime_path)
-    return run_summary(
-        start_single_command_run(
-            ree_id,
-            operation="sbom",
-            command=GenerateSbomCommand(args=GenerateSbomArgs(produced_runtime_path=runtime_path)),
-            run_id_prefix="sbom",
-            request_payload={"produced_runtime_path": runtime_path},
-            canceled_message="SBOM run canceled",
-            fallback_outputs={"runtime_relative_path": runtime_path},
-            idempotency_key=payload.idempotency_key,
+    return RunSummary.model_validate(
+        run_summary(
+            start_single_command_run(
+                ree_id,
+                operation="sbom",
+                command=GenerateSbomCommand(args=GenerateSbomArgs(produced_runtime_path=runtime_path)),
+                run_id_prefix="sbom",
+                request_payload={"produced_runtime_path": runtime_path},
+                canceled_message="SBOM run canceled",
+                fallback_outputs={"runtime_relative_path": runtime_path},
+                idempotency_key=payload.idempotency_key,
+            )
         )
     )
 

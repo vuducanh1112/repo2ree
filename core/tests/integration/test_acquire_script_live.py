@@ -26,7 +26,7 @@ _LIVE_ORIGIN = "https://github.com/vuducanh1112/repo2ree.git"
 _LIVE_PINNED_COMMIT = "1fbbca3e81f09798afdb36729b358289829dda94"
 
 
-def _run(script: bytes, tmp: Path, *args: str) -> subprocess.CompletedProcess:
+def _run(script: bytes, tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
     path = tmp / ACQUIRE_SCRIPT_FILENAME
     path.write_bytes(script)
     return subprocess.run(["sh", str(path), *args], text=True, capture_output=True)

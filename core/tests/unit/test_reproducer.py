@@ -3,6 +3,7 @@
 import subprocess
 import tarfile
 from pathlib import Path
+from typing import Any
 
 from repo2ree_core.ree_scripts.acquire_source import build_acquire_sh
 from repo2ree_core.ree_scripts.materialize_workspace import build_materialize_sh
@@ -52,7 +53,7 @@ def test_reproducer_entries_are_run_sh_scripts_and_readme():
 
 
 def test_reproducer_sh_is_deterministic_for_equal_inputs():
-    kwargs = dict(
+    kwargs: dict[str, Any] = dict(
         build_script=RESERVED_BUILD_SCRIPT,
         activation_script=RESERVED_ACTIVATION_SCRIPT,
         experiments=[("exp one", "ree-scripts/experiments/exp one.sh", "")],
@@ -135,7 +136,7 @@ def _seed_extracted_bundle(
     return root
 
 
-def _run(root: Path, *args: str) -> subprocess.CompletedProcess:
+def _run(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["sh", "run.sh", *args], cwd=root, text=True, capture_output=True)
 
 

@@ -103,6 +103,10 @@ mypy_path = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/
 # Test dirs ship no __init__.py, so module names must come from file paths —
 # otherwise the per-tier conftest.py files (unit/ and integration/) collide.
 explicit_package_bases = true
+# The evidence this codebase produces is only as trustworthy as the code that
+# derives it, and most of that derivation is already annotated — turning strict
+# on asserts what the source already does rather than demanding new work of it.
+strict = true
 
 # Tests import shared constants from their tier's conftest as a top-level
 # module (`from conftest import …`) — resolvable under pytest, which puts the
@@ -116,3 +120,17 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "scriptinfer_helpers"
 ignore_missing_imports = true
+
+# Tests keep the half of strict that finds defects — wrong argument types,
+# unnarrowed Optionals, annotations that disagree with what a fixture actually
+# holds — and drop the half that only asks for ceremony. A pytest function's
+# return type is always None and its helpers are composed by nothing, so
+# spelling those out states what the signature already says; re-exports are the
+# same, since a test importing a symbol through the module under test is reading
+# that module's surface rather than building on it.
+[[tool.mypy.overrides]]
+module = ["*.tests.*", "conftest", "scriptinfer_helpers"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+no_implicit_reexport = false

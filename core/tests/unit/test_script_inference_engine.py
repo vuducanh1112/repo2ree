@@ -53,7 +53,7 @@ def _mutate(replace: dict[str, object]) -> DecisionDag:
     dag = BUILD_INFERENCE_DAG.model_copy(deep=True)
     nodes = [replace.get(node.id, node) for node in dag.nodes]
     if "__extra__" in replace:
-        nodes.append(replace["__extra__"])  # type: ignore[arg-type]
+        nodes.append(replace["__extra__"])
     return dag.model_copy(update={"nodes": nodes})
 
 

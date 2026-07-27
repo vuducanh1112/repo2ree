@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi.testclient import TestClient
 
 from repo2ree_core.reserved_paths import (
@@ -18,7 +20,7 @@ from repo2ree_core.reserved_templates import (
 )
 
 
-def _assert_entries_match(entries: list[dict[str, str]], expected_keys: list[str]) -> None:
+def _assert_entries_match(entries: list[dict[str, Any]], expected_keys: list[str]) -> None:
     assert [entry["key"] for entry in entries] == expected_keys
     # Exactly one entry per section is the explicit default: the first, per
     # the core catalogs' ordering.
