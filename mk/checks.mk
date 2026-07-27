@@ -1,6 +1,6 @@
 # Static checks: prose, shell scripts, nix, frontend, python.
 
-.PHONY: docs-lint scripts-checks nix-checks fe-checks be-checks api-types-check
+.PHONY: docs-lint scripts-checks nix-checks fe-checks be-checks arch-checks api-types-check
 
 # ================================================
 # Docs — prose linting
@@ -70,4 +70,12 @@ $(addsuffix -checks,$(PY_PACKAGES)): %-checks:
 	ruff format $(wildcard $*/src $*/tests)
 	mypy $(wildcard $*/src $*/tests)
 
-be-checks: $(addsuffix -checks,$(PY_PACKAGES))
+# Architecture contracts over the backend import graph — the counterpart of the
+# dependency-cruiser step in fe-checks. Ruff and mypy are per-file and never see
+# the graph, so layering and cycles are only caught here. Contracts live in
+# pyproject.toml under [tool.importlinter].
+arch-checks:
+	@echo "Running import-linter..."
+	lint-imports
+
+be-checks: $(addsuffix -checks,$(PY_PACKAGES)) arch-checks

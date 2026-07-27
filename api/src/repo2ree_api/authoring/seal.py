@@ -15,6 +15,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
+from repo2ree_api.authoring.upload_runs import StagedUploadLog, start_staged_upload_run
 from repo2ree_api.contracts import (
     ERROR_RESPONSES,
     ReeBundleLoadPayload,
@@ -29,7 +30,6 @@ from repo2ree_api.control.run_orchestration import run_summary
 from repo2ree_api.deps import workbench_manager
 from repo2ree_api.workbench.archives import archive_download_filename, spool_chunks
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
-from repo2ree_api.workbench.upload_runs import StagedUploadLog, start_staged_upload_run
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
 from repo2ree_protocol import LoadReeBundleCommand, SealReeCommand
 from repo2ree_protocol.command import LoadReeBundleArgs, SealReeArgs

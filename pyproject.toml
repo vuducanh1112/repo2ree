@@ -13,6 +13,10 @@ members = ["protocol", "core", "supervisor", "api", "executor", "agent"]
 [dependency-groups]
 dev = [
     "httpx~=0.28.1",
+    # Architecture contracts (`make arch-checks`): the backend counterpart of the
+    # frontend's dependency-cruiser rules. Neither ruff nor mypy sees the import
+    # graph, so layering is only enforced here.
+    "import-linter~=2.13.0",
     # Property-based testing (the `property`-marked tests). Resolves transitively
     # today via core's test-only `swh.model` oracle, but declared directly so the
     # property tests don't hinge on that pin.
@@ -96,6 +100,72 @@ extend-ignore = [
 [tool.ruff.lint.per-file-ignores]
 "*/tests/*" = [
     "S101",  # assert is the standard pytest assertion pattern
+]
+
+# ================================================
+# Architecture contracts (`make arch-checks`)
+# ================================================
+#
+# The backend counterpart of the frontend's dependency-cruiser rules
+# (frontend/.dependency-cruiser.js, run by fe-checks). Ruff and mypy never look
+# at the import graph, so nothing else in the backend gate can see a layering
+# violation or an import cycle — every contract below was a real defect at some
+# point rather than a hypothetical.
+#
+# Only repo2ree_api is under contract today. The other packages are declared as
+# root packages so cross-package imports resolve; core's own layering is the
+# next tranche and needs its cycles broken first.
+[tool.importlinter]
+root_packages = [
+    "repo2ree_api",
+    "repo2ree_core",
+    "repo2ree_protocol",
+    "repo2ree_supervisor",
+]
+
+# The API's tiers, high to low. Each layer may import everything below it and
+# nothing above. `main` is assembly only; the two step graphs sit on the control
+# plane; the control plane sits on the workbench transport; everything rests on
+# the wire contract and the composition root.
+[[tool.importlinter.contracts]]
+name = "API layers"
+type = "layers"
+layers = [
+    "repo2ree_api.main",
+    "repo2ree_api.authoring : repo2ree_api.review",
+    "repo2ree_api.control",
+    "repo2ree_api.workbench",
+    "repo2ree_api.contracts",
+    "repo2ree_api.deps",
+    "repo2ree_api.settings",
+]
+
+# The author's step graph and the reviewer's mirror it. They deliberately look
+# alike, which is exactly what makes a shortcut between them tempting and wrong:
+# a reviewer route reaching into an authoring route would let review evidence be
+# produced by the code under review. Both compose the shared lower layers
+# instead.
+[[tool.importlinter.contracts]]
+name = "Authoring and review never reach into each other"
+type = "independence"
+modules = [
+    "repo2ree_api.authoring",
+    "repo2ree_api.review",
+]
+
+# The published wire vocabulary is a leaf: it describes the contract, so it can
+# never depend on the code that serves it. A response model that imported a
+# route would make the OpenAPI document a function of the implementation.
+[[tool.importlinter.contracts]]
+name = "The wire contract imports no implementation"
+type = "forbidden"
+source_modules = ["repo2ree_api.contracts"]
+forbidden_modules = [
+    "repo2ree_api.authoring",
+    "repo2ree_api.review",
+    "repo2ree_api.control",
+    "repo2ree_api.workbench",
+    "repo2ree_api.deps",
 ]
 
 [tool.mypy]

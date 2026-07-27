@@ -4,7 +4,7 @@ Everything here runs on the request thread and answers to the client that is
 uploading: it validates the declared size, claims a token for one REE and one
 purpose, and streams the body onto control-plane disk. Nothing here touches a
 workbench or starts a run — handing staged bytes to the REE is the other half,
-in :mod:`repo2ree_api.workbench.upload_runs`.
+in :mod:`repo2ree_api.authoring.upload_runs`.
 """
 
 from __future__ import annotations
