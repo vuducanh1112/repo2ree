@@ -19,6 +19,7 @@ Schemas plus the pure record algebra over them. How a verdict is *reached* is
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,6 +30,7 @@ from repo2ree_core.evidence.receipts.models import (
     BuildRuntimeReceipt,
     RunExperimentReceipt,
 )
+from repo2ree_protocol.command import ReviewBasis
 
 ReviewStatus = Literal["running", "completed", "failed", "canceled"]
 ReviewStepKey = Literal["source", "build", "activation", "experiments"]
@@ -304,6 +306,28 @@ def experiment_comparison(record: ReviewRecord, experiment_name: str) -> Experim
         if comparison.experiment_name == experiment_name:
             return comparison
     return None
+
+
+def resolve_basis(requested: ReviewBasis, *, available: Collection[EvidenceBasis]) -> EvidenceBasis | None:
+    """Settle a reviewer's requested basis against what a step can actually offer.
+
+    Every step that takes a basis asks this same question, and the answer has to
+    be the same one twice over. ``auto`` prefers the independent path and falls
+    back, so a reviewer who states no preference always gets the strongest
+    evidence on offer. An explicit request is never silently downgraded — handing
+    back an integrity check to someone who asked for a reproduction is the one
+    failure a review cannot afford — so it returns ``None`` instead, and the
+    caller says why in the vocabulary of its own step.
+
+    Only *what is on offer* differs between steps (an acquirable origin and a
+    snapshot for source; a runnable recipe and a shipped artifact for the
+    runtime), which is why that is the parameter and the rule above is not.
+    """
+    if requested != "auto":
+        return requested if requested in available else None
+    if "independent" in available:
+        return "independent"
+    return "bundled" if "bundled" in available else None
 
 
 def attempt_basis(record: ReviewRecord) -> EvidenceBasis | None:

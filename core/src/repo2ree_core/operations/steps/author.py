@@ -32,7 +32,10 @@ from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.consistency import check_workspace_drift, declared_output_paths
 from repo2ree_core.evidence.receipts.models import (
     ActivationTestReceipt,
+    ReceiptEnvelopeFields,
     RunExperimentReceipt,
+    RunnableStepFields,
+    RunReceipt,
     WorkspaceDrift,
     receipt_envelope,
 )
@@ -47,11 +50,14 @@ from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
 from repo2ree_protocol.tracing import ReceiptInputAttrs
 
-# What a half-built or damaged sidecar raises on the way through pydantic and
-# json: an unreadable file, malformed bytes, or a document that no longer fits
-# the model. Anything outside this set is a defect here, not a fact about the
-# REE, and must not be mistaken for one.
-UNREADABLE_METADATA = (OSError, json.JSONDecodeError, ValidationError, ValueError)
+# What a half-built or damaged persisted document raises on the way through
+# json and pydantic: an unreadable file, malformed bytes, or content that no
+# longer fits the model. Named for the failure rather than for the sidecar it
+# was first written about, because the REE's other persisted documents (the
+# reproducibility report, say) fail exactly these four ways and no others.
+# Anything outside this set is a defect here, not a fact about the REE, and
+# must not be mistaken for one.
+UNREADABLE_DOCUMENT = (OSError, json.JSONDecodeError, ValidationError, ValueError)
 
 
 def resolve_workspace_path(layout: ReeLayout, rel_path: str) -> Path:
@@ -116,7 +122,7 @@ def read_intent_or_none(store: ReeStore, *, log: LogSink) -> ReeIntent | None:
         return None
     try:
         return store.read_intent()
-    except UNREADABLE_METADATA as exc:
+    except UNREADABLE_DOCUMENT as exc:
         log("system", "warn", f"REE metadata is present but unreadable ({exc}); proceeding without an intent")
         return None
 
@@ -140,7 +146,7 @@ def collect_step_inputs(
     if store.metadata_exists():
         try:
             snapshot_digest = store.read_session().source_snapshot_digest
-        except UNREADABLE_METADATA as exc:
+        except UNREADABLE_DOCUMENT as exc:
             # The snapshot digest is the root of this receipt's input chain, so
             # a receipt without one asserts "this REE has no captured source".
             # When the truth is instead "the session could not be read", the
@@ -227,6 +233,77 @@ def result_from_run_outcome(
     return ActionResult(status=status, exit_code=0, outputs=outputs)
 
 
+def outcome_log_level(status: ActionStatus) -> Literal["info", "warn", "error"]:
+    """The level a step's closing line is logged at, keyed to how it ended."""
+    if status == "succeeded":
+        return "info"
+    return "warn" if status == "canceled" else "error"
+
+
+def log_step_outcome(
+    operation: str,
+    status: ActionStatus,
+    timing: OperationTiming,
+    *,
+    log: LogSink,
+    detail: str = "",
+) -> None:
+    """Say how a step ended and how long it took, in the one shape every step uses.
+
+    The line a run log is read for: which operation, which of the three ways it
+    can end, and the duration in both a human spelling and the machine one a log
+    scraper keys on. Spelled here rather than at each step because those two
+    renderings of one duration have to agree, and a format string copied per
+    handler agrees only until one copy is edited.
+
+    ``detail`` appends a step-specific parenthetical (an exit code, say) after
+    the status; the rest of the line stays fixed.
+    """
+    log(
+        "system",
+        outcome_log_level(status),
+        f"{operation} {status}{detail} in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+    )
+
+
+def settle_step[ReceiptT: RunReceipt](
+    layout: ReeLayout,
+    build: Callable[[ReceiptEnvelopeFields], ReceiptT],
+    *,
+    operation: str,
+    run_id: str,
+    timer: OperationTimer,
+    status: ActionStatus,
+    log: LogSink,
+    detail: str = "",
+) -> ReceiptT:
+    """Close a step: stop its clock, receipt it against that clock, and say so.
+
+    The author-side counterpart of :func:`~repo2ree_core.operations.steps.review.review_step_halt`
+    — the same "settle the record and report consistently" job, for a lifecycle
+    whose record is a receipt rather than a persisted attempt. The order is the
+    load-bearing part: one :meth:`OperationTimer.finish` reading feeds both the
+    receipt's envelope and the closing log line, so a receipt can never claim a
+    duration the log contradicts.
+
+    ``build`` receives the envelope and returns the step's own receipt, so this
+    knows nothing about which shapes exist — the same reason
+    :attr:`RunnableStep.build_receipt` is a builder rather than a class::
+
+        receipt = settle_step(
+            layout,
+            lambda envelope: GenerateSbomReceipt(**envelope, runtime_path=path),
+            operation="generate_sbom", run_id=run_id, timer=timer,
+            status="succeeded", log=log,
+        )
+    """
+    timing = timer.finish()
+    receipt = build(receipt_envelope(run_id, timing, status))
+    record_receipt(layout, receipt, log=log)
+    log_step_outcome(operation, status, timing, log=log, detail=detail)
+    return receipt
+
+
 def _capture_experiment_outputs(
     layout: ReeLayout,
     name: str,
@@ -288,27 +365,32 @@ class StepRecord:
     produced_output_digest: str | None
 
 
-def step_receipt_fields(record: StepRecord) -> dict[str, Any]:
+def step_receipt_fields(record: StepRecord) -> RunnableStepFields:
     """The receipt fields every runnable step records, whatever shape it takes.
 
     Spread into the receipt a builder constructs (``**step_receipt_fields(...)``,
     the same idiom as :func:`receipt_envelope`, which it includes). These are the
     fields that make a receipt auditable — the input slice collected before the
     run, bound to what the run did — so no builder gets to spell them itself.
+
+    Typed as a :class:`RunnableStepFields` rather than a plain mapping so the
+    spread stays checked: a receipt field renamed on one side and not the other
+    is a type error here, not a validation error thrown away at the end of the
+    run it was recording.
     """
-    return {
+    return RunnableStepFields(
         **receipt_envelope(record.run_id, record.timing, record.status),
-        "workspace_drift": record.inputs.workspace_drift,
-        "snapshot_digest": record.inputs.snapshot_digest,
-        "run_script_path": record.runnable.run_script,
-        "run_script_digest": record.inputs.script_digest,
-        "run_exit_code": record.run_exit_code,
-        "verify_script_path": record.runnable.verify_script,
-        "verify_script_digest": record.inputs.verify_script_digest,
-        "verify_exit_code": record.verify_exit_code,
-        "runtime_path": record.inputs.runtime_path,
-        "declared_runtime_digest": record.inputs.declared_runtime_digest,
-    }
+        workspace_drift=record.inputs.workspace_drift,
+        snapshot_digest=record.inputs.snapshot_digest,
+        run_script_path=record.runnable.run_script,
+        run_script_digest=record.inputs.script_digest,
+        run_exit_code=record.run_exit_code,
+        verify_script_path=record.runnable.verify_script,
+        verify_script_digest=record.inputs.verify_script_digest,
+        verify_exit_code=record.verify_exit_code,
+        runtime_path=record.inputs.runtime_path,
+        declared_runtime_digest=record.inputs.declared_runtime_digest,
+    )
 
 
 ReceiptBuilder = Callable[[StepRecord], ActivationTestReceipt | RunExperimentReceipt]
@@ -357,7 +439,7 @@ def run_runnable_handler(
 
     try:
         ree = store.read_intent()
-    except UNREADABLE_METADATA as exc:
+    except UNREADABLE_DOCUMENT as exc:
         log("system", "error", f"Invalid REE intent: {exc}")
         return ActionResult.failed("internal", f"Invalid REE intent: {exc}")
 
@@ -411,11 +493,7 @@ def run_runnable_handler(
     )
     record_receipt(layout, receipt, log=log)
     outputs.receipt = receipt.model_dump()
-    log(
-        "system",
-        outcome_log_level(status),
-        f"{step.operation} {status} in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
-    )
+    log_step_outcome(step.operation, status, timing, log=log)
 
     return result_from_run_outcome(
         status,
@@ -423,13 +501,6 @@ def run_runnable_handler(
         outputs=outputs.model_dump(exclude_none=True),
         operation=step.operation,
     )
-
-
-def outcome_log_level(status: ActionStatus) -> Literal["info", "warn", "error"]:
-    """The level a step's closing line is logged at, keyed to how it ended."""
-    if status == "succeeded":
-        return "info"
-    return "warn" if status == "canceled" else "error"
 
 
 def workspace_content_etag(store: ReeStore, path: str) -> str | None:

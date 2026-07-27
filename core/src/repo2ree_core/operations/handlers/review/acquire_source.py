@@ -24,7 +24,13 @@ from repo2ree_core.authoring.script_generation.acquire_source import build_acqui
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.models import AcquireSourceReceipt, receipt_envelope
 from repo2ree_core.evidence.review.comparison import compare_source_swhids
-from repo2ree_core.evidence.review.models import EvidenceBasis, SourceComparison, new_review_record, with_step
+from repo2ree_core.evidence.review.models import (
+    EvidenceBasis,
+    SourceComparison,
+    new_review_record,
+    resolve_basis,
+    with_step,
+)
 from repo2ree_core.evidence.review.store import write_review_record, write_review_source_evidence
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
 from repo2ree_core.operations.steps.review import begin_review_step
@@ -32,7 +38,7 @@ from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
-from repo2ree_protocol.command import ReviewAcquireSourceArgs
+from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -72,9 +78,7 @@ def handle_review_acquire_source(
     if is_canceled():
         return stop("canceled", "canceled before source acquisition")
 
-    has_origin = _has_acquirable_origin(intent)
-    has_snapshot = ree_layout.snapshot_archive.is_file()
-    basis = _resolve_basis(args.basis, has_origin=has_origin, has_snapshot=has_snapshot)
+    basis = resolve_basis(args.basis, available=_available_bases(intent, ree_layout))
     if basis is None:
         return stop("failed", _basis_refusal(args.basis))
 
@@ -149,25 +153,17 @@ def _has_acquirable_origin(intent: ReeIntent) -> bool:
     return bool(intent.origin_url) and intent.source_type in {"git", "tarball", "zip"}
 
 
-def _resolve_basis(requested: str, *, has_origin: bool, has_snapshot: bool) -> EvidenceBasis | None:
-    """Settle the requested basis against what the baseline actually carries.
-
-    ``auto`` prefers the independent path and falls back to the snapshot, so a
-    reviewer who states no preference always gets the strongest evidence
-    available. An explicit request is never silently downgraded — asking for a
-    reproduction and receiving an integrity check would be the one failure this
-    module cannot afford — so it fails instead, and the caller reports why.
-    """
-    if requested == "independent":
-        return "independent" if has_origin else None
-    if requested == "bundled":
-        return "bundled" if has_snapshot else None
-    if has_origin:
-        return "independent"
-    return "bundled" if has_snapshot else None
+def _available_bases(intent: ReeIntent, ree_layout: ReeLayout) -> set[EvidenceBasis]:
+    """Which bases this baseline can actually offer a source acquisition."""
+    available: set[EvidenceBasis] = set()
+    if _has_acquirable_origin(intent):
+        available.add("independent")
+    if ree_layout.snapshot_archive.is_file():
+        available.add("bundled")
+    return available
 
 
-def _basis_refusal(requested: str) -> str:
+def _basis_refusal(requested: ReviewBasis) -> str:
     if requested == "independent":
         return "The author baseline has no independently acquirable source origin"
     if requested == "bundled":

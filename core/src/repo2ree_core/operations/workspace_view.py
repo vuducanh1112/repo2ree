@@ -28,7 +28,7 @@ from repo2ree_core.evidence.receipts.consistency import (
     build_consistency_report,
 )
 from repo2ree_core.evidence.receipts.store import load_author_receipts
-from repo2ree_core.evidence.steps import ReeStepState, build_ree_step_states
+from repo2ree_core.evidence.step_graph import ReeStepState, build_ree_step_states
 from repo2ree_core.ree.workspace.inventory import ReeFile, WorkspaceFile
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.ree.workspace.views import layout_for, read_metadata, ree_files, workspace_files

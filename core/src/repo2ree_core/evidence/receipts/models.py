@@ -238,6 +238,30 @@ def receipt_envelope(run_id: str, timing: OperationTiming, status: ActionStatus)
     )
 
 
+class RunnableStepFields(ReceiptEnvelopeFields):
+    """The envelope plus the slice every runnable step records, as arguments.
+
+    The constructor-argument mirror of :class:`_RunnableReceipt`, for the same
+    reason :class:`ReceiptEnvelopeFields` mirrors the envelope: a runnable
+    step's receipt is built by the handler that owns the step, from fields the
+    shared runner collected. Spreading an untyped mapping into that constructor
+    would be the one place a receipt is assembled without the checker watching —
+    and a field renamed on the model would then survive to runtime, where an
+    ``extra="forbid"`` model rejects it *after* the run it was recording.
+    """
+
+    workspace_drift: WorkspaceDrift
+    snapshot_digest: str | None
+    run_script_path: str
+    run_script_digest: str | None
+    run_exit_code: int | None
+    verify_script_path: str
+    verify_script_digest: str | None
+    verify_exit_code: int | None
+    runtime_path: str | None
+    declared_runtime_digest: str | None
+
+
 def receipt_run_id(run_id: str) -> str:
     """A run id safe to key a receipt file by.
 

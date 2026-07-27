@@ -18,21 +18,20 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists
-from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt, receipt_envelope
-from repo2ree_core.evidence.receipts.store import record_receipt
+from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
 from repo2ree_core.execution.process import CancelCheck, run_workspace_script
 from repo2ree_core.operations.steps.author import (
     collect_step_inputs,
-    outcome_log_level,
     read_intent_or_none,
     record_step_inputs,
     resolve_workspace_path,
     result_from_run_outcome,
+    settle_step,
 )
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
-from repo2ree_core.time_utils import OperationTimer, format_duration_ms
+from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -86,22 +85,23 @@ def handle_build_runtime(
         if outcome.status == "succeeded" and inputs.runtime_path
         else None
     )
-    timing = timer.finish()
-    receipt = BuildRuntimeReceipt(
-        **receipt_envelope(run_id, timing, outcome.status),
-        workspace_drift=inputs.workspace_drift,
-        snapshot_digest=inputs.snapshot_digest,
-        build_script_path=RESERVED_BUILD_SCRIPT,
-        build_script_digest=inputs.script_digest,
-        runtime_path=inputs.runtime_path,
-        produced_runtime_digest=produced_runtime_digest,
-    )
-    record_receipt(layout, receipt, log=log)
-    log(
-        "system",
-        outcome_log_level(outcome.status),
-        f"Build run {outcome.status} (exit code {outcome.exit_code}) in "
-        f"{format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+    receipt = settle_step(
+        layout,
+        lambda envelope: BuildRuntimeReceipt(
+            **envelope,
+            workspace_drift=inputs.workspace_drift,
+            snapshot_digest=inputs.snapshot_digest,
+            build_script_path=RESERVED_BUILD_SCRIPT,
+            build_script_digest=inputs.script_digest,
+            runtime_path=inputs.runtime_path,
+            produced_runtime_digest=produced_runtime_digest,
+        ),
+        operation=_OPERATION,
+        run_id=run_id,
+        timer=timer,
+        status=outcome.status,
+        log=log,
+        detail=f" (exit code {outcome.exit_code})",
     )
 
     outputs = BuildRuntimeOutputs(

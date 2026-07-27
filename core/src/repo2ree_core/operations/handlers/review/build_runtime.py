@@ -54,7 +54,7 @@ from repo2ree_core.evidence.receipts.models import (
 )
 from repo2ree_core.evidence.receipts.store import load_author_receipts
 from repo2ree_core.evidence.review.comparison import compare_build_runtimes
-from repo2ree_core.evidence.review.models import BuildComparison, EvidenceBasis, with_step
+from repo2ree_core.evidence.review.models import BuildComparison, EvidenceBasis, resolve_basis, with_step
 from repo2ree_core.evidence.review.store import write_review_build_evidence, write_review_record
 from repo2ree_core.execution.process import (
     CancelCheck,
@@ -73,7 +73,7 @@ from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
-from repo2ree_protocol.command import ReviewBuildRuntimeArgs
+from repo2ree_protocol.command import ReviewBasis, ReviewBuildRuntimeArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -130,8 +130,10 @@ def handle_review_build_runtime(
         return stop("failed", "The author baseline declares no runtime artifact to certify")
 
     bundled_runtime = store.author_artifact(runtime_path)
-    has_recipe = _has_build_recipe(ree_layout, review_layout)
-    basis = _resolve_basis(args.basis, has_recipe=has_recipe, has_bundled_runtime=bundled_runtime is not None)
+    basis = resolve_basis(
+        args.basis,
+        available=_available_bases(ree_layout, review_layout, has_bundled_runtime=bundled_runtime is not None),
+    )
     if basis is None:
         return stop("failed", _basis_refusal(args.basis))
 
@@ -142,7 +144,7 @@ def handle_review_build_runtime(
     #    beside the runtime whether or not this attempt built one.
     try:
         _stage_author_overlay(ree_layout, review_layout)
-    except Exception as exc:
+    except OSError as exc:
         return stop("failed", f"could not stage the author overlay: {exc}")
 
     review_layout.materialize_script.write_bytes(build_materialize_sh())
@@ -160,7 +162,7 @@ def handle_review_build_runtime(
         log("system", "info", f"review {args.review_id}: staging the runtime the REE ships at {runtime_path}")
         try:
             runtime_abs = _stage_bundled_runtime(review_layout, bundled_runtime, runtime_path)
-        except Exception as exc:
+        except OSError as exc:
             return stop("failed", f"could not stage the bundled runtime: {exc}")
         build_script_digest = None
     else:
@@ -387,24 +389,27 @@ def _has_build_recipe(ree_layout: ReeLayout, review_layout: ReviewLayout) -> boo
     ).is_file()
 
 
-def _resolve_basis(requested: str, *, has_recipe: bool, has_bundled_runtime: bool) -> EvidenceBasis | None:
-    """Settle the requested basis against what this baseline can actually offer.
+def _available_bases(
+    ree_layout: ReeLayout,
+    review_layout: ReviewLayout,
+    *,
+    has_bundled_runtime: bool,
+) -> set[EvidenceBasis]:
+    """Which bases this baseline can actually offer a runtime certification.
 
-    ``auto`` rebuilds whenever a recipe exists, because a rebuild is the only
-    thing here that reproduces anything; it falls back to the shipped artifact
-    only when there is no script to run. An explicit request is never quietly
-    downgraded — see the source step's counterpart for why.
+    A recipe is what makes the independent path possible, because a rebuild is
+    the only thing here that reproduces anything; the shipped artifact is the
+    fallback ``auto`` reaches for when there is no script to run.
     """
-    if requested == "independent":
-        return "independent" if has_recipe else None
-    if requested == "bundled":
-        return "bundled" if has_bundled_runtime else None
-    if has_recipe:
-        return "independent"
-    return "bundled" if has_bundled_runtime else None
+    available: set[EvidenceBasis] = set()
+    if _has_build_recipe(ree_layout, review_layout):
+        available.add("independent")
+    if has_bundled_runtime:
+        available.add("bundled")
+    return available
 
 
-def _basis_refusal(requested: str) -> str:
+def _basis_refusal(requested: ReviewBasis) -> str:
     if requested == "independent":
         return f"The author baseline carries no {RESERVED_BUILD_SCRIPT} to rebuild the runtime with"
     if requested == "bundled":
@@ -448,5 +453,5 @@ def _prune_rebuilt_tree(review_layout: ReviewLayout, *, log: LogSink) -> None:
         try:
             if directory.is_dir():
                 shutil.rmtree(directory)
-        except Exception as exc:
+        except OSError as exc:
             log("system", "warn", f"could not prune {directory.name}/: {exc}")

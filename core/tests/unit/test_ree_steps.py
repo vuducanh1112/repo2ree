@@ -4,7 +4,7 @@ from repo2ree_core.domain.experiment import Experiment
 from repo2ree_core.domain.hbom import HBOM, CPUDefinition
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
-from repo2ree_core.evidence.steps import (
+from repo2ree_core.evidence.step_graph import (
     REE_STEPS,
     ReeStepState,
     build_ree_step_states,

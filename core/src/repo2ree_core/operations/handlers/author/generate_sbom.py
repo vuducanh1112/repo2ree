@@ -6,19 +6,21 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.sbom.scan import SBOM_FORMAT, is_runtime_archive, scan_runtime_archive
 from repo2ree_core.digests import digest_file
-from repo2ree_core.evidence.receipts.models import GenerateSbomReceipt, receipt_envelope
-from repo2ree_core.evidence.receipts.store import record_receipt
+from repo2ree_core.evidence.receipts.models import GenerateSbomReceipt
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.author import (
     patch_ree_intent,
     resolve_workspace_path,
+    settle_step,
 )
 from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.time_utils import OperationTimer, format_duration_ms
+from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
+
+_OPERATION = "generate_sbom"
 
 
 class GenerateSbomOutputs(BaseModel):
@@ -41,7 +43,7 @@ def handle_generate_sbom(
     runtime_path = args.produced_runtime_path.strip()
     try:
         runtime_abs = resolve_workspace_path(layout, runtime_path)
-    except Exception as exc:
+    except ValueError as exc:
         log("system", "error", f"invalid runtime path: {exc}")
         return ActionResult.failed("validation", f"invalid runtime path: {exc}")
 
@@ -68,23 +70,24 @@ def handle_generate_sbom(
         sbom_digest: str | None = None,
         tool_version: str | None = None,
     ) -> GenerateSbomReceipt:
-        timing = timer.finish()
-        built = GenerateSbomReceipt(
-            **receipt_envelope(run_id, timing, status),
-            runtime_path=runtime_path,
-            declared_runtime_digest=declared_runtime_digest,
-            sbom_path=SBOM_ARTIFACT_PATH if sbom_digest else None,
-            sbom_digest=sbom_digest,
-            sbom_format=SBOM_FORMAT if sbom_digest else None,
-            tool_version=tool_version,
+        """Settle this step, on whichever of its four exits reached here."""
+        return settle_step(
+            layout,
+            lambda envelope: GenerateSbomReceipt(
+                **envelope,
+                runtime_path=runtime_path,
+                declared_runtime_digest=declared_runtime_digest,
+                sbom_path=SBOM_ARTIFACT_PATH if sbom_digest else None,
+                sbom_digest=sbom_digest,
+                sbom_format=SBOM_FORMAT if sbom_digest else None,
+                tool_version=tool_version,
+            ),
+            operation=_OPERATION,
+            run_id=run_id,
+            timer=timer,
+            status=status,
+            log=log,
         )
-        record_receipt(layout, built, log=log)
-        log(
-            "system",
-            "info" if status == "succeeded" else "error",
-            f"generate_sbom {status} in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
-        )
-        return built
 
     # Written straight into the REE's own artifacts/, never into the workspace:
     # the SBOM is produced evidence, so nothing downstream has to lift it out of

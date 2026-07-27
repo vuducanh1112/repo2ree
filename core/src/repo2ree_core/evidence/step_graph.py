@@ -1,5 +1,10 @@
 """The REE authoring steps: the ordered checklist and its prerequisite graph.
 
+Not to be read as a sibling of :mod:`repo2ree_core.operations.steps`, which is
+the machinery a step *handler* is assembled from. This is the graph those
+handlers advance a client through — a navigation model over the persisted
+record, with no execution in it.
+
 This is the operational counterpart of the reproducibility scorecard. The
 scorecard answers *how reproducible is this* (an assessment, on the R0-R5
 ladder); the steps answer *what is there to do, in what order, and what can run

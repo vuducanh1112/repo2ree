@@ -14,18 +14,20 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.authoring.script_generation.acquire_source import build_acquire_sh
-from repo2ree_core.evidence.receipts.models import AcquireSourceReceipt, receipt_envelope
-from repo2ree_core.evidence.receipts.store import record_receipt
+from repo2ree_core.evidence.receipts.models import AcquireSourceReceipt
 from repo2ree_core.execution.process import (
     CancelCheck,
     format_command,
     run_streaming_process,
 )
+from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
 from repo2ree_core.ree.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
-from repo2ree_core.time_utils import OperationTimer, format_duration_ms
+from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+
+_OPERATION = "acquire_source"
 
 
 class AcquireSourceOutputs(BaseModel):
@@ -74,42 +76,32 @@ def handle_acquire_source(
     log("system", "info", format_command(cmd))
     result = run_streaming_process(cmd, log=log, is_canceled=is_canceled)
 
+    # Neither exit records a receipt: acquisition is the chain root, and a
+    # receipt for a source that was never acquired would be a link to nothing.
     if result.canceled or is_canceled():
-        timing = timer.finish()
-        log(
-            "system",
-            "warn",
-            f"acquire_source canceled in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
-        )
+        log_step_outcome(_OPERATION, "canceled", timer.finish(), log=log)
         return ActionResult(status="canceled")
     if result.returncode != 0:
-        timing = timer.finish()
-        log(
-            "system",
-            "error",
-            f"acquire_source failed in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
-        )
+        log_step_outcome(_OPERATION, "failed", timer.finish(), log=log)
         return ActionResult.failed(
             "execution",
             f"acquire script exited {result.returncode}",
             exit_code=result.returncode or 1,
         )
 
-    timing = timer.finish()
-    record_receipt(
+    settle_step(
         layout,
-        AcquireSourceReceipt(
-            **receipt_envelope(run_id, timing, "succeeded"),
+        lambda envelope: AcquireSourceReceipt(
+            **envelope,
             origin_url=args.origin_url,
             source_type=args.source_type or "",
             revision=args.revision or "",
         ),
+        operation=_OPERATION,
+        run_id=run_id,
+        timer=timer,
+        status="succeeded",
         log=log,
-    )
-    log(
-        "system",
-        "info",
-        f"acquire_source succeeded in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
     )
     return ActionResult(
         status="succeeded",

@@ -12,13 +12,15 @@ from repo2ree_core.analysis.repository.reproducibility_report import (
 from repo2ree_core.analysis.sbom.crosscheck import cross_check
 from repo2ree_core.analysis.sbom.cyclonedx import parse_cyclonedx
 from repo2ree_core.digests import digest_file
-from repo2ree_core.evidence.receipts.models import CrossCheckSbomReceipt, receipt_envelope
-from repo2ree_core.evidence.receipts.store import record_receipt
+from repo2ree_core.evidence.receipts.models import CrossCheckSbomReceipt
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.operations.steps.author import UNREADABLE_DOCUMENT, log_step_outcome, settle_step
 from repo2ree_core.ree.layout import REPRODUCIBILITY_REPORT_FILENAME, SBOM_ARTIFACT_PATH, ReeLayout
-from repo2ree_core.time_utils import OperationTimer, format_duration_ms, utc_now
+from repo2ree_core.time_utils import OperationTimer, utc_now
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
+
+_OPERATION = "cross_check_sbom"
 
 
 class CrossCheckSbomOutputs(BaseModel):
@@ -58,28 +60,29 @@ def handle_cross_check_sbom(
     sbom_digest = digest_file(sbom_abs)
 
     def receipt(status: ActionStatus, counts: SbomCrossCheckSummary | None = None) -> CrossCheckSbomReceipt:
+        """Settle this step, on whichever of its three exits reached here."""
         aggregates = counts or SbomCrossCheckSummary()
-        timing = timer.finish()
-        built = CrossCheckSbomReceipt(
-            **receipt_envelope(run_id, timing, status),
-            sbom_digest=sbom_digest,
-            declared_direct_total=aggregates.declared_direct_total,
-            observed_matched=aggregates.observed_matched,
-            version_mismatches=aggregates.version_mismatches,
-            undeclared_same_ecosystem=aggregates.undeclared_same_ecosystem,
-            observed_total=aggregates.observed_total,
+        return settle_step(
+            layout,
+            lambda envelope: CrossCheckSbomReceipt(
+                **envelope,
+                sbom_digest=sbom_digest,
+                declared_direct_total=aggregates.declared_direct_total,
+                observed_matched=aggregates.observed_matched,
+                version_mismatches=aggregates.version_mismatches,
+                undeclared_same_ecosystem=aggregates.undeclared_same_ecosystem,
+                observed_total=aggregates.observed_total,
+            ),
+            operation=_OPERATION,
+            run_id=run_id,
+            timer=timer,
+            status=status,
+            log=log,
         )
-        record_receipt(layout, built, log=log)
-        log(
-            "system",
-            "info" if status == "succeeded" else "error",
-            f"cross_check_sbom {status} in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
-        )
-        return built
 
     try:
         report = ReproducibilityReport.model_validate(json.loads(report_path.read_text(encoding="utf-8")))
-    except Exception as exc:
+    except UNREADABLE_DOCUMENT as exc:
         log("system", "error", f"unreadable reproducibility report: {exc}")
         receipt("failed")
         return ActionResult.failed("internal", f"unreadable reproducibility report: {exc}")
@@ -95,13 +98,10 @@ def handle_cross_check_sbom(
     summary.sbom_digest = sbom_digest
     summary.checked_at = utc_now()
 
+    # Nothing has been written yet, so a cancel here leaves no half-updated
+    # report behind and needs no receipt to say what it left.
     if is_canceled():
-        timing = timer.finish()
-        log(
-            "system",
-            "warn",
-            f"cross_check_sbom canceled in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
-        )
+        log_step_outcome(_OPERATION, "canceled", timer.finish(), log=log)
         return ActionResult(status="canceled")
 
     try:
@@ -111,7 +111,7 @@ def handle_cross_check_sbom(
             json.dumps(report.model_dump(), indent=2),
             encoding="utf-8",
         )
-    except Exception as exc:
+    except OSError as exc:
         log("system", "error", f"failed to persist cross-checked report: {exc}")
         receipt("failed")
         return ActionResult.failed("internal", f"failed to persist cross-checked report: {exc}")

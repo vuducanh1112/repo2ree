@@ -8,17 +8,22 @@ run's receipt.
 
 from __future__ import annotations
 
+import tarfile
+
 from pydantic import BaseModel, ConfigDict
 
-from repo2ree_core.evidence.receipts.models import SnapshotUpstreamReceipt, receipt_envelope
-from repo2ree_core.evidence.receipts.store import persist_snapshot_digest, record_receipt
+from repo2ree_core.evidence.receipts.models import SnapshotUpstreamReceipt
+from repo2ree_core.evidence.receipts.store import persist_snapshot_digest
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
 from repo2ree_core.ree.files import pack_directory_tar_gz
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.time_utils import OperationTimer, format_duration_ms
+from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+
+_OPERATION = "snapshot_upstream"
 
 
 class SnapshotUpstreamOutputs(BaseModel):
@@ -42,32 +47,25 @@ def handle_snapshot_upstream(
 
     timer = OperationTimer.start()
     log("system", "info", f"snapshotting {layout.upstream} → {layout.snapshot_archive}")
+    # Packing walks and reads an arbitrary source tree: an unreadable file, a
+    # broken link, a device node tarfile refuses. All of it is a fact about that
+    # tree rather than a defect here, which is what makes it the caller's news.
     try:
         snapshot_digest = pack_directory_tar_gz(layout.upstream, layout.snapshot_archive)
-    except Exception as exc:
-        timing = timer.finish()
-        log(
-            "system",
-            "error",
-            f"snapshot failed after {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms}): {exc}",
-        )
+    except (OSError, tarfile.TarError) as exc:
+        log("system", "error", f"snapshot failed: {exc}")
+        log_step_outcome(_OPERATION, "failed", timer.finish(), log=log)
         return ActionResult.failed("internal", f"snapshot failed: {exc}")
 
     persist_snapshot_digest(ReeStore(layout), snapshot_digest, log=log)
-    timing = timer.finish()
-    record_receipt(
+    settle_step(
         layout,
-        SnapshotUpstreamReceipt(
-            **receipt_envelope(run_id, timing, "succeeded"),
-            snapshot_digest=snapshot_digest,
-        ),
+        lambda envelope: SnapshotUpstreamReceipt(**envelope, snapshot_digest=snapshot_digest),
+        operation=_OPERATION,
+        run_id=run_id,
+        timer=timer,
+        status="succeeded",
         log=log,
-    )
-
-    log(
-        "system",
-        "info",
-        f"snapshot_upstream succeeded in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
     )
     return ActionResult(
         status="succeeded",

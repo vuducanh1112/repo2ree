@@ -16,7 +16,7 @@ from repo2ree_api.contracts.runs import RunSummary
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.evidence.receipts.consistency import AuthorReceiptSet, ConsistencyReport
-from repo2ree_core.evidence.steps import ReeStepState
+from repo2ree_core.evidence.step_graph import ReeStepState
 from repo2ree_core.ree.workspace.inventory import ReeFile, WorkspaceFile
 from repo2ree_core.source_repo.metadata import SourceRepoMetadata
 
