@@ -79,21 +79,24 @@ then hosts the fixed `/ree` layout and the tools that act on it:
 │  │                                                                   │ │
 │  │  /ree                          ── the REE's durable structure ──  │ │
 │  │  ├── upstream/    extracted source snapshot                        │ │
-│  │  ├── overlay/     REE definition: runtime spec, experiment         │ │
-│  │  │                specs, generated Dockerfiles/scripts            │ │
+│  │  ├── overlay/     REE definition: ree-scripts/ (build, activation, │ │
+│  │  │                experiments), generated recipes                  │ │
 │  │  │                        ▲ declared via the frontend             │ │
 │  │  ├── workspace/   materialized upstream + overlay view             │ │
-│  │  └── artifacts/   produced outputs:                               │ │
-│  │      ├── runtime-image.tar   ◄── the REE                          │ │
-│  │      ├── sbom/                                                    │ │
-│  │      ├── dependency-score/                                        │ │
-│  │      └── runs/<id>/   experiment results & traces                 │ │
+│  │  ├── artifacts/   produced evidence:                              │ │
+│  │  │   ├── <runtime>.tar             ◄── the REE                    │ │
+│  │  │   ├── sbom.json                                                │ │
+│  │  │   └── reproducibility-report.json                              │ │
+│  │  ├── results/<name>/   captured experiment outputs (baseline)     │ │
+│  │  ├── runs/<id>/        NDJSON logs & run results                  │ │
+│  │  ├── receipts/author/  latest successful receipt per step         │ │
+│  │  └── reviews/<id>/     one reviewer attempt (its own tree)        │ │
 │  │                                                                   │ │
 │  │  assembly functions (repo2ree-exec/core) read workspace+overlay,  │ │
 │  │  write artifacts:                                                 │ │
-│  │    build-runtime             ─ docker build ─► runtime-image      │ │
-│  │    generate-sbom             ────────────────► sbom               │ │
-│  │    evaluate-dependency-score ────────────────► dependency-score   │ │
+│  │    build-runtime             ─ docker build ─► <runtime>.tar      │ │
+│  │    generate-sbom             ────────────────► sbom.json          │ │
+│  │    evaluate-dependency-score ─────► reproducibility-report.json   │ │
 │  │    run-experiment   ─ docker run runtime-image ─► runs/<id>       │ │
 │  └───────────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -115,11 +118,17 @@ workspace↔REE seam:
 | `/ree/upstream/` | Extracted source snapshot, treated as read-only. | the **source** |
 | `/ree/overlay/` | repo2ree-authored files layered beside the source: runtime scripts, generated recipes, experiment specs. | the **environment** |
 | `/ree/workspace/` | Materialized view used at build/run time. It is derived from `upstream/ + overlay/` and may be rebuilt. | the **inputs** |
-| `/ree/artifacts/` | Produced evidence: runtime image, SBOM, dependency score, per-run results and traces. | the **outputs** |
+| `/ree/artifacts/` | Produced evidence: runtime image, SBOM (`sbom.json`), reproducibility report. | the **outputs** |
+| `/ree/results/<name>/` | Per-experiment produced-results store: the author baseline a reviewer diffs against. | the **outputs** |
 | `/ree/runs/` | NDJSON logs and run results for command executions. | the **lineage** |
+| `/ree/receipts/author/` | Selected author evidence: the latest successful receipt per step. | the **lineage** |
+| `/ree/reviews/<review_id>/` | One reviewer attempt, a parallel tree with its own `upstream/`, `overlay/`, `workspace/`. Never writes to author evidence. | the **review** |
 
 `upstream/` and `overlay/` are the sources of truth; `workspace/` is the working
 view. The source stays pristine while REE-defining material lives beside it.
+Receipts and review attempts are covered in
+[engineering/step-lifecycle.md](engineering/step-lifecycle.md) and
+[engineering/review-evidence.md](engineering/review-evidence.md).
 
 This **tree** — not the running container/VM — is the durable REE state. The
 workbench is rehydratable: tear it down and recreate it by re-mounting the
@@ -219,7 +228,7 @@ Because the api/frontend defer execution, the typed `Command` envelope and
 `repo2ree-exec` are the seam between the two planes:
 
 - **Structured I/O:** `repo2ree-exec` reads typed JSON, streams structured
-  `LogEvent`s, writes an `ActionResult`, and exits with a meaningful status.
+  `LogFrame`s, writes an `ActionResult`, and exits with a meaningful status.
 - **The future host CLI is a surface over the same contract.** A user-facing
   `repo2ree` command should drive supervisor/protocol exactly as the API does,
   not invent a parallel execution path.
@@ -698,12 +707,13 @@ explicit SWH save/deposit request.
 - **Remote the existing job model; don't reinvent it.** *(Done.)* The
   submit→stream→cancel async-job shape lives in
   [`RunRegistry`](../api/src/repo2ree_api/control/run_registry.py), fronted by
-  `_start_background_run` / `_run_summary` / `_is_cancel_requested`
-  ([control/run_orchestration.py:45](../api/src/repo2ree_api/control/run_orchestration.py#L45)).
+  `start_background_run` / `run_summary` / `is_cancel_requested`, plus the
+  `start_provisioning_run` / `start_single_command_run` shapes
+  ([control/run_orchestration.py](../api/src/repo2ree_api/control/run_orchestration.py)).
   Operations dispatch to `repo2ree-exec` through
   `WorkbenchManager.dispatch_action` with logs streamed back, and cancellation
   crosses the boundary as a remote signal to the agent
-  ([manager.py:304](../supervisor/src/repo2ree_supervisor/manager.py#L304))
+  ([manager.py:287](../supervisor/src/repo2ree_supervisor/manager.py#L287))
   rather than a local flag check.
 - **Keep Docker image construction inside the workbench.** The main build path
   now reaches `core` through `repo2ree-exec` inside the workbench. Any remaining

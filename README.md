@@ -1,8 +1,8 @@
 # repo2ree
 
 Public product docs live in [docs/public/README.md](docs/public/README.md).
-Contributor setup, deployment, and test docs live under
-[docs/engineering/](docs/engineering/).
+Contributor setup, deployment, test docs, and backend design rationale live under
+[docs/engineering/](docs/engineering/README.md).
 Research and paper-facing notes live under
 [docs/research/](docs/research/).
 

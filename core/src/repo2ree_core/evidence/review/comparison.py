@@ -1,26 +1,12 @@
 """How a reviewer's step reaches its verdict.
 
 What settles a verdict differs per step, because the certifiable property does:
+source by SWHID identity, build by runtime digest then SBOM closure, experiments
+by the author's own verify script. Activation has no comparison at all — the
+reviewer's probe is the whole claim, recorded as an ``ActivationOutcome`` rather
+than a comparison to keep that visible in the type.
 
-* source — SWHID identity, which *is* reproducible bit for bit;
-* build — SBOM closure equivalence, because container builds are routinely not
-  bit-reproducible even from identical inputs (see
-  :mod:`repo2ree_core.analysis.sbom.equivalence`). A digest match is the stronger
-  verdict where it happens, not the only acceptable one.
-* activation — no comparison at all. There is no author artifact to reproduce
-  here: the author's own activation is a precondition of a credible baseline,
-  not a baseline to diff against, so "theirs passed and so did mine" would
-  certify nothing beyond the second half. The reviewer's own probe is the whole
-  claim, and it is recorded as an :class:`ActivationOutcome` rather than a
-  comparison to keep that distinction visible in the type.
-* experiments — the author's own verify script, re-run against the reviewer's
-  results. Output bytes are the wrong bar: a run that stamps a timestamp or
-  draws a seed produces different bytes on every honest reproduction, so
-  demanding equality would report a red verdict for a result that reproduced
-  perfectly. The author already declared what counts as a correct result — the
-  verify script — so a pass is the verdict, and matching output digests are
-  recorded as the stronger tier where they happen (see
-  :func:`compare_experiment_results`).
+The rationale for each is in ``docs/engineering/review-evidence.md``.
 
 Pure: these functions take facts and return comparison records. Nothing here
 touches the filesystem.
@@ -90,14 +76,12 @@ def compare_build_runtimes(
 
     The ladder, strongest first: equal runtime digests mean the build is bit
     reproducible (``identical``); otherwise the dependency closures decide
-    (``equivalent`` / ``different``); a closure that cannot be compared at all
-    — no author SBOM, or a scan that yielded nothing — is ``inconclusive``
-    rather than a pass, because an absent baseline is not agreement.
+    (``equivalent`` / ``different``); a closure that cannot be compared at all is
+    ``inconclusive`` rather than a pass, because an absent baseline is not
+    agreement.
 
-    The ladder is basis-blind on purpose: a ``bundled`` runtime is scanned and
-    diffed by exactly the same rules, so a shipped artifact that does *not*
-    match the author's own receipt still comes back ``different``. What the
-    resulting agreement is worth is carried by ``basis``, not by the verdict.
+    The ladder is basis-blind on purpose — what an agreement is worth is carried
+    by ``basis``, not by the verdict.
     """
     delta = compare_sbom_closures(expected_packages, observed_packages)
     if expected_runtime_digest and expected_runtime_digest == observed_runtime_digest:
@@ -143,22 +127,15 @@ def compare_experiment_results(
 
     The ladder, in the order it is decided:
 
-    * No verify script declared — ``inconclusive``. All that remains is "the run
-      script exited 0", which for a script whose last act is to write a results
-      file says only that something ran. Reporting that as a reproduction would
-      make the verdict free, and a free verdict certifies nothing.
-    * The author never ran this experiment themselves — ``inconclusive``. There
-      is no baseline claim to have reproduced, and an absent baseline is not
-      agreement (the same rule :func:`compare_build_runtimes` applies to a
-      missing SBOM).
+    * No verify script declared, or the author never ran this experiment —
+      ``inconclusive``. An absent baseline is not agreement.
     * Verify exited nonzero — ``different``. The author's own criterion, applied
-      to the reviewer's results, rejected them. This is the step working.
+      to the reviewer's results, rejected them.
     * Verify exited 0 — ``reproduced``, upgraded to ``identical`` when both
       sides recorded an output digest and the two agree.
 
-    Note what is deliberately *not* here: a digest mismatch never downgrades a
-    passing verify. Timestamps, seeds, and hostnames land in output files on
-    every honest re-run, and the author already said what correctness means.
+    A digest mismatch never downgrades a passing verify: timestamps, seeds, and
+    hostnames land in output files on every honest re-run.
     """
     if not verify_script_path.strip():
         verdict: ExperimentVerdict = "inconclusive"

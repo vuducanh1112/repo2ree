@@ -39,7 +39,7 @@ runtime-owning deployable that sits on the execution-plane host between the
 control plane and the bench.
 
 ```
-                       protocol            ← the contract (Command / ActionResult / LogEvent)
+                       protocol            ← the contract (Command / ActionResult / LogFrame)
                     /      |       \
                 core    agent      supervisor
                   │    (runtime      /       \
@@ -61,7 +61,7 @@ control plane and the bench.
 
 | package | responsibility | depends on | deployed |
 |---|---|---|---|
-| **protocol** | the typed `Command` / `ActionResult` / `LogEvent` envelope + (de)serialization (`command_adapter`), **and** the agent wire schema (`AgentRequest` / `AgentFrame` / `WorkbenchLocation`). The things the sides must agree on. | — | host, agent **and** bench |
+| **protocol** | the typed `Command` / `ActionResult` / `LogFrame` envelope + (de)serialization (`command_adapter`), **and** the agent wire schema (`AgentRequest` / `AgentFrame` / `WorkbenchLocation`). The things the sides must agree on. | — | host, agent **and** bench |
 | **core** | does the actual work — the command handlers (`build-runtime`, `generate-sbom`, `evaluate`, `run-experiment`), the `doctor` bench probe, the tool resolver (`tooling.py`), and the workspace/REE/`/ree`-tree operations. Pure library; **no CLI framework deps**. | protocol | **bench only** |
 | **supervisor** | the control plane: workbench + REE **lifecycle** (provision / reprovision / teardown), the **registry** (`ree_id → agent + location`), and the **dispatch** that sends commands to the agent and streams logs/results back. Never executes a command, and never touches a container runtime, itself. | protocol | host only |
 
@@ -75,7 +75,7 @@ control plane and the bench.
 
 | surface | over | role | deployed |
 |---|---|---|---|
-| **executor** (`repo2ree-exec`) | core + protocol | one-shot: read a `Command` on stdin, run it via core, stream `LogEvent`s on stderr, emit `ActionResult` on stdout, exit. **No listening server.** Injected by the agent, so it ships with the agent — not baked into the bench image. | **bench only** |
+| **executor** (`repo2ree-exec`) | core + protocol | one-shot: read a `Command` on stdin, run it via core, stream `LogFrame`s on stderr, emit `ActionResult` on stdout, exit. **No listening server.** Injected by the agent, so it ships with the agent — not baked into the bench image. | **bench only** |
 | **`repo2ree`** (supervisor cli) | supervisor + protocol | **target user/agent surface.** Drive the pipeline against a bench, stream logs, pull artifacts, tear down. | host — *not implemented yet* |
 | **api** (http) | supervisor + protocol | **optional** hosted UX over the supervisor (what the frontend talks to; remote/multi-user access). | host |
 
@@ -348,8 +348,14 @@ The package split is now largely real:
   `AgentClient` → `WsAgentClient`, `WorkbenchRuntime` → `DockerRuntime` — not a
   single hardcoded local-Docker path. Additional runtimes (cloud/HPC) are the
   intended next impls.
-- **Still rough:** `api` still imports some `core` domain/storage helpers and
-  owns hosted UX concerns directly.
+- **Done:** the dependency rules above are machine-enforced. `[tool.importlinter]`
+  in [pyproject.toml](../pyproject.toml) carries workspace-level layers, per-package
+  layer contracts for `api` and `core` (both marked exhaustive, so a new top-level
+  module must declare its tier), and independence contracts holding the author and
+  review sides apart in both `core.operations.handlers` and `api`.
+- **Still rough:** `api` imports `core` domain and evidence *types* directly
+  (`ReeIntent`, `ReviewRecord`, `ReproducibilityScoreCard`, the step graph) rather
+  than through `protocol`, and owns hosted UX concerns directly.
 - **Missing:** the user-facing host `repo2ree` supervisor CLI does not exist yet.
 
 ## Future surfaces — what the seams enable (optional, driver-gated)

@@ -62,24 +62,18 @@ def publish_atomic(staged: Path, path: Path) -> None:
 def write_atomic(path: Path, content: bytes) -> None:
     """Replace ``path`` with ``content``, or leave what was there untouched.
 
-    Every durable file this REE writes goes through here, so a process killed
-    mid-write can never leave a half-written one behind: the bytes land on a
+    Every durable file this REE writes goes through here: the bytes land on a
     sibling temporary and become visible under the real name in one
-    :func:`os.replace`. A reader therefore sees the previous version or the new
-    one, never a prefix of the new one — which is what lets the readers of these
-    documents treat "present" as "parseable" (see the ``UNREADABLE_DOCUMENT``
-    handling in ``operations.steps.author``).
+    :func:`os.replace`, so a reader sees the previous version or the new one,
+    never a prefix of the new one.
 
-    Deliberately *not* durable across power loss: that additionally needs an
-    ``fsync`` of the file and of its parent directory, on every write. The
-    failure this guards is a killed workbench — the container dies, the volume
-    does not — so the syncs would be paid on every receipt to buy nothing.
+    Deliberately *not* durable across power loss — that needs an ``fsync`` of the
+    file and its parent on every write. The failure this guards is a killed
+    workbench, where the container dies but the volume does not.
 
-    Buffers ``content`` in memory by construction, which is the whole contract:
-    a caller that cannot hold its output (a streamed download, a subprocess
-    writing its own output file) uses :func:`staging_path` and
-    :func:`publish_atomic` directly rather than squeezing itself through this
-    signature.
+    Buffers ``content`` in memory. A caller that cannot hold its output (a
+    streamed download, a subprocess writing its own file) uses
+    :func:`staging_path` and :func:`publish_atomic` directly.
     """
     temporary = staging_path(path)
     temporary.parent.mkdir(parents=True, exist_ok=True)

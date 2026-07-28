@@ -1,33 +1,13 @@
 """Reproduce one of the author's experiments inside a review attempt.
 
-The last step of the reviewer lifecycle, and the one the other three exist to
-make possible: source establishes that the code is the author's, build that the
-environment is theirs, activation that it comes up — and this asks the question
-a reader actually came with, which is whether the result holds.
+The last step of the reviewer lifecycle: source establishes that the code is the
+author's, build that the environment is theirs, activation that it comes up, and
+this asks whether the result holds.
 
-What settles it is the author's own verify script. Output bytes are the wrong
-bar and deliberately not the verdict: a run that stamps a timestamp, draws a
-seed, or records a hostname writes different bytes on every honest
-reproduction, so demanding equality would report failure for results that
-reproduced perfectly, and would do it most often for exactly the
-computationally interesting experiments. The author already declared what
-counts as a correct result when they wrote the verify script, so this step
-re-runs that declaration against the reviewer's own results and reports what it
-said. Matching output digests are recorded as a stronger tier where they
-happen, never as a requirement (see
-:func:`repo2ree_core.evidence.review.comparison.compare_experiment_results`).
-
-The cost of that choice is that a verdict is worth exactly as much as the
-script that granted it, and verify scripts range from a tolerance check against
-reference values to ``test -f results.csv``. Two things keep that honest rather
-than hidden: an experiment declaring no verify script at all is ``inconclusive``
-rather than a free pass, and the comparison records the verify script's digest
-so a reader can see which criterion they are trusting.
-
-Activation must have *passed*, not merely completed, before this runs. Every
-experiment inside a runtime that would not come up fails for one reason that
-has nothing to do with the experiments, and recording a wall of ``different``
-verdicts would bury the single fact that explains them all.
+The verdict is what the author's own verify script says, re-run against the
+reviewer's results; matching output digests are a stronger tier where they
+happen, never a requirement. Requires activation to have *passed*, not merely
+completed. See ``docs/engineering/review-evidence.md``.
 """
 
 from __future__ import annotations

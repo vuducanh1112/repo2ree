@@ -9,9 +9,8 @@ reviewer's machine did) and a verdict (what that settles). The attempt's own
 failed" can never disagree with "which step failed".
 
 A step that ran to completion and found something unwelcome is ``completed``
-with an unwelcome verdict, never ``failed``: the reviewer's machine did its job,
-and losing that distinction would collapse "the review could not run" into "the
-review has news" — the second being the whole point of running one.
+with an unwelcome verdict, never ``failed`` — "the review could not run" and
+"the review has news" must stay distinguishable.
 
 Schemas plus the pure record algebra over them. How a verdict is *reached* is
 ``comparison``; where the record lives is ``store``.

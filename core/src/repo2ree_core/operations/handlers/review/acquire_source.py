@@ -5,10 +5,9 @@ Two ways to get a tree to verify, and the choice is the reviewer's:
 * ``independent`` — fetch the recorded origin, exactly as the author first did.
   The strong form: agreement means the origin still serves the authored source.
 * ``bundled`` — extract the REE's own ``snapshot.tar.gz``. No network, no live
-  origin, and it is the only path open for an REE whose source was uploaded
-  rather than fetched. Agreement means the carried bytes hash to the recorded
-  identity — the bundle is intact — which is an integrity check, not an
-  independent reproduction, and is recorded as such on the comparison.
+  origin, and the only path open for an REE whose source was uploaded rather
+  than fetched. Agreement means the bundle is intact — an integrity check, not
+  an independent reproduction, and recorded as such on the comparison.
 
 Either way the same generated ``acquire_source.sh`` does the work, and the same
 SWHID comparison judges it; only what lands next to the script differs.

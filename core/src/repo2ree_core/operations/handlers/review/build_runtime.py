@@ -1,38 +1,14 @@
 """Rebuild and certify a runtime inside an isolated review attempt.
 
-The reviewer-side counterpart of the author's ``build_runtime`` step, and the
-first step where reproduction stops being an identity check. The source step can
-demand a bit-exact SWHID; a container build cannot be held to that standard —
-image builds bake in timestamps, layer ordering, and base-image tags that move
-under a pinned name, so identical inputs routinely yield different bytes while
-installing exactly the same software.
+The reviewer-side counterpart of the author's ``build_runtime`` step. The
+runtime is certified in two tiers — the produced tarball's digest, else the SBOM
+dependency closure — over one of two bases: ``independent`` (rebuilt here) or
+``bundled`` (the artifact the REE ships, an integrity check rather than a
+reproduction).
 
-So the runtime is certified in two tiers (see
-:func:`repo2ree_core.evidence.review.comparison.compare_build_runtimes`): the produced tarball's
-digest, which settles ``identical`` on the rare bit-reproducible build, and
-otherwise the SBOM dependency closure scanned off the runtime the reviewer just
-built and diffed against the author's recorded SBOM.
-
-Isolation works the same way it does for source: the attempt is a parallel REE
-tree. The author's overlay is *copied* into it and merged with the attempt's own
-independently acquired upstream by the shared materialize script, so nothing
-here can write to author evidence — and the workspace the build runs in is the
-reviewer's, assembled from the source they fetched themselves.
-
-An REE that ships its runtime offers a second basis: certify the artifact it
-already carries instead of building one. That reproduces nothing — the same
-scan and the same closure diff run, but against the author's own bytes, so
-agreement is expected and only *disagreement* is news (a shipped runtime that
-contradicts the author's receipt). It exists because the alternative for a
-baseline whose build cannot run here — no Docker, wrong architecture, no
-network — is no verdict at all, and it is marked ``bundled`` on the comparison
-so it can never be read as a reproduction.
-
-What both bases share is the workspace they leave behind: source materialized
-from the attempt's own acquisition, with a runtime beside it at the path the
-recipe expects. Only how the runtime got there differs — built here, or copied
-in from the bundle — because activation and the experiments run *in* that
-workspace and cannot tell the difference, nor should they have to.
+Both bases leave the same workspace behind, because activation and the
+experiments run in it and cannot tell the difference. See
+``docs/engineering/review-evidence.md``.
 """
 
 from __future__ import annotations
@@ -99,8 +75,6 @@ def handle_review_build_runtime(
     review_layout = ree_layout.review(args.review_id)
     timer = OperationTimer.start()
 
-    # Read before the step is marked running: a baseline nobody can read is a
-    # precondition nobody can meet, so there is nothing yet to settle a halt on.
     intent = require_ree_intent(ree_layout, log=log)
     if isinstance(intent, ActionResult):
         return intent
@@ -146,10 +120,8 @@ def handle_review_build_runtime(
         return stop("failed", _basis_refusal(args.basis))
 
     # 1. Assemble the reviewer's own workspace: their upstream + the author's
-    #    recipe, merged by the very script the author's workbench runs. Both
-    #    bases need this — the workspace is not scaffolding for the build, it is
-    #    what activation and the experiments run *in*, and they need the source
-    #    beside the runtime whether or not this attempt built one.
+    #    recipe, merged by the script the author's workbench runs. Both bases
+    #    need it — it is what activation and the experiments run *in*.
     try:
         _stage_author_overlay(ree_layout, review_layout)
     except OSError as exc:
@@ -204,9 +176,8 @@ def handle_review_build_runtime(
         log=log,
         is_canceled=is_canceled,
     )
-    # A cancel is not an inconclusive verdict. Both leave the closure unknown,
-    # but "nobody asked the question" must not be recorded as "the evidence
-    # could not answer it" — the second reads as a finding about the build.
+    # A cancel is not an inconclusive verdict: "nobody asked the question" must
+    # not be recorded as "the evidence could not answer it".
     if comparison is None:
         return stop("canceled", "certification canceled")
 
@@ -249,8 +220,8 @@ def _stage_author_overlay(ree_layout: ReeLayout, review_layout: ReviewLayout) ->
 
     A copy rather than a reference: the merge writes into the attempt's own
     workspace and a build script may write beside itself, neither of which may
-    reach author evidence. Re-running the step re-copies, so an overlay edited
-    between attempts is picked up.
+    reach author evidence. Re-copying means an overlay edited between attempts
+    is picked up.
     """
     if review_layout.overlay.exists():
         shutil.rmtree(review_layout.overlay)
@@ -274,14 +245,12 @@ def _certify(
 ) -> BuildComparison | None:
     """Scan the runtime in hand and compare it with the author's recorded build.
 
-    A scan that cannot run — an unsupported artifact shape, a missing scanner,
-    an absent author SBOM — yields an empty closure on one side, which the
-    comparison reports as ``inconclusive``. That is the honest answer: it is a
-    statement about the evidence, not about the build.
+    A scan that cannot run — unsupported artifact shape, missing scanner, absent
+    author SBOM — yields an empty closure on one side, which the comparison
+    reports as ``inconclusive``.
 
-    Returns ``None`` when the scan was canceled, which is deliberately *not* one
-    of those cases: an abandoned scan says nothing about the runtime, so the
-    caller halts the step instead of settling a verdict over it.
+    Returns ``None`` when the scan was *canceled*, which is deliberately not one
+    of those cases: the caller halts the step instead of settling a verdict.
     """
     author = load_author_receipts(ree_layout)
     author_build = author.get("build_runtime")
@@ -329,19 +298,12 @@ def _author_runtime_digest(
 ) -> str | None:
     """The digest the author recorded for the runtime this REE declares.
 
-    The build receipt is the natural home for it, but often does not have it:
-    the runtime artifact is *declared after the build*, because the picker
-    chooses among the files the build just produced. A build that ran before
-    that choice legitimately does not know which of its outputs became the
-    runtime, and its receipt is evidence of what happened — not to be rewritten
-    once the author decides.
-
-    The SBOM step runs after that choice and records ``declared_runtime_digest``
-    for the file it scanned, so it answers the same question. It is only
-    accepted when it scanned the artifact the REE still declares; an author who
-    re-pointed ``runtime`` since would otherwise have the wrong file's digest
-    compared. Without this the digest tier is dead for every REE authored in the
-    natural order, and no build review could ever reach ``identical``.
+    Prefers the build receipt, which often does not carry one because the
+    runtime artifact is declared *after* the build. Falls back to the SBOM
+    receipt's ``declared_runtime_digest``, accepted only when it scanned the
+    artifact the REE still declares — otherwise an author who re-pointed
+    ``runtime`` would have the wrong file's digest compared. See
+    ``docs/engineering/review-evidence.md``.
     """
     if isinstance(author_build, BuildRuntimeReceipt) and author_build.produced_runtime_digest:
         return author_build.produced_runtime_digest
@@ -376,11 +338,9 @@ def _author_packages(ree_layout: ReeLayout, *, log: LogSink) -> list[ObservedPac
 def _stage_bundled_runtime(review_layout: ReviewLayout, shipped: Path, runtime_path: str) -> Path:
     """Copy the shipped runtime into the workspace, where a rebuild would leave it.
 
-    Both bases have to leave the same workspace behind, because the steps after
-    this one do not care how the runtime got there — the author's activation and
-    experiment scripts reach for it at the path their own build wrote, which is
-    the last candidate when the declared path has been remapped into
-    ``artifacts/``.
+    The author's activation and experiment scripts reach for it at the path
+    their own build wrote — the last candidate when the declared path has been
+    remapped into ``artifacts/``.
 
     Copied rather than linked: the workspace is the reviewer's to run scripts in,
     and a hard link would let one of them write through to author evidence.
@@ -411,8 +371,7 @@ def _available_bases(
 ) -> set[EvidenceBasis]:
     """Which bases this baseline can actually offer a runtime certification.
 
-    A recipe is what makes the independent path possible, because a rebuild is
-    the only thing here that reproduces anything; the shipped artifact is the
+    A build recipe makes ``independent`` possible; the shipped artifact is the
     fallback ``auto`` reaches for when there is no script to run.
     """
     available: set[EvidenceBasis] = set()

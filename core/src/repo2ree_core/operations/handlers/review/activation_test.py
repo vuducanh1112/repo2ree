@@ -1,36 +1,14 @@
 """Probe the runtime a review attempt certified, inside that attempt's workspace.
 
 The reviewer-side counterpart of the author's ``activation_test`` step, and the
-first review step that certifies nothing by comparison. Source has the author's
-SWHID and build has their SBOM closure — both recorded artifacts a reviewer can
-reproduce and diff. Activation has no such artifact. The author's own activation
-receipt is a precondition of a credible baseline, not a baseline to reproduce:
-"their probe passed and so did mine" says nothing the second half does not
-already say. So this step runs the author's activation script against the
-reviewer's own runtime and reports whether it came up, full stop.
+only review step that certifies nothing by comparison: there is no author
+artifact to reproduce, so the reviewer's own probe is the whole claim.
 
-That makes two things load-bearing that a comparison would otherwise have
-carried:
-
-*Basis* is inherited, not chosen. Activation runs in the workspace the build
-left behind and deliberately cannot tell whether the runtime there was rebuilt
-or unpacked from the bundle — that indifference is what lets the author's
-scripts run unchanged on either basis. So it takes no ``basis`` argument and
-adopts the weakest one the attempt has settled: passing on a shipped artifact
-says that artifact is inhabitable, never that the world still produces one.
-
-*Identity* is checked, not assumed. The probe is bound to the runtime digest the
-build step recorded, so an attempt whose build has since been re-run cannot
-leave a pass attached to a runtime that no longer exists. This mirrors the
-author-side scorecard, which likewise only counts an activation pass against the
-runtime that was actually built.
-
-A runtime that does not come up completes the step with a ``failed`` verdict
-rather than failing it. The distinction matters: the reviewer's machine did
-exactly its job, and the finding is the most valuable thing this step can
-produce. Only the conditions that stop it probing at all — a reclaimed
-workspace, no activation script, a stale runtime — fail the step, and they are
-statements about the attempt rather than about the runtime.
+Two consequences a comparison would otherwise have carried: the ``basis`` is
+inherited from the attempt rather than chosen, and the probe is bound to the
+runtime digest the build recorded. A runtime that does not come up *completes*
+the step with a ``failed`` verdict; only conditions that stop it probing at all
+fail the step. See ``docs/engineering/review-evidence.md``.
 """
 
 from __future__ import annotations

@@ -85,6 +85,12 @@ tolerations
 rmi
 
 # General CS / dev jargon
+docstrings?
+dataclass(es)?
+tracebacks?
+renderers?
+auditable
+unreferenced
 apis?
 clis?
 CAs

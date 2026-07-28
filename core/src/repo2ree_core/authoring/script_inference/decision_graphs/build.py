@@ -1,15 +1,18 @@
 """The Phase 1 build-inference decision DAG.
 
 A shared project-root prefix, a fork into one branch per runtime strategy
-(only ``dockerfile`` in Phase 1), and an explicit score-free resolver join.
-This is deployment-static, versioned data — the sibling of ``ree_step_catalog``
-— and it is the *only* control-flow authority: the generic engine walks exactly
-these nodes. Adding an ecosystem later means adding a fork branch and another
-input edge to the same resolver, never a priority number.
+(``dockerfile`` and ``pip`` in Phase 1), and an explicit score-free resolver
+join. This is deployment-static, versioned data — the sibling of
+``ree_step_catalog`` — and it is the *only* control-flow authority: the generic
+engine walks exactly these nodes. Adding an ecosystem later means adding a fork
+branch and another input edge to the same resolver, never a priority number.
 
 The dockerfile branch is purely locational (see ``checks/dockerfile.py``): more
 than one project-root Dockerfile blocks (can't pick which); a nested Dockerfile
-blocks on ambiguous build context; exactly one at the root is complete.
+blocks on ambiguous build context; exactly one at the root is complete. The pip
+branch yields a ``candidate`` rather than a complete outcome, so a lone
+requirements.txt resolves to ``needs_input`` and a Dockerfile alongside it makes
+the two strategies an explicit decision.
 """
 
 from __future__ import annotations

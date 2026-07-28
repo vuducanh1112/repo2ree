@@ -2,17 +2,12 @@
 
 A step handler is mostly ceremony around one script run — open the REE, digest
 what the run is about to consume, run it, write a receipt binding the two, and
-report a status that agrees with all three. That ceremony is here so the
-handlers can be about what makes them different, and so the input slice in
-particular is collected one way: it is the chain that makes a receipt auditable,
-and two spellings of it would be two chains.
+report a status that agrees with all three. That ceremony lives here so the
+handlers can be about what makes them different.
 
-Nothing here knows its callers, by name or by type. A step that needs to record
-something another does not says so with a :class:`RunnableStep` field — it
-brings its own :attr:`~RunnableStep.build_receipt` rather than handing over a
-receipt class this module would then have to interrogate. Recognising a caller
-by the shape of its evidence is the same coupling as recognising it by its
-operation string, and fails the same way when a third step arrives.
+Nothing here knows its callers, by name or by type: a step that records
+something another does not says so with a :class:`RunnableStep` field. Design
+rationale: ``docs/engineering/step-lifecycle.md``.
 """
 
 from __future__ import annotations
@@ -84,11 +79,8 @@ def open_ree_store(log: LogSink) -> tuple[ReeLayout, ReeStore] | ActionResult:
 
     Every handler that touches REE state starts this way, so the guard and the
     message an author sees for "no REE here yet" live in one place. Callers
-    ``return`` the ActionResult unchanged::
+    ``return`` the ActionResult unchanged, then unpack::
 
-        opened = open_ree_store(log)
-        if isinstance(opened, ActionResult):
-            return opened
         layout, store = opened
     """
     layout = ReeLayout.in_workbench()
@@ -103,10 +95,9 @@ def read_intent_or_none(store: ReeStore, *, log: LogSink) -> ReeIntent | None:
     """The intent, or None when there is no readable metadata.
 
     For the read-only paths that must still answer when a REE is half-built
-    (inference, step inputs) rather than fail the command. An *unreadable*
-    sidecar is not the same thing as an absent one, so it is said out loud:
-    what follows records "nothing declared" either way, and only the log can
-    tell a reader which of the two they are looking at.
+    (inference, step inputs) rather than fail the command. An unreadable sidecar
+    is logged, because what follows records "nothing declared" either way and
+    only the log distinguishes the two.
     """
     if not store.metadata_exists():
         return None
@@ -137,11 +128,9 @@ def collect_step_inputs(
         try:
             snapshot_digest = store.read_session().source_snapshot_digest
         except UNREADABLE_DOCUMENT as exc:
-            # The snapshot digest is the root of this receipt's input chain, so
-            # a receipt without one asserts "this REE has no captured source".
-            # When the truth is instead "the session could not be read", the
-            # receipt is still the honest record of what was known — but the
-            # difference has to be recoverable, and this line is where.
+            # A receipt without a snapshot digest asserts "this REE has no
+            # captured source". When the truth is "the session could not be
+            # read", this line is the only place that difference is recoverable.
             log("system", "warn", f"could not read the session for this receipt's snapshot digest: {exc}")
     runtime_path = intent.runtime if intent else None
     return StepInputs(
@@ -176,16 +165,10 @@ def dump_receipt_whole[ReceiptT: RunReceipt](receipt: ReceiptT | None) -> dict[s
     """Serialize a receipt carried on an outputs envelope, fields and all.
 
     Attach with ``@field_serializer`` to any ``receipt`` field on an outputs
-    model. The envelopes are dumped with ``exclude_none=True`` — an output that
-    does not apply should not appear — but that recursion must not reach inside
-    the receipt, where a None field is itself the evidence: ``produced_runtime_digest:
-    null`` says the build produced nothing at the declared path, and dropping it
-    would turn a recorded fact into an absent one.
-
-    The alternative, typing the field as ``dict[str, Any]`` and pre-dumping it,
-    happens to serialize the same way — which is exactly why it survived: it
-    looked like a formatting detail rather than the receipt schema going
-    unchecked at the boundary a client reads it from.
+    model. Envelopes are dumped with ``exclude_none=True``, and that recursion
+    must not reach inside the receipt, where a None field is itself the
+    evidence: ``produced_runtime_digest: null`` says the build produced nothing
+    at the declared path.
     """
     return receipt.model_dump() if receipt is not None else None
 
@@ -260,11 +243,9 @@ def log_step_outcome(
 ) -> None:
     """Say how a step ended and how long it took, in the one shape every step uses.
 
-    The line a run log is read for: which operation, which of the three ways it
-    can end, and the duration in both a human spelling and the machine one a log
-    scraper keys on. Spelled here rather than at each step because those two
-    renderings of one duration have to agree, and a format string copied per
-    handler agrees only until one copy is edited.
+    Which operation, which of the three ways it can end, and the duration in
+    both a human spelling and the machine one a log scraper keys on. Centralised
+    so those two renderings of one duration cannot drift apart.
 
     ``detail`` appends a step-specific parenthetical (an exit code, say) after
     the status; the rest of the line stays fixed.
@@ -289,12 +270,12 @@ def settle_step[ReceiptT: RunReceipt](
 ) -> ReceiptT:
     """Close a step: stop its clock, receipt it against that clock, and say so.
 
-    The author-side counterpart of :func:`~repo2ree_core.operations.steps.review.review_step_halt`
-    — the same "settle the record and report consistently" job, for a lifecycle
-    whose record is a receipt rather than a persisted attempt. The order is the
-    load-bearing part: one :meth:`OperationTimer.finish` reading feeds both the
-    receipt's envelope and the closing log line, so a receipt can never claim a
-    duration the log contradicts.
+    The author-side counterpart of the reviewer's ``settle`` exit
+    (:mod:`repo2ree_core.operations.steps.review`), for a lifecycle whose record
+    is a receipt rather than a persisted attempt. The order is load-bearing: one
+    :meth:`OperationTimer.finish` reading feeds both the receipt's envelope and
+    the closing log line, so a receipt can never claim a duration the log
+    contradicts.
 
     ``build`` receives the envelope and returns the step's own receipt, so this
     knows nothing about which shapes exist — the same reason
@@ -356,10 +337,9 @@ class StepRecord:
     """Everything the shared runner learned about one runnable run.
 
     The complete input to a step's receipt, assembled by the runner and handed
-    to :attr:`RunnableStep.build_receipt`. It exists so that hand-off can be one
-    typed value rather than a widening argument list: a receipt shape that needs
-    a fact none of the others do adds a field here, not a parameter to every
-    builder.
+    to :attr:`RunnableStep.build_receipt` as one typed value: a receipt shape
+    needing a fact none of the others do adds a field here, not a parameter to
+    every builder.
     """
 
     run_id: str
@@ -381,12 +361,11 @@ def step_receipt_fields(record: StepRecord) -> RunnableStepFields:
     Spread into the receipt a builder constructs (``**step_receipt_fields(...)``,
     the same idiom as :func:`receipt_envelope`, which it includes). These are the
     fields that make a receipt auditable — the input slice collected before the
-    run, bound to what the run did — so no builder gets to spell them itself.
+    run, bound to what the run did — so no builder spells them itself.
 
-    Typed as a :class:`RunnableStepFields` rather than a plain mapping so the
-    spread stays checked: a receipt field renamed on one side and not the other
-    is a type error here, not a validation error thrown away at the end of the
-    run it was recording.
+    Typed rather than a plain mapping so the spread stays checked: a receipt
+    field renamed on one side only is a type error here, not a validation error
+    thrown away at the end of the run it was recording.
     """
     return RunnableStepFields(
         **receipt_envelope(record.run_id, record.timing, record.status),
@@ -414,14 +393,9 @@ class RunnableStep:
     :class:`~repo2ree_core.domain.experiment.Runnable` means — and differ only
     in what they *record*: what shape their evidence takes, and whether a
     successful run has declared outputs to capture as a reviewer's baseline.
-    Both are stated here by the handler that owns the step.
 
-    ``build_receipt`` is a builder rather than a receipt class because a step
-    that records something the others do not must be able to say so itself. Hand
-    the runner a class and it is left holding a receipt it has to interrogate
-    before it can finish filling in — which is recognising its callers by type,
-    the same coupling as recognising them by name and just as prone to going
-    quietly wrong when a third step arrives.
+    ``build_receipt`` is a builder rather than a receipt class so the runner
+    never has to interrogate a receipt to finish filling it in.
     """
 
     operation: str
