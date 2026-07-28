@@ -4,14 +4,18 @@ All filesystem I/O for a single REE goes through :class:`ReeStore`. It takes
 a :class:`ReeLayout` at construction and performs reads, writes, and
 directory bootstrapping at the paths the layout describes. The layout
 itself is pure; this module is intentionally not.
+
+Every write here replaces its target atomically
+(:func:`repo2ree_core.ree.files.write_atomic`), so a workbench killed mid-write
+leaves the previous version rather than a prefix of the new one. That is what
+lets the readers throughout ``operations`` treat an unparseable document as a
+defect worth reporting rather than an expected state to recover from.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import shutil
-import tempfile
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -19,6 +23,7 @@ from typing import Any
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.path_safety import validate_relative_path
+from repo2ree_core.ree.files import write_atomic, write_json_atomic
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
@@ -57,9 +62,14 @@ class SubtreeStore:
         return self.absolute(rel).read_text(encoding=encoding)
 
     def write_bytes(self, rel: str | PurePosixPath, content: bytes) -> None:
-        target = self.absolute(rel)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(content)
+        """Replace a subtree file, atomically.
+
+        Overlay content is authored, and the etag a client holds is a digest of
+        what it last read — so a torn write here would both lose edits that
+        exist nowhere else and leave the next optimistic-concurrency check
+        comparing against a half-file.
+        """
+        write_atomic(self.absolute(rel), content)
 
     def write_text(
         self,
@@ -67,9 +77,7 @@ class SubtreeStore:
         content: str,
         encoding: str = "utf-8",
     ) -> None:
-        target = self.absolute(rel)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding=encoding)
+        write_atomic(self.absolute(rel), content.encode(encoding))
 
     def delete(self, rel: str | PurePosixPath) -> None:
         target = self.absolute(rel)
@@ -231,7 +239,7 @@ class ReeStore:
 
     def write_metadata_json(self, payload: dict[str, Any]) -> None:
         """Write raw JSON metadata atomically. Companion to :meth:`read_metadata_json`."""
-        _write_json_atomic(self.layout.metadata, payload)
+        write_json_atomic(self.layout.metadata, payload)
 
     # --- Typed intent / session accessors -------------------------------
 
@@ -255,31 +263,12 @@ class ReeStore:
         return _read_json(self.layout.manifest)
 
     def write_manifest(self, payload: dict[str, Any]) -> None:
-        _write_json_atomic(self.layout.manifest, payload)
+        write_json_atomic(self.layout.manifest, payload)
 
 
 def _read_json(path: Path) -> dict[str, Any]:
     parsed: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
     return parsed
-
-
-def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(payload, indent=2, sort_keys=True)
-    fd, tmp_name = tempfile.mkstemp(
-        prefix=path.name + ".",
-        suffix=".tmp",
-        dir=path.parent,
-    )
-    tmp_path = Path(tmp_name)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(text)
-        os.replace(tmp_path, path)
-    except BaseException:
-        if tmp_path.exists():
-            tmp_path.unlink()
-        raise
 
 
 def reset_source_state(*, layout: ReeLayout, store: ReeStore) -> None:

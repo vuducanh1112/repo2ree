@@ -261,6 +261,32 @@ def test_a_failed_scan_is_inconclusive(tmp_path: Path, monkeypatch: pytest.Monke
     assert _build().outputs["comparison"]["verdict"] == "inconclusive"
 
 
+def test_a_canceled_scan_is_not_recorded_as_an_inconclusive_verdict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ "Nobody asked" and "the evidence could not answer" must stay distinct.
+
+    Both leave the closure unknown, but only the second is a finding about the
+    build — recording a cancel as ``inconclusive`` would complete the step with
+    a verdict nothing established.
+    """
+    layout = _author_ree(tmp_path, monkeypatch, author_sbom=_sbom(AUTHOR_PACKAGES))
+    _reviewed_source(layout)
+
+    def canceled_scan(_runtime: Path, _output: Path, **_kwargs: Any) -> ScanOutcome:
+        return ScanOutcome(returncode=-15, canceled=True)
+
+    monkeypatch.setattr(handler, "scan_runtime_archive", canceled_scan)
+
+    result = _build()
+
+    assert result.status == "canceled"
+    record = load_reviews(layout).reviews[0]
+    build = step_state(record, "build")
+    assert build is not None and build.status == "canceled"
+    assert record.build_comparison is None
+
+
 def test_the_rebuild_is_isolated_from_author_evidence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     layout = _author_ree(tmp_path, monkeypatch, author_sbom=_sbom(AUTHOR_PACKAGES))
     _reviewed_source(layout)

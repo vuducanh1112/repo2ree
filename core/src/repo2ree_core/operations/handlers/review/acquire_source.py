@@ -34,6 +34,7 @@ from repo2ree_core.evidence.review.models import (
 from repo2ree_core.evidence.review.store import write_review_record, write_review_source_evidence
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
 from repo2ree_core.operations.steps.review import begin_review_step
+from repo2ree_core.ree.files import write_atomic
 from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.source_repo.swhid import directory_swhid
@@ -200,14 +201,15 @@ def _stage_acquisition(
     if basis == "bundled":
         shutil.copyfile(ree_layout.snapshot_archive, review_layout.snapshot_archive)
         log("system", "info", f"staged the author snapshot into {review_layout.snapshot_archive}")
-        review_layout.acquire_script.write_bytes(build_acquire_sh(swhid=intent.swhid))
+        write_atomic(review_layout.acquire_script, build_acquire_sh(swhid=intent.swhid))
         return
     review_layout.snapshot_archive.unlink(missing_ok=True)
-    review_layout.acquire_script.write_bytes(
+    write_atomic(
+        review_layout.acquire_script,
         build_acquire_sh(
             origin_url=intent.origin_url,
             source_type=intent.source_type,
             revision=intent.revision,
             swhid=intent.swhid,
-        )
+        ),
     )

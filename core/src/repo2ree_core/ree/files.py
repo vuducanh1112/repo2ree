@@ -1,4 +1,4 @@
-"""File operations the REE aggregate is built out of: fetch, extract, enumerate.
+"""File operations the REE aggregate is built out of: write, fetch, extract, enumerate.
 
 Tar and zip archives can contain entries whose names point outside the
 destination directory (``../etc/passwd``, absolute paths, etc.). The
@@ -12,14 +12,98 @@ any future archive consumers can share the same operations.
 
 from __future__ import annotations
 
+import json
+import os
 import shutil
 import tarfile
 import zipfile
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 from urllib.request import urlopen
+from uuid import uuid4
 
 from repo2ree_core.digests import HashingWriter
+
+# ================================================
+# Durable writes
+# ================================================
+
+
+def staging_path(path: Path) -> Path:
+    """A sibling of ``path`` to write before publishing it with :func:`publish_atomic`.
+
+    A sibling rather than a temp directory so the publish is a rename within one
+    filesystem, which is what makes it atomic. Unique per call: two writers
+    racing on one path must not collide on the staging file and hand each other
+    a partial one to publish.
+    """
+    return path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+
+
+def publish_atomic(staged: Path, path: Path) -> None:
+    """Make already-written bytes visible at ``path`` in one indivisible step.
+
+    For producers that cannot hand over a ``bytes`` — a subprocess writing its
+    own output file, a stream too large to buffer. Write to
+    :func:`staging_path`, then publish here once the producer has finished
+    *successfully*; on any other outcome unlink the staging file instead, and
+    whatever was at ``path`` is still there untouched.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(staged, path)
+
+
+def write_atomic(path: Path, content: bytes) -> None:
+    """Replace ``path`` with ``content``, or leave what was there untouched.
+
+    Every durable file this REE writes goes through here, so a process killed
+    mid-write can never leave a half-written one behind: the bytes land on a
+    sibling temporary and become visible under the real name in one
+    :func:`os.replace`. A reader therefore sees the previous version or the new
+    one, never a prefix of the new one — which is what lets the readers of these
+    documents treat "present" as "parseable" (see the ``UNREADABLE_DOCUMENT``
+    handling in ``operations.steps.author``).
+
+    Deliberately *not* durable across power loss: that additionally needs an
+    ``fsync`` of the file and of its parent directory, on every write. The
+    failure this guards is a killed workbench — the container dies, the volume
+    does not — so the syncs would be paid on every receipt to buy nothing.
+
+    Buffers ``content`` in memory by construction, which is the whole contract:
+    a caller that cannot hold its output (a streamed download, a subprocess
+    writing its own output file) uses :func:`staging_path` and
+    :func:`publish_atomic` directly rather than squeezing itself through this
+    signature.
+    """
+    temporary = staging_path(path)
+    temporary.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        temporary.write_bytes(content)
+        publish_atomic(temporary, path)
+    except BaseException:
+        # Includes cancellation: a killed write must not leave litter beside the
+        # file it failed to replace.
+        temporary.unlink(missing_ok=True)
+        raise
+
+
+def json_document_bytes(payload: Any) -> bytes:
+    """Serialize ``payload`` the way this REE spells a persisted document.
+
+    Indented and key-sorted: these files are read by humans auditing an REE and
+    diffed between runs, and sorted keys are what keep a diff about the values
+    that changed. Distinct from :func:`repo2ree_core.digests.digest_json`, which
+    canonicalizes for *hashing* (compact, no whitespace) — the two must not be
+    merged, because changing the persisted spelling here would change every
+    digest there.
+    """
+    return json.dumps(payload, indent=2, sort_keys=True).encode("utf-8")
+
+
+def write_json_atomic(path: Path, payload: Any) -> None:
+    """Atomically replace ``path`` with ``payload`` as a persisted JSON document."""
+    write_atomic(path, json_document_bytes(payload))
 
 
 def download_or_copy(origin_url: str, destination: Path) -> Path:

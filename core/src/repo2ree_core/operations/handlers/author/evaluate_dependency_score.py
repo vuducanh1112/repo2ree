@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.repository.profiler import AnalysisError, analyze_repo
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.ree.files import write_json_atomic
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_protocol.command import EvaluateDependencyScoreArgs
@@ -50,12 +50,7 @@ def handle_evaluate_dependency_score(
         return ActionResult(status="canceled")
 
     try:
-        layout.artifacts.mkdir(parents=True, exist_ok=True)
-        report_path = layout.reproducibility_report
-        report_path.write_text(
-            json.dumps(report.model_dump(), indent=2),
-            encoding="utf-8",
-        )
+        write_json_atomic(layout.reproducibility_report, report.model_dump())
         store = ReeStore(layout)
         session = store.read_session().with_evaluation(
             dependency_level=int(report.dependency_level),

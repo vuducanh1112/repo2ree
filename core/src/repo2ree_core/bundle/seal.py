@@ -42,7 +42,7 @@ from repo2ree_core.bundle.plan import (
 )
 from repo2ree_core.evidence.receipts.consistency import ConsistencyReport, build_consistency_report
 from repo2ree_core.evidence.receipts.store import author_receipt_path, published_receipts
-from repo2ree_core.ree.files import list_tree_relpaths
+from repo2ree_core.ree.files import list_tree_relpaths, write_atomic
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.ree.workspace.views import layout_for, store_for
@@ -307,8 +307,13 @@ def seal_workspace_ree(
     )
     zip_bytes = build_zip_bytes(_entries_with_manifest(head, tail, manifest_bytes))
 
-    # Persist everything atomically within the workbench lock (held by caller).
-    layout.sealed_archive.write_bytes(zip_bytes)
+    # Three writes, serialized against other writers by the workbench lock the
+    # caller holds, and each individually atomic against this process dying
+    # between them. The archive goes first: it is the only one of the three that
+    # nothing recomputes, so a crash after it leaves a bundle no session claims
+    # (recoverable — seal again), while a crash before it would leave a session
+    # claiming a seal_hash for an archive that was never written.
+    write_atomic(layout.sealed_archive, zip_bytes)
     store.write_manifest(sidecar_manifest)
     store.write_session(session)
 

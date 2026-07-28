@@ -40,6 +40,7 @@ from repo2ree_core.evidence.receipts.models import (
 )
 from repo2ree_core.evidence.receipts.store import load_author_receipts, stat_table
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES
+from repo2ree_core.ree.files import write_json_atomic
 from repo2ree_core.ree.layout import ReeLayout
 
 _DRIFT_PATHS_CAP = 20
@@ -145,7 +146,7 @@ def current_runtime_digest(layout: ReeLayout, runtime_path: str | None) -> str |
             return str(cached["digest"])
     digest = digest_file(path)
     with suppress(Exception):
-        layout.digest_cache.write_text(json.dumps({**key, "digest": digest}), encoding="utf-8")
+        write_json_atomic(layout.digest_cache, {**key, "digest": digest})
     return digest
 
 

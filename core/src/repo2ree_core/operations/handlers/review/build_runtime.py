@@ -69,6 +69,7 @@ from repo2ree_core.operations.steps.review import (
     workspace_runtime,
     workspace_runtime_candidates,
 )
+from repo2ree_core.ree.files import write_atomic
 from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
@@ -147,7 +148,7 @@ def handle_review_build_runtime(
     except OSError as exc:
         return stop("failed", f"could not stage the author overlay: {exc}")
 
-    review_layout.materialize_script.write_bytes(build_materialize_sh())
+    write_atomic(review_layout.materialize_script, build_materialize_sh())
     command = ["sh", str(review_layout.materialize_script)]
     log("system", "info", f"review {args.review_id}: materializing into {review_layout.workspace}")
     log("system", "info", format_command(command))
@@ -194,7 +195,13 @@ def handle_review_build_runtime(
         observed_runtime_digest=observed_runtime_digest,
         basis=basis,
         log=log,
+        is_canceled=is_canceled,
     )
+    # A cancel is not an inconclusive verdict. Both leave the closure unknown,
+    # but "nobody asked the question" must not be recorded as "the evidence
+    # could not answer it" — the second reads as a finding about the build.
+    if comparison is None:
+        return stop("canceled", "certification canceled")
 
     timing = timer.finish()
     # No snapshot digest and no drift verdict: both describe an author's
@@ -263,13 +270,18 @@ def _certify(
     observed_runtime_digest: str,
     basis: EvidenceBasis,
     log: LogSink,
-) -> BuildComparison:
+    is_canceled: CancelCheck,
+) -> BuildComparison | None:
     """Scan the runtime in hand and compare it with the author's recorded build.
 
     A scan that cannot run — an unsupported artifact shape, a missing scanner,
     an absent author SBOM — yields an empty closure on one side, which the
     comparison reports as ``inconclusive``. That is the honest answer: it is a
     statement about the evidence, not about the build.
+
+    Returns ``None`` when the scan was canceled, which is deliberately *not* one
+    of those cases: an abandoned scan says nothing about the runtime, so the
+    caller halts the step instead of settling a verdict over it.
     """
     author = load_author_receipts(ree_layout)
     author_build = author.get("build_runtime")
@@ -285,7 +297,9 @@ def _certify(
     if not is_runtime_archive(runtime_path):
         log("system", "warn", f"cannot scan {runtime_path}: SBOM comparison supports runtime tarballs only")
     else:
-        scan = scan_runtime_archive(runtime_abs, review_layout.sbom, log=log)
+        scan = scan_runtime_archive(runtime_abs, review_layout.sbom, log=log, is_canceled=is_canceled)
+        if scan.canceled:
+            return None
         if scan.returncode != 0:
             log("system", "warn", f"syft failed (exit {scan.returncode}); the closure comparison is inconclusive")
         else:

@@ -15,6 +15,7 @@ from repo2ree_core.digests import digest_file
 from repo2ree_core.evidence.receipts.models import CrossCheckSbomReceipt
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.author import UNREADABLE_DOCUMENT, log_step_outcome, settle_step
+from repo2ree_core.ree.files import write_json_atomic
 from repo2ree_core.ree.layout import REPRODUCIBILITY_REPORT_FILENAME, SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.time_utils import OperationTimer, utc_now
 from repo2ree_protocol.log import LogSink
@@ -107,10 +108,11 @@ def handle_cross_check_sbom(
     try:
         report.dependencies = result.dependencies
         report.sbom_cross_check = summary
-        report_path.write_text(
-            json.dumps(report.model_dump(), indent=2),
-            encoding="utf-8",
-        )
+        # Read-modify-write of the evaluate step's report: a torn write here
+        # would lose that step's work too, not just this one's, and leave a
+        # present-but-unparseable file that fails this handler's own
+        # precondition on the next run.
+        write_json_atomic(report_path, report.model_dump())
     except OSError as exc:
         log("system", "error", f"failed to persist cross-checked report: {exc}")
         receipt("failed")

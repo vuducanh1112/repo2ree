@@ -9,11 +9,7 @@ Imperative shell: every function here touches the filesystem.
 
 from __future__ import annotations
 
-import json
-import os
 from contextlib import suppress
-from pathlib import Path
-from uuid import uuid4
 
 from repo2ree_core.evidence.receipts.models import (
     AcquireSourceReceipt,
@@ -30,12 +26,13 @@ from repo2ree_core.evidence.review.models import (
     ReviewStepKey,
     SourceComparison,
 )
+from repo2ree_core.ree.files import json_document_bytes, write_atomic, write_json_atomic
 from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.reserved_paths import experiment_slug
 
 
 def write_review_record(layout: ReviewLayout, record: ReviewRecord) -> None:
-    _atomic_write_json(layout.metadata, record.model_dump(mode="json"))
+    write_json_atomic(layout.metadata, record.model_dump(mode="json"))
 
 
 def read_review_record(layout: ReviewLayout) -> ReviewRecord | None:
@@ -92,10 +89,10 @@ def write_review_experiment_evidence(
     both sides of the same REE are laid out the same way.
     """
     slug = experiment_slug(receipt.experiment_name)
-    payload = receipt.model_dump(mode="json")
-    _atomic_write_json(layout.run_receipt(receipt.run_id), payload)
-    _atomic_write_json(layout.experiment_receipt(slug), payload)
-    _atomic_write_json(layout.experiment_comparison(slug), comparison.model_dump(mode="json"))
+    payload = json_document_bytes(receipt.model_dump(mode="json"))
+    write_atomic(layout.run_receipt(receipt.run_id), payload)
+    write_atomic(layout.experiment_receipt(slug), payload)
+    write_json_atomic(layout.experiment_comparison(slug), comparison.model_dump(mode="json"))
 
 
 def _write_review_evidence(
@@ -109,10 +106,10 @@ def _write_review_evidence(
     The same selection rule the author side uses: ``runs/`` keeps the immutable
     history, ``receipts/<operation>.json`` keeps the latest per operation.
     """
-    payload = receipt.model_dump(mode="json")
-    _atomic_write_json(layout.run_receipt(receipt.run_id), payload)
-    _atomic_write_json(layout.operation_receipt(receipt.operation), payload)
-    _atomic_write_json(layout.comparison(step), comparison)
+    payload = json_document_bytes(receipt.model_dump(mode="json"))
+    write_atomic(layout.run_receipt(receipt.run_id), payload)
+    write_atomic(layout.operation_receipt(receipt.operation), payload)
+    write_json_atomic(layout.comparison(step), comparison)
 
 
 def load_reviews(layout: ReeLayout) -> ReviewSet:
@@ -124,13 +121,3 @@ def load_reviews(layout: ReeLayout) -> ReviewSet:
             records.append(ReviewRecord.model_validate_json(path.read_text(encoding="utf-8")))
     records.sort(key=lambda record: (record.created_at, record.review_id), reverse=True)
     return ReviewSet(reviews=records)
-
-
-def _atomic_write_json(path: Path, payload: dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        temporary.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)

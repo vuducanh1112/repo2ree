@@ -21,6 +21,7 @@ from repo2ree_core.execution.process import (
     run_streaming_process,
 )
 from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
+from repo2ree_core.ree.files import write_atomic
 from repo2ree_core.ree.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import AcquireSourceArgs
@@ -45,8 +46,9 @@ def _write_acquire_script(args: AcquireSourceArgs, *, log: LogSink, layout: ReeL
     (it is computed after acquisition); seal regenerates the script with it baked
     in for the bundle.
     """
-    layout.acquire_script.write_bytes(
-        build_acquire_sh(origin_url=args.origin_url, source_type=args.source_type or "", revision=args.revision)
+    write_atomic(
+        layout.acquire_script,
+        build_acquire_sh(origin_url=args.origin_url, source_type=args.source_type or "", revision=args.revision),
     )
     log("system", "info", f"wrote acquire script → {ACQUIRE_SCRIPT_FILENAME}")
     return layout.acquire_script

@@ -14,11 +14,8 @@ Imperative shell: every function here touches the filesystem.
 
 from __future__ import annotations
 
-import json
-import os
 from contextlib import suppress
 from pathlib import Path
-from uuid import uuid4
 
 from repo2ree_core.digests import digest_tree
 from repo2ree_core.domain.ree_intent import ReeIntent
@@ -29,22 +26,12 @@ from repo2ree_core.evidence.receipts.models import (
     receipt_adapter,
     receipt_step_key,
 )
+from repo2ree_core.ree.files import json_document_bytes, write_atomic, write_json_atomic
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.reserved_paths import experiment_slug
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.log import LogSink
-
-
-def _atomic_write(path: Path, content: str) -> None:
-    """Atomically replace one receipt file with fully serialized JSON."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        temporary.write_text(content, encoding="utf-8")
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
 
 
 def author_receipt_path(layout: ReeLayout, receipt: RunReceipt) -> Path:
@@ -63,10 +50,13 @@ def record_receipt(layout: ReeLayout, receipt: RunReceipt, *, log: LogSink) -> N
     under ``receipts/author``.
     """
     try:
-        content = json.dumps(receipt.model_dump(), indent=2, sort_keys=True)
-        _atomic_write(layout.run_receipt(receipt.run_id), content)
+        # Serialized once and written twice: history and the selected receipt
+        # are the same bytes by construction, so no promotion can quietly
+        # publish a receipt that differs from the one it was recorded as.
+        content = json_document_bytes(receipt.model_dump())
+        write_atomic(layout.run_receipt(receipt.run_id), content)
         if receipt.status == "succeeded":
-            _atomic_write(author_receipt_path(layout, receipt), content)
+            write_atomic(author_receipt_path(layout, receipt), content)
     except Exception as exc:
         log("system", "warn", f"failed to record run receipt: {exc}")
 
@@ -189,9 +179,6 @@ def write_materialize_marker(
             "overlay_digest": digest_tree(layout.overlay),
             "files": stat_table(layout.workspace),
         }
-        layout.materialize_marker.write_text(
-            json.dumps(marker, indent=2, sort_keys=True),
-            encoding="utf-8",
-        )
+        write_json_atomic(layout.materialize_marker, marker)
     except Exception as exc:
         log("system", "warn", f"failed to write materialization marker: {exc}")

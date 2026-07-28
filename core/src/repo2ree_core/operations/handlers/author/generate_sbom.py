@@ -13,6 +13,7 @@ from repo2ree_core.operations.steps.author import (
     resolve_workspace_path,
     settle_step,
 )
+from repo2ree_core.ree.files import publish_atomic, staging_path
 from repo2ree_core.ree.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.time_utils import OperationTimer
@@ -94,11 +95,25 @@ def handle_generate_sbom(
     # a materialized tree — or exempt it from that tree's drift check.
     output_path = layout.sbom
     log("system", "info", f"Runtime input: {runtime_path}")
-    scan = scan_runtime_archive(runtime_abs, output_path, log=log)
+
+    # Scanned into a staging sibling and promoted only once syft has finished
+    # cleanly. The scanner writes its own output file, so a scan that fails or
+    # is canceled part-way leaves a partial document behind — and this path is
+    # the one the intent points at, so publishing that would leave the REE
+    # declaring an SBOM that no longer parses.
+    staged = staging_path(output_path)
+    scan = scan_runtime_archive(runtime_abs, staged, log=log, is_canceled=is_canceled)
+    if scan.canceled:
+        staged.unlink(missing_ok=True)
+        receipt("canceled")
+        return ActionResult(status="canceled")
     if scan.returncode != 0:
+        staged.unlink(missing_ok=True)
         log("system", "error", f"syft failed (exit {scan.returncode})")
         receipt("failed")
-        return ActionResult.failed("execution", f"syft failed (exit {scan.returncode})", exit_code=scan.returncode)
+        # Never 0: a failed step must not report the exit code of a success.
+        return ActionResult.failed("execution", f"syft failed (exit {scan.returncode})", exit_code=scan.returncode or 1)
+    publish_atomic(staged, output_path)
 
     try:
         patch_ree_intent(ReeStore(layout), {"sbom": SBOM_ARTIFACT_PATH})

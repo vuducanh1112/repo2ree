@@ -8,16 +8,24 @@ spelled at each call site.
 
 Shell module: it runs a subprocess and writes the scanner's output file. The
 parsing of that output into the IR stays in :mod:`repo2ree_core.analysis.sbom.cyclonedx`.
+
+The scan runs through the shared process runner rather than a blocking
+``subprocess.run``. Scanning a multi-gigabyte runtime tarball is the longest
+non-script operation in the system, and going through the runner is what makes
+it behave like one: progress reaches the run log while it happens, a cancel
+signals the whole process group instead of being noticed once the tool has
+already finished, and the invocation lands on a ``workbench.exec`` span like
+every other subprocess the workbench runs.
 """
 
 from __future__ import annotations
 
 import json
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
 from repo2ree_core.execution.tools import resolve_tool
 from repo2ree_protocol.log import LogSink
 
@@ -30,10 +38,16 @@ RUNTIME_ARCHIVE_SUFFIXES = (".tar", ".tar.gz", ".tgz")
 
 @dataclass(frozen=True)
 class ScanOutcome:
-    """What a scan run produced: its exit code and the tool that produced it."""
+    """What a scan run produced: how it ended, and the tool that produced it.
 
-    returncode: int
+    ``canceled`` is its own field rather than a distinguished exit code: a
+    scanner killed by a cancel exits nonzero the same way a scanner that choked
+    on the archive does, and only one of those is news about the runtime.
+    """
+
+    returncode: int | None
     tool_version: str | None = None
+    canceled: bool = False
 
 
 def is_runtime_archive(path: str) -> bool:
@@ -41,13 +55,24 @@ def is_runtime_archive(path: str) -> bool:
     return path.lower().endswith(RUNTIME_ARCHIVE_SUFFIXES)
 
 
-def scan_runtime_archive(runtime_abs: Path, output_path: Path, *, log: LogSink) -> ScanOutcome:
+def scan_runtime_archive(
+    runtime_abs: Path,
+    output_path: Path,
+    *,
+    log: LogSink,
+    is_canceled: CancelCheck = lambda: False,
+) -> ScanOutcome:
     """Scan a runtime tarball into a CycloneDX document at ``output_path``.
 
     ``--scope squashed`` is pinned explicitly: "observed in the runtime" must
     mean the squashed filesystem, and scanner defaults must not drift underneath
-    the recorded evidence. A non-zero return code is reported, never raised —
-    the caller decides whether a failed scan is fatal or merely inconclusive.
+    the recorded evidence. Neither a non-zero return code nor a cancel is raised
+    — both are reported, and the caller decides whether a scan that did not
+    finish is fatal or merely leaves the evidence inconclusive.
+
+    The scanner writes ``output_path`` itself, so a run that did not succeed can
+    leave a partial document there. Callers that publish the result as durable
+    evidence scan into a staging path and promote it only on success.
     """
     syft = resolve_tool("syft")
     argv = [
@@ -58,14 +83,12 @@ def scan_runtime_archive(runtime_abs: Path, output_path: Path, *, log: LogSink) 
         "-o",
         f"{SBOM_FORMAT}={output_path}",
     ]
-    log("system", "info", f"$ {' '.join(argv)}")
+    log("system", "info", format_command(argv))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    result = subprocess.run(argv, capture_output=True, text=True)
-    for line in result.stdout.splitlines():
-        log("stdout", "info", line)
-    for line in result.stderr.splitlines():
-        log("stdout", "info", line)
+    result = run_streaming_process(argv, log=log, is_canceled=is_canceled)
+    if result.canceled or is_canceled():
+        return ScanOutcome(returncode=result.returncode, canceled=True)
     if result.returncode != 0:
         return ScanOutcome(returncode=result.returncode)
     return ScanOutcome(returncode=0, tool_version=read_tool_version(output_path))

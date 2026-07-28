@@ -17,6 +17,7 @@ from repo2ree_core.execution.process import (
     format_command,
     run_streaming_process,
 )
+from repo2ree_core.ree.files import write_atomic
 from repo2ree_core.ree.layout import MATERIALIZE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_protocol.log import LogSink
@@ -31,7 +32,7 @@ def _write_materialize_script(*, log: LogSink, layout: ReeLayout) -> Path:
     REE, so the REE root is always present. The script takes no per-source inputs
     — it merges whatever is on disk under the fixed layout dirs.
     """
-    layout.materialize_script.write_bytes(build_materialize_sh())
+    write_atomic(layout.materialize_script, build_materialize_sh())
     log("system", "info", f"wrote materialize script → {MATERIALIZE_SCRIPT_FILENAME}")
     return layout.materialize_script
 

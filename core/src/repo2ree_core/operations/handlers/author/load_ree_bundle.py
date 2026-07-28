@@ -27,7 +27,7 @@ from repo2ree_core.authoring.script_generation.materialize_workspace import buil
 from repo2ree_core.bundle.restore import BundleLoadOutputs, restore_ree_bundle
 from repo2ree_core.evidence.receipts.store import write_materialize_marker
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
-from repo2ree_core.ree.files import safe_extract_zip
+from repo2ree_core.ree.files import safe_extract_zip, write_atomic
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_protocol.command import LoadReeBundleArgs
@@ -104,12 +104,12 @@ def _rebuild_derived_trees(
     if restored_source:
         # Snapshot-only acquisition: the script extracts the restored snapshot
         # and never reaches for the origin, so loading stays offline.
-        layout.acquire_script.write_bytes(build_acquire_sh())
+        write_atomic(layout.acquire_script, build_acquire_sh())
         failure = _run_script(layout.acquire_script, what="acquire", log=log, is_canceled=is_canceled)
         if failure is not None:
             return failure
 
-    layout.materialize_script.write_bytes(build_materialize_sh())
+    write_atomic(layout.materialize_script, build_materialize_sh())
     failure = _run_script(layout.materialize_script, what="materialize", log=log, is_canceled=is_canceled)
     if failure is not None:
         return failure
