@@ -26,6 +26,28 @@ commands, and compare the result against published expectations.
 Venues and institutions can use repo2ree as a reproducibility layer over their
 own compute and archival infrastructure.
 
+## Why the author does the work
+
+repo2ree asks the author to declare things a README would leave implicit: where
+the build lives, how the runtime is activated, which command is the experiment,
+and what counts as a passing result. That is deliberate. The work moves to the
+author so it does not fall on every reader afterwards.
+
+Three reasons it belongs there:
+
+- **The author knows.** Which of the twelve scripts is the experiment, and what
+  "it worked" means, is not recoverable from the repository by guesswork.
+- **One author, many readers.** A cost paid once upstream is a cost not
+  repeated by everyone downstream.
+- **The knowledge decays.** Within a year the details are gone, including from
+  the author. Capturing them is only cheap while they are fresh.
+
+repo2ree tries to keep that cost small — it reads the repository and proposes
+build and run scripts for you to confirm rather than write. It stops short of
+guessing what your code does: it will scaffold an experiment run, but it will
+not choose the command, because a wrong guess that runs produces evidence worse
+than none.
+
 ## What you bring and what you get
 
 | You bring | repo2ree returns |

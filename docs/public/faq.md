@@ -12,6 +12,16 @@ No. Those are substrates. repo2ree connects source, runtime, experiment
 evidence, and archive metadata so those tools can form one reproducibility
 workflow.
 
+## Why does repo2ree ask so much of the author?
+
+Because the alternative is asking far more of everyone else. The author knows
+how their software builds and runs; a reviewer facing the same repository a year
+later does not, and neither does the author's future self. repo2ree moves that
+work upstream, where it is cheap and accurate, so it is not repeated downstream
+by each reader as guesswork. Script inference keeps the cost down by proposing
+build and run scripts from the repository — but it will not guess what your code
+does, because a wrong guess that runs is worse than no answer.
+
 ## Is a Repro Label a grade?
 
 No. It is a disclosure. It should show evidence and risks: what is pinned, what

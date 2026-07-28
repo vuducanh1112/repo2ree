@@ -58,7 +58,59 @@ vocabulary, bindings, and workflows that turn them into one citable artifact.
 
 ## Design principles
 
-Two principles shape the product.
+Three principles shape the product. The first explains the other two.
+
+### Asymmetric by design: the author pays once, every reader collects
+
+repo2ree deliberately puts work on the author in order to take it off
+everyone downstream. That trade **is** the product, not a rough edge of the
+prototype.
+
+Today the cost sits in the wrong place. A reviewer clones a repo, finds a
+README if they are lucky, and reconstructs by guesswork what the author knew
+exactly. The next reader repeats that work from the same standing start. The
+knowledge that would have made it a ten-minute job existed — in one person's
+head, at one moment — and was never written anywhere a machine could act on
+it.
+
+Three asymmetries put the burden with the author:
+
+| Asymmetry | Why the author |
+|---|---|
+| **Information** | The author knows which of the twelve scripts is the experiment, which flags matter, and what "it worked" means. The reviewer is guessing. |
+| **Multiplicity** | One author, many readers over the artifact's life. Work done once upstream is work not repeated by each of them. |
+| **Decay** | The author's knowledge is perishable. Within a year it is gone — including from the author. Capture is only cheap while it is still fresh. |
+
+repo2ree therefore asks the author for **convention where the ecosystem has
+none**: a
+reserved build script, a reserved activation script, a named experiment whose
+verify script owns the claim. Little of this is new intellectual work. It is
+knowledge the author already has, written down in a place a machine can act on
+— which is precisely what a README is not. What comes back is an artifact a
+reviewer can execute and compare without the author present, and the
+[Verify](#verify) workflow that this makes possible at all.
+
+This principle sets two obligations on everything else in the product.
+
+**Reduce the burden wherever honesty permits — and stop there.** Script
+inference exists for this: it reads the repository and proposes the plumbing
+so the author confirms rather than composes. But it deliberately never selects
+a run command. It emits a fail-closed scaffold and says so, because repo2ree
+cannot know what the author's software does, and a wrong guess that *runs*
+produces evidence worse than no evidence at all. Burden reduction stops at the
+point where it would start manufacturing claims.
+
+**Pay the author back in the same transaction.** Costs and benefits landing on
+different people is the standing risk of this design, and no amount of
+engineering removes it — it is why reproducibility tooling historically lives
+or dies on mandates from venues and funding bodies rather than on merit. The
+mitigation is
+that the sealed bundle must be worth having for the author too: a runnable
+artifact for their own future self, a deposit-ready object with a DOI, a
+citable record of a run they will otherwise re-derive by hand next year. Every
+increment of author burden should buy the author something, not only their
+readers. Where it does not, the burden is a defect rather than a design
+choice.
 
 ### Not a work environment
 
