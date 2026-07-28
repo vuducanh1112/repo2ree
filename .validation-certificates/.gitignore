@@ -1,0 +1,14 @@
+# Certificates recording what a gate last validated, written by
+# scripts/commit-gate-stamp.sh and checked by the pre-commit hook. They describe
+# one clone's state, so they are never committed — but the directory is, so a
+# fresh clone has somewhere to put them and this ignore rule is in force from
+# the first commit rather than after someone remembers to add it.
+#
+# The rule is load-bearing, not tidiness. A certificate is a hash of the working
+# tree; a *tracked* certificate would be part of the tree it measures, so writing
+# one would change the answer and no certificate could ever match twice. The
+# script refuses to write a certificate that git does not ignore, so if this rule
+# is ever edited away the gate fails loudly instead of silently rejecting every
+# commit.
+*
+!.gitignore

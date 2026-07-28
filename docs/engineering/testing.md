@@ -24,7 +24,7 @@
 | `make stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
 | `make workbench-clean` | Just the workbench leftovers; `STORE=1` also drops every bundle store volume. |
 | `make store-gc` | Evict bundle store caches unused for `STORE_GC_DAYS` (14), keeping the live one. |
-| `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. Also runs as the pre-commit hook. |
+| `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
 | `make e2e-coverage` | Backend coverage plus browser-side frontend coverage for e2e. |
 
@@ -248,15 +248,41 @@ backend unit, core integration). It takes well under a minute warm — that's
 the point; commits should stay cheap. The exhaustive counterpart is the push
 gate below.
 
-It is also wired as the pre-commit hook (`.pre-commit-config.yaml`), so it
-runs on every commit whether or not you remember it. The hook shells out to
-this target rather than pinning linters of its own: a hook that pins its own
-ruff drifts from the pin in `pyproject.toml`, and then the hook and the gate
-enforce different rules. Because pre-commit stashes whatever you have not
-staged, the hook checks exactly the staged tree — stricter than running the
-target by hand on a dirty one. Steps that rewrite files (`ruff format`, `biome --write`)
-fail the commit rather than rewriting silently, leaving the formatted result
-to re-stage.
+The pre-commit hook does not run the gate — it checks that you did. On a green
+run the gate records the tree it validated under `.validation-certificates/`,
+whose own `.gitignore` keeps every certificate out of the repository while
+keeping the directory in it. That ignore rule is load-bearing rather than
+tidiness: a certificate is a hash of the working tree and lives inside it, so a
+tracked one would change the thing it measures. `commit-gate-stamp.sh` refuses
+to write a certificate git would track, so editing the rule away fails loudly
+instead of rejecting every commit for no visible reason.
+
+The hook (`.pre-commit-config.yaml`) compares that certificate against the tree
+you are about to commit. The comparison is a hash, so it costs milliseconds, and
+any edit to any staged file changes the hash: a certificate can be stale, never
+wrong.
+
+The split exists because pre-commit captures hook output rather than streaming
+it. Running the gate from the hook meant a `git commit` that showed nothing for
+the better part of a minute, which is how a `--no-verify` habit starts. Run the
+gate in your own terminal, where you can watch it, and let the hook do the
+bookkeeping.
+
+The practical consequence is that the gate must see what you intend to commit:
+it fingerprints the working tree, and the hook fingerprints the index. Stage
+first, then run the gate, then commit. Partial staging (`git add -p`, or
+committing a subset of a dirty tree) will not match, because the gate never
+inspected that combination — re-run it against the content you actually mean to
+ship, or use `git commit --no-verify` if you know you are committing something
+the gate has not seen.
+
+What the certificate cannot see is the toolchain: a gate that passed under a
+different ruff than you have installed still produces a valid certificate. The
+pin in `pyproject.toml` is what keeps that honest.
+
+```bash
+scripts/commit-gate-stamp.sh verify   # what the hook runs
+```
 
 `make push-gate` bundles the whole pre-publish sequence: it refuses a dirty
 tree (pushed images must correspond to a commit), then runs the static

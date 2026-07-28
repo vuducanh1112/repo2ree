@@ -20,9 +20,17 @@ endef
 # The commit gate: fast and container-free by design — static checks plus
 # every test tier that runs without docker/nix/browsers, so it's cheap enough
 # to run before each commit. The heavyweight counterpart is push-gate.
+#
+# The last step records the tree this run validated, which is what the
+# pre-commit hook checks (scripts/commit-gate-stamp.sh). It runs only after
+# everything above passed, because make stops the recipe at the first failure —
+# a failed gate leaves the previous certificate in place, and a stale
+# certificate never matches new content anyway.
 commit-gate:
 	$(MAKE) scripts-checks fe-checks be-checks
 	$(MAKE) fe-tests be-unit-tests core-integration-tests
+	scripts/commit-gate-stamp.sh write
+	@echo ">> commit gate green — certificate written for the current tree"
 
 # The push gate: everything that must be green before publishing images, in
 # one command. Refuses a dirty tree first (require-clean-tree) — images build

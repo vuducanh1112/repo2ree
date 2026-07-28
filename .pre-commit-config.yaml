@@ -1,38 +1,38 @@
-# The hook runs `make commit-gate` — the same gate you would run by hand —
-# rather than a separately-pinned ruff-pre-commit copy. A pinned hook version
-# drifts from the ruff pin in pyproject.toml, and then the hook and the gate
-# enforce two different rule sets: that is how an RUF043 finding reached a
-# commit `make be-checks` had just passed. One toolchain, one answer, and the
-# gate is no longer something you can forget to run.
+# The hooks here are cheap by design. The expensive checking lives in
+# `make commit-gate`, which you run in your own terminal where its output
+# streams; the hook only confirms that it ran against the content you are
+# committing.
+#
+# Running the gate *from* the hook was the first design and it did not survive
+# contact: ~50s during which pre-commit shows nothing, because it captures hook
+# output and prints it only after the hook exits. A `git commit` that looks hung
+# for a minute is a `git commit --no-verify` habit waiting to happen, and that
+# costs the guarantee entirely.
 repos:
   - repo: local
     hooks:
-      # always_run with no `files` pattern: the gate ignores the staged file
-      # list and re-checks the whole tree, so a pattern could only gate
-      # *whether* it runs — a guess about which commits can change the answer,
-      # and one that is wrong in ways that matter (a uv.lock-only dependency
-      # bump changes what mypy concludes; an edit to PY_PACKAGES in
-      # mk/checks.mk changes what is covered at all — neither touches a .py
-      # file).
+      # Compares the tree recorded by the last passing `make commit-gate` with
+      # the tree you are about to commit — a hash comparison, ~10ms. Content
+      # equality is the whole check: any edit to any staged file changes the
+      # tree hash, so a certificate can be stale but never wrong.
       #
-      # Note that pre-commit stashes unstaged changes first, so the gate runs
-      # against exactly the staged tree — a stricter check than running
-      # `make commit-gate` by hand on a dirty working tree.
-      - id: commit-gate
-        name: commit gate (static checks + container-free test tiers)
+      # What it does not cover: the gate could have passed under a different
+      # toolchain than you have now. The ruff pin in pyproject.toml is what
+      # keeps that honest, after a pinned ruff-pre-commit hook drifted from it
+      # and let an RUF043 finding through a commit the gate had just passed.
+      - id: commit-gate-certificate
+        name: commit-gate ran on this exact content
         language: system
-        entry: make commit-gate
+        entry: scripts/commit-gate-stamp.sh verify
         always_run: true
         pass_filenames: false
 
       # Keep the pinned npm-deps hash in sync with the frontend lockfile. Not part
       # of commit-gate: it is a nix prefetch measured in minutes, and its entire
-      # input is package-lock.json, so `files` here is an exact statement of what
-      # can change its answer rather than a guess. Regenerates
-      # nix/frontend-npm-deps.hash and, if it changed, fails the commit so you
-      # re-stage it (pre-commit fails any hook that modifies a file, which is also
-      # what turns the gate's in-place `ruff format` and `biome --write` steps into
-      # a failed commit rather than a silent rewrite).
+      # input is package-lock.json, so `files` here states exactly what can change
+      # its answer rather than guessing. Regenerates nix/frontend-npm-deps.hash
+      # and, if it changed, fails the commit so you re-stage it (pre-commit fails
+      # any hook that modifies a file).
       # Prevents committing a lockfile change with a stale hash that would only break
       # later at `nix build` time.
       - id: frontend-npm-hash
