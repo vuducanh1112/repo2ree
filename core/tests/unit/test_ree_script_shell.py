@@ -1,5 +1,7 @@
 """Tests for shared generated-shell formatting helpers."""
 
+import re
+
 import pytest
 
 from repo2ree_core.authoring.script_generation.shell import assert_no_placeholders
@@ -15,5 +17,5 @@ def test_assert_no_placeholders_allows_literal_at_markers():
 
 
 def test_assert_no_placeholders_rejects_unresolved_tokens():
-    with pytest.raises(AssertionError, match="unresolved placeholder in generated x.sh"):
+    with pytest.raises(AssertionError, match=re.escape("unresolved placeholder in generated x.sh")):
         assert_no_placeholders("echo @@MISSING@@\n", artifact="x.sh")

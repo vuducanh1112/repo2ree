@@ -1,17 +1,40 @@
+# The hook runs `make commit-gate` — the same gate you would run by hand —
+# rather than a separately-pinned ruff-pre-commit copy. A pinned hook version
+# drifts from the ruff pin in pyproject.toml, and then the hook and the gate
+# enforce two different rule sets: that is how an RUF043 finding reached a
+# commit `make be-checks` had just passed. One toolchain, one answer, and the
+# gate is no longer something you can forget to run.
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.5
-    hooks:
-      - id: ruff-check
-      - id: ruff-format
-
-  # Keep the pinned npm-deps hash in sync with the frontend lockfile. Runs only
-  # when package-lock.json is staged; regenerates nix/frontend-npm-deps.hash and,
-  # if it changed, fails the commit so you re-stage it (same flow as ruff-format).
-  # Prevents committing a lockfile change with a stale hash that would only break
-  # later at `nix build` time.
   - repo: local
     hooks:
+      # always_run with no `files` pattern: the gate ignores the staged file
+      # list and re-checks the whole tree, so a pattern could only gate
+      # *whether* it runs — a guess about which commits can change the answer,
+      # and one that is wrong in ways that matter (a uv.lock-only dependency
+      # bump changes what mypy concludes; an edit to PY_PACKAGES in
+      # mk/checks.mk changes what is covered at all — neither touches a .py
+      # file).
+      #
+      # Note that pre-commit stashes unstaged changes first, so the gate runs
+      # against exactly the staged tree — a stricter check than running
+      # `make commit-gate` by hand on a dirty working tree.
+      - id: commit-gate
+        name: commit gate (static checks + container-free test tiers)
+        language: system
+        entry: make commit-gate
+        always_run: true
+        pass_filenames: false
+
+      # Keep the pinned npm-deps hash in sync with the frontend lockfile. Not part
+      # of commit-gate: it is a nix prefetch measured in minutes, and its entire
+      # input is package-lock.json, so `files` here is an exact statement of what
+      # can change its answer rather than a guess. Regenerates
+      # nix/frontend-npm-deps.hash and, if it changed, fails the commit so you
+      # re-stage it (pre-commit fails any hook that modifies a file, which is also
+      # what turns the gate's in-place `ruff format` and `biome --write` steps into
+      # a failed commit rather than a silent rewrite).
+      # Prevents committing a lockfile change with a stale hash that would only break
+      # later at `nix build` time.
       - id: frontend-npm-hash
         name: frontend npm-deps hash in sync with lockfile
         language: system

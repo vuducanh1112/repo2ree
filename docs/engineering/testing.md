@@ -24,7 +24,7 @@
 | `make stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
 | `make workbench-clean` | Just the workbench leftovers; `STORE=1` also drops every bundle store volume. |
 | `make store-gc` | Evict bundle store caches unused for `STORE_GC_DAYS` (14), keeping the live one. |
-| `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. |
+| `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. Also runs as the pre-commit hook. |
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
 | `make e2e-coverage` | Backend coverage plus browser-side frontend coverage for e2e. |
 
@@ -244,9 +244,19 @@ pushing or promoting images.
 
 `make commit-gate` is the fast pre-commit companion: static checks plus every
 test tier that needs no docker, nix builds, or browsers (frontend unit,
-backend unit, core integration). It runs in a few minutes on a dirty tree —
-that's the point; commits should stay cheap. The exhaustive counterpart is
-the push gate below.
+backend unit, core integration). It takes well under a minute warm — that's
+the point; commits should stay cheap. The exhaustive counterpart is the push
+gate below.
+
+It is also wired as the pre-commit hook (`.pre-commit-config.yaml`), so it
+runs on every commit whether or not you remember it. The hook shells out to
+this target rather than pinning linters of its own: a hook that pins its own
+ruff drifts from the pin in `pyproject.toml`, and then the hook and the gate
+enforce different rules. Because pre-commit stashes whatever you have not
+staged, the hook checks exactly the staged tree — stricter than running the
+target by hand on a dirty one. Steps that rewrite files (`ruff format`, `biome --write`)
+fail the commit rather than rewriting silently, leaving the formatted result
+to re-stage.
 
 `make push-gate` bundles the whole pre-publish sequence: it refuses a dirty
 tree (pushed images must correspond to a commit), then runs the static

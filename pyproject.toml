@@ -25,7 +25,11 @@ dev = [
     "pytest~=8.4.1",
     "pytest-cov~=7.1.0",
     "pre-commit~=4.3.0",
-    "ruff~=0.12.11",
+    # The single ruff version for this tree: the gate, the commit hook and a
+    # local `ruff` invocation all resolve to this one. It replaced a pinned
+    # ruff-pre-commit hook that drifted to a newer ruff than this pin, which is
+    # how an RUF043 finding reached a commit `make be-checks` had just passed.
+    "ruff~=0.14.5",
     "syrupy~=5.0.0",
 ]
 notebooks = [
