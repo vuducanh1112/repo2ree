@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -35,7 +34,7 @@ def test_deliver_reassembles_chunks_and_cleans_up() -> None:
     assert landed["container_name"] == "wb"
     assert landed["container_path"] == "/ree/dest.bin"
     # The temp file is gone once delivered, and the handle is no longer tracked.
-    assert not os.path.exists(landed["source_path"])
+    assert not Path(landed["source_path"]).exists()
     with pytest.raises(KeyError):
         store.write(transfer_id, 11, b"more")
 
@@ -54,7 +53,7 @@ def test_deliver_removes_temp_file_even_when_sink_raises() -> None:
     with pytest.raises(RuntimeError, match="docker cp failed"):
         store.deliver(transfer_id, failing_sink)
 
-    assert not os.path.exists(captured["source_path"])
+    assert not Path(captured["source_path"]).exists()
 
 
 def test_abort_and_abort_all_discard_partial_files() -> None:

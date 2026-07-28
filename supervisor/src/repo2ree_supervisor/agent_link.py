@@ -29,6 +29,7 @@ from collections import deque
 from collections.abc import Callable, Iterator
 from contextlib import suppress
 from dataclasses import dataclass
+from pathlib import Path
 from uuid import uuid4
 
 from repo2ree_protocol.agent import (
@@ -223,14 +224,14 @@ class PendingReply:
                 if terminated:
                     return
         finally:
-            self._connection._discard(self._req_id)
+            self._connection._discard(self._req_id)  # noqa: SLF001 — the reply and its connection are one mechanism split across two classes in this module
             if not terminated:
-                self._connection._cancel(self._req_id)
+                self._connection._cancel(self._req_id)  # noqa: SLF001 — same-module collaborator; see above
 
     def discard(self) -> None:
         """Stop waiting for this reply without consuming it (error-path cleanup
         for pipelined requests that will never be drained)."""
-        self._connection._discard(self._req_id)
+        self._connection._discard(self._req_id)  # noqa: SLF001 — same-module collaborator; see above
 
 
 # ================================================
@@ -448,7 +449,7 @@ class WsAgentClient:
         transfer_id = self._open_transfer(conn, location, container_path)
         in_flight: deque[PendingReply] = deque()
         try:
-            with open(source_path, "rb") as source:
+            with Path(source_path).open("rb") as source:
                 offset = 0
                 while chunk := source.read(COPY_CHUNK_BYTES):
                     in_flight.append(

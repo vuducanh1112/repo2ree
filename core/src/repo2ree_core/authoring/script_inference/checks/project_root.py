@@ -8,6 +8,8 @@ runtime strategy branch depends on.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from repo2ree_core.authoring.script_inference.models import (
     BindingKind,
     CheckResult,
@@ -22,7 +24,7 @@ class LogicalProjectRootCheck:
     label = "What is the logical project root?"
     branches = frozenset({"root", "wrapper"})
     requires: frozenset[BindingKind] = frozenset()
-    produces: dict[str, frozenset[BindingKind]] = {
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "root": frozenset({"project_root"}),
         "wrapper": frozenset({"project_root"}),
     }

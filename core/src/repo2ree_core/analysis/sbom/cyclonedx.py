@@ -38,7 +38,7 @@ def parse_cyclonedx(text: str) -> list[ObservedPackage]:
     """Observed packages out of a CycloneDX JSON document."""
     try:
         data = json.loads(text)
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable document yields no observed packages, never an error
         return []
     if not isinstance(data, dict):
         return []

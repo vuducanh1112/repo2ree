@@ -10,6 +10,8 @@ ambiguous. There is no ``FROM`` parsing here.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from repo2ree_core.authoring.script_inference.models import (
     BindingKind,
     CheckResult,
@@ -33,7 +35,7 @@ class DockerfilesAtProjectRootCheck:
     label = "How many Dockerfiles sit directly at the project root?"
     branches = frozenset({"none", "exactly_one", "more_than_one"})
     requires: frozenset[BindingKind] = frozenset({"project_root"})
-    produces: dict[str, frozenset[BindingKind]] = {
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "none": frozenset(),
         "exactly_one": frozenset({"dockerfile"}),
         "more_than_one": frozenset(),
@@ -65,7 +67,7 @@ class NestedDockerfilesCheck:
     label = "Are there Dockerfiles nested below the project root?"
     branches = frozenset({"none", "one_or_more"})
     requires: frozenset[BindingKind] = frozenset({"project_root"})
-    produces: dict[str, frozenset[BindingKind]] = {
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "none": frozenset(),
         "one_or_more": frozenset(),
     }

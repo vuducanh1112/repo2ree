@@ -72,6 +72,7 @@ def _probe_docker(wait_seconds: float) -> dict[str, Any]:
         try:
             result = subprocess.run(
                 [docker, "info", "--format", "{{.ServerVersion}}"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=min(30.0, wait_seconds),

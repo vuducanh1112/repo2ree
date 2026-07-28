@@ -10,6 +10,8 @@ An undeclared experiment blocks straight to ``not_inferred``.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from repo2ree_core.authoring.script_inference.models import (
     BindingKind,
     CheckResult,
@@ -25,7 +27,7 @@ class RequestedExperimentCheck:
     label = "Is the requested experiment declared on the REE?"
     branches = frozenset({"absent", "found"})
     requires: frozenset[BindingKind] = frozenset()
-    produces: dict[str, frozenset[BindingKind]] = {
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "absent": frozenset(),
         "found": frozenset({"experiment"}),
     }

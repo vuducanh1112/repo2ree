@@ -65,7 +65,7 @@ def is_reserved_workspace_filename(name: str) -> bool:
     Currently: the metadata sidecar and upload-staging blobs. Workspace
     enumeration and ad-hoc path access both reject these names.
     """
-    return name.startswith(".workspace") or name.startswith(".upload.")
+    return name.startswith((".workspace", ".upload."))
 
 
 def should_inline_file_content(relative_path: str, size: int) -> bool:
@@ -73,9 +73,7 @@ def should_inline_file_content(relative_path: str, size: int) -> bool:
     lower_path = relative_path.lower()
     if lower_path.endswith("sbom.json") and size > MAX_INLINE_SBOM_BYTES:
         return False
-    if size > MAX_INLINE_TEXT_BYTES:
-        return False
-    return True
+    return size <= MAX_INLINE_TEXT_BYTES
 
 
 def classify_file_kind(relative_path: str) -> WorkspaceFileKind:

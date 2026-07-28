@@ -7,7 +7,7 @@ from repo2ree_core.ree.workspace.snapshot import (
 
 
 @pytest.mark.parametrize(
-    "name, expected",
+    ("name", "expected"),
     [
         ("repo.tar.gz", "repo"),
         ("repo.tgz", "repo"),

@@ -8,7 +8,7 @@ def temp_storage(tmp_path, monkeypatch):
 
     monkeypatch.setattr(service_settings, "UPLOAD_STAGING_DIR", tmp_path / "upload-staging")
     create_upload_staging_if_not_exists()
-    yield tmp_path
+    return tmp_path
 
 
 def test_ree_intent_normalizes_invalid_hardware_description_payload():

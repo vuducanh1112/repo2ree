@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import threading
-from typing import Any
+from typing import Any, ClassVar
 
 from repo2ree_agent.control_link import _serve
 from repo2ree_protocol.agent import (
@@ -50,7 +50,7 @@ class FakeSocket:
 
 class FakeRuntime:
     query_result: bytes = b""
-    canceled_runs: list[tuple[str, str]] = []
+    canceled_runs: ClassVar[list[tuple[str, str]]] = []
 
     def is_running(self, location: WorkbenchLocation) -> bool:
         return location.container_name == "wb-up"

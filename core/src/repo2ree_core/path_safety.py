@@ -69,7 +69,7 @@ def validate_relative_path(rel: str | PurePosixPath) -> None:
     if text == "":
         raise ValueError("relative path must not be empty")
     pure = PurePosixPath(text)
-    if pure.is_absolute() or text.startswith("/") or text.startswith("\\"):
+    if pure.is_absolute() or text.startswith(("/", "\\")):
         raise ValueError(f"relative path must not be absolute: {text!r}")
     if any(part == ".." for part in pure.parts):
         raise ValueError(f"relative path must not contain '..': {text!r}")

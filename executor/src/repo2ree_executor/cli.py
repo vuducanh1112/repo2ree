@@ -131,7 +131,7 @@ def execute_cmd(action_source: str, run_id: str | None) -> None:
 
     try:
         cmd = command_adapter.validate_json(text)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — malformed input is reported on the wire as a log frame, not as a traceback
         click.echo(
             json.dumps(
                 {

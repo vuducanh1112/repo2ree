@@ -70,7 +70,8 @@ class TestTotality:
         # The side obligation from base.py, checked per parser.
         for row in rows:
             if parser.side == "declared":
-                assert row.direct and row.declared_in == "some/path"
+                assert row.direct
+                assert row.declared_in == "some/path"
             else:
                 assert not row.direct
 
@@ -373,7 +374,7 @@ class TestMetamorphic:
         runtime-relevant section provides the row."""
         import json
 
-        text = json.dumps({"dependencies": entries, other_section: {name: "*" for name in entries}})
+        text = json.dumps({"dependencies": entries, other_section: dict.fromkeys(entries, "*")})
         rows = parse_package_json(text, "package.json")
         assert [(r.name, r.declared_constraint, r.scope) for r in rows] == [
             (normalize_package_name("npm", name), constraint, None) for name, constraint in entries.items()

@@ -76,7 +76,7 @@ def _null_log() -> LogSink:
     return lambda _stream, _level, _message: None
 
 
-@pytest.mark.parametrize("command_cls,handler_name", _ROUTES, ids=lambda v: getattr(v, "__name__", v))
+@pytest.mark.parametrize(("command_cls", "handler_name"), _ROUTES, ids=lambda v: getattr(v, "__name__", v))
 def test_routes_to_its_handler(
     command_cls: type[BaseModel], handler_name: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -101,7 +101,7 @@ def test_routes_to_its_handler(
     assert called == [handler_name]
 
 
-@pytest.mark.parametrize("command_cls,handler_name", _ROUTES, ids=lambda v: getattr(v, "__name__", v))
+@pytest.mark.parametrize(("command_cls", "handler_name"), _ROUTES, ids=lambda v: getattr(v, "__name__", v))
 def test_cancel_before_start_never_reaches_the_handler(
     command_cls: type[BaseModel], handler_name: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:

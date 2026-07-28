@@ -109,9 +109,8 @@ def client() -> Iterator[TestClient]:
     TRACE_FILE set above (or to OTLP_ENDPOINT when configured), so every run
     leaves an inspectable trace record.
     """
-    with TestClient(app) as client:
-        with _connected_agent():
-            yield client
+    with TestClient(app) as client, _connected_agent():
+        yield client
 
 
 @pytest.fixture

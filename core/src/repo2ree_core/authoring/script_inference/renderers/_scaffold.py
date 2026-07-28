@@ -38,8 +38,7 @@ def candidate_examples_block(candidates: list[ScriptCommandCandidate], *, noun: 
             "# on the 'set --' line below."
         )
     lines = ["# Detected candidate command(s) from the runtime image (review before using):"]
-    for candidate in candidates:
-        lines.append(f"#   {_example(candidate)}")
+    lines.extend(f"#   {_example(candidate)}" for candidate in candidates)
     lines.append("#")
     lines.append(f"# They stay commented because a runtime's own command is not necessarily the {noun} command.")
     return "\n".join(lines)

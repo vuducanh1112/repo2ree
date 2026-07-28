@@ -124,7 +124,8 @@ def test_asking_for_a_bundled_basis_without_a_snapshot_is_refused(
     result = _acquire(basis="bundled")
 
     assert result.status == "failed"
-    assert result.failure is not None and "no source snapshot" in result.failure.message
+    assert result.failure is not None
+    assert "no source snapshot" in result.failure.message
 
 
 def test_asking_for_an_independent_basis_without_an_origin_is_refused(
@@ -137,7 +138,8 @@ def test_asking_for_an_independent_basis_without_an_origin_is_refused(
     result = _acquire(basis="independent")
 
     assert result.status == "failed"
-    assert result.failure is not None and "independently acquirable" in result.failure.message
+    assert result.failure is not None
+    assert "independently acquirable" in result.failure.message
 
 
 def test_a_baseline_with_neither_origin_nor_snapshot_says_so(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -146,7 +148,8 @@ def test_a_baseline_with_neither_origin_nor_snapshot_says_so(tmp_path: Path, mon
     result = _acquire()
 
     assert result.status == "failed"
-    assert result.failure is not None and "neither" in result.failure.message
+    assert result.failure is not None
+    assert "neither" in result.failure.message
 
 
 def test_auto_prefers_the_origin_when_the_baseline_has_both(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

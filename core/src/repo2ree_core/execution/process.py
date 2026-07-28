@@ -8,6 +8,7 @@ logs and cooperative cancellation.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shlex
 import signal
@@ -117,10 +118,8 @@ def _signal_group(proc: subprocess.Popen[str], sig: int) -> None:
     pgid and the signal reaches every descendant. A missing group — the tree
     already exited between the poll and here — is not an error.
     """
-    try:
+    with contextlib.suppress(ProcessLookupError, PermissionError):
         os.killpg(proc.pid, sig)
-    except (ProcessLookupError, PermissionError):
-        pass
 
 
 def _terminate_process_group(proc: subprocess.Popen[str], *, log: LogSink) -> None:

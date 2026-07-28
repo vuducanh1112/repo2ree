@@ -57,7 +57,7 @@ def record_receipt(layout: ReeLayout, receipt: RunReceipt, *, log: LogSink) -> N
         write_atomic(layout.run_receipt(receipt.run_id), content)
         if receipt.status == "succeeded":
             write_atomic(author_receipt_path(layout, receipt), content)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — recording evidence must never fail the run the evidence is about
         log("system", "warn", f"failed to record run receipt: {exc}")
 
 
@@ -67,7 +67,7 @@ def persist_snapshot_digest(store: ReeStore, digest: str | None, *, log: LogSink
         if not store.metadata_exists():
             return
         store.write_session(store.read_session().with_snapshot_digest(digest))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — as the docstring says: never raises
         log("system", "warn", f"failed to persist snapshot digest: {exc}")
 
 
@@ -180,5 +180,5 @@ def write_materialize_marker(
             "files": stat_table(layout.workspace),
         }
         write_json_atomic(layout.materialize_marker, marker)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a missing marker degrades a later drift check to unknown; it cannot fail this run
         log("system", "warn", f"failed to write materialization marker: {exc}")

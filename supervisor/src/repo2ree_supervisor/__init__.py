@@ -12,6 +12,6 @@ __all__ = [
     "WorkbenchHandle",
     "WorkbenchManager",
     "WorkbenchRegistry",
-    "WsAgentClient",
     "WorkbenchUnavailableError",
+    "WsAgentClient",
 ]

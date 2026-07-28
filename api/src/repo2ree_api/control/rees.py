@@ -74,7 +74,7 @@ def create_workspace_route(payload: ReeCreatePayload) -> RunSummary:
         # begun, so a cancel mid-pull only takes effect afterwards.
         try:
             handle = workbench_manager.provision(rid, name, log=_log_run, image=image, agent_id=agent_id)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — provisioning is the agent's, so any failure is reported as an unavailable run
             _log_run("system", "error", f"Workbench provisioning failed: {exc}")
             return ActionResult.failed(
                 "unavailable",

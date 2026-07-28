@@ -247,18 +247,18 @@ def is_manifest_filename(lower_name: str) -> bool:
 
 
 def is_dockerfile_filename(lower_name: str) -> bool:
-    return (
-        lower_name in {"dockerfile", "containerfile", "docker-compose.yml", "docker-compose.yaml"}
-        or lower_name.startswith("dockerfile.")
-        or lower_name.startswith("containerfile.")
-    )
+    return lower_name in {
+        "dockerfile",
+        "containerfile",
+        "docker-compose.yml",
+        "docker-compose.yaml",
+    } or lower_name.startswith(("dockerfile.", "containerfile."))
 
 
 def is_vm_artifact_filename(lower_name: str) -> bool:
     return (
         lower_name == "vagrantfile"
-        or lower_name.endswith(".pkr.hcl")
-        or lower_name.endswith(".pkr.json")
+        or lower_name.endswith((".pkr.hcl", ".pkr.json"))
         or lower_name.endswith(_VM_IMAGE_SUFFIXES)
     )
 
@@ -412,10 +412,9 @@ def _apt_install_is_unpinned(dockerfile_text: str) -> bool:
     """Heuristic: a Dockerfile apt(-get) install without any `pkg=version` pin."""
     for raw in dockerfile_text.splitlines():
         line = raw.strip()
-        if re.search(r"\bapt(?:-get)?\s+install\b", line):
-            # A pinned install names a version with `pkg=ver`.
-            if "=" not in re.sub(r"--[a-z-]+", "", line):
-                return True
+        # A pinned install names a version with `pkg=ver`.
+        if re.search(r"\bapt(?:-get)?\s+install\b", line) and "=" not in re.sub(r"--[a-z-]+", "", line):
+            return True
     return False
 
 

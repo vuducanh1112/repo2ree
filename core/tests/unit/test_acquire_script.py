@@ -113,7 +113,8 @@ def test_overlay_only_when_no_snapshot_or_origin(tmp_path):
     result = _run(build_acquire_sh(), tmp_path)
     assert result.returncode == 0, result.stderr
     assert "overlay-only" in result.stdout
-    assert upstream.is_dir() and not any(upstream.iterdir())
+    assert upstream.is_dir()
+    assert not any(upstream.iterdir())
 
 
 def test_fetches_local_tarball_origin_when_snapshot_missing(tmp_path):

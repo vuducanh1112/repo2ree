@@ -11,6 +11,7 @@ module level.
 from __future__ import annotations
 
 import json
+from typing import ClassVar
 
 import pytest
 from hypothesis import given
@@ -69,7 +70,7 @@ class TestParseCpuinfo:
 
 
 class TestStorageTypeForDevice:
-    _VALID = {"HDD", "SSD", "NVMe", "eMMC", "SD"}
+    _VALID: ClassVar[set[str]] = {"HDD", "SSD", "NVMe", "eMMC", "SD"}
 
     @given(st.text(max_size=16), st.sampled_from(["0", "1", ""]), st.text(max_size=8), st.text(max_size=16))
     def test_always_returns_valid_type(self, name: str, rota: str, transport: str, model: str) -> None:

@@ -15,6 +15,7 @@ def resolved_git_head(tree: Path) -> str:
     """
     rev = subprocess.run(
         ["git", "-C", str(tree), "rev-parse", "HEAD"],
+        check=False,
         capture_output=True,
         text=True,
     )

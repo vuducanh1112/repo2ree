@@ -283,7 +283,8 @@ def test_a_canceled_scan_is_not_recorded_as_an_inconclusive_verdict(
     assert result.status == "canceled"
     record = load_reviews(layout).reviews[0]
     build = step_state(record, "build")
-    assert build is not None and build.status == "canceled"
+    assert build is not None
+    assert build.status == "canceled"
     assert record.build_comparison is None
 
 
@@ -367,7 +368,8 @@ def test_a_failing_build_script_fails_the_step_and_the_attempt(tmp_path: Path, m
     record = load_reviews(layout).reviews[0]
     assert record.status == "failed"
     assert record.build_comparison is None
-    assert record.failure is not None and "exited 3" in record.failure
+    assert record.failure is not None
+    assert "exited 3" in record.failure
 
 
 # ================================================
@@ -532,7 +534,8 @@ def test_an_explicit_basis_is_refused_rather_than_downgraded(tmp_path: Path, mon
     result = _build(basis="independent")
 
     assert result.status == "failed"
-    assert result.failure is not None and RESERVED_BUILD_SCRIPT in result.failure.message
+    assert result.failure is not None
+    assert RESERVED_BUILD_SCRIPT in result.failure.message
 
 
 def test_asking_for_a_bundled_runtime_the_ree_does_not_carry_is_refused(
@@ -544,7 +547,8 @@ def test_asking_for_a_bundled_runtime_the_ree_does_not_carry_is_refused(
     result = _build(basis="bundled")
 
     assert result.status == "failed"
-    assert result.failure is not None and "ships no runtime artifact" in result.failure.message
+    assert result.failure is not None
+    assert "ships no runtime artifact" in result.failure.message
 
 
 def test_the_author_closure_is_read_from_the_ree_slot_not_the_workspace(

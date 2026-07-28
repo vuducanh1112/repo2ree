@@ -197,11 +197,7 @@ _SKIPPED_DIRS: frozenset[str] = frozenset(
 
 def _is_dockerfile_name(name: str) -> bool:
     lower = name.lower()
-    return (
-        lower in {"dockerfile", "containerfile"}
-        or lower.startswith("dockerfile.")
-        or lower.startswith("containerfile.")
-    )
+    return lower in {"dockerfile", "containerfile"} or lower.startswith(("dockerfile.", "containerfile."))
 
 
 def scan_repository(repo_path: Path) -> RepositoryFacts:

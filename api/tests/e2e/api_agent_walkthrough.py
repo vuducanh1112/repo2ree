@@ -121,7 +121,7 @@ def _run_curl(argv: list[str], *, cwd: str | None = None, echo: bool = True) -> 
     argv = ["curl", "-sS", "--fail-with-body", *argv]
     if echo:
         print(f"\033[1;34m$ {shlex.join(argv)}\033[0m")
-    proc = subprocess.run(argv, capture_output=True, cwd=cwd)  # noqa: S603,S607 — curl is a required stack dep
+    proc = subprocess.run(argv, capture_output=True, cwd=cwd)
     return proc.returncode, proc.stdout, proc.stderr
 
 

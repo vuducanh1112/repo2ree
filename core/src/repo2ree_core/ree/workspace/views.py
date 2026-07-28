@@ -120,7 +120,7 @@ _REE_SUBTREE_TAGS: dict[str, str] = {
 def _ree_file_tag(rel: str) -> str:
     if rel == "manifest.json":
         return "Manifest"
-    if rel.endswith(".zip") or rel.endswith(".tar.gz"):
+    if rel.endswith((".zip", ".tar.gz")):
         return "Archive"
     top, _, _ = rel.partition("/")
     return _REE_SUBTREE_TAGS.get(top, "REE")

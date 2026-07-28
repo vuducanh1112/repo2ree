@@ -9,6 +9,7 @@ are run.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable
 from pathlib import Path
 
@@ -84,10 +85,8 @@ def _collect_file_signals(repo_path: Path) -> FileSignals:
             signals.has_manifest = True
         if is_dockerfile_filename(lower_name):
             signals.has_dockerfile = True
-            try:
+            with contextlib.suppress(OSError):
                 signals.dockerfile_texts.append(file_path.read_text(encoding="utf-8", errors="replace"))
-            except OSError:
-                pass
         if lower_name.endswith(".nix"):
             signals.has_nix_file = True
         if is_vm_artifact_filename(lower_name):

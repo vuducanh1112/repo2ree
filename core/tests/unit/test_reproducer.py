@@ -37,8 +37,8 @@ def test_reproducer_entries_are_run_sh_scripts_and_readme():
         REPRODUCER_README_ENTRY_PATH,
     }
     assert REPRODUCER_SCRIPT_ENTRY_PATH == "run.sh"
-    assert REPRODUCER_ACQUIRE_ENTRY_PATH == f"ree/{ACQUIRE_SCRIPT_FILENAME}"
-    assert REPRODUCER_MATERIALIZE_ENTRY_PATH == f"ree/{MATERIALIZE_SCRIPT_FILENAME}"
+    assert f"ree/{ACQUIRE_SCRIPT_FILENAME}" == REPRODUCER_ACQUIRE_ENTRY_PATH
+    assert f"ree/{MATERIALIZE_SCRIPT_FILENAME}" == REPRODUCER_MATERIALIZE_ENTRY_PATH
     assert entries["run.sh"].startswith(b"#!/bin/sh")
     # run.sh delegates acquisition and the clear-and-merge to the bundled scripts.
     assert ACQUIRE_SCRIPT_FILENAME.encode() in entries["run.sh"]
@@ -53,13 +53,13 @@ def test_reproducer_entries_are_run_sh_scripts_and_readme():
 
 
 def test_reproducer_sh_is_deterministic_for_equal_inputs():
-    kwargs: dict[str, Any] = dict(
-        build_script=RESERVED_BUILD_SCRIPT,
-        activation_script=RESERVED_ACTIVATION_SCRIPT,
-        experiments=[("exp one", "ree-scripts/experiments/exp one.sh", "")],
-        runtime_workspace_path="runtime.tar.gz",
-        runtime_artifact_basename="runtime.tar.gz",
-    )
+    kwargs: dict[str, Any] = {
+        "build_script": RESERVED_BUILD_SCRIPT,
+        "activation_script": RESERVED_ACTIVATION_SCRIPT,
+        "experiments": [("exp one", "ree-scripts/experiments/exp one.sh", "")],
+        "runtime_workspace_path": "runtime.tar.gz",
+        "runtime_artifact_basename": "runtime.tar.gz",
+    }
     assert build_reproducer_sh(**kwargs) == build_reproducer_sh(**kwargs)
 
 

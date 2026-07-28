@@ -51,7 +51,12 @@ def publish_atomic(staged: Path, path: Path) -> None:
     whatever was at ``path`` is still there untouched.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    os.replace(staged, path)
+    # Kept as `os.replace` rather than `staged.replace(path)` (PTH105): this call
+    # is the atomicity seam, and test_atomic_write patches
+    # `repo2ree_core.ree.files.os.replace` to prove the guarantees this
+    # docstring claims. `Path.replace` resolves `os` inside pathlib, where that
+    # patch cannot reach, so the rename would silently stop being covered.
+    os.replace(staged, path)  # noqa: PTH105
 
 
 def write_atomic(path: Path, content: bytes) -> None:
@@ -193,7 +198,10 @@ def safe_filename(name: str | None, default: str) -> str:
     # ── postcondition ──
     # Single-component: no path separators survive, so the result can never be
     # used to traverse out of the directory it names a file in.
-    assert result and "/" not in result and "\\" not in result, f"unsafe filename: {result!r}"  # noqa: S101
+    # PT018 is suppressed below: this is one postcondition with one message, the
+    # idiom the other leaf primitives use. Splitting it would report three
+    # unrelated failures where the code asserts a single property.
+    assert result and "/" not in result and "\\" not in result, f"unsafe filename: {result!r}"  # noqa: S101, PT018
     # ───────────────────
     return result
 

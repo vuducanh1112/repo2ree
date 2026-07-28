@@ -89,16 +89,16 @@ def cross_check(
         ),
         key=lambda package: (package.ecosystem, package.name),
     )
-    for package in undeclared:
-        merged.append(
-            EvaluatedDependency(
-                ecosystem=package.ecosystem,
-                name=package.name,
-                direct=False,
-                status="undeclared",
-                observed_version=package.version,
-            )
+    merged.extend(
+        EvaluatedDependency(
+            ecosystem=package.ecosystem,
+            name=package.name,
+            direct=False,
+            status="undeclared",
+            observed_version=package.version,
         )
+        for package in undeclared
+    )
 
     summary = SbomCrossCheckSummary(
         declared_direct_total=direct_total,

@@ -146,7 +146,7 @@ def download_workspace_ree_archive_route(ree_id: str) -> StreamingResponse:
     # per-REE lock (and the agent's exec) is held only while the workbench
     # streams to us — never for as long as the client takes to download — so a
     # slow client cannot block other operations on the REE.
-    spool = tempfile.TemporaryFile()
+    spool = tempfile.TemporaryFile()  # noqa: SIM115 — the spool outlives this frame — it is closed by the streaming response below
     try:
         with ree_command_span("ree-archive", ree_id):
             for chunk in workbench_manager.build_archive_stream(handle):

@@ -164,7 +164,7 @@ def _copy_into_workbench(
     log_run("system", "info", f"Copying staged archive into the workbench ({size} bytes)")
     try:
         workbench_manager.copy_to_workbench(handle, str(staged_host), f"/ree/upload-staging/{upload_token}.bin")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — the transfer is the workbench's, so any failure is reported as an unavailable run
         log_run("system", "error", f"Copy to workbench failed: {exc}")
         return ActionResult.failed(
             "unavailable",

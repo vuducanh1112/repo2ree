@@ -18,9 +18,8 @@ inconsistency is the point. Reads the tree, writes nothing but its digest cache.
 from __future__ import annotations
 
 import json
-import os
 from contextlib import suppress
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -47,7 +46,7 @@ _DRIFT_PATHS_CAP = 20
 
 
 def _is_control_name(rel: str) -> bool:
-    return os.path.basename(rel).startswith(WORKSPACE_CONTROL_PREFIXES)
+    return PurePosixPath(rel).name.startswith(WORKSPACE_CONTROL_PREFIXES)
 
 
 def declared_output_paths(intent: ReeIntent) -> set[str]:
@@ -81,7 +80,7 @@ def check_workspace_drift(layout: ReeLayout, *, excluded_paths: set[str]) -> Wor
     try:
         marker = json.loads(layout.materialize_marker.read_text(encoding="utf-8"))
         recorded: dict[str, list[int]] = dict(marker.get("files") or {})
-    except Exception:
+    except Exception:  # noqa: BLE001 — an unreadable marker means drift is unknown, which is a verdict, not a failure
         return WorkspaceDrift(status="unknown")
 
     current = stat_table(layout.workspace)

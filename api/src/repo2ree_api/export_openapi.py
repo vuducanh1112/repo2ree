@@ -31,7 +31,7 @@ def openapi_document() -> str:
 
 def main() -> None:
     CONTRACT_PATH.write_text(openapi_document())
-    print(f"wrote {CONTRACT_PATH}")
+    print(f"wrote {CONTRACT_PATH}")  # noqa: T201 — CLI entrypoint: this is the script's user-facing output
 
 
 if __name__ == "__main__":

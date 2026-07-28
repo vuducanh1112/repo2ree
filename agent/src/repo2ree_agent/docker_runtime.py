@@ -405,6 +405,7 @@ class DockerRuntime:
         stopping, ``RuntimeError`` for any other non-zero exit."""
         result = subprocess.run(
             ["docker", "exec", container_name, *argv],
+            check=False,
             capture_output=True,
             timeout=timeout,
         )
@@ -426,6 +427,7 @@ class DockerRuntime:
         with _docker_op("copy_in"):
             result = subprocess.run(
                 ["docker", "cp", source_path, f"{location.container_name}:{container_path}"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=120,
@@ -637,6 +639,7 @@ def _probe_bench(container_name: str, exec_path: str, image: str) -> Iterator[Ag
     with _docker_op("docker.exec_doctor"):
         result = subprocess.run(
             ["docker", "exec", container_name, exec_path, "doctor"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=90,
@@ -699,6 +702,7 @@ def _container_running(container_name: str) -> bool:
         try:
             result = subprocess.run(
                 ["docker", "inspect", "--format", "{{.State.Running}}", container_name],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -747,6 +751,7 @@ def _container_path_exists(container_id: str, path: str) -> bool:
     with _docker_op("docker.cp_probe_path"):
         result = subprocess.run(
             ["docker", "cp", f"{container_id}:{path}", "-"],
+            check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             timeout=30,
@@ -795,7 +800,7 @@ def _docker_silent(*args: str) -> None:
     """Like _docker but ignores failures (for cleanup paths)."""
     with _docker_op(f"docker.{args[0]}") as op:
         try:
-            result = subprocess.run(["docker", *args], capture_output=True, timeout=30)
+            result = subprocess.run(["docker", *args], check=False, capture_output=True, timeout=30)
             if result.returncode != 0:
                 op.status = "failed_ignored"
         except (subprocess.SubprocessError, OSError):
@@ -805,7 +810,7 @@ def _docker_silent(*args: str) -> None:
 def _docker_remove(*args: str) -> None:
     """Idempotent but strict cleanup for acknowledged user deletion."""
     with _docker_op(f"docker.{args[0]}"):
-        result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=30)
+        result = subprocess.run(["docker", *args], check=False, capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
             return
         detail = docker_cli.failure_detail(result.stderr, result.stdout)

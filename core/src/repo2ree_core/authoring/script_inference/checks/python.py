@@ -11,6 +11,8 @@ strategy leaf is a confirmation-required ``candidate`` rather than an automatic
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from repo2ree_core.authoring.script_inference.models import (
     BindingKind,
     CheckResult,
@@ -32,7 +34,7 @@ class RequirementsAtProjectRootCheck:
     label = "Is there a requirements.txt at the project root?"
     branches = frozenset({"none", "exactly_one"})
     requires: frozenset[BindingKind] = frozenset({"project_root"})
-    produces: dict[str, frozenset[BindingKind]] = {
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "none": frozenset(),
         "exactly_one": frozenset({"requirements_project"}),
     }

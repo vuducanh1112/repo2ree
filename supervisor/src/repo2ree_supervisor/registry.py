@@ -89,7 +89,7 @@ class WorkbenchRegistry:
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(text)
-            os.replace(tmp, self._path)
+            Path(tmp).replace(self._path)
         except BaseException:
             Path(tmp).unlink(missing_ok=True)
             raise

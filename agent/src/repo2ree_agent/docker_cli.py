@@ -98,14 +98,17 @@ def stream_exec(cmd: list[str], timeout: int, what: str) -> Iterator[bytes]:
 
 
 def docker_out(args: tuple[str, ...], timeout: int) -> str:
-    result = subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout)
+    result = subprocess.run(["docker", *args], check=False, capture_output=True, text=True, timeout=timeout)
     if result.returncode != 0:
         raise RuntimeError(f"docker {args[0]} failed: {failure_detail(result.stderr, result.stdout)}")
     return result.stdout.strip()
 
 
 def image_present(image: str) -> bool:
-    return subprocess.run(["docker", "image", "inspect", image], capture_output=True, timeout=30).returncode == 0
+    return (
+        subprocess.run(["docker", "image", "inspect", image], check=False, capture_output=True, timeout=30).returncode
+        == 0
+    )
 
 
 def _append_tail(tail: bytearray, chunk: bytes) -> None:

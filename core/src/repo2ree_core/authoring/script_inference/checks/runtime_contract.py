@@ -14,6 +14,7 @@ why no runtime contract was established.
 from __future__ import annotations
 
 from pathlib import PurePosixPath
+from typing import ClassVar
 
 from repo2ree_core.authoring.script_inference.artifact_inspection import (
     DockerArchiveInspection,
@@ -57,7 +58,7 @@ class DeclaredRuntimePathCheck:
     label = "Is a runtime artifact declared, inside the logical project root?"
     branches = frozenset({"absent", "outside_root", "valid"})
     requires: frozenset[BindingKind] = frozenset({"project_root"})
-    produces: dict[str, frozenset[BindingKind]] = {
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "absent": frozenset(),
         "outside_root": frozenset(),
         "valid": frozenset({"runtime_declaration"}),
@@ -99,7 +100,7 @@ class RuntimeArtifactStateCheck:
     label = "Does the declared runtime artifact exist as a file yet?"
     branches = frozenset({"regular_file", "missing"})
     requires: frozenset[BindingKind] = frozenset({"runtime_declaration"})
-    produces: dict[str, frozenset[BindingKind]] = {
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "regular_file": frozenset(),
         "missing": frozenset(),
     }
@@ -119,7 +120,7 @@ class RuntimeArtifactInspectionCheck:
     label = "What runtime does the built artifact declare?"
     branches = frozenset({"docker_single_ref", "docker_multiple_refs", "docker_no_ref", "venv", "invalid"})
     requires: frozenset[BindingKind] = frozenset({"runtime_declaration"})
-    produces: dict[str, frozenset[BindingKind]] = {
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "docker_single_ref": frozenset({"runtime_contract", "image_command"}),
         "docker_multiple_refs": frozenset(),
         "docker_no_ref": frozenset(),
@@ -212,7 +213,7 @@ class UnchangedGeneratedBuildCheck:
     label = "Would the current build script generate this runtime?"
     branches = frozenset({"matched", "unmatched"})
     requires: frozenset[BindingKind] = frozenset({"runtime_declaration"})
-    produces: dict[str, frozenset[BindingKind]] = {
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "matched": frozenset({"runtime_contract"}),
         "unmatched": frozenset(),
     }
@@ -261,7 +262,7 @@ class RuntimeContractKindCheck:
     label = "What kind of runtime was resolved?"
     branches = frozenset({"docker", "venv"})
     requires: frozenset[BindingKind] = frozenset({"runtime_contract"})
-    produces: dict[str, frozenset[BindingKind]] = {"docker": frozenset(), "venv": frozenset()}
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {"docker": frozenset(), "venv": frozenset()}
 
     def evaluate(self, context: DecisionContext) -> CheckResult:
         binding = context.binding("runtime_contract")

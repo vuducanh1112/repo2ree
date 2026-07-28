@@ -13,7 +13,7 @@ is no parallel imperative rule implementation.
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, Protocol, runtime_checkable
+from typing import Annotated, ClassVar, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -518,7 +518,7 @@ class Check(Protocol):
     label: str
     branches: frozenset[str]
     requires: frozenset[BindingKind]
-    produces: dict[str, frozenset[BindingKind]]
+    produces: ClassVar[dict[str, frozenset[BindingKind]]]
 
     def evaluate(self, context: DecisionContext) -> CheckResult: ...
 

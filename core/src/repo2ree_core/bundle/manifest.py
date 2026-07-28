@@ -61,7 +61,7 @@ def split_manifest_payload(payload: Mapping[str, Any]) -> tuple[ReeIntent, ReeSe
     return intent, session
 
 
-def _pick(payload: Mapping[str, Any], model: type[ReeIntent] | type[ReeSession]) -> dict[str, Any]:
+def _pick(payload: Mapping[str, Any], model: type[ReeIntent | ReeSession]) -> dict[str, Any]:
     """The subset of ``payload`` that ``model`` declares, keyed by field name."""
     return {key: value for key, value in payload.items() if key in model.model_fields}
 

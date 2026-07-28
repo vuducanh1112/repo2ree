@@ -28,7 +28,7 @@ _HASH_OPTION_RE = re.compile(r"--hash[= ](\S+)")
 def parse_requirements_txt(text: str, path: str) -> list[Dependency]:
     deps: list[Dependency] = []
     for line in _logical_lines(text):
-        if line.startswith("-") or "://" in line or line.startswith((".", "/")):
+        if line.startswith(("-", ".", "/")) or "://" in line:
             continue  # pip options, URL requirements, local paths
         hashes = _HASH_OPTION_RE.findall(line)
         spec = _HASH_OPTION_RE.sub("", line).split(";", 1)[0].strip()
@@ -105,9 +105,9 @@ def parse_uv_lock(text: str, path: str) -> list[Dependency]:
         sdist = package.get("sdist")
         if isinstance(sdist, dict) and sdist.get("hash"):
             hashes.append(str(sdist["hash"]))
-        for wheel in package.get("wheels") or []:
-            if isinstance(wheel, dict) and wheel.get("hash"):
-                hashes.append(str(wheel["hash"]))
+        hashes.extend(
+            str(wheel["hash"]) for wheel in package.get("wheels") or [] if isinstance(wheel, dict) and wheel.get("hash")
+        )
         deps.append(
             make_locked_dependency(
                 "pypi",

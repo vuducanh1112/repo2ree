@@ -292,7 +292,7 @@ class RunRegistry:
                     message = str(exc.detail or "Run failed")
                     self.append_log(ree_id, run_id, "system", "error", message)
                     result = self._terminal_from_exception(ree_id, run_id, message)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 — the registry is the last frame of a background run; nothing above it can report
                     span.record_exception(exc)
                     message = str(exc)
                     self.append_log(ree_id, run_id, "system", "error", message)

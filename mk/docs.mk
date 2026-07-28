@@ -5,7 +5,7 @@
 # structure is the one you meant, which is a different job from asserting that
 # today's structure matches yesterday's rules.
 
-.PHONY: docs-lint docs-diagrams be-graph fe-graph
+.PHONY: docs-lint docs-diagrams be-graph be-graphs be-graph-all fe-graph
 
 # ================================================
 # Prose linting
@@ -37,15 +37,52 @@ DIAGRAM_DIR ?= dist/diagrams
 ARGS ?=
 FE_ARGS ?=
 
-docs-diagrams: be-graph fe-graph
+docs-diagrams: be-graphs be-graph-all fe-graph
 
 # Backend, via grimp — the engine import-linter itself is built on — reading
-# the root_packages and layers contracts straight out of pyproject.toml. PKG
-# picks a root package, ARGS forwards flags such as --all or --hide-leaves.
+# the root_packages and layers contracts straight out of pyproject.toml.
+#
+# The package list is not written here. `make be-graph` used to draw core and
+# nothing else, which quietly made "the backend diagram" mean "the diagram of
+# the package someone thought to pass": a package with no picture is exactly the
+# one whose shape nobody is checking. Asking the script for root_packages keeps
+# the set of diagrams equal to the set of packages the contracts govern, so
+# adding a seventh package to the workspace adds its diagram too.
+BE_PACKAGES := $(shell python scripts/arch_graph.py --list-packages)
+
+# One diagram per root package: the inside of that package, with its own layers
+# contract setting the vertical axis. PKG/ARGS still single out one package
+# (`make be-graph PKG=repo2ree_api ARGS=--hide-leaves`) for when you are working
+# on it and want one file to reload.
 PKG ?= repo2ree_core
 be-graph:
 	@mkdir -p $(DIAGRAM_DIR)
 	python scripts/arch_graph.py $(PKG) $(ARGS) -f svg -o $(DIAGRAM_DIR)/$(PKG).svg
+
+be-graphs:
+	@mkdir -p $(DIAGRAM_DIR)
+	@for pkg in $(BE_PACKAGES); do \
+		python scripts/arch_graph.py $$pkg $(ARGS) -f svg -o $(DIAGRAM_DIR)/$$pkg.svg || exit 1; \
+	done
+
+# The two views across all six packages, which answer different questions.
+#
+# workspace.svg folds each package to one node. This is the only picture where
+# "Workspace layers", "Protocol imports no workspace package" and "Agent and
+# supervisor speak only protocol" are things you can see rather than rules you
+# have to trust: the packages are stacked in the contract's order, so all three
+# hold exactly when no arrow points up the page. Edge labels carry the import
+# count, which is where it becomes obvious that core -> protocol (89) is a
+# different kind of dependency from api -> supervisor (1).
+#
+# workspace-modules.svg is the same graph without the folding — every top-level
+# module of every package, and the cross-package edges the per-package diagrams
+# necessarily cut. Honest and unavoidably wide; it is for tracing one specific
+# edge back to the modules underneath it, not for reading the shape.
+be-graph-all:
+	@mkdir -p $(DIAGRAM_DIR)
+	python scripts/arch_graph.py --collapse $(ARGS) -f svg -o $(DIAGRAM_DIR)/workspace.svg
+	python scripts/arch_graph.py --all $(ARGS) -f svg -o $(DIAGRAM_DIR)/workspace-modules.svg
 
 # Frontend, via dependency-cruiser's own dot reporter — the same cruise
 # fe-checks runs, rendered instead of asserted, so rule violations show up

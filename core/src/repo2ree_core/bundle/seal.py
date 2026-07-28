@@ -112,11 +112,15 @@ def _bundle_entry_partition(
     if include_snapshot and layout.snapshot_archive.exists():
         tail.append((REE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive.read_bytes()))
     tail.append((REE_OVERLAY_PREFIX, b""))
-    for rel in list_tree_relpaths(layout.overlay):
-        tail.append((f"{REE_OVERLAY_PREFIX}{rel}", (layout.overlay / rel).read_bytes()))
+    tail.extend(
+        (f"{REE_OVERLAY_PREFIX}{rel}", (layout.overlay / rel).read_bytes())
+        for rel in list_tree_relpaths(layout.overlay)
+    )
     tail.append((REE_ARTIFACTS_PREFIX, b""))
-    for rel in artifact_plan.on_disk_relpaths:
-        tail.append((f"{REE_ARTIFACTS_PREFIX}{rel}", (layout.artifacts / rel).read_bytes()))
+    tail.extend(
+        (f"{REE_ARTIFACTS_PREFIX}{rel}", (layout.artifacts / rel).read_bytes())
+        for rel in artifact_plan.on_disk_relpaths
+    )
     for ws_rel, archive_name in sorted(artifact_plan.workspace_pulls.items()):
         tail.append(
             (
@@ -141,10 +145,10 @@ def _bundle_entry_partition(
             if not experiment.name:
                 continue
             results_dir = layout.results_dir(experiment.name)
-            for rel in list_tree_relpaths(results_dir):
-                result_entries.append(
-                    (f"{REE_RESULTS_PREFIX}{experiment.name}/{rel}", (results_dir / rel).read_bytes())
-                )
+            result_entries.extend(
+                (f"{REE_RESULTS_PREFIX}{experiment.name}/{rel}", (results_dir / rel).read_bytes())
+                for rel in list_tree_relpaths(results_dir)
+            )
     if result_entries:
         tail.append((REE_RESULTS_PREFIX, b""))
         tail.extend(result_entries)

@@ -103,7 +103,7 @@ def read_tool_version(sbom_path: Path) -> str | None:
     """
     try:
         data: Any = json.loads(sbom_path.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001 — the tool version is provenance, not a result — absence is not an error
         return None
     if not isinstance(data, dict):
         return None

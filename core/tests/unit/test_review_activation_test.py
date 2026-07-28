@@ -236,7 +236,8 @@ def test_the_probe_is_bound_to_the_runtime_the_build_certified(tmp_path: Path, m
     result = _activate()
 
     assert result.status == "failed"
-    assert result.failure is not None and "not the one this attempt certified" in result.failure.message
+    assert result.failure is not None
+    assert "not the one this attempt certified" in result.failure.message
     assert _record(layout).activation_outcome is None
 
 
@@ -300,7 +301,8 @@ def test_a_reclaimed_workspace_is_refused_with_the_way_back(tmp_path: Path, monk
     result = _activate()
 
     assert result.status == "failed"
-    assert result.failure is not None and "re-run the build review" in result.failure.message
+    assert result.failure is not None
+    assert "re-run the build review" in result.failure.message
 
 
 def test_an_activation_script_that_is_not_there_is_refused_not_reported_as_a_failure(
@@ -318,7 +320,8 @@ def test_an_activation_script_that_is_not_there_is_refused_not_reported_as_a_fai
     result = _activate()
 
     assert result.status == "failed"
-    assert result.failure is not None and "not there" in result.failure.message
+    assert result.failure is not None
+    assert "not there" in result.failure.message
     assert _record(layout).activation_outcome is None
 
 
@@ -328,7 +331,8 @@ def test_an_unknown_attempt_is_refused(tmp_path: Path, monkeypatch: pytest.Monke
     result = _activate("review-nonexistent")
 
     assert result.status == "failed"
-    assert result.failure is not None and "review-nonexistent" in result.failure.message
+    assert result.failure is not None
+    assert "review-nonexistent" in result.failure.message
 
 
 # ================================================
@@ -384,5 +388,6 @@ def test_an_absent_baseline_fails_the_step_instead_of_raising(tmp_path: Path, mo
     result = _activate()
 
     assert result.status == "failed"
-    assert result.failure is not None and result.failure.category == "precondition"
+    assert result.failure is not None
+    assert result.failure.category == "precondition"
     assert "no REE to review" in result.failure.message

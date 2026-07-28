@@ -89,7 +89,62 @@ src = ["protocol/src", "core/src", "supervisor/src", "api/src", "executor/src", 
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "S", "N"]
+# Grouped by what each family buys us rather than alphabetically, because the
+# question worth answering at review time is "why is this on" and not "is this
+# sorted". Families deliberately left off: D (docstring formatting — the tree
+# documents *why*, and a linter can only check that a docstring exists), TC
+# (moving annotations into TYPE_CHECKING blocks breaks pydantic/FastAPI, which
+# resolve them at runtime), COM (conflicts with ruff format), EM/TRY/ANN/ARG
+# (style churn with no defect signal here), and ERA (it reads the `# ---- Section
+# ---- ` banner idiom this tree uses in five modules as commented-out code).
+select = [
+    # The original set: pycodestyle, pyflakes, import order, pyupgrade, bugbear,
+    # bandit, naming.
+    "E", "F", "W", "I", "UP", "B", "S", "N",
+
+    # Rules the tree already assumes are on. Both BLE001 and SLF001 carry
+    # written `# noqa` justifications in the source, which were dead comments
+    # while the rules were unselected. RUF100 is what keeps that from recurring:
+    # it fails on a suppression that no longer suppresses anything.
+    "BLE",   # blind `except Exception`
+    "SLF",   # private-member access across objects
+    "RUF",
+
+    # INP001 is why `repo2ree_api.storage` went missing from the import graph:
+    # a package without `__init__.py` is invisible to grimp, so every
+    # architecture contract silently skipped it. This rule is the guard that
+    # keeps the import-linter contracts honest about what they actually cover.
+    "INP",
+
+    # Correctness families this codebase is specifically exposed to: async
+    # routes that must not block the event loop, and timestamps that must stay
+    # timezone-aware (the whole point of `core.time_utils`).
+    "ASYNC",
+    "DTZ",
+    "LOG", "G",  # logging call and format-string misuse
+
+    # General defect-adjacent cleanliness. All were at or near zero already.
+    "A",      # shadowing builtins
+    "C4",     # comprehension misuse
+    "FLY",    # static str.join
+    "FURB",
+    "ISC",    # implicit string concatenation
+    "PERF",
+    "PIE",
+    "PT",     # pytest style
+    "PTH",    # os.path calls that should be pathlib
+    "PYI",
+    "RET",
+    "SIM",
+    "T20",    # stray print()
+    "TID",    # banned/relative imports
+    "YTT",    # sys.version misuse
+
+    # Two pylint rules worth the noise budget on their own:
+    "PLW1510",  # subprocess.run without an explicit `check=`
+    "PLC0415",  # function-local import — the shape of the cycle core's layering
+                # comment describes as the original sin
+]
 extend-ignore = [
     # subprocess calls with a list arg (not shell=True) are the safe pattern;
     # S603/S607 fire on every docker/git invocation and add no signal here.
@@ -98,9 +153,50 @@ extend-ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# Test code is shaped by pytest, not by the rules that govern the packages it
+# exercises. Each entry below is a property of how pytest works rather than a
+# concession: silencing it in `src` too would lose real signal.
 "*/tests/*" = [
-    "S101",  # assert is the standard pytest assertion pattern
+    "S101",    # assert is the standard pytest assertion pattern
+    # Test dirs deliberately ship no __init__.py so module names come from file
+    # paths — the same arrangement `explicit_package_bases` exists for above.
+    # Adding the __init__.py this rule asks for would collide the per-tier
+    # conftest modules, which is the opposite of what INP001 is protecting.
+    "INP001",
+    # Tests import inside a function to keep an import behind a skip guard, or
+    # to observe import side effects. In `src` a function-local import is a
+    # cycle smell; here it is the point.
+    "PLC0415",
+    # A test may assert on the private state it is testing; the module under
+    # test is not a black box to its own unit tests.
+    "SLF001",
+    # Fixtures and e2e walkthroughs shell out and assert on the result object
+    # themselves, so an explicit `check=` would just raise before the assert.
+    "PLW1510",
+    # The e2e walkthrough scripts narrate their progress on stdout by design.
+    "T201",
+    # PT011 wants a `match=` on every broad `pytest.raises`. The nine sites are
+    # path-safety rejection tests, and the parametrized ones raise a *different*
+    # message per input, so no single pattern fits — tightening them means
+    # deciding which message text is contract and which is incidental. Worth
+    # doing deliberately; not worth inventing to satisfy a linter.
+    "PT011",
 ]
+# Every handler is a boundary that turns any failure into a failed ActionResult
+# — the run must record what went wrong, never propagate it into the step
+# runner. That is one uniform, deliberate pattern across the whole directory, so
+# it is stated once here rather than as a `noqa` on each of sixteen handlers.
+# Blind catches *outside* this directory still have to justify themselves.
+"*/operations/handlers/*" = ["BLE001"]
+# The OpenTelemetry SDK and OTLP exporters are optional at runtime: tracing is a
+# no-op when unconfigured, and importing them at module scope would make the
+# whole protocol package depend on packages the workbench need not install.
+"*/repo2ree_protocol/tracing.py" = ["PLC0415"]
+# `scripts/` holds developer tools invoked as `python scripts/x.py`, not an
+# importable package (`make scripts-checks` lints it separately from the six
+# workspace packages). A command-line tool with no stdout is useless, and the
+# directory has no `__init__.py` for the same reason the test dirs do not.
+"scripts/*" = ["T201", "INP001"]
 
 # ================================================
 # Architecture contracts (`make arch-checks`)
@@ -122,21 +218,90 @@ root_packages = [
     "repo2ree_supervisor",
 ]
 
+# ---- The workspace itself -----------------------------------------------
+#
+# The six packages, high to low. Until these three contracts existed the graph
+# *between* packages was governed only from core's side ("Core imports no
+# application tier"), so nothing stopped a lower tier from growing an upward
+# edge as long as core was not the one growing it.
+[[tool.importlinter.contracts]]
+name = "Workspace layers"
+type = "layers"
+layers = [
+    "repo2ree_api",
+    "repo2ree_supervisor",
+    "repo2ree_agent : repo2ree_executor",
+    "repo2ree_core",
+    "repo2ree_protocol",
+]
+
+# The same argument as "The wire contract imports no implementation", one level
+# up: `repo2ree_protocol` is the vocabulary all five other packages speak, so it
+# describes the conversation and can never depend on either end of it. It is the
+# only package every other package imports, which is exactly why an edge out of
+# it would be load-bearing everywhere at once.
+[[tool.importlinter.contracts]]
+name = "Protocol imports no workspace package"
+type = "forbidden"
+source_modules = ["repo2ree_protocol"]
+forbidden_modules = [
+    "repo2ree_agent",
+    "repo2ree_api",
+    "repo2ree_core",
+    "repo2ree_executor",
+    "repo2ree_supervisor",
+]
+
+# The agent and the supervisor are the two ends of one wire, and neither knows
+# what the wire is carrying: they move frames, they do not perform operations.
+# Today both import `repo2ree_protocol` and nothing else in the workspace —
+# notably not core. That is what lets the same agent run a workbench whose core
+# it was never built against, so it is worth stating rather than leaving as an
+# accident of the current import list.
+[[tool.importlinter.contracts]]
+name = "Agent and supervisor speak only protocol"
+type = "forbidden"
+source_modules = [
+    "repo2ree_agent",
+    "repo2ree_supervisor",
+]
+forbidden_modules = [
+    "repo2ree_api",
+    "repo2ree_core",
+    "repo2ree_executor",
+]
+
+# ---- Inside the API ------------------------------------------------------
+#
 # The API's tiers, high to low. Each layer may import everything below it and
 # nothing above. `main` is assembly only; the two step graphs sit on the control
 # plane; the control plane sits on the workbench transport; everything rests on
 # the wire contract and the composition root.
+#
+# `exhaustive` is what makes this contract mean what it appears to mean: without
+# it, a top-level module missing from the list below is not "unconstrained by
+# accident", it is simply unconstrained, and nothing reports that. `storage` was
+# in that position — and worse, being a namespace package it was missing from
+# the graph entirely — while three separate tiers imported it.
 [[tool.importlinter.contracts]]
 name = "API layers"
 type = "layers"
+exhaustive = true
+# The `python -m repo2ree_api.export_openapi` entrypoint, which imports `main`
+# to serialize its OpenAPI document. It is a build script that happens to live
+# in the package, not a tier of it.
+exhaustive_ignores = ["export_openapi"]
+containers = ["repo2ree_api"]
 layers = [
-    "repo2ree_api.main",
-    "repo2ree_api.authoring : repo2ree_api.review",
-    "repo2ree_api.control",
-    "repo2ree_api.workbench",
-    "repo2ree_api.contracts",
-    "repo2ree_api.deps",
-    "repo2ree_api.settings",
+    "main",
+    "authoring : review",
+    "control",
+    "workbench",
+    "storage",
+    "contracts",
+    "paths : pagination",
+    "deps",
+    "settings",
 ]
 
 # The author's step graph and the reviewer's mirror it. They deliberately look
@@ -164,6 +329,7 @@ forbidden_modules = [
     "repo2ree_api.review",
     "repo2ree_api.control",
     "repo2ree_api.workbench",
+    "repo2ree_api.storage",
     "repo2ree_api.deps",
 ]
 
@@ -178,15 +344,25 @@ forbidden_modules = [
 # is the mistake this tree used to make in another form — a `storage` package
 # and a `workspace` package that each owned half the aggregate and imported
 # each other through deferred, function-local imports.
+#
+# Marked `exhaustive`, so a new top-level package in core has to declare where
+# it sits rather than joining ungoverned. The capabilities and the leaf
+# primitives appear here as sibling rows only to satisfy that: the two contracts
+# below are what actually describe them, and are kept because a `forbidden`
+# contract says *why* a direction is wrong in a way a row in a list cannot.
 [[tool.importlinter.contracts]]
 name = "Core layers"
 type = "layers"
+exhaustive = true
+containers = ["repo2ree_core"]
 layers = [
-    "repo2ree_core.operations",
-    "repo2ree_core.bundle",
-    "repo2ree_core.evidence",
-    "repo2ree_core.ree",
-    "repo2ree_core.domain",
+    "operations",
+    "bundle",
+    "evidence",
+    "analysis : authoring : execution : source_repo : doctor",
+    "ree",
+    "domain",
+    "digests : path_safety : reproduction : reserved_paths : reserved_templates : time_utils",
 ]
 
 # The capabilities the spine calls into. They are deliberately *not* placed in
@@ -262,9 +438,10 @@ forbidden_modules = [
 
 # The leaf primitives every layer is allowed to use precisely because they use
 # nothing back. Each already says so in its own docstring; this is what keeps
-# that claim true. They may still import one another (`path_safety` builds on
-# `reserved_paths`), which is why the rule names the packages rather than all
-# of `repo2ree_core`.
+# that claim true. None of them imports another — `path_safety` duplicates the
+# one constant it shares with `reserved_paths` rather than depending on it — so
+# the sibling row in "Core layers" holds too; this contract is the one that
+# explains the direction.
 [[tool.importlinter.contracts]]
 name = "Leaf primitives depend on no package"
 type = "forbidden"

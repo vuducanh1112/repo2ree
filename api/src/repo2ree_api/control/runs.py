@@ -154,7 +154,7 @@ def cancel_workspace_run(ree_id: str, run_id: str) -> CancelRunResponse:
     if handle is not None:
         try:
             workbench_manager.cancel_run(handle, run_id)
-        except Exception:
+        except Exception:  # noqa: BLE001 — cancellation is best-effort; a failed signal must not fail the cancel request
             logger.warning("failed to signal cancellation for %s", run_id, exc_info=True)
             append_run_log(
                 ree_id,

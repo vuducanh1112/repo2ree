@@ -52,7 +52,7 @@ def test_upload_init_allocates_token_and_url(
     token = upload["upload_token"]
     assert upload["upload_url"] == f"/api/v1/rees/{online_ree.ree_id}/source:upload/{token}"
 
-    expires_at = datetime.fromisoformat(upload["expires_at"].replace("Z", "+00:00"))
+    expires_at = datetime.fromisoformat(upload["expires_at"])
     assert expires_at > datetime.now(UTC) + timedelta(minutes=50)
 
     # init mints an empty marker (proof the token was issued); bytes land on PUT

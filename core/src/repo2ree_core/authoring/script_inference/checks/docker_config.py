@@ -17,6 +17,8 @@ check reads only the already-parsed binding — it never re-opens the archive.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from repo2ree_core.authoring.script_inference.models import (
     ArgvCommandCandidate,
     BindingKind,
@@ -41,7 +43,7 @@ class DockerConfigCommandsCheck:
     label = "Does the runtime image declare a command?"
     branches = frozenset({"candidates", "none"})
     requires: frozenset[BindingKind] = frozenset({"runtime_contract"})
-    produces: dict[str, frozenset[BindingKind]] = {
+    produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "candidates": frozenset({"command_candidates"}),
         "none": frozenset({"command_candidates"}),
     }

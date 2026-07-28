@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import json
 import subprocess
 import time
@@ -138,7 +139,8 @@ def test_provision_emits_error_frame_when_pull_fails_and_image_absent(monkeypatc
 
     frames = list(DockerRuntime().provision("ree-absent", "default:img"))
     errors = [f for f in frames if isinstance(f, ErrorFrame)]
-    assert errors and "network unreachable" in errors[0].detail
+    assert errors
+    assert "network unreachable" in errors[0].detail
     assert not any(isinstance(f, LocationFrame) for f in frames)
 
 
@@ -181,7 +183,7 @@ def _only_run_call(calls: list[tuple[str, ...]]) -> tuple[str, ...]:
 
 
 def _has_option_value(call: tuple[str, ...], option: str, value: str) -> bool:
-    return any(current == option and next_value == value for current, next_value in zip(call, call[1:], strict=False))
+    return any(current == option and next_value == value for current, next_value in itertools.pairwise(call))
 
 
 # ================================================
@@ -255,8 +257,8 @@ def test_provision_injects_bundle_into_foreign_image(
     run_call = _only_run_call(docker_calls)
     # The store volume is mounted read-only at /nix/store and the bench is kept
     # alive by the bundle's static pause binary, not the image's sleep.
-    assert runtime._bundle is not None  # noqa: SLF001
-    volume = runtime._bundle.volume_name  # noqa: SLF001 — content-addressed name
+    assert runtime._bundle is not None
+    volume = runtime._bundle.volume_name
     assert _has_option_value(run_call, "-v", f"{volume}:/nix/store:ro")
     # The image's own default command is the bench's main process; no keep-alive
     # command is inserted, and tini reaps the exec'd process trees.
@@ -344,7 +346,8 @@ def test_bench_that_cannot_stay_up_is_an_error_frame(monkeypatch: pytest.MonkeyP
 
     frames = list(DockerRuntime(exec_bundle_dir=exec_bundle_dir).provision("ree1", "broken:img"))
     errors = [f for f in frames if isinstance(f, ErrorFrame)]
-    assert errors and "would not stay running" in errors[0].detail
+    assert errors
+    assert "would not stay running" in errors[0].detail
     assert not any(isinstance(f, LocationFrame) for f in frames)
 
 
@@ -492,19 +495,16 @@ def test_docker_op_maps_each_exit_to_its_terminal_status(monkeypatch: pytest.Mon
         pass
     assert recorded[-1] == ("docker.x", "succeeded")
 
-    with pytest.raises(RuntimeError):
-        with rt_mod._docker_op("docker.x"):
-            raise RuntimeError("boom")
+    with pytest.raises(RuntimeError), rt_mod._docker_op("docker.x"):
+        raise RuntimeError("boom")
     assert recorded[-1] == ("docker.x", "failed")
 
-    with pytest.raises(rt_mod.WorkbenchGoneError):
-        with rt_mod._docker_op("docker.x"):
-            raise rt_mod.WorkbenchGoneError("gone")
+    with pytest.raises(rt_mod.WorkbenchGoneError), rt_mod._docker_op("docker.x"):
+        raise rt_mod.WorkbenchGoneError("gone")
     assert recorded[-1] == ("docker.x", "unavailable")
 
-    with pytest.raises(rt_mod.ContainerStateUnknownError):
-        with rt_mod._docker_op("docker.x"):
-            raise rt_mod.ContainerStateUnknownError("blip")
+    with pytest.raises(rt_mod.ContainerStateUnknownError), rt_mod._docker_op("docker.x"):
+        raise rt_mod.ContainerStateUnknownError("blip")
     assert recorded[-1] == ("docker.x", "unknown")
 
     with rt_mod._docker_op("docker.x") as op:

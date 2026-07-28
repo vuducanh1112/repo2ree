@@ -15,10 +15,10 @@ from .ree_intent import (
 from .ree_session import ReeSession, SourceAcquiredBy
 
 __all__ = [
+    "HBOM",
     "CPUDefinition",
     "Contributor",
     "GPUDefinition",
-    "HBOM",
     "MemoryDefinition",
     "NetworkDefinition",
     "ReeCatalogMetadata",

@@ -210,9 +210,8 @@ class _Evidence:
             return False
         if not _digests_consistent(receipt.declared_runtime_digest, self.runtime_digest):
             return False
-        if declares_outputs and not receipt.produced_output_digest:
-            return False
-        return True
+        # Either the experiment declares no outputs, or it produced a digest for them.
+        return not declares_outputs or bool(receipt.produced_output_digest)
 
     def outputs_captured(self, name: str) -> bool:
         receipt = self.experiments.get(name)

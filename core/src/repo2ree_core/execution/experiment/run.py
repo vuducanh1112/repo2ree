@@ -117,7 +117,7 @@ def run_runnable(
             ScriptSpanAttrs(path=runnable.run_script).apply(span)
             run_outcome = _run_script(workspace, runnable.run_script, log, is_canceled)
             record_exit_code(span, run_outcome.exit_code)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — the experiment's own failure is the result being recorded, not an error to raise
         log("system", "error", f"Run failed: {exc}")
         return ExperimentRunOutcome(status="failed", run_outputs=outputs)
 
@@ -144,7 +144,7 @@ def run_runnable(
             ScriptSpanAttrs(path=runnable.verify_script).apply(span)
             verify_outcome = _run_script(workspace, runnable.verify_script, log, is_canceled)
             record_exit_code(span, verify_outcome.exit_code)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — a failed verify is a verdict this function returns, not an exception it propagates
         log("system", "error", f"Verify failed: {exc}")
         outputs.verdict = "fail"
         return ExperimentRunOutcome(status="failed", run_outputs=outputs)

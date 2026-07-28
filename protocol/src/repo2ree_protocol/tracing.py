@@ -785,14 +785,13 @@ def _console_span_sink(payloads: list[str]) -> None:
             continue
         for resource_spans in request.resource_spans:
             for scope_spans in resource_spans.scope_spans:
-                for span in scope_spans.spans:
-                    lines.append(json.dumps(_format_relayed_span(span)))
+                lines.extend(json.dumps(_format_relayed_span(span)) for span in scope_spans.spans)
 
     if trace_file := os.environ.get(_TRACE_FILE_ENV):
         _append_trace_lines(Path(trace_file), lines)
     else:
         for line in lines:
-            print(line, file=sys.stdout, flush=True)
+            print(line, file=sys.stdout, flush=True)  # noqa: T201 — the console span exporter's whole job is writing spans to stdout
 
 
 def _format_relayed_span(span: _PbSpan) -> dict[str, object]:

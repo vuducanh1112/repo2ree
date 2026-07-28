@@ -40,7 +40,8 @@ def test_stale_expected_version_conflicts_without_mutating(tmp_path: Path, monke
     )
 
     assert result.status == "failed"
-    assert result.failure is not None and result.failure.category == "conflict"
+    assert result.failure is not None
+    assert result.failure.category == "conflict"
     # The same shape a file etag conflict reports, minus the path an intent
     # conflict has no equivalent of.
     assert result.outputs == {
