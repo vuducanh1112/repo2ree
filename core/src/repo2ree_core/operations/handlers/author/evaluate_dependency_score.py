@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.repository.profiler import AnalysisError, analyze_repo
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.ree.files import write_json_atomic
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.ree.store import ReeStore
@@ -43,7 +44,7 @@ def handle_evaluate_dependency_score(
         return ActionResult.failed("execution", str(exc))
     except Exception as exc:
         log("system", "error", f"evaluate_dependency_score failed: {exc}")
-        return ActionResult.failed("internal", f"evaluate_dependency_score failed: {exc}")
+        return failed_from_exception(exc, f"evaluate_dependency_score failed: {exc}")
 
     if is_canceled():
         log("system", "warn", "evaluate_dependency_score canceled")
@@ -61,7 +62,7 @@ def handle_evaluate_dependency_score(
         store.write_session(session)
     except Exception as exc:
         log("system", "error", f"failed to persist evaluation outputs: {exc}")
-        return ActionResult.failed("internal", f"failed to persist evaluation outputs: {exc}")
+        return failed_from_exception(exc, f"failed to persist evaluation outputs: {exc}")
 
     outputs = EvaluateOutputs(
         dependency_count=report.dependency_summary.total,

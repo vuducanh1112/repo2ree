@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.evidence.receipts.models import SnapshotUpstreamReceipt
 from repo2ree_core.evidence.receipts.store import persist_snapshot_digest
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
 from repo2ree_core.ree.files import pack_directory_tar_gz
 from repo2ree_core.ree.layout import ReeLayout
@@ -55,7 +56,7 @@ def handle_snapshot_upstream(
     except (OSError, tarfile.TarError) as exc:
         log("system", "error", f"snapshot failed: {exc}")
         log_step_outcome(_OPERATION, "failed", timer.finish(), log=log)
-        return ActionResult.failed("internal", f"snapshot failed: {exc}")
+        return failed_from_exception(exc, f"snapshot failed: {exc}")
 
     persist_snapshot_digest(ReeStore(layout), snapshot_digest, log=log)
     settle_step(

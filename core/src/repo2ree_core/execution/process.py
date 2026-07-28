@@ -41,6 +41,12 @@ CancelCheck = Callable[[], bool]  # True once a cancel has been requested
 # ignores SIGTERM, or a child that outlives its parent, is killed after it.
 CANCEL_GRACE_SECONDS = 5.0
 
+# How long to wait for the output readers to drain after the process exits. A
+# grandchild that inherited the pipe can hold it open past its parent's exit,
+# and waiting on that indefinitely would hang the command; what is bounded here
+# is the wait, not the truncation it implies — see _stream_process.
+READER_DRAIN_SECONDS = 5.0
+
 
 @dataclass(frozen=True)
 class StepOutcome:
@@ -208,8 +214,19 @@ def _stream_process(
 
     returncode = proc.wait()
 
-    stdout_reader.join(timeout=5)
-    stderr_reader.join(timeout=5)
+    stdout_reader.join(timeout=READER_DRAIN_SECONDS)
+    stderr_reader.join(timeout=READER_DRAIN_SECONDS)
+    if stdout_reader.is_alive() or stderr_reader.is_alive():
+        # Say so rather than return quietly short. Everything downstream — the
+        # run log, the receipt, the failure tails on the span — is built from
+        # these buffers, and silence in a run log reads as "the script printed
+        # nothing more", which is the one thing that is not true here.
+        log(
+            "system",
+            "warn",
+            f"output readers still draining after {READER_DRAIN_SECONDS:g}s "
+            "(a child still holds the pipe); captured output may be truncated",
+        )
 
     return StreamingProcessResult(
         returncode=returncode,

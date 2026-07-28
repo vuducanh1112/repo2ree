@@ -7,6 +7,7 @@ Mirrors the host-side write_file_content behaviour exactly.
 from __future__ import annotations
 
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import check_expected_etag
 from repo2ree_core.path_safety import validate_relative_path
 from repo2ree_core.ree.layout import ReeLayout
@@ -41,6 +42,6 @@ def handle_write_file(
         store.workspace.write_text(args.path, args.content)
     except Exception as exc:
         log("system", "error", f"write_file failed: {exc}")
-        return ActionResult.failed("internal", f"write_file failed: {exc}")
+        return failed_from_exception(exc, f"write_file failed: {exc}")
 
     return ActionResult(status="succeeded", exit_code=0)

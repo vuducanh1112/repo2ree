@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_core.analysis.hbom.generate_hbom import generate_hbom
 from repo2ree_core.domain.hbom import HBOM
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import open_ree_store, patch_ree_intent
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -33,14 +34,14 @@ def handle_generate_hbom(
     opened = open_ree_store(log)
     if isinstance(opened, ActionResult):
         return opened
-    layout, store = opened
+    _layout, store = opened
 
     log("system", "info", "profiling hardware")
     try:
         profiled = generate_hbom()
     except Exception as exc:
         log("system", "error", f"hardware profiling failed: {exc}")
-        return ActionResult.failed("internal", f"hardware profiling failed: {exc}")
+        return failed_from_exception(exc, f"hardware profiling failed: {exc}")
 
     if is_canceled():
         log("system", "warn", "generate_hbom canceled after profiling")
@@ -59,7 +60,7 @@ def handle_generate_hbom(
         patch_ree_intent(store, {"hardware_description": merged.model_dump(exclude_none=True)})
     except Exception as exc:
         log("system", "error", f"failed to persist hbom: {exc}")
-        return ActionResult.failed("internal", f"failed to persist hbom: {exc}")
+        return failed_from_exception(exc, f"failed to persist hbom: {exc}")
 
     log("system", "info", "generate_hbom succeeded")
     return ActionResult(

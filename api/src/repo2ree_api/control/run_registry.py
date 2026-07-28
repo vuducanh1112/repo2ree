@@ -11,16 +11,55 @@ from fastapi import HTTPException
 
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.log import emit_run_log
-from repo2ree_protocol.result import ActionResult, Failure
+from repo2ree_protocol.result import ActionResult, Failure, FailureCategory
 from repo2ree_protocol.tracing import (
     CommandSpanAttrs,
+    command_metric_attrs,
     current_span_link,
+    get_meter,
     get_tracer,
     record_command_status,
     record_span_facts,
 )
 
 tracer = get_tracer(__name__)
+_meter = get_meter(__name__)
+
+# ================================================
+# Metrics
+# ================================================
+#
+# The background-run counterpart of the ``ree.command`` instruments in
+# workbench/commands.py, named and attributed the same way so one query spans
+# both halves of the API's work. Spans already carry each run as a wide event;
+# these exist for the questions a trace store answers badly — run rate, error
+# rate, and duration distribution over a window.
+
+_run_counter = _meter.create_counter(
+    "ree.run",
+    description="Number of background runs settled, by operation and terminal status.",
+)
+_run_duration = _meter.create_histogram(
+    "ree.run_duration_seconds",
+    description="Wall-clock duration of a background run, from worker start to terminal status.",
+    unit="s",
+)
+_runs_active = _meter.create_up_down_counter(
+    "ree.run_active",
+    description="Background runs currently executing, by operation.",
+)
+# The two idempotency outcomes are separate instruments rather than one counter
+# with an outcome attribute: they answer different questions (a replay is a
+# client retrying correctly; a conflict is a client reusing a key it shouldn't)
+# and only the second is ever alertable.
+_run_replay_counter = _meter.create_counter(
+    "ree.run_idempotent_replay",
+    description="Number of run requests answered with an existing run because their idempotency key matched.",
+)
+_run_idempotency_conflict_counter = _meter.create_counter(
+    "ree.run_idempotency_conflict",
+    description="Number of run requests rejected because their idempotency key was reused with a different payload.",
+)
 
 # ================================================
 # Types
@@ -31,6 +70,55 @@ ACTIVE_STATUSES: frozenset[str] = frozenset({"running", "queued", "provisioning"
 
 # JSON field name for the REE id in run state and summaries.
 _REE_ID_FIELD = "ree_id"
+
+# HTTP status → the failure category it already means.
+#
+# A route that raised a typed 4xx knew what kind of failure it had; the worker
+# thread that catches it does not, and re-minting it as `internal` would tell
+# the client the fault was repo2ree's when the client is the one who can fix
+# it. The contract is that a layer enriches a failure rather than collapsing it
+# (see repo2ree_protocol.result.Failure), and this is where that has to hold
+# for a run started over HTTP.
+_STATUS_CATEGORIES: dict[int, FailureCategory] = {
+    400: "validation",
+    404: "precondition",
+    409: "conflict",
+    412: "conflict",
+    413: "validation",
+    422: "validation",
+    502: "unavailable",
+    503: "unavailable",
+    504: "timeout",
+}
+# The statuses whose meaning is "try again" — same set the HTTP error envelope
+# in main.py defaults `retryable` from, so a run failure and the immediate
+# response to the request that started it agree.
+_RETRYABLE_STATUSES: frozenset[int] = frozenset({429, 502, 503, 504})
+
+
+def _failure_from_http_exception(exc: HTTPException) -> Failure:
+    """The typed failure an ``HTTPException`` raised by a runner already carries.
+
+    Routes raise the structured error envelope through ``detail``. Stringifying
+    that dict produced a failure whose message was a Python repr; instead the
+    envelope's own message becomes the message, and everything else on it —
+    ``code``, ``details`` — is preserved under ``Failure.details`` where a
+    client can still read it.
+    """
+    default_category: FailureCategory = "validation" if exc.status_code < 500 else "internal"
+    category = _STATUS_CATEGORIES.get(exc.status_code, default_category)
+    retryable = exc.status_code in _RETRYABLE_STATUSES
+
+    detail = exc.detail
+    if isinstance(detail, dict):
+        message = str(detail.get("message") or detail.get("code") or "Run failed")
+        carried = {key: value for key, value in detail.items() if key != "message" and value is not None}
+    else:
+        message = str(detail or "Run failed")
+        carried = {}
+    carried["http_status"] = exc.status_code
+
+    return Failure(category=category, message=message, retryable=retryable, origin="api", details=carried)
 
 
 class RunRegistry:
@@ -193,7 +281,13 @@ class RunRegistry:
         status: str,
         outputs: dict[str, Any],
         failure: Failure | None = None,
-    ) -> None:
+    ) -> str:
+        """Settle a run and return the status actually stored.
+
+        The settled status is not always the one passed in — a cancel in flight
+        rewrites it — and the caller's metrics have to report what a poller will
+        see, not what the runner proposed.
+        """
         if self.is_cancel_requested(ree_id, run_id) and status not in {"failed", "succeeded"}:
             status = "canceled"
             # A canceled run carries no failure (mirrors the ActionResult contract).
@@ -204,16 +298,31 @@ class RunRegistry:
             run_state = self._run_store.get(ree_id, {}).get(run_id)
             if run_state:
                 run_state.pop("_next_seq", None)
+        return status
 
-    def _terminal_from_exception(self, ree_id: str, run_id: str, message: str) -> ActionResult:
-        """Terminal result for a runner that raised.
+    def _terminal_from_failure(self, ree_id: str, run_id: str, failure: Failure) -> ActionResult:
+        """Terminal result for a runner that raised, carrying ``failure``.
 
-        A cancel in flight settles to `canceled`; anything else is an
-        `internal` failure that originated here in the API worker thread.
+        A cancel in flight settles to `canceled` — which carries no failure, per
+        the ActionResult contract — and anything else fails with the typed
+        failure the caller derived from what was actually raised.
         """
         if self.is_cancel_requested(ree_id, run_id):
             return ActionResult(status="canceled")
-        return ActionResult.failed("internal", message, origin="api")
+        return ActionResult(status="failed", exit_code=1, failure=failure)
+
+    def _terminal_from_exception(self, ree_id: str, run_id: str, message: str) -> ActionResult:
+        """Terminal result for a runner that raised something untyped.
+
+        The last frame of a background run: nothing above it can report, and an
+        exception that reached here was not anticipated by the code that raised
+        it, so it is an `internal` fault originating in this API worker thread.
+        """
+        return self._terminal_from_failure(
+            ree_id,
+            run_id,
+            Failure(category="internal", message=message, origin="api"),
+        )
 
     def start_background(
         self,
@@ -243,6 +352,7 @@ class RunRegistry:
                 if existing is not None:
                     existing_run_id, existing_fingerprint = existing
                     if existing_fingerprint != fingerprint:
+                        _run_idempotency_conflict_counter.add(1, command_metric_attrs(operation))
                         raise HTTPException(
                             status_code=409,
                             detail={
@@ -257,6 +367,7 @@ class RunRegistry:
                         )
                     existing_state = self._run_store.get(ree_id, {}).get(existing_run_id)
                     if existing_state is not None:
+                        _run_replay_counter.add(1, command_metric_attrs(operation))
                         return existing_state
 
             created_at = utc_now()
@@ -286,25 +397,43 @@ class RunRegistry:
             with tracer.start_as_current_span(f"run.{operation}", links=links) as span:
                 CommandSpanAttrs(operation=operation, run_id=run_id, ree_id=ree_id).apply(span)
                 self._begin_run(ree_id, run_id, operation)
+                # Measured from here, not from the request: the queue between
+                # them is a thread spawn, and what an operator wants back is how
+                # long the work took.
+                started = time.monotonic()
+                active_attrs = command_metric_attrs(operation)
+                _runs_active.add(1, active_attrs)
                 try:
-                    result = runner(ree_id, run_id)
-                except HTTPException as exc:
-                    message = str(exc.detail or "Run failed")
-                    self.append_log(ree_id, run_id, "system", "error", message)
-                    result = self._terminal_from_exception(ree_id, run_id, message)
-                except Exception as exc:  # noqa: BLE001 — the registry is the last frame of a background run; nothing above it can report
-                    span.record_exception(exc)
-                    message = str(exc)
-                    self.append_log(ree_id, run_id, "system", "error", message)
-                    result = self._terminal_from_exception(ree_id, run_id, message)
-                # The run root is the trace a user finds first; make it a
-                # self-sufficient wide event by recording the outputs — and the
-                # failure, when there is one — here too.
-                record_span_facts(span, result.outputs, namespace="output")
-                if result.failure is not None:
-                    record_span_facts(span, result.failure.model_dump(exclude_none=True), namespace="failure")
-                record_command_status(span, result.status)
-                self.finalize(ree_id, run_id, result.status, result.outputs, result.failure)
+                    try:
+                        result = runner(ree_id, run_id)
+                    except HTTPException as exc:
+                        failure = _failure_from_http_exception(exc)
+                        # The envelope's message, not the dict it arrived in:
+                        # this line is what a user reads in the run log.
+                        self.append_log(ree_id, run_id, "system", "error", failure.message)
+                        result = self._terminal_from_failure(ree_id, run_id, failure)
+                    except Exception as exc:  # noqa: BLE001 — the registry is the last frame of a background run; nothing above it can report
+                        span.record_exception(exc)
+                        message = str(exc)
+                        self.append_log(ree_id, run_id, "system", "error", message)
+                        result = self._terminal_from_exception(ree_id, run_id, message)
+                    # The run root is the trace a user finds first; make it a
+                    # self-sufficient wide event by recording the outputs — and the
+                    # failure, when there is one — here too.
+                    record_span_facts(span, result.outputs, namespace="output")
+                    if result.failure is not None:
+                        record_span_facts(span, result.failure.model_dump(exclude_none=True), namespace="failure")
+                    record_command_status(span, result.status)
+                    settled = self.finalize(ree_id, run_id, result.status, result.outputs, result.failure)
+                    # Attributed with the *settled* status, so the counter agrees
+                    # with what a poller reads back and with the run's own span.
+                    terminal_attrs = command_metric_attrs(operation, status=settled)
+                    _run_duration.record(time.monotonic() - started, terminal_attrs)
+                    _run_counter.add(1, terminal_attrs)
+                finally:
+                    # In the finally so a raise anywhere above cannot strand the
+                    # gauge one run high for the life of the process.
+                    _runs_active.add(-1, active_attrs)
 
         worker = Thread(target=_worker, daemon=True)
         with self._lock:

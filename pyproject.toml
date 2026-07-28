@@ -362,7 +362,7 @@ layers = [
     "analysis : authoring : execution : source_repo : doctor",
     "ree",
     "domain",
-    "digests : path_safety : reproduction : reserved_paths : reserved_templates : time_utils",
+    "digests : failures : path_safety : reproduction : reserved_paths : reserved_templates : time_utils",
 ]
 
 # The capabilities the spine calls into. They are deliberately *not* placed in
@@ -447,6 +447,7 @@ name = "Leaf primitives depend on no package"
 type = "forbidden"
 source_modules = [
     "repo2ree_core.digests",
+    "repo2ree_core.failures",
     "repo2ree_core.path_safety",
     "repo2ree_core.reproduction",
     "repo2ree_core.reserved_paths",

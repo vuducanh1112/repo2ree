@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import open_ree_store
 from repo2ree_core.ree.store import reset_source_state
 from repo2ree_protocol.log import LogSink
@@ -24,7 +25,7 @@ def handle_remove_source(
         reset_source_state(layout=layout, store=store)
     except Exception as exc:
         log("system", "error", f"remove_source failed: {exc}")
-        return ActionResult.failed("internal", f"remove_source failed: {exc}")
+        return failed_from_exception(exc, f"remove_source failed: {exc}")
 
     log("system", "info", "remove_source succeeded")
     return ActionResult(status="succeeded", exit_code=0)

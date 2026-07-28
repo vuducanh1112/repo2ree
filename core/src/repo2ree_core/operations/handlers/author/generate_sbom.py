@@ -6,6 +6,7 @@ from repo2ree_core.analysis.sbom.scan import SBOM_FORMAT, is_runtime_archive, sc
 from repo2ree_core.digests import digest_file
 from repo2ree_core.evidence.receipts.models import GenerateSbomReceipt
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import (
     patch_ree_intent,
     resolve_workspace_path,
@@ -118,7 +119,7 @@ def handle_generate_sbom(
     except Exception as exc:
         log("system", "error", f"post-processing SBOM failed: {exc}")
         receipt("failed")
-        return ActionResult.failed("internal", f"post-processing SBOM failed: {exc}")
+        return failed_from_exception(exc, f"post-processing SBOM failed: {exc}")
 
     recorded = receipt(
         "succeeded",

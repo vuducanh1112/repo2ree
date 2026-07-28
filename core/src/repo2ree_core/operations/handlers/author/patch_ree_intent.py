@@ -9,6 +9,7 @@ from __future__ import annotations
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.store import prune_author_experiment_receipts
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import (
     VersionConflictOutputs,
     open_ree_store,
@@ -68,6 +69,6 @@ def handle_patch_ree_intent(
         prune_author_experiment_receipts(layout, store.read_intent())
     except Exception as exc:
         log("system", "error", f"patch_ree_intent failed: {exc}")
-        return ActionResult.failed("internal", f"patch_ree_intent failed: {exc}")
+        return failed_from_exception(exc, f"patch_ree_intent failed: {exc}")
 
     return ActionResult(status="succeeded", exit_code=0)

@@ -14,6 +14,7 @@ from contextlib import suppress
 
 from repo2ree_core.authoring.script_inference import ScriptTargetSelector, infer_scripts
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author._script_inference_inputs import build_runtime_inputs
 from repo2ree_core.operations.steps.author import read_intent_or_none
 from repo2ree_core.ree.layout import ReeLayout
@@ -63,7 +64,7 @@ def handle_generate_script_candidates(
         return ActionResult.failed("validation", f"invalid inference target: {exc}")
     except Exception as exc:
         log("system", "error", f"generate_script_candidates failed: {exc}")
-        return ActionResult.failed("internal", f"generate_script_candidates failed: {exc}")
+        return failed_from_exception(exc, f"generate_script_candidates failed: {exc}")
 
     if is_canceled():
         log("system", "warn", "generate_script_candidates canceled")

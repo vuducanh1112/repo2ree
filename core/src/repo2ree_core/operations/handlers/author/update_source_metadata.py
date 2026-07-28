@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import open_ree_store
 from repo2ree_core.ree.layout import SNAPSHOT_FILENAME
 from repo2ree_core.source_repo import directory_swhid, resolved_git_head
@@ -97,7 +98,7 @@ def handle_update_source_metadata(
         store.write_metadata(updated)
     except Exception as exc:
         log("system", "error", f"metadata update failed: {exc}")
-        return ActionResult.failed("internal", f"metadata update failed: {exc}")
+        return failed_from_exception(exc, f"metadata update failed: {exc}")
 
     log("system", "info", "update_source_metadata succeeded")
     return ActionResult(status="succeeded", exit_code=0)

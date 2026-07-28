@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from repo2ree_core.bundle.seal import seal_workspace_ree
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.ree.layout import ReeLayout
 from repo2ree_core.time_utils import utc_now
 from repo2ree_protocol.command import SealReeArgs
@@ -30,7 +31,7 @@ def handle_seal_ree(
         )
     except Exception as exc:
         log("system", "error", f"seal_ree failed: {exc}")
-        return ActionResult.failed("internal", f"seal_ree failed: {exc}")
+        return failed_from_exception(exc, f"seal_ree failed: {exc}")
 
     log("system", "info", f"REE sealed: {outputs.seal_hash}")
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())

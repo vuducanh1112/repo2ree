@@ -14,6 +14,7 @@ from repo2ree_core.analysis.sbom.cyclonedx import parse_cyclonedx
 from repo2ree_core.digests import digest_file
 from repo2ree_core.evidence.receipts.models import CrossCheckSbomReceipt
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
 from repo2ree_core.ree.files import write_json_atomic
 from repo2ree_core.ree.layout import REPRODUCIBILITY_REPORT_FILENAME, SBOM_ARTIFACT_PATH, ReeLayout
@@ -117,7 +118,7 @@ def handle_cross_check_sbom(
     except OSError as exc:
         log("system", "error", f"failed to persist cross-checked report: {exc}")
         receipt("failed")
-        return ActionResult.failed("internal", f"failed to persist cross-checked report: {exc}")
+        return failed_from_exception(exc, f"failed to persist cross-checked report: {exc}")
 
     log(
         "system",

@@ -9,12 +9,14 @@ exceptions, cancellation racing completion, and log sequencing.
 from __future__ import annotations
 
 import time
+from dataclasses import dataclass, field
 from threading import Event
 from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException
 
+from repo2ree_api.control import run_registry as run_registry_module
 from repo2ree_api.control.run_registry import RunRegistry
 from repo2ree_protocol.result import ActionResult
 
@@ -26,6 +28,60 @@ from repo2ree_protocol.result import ActionResult
 KNOWN_REE = "ree-1"
 
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
+
+
+@dataclass
+class _FakeInstrument:
+    """Stands in for an OTel counter/histogram, capturing what was recorded.
+
+    The real instruments bind to the global meter provider, which is set once
+    per process — installing a reader to read them back would leak into every
+    other test in the tier. What is worth asserting is the call sites anyway:
+    which instrument fires, with which value, under which attributes.
+    """
+
+    calls: list[tuple[float, dict[str, str]]] = field(default_factory=list)
+
+    def add(self, amount: float, attributes: dict[str, str] | None = None) -> None:
+        self.calls.append((amount, dict(attributes or {})))
+
+    def record(self, amount: float, attributes: dict[str, str] | None = None) -> None:
+        self.calls.append((amount, dict(attributes or {})))
+
+    @property
+    def attributes(self) -> list[dict[str, str]]:
+        return [attrs for _amount, attrs in self.calls]
+
+    @property
+    def total(self) -> float:
+        return sum(amount for amount, _attrs in self.calls)
+
+
+@dataclass
+class _Instruments:
+    runs: _FakeInstrument
+    duration: _FakeInstrument
+    active: _FakeInstrument
+    replay: _FakeInstrument
+    conflict: _FakeInstrument
+
+
+@pytest.fixture
+def instruments(monkeypatch: pytest.MonkeyPatch) -> _Instruments:
+    """Swap the module's run-lifecycle instruments for capturing fakes."""
+    fakes = _Instruments(
+        runs=_FakeInstrument(),
+        duration=_FakeInstrument(),
+        active=_FakeInstrument(),
+        replay=_FakeInstrument(),
+        conflict=_FakeInstrument(),
+    )
+    monkeypatch.setattr(run_registry_module, "_run_counter", fakes.runs)
+    monkeypatch.setattr(run_registry_module, "_run_duration", fakes.duration)
+    monkeypatch.setattr(run_registry_module, "_runs_active", fakes.active)
+    monkeypatch.setattr(run_registry_module, "_run_replay_counter", fakes.replay)
+    monkeypatch.setattr(run_registry_module, "_run_idempotency_conflict_counter", fakes.conflict)
+    return fakes
 
 
 def _registry() -> RunRegistry:
@@ -237,7 +293,65 @@ def test_runner_http_exception_finalizes_as_failed_with_detail_logged():
     assert final["status"] == "failed"
     assert final["failure"]["origin"] == "api"
     assert final["failure"]["message"] == "seal in progress"
+    # The status already says what kind of failure this is; a 409 is a conflict,
+    # not an internal fault of ours.
+    assert final["failure"]["category"] == "conflict"
     assert final["logs"][0]["message"] == "seal in progress"
+
+
+def test_structured_http_detail_survives_as_a_typed_failure():
+    """A route's error envelope must not be flattened into a dict repr."""
+    registry = _registry()
+
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "version_conflict",
+                "message": "The file changed since you read it",
+                "details": {"path": "ree-scripts/build_script.sh", "expected_version": "etag-1"},
+            },
+        )
+
+    run_state = registry.start_background(KNOWN_REE, "files", {}, "files", _runner)
+    final = _wait_for(registry, run_state["run_id"], TERMINAL)
+
+    failure = final["failure"]
+    assert failure["category"] == "conflict"
+    assert failure["retryable"] is False
+    # The envelope's own message, not `str(detail)`.
+    assert failure["message"] == "The file changed since you read it"
+    # Everything else on the envelope stays readable by the client.
+    assert failure["details"]["code"] == "version_conflict"
+    assert failure["details"]["details"]["path"] == "ree-scripts/build_script.sh"
+    assert failure["details"]["http_status"] == 409
+    assert final["logs"][0]["message"] == "The file changed since you read it"
+
+
+def test_an_unreachable_dependency_reported_over_http_is_retryable():
+    registry = _registry()
+
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
+        raise HTTPException(status_code=503, detail="Workbench unavailable for this REE")
+
+    run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    failure = _wait_for(registry, run_state["run_id"], TERMINAL)["failure"]
+
+    assert failure["category"] == "unavailable"
+    assert failure["retryable"] is True
+
+
+def test_a_server_side_http_status_without_a_mapping_stays_internal():
+    registry = _registry()
+
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
+        raise HTTPException(status_code=500, detail="something gave way")
+
+    run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    failure = _wait_for(registry, run_state["run_id"], TERMINAL)["failure"]
+
+    assert failure["category"] == "internal"
+    assert failure["retryable"] is False
 
 
 # ================================================
@@ -394,3 +508,128 @@ def test_get_run_state_for_unknown_run_is_404():
     with pytest.raises(HTTPException) as excinfo:
         registry.get_run_state(KNOWN_REE, "no-such-run")
     assert excinfo.value.status_code == 404
+
+
+# ================================================
+# Metrics
+# ================================================
+
+
+def test_settled_run_counts_once_and_records_its_duration(instruments: _Instruments):
+    registry = _registry()
+    run = registry.start_background(KNOWN_REE, "build", {}, "build", lambda e, r: ActionResult(status="succeeded"))
+    _wait_for(registry, run["run_id"], TERMINAL)
+
+    terminal_attrs = {"repo2ree.operation": "build", "repo2ree.status": "succeeded"}
+    assert instruments.runs.calls == [(1, terminal_attrs)]
+    assert instruments.duration.attributes == [terminal_attrs]
+    # One sample, of a real elapsed span rather than a placeholder zero.
+    duration, _attrs = instruments.duration.calls[0]
+    assert duration > 0
+
+
+def test_failed_run_is_metered_under_its_terminal_status(instruments: _Instruments):
+    registry = _registry()
+
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
+        raise RuntimeError("docker cp exploded")
+
+    run = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
+    _wait_for(registry, run["run_id"], TERMINAL)
+
+    assert instruments.runs.attributes == [{"repo2ree.operation": "source", "repo2ree.status": "failed"}]
+
+
+def test_run_is_metered_with_the_settled_status_not_the_proposed_one(instruments: _Instruments):
+    """A run canceled mid-flight counts as canceled, matching what a poller reads."""
+    registry = _registry()
+    release = Event()
+
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
+        release.wait(timeout=5.0)
+        return ActionResult(status="canceled")
+
+    run = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    _wait_for(registry, run["run_id"], frozenset({"running"}))
+    registry.mark_cancel_requested(KNOWN_REE, run["run_id"])
+    release.set()
+
+    final = _wait_for(registry, run["run_id"], TERMINAL)
+    assert instruments.runs.attributes == [{"repo2ree.operation": "build", "repo2ree.status": final["status"]}]
+
+
+def test_active_gauge_rises_while_running_and_returns_to_zero(instruments: _Instruments):
+    registry = _registry()
+    release = Event()
+
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
+        release.wait(timeout=5.0)
+        return ActionResult(status="succeeded")
+
+    run = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    _wait_for(registry, run["run_id"], frozenset({"running"}))
+    assert instruments.active.total == 1
+
+    release.set()
+    _wait_for(registry, run["run_id"], TERMINAL)
+    # The gauge is balanced by the finally, and carries no status: an in-flight
+    # run has no terminal status to slice by.
+    assert instruments.active.total == 0
+    assert instruments.active.attributes == [{"repo2ree.operation": "build"}] * 2
+
+
+def test_a_crashed_runner_still_balances_the_active_gauge(instruments: _Instruments):
+    registry = _registry()
+
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
+        raise RuntimeError("boom")
+
+    run = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
+    _wait_for(registry, run["run_id"], TERMINAL)
+
+    assert instruments.active.total == 0
+
+
+def test_idempotent_replay_is_metered_and_the_run_counted_once(instruments: _Instruments):
+    registry = _registry()
+    release = Event()
+
+    def _runner(ree_id: str, run_id: str) -> ActionResult:
+        release.wait(timeout=5.0)
+        return ActionResult(status="succeeded")
+
+    payload = {"script": "ree-scripts/build_script.sh"}
+    first = registry.start_background(KNOWN_REE, "build", payload, "build", _runner, idempotency_key="request-1")
+    registry.start_background(KNOWN_REE, "build", payload, "build", _runner, idempotency_key="request-1")
+
+    assert instruments.replay.calls == [(1, {"repo2ree.operation": "build"})]
+    release.set()
+    _wait_for(registry, first["run_id"], TERMINAL)
+    # The replayed request started no second run, so exactly one settled.
+    assert instruments.runs.total == 1
+
+
+def test_idempotency_conflict_is_metered(instruments: _Instruments):
+    registry = _registry()
+    first = registry.start_background(
+        KNOWN_REE,
+        "evaluate",
+        {"strict": False},
+        "evaluate",
+        lambda e, r: ActionResult(status="succeeded"),
+        idempotency_key="request-1",
+    )
+
+    with pytest.raises(HTTPException):
+        registry.start_background(
+            KNOWN_REE,
+            "evaluate",
+            {"strict": True},
+            "evaluate",
+            lambda e, r: ActionResult(status="succeeded"),
+            idempotency_key="request-1",
+        )
+
+    assert instruments.conflict.calls == [(1, {"repo2ree.operation": "evaluate"})]
+    assert instruments.replay.calls == []
+    _wait_for(registry, first["run_id"], TERMINAL)

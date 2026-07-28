@@ -90,3 +90,43 @@ def test_cancel_escalates_to_sigkill_when_sigterm_ignored(tmp_path, monkeypatch)
     child_pid = int(pid_file.read_text().strip())
     assert _wait_pid_gone(child_pid), "SIGTERM-ignoring process survived escalation"
     assert any("SIGKILL" in msg for _, _, msg in logged), "escalation was not logged"
+
+
+def test_truncated_output_is_reported_rather_than_returned_quietly(tmp_path, monkeypatch):
+    """A grandchild holding the pipe open past the drain window is announced.
+
+    Everything downstream — run log, receipt, span failure tails — is built from
+    the captured buffers, so a short read that says nothing reads as "the script
+    printed nothing more", which is the one thing it does not mean.
+    """
+    # Keep the test fast: shrink the window the readers get to drain.
+    monkeypatch.setattr(run_script, "READER_DRAIN_SECONDS", 0.2)
+    # The parent exits immediately; the backgrounded subshell inherits its
+    # stdout and holds the pipe open well past the drain deadline.
+    holder = tmp_path / "holder.sh"
+    holder.write_text("printf 'first\\n'\n(sleep 2; printf 'late\\n') &\n")
+
+    logged: list[tuple[str, str, str]] = []
+    result = run_streaming_process(
+        ["sh", str(holder)],
+        log=lambda stream, level, msg: logged.append((stream, level, msg)),
+    )
+
+    assert result.returncode == 0
+    # What was read before the deadline is still returned.
+    assert "first" in result.stdout
+    # ...and the fact that more may be missing is said out loud.
+    assert any(stream == "system" and level == "warn" and "truncated" in msg for stream, level, msg in logged), (
+        f"truncation was not reported: {logged}"
+    )
+
+
+def test_a_process_that_closes_its_pipes_reports_no_truncation(tmp_path):
+    logged: list[tuple[str, str, str]] = []
+
+    run_streaming_process(
+        ["sh", "-c", "printf 'done\\n'"],
+        log=lambda stream, level, msg: logged.append((stream, level, msg)),
+    )
+
+    assert not any("truncated" in msg for _, _, msg in logged)
