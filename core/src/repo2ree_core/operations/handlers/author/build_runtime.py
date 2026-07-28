@@ -13,15 +13,14 @@ script and receipt it" is not a second general shape, it is this step.
 
 from __future__ import annotations
 
-from typing import Any
-
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
 
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
 from repo2ree_core.execution.process import CancelCheck, run_workspace_script
 from repo2ree_core.operations.steps.author import (
     collect_step_inputs,
+    dump_receipt_whole,
     read_intent_or_none,
     record_step_inputs,
     resolve_workspace_path,
@@ -45,7 +44,9 @@ class BuildRuntimeOutputs(BaseModel):
 
     build_runtime_script_path: str
     container_exit_code: int | None = None
-    receipt: dict[str, Any] | None = None
+    receipt: BuildRuntimeReceipt | None = None
+
+    _dump_receipt = field_serializer("receipt")(dump_receipt_whole)
 
 
 def handle_build_runtime(
@@ -107,7 +108,7 @@ def handle_build_runtime(
     outputs = BuildRuntimeOutputs(
         build_runtime_script_path=RESERVED_BUILD_SCRIPT,
         container_exit_code=outcome.exit_code,
-        receipt=receipt.model_dump(),
+        receipt=receipt,
     )
     return result_from_run_outcome(
         outcome.status,

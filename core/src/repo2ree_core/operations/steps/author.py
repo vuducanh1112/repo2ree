@@ -17,14 +17,13 @@ operation string, and fails the same way when a third step arrives.
 
 from __future__ import annotations
 
-import json
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, field_serializer
 
 from repo2ree_core.digests import digest_bytes, digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.experiment import Runnable
@@ -44,20 +43,11 @@ from repo2ree_core.execution.experiment.run import RunnableRunOutputs, run_runna
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.path_safety import WORKSPACE_CONTROL_PREFIXES, resolve_within
 from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
+from repo2ree_core.ree.store import UNREADABLE_DOCUMENT, ReeStore
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
 from repo2ree_protocol.tracing import ReceiptInputAttrs
-
-# What a half-built or damaged persisted document raises on the way through
-# json and pydantic: an unreadable file, malformed bytes, or content that no
-# longer fits the model. Named for the failure rather than for the sidecar it
-# was first written about, because the REE's other persisted documents (the
-# reproducibility report, say) fail exactly these four ways and no others.
-# Anything outside this set is a defect here, not a fact about the REE, and
-# must not be mistaken for one.
-UNREADABLE_DOCUMENT = (OSError, json.JSONDecodeError, ValidationError, ValueError)
 
 
 def resolve_workspace_path(layout: ReeLayout, rel_path: str) -> Path:
@@ -182,11 +172,31 @@ def record_step_inputs(inputs: StepInputs) -> None:
     ).apply_current()
 
 
+def dump_receipt_whole[ReceiptT: RunReceipt](receipt: ReceiptT | None) -> dict[str, Any] | None:
+    """Serialize a receipt carried on an outputs envelope, fields and all.
+
+    Attach with ``@field_serializer`` to any ``receipt`` field on an outputs
+    model. The envelopes are dumped with ``exclude_none=True`` — an output that
+    does not apply should not appear — but that recursion must not reach inside
+    the receipt, where a None field is itself the evidence: ``produced_runtime_digest:
+    null`` says the build produced nothing at the declared path, and dropping it
+    would turn a recorded fact into an absent one.
+
+    The alternative, typing the field as ``dict[str, Any]`` and pre-dumping it,
+    happens to serialize the same way — which is exactly why it survived: it
+    looked like a formatting detail rather than the receipt schema going
+    unchecked at the boundary a client reads it from.
+    """
+    return receipt.model_dump() if receipt is not None else None
+
+
 class RunnableStepOutputs(RunnableRunOutputs):
     """A runnable run's outputs plus the handler-level facts."""
 
     runtime_path: str = ""
-    receipt: dict[str, Any] | None = None
+    receipt: ActivationTestReceipt | RunExperimentReceipt | None = None
+
+    _dump_receipt = field_serializer("receipt")(dump_receipt_whole)
 
 
 class VersionConflictOutputs(BaseModel):
@@ -492,7 +502,7 @@ def run_runnable_handler(
         )
     )
     record_receipt(layout, receipt, log=log)
-    outputs.receipt = receipt.model_dump()
+    outputs.receipt = receipt
     log_step_outcome(step.operation, status, timing, log=log)
 
     return result_from_run_outcome(

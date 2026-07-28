@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.analysis.sbom.scan import SBOM_FORMAT, is_runtime_archive, scan_runtime_archive
@@ -30,7 +28,7 @@ class GenerateSbomOutputs(BaseModel):
     sbom_relative_path: str
     runtime_relative_path: str
     format: str
-    receipt: dict[str, Any]
+    receipt: GenerateSbomReceipt
 
 
 def handle_generate_sbom(
@@ -131,6 +129,6 @@ def handle_generate_sbom(
         sbom_relative_path=SBOM_ARTIFACT_PATH,
         runtime_relative_path=runtime_path,
         format=SBOM_FORMAT,
-        receipt=recorded.model_dump(),
+        receipt=recorded,
     )
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())

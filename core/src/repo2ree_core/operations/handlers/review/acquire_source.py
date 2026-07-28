@@ -29,16 +29,14 @@ from repo2ree_core.evidence.review.models import (
     SourceComparison,
     new_review_record,
     resolve_basis,
-    with_step,
 )
-from repo2ree_core.evidence.review.store import write_review_record, write_review_source_evidence
+from repo2ree_core.evidence.review.store import write_review_source_evidence
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
-from repo2ree_core.operations.steps.review import begin_review_step
+from repo2ree_core.operations.steps.review import begin_review_step, require_ree_intent
 from repo2ree_core.ree.files import write_atomic
 from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
-from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.source_repo.swhid import directory_swhid
-from repo2ree_core.time_utils import OperationTimer, format_duration_ms
+from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -61,12 +59,15 @@ def handle_review_acquire_source(
 ) -> ActionResult:
     ree_layout = ReeLayout.in_workbench()
     review_layout = ree_layout.review(args.review_id)
-    intent = ReeStore(ree_layout).read_intent()
     timer = OperationTimer.start()
+
+    intent = require_ree_intent(ree_layout, log=log)
+    if isinstance(intent, ActionResult):
+        return intent
 
     # The one step that opens an attempt rather than joining one: there is no
     # record to require, so it starts from a freshly minted one.
-    started, stop = begin_review_step(
+    step = begin_review_step(
         review_layout,
         new_review_record(args.review_id, at=timer.started_at),
         "source",
@@ -75,6 +76,7 @@ def handle_review_acquire_source(
         log=log,
         noun="review source acquisition",
     )
+    started, stop = step.record, step.stop
 
     if is_canceled():
         return stop("canceled", "canceled before source acquisition")
@@ -109,15 +111,6 @@ def handle_review_acquire_source(
         observed_swhid=comparison.observed_swhid,
     )
     write_review_source_evidence(review_layout, receipt, comparison)
-    write_review_record(
-        review_layout,
-        with_step(
-            started.model_copy(update={"source_receipt": receipt, "source_comparison": comparison}),
-            "source",
-            status="completed",
-            at=timing.finished_at,
-        ),
-    )
     log(
         "system",
         "info" if comparison.verdict == "identical" else "warn",
@@ -131,11 +124,11 @@ def handle_review_acquire_source(
             "this verdict certifies the bundle's own snapshot — the recorded origin was never contacted, "
             "so it is an integrity check rather than an independent reproduction",
         )
-    log(
-        "system",
-        "info",
-        f"review source acquisition succeeded in {format_duration_ms(timing.duration_ms)} "
-        f"(duration_ms={timing.duration_ms})",
+    step.settle(
+        started.model_copy(update={"source_receipt": receipt, "source_comparison": comparison}),
+        timing,
+        verdict=comparison.verdict,
+        basis=basis,
     )
     outputs = ReviewAcquireSourceOutputs(
         review_id=args.review_id,

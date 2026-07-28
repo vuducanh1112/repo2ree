@@ -37,21 +37,18 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_core.domain.experiment import Activation
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.models import ActivationTestReceipt, receipt_envelope
-from repo2ree_core.evidence.review.models import ActivationOutcome, ActivationVerdict, with_step
-from repo2ree_core.evidence.review.store import write_review_activation_evidence, write_review_record
-from repo2ree_core.execution.experiment.resolve import RunnableResolutionError, resolve_activation_runnable
-from repo2ree_core.execution.experiment.run import run_runnable
+from repo2ree_core.evidence.review.models import ActivationOutcome, ActivationVerdict, ReviewRecord
+from repo2ree_core.evidence.review.store import write_review_activation_evidence
+from repo2ree_core.execution.experiment.resolve import resolve_activation_runnable
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.review import (
-    begin_review_step,
-    require_certified_runtime,
-    require_completed_step,
-    require_review_record,
+    CertifiedRuntime,
+    ReviewRunnableStep,
+    open_review_run,
 )
-from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import ReviewActivationTestArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -65,6 +62,36 @@ class ReviewActivationTestOutputs(BaseModel):
     outcome: ActivationOutcome
 
 
+def _select(intent: ReeIntent) -> tuple[Activation, str]:
+    return resolve_activation_runnable(intent), "activation"
+
+
+def _admit(_record: ReviewRecord, certified: CertifiedRuntime) -> str | None:
+    """Unlike an experiment, a probe of nothing is not a probe.
+
+    Activation exists to say the *runtime* comes up, so a baseline that declares
+    none has no question here to answer.
+    """
+    if not certified.runtime_path:
+        return "The certified build recorded no runtime artifact to activate"
+    return None
+
+
+_STEP: ReviewRunnableStep[Activation] = ReviewRunnableStep(
+    step="activation",
+    noun="review activation",
+    subject="activation",
+    requires="build",
+    requires_message="Certify the runtime before probing whether it is inhabitable",
+    runtime_purpose="to activate",
+    runtime_retry_purpose="to activate",
+    admit=_admit,
+    select=_select,
+    unresolvable="the author baseline cannot be activated",
+    script_noun="an activation script",
+)
+
+
 def handle_review_activation_test(
     args: ReviewActivationTestArgs,
     *,
@@ -72,79 +99,19 @@ def handle_review_activation_test(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    ree_layout = ReeLayout.in_workbench()
-    review_layout = ree_layout.review(args.review_id)
-    timer = OperationTimer.start()
-
-    record = require_review_record(review_layout, args.review_id, log)
-    if isinstance(record, ActionResult):
-        return record
-
-    started, stop = begin_review_step(
-        review_layout,
-        record,
-        "activation",
+    opened = open_review_run(
+        _STEP,
         review_id=args.review_id,
-        timer=timer,
-        log=log,
-        noun="review activation",
-    )
-
-    if is_canceled():
-        return stop("canceled", "canceled before activation")
-
-    halted = require_completed_step(
-        started,
-        "build",
-        stop=stop,
-        message="Certify the runtime before probing whether it is inhabitable",
-    )
-    if halted is not None:
-        return halted
-
-    certified = require_certified_runtime(
-        started,
-        review_layout,
-        stop=stop,
-        purpose="to activate",
-        retry_purpose="to activate",
-    )
-    if isinstance(certified, ActionResult):
-        return certified
-
-    # Unlike an experiment, a probe of nothing is not a probe: activation exists
-    # to say the *runtime* comes up, so a baseline that declares none has no
-    # question here to answer.
-    if not certified.runtime_path:
-        return stop("failed", "The certified build recorded no runtime artifact to activate")
-
-    try:
-        activation = resolve_activation_runnable(ReeStore(ree_layout).read_intent())
-    except RunnableResolutionError as exc:
-        return stop("failed", f"the author baseline cannot be activated: {exc}")
-
-    # A script that is not there would otherwise run, fail, and be recorded as
-    # "the runtime would not come up" — a verdict about a runtime nothing ever
-    # probed. Absent apparatus is a fact about the baseline, so it fails the step.
-    if not (review_layout.workspace / activation.run_script).is_file():
-        return stop(
-            "failed",
-            f"the author baseline declares an activation script that is not there: {activation.run_script}",
-        )
-
-    outcome = run_runnable(
-        workspace=review_layout.workspace.resolve(),
-        runnable=activation,
-        label="activation",
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,
     )
-    if outcome.status == "canceled" or is_canceled():
-        return stop("canceled", "activation canceled")
+    if isinstance(opened, ActionResult):
+        return opened
 
+    activation, certified, outcome = opened.runnable, opened.certified, opened.outcome
     verdict: ActivationVerdict = "passed" if outcome.status == "succeeded" else "failed"
-    timing = timer.finish()
+    timing = opened.timer.finish()
     # No snapshot digest and no drift verdict, for the same reason the build
     # review records neither: both describe an author's workspace drifting from
     # what it was materialized from, and a review namespace is materialized
@@ -165,25 +132,18 @@ def handle_review_activation_test(
         run_exit_code=outcome.run_outputs.exit_code,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
     )
-    write_review_activation_evidence(review_layout, receipt, activation_outcome)
-    write_review_record(
-        review_layout,
-        with_step(
-            started.model_copy(update={"activation_receipt": receipt, "activation_outcome": activation_outcome}),
-            "activation",
-            # Completed either way: a runtime that will not come up is this step
-            # working, not failing. Recording it as a failure would put the
-            # attempt into ``failed`` and lose the difference between "the review
-            # could not run" and "the review found the runtime uninhabitable".
-            status="completed",
-            at=timing.finished_at,
-        ),
-    )
+    write_review_activation_evidence(opened.review_layout, receipt, activation_outcome)
     _log_outcome(activation_outcome, log=log)
-    log(
-        "system",
-        "info",
-        f"review activation completed in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+    # Completed either way: a runtime that will not come up is this step
+    # working, not failing. Recording it as a failure would put the attempt into
+    # ``failed`` and lose the difference between "the review could not run" and
+    # "the review found the runtime uninhabitable".
+    opened.step.settle(
+        opened.step.record.model_copy(update={"activation_receipt": receipt, "activation_outcome": activation_outcome}),
+        timing,
+        verdict=verdict,
+        basis=certified.basis,
+        runtime_digest=certified.runtime_digest,
     )
 
     outputs = ReviewActivationTestOutputs(

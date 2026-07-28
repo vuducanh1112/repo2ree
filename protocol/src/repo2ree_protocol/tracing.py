@@ -494,6 +494,44 @@ class ReceiptInputAttrs(_SpanFactCarrier):
         }
 
 
+@dataclass(frozen=True, slots=True)
+class ReviewStepAttrs(_SpanFactCarrier):
+    """One review step's identity, and what it settled.
+
+    Recorded on the ``command.review_*`` span rather than on a span of its own:
+    a review step *is* the whole command, so a nested span would be 1:1 with it
+    and add a level without adding a fact. What was missing was never the span,
+    it was these attributes — an attempt could be traced end to end without the
+    trace ever saying which attempt it was or what it concluded.
+
+    Applied twice per step: identity as soon as the step is marked running, so
+    a step killed mid-run is still attributable, and the terminal facts when it
+    settles. ``verdict`` is what the step *found* (a build closure that differs,
+    a runtime that would not come up) and is independent of ``status``, which is
+    whether the step could run at all — collapsing the two is exactly the
+    conflation the review record refuses to make.
+    """
+
+    _namespace: ClassVar[str] = "review"
+
+    review_id: str | None = None
+    step: str | None = None
+    basis: str | None = None
+    status: str | None = None
+    verdict: str | None = None
+    runtime_digest: str | None = None
+
+    def _facts(self) -> Mapping[str, object]:
+        return {
+            "review_id": self.review_id,
+            "step": self.step,
+            "basis": self.basis,
+            "status": self.status,
+            "verdict": self.verdict,
+            "runtime_digest": self.runtime_digest,
+        }
+
+
 def record_exec_outcome(
     span: Span,
     *,

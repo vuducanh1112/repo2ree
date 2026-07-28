@@ -20,6 +20,8 @@ from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+from pydantic import ValidationError
+
 from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.domain.ree_session import ReeSession
 from repo2ree_core.path_safety import validate_relative_path
@@ -29,6 +31,20 @@ from repo2ree_core.ree.workspace.model import WorkspaceMetadata
 from repo2ree_core.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 from repo2ree_core.reserved_templates import reserved_script_template
 from repo2ree_core.time_utils import utc_now
+
+# What a half-built or damaged persisted document raises on the way through
+# json and pydantic: an unreadable file, malformed bytes, or content that no
+# longer fits the model. Named for the failure rather than for any one document,
+# because every document this module reads — the sidecar, the manifest, the
+# reproducibility report — fails exactly these four ways and no others. Anything
+# outside this set is a defect in the reader, not a fact about the REE, and must
+# not be mistaken for one.
+#
+# It lives here, beside the writes it is the counterpart of: the atomic-write
+# guarantee above is what makes an unparseable document worth reporting rather
+# than an expected state to recover from. Both step families read REE documents,
+# and neither may import the other, so the shared name has to sit below both.
+UNREADABLE_DOCUMENT = (OSError, json.JSONDecodeError, ValidationError, ValueError)
 
 
 class SubtreeStore:

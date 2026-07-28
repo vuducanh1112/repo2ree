@@ -349,3 +349,40 @@ def test_the_probe_never_writes_to_author_evidence(tmp_path: Path, monkeypatch: 
     # their workspace, which the probe ran entirely beside.
     assert not (layout.author_receipts / "activation_test.json").exists()
     assert list(layout.workspace.iterdir()) == []
+
+
+# ================================================
+# A baseline that cannot be read
+# ================================================
+
+
+def test_a_damaged_baseline_fails_the_step_instead_of_raising(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A sidecar that will not parse is a precondition, not a traceback.
+
+    Nothing above core catches: the dispatcher re-raises and the executor prints
+    the traceback instead of an ActionResult, so an exception escaping a handler
+    is not a worse error message — it is no result at all, on a channel whose
+    readers have no way to interpret one.
+    """
+    layout = _author_ree(tmp_path, monkeypatch)
+    _certified_attempt(layout)
+    layout.metadata.write_text("{ not json", encoding="utf-8")
+
+    result = _activate()
+
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert result.failure.category == "precondition"
+    assert "unreadable metadata" in result.failure.message
+
+
+def test_an_absent_baseline_fails_the_step_instead_of_raising(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    layout = _author_ree(tmp_path, monkeypatch)
+    _certified_attempt(layout)
+    layout.metadata.unlink()
+
+    result = _activate()
+
+    assert result.status == "failed"
+    assert result.failure is not None and result.failure.category == "precondition"
+    assert "no REE to review" in result.failure.message

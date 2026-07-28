@@ -14,9 +14,10 @@ from repo2ree_core.analysis.sbom.cyclonedx import parse_cyclonedx
 from repo2ree_core.digests import digest_file
 from repo2ree_core.evidence.receipts.models import CrossCheckSbomReceipt
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.operations.steps.author import UNREADABLE_DOCUMENT, log_step_outcome, settle_step
+from repo2ree_core.operations.steps.author import log_step_outcome, settle_step
 from repo2ree_core.ree.files import write_json_atomic
 from repo2ree_core.ree.layout import REPRODUCIBILITY_REPORT_FILENAME, SBOM_ARTIFACT_PATH, ReeLayout
+from repo2ree_core.ree.store import UNREADABLE_DOCUMENT
 from repo2ree_core.time_utils import OperationTimer, utc_now
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult, ActionStatus
@@ -32,7 +33,7 @@ class CrossCheckSbomOutputs(BaseModel):
     # The cross-check summary (an SbomCrossCheckSummary dump); kept as a dict
     # here because the outputs envelope stays JSON.
     cross_check: dict[str, Any]
-    receipt: dict[str, Any]
+    receipt: CrossCheckSbomReceipt
 
 
 def handle_cross_check_sbom(
@@ -130,6 +131,6 @@ def handle_cross_check_sbom(
         report_relative_path=REPRODUCIBILITY_REPORT_FILENAME,
         sbom_relative_path=sbom_rel,
         cross_check=summary.model_dump(),
-        receipt=recorded.model_dump(),
+        receipt=recorded,
     )
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())

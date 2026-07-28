@@ -54,8 +54,8 @@ from repo2ree_core.evidence.receipts.models import (
 )
 from repo2ree_core.evidence.receipts.store import load_author_receipts
 from repo2ree_core.evidence.review.comparison import compare_build_runtimes
-from repo2ree_core.evidence.review.models import BuildComparison, EvidenceBasis, resolve_basis, with_step
-from repo2ree_core.evidence.review.store import write_review_build_evidence, write_review_record
+from repo2ree_core.evidence.review.models import BuildComparison, EvidenceBasis, resolve_basis
+from repo2ree_core.evidence.review.store import write_review_build_evidence
 from repo2ree_core.execution.process import (
     CancelCheck,
     format_command,
@@ -65,6 +65,7 @@ from repo2ree_core.execution.process import (
 from repo2ree_core.operations.steps.review import (
     begin_review_step,
     require_completed_step,
+    require_ree_intent,
     require_review_record,
     workspace_runtime,
     workspace_runtime_candidates,
@@ -73,7 +74,7 @@ from repo2ree_core.ree.files import write_atomic
 from repo2ree_core.ree.layout import ReeLayout, ReviewLayout
 from repo2ree_core.ree.store import ReeStore
 from repo2ree_core.reserved_paths import RESERVED_BUILD_SCRIPT
-from repo2ree_core.time_utils import OperationTimer, format_duration_ms
+from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewBasis, ReviewBuildRuntimeArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -98,11 +99,17 @@ def handle_review_build_runtime(
     review_layout = ree_layout.review(args.review_id)
     timer = OperationTimer.start()
 
+    # Read before the step is marked running: a baseline nobody can read is a
+    # precondition nobody can meet, so there is nothing yet to settle a halt on.
+    intent = require_ree_intent(ree_layout, log=log)
+    if isinstance(intent, ActionResult):
+        return intent
+
     record = require_review_record(review_layout, args.review_id, log)
     if isinstance(record, ActionResult):
         return record
 
-    started, stop = begin_review_step(
+    step = begin_review_step(
         review_layout,
         record,
         "build",
@@ -111,6 +118,7 @@ def handle_review_build_runtime(
         log=log,
         noun="review build",
     )
+    started, stop = step.record, step.stop
 
     if is_canceled():
         return stop("canceled", "canceled before build")
@@ -125,7 +133,6 @@ def handle_review_build_runtime(
         return halted
 
     store = ReeStore(ree_layout)
-    intent = store.read_intent()
     runtime_path = (intent.runtime or "").strip()
     if not runtime_path:
         return stop("failed", "The author baseline declares no runtime artifact to certify")
@@ -217,20 +224,13 @@ def handle_review_build_runtime(
         produced_runtime_digest=observed_runtime_digest,
     )
     write_review_build_evidence(review_layout, receipt, comparison)
-    write_review_record(
-        review_layout,
-        with_step(
-            started.model_copy(update={"build_receipt": receipt, "build_comparison": comparison}),
-            "build",
-            status="completed",
-            at=timing.finished_at,
-        ),
-    )
     _log_verdict(comparison, log=log)
-    log(
-        "system",
-        "info",
-        f"review build succeeded in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+    step.settle(
+        started.model_copy(update={"build_receipt": receipt, "build_comparison": comparison}),
+        timing,
+        verdict=comparison.verdict,
+        basis=comparison.basis,
+        runtime_digest=observed_runtime_digest,
     )
 
     if args.prune_workspace:

@@ -13,6 +13,12 @@ the build left behind must first prove that what is there is still what was
 certified. A copy of that check that drifted would leave a pass standing over a
 runtime nobody can point to — which is worse than no verdict, because it still
 reads as one.
+
+A step ends exactly two ways, and both are owned here: :class:`ReviewStep`
+hands a handler its ``stop`` and its ``settle`` together, so the record, the log
+line, and the span agree however the step came out. They are one object because
+they are one obligation — a settle that spelled the closing line itself would
+be a fifth copy of the format string the halt already owns.
 """
 
 from __future__ import annotations
@@ -20,11 +26,18 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+from typing import Protocol
 
 from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.domain.experiment import Runnable
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.models import BuildRuntimeReceipt
 from repo2ree_core.evidence.review.models import (
+    ActivationVerdict,
+    BuildVerdict,
+    ComparisonVerdict,
     EvidenceBasis,
+    ExperimentVerdict,
     ReviewRecord,
     ReviewStatus,
     ReviewStepKey,
@@ -33,13 +46,100 @@ from repo2ree_core.evidence.review.models import (
     with_step,
 )
 from repo2ree_core.evidence.review.store import read_review_record, write_review_record
-from repo2ree_core.ree.layout import ARTIFACTS_DIRNAME, ReviewLayout
-from repo2ree_core.time_utils import OperationTimer
+from repo2ree_core.execution.experiment.resolve import RunnableResolutionError
+from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_runnable
+from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.ree.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
+from repo2ree_core.ree.store import UNREADABLE_DOCUMENT, ReeStore
+from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_protocol.tracing import ReviewStepAttrs
 
 # Signature of the per-handler early exit: a terminal status and why.
 ReviewHalt = Callable[[ReviewStatus, str], ActionResult]
+
+# What a completed step settled. Each step draws from its own vocabulary — the
+# four are disjoint apart from ``identical``, which means the same thing in all
+# of them — and the union is what the shared exit accepts, so a step cannot
+# report a verdict from a lifecycle it does not belong to.
+ReviewVerdict = ComparisonVerdict | BuildVerdict | ActivationVerdict | ExperimentVerdict
+
+
+class ReviewSettle(Protocol):
+    """Signature of the per-handler success exit.
+
+    Spelled as a protocol rather than a ``Callable[...]`` alias so the keyword
+    arguments stay checked: what a step settled is optional (a source step has
+    no runtime to name) and a typo in one of them would otherwise be accepted
+    and silently dropped from the span.
+    """
+
+    def __call__(
+        self,
+        record: ReviewRecord,
+        timing: OperationTiming,
+        *,
+        verdict: ReviewVerdict | None = None,
+        basis: EvidenceBasis | None = None,
+        runtime_digest: str | None = None,
+    ) -> None: ...
+
+
+@dataclass(frozen=True)
+class ReviewStep:
+    """A started review step: the record it began from, and the two ways it ends.
+
+    ``record`` is the *started* record — the one every later write must build
+    on, since ``stop`` and ``settle`` both close over it. A handler that kept
+    the pre-start record would persist a step whose status contradicts what the
+    exit already wrote.
+
+    ``stop`` and ``settle`` are plain callables held as fields rather than
+    methods, because they are closures over the step's identity (layout, key,
+    timer, log, noun) that a handler should not be able to call with a
+    different one.
+    """
+
+    record: ReviewRecord
+    stop: ReviewHalt
+    settle: ReviewSettle
+
+
+def require_ree_intent(ree_layout: ReeLayout, *, log: LogSink) -> ReeIntent | ActionResult:
+    """The author baseline this attempt reviews, or the failure to return.
+
+    Every review step reads the intent — for the origin to fetch, the runtime to
+    certify, the runnable to run — and none of them can do anything without it.
+    Read *before* the step is marked running, for the same reason
+    :func:`require_review_record` is: a baseline nobody can read is a
+    precondition nobody can meet, so there is nothing to mark running and
+    nothing to settle a halt on.
+
+    Unguarded, this was where a review command against an uninitialised or
+    damaged workbench raised straight out of the handler — past the dispatcher,
+    which does not catch, and out of the executor as a traceback with no
+    ``ActionResult`` at all, which is not a shape the callers upstream have any
+    way to read. Callers ``return`` the ActionResult unchanged::
+
+        intent = require_ree_intent(ree_layout, log=log)
+        if isinstance(intent, ActionResult):
+            return intent
+    """
+    store = ReeStore(ree_layout)
+    if not store.metadata_exists():
+        message = "This workbench holds no REE to review"
+        log("system", "error", message)
+        return ActionResult.failed("precondition", message)
+    try:
+        return store.read_intent()
+    except UNREADABLE_DOCUMENT as exc:
+        # A precondition rather than an `internal` fault: the document is the
+        # REE's, not this code's, and a reviewer's next action is to fix the
+        # baseline rather than to report a bug.
+        message = f"The REE under review has unreadable metadata: {exc}"
+        log("system", "error", message)
+        return ActionResult.failed("precondition", message)
 
 
 def require_review_record(review_layout: ReviewLayout, review_id: str, log: LogSink) -> ReviewRecord | ActionResult:
@@ -72,33 +172,41 @@ def begin_review_step(
     timer: OperationTimer,
     log: LogSink,
     noun: str,
-) -> tuple[ReviewRecord, ReviewHalt]:
-    """Mark a step running on the persisted record and arm its halt.
+) -> ReviewStep:
+    """Mark a step running on the persisted record and arm both of its exits.
 
     Every review step opens the same way: settle the step to ``running`` on disk
     *before* doing any work — so an attempt killed mid-step reads as a step that
-    started rather than one that never ran — and build the halt that every
-    non-success path below returns through (see :func:`review_step_halt`).
+    started rather than one that never ran — and build the two exits below that
+    every path out of the handler returns through.
 
-    Returns the started record, which is the one every later write must build on:
-    the halt closes over it, so a handler that kept the pre-start record would
-    persist a step whose status contradicts what the halt already wrote.
+    The step's identity goes on the command span here rather than at either
+    exit, so a step killed mid-run is still attributable to its attempt.
     """
     started = with_step(record, step, status="running", at=timer.started_at)
     write_review_record(review_layout, started)
-    halt = review_step_halt(
-        review_layout=review_layout,
+    ReviewStepAttrs(review_id=review_id, step=step).apply_current()
+    return ReviewStep(
         record=started,
-        step=step,
-        review_id=review_id,
-        timer=timer,
-        log=log,
-        noun=noun,
+        stop=_review_step_halt(
+            review_layout=review_layout,
+            record=started,
+            step=step,
+            review_id=review_id,
+            timer=timer,
+            log=log,
+            noun=noun,
+        ),
+        settle=_review_step_settle(
+            review_layout=review_layout,
+            step=step,
+            log=log,
+            noun=noun,
+        ),
     )
-    return started, halt
 
 
-def review_step_halt(
+def _review_step_halt(
     *,
     review_layout: ReviewLayout,
     record: ReviewRecord,
@@ -119,9 +227,10 @@ def review_step_halt(
     Note what this is *not* for: a step that ran to completion and found
     something unwelcome. A build whose closure differs and an activation whose
     runtime would not come up are both the review working correctly, and they
-    complete with a verdict rather than halting here. Routing them through this
-    would put the attempt into ``failed`` and conflate "the review could not
-    run" with "the review has news".
+    complete through :func:`_review_step_settle` with a verdict rather than
+    halting here. Routing them through this would put the attempt into
+    ``failed`` and conflate "the review could not run" with "the review has
+    news".
     """
 
     def halt(status: ReviewStatus, message: str) -> ActionResult:
@@ -130,12 +239,64 @@ def review_step_halt(
             review_layout,
             with_step(record, step, status=status, at=timing.finished_at, failure=message),
         )
+        ReviewStepAttrs(step=step, status=status).apply_current()
         log("system", "warn" if status == "canceled" else "error", f"{noun} {status}: {message}")
         if status == "canceled":
             return ActionResult(status="canceled", outputs={"review_id": review_id})
         return ActionResult.failed("precondition", message)
 
     return halt
+
+
+def _review_step_settle(
+    *,
+    review_layout: ReviewLayout,
+    step: ReviewStepKey,
+    log: LogSink,
+    noun: str,
+) -> ReviewSettle:
+    """Build the "this step ran to completion" exit for one review step.
+
+    The counterpart of :func:`_review_step_halt`, and the reviewer-side
+    counterpart of :func:`~repo2ree_core.operations.steps.author.settle_step` —
+    the same "settle the record and report consistently" job for a lifecycle
+    whose record is a persisted attempt rather than a receipt.
+
+    ``completed`` whatever the verdict, because the verdict is not this
+    function's business: a build whose closure differs and a runtime that would
+    not come up are both steps that did their job. Only the halt above records
+    a step that could not run.
+
+    The handler passes the record already carrying this step's evidence (the
+    receipt and the comparison it just wrote), together with the ``timing`` that
+    evidence was stamped with — the same reading, so the record can never claim
+    a duration its own receipt contradicts. What it settled goes on the span
+    here, which is the one place that sees every step's verdict.
+    """
+
+    def settle(
+        record: ReviewRecord,
+        timing: OperationTiming,
+        *,
+        verdict: ReviewVerdict | None = None,
+        basis: EvidenceBasis | None = None,
+        runtime_digest: str | None = None,
+    ) -> None:
+        write_review_record(review_layout, with_step(record, step, status="completed", at=timing.finished_at))
+        ReviewStepAttrs(
+            step=step,
+            status="completed",
+            verdict=verdict,
+            basis=basis,
+            runtime_digest=runtime_digest,
+        ).apply_current()
+        log(
+            "system",
+            "info",
+            f"{noun} completed in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+        )
+
+    return settle
 
 
 def require_completed_step(
@@ -263,3 +424,181 @@ def workspace_runtime(review_layout: ReviewLayout, runtime_path: str) -> Path:
     """
     candidates = workspace_runtime_candidates(review_layout, runtime_path)
     return next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
+
+
+# ================================================
+# Running one of the author's runnables
+# ================================================
+
+
+#: An extra precondition a step has that the others do not, checked once the
+#: certified runtime is in hand. Returns the refusal message, or None to admit.
+ReviewAdmission = Callable[[ReviewRecord, CertifiedRuntime], str | None]
+
+
+@dataclass(frozen=True)
+class ReviewRunnableStep[RunnableT: Runnable]:
+    """What distinguishes the two review steps that run one of the author's runnables.
+
+    The reviewer-side counterpart of
+    :class:`~repo2ree_core.operations.steps.author.RunnableStep`, and it stops
+    at the same place for the same reason. Activation and experiments *get to*
+    their run identically — join the attempt, prove the step before them
+    completed, prove the certified runtime is still the certified runtime,
+    resolve the author's runnable, run it — and that is what this descriptor
+    covers.
+
+    What they do *afterwards* is not covered and deliberately stays in the
+    handlers: they write different evidence documents, attach them to different
+    fields of the record, and reach their verdicts by different rules (one
+    compares nothing, the other diffs against the author's recorded run). A
+    runner that owned settlement too would need a callback carrying most of
+    each handler's body, which is a parameter list pretending to be an
+    abstraction.
+
+    ``admit`` is the one precondition that is genuinely per-step — activation
+    needs a runtime artifact to probe, an experiment needs an activation that
+    actually passed — and it runs after certification, so both steps report the
+    apparatus being absent before reporting what they wanted it for.
+
+    Generic in the runnable it selects so a handler gets back what it resolved
+    rather than the widened base: an experiment step needs the ``name`` and
+    ``output_paths`` only an :class:`~repo2ree_core.domain.experiment.Experiment`
+    has, and narrowing that back with a runtime check would be this module's
+    typing weakness paid for at every call site.
+    """
+
+    step: ReviewStepKey
+    #: Completes the log line: "<noun> completed in …", "<noun> failed: …".
+    noun: str
+    #: Names the step in cancellation messages: "canceled before <subject>".
+    subject: str
+    requires: ReviewStepKey
+    requires_message: str
+    runtime_purpose: str
+    runtime_retry_purpose: str
+    admit: ReviewAdmission
+    #: Resolve the runnable this step runs, and the label it runs under. Raises
+    #: :class:`RunnableResolutionError` when the baseline cannot produce it.
+    select: Callable[[ReeIntent], tuple[RunnableT, str]]
+    #: Completes "<unresolvable>: <why>" when ``select`` refuses.
+    unresolvable: str
+    #: Completes "the author baseline declares <script_noun> that is not there".
+    script_noun: str
+
+
+@dataclass(frozen=True)
+class ReviewRun[RunnableT: Runnable]:
+    """One of the author's runnables, resolved and run inside a review attempt.
+
+    Everything a handler needs to judge what just happened and settle it: the
+    trees to read and write, the step's two exits, the runtime the run is bound
+    to, and the run's own outcome. The handler owns everything from here on.
+    """
+
+    ree_layout: ReeLayout
+    review_layout: ReviewLayout
+    step: ReviewStep
+    timer: OperationTimer
+    certified: CertifiedRuntime
+    runnable: RunnableT
+    label: str
+    outcome: ExperimentRunOutcome
+
+
+def open_review_run[RunnableT: Runnable](
+    step: ReviewRunnableStep[RunnableT],
+    *,
+    review_id: str,
+    run_id: str,
+    log: LogSink,
+    is_canceled: CancelCheck,
+) -> ReviewRun[RunnableT] | ActionResult:
+    """Take a review step from its command up to the end of its run.
+
+    Returns the run for the handler to judge, or the ``ActionResult`` to return
+    unchanged — every refusal below has already settled the attempt's record and
+    said why, so a caller never has to decide how a halt is reported::
+
+        opened = open_review_run(_ACTIVATION, review_id=args.review_id, …)
+        if isinstance(opened, ActionResult):
+            return opened
+    """
+    ree_layout = ReeLayout.in_workbench()
+    review_layout = ree_layout.review(review_id)
+    timer = OperationTimer.start()
+
+    intent = require_ree_intent(ree_layout, log=log)
+    if isinstance(intent, ActionResult):
+        return intent
+
+    record = require_review_record(review_layout, review_id, log)
+    if isinstance(record, ActionResult):
+        return record
+
+    started = begin_review_step(
+        review_layout,
+        record,
+        step.step,
+        review_id=review_id,
+        timer=timer,
+        log=log,
+        noun=step.noun,
+    )
+
+    if is_canceled():
+        return started.stop("canceled", f"canceled before {step.subject}")
+
+    halted = require_completed_step(started.record, step.requires, stop=started.stop, message=step.requires_message)
+    if halted is not None:
+        return halted
+
+    certified = require_certified_runtime(
+        started.record,
+        review_layout,
+        stop=started.stop,
+        purpose=step.runtime_purpose,
+        retry_purpose=step.runtime_retry_purpose,
+    )
+    if isinstance(certified, ActionResult):
+        return certified
+
+    refusal = step.admit(started.record, certified)
+    if refusal is not None:
+        return started.stop("failed", refusal)
+
+    try:
+        runnable, label = step.select(intent)
+    except RunnableResolutionError as exc:
+        return started.stop("failed", f"{step.unresolvable}: {exc}")
+
+    # A script that is not there would otherwise run, fail, and be recorded as a
+    # verdict about something nothing ever exercised. Absent apparatus is a fact
+    # about the baseline, so it fails the step rather than settling a verdict.
+    if not (review_layout.workspace / runnable.run_script).is_file():
+        return started.stop(
+            "failed",
+            f"the author baseline declares {step.script_noun} that is not there: {runnable.run_script}",
+        )
+
+    outcome = run_runnable(
+        workspace=review_layout.workspace.resolve(),
+        runnable=runnable,
+        label=label,
+        run_id=run_id,
+        log=log,
+        is_canceled=is_canceled,
+    )
+    if outcome.status == "canceled" or is_canceled():
+        return started.stop("canceled", f"{step.subject} was canceled")
+
+    return ReviewRun(
+        ree_layout=ree_layout,
+        review_layout=review_layout,
+        step=started,
+        timer=timer,
+        certified=certified,
+        runnable=runnable,
+        label=label,
+        outcome=outcome,
+    )

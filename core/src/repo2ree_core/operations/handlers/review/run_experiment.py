@@ -36,28 +36,25 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
 from repo2ree_core.domain.experiment import Experiment
+from repo2ree_core.domain.ree_intent import ReeIntent
 from repo2ree_core.evidence.receipts.models import RunExperimentReceipt, experiment_step_key, receipt_envelope
 from repo2ree_core.evidence.receipts.store import load_author_receipts
 from repo2ree_core.evidence.review.comparison import compare_experiment_results
 from repo2ree_core.evidence.review.models import (
     EvidenceBasis,
     ExperimentComparison,
+    ReviewRecord,
     with_experiment,
-    with_step,
 )
-from repo2ree_core.evidence.review.store import write_review_experiment_evidence, write_review_record
-from repo2ree_core.execution.experiment.resolve import RunnableResolutionError, resolve_experiment_runnable
-from repo2ree_core.execution.experiment.run import run_runnable
+from repo2ree_core.evidence.review.store import write_review_experiment_evidence
+from repo2ree_core.execution.experiment.resolve import resolve_experiment_runnable
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.review import (
-    begin_review_step,
-    require_certified_runtime,
-    require_completed_step,
-    require_review_record,
+    CertifiedRuntime,
+    ReviewRunnableStep,
+    open_review_run,
 )
 from repo2ree_core.ree.layout import ReeLayout
-from repo2ree_core.ree.store import ReeStore
-from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import ReviewRunExperimentArgs
 from repo2ree_protocol.log import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -72,6 +69,47 @@ class ReviewRunExperimentOutputs(BaseModel):
     comparison: ExperimentComparison
 
 
+def _admit(record: ReviewRecord, _certified: CertifiedRuntime) -> str | None:
+    """A completed activation is not enough — it has to have passed.
+
+    Activation completes with a ``failed`` verdict when the runtime would not
+    come up, and every experiment run inside such a runtime would report a
+    result failure that is really the activation failure wearing a different
+    hat. Recording a wall of ``different`` verdicts would bury the single fact
+    that explains them all.
+    """
+    if record.activation_outcome is None or record.activation_outcome.verdict != "passed":
+        return "This attempt's runtime would not come up; its results cannot be reproduced in it"
+    return None
+
+
+def _step(experiment_name: str) -> ReviewRunnableStep[Experiment]:
+    """The descriptor for reproducing one named experiment.
+
+    Built per call rather than shared as a constant, because unlike activation
+    this step's subject is chosen by the reviewer: the name is what ``select``
+    resolves against.
+    """
+
+    def select(intent: ReeIntent) -> tuple[Experiment, str]:
+        experiment = resolve_experiment_runnable(intent, experiment_name)
+        return experiment, experiment.name
+
+    return ReviewRunnableStep(
+        step="experiments",
+        noun="review experiment",
+        subject="the experiment",
+        requires="activation",
+        requires_message="Probe the runtime before reproducing results in it",
+        runtime_purpose="to run experiments in",
+        runtime_retry_purpose="to reproduce results",
+        admit=_admit,
+        select=select,
+        unresolvable="the author baseline cannot run this experiment",
+        script_noun="a run script",
+    )
+
+
 def handle_review_run_experiment(
     args: ReviewRunExperimentArgs,
     *,
@@ -79,77 +117,21 @@ def handle_review_run_experiment(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    ree_layout = ReeLayout.in_workbench()
-    review_layout = ree_layout.review(args.review_id)
-    timer = OperationTimer.start()
-
-    record = require_review_record(review_layout, args.review_id, log)
-    if isinstance(record, ActionResult):
-        return record
-
-    started, stop = begin_review_step(
-        review_layout,
-        record,
-        "experiments",
+    opened = open_review_run(
+        _step(args.experiment_name),
         review_id=args.review_id,
-        timer=timer,
-        log=log,
-        noun="review experiment",
-    )
-
-    if is_canceled():
-        return stop("canceled", "canceled before the experiment")
-
-    halted = require_completed_step(
-        started,
-        "activation",
-        stop=stop,
-        message="Probe the runtime before reproducing results in it",
-    )
-    if halted is not None:
-        return halted
-
-    # Completed is not enough: activation completes with a `failed` verdict when
-    # the runtime would not come up, and every experiment run inside such a
-    # runtime would report a result failure that is really the activation
-    # failure wearing a different hat.
-    if started.activation_outcome is None or started.activation_outcome.verdict != "passed":
-        return stop("failed", "This attempt's runtime would not come up; its results cannot be reproduced in it")
-
-    certified = require_certified_runtime(
-        started,
-        review_layout,
-        stop=stop,
-        purpose="to run experiments in",
-        retry_purpose="to reproduce results",
-    )
-    if isinstance(certified, ActionResult):
-        return certified
-
-    try:
-        experiment = resolve_experiment_runnable(ReeStore(ree_layout).read_intent(), args.experiment_name)
-    except RunnableResolutionError as exc:
-        return stop("failed", f"the author baseline cannot run this experiment: {exc}")
-
-    if not (review_layout.workspace / experiment.run_script).is_file():
-        return stop(
-            "failed",
-            f"the author baseline declares a run script that is not there: {experiment.run_script}",
-        )
-
-    outcome = run_runnable(
-        workspace=review_layout.workspace.resolve(),
-        runnable=experiment,
-        label=experiment.name,
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,
     )
-    if outcome.status == "canceled" or is_canceled():
-        return stop("canceled", "the experiment was canceled")
+    if isinstance(opened, ActionResult):
+        return opened
+
+    experiment, certified, outcome = opened.runnable, opened.certified, opened.outcome
+    review_layout = opened.review_layout
 
     comparison = _certify(
-        ree_layout,
+        opened.ree_layout,
         experiment=experiment,
         basis=certified.basis,
         run_exit_code=outcome.run_outputs.exit_code,
@@ -166,7 +148,7 @@ def handle_review_run_experiment(
         ),
     )
 
-    timing = timer.finish()
+    timing = opened.timer.finish()
     receipt = RunExperimentReceipt(
         **receipt_envelope(run_id, timing, outcome.status),
         experiment_name=experiment.name,
@@ -179,24 +161,17 @@ def handle_review_run_experiment(
         produced_output_digest=comparison.observed_output_digest,
     )
     write_review_experiment_evidence(review_layout, receipt, comparison)
-    write_review_record(
-        review_layout,
-        with_step(
-            with_experiment(started, receipt, comparison),
-            "experiments",
-            # Completed whatever the verdict: an experiment whose results do not
-            # reproduce is this step doing its job, and the finding is the most
-            # valuable thing a review produces. Only the conditions that stop it
-            # running at all are step failures.
-            status="completed",
-            at=timing.finished_at,
-        ),
-    )
     _log_verdict(comparison, log=log)
-    log(
-        "system",
-        "info",
-        f"review experiment completed in {format_duration_ms(timing.duration_ms)} (duration_ms={timing.duration_ms})",
+    # Completed whatever the verdict: an experiment whose results do not
+    # reproduce is this step doing its job, and the finding is the most valuable
+    # thing a review produces. Only the conditions that stop it running at all
+    # are step failures.
+    opened.step.settle(
+        with_experiment(opened.step.record, receipt, comparison),
+        timing,
+        verdict=comparison.verdict,
+        basis=certified.basis,
+        runtime_digest=certified.runtime_digest,
     )
 
     outputs = ReviewRunExperimentOutputs(
