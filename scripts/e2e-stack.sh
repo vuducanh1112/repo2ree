@@ -12,14 +12,24 @@
 # of a playwright project — used by the pure-API agent walkthrough. With
 # --record the run is captured via asciinema into a .cast terminal recording.
 #
-# With --coverage the backend is started *under* coverage (you can't measure
-# an already-running server), the e2e suite runs with E2E_COVERAGE=1 so the
-# jsCoverage fixture captures browser V8 coverage, and both processes get a
-# graceful SIGTERM at the end so coverage flushes its data on shutdown. Two
-# reports come out: backend (test-artifacts/coverage/e2e/) and frontend
-# (frontend/test-artifacts/coverage/). Backend data uses its own
-# COVERAGE_FILE so it never clobbers be-coverage's, but lives in the same
-# test-artifacts/coverage/data dir.
+# With --coverage <tier> the backend *and* every agent are started under
+# coverage (you can't measure an already-running process), the suite runs with
+# E2E_COVERAGE=1 so the jsCoverage fixture captures browser V8 coverage, and
+# every process gets a graceful SIGTERM at the end so coverage flushes its data
+# on shutdown. Two reports come out: backend (test-artifacts/coverage/<tier>/)
+# and frontend (frontend/test-artifacts/coverage/).
+#
+# <tier> names which measured tier this run belongs to — `e2e` for the
+# regression stack, `demo` for the narrated ones — and selects the tier's own
+# data directory under test-artifacts/coverage/data/<tier>/, so it never blends
+# with the pytest tiers or with the other stack tier. `make coverage-combined`
+# unions them. See the tier map at the top of mk/tests.mk.
+#
+# The agents are measured, not just the backend: an e2e run is the heaviest
+# exercise the agent package gets (docker runtime, control link, injection,
+# chunked transfers), and leaving them out reported that work as uncovered.
+# Server and agents therefore share one COVERAGE_FILE under --parallel-mode,
+# each writing its own suffixed data file, combined at the end.
 #
 # Environment knobs (all optional):
 #   E2E_WORKBENCH_IMAGE        bench the backend's catalog offers; empty means
@@ -39,7 +49,7 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: $0 (--project <playwright-project> | --script <path>) [--agents <n>] [--coverage] [--record <cast>]" >&2
+    echo "usage: $0 (--project <playwright-project> | --script <path>) [--agents <n>] [--coverage <tier>] [--record <cast>]" >&2
     exit 2
 }
 
@@ -52,13 +62,14 @@ script=
 record=
 agents=1
 coverage=0
+coverage_tier=
 while [ $# -gt 0 ]; do
     case "$1" in
         --project) [ $# -ge 2 ] || usage; project=$2; shift 2 ;;
         --script) [ $# -ge 2 ] || usage; script=$2; shift 2 ;;
         --record) [ $# -ge 2 ] || usage; record=$2; shift 2 ;;
         --agents) [ $# -ge 2 ] || usage; agents=$2; shift 2 ;;
-        --coverage) coverage=1; shift ;;
+        --coverage) [ $# -ge 2 ] || usage; coverage=1; coverage_tier=$2; shift 2 ;;
         *) usage ;;
     esac
 done
@@ -66,6 +77,13 @@ done
 if { [ -n "$project" ] && [ -n "$script" ]; } || { [ -z "$project" ] && [ -z "$script" ]; }; then usage; fi
 [ -z "$record" ] || [ -n "$script" ] || usage  # --record only applies to --script
 [ "$agents" -ge 1 ] 2>/dev/null || usage
+# The tier must be one the combine step knows about (see mk/tests.mk): a typo
+# would otherwise write a data directory `make coverage-combined` never reads,
+# and the run would silently produce nothing.
+case "$coverage_tier" in
+    "" | e2e | demo) ;;
+    *) echo "unknown coverage tier '$coverage_tier' — expected e2e or demo" >&2; exit 2 ;;
+esac
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
@@ -84,10 +102,14 @@ agent_log() {
 
 mkdir -p test-artifacts
 if [ "$coverage" -eq 1 ]; then
-    coverage_file=$root/test-artifacts/coverage/data/.coverage.e2e
-    backend_log=$root/test-artifacts/coverage/e2e/backend.log
-    agent_log_dir=$root/test-artifacts/coverage/e2e
-    mkdir -p test-artifacts/coverage/e2e
+    coverage_data_dir=$root/test-artifacts/coverage/data/$coverage_tier
+    coverage_file=$coverage_data_dir/.coverage
+    backend_log=$root/test-artifacts/coverage/$coverage_tier/backend.log
+    agent_log_dir=$root/test-artifacts/coverage/$coverage_tier
+    mkdir -p "$coverage_data_dir" "test-artifacts/coverage/$coverage_tier"
+    # Start the tier's data fresh: --parallel-mode leaves one suffixed file per
+    # process, so a previous run's files would otherwise be combined in as well
+    # and report a union of two runs as one.
     rm -f "$coverage_file" "$coverage_file".*
     rm -rf frontend/test-artifacts/coverage-raw
 else
@@ -159,14 +181,29 @@ api_pid=$!
 wait_until "backend" curl -sf http://127.0.0.1:8000/
 
 # start_agent <state-dir> <log>: one workbench agent process, backgrounded.
+# Under coverage it runs through `coverage run --parallel-mode` sharing the
+# tier's COVERAGE_FILE with the backend, so each process writes its own suffixed
+# data file and the combine at the end picks all of them up. `sigterm = true`
+# (pyproject.toml) is what makes the flush happen when stop_stack signals them.
 start_agent() {
-    WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
-    WORKBENCH_DOCKER_MODE=$docker_mode \
-    WORKBENCH_AGENT_STATE_DIR=$1 \
-    REPO2REE_EXEC_BUNDLE=$exec_bundle \
-    REPO2REE_TOOLS_BUNDLE=$tools_bundle \
-    uv run --package repo2ree-agent python -m repo2ree_agent \
-        >"$2" 2>&1 &
+    if [ "$coverage" -eq 1 ]; then
+        WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
+        WORKBENCH_DOCKER_MODE=$docker_mode \
+        WORKBENCH_AGENT_STATE_DIR=$1 \
+        REPO2REE_EXEC_BUNDLE=$exec_bundle \
+        REPO2REE_TOOLS_BUNDLE=$tools_bundle \
+        COVERAGE_FILE=$coverage_file \
+        uv run --package repo2ree-agent coverage run --parallel-mode \
+            -m repo2ree_agent >"$2" 2>&1 &
+    else
+        WORKBENCH_API_WS_URL=ws://127.0.0.1:8000/agent/connect \
+        WORKBENCH_DOCKER_MODE=$docker_mode \
+        WORKBENCH_AGENT_STATE_DIR=$1 \
+        REPO2REE_EXEC_BUNDLE=$exec_bundle \
+        REPO2REE_TOOLS_BUNDLE=$tools_bundle \
+        uv run --package repo2ree-agent python -m repo2ree_agent \
+            >"$2" 2>&1 &
+    fi
     agent_pids+=($!)
 }
 
@@ -216,10 +253,18 @@ stop_stack
 trap - EXIT
 
 if [ "$coverage" -eq 1 ]; then
-    echo ">> backend coverage"
+    echo ">> backend coverage ($coverage_tier tier: server + $agents agent(s))"
+    # Fold this tier's per-process files (one per --parallel-mode process:
+    # the server and each agent) into the tier's single .coverage. No --keep —
+    # the suffixed files have no reader once merged, and collapsing them leaves
+    # the tier looking exactly like a single-process pytest tier for the
+    # cross-tier combine.
     COVERAGE_FILE=$coverage_file coverage combine
-    COVERAGE_FILE=$coverage_file coverage html -d test-artifacts/coverage/e2e
     COVERAGE_FILE=$coverage_file coverage report
+    # Report through the same make rule the pytest tiers use, so a stack tier
+    # gets the identical total + per-package breakdown rather than a second,
+    # drifting variant. All coverage layout lives in mk/tests.mk.
+    make -s coverage-report TIER="$coverage_tier"
     echo ">> frontend coverage"
     (cd frontend && node scripts/gen-frontend-coverage.mjs)
 fi

@@ -4,9 +4,9 @@
 .PHONY: fe-tests \
 	be-tests be-unit-tests be-integration-tests \
 	protocol-tests core-tests core-unit-tests core-integration-tests \
-	supervisor-tests supervisor-integration-tests \
+	supervisor-tests supervisor-unit-tests supervisor-integration-tests \
 	api-tests api-unit-tests api-integration-tests executor-tests agent-tests \
-	be-coverage be-coverage-unit be-coverage-context
+	coverage-unit coverage-integration coverage-context coverage-combined coverage-report
 
 # ================================================
 # Frontend — tests
@@ -36,7 +36,10 @@ executor-tests:
 agent-tests:
 	pytest agent/tests
 
-be-unit-tests: protocol-tests core-unit-tests api-unit-tests executor-tests agent-tests
+supervisor-unit-tests:
+	pytest supervisor/tests/unit
+
+be-unit-tests: protocol-tests core-unit-tests api-unit-tests supervisor-unit-tests executor-tests agent-tests
 
 # Integration tests — flows spanning multiple components.
 core-integration-tests:
@@ -45,7 +48,7 @@ core-integration-tests:
 # Real-component API tier: the actual FastAPI app over HTTP against real
 # workbench containers (pinned dind + injected bundles). Skips when docker or
 # the bundles are absent (build with `make e2e-bundles`). Spans land
-# in test-results/api-integration/traces.ndjson for post-run inspection.
+# in test-artifacts/traces/api-integration/traces.ndjson for post-run inspection.
 api-integration-tests:
 	pytest api/tests/integration
 
@@ -62,53 +65,149 @@ core-tests: core-unit-tests core-integration-tests
 
 api-tests: api-unit-tests api-integration-tests
 
-supervisor-tests: supervisor-integration-tests
+supervisor-tests: supervisor-unit-tests supervisor-integration-tests
 
 be-tests: be-unit-tests be-integration-tests
 
 # ================================================
-# Backend - tests with coverage
+# Coverage — one report per tier, plus the union
 # ================================================
 #
-# Reports land under test-artifacts/coverage/<variant>/ (one per target, so they
-# never clobber each other); the .coverage data lives under
-# test-artifacts/coverage/data (set in [tool.coverage.run] in pyproject.toml).
-# The `--cov` source list also lives there, so a bare `--cov` is all pytest needs.
-
-# Container-free tiers in one process: fast and deterministic, runs anywhere.
-# Includes the agent unit tests (no docker) so the agent tier's own coverage is
-# counted rather than reading 0% on files only its unit tests exercise. The
-# Docker-gated transport (supervisor manager, hbom profilers) is not exercised,
-# so it reads as uncovered — this number is a floor, not the truth.
-be-coverage-unit:
-	pytest protocol/tests core/tests/unit api/tests/unit executor/tests agent/tests core/tests/integration \
-		--cov --cov-report=term-missing --cov-report=html:test-artifacts/coverage/unit
-
-# Full suite: build the executor/tools bundles from the current tree first, so
-# the integration tiers cannot accidentally exercise a stale command protocol.
-# Docker-gated tests still skip when Docker itself is unavailable.
+# Four measured tiers, matching the four ways this project is tested:
 #
-# Two invocations, not one: the api unit and integration tiers must run in
-# separate processes (they collide on OpenTelemetry's set-once tracer provider
-# — the tier conftests enforce this). The first run measures everything bar the
-# api integration tier and writes .coverage fresh; the second appends the api
-# integration tier and reports the combined total.
-be-coverage: e2e-bundles
-	pytest protocol/tests core/tests api/tests/unit supervisor/tests executor/tests agent/tests \
-		--cov --cov-report=
-	pytest api/tests/integration \
-		--cov --cov-append --cov-report=term-missing --cov-report=html:test-artifacts/coverage/full
+#   unit         container-free suites            (mk/tests.mk, runs anywhere)
+#   integration  docker-gated suites              (mk/tests.mk)
+#   e2e          the live stack, browser-driven   (mk/e2e.mk)
+#   demo         the narrated/demonstration runs  (mk/e2e.mk)
+#
+# Each tier owns a directory — data under test-artifacts/coverage/data/<tier>/,
+# HTML under test-artifacts/coverage/<tier>/ — so a tier's number always means
+# "what this way of testing reaches", never a blend. `coverage-combined` unions
+# them into the honest total. Per-tier *directories* rather than per-tier
+# `.coverage.<tier>` files is deliberate: see the data_file comment in
+# pyproject.toml.
+#
+# Every tier is additionally broken down by source package into
+# <tier>/by-module/<package>/ — filters over the tier's own data, so the
+# breakdown costs no extra test run and exists for every tier (see
+# coverage_render below, which every tier reports through).
+#
+# The `--cov` source list lives in pyproject.toml, so a bare `--cov` is all
+# pytest needs.
 
-# Per-test coverage: same two-process split as be-coverage, but each line is
-# tagged with the test that executed it (--cov-context=test). The HTML report
-# is built with `coverage html --show-contexts` so each source line lists which
-# tests hit it (use the filter box in the report's index.html to narrow to one
-# test). --show-contexts is kept on this target only, so the plain be-coverage
-# report stays uncluttered.
-be-coverage-context: e2e-bundles
-	pytest protocol/tests core/tests api/tests/unit supervisor/tests executor/tests agent/tests \
+COVERAGE_DATA = test-artifacts/coverage/data
+COVERAGE_HTML = test-artifacts/coverage
+# Every tier is measured through this: point COVERAGE_FILE at the tier's own
+# data directory. Exported for the whole recipe line, subprocesses included.
+tier_coverage = COVERAGE_FILE=$(CURDIR)/$(COVERAGE_DATA)/$(1)/.coverage
+
+# The packages each tier is broken down by, mirroring the coverage source list
+# in pyproject.toml. Listed rather than derived: the two change together about
+# once a package, and a missing entry shows up as an absent line in the summary
+# below rather than as a wrong number.
+COVERAGE_PACKAGES = protocol core supervisor api executor agent
+
+# coverage_render <tier>: the tier's HTML total, then one report per package
+# filtered to that package's src/, then the summary line for each. Filters over
+# the tier's own data, so this adds no test run and works for every tier —
+# including the stack tiers, which are a single run and cannot be split by
+# suite. Written as one shell command so the loop is one recipe line.
+#
+# Carries no `@`: coverage-combined splices this into the middle of its own
+# shell chain, where a leading `@` is no longer make's silent-recipe prefix but
+# a literal word the shell tries to run. Callers that start a recipe line with
+# it add their own.
+coverage_render = set -e; \
+	[ -f $(COVERAGE_DATA)/$(1)/.coverage ] \
+		|| { echo "no coverage data for the $(1) tier — run 'make coverage-$(1)' first" >&2; exit 1; }; \
+	$(call tier_coverage,$(1)) coverage html -d $(COVERAGE_HTML)/$(1) \
+		--title "repo2ree — $(1) tier" >/dev/null; \
+	echo ">> $(1) tier, by module"; \
+	for pkg in $(COVERAGE_PACKAGES); do \
+		$(call tier_coverage,$(1)) coverage html --include="$$pkg/src/*" \
+			-d $(COVERAGE_HTML)/$(1)/by-module/$$pkg --title "repo2ree — $$pkg ($(1) tier)" >/dev/null; \
+		printf '   %-12s %s%%\n' "$$pkg" \
+			"$$($(call tier_coverage,$(1)) coverage report --include="$$pkg/src/*" --format=total)"; \
+	done; \
+	printf '   %-12s %s%%\n' TOTAL "$$($(call tier_coverage,$(1)) coverage report --format=total)"; \
+	echo ">> $(1) reports: $(COVERAGE_HTML)/$(1) (by module: .../by-module/<package>)"
+
+# Render a tier that was measured elsewhere: scripts/e2e-stack.sh runs the stack
+# under coverage and calls back here, so the stack tiers report identically to
+# the pytest ones instead of growing their own variant.
+coverage-report:
+	@$(call coverage_render,$(TIER))
+
+# The container-free tier: fast and deterministic, runs on any machine, and is
+# exactly the set `commit-gate` already requires green. The docker-gated
+# transport (supervisor manager, hbom profilers, the agent's docker runtime) is
+# not exercised here, so it reads as uncovered — this number is a floor, not
+# the truth. The integration tier below is where that floor gets lifted.
+coverage-unit:
+	$(call tier_coverage,unit) pytest protocol/tests core/tests/unit api/tests/unit supervisor/tests/unit executor/tests agent/tests \
+		--cov --cov-report=term-missing
+	@$(call coverage_render,unit)
+
+# The docker-gated tier: real containers, real docker exec, real workbench
+# volumes. Builds the executor/tools bundles from the current tree first, so it
+# cannot accidentally exercise a stale command protocol. Individual tests still
+# skip (never fake) when Docker itself is absent — which makes an unguarded run
+# of this target on a docker-less machine report a floor of its own, so treat a
+# suspiciously low number here as "did it actually run" before "did coverage
+# regress".
+#
+# One invocation, not two: the process split the old `be-coverage` needed was
+# only ever between the api *unit* and *integration* tiers (they collide on
+# OpenTelemetry's set-once tracer provider — the tier conftests enforce it).
+# Those now live in different tiers and different processes by construction, so
+# the three integration suites share one.
+coverage-integration: e2e-bundles
+	$(call tier_coverage,integration) pytest core/tests/integration api/tests/integration supervisor/tests/integration \
+		--cov --cov-report=term-missing
+	@$(call coverage_render,integration)
+
+# Per-test coverage over the two pytest tiers: each line is tagged with the test
+# that executed it (--cov-context=test), and the HTML is built with
+# `coverage html --show-contexts` so every source line lists which tests hit it
+# (use the filter box in the report's index.html to narrow to one test).
+# --show-contexts is kept on this target alone, so the plain tier reports stay
+# uncluttered. Writes its own data dir rather than reusing the tiers': contexts
+# make the database much larger, and a plain tier report should not pay for it.
+coverage-context: e2e-bundles
+	$(call tier_coverage,context) pytest protocol/tests core/tests api/tests/unit supervisor/tests/unit executor/tests agent/tests \
 		--cov --cov-context=test --cov-report=
-	pytest api/tests/integration \
+	$(call tier_coverage,context) pytest api/tests/integration supervisor/tests/integration \
 		--cov --cov-append --cov-context=test --cov-report=
-	coverage html --show-contexts -d test-artifacts/coverage/context
-	coverage report
+	$(call tier_coverage,context) coverage html --show-contexts -d $(COVERAGE_HTML)/context
+	$(call tier_coverage,context) coverage report
+
+# The union of whatever tiers have been measured on this checkout.
+#
+# --keep is load-bearing: without it `coverage combine` *deletes* the per-tier
+# data it consumed, and the tier reports could never be regenerated without
+# re-running the suites. Tiers that were never run are skipped rather than
+# failing the target, so this is useful after any subset — but a combined
+# number is only the honest total when every tier ran on the same tree, which
+# is what `push-gate` arranges. The tier list is deliberately not a
+# prerequisite: combining is cheap, and re-running the e2e stack because
+# someone asked for a union report is not.
+#
+# Inputs are named file-by-file, not by directory: `coverage combine <dir>`
+# looks only for *suffixed* parallel-mode files (.coverage.<host>.<pid>) and
+# silently reports "No data to combine" for a directory holding a plain
+# .coverage — which is exactly what each tier writes. The glob covers both, so
+# a tier that ran under --parallel-mode (e2e, demo: server + agents in separate
+# processes) combines the same way as a single-process pytest tier.
+coverage-combined:
+	@set -e; files=""; \
+	for tier in unit integration e2e demo; do \
+		found=$$(ls $(COVERAGE_DATA)/$$tier/.coverage* 2>/dev/null || true); \
+		if [ -n "$$found" ]; then files="$$files $$found"; \
+		else echo "note: no coverage data for the $$tier tier — skipping"; fi; \
+	done; \
+	[ -n "$$files" ] || { echo "no tier has been measured; run e.g. 'make coverage-unit' first"; exit 1; }; \
+	echo ">> combining:$$files"; \
+	rm -rf $(COVERAGE_DATA)/combined; mkdir -p $(COVERAGE_DATA)/combined; \
+	$(call tier_coverage,combined) coverage combine --keep $$files; \
+	$(call tier_coverage,combined) coverage report; \
+	$(call coverage_render,combined)

@@ -7,7 +7,7 @@
 	e2e-tests e2e-tests-images e2e-tests-stack e2e-tests-stack-published \
 	e2e-review e2e-review-images e2e-review-stack e2e-review-stack-published \
 	e2e-demo e2e-demo-images e2e-demo-stack e2e-demo-stack-published \
-	e2e-demo-code-ocean e2e-coverage \
+	e2e-demo-code-ocean coverage-e2e coverage-demo \
 	e2e-api e2e-api-images e2e-api-stack e2e-api-stack-published \
 	stack-up stack-down stack-clean workbench-clean store-gc
 
@@ -64,12 +64,20 @@ e2e-api: e2e-bundles
 e2e-demo-code-ocean: e2e-bundles
 	$(E2E_STACK) --project code-ocean
 
-# Full-stack e2e coverage: browser (frontend) + server (backend) in one run.
-# Reports land in test-artifacts/coverage/e2e/ (backend) and
+# Full-stack coverage: browser (frontend) + server and agents (backend) in one
+# run. Reports land in test-artifacts/coverage/<tier>/ (backend) and
 # frontend/test-artifacts/coverage/ (browser V8). Needs docker + the workbench
-# image + browsers, like the e2e suite itself.
-e2e-coverage: e2e-bundles
-	$(E2E_STACK) --project e2e --agents $(E2E_AGENTS) --coverage
+# image + browsers, like the suites themselves.
+#
+# Two tiers, because the two stacks reach different code: `e2e` is the
+# regression suite, `demo` the narrated walkthrough. Each writes its own data
+# directory; `make coverage-combined` unions them with the pytest tiers. See
+# the tier map at the top of mk/tests.mk.
+coverage-e2e: e2e-bundles
+	$(E2E_STACK) --project e2e --agents $(E2E_AGENTS) --coverage e2e
+
+coverage-demo: e2e-bundles
+	$(E2E_STACK) --project demo --coverage demo
 
 # Image-backed demo stack: the compose control plane on :local tags plus the
 # agent container compose deliberately doesn't manage. Expects `make images`

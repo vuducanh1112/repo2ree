@@ -26,7 +26,9 @@
 | `make store-gc` | Evict bundle store caches unused for `STORE_GC_DAYS` (14), keeping the live one. |
 | `make commit-gate` | Fast pre-commit gate: static checks + all container-free test tiers. Certifies the tree it passed on; the pre-commit hook checks that certificate. |
 | `make push-gate` | The pre-publish gate: clean tree, all checks and tests, e2e source-run and image-backed. |
-| `make e2e-coverage` | Backend coverage plus browser-side frontend coverage for e2e. |
+| `make coverage-unit` / `coverage-integration` / `coverage-e2e` / `coverage-demo` | Coverage for one tier, into its own report. `coverage-e2e` / `coverage-demo` also produce browser-side frontend coverage. |
+| `make coverage-combined` | Union of whichever tiers have been measured on this checkout. |
+| `make coverage-context` | Per-test coverage attribution over the two pytest tiers. |
 
 ## Before Docker-Gated Tests
 
@@ -112,26 +114,86 @@ pytest api/tests/integration
 
 ## Coverage
 
-Container-free coverage floor:
+Coverage is measured per **tier**, one report each, matching the four ways this
+project is tested:
 
-```bash
-make be-coverage-unit
+| Tier | Target | What it measures | Needs |
+|---|---|---|---|
+| `unit` | `make coverage-unit` | Container-free suites | nothing |
+| `integration` | `make coverage-integration` | Docker-gated suites | docker + bundles |
+| `e2e` | `make coverage-e2e` | The live stack, browser-driven | docker + browsers |
+| `demo` | `make coverage-demo` | The narrated walkthrough stack | docker + browsers |
+
+Each tier writes its data to `test-artifacts/coverage/data/<tier>/` and its HTML
+report to `test-artifacts/coverage/<tier>/`, so a tier's number always means
+"what this way of testing reaches" and never a blend of two.
+
+### By module
+
+Every tier is also broken down by source package, into
+`test-artifacts/coverage/<tier>/by-module/<package>/`, and each run prints the
+per-package totals:
+
+```
+>> unit tier, by module
+   protocol     99%
+   core         90%
+   supervisor   82%
+   api          86%
+   executor     81%
+   agent        70%
+   TOTAL        88%
 ```
 
-Full backend coverage:
+These are filters over the tier's own data, not separate runs — so they cost no
+extra test time and exist for every tier, including `e2e` and `demo`, which are
+a single stack run and could never be decomposed by suite. They answer "how
+well covered is this package", with every suite in the tier contributing.
+
+Comparing one package across tiers is often the useful read: `agent` is 70% in
+`unit` and 87% in `combined`, because its docker runtime only runs under the
+stack tiers.
+
+All of this lives in `mk/tests.mk`: the tier definitions, the package list
+(`COVERAGE_PACKAGES`), and the `coverage_render` rule every tier reports
+through. To re-render a tier from data already measured, without repeating its
+suite:
 
 ```bash
-make be-coverage
+make coverage-report TIER=unit
 ```
 
-Per-test backend coverage context:
+Union of whatever has been measured:
 
 ```bash
-make be-coverage-context
+make coverage-combined
 ```
 
-Reports land under `test-artifacts/coverage/`. Coverage data lives under
-`test-artifacts/coverage/data/`, configured in `pyproject.toml`.
+It skips tiers that were never run, so it is useful after any subset — but the
+combined number is only the honest total when every tier ran on the same tree,
+which is what `push-gate` arranges. `--keep` means combining never destroys the
+per-tier data, so any tier report can be rebuilt without re-running its suite.
+
+Per-test attribution (which test hit which line) over the two pytest tiers:
+
+```bash
+make coverage-context
+```
+
+Two things to know when reading a report:
+
+- **The `unit` tier is a floor, not the truth.** The docker-gated transport
+  (supervisor manager, hbom profilers, the agent's docker runtime) is not
+  exercised there, so it reads as uncovered. That is what the `integration`
+  tier lifts.
+- **The executor reads 0% outside the `unit` tier.** `repo2ree-exec` runs
+  *inside* the workbench container, where the host's coverage process cannot
+  see it. Integration and e2e exercise it heavily; none of that is measured.
+  Its real coverage comes from `executor/tests` in the `unit` tier.
+
+Data layout is configured in `pyproject.toml`; one directory per tier rather
+than one suffixed file per tier, because `coverage combine` treats sibling
+`.coverage.*` files as its own parallel-mode output and consumes them.
 
 ## Frontend Checks And Tests
 
@@ -294,8 +356,13 @@ exactly what the push targets will publish.
 Run e2e coverage:
 
 ```bash
-make e2e-coverage
+make coverage-e2e
 ```
+
+This starts the backend *and* every agent under coverage — an e2e run is the
+heaviest exercise the agent package gets (docker runtime, control link,
+injection, chunked transfers), so measuring only the server reported that work
+as uncovered.
 
 E2E tests provision real workbench containers — the most expensive part of
 any e2e test (bench start, nested dockerd boot, and a cold-cache DinD build
